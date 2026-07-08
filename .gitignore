@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+coverage/
+*.local
+*.tsbuildinfo
+
+# Secrets - never committed, never read by tooling
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Aseprite autosaves (sources themselves are backed up off-site, not committed)
+*.aseprite-backup
+*.ase~
+
+# OS
+.DS_Store
+Thumbs.db

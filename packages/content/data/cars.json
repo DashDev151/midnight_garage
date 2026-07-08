@@ -1,0 +1,17 @@
+[
+  {
+    "id": "honda-city-e-aa",
+    "displayName": "Honda City E (AA)",
+    "brand": "Honda",
+    "spec": {
+      "chassisCode": "AA",
+      "engineCode": "ER",
+      "yearFrom": 1981,
+      "curbWeightKg": 690,
+      "stockPowerPs": 61,
+      "drivetrain": "FF"
+    },
+    "tier": "shitbox",
+    "tags": ["FF", "NA", "80s", "JDM"]
+  }
+]

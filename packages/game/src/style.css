@@ -1,0 +1,24 @@
+:root {
+  --mg-night: #14102a;
+  --mg-night-deep: #0b0820;
+  --mg-neon-pink: #ff4f9e;
+  --mg-neon-cyan: #22d3ee;
+  --mg-text: #e8e4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--mg-night-deep);
+  color: var(--mg-text);
+  font-family: 'Courier New', monospace;
+}
+
+#app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
