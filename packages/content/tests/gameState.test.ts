@@ -46,6 +46,8 @@ describe('GameState / DayLog round-trip', () => {
       staff: [],
       jobs: [],
       marketHeat: {},
+      activeAuctionLots: [],
+      activeListings: [],
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -63,6 +65,18 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'labor-overbooked', requestedSlots: 5, availableSlots: 2 },
       { type: 'service-bay-income', amountYen: 15_000 },
       { type: 'market-heat-shift', modelId: 'toyota-supra-rz-jza80', deltaPercent: 12.5 },
+      { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
+      { type: 'lot-inspected', lotId: 'lot-0001' },
+      { type: 'auction-bid-won', lotId: 'lot-0001', finalPriceYen: 150_000 },
+      { type: 'auction-bid-lost', lotId: 'lot-0002', winningPriceYen: 200_000 },
+      {
+        type: 'listing-created',
+        listingId: 'listing-0001',
+        carInstanceId: 'car-0001',
+        askingPriceYen: 300_000,
+        resolvesOnDay: 10,
+      },
+      { type: 'car-sold', carInstanceId: 'car-0001', channel: 'walk-in-offer', priceYen: 280_000 },
     ]
 
     const parsed = DayLogSchema.parse(fixture)

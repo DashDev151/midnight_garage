@@ -1,26 +1,30 @@
 """Balance harness CLI.
 
-Sprint 0 wiring stub. Sprint 3 fills in: read parquet emitted by the
-headless sim's bot careers, compute pacing distributions with polars,
-render a markdown report, and fail on invariant violations.
+Reads the CSV the sim's `pnpm balance:run` exports (careers.csv +
+careers.manifest.json), renders a markdown report, and checks the
+pacing invariants - a failed invariant fails the build.
 """
 
 import argparse
 import sys
+
+from balance.invariants import main as invariants_main
+from balance.report import main as report_main
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="balance", description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    report = subparsers.add_parser("report", help="Render a balance report from sim run output.")
-    report.add_argument("--runs", help="Path to a parquet file of simulated careers.")
+    subparsers.add_parser("report", help="Render the markdown balance report.")
+    subparsers.add_parser("check", help="Check balance invariants; exits non-zero on failure.")
 
-    args = parser.parse_args()
+    args, remaining = parser.parse_known_args()
 
     if args.command == "report":
-        print("balance report: not implemented until Sprint 3 (harness wiring stub).")
-        return 0
+        return report_main(remaining)
+    if args.command == "check":
+        return invariants_main(remaining)
     return 1
 
 

@@ -38,3 +38,15 @@ export function createRng(seed: number): Rng {
 
   return { next, int, pick }
 }
+
+/**
+ * Deterministic string -> seed hash, so an id (bidder, car instance, ...)
+ * can drive its own persistent seeded RNG stream without any extra state.
+ */
+export function hashStringToSeed(value: string): number {
+  let hash = 0
+  for (let i = 0; i < value.length; i++) {
+    hash = (Math.imul(hash, 31) + value.charCodeAt(i)) | 0
+  }
+  return hash >>> 0
+}

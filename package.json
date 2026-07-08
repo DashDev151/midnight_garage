@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "balance:run": "pnpm --filter @midnight-garage/sim balance:run"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

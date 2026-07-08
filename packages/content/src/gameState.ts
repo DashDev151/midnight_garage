@@ -4,6 +4,8 @@ import { CarInstanceSchema } from './carInstance'
 import { PartInstanceSchema } from './part'
 import { StaffMemberSchema } from './staff'
 import { JobKindSchema, JobSchema } from './job'
+import { AuctionLotSchema, AuctionTierSchema } from './auction'
+import { PublicListingSchema, SaleChannelSchema } from './sale'
 
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
@@ -16,6 +18,8 @@ export const GameStateSchema = z.object({
   jobs: z.array(JobSchema).default([]),
   /** Demand index per CarModel id, base 100 (GDD 6.4). */
   marketHeat: z.record(z.string(), z.number()).default({}),
+  activeAuctionLots: z.array(AuctionLotSchema).default([]),
+  activeListings: z.array(PublicListingSchema).default([]),
 })
 
 /**
@@ -62,6 +66,35 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('market-heat-shift'),
     modelId: z.string().min(1),
     deltaPercent: z.number(),
+  }),
+  z.object({
+    type: z.literal('auction-catalog-refreshed'),
+    tier: AuctionTierSchema,
+    lotCount: z.number().int().nonnegative(),
+  }),
+  z.object({ type: z.literal('lot-inspected'), lotId: z.string().min(1) }),
+  z.object({
+    type: z.literal('auction-bid-won'),
+    lotId: z.string().min(1),
+    finalPriceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('auction-bid-lost'),
+    lotId: z.string().min(1),
+    winningPriceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('listing-created'),
+    listingId: z.string().min(1),
+    carInstanceId: z.string().min(1),
+    askingPriceYen: z.number().int().positive(),
+    resolvesOnDay: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('car-sold'),
+    carInstanceId: z.string().min(1),
+    channel: SaleChannelSchema,
+    priceYen: z.number().int().nonnegative(),
   }),
 ])
 

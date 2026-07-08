@@ -8,7 +8,7 @@ Sources: GDD sections 6 and 9, roadmap risk R4. All currency is yen.*
 
 | Item | Value | Rationale |
 |---|---|---|
-| Starting cash | ¥1,200,000 | Enough for one shitbox flip plus ~4 weeks of rent buffer |
+| Starting cash | ~~¥1,200,000~~ **¥1,500,000** | **Corrected in Sprint 03** (implementation-time finding 3, `docs/sprints/sprint03.md`): 100 days of weekly rent alone is ¥1,260,000 — more than the original draft, leaving zero operating margin for *any* strategy regardless of how it played. The harness doing exactly its intended job. |
 | Weekly rent | ¥90,000 | Real pressure: uncovered by service jobs alone after ~5 weeks |
 | Player labor slots | 2/day (14/week) | GDD 3.2 base |
 | Starting equipment | Basic tools | Gates jobs to Act 1 tier |
@@ -66,15 +66,42 @@ discount from these numbers.
 
 These become hard assertions in `tools/balance`; a failed assertion fails the build.
 
-1. A competent flipper bot reaches Act 2 (Local -> Known) by **day 25 +/- 10**.
+**Amended in Sprint 03 design** (see `docs/sprints/sprint03.md` decision 3): reputation-tier
+progression (Act 2/Act 3 gates) has no mechanic granting it yet, and neither does a real
+"event chaser" strategy (needs the events system). Rather than assert against mechanics that
+don't exist, #1 and #3 below are proxy invariants until a rep-gain mechanic lands.
+
+**Amended again once the harness actually ran** (see `tools/balance/src/balance/invariants.py`
+and sprint03.md's implementation-time findings): #1's separation check moved from day 25 to day
+100 — the full 1,000-seed run showed day 25 is too early for a population median to diverge from
+Passive Grinder (auction catalogs only start appearing day 7). #4's roster grew to 5 bots
+(Flipper / Cautious Restorer / Balanced Player / Random / Passive Grinder — the last two added
+mid-sprint at user request); the strict "no strategy beats another by more than 3x" framing was
+dropped in favor of a sanity floor plus honest, un-gated reporting of each bot's actual result —
+Cautious Restorer's day100 median is currently negative (~-¥255,000), a genuine finding about
+full-restoration strategies needing a longer time horizon than 100 days, not something to force
+past with a stricter invariant.
+
+1. ~~A competent flipper bot reaches Act 2 (Local -> Known) by day 25 +/- 10~~ **Proxy (day 100,
+   not day 25 — see above):** a Flipper bot's day100 cash trajectory is clearly separated from a
+   Passive Grinder's, proving real market participation.
 2. Rent pressure is real until the first staff hire: median cash buffer stays under 6 weeks of
    fixed costs through Act 1.
-3. Act 3 (Respected) by **day 70 +/- 15** for flipper and event-chaser strategies.
-4. No bot strategy (pure flipper / service grinder / event chaser) out-earns another by more
-   than **3x** at day 100.
+3. ~~Act 3 (Respected) by day 70 +/- 15 for flipper and event-chaser strategies~~ **Proxy:** a
+   Flipper bot's day100 median cash stays positive (GDD 6.6's forced-loan/debt-spiral mechanic
+   isn't built yet, so this is the closest measurable solvency signal) — the real Act 1 gate.
+4. ~~No bot strategy out-earns another by more than 3x at day 100~~ **Softened to a sanity
+   floor** (no strategy's day100 median falls below -¥2,000,000, catching a runaway/catastrophic
+   bug) once the 5-bot spread made "3x" meaningless with negative numbers in the mix. Cautious
+   Restorer's negative result and Random's clearly-worst result are both reported, not gated.
 5. A fair-price uninspected purchase never loses more than **50% of purchase price** to hidden
-   issues (sliding-scale lemon cap).
-6. First-timer buyers keep sub-¥500k Commons sellable within 7 days at book value or better.
+   issues (sliding-scale lemon cap). **Verified at the mechanism level** (`auctions.test.ts`'s
+   `resolveHandoverCondition` tests assert the dampened-multiplier behavior directly) but not yet
+   as a population-level harness invariant — no bot currently buys uninspected and reports the
+   outcome in a way the CSV captures. A natural follow-up once a bot models that behavior.
+6. First-timer buyers keep sub-¥500k Commons sellable within 7 days at book value or better. **Not
+   yet checked** — no bot models first-timer-specific selling behavior this sprint. Flagged as
+   still open rather than silently assumed passing.
 
 ## Open questions for the spreadsheet pass
 

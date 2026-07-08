@@ -1,8 +1,11 @@
 import type { DayActions } from '../src/actions'
-import type { GameState } from '@midnight-garage/content'
+import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
+import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
+
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
 
 const POC_10_MODEL_IDS = [
   'honda-city-e-aa',
@@ -56,10 +59,19 @@ function initialState(): GameState {
     staff: [],
     jobs: [],
     marketHeat: Object.fromEntries(POC_10_MODEL_IDS.map((id) => [id, 100])),
+    activeAuctionLots: [],
+    activeListings: [],
   }
 }
 
-const noActions: DayActions = { createJobs: [], laborAssignments: [] }
+const noActions: DayActions = {
+  createJobs: [],
+  laborAssignments: [],
+  bidsOnLots: [],
+  inspectLots: [],
+  sellViaWalkIn: [],
+  listForSale: [],
+}
 
 /**
  * Scripted 30-day career: day 1 opens a repair-zone job (body, 3 slots)
@@ -71,6 +83,7 @@ const noActions: DayActions = { createJobs: [], laborAssignments: [] }
 function scriptedActionsForDay(day: number): DayActions {
   if (day === 1) {
     return {
+      ...noActions,
       createJobs: [
         { carInstanceId: 'car-0001', kind: 'repair-zone', zone: 'body', laborSlotsRequired: 3 },
       ],
@@ -78,10 +91,11 @@ function scriptedActionsForDay(day: number): DayActions {
     }
   }
   if (day === 2) {
-    return { createJobs: [], laborAssignments: [{ jobId: 'job-1-0', laborSlots: 1 }] }
+    return { ...noActions, laborAssignments: [{ jobId: 'job-1-0', laborSlots: 1 }] }
   }
   if (day === 3) {
     return {
+      ...noActions,
       createJobs: [
         {
           carInstanceId: 'car-0001',
@@ -101,7 +115,7 @@ function runCareer(days: number): GameState {
   let state = initialState()
   for (let day = 1; day <= days; day++) {
     const actions = scriptedActionsForDay(day)
-    const result = advanceDay(state, actions, state.seed + state.day)
+    const result = advanceDay(state, actions, state.seed + state.day, CONTEXT)
     state = result.state
   }
   return state
@@ -111,7 +125,7 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('0349eea8')
+    expect(hashState(finalState)).toBe('1d81d4c2')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -131,6 +145,13 @@ describe('advanceDay golden master', () => {
     const car = finalState.ownedCars[0]
     expect(car?.buildSheet.suspension?.partId).toBe('tanuki-street-coilovers')
     expect(finalState.partInventory).toHaveLength(0)
+  })
+
+  it('weekly auction catalogs refresh even when no bids are placed', () => {
+    const finalState = runCareer(30)
+    expect(finalState.activeAuctionLots.length).toBeGreaterThan(0)
+    const tiers = new Set(finalState.activeAuctionLots.map((lot) => lot.tier))
+    expect(tiers.has('local-yard')).toBe(true)
   })
 
   it('rent is deducted on every 7-day boundary through day 30', () => {

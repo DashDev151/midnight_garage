@@ -7,10 +7,15 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:cli": "tsc -p tsconfig.cli.json && node scripts/mark-commonjs.cjs dist",
+    "balance:run": "pnpm build:cli && node dist/packages/sim/src/cli/exportCareers.js"
   },
   "dependencies": {
     "@midnight-garage/content": "workspace:*",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1"
   }
 }

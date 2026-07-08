@@ -1,0 +1,194 @@
+import type {
+  AuctionLot,
+  AuctionTier,
+  CarInstance,
+  CarModel,
+  HiddenIssue,
+  RarityTier,
+  Zone,
+} from '@midnight-garage/content'
+import type { Rng } from './rng'
+
+const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
+
+const PROVENANCE_POOL = [
+  'one-owner, garage kept',
+  'dealer trade-in, service history unknown',
+  'estate sale, low mileage claimed',
+  'daily driver, honest wear',
+] as const
+
+/**
+ * GDD 4.5: Gaisha is sourced only via the (unbuilt) Import Broker, "no
+ * auction luck" — it never appears in a regular auction catalog. Legend
+ * appears only at the rep-gated Collector Network (GDD 9.2: rare, mostly
+ * story leads, occasionally an auction).
+ */
+export function auctionTierForRarity(tier: RarityTier): AuctionTier | null {
+  switch (tier) {
+    case 'shitbox':
+    case 'common':
+      return 'local-yard'
+    case 'uncommon':
+      return 'regional'
+    case 'rare':
+      return 'premium'
+    case 'legend':
+      return 'collector-network'
+    case 'gaisha':
+      return null
+  }
+}
+
+export function groupHiddenIssuesByZone(
+  issues: readonly HiddenIssue[],
+): Readonly<Record<Zone, readonly HiddenIssue[]>> {
+  const grouped: Record<Zone, HiddenIssue[]> = {
+    engine: [],
+    drivetrain: [],
+    suspension: [],
+    body: [],
+    interior: [],
+  }
+  for (const issue of issues) {
+    grouped[issue.zone].push(issue)
+  }
+  return grouped
+}
+
+/**
+ * Rolls a fresh, not-yet-owned car for an auction lot. Condition here is
+ * the displayed/paperwork baseline; hidden issues are drawn (weighted by
+ * the model's hiddenIssueWeights) but stay unresolved — revealed=false —
+ * until inspection or the sliding-scale lemon rule at handover
+ * (resolveHandoverCondition). Always stock: buildSheet is empty, since an
+ * auction car hasn't been touched yet (GDD: "buy rough, restore/build").
+ */
+export function generateAuctionCarInstance(
+  model: CarModel,
+  hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
+  id: string,
+  rng: Rng,
+): CarInstance {
+  const hiddenIssues = model.hiddenIssueWeights.flatMap((weighted) => {
+    if (rng.next() >= weighted.weight) return []
+    const candidates = hiddenIssuesByZone[weighted.zone]
+    if (candidates.length === 0) return []
+    return [{ issueId: rng.pick(candidates).id, revealed: false }]
+  })
+
+  return {
+    id,
+    modelId: model.id,
+    year: model.spec.yearFrom + rng.int(0, 8),
+    mileageKm: rng.int(30_000, 180_000),
+    color: rng.pick(COLOR_POOL),
+    provenanceNote: rng.pick(PROVENANCE_POOL),
+    condition: {
+      engine: rng.int(30, 90),
+      drivetrain: rng.int(30, 90),
+      suspension: rng.int(30, 90),
+      body: rng.int(30, 90),
+      interior: rng.int(30, 90),
+    },
+    hiddenIssues,
+    authenticityPercent: rng.int(60, 95),
+    buildSheet: {
+      engine: null,
+      forcedInduction: null,
+      drivetrain: null,
+      suspension: null,
+      brakes: null,
+      bodyAero: null,
+      wheelsInterior: null,
+    },
+  }
+}
+
+/** Weekly catalog for one tier: one lot per eligible model that's in stock this week, up to `count`. */
+export function generateAuctionCatalog(
+  models: readonly CarModel[],
+  tier: AuctionTier,
+  hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
+  day: number,
+  count: number,
+  expiresInDays: number,
+  rng: Rng,
+): AuctionLot[] {
+  const eligible = models.filter((model) => auctionTierForRarity(model.tier) === tier)
+  if (eligible.length === 0) return []
+
+  const lots: AuctionLot[] = []
+  for (let i = 0; i < count; i++) {
+    const model = rng.pick(eligible)
+    const lotId = `lot-${day}-${tier}-${i}`
+    const car = generateAuctionCarInstance(model, hiddenIssuesByZone, `car-${lotId}`, rng)
+    lots.push({
+      id: lotId,
+      tier,
+      modelId: model.id,
+      car,
+      bookValueYen: model.bookValueYen,
+      inspected: false,
+      expiresOnDay: day + expiresInDays,
+    })
+  }
+  return lots
+}
+
+export function inspectLot(lot: AuctionLot): AuctionLot {
+  return {
+    ...lot,
+    inspected: true,
+    car: { ...lot.car, hiddenIssues: lot.car.hiddenIssues.map((i) => ({ ...i, revealed: true })) },
+  }
+}
+
+function applyIssueSeverity(car: CarInstance, zone: Zone, severity: number): CarInstance {
+  return {
+    ...car,
+    condition: { ...car.condition, [zone]: Math.max(0, car.condition[zone] - severity) },
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+/**
+ * The sliding-scale lemon rule (GDD 6.5, Sprint 03 decision 2). Inspected
+ * lots apply their rolled hidden-issue severity in full — no surprise, the
+ * player saw it coming. Uninspected lots run each issue through a
+ * discount-scaled variance roll: buying at or above book value dampens
+ * the outcome to half the rolled severity (an annoyance, never a
+ * showstopper); the further under book value the final price is, the
+ * wider the swing opens both ways — near-zero (goldmine) to up to 3x the
+ * rolled severity (lemon). First-pass formula, explicitly tunable.
+ */
+export function resolveHandoverCondition(
+  lot: AuctionLot,
+  finalPriceYen: number,
+  hiddenIssueCatalog: Readonly<Record<string, HiddenIssue>>,
+  rng: Rng,
+): CarInstance {
+  let car = lot.car
+  const revealed = lot.inspected
+
+  const discount = clamp((lot.bookValueYen - finalPriceYen) / lot.bookValueYen, -1, 1)
+  const varianceFactor = Math.max(0, discount)
+
+  for (const issue of car.hiddenIssues) {
+    const catalogEntry = hiddenIssueCatalog[issue.issueId]
+    if (!catalogEntry) continue
+    const rolledSeverity = rng.int(catalogEntry.severityMin, catalogEntry.severityMax)
+    const multiplier = revealed
+      ? 1
+      : varianceFactor === 0
+        ? 0.5
+        : rng.next() * (1 + varianceFactor * 2)
+    const finalSeverity = clamp(rolledSeverity * multiplier, 0, 100)
+    car = applyIssueSeverity(car, catalogEntry.zone, finalSeverity)
+  }
+
+  return { ...car, hiddenIssues: car.hiddenIssues.map((i) => ({ ...i, revealed: true })) }
+}

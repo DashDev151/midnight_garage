@@ -22,6 +22,16 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
   {
+    // Plain CommonJS Node scripts (build helpers, not part of any TS
+    // project) — .cjs always runs as CommonJS regardless of package.json
+    // "type", so require()/process are expected here.
+    files: ['**/*.cjs'],
+    languageOptions: { globals: globals.node, sourceType: 'commonjs' },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     // Boundary law (CLAUDE.md / roadmap section 5): the sim core stays
     // renderer-, storage-, and framework-agnostic. Enforced here, not by
     // discipline.

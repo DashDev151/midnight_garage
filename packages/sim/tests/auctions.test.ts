@@ -1,0 +1,202 @@
+import { CARS, HIDDEN_ISSUES, type CarModel } from '@midnight-garage/content'
+import { describe, expect, it } from 'vitest'
+import {
+  auctionTierForRarity,
+  generateAuctionCarInstance,
+  generateAuctionCatalog,
+  groupHiddenIssuesByZone,
+  inspectLot,
+  resolveHandoverCondition,
+} from '../src/auctions'
+import { createRng } from '../src/rng'
+
+const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
+const HIDDEN_ISSUES_BY_ID = Object.fromEntries(HIDDEN_ISSUES.map((issue) => [issue.id, issue]))
+
+/** A synthetic Gaisha model — PoC-10 has none, so this proves the exclusion holds even when one exists in the pool. */
+const GAISHA_MODEL: CarModel = {
+  id: 'bmw-m3-e30',
+  displayName: 'BMW M3 (E30)',
+  brand: 'BMW',
+  parodyName: 'BMV M3 (E30)',
+  parodyBrand: 'BMV',
+  spec: {
+    chassisCode: 'E30',
+    engineCode: 'S14',
+    yearFrom: 1986,
+    curbWeightKg: 1200,
+    stockPowerPs: 200,
+  },
+  tier: 'gaisha',
+  tags: ['FR', 'NA', 'Piston', '80s', 'Gaisha'],
+  bookValueYen: 5_000_000,
+  hiddenIssueWeights: [],
+}
+
+describe('auctionTierForRarity', () => {
+  it('maps every real tier and excludes gaisha', () => {
+    expect(auctionTierForRarity('shitbox')).toBe('local-yard')
+    expect(auctionTierForRarity('common')).toBe('local-yard')
+    expect(auctionTierForRarity('uncommon')).toBe('regional')
+    expect(auctionTierForRarity('rare')).toBe('premium')
+    expect(auctionTierForRarity('legend')).toBe('collector-network')
+    expect(auctionTierForRarity('gaisha')).toBeNull()
+  })
+})
+
+describe('generateAuctionCatalog never includes Gaisha', () => {
+  const modelsWithGaisha = [...CARS, GAISHA_MODEL]
+  const tiers = ['local-yard', 'regional', 'premium', 'collector-network'] as const
+
+  it('across many seeds and all four tiers', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      for (const tier of tiers) {
+        const lots = generateAuctionCatalog(
+          modelsWithGaisha,
+          tier,
+          HIDDEN_ISSUES_BY_ZONE,
+          7,
+          5,
+          7,
+          createRng(seed),
+        )
+        for (const lot of lots) {
+          expect(lot.modelId).not.toBe(GAISHA_MODEL.id)
+        }
+      }
+    }
+  })
+})
+
+describe('generateAuctionCarInstance', () => {
+  const model = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!model) throw new Error('fixture car missing from seed content')
+
+  it('rolls condition and authenticity within sane bounds', () => {
+    const rng = createRng(1)
+    const instance = generateAuctionCarInstance(model, HIDDEN_ISSUES_BY_ZONE, 'car-test', rng)
+    for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
+      expect(instance.condition[zone]).toBeGreaterThanOrEqual(0)
+      expect(instance.condition[zone]).toBeLessThanOrEqual(100)
+    }
+    expect(instance.authenticityPercent).toBeGreaterThanOrEqual(60)
+    expect(instance.authenticityPercent).toBeLessThanOrEqual(95)
+    expect(instance.year).toBeGreaterThanOrEqual(model.spec.yearFrom)
+  })
+
+  it('starts stock — every build sheet slot is empty', () => {
+    const instance = generateAuctionCarInstance(
+      model,
+      HIDDEN_ISSUES_BY_ZONE,
+      'car-test',
+      createRng(1),
+    )
+    for (const part of Object.values(instance.buildSheet)) {
+      expect(part).toBeNull()
+    }
+  })
+
+  it('hidden issues start unrevealed', () => {
+    const instance = generateAuctionCarInstance(
+      model,
+      HIDDEN_ISSUES_BY_ZONE,
+      'car-test',
+      createRng(2),
+    )
+    for (const issue of instance.hiddenIssues) {
+      expect(issue.revealed).toBe(false)
+    }
+  })
+})
+
+describe('inspectLot', () => {
+  it('reveals every hidden issue and marks the lot inspected', () => {
+    const model = CARS.find((c) => c.id === 'honda-city-e-aa')
+    if (!model) throw new Error('fixture car missing from seed content')
+    const lots = generateAuctionCatalog(
+      CARS,
+      'local-yard',
+      HIDDEN_ISSUES_BY_ZONE,
+      7,
+      10,
+      7,
+      createRng(3),
+    )
+    const lotWithIssue = lots.find((lot) => lot.car.hiddenIssues.length > 0)
+    if (!lotWithIssue) return // seed happened to roll no issues this run — nothing to assert
+    const inspected = inspectLot(lotWithIssue)
+    expect(inspected.inspected).toBe(true)
+    for (const issue of inspected.car.hiddenIssues) {
+      expect(issue.revealed).toBe(true)
+    }
+  })
+})
+
+describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
+  const model = CARS.find((c) => c.id === 'mazda-savanna-rx7-fc3s')
+  if (!model) throw new Error('fixture car missing from seed content')
+
+  const lotWithIssue = (seed: number) => {
+    let attempt = seed
+    for (let i = 0; i < 20; i++) {
+      const [lot] = generateAuctionCatalog(
+        [model],
+        'regional',
+        HIDDEN_ISSUES_BY_ZONE,
+        7,
+        1,
+        7,
+        createRng(attempt),
+      )
+      if (lot && lot.car.hiddenIssues.length > 0) return lot
+      attempt += 1000
+    }
+    throw new Error('could not roll a lot with a hidden issue in 20 attempts')
+  }
+
+  it('an inspected lot applies issues at full rolled severity regardless of price', () => {
+    const lot = inspectLot(lotWithIssue(1))
+    const atBookValue = resolveHandoverCondition(
+      lot,
+      lot.bookValueYen,
+      HIDDEN_ISSUES_BY_ID,
+      createRng(1),
+    )
+    const atSteal = resolveHandoverCondition(
+      lot,
+      Math.round(lot.bookValueYen * 0.1),
+      HIDDEN_ISSUES_BY_ID,
+      createRng(1),
+    )
+    // Same rng seed, same rolled severity — inspected outcomes don't vary with price.
+    expect(atBookValue.condition).toEqual(atSteal.condition)
+  })
+
+  it('an uninspected fair-price purchase dampens the outcome (never a full-severity showstopper)', () => {
+    const lot = lotWithIssue(2)
+    const issue = HIDDEN_ISSUES_BY_ID[lot.car.hiddenIssues[0]?.issueId ?? '']
+    if (!issue) throw new Error('expected a rolled hidden issue')
+    const resolved = resolveHandoverCondition(
+      lot,
+      lot.bookValueYen,
+      HIDDEN_ISSUES_BY_ID,
+      createRng(2),
+    )
+    const before = lot.car.condition[issue.zone]
+    const after = resolved.condition[issue.zone]
+    expect(before - after).toBeLessThanOrEqual(issue.severityMax * 0.5 + 0.01)
+  })
+
+  it('every issue is revealed after handover, inspected or not', () => {
+    const lot = lotWithIssue(3)
+    const resolved = resolveHandoverCondition(
+      lot,
+      lot.bookValueYen,
+      HIDDEN_ISSUES_BY_ID,
+      createRng(3),
+    )
+    for (const issue of resolved.hiddenIssues) {
+      expect(issue.revealed).toBe(true)
+    }
+  })
+})

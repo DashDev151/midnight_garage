@@ -13,6 +13,8 @@ function baseState(staff: StaffMember[]): GameState {
     staff,
     jobs: [],
     marketHeat: {},
+    activeAuctionLots: [],
+    activeListings: [],
   }
 }
 

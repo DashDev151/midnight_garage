@@ -3,3 +3,4 @@ packages:
 minimumReleaseAgeExclude:
   - '@vue/language-core@3.3.7'
   - vue-tsc@3.3.7
+  - '@types/node@22.20.1'
