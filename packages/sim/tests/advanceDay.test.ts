@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
+import { createInitialGameState } from '../src/newGame'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
 
@@ -160,5 +161,51 @@ describe('advanceDay golden master', () => {
     const finalState = runCareer(30)
     const rentPayments = 4 // days 7, 14, 21, 28
     expect(finalState.cashYen).toBe(1_200_000 - rentPayments * 90_000)
+  })
+})
+
+/**
+ * A second golden master covering the money path the job-loop career above
+ * never touches: winning a lot at auction (with the handover/lemon rule
+ * applied) and selling the car. Pinned by hash so a regression here trips
+ * the golden test, not only the unit tests. (External review 2026-07, 5b.)
+ */
+describe('advanceDay golden master — acquisition and sale path', () => {
+  function acquisitionCareer(): { won: GameState; sold: GameState } {
+    let state = createInitialGameState(CONTEXT, 42)
+    let guard = 0
+    while (state.activeAuctionLots.length === 0 && guard++ < 30) {
+      state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
+    }
+    const lot = state.activeAuctionLots.find((l) => l.tier === 'local-yard')
+    if (!lot) throw new Error('expected a local-yard lot to appear')
+    // An over-market max bid wins under second-price resolution.
+    state = advanceDay(
+      state,
+      { ...noActions, bidsOnLots: [{ lotId: lot.id, maxBidYen: lot.bookValueYen * 3 }] },
+      state.seed + state.day,
+      CONTEXT,
+    ).state
+    const won = state
+    const car = won.ownedCars[0]
+    if (!car) throw new Error('expected to win the lot')
+    const sold = advanceDay(
+      won,
+      { ...noActions, sellViaWalkIn: [{ carInstanceId: car.id }] },
+      won.seed + won.day,
+      CONTEXT,
+    ).state
+    return { won, sold }
+  }
+
+  it('wins a lot at auction, then sells the car', () => {
+    const { won, sold } = acquisitionCareer()
+    expect(won.ownedCars).toHaveLength(1)
+    expect(sold.ownedCars).toHaveLength(0)
+    expect(sold.cashYen).toBeGreaterThan(0)
+  })
+
+  it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
+    expect(hashState(acquisitionCareer().sold)).toBe('30516541')
   })
 })

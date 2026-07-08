@@ -12,6 +12,7 @@
   "dependencies": {
     "@midnight-garage/content": "workspace:*",
     "@midnight-garage/sim": "workspace:*",
+    "dexie": "^4.4.4",
     "pinia": "^3.0.4",
     "pixi.js": "^8.19.0",
     "vue": "^3.5.39",

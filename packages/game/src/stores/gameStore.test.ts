@@ -35,6 +35,25 @@ describe('useGameStore', () => {
     expect(game.dayLog.length).toBeGreaterThan(0)
   })
 
+  it('newGame with no seed randomizes the career (external review finding 3)', () => {
+    const a = useGameStore()
+    a.newGame()
+    const seedA = a.gameState.seed
+
+    setActivePinia(createPinia())
+    const b = useGameStore()
+    b.newGame()
+    const seedB = b.gameState.seed
+
+    // Two fresh games get different seeds (collision odds ~1 in 2^31).
+    expect(seedA).not.toBe(seedB)
+    // An explicit seed still pins the career for dev/challenge/tests.
+    setActivePinia(createPinia())
+    const c = useGameStore()
+    c.newGame(1234)
+    expect(c.gameState.seed).toBe(1234)
+  })
+
   it('is deterministic: same seed, same end-days, identical state', () => {
     const a = useGameStore()
     a.newGame(99)

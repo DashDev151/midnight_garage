@@ -40,16 +40,32 @@ import {
   type SimContext,
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from '../constants'
+import { decodeSave, encodeSave } from '../save/saveCodec'
+import { loadSave, writeSave } from '../save/saveDb'
 
 /** A fully-defaulted, typed empty action set - End Day with nothing queued. */
 export function emptyActions(): DayActions {
   return DayActionsSchema.parse({})
 }
 
-/** Fixed default seed for a new game until seed selection is a real feature. */
+/**
+ * Placeholder seed for the eager store init (immediately replaced by
+ * `hydrate()` — either a loaded save or a fresh random career). Kept fixed
+ * so store-level tests that read the pre-hydrate state stay deterministic.
+ */
 const DEFAULT_SEED = 1
+
+/**
+ * A fresh random career seed. Game-layer only (Math.random is fine here —
+ * the sim stays fully deterministic *given* a seed). External review 2026-07
+ * finding 3: a fixed default meant every player got the identical career.
+ * Explicit seeds (dev console, tests, the balance harness) still bypass this.
+ */
+function randomSeed(): number {
+  return Math.floor(Math.random() * 2_147_483_647)
+}
 
 /** A car paired with its resolved model, display name, and derived stats. */
 export interface DetailedCar {
@@ -86,6 +102,13 @@ export interface WalkInEstimate {
   offerYen: number
 }
 
+/** Summary of the day that just ended, for the end-of-day report modal. */
+export interface DayReport {
+  day: number
+  entries: DayLogEntry[]
+  cashDeltaYen: number
+}
+
 /**
  * The state bridge between the pure sim and Vue. Holds the one object
  * Dexie will persist in Sprint 7 (`gameState`), the static content
@@ -107,6 +130,9 @@ export const useGameStore = defineStore('game', () => {
   const pending = ref<DayActions>(emptyActions())
   // Monotonic counter for dev-granted content ids (dev-only, so non-deterministic is fine).
   const grantCounter = ref(0)
+  // End-of-day report shown after a player-committed day.
+  const lastDayReport = ref<DayReport | null>(null)
+  const reportVisible = ref(false)
 
   const day = computed(() => gameState.value.day)
   const cashYen = computed(() => gameState.value.cashYen)
@@ -361,27 +387,95 @@ export const useGameStore = defineStore('game', () => {
 
   function advance(actions: DayActions): void {
     const state = gameState.value
+    const endedDay = state.day
+    const cashBefore = state.cashYen
     const result = advanceDay(state, actions, state.seed + state.day, context.value)
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    lastDayReport.value = {
+      day: endedDay,
+      entries: result.log,
+      cashDeltaYen: result.state.cashYen - cashBefore,
+    }
   }
 
-  /** Low-level advance (dev warp, tests). Does not touch the pending plan. */
+  /** Low-level advance (dev warp, tests). Does not touch the pending plan or pop the report. */
   function endDay(actions: DayActions = emptyActions()): void {
     advance(actions)
   }
 
-  /** Player-facing End Day: commit the queued plan with auto-planned labor. */
+  /** Player-facing End Day: commit the queued plan, then show the day's report. */
   function commitDay(): void {
     advance(planActions())
     clearPending()
+    reportVisible.value = true
   }
 
-  function newGame(seed: number = DEFAULT_SEED): void {
+  function dismissReport(): void {
+    reportVisible.value = false
+  }
+
+  /** Start a fresh career. Defaults to a random seed so players don't all get the same run. */
+  function newGame(seed: number = randomSeed()): void {
     gameState.value = createInitialGameState(context.value, seed)
     dayLog.value = []
     clearPending()
+    lastDayReport.value = null
+    reportVisible.value = false
   }
+
+  // --- persistence (Sprint 07) ------------------------------------------
+
+  /**
+   * Load the autosaved career on startup (called once from main.ts before
+   * mount). On any failure or absence, the fresh new game stays. Autosave
+   * is wired after, so hydrate itself doesn't need to write.
+   */
+  async function hydrate(): Promise<void> {
+    const code = await loadSave()
+    if (!code) {
+      // No save: start a fresh *random* career (not the fixed placeholder seed).
+      newGame()
+      return
+    }
+    try {
+      gameState.value = decodeSave(code)
+      dayLog.value = []
+      clearPending()
+    } catch {
+      // Corrupt/unreadable save - start fresh rather than crash.
+      newGame()
+    }
+  }
+
+  /** The current career as a copy-paste save code (R2 backup). */
+  function exportSaveCode(): string {
+    return encodeSave(gameState.value)
+  }
+
+  /** Load a pasted save code, replacing the current career. Returns an error string on failure. */
+  function importSaveCode(code: string): { ok: true } | { ok: false; error: string } {
+    try {
+      const state = decodeSave(code)
+      gameState.value = state
+      dayLog.value = []
+      clearPending()
+      lastDayReport.value = null
+      reportVisible.value = false
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Could not read that code.' }
+    }
+  }
+
+  /** Autosave: every state mutation persists (best-effort; a no-op without IndexedDB). */
+  watch(
+    gameState,
+    (state) => {
+      void writeSave(encodeSave(state))
+    },
+    { flush: 'post' },
+  )
 
   // --- dev-console affordances (dev build only) -------------------------
 
@@ -461,6 +555,12 @@ export const useGameStore = defineStore('game', () => {
     clearPending,
     endDay,
     commitDay,
+    lastDayReport,
+    reportVisible,
+    dismissReport,
+    hydrate,
+    exportSaveCode,
+    importSaveCode,
     newGame,
     devGiveCash,
     devGrantCar,

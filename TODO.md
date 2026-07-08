@@ -25,10 +25,27 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
 
 ## Engineering
 
-- [ ] **Wire the balance harness into CI.** `pnpm balance:run` + `python -m balance.cli check`
-  currently only run locally, by hand (user decision, Sprint 03 review — see
-  `docs/sprints/sprint03.md`). Add a job/step to `.github/workflows/ci.yml` once the user wants
-  this running on every push. Update CLAUDE.md's Test law and Commands section when it happens.
+- [ ] **Wire the balance harness into CI — DEADLINE: before Phase 5 (Sprint 19) content waves.**
+  `pnpm balance:run` + `python -m balance.cli check` only run locally by hand (user deferred CI
+  wiring in Sprint 03). **External review (2026-07, finding 1) flags this as high priority:** without
+  it, a content PR can silently break the economy, and Phase 5 is exactly when roster/parts PRs pile
+  up. Recommended shape: a CI job **path-filtered to `packages/sim/**` and `packages/content/data/**`**
+  that runs `balance:run` + the invariants and **uploads `report.md` as a build artifact**. Revisit
+  the Sprint-03 deferral before Phase 5. Update CLAUDE.md's Test law + Commands when it lands. See
+  `docs/reviews/external-review-2026-07.md`.
+
+- [ ] **Buyout premium needs a leash + telemetry (external review 2026-07, finding 2).**
+  `AUCTION_BUYOUT_PREMIUM = 1.1` may make instant certainty too cheap and hollow out the bidding
+  game. Add a balance-report column for **fraction of acquisitions via buyout vs. won bids**; if
+  bots converge on always-buyout, raise the premium. **Blocker:** the harness bots only bid today
+  (never buy out), so the fraction is 0 by construction — a bot must first model the buyout decision
+  (bid vs. buy-out-if-cheap). Target: the Fun Gate (Sprint 08) tuning pass. Also noted in
+  `docs/economy-v0.md`.
+
+- [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
+  It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider
+  `useGarageStore` / `useAuctionStore` / `useStaffStore` behind the current surface rather than one
+  growing store.
 
 ## Balance / economy (from `docs/economy-v0.md`)
 

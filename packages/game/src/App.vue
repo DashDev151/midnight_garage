@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import DayReport from './components/DayReport.vue'
+import SaveMenu from './components/SaveMenu.vue'
 import { useUiStore } from './stores/uiStore'
 
 const isDev = import.meta.env.DEV
@@ -21,6 +23,7 @@ const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevCo
       <RouterLink :to="{ name: 'auctions' }">Auctions</RouterLink>
       <RouterLink :to="{ name: 'parts' }">Parts</RouterLink>
       <RouterLink :to="{ name: 'spike' }">Spike</RouterLink>
+      <SaveMenu />
       <button v-if="isDev" class="dev-toggle" @click="ui.toggleDevConsole()">dev</button>
     </nav>
   </header>
@@ -29,6 +32,7 @@ const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevCo
     <RouterView />
   </main>
 
+  <DayReport />
   <component :is="DevConsole" v-if="DevConsole" />
 </template>
 

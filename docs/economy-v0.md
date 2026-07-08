@@ -103,6 +103,19 @@ past with a stricter invariant.
    yet checked** — no bot models first-timer-specific selling behavior this sprint. Flagged as
    still open rather than silently assumed passing.
 
+## Design signals from the external review (2026-07)
+
+- **Restoration may be under-rewarded — a core-fantasy risk, not just a harness note.** The Cautious
+  Restorer bot's full-restoration cycles don't turn a profit inside 100 days (Sprint 03 finding 5).
+  The review reframes this: if restoring a car doesn't pay, the game's central fantasy (hunt →
+  *restore* → sell/enshrine) is undercut. **Carry into the Fun Gate (Sprint 08) interviews:** do
+  players *want* to restore, and does the payoff feel worth the time? A candidate economy fix is
+  raising the reward for a fully-restored, high-authenticity car (collector valuation), but validate
+  the desire first, then tune.
+- **Buyout premium (`AUCTION_BUYOUT_PREMIUM = 1.1`) may be too cheap.** 10% over book might make
+  instant certainty dominate the bidding game. Needs harness telemetry (buyout-vs-won-bid fraction,
+  once a bot models buyout) before tuning the constant up. Tracked in `TODO.md`.
+
 ## Open questions for the spreadsheet pass
 
 - Interest rate and repayment cadence on the forced loan (GDD 6.6 says painful; how painful).
