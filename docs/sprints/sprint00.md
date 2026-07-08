@@ -42,8 +42,8 @@ A placeholder car renders in 4 palette-swapped colors on a deployed URL, built a
 
 ### E. User-only tasks (air-gapped / purchases / accounts)
 
-- [ ] Create the GitHub repository and push (Claude prepares the commit; user approves and provides the remote).
-- [ ] Create Cloudflare Pages project; add the two CI secrets to GitHub.
+- [x] Create the GitHub repository and push (Claude prepares the commit; user approves and provides the remote). Done: `github.com/DashDev151/midnight_garage`, commit `00b44e2`, CI run #1 fully green (check 31s, deploy 17s, 7/7 tests).
+- [ ] **DEFERRED (user decision, Sprint 00 review):** Create Cloudflare Pages project; add `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` secrets to GitHub. The deploy step self-skips until then, so CI stays green. The DoD's "on a deployed URL" clause is parked with it — revisit before the Fun Gate (Sprint 8) at the latest, since playtesters need a link.
 - [ ] Buy Aseprite; (optional this sprint) draw the deliberately-bad car sprite to replace the programmatic placeholder.
 - [ ] Trademark search on the final title ("Midnight Garage" vs. alternates in GDD); register domain.
 - [ ] Create private `IDEAS.md` (kept out of the public repo or in a private location — scope-creep parking lot per risk R3).

@@ -1,0 +1,202 @@
+[
+  {
+    "id": "khs-street-ecu",
+    "brand": "KHS",
+    "name": "Street ECU",
+    "slot": "engine",
+    "grade": "street",
+    "requiredTags": ["Piston"],
+    "statModifiers": { "power": 5, "reliability": -2 },
+    "priceYen": 45000
+  },
+  {
+    "id": "khs-sport-internals",
+    "brand": "KHS",
+    "name": "Sport Internals",
+    "slot": "engine",
+    "grade": "sport",
+    "requiredTags": ["Piston"],
+    "statModifiers": { "power": 15, "reliability": -5 },
+    "priceYen": 220000
+  },
+  {
+    "id": "khs-n1-block",
+    "brand": "KHS",
+    "name": "N1 Block Kit",
+    "slot": "engine",
+    "grade": "race",
+    "requiredTags": ["Piston"],
+    "statModifiers": { "power": 35, "reliability": -15 },
+    "priceYen": 650000
+  },
+  {
+    "id": "kaze-bolton-turbo",
+    "brand": "Kaze",
+    "name": "Bolt-On Turbo",
+    "slot": "forcedInduction",
+    "grade": "street",
+    "requiredTags": ["Piston"],
+    "statModifiers": { "power": 20, "reliability": -5 },
+    "priceYen": 180000
+  },
+  {
+    "id": "khs-tr-350",
+    "brand": "KHS",
+    "name": "TR-350 Turbo Kit",
+    "slot": "forcedInduction",
+    "grade": "sport",
+    "requiredTags": ["Piston"],
+    "statModifiers": { "power": 30, "reliability": -8 },
+    "priceYen": 320000
+  },
+  {
+    "id": "khs-tr-500",
+    "brand": "KHS",
+    "name": "TR-500 Turbo Kit",
+    "slot": "forcedInduction",
+    "grade": "race",
+    "requiredTags": ["Piston"],
+    "statModifiers": { "power": 45, "reliability": -15 },
+    "priceYen": 520000
+  },
+  {
+    "id": "katana-street-clutch",
+    "brand": "Katana",
+    "name": "Street Clutch",
+    "slot": "drivetrain",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": { "reliability": 5 },
+    "priceYen": 60000
+  },
+  {
+    "id": "tsuru-2way-lsd",
+    "brand": "Tsuru",
+    "name": "2-Way LSD",
+    "slot": "drivetrain",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": { "handling": 10 },
+    "priceYen": 150000
+  },
+  {
+    "id": "khs-race-dogbox",
+    "brand": "KHS",
+    "name": "Race Dogbox",
+    "slot": "drivetrain",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": { "handling": 15, "reliability": -10 },
+    "priceYen": 480000
+  },
+  {
+    "id": "tanuki-street-coilovers",
+    "brand": "Tanuki",
+    "name": "Street Coilovers",
+    "slot": "suspension",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": { "handling": 8, "style": 3 },
+    "priceYen": 70000
+  },
+  {
+    "id": "tanuki-circuit-coilovers",
+    "brand": "Tanuki",
+    "name": "Circuit Coilovers",
+    "slot": "suspension",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": { "handling": 18, "reliability": -3 },
+    "priceYen": 180000
+  },
+  {
+    "id": "tanuki-n1-coilovers",
+    "brand": "Tanuki",
+    "name": "N1 Coilovers",
+    "slot": "suspension",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": { "handling": 28, "reliability": -6 },
+    "priceYen": 380000
+  },
+  {
+    "id": "katana-stock-pads",
+    "brand": "Katana",
+    "name": "Stock Pads (Repro)",
+    "slot": "brakes",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": { "reliability": 2 },
+    "priceYen": 20000
+  },
+  {
+    "id": "katana-4pot-kit",
+    "brand": "Katana",
+    "name": "4-Pot Kit",
+    "slot": "brakes",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": { "handling": 12 },
+    "priceYen": 140000
+  },
+  {
+    "id": "mikoshi-lip-kit",
+    "brand": "Mikoshi",
+    "name": "Lip Kit",
+    "slot": "bodyAero",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": { "style": 10 },
+    "priceYen": 40000
+  },
+  {
+    "id": "mikoshi-gt-wing",
+    "brand": "Mikoshi",
+    "name": "GT Wing",
+    "slot": "bodyAero",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": { "style": 18, "handling": 5 },
+    "priceYen": 120000
+  },
+  {
+    "id": "frp-race-aero",
+    "brand": "FRP",
+    "name": "Race Aero Kit",
+    "slot": "bodyAero",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": { "style": 30, "handling": 15, "reliability": -5 },
+    "priceYen": 450000
+  },
+  {
+    "id": "enkai-mesh-15",
+    "brand": "Enkai",
+    "name": "Mesh 15s",
+    "slot": "wheelsInterior",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": { "style": 8 },
+    "priceYen": 55000
+  },
+  {
+    "id": "vulk-ve37",
+    "brand": "Vulk Racing",
+    "name": "VE37",
+    "slot": "wheelsInterior",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": { "style": 20, "handling": 5 },
+    "priceYen": 220000
+  },
+  {
+    "id": "zashiki-bucket-seat",
+    "brand": "Zashiki",
+    "name": "Bucket Seat",
+    "slot": "wheelsInterior",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": { "style": 10 },
+    "priceYen": 95000
+  }
+]

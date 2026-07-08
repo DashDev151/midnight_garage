@@ -1,0 +1,27 @@
+[
+  {
+    "id": "ex-pro-driver",
+    "displayName": "Ex-Pro Driver",
+    "description": "Wheel time on real circuits before real bills. Improves touge results; occasionally insists on driving your car herself."
+  },
+  {
+    "id": "auction-rat",
+    "displayName": "Auction Rat",
+    "description": "Knows every dealer at the Local Yard by first name. Inspections there are free when he's along."
+  },
+  {
+    "id": "perfectionist",
+    "displayName": "Perfectionist",
+    "description": "Won't let a panel gap slide. Builds finish beautifully; they take their time getting there."
+  },
+  {
+    "id": "night-owl",
+    "displayName": "Night Owl",
+    "description": "Sleeps through the morning mail, comes alive after dark. An extra labor slot on any day you hit an evening event."
+  },
+  {
+    "id": "gaisha-fluent",
+    "displayName": "Gaisha-Fluent",
+    "description": "Learned wrenching on European iron before JDM ever crossed her mind. Import repairs don't confuse her the way they confuse everyone else."
+  }
+]

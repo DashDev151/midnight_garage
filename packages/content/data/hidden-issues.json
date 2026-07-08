@@ -1,0 +1,82 @@
+[
+  {
+    "id": "rusted-rails",
+    "zone": "body",
+    "severityMin": 15,
+    "severityMax": 45,
+    "hintText": "faint bubbling under the rear wheel arches",
+    "repairCostBaseYen": 120000
+  },
+  {
+    "id": "blown-turbo-seals",
+    "zone": "engine",
+    "severityMin": 20,
+    "severityMax": 50,
+    "hintText": "blue smoke on cold start, clears after a minute",
+    "repairCostBaseYen": 180000
+  },
+  {
+    "id": "accident-history",
+    "zone": "body",
+    "severityMin": 10,
+    "severityMax": 60,
+    "hintText": "panel gaps look... optimistic",
+    "repairCostBaseYen": 250000
+  },
+  {
+    "id": "tired-apex-seals",
+    "zone": "engine",
+    "severityMin": 25,
+    "severityMax": 55,
+    "hintText": "compression numbers the seller conveniently forgot to mention",
+    "repairCostBaseYen": 320000
+  },
+  {
+    "id": "dead-synchros",
+    "zone": "drivetrain",
+    "severityMin": 10,
+    "severityMax": 35,
+    "hintText": "grinds into second when cold",
+    "repairCostBaseYen": 90000
+  },
+  {
+    "id": "interior-rot",
+    "zone": "interior",
+    "severityMin": 10,
+    "severityMax": 40,
+    "hintText": "dash has that sun-baked crack pattern",
+    "repairCostBaseYen": 60000
+  },
+  {
+    "id": "worn-bushings",
+    "zone": "suspension",
+    "severityMin": 10,
+    "severityMax": 30,
+    "hintText": "clunks over expansion joints",
+    "repairCostBaseYen": 40000
+  },
+  {
+    "id": "oil-leak-valve-cover",
+    "zone": "engine",
+    "severityMin": 5,
+    "severityMax": 20,
+    "hintText": "faint haze on the block, more embarrassing than serious",
+    "repairCostBaseYen": 25000
+  },
+  {
+    "id": "clutch-slip",
+    "zone": "drivetrain",
+    "severityMin": 10,
+    "severityMax": 30,
+    "hintText": "revs flare slightly under load",
+    "repairCostBaseYen": 70000
+  },
+  {
+    "id": "faded-paint-clearcoat",
+    "zone": "body",
+    "severityMin": 5,
+    "severityMax": 20,
+    "hintText": "clearcoat is peeling on the roof",
+    "repairCostBaseYen": 80000
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "collector",
+    "archetype": "collector",
+    "displayName": "Collector",
+    "statWeights": {
+      "power": 0.1,
+      "handling": 0.2,
+      "style": 0.3,
+      "reliability": 0.3,
+      "authenticity": 1.0
+    },
+    "tierPreferences": [
+      { "tier": "legend", "weight": 1.0 },
+      { "tier": "gaisha", "weight": 0.9 },
+      { "tier": "rare", "weight": 0.8 },
+      { "tier": "uncommon", "weight": 0.3 }
+    ],
+    "priceSensitivity": 0.2
+  },
+  {
+    "id": "tuner",
+    "archetype": "tuner",
+    "displayName": "Tuner",
+    "statWeights": {
+      "power": 1.0,
+      "handling": 0.6,
+      "style": 0.3,
+      "reliability": 0.3,
+      "authenticity": 0.0
+    },
+    "tierPreferences": [
+      { "tier": "rare", "weight": 0.6 },
+      { "tier": "uncommon", "weight": 0.6 },
+      { "tier": "common", "weight": 0.4 }
+    ],
+    "priceSensitivity": 0.4
+  },
+  {
+    "id": "stancer",
+    "archetype": "stancer",
+    "displayName": "Stancer",
+    "statWeights": {
+      "power": 0.1,
+      "handling": 0.2,
+      "style": 1.0,
+      "reliability": 0.0,
+      "authenticity": 0.2
+    },
+    "tierPreferences": [
+      { "tier": "uncommon", "weight": 0.5 },
+      { "tier": "common", "weight": 0.5 },
+      { "tier": "rare", "weight": 0.3 }
+    ],
+    "priceSensitivity": 0.5
+  },
+  {
+    "id": "racer",
+    "archetype": "racer",
+    "displayName": "Racer",
+    "statWeights": {
+      "power": 0.5,
+      "handling": 1.0,
+      "style": 0.0,
+      "reliability": 1.0,
+      "authenticity": 0.2
+    },
+    "tierPreferences": [
+      { "tier": "uncommon", "weight": 0.6 },
+      { "tier": "rare", "weight": 0.5 },
+      { "tier": "common", "weight": 0.3 }
+    ],
+    "priceSensitivity": 0.4
+  },
+  {
+    "id": "first-timer",
+    "archetype": "first-timer",
+    "displayName": "First-timer",
+    "statWeights": {
+      "power": 0.2,
+      "handling": 0.2,
+      "style": 0.1,
+      "reliability": 0.8,
+      "authenticity": 0.1
+    },
+    "tierPreferences": [
+      { "tier": "shitbox", "weight": 1.0 },
+      { "tier": "common", "weight": 0.6 }
+    ],
+    "priceSensitivity": 0.9
+  }
+]
