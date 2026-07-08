@@ -126,6 +126,6 @@ than speed.
 ## Exit
 
 DoD met locally (`pnpm test` green, naming leak test verified to actually catch leaks). User
-reviewed and approved parody names and economy-v0 numbers on 2026-07-08. Committing and pushing
-next; CI confirmation to follow the same pattern as Sprint 00. Sprint 02 (`advanceDay` +
-golden-master determinism test) builds on these types next.
+reviewed and approved parody names and economy-v0 numbers on 2026-07-08. Committed as `832e47b`
+and pushed to `main`. **Sprint 01 complete.** Sprint 02 (`advanceDay` + golden-master determinism
+test) builds on these types next.
