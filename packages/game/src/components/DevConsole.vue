@@ -10,6 +10,8 @@ const ui = useUiStore()
 
 const giveAmount = ref(100_000)
 const warpDays = ref(7)
+const grantModelId = ref('')
+const grantPartId = ref('')
 
 function warp(): void {
   for (let i = 0; i < warpDays.value; i++) {
@@ -38,6 +40,26 @@ function warp(): void {
     <div class="row">
       <label>warp <input v-model.number="warpDays" type="number" min="1" /> days</label>
       <button @click="warp">warp</button>
+    </div>
+
+    <div class="row">
+      <select v-model="grantModelId">
+        <option value="">random model</option>
+        <option v-for="m in game.modelsCatalog" :key="m.id" :value="m.id">
+          {{ m.displayName }}
+        </option>
+      </select>
+      <button @click="game.devGrantCar(grantModelId || undefined)">grant car</button>
+    </div>
+
+    <div class="row">
+      <select v-model="grantPartId">
+        <option value="">pick part</option>
+        <option v-for="p in game.partsCatalog" :key="p.id" :value="p.id">
+          {{ p.brand }} {{ p.name }}
+        </option>
+      </select>
+      <button :disabled="!grantPartId" @click="game.devGrantPart(grantPartId)">grant part</button>
     </div>
   </aside>
 </template>
@@ -79,6 +101,17 @@ function warp(): void {
 
 .row input {
   width: 90px;
+  background: var(--mg-night-deep);
+  color: var(--mg-text);
+  border: var(--mg-border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-family: inherit;
+}
+
+.row select {
+  flex: 1;
+  min-width: 0;
   background: var(--mg-night-deep);
   color: var(--mg-text);
   border: var(--mg-border);

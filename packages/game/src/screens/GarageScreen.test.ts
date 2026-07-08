@@ -1,13 +1,19 @@
-import { mount } from '@vue/test-utils'
-import { createPinia } from 'pinia'
-import { describe, expect, it } from 'vitest'
+import { CARS } from '@midnight-garage/content'
+import { mount, RouterLinkStub } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useGameStore } from '../stores/gameStore'
 import GarageScreen from './GarageScreen.vue'
 
 function mountScreen() {
-  return mount(GarageScreen, { global: { plugins: [createPinia()] } })
+  // Relies on the active pinia from beforeEach; RouterLink is stubbed since
+  // these tests don't exercise navigation, only rendering.
+  return mount(GarageScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
 }
 
 describe('GarageScreen', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
   it('renders the starting day and cash', () => {
     const wrapper = mountScreen()
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
@@ -37,5 +43,18 @@ describe('GarageScreen', () => {
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('2')
     await wrapper.get('[data-test="new-game"]').trigger('click')
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
+  })
+
+  it('renders a card per owned car once one is granted', async () => {
+    const game = useGameStore()
+    const wrapper = mountScreen()
+    expect(wrapper.text()).toContain('No cars yet')
+
+    game.devGrantCar(CARS[0]!.id)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).not.toContain('No cars yet')
+    expect(wrapper.findAll('.car-card')).toHaveLength(1)
+    expect(wrapper.text()).toContain(game.carsDetailed[0]!.displayName)
   })
 })

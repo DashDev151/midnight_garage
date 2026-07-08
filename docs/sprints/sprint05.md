@@ -2,8 +2,8 @@
 
 *Source: roadmap Phase 2 (Ugly MVP), Sprint 5. GDD 4.1-4.4 (the car as an object, derived stats,
 tags), 5.4 screen list ("Car Detail / Build Sheet: radar chart, slots, condition zones, job queue"),
-3.2 (labor slots). Builds directly on Sprint 04's shell + state bridge. Status: **approved
-2026-07-08; implementation in progress.***
+3.2 (labor slots). Builds directly on Sprint 04's shell + state bridge. Status: **implemented and
+locally verified — ready for review.***
 
 ## Goal
 
@@ -67,52 +67,61 @@ the existing job pipeline to buttons.
 
 ## Task breakdown
 
-### A. Garage-layer helpers & selectors (`packages/game/src/stores`, `utils`)
+### A. Garage-layer helpers & selectors (`packages/game/src/stores`, `constants`)
 
-- [ ] Extend `useGameStore` with car/job selectors: `carsWithModel` (owned car + resolved model +
-  derived stats), `jobsForCar(id)`, and `availableLaborSlots` (from the sim helper). Keep the store
-  the single read/write surface for the sim.
-- [ ] Queue-building helpers: `queueRepair(carId, zone, laborSlotsRequired)`, `queueInstall(carId,
-  slot, partInstanceId, laborSlotsRequired)`, `assignLabor(jobId, slots)` — each appends to a
-  pending `DayActions` the store holds until End Day, so the player composes a day's plan and commits
-  it. (Sprint 04's `endDay(actions?)` already accepts a `DayActions`; this fills it in.)
-- [ ] `pendingActions` state + a `clearPending`/reset on End Day, so the UI can show "queued today"
-  before committing.
+- [x] Extended `useGameStore` with `carsDetailed` (car + model + name + derived stats), `carDetail(id)`
+  (adds in-progress + pending jobs), `laborSlotsPerDay`, `installablePartsFor(id, slot)`,
+  `partName(id)`. The store stays the single read/write surface for the sim.
+- [x] Queue helpers: `queueRepair(carId, zone)` (labor cost scaled by damage via
+  `repairLaborSlotsFor`), `queueInstall(carId, slot, partInstanceId)`, `cancelPending(i)`. Instead of
+  an `assignLabor` slider, `planActions()` auto-allocates the day's slots across in-progress jobs
+  first, then newly-queued ones — the simplest honest labor model for a PoC (manual per-job sliders
+  are a later refinement).
+- [x] `pendingJobs` state + `commitDay()` (builds `DayActions` via `planActions`, advances, clears
+  the plan). `endDay(actions?)` stays as the low-level advance for dev warp / tests. New game clears
+  pending.
 
 ### B. Radar chart component (`packages/game/src/components`)
 
-- [ ] `StatRadar.vue`: a pure-SVG five-axis radar taking a `StatBlock`, normalizing per decision 3,
-  rendering the pentagon grid + the filled stat polygon in synthwave tokens. No dependency.
+- [x] `StatRadar.vue`: a pure-SVG five-axis radar over a `StatBlock`; geometry lives in a testable
+  `utils/radar.ts` (`normalizeStats`, `axisPoint`, `statPolygonPoints`) so it's unit-tested without
+  mounting. No dependency. Power normalizes against `RADAR_POWER_REFERENCE_PS` (decision 3).
 
 ### C. Garage hub screen (`packages/game/src/screens`)
 
-- [ ] `GarageScreen.vue` (evolve Sprint 04's): keep the day/cash/rep summary and End Day, add a grid
-  of owned-car cards (name via Naming Layer, tier, headline condition, a "to detail" link). Empty
-  state points at the dev console (or, post-Sprint 06, the auctions).
+- [x] `GarageScreen.vue` (evolved): day/cash/rep summary + End Day (now `commitDay`), a grid of
+  owned-car cards (Naming-Layer name, tier/year, worst-zone health, link to detail), empty state
+  pointing at the dev console.
 
 ### D. Car-detail screen (`packages/game/src/screens`)
 
-- [ ] `CarDetailScreen.vue` at `/car/:id`: header (model name, year, mileage, color, provenance),
-  the `StatRadar`, the five condition zones (bars), the build-sheet slot list (installed part or
-  "empty"), and the job panel — existing jobs with labor progress, plus controls to queue a
-  repair on a zone and install an owned compatible part, and to assign labor within the day's slots.
-- [ ] Route guard: unknown/sold `:id` redirects to `garage`.
+- [x] `CarDetailScreen.vue` at `/car/:id`: header (name, year, mileage, color, provenance), the
+  `StatRadar`, five condition zones (bars + per-zone Repair, disabled when busy/full), the
+  build-sheet slot list (installed part or an install control filtered by compatibility), the job
+  panel (queued-today + in-progress with labor progress), a labor-per-day readout, and End Day.
+- [x] Route guard: a `watch` on the detail selector `router.replace`s to `garage` for an
+  unknown/sold id.
 
 ### E. Dev console additions (`packages/game/src/components`)
 
-- [ ] Extend `DevConsole.vue` (still dev-build-only): grant-starter-car (spawn a seeded `CarInstance`
-  of a chosen/random model into `ownedCars`) and grant-part (a chosen catalog `Part` as a
-  `PartInstance` into `partInventory`), so the garage is exercisable before Sprint 06's acquisition.
+- [x] Extended `DevConsole.vue` (still dev-build-only): grant-car (model picker or random, spawns a
+  rough auction-grade `CarInstance` via `generateAuctionCarInstance`) and grant-part (catalog picker
+  into inventory), so the garage is exercisable before Sprint 06's acquisition.
 
 ### F. Testing (`packages/game`)
 
-- [ ] Store tests: `queueRepair`/`queueInstall`/`assignLabor` build the expected `DayActions`;
-  End Day with a queued repair lifts the zone to 100 after enough labor-days; a queued install moves
-  the part to the build sheet and changes derived stats; labor can't exceed available slots.
-- [ ] `StatRadar.test.ts`: renders five axes; a higher stat produces a larger polygon (geometry
-  sanity), and power normalization maps the reference ceiling to a full spoke.
-- [ ] `CarDetailScreen.test.ts` (mounted): a dev-granted car renders its radar + zones + build sheet;
-  queuing a repair and ending enough days lifts the zone bar to 100.
+- [x] `stores/gameStore.garage.test.ts`: grant surfaces a detailed car; a queued repair lifts the
+  zone to 100 over the right number of labor-days; no double-queue per zone; labor never exceeds the
+  daily budget in one commit; a compatible power part installs, moves to the build sheet, is consumed
+  from inventory, and raises the power stat; `installablePartsFor` excludes occupied slots.
+- [x] `utils/radar.test.ts`: 0-100 and power normalization (with clamping); first axis points
+  straight up; larger magnitude sits farther out; a stronger car draws a larger polygon.
+- [x] `screens/CarDetailScreen.test.ts` (mounted, real memory router): a granted car renders radar +
+  all five zone Repair controls + name; queuing a repair and ending days lifts the zone to 100; an
+  unknown id redirects to `garage`.
+- [x] Plus a garage card-render test, and **backfilled two Sprint-04-era gaps found during a
+  coverage review** — `utils/dayLogFormat.test.ts` (exhaustive over every `DayLogEntry` variant) and
+  `constants.test.ts` (`repairLaborSlotsFor` scaling + floor).
 
 ## Claude-implementable vs user-only
 
@@ -122,6 +131,23 @@ the existing job pipeline to buttons.
 - Run `pnpm dev`, grant a car via the dev console, queue a repair/install, End Day, watch the radar
   move (dev server is user-run).
 - No dependency approvals needed — this sprint adds none.
+
+## Implementation notes & verification
+
+- **Labor model simplified for the PoC.** The design floated an `assignLabor(jobId, slots)` slider;
+  the built version auto-allocates the day's slots (in-progress jobs first, then newly-queued) in
+  `planActions()`. It demonstrates labor scarcity (a badly damaged zone spans multiple days) without
+  per-job micro-management UI, which is a later refinement. Per-job labor *costs* live in a
+  provisional game constant (`repairLaborSlotsFor`, `INSTALL_LABOR_SLOTS`) — a content-law candidate
+  once the job taxonomy firms up (flagged in `TODO.md`).
+- **Coverage review mid-sprint.** A check for meaningful test coverage caught that the new store
+  logic had been written ahead of its tests, and that Sprint 04's `dayLogFormat` slipped through
+  untested. Both fixed: the garage store logic now has outcome-asserting tests (zone actually
+  reaches 100, install actually changes stats, labor actually capped), and the two Sprint-04-era
+  gaps were backfilled.
+- **Verification:** `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm build` all green; **135
+  tests across 29 files** (was 114/24), of which ~21 are new this sprint. Per-route code-splitting
+  confirmed intact (car-detail and garage load without Pixi).
 
 ## Open scoping note (surfaced, not decided here)
 

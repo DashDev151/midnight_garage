@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import { describeLogEntry } from '../utils/dayLogFormat'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 
-// Newest entries first, capped - the full log can grow unbounded over a career.
 const recentLog = computed(() =>
   game.dayLog
     .slice(-40)
@@ -16,6 +16,11 @@ const recentLog = computed(() =>
       text: describeLogEntry(entry, game.resolveModelName),
     })),
 )
+
+/** Worst zone condition, as a quick garage-card health read. */
+function worstZone(condition: Record<string, number>): number {
+  return Math.min(...Object.values(condition))
+}
 </script>
 
 <template>
@@ -42,9 +47,25 @@ const recentLog = computed(() =>
     </dl>
 
     <div class="controls">
-      <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
+      <button class="primary" data-test="end-day" @click="game.commitDay()">End Day</button>
       <button data-test="new-game" @click="game.newGame()">New Game</button>
     </div>
+
+    <section class="bays">
+      <h3>Bays</h3>
+      <p v-if="game.carsDetailed.length === 0" class="empty">
+        No cars yet. Grant one from the dev console (auctions arrive in Sprint 06).
+      </p>
+      <ul v-else class="car-grid">
+        <li v-for="detailed in game.carsDetailed" :key="detailed.car.id" class="car-card">
+          <RouterLink :to="{ name: 'car', params: { id: detailed.car.id } }">
+            <span class="car-name">{{ detailed.displayName }}</span>
+            <span class="car-meta">{{ detailed.model.tier }} · {{ detailed.car.year }}</span>
+            <span class="car-health">worst zone {{ worstZone(detailed.car.condition) }}/100</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </section>
 
     <section class="log">
       <h3>Event log</h3>
@@ -61,6 +82,11 @@ const recentLog = computed(() =>
 <style scoped>
 h2 {
   color: var(--mg-neon-cyan);
+}
+
+h3 {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-md);
 }
 
 .stats {
@@ -114,13 +140,39 @@ button.primary {
   border-color: var(--mg-neon-pink);
 }
 
-.log h3 {
-  color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-md);
+.empty {
+  color: var(--mg-text-dim);
 }
 
-.log .empty {
+.car-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--mg-space-3);
+}
+
+.car-card a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-1);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  text-decoration: none;
+  color: var(--mg-text);
+}
+
+.car-name {
+  color: var(--mg-neon-cyan);
+}
+
+.car-meta,
+.car-health {
   color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .log ul {
