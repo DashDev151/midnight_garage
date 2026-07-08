@@ -80,5 +80,8 @@ These become hard assertions in `tools/balance`; a failed assertion fails the bu
 
 - Interest rate and repayment cadence on the forced loan (GDD 6.6 says painful; how painful).
 - Parts pricing curve per grade (Stock/Street/Sport/Race) relative to car book value.
-- Market heat amplitude: +/- what percent around book value, and spike magnitude (+40% is the
-  GDD movie-premiere example).
+- ~~Market heat amplitude~~ **First-pass answer landed in Sprint 02:** weekly demand-index drift
+  is a seeded +/-4 random walk per model (`MARKET_HEAT_WEEKLY_DRIFT_RANGE` in
+  `packages/sim/src/constants.ts`), floored at 0. Event-driven spikes (the GDD's +40%
+  movie-premiere example) are still unbuilt — that's a later events-system sprint, not this
+  weekly-drift baseline.

@@ -51,7 +51,9 @@ A placeholder car renders in 4 palette-swapped colors on a deployed URL, built a
 ## Testing
 
 - [x] Five passing Vitest tests in `packages/sim/tests/rng.test.ts` (determinism, seed divergence, float bounds, inclusive int range, empty-pick throw).
-- [x] Content schema validation + unique-id tests in `packages/content/tests/content.test.ts`.
+- [x] Content schema validation + unique-id tests in `packages/content/tests/content.test.ts`
+  (superseded in Sprint 01 by `schemas.test.ts` + `integrity.test.ts`, same coverage carried
+  forward).
 - [x] ESLint boundary rule verified by a deliberate `import 'pixi.js'` in sim: errored with the boundary-law message, removed, file re-lints clean (exit 0).
 - [x] `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test` (7 tests, 2 files), `pnpm build` (163 kB gzipped) all green locally. CI run pending first push (user task E).
 
