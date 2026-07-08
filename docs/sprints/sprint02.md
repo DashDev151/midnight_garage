@@ -136,7 +136,7 @@ state hash, every time.
 ## Exit
 
 DoD met: golden-master 30-day career reproducible from seed 42, verified to actually catch
-non-determinism when it's introduced. Commit pending user approval, then push for CI confirmation.
-Sprint 03 (markets, auctions, balance harness) is the first sprint that can actually answer "what
-does day 40 look like for a flipper?" — it depends on this sprint's `advanceDay` existing and
-being trustworthy.
+non-determinism when it's introduced. Committed as `97af527` and pushed to `main`. **Sprint 02
+complete.** Sprint 03 (markets, auctions, balance harness) is the first sprint that can actually
+answer "what does day 40 look like for a flipper?" — it depends on this sprint's `advanceDay`
+existing and being trustworthy.
