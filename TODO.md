@@ -58,5 +58,8 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
   programmatic placeholder from the Sprint 00 art spike.
 - [ ] Trademark search on the final title ("Midnight Garage" vs. alternates in the GDD); register
   a domain if the search comes back clean.
-- [ ] Create a private `IDEAS.md` (kept out of the public repo) as the scope-creep parking lot the
-  roadmap's risk register (R3) calls for — new mechanic ideas go there, not into the GDD.
+- [x] Create a private `IDEAS.md` (kept out of the public repo) as the scope-creep parking lot the
+  roadmap's risk register (R3) calls for — new mechanic ideas go there, not into the GDD. **Done
+  2026-07-08** (gitignored). First entry: an exploratory driving minigame (top-down/isometric,
+  Super-Woden-GP-simplified) — flagged as conflicting with the hard "no driving gameplay" and "no
+  reflex input" pillars, parked as a possible optional post-launch mode, likely cut.
