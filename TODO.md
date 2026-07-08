@@ -17,6 +17,13 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
 
 ## Balance / economy (from `docs/economy-v0.md`)
 
+- [ ] **Parts acquisition has no sim mechanic yet.** The sim can install parts (`install-part` jobs)
+  but there is no way to *buy* a part into inventory — no `buyParts` action, no parts market. Sprint
+  05 exercises the install flow against dev-granted parts; Sprint 06 is slotted to add the real
+  parts market alongside car auctions (`docs/sprints/sprint05.md` decision 1). The richer "order
+  deliveries / lead times / parts scouts" layer is separately Sprint 16. Flagged so the Sprint 06
+  design remembers to carry parts, not just cars.
+
 - [ ] **User considers the Sprint 03 economy simulation too simplified — a real refinement pass is
   wanted, scope not yet defined.** Stated on 2026-07-08 review: "there is still a LOT of refinement
   that needs to be done here... I dont agree yet with how we are simulating, its too simplified."

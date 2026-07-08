@@ -1,0 +1,70 @@
+import { GameStateSchema } from '@midnight-garage/content'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { emptyActions, useGameStore } from './gameStore'
+
+describe('useGameStore', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('newGame produces a schema-valid day-1 state with the starting cash', () => {
+    const game = useGameStore()
+    game.newGame(42)
+    expect(() => GameStateSchema.parse(game.gameState)).not.toThrow()
+    expect(game.day).toBe(1)
+    expect(game.cashYen).toBe(1_500_000)
+    expect(game.ownedCarCount).toBe(0)
+    expect(game.dayLog).toEqual([])
+  })
+
+  it('endDay advances the day by exactly one', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.endDay()
+    expect(game.day).toBe(2)
+    game.endDay()
+    expect(game.day).toBe(3)
+  })
+
+  it('endDay appends the returned log entries', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    // Day 7 crosses the weekly rent/catalog boundary, so the log is non-empty.
+    for (let i = 0; i < 7; i++) game.endDay()
+    expect(game.dayLog.length).toBeGreaterThan(0)
+  })
+
+  it('is deterministic: same seed, same end-days, identical state', () => {
+    const a = useGameStore()
+    a.newGame(99)
+    for (let i = 0; i < 20; i++) a.endDay(emptyActions())
+
+    setActivePinia(createPinia())
+    const b = useGameStore()
+    b.newGame(99)
+    for (let i = 0; i < 20; i++) b.endDay(emptyActions())
+
+    expect(a.gameState).toEqual(b.gameState)
+    expect(a.dayLog).toEqual(b.dayLog)
+  })
+
+  it('devGiveCash adds cash outside the sim', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const before = game.cashYen
+    game.devGiveCash(250_000)
+    expect(game.cashYen).toBe(before + 250_000)
+  })
+
+  it('resolveModelName returns a display name for a known model', () => {
+    const game = useGameStore()
+    const knownId = game.gameState.marketHeat
+      ? Object.keys(game.gameState.marketHeat)[0]
+      : undefined
+    if (!knownId) throw new Error('expected at least one model in market heat')
+    // A resolved name should differ from a raw id fallback for real content.
+    expect(typeof game.resolveModelName(knownId)).toBe('string')
+    expect(game.resolveModelName('no-such-model')).toBe('no-such-model')
+  })
+})

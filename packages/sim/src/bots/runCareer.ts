@@ -2,6 +2,7 @@ import type { GameState, ReputationTier } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
 import { advanceDay } from '../advanceDay'
 import type { SimContext } from '../context'
+import { createInitialGameState } from '../newGame'
 import { createRng, type Rng } from '../rng'
 
 export type BotStrategy = (state: GameState, context: SimContext, rng: Rng) => DayActions
@@ -13,32 +14,6 @@ export interface CareerSnapshot {
   /** Cash plus owned cars valued at book price — a simple, transparent proxy, not a real buyer valuation. */
   netWorthEstimateYen: number
   reputationTier: ReputationTier
-}
-
-/**
- * Balance-harness finding (Sprint 03): 100 days of WEEKLY_RENT_YEN
- * (Y1,260,000) almost exactly consumes the original economy-v0.md draft
- * of Y1,200,000, leaving zero operating margin for any strategy — even
- * one with genuinely profitable trades goes under from a single bad run
- * or a slow start. Bumped to give real working capital; economy-v0.md
- * updated to match.
- */
-const STARTING_CASH_YEN = 1_500_000
-
-export function createInitialCareerState(context: SimContext, seed: number): GameState {
-  return {
-    day: 1,
-    seed,
-    cashYen: STARTING_CASH_YEN,
-    reputationTier: 'unknown',
-    ownedCars: [],
-    partInventory: [],
-    staff: [],
-    jobs: [],
-    marketHeat: Object.fromEntries(context.models.map((model) => [model.id, 100])),
-    activeAuctionLots: [],
-    activeListings: [],
-  }
 }
 
 /**
@@ -54,7 +29,7 @@ export function runCareer(
   days: number,
   context: SimContext,
 ): CareerSnapshot[] {
-  let state = createInitialCareerState(context, seed)
+  let state = createInitialGameState(context, seed)
   const snapshots: CareerSnapshot[] = []
 
   for (let day = 1; day <= days; day++) {

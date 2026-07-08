@@ -1,35 +1,77 @@
 <script setup lang="ts">
-import PixiCarSandbox from './components/PixiCarSandbox.vue'
+import { defineAsyncComponent } from 'vue'
+import { RouterLink, RouterView } from 'vue-router'
+import { useUiStore } from './stores/uiStore'
+
+const isDev = import.meta.env.DEV
+const ui = useUiStore()
+
+// Conditional dynamic import so the dev console is tree-shaken out of the
+// production bundle entirely - `import.meta.env.DEV` folds to a literal
+// `false` at build time, making the import() unreachable and droppable. A
+// static import would ship the component even behind a v-if.
+const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevConsole.vue')) : null
 </script>
 
 <template>
-  <header>
+  <header class="chrome">
     <h1>MIDNIGHT GARAGE</h1>
-    <p class="subtitle">Sprint 00 — art architecture spike</p>
+    <nav>
+      <RouterLink :to="{ name: 'garage' }">Garage</RouterLink>
+      <RouterLink :to="{ name: 'spike' }">Spike</RouterLink>
+      <button v-if="isDev" class="dev-toggle" @click="ui.toggleDevConsole()">dev</button>
+    </nav>
   </header>
+
   <main>
-    <PixiCarSandbox />
-    <p class="caption">
-      One indexed body template, one shared wheel layer. Four paints are runtime palette swaps; the
-      last car is slammed via a ride-height offset. No per-configuration sprites exist.
-    </p>
+    <RouterView />
   </main>
+
+  <component :is="DevConsole" v-if="DevConsole" />
 </template>
 
 <style scoped>
+.chrome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--mg-space-3);
+  border-bottom: var(--mg-border);
+  padding-bottom: var(--mg-space-3);
+  margin-bottom: var(--mg-space-4);
+}
+
 h1 {
   color: var(--mg-neon-cyan);
   letter-spacing: 0.3em;
-  margin-bottom: 0;
+  font-size: var(--mg-fs-xl);
+  margin: 0;
 }
 
-.subtitle {
+nav {
+  display: flex;
+  gap: var(--mg-space-3);
+  align-items: center;
+}
+
+nav a {
+  color: var(--mg-text-dim);
+  text-decoration: none;
+  padding: var(--mg-space-1) var(--mg-space-2);
+  border-radius: 4px;
+}
+
+nav a.router-link-active {
   color: var(--mg-neon-pink);
-  margin-top: 0.25rem;
 }
 
-.caption {
-  color: #9a93c9;
-  font-size: 0.85rem;
+.dev-toggle {
+  background: transparent;
+  color: var(--mg-neon-violet);
+  border: 1px solid var(--mg-neon-violet);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: inherit;
 }
 </style>
