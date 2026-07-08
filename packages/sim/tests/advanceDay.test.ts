@@ -68,9 +68,11 @@ const noActions: DayActions = {
   createJobs: [],
   laborAssignments: [],
   bidsOnLots: [],
+  buyoutLots: [],
   inspectLots: [],
   sellViaWalkIn: [],
   listForSale: [],
+  buyParts: [],
 }
 
 /**

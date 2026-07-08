@@ -1,4 +1,4 @@
-import type { DayActions } from '../actions'
+import { emptyDayActions, type DayActions } from '../actions'
 
 /**
  * The do-nothing control group (Sprint 03 decision 2): never buys, never
@@ -7,12 +7,5 @@ import type { DayActions } from '../actions'
  * nothing else in the economy actually matters.
  */
 export function passiveGrinderStrategy(): DayActions {
-  return {
-    createJobs: [],
-    laborAssignments: [],
-    bidsOnLots: [],
-    inspectLots: [],
-    sellViaWalkIn: [],
-    listForSale: [],
-  }
+  return emptyDayActions()
 }

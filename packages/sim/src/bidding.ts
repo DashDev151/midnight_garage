@@ -2,6 +2,7 @@ import type { AuctionLot, Buyer, CarModel, Part } from '@midnight-garage/content
 import {
   AUCTION_BID_INCREMENT_YEN,
   AUCTION_BIDDER_NOISE_RANGE,
+  AUCTION_INTEREST_BASE_BAND,
   AUCTION_RESERVE_PRICE_FRACTION,
 } from './constants'
 import { createRng, hashStringToSeed } from './rng'
@@ -16,6 +17,58 @@ export interface AuctionResult {
   winner: 'player' | 'ai' | 'no-sale'
   finalPriceYen: number
   winningBidderId?: string
+}
+
+/** A fuzzy read on rival demand for a lot, so the player can calibrate a bid. */
+export interface LotInterest {
+  level: 'quiet' | 'warm' | 'hot' | 'frenzy'
+  /** Rival bidders willing to meet the reserve. */
+  contenders: number
+  /** Fuzzy expected clearing range (0 when nobody's expected to bid). */
+  estimateLowYen: number
+  estimateHighYen: number
+}
+
+/**
+ * How much competition a lot is likely to draw, and roughly where it'll
+ * clear — the "Interest" read the auction screen shows so bidding is a
+ * judgment call, not a blind guess. Derived from the same deterministic
+ * AI valuations + per-bidder noise that `resolveAuction` uses, then
+ * deliberately fuzzed into a range. `precision` (0..1, default 0) narrows
+ * the band — the hook a future auction-scout staff trait plugs into for a
+ * sharper read.
+ */
+export function computeLotInterest(
+  lot: AuctionLot,
+  model: CarModel,
+  aiBidders: readonly AuctionBidder[],
+  partsById: Readonly<Record<string, Part>>,
+  precision = 0,
+): LotInterest {
+  const reserveYen = Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
+  const bids = aiBidders
+    .map((b) =>
+      Math.round(valuateCarForBuyer(b.buyer, model, lot.car, partsById) * biddingNoiseFactor(b.id)),
+    )
+    .filter((bid) => bid >= reserveYen)
+    .sort((a, b) => b - a)
+  const contenders = bids.length
+
+  const level: LotInterest['level'] =
+    contenders === 0 ? 'quiet' : contenders === 1 ? 'warm' : contenders <= 3 ? 'hot' : 'frenzy'
+
+  // Expected clearing ~ the second-highest eligible bid (second-price), or
+  // the reserve when only one rival is interested.
+  const center = contenders >= 2 ? bids[1]! : contenders === 1 ? reserveYen : 0
+  const band = AUCTION_INTEREST_BASE_BAND * (1 - Math.max(0, Math.min(1, precision)))
+  const roundTo10k = (n: number) => Math.round(n / 10_000) * 10_000
+
+  return {
+    level,
+    contenders,
+    estimateLowYen: center > 0 ? roundTo10k(center * (1 - band)) : 0,
+    estimateHighYen: center > 0 ? roundTo10k(center * (1 + band)) : 0,
+  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { GameState, Zone } from '@midnight-garage/content'
-import type { DayActions } from '../actions'
+import { emptyDayActions, type DayActions } from '../actions'
 import type { SimContext } from '../context'
 import type { Rng } from '../rng'
 
@@ -37,14 +37,7 @@ const ZONES: readonly Zone[] = ['engine', 'drivetrain', 'suspension', 'body', 'i
  * "buy it when you see it" fantasy, lightly built rather than restored).
  */
 export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng): DayActions {
-  const actions: DayActions = {
-    createJobs: [],
-    laborAssignments: [],
-    bidsOnLots: [],
-    inspectLots: [],
-    sellViaWalkIn: [],
-    listForSale: [],
-  }
+  const actions: DayActions = emptyDayActions()
 
   let laborBudget = PLAYER_LABOR_SLOTS
 

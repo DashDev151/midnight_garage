@@ -34,6 +34,14 @@ export const AUCTION_RESERVE_PRICE_FRACTION = 0.4
 /** Second-price sealed-bid resolution: winner pays second-highest + this. */
 export const AUCTION_BID_INCREMENT_YEN = 10_000
 
+/** Instant-buyout price as a fraction of book value — a premium over the
+ * expected auction clearing price, the convenience tax for certainty. */
+export const AUCTION_BUYOUT_PREMIUM = 1.1
+
+/** Default +/- fuzz band on the shown "expected clearing" estimate. A future
+ * auction-scout staff trait narrows this via the `precision` parameter. */
+export const AUCTION_INTEREST_BASE_BAND = 0.2
+
 /** Persistent per-bidder aggression range (Sprint 03 decision 4a). */
 export const AUCTION_BIDDER_NOISE_RANGE: readonly [number, number] = [0.85, 1.15]
 

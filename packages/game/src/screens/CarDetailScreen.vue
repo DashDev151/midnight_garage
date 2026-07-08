@@ -44,6 +44,15 @@ function zoneBusy(zone: Zone): boolean {
 function installFor(slot: Slot) {
   return detail.value ? game.installablePartsFor(detail.value.car.id, slot) : []
 }
+
+const walkIn = computed(() => game.walkInEstimate(carId.value))
+const listPrice = computed(() => game.listingEstimate(carId.value))
+const sellQueued = computed(() => {
+  const id = carId.value
+  const walkInQueued = game.pending.sellViaWalkIn.some((a) => a.carInstanceId === id)
+  const listQueued = game.pending.listForSale.some((a) => a.carInstanceId === id)
+  return { walkIn: walkInQueued, list: listQueued, any: walkInQueued || listQueued }
+})
 </script>
 
 <template>
@@ -109,6 +118,37 @@ function installFor(slot: Slot) {
           </template>
         </li>
       </ul>
+    </section>
+
+    <section class="sell">
+      <h3>Sell</h3>
+      <div class="sell-options">
+        <div class="sell-option">
+          <span class="sell-label">Walk-in (today)</span>
+          <span class="sell-est">
+            ~{{ formatYen(walkIn.offerYen)
+            }}<span v-if="walkIn.buyerId"> · {{ walkIn.buyerId }}</span>
+          </span>
+          <button
+            :disabled="sellQueued.any"
+            data-test="sell-walkin"
+            @click="game.queueSellWalkIn(detail.car.id)"
+          >
+            {{ sellQueued.walkIn ? 'queued' : 'Sell now' }}
+          </button>
+        </div>
+        <div class="sell-option">
+          <span class="sell-label">List publicly</span>
+          <span class="sell-est">asking {{ formatYen(listPrice) }}</span>
+          <button
+            :disabled="sellQueued.any"
+            data-test="sell-list"
+            @click="game.queueListForSale(detail.car.id)"
+          >
+            {{ sellQueued.list ? 'queued' : 'List' }}
+          </button>
+        </div>
+      </div>
     </section>
 
     <section class="jobs">
@@ -199,6 +239,31 @@ h4 {
 
 .zone-name {
   text-transform: capitalize;
+  font-size: var(--mg-fs-sm);
+}
+
+.sell-options {
+  display: flex;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+}
+
+.sell-option {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+}
+
+.sell-label {
+  font-size: var(--mg-fs-sm);
+}
+
+.sell-est {
+  color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
 }
 

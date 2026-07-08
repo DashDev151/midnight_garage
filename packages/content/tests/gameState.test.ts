@@ -69,6 +69,7 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'lot-inspected', lotId: 'lot-0001' },
       { type: 'auction-bid-won', lotId: 'lot-0001', finalPriceYen: 150_000 },
       { type: 'auction-bid-lost', lotId: 'lot-0002', winningPriceYen: 200_000 },
+      { type: 'lot-bought-out', lotId: 'lot-0003', priceYen: 240_000 },
       {
         type: 'listing-created',
         listingId: 'listing-0001',
@@ -77,6 +78,12 @@ describe('GameState / DayLog round-trip', () => {
         resolvesOnDay: 10,
       },
       { type: 'car-sold', carInstanceId: 'car-0001', channel: 'walk-in-offer', priceYen: 280_000 },
+      {
+        type: 'part-bought',
+        partId: 'khs-street-ecu',
+        partInstanceId: 'part-7-0',
+        priceYen: 60_000,
+      },
     ]
 
     const parsed = DayLogSchema.parse(fixture)

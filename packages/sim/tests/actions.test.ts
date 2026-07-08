@@ -5,9 +5,11 @@ const EMPTY_ACTIONS = {
   createJobs: [],
   laborAssignments: [],
   bidsOnLots: [],
+  buyoutLots: [],
   inspectLots: [],
   sellViaWalkIn: [],
   listForSale: [],
+  buyParts: [],
 }
 
 describe('DayActionsSchema', () => {

@@ -67,6 +67,16 @@ function worstZone(condition: Record<string, number>): number {
       </ul>
     </section>
 
+    <section v-if="game.activeListings.length" class="listings">
+      <h3>Listings ({{ game.activeListings.length }})</h3>
+      <ul>
+        <li v-for="listing in game.activeListings" :key="listing.id">
+          {{ game.resolveModelName(listing.modelId) }} — asking
+          {{ formatYen(listing.askingPriceYen) }}, resolves day {{ listing.resolvesOnDay }}
+        </li>
+      </ul>
+    </section>
+
     <section class="log">
       <h3>Event log</h3>
       <p v-if="recentLog.length === 0" class="empty">
@@ -173,6 +183,18 @@ button.primary {
 .car-health {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+.listings ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-4);
+}
+
+.listings li {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  padding: var(--mg-space-1) 0;
 }
 
 .log ul {

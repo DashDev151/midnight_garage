@@ -1,5 +1,5 @@
 import type { GameState, Zone } from '@midnight-garage/content'
-import type { DayActions } from '../actions'
+import { emptyDayActions, type DayActions } from '../actions'
 import type { SimContext } from '../context'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
@@ -39,14 +39,7 @@ export function balancedPlayerStrategy(
   context: SimContext,
   rng: Rng,
 ): DayActions {
-  const actions: DayActions = {
-    createJobs: [],
-    laborAssignments: [],
-    bidsOnLots: [],
-    inspectLots: [],
-    sellViaWalkIn: [],
-    listForSale: [],
-  }
+  const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
 

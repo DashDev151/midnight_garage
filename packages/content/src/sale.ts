@@ -12,6 +12,9 @@ export const SaleChannelSchema = z.enum(['list-publicly', 'walk-in-offer'])
 export const PublicListingSchema = z.object({
   id: z.string().min(1),
   carInstanceId: z.string().min(1),
+  /** The listed car's model, kept here because the car leaves ownedCars the
+   * moment it's listed — the UI needs it to name the listing. */
+  modelId: z.string().min(1),
   /** Snapshot of the market valuation at listing time — market heat can
    * drift while the listing is pending, but the asking price doesn't. */
   askingPriceYen: z.number().int().positive(),

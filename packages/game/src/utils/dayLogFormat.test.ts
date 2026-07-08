@@ -18,6 +18,7 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'lot-inspected', lotId: 'lot-1' },
   { type: 'auction-bid-won', lotId: 'lot-1', finalPriceYen: 120_000 },
   { type: 'auction-bid-lost', lotId: 'lot-1', winningPriceYen: 130_000 },
+  { type: 'lot-bought-out', lotId: 'lot-1', priceYen: 240_000 },
   {
     type: 'listing-created',
     listingId: 'listing-1',
@@ -26,6 +27,7 @@ const SAMPLES: DayLogEntry[] = [
     resolvesOnDay: 12,
   },
   { type: 'car-sold', carInstanceId: 'car-1', channel: 'walk-in-offer', priceYen: 180_000 },
+  { type: 'part-bought', partId: 'khs-street-ecu', partInstanceId: 'part-7-0', priceYen: 60_000 },
 ]
 
 describe('describeLogEntry', () => {

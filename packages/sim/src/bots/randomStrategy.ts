@@ -1,5 +1,5 @@
 import type { GameState, Zone } from '@midnight-garage/content'
-import type { DayActions } from '../actions'
+import { emptyDayActions, type DayActions } from '../actions'
 import type { SimContext } from '../context'
 import { availableLaborSlots } from '../laborSlots'
 import { createRng, hashStringToSeed, type Rng } from '../rng'
@@ -70,14 +70,7 @@ function archetypeForCar(carInstanceId: string): Archetype {
  * can't operate the controls.
  */
 export function randomStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
-  const actions: DayActions = {
-    createJobs: [],
-    laborAssignments: [],
-    bidsOnLots: [],
-    inspectLots: [],
-    sellViaWalkIn: [],
-    listForSale: [],
-  }
+  const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
 

@@ -84,6 +84,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     winningPriceYen: z.number().int().nonnegative(),
   }),
   z.object({
+    type: z.literal('lot-bought-out'),
+    lotId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
     type: z.literal('listing-created'),
     listingId: z.string().min(1),
     carInstanceId: z.string().min(1),
@@ -94,6 +99,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('car-sold'),
     carInstanceId: z.string().min(1),
     channel: SaleChannelSchema,
+    priceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('part-bought'),
+    partId: z.string().min(1),
+    partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
   }),
 ])

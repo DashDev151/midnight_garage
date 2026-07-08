@@ -13,6 +13,12 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'garage', component: () => import('../screens/GarageScreen.vue') },
     { path: '/car/:id', name: 'car', component: () => import('../screens/CarDetailScreen.vue') },
+    {
+      path: '/auctions',
+      name: 'auctions',
+      component: () => import('../screens/AuctionScreen.vue'),
+    },
+    { path: '/parts', name: 'parts', component: () => import('../screens/PartsMarketScreen.vue') },
     { path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') },
   ],
 })

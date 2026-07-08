@@ -148,7 +148,7 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 
 ### PHASE 4 — Systems Complete
 
-- **Sprint 13 — SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc).
+- **Sprint 13 — SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc). **Includes the skill/XP progression system** — learn-by-doing growth for staff *and* the player character, where skill *optimizes* (efficiency/quality) but never *unlocks* tiers (tools + rep still do that). Player-character skill may debut earlier alongside the service-jobs feature. Full design: `docs/design/skill-progression.md`.
 - **Sprint 14 — Commissions & rep tiers** (briefs, scoring, act gating, equipment purchases as unlocks).
 - **Sprint 15 — Events I:** night meet, show & shine (incl. Gentleman's Class), magazine features → market heat spikes.
 - **Sprint 16 — Events II:** touge nights (pace dial, sector-by-sector cutaway resolution, damage), part scouts.

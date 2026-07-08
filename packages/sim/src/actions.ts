@@ -33,13 +33,19 @@ const ListForSaleActionSchema = z.object({
   waitDays: z.number().int().positive().optional(),
 })
 
+const BuyPartActionSchema = z.object({ partId: z.string().min(1) })
+
+const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
+
 export const DayActionsSchema = z.object({
   createJobs: z.array(NewJobSpecSchema).default([]),
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
   bidsOnLots: z.array(BidOnLotSchema).default([]),
+  buyoutLots: z.array(BuyoutLotActionSchema).default([]),
   inspectLots: z.array(InspectLotActionSchema).default([]),
   sellViaWalkIn: z.array(SellViaWalkInActionSchema).default([]),
   listForSale: z.array(ListForSaleActionSchema).default([]),
+  buyParts: z.array(BuyPartActionSchema).default([]),
 })
 
 export type NewJobSpec = z.infer<typeof NewJobSpecSchema>
@@ -48,4 +54,14 @@ export type BidOnLotAction = z.infer<typeof BidOnLotSchema>
 export type InspectLotAction = z.infer<typeof InspectLotActionSchema>
 export type SellViaWalkInAction = z.infer<typeof SellViaWalkInActionSchema>
 export type ListForSaleAction = z.infer<typeof ListForSaleActionSchema>
+export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
+export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type DayActions = z.infer<typeof DayActionsSchema>
+
+/**
+ * A fresh, fully-defaulted (all-empty) DayActions. One home for the shape
+ * so adding an action type doesn't break every caller that builds a literal.
+ */
+export function emptyDayActions(): DayActions {
+  return DayActionsSchema.parse({})
+}

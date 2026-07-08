@@ -39,9 +39,13 @@ export function describeLogEntry(
       return `Won lot ${entry.lotId} for ${formatYen(entry.finalPriceYen)}`
     case 'auction-bid-lost':
       return `Lost lot ${entry.lotId} (went for ${formatYen(entry.winningPriceYen)})`
+    case 'lot-bought-out':
+      return `Bought out lot ${entry.lotId} for ${formatYen(entry.priceYen)}`
     case 'listing-created':
       return `Listed ${entry.carInstanceId} at ${formatYen(entry.askingPriceYen)} (resolves day ${entry.resolvesOnDay})`
     case 'car-sold':
       return `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
+    case 'part-bought':
+      return `Bought ${entry.partId} for ${formatYen(entry.priceYen)}`
   }
 }

@@ -5,12 +5,14 @@ import type {
   DayLogEntry,
   GameState,
   Job,
+  PartInstance,
   PublicListing,
 } from '@midnight-garage/content'
 import type { DayActions } from './actions'
 import { generateAuctionCatalog, inspectLot, resolveHandoverCondition } from './auctions'
 import { type AuctionBidder, resolveAuction } from './bidding'
 import {
+  AUCTION_BUYOUT_PREMIUM,
   AUCTION_LOT_EXPIRY_DAYS,
   AUCTION_LOTS_PER_TIER,
   AUCTION_TRAVEL_FEE_YEN,
@@ -80,6 +82,31 @@ export function advanceDay(
   })
   next = { ...next, jobs }
 
+  // 1b. Buy parts from the market (GDD 3.1 "buy parts"). Turn-based: a bought
+  // part lands in inventory this tick and is installable from the next day
+  // (an install job can't reference a part-instance id that doesn't exist yet).
+  queuedActions.buyParts.forEach((action, i) => {
+    const part = context.partsById[action.partId]
+    if (!part || next.cashYen < part.priceYen) return
+    const partInstance: PartInstance = {
+      id: `part-${next.day}-${i}`,
+      partId: part.id,
+      conditionPercent: 100,
+      genuinePeriod: false,
+    }
+    next = {
+      ...next,
+      cashYen: next.cashYen - part.priceYen,
+      partInventory: [...next.partInventory, partInstance],
+    }
+    log.push({
+      type: 'part-bought',
+      partId: part.id,
+      partInstanceId: partInstance.id,
+      priceYen: part.priceYen,
+    })
+  })
+
   // 2. Labor budget for the day, shared by lot inspections and job assignments.
   const available = availableLaborSlots(next)
   let remainingLabor = available
@@ -145,9 +172,22 @@ export function advanceDay(
   }
   next = { ...next, jobs: stillOpen }
 
-  // 4. Resolve queued auction bids.
+  // 4. Resolve queued auction actions. Buyouts first (guaranteed purchase at
+  // a premium, no contest), then competitive bids on what's left.
   const remainingLots = new Map(next.activeAuctionLots.map((lot) => [lot.id, lot]))
   const aiBidders: AuctionBidder[] = context.buyers.map((buyer) => ({ id: buyer.id, buyer }))
+
+  for (const { lotId } of queuedActions.buyoutLots) {
+    const lot = remainingLots.get(lotId)
+    if (!lot) continue
+    const priceYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
+    if (next.cashYen < priceYen) continue
+    remainingLots.delete(lotId)
+    const car = resolveHandoverCondition(lot, priceYen, context.hiddenIssuesById, rng)
+    next = { ...next, cashYen: next.cashYen - priceYen, ownedCars: [...next.ownedCars, car] }
+    log.push({ type: 'lot-bought-out', lotId, priceYen })
+  }
+
   for (const bid of queuedActions.bidsOnLots) {
     const lot = remainingLots.get(bid.lotId)
     if (!lot) continue
@@ -220,6 +260,7 @@ export function advanceDay(
     const listing: PublicListing = {
       id: `listing-${next.day}-${i}`,
       carInstanceId: action.carInstanceId,
+      modelId: car.modelId,
       askingPriceYen,
       resolvesOnDay: next.day + waitDays,
     }

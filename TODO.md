@@ -8,6 +8,21 @@ before Sprint 8 — live in their sprint docs instead and aren't duplicated here
 
 Remove an item once it's actioned; note which sprint/commit picked it up.
 
+## Next focus (agreed 2026-07-08)
+
+- [ ] **Interactive service / walk-in jobs — the next major feature.** A customer brings in a car
+  with a request (repair a body panel, fit these wheels, diagnose+fix a drivetrain issue); the
+  player accepts, the car takes a bay, labor + parts go in, the job completes, and the player is paid
+  a **guaranteed profit** — the player never owns the car (Car Mechanic Sim / PC Building Sim style).
+  **Why it matters:** it's the Act 1 early-game floor (carries the player when capital is scarce) and
+  the natural tutorial vehicle; right now the player is auction-only, which is punishing early. Only
+  *passive* service-bay income exists in code (needs staff nobody has yet). **Economy design goal:**
+  service jobs carry the early game, then auction flipping should overtake them in profitability by
+  the midgame — the balance harness can pin the crossover. Needs a dedicated sprint; **sequencing vs.
+  Sprint 07 (persistence) is a user call** — the user said "focus on this next," which may reorder
+  the roadmap. The GDD already scopes Act 1 service jobs + the landlord tutorial, so this is
+  elaborating planned scope, not new scope.
+
 ## Engineering
 
 - [ ] **Wire the balance harness into CI.** `pnpm balance:run` + `python -m balance.cli check`
@@ -45,6 +60,13 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
   how painful) — open question for the spreadsheet pass.
 - [ ] **Parts pricing curve per grade** (Stock/Street/Sport/Race) relative to car book value — open
   question for the spreadsheet pass.
+
+## Planned systems (designed, not yet scheduled)
+
+- [ ] **Skill / XP progression** — learn-by-doing growth for staff *and* the player character; skill
+  *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
+  with the staff system (Sprint 13); player-character skill is new v1.0 scope, slotted against the
+  service-jobs feature. Full design: `docs/design/skill-progression.md`.
 
 ## Design decisions
 

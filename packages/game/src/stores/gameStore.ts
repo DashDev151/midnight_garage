@@ -1,5 +1,8 @@
 import { BUYERS, CARS, HIDDEN_ISSUES, PARTS } from '@midnight-garage/content'
 import type {
+  AuctionLot,
+  AuctionTier,
+  Buyer,
   CarInstance,
   CarModel,
   DayLogEntry,
@@ -7,6 +10,7 @@ import type {
   Job,
   Part,
   PartInstance,
+  PublicListing,
   Slot,
   StatBlock,
   Zone,
@@ -14,15 +18,24 @@ import type {
 import { resolveCarDisplayName } from '@midnight-garage/content'
 import {
   advanceDay,
+  AUCTION_BUYOUT_PREMIUM,
+  AUCTION_RESERVE_PRICE_FRACTION,
+  AUCTION_TRAVEL_FEE_YEN,
   availableLaborSlots,
+  bestFitBuyer,
   buildSimContext,
   computeDerivedStats,
+  computeLotInterest,
   createInitialGameState,
   createRng,
   DayActionsSchema,
   generateAuctionCarInstance,
+  listPubliclyAskingPrice,
+  valuateCarForBuyer,
+  type AuctionBidder,
   type DayActions,
   type LaborAssignment,
+  type LotInterest,
   type NewJobSpec,
   type SimContext,
 } from '@midnight-garage/sim'
@@ -52,6 +65,27 @@ export interface CarDetail extends DetailedCar {
   pendingJobs: NewJobSpec[]
 }
 
+/** An auction lot with the derived numbers the auction screen shows. */
+export interface LotDetail {
+  lot: AuctionLot
+  model: CarModel
+  displayName: string
+  bookValueYen: number
+  reserveYen: number
+  inspectionFeeYen: number
+  buyoutPriceYen: number
+  /** Fuzzy rival-demand read for bid calibration. */
+  interest: LotInterest
+  /** Revealed hidden issues (only populated once the lot is inspected). */
+  revealedIssues: { zone: Zone; hintText: string }[]
+}
+
+/** The estimated same-day walk-in offer for an owned car. */
+export interface WalkInEstimate {
+  buyerId: string | undefined
+  offerYen: number
+}
+
 /**
  * The state bridge between the pure sim and Vue. Holds the one object
  * Dexie will persist in Sprint 7 (`gameState`), the static content
@@ -66,7 +100,11 @@ export const useGameStore = defineStore('game', () => {
   const context = shallowRef<SimContext>(buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES))
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
   const dayLog = ref<DayLogEntry[]>([])
-  const pendingJobs = ref<NewJobSpec[]>([])
+  // The player's not-yet-committed plan for the current day - the full set of
+  // actions (jobs, bids, inspections, sells, listings, part buys) assembled
+  // over the day and applied on End Day. laborAssignments are auto-planned at
+  // commit, so this holds everything except that.
+  const pending = ref<DayActions>(emptyActions())
   // Monotonic counter for dev-granted content ids (dev-only, so non-deterministic is fine).
   const grantCounter = ref(0)
 
@@ -75,6 +113,7 @@ export const useGameStore = defineStore('game', () => {
   const reputationTier = computed(() => gameState.value.reputationTier)
   const ownedCarCount = computed(() => gameState.value.ownedCars.length)
   const laborSlotsPerDay = computed(() => availableLaborSlots(gameState.value))
+  const pendingJobs = computed(() => pending.value.createJobs)
 
   function detailFor(car: CarInstance): DetailedCar {
     const model = context.value.modelsById[car.modelId]
@@ -113,6 +152,78 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  // --- auction & market selectors --------------------------------------
+
+  // The rival bidder field is the same for every lot; build it once.
+  const aiBidders = computed<AuctionBidder[]>(() =>
+    context.value.buyers.map((buyer) => ({ id: buyer.id, buyer })),
+  )
+
+  const activeListings = computed<PublicListing[]>(() => gameState.value.activeListings)
+
+  /** Current auction catalog grouped by tier (only tiers with lots present). */
+  const auctionLotsByTier = computed<{ tier: AuctionTier; lots: AuctionLot[] }[]>(() => {
+    const byTier = new Map<AuctionTier, AuctionLot[]>()
+    for (const lot of gameState.value.activeAuctionLots) {
+      const list = byTier.get(lot.tier) ?? []
+      list.push(lot)
+      byTier.set(lot.tier, list)
+    }
+    return [...byTier.entries()].map(([tier, lots]) => ({ tier, lots }))
+  })
+
+  /** Derived numbers + (if inspected) revealed issues for one lot. */
+  function lotDetail(lotId: string): LotDetail | undefined {
+    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
+    if (!lot) return undefined
+    const model = context.value.modelsById[lot.modelId]
+    if (!model) return undefined
+    const revealedIssues = lot.inspected
+      ? lot.car.hiddenIssues
+          .filter((i) => i.revealed)
+          .flatMap((i) => {
+            const issue = context.value.hiddenIssuesById[i.issueId]
+            return issue ? [{ zone: issue.zone, hintText: issue.hintText }] : []
+          })
+      : []
+    return {
+      lot,
+      model,
+      displayName: resolveCarDisplayName(model),
+      bookValueYen: lot.bookValueYen,
+      reserveYen: Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION),
+      inspectionFeeYen: AUCTION_TRAVEL_FEE_YEN[lot.tier],
+      buyoutPriceYen: Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM),
+      // precision 0 for now; a future auction-scout staff trait raises it.
+      interest: computeLotInterest(lot, model, aiBidders.value, context.value.partsById, 0),
+      revealedIssues,
+    }
+  }
+
+  /** Estimated same-day walk-in offer for an owned car (best-fit buyer's valuation). */
+  function walkInEstimate(carId: string): WalkInEstimate {
+    const car = gameState.value.ownedCars.find((c) => c.id === carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!car || !model) return { buyerId: undefined, offerYen: 0 }
+    const buyer: Buyer | undefined = bestFitBuyer(
+      car,
+      model,
+      context.value.buyers,
+      context.value.partsById,
+    )
+    const offerYen = buyer ? valuateCarForBuyer(buyer, model, car, context.value.partsById) : 0
+    return { buyerId: buyer?.id, offerYen: Math.round(offerYen) }
+  }
+
+  /** Estimated public-listing asking price for an owned car (market-heat scaled). */
+  function listingEstimate(carId: string): number {
+    const car = gameState.value.ownedCars.find((c) => c.id === carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!car || !model) return 0
+    const heat = gameState.value.marketHeat[car.modelId] ?? 100
+    return listPubliclyAskingPrice(car, model, context.value.buyers, context.value.partsById, heat)
+  }
+
   /** Parts in inventory that fit an empty slot on the given car (slot + required tags). */
   function installablePartsFor(carId: string, slot: Slot): PartInstance[] {
     const car = gameState.value.ownedCars.find((c) => c.id === carId)
@@ -131,7 +242,7 @@ export const useGameStore = defineStore('game', () => {
     const inProgress = gameState.value.jobs.some(
       (j) => j.carInstanceId === carId && j.kind === 'repair-zone' && j.zone === zone,
     )
-    const queued = pendingJobs.value.some(
+    const queued = pending.value.createJobs.some(
       (j) => j.carInstanceId === carId && j.kind === 'repair-zone' && j.zone === zone,
     )
     return inProgress || queued
@@ -147,7 +258,7 @@ export const useGameStore = defineStore('game', () => {
       zone,
       laborSlotsRequired: repairLaborSlotsFor(car.condition[zone]),
     }
-    pendingJobs.value = [...pendingJobs.value, spec]
+    pending.value = { ...pending.value, createJobs: [...pending.value.createJobs, spec] }
   }
 
   /** Queue installing an owned part into an empty slot (committed on End Day). */
@@ -159,21 +270,72 @@ export const useGameStore = defineStore('game', () => {
       partInstanceId,
       laborSlotsRequired: INSTALL_LABOR_SLOTS,
     }
-    pendingJobs.value = [...pendingJobs.value, spec]
+    pending.value = { ...pending.value, createJobs: [...pending.value.createJobs, spec] }
   }
 
-  function cancelPending(index: number): void {
-    pendingJobs.value = pendingJobs.value.filter((_, i) => i !== index)
+  /** Queue inspecting an auction lot (costs a labor slot + travel fee on End Day). */
+  function queueInspect(lotId: string): void {
+    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
+    if (!lot || lot.inspected) return
+    if (pending.value.inspectLots.some((a) => a.lotId === lotId)) return
+    pending.value = { ...pending.value, inspectLots: [...pending.value.inspectLots, { lotId }] }
+  }
+
+  /** Queue a max bid on an auction lot (resolved second-price on End Day). */
+  function queueBid(lotId: string, maxBidYen: number): void {
+    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
+    if (!lot || maxBidYen <= 0) return
+    const rest = pending.value.bidsOnLots.filter((b) => b.lotId !== lotId)
+    pending.value = { ...pending.value, bidsOnLots: [...rest, { lotId, maxBidYen }] }
+  }
+
+  /** Queue an instant buyout of a lot (guaranteed win at a premium on End Day). */
+  function queueBuyout(lotId: string): void {
+    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
+    if (!lot) return
+    if (pending.value.buyoutLots.some((a) => a.lotId === lotId)) return
+    pending.value = { ...pending.value, buyoutLots: [...pending.value.buyoutLots, { lotId }] }
+  }
+
+  /** Queue buying a catalog part into inventory (paid on End Day). */
+  function queueBuyPart(partId: string): void {
+    const part = context.value.partsById[partId]
+    if (!part) return
+    pending.value = { ...pending.value, buyParts: [...pending.value.buyParts, { partId }] }
+  }
+
+  /** Queue selling an owned car via a same-day walk-in offer. */
+  function queueSellWalkIn(carId: string): void {
+    if (!gameState.value.ownedCars.some((c) => c.id === carId)) return
+    if (pending.value.sellViaWalkIn.some((a) => a.carInstanceId === carId)) return
+    pending.value = {
+      ...pending.value,
+      sellViaWalkIn: [...pending.value.sellViaWalkIn, { carInstanceId: carId }],
+    }
+  }
+
+  /** Queue listing an owned car publicly (resolves after the wait). */
+  function queueListForSale(carId: string, waitDays?: number): void {
+    if (!gameState.value.ownedCars.some((c) => c.id === carId)) return
+    if (pending.value.listForSale.some((a) => a.carInstanceId === carId)) return
+    pending.value = {
+      ...pending.value,
+      listForSale: [...pending.value.listForSale, { carInstanceId: carId, waitDays }],
+    }
+  }
+
+  function clearPending(): void {
+    pending.value = emptyActions()
   }
 
   /**
-   * Auto-allocates the day's labor slots across in-progress jobs first
-   * (continue what's started), then newly-queued jobs in order, and returns
-   * the full DayActions to commit. Predicted ids for new jobs match
-   * advanceDay's `job-${day}-${index}` scheme.
+   * Auto-allocates the day's labor slots (inspections eat a slot each first,
+   * matching advanceDay's order, then in-progress jobs, then newly-queued
+   * jobs) and returns the full DayActions to commit. Predicted ids for new
+   * jobs match advanceDay's `job-${day}-${index}` scheme.
    */
   function planActions(): DayActions {
-    let remaining = laborSlotsPerDay.value
+    let remaining = Math.max(0, laborSlotsPerDay.value - pending.value.inspectLots.length)
     const laborAssignments: LaborAssignment[] = []
 
     for (const job of gameState.value.jobs) {
@@ -185,14 +347,14 @@ export const useGameStore = defineStore('game', () => {
       remaining -= slots
     }
 
-    pendingJobs.value.forEach((spec, i) => {
+    pending.value.createJobs.forEach((spec, i) => {
       if (remaining <= 0) return
       const slots = Math.min(spec.laborSlotsRequired, remaining)
       laborAssignments.push({ jobId: `job-${gameState.value.day}-${i}`, laborSlots: slots })
       remaining -= slots
     })
 
-    return DayActionsSchema.parse({ createJobs: pendingJobs.value, laborAssignments })
+    return DayActionsSchema.parse({ ...pending.value, laborAssignments })
   }
 
   // --- day advance ------------------------------------------------------
@@ -212,13 +374,13 @@ export const useGameStore = defineStore('game', () => {
   /** Player-facing End Day: commit the queued plan with auto-planned labor. */
   function commitDay(): void {
     advance(planActions())
-    pendingJobs.value = []
+    clearPending()
   }
 
   function newGame(seed: number = DEFAULT_SEED): void {
     gameState.value = createInitialGameState(context.value, seed)
     dayLog.value = []
-    pendingJobs.value = []
+    clearPending()
   }
 
   // --- dev-console affordances (dev build only) -------------------------
@@ -268,6 +430,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     gameState,
     dayLog,
+    pending,
     pendingJobs,
     day,
     cashYen,
@@ -278,13 +441,24 @@ export const useGameStore = defineStore('game', () => {
     ownedCarNames,
     partsCatalog,
     modelsCatalog,
+    activeListings,
+    auctionLotsByTier,
     resolveModelName,
     partName,
     carDetail,
+    lotDetail,
+    walkInEstimate,
+    listingEstimate,
     installablePartsFor,
     queueRepair,
     queueInstall,
-    cancelPending,
+    queueInspect,
+    queueBid,
+    queueBuyout,
+    queueBuyPart,
+    queueSellWalkIn,
+    queueListForSale,
+    clearPending,
     endDay,
     commitDay,
     newGame,
