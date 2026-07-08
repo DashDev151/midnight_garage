@@ -1,8 +1,9 @@
 import { z } from 'zod'
-import { ReputationTierSchema, SlotSchema } from './tags'
+import { ReputationTierSchema } from './tags'
 import { CarInstanceSchema } from './carInstance'
 import { PartInstanceSchema } from './part'
 import { StaffMemberSchema } from './staff'
+import { JobKindSchema, JobSchema } from './job'
 
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
@@ -12,6 +13,9 @@ export const GameStateSchema = z.object({
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
   staff: z.array(StaffMemberSchema).default([]),
+  jobs: z.array(JobSchema).default([]),
+  /** Demand index per CarModel id, base 100 (GDD 6.4). */
+  marketHeat: z.record(z.string(), z.number()).default({}),
 })
 
 /**
@@ -27,10 +31,31 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     amountYen: z.number().int(),
   }),
   z.object({
-    type: z.literal('job-progress'),
+    type: z.literal('job-created'),
+    jobId: z.string().min(1),
     carInstanceId: z.string().min(1),
-    slot: SlotSchema,
+    kind: JobKindSchema,
+  }),
+  z.object({
+    type: z.literal('job-progress'),
+    jobId: z.string().min(1),
     laborSlotsSpent: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('job-completed'),
+    jobId: z.string().min(1),
+    carInstanceId: z.string().min(1),
+    kind: JobKindSchema,
+  }),
+  z.object({
+    type: z.literal('job-blocked'),
+    jobId: z.string().min(1),
+    reason: z.enum(['slot-occupied']),
+  }),
+  z.object({
+    type: z.literal('labor-overbooked'),
+    requestedSlots: z.number().int().positive(),
+    availableSlots: z.number().int().nonnegative(),
   }),
   z.object({ type: z.literal('service-bay-income'), amountYen: z.number().int() }),
   z.object({

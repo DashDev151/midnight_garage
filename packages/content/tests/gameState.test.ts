@@ -44,6 +44,8 @@ describe('GameState / DayLog round-trip', () => {
         },
       ],
       staff: [],
+      jobs: [],
+      marketHeat: {},
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -54,7 +56,11 @@ describe('GameState / DayLog round-trip', () => {
     const fixture = [
       { type: 'rent-paid', amountYen: -90_000 },
       { type: 'wage-paid', staffId: 'staff-0001', amountYen: -45_000 },
-      { type: 'job-progress', carInstanceId: 'car-0001', slot: 'engine', laborSlotsSpent: 1 },
+      { type: 'job-created', jobId: 'job-0001', carInstanceId: 'car-0001', kind: 'repair-zone' },
+      { type: 'job-progress', jobId: 'job-0001', laborSlotsSpent: 1 },
+      { type: 'job-completed', jobId: 'job-0001', carInstanceId: 'car-0001', kind: 'repair-zone' },
+      { type: 'job-blocked', jobId: 'job-0002', reason: 'slot-occupied' },
+      { type: 'labor-overbooked', requestedSlots: 5, availableSlots: 2 },
       { type: 'service-bay-income', amountYen: 15_000 },
       { type: 'market-heat-shift', modelId: 'toyota-supra-rz-jza80', deltaPercent: 12.5 },
     ]

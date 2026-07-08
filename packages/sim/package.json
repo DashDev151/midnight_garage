@@ -8,5 +8,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@midnight-garage/content": "workspace:*",
+    "zod": "^4.4.3"
   }
 }
