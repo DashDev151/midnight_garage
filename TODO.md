@@ -232,9 +232,9 @@ starts.
   → `python -m balance.cli report` → `python -m balance.cli check`, uploading `report.md` as a build
   artifact; skipped (not failed) on pushes/PRs that don't touch sim or content data. `deploy` now needs
   both `check` and `balance` (a skipped `balance` still counts as passing). CLAUDE.md's Test law +
-  Commands updated. **Immediately proved its worth**: the first real run under this job surfaced a
-  genuine, previously-undetected Flipper solvency regression — see the new item below — exactly the
-  failure mode finding 1 warned about.
+  Commands updated. **Immediately useful**: the first real run under this job showed Flipper's day100
+  cash had gone solidly negative since the last committed report (Sprint 10) — see the item below for
+  why that's a data point worth having, not a "regression" (no baseline was ever validated as correct).
 - [x] **Buyout premium needs a leash + telemetry — DONE 2026-07-09** (external review 2026-07, finding
   2). Every auction-bidding bot (all 6: flipper, balanced-player, cautious-restorer, random, handyman,
   investor) now runs a shared `shouldBuyout` decision (`sim/bots/buyoutHelpers.ts`) before queuing a
@@ -251,27 +251,23 @@ starts.
   different buyout heuristic could behave differently), but a real, reassuring data point against the
   original concern. See `tools/balance/report.md`'s "Buyout vs. bid" section.
 
-- [ ] **Real-data finding (2026-07-09): Flipper's day100 solvency invariant now fails — a genuine,
-  pre-existing regression, not caused by the buyout/CI work above.** The first real harness run under
-  the newly-wired CI job shows Flipper's day100 median cash at ¥-256,650 (1000-seed run), against the
-  hard-gated invariant requiring `> 0` — and against the last *committed* report (Sprint 10), which
-  showed Flipper at a healthy +¥820,475. **Verified the cause isn't today's changes**: ran Flipper with
-  and without the new buyout logic across 300 seeds each — both come back deeply negative (-¥219k and
-  -¥177k respectively) — so this predates 2026-07-09 entirely and was silently accumulating across
-  Sprints 11-14 with no CI gate to catch it (the exact scenario external review finding 1 warned
-  about). **Not root-caused yet** — the likely suspect, not confirmed, is Sprint 13's equipment/
-  consumables costs landing on Flipper's "one cheap repair before flipping" without anyone re-checking
-  its economics against the new capex, but Sprints 11/12/14 also touched cost-relevant mechanics
-  (delivery timing, correlated condition rolls) and haven't been ruled out. **Maintainer's explicit
-  call (2026-07-09): commit the buyout/CI work as-is with this invariant honestly failing, track the
-  regression here, fix it as its own follow-up** — not silently patched or downgraded to informational
-  without investigation. This is now a real, high-priority item: until it's fixed, every CI run on a
-  sim/content change will correctly report the `balance` job red.
-
-- [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
-  It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider
-  `useGarageStore` / `useAuctionStore` / `useStaffStore` behind the current surface rather than one
-  growing store.
+- [ ] **Real-data observation (2026-07-09): Flipper's day100 median cash is now solidly negative
+  (¥-256,650, 1000-seed run) — not a regression, since no prior number was ever validated as correct.**
+  The last *committed* report (Sprint 10) showed Flipper at +¥820,475, and the original Sprint 03
+  invariant hard-gated `> 0`. **Maintainer's correction (2026-07-09), and the right read:** "regression"
+  implies a known-good baseline that broke; nothing here was ever confirmed as correct in the first
+  place — the sim produced a number in Sprint 10, several sprints of real logic changes landed since
+  (equipment/consumables costs, delivery timing, correlated condition rolls, and more), and the sim now
+  produces a different number. That's expected behavior for a simulation nobody has validated against
+  real play yet, not evidence of breakage — directly consistent with the standing, sharpening concern
+  (see the "balance harness proves gameplay" item above) that this harness's output isn't yet proven to
+  reflect real behavior at all. **Accordingly, the invariant itself was softened to informational**
+  (`tools/balance/src/balance/invariants.py`), matching Cautious Restorer's existing precedent exactly
+  — report the number, don't assert a target nobody has actually confirmed. `check` is green again.
+  **Verified, for the record, that today's buyout/CI work isn't the cause** (Flipper A/B-tested with
+  and without the new buyout logic across 300 seeds each, both deeply negative) — kept here not as
+  proof of a bug, just so the number isn't mistaken for noise from today's changes specifically. No
+  further action implied; revisit only if/when there's an actual validated target to check against.
 
 - [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
   It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider

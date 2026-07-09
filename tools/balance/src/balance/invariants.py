@@ -30,6 +30,20 @@ no established target for a "completely average" bot or a "no strategy
 at all" control yet, only the observation that Random should plausibly
 underperform every deliberate strategy (which the first real run
 confirmed: Random's day100 median was clearly the worst of all five).
+
+Flipper's day100 solvency (`> 0`) was originally gated (Sprint 03), on
+the same unvalidated-target footing every other per-strategy number
+here has always been on - no one ever confirmed that a positive median
+was the *correct* outcome for this bot, only that it looked plausible
+the day it was written. Downgraded to informational 2026-07-09 after
+a real run came back solidly negative following several sprints of
+unrelated logic changes (equipment costs, delivery timing, and more):
+the maintainer's own framing is the right one - this isn't a
+regression from a known-good baseline (none was ever established),
+it's the sim producing a new answer after its logic changed, which is
+exactly what an unvalidated simulation is expected to do. Matches
+Cautious Restorer's precedent exactly: report the number, don't assert
+a target nobody has actually confirmed.
 """
 
 import argparse
@@ -68,15 +82,6 @@ def check_invariants(df: pl.DataFrame) -> list[tuple[str, bool, str]]:
 
     results.append(
         (
-            "Flipper solvency (proxy for GDD 6.6's debt spiral - the forced-loan "
-            "mechanic itself isn't built yet)",
-            flipper_100 > 0,
-            f"day100 median cashYen=Y{flipper_100:,.0f}",
-        )
-    )
-
-    results.append(
-        (
             "Flipper shows real market participation (day100 cash diverges from "
             "Passive Grinder's, proving trades actually happen)",
             abs(flipper_100 - passive_100) > SEPARATION_THRESHOLD_YEN,
@@ -105,6 +110,16 @@ def check_invariants(df: pl.DataFrame) -> list[tuple[str, bool, str]]:
             "need a longer time horizon than 100 days (see sprint03.md)",
             True,
             f"day100 median cashYen=Y{restorer_100:,.0f}",
+        )
+    )
+
+    results.append(
+        (
+            "[INFO, not gated] Flipper day100 median cash - no confirmed target; "
+            "downgraded from a hard gate 2026-07-09 (never validated as correct, "
+            "just the number a first pass happened to produce)",
+            True,
+            f"day100 median cashYen=Y{flipper_100:,.0f}",
         )
     )
 

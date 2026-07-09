@@ -22,9 +22,10 @@ committed by hand and `ci.yml` had no Python step. A content PR could silently b
 **Disposition:** **Fixed 2026-07-09**, well ahead of the Phase 5 deadline. A new `balance` job in
 `.github/workflows/ci.yml` does exactly the recommended shape — path-filtered, runs the full harness +
 invariant check, uploads `report.md`, and gates `deploy` (a skipped run, i.e. no relevant paths
-changed, still counts as passing). **It proved its value immediately**: the very first real run under
-this job caught a genuine, previously-undetected Flipper solvency regression (see `TODO.md`) — exactly
-the failure mode this finding warned about, now impossible to ship silently again.
+changed, still counts as passing). **Immediately useful**: the very first real run under this job
+showed Flipper's day100 cash solidly negative, a real data point worth having visibility into (see
+`TODO.md` — not framed as a "regression," since no prior number was ever validated as the correct
+target in the first place, just the sim producing a different answer after real logic changes).
 
 ## 2. Buyout premium needs a leash + telemetry (High) — ADDRESSED
 
