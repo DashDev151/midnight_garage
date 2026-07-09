@@ -42,6 +42,8 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
+    pendingPartOrders: [],
+    cartPartIds: [],
     ...overrides,
   }
 }

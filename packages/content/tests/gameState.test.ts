@@ -59,6 +59,8 @@ describe('GameState / DayLog round-trip', () => {
       serviceBayCarIds: ['car-0001'],
       laborSlotsSpentToday: 0,
       ownedEquipmentIds: [],
+      pendingPartOrders: [],
+      cartPartIds: [],
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -100,6 +102,19 @@ describe('GameState / DayLog round-trip', () => {
         partId: 'khs-street-ecu',
         partInstanceId: 'part-7-0',
         priceYen: 60_000,
+      },
+      {
+        type: 'part-ordered',
+        orderId: 'order-7-0',
+        partId: 'khs-street-ecu',
+        priceYen: 54_000,
+        arrivesOnDay: 8,
+      },
+      {
+        type: 'part-delivered',
+        orderId: 'order-7-0',
+        partId: 'khs-street-ecu',
+        partInstanceId: 'part-8-0',
       },
       { type: 'car-moved', carInstanceId: 'car-0001', to: 'service' },
       { type: 'cars-swapped', serviceCarId: 'car-0001', parkingCarId: 'car-0002' },

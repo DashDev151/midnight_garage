@@ -32,7 +32,13 @@ const ListForSaleActionSchema = z.object({
   waitDays: z.number().int().positive().optional(),
 })
 
-const BuyPartActionSchema = z.object({ partId: z.string().min(1) })
+const BuyPartActionSchema = z.object({
+  partId: z.string().min(1),
+  /** Sprint 14: defaults to 'express' (today's pre-Sprint-14 instant-buy
+   * behavior) so every pre-existing caller/fixture that omits it keeps
+   * working unchanged. */
+  deliverySpeed: z.enum(['standard', 'express']).default('express'),
+})
 
 const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
 

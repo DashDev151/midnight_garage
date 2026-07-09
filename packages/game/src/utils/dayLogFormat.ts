@@ -47,6 +47,10 @@ export function describeLogEntry(
       return `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
     case 'part-bought':
       return `Bought ${entry.partId} for ${formatYen(entry.priceYen)}`
+    case 'part-ordered':
+      return `Ordered ${entry.partId} for ${formatYen(entry.priceYen)} (arrives day ${entry.arrivesOnDay})`
+    case 'part-delivered':
+      return `Delivery arrived: ${entry.partId}`
     case 'service-job-accepted':
       return `Service job accepted — customer car ${entry.carInstanceId} in the shop`
     case 'service-job-completed':

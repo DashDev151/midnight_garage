@@ -78,6 +78,8 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [WELDER.id, ENGINE_CRANE.id],
+    pendingPartOrders: [],
+    cartPartIds: [],
     ...overrides,
   }
 }

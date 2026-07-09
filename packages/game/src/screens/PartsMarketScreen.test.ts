@@ -20,12 +20,58 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
   })
 
-  it('clicking Buy purchases instantly (Sprint 11)', async () => {
+  it('adding to cart spends nothing (Sprint 14 misclick safeguard)', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     const wrapper = mountScreen()
-    await wrapper.find(`[data-test="buy-${cheapest.id}"]`).trigger('click')
-    expect(game.gameState.partInventory.some((pi) => pi.partId === cheapest.id)).toBe(true)
+    await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
+    expect(game.cashYen).toBe(cashBefore)
+    expect(game.gameState.partInventory).toHaveLength(0)
+    expect(game.cartItems).toHaveLength(1)
+    expect(wrapper.find('[data-test="cart-panel"]').text()).toContain(cheapest.name)
+  })
+
+  it('checkout at standard delivery deducts sticker price and orders, not buys, the part', async () => {
+    const game = useGameStore()
+    const cashBefore = game.cashYen
+    const wrapper = mountScreen()
+    await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
+    await wrapper.find('[data-test="delivery-standard"]').setValue(true)
+    await wrapper.find('[data-test="checkout"]').trigger('click')
+
     expect(game.cashYen).toBe(cashBefore - cheapest.priceYen)
+    expect(game.gameState.partInventory).toHaveLength(0)
+    expect(game.gameState.pendingPartOrders).toHaveLength(1)
+    expect(game.cartItems).toHaveLength(0)
+  })
+
+  it('checkout at express delivery buys instantly at the surcharged price', async () => {
+    const game = useGameStore()
+    const cashBefore = game.cashYen
+    const wrapper = mountScreen()
+    await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
+    await wrapper.find('[data-test="delivery-express"]').setValue(true)
+    await wrapper.find('[data-test="checkout"]').trigger('click')
+
+    expect(game.gameState.partInventory.some((pi) => pi.partId === cheapest.id)).toBe(true)
+    expect(game.cashYen).toBeLessThan(cashBefore - cheapest.priceYen) // surcharge on top
+    expect(game.cartItems).toHaveLength(0)
+  })
+
+  it('removing a cart item costs nothing and clears it from the cart', async () => {
+    const game = useGameStore()
+    const cashBefore = game.cashYen
+    const wrapper = mountScreen()
+    await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
+    await wrapper.find(`[data-test="remove-from-cart-${cheapest.id}"]`).trigger('click')
+    expect(game.cartItems).toHaveLength(0)
+    expect(game.cashYen).toBe(cashBefore)
+  })
+
+  it('filters the catalog by component', async () => {
+    const wrapper = mountScreen()
+    const engineOnly = PARTS.filter((p) => p.componentId === 'engine')
+    await wrapper.find('[data-test="filter-component"]').setValue('engine')
+    expect(wrapper.findAll('.part').length).toBe(engineOnly.length)
   })
 })

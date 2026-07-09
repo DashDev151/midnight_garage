@@ -50,6 +50,7 @@ import {
   listPubliclyAskingPrice,
   nextBayPriceYen,
   parkingOccupancy,
+  PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
   resolveAcceptServiceJob,
   resolveBidInstant,
@@ -62,6 +63,7 @@ import {
   resolveServiceJob,
   swapCars as swapCarsCore,
   valuateCarForBuyer,
+  type DeliverySpeed,
   type LotInterest,
   type NewJobSpec,
   type ServiceJobOutcome,
@@ -119,6 +121,14 @@ export interface ShopCarView {
 /** One catalog equipment item plus whether it's owned, for the purchase UI (Sprint 13). */
 export interface EquipmentView extends Equipment {
   owned: boolean
+}
+
+/** One line of the parts-market cart, aggregated by part (repeats in
+ * `cartPartIds` = quantity), for the cart panel (Sprint 14). */
+export interface CartItemView {
+  part: Part
+  quantity: number
+  subtotalYen: number
 }
 
 /** A short human label for a service job's required work. */
@@ -673,14 +683,91 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** Buy a catalog part into inventory — instant, installable immediately. */
-  function buyPart(partId: string): boolean {
-    const result = resolveBuyPart(gameState.value, partId, context.value)
+  /**
+   * Buy a single catalog part directly, bypassing the cart — the primitive
+   * `checkoutCart` calls per item below. Not wired to any "Buy" button on
+   * `PartsMarketScreen.vue` (Sprint 14 replaced the instant per-row buy with
+   * cart + checkout, specifically to stop a misclick from spending real
+   * cash) but kept as a real store action for tests/dev use. Defaults to
+   * 'express' — today's pre-Sprint-14 instant behavior.
+   */
+  function buyPart(partId: string, deliverySpeed: DeliverySpeed = 'express'): boolean {
+    const result = resolveBuyPart(gameState.value, partId, context.value, deliverySpeed)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
     return true
   }
+
+  /** Add one unit of a catalog part to the cart — no cash spent yet. */
+  function addToCart(partId: string): void {
+    if (!context.value.partsById[partId]) return
+    gameState.value = {
+      ...gameState.value,
+      cartPartIds: [...gameState.value.cartPartIds, partId],
+    }
+  }
+
+  /** Remove one unit of a part from the cart (first matching occurrence). */
+  function removeFromCart(partId: string): void {
+    const index = gameState.value.cartPartIds.indexOf(partId)
+    if (index === -1) return
+    const cartPartIds = [...gameState.value.cartPartIds]
+    cartPartIds.splice(index, 1)
+    gameState.value = { ...gameState.value, cartPartIds }
+  }
+
+  /** The cart's contents, one entry per distinct part with its quantity and subtotal. */
+  const cartItems = computed<CartItemView[]>(() => {
+    const quantities = new Map<string, number>()
+    for (const partId of gameState.value.cartPartIds) {
+      quantities.set(partId, (quantities.get(partId) ?? 0) + 1)
+    }
+    const items: CartItemView[] = []
+    for (const [partId, quantity] of quantities) {
+      const part = context.value.partsById[partId]
+      if (!part) continue
+      items.push({ part, quantity, subtotalYen: part.priceYen * quantity })
+    }
+    return items
+  })
+
+  /** Base-price cart total (standard delivery — no surcharge). */
+  const cartStandardTotalYen = computed<number>(() =>
+    cartItems.value.reduce((sum, item) => sum + item.subtotalYen, 0),
+  )
+
+  /** Cart total including the express surcharge, for the checkout screen's two-option display. */
+  const cartExpressTotalYen = computed<number>(() =>
+    Math.round(cartStandardTotalYen.value * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION)),
+  )
+
+  /**
+   * Checkout — buys every item currently in the cart at the chosen delivery
+   * speed, one `resolveBuyPart` call per item (so a cart that's only
+   * partially affordable buys what it can and leaves the rest in the cart,
+   * rather than failing all-or-nothing). Returns how many line-units were
+   * bought vs. left behind, for the confirmation UI.
+   */
+  function checkoutCart(deliverySpeed: DeliverySpeed): {
+    boughtCount: number
+    remainingCount: number
+  } {
+    const remaining: string[] = []
+    let boughtCount = 0
+    for (const partId of gameState.value.cartPartIds) {
+      if (buyPart(partId, deliverySpeed)) {
+        boughtCount += 1
+      } else {
+        remaining.push(partId)
+      }
+    }
+    gameState.value = { ...gameState.value, cartPartIds: remaining }
+    return { boughtCount, remainingCount: remaining.length }
+  }
+
+  /** Standard-delivery orders still in transit, for a "pending orders" display. */
+  const pendingPartOrders = computed(() => gameState.value.pendingPartOrders)
 
   /**
    * Accept a service-job offer — instant. The customer's car arrives in the
@@ -950,6 +1037,13 @@ export const useGameStore = defineStore('game', () => {
     placeBid,
     buyout,
     buyPart,
+    cartItems,
+    cartStandardTotalYen,
+    cartExpressTotalYen,
+    addToCart,
+    removeFromCart,
+    checkoutCart,
+    pendingPartOrders,
     sellWalkIn,
     listForSale,
     acceptServiceJob,

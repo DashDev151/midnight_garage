@@ -156,3 +156,11 @@ export const COLLECTOR_NETWORK_MIN_REPUTATION: ReputationTier = 'respected'
 
 /** Default wait for a list-publicly sale to resolve (GDD 6.3: "slow, market price"). */
 export const PUBLIC_LISTING_WAIT_DAYS = 5
+
+/**
+ * Parts-market delivery timing (Sprint 14): express pays this surcharge for
+ * a part to land in inventory the same day (today's pre-Sprint-14 behavior);
+ * standard pays sticker price and waits this many days instead.
+ */
+export const PARTS_EXPRESS_SURCHARGE_FRACTION = 0.1
+export const PARTS_STANDARD_DELIVERY_DAYS = 1

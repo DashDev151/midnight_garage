@@ -142,13 +142,49 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   future system reputation-gates something with real economic stakes — auction-tier access
   (Collector Network) has gotten away with it so far only because nothing forces reputation to
   actually be reachable to test the gate meaningfully.
-- [ ] **Sprint 14 — Parts market overhaul.** Sorting/filtering, more grades (a junk/scrapyard tier
-  below stock), multiple vendors (scrapyard vs. performance house). Deliberately sequenced last — it
-  should target `componentId` (Sprint 12) and be instant-buy (Sprint 11), so building it earlier would
-  mean redoing it. Not yet written up as a full sprint doc.
+- [x] **Sprint 14 — Parts market: cart, checkout & delivery timing.** Implemented, ready for review —
+  see `docs/sprints/sprint14.md`. **Scope corrected 2026-07-09**: the previous version of this bullet
+  added "more grades (a junk/scrapyard tier), multiple vendors" — traced back through the docs and
+  found to be scope invented in an earlier session, not the GDD's 4-grade system
+  (Stock/Street/Sport/Race) nor any sourced playtest note. Moved to `IDEAS.md` as an unapproved idea.
+  Actual scope, grounded directly with the maintainer same day: the real, sourced playtest ask (#7)
+  turned out to be a genuine misclick-safety problem (accidentally bought a ¥500k part in one click
+  during playtesting) — `PartsMarketScreen.vue` now has a real cart (Add to cart, running total, one
+  deliberate Checkout click; nothing spends cash until then) plus a delivery-speed choice at checkout:
+  **express** (a 10% surcharge, arrives same-day, today's old behavior) or **standard** (sticker price,
+  arrives next day via a new `pendingPartOrders` queue resolved by `advanceDay`, modeled directly on
+  `PublicListingSchema`'s `resolvesOnDay` pattern) — a deliberate narrow pull-forward of what the
+  roadmap assigned to Sprint 16 ("order deliveries / lead times / parts scouts"), plus sorting/filtering
+  the catalog. **The cart is persistent** (maintainer's explicit call, reversing the original
+  ephemeral-ref proposal): it lives on `GameState` (`cartPartIds`), riding the existing autosave/
+  save-code mechanism for free rather than a new persistence layer. **A design assumption was revised
+  mid-implementation**: the planned deadline-aware bot `decideDeliverySpeed` helper turned out to have
+  exactly one real caller (`investor.ts`), whose existing same-tick install mechanic structurally can't
+  use standard delivery at all — so Investor is pinned to express with a comment instead of shipping an
+  unused generic helper (tracked as its own follow-up below). `SAVE_VERSION` 6→7, purely additive.
+  361 tests (was 336); all checks green. Deliberately sequenced last in the 10→11→12→13→14 run — it
+  targets `componentId` (Sprint 12) and is instant-buy (Sprint 11), so building it earlier would have
+  meant redoing it.
+- [ ] **Sprint 14 follow-up: manually verify the cart/checkout/delivery-timing flow in a browser.**
+  Never visually checked — not currently possible from mobile (2026-07-09), same recurring blocker as
+  Sprints 12/13. Component-mount tests confirm the right elements exist and the right state transitions
+  happen, not that the cart *feels* like a safeguard, that the "On order" pending-deliveries section is
+  discoverable, or that the checkout-disabled-when-unaffordable state reads clearly. Check on next
+  desktop session — this is also the first thing the upcoming playtesting sprint should exercise.
+- [ ] **Sprint 14 follow-up: a deadline-aware bot delivery-speed helper, once a second part-buying bot
+  actually needs it.** Sprint 14's design originally planned a shared `decideDeliverySpeed` helper
+  (standard by default, express only under real time pressure) for every part-buying bot. Implementation
+  found `buyParts`/`resolveBuyPart` has exactly one bot caller today — `investor.ts` — and its existing
+  mechanic structurally requires express (it predicts a part's `partInstanceId` and installs it the same
+  tick; a standard order wouldn't create that `PartInstance` until a later day). Building a deadline-aware
+  helper for a single caller that can't use its "wait" branch would be dead generality, so Investor is
+  pinned to express with a comment instead. Revisit if/when a future bot (e.g. one that installs parts for
+  service jobs, which have real `dueOnDay` deadlines) actually needs the standard/express trade-off.
 
 Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro.
-10, 11, 12, and 13 are done; Sprint 14 (parts market overhaul, below) is next up.
+10 through 14 are all done. A dedicated playtesting sprint is next, per the maintainer's explicit call
+(2026-07-09) — not a numbered roadmap sprint, so it isn't pre-written here; scope it when that session
+starts.
 
 ## Engineering
 

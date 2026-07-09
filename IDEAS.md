@@ -62,3 +62,34 @@ core loop is proven — but it is a real, intended future addition, not a maybe.
 constraints above are hard requirements (optional, decision-paced default preserved, isolated
 cuttable module, stat-linked not twitch-linked), and the pillar conflict is already signed off as an
 explicit exception. Do not re-argue whether it belongs; just build it right, small, and skippable.
+
+---
+
+## Parts market: a junk/scrapyard grade tier + multiple vendors
+
+*Added 2026-07-09, moved here from `TODO.md`'s Sprint 14 placeholder. Status: **not maintainer-
+requested — traced to an earlier Claude session inventing scope while drafting the Sprint 14
+placeholder, not to the GDD or any playtest note.** Unlike the driving minigame above, this has no
+sign-off; it's parked here specifically so it stops silently riding along in the roadmap as if it
+were confirmed scope.*
+
+**The idea:** a 5th part grade below Stock (junk/scrapyard-condition) and multiple vendors per
+component (a cheap scrapyard vs. a pricier performance house), instead of today's single catalog with
+one price per part.
+
+**Why it's not simply in scope:** the GDD (`docs/design/midnight-garage-gdd.md`, frozen for v1.0)
+is explicit — parts have exactly four grades, **Stock → Street → Sport → Race** — and describes no
+vendor concept anywhere. Adding a 5th grade or a vendor system is new mechanic surface the GDD didn't
+plan for, not a bugfix or a UI pass, so it needs the same explicit sign-off the driving minigame got,
+not a default assumption baked into a TODO.md one-liner.
+
+**What Sprint 14 actually covers instead:** the real, sourced playtest ask (#7, "the parts-market
+cart/checkout overhaul" — batch-buying multiple parts in one flow) plus sorting/filtering, which is
+pure UI/QoL over the existing single-grade catalog, not a new mechanic. See `docs/sprints/sprint14.md`
+once it exists.
+
+**If this is ever pursued:** it would need its own reuse-analysis pass against `GradeSchema` (adding a
+grade means every part-grade-driven formula — pricing, stat modifiers, reputation scaling on installs
+— gets audited for a new bottom rung) and a real vendor data model (`packages/content`), not just a
+content JSON tweak. Revisit only with an explicit ask, the same way the driving minigame is explicit
+opt-in scope rather than an assumed default.

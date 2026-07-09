@@ -37,8 +37,14 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   with a schema default of `[]`, so a pre-v6 save decodes under v6 with no
  *   equipment owned — correct, since equipment didn't exist as a concept
  *   yet. No explicit `MIGRATIONS[5]` step needed.
+ * - v7 (Sprint 14): added `pendingPartOrders` and `cartPartIds` to GameState
+ *   (standard-delivery orders in transit, and the persistent parts-market
+ *   cart). Both purely additive with a schema default of `[]`, so a pre-v7
+ *   save decodes under v7 with no orders in transit and an empty cart —
+ *   correct, since neither concept existed yet. No explicit `MIGRATIONS[6]`
+ *   step needed.
  */
-export const SAVE_VERSION = 6
+export const SAVE_VERSION = 7
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

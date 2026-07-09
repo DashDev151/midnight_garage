@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ReputationTierSchema } from './tags'
 import { CarInstanceSchema } from './carInstance'
-import { PartInstanceSchema } from './part'
+import { PartInstanceSchema, PendingPartOrderSchema } from './part'
 import { StaffMemberSchema } from './staff'
 import { JobKindSchema, JobSchema } from './job'
 import { AuctionLotSchema, AuctionTierSchema } from './auction'
@@ -55,6 +55,20 @@ export const GameStateSchema = z.object({
    * is correct (no save ever owned equipment before this existed).
    */
   ownedEquipmentIds: z.array(z.string().min(1)).default([]),
+  /**
+   * Standard-delivery part purchases in transit (Sprint 14) — resolved by
+   * advanceDay's day-boundary tick once `arrivesOnDay` is reached, exactly
+   * like `activeListings`. Purely additive.
+   */
+  pendingPartOrders: z.array(PendingPartOrderSchema).default([]),
+  /**
+   * The player's parts-market cart (Sprint 14): part ids awaiting checkout,
+   * repeats meaning quantity > 1. Deliberately persistent (survives a
+   * reload) per the maintainer's explicit call, so it lives on GameState and
+   * rides the existing autosave/save-code mechanism rather than a separate
+   * one — inert to the sim, read/written only by the game layer.
+   */
+  cartPartIds: z.array(z.string().min(1)).default([]),
 })
 
 /**
@@ -163,6 +177,19 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     partId: z.string().min(1),
     partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('part-ordered'),
+    orderId: z.string().min(1),
+    partId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+    arrivesOnDay: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('part-delivered'),
+    orderId: z.string().min(1),
+    partId: z.string().min(1),
+    partInstanceId: z.string().min(1),
   }),
   z.object({
     type: z.literal('car-moved'),

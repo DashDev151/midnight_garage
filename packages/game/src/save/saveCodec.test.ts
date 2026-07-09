@@ -39,6 +39,17 @@ const GOLDEN_V3_CODE =
 const GOLDEN_V5_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjo1LCJnYW1lU3RhdGUiOnsiZGF5IjozMywic2VlZCI6NywiY2FzaFllbiI6MzAwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJrbm93biIsInJlcHV0YXRpb25Qb2ludHMiOjIwLCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdLCJzZXJ2aWNlQmF5Q291bnQiOjIsInBhcmtpbmdCYXlDb3VudCI6NSwic2VydmljZUJheUNhcklkcyI6W10sImxhYm9yU2xvdHNTcGVudFRvZGF5IjozfX0='
 
+/**
+ * A save code produced by version 6 (Sprint 13, post equipment economy),
+ * pinned as a literal — same Save law again. Carries non-default
+ * `ownedEquipmentIds` so the test can distinguish "preserved" from
+ * "defaulted", while `pendingPartOrders`/`cartPartIds` (added in v7) are
+ * necessarily absent, proving the v6 -> v7 migration default-fills them
+ * correctly.
+ */
+const GOLDEN_V6_CODE =
+  'MGSAVE1.eyJ2ZXJzaW9uIjo2LCJnYW1lU3RhdGUiOnsiZGF5Ijo1MCwic2VlZCI6MywiY2FzaFllbiI6NDUwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJyZXNwZWN0ZWQiLCJyZXB1dGF0aW9uUG9pbnRzIjozMCwic2VydmljZUpvYk9mZmVycyI6W10sImFjdGl2ZVNlcnZpY2VKb2JzIjpbXSwic2VydmljZUJheUNvdW50IjozLCJwYXJraW5nQmF5Q291bnQiOjYsInNlcnZpY2VCYXlDYXJJZHMiOltdLCJsYWJvclNsb3RzU3BlbnRUb2RheSI6MSwib3duZWRFcXVpcG1lbnRJZHMiOlsid2VsZGVyIiwidGlyZS1tYWNoaW5lIl19fQ=='
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -85,6 +96,10 @@ describe('saveCodec', () => {
     // v5 -> v6 migration is pure default-fill too: a v1 save never had the
     // Sprint-13 equipment list either.
     expect(decoded.ownedEquipmentIds).toEqual([])
+    // v6 -> v7 migration is pure default-fill too: a v1 save never had the
+    // Sprint-14 order/cart fields either.
+    expect(decoded.pendingPartOrders).toEqual([])
+    expect(decoded.cartPartIds).toEqual([])
   })
 
   it('decodes the pinned golden v2 save under the current version (Save law)', () => {
@@ -105,6 +120,10 @@ describe('saveCodec', () => {
     // v5 -> v6 migration is pure default-fill: a v2 save never had the
     // Sprint-13 equipment list either.
     expect(decoded.ownedEquipmentIds).toEqual([])
+    // v6 -> v7 migration is pure default-fill: a v2 save never had the
+    // Sprint-14 order/cart fields either.
+    expect(decoded.pendingPartOrders).toEqual([])
+    expect(decoded.cartPartIds).toEqual([])
   })
 
   it('decodes the pinned golden v3 save under the current version (Save law)', () => {
@@ -122,6 +141,10 @@ describe('saveCodec', () => {
     // v5 -> v6 migration is pure default-fill: a v3 save never had the
     // Sprint-13 equipment list either.
     expect(decoded.ownedEquipmentIds).toEqual([])
+    // v6 -> v7 migration is pure default-fill: a v3 save never had the
+    // Sprint-14 order/cart fields either.
+    expect(decoded.pendingPartOrders).toEqual([])
+    expect(decoded.cartPartIds).toEqual([])
   })
 
   it('decodes the pinned golden v5 save under the current version (Save law)', () => {
@@ -138,6 +161,28 @@ describe('saveCodec', () => {
     // at all — correct, since equipment didn't exist as a concept yet, and
     // this is the normal additive case, unlike Sprint 12's deliberate nuke.
     expect(decoded.ownedEquipmentIds).toEqual([])
+    // v6 -> v7 migration is pure default-fill: a v5 save never had the
+    // Sprint-14 order/cart fields either.
+    expect(decoded.pendingPartOrders).toEqual([])
+    expect(decoded.cartPartIds).toEqual([])
+  })
+
+  it('decodes the pinned golden v6 save under the current version (Save law)', () => {
+    const decoded = decodeSave(GOLDEN_V6_CODE)
+    expect(decoded.day).toBe(50)
+    expect(decoded.cashYen).toBe(4_500_000)
+    expect(decoded.reputationTier).toBe('respected')
+    expect(decoded.reputationPoints).toBe(30)
+    // v6 fields are preserved unchanged, not reset to their defaults.
+    expect(decoded.serviceBayCount).toBe(3)
+    expect(decoded.parkingBayCount).toBe(6)
+    expect(decoded.laborSlotsSpentToday).toBe(1)
+    expect(decoded.ownedEquipmentIds).toEqual(['welder', 'tire-machine'])
+    // v6 -> v7 migration (Sprint 14): a v6 save never had the order/cart
+    // fields at all — correct, since neither concept existed yet, and this
+    // is the normal additive case, unlike Sprint 12's deliberate nuke.
+    expect(decoded.pendingPartOrders).toEqual([])
+    expect(decoded.cartPartIds).toEqual([])
   })
 
   it('rejects a non-save string', () => {
@@ -209,6 +254,24 @@ describe('saveCodec', () => {
     }
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV5WithCar))
     expect(() => decodeSave(code)).toThrow()
+  })
+
+  it('round-trips a v7 state with real pending orders and cart contents', () => {
+    const withOrdersAndCart: GameState = GameStateSchema.parse({
+      ...fullState,
+      pendingPartOrders: [
+        {
+          id: 'order-10-0',
+          partId: 'khs-street-ecu',
+          priceYen: 45_000,
+          purchasedOnDay: 10,
+          arrivesOnDay: 11,
+        },
+      ],
+      cartPartIds: ['tanuki-street-coilovers', 'tanuki-street-coilovers'],
+    })
+    const decoded = decodeSave(encodeSave(withOrdersAndCart))
+    expect(decoded).toEqual(withOrdersAndCart)
   })
 
   it('round-trips a v5 state with a real car through the new components shape', () => {

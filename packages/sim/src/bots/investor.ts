@@ -101,7 +101,14 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
 
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
-    actions.buyParts.push({ partId: part.id })
+    // Sprint 14: pinned to express, not a policy choice. The predicted
+    // partInstanceId below is referenced by this same tick's install job —
+    // only an express (same-day) purchase actually creates that PartInstance
+    // in time; a standard order wouldn't land until a later day's delivery
+    // step, and the install job would crash looking for a part that doesn't
+    // exist yet. Thematically apt anyway: Investor pays full retail for
+    // speed just as readily as it skips investing in equipment.
+    actions.buyParts.push({ partId: part.id, deliverySpeed: 'express' })
     cashCommitted += part.priceYen
     const partInstanceId = `part-${state.day}-${nextPartIndex}`
     nextPartIndex += 1

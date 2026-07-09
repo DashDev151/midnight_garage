@@ -47,6 +47,8 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
+    pendingPartOrders: [],
+    cartPartIds: [],
   }
 
   const refresh = refreshCatalogs(base, context, base.day, createRng(seed))

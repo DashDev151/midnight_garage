@@ -16,7 +16,7 @@ import {
 } from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { driftMarketHeat } from './marketHeat'
-import { resolveBuyPart } from './parts'
+import { resolveBuyPart, resolvePartDeliveries } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
 import { resolveAcceptServiceJob, resolveServiceJob } from './serviceJobs'
@@ -106,9 +106,11 @@ export function advanceDay(
   next = { ...next, jobs }
 
   // 1b. Bots' queued part purchases — the player buys instantly via
-  // resolveBuyPart directly from the store.
-  for (const { partId } of queuedActions.buyParts) {
-    const result = resolveBuyPart(next, partId, context)
+  // resolveBuyPart directly from the store (via the cart/checkout flow,
+  // Sprint 14). Bots choose deliverySpeed themselves (partDeliveryHelpers.ts)
+  // before queuing the action; this loop just calls the same resolver.
+  for (const { partId, deliverySpeed } of queuedActions.buyParts) {
+    const result = resolveBuyPart(next, partId, context, deliverySpeed)
     next = result.state
     log.push(...result.log)
   }
@@ -238,6 +240,13 @@ export function advanceDay(
     })
   }
   next = { ...next, activeListings: stillListed }
+
+  // 7b. Resolve standard-delivery part orders due today (Sprint 14) — the
+  // purchase counterpart to step 7 above, same "due today resolves, the
+  // rest stays pending" shape.
+  const deliveries = resolvePartDeliveries(next)
+  next = deliveries.state
+  log.push(...deliveries.log)
 
   // 8. Expire unsold auction lots and stale service-job offers, then refresh
   // both weekly catalogs (day 7 boundary) via the same generator day-1

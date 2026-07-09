@@ -36,6 +36,8 @@ function stateWithLots(
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
+    pendingPartOrders: [],
+    cartPartIds: [],
   }
 }
 

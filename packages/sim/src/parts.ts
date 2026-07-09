@@ -1,5 +1,13 @@
-import type { DayLogEntry, GameState, PartInstance } from '@midnight-garage/content'
+import type {
+  DayLogEntry,
+  GameState,
+  PartInstance,
+  PendingPartOrder,
+} from '@midnight-garage/content'
+import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
+
+export type DeliverySpeed = 'standard' | 'express'
 
 export interface BuyPartResult {
   state: GameState
@@ -7,18 +15,52 @@ export interface BuyPartResult {
 }
 
 /**
- * The instant buy-part resolver (Sprint 11): a bought part lands in
- * inventory the moment it's bought — installable immediately (an install
- * job can reference the new part-instance id in the same click that creates
- * it), not from the next day like the old queued-until-End-Day flow.
+ * The buy-part resolver (Sprint 11, split by delivery speed in Sprint 14).
+ * Express pays a surcharge and lands in inventory the moment it's bought —
+ * installable immediately, exactly like every purchase before this sprint.
+ * Standard pays sticker price and creates a `PendingPartOrder` instead; the
+ * real `PartInstance` only appears once `advanceDay`'s delivery step reaches
+ * `arrivesOnDay` (see `resolvePartDeliveries` below), mirroring how
+ * `resolveListForSale` locks in a price now and resolves the sale later.
  */
 export function resolveBuyPart(
   state: GameState,
   partId: string,
   context: SimContext,
+  deliverySpeed: DeliverySpeed = 'express',
 ): BuyPartResult {
   const part = context.partsById[partId]
-  if (!part || state.cashYen < part.priceYen) return { state, log: [] }
+  if (!part) return { state, log: [] }
+
+  if (deliverySpeed === 'standard') {
+    if (state.cashYen < part.priceYen) return { state, log: [] }
+    const order: PendingPartOrder = {
+      id: `order-${state.day}-${state.pendingPartOrders.length}`,
+      partId: part.id,
+      priceYen: part.priceYen,
+      purchasedOnDay: state.day,
+      arrivesOnDay: state.day + PARTS_STANDARD_DELIVERY_DAYS,
+    }
+    return {
+      state: {
+        ...state,
+        cashYen: state.cashYen - part.priceYen,
+        pendingPartOrders: [...state.pendingPartOrders, order],
+      },
+      log: [
+        {
+          type: 'part-ordered',
+          orderId: order.id,
+          partId: part.id,
+          priceYen: order.priceYen,
+          arrivesOnDay: order.arrivesOnDay,
+        },
+      ],
+    }
+  }
+
+  const priceYen = Math.round(part.priceYen * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION))
+  if (state.cashYen < priceYen) return { state, log: [] }
 
   const partInstance: PartInstance = {
     id: `part-${state.day}-${state.partInventory.length}`,
@@ -29,7 +71,7 @@ export function resolveBuyPart(
   return {
     state: {
       ...state,
-      cashYen: state.cashYen - part.priceYen,
+      cashYen: state.cashYen - priceYen,
       partInventory: [...state.partInventory, partInstance],
     },
     log: [
@@ -37,8 +79,48 @@ export function resolveBuyPart(
         type: 'part-bought',
         partId: part.id,
         partInstanceId: partInstance.id,
-        priceYen: part.priceYen,
+        priceYen,
       },
     ],
   }
+}
+
+export interface PartDeliveryResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Day-boundary resolution for standard-delivery orders (Sprint 14) — modeled
+ * directly on `advanceDay`'s existing `activeListings` resolve-loop: orders
+ * due today become real `PartInstance`s in `partInventory`; everything else
+ * stays pending. No player action required, called once per `advanceDay`.
+ */
+export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
+  const stillPending: PendingPartOrder[] = []
+  const log: DayLogEntry[] = []
+  let partInventory = state.partInventory
+
+  for (const order of state.pendingPartOrders) {
+    if (order.arrivesOnDay > state.day) {
+      stillPending.push(order)
+      continue
+    }
+    const partInstance: PartInstance = {
+      id: `part-${state.day}-${partInventory.length}`,
+      partId: order.partId,
+      conditionPercent: 100,
+      genuinePeriod: false,
+    }
+    partInventory = [...partInventory, partInstance]
+    log.push({
+      type: 'part-delivered',
+      orderId: order.id,
+      partId: order.partId,
+      partInstanceId: partInstance.id,
+    })
+  }
+
+  if (log.length === 0) return { state, log: [] }
+  return { state: { ...state, partInventory, pendingPartOrders: stillPending }, log }
 }

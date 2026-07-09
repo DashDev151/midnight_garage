@@ -84,6 +84,8 @@ function initialState(): GameState {
     // as a concept; hand-placing it here matches how the spare coilovers
     // above are also hand-placed rather than bought through the sim.
     ownedEquipmentIds: [WELDER_ID],
+    pendingPartOrders: [],
+    cartPartIds: [],
   }
 }
 
@@ -148,12 +150,12 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 13: the equipment/repair-vs-replace economy adds
-    // `ownedEquipmentIds` to state and charges a one-time consumables cost
-    // on the day-1 body repair job, both of which change the hash.
+    // Re-pinned Sprint 14: `pendingPartOrders` and `cartPartIds` are now
+    // part of every state, changing the hash even though this script never
+    // touches either.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('112d4a53')
+    expect(hashState(finalState)).toBe('9def8a35')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -234,8 +236,9 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 13: `ownedEquipmentIds` is now part of every state,
-    // changing the hash even for a path that never touches equipment.
-    expect(hashState(acquisitionCareer().sold)).toBe('bf08a198')
+    // Re-pinned Sprint 14: `pendingPartOrders` and `cartPartIds` are now
+    // part of every state, changing the hash even for a path that never
+    // touches either.
+    expect(hashState(acquisitionCareer().sold)).toBe('87e8338a')
   })
 })

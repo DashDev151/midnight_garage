@@ -141,6 +141,8 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     serviceBayCarIds: [car.id],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
+    pendingPartOrders: [],
+    cartPartIds: [],
     ...overrides,
   }
 }
