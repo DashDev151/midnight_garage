@@ -200,6 +200,21 @@ starts.
   path into that dist file. Verified with a real, full `pnpm balance:run` (600,000 career rows, 126,093
   auction-win rows, 24,000 field-size rows) and `python -m balance.cli check` (all 4 gated invariants
   pass).
+- [x] **Pre-commit/pre-push hooks and test coverage gating — added 2026-07-09** (maintainer request, a
+  self-assessment turned up both as real gaps versus a typical Python `uv`/`ruff`/`prek`/`pytest`
+  toolchain). Husky + lint-staged: `pre-commit` runs ESLint --fix + Prettier --write on staged files
+  only (fast); `pre-push` runs the full local gate (`typecheck` → `lint` → `format` → `test:coverage`)
+  so a broken push is caught locally, not only by CI. Coverage via `@vitest/coverage-v8`, configured at
+  the root `vitest.config.ts` (workspace/projects mode aggregates coverage at the root, not per
+  package) — thresholds (statements 80 / branches 65 / functions 78 / lines 82) are ratcheted to the
+  real measured baseline (86.19/70.97/84.59/89.41 at the time), not an aspirational number picked in
+  advance; a handful of legitimately-untestable files are excluded with a reason each (Pixi rendering,
+  the Sprint 00 art-spike/dev-sandbox screens, the dev-only console tree-shaken from prod, and
+  `saveDb.ts` — deliberately a thin Dexie wrapper by Sprint 07 design so tests don't need
+  fake-indexeddb). CI's `pnpm test` step swapped for `pnpm test:coverage` so the same threshold gates
+  pushes there too; the HTML/lcov report uploads as a build artifact. No coverage backfill work was
+  done to hit a higher number — the point was making regression visible, not retroactively maximizing
+  the metric.
 - [ ] **Auction calibration, real-data finding (2026-07-09): FRENZY essentially never happens.** The
   first real `pnpm balance:run` since the fix above shows STEAL 8.2% / MID 91.8% / FRENZY 0.0% against
   a target of STEAL/FRENZY 5-10% each — MID is winning far more than the unit-level Monte Carlo
