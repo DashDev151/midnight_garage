@@ -54,6 +54,8 @@ describe('CarDetailScreen', () => {
 
   it('queuing a repair and ending days lifts the zone bar to 100', async () => {
     const game = useGameStore()
+    // Sprint 13: repair is gated on owning the matching equipment.
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     const id = car.id
@@ -62,13 +64,26 @@ describe('CarDetailScreen', () => {
     // A dev-granted car lands in parking; move it into the service bay first
     // so the repair job it's about to queue can actually receive labor.
     await wrapper.find('[data-test="toggle-bay"]').trigger('click')
-    await wrapper.find('[data-test="repair-engine"]').trigger('click')
+    // 'body' (unlike 'engine', which this seeded car rolls at a full 100)
+    // reliably starts below 100, so this test actually exercises repair.
+    await wrapper.find('[data-test="repair-body"]').trigger('click')
     // End enough days for the repair to finish (bounded loop).
-    for (let i = 0; i < 6 && game.gameState.ownedCars[0]!.components.engine.condition < 100; i++) {
+    for (let i = 0; i < 6 && game.gameState.ownedCars[0]!.components.body.condition < 100; i++) {
       await wrapper.find('[data-test="end-day"]').trigger('click')
       await flushPromises()
     }
-    expect(game.gameState.ownedCars[0]!.components.engine.condition).toBe(100)
+    expect(game.gameState.ownedCars[0]!.components.body.condition).toBe(100)
+  })
+
+  it('disables the repair button (with a reason) when the equipment is not owned (Sprint 13)', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const id = game.gameState.ownedCars[0]!.id
+    const { wrapper } = await mountAt(id)
+
+    const button = wrapper.find('[data-test="repair-body"]')
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('needs')
   })
 
   it('redirects to the garage when the car id is not owned', async () => {

@@ -29,6 +29,16 @@ const GOLDEN_V2_CODE =
 const GOLDEN_V3_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjozLCJnYW1lU3RhdGUiOnsiZGF5IjoyMCwic2VlZCI6NTUsImNhc2hZZW4iOjIwMDAwMDAsInJlcHV0YXRpb25UaWVyIjoia25vd24iLCJyZXB1dGF0aW9uUG9pbnRzIjoxMiwic2VydmljZUpvYk9mZmVycyI6W10sImFjdGl2ZVNlcnZpY2VKb2JzIjpbXSwic2VydmljZUJheUNvdW50IjoyLCJwYXJraW5nQmF5Q291bnQiOjQsInNlcnZpY2VCYXlDYXJJZHMiOltdfX0='
 
+/**
+ * A save code produced by version 5 (Sprint 12, post components-refactor),
+ * pinned as a literal — same Save law again. Carries non-default
+ * `laborSlotsSpentToday` so the test can distinguish "preserved" from
+ * "defaulted", while `ownedEquipmentIds` (added in v6) is necessarily
+ * absent, proving the v5 -> v6 migration default-fills it correctly.
+ */
+const GOLDEN_V5_CODE =
+  'MGSAVE1.eyJ2ZXJzaW9uIjo1LCJnYW1lU3RhdGUiOnsiZGF5IjozMywic2VlZCI6NywiY2FzaFllbiI6MzAwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJrbm93biIsInJlcHV0YXRpb25Qb2ludHMiOjIwLCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdLCJzZXJ2aWNlQmF5Q291bnQiOjIsInBhcmtpbmdCYXlDb3VudCI6NSwic2VydmljZUJheUNhcklkcyI6W10sImxhYm9yU2xvdHNTcGVudFRvZGF5IjozfX0='
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -72,6 +82,9 @@ describe('saveCodec', () => {
     // v3 -> v4 migration is pure default-fill too: a v1 save never had the
     // Sprint-11 daily labor counter either.
     expect(decoded.laborSlotsSpentToday).toBe(0)
+    // v5 -> v6 migration is pure default-fill too: a v1 save never had the
+    // Sprint-13 equipment list either.
+    expect(decoded.ownedEquipmentIds).toEqual([])
   })
 
   it('decodes the pinned golden v2 save under the current version (Save law)', () => {
@@ -89,6 +102,9 @@ describe('saveCodec', () => {
     // v3 -> v4 migration is pure default-fill: a v2 save never had the
     // Sprint-11 daily labor counter either.
     expect(decoded.laborSlotsSpentToday).toBe(0)
+    // v5 -> v6 migration is pure default-fill: a v2 save never had the
+    // Sprint-13 equipment list either.
+    expect(decoded.ownedEquipmentIds).toEqual([])
   })
 
   it('decodes the pinned golden v3 save under the current version (Save law)', () => {
@@ -103,6 +119,25 @@ describe('saveCodec', () => {
     // v3 -> v4 migration is pure default-fill: a v3 save never had the
     // Sprint-11 daily labor counter.
     expect(decoded.laborSlotsSpentToday).toBe(0)
+    // v5 -> v6 migration is pure default-fill: a v3 save never had the
+    // Sprint-13 equipment list either.
+    expect(decoded.ownedEquipmentIds).toEqual([])
+  })
+
+  it('decodes the pinned golden v5 save under the current version (Save law)', () => {
+    const decoded = decodeSave(GOLDEN_V5_CODE)
+    expect(decoded.day).toBe(33)
+    expect(decoded.cashYen).toBe(3_000_000)
+    expect(decoded.reputationTier).toBe('known')
+    expect(decoded.reputationPoints).toBe(20)
+    // v5 fields are preserved unchanged, not reset to their defaults.
+    expect(decoded.serviceBayCount).toBe(2)
+    expect(decoded.parkingBayCount).toBe(5)
+    expect(decoded.laborSlotsSpentToday).toBe(3)
+    // v5 -> v6 migration (Sprint 13): a v5 save never had the equipment list
+    // at all — correct, since equipment didn't exist as a concept yet, and
+    // this is the normal additive case, unlike Sprint 12's deliberate nuke.
+    expect(decoded.ownedEquipmentIds).toEqual([])
   })
 
   it('rejects a non-save string', () => {

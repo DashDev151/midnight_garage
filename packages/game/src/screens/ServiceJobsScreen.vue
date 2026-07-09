@@ -46,9 +46,16 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
             </span>
           </div>
           <div class="offer-foot">
-            <button :data-test="'accept-' + offer.id" @click="game.acceptServiceJob(offer.id)">
+            <button
+              :disabled="!offer.canAccept"
+              :data-test="'accept-' + offer.id"
+              @click="game.acceptServiceJob(offer.id)"
+            >
               Accept
             </button>
+            <span v-if="!offer.canAccept" class="equip-hint">
+              needs {{ offer.missingEquipmentName ?? 'equipment' }}
+            </span>
           </div>
         </li>
       </ul>
@@ -158,6 +165,11 @@ h3 {
   display: flex;
   align-items: center;
   gap: var(--mg-space-3);
+}
+
+.equip-hint {
+  color: var(--mg-neon-pink);
+  font-size: var(--mg-fs-sm);
 }
 
 .active ul {

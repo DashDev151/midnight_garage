@@ -35,6 +35,7 @@ function stateWithLots(
     parkingBayCount: 3,
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
+    ownedEquipmentIds: [],
   }
 }
 

@@ -83,19 +83,72 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   never checked against real bot economy behavior at the 100-day-career scale the harness exercises.
   Per Sprint 10/11's own precedent: unit tests passing isn't proof the economy is still right. Can be
   folded into Sprint 13's own harness work if that's more efficient than a standalone run now.
-- [ ] **Sprint 13 — Equipment & repair-vs-replace economy.** The maintainer called this **critical,
-  not a nice-to-have** (2026-07-09) — repair gated by owned equipment, replace always available via
-  the parts market. Full design already exists in `docs/design/repair-replace-progression.md`; this
-  sprint builds the equipment catalog + purchase actions + gated repair on top of Sprint 12's
-  component model.
+- [x] **Sprint 13 — Equipment & repair-vs-replace economy.** Implemented, ready for review — see
+  `docs/sprints/sprint13.md`. The maintainer called this **critical, not a nice-to-have**
+  (2026-07-09). A new 7-item `equipment.json` catalog gates REPAIR: `findOrCreateJob` refuses to open
+  a new repair-zone job (logging `job-blocked`/`equipment-missing`) without the component's equipment,
+  and charges a flat one-time consumables cost on successful creation; `resolveAcceptServiceJob`
+  applies the same gate to repair-kind service-job offers (install-kind is never gated). Buying
+  equipment is instant for the player and bot-batchable, following the `applyBayPurchase` template
+  exactly. REPLACE (buy a part + install) is untouched and stays equipment-free, as a fix found
+  mid-implementation (`applyJobToCar`'s install branch never restored `condition` — a pre-Sprint-12
+  gap, closed since Sprint 13 is exactly the sprint that makes Replace a complete alternative to
+  Repair). **Reversed mid-implementation:** the original design reputation-gated the 3 priciest items,
+  but `reputationTier` turned out to never be mutated anywhere in the sim — gating on it would be
+  permanent denial, not a climbable ladder, so all 7 items shipped cash-only (see the follow-up item
+  below). All 5 pre-existing bots got a shared `bots/equipmentHelpers.ts` gate (mirroring
+  `bayHelpers.ts`); two new bots, Handyman (buys equipment aggressively, then repairs) and Investor
+  (never buys equipment, replace-only), exist specifically to make the payback curve measurable.
+  Testing surfaced a genuine balance finding, not a bug: Service Grinder's repair-only income can't
+  currently pay back real equipment prices within a 100-day career — resolved the same way Sprint 03
+  handled Cautious Restorer's honest negative result (the test asserts the mechanism works, not a
+  profitability claim that isn't true yet), tracked as its own follow-up below rather than patched
+  away. Also fixed, opportunistically, a pre-existing and unrelated bug found while wiring the harness
+  CLI: `cli/exportCareers.ts` had been silently generating zero service-job offers in every real
+  `pnpm balance:run` since Sprint 11 shipped (stale `SERVICE_JOB_TEMPLATES` import, missing customer
+  names). `SAVE_VERSION` 5→6, purely additive. 336 tests (was 301); all checks green.
+- [ ] **Sprint 13 follow-up: manually verify the equipment UI in a browser.** Never visually
+  checked — `pnpm dev` is the maintainer's to run, not Claude's, and not currently possible from
+  mobile (2026-07-09). Covers `GarageScreen.vue`'s new Equipment section (owned/unowned, price, buy
+  button), `CarDetailScreen.vue`'s disabled-repair-button + "needs `<equipment>`" hint, and
+  `ServiceJobsScreen.vue`'s disabled-accept + hint for repair-kind offers. Component-mount tests
+  (`gameStore.equipment.test.ts`, `CarDetailScreen.test.ts`) confirm the right elements exist with the
+  right `data-test` hooks and the right disabled state under the right game-state conditions, not that
+  the buy/gate flow actually reads well or that the "why is repair disabled" messaging is clear in
+  practice — same caveat as the still-open Sprint 12 Components-list check directly above. Check on
+  next desktop session.
+- [ ] **Sprint 13 follow-up: filter repair-kind service-job offers by owned equipment at generation
+  time, not just block them at accept time.** Maintainer's read (2026-07-10): "these jobs should not
+  even be showing up if the player can not complete them yet." Correct critique — Sprint 13 ships the
+  simpler accept-time block (`resolveAcceptServiceJob` refuses, offer stays visible on the board) per
+  the maintainer's own "leave as is for now" call, but the better UX is `generateServiceJobOffers`
+  never rolling a repair-kind offer the player can't yet act on. Revisit once equipment ownership
+  meaningfully varies across playtested careers.
+- [ ] **Sprint 13 follow-up: deeper per-bot equipment strategy, if the harness shows the minimal
+  buy-if-affordable logic isn't good enough.** Every repair-touching bot (5, including Service
+  Grinder) gets a working equipment-purchase gate in Sprint 13 itself — no bot goes inert. What's
+  deferred is *strategic* depth: an existing bot (Flipper, Cautious Restorer, Balanced Player,
+  Random Strategy) deliberately timing a purchase against its own payback math, the way the new
+  Handyman bot does. Only pick this up if `pnpm balance:run` after Sprint 13 shows the plain
+  buy-if-affordable heuristic produces bad-looking economics for one of the existing archetypes.
+- [ ] **`reputationTier` is never derived from `reputationPoints` anywhere in the sim — a real gap,
+  surfaced as load-bearing by Sprint 13.** Confirmed by grep: `reputationTier` is read (auction
+  calendar, service-bay income) but nothing ever mutates it from `unknown`. Harmless while nothing
+  gated on it mattered much; Sprint 13 originally gated the 3 priciest equipment items behind
+  reputation tiers and found Service Grinder permanently stuck at `unknown`, locked out of 3 of 5
+  repair components forever, going net-negative over 100 days — so Sprint 13 shipped with **no**
+  reputation gate on equipment (all 7 items cash-only) rather than gate on a value that can't climb.
+  Needs its own scoped design (point thresholds per tier, where the derivation runs) before *any*
+  future system reputation-gates something with real economic stakes — auction-tier access
+  (Collector Network) has gotten away with it so far only because nothing forces reputation to
+  actually be reachable to test the gate meaningfully.
 - [ ] **Sprint 14 — Parts market overhaul.** Sorting/filtering, more grades (a junk/scrapyard tier
   below stock), multiple vendors (scrapyard vs. performance house). Deliberately sequenced last — it
   should target `componentId` (Sprint 12) and be instant-buy (Sprint 11), so building it earlier would
   mean redoing it. Not yet written up as a full sprint doc.
 
 Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro.
-10, 11, and 12 are done; 13-14's order past this point is not yet explicitly confirmed — revisit
-before writing 13's full doc if it changes.
+10, 11, 12, and 13 are done; Sprint 14 (parts market overhaul, below) is next up.
 
 ## Engineering
 
@@ -153,13 +206,42 @@ before writing 13's full doc if it changes.
   deliveries / lead times / parts scouts" layer is separately Sprint 16. Flagged so the Sprint 06
   design remembers to carry parts, not just cars.
 
-- [ ] **User considers the Sprint 03 economy simulation too simplified — a real refinement pass is
-  wanted, scope not yet defined.** Stated on 2026-07-08 review: "there is still a LOT of refinement
-  that needs to be done here... I dont agree yet with how we are simulating, its too simplified."
-  Explicitly not blocking — the framework (auctions, valuation, bots, harness) is good enough to
-  build on for now — but don't mistake Sprint 03 passing its own invariants for the economy being
-  actually right. No specific complaint was scoped yet (which mechanic, what "too simple" means
-  concretely); ask before guessing when this comes up again.
+- [ ] **User doubts the balance harness proves anything about real gameplay — a standing, sharpening
+  concern, scope still not defined.** First stated 2026-07-08 (after Sprint 03): "there is still a LOT
+  of refinement that needs to be done here... I dont agree yet with how we are simulating, its too
+  simplified." Restated more sharply 2026-07-09 (after Sprint 13): "the simulation is a strong
+  framework, but does not yield any useful or valuable results. I'm not convinced yet that we are
+  simulating any real gameplay behaviour." The concern has moved from "the numbers feel simple" to a
+  construct-validity doubt about the bot archetypes themselves — do Flipper/Cautious Restorer/Balanced
+  Player/etc. actually resemble how a real player plays, or just behave consistently with each other?
+  Explicitly not blocking — the framework (auctions, valuation, bots, harness) is good enough to keep
+  building on — but "N invariants pass" / "all checks green" is evidence the mechanism works, never
+  evidence the game is fun or the bots are realistic; don't conflate the two when this comes up again.
+  See the recorded-play idea directly below, the user's own proposed way to actually close this gap.
+
+- [ ] **Idea (2026-07-09, user-proposed, refined same day, not scoped or sprint-assigned): record real
+  play sessions and *parse* them into per-archetype statistical rulesets, not literal replay.** Raised
+  in the same breath as the concern above: "if you could record my actions playing the game to get real
+  representative samples of actions every player archetype might take." Refined once the user clarified
+  intent: **not** 100%-replicating a session — the goal is deriving *rates and biases* from the action
+  log (e.g. "bids X% below book, wins Y% of contested lots," "does these types of repairs, buys that
+  type of part") and turning those into a **more specific ruleset than today's hand-authored bot
+  heuristics** — genuinely more granular archetype behavior, calibrated against evidence instead of
+  guessed. Explicit second requirement: the derived ruleset must be **phase-aware, not one static
+  profile per archetype** — a real career can *drift* mid-run (the user's own example: "start heavy in
+  jobs and gradually transition to only restorations"), and today's bots don't model that at all (each
+  one plays the same fixed heuristic day 1 through day 100). Feasible with the existing architecture —
+  Sprint 11 already made every player action an instant, self-contained resolver call (`repair`/
+  `install`/`placeBid`/`buyout`/`buyPart`/`sellWalkIn`/`listForSale`/`acceptServiceJob`/`moveCar`/
+  `buyBay`/`buyEquipment`/`inspectLot` in `gameStore.ts`), so capturing a session is "wrap each call
+  site, append `{day, actionType, params, outcome}` to a log, export it," not a new architecture. Still
+  needs its own scoped design before it's a sprint: recording format, how many real sessions before a
+  derived rate is trustworthy (one session is an anecdote, not a distribution), how phase-drift gets
+  detected and encoded (a fixed day-range split? a rolling window? explicit player-declared phases?),
+  and how a derived ruleset plugs into the existing bot-strategy shape (`(state, context) => DayActions`)
+  without a parallel bot architecture. Blocked on there being enough real play data to parse in the
+  first place — the user hasn't logged a full career yet, so this stays an idea, not a backlog item
+  with a target sprint.
 
 - [ ] **Invariant #5 (lemon cap) is only verified at the unit-test level.** `auctions.test.ts`
   asserts `resolveHandoverCondition`'s dampened-multiplier behavior directly, but no bot currently
@@ -179,18 +261,9 @@ before writing 13's full doc if it changes.
 
 - [ ] **Skill / XP progression** — learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
-  with the staff system (Sprint 13); player-character skill is new v1.0 scope, slotted against the
-  service-jobs feature. Full design: `docs/design/skill-progression.md`.
-
-- [ ] **Repair vs. Replace equipment progression — fully designed, now targets Sprint 13** (see the
-  Next focus section above; the component-model migration this design called "14a" shipped as
-  Sprint 12). Every part category has two paths: *replace* (buy the part + labor — available from day
-  one) and *repair* (labor only, but requires owning that category's repair equipment). Early game
-  forces replacement (parts cost = the pain); buying equipment converts that opex to capex;
-  post-investment, repair dominates restoration and replacement becomes the *upgrade* path. Equipment
-  unlocks in real-world-difficulty order (tire machine → brake lathe → ... → machine-shop/full engine
-  rebuild), doubling as act progression. Full design incl. economic guardrails and harness columns:
-  `docs/design/repair-replace-progression.md`.
+  with the staff system, still unscheduled (playtest #9, deferred by Sprint 11 — see the Next focus
+  section above); player-character skill is new v1.0 scope, slotted against the service-jobs feature.
+  Full design: `docs/design/skill-progression.md`.
 
 ## Design decisions
 

@@ -4,9 +4,16 @@ import { resolveBidInstant, resolveBuyoutInstant } from './bidding'
 import { resolveInspectLot } from './auctions'
 import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
+import { applyEquipmentPurchases } from './equipment'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves } from './facilities'
-import { applyAvailableLaborToJob, completeJob, createJob, isJobComplete } from './jobs'
+import {
+  applyAvailableLaborToJob,
+  completeJob,
+  createJob,
+  isJobComplete,
+  repairJobGate,
+} from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { driftMarketHeat } from './marketHeat'
 import { resolveBuyPart } from './parts'
@@ -51,9 +58,15 @@ export function advanceDay(
   const rng = createRng(seed)
   let next: GameState = state
 
-  // 0. Bots' bay purchases then moves (the player does both instantly via a
-  // direct store call — the same pure cores either way). Bays purchased
-  // today are usable by the moves and labor below, same day.
+  // 0. Bots' equipment and bay purchases, then moves (the player does all
+  // three instantly via a direct store call — the same pure cores either
+  // way). Equipment/bays bought today gate/enable the job creation and
+  // labor below, same day. Equipment first since job creation (step 1) reads
+  // ownership.
+  const equipmentPurchases = applyEquipmentPurchases(next, queuedActions.buyEquipment, context)
+  next = equipmentPurchases.state
+  log.push(...equipmentPurchases.log)
+
   const bayPurchases = applyBayPurchases(next, queuedActions.buyBays, context.facilities)
   next = bayPurchases.state
   log.push(...bayPurchases.log)
@@ -68,9 +81,19 @@ export function advanceDay(
   // car+componentId-derived id scheme. Bots predict `job-${day}-${i}` ids in
   // the same tick to reference in laborAssignments below, so this id scheme
   // stays exactly as it was — the two schemes never need to agree, because a
-  // given GameState is only ever a bot's or only ever a player's.
+  // given GameState is only ever a bot's or only ever a player's. Sprint 13:
+  // a repair-zone spec passes through the same `repairJobGate` the player's
+  // instant path uses (equipment owned + consumables affordable) before
+  // it's created — a gate refusal just skips that one queued spec, logging
+  // why, rather than creating a job that could never receive labor.
   const jobs: Job[] = [...next.jobs]
   queuedActions.createJobs.forEach((spec, i) => {
+    const gate = repairJobGate(next, spec, context)
+    if (!gate.ok) {
+      log.push(...gate.log)
+      return
+    }
+    next = gate.state
     const job = createJob(spec, `job-${next.day}-${i}`)
     jobs.push(job)
     log.push({
@@ -93,7 +116,7 @@ export function advanceDay(
   // 1c. Bots' queued service-job accepts — the player accepts instantly via
   // resolveAcceptServiceJob directly from the store.
   for (const { offerId } of queuedActions.acceptServiceJobs) {
-    const result = resolveAcceptServiceJob(next, offerId)
+    const result = resolveAcceptServiceJob(next, offerId, context)
     next = result.state
     log.push(...result.log)
   }

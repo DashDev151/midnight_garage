@@ -38,6 +38,8 @@ describe('garage: instant repair and labor', () => {
 
   it('repairing completes and lifts the zone to 100 over the right number of days', () => {
     const game = useGameStore()
+    // Sprint 13: repair now requires owning the component's equipment.
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     // Correlated condition rolls (Sprint 12) can occasionally clamp a
     // component to 100 even on a "rough" car — retry grants until the
     // engine specifically needs work, since that's what this test exercises.
@@ -79,6 +81,7 @@ describe('garage: instant repair and labor', () => {
 
   it('a repeat click continues the same job for a zone, not a duplicate', () => {
     const game = useGameStore()
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.repair(car.id, 'body')
@@ -88,6 +91,7 @@ describe('garage: instant repair and labor', () => {
 
   it('never spends more than the daily labor slots across repairs in one day', () => {
     const game = useGameStore()
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')

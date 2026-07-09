@@ -6,6 +6,8 @@ import type {
   PartInstance,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
+import type { SimContext } from './context'
+import { hasEquipmentFor } from './equipment'
 
 export function createJob(spec: NewJobSpec, id: string): Job {
   return {
@@ -47,8 +49,19 @@ interface CarEffect {
 
 /**
  * The pure "apply a completed job to a car" core, shared by owned cars and
- * service-job cars. Repair -> condition 100; part install -> the part moves
- * from inventory onto the component (skipped if it's already occupied).
+ * service-job cars. Repair -> condition 100, installed untouched; part
+ * install (Replace) -> the part moves from inventory onto the component AND
+ * condition -> 100 (skipped entirely if the component is already occupied).
+ *
+ * Sprint 13 fix: the install branch used to leave `condition` untouched — a
+ * gap inherited from the pre-Sprint-12 model, where `condition` and
+ * `buildSheet` were separate maps with no coupling at all, so installing a
+ * part never had a way to affect condition. `docs/design/
+ * repair-replace-progression.md` is explicit that Replace "sets condition ->
+ * 100 and swaps installed" — Sprint 13 is exactly the sprint that makes
+ * Replace a real, complete alternative restoration path to Repair, so this
+ * is the sprint that closes the gap, not a silent behavior change smuggled
+ * in elsewhere.
  */
 function applyJobToCar(
   car: CarInstance,
@@ -84,7 +97,7 @@ function applyJobToCar(
       ...car,
       components: {
         ...car.components,
-        [job.componentId]: { ...component, installed: partInstance },
+        [job.componentId]: { condition: 100, installed: partInstance },
       },
     },
     partInventory: partInventory.filter((_, i) => i !== partIndex),
@@ -132,6 +145,46 @@ function jobIdFor(spec: NewJobSpec): string {
   return `job-${spec.carInstanceId}-${spec.kind}-${spec.componentId}`
 }
 
+export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
+
+/**
+ * Sprint 13: the equipment + consumables gate on *starting* a new repair-zone
+ * job — checked once, at creation, never again. Equipment ownership is
+ * monotonic (nothing in the sim ever removes it), so a job that passed this
+ * gate never needs re-checking once it exists; unlike the service-bay gate
+ * (which toggles as cars move and is re-checked every labor application),
+ * this one only ever needs to fire at the single moment a job is born.
+ * Shared by the player's instant `findOrCreateJob` path and advanceDay's bot
+ * batch job-creation loop — one gate, two callers, matching every other
+ * Sprint 11 instant-resolver precedent.
+ */
+export function repairJobGate(
+  state: GameState,
+  spec: NewJobSpec,
+  context: SimContext,
+): RepairJobGate {
+  if (spec.kind !== 'repair-zone') return { ok: true, state }
+
+  const id = jobIdFor(spec)
+  if (!hasEquipmentFor(state, spec.componentId, context)) {
+    return {
+      ok: false,
+      log: [{ type: 'job-blocked', jobId: id, reason: 'equipment-missing' }],
+    }
+  }
+
+  const equipment = context.equipment.find((e) => e.componentIds.includes(spec.componentId))
+  const consumablesCostYen = equipment?.consumablesCostYen ?? 0
+  if (state.cashYen < consumablesCostYen) {
+    // Equipment owned, just can't afford the consumables right now — a
+    // silent refusal, matching every other can't-afford-it gate in this
+    // codebase (resolveBuyPart, applyBayPurchase, resolveBuyoutInstant).
+    return { ok: false, log: [] }
+  }
+
+  return { ok: true, state: { ...state, cashYen: state.cashYen - consumablesCostYen } }
+}
+
 /**
  * Finds the car's already-open job matching this spec's kind+component, or
  * creates one (Sprint 11). A car can only have one open job per component at
@@ -139,18 +192,38 @@ function jobIdFor(spec: NewJobSpec): string {
  * existing job rather than creating a duplicate — the id is derived
  * deterministically from car+kind+componentId instead of a day/index
  * counter, so "the same job" is recognizable across days without extra
- * bookkeeping.
+ * bookkeeping. Sprint 13: a *new* repair-zone job additionally passes
+ * `repairJobGate` (equipment owned + consumables affordable) before it's
+ * created — `job` comes back `null` when the gate refuses, since nothing was
+ * created to return.
  */
 export function findOrCreateJob(
   state: GameState,
   spec: NewJobSpec,
-): { state: GameState; job: Job } {
+  context: SimContext,
+): { state: GameState; job: Job | null; log: DayLogEntry[] } {
   const id = jobIdFor(spec)
   const existing = state.jobs.find((j) => j.id === id)
-  if (existing) return { state, job: existing }
+  if (existing) return { state, job: existing, log: [] }
+
+  const gate = repairJobGate(state, spec, context)
+  if (!gate.ok) return { state, job: null, log: gate.log }
 
   const job = createJob(spec, id)
-  return { state: { ...state, jobs: [...state.jobs, job] }, job }
+  const consumablesCostYen = state.cashYen - gate.state.cashYen || undefined
+  return {
+    state: { ...gate.state, jobs: [...gate.state.jobs, job] },
+    job,
+    log: [
+      {
+        type: 'job-created',
+        jobId: job.id,
+        carInstanceId: job.carInstanceId,
+        kind: job.kind,
+        ...(consumablesCostYen ? { consumablesCostYen } : {}),
+      },
+    ],
+  }
 }
 
 export interface LaborApplicationResult {
@@ -220,13 +293,19 @@ export function applyAvailableLaborToJob(
  * this car+zone/slot, then apply as much of today's remaining labor as it
  * needs. Composes `findOrCreateJob` + `applyAvailableLaborToJob` — the same
  * two primitives advanceDay's bot batch loop uses, just for a single click
- * instead of a whole day's queue.
+ * instead of a whole day's queue. Sprint 13: `findOrCreateJob` can now refuse
+ * to create a repair-zone job at all (no equipment / can't afford
+ * consumables) — `job` comes back `null` in that case, and there's nothing
+ * left to apply labor to.
  */
 export function resolveJobLabor(
   state: GameState,
   spec: NewJobSpec,
   laborAvailable: number,
+  context: SimContext,
 ): LaborApplicationResult {
-  const created = findOrCreateJob(state, spec)
-  return applyAvailableLaborToJob(created.state, created.job.id, laborAvailable)
+  const created = findOrCreateJob(state, spec, context)
+  if (!created.job) return { state: created.state, log: created.log, laborSlotsUsed: 0 }
+  const result = applyAvailableLaborToJob(created.state, created.job.id, laborAvailable)
+  return { ...result, log: [...created.log, ...result.log] }
 }

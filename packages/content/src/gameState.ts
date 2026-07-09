@@ -49,6 +49,12 @@ export const GameStateSchema = z.object({
    * advanceDay's day-boundary tick.
    */
   laborSlotsSpentToday: z.number().int().nonnegative().default(0),
+  /**
+   * Ids of owned Equipment items (Sprint 13) — what REPAIR is gated on. Purely
+   * additive: a pre-Sprint-13 save decodes with this defaulted to `[]`, which
+   * is correct (no save ever owned equipment before this existed).
+   */
+  ownedEquipmentIds: z.array(z.string().min(1)).default([]),
 })
 
 /**
@@ -83,7 +89,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('job-blocked'),
     jobId: z.string().min(1),
-    reason: z.enum(['slot-occupied', 'not-in-service-bay']),
+    reason: z.enum(['slot-occupied', 'not-in-service-bay', 'equipment-missing']),
   }),
   z.object({
     type: z.literal('labor-overbooked'),
@@ -176,7 +182,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('acquisition-blocked'),
     kind: z.enum(['auction-win', 'buyout', 'service-accept']),
-    reason: z.enum(['no-parking']),
+    reason: z.enum(['no-parking', 'no-equipment']),
+  }),
+  z.object({
+    type: z.literal('equipment-purchased'),
+    equipmentId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
   }),
 ])
 

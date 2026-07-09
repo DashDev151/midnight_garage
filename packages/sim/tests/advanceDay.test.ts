@@ -1,12 +1,22 @@
 import { emptyDayActions, type DayActions } from '../src/actions'
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, type GameState } from '@midnight-garage/content'
+import {
+  BUYERS,
+  CARS,
+  EQUIPMENT,
+  HIDDEN_ISSUES,
+  PARTS,
+  type GameState,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
 import { createInitialGameState } from '../src/newGame'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, [], undefined, [], EQUIPMENT)
+
+/** The equipment the scripted career's day-1 body repair needs (Sprint 13). */
+const WELDER_ID = EQUIPMENT.find((e) => e.componentIds.includes('body'))!.id
 
 const POC_10_MODEL_IDS = [
   'honda-city-e-aa',
@@ -69,6 +79,11 @@ function initialState(): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
+    // Pre-granted, not purchased through the script — the scripted day-1
+    // body repair (below) needs it, and this fixture predates equipment
+    // as a concept; hand-placing it here matches how the spare coilovers
+    // above are also hand-placed rather than bought through the sim.
+    ownedEquipmentIds: [WELDER_ID],
   }
 }
 
@@ -133,14 +148,12 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 12: the zones+slots -> unified components migration
-    // changed CarInstance's shape (condition/buildSheet -> components) and
-    // generateAuctionCarInstance's condition roll (now a correlated per-car
-    // baseline + jitter instead of independent per-zone rolls), both of
-    // which change hashState's output for any state touching a CarInstance.
+    // Re-pinned Sprint 13: the equipment/repair-vs-replace economy adds
+    // `ownedEquipmentIds` to state and charges a one-time consumables cost
+    // on the day-1 body repair job, both of which change the hash.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('27aa1230')
+    expect(hashState(finalState)).toBe('112d4a53')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -172,7 +185,10 @@ describe('advanceDay golden master', () => {
   it('rent is deducted on every 7-day boundary through day 30', () => {
     const finalState = runCareer(30)
     const rentPayments = 4 // days 7, 14, 21, 28
-    expect(finalState.cashYen).toBe(1_200_000 - rentPayments * 90_000)
+    // Sprint 13: the day-1 body repair also charges its equipment's flat
+    // consumables cost once, on top of rent.
+    const consumablesCostYen = EQUIPMENT.find((e) => e.id === WELDER_ID)!.consumablesCostYen
+    expect(finalState.cashYen).toBe(1_200_000 - rentPayments * 90_000 - consumablesCostYen)
   })
 })
 
@@ -218,9 +234,8 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 12: same reasons as the scripted-career hash above —
-    // the components migration and the correlated condition roll both
-    // change what a won/sold CarInstance hashes to.
-    expect(hashState(acquisitionCareer().sold)).toBe('a7dc17af')
+    // Re-pinned Sprint 13: `ownedEquipmentIds` is now part of every state,
+    // changing the hash even for a path that never touches equipment.
+    expect(hashState(acquisitionCareer().sold)).toBe('bf08a198')
   })
 })

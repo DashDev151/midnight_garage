@@ -22,6 +22,7 @@ function baseState(staff: StaffMember[]): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [],
     laborSlotsSpentToday: 0,
+    ownedEquipmentIds: [],
   }
 }
 

@@ -4,20 +4,18 @@ import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
-import type { Rng } from '../rng'
 import { bestFitBuyer } from '../selling'
 import { valuateCarForBuyer } from '../valuation'
+import type { Rng } from '../rng'
 
 const MAX_CONCURRENT_CARS = 2
-/** Mid-range only — not the cheapest shitboxes, not the priciest rares. */
 const MIN_TARGET_BOOK_VALUE_YEN = 150_000
 const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.0
+/** Same headroom style as every other bot's cash buffer — equipment purchases use it too. */
 const CASH_BUFFER_MULTIPLIER = 1.2
-/** "A few of the most critical repairs," not a full restoration. */
-const CRITICAL_REPAIR_ZONE_COUNT = 2
-const REPAIR_LABOR_SLOTS = 2
 const REPAIR_THRESHOLD = 90
+const REPAIR_LABOR_SLOTS = 2
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -25,36 +23,28 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'body',
   'interior',
 ]
-/**
- * "First okay offer," not "first offer, period." A mid player still has a
- * floor: below this fraction of book value (estimated from the best-fit
- * buyer's valuation, the closest proxy available without previewing the
- * actual walk-in roll), a walk-in offer reads as a lowball and the car
- * goes to a public listing instead of being dumped cheap.
- */
 const ACCEPTABLE_WALKIN_FRACTION = 0.85
 
 /**
- * A completely average decision-maker (user-requested, sitting between
- * Flipper and Cautious Restorer): targets mid-priced cars rather than
- * either extreme, fixes the two worst zones rather than fully restoring
- * or doing nothing, and accepts the first walk-in offer that's actually
- * decent rather than either blindly taking anything or holding out for
- * the best possible public-listing price.
+ * Sprint 13: the payback-curve archetype the design doc's equipment ladder
+ * is meant to reward — "invest fast, harvest the labor-only margin." Buys
+ * the cheapest equipment it doesn't yet own, every day it can afford one
+ * with headroom to spare, *before* deciding what to do with its cars —
+ * equipment is the priority spend, not an afterthought. Once equipped,
+ * behaves like a disciplined restorer: fixes the worst component per car
+ * (repair, now genuinely free of part cost thanks to the tool already
+ * owned) and sells at a fair floor. The harness's payback-curve columns
+ * (sprint13.md decision 11) compare this bot's cash/net-worth trajectory
+ * against Investor's to check the investment actually pays off.
  */
-export function balancedPlayerStrategy(
-  state: GameState,
-  context: SimContext,
-  rng: Rng,
-): DayActions {
+export function handymanStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
   const equipBudget = equipmentBudget()
 
-  // 1. Continue any in-progress repair job from a prior day — only if its
-  // car is in the service bay (moved in first, if there's room today).
+  // 1. Continue any in-progress repair job from a prior day.
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
     const need = job.laborSlotsRequired - job.laborSlotsSpent
@@ -65,17 +55,34 @@ export function balancedPlayerStrategy(
     laborBudget -= slots
   }
 
+  // 2. Buy the cheapest unowned, affordable, reputation-eligible equipment —
+  // the investment priority. One purchase per day: buying everything at once
+  // would strand the bot broke on tools with nothing left to run the shop.
+  const unowned = context.equipment
+    .filter((e) => !state.ownedEquipmentIds.includes(e.id))
+    .sort((a, b) => a.priceYen - b.priceYen)
+  for (const equipment of unowned) {
+    if (
+      equipment.componentIds.some((id) =>
+        ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER),
+      )
+    ) {
+      break
+    }
+  }
+
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
 
-  // 2. Fix the worst zone per job-free owned car, up to two critical repairs
-  // total, bay space permitting.
+  // 3. Repair the worst repairable component per job-free owned car —
+  // ensureEquipmentFor buys the tool here too if step 2 skipped it (e.g. no
+  // unowned equipment covered a component this car actually needs).
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const repairedCount = REPAIRABLE_COMPONENTS.filter(
+    const isRestored = REPAIRABLE_COMPONENTS.every(
       (id) => car.components[id].condition >= REPAIR_THRESHOLD,
-    ).length
-    if (repairedCount >= CRITICAL_REPAIR_ZONE_COUNT) continue
+    )
+    if (isRestored) continue
 
     const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
       car.components[id].condition < car.components[worst].condition ? id : worst,
@@ -92,6 +99,7 @@ export function balancedPlayerStrategy(
       )
     )
       continue
+
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,
@@ -105,12 +113,13 @@ export function balancedPlayerStrategy(
     jobbedCarIds.add(car.id)
   }
 
-  // 3. Sell any car whose critical repairs are done and has no open job:
-  // accept the walk-in channel only if the estimated offer clears the
-  // "okay" floor, otherwise send it to a public listing instead of
-  // dumping it cheap.
+  // 4. Sell any job-free car that's fully restored, at a fair floor.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
+    const isRestored = REPAIRABLE_COMPONENTS.every(
+      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    )
+    if (!isRestored) continue
     const model = context.modelsById[car.modelId]
     const buyer = model ? bestFitBuyer(car, model, context.buyers, context.partsById) : undefined
     const estimatedOfferYen =
@@ -122,7 +131,8 @@ export function balancedPlayerStrategy(
     }
   }
 
-  // 4. Bid fair value on a mid-priced lot if there's room for another car.
+  // 5. Bid fair value on a mid-priced lot if there's room for another car —
+  // modest scale, since equipment competes for the same cash.
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
   if (roomForMoreCars > 0) {
     const candidates = state.activeAuctionLots.filter(

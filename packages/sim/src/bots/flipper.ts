@@ -2,6 +2,7 @@ import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
+import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import type { Rng } from '../rng'
 
 const MAX_CONCURRENT_CARS = 3
@@ -43,11 +44,12 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
  * Buy rough at a discount, do one quick repair, flip fast (GDD 9.0's
  * "buy it when you see it" fantasy, lightly built rather than restored).
  */
-export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng): DayActions {
+export function flipperStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = PLAYER_LABOR_SLOTS
   const bayBudget = serviceBayBudget(state)
+  const equipBudget = equipmentBudget()
 
   // 1. Continue any in-progress repair job from a prior day — only if its
   // car is in the service bay (moved in first, if there's room today).
@@ -73,6 +75,17 @@ export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng
     )
     if (car.components[worstComponent].condition >= 90) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
+    if (
+      !ensureEquipmentFor(
+        state,
+        worstComponent,
+        actions,
+        context,
+        equipBudget,
+        CASH_BUFFER_MULTIPLIER,
+      )
+    )
+      continue
 
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({

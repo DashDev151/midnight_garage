@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
@@ -23,8 +24,13 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
+  EQUIPMENT,
 )
 const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
+/** Covers 'body' (the repair component these labor/bay tests exercise) plus, for the
+ * parking-gate test below, every other component too so whichever offer comes up first
+ * never trips the Sprint 13 equipment gate — that test is about parking, not equipment. */
+const ALL_EQUIPMENT_IDS = EQUIPMENT.map((e) => e.id)
 
 function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
@@ -38,7 +44,15 @@ function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
     createRng(seed),
   )
   const base = createInitialGameState(CONTEXT, 1)
-  return { state: { ...base, activeAuctionLots: [lot!], ...overrides }, lot: lot! }
+  return {
+    state: {
+      ...base,
+      activeAuctionLots: [lot!],
+      ownedEquipmentIds: ALL_EQUIPMENT_IDS,
+      ...overrides,
+    },
+    lot: lot!,
+  }
 }
 
 const noActions = DayActionsSchema.parse({})
@@ -138,7 +152,7 @@ describe('acquisitions require a free parking space at delivery, never at biddin
 
   it('accepting a service job is skipped (offer stays) when parking is full', () => {
     const base = createInitialGameState(CONTEXT, 1)
-    const full = { ...base, parkingBayCount: 0 }
+    const full = { ...base, parkingBayCount: 0, ownedEquipmentIds: ALL_EQUIPMENT_IDS }
     // Force a weekly offer refresh to get a real offer on the board.
     const withOffers = advanceDay({ ...full, day: 7 }, noActions, 1, CONTEXT).state
     expect(withOffers.serviceJobOffers.length).toBeGreaterThan(0)

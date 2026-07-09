@@ -58,6 +58,7 @@ describe('GameState / DayLog round-trip', () => {
       parkingBayCount: 3,
       serviceBayCarIds: ['car-0001'],
       laborSlotsSpentToday: 0,
+      ownedEquipmentIds: [],
     }
 
     const parsed = GameStateSchema.parse(fixture)

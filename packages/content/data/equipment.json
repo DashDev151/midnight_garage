@@ -1,0 +1,51 @@
+[
+  {
+    "id": "tire-machine",
+    "displayName": "Tire Machine & Balancer",
+    "componentIds": ["wheels"],
+    "priceYen": 150000,
+    "consumablesCostYen": 8000
+  },
+  {
+    "id": "brake-lathe",
+    "displayName": "Brake Service Kit & Disc Lathe",
+    "componentIds": ["brakes"],
+    "priceYen": 250000,
+    "consumablesCostYen": 3000
+  },
+  {
+    "id": "suspension-press",
+    "displayName": "Suspension Press & Spring Tools",
+    "componentIds": ["suspension"],
+    "priceYen": 400000,
+    "consumablesCostYen": 10000
+  },
+  {
+    "id": "upholstery-bench",
+    "displayName": "Upholstery & Trim Bench",
+    "componentIds": ["interior"],
+    "priceYen": 350000,
+    "consumablesCostYen": 8000
+  },
+  {
+    "id": "welder",
+    "displayName": "Welder & Panel Tools",
+    "componentIds": ["body"],
+    "priceYen": 700000,
+    "consumablesCostYen": 6000
+  },
+  {
+    "id": "transmission-bench",
+    "displayName": "Transmission Bench",
+    "componentIds": ["drivetrain"],
+    "priceYen": 900000,
+    "consumablesCostYen": 9000
+  },
+  {
+    "id": "engine-crane",
+    "displayName": "Engine Crane, Stand & Tooling",
+    "componentIds": ["engine", "forcedInduction"],
+    "priceYen": 1500000,
+    "consumablesCostYen": 8000
+  }
+]

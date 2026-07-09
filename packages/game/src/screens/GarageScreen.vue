@@ -181,6 +181,29 @@ function swapParkingCarWithPick(parkingCarId: string): void {
       </div>
     </section>
 
+    <section class="equipment">
+      <h3>Equipment</h3>
+      <p class="how">
+        Owning a component's equipment is what unlocks Repair for it — Replace (buy a part, install
+        it) never needs equipment.
+      </p>
+      <ul class="equipment-list">
+        <li v-for="item in game.equipmentCatalog" :key="item.id" class="equipment-row">
+          <span class="equip-name">{{ item.displayName }}</span>
+          <span class="equip-components">{{ item.componentIds.join(', ') }}</span>
+          <span v-if="item.owned" class="maxed">owned</span>
+          <button
+            v-else
+            :disabled="game.cashYen < item.priceYen"
+            :data-test="'buy-equipment-' + item.id"
+            @click="game.buyEquipment(item.id)"
+          >
+            Buy ({{ formatYen(item.priceYen) }})
+          </button>
+        </li>
+      </ul>
+    </section>
+
     <section v-if="game.activeListings.length" class="listings">
       <h3>Listings ({{ game.activeListings.length }})</h3>
       <ul>
@@ -380,6 +403,39 @@ button:disabled {
 
 .maxed {
   color: var(--mg-success);
+  font-size: var(--mg-fs-sm);
+}
+
+.equipment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-4);
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.equipment-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+}
+
+.equip-name {
+  flex: 1 1 auto;
+}
+
+.equip-components {
+  color: var(--mg-text-dim);
+  text-transform: capitalize;
+}
+
+.equipment-row button {
+  padding: 2px 10px;
   font-size: var(--mg-fs-sm);
 }
 

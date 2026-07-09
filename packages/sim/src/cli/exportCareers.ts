@@ -20,14 +20,18 @@ import { join } from 'node:path'
 import {
   BUYERS,
   CARS,
+  EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
-  SERVICE_JOB_TEMPLATES,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
 } from '../../../content/src/data'
 import { balancedPlayerStrategy } from '../bots/balancedPlayer'
 import { cautiousRestorerStrategy } from '../bots/cautiousRestorer'
 import { flipperStrategy } from '../bots/flipper'
+import { handymanStrategy } from '../bots/handyman'
+import { investorStrategy } from '../bots/investor'
 import { passiveGrinderStrategy } from '../bots/passiveGrinder'
 import { randomStrategy } from '../bots/randomStrategy'
 import { serviceGrinderStrategy } from '../bots/serviceGrinder'
@@ -56,6 +60,8 @@ const STRATEGIES: ReadonlyArray<{ name: string; strategy: BotStrategy }> = [
   { name: 'random', strategy: randomStrategy },
   { name: 'passive-grinder', strategy: passiveGrinderStrategy },
   { name: 'service-grinder', strategy: serviceGrinderStrategy },
+  { name: 'handyman', strategy: handymanStrategy },
+  { name: 'investor', strategy: investorStrategy },
 ]
 
 const COLUMNS = [
@@ -66,6 +72,7 @@ const COLUMNS = [
   { name: 'carsOwned', type: 'int64' },
   { name: 'netWorthEstimateYen', type: 'int64' },
   { name: 'reputationTier', type: 'string' },
+  { name: 'equipmentOwnedCount', type: 'int64' },
 ] as const
 
 /** win price as a fraction of [reserve, buyout], bucketed — the Sprint 10
@@ -105,8 +112,10 @@ function main(): void {
     PARTS,
     BUYERS,
     HIDDEN_ISSUES,
-    SERVICE_JOB_TEMPLATES,
+    SERVICE_JOB_TYPES,
     FACILITIES,
+    SERVICE_JOB_CUSTOMER_NAMES,
+    EQUIPMENT,
   )
   const rows: string[] = []
   const auctionWinRows: string[] = []
@@ -124,6 +133,7 @@ function main(): void {
             snapshot.carsOwned,
             snapshot.netWorthEstimateYen,
             snapshot.reputationTier,
+            snapshot.equipmentOwnedCount,
           ].join(','),
         )
       }

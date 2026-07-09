@@ -45,6 +45,8 @@ const MoveCarActionSchema = z.object({
 
 const BuyBayActionSchema = z.object({ kind: BayKindSchema })
 
+const BuyEquipmentActionSchema = z.object({ equipmentId: z.string().min(1) })
+
 export const DayActionsSchema = z.object({
   createJobs: z.array(NewJobSpecSchema).default([]),
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
@@ -60,6 +62,8 @@ export const DayActionsSchema = z.object({
   moveCars: z.array(MoveCarActionSchema).default([]),
   /** Bots' only path to buying a bay — the player buys instantly likewise. */
   buyBays: z.array(BuyBayActionSchema).default([]),
+  /** Bots' only path to buying equipment — the player buys instantly likewise. */
+  buyEquipment: z.array(BuyEquipmentActionSchema).default([]),
 })
 // Note: completing a service job is NOT a DayAction. The player resolves it
 // immediately (a store call to resolveServiceJob) the moment they click
@@ -77,6 +81,7 @@ export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
 export type MoveCarAction = z.infer<typeof MoveCarActionSchema>
 export type BuyBayAction = z.infer<typeof BuyBayActionSchema>
+export type BuyEquipmentAction = z.infer<typeof BuyEquipmentActionSchema>
 export type DayActions = z.infer<typeof DayActionsSchema>
 
 /**

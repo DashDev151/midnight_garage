@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
@@ -16,6 +17,7 @@ import type {
   CarModel,
   ComponentId,
   DayLogEntry,
+  Equipment,
   GameState,
   Job,
   Part,
@@ -27,6 +29,7 @@ import type {
 import { resolveCarDisplayName } from '@midnight-garage/content'
 import {
   applyBayPurchase,
+  applyEquipmentPurchase,
   applyMoves,
   AUCTION_BUYOUT_PREMIUM,
   AUCTION_RESERVE_PRICE_FRACTION,
@@ -41,6 +44,7 @@ import {
   createRng,
   emptyDayActions,
   generateAuctionCarInstance,
+  hasEquipmentFor,
   hasParkingSpace,
   isServiceWorkDone,
   listPubliclyAskingPrice,
@@ -112,6 +116,11 @@ export interface ShopCarView {
   isCustomerCar: boolean
 }
 
+/** One catalog equipment item plus whether it's owned, for the purchase UI (Sprint 13). */
+export interface EquipmentView extends Equipment {
+  owned: boolean
+}
+
 /** A short human label for a service job's required work. */
 function serviceWorkLabel(job: ServiceJob): string {
   return job.work.kind === 'repair'
@@ -129,6 +138,17 @@ export interface ServiceJobOfferView {
   payoutYen: number
   baseReputation: number
   expiresOnDay: number
+  /**
+   * False for a repair-kind offer whose equipment isn't owned yet (Sprint
+   * 13) — `resolveAcceptServiceJob` refuses it, so the UI shows why upfront
+   * rather than letting the click silently fail. Install-kind offers are
+   * always `true` (replace never needs equipment). The offer itself still
+   * stays on the board either way — filtering it out entirely at generation
+   * time is a deliberately deferred refinement (see TODO.md).
+   */
+  canAccept: boolean
+  /** Set only when `canAccept` is false: the equipment that's missing. */
+  missingEquipmentName?: string
 }
 
 /** A service job in the shop, tracked against its car's real work state. */
@@ -222,6 +242,7 @@ export const useGameStore = defineStore('game', () => {
       SERVICE_JOB_TYPES,
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
+      EQUIPMENT,
     ),
   )
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
@@ -252,6 +273,14 @@ export const useGameStore = defineStore('game', () => {
   const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
     gameState.value.serviceJobOffers.map((offer) => {
       const model = context.value.modelsById[offer.car.modelId]
+      const canAccept =
+        offer.work.kind !== 'repair' ||
+        hasEquipmentFor(gameState.value, offer.work.componentId, context.value)
+      const missingEquipmentName = canAccept
+        ? undefined
+        : context.value.equipment.find(
+            (e) => offer.work.kind === 'repair' && e.componentIds.includes(offer.work.componentId),
+          )?.displayName
       return {
         id: offer.id,
         customerName: offer.customerName,
@@ -261,6 +290,8 @@ export const useGameStore = defineStore('game', () => {
         payoutYen: offer.payoutYen,
         baseReputation: offer.baseReputation,
         expiresOnDay: offer.expiresOnDay,
+        canAccept,
+        missingEquipmentName,
       }
     }),
   )
@@ -522,6 +553,29 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  // --- equipment (Sprint 13) ----------------------------------------------
+
+  /** The full equipment catalog with owned-status, for the purchase UI. */
+  const equipmentCatalog = computed<EquipmentView[]>(() =>
+    context.value.equipment.map((e) => ({
+      ...e,
+      owned: gameState.value.ownedEquipmentIds.includes(e.id),
+    })),
+  )
+
+  /**
+   * Buy a piece of equipment — instant, usable the same day (unlocks REPAIR
+   * on its component(s) immediately). Returns false if already owned,
+   * reputation-gated, or unaffordable.
+   */
+  function buyEquipment(equipmentId: string): boolean {
+    const result = applyEquipmentPurchase(gameState.value, equipmentId, context.value)
+    if (!result.applied) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
   // --- instant actions (Sprint 11) ---------------------------------------
 
   /**
@@ -540,7 +594,12 @@ export const useGameStore = defineStore('game', () => {
       componentId,
       laborSlotsRequired: repairLaborSlotsFor(car.components[componentId].condition),
     }
-    const result = resolveJobLabor(gameState.value, spec, laborSlotsRemainingToday.value)
+    const result = resolveJobLabor(
+      gameState.value,
+      spec,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
     gameState.value = result.state
     dayLog.value.push(...result.log)
   }
@@ -554,9 +613,23 @@ export const useGameStore = defineStore('game', () => {
       partInstanceId,
       laborSlotsRequired: INSTALL_LABOR_SLOTS,
     }
-    const result = resolveJobLabor(gameState.value, spec, laborSlotsRemainingToday.value)
+    const result = resolveJobLabor(
+      gameState.value,
+      spec,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
     gameState.value = result.state
     dayLog.value.push(...result.log)
+  }
+
+  /**
+   * Whether the shop currently owns equipment covering `componentId` — what
+   * REPAIR is gated on (Sprint 13). Replace never needs this; it's always
+   * available.
+   */
+  function hasEquipmentForComponent(componentId: ComponentId): boolean {
+    return hasEquipmentFor(gameState.value, componentId, context.value)
   }
 
   /** Inspect an auction lot — instant, reveals hidden issues for the cash travel fee only. */
@@ -615,7 +688,7 @@ export const useGameStore = defineStore('game', () => {
    * parking space to take delivery.
    */
   function acceptServiceJob(offerId: string): boolean {
-    const result = resolveAcceptServiceJob(gameState.value, offerId)
+    const result = resolveAcceptServiceJob(gameState.value, offerId, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -816,6 +889,15 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** Grant equipment for free, bypassing price/reputation — dev/test only. */
+  function devGrantEquipment(equipmentId: string): void {
+    if (gameState.value.ownedEquipmentIds.includes(equipmentId)) return
+    gameState.value = {
+      ...gameState.value,
+      ownedEquipmentIds: [...gameState.value.ownedEquipmentIds, equipmentId],
+    }
+  }
+
   /** The parts catalog, for the dev grant picker. */
   const partsCatalog = computed<readonly Part[]>(() => context.value.parts)
   const modelsCatalog = computed<readonly CarModel[]>(() => context.value.models)
@@ -859,6 +941,9 @@ export const useGameStore = defineStore('game', () => {
     moveCar,
     swapCars,
     buyBay,
+    equipmentCatalog,
+    hasEquipmentForComponent,
+    buyEquipment,
     repair,
     install,
     inspectLot,
@@ -882,5 +967,6 @@ export const useGameStore = defineStore('game', () => {
     devGiveCash,
     devGrantCar,
     devGrantPart,
+    devGrantEquipment,
   }
 })

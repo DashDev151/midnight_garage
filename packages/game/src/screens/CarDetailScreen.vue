@@ -44,6 +44,11 @@ function installFor(componentId: ComponentId) {
   return detail.value ? game.installablePartsFor(detail.value.car.id, componentId) : []
 }
 
+/** The equipment item covering this component, if the catalog has one (Sprint 13). */
+function equipmentFor(componentId: ComponentId) {
+  return game.equipmentCatalog.find((e) => e.componentIds.includes(componentId))
+}
+
 /**
  * Resolve a customer job immediately (paid if the work's done, forfeited with a
  * reputation hit if not). The car then leaves the shop, so the detail computed
@@ -151,13 +156,23 @@ const listPrice = computed(() => game.listingEstimate(carId.value))
             <button
               :disabled="
                 detail.car.components[componentId].condition >= 100 ||
-                game.laborSlotsRemainingToday <= 0
+                game.laborSlotsRemainingToday <= 0 ||
+                !game.hasEquipmentForComponent(componentId)
               "
               :data-test="'repair-' + componentId"
               @click="game.repair(detail.car.id, componentId)"
             >
               {{ componentBusy(componentId) ? 'Continue repair' : 'Repair' }}
             </button>
+            <span
+              v-if="
+                detail.car.components[componentId].condition < 100 &&
+                !game.hasEquipmentForComponent(componentId)
+              "
+              class="equip-hint"
+            >
+              needs {{ equipmentFor(componentId)?.displayName ?? 'equipment' }}
+            </span>
             <template v-if="detail.car.components[componentId].installed">
               <span class="installed">{{
                 game.partName(detail.car.components[componentId].installed?.partId ?? '')
@@ -425,6 +440,11 @@ button.primary.danger {
 
 .slot-empty {
   color: var(--mg-text-dim);
+}
+
+.equip-hint {
+  color: var(--mg-neon-pink);
+  font-size: var(--mg-fs-sm);
 }
 
 .installed {

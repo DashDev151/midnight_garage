@@ -1,5 +1,6 @@
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
+import equipmentJson from '../data/equipment.json'
 import facilitiesJson from '../data/facilities.json'
 import hiddenIssuesJson from '../data/hidden-issues.json'
 import partsJson from '../data/parts.json'
@@ -8,6 +9,7 @@ import serviceJobsJson from '../data/serviceJobs.json'
 import traitsJson from '../data/traits.json'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
+import { EquipmentsSchema } from './equipment'
 import { FacilitiesSchema } from './facilities'
 import { HiddenIssuesSchema } from './hiddenIssue'
 import { PartsSchema } from './part'
@@ -31,3 +33,4 @@ export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(
   serviceJobCustomerNamesJson,
 )
 export const FACILITIES = FacilitiesSchema.parse(facilitiesJson)
+export const EQUIPMENT = EquipmentsSchema.parse(equipmentJson)

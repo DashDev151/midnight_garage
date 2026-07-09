@@ -2,6 +2,7 @@ import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
+import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import { createRng, hashStringToSeed, type Rng } from '../rng'
 import { bestFitBuyer } from '../selling'
@@ -82,6 +83,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
+  const equipBudget = equipmentBudget()
 
   // 1. Continue any in-progress repair job from a prior day — only if its
   // car is in the service bay (moved in first, if there's room today).
@@ -112,6 +114,17 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
       car.components[id].condition < car.components[worst].condition ? id : worst,
     )
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
+    if (
+      !ensureEquipmentFor(
+        state,
+        worstComponent,
+        actions,
+        context,
+        equipBudget,
+        CASH_BUFFER_MULTIPLIER,
+      )
+    )
+      continue
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,

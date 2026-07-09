@@ -2,6 +2,7 @@ import type {
   Buyer,
   CarModel,
   ComponentId,
+  Equipment,
   Facilities,
   HiddenIssue,
   Part,
@@ -40,6 +41,8 @@ export interface SimContext {
   serviceJobTypes: readonly ServiceJobType[]
   serviceJobCustomerNames: readonly string[]
   facilities: Facilities
+  equipment: readonly Equipment[]
+  equipmentById: Readonly<Record<string, Equipment>>
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -58,6 +61,7 @@ export function buildSimContext(
   serviceJobTypes: readonly ServiceJobType[] = [],
   facilities: Facilities = DEFAULT_FACILITIES,
   serviceJobCustomerNames: readonly string[] = [],
+  equipment: readonly Equipment[] = [],
 ): SimContext {
   return {
     models,
@@ -70,5 +74,7 @@ export function buildSimContext(
     serviceJobTypes,
     serviceJobCustomerNames,
     facilities,
+    equipment,
+    equipmentById: indexById(equipment),
   }
 }

@@ -32,8 +32,13 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   failure and fall back to a fresh career, so nothing new needed building
  *   for it, only testing (saveCodec.test.ts confirms a pre-v5 code fails
  *   cleanly rather than crashing).
+ * - v6 (Sprint 13): added `ownedEquipmentIds` to GameState (what REPAIR is
+ *   gated on — the equipment/repair-vs-replace economy). Purely additive
+ *   with a schema default of `[]`, so a pre-v6 save decodes under v6 with no
+ *   equipment owned — correct, since equipment didn't exist as a concept
+ *   yet. No explicit `MIGRATIONS[5]` step needed.
  */
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

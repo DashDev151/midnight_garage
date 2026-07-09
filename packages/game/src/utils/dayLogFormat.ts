@@ -60,6 +60,8 @@ export function describeLogEntry(
     case 'bay-purchased':
       return `Bought a ${entry.kind} bay for ${formatYen(entry.priceYen)}`
     case 'acquisition-blocked':
-      return `${entry.kind} blocked — no parking space`
+      return `${entry.kind} blocked — ${entry.reason === 'no-parking' ? 'no parking space' : 'equipment not owned'}`
+    case 'equipment-purchased':
+      return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
   }
 }

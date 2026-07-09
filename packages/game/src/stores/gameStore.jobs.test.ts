@@ -33,6 +33,8 @@ describe('service jobs in the store', () => {
   it('accepting brings the customer car into the shop instantly, owning nothing', () => {
     const game = useGameStore()
     game.newGame(1)
+    // Sprint 13: accepting a repair-kind offer now requires owning its equipment.
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToOffers(game)
     const offer = game.serviceJobOffers[0]!
     game.acceptServiceJob(offer.id)
@@ -46,6 +48,7 @@ describe('service jobs in the store', () => {
   it('doing the repair then clicking Complete pays out immediately and gains reputation', () => {
     const game = useGameStore()
     game.newGame(1)
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')
@@ -84,6 +87,7 @@ describe('service jobs in the store', () => {
   it('clicking Complete before the work is done fails the job immediately, no pay', () => {
     const game = useGameStore()
     game.newGame(1)
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')
@@ -99,6 +103,7 @@ describe('service jobs in the store', () => {
   it('an untouched job auto-fails at its deadline (no pay)', () => {
     const game = useGameStore()
     game.newGame(1)
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')

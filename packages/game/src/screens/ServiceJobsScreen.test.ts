@@ -26,6 +26,8 @@ describe('ServiceJobsScreen', () => {
   it('accepting a job brings the car into the shop instantly (Sprint 11)', async () => {
     const game = useGameStore()
     game.newGame(1)
+    // Sprint 13: accepting a repair-kind offer now requires owning its equipment.
+    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToOffers(game)
     const offer = game.serviceJobOffers[0]
     if (!offer) throw new Error('expected an offer on the board')

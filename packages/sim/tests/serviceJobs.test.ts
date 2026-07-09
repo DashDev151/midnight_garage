@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
@@ -39,11 +40,18 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
+  EQUIPMENT,
 )
 
 const repairType = SERVICE_JOB_TYPES.find((t) => t.work.kind === 'repair')!
 const installType = SERVICE_JOB_TYPES.find(
   (t) => t.work.kind === 'install' && t.work.componentId === 'brakes',
+)!
+/** The equipment covering repairType's component — owned by default in accept tests below
+ * so they exercise their own intended gate (parking, unknown offer) rather than the new
+ * Sprint 13 equipment gate, which has its own dedicated tests. */
+const REPAIR_EQUIPMENT = EQUIPMENT.find((e) =>
+  e.componentIds.includes(repairType.work.componentId),
 )!
 
 /** An active (accepted) service job carrying a real car, ready to resolve. */
@@ -300,8 +308,12 @@ describe('resolveServiceJob (the single resolution path)', () => {
 describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
   it('moves the offer into activeServiceJobs and stamps the deadline instantly', () => {
     const offer = { ...activeJob(repairType), dueOnDay: null }
-    const state = { ...createInitialGameState(CONTEXT, 1), serviceJobOffers: [offer] }
-    const result = resolveAcceptServiceJob(state, offer.id)
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+      ownedEquipmentIds: [REPAIR_EQUIPMENT.id],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(0)
     expect(result.state.activeServiceJobs).toHaveLength(1)
     expect(result.state.activeServiceJobs[0]!.dueOnDay).toBe(state.day + SERVICE_JOB_DEADLINE_DAYS)
@@ -312,7 +324,7 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
 
   it('is a no-op for an unknown offer id', () => {
     const state = createInitialGameState(CONTEXT, 1)
-    const result = resolveAcceptServiceJob(state, 'no-such-offer')
+    const result = resolveAcceptServiceJob(state, 'no-such-offer', CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
@@ -323,20 +335,59 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
       parkingBayCount: 0,
+      ownedEquipmentIds: [REPAIR_EQUIPMENT.id],
     }
-    const result = resolveAcceptServiceJob(state, offer.id)
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(1)
     expect(result.state.activeServiceJobs).toHaveLength(0)
     expect(result.log).toEqual([
       { type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-parking' },
     ])
   })
+
+  /**
+   * Sprint 13 decision 2: a repair-kind offer "can't even be accepted"
+   * without the matching equipment — install-kind offers are never gated
+   * (replace is always available). The offer stays on the board either way
+   * (the maintainer's own read is that an unreachable repair offer
+   * arguably shouldn't be generated at all — deliberately deferred, see
+   * TODO.md — this sprint ships the simpler accept-time block).
+   */
+  it('refuses a repair-kind offer without the matching equipment, leaving it on the board', () => {
+    const offer = { ...activeJob(repairType), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+      ownedEquipmentIds: [],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(result.state.serviceJobOffers).toHaveLength(1)
+    expect(result.state.activeServiceJobs).toHaveLength(0)
+    expect(result.log).toEqual([
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-equipment' },
+    ])
+  })
+
+  it('never gates an install-kind offer by equipment', () => {
+    const offer = { ...activeJob(installType), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+      ownedEquipmentIds: [],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(result.state.activeServiceJobs).toHaveLength(1)
+  })
 })
 
 describe('service jobs in advanceDay', () => {
   it('accepting brings the car into the shop and stamps the deadline', () => {
     const offer = { ...activeJob(repairType), dueOnDay: null }
-    const state = { ...createInitialGameState(CONTEXT, 1), serviceJobOffers: [offer] }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+      ownedEquipmentIds: [REPAIR_EQUIPMENT.id],
+    }
     const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
     const { state: next } = advanceDay(state, actions, 1, CONTEXT)
 

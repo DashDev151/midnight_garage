@@ -15,6 +15,7 @@ import {
   SERVICE_JOB_FAILURE_REP_MULTIPLIER,
 } from './constants'
 import type { SimContext } from './context'
+import { hasEquipmentFor } from './equipment'
 import { hasParkingSpace, releaseCarFromServiceBay } from './facilities'
 import type { Rng } from './rng'
 
@@ -85,10 +86,28 @@ export interface AcceptServiceJobResult {
  * the offer on the board rather than spending anything. Shared by the
  * player's instant click and advanceDay's bot batch loop (one queued accept
  * per call, matching every other Sprint 11 instant resolver's shape).
+ *
+ * Sprint 13: a `repair`-kind offer additionally needs the matching component's
+ * equipment owned — "can't even accept them without it," per the design doc.
+ * `install`-kind offers are never gated (replace is always available). The
+ * maintainer's own read is that an unreachable repair offer arguably
+ * shouldn't be generated in the first place, not surfaced-then-blocked; that
+ * refinement is deliberately deferred (tracked in TODO.md) — this sprint
+ * ships the simpler accept-time block.
  */
-export function resolveAcceptServiceJob(state: GameState, offerId: string): AcceptServiceJobResult {
+export function resolveAcceptServiceJob(
+  state: GameState,
+  offerId: string,
+  context: SimContext,
+): AcceptServiceJobResult {
   const offer = state.serviceJobOffers.find((o) => o.id === offerId)
   if (!offer) return { state, log: [] }
+  if (offer.work.kind === 'repair' && !hasEquipmentFor(state, offer.work.componentId, context)) {
+    return {
+      state,
+      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-equipment' }],
+    }
+  }
   if (!hasParkingSpace(state)) {
     return {
       state,

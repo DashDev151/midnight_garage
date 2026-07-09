@@ -1,0 +1,160 @@
+import type { ComponentId, GameState } from '@midnight-garage/content'
+import { emptyDayActions, type DayActions } from '../actions'
+import { claimServiceBay, serviceBayBudget } from './bayHelpers'
+import type { SimContext } from '../context'
+import { INSTALL_LABOR_SLOTS } from '../constants'
+import { availableLaborSlots } from '../laborSlots'
+import { bestFitBuyer } from '../selling'
+import { valuateCarForBuyer } from '../valuation'
+import type { Rng } from '../rng'
+
+const MAX_CONCURRENT_CARS = 2
+const MIN_TARGET_BOOK_VALUE_YEN = 150_000
+const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
+const FAIR_BID_MULTIPLIER = 1.0
+const CASH_BUFFER_MULTIPLIER = 1.2
+const ACCEPTABLE_WALKIN_FRACTION = 0.85
+
+const ALL_COMPONENTS: readonly ComponentId[] = [
+  'engine',
+  'forcedInduction',
+  'drivetrain',
+  'suspension',
+  'brakes',
+  'wheels',
+  'body',
+  'interior',
+]
+
+/**
+ * Sprint 13: the control for the payback-curve question — never buys
+ * equipment, ever, and restores cars entirely through Replace (buy a
+ * catalog part, install it) instead of Repair. Every component is fair game
+ * (not just the 5 that feed stat formulas), since Replace was always
+ * available everywhere and Investor's whole premise is "skip the
+ * investment, pay per-job instead." Should end up *worse* than Handyman
+ * post-investment (paying full part price every time beats no restoration
+ * at all, but loses to labor-only repair once the tool's paid for) — the
+ * harness's payback-curve columns (sprint13.md decision 11) are what turn
+ * that "should" into a measured fact.
+ *
+ * The one piece of real complexity: an install-part job needs a real
+ * `partInstanceId` that only exists once `resolveBuyPart`'s queued purchase
+ * resolves — but bots decide their whole day from one immutable state
+ * snapshot, and `buyParts` resolves *after* `createJobs` in advanceDay's
+ * step order. So the id is predicted the same way bots already predict
+ * `job-${day}-${i}` ids: `resolveBuyPart` assigns `part-${day}-${index}`,
+ * `index` starting at `state.partInventory.length` and counting up once per
+ * part this bot queues this same tick.
+ */
+export function investorStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
+  const actions: DayActions = emptyDayActions()
+
+  let laborBudget = availableLaborSlots(state)
+  const bayBudget = serviceBayBudget(state)
+  let nextPartIndex = state.partInventory.length
+  // Tracks cash already committed to a part queued earlier *this same tick*
+  // — without it, two cars each independently checking the same undiminished
+  // `state.cashYen` could both queue a purchase the shop can't actually
+  // afford both of, leaving the second install job referencing a part that
+  // never lands in inventory (a hard crash in applyJobToCar, not a graceful
+  // no-op — resolveBuyPart's own affordability check happens later, at
+  // resolution time, using whichever cash is left by then).
+  let cashCommitted = 0
+
+  // 1. Continue any in-progress install job from a prior day.
+  for (const job of state.jobs) {
+    if (laborBudget <= 0) break
+    const need = job.laborSlotsRequired - job.laborSlotsSpent
+    if (need <= 0) continue
+    if (!claimServiceBay(state, job.carInstanceId, actions, bayBudget)) continue
+    const slots = Math.min(need, laborBudget)
+    actions.laborAssignments.push({ jobId: job.id, laborSlots: slots })
+    laborBudget -= slots
+  }
+
+  const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
+
+  // 2. Replace one empty component per job-free owned car: buy the cheapest
+  // fitting catalog part, install it. A component with nothing installed is
+  // the only thing Investor can act on — an occupied-but-worn component
+  // would need Repair, which this bot refuses to ever do.
+  for (const car of state.ownedCars) {
+    if (laborBudget <= 0) break
+    if (jobbedCarIds.has(car.id)) continue
+    const model = context.modelsById[car.modelId]
+    if (!model) continue
+
+    const emptyComponents = ALL_COMPONENTS.filter((id) => !car.components[id].installed)
+    if (emptyComponents.length === 0) continue
+    const worstEmpty = emptyComponents.reduce((worst, id) =>
+      car.components[id].condition < car.components[worst].condition ? id : worst,
+    )
+
+    const fitting = context.parts
+      .filter(
+        (p) => p.componentId === worstEmpty && p.requiredTags.every((t) => model.tags.includes(t)),
+      )
+      .sort((a, b) => a.priceYen - b.priceYen)
+    const part = fitting[0]
+    if (!part || state.cashYen < (cashCommitted + part.priceYen) * CASH_BUFFER_MULTIPLIER) continue
+
+    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
+
+    actions.buyParts.push({ partId: part.id })
+    cashCommitted += part.priceYen
+    const partInstanceId = `part-${state.day}-${nextPartIndex}`
+    nextPartIndex += 1
+
+    const jobIndex = actions.createJobs.length
+    actions.createJobs.push({
+      carInstanceId: car.id,
+      kind: 'install-part',
+      componentId: worstEmpty,
+      partInstanceId,
+      laborSlotsRequired: INSTALL_LABOR_SLOTS,
+    })
+    const slots = Math.min(INSTALL_LABOR_SLOTS, laborBudget)
+    actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
+    laborBudget -= slots
+    jobbedCarIds.add(car.id)
+  }
+
+  // 3. Sell any job-free car with nothing left worth replacing cheaply —
+  // "good enough" for Investor means every component has *something*
+  // installed, not that every condition is high (it never repairs).
+  for (const car of state.ownedCars) {
+    if (jobbedCarIds.has(car.id)) continue
+    const isBuilt = ALL_COMPONENTS.every((id) => car.components[id].installed !== null)
+    if (!isBuilt) continue
+    const model = context.modelsById[car.modelId]
+    const buyer = model ? bestFitBuyer(car, model, context.buyers, context.partsById) : undefined
+    const estimatedOfferYen =
+      model && buyer ? valuateCarForBuyer(buyer, model, car, context.partsById) : 0
+    if (model && estimatedOfferYen >= model.bookValueYen * ACCEPTABLE_WALKIN_FRACTION) {
+      actions.sellViaWalkIn.push({ carInstanceId: car.id })
+    } else {
+      actions.listForSale.push({ carInstanceId: car.id })
+    }
+  }
+
+  // 4. Bid fair value on a mid-priced lot if there's room for another car.
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
+  if (roomForMoreCars > 0) {
+    const candidates = state.activeAuctionLots.filter(
+      (lot) =>
+        lot.bookValueYen >= MIN_TARGET_BOOK_VALUE_YEN &&
+        lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
+        state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
+    )
+    if (candidates.length > 0) {
+      const chosen = rng.pick(candidates)
+      actions.bidsOnLots.push({
+        lotId: chosen.id,
+        maxBidYen: Math.round(chosen.bookValueYen * FAIR_BID_MULTIPLIER),
+      })
+    }
+  }
+
+  return actions
+}
