@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { RarityTierSchema, TagSchema, ZoneSchema, type Tag } from './tags'
+import { ComponentIdSchema, RarityTierSchema, TagSchema, type Tag } from './tags'
 
 const LAYOUT_TAGS = ['FR', 'FF', 'AWD', 'MR', 'RR'] as const
 const INDUCTION_TAGS = ['NA', 'Turbo', 'Supercharged'] as const
@@ -10,7 +10,7 @@ function countMatching(tags: readonly Tag[], set: readonly string[]): number {
 }
 
 const HiddenIssueWeightSchema = z.object({
-  zone: ZoneSchema,
+  componentId: ComponentIdSchema,
   weight: z.number().min(0).max(1),
 })
 

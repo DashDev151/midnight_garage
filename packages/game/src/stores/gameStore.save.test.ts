@@ -33,6 +33,67 @@ describe('persistence: export / import save code', () => {
     if (!result.ok) expect(result.error).toMatch(/save code/i)
     expect(game.day).toBe(dayBefore)
   })
+
+  /**
+   * Sprint 12 decision 3 ("nuke"): a pre-v5 save carrying a car in the old
+   * condition/buildSheet shape is intentionally unsupported (no migration).
+   * `importSaveCode`'s existing try/catch (the same one `hydrate()` uses at
+   * startup) must turn that decode failure into a clean `{ok: false}`
+   * rather than crashing or corrupting the current career.
+   */
+  it('importing a pre-v5 save with a car fails cleanly, not a crash', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const dayBefore = game.day
+    const preV5WithCar = {
+      version: 4,
+      gameState: {
+        day: 10,
+        seed: 1,
+        cashYen: 500_000,
+        reputationTier: 'unknown',
+        reputationPoints: 0,
+        ownedCars: [
+          {
+            id: 'car-0001',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 100_000,
+            color: 'White',
+            provenanceNote: '',
+            condition: { engine: 50, drivetrain: 50, suspension: 50, body: 50, interior: 50 },
+            hiddenIssues: [],
+            authenticityPercent: 90,
+            buildSheet: {
+              engine: null,
+              forcedInduction: null,
+              drivetrain: null,
+              suspension: null,
+              brakes: null,
+              bodyAero: null,
+              wheelsInterior: null,
+            },
+          },
+        ],
+        partInventory: [],
+        staff: [],
+        jobs: [],
+        marketHeat: {},
+        activeAuctionLots: [],
+        activeListings: [],
+        serviceJobOffers: [],
+        activeServiceJobs: [],
+        serviceBayCount: 1,
+        parkingBayCount: 3,
+        serviceBayCarIds: [],
+        laborSlotsSpentToday: 0,
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV5WithCar))
+    const result = game.importSaveCode(code)
+    expect(result.ok).toBe(false)
+    expect(game.day).toBe(dayBefore) // current career untouched
+  })
 })
 
 describe('persistence: end-of-day report', () => {

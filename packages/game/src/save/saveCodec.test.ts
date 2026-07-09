@@ -117,4 +117,92 @@ describe('saveCodec', () => {
     const future = 'MGSAVE1.' + btoa(JSON.stringify({ version: SAVE_VERSION + 1, gameState: {} }))
     expect(() => decodeSave(future)).toThrow(/newer version/i)
   })
+
+  /**
+   * Sprint 12 decision 3 ("nuke"): the zones+slots -> components migration
+   * deliberately has no `MIGRATIONS[4]` transform, since the maintainer
+   * confirmed there are no existing saves worth preserving. A pre-v5 save
+   * that actually contains a car (unlike GOLDEN_V1/V2/V3 above, which never
+   * populate `ownedCars`) exercises the real break: its car's old
+   * `condition`/`buildSheet` shape no longer matches `CarInstanceSchema`, so
+   * decoding must fail cleanly rather than silently produce a corrupt state.
+   */
+  it('a pre-v5 save containing a car fails to decode (no migration, by design)', () => {
+    const preV5WithCar = {
+      version: 4,
+      gameState: {
+        day: 10,
+        seed: 1,
+        cashYen: 500_000,
+        reputationTier: 'unknown',
+        reputationPoints: 0,
+        ownedCars: [
+          {
+            id: 'car-0001',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 100_000,
+            color: 'White',
+            provenanceNote: '',
+            condition: { engine: 50, drivetrain: 50, suspension: 50, body: 50, interior: 50 },
+            hiddenIssues: [],
+            authenticityPercent: 90,
+            buildSheet: {
+              engine: null,
+              forcedInduction: null,
+              drivetrain: null,
+              suspension: null,
+              brakes: null,
+              bodyAero: null,
+              wheelsInterior: null,
+            },
+          },
+        ],
+        partInventory: [],
+        staff: [],
+        jobs: [],
+        marketHeat: {},
+        activeAuctionLots: [],
+        activeListings: [],
+        serviceJobOffers: [],
+        activeServiceJobs: [],
+        serviceBayCount: 1,
+        parkingBayCount: 3,
+        serviceBayCarIds: [],
+        laborSlotsSpentToday: 0,
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV5WithCar))
+    expect(() => decodeSave(code)).toThrow()
+  })
+
+  it('round-trips a v5 state with a real car through the new components shape', () => {
+    const withCar: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-0001',
+          modelId: 'honda-city-e-aa',
+          year: 1984,
+          mileageKm: 100_000,
+          color: 'White',
+          provenanceNote: '',
+          hiddenIssues: [],
+          authenticityPercent: 90,
+          components: {
+            engine: { condition: 50, installed: null },
+            forcedInduction: { condition: 100, installed: null },
+            drivetrain: { condition: 50, installed: null },
+            suspension: { condition: 50, installed: null },
+            brakes: { condition: 100, installed: null },
+            wheels: { condition: 100, installed: null },
+            body: { condition: 50, installed: null },
+            interior: { condition: 50, installed: null },
+          },
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withCar))
+    expect(decoded).toEqual(withCar)
+  })
 })

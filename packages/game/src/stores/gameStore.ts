@@ -14,6 +14,7 @@ import type {
   Buyer,
   CarInstance,
   CarModel,
+  ComponentId,
   DayLogEntry,
   GameState,
   Job,
@@ -21,9 +22,7 @@ import type {
   PartInstance,
   PublicListing,
   ServiceJob,
-  Slot,
   StatBlock,
-  Zone,
 } from '@midnight-garage/content'
 import { resolveCarDisplayName } from '@midnight-garage/content'
 import {
@@ -115,7 +114,9 @@ export interface ShopCarView {
 
 /** A short human label for a service job's required work. */
 function serviceWorkLabel(job: ServiceJob): string {
-  return job.work.kind === 'repair' ? `Repair ${job.work.zone}` : `Install ${job.work.slot} part`
+  return job.work.kind === 'repair'
+    ? `Repair ${job.work.componentId}`
+    : `Install ${job.work.componentId} part`
 }
 
 /** A service-job offer on the board (accept to bring the car into the shop). */
@@ -181,7 +182,7 @@ export interface LotDetail {
   /** Fuzzy rival-demand read for bid calibration. */
   interest: LotInterest
   /** Revealed hidden issues (only populated once the lot is inspected). */
-  revealedIssues: { zone: Zone; hintText: string }[]
+  revealedIssues: { componentId: ComponentId; hintText: string }[]
   /** The last bid this session resolved against this lot, if any. */
   lastBidResult?: BidResultView
 }
@@ -364,7 +365,7 @@ export const useGameStore = defineStore('game', () => {
           .filter((i) => i.revealed)
           .flatMap((i) => {
             const issue = context.value.hiddenIssuesById[i.issueId]
-            return issue ? [{ zone: issue.zone, hintText: issue.hintText }] : []
+            return issue ? [{ componentId: issue.componentId, hintText: issue.hintText }] : []
           })
       : []
     return {
@@ -406,14 +407,14 @@ export const useGameStore = defineStore('game', () => {
     return listPubliclyAskingPrice(car, model, context.value.buyers, context.value.partsById, heat)
   }
 
-  /** Parts in inventory that fit an empty slot on the given car (slot + required tags). */
-  function installablePartsFor(carId: string, slot: Slot): PartInstance[] {
+  /** Parts in inventory that fit an empty component on the given car (component + required tags). */
+  function installablePartsFor(carId: string, componentId: ComponentId): PartInstance[] {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
-    if (!car || !model || car.buildSheet[slot]) return []
+    if (!car || !model || car.components[componentId].installed) return []
     return gameState.value.partInventory.filter((pi) => {
       const part = context.value.partsById[pi.partId]
-      if (!part || part.slot !== slot) return false
+      if (!part || part.componentId !== componentId) return false
       return part.requiredTags.every((tag) => model.tags.includes(tag))
     })
   }
@@ -524,32 +525,32 @@ export const useGameStore = defineStore('game', () => {
   // --- instant actions (Sprint 11) ---------------------------------------
 
   /**
-   * Repair a zone — instant. Finds the car's already-open repair job for
-   * this zone (if the player already started it on an earlier day) or
-   * starts a new one, then immediately spends up to today's remaining labor
-   * on it. A repeat click just continues the same job; no separate "add
-   * labor" control needed.
+   * Repair a component — instant. Finds the car's already-open repair job
+   * for this component (if the player already started it on an earlier day)
+   * or starts a new one, then immediately spends up to today's remaining
+   * labor on it. A repeat click just continues the same job; no separate
+   * "add labor" control needed.
    */
-  function repair(carId: string, zone: Zone): void {
+  function repair(carId: string, componentId: ComponentId): void {
     const car = findWorkableCar(carId)
     if (!car) return
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'repair-zone',
-      zone,
-      laborSlotsRequired: repairLaborSlotsFor(car.condition[zone]),
+      componentId,
+      laborSlotsRequired: repairLaborSlotsFor(car.components[componentId].condition),
     }
     const result = resolveJobLabor(gameState.value, spec, laborSlotsRemainingToday.value)
     gameState.value = result.state
     dayLog.value.push(...result.log)
   }
 
-  /** Install an owned part into an empty slot — instant, same continuation rule as `repair`. */
-  function install(carId: string, slot: Slot, partInstanceId: string): void {
+  /** Install an owned part into an empty component — instant, same continuation rule as `repair`. */
+  function install(carId: string, componentId: ComponentId, partInstanceId: string): void {
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'install-part',
-      slot,
+      componentId,
       partInstanceId,
       laborSlotsRequired: INSTALL_LABOR_SLOTS,
     }
@@ -791,7 +792,7 @@ export const useGameStore = defineStore('game', () => {
     const id = `dev-car-${grantCounter.value}`
     const car = generateAuctionCarInstance(
       model,
-      context.value.hiddenIssuesByZone,
+      context.value.hiddenIssuesByComponent,
       id,
       createRng(grantCounter.value),
     )

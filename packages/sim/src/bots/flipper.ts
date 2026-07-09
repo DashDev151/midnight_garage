@@ -1,4 +1,4 @@
-import type { GameState, Zone } from '@midnight-garage/content'
+import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
@@ -31,7 +31,13 @@ const MAX_TARGET_BOOK_VALUE_YEN = 300_000
  * same-day resale.
  */
 const QUICK_REPAIR_LABOR_SLOTS = 2
-const ZONES: readonly Zone[] = ['engine', 'drivetrain', 'suspension', 'body', 'interior']
+const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
+  'engine',
+  'drivetrain',
+  'suspension',
+  'body',
+  'interior',
+]
 
 /**
  * Buy rough at a discount, do one quick repair, flip fast (GDD 9.0's
@@ -62,17 +68,17 @@ export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const worstZone = ZONES.reduce((worst, zone) =>
-      car.condition[zone] < car.condition[worst] ? zone : worst,
+    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
+      car.components[id].condition < car.components[worst].condition ? id : worst,
     )
-    if (car.condition[worstZone] >= 90) continue
+    if (car.components[worstComponent].condition >= 90) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: worstZone,
+      componentId: worstComponent,
       laborSlotsRequired: QUICK_REPAIR_LABOR_SLOTS,
     })
     const slots = Math.min(QUICK_REPAIR_LABOR_SLOTS, laborBudget)

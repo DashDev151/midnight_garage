@@ -42,17 +42,19 @@ export function serviceGrinderStrategy(state: GameState): DayActions {
 
     if (!claimServiceBay(state, carId, actions, bayBudget)) continue
 
-    const zone = serviceJob.work.zone
+    const componentId = serviceJob.work.componentId
     const existing = jobByCar.get(carId)
 
     // Ensure a repair job exists on the customer's car, then feed it labor.
     if (!existing) {
       if (laborBudget <= 0) continue
-      const laborSlotsRequired = repairLaborSlotsFor(serviceJob.car.condition[zone])
+      const laborSlotsRequired = repairLaborSlotsFor(
+        serviceJob.car.components[componentId].condition,
+      )
       actions.createJobs.push({
         carInstanceId: carId,
         kind: 'repair-zone',
-        zone,
+        componentId,
         laborSlotsRequired,
       })
       const slots = Math.min(laborSlotsRequired, laborBudget)

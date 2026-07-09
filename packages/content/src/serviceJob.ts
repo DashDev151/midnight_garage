@@ -1,16 +1,16 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
-import { SlotSchema, ZoneSchema } from './tags'
+import { ComponentIdSchema } from './tags'
 
 /**
  * What a customer job actually asks for. The player satisfies it with the
  * normal build/repair system on the customer's car:
- *  - `repair` a condition zone back to 100 (labor only), or
- *  - `install` a part into a slot (buy the part at the market, then fit it).
+ *  - `repair` a component's condition back to 100 (labor only), or
+ *  - `install` a part onto a component (buy the part at the market, then fit it).
  */
 export const ServiceJobWorkSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('repair'), zone: ZoneSchema }),
-  z.object({ kind: z.literal('install'), slot: SlotSchema }),
+  z.object({ kind: z.literal('repair'), componentId: ComponentIdSchema }),
+  z.object({ kind: z.literal('install'), componentId: ComponentIdSchema }),
 ])
 
 /**

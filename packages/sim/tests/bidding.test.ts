@@ -14,7 +14,7 @@ import {
   resolveBidInstant,
   resolveBuyoutInstant,
 } from '../src/bidding'
-import { generateAuctionCatalog, groupHiddenIssuesByZone } from '../src/auctions'
+import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
 import { AUCTION_BUYOUT_PREMIUM, AUCTION_RESERVE_PRICE_FRACTION } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
@@ -45,7 +45,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
   }
 }
 
-const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
+const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 
 function sampleLot(seed: number) {
   const model = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
@@ -53,7 +53,7 @@ function sampleLot(seed: number) {
   const [lot] = generateAuctionCatalog(
     [model],
     'premium',
-    HIDDEN_ISSUES_BY_ZONE,
+    HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
     7,

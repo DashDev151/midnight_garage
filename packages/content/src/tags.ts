@@ -31,16 +31,21 @@ export const TagSchema = z.enum([
   'Gaisha',
 ])
 
-export const ZoneSchema = z.enum(['engine', 'drivetrain', 'suspension', 'body', 'interior'])
-
-export const SlotSchema = z.enum([
+/**
+ * The 8 real car components (Sprint 12 — replaces the old split of 5
+ * `condition` zones + 7 `buildSheet` slots, which had different key sets and
+ * no shared identity; see docs/design/repair-replace-progression.md). Every
+ * component has both a condition and an optional installed part.
+ */
+export const ComponentIdSchema = z.enum([
   'engine',
   'forcedInduction',
   'drivetrain',
   'suspension',
   'brakes',
-  'bodyAero',
-  'wheelsInterior',
+  'wheels',
+  'body',
+  'interior',
 ])
 
 export const GradeSchema = z.enum(['stock', 'street', 'sport', 'race'])
@@ -57,8 +62,7 @@ export const RarityTierSchema = z.enum([
 export const ReputationTierSchema = z.enum(['unknown', 'local', 'known', 'respected', 'legend'])
 
 export type Tag = z.infer<typeof TagSchema>
-export type Zone = z.infer<typeof ZoneSchema>
-export type Slot = z.infer<typeof SlotSchema>
+export type ComponentId = z.infer<typeof ComponentIdSchema>
 export type Grade = z.infer<typeof GradeSchema>
 export type RarityTier = z.infer<typeof RarityTierSchema>
 export type ReputationTier = z.infer<typeof ReputationTierSchema>

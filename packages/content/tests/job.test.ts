@@ -7,7 +7,7 @@ describe('JobSchema', () => {
       id: 'job-0001',
       carInstanceId: 'car-0001',
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 3,
       laborSlotsSpent: 1,
     }
@@ -19,7 +19,7 @@ describe('JobSchema', () => {
       id: 'job-0002',
       carInstanceId: 'car-0001',
       kind: 'install-part',
-      slot: 'suspension',
+      componentId: 'suspension',
       partInstanceId: 'pi-0002',
       laborSlotsRequired: 1,
       laborSlotsSpent: 0,
@@ -27,22 +27,12 @@ describe('JobSchema', () => {
     expect(JobSchema.parse(job)).toEqual(job)
   })
 
-  it('rejects a repair-zone job with no zone', () => {
-    const job = {
-      id: 'job-0003',
-      carInstanceId: 'car-0001',
-      kind: 'repair-zone',
-      laborSlotsRequired: 3,
-    }
-    expect(JobSchema.safeParse(job).success).toBe(false)
-  })
-
-  it('rejects an install-part job missing slot or partInstanceId', () => {
+  it('rejects an install-part job missing partInstanceId', () => {
     const job = {
       id: 'job-0004',
       carInstanceId: 'car-0001',
       kind: 'install-part',
-      slot: 'suspension',
+      componentId: 'suspension',
       laborSlotsRequired: 1,
     }
     expect(JobSchema.safeParse(job).success).toBe(false)
@@ -53,7 +43,7 @@ describe('JobSchema', () => {
       id: 'job-0005',
       carInstanceId: 'car-0001',
       kind: 'repair-zone',
-      zone: 'engine',
+      componentId: 'engine',
       laborSlotsRequired: 2,
       laborSlotsSpent: 3,
     }

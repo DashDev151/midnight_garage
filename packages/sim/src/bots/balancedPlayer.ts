@@ -1,4 +1,4 @@
-import type { GameState, Zone } from '@midnight-garage/content'
+import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
@@ -17,7 +17,13 @@ const CASH_BUFFER_MULTIPLIER = 1.2
 const CRITICAL_REPAIR_ZONE_COUNT = 2
 const REPAIR_LABOR_SLOTS = 2
 const REPAIR_THRESHOLD = 90
-const ZONES: readonly Zone[] = ['engine', 'drivetrain', 'suspension', 'body', 'interior']
+const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
+  'engine',
+  'drivetrain',
+  'suspension',
+  'body',
+  'interior',
+]
 /**
  * "First okay offer," not "first offer, period." A mid player still has a
  * floor: below this fraction of book value (estimated from the best-fit
@@ -64,18 +70,20 @@ export function balancedPlayerStrategy(
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const repairedCount = ZONES.filter((z) => car.condition[z] >= REPAIR_THRESHOLD).length
+    const repairedCount = REPAIRABLE_COMPONENTS.filter(
+      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    ).length
     if (repairedCount >= CRITICAL_REPAIR_ZONE_COUNT) continue
 
-    const worstZone = ZONES.reduce((worst, zone) =>
-      car.condition[zone] < car.condition[worst] ? zone : worst,
+    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
+      car.components[id].condition < car.components[worst].condition ? id : worst,
     )
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: worstZone,
+      componentId: worstComponent,
       laborSlotsRequired: REPAIR_LABOR_SLOTS,
     })
     const slots = Math.min(REPAIR_LABOR_SLOTS, laborBudget)

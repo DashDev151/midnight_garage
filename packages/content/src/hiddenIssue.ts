@@ -1,10 +1,10 @@
 import { z } from 'zod'
-import { ZoneSchema } from './tags'
+import { ComponentIdSchema } from './tags'
 
 export const HiddenIssueSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
-    zone: ZoneSchema,
+    componentId: ComponentIdSchema,
     severityMin: z.number().min(0).max(100),
     severityMax: z.number().min(0).max(100),
     hintText: z.string().min(1),

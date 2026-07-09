@@ -3,13 +3,18 @@ import type {
   AuctionTier,
   CarInstance,
   CarModel,
+  ComponentId,
   DayLogEntry,
   GameState,
   HiddenIssue,
   RarityTier,
-  Zone,
 } from '@midnight-garage/content'
-import { AUCTION_TRAVEL_FEE_YEN } from './constants'
+import {
+  AUCTION_TRAVEL_FEE_YEN,
+  CAR_CONDITION_BASE_MAX,
+  CAR_CONDITION_BASE_MIN,
+  CAR_CONDITION_JITTER,
+} from './constants'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
@@ -20,6 +25,17 @@ const PROVENANCE_POOL = [
   'estate sale, low mileage claimed',
   'daily driver, honest wear',
 ] as const
+
+const COMPONENT_IDS: readonly ComponentId[] = [
+  'engine',
+  'forcedInduction',
+  'drivetrain',
+  'suspension',
+  'brakes',
+  'wheels',
+  'body',
+  'interior',
+]
 
 /**
  * GDD 4.5: Gaisha is sourced only via the (unbuilt) Import Broker, "no
@@ -43,20 +59,27 @@ export function auctionTierForRarity(tier: RarityTier): AuctionTier | null {
   }
 }
 
-export function groupHiddenIssuesByZone(
+export function groupHiddenIssuesByComponent(
   issues: readonly HiddenIssue[],
-): Readonly<Record<Zone, readonly HiddenIssue[]>> {
-  const grouped: Record<Zone, HiddenIssue[]> = {
+): Readonly<Record<ComponentId, readonly HiddenIssue[]>> {
+  const grouped: Record<ComponentId, HiddenIssue[]> = {
     engine: [],
+    forcedInduction: [],
     drivetrain: [],
     suspension: [],
+    brakes: [],
+    wheels: [],
     body: [],
     interior: [],
   }
   for (const issue of issues) {
-    grouped[issue.zone].push(issue)
+    grouped[issue.componentId].push(issue)
   }
   return grouped
+}
+
+function clampCondition(value: number): number {
+  return Math.max(0, Math.min(100, value))
 }
 
 /**
@@ -64,26 +87,46 @@ export function groupHiddenIssuesByZone(
  * the displayed/paperwork baseline; hidden issues are drawn (weighted by
  * the model's hiddenIssueWeights) but stay unresolved — revealed=false —
  * until inspection or the sliding-scale lemon rule at handover
- * (resolveHandoverCondition). Always stock: buildSheet is empty, since an
- * auction car hasn't been touched yet (GDD: "buy rough, restore/build").
- * `currentYear` (Sprint 10, default Infinity = unrestricted) clamps the
- * rolled model year to the in-game calendar — see calendar.ts — so an
- * individual instance can't roll a still-impossible year even when its
- * model is otherwise eligible.
+ * (resolveHandoverCondition). Always stock: every component starts with
+ * nothing installed, since an auction car hasn't been touched yet (GDD:
+ * "buy rough, restore/build"). `currentYear` (Sprint 10, default Infinity =
+ * unrestricted) clamps the rolled model year to the in-game calendar — see
+ * calendar.ts — so an individual instance can't roll a still-impossible
+ * year even when its model is otherwise eligible.
+ *
+ * Sprint 12: component conditions are no longer rolled independently — a
+ * car that rolled a pristine engine and a wrecked transmission with no
+ * relationship between them read as arbitrary rather than "this car has had
+ * a hard life." One baseline is rolled per car, and each of the 8
+ * components jitters around it (CAR_CONDITION_JITTER), so a car still
+ * varies component-to-component but stays recognizably one car's condition.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
-  hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
+  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
   id: string,
   rng: Rng,
   currentYear: number = Infinity,
 ): CarInstance {
   const hiddenIssues = model.hiddenIssueWeights.flatMap((weighted) => {
     if (rng.next() >= weighted.weight) return []
-    const candidates = hiddenIssuesByZone[weighted.zone]
+    const candidates = hiddenIssuesByComponent[weighted.componentId]
     if (candidates.length === 0) return []
     return [{ issueId: rng.pick(candidates).id, revealed: false }]
   })
+
+  const conditionBaseline = rng.int(CAR_CONDITION_BASE_MIN, CAR_CONDITION_BASE_MAX)
+  const components = Object.fromEntries(
+    COMPONENT_IDS.map((componentId) => [
+      componentId,
+      {
+        condition: clampCondition(
+          conditionBaseline + rng.int(-CAR_CONDITION_JITTER, CAR_CONDITION_JITTER),
+        ),
+        installed: null,
+      },
+    ]),
+  ) as CarInstance['components']
 
   return {
     id,
@@ -92,24 +135,9 @@ export function generateAuctionCarInstance(
     mileageKm: rng.int(30_000, 180_000),
     color: rng.pick(COLOR_POOL),
     provenanceNote: rng.pick(PROVENANCE_POOL),
-    condition: {
-      engine: rng.int(30, 90),
-      drivetrain: rng.int(30, 90),
-      suspension: rng.int(30, 90),
-      body: rng.int(30, 90),
-      interior: rng.int(30, 90),
-    },
     hiddenIssues,
     authenticityPercent: rng.int(60, 95),
-    buildSheet: {
-      engine: null,
-      forcedInduction: null,
-      drivetrain: null,
-      suspension: null,
-      brakes: null,
-      bodyAero: null,
-      wheelsInterior: null,
-    },
+    components,
   }
 }
 
@@ -123,7 +151,7 @@ export function generateAuctionCarInstance(
 export function generateAuctionCatalog(
   models: readonly CarModel[],
   tier: AuctionTier,
-  hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
+  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
   day: number,
   count: number,
   expiresInDays: number,
@@ -141,7 +169,7 @@ export function generateAuctionCatalog(
     const lotId = `lot-${day}-${tier}-${i}`
     const car = generateAuctionCarInstance(
       model,
-      hiddenIssuesByZone,
+      hiddenIssuesByComponent,
       `car-${lotId}`,
       rng,
       currentYear,
@@ -195,10 +223,18 @@ export function resolveInspectLot(state: GameState, lotId: string): InspectLotRe
   }
 }
 
-function applyIssueSeverity(car: CarInstance, zone: Zone, severity: number): CarInstance {
+function applyIssueSeverity(
+  car: CarInstance,
+  componentId: ComponentId,
+  severity: number,
+): CarInstance {
+  const component = car.components[componentId]
   return {
     ...car,
-    condition: { ...car.condition, [zone]: Math.max(0, car.condition[zone] - severity) },
+    components: {
+      ...car.components,
+      [componentId]: { ...component, condition: Math.max(0, component.condition - severity) },
+    },
   }
 }
 
@@ -238,7 +274,7 @@ export function resolveHandoverCondition(
         ? 0.5
         : rng.next() * (1 + varianceFactor * 2)
     const finalSeverity = clamp(rolledSeverity * multiplier, 0, 100)
-    car = applyIssueSeverity(car, catalogEntry.zone, finalSeverity)
+    car = applyIssueSeverity(car, catalogEntry.componentId, finalSeverity)
   }
 
   return { ...car, hiddenIssues: car.hiddenIssues.map((i) => ({ ...i, revealed: true })) }

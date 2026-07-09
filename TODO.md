@@ -48,9 +48,41 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   instance of it and asked for a structural fix. 295 tests (was 251); all checks green.
   **Deferred (per the maintainer, tracked as their own future sprints):** staff (playtest #9), the
   parts-market cart/checkout overhaul (playtest #7).
-- [ ] **Sprint 12 — Component model refactor.** The zones+slots → unified per-component model from
-  `docs/design/repair-replace-progression.md` ("Option B," already fully designed). Foundational,
-  major save-law migration, touches nearly every sim module. Not yet written up as a full sprint doc.
+- [x] **Sprint 12 — Component model refactor.** Implemented, ready for review — see
+  `docs/sprints/sprint12.md`. The zones+slots split (5 `condition` zones + 7 `buildSheet` slots, no
+  shared identity between them) is gone, replaced by one unified 8-key `components` map
+  (`{condition, installed}` per component: engine/forcedInduction/drivetrain/suspension/brakes/wheels/
+  body/interior) on `CarInstanceSchema` — the foundation Sprint 13's repair-vs-replace economy needs.
+  Ripple touched `computeDerivedStats` (condition-to-stat feed deliberately stays scoped to the same 4
+  components as before — brakes/wheels/forcedInduction stay inert on stats this sprint, an explicit
+  anti-balance-change guard), auction/service-job car generation, the job/labor core, all 5 bots +
+  service-grinder, the car-detail UI (collapsed into one 8-row Components list), and the parts catalog
+  (`wheelsInterior`'s 3 parts reclassified by name: `enkai-mesh-15`/`vulk-ve37` → `wheels`,
+  `zashiki-bucket-seat` → `interior`). Two decisions were revised mid-flow at the maintainer's explicit
+  direction: **no save migration** ("nuke" — no existing saves worth preserving, so `SAVE_VERSION` 4→5
+  ships with no `MIGRATIONS[4]` transform; a pre-v5 save with a car now fails `decodeSave` cleanly and
+  the store's existing hydrate/import fallback already handles it), and **correlated condition rolls**
+  (a car's 8 components now roll around one shared per-car baseline ± jitter instead of fully
+  independently, fixing a "pristine engine, wrecked transmission" realism gap that existed even in the
+  old 5-zone model). Also split the old `install-wheels-interior` service-job type's mixed-theme
+  flavor pool into separate `install-wheels`/`install-interior` types (13 types total, up from 12) —
+  a real instance of the exact flavor/work mismatch class Sprint 11's type+pool model exists to
+  prevent, surfaced by giving wheels and interior real separate identities. Both golden-master hashes
+  re-pinned (`27aa1230`/`a7dc17af`). 301 tests (was 296; two content/resolution coverage gaps found in
+  self-review after the fact and closed — see the two open items directly below). All checks green.
+- [ ] **Sprint 12 follow-up: manually verify `CarDetailScreen.vue`'s unified Components list in a
+  browser.** Never visually checked — `pnpm dev` is long-running and the maintainer's to run, not
+  Claude's. Component-mount tests (`CarDetailScreen.test.ts`) confirm the right elements exist with the
+  right `data-test` hooks, not that the 8-row layout actually reads well replacing the old two-section
+  Condition/Build-sheet view. Check on next playtest pass.
+- [ ] **Sprint 12 follow-up: run `pnpm balance:run` to check the correlated-condition-roll change
+  (decision 5) at population scale.** Unit tests confirm the mechanics (shared per-car baseline +
+  bounded jitter) are correct in isolation, but components now more often need the *same* number of
+  repair labor slots (they cluster near one baseline instead of rolling independently) — this is
+  exactly what broke one `gameStore.garage.test.ts` assertion during implementation, fixed there, but
+  never checked against real bot economy behavior at the 100-day-career scale the harness exercises.
+  Per Sprint 10/11's own precedent: unit tests passing isn't proof the economy is still right. Can be
+  folded into Sprint 13's own harness work if that's more efficient than a standalone run now.
 - [ ] **Sprint 13 — Equipment & repair-vs-replace economy.** The maintainer called this **critical,
   not a nice-to-have** (2026-07-09) — repair gated by owned equipment, replace always available via
   the parts market. Full design already exists in `docs/design/repair-replace-progression.md`; this
@@ -62,8 +94,8 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   mean redoing it. Not yet written up as a full sprint doc.
 
 Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro.
-10 and 11 are both done; 12-14's order past this point is not yet explicitly confirmed — revisit
-before writing 12's full doc if it changes.
+10, 11, and 12 are done; 13-14's order past this point is not yet explicitly confirmed — revisit
+before writing 13's full doc if it changes.
 
 ## Engineering
 
@@ -150,15 +182,15 @@ before writing 12's full doc if it changes.
   with the staff system (Sprint 13); player-character skill is new v1.0 scope, slotted against the
   service-jobs feature. Full design: `docs/design/skill-progression.md`.
 
-- [ ] **Repair vs. Replace equipment progression — fully designed, targets the Sprint 14 slot.**
-  Every part category has two paths: *replace* (buy the part + labor — available from day one) and
-  *repair* (labor only, but requires owning that category's repair equipment). Early game forces
-  replacement (parts cost = the pain); buying equipment converts that opex to capex; post-investment,
-  repair dominates restoration and replacement becomes the *upgrade* path. Equipment unlocks in
-  real-world-difficulty order (tire machine → brake lathe → ... → machine-shop/full engine rebuild),
-  doubling as act progression. Does NOT block Sprint 08 (its repair-only vs. part-install job split
-  is this system's seam). Full design incl. the zone/slot reconciliation question, economic
-  guardrails, and harness columns: `docs/design/repair-replace-progression.md`.
+- [ ] **Repair vs. Replace equipment progression — fully designed, now targets Sprint 13** (see the
+  Next focus section above; the component-model migration this design called "14a" shipped as
+  Sprint 12). Every part category has two paths: *replace* (buy the part + labor — available from day
+  one) and *repair* (labor only, but requires owning that category's repair equipment). Early game
+  forces replacement (parts cost = the pain); buying equipment converts that opex to capex;
+  post-investment, repair dominates restoration and replacement becomes the *upgrade* path. Equipment
+  unlocks in real-world-difficulty order (tire machine → brake lathe → ... → machine-shop/full engine
+  rebuild), doubling as act progression. Full design incl. economic guardrails and harness columns:
+  `docs/design/repair-replace-progression.md`.
 
 ## Design decisions
 

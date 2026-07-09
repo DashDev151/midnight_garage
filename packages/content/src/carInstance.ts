@@ -1,22 +1,26 @@
 import { z } from 'zod'
 import { PartInstanceSchema } from './part'
 
-const ConditionSchema = z.object({
-  engine: z.number().min(0).max(100),
-  drivetrain: z.number().min(0).max(100),
-  suspension: z.number().min(0).max(100),
-  body: z.number().min(0).max(100),
-  interior: z.number().min(0).max(100),
+/** One real car component: its wear (0-100) and whatever part is installed on it, if any. */
+const ComponentSchema = z.object({
+  condition: z.number().min(0).max(100),
+  installed: PartInstanceSchema.nullable().default(null),
 })
 
-const BuildSheetSchema = z.object({
-  engine: PartInstanceSchema.nullable().default(null),
-  forcedInduction: PartInstanceSchema.nullable().default(null),
-  drivetrain: PartInstanceSchema.nullable().default(null),
-  suspension: PartInstanceSchema.nullable().default(null),
-  brakes: PartInstanceSchema.nullable().default(null),
-  bodyAero: PartInstanceSchema.nullable().default(null),
-  wheelsInterior: PartInstanceSchema.nullable().default(null),
+/**
+ * The 8 real car components (Sprint 12 — replaces the old split
+ * `condition`/`buildSheet` maps, which had different key sets and no shared
+ * identity between them; see docs/design/repair-replace-progression.md).
+ */
+const ComponentsSchema = z.object({
+  engine: ComponentSchema,
+  forcedInduction: ComponentSchema,
+  drivetrain: ComponentSchema,
+  suspension: ComponentSchema,
+  brakes: ComponentSchema,
+  wheels: ComponentSchema,
+  body: ComponentSchema,
+  interior: ComponentSchema,
 })
 
 const RevealedIssueSchema = z.object({
@@ -31,10 +35,10 @@ export const CarInstanceSchema = z.object({
   mileageKm: z.number().int().nonnegative(),
   color: z.string().min(1),
   provenanceNote: z.string().default(''),
-  condition: ConditionSchema,
   hiddenIssues: z.array(RevealedIssueSchema).default([]),
   authenticityPercent: z.number().min(0).max(100),
-  buildSheet: BuildSheetSchema,
+  components: ComponentsSchema,
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>
+export type CarComponent = z.infer<typeof ComponentSchema>

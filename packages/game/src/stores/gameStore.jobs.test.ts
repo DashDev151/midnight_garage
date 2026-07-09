@@ -49,7 +49,7 @@ describe('service jobs in the store', () => {
     warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')
-    const zone = offer.work.kind === 'repair' ? offer.work.zone : 'engine'
+    const componentId = offer.work.kind === 'repair' ? offer.work.componentId : 'engine'
 
     const repBefore = game.reputationPoints
     game.acceptServiceJob(offer.id)
@@ -66,7 +66,7 @@ describe('service jobs in the store', () => {
         outcome = game.completeServiceJob(offer.id) // immediate — no End Day involved
         break
       }
-      game.repair(carId, zone) // instant — spends today's labor right now
+      game.repair(carId, componentId) // instant — spends today's labor right now
       const after = game.carDetail(carId)?.serviceJob
       if (after?.workDone) {
         outcome = game.completeServiceJob(offer.id)

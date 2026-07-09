@@ -2,21 +2,21 @@ import { BUYERS, CARS, HIDDEN_ISSUES, PARTS } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
-import { generateAuctionCatalog, groupHiddenIssuesByZone } from '../src/auctions'
+import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
 import { AUCTION_BUYOUT_PREMIUM } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
-const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
+const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 
 function stateWithLot(seed: number) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
   const [lot] = generateAuctionCatalog(
     [model],
     'local-yard',
-    HIDDEN_ISSUES_BY_ZONE,
+    HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
     30,

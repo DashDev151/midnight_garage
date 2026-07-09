@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Slot, Zone } from '@midnight-garage/content'
+import type { ComponentId } from '@midnight-garage/content'
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StatRadar from '../components/StatRadar.vue'
@@ -22,31 +22,26 @@ watch(
   { immediate: true },
 )
 
-const ZONES: readonly Zone[] = ['engine', 'drivetrain', 'suspension', 'body', 'interior']
-const SLOTS: readonly Slot[] = [
+const COMPONENTS: readonly ComponentId[] = [
   'engine',
   'forcedInduction',
   'drivetrain',
   'suspension',
   'brakes',
-  'bodyAero',
-  'wheelsInterior',
+  'wheels',
+  'body',
+  'interior',
 ]
 
-function zoneBusy(zone: Zone): boolean {
+/** True while a repair or install job is open against this component (either kind, either busy). */
+function componentBusy(componentId: ComponentId): boolean {
   const d = detail.value
   if (!d) return false
-  return d.jobs.some((j) => j.kind === 'repair-zone' && j.zone === zone)
+  return d.jobs.some((j) => j.componentId === componentId)
 }
 
-function slotBusy(slot: Slot): boolean {
-  const d = detail.value
-  if (!d) return false
-  return d.jobs.some((j) => j.kind === 'install-part' && j.slot === slot)
-}
-
-function installFor(slot: Slot) {
-  return detail.value ? game.installablePartsFor(detail.value.car.id, slot) : []
+function installFor(componentId: ComponentId) {
+  return detail.value ? game.installablePartsFor(detail.value.car.id, componentId) : []
 }
 
 /**
@@ -142,55 +137,53 @@ const listPrice = computed(() => game.listingEstimate(carId.value))
         <StatRadar :stats="detail.stats" />
       </div>
 
-      <div class="zones-col">
-        <h3>Condition</h3>
-        <ul class="zones">
-          <li v-for="zone in ZONES" :key="zone">
-            <span class="zone-name">{{ zone }}</span>
+      <div class="components-col">
+        <h3>Components</h3>
+        <ul class="components">
+          <li v-for="componentId in COMPONENTS" :key="componentId" class="component-row">
+            <span class="component-name">{{ componentId }}</span>
             <span class="bar"
-              ><span class="fill" :style="{ width: detail.car.condition[zone] + '%' }"
+              ><span
+                class="fill"
+                :style="{ width: detail.car.components[componentId].condition + '%' }"
             /></span>
-            <span class="zone-val">{{ detail.car.condition[zone] }}</span>
+            <span class="component-val">{{ detail.car.components[componentId].condition }}</span>
             <button
-              :disabled="detail.car.condition[zone] >= 100 || game.laborSlotsRemainingToday <= 0"
-              :data-test="'repair-' + zone"
-              @click="game.repair(detail.car.id, zone)"
+              :disabled="
+                detail.car.components[componentId].condition >= 100 ||
+                game.laborSlotsRemainingToday <= 0
+              "
+              :data-test="'repair-' + componentId"
+              @click="game.repair(detail.car.id, componentId)"
             >
-              {{ zoneBusy(zone) ? 'Continue repair' : 'Repair' }}
+              {{ componentBusy(componentId) ? 'Continue repair' : 'Repair' }}
             </button>
+            <template v-if="detail.car.components[componentId].installed">
+              <span class="installed">{{
+                game.partName(detail.car.components[componentId].installed?.partId ?? '')
+              }}</span>
+            </template>
+            <template v-else-if="componentBusy(componentId)">
+              <span class="slot-empty">installing…</span>
+            </template>
+            <template v-else>
+              <span v-if="installFor(componentId).length === 0" class="slot-empty">empty</span>
+              <span v-else class="slot-install">
+                <button
+                  v-for="pi in installFor(componentId)"
+                  :key="pi.id"
+                  :disabled="game.laborSlotsRemainingToday <= 0"
+                  :data-test="'install-' + componentId"
+                  @click="game.install(detail.car.id, componentId, pi.id)"
+                >
+                  install {{ game.partName(pi.partId) }}
+                </button>
+              </span>
+            </template>
           </li>
         </ul>
       </div>
     </div>
-
-    <section class="build">
-      <h3>Build sheet</h3>
-      <ul class="slots">
-        <li v-for="slot in SLOTS" :key="slot">
-          <span class="slot-name">{{ slot }}</span>
-          <template v-if="detail.car.buildSheet[slot]">
-            <span class="installed">{{ game.partName(detail.car.buildSheet[slot]!.partId) }}</span>
-          </template>
-          <template v-else-if="slotBusy(slot)">
-            <span class="slot-empty">installing…</span>
-          </template>
-          <template v-else>
-            <span v-if="installFor(slot).length === 0" class="slot-empty">empty</span>
-            <span v-else class="slot-install">
-              <button
-                v-for="pi in installFor(slot)"
-                :key="pi.id"
-                :disabled="game.laborSlotsRemainingToday <= 0"
-                :data-test="'install-' + slot"
-                @click="game.install(detail.car.id, slot, pi.id)"
-              >
-                install {{ game.partName(pi.partId) }}
-              </button>
-            </span>
-          </template>
-        </li>
-      </ul>
-    </section>
 
     <section v-if="!detail.serviceJob" class="sell">
       <h3>Sell</h3>
@@ -221,7 +214,7 @@ const listPrice = computed(() => game.listingEstimate(carId.value))
         <h4>In progress</h4>
         <ul>
           <li v-for="job in detail.jobs" :key="job.id">
-            {{ job.kind === 'repair-zone' ? 'repair ' + job.zone : 'install part' }} ·
+            {{ job.kind === 'repair-zone' ? 'repair ' + job.componentId : 'install part' }} ·
             {{ job.laborSlotsSpent }}/{{ job.laborSlotsRequired }} slots
           </li>
         </ul>
@@ -350,23 +343,32 @@ button.primary.danger {
   margin: var(--mg-space-4) 0;
 }
 
-.zones {
+.components {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.zones li {
-  display: grid;
-  grid-template-columns: 90px 1fr 32px auto;
+.component-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--mg-space-2);
   margin-bottom: var(--mg-space-2);
+  padding-bottom: var(--mg-space-2);
+  border-bottom: var(--mg-border);
 }
 
-.zone-name {
+.component-name {
+  width: 110px;
+  flex-shrink: 0;
   text-transform: capitalize;
   font-size: var(--mg-fs-sm);
+}
+
+.component-row .bar {
+  flex: 1 1 80px;
+  min-width: 60px;
 }
 
 .sell-options {
@@ -408,30 +410,17 @@ button.primary.danger {
   background: var(--mg-neon-cyan);
 }
 
-.zone-val {
+.component-val {
   font-size: var(--mg-fs-sm);
   text-align: right;
+  width: 28px;
+  flex-shrink: 0;
 }
 
-.slots {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.slots li {
+.slot-install {
   display: flex;
-  gap: var(--mg-space-3);
-  align-items: center;
-  padding: var(--mg-space-1) 0;
-  border-bottom: var(--mg-border);
-  font-size: var(--mg-fs-sm);
-}
-
-.slot-name {
-  width: 130px;
-  color: var(--mg-text-dim);
-  text-transform: capitalize;
+  gap: var(--mg-space-2);
+  flex-wrap: wrap;
 }
 
 .slot-empty {

@@ -89,7 +89,7 @@ const INTEREST_LABEL: Record<string, string> = {
               <span v-if="d.revealedIssues.length === 0" class="clean">no hidden issues</span>
               <span v-else class="issues">
                 <span v-for="(iss, i) in d.revealedIssues" :key="i">
-                  {{ iss.zone }}: {{ iss.hintText }}
+                  {{ iss.componentId }}: {{ iss.hintText }}
                 </span>
               </span>
             </template>

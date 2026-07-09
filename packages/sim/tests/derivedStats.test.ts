@@ -28,17 +28,17 @@ const baseInstance: CarInstance = {
   mileageKm: 100_000,
   color: 'White',
   provenanceNote: '',
-  condition: { engine: 100, drivetrain: 100, suspension: 100, body: 100, interior: 100 },
   hiddenIssues: [],
   authenticityPercent: 90,
-  buildSheet: {
-    engine: null,
-    forcedInduction: null,
-    drivetrain: null,
-    suspension: null,
-    brakes: null,
-    bodyAero: null,
-    wheelsInterior: null,
+  components: {
+    engine: { condition: 100, installed: null },
+    forcedInduction: { condition: 100, installed: null },
+    drivetrain: { condition: 100, installed: null },
+    suspension: { condition: 100, installed: null },
+    brakes: { condition: 100, installed: null },
+    wheels: { condition: 100, installed: null },
+    body: { condition: 100, installed: null },
+    interior: { condition: 100, installed: null },
   },
 }
 
@@ -46,7 +46,7 @@ const coilovers: Part = {
   id: 'tanuki-street-coilovers',
   brand: 'Tanuki',
   name: 'Street Coilovers',
-  slot: 'suspension',
+  componentId: 'suspension',
   grade: 'street',
   requiredTags: [],
   statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
@@ -63,13 +63,16 @@ describe('computeDerivedStats', () => {
   it('a genuine-period installed part fully applies its modifiers', () => {
     const instance: CarInstance = {
       ...baseInstance,
-      buildSheet: {
-        ...baseInstance.buildSheet,
+      components: {
+        ...baseInstance.components,
         suspension: {
-          id: 'pi-0001',
-          partId: coilovers.id,
-          conditionPercent: 100,
-          genuinePeriod: true,
+          condition: 100,
+          installed: {
+            id: 'pi-0001',
+            partId: coilovers.id,
+            conditionPercent: 100,
+            genuinePeriod: true,
+          },
         },
       },
     }
@@ -82,13 +85,16 @@ describe('computeDerivedStats', () => {
   it('a worn part contributes proportionally less benefit', () => {
     const instance: CarInstance = {
       ...baseInstance,
-      buildSheet: {
-        ...baseInstance.buildSheet,
+      components: {
+        ...baseInstance.components,
         suspension: {
-          id: 'pi-0002',
-          partId: coilovers.id,
-          conditionPercent: 50,
-          genuinePeriod: true,
+          condition: 100,
+          installed: {
+            id: 'pi-0002',
+            partId: coilovers.id,
+            conditionPercent: 50,
+            genuinePeriod: true,
+          },
         },
       },
     }
@@ -101,18 +107,21 @@ describe('computeDerivedStats', () => {
     const brokenPart: Part = {
       ...coilovers,
       id: 'broken-engine-part',
-      slot: 'engine',
+      componentId: 'engine',
       statModifiers: { power: -500, handling: 0, style: 0, reliability: 0, authenticity: 0 },
     }
     const instance: CarInstance = {
       ...baseInstance,
-      buildSheet: {
-        ...baseInstance.buildSheet,
+      components: {
+        ...baseInstance.components,
         engine: {
-          id: 'pi-0004',
-          partId: brokenPart.id,
-          conditionPercent: 100,
-          genuinePeriod: true,
+          condition: 100,
+          installed: {
+            id: 'pi-0004',
+            partId: brokenPart.id,
+            conditionPercent: 100,
+            genuinePeriod: true,
+          },
         },
       },
     }
@@ -128,17 +137,43 @@ describe('computeDerivedStats', () => {
     }
     const instance: CarInstance = {
       ...baseInstance,
-      buildSheet: {
-        ...baseInstance.buildSheet,
+      components: {
+        ...baseInstance.components,
         suspension: {
-          id: 'pi-0003',
-          partId: modifiedPart.id,
-          conditionPercent: 100,
-          genuinePeriod: false,
+          condition: 100,
+          installed: {
+            id: 'pi-0003',
+            partId: modifiedPart.id,
+            conditionPercent: 100,
+            genuinePeriod: false,
+          },
         },
       },
     }
     const stats = computeDerivedStats(model, instance, { [modifiedPart.id]: modifiedPart })
     expect(stats.authenticity).toBe(75)
+  })
+
+  /**
+   * Sprint 12 decision 4: brakes/wheels/forcedInduction never had a
+   * condition-to-stat pathway before the zones+slots -> components
+   * migration (only interior condition also fed nothing). Wiring their new
+   * condition fields into stats now would be a disguised balance change
+   * smuggled into a refactor — this guards that they stay inert until
+   * Sprint 13 gives repair-vs-replace on those components real stakes.
+   */
+  it('brakes/wheels/forcedInduction/interior condition changes produce zero stat delta', () => {
+    const baseline = computeDerivedStats(model, baseInstance, {})
+    const damaged: CarInstance = {
+      ...baseInstance,
+      components: {
+        ...baseInstance.components,
+        brakes: { condition: 5, installed: null },
+        wheels: { condition: 5, installed: null },
+        forcedInduction: { condition: 5, installed: null },
+        interior: { condition: 5, installed: null },
+      },
+    }
+    expect(computeDerivedStats(model, damaged, {})).toEqual(baseline)
   })
 })

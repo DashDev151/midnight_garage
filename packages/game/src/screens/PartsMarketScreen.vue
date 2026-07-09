@@ -41,7 +41,8 @@ function statSummary(part: Part): string {
         <div class="part-main">
           <span class="part-name">{{ part.brand }} {{ part.name }}</span>
           <span class="part-meta"
-            >{{ part.slot }} · {{ part.grade }} · {{ statSummary(part) || 'no stat change' }}</span
+            >{{ part.componentId }} · {{ part.grade }} ·
+            {{ statSummary(part) || 'no stat change' }}</span
           >
           <span v-if="part.requiredTags.length" class="part-tags">
             needs {{ part.requiredTags.join(', ') }}

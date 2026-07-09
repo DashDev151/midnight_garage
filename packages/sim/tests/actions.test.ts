@@ -25,7 +25,12 @@ describe('DayActionsSchema', () => {
     const input = {
       ...EMPTY_ACTIONS,
       createJobs: [
-        { carInstanceId: 'car-0001', kind: 'repair-zone', zone: 'body', laborSlotsRequired: 3 },
+        {
+          carInstanceId: 'car-0001',
+          kind: 'repair-zone',
+          componentId: 'body',
+          laborSlotsRequired: 3,
+        },
       ],
       laborAssignments: [{ jobId: 'job-1', laborSlots: 2 }],
       bidsOnLots: [{ lotId: 'lot-1', maxBidYen: 500_000 }],

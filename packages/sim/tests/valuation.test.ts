@@ -28,17 +28,17 @@ const stockInstance: CarInstance = {
   mileageKm: 80_000,
   color: 'White',
   provenanceNote: '',
-  condition: { engine: 90, drivetrain: 90, suspension: 90, body: 90, interior: 90 },
   hiddenIssues: [],
   authenticityPercent: 95,
-  buildSheet: {
-    engine: null,
-    forcedInduction: null,
-    drivetrain: null,
-    suspension: null,
-    brakes: null,
-    bodyAero: null,
-    wheelsInterior: null,
+  components: {
+    engine: { condition: 90, installed: null },
+    forcedInduction: { condition: 90, installed: null },
+    drivetrain: { condition: 90, installed: null },
+    suspension: { condition: 90, installed: null },
+    brakes: { condition: 90, installed: null },
+    wheels: { condition: 90, installed: null },
+    body: { condition: 90, installed: null },
+    interior: { condition: 90, installed: null },
   },
 }
 
@@ -84,7 +84,16 @@ describe('valuateCarForBuyer', () => {
   it('never returns a negative value', () => {
     const wornOut: CarInstance = {
       ...stockInstance,
-      condition: { engine: 0, drivetrain: 0, suspension: 0, body: 0, interior: 0 },
+      components: {
+        engine: { condition: 0, installed: null },
+        forcedInduction: { condition: 0, installed: null },
+        drivetrain: { condition: 0, installed: null },
+        suspension: { condition: 0, installed: null },
+        brakes: { condition: 0, installed: null },
+        wheels: { condition: 0, installed: null },
+        body: { condition: 0, installed: null },
+        interior: { condition: 0, installed: null },
+      },
       authenticityPercent: 0,
     }
     const value = valuateCarForBuyer({ ...firstTimer, priceSensitivity: 1 }, model, wornOut, {})

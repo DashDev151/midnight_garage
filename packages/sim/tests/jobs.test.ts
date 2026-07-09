@@ -10,15 +10,16 @@ import {
   resolveJobLabor,
 } from '../src/jobs'
 
-function emptyBuildSheet() {
+function emptyComponents() {
   return {
-    engine: null,
-    forcedInduction: null,
-    drivetrain: null,
-    suspension: null,
-    brakes: null,
-    bodyAero: null,
-    wheelsInterior: null,
+    engine: { condition: 40, installed: null },
+    forcedInduction: { condition: 100, installed: null },
+    drivetrain: { condition: 40, installed: null },
+    suspension: { condition: 40, installed: null },
+    brakes: { condition: 100, installed: null },
+    wheels: { condition: 100, installed: null },
+    body: { condition: 30, installed: null },
+    interior: { condition: 40, installed: null },
   }
 }
 
@@ -29,10 +30,9 @@ const car: CarInstance = {
   mileageKm: 100_000,
   color: 'White',
   provenanceNote: '',
-  condition: { engine: 40, drivetrain: 40, suspension: 40, body: 30, interior: 40 },
   hiddenIssues: [],
   authenticityPercent: 90,
-  buildSheet: emptyBuildSheet(),
+  components: emptyComponents(),
 }
 
 const sparePart: PartInstance = {
@@ -69,7 +69,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 describe('createJob / applyLaborToJob / isJobComplete', () => {
   it('creates a job with zero labor spent', () => {
     const job = createJob(
-      { carInstanceId: car.id, kind: 'repair-zone', zone: 'body', laborSlotsRequired: 3 },
+      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
       'job-1',
     )
     expect(job.laborSlotsSpent).toBe(0)
@@ -78,7 +78,7 @@ describe('createJob / applyLaborToJob / isJobComplete', () => {
 
   it('applyLaborToJob clamps at laborSlotsRequired', () => {
     const job = createJob(
-      { carInstanceId: car.id, kind: 'repair-zone', zone: 'body', laborSlotsRequired: 3 },
+      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
       'job-1',
     )
     const progressed = applyLaborToJob(job, 10)
@@ -88,47 +88,50 @@ describe('createJob / applyLaborToJob / isJobComplete', () => {
 })
 
 describe('completeJob', () => {
-  it('a completed repair-zone job restores the zone to 100', () => {
+  it('a completed repair-zone job restores the component to 100', () => {
     const job: Job = {
       id: 'job-1',
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 3,
       laborSlotsSpent: 3,
     }
     const result = completeJob(baseState(), job)
     expect(result.blockedByOccupiedSlot).toBe(false)
-    expect(result.state.ownedCars[0]?.condition.body).toBe(100)
-    expect(result.state.ownedCars[0]?.condition.engine).toBe(40)
+    expect(result.state.ownedCars[0]?.components.body.condition).toBe(100)
+    expect(result.state.ownedCars[0]?.components.engine.condition).toBe(40)
   })
 
-  it('a completed install-part job moves the part from inventory into the build sheet', () => {
+  it('a completed install-part job moves the part from inventory onto the component', () => {
     const job: Job = {
       id: 'job-2',
       carInstanceId: car.id,
       kind: 'install-part',
-      slot: 'suspension',
+      componentId: 'suspension',
       partInstanceId: sparePart.id,
       laborSlotsRequired: 1,
       laborSlotsSpent: 1,
     }
     const result = completeJob(baseState(), job)
     expect(result.blockedByOccupiedSlot).toBe(false)
-    expect(result.state.ownedCars[0]?.buildSheet.suspension?.id).toBe(sparePart.id)
+    expect(result.state.ownedCars[0]?.components.suspension.installed?.id).toBe(sparePart.id)
     expect(result.state.partInventory).toHaveLength(0)
   })
 
-  it('an install-part job into an occupied slot is blocked, not overwritten', () => {
+  it('an install-part job into an occupied component is blocked, not overwritten', () => {
     const occupiedCar: CarInstance = {
       ...car,
-      buildSheet: {
-        ...emptyBuildSheet(),
+      components: {
+        ...emptyComponents(),
         suspension: {
-          id: 'pi-existing',
-          partId: 'tanuki-n1-coilovers',
-          conditionPercent: 80,
-          genuinePeriod: true,
+          condition: 40,
+          installed: {
+            id: 'pi-existing',
+            partId: 'tanuki-n1-coilovers',
+            conditionPercent: 80,
+            genuinePeriod: true,
+          },
         },
       },
     }
@@ -136,24 +139,24 @@ describe('completeJob', () => {
       id: 'job-3',
       carInstanceId: car.id,
       kind: 'install-part',
-      slot: 'suspension',
+      componentId: 'suspension',
       partInstanceId: sparePart.id,
       laborSlotsRequired: 1,
       laborSlotsSpent: 1,
     }
     const result = completeJob(baseState({ ownedCars: [occupiedCar] }), job)
     expect(result.blockedByOccupiedSlot).toBe(true)
-    expect(result.state.ownedCars[0]?.buildSheet.suspension?.id).toBe('pi-existing')
+    expect(result.state.ownedCars[0]?.components.suspension.installed?.id).toBe('pi-existing')
     expect(result.state.partInventory).toHaveLength(1)
   })
 })
 
 describe('findOrCreateJob (Sprint 11)', () => {
-  it('creates a new job when none is open for this car+zone', () => {
+  it('creates a new job when none is open for this car+component', () => {
     const result = findOrCreateJob(baseState(), {
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 3,
     })
     expect(result.job.laborSlotsSpent).toBe(0)
@@ -164,7 +167,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
     const spec = {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
-      zone: 'body' as const,
+      componentId: 'body' as const,
       laborSlotsRequired: 3,
     }
     const first = findOrCreateJob(baseState(), spec)
@@ -173,17 +176,17 @@ describe('findOrCreateJob (Sprint 11)', () => {
     expect(second.state.jobs).toHaveLength(1)
   })
 
-  it('a different zone on the same car gets its own job', () => {
+  it('a different component on the same car gets its own job', () => {
     const first = findOrCreateJob(baseState(), {
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 3,
     })
     const second = findOrCreateJob(first.state, {
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'engine',
+      componentId: 'engine',
       laborSlotsRequired: 2,
     })
     expect(second.job.id).not.toBe(first.job.id)
@@ -196,7 +199,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
     const created = findOrCreateJob(baseState({ serviceBayCarIds: [car.id] }), {
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 3,
     })
     const result = applyAvailableLaborToJob(created.state, created.job.id, 2)
@@ -209,13 +212,13 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
     const created = findOrCreateJob(baseState({ serviceBayCarIds: [car.id] }), {
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 2,
     })
     const result = applyAvailableLaborToJob(created.state, created.job.id, 5)
     expect(result.laborSlotsUsed).toBe(2) // clamped to what the job needed, not the offer
     expect(result.state.jobs).toHaveLength(0)
-    expect(result.state.ownedCars[0]?.condition.body).toBe(100)
+    expect(result.state.ownedCars[0]?.components.body.condition).toBe(100)
     expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
   })
 
@@ -223,7 +226,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
     const created = findOrCreateJob(baseState(), {
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: 'body',
+      componentId: 'body',
       laborSlotsRequired: 3,
     })
     const result = applyAvailableLaborToJob(created.state, created.job.id, 2)
@@ -245,7 +248,7 @@ describe('resolveJobLabor (Sprint 11) — the instant player-facing resolver', (
     const spec = {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
-      zone: 'body' as const,
+      componentId: 'body' as const,
       laborSlotsRequired: 3,
     }
     const result = resolveJobLabor(state, spec, 2)
@@ -258,12 +261,12 @@ describe('resolveJobLabor (Sprint 11) — the instant player-facing resolver', (
     const spec = {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
-      zone: 'body' as const,
+      componentId: 'body' as const,
       laborSlotsRequired: 3,
     }
     const first = resolveJobLabor(state, spec, 1)
     const second = resolveJobLabor(first.state, spec, 5)
     expect(second.state.jobs).toHaveLength(0) // completed and removed
-    expect(second.state.ownedCars[0]?.condition.body).toBe(100)
+    expect(second.state.ownedCars[0]?.components.body.condition).toBe(100)
   })
 })

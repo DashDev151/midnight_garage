@@ -1,12 +1,12 @@
 import type {
   CarModel,
+  ComponentId,
   DayLogEntry,
   GameState,
   Grade,
   HiddenIssue,
   ServiceJob,
   ServiceJobType,
-  Zone,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
 import {
@@ -35,7 +35,7 @@ export function generateServiceJobOffers(
   types: readonly ServiceJobType[],
   customerNames: readonly string[],
   models: readonly CarModel[],
-  hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
+  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
   day: number,
   count: number,
   expiresInDays: number,
@@ -51,7 +51,7 @@ export function generateServiceJobOffers(
     const [minPayout, maxPayout] = type.payoutRangeYen
     const car = generateAuctionCarInstance(
       model,
-      hiddenIssuesByZone,
+      hiddenIssuesByComponent,
       `svc-car-${day}-${i}`,
       rng,
       currentYear,
@@ -108,9 +108,8 @@ export function resolveAcceptServiceJob(state: GameState, offerId: string): Acce
 
 /** Whether the customer's required work has actually been done on their car. */
 export function isServiceWorkDone(job: ServiceJob): boolean {
-  return job.work.kind === 'repair'
-    ? job.car.condition[job.work.zone] >= 100
-    : job.car.buildSheet[job.work.slot] !== null
+  const component = job.car.components[job.work.componentId]
+  return job.work.kind === 'repair' ? component.condition >= 100 : component.installed !== null
 }
 
 /**
@@ -135,10 +134,10 @@ export interface ServiceJobResolution {
   outcome: ServiceJobOutcome
 }
 
-/** The catalog part installed for an install job's slot (undefined for repair jobs). */
+/** The catalog part installed for an install job's component (undefined for repair jobs). */
 function installedPart(job: ServiceJob, context: SimContext) {
   if (job.work.kind !== 'install') return undefined
-  const part = job.car.buildSheet[job.work.slot]
+  const part = job.car.components[job.work.componentId].installed
   return part ? context.partsById[part.partId] : undefined
 }
 

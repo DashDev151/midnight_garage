@@ -29,7 +29,7 @@ async function mountAt(carId: string) {
 describe('CarDetailScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('renders a granted car: name, radar, condition zones, build sheet', async () => {
+  it('renders a granted car: name, radar, components', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
@@ -37,9 +37,18 @@ describe('CarDetailScreen', () => {
     const { wrapper } = await mountAt(id)
     expect(wrapper.find('svg.radar').exists()).toBe(true)
     expect(wrapper.text()).toContain(game.carsDetailed[0]!.displayName)
-    // All five condition zones render a Repair control.
-    for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior']) {
-      expect(wrapper.find(`[data-test="repair-${zone}"]`).exists()).toBe(true)
+    // All 8 components render a Repair control.
+    for (const componentId of [
+      'engine',
+      'forcedInduction',
+      'drivetrain',
+      'suspension',
+      'brakes',
+      'wheels',
+      'body',
+      'interior',
+    ]) {
+      expect(wrapper.find(`[data-test="repair-${componentId}"]`).exists()).toBe(true)
     }
   })
 
@@ -55,11 +64,11 @@ describe('CarDetailScreen', () => {
     await wrapper.find('[data-test="toggle-bay"]').trigger('click')
     await wrapper.find('[data-test="repair-engine"]').trigger('click')
     // End enough days for the repair to finish (bounded loop).
-    for (let i = 0; i < 6 && game.gameState.ownedCars[0]!.condition.engine < 100; i++) {
+    for (let i = 0; i < 6 && game.gameState.ownedCars[0]!.components.engine.condition < 100; i++) {
       await wrapper.find('[data-test="end-day"]').trigger('click')
       await flushPromises()
     }
-    expect(game.gameState.ownedCars[0]!.condition.engine).toBe(100)
+    expect(game.gameState.ownedCars[0]!.components.engine.condition).toBe(100)
   })
 
   it('redirects to the garage when the car id is not owned', async () => {

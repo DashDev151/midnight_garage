@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
+import parts from '../data/parts.json'
 import serviceJobs from '../data/serviceJobs.json'
-import { BuyersSchema, CarModelsSchema, ServiceJobTypesSchema, type RarityTier } from '../src'
+import {
+  BuyersSchema,
+  CarModelsSchema,
+  PartsSchema,
+  ServiceJobTypesSchema,
+  type RarityTier,
+} from '../src'
 
 describe('referential integrity', () => {
   it('every buyer statWeights covers exactly the five derived stats', () => {
@@ -13,11 +20,13 @@ describe('referential integrity', () => {
     }
   })
 
-  it('no car repeats the same zone twice in hiddenIssueWeights', () => {
+  it('no car repeats the same component twice in hiddenIssueWeights', () => {
     const parsedCars = CarModelsSchema.parse(cars)
     for (const car of parsedCars) {
-      const zones = car.hiddenIssueWeights.map((w) => w.zone)
-      expect(new Set(zones).size, `${car.id} has duplicate zone weights`).toBe(zones.length)
+      const componentIds = car.hiddenIssueWeights.map((w) => w.componentId)
+      expect(new Set(componentIds).size, `${car.id} has duplicate component weights`).toBe(
+        componentIds.length,
+      )
     }
   })
 
@@ -43,27 +52,51 @@ describe('referential integrity', () => {
   })
 
   /**
+   * Sprint 12: the old `wheelsInterior` slot's 3 parts were hand-reclassified
+   * by name onto the new `wheels`/`interior` components (no schema check can
+   * catch a swap here — `componentId` is a valid enum value either way, so
+   * this is the only thing that would catch e.g. the bucket seat accidentally
+   * landing on `wheels`).
+   */
+  it('the former wheelsInterior parts landed on the correct real component', () => {
+    const parsedParts = PartsSchema.parse(parts)
+    const byId = Object.fromEntries(parsedParts.map((p) => [p.id, p]))
+    expect(byId['enkai-mesh-15']?.componentId).toBe('wheels')
+    expect(byId['vulk-ve37']?.componentId).toBe('wheels')
+    expect(byId['zashiki-bucket-seat']?.componentId).toBe('interior')
+  })
+
+  /**
    * Sprint 11: the job-type + flavor-pool model (replacing Sprint 10's fixed
    * 1:1 templates) exists specifically so a flavor line can never be paired
    * with a `work` it wasn't written for — Sprint 10's own "Brakes are shot"
    * line on a suspension-zone job is the exact bug this structurally
    * prevents. This guards against a future editing mistake reintroducing it:
-   * no repair-zone type's flavor pool names a *different* zone or "brakes"
-   * (a real, distinct part players think of separately from "suspension").
+   * no repair-zone type's flavor pool names a *different* component (Sprint
+   * 12: componentId now covers all 8 real components, brakes included as a
+   * real one rather than a special case).
    */
-  it('no repair-zone flavor line names a different zone (or brakes)', () => {
+  it('no repair-zone flavor line names a different component', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
-    const ZONE_WORDS = ['engine', 'drivetrain', 'suspension', 'body', 'interior', 'brakes']
+    const COMPONENT_WORDS = [
+      'engine',
+      'drivetrain',
+      'suspension',
+      'body',
+      'interior',
+      'brakes',
+      'wheels',
+    ]
     for (const type of parsedTypes) {
       if (type.work.kind !== 'repair') continue
-      const zone = type.work.zone
-      const foreignWords = ZONE_WORDS.filter((w) => w !== zone)
+      const componentId = type.work.componentId
+      const foreignWords = COMPONENT_WORDS.filter((w) => w !== componentId)
       for (const line of type.flavorPool) {
         const text = line.toLowerCase()
         for (const word of foreignWords) {
           expect(
             text.includes(word),
-            `job type "${type.id}" (repair ${zone}) flavor line "${line}" names "${word}"`,
+            `job type "${type.id}" (repair ${componentId}) flavor line "${line}" names "${word}"`,
           ).toBe(false)
         }
       }

@@ -1,10 +1,10 @@
 import { BUYERS, CARS, HIDDEN_ISSUES } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { computeLotInterest } from '../src/bidding'
-import { generateAuctionCatalog, groupHiddenIssuesByZone } from '../src/auctions'
+import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
 import { createRng } from '../src/rng'
 
-const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
+const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 
 function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium', seed: number) {
   const model = CARS.find((c) => c.id === modelId)
@@ -12,7 +12,7 @@ function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium',
   const [lot] = generateAuctionCatalog(
     [model],
     tier,
-    HIDDEN_ISSUES_BY_ZONE,
+    HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
     7,

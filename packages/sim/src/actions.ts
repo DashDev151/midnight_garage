@@ -1,4 +1,4 @@
-import { BayKindSchema, SlotSchema, ZoneSchema } from '@midnight-garage/content'
+import { BayKindSchema, ComponentIdSchema } from '@midnight-garage/content'
 import { z } from 'zod'
 
 /**
@@ -8,8 +8,7 @@ import { z } from 'zod'
 const NewJobSpecSchema = z.object({
   carInstanceId: z.string().min(1),
   kind: z.enum(['repair-zone', 'install-part']),
-  zone: ZoneSchema.optional(),
-  slot: SlotSchema.optional(),
+  componentId: ComponentIdSchema,
   partInstanceId: z.string().min(1).optional(),
   laborSlotsRequired: z.number().int().positive(),
 })

@@ -1,13 +1,14 @@
-import type { CarInstance, CarModel, Part, Slot, StatBlock } from '@midnight-garage/content'
+import type { CarInstance, CarModel, ComponentId, Part, StatBlock } from '@midnight-garage/content'
 
-const SLOTS: readonly Slot[] = [
+const COMPONENT_IDS: readonly ComponentId[] = [
   'engine',
   'forcedInduction',
   'drivetrain',
   'suspension',
   'brakes',
-  'bodyAero',
-  'wheelsInterior',
+  'wheels',
+  'body',
+  'interior',
 ]
 
 function clamp(value: number, min: number, max: number): number {
@@ -21,20 +22,31 @@ function clamp(value: number, min: number, max: number): number {
  * statModifiers from the parts catalog — sim has no data loader of its
  * own, so the caller supplies it (built once from data/parts.json, or a
  * small test fixture).
+ *
+ * Sprint 12: only engine/suspension/body/drivetrain condition ever fed a
+ * stat formula before the zones+slots -> components migration — brakes,
+ * wheels, and forcedInduction never had a condition-to-stat pathway (only
+ * their installed part's own statModifiers counted), and interior condition
+ * never fed anything either. Deliberately kept that way here: wiring the 3
+ * new condition fields into stats now would be a disguised balance change
+ * smuggled into a refactor. They're tracked and readable; nothing consumes
+ * them for stats until Sprint 13 gives repair-vs-replace on those
+ * components real stakes.
  */
 export function computeDerivedStats(
   model: CarModel,
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
 ): StatBlock {
-  let power = model.spec.stockPowerPs * (0.5 + 0.5 * (instance.condition.engine / 100))
-  let handling = 50 * (instance.condition.suspension / 100) - model.spec.curbWeightKg / 50
-  let style = (instance.condition.body / 100) * 20
-  let reliability = 70 * ((instance.condition.engine + instance.condition.drivetrain) / 200)
+  const { components } = instance
+  let power = model.spec.stockPowerPs * (0.5 + 0.5 * (components.engine.condition / 100))
+  let handling = 50 * (components.suspension.condition / 100) - model.spec.curbWeightKg / 50
+  let style = (components.body.condition / 100) * 20
+  let reliability = 70 * ((components.engine.condition + components.drivetrain.condition) / 200)
   let authenticity = instance.authenticityPercent
 
-  for (const slot of SLOTS) {
-    const installed = instance.buildSheet[slot]
+  for (const componentId of COMPONENT_IDS) {
+    const installed = components[componentId].installed
     if (!installed) continue
     const part = partsById[installed.partId]
     if (!part) continue

@@ -1,13 +1,13 @@
 import type {
   Buyer,
   CarModel,
+  ComponentId,
   Facilities,
   HiddenIssue,
   Part,
   ServiceJobType,
-  Zone,
 } from '@midnight-garage/content'
-import { groupHiddenIssuesByZone } from './auctions'
+import { groupHiddenIssuesByComponent } from './auctions'
 
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
@@ -36,7 +36,7 @@ export interface SimContext {
   partsById: Readonly<Record<string, Part>>
   buyers: readonly Buyer[]
   hiddenIssuesById: Readonly<Record<string, HiddenIssue>>
-  hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>
+  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>
   serviceJobTypes: readonly ServiceJobType[]
   serviceJobCustomerNames: readonly string[]
   facilities: Facilities
@@ -66,7 +66,7 @@ export function buildSimContext(
     partsById: indexById(parts),
     buyers,
     hiddenIssuesById: indexById(hiddenIssues),
-    hiddenIssuesByZone: groupHiddenIssuesByZone(hiddenIssues),
+    hiddenIssuesByComponent: groupHiddenIssuesByComponent(hiddenIssues),
     serviceJobTypes,
     serviceJobCustomerNames,
     facilities,

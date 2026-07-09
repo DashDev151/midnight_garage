@@ -27,18 +27,6 @@ import { createRng } from '../src/rng'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, [], FACILITIES)
 
-function emptyBuildSheet(): CarInstance['buildSheet'] {
-  return {
-    engine: null,
-    forcedInduction: null,
-    drivetrain: null,
-    suspension: null,
-    brakes: null,
-    bodyAero: null,
-    wheelsInterior: null,
-  }
-}
-
 function ownedCar(id: string): CarInstance {
   return {
     id,
@@ -47,21 +35,34 @@ function ownedCar(id: string): CarInstance {
     mileageKm: 100_000,
     color: 'White',
     provenanceNote: '',
-    condition: { engine: 80, drivetrain: 80, suspension: 80, body: 80, interior: 80 },
     hiddenIssues: [],
     authenticityPercent: 90,
-    buildSheet: emptyBuildSheet(),
+    components: {
+      engine: { condition: 80, installed: null },
+      forcedInduction: { condition: 80, installed: null },
+      drivetrain: { condition: 80, installed: null },
+      suspension: { condition: 80, installed: null },
+      brakes: { condition: 80, installed: null },
+      wheels: { condition: 80, installed: null },
+      body: { condition: 80, installed: null },
+      interior: { condition: 80, installed: null },
+    },
   }
 }
 
 function serviceCar(id: string): ServiceJob {
-  const car = generateAuctionCarInstance(CARS[0]!, CONTEXT.hiddenIssuesByZone, id, createRng(1))
+  const car = generateAuctionCarInstance(
+    CARS[0]!,
+    CONTEXT.hiddenIssuesByComponent,
+    id,
+    createRng(1),
+  )
   return {
     id: `svc-${id}`,
     typeId: 'repair-engine',
     customerName: 'Test Customer',
     description: 'test',
-    work: { kind: 'repair', zone: 'engine' },
+    work: { kind: 'repair', componentId: 'engine' },
     car: { ...car, id },
     payoutYen: 20_000,
     baseReputation: 1,

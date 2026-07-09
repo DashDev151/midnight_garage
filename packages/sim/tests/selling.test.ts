@@ -32,17 +32,17 @@ const car: CarInstance = {
   mileageKm: 90_000,
   color: 'White',
   provenanceNote: '',
-  condition: { engine: 80, drivetrain: 80, suspension: 80, body: 80, interior: 80 },
   hiddenIssues: [],
   authenticityPercent: 85,
-  buildSheet: {
-    engine: null,
-    forcedInduction: null,
-    drivetrain: null,
-    suspension: null,
-    brakes: null,
-    bodyAero: null,
-    wheelsInterior: null,
+  components: {
+    engine: { condition: 80, installed: null },
+    forcedInduction: { condition: 80, installed: null },
+    drivetrain: { condition: 80, installed: null },
+    suspension: { condition: 80, installed: null },
+    brakes: { condition: 80, installed: null },
+    wheels: { condition: 80, installed: null },
+    body: { condition: 80, installed: null },
+    interior: { condition: 80, installed: null },
   },
 }
 

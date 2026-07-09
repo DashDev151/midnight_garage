@@ -12,8 +12,7 @@ export function createJob(spec: NewJobSpec, id: string): Job {
     id,
     carInstanceId: spec.carInstanceId,
     kind: spec.kind,
-    zone: spec.zone,
-    slot: spec.slot,
+    componentId: spec.componentId,
     partInstanceId: spec.partInstanceId,
     laborSlotsRequired: spec.laborSlotsRequired,
     laborSlotsSpent: 0,
@@ -48,27 +47,31 @@ interface CarEffect {
 
 /**
  * The pure "apply a completed job to a car" core, shared by owned cars and
- * service-job cars. Zone repair -> condition 100; part install -> the part
- * moves from inventory onto the build sheet (skipped if the slot is occupied).
+ * service-job cars. Repair -> condition 100; part install -> the part moves
+ * from inventory onto the component (skipped if it's already occupied).
  */
 function applyJobToCar(
   car: CarInstance,
   job: Job,
   partInventory: readonly PartInstance[],
 ): CarEffect {
+  const component = car.components[job.componentId]
+
   if (job.kind === 'repair-zone') {
-    if (!job.zone) throw new Error(`repair-zone job ${job.id} has no zone`)
     return {
-      car: { ...car, condition: { ...car.condition, [job.zone]: 100 } },
+      car: {
+        ...car,
+        components: { ...car.components, [job.componentId]: { ...component, condition: 100 } },
+      },
       partInventory: [...partInventory],
       blockedByOccupiedSlot: false,
     }
   }
 
-  if (!job.slot || !job.partInstanceId) {
-    throw new Error(`install-part job ${job.id} missing slot/partInstanceId`)
+  if (!job.partInstanceId) {
+    throw new Error(`install-part job ${job.id} missing partInstanceId`)
   }
-  if (car.buildSheet[job.slot]) {
+  if (component.installed) {
     return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
   }
   const partIndex = partInventory.findIndex((p) => p.id === job.partInstanceId)
@@ -77,7 +80,13 @@ function applyJobToCar(
     throw new Error(`install-part job ${job.id} references a part not in inventory`)
   }
   return {
-    car: { ...car, buildSheet: { ...car.buildSheet, [job.slot]: partInstance } },
+    car: {
+      ...car,
+      components: {
+        ...car.components,
+        [job.componentId]: { ...component, installed: partInstance },
+      },
+    },
     partInventory: partInventory.filter((_, i) => i !== partIndex),
     blockedByOccupiedSlot: false,
   }
@@ -118,19 +127,19 @@ export function completeJob(state: GameState, job: Job): JobCompletionResult {
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
 }
 
-/** An open job's stable id — one job per car+zone(repair) or car+slot(install) at a time. */
+/** An open job's stable id — one job per car+component+kind at a time. */
 function jobIdFor(spec: NewJobSpec): string {
-  const target = spec.kind === 'repair-zone' ? spec.zone : spec.slot
-  return `job-${spec.carInstanceId}-${spec.kind}-${target}`
+  return `job-${spec.carInstanceId}-${spec.kind}-${spec.componentId}`
 }
 
 /**
- * Finds the car's already-open job matching this spec's kind+zone/slot, or
- * creates one (Sprint 11). A car can only have one open job per zone/slot at
+ * Finds the car's already-open job matching this spec's kind+component, or
+ * creates one (Sprint 11). A car can only have one open job per component at
  * a time, so a repeat click on the same repair/install just continues the
  * existing job rather than creating a duplicate — the id is derived
- * deterministically from car+kind+zone/slot instead of a day/index counter,
- * so "the same job" is recognizable across days without extra bookkeeping.
+ * deterministically from car+kind+componentId instead of a day/index
+ * counter, so "the same job" is recognizable across days without extra
+ * bookkeeping.
  */
 export function findOrCreateJob(
   state: GameState,

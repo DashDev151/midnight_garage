@@ -38,17 +38,17 @@ function initialState(): GameState {
         mileageKm: 128_000,
         color: 'Sodium Amber',
         provenanceNote: 'one-owner, garage kept, Gunma plates',
-        condition: { engine: 55, drivetrain: 60, suspension: 50, body: 40, interior: 45 },
         hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
         authenticityPercent: 88,
-        buildSheet: {
-          engine: null,
-          forcedInduction: null,
-          drivetrain: null,
-          suspension: null,
-          brakes: null,
-          bodyAero: null,
-          wheelsInterior: null,
+        components: {
+          engine: { condition: 55, installed: null },
+          forcedInduction: { condition: 100, installed: null },
+          drivetrain: { condition: 60, installed: null },
+          suspension: { condition: 50, installed: null },
+          brakes: { condition: 100, installed: null },
+          wheels: { condition: 100, installed: null },
+          body: { condition: 40, installed: null },
+          interior: { condition: 45, installed: null },
         },
       },
     ],
@@ -90,7 +90,12 @@ function scriptedActionsForDay(day: number): DayActions {
       ...noActions,
       moveCars: [{ carInstanceId: 'car-0001', to: 'service' }],
       createJobs: [
-        { carInstanceId: 'car-0001', kind: 'repair-zone', zone: 'body', laborSlotsRequired: 3 },
+        {
+          carInstanceId: 'car-0001',
+          kind: 'repair-zone',
+          componentId: 'body',
+          laborSlotsRequired: 3,
+        },
       ],
       laborAssignments: [{ jobId: 'job-1-0', laborSlots: 2 }],
     }
@@ -105,7 +110,7 @@ function scriptedActionsForDay(day: number): DayActions {
         {
           carInstanceId: 'car-0001',
           kind: 'install-part',
-          slot: 'suspension',
+          componentId: 'suspension',
           partInstanceId: 'pi-0001',
           laborSlotsRequired: 1,
         },
@@ -128,14 +133,14 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 11: advanceDay was rewritten into a pure day-boundary
-    // tick around new instant resolvers (jobs, auctions, selling), changing
-    // RNG consumption order (e.g. the handover roll is now seeded per-lot-id
-    // instead of drawn from the day's shared stream) and adding the new
-    // laborSlotsSpentToday field to state.
+    // Re-pinned Sprint 12: the zones+slots -> unified components migration
+    // changed CarInstance's shape (condition/buildSheet -> components) and
+    // generateAuctionCarInstance's condition roll (now a correlated per-car
+    // baseline + jitter instead of independent per-zone rolls), both of
+    // which change hashState's output for any state touching a CarInstance.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('2f9ef05f')
+    expect(hashState(finalState)).toBe('27aa1230')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -144,16 +149,16 @@ describe('advanceDay golden master', () => {
     expect(a).toBe(b)
   })
 
-  it('the repair-zone job completes and restores the body zone', () => {
+  it('the repair-zone job completes and restores the body component', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
-    expect(car?.condition.body).toBe(100)
+    expect(car?.components.body.condition).toBe(100)
   })
 
-  it('the install-part job moves the spare coilovers into the build sheet', () => {
+  it('the install-part job moves the spare coilovers onto the suspension component', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
-    expect(car?.buildSheet.suspension?.partId).toBe('tanuki-street-coilovers')
+    expect(car?.components.suspension.installed?.partId).toBe('tanuki-street-coilovers')
     expect(finalState.partInventory).toHaveLength(0)
   })
 
@@ -213,9 +218,9 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 11: same reasons as the scripted-career hash above —
-    // advanceDay's instant-resolver rewrite changes RNG consumption order
-    // and adds laborSlotsSpentToday to state.
-    expect(hashState(acquisitionCareer().sold)).toBe('917565d6')
+    // Re-pinned Sprint 12: same reasons as the scripted-career hash above —
+    // the components migration and the correlated condition roll both
+    // change what a won/sold CarInstance hashes to.
+    expect(hashState(acquisitionCareer().sold)).toBe('a7dc17af')
   })
 })

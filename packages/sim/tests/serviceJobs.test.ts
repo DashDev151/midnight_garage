@@ -7,6 +7,7 @@ import {
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
   type CarInstance,
+  type ComponentId,
   type GameState,
   type Job,
   type PartInstance,
@@ -23,6 +24,7 @@ import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
   generateServiceJobOffers,
+  isServiceWorkDone,
   reputationForCompletion,
   reputationForFailure,
   resolveAcceptServiceJob,
@@ -41,14 +43,14 @@ const CONTEXT = buildSimContext(
 
 const repairType = SERVICE_JOB_TYPES.find((t) => t.work.kind === 'repair')!
 const installType = SERVICE_JOB_TYPES.find(
-  (t) => t.work.kind === 'install' && t.work.slot === 'brakes',
+  (t) => t.work.kind === 'install' && t.work.componentId === 'brakes',
 )!
 
 /** An active (accepted) service job carrying a real car, ready to resolve. */
 function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}): ServiceJob {
   const car = generateAuctionCarInstance(
     CARS[0]!,
-    CONTEXT.hiddenIssuesByZone,
+    CONTEXT.hiddenIssuesByComponent,
     `svc-car-${type.id}`,
     createRng(42),
   )
@@ -66,24 +68,26 @@ function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}
   }
 }
 
-function makeCondition(zone: string, value: number): CarInstance['condition'] {
-  return { engine: 100, drivetrain: 100, suspension: 100, body: 100, interior: 100, [zone]: value }
-}
-
-function emptyBuildSheet(): CarInstance['buildSheet'] {
+function emptyComponents(): CarInstance['components'] {
   return {
-    engine: null,
-    forcedInduction: null,
-    drivetrain: null,
-    suspension: null,
-    brakes: null,
-    bodyAero: null,
-    wheelsInterior: null,
+    engine: { condition: 100, installed: null },
+    forcedInduction: { condition: 100, installed: null },
+    drivetrain: { condition: 100, installed: null },
+    suspension: { condition: 100, installed: null },
+    brakes: { condition: 100, installed: null },
+    wheels: { condition: 100, installed: null },
+    body: { condition: 100, installed: null },
+    interior: { condition: 100, installed: null },
   }
 }
 
-const repairZone = repairType.work.kind === 'repair' ? repairType.work.zone : 'engine'
-const installSlot = installType.work.kind === 'install' ? installType.work.slot : 'brakes'
+/** All components stock/full except the given one, at `value`. */
+function makeComponents(componentId: ComponentId, value: number): CarInstance['components'] {
+  return { ...emptyComponents(), [componentId]: { condition: value, installed: null } }
+}
+
+const repairComponent = repairType.work.componentId
+const installComponent = installType.work.componentId
 
 function partInstance(partId: string): PartInstance {
   return { id: `pi-${partId}`, partId, conditionPercent: 100, genuinePeriod: false }
@@ -99,7 +103,7 @@ describe('generateServiceJobOffers', () => {
       SERVICE_JOB_TYPES,
       SERVICE_JOB_CUSTOMER_NAMES,
       CARS,
-      CONTEXT.hiddenIssuesByZone,
+      CONTEXT.hiddenIssuesByComponent,
       7,
       4,
       10,
@@ -117,7 +121,7 @@ describe('generateServiceJobOffers', () => {
       SERVICE_JOB_TYPES,
       SERVICE_JOB_CUSTOMER_NAMES,
       CARS,
-      CONTEXT.hiddenIssuesByZone,
+      CONTEXT.hiddenIssuesByComponent,
       7,
       20,
       10,
@@ -139,7 +143,7 @@ describe('generateServiceJobOffers', () => {
         [],
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByZone,
+        CONTEXT.hiddenIssuesByComponent,
         7,
         4,
         10,
@@ -151,7 +155,7 @@ describe('generateServiceJobOffers', () => {
         SERVICE_JOB_TYPES,
         [],
         CARS,
-        CONTEXT.hiddenIssuesByZone,
+        CONTEXT.hiddenIssuesByComponent,
         7,
         4,
         10,
@@ -163,7 +167,7 @@ describe('generateServiceJobOffers', () => {
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         [],
-        CONTEXT.hiddenIssuesByZone,
+        CONTEXT.hiddenIssuesByComponent,
         7,
         4,
         10,
@@ -188,12 +192,12 @@ describe('reputation helpers', () => {
 
 describe('resolveServiceJob (the single resolution path)', () => {
   it('pays out + grants reputation when the work is done, and the car leaves', () => {
-    const job = activeJob(repairType, { condition: makeCondition(repairZone, 100) })
+    const job = activeJob(repairType, { components: makeComponents(repairComponent, 100) })
     const leftover: Job = {
       id: 'job-x',
       carInstanceId: job.car.id,
       kind: 'repair-zone',
-      zone: repairZone,
+      componentId: repairComponent,
       laborSlotsRequired: 1,
       laborSlotsSpent: 1,
     }
@@ -211,7 +215,7 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('fails (no pay, reputation penalty) when the work is not done', () => {
-    const job = activeJob(repairType, { condition: makeCondition(repairZone, 40) })
+    const job = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
     const state = stateWith(job, { reputationPoints: 50 })
     const cashBefore = state.cashYen
 
@@ -224,7 +228,7 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('clamps the reputation penalty at zero', () => {
-    const job = activeJob(repairType, { condition: makeCondition(repairZone, 40) })
+    const job = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
     const state = stateWith(job) // reputationPoints starts at 0
     const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
     expect(next.reputationPoints).toBe(0)
@@ -239,17 +243,57 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('an install job pays; a pricier installed grade earns more reputation', () => {
-    const budget = PARTS.find((p) => p.slot === installSlot && p.grade === 'stock')!
-    const pricey = PARTS.find((p) => p.slot === installSlot && p.grade !== 'stock')!
+    const budget = PARTS.find((p) => p.componentId === installComponent && p.grade === 'stock')!
+    const pricey = PARTS.find((p) => p.componentId === installComponent && p.grade !== 'stock')!
 
     function repWith(part: (typeof PARTS)[number]): number {
       const job = activeJob(installType, {
-        buildSheet: { ...emptyBuildSheet(), [installSlot]: partInstance(part.id) },
+        components: {
+          ...emptyComponents(),
+          [installComponent]: { condition: 100, installed: partInstance(part.id) },
+        },
       })
       return resolveServiceJob(stateWith(job), job.id, CONTEXT).state.reputationPoints
     }
 
     expect(repWith(pricey)).toBeGreaterThan(repWith(budget))
+  })
+
+  /**
+   * Sprint 12: the old `install-wheels-interior` type (one mixed-theme
+   * flavor pool covering both wheels and interior parts) was split into
+   * separate `install-wheels`/`install-interior` types once wheels and
+   * interior became real, distinct components. The "install job pays" test
+   * above only exercises `brakes` (a pre-existing install type) — this
+   * covers every install type in the real catalog, including the two new
+   * ones, so a broken split (e.g. componentId pointing at the wrong
+   * component, or a missing content entry) fails here instead of silently
+   * passing type-checks and schema validation alone.
+   */
+  it('every install job type in the real catalog resolves work-done correctly for its own component', () => {
+    const installTypes = SERVICE_JOB_TYPES.filter((t) => t.work.kind === 'install')
+    expect(installTypes.some((t) => t.work.componentId === 'wheels')).toBe(true)
+    expect(installTypes.some((t) => t.work.componentId === 'interior')).toBe(true)
+
+    for (const type of installTypes) {
+      const componentId = type.work.componentId
+      const part = PARTS.find((p) => p.componentId === componentId)
+      if (!part) throw new Error(`no catalog part fits component "${componentId}"`)
+
+      const unfinished = activeJob(type)
+      expect(isServiceWorkDone(unfinished)).toBe(false)
+
+      const finished = activeJob(type, {
+        components: {
+          ...emptyComponents(),
+          [componentId]: { condition: 100, installed: partInstance(part.id) },
+        },
+      })
+      expect(isServiceWorkDone(finished)).toBe(true)
+
+      const { outcome } = resolveServiceJob(stateWith(finished), finished.id, CONTEXT)
+      expect(outcome).toBe('paid')
+    }
   })
 })
 
@@ -302,14 +346,14 @@ describe('service jobs in advanceDay', () => {
   })
 
   it('the deadline backstop pays a finished job and fails an unfinished one', () => {
-    const done = activeJob(repairType, { condition: makeCondition(repairZone, 100) })
+    const done = activeJob(repairType, { components: makeComponents(repairComponent, 100) })
     const paidState = { ...createInitialGameState(CONTEXT, 1), day: 8, activeServiceJobs: [done] }
     const paidBefore = paidState.cashYen
     const paid = advanceDay(paidState, DayActionsSchema.parse({}), 8, CONTEXT).state
     expect(paid.cashYen).toBe(paidBefore + done.payoutYen)
     expect(paid.activeServiceJobs).toHaveLength(0)
 
-    const undone = activeJob(repairType, { condition: makeCondition(repairZone, 40) })
+    const undone = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
     const failState = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,

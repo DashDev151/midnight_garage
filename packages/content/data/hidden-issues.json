@@ -1,7 +1,7 @@
 [
   {
     "id": "rusted-rails",
-    "zone": "body",
+    "componentId": "body",
     "severityMin": 15,
     "severityMax": 45,
     "hintText": "faint bubbling under the rear wheel arches",
@@ -9,7 +9,7 @@
   },
   {
     "id": "blown-turbo-seals",
-    "zone": "engine",
+    "componentId": "engine",
     "severityMin": 20,
     "severityMax": 50,
     "hintText": "blue smoke on cold start, clears after a minute",
@@ -17,7 +17,7 @@
   },
   {
     "id": "accident-history",
-    "zone": "body",
+    "componentId": "body",
     "severityMin": 10,
     "severityMax": 60,
     "hintText": "panel gaps look... optimistic",
@@ -25,7 +25,7 @@
   },
   {
     "id": "tired-apex-seals",
-    "zone": "engine",
+    "componentId": "engine",
     "severityMin": 25,
     "severityMax": 55,
     "hintText": "compression numbers the seller conveniently forgot to mention",
@@ -33,7 +33,7 @@
   },
   {
     "id": "dead-synchros",
-    "zone": "drivetrain",
+    "componentId": "drivetrain",
     "severityMin": 10,
     "severityMax": 35,
     "hintText": "grinds into second when cold",
@@ -41,7 +41,7 @@
   },
   {
     "id": "interior-rot",
-    "zone": "interior",
+    "componentId": "interior",
     "severityMin": 10,
     "severityMax": 40,
     "hintText": "dash has that sun-baked crack pattern",
@@ -49,7 +49,7 @@
   },
   {
     "id": "worn-bushings",
-    "zone": "suspension",
+    "componentId": "suspension",
     "severityMin": 10,
     "severityMax": 30,
     "hintText": "clunks over expansion joints",
@@ -57,7 +57,7 @@
   },
   {
     "id": "oil-leak-valve-cover",
-    "zone": "engine",
+    "componentId": "engine",
     "severityMin": 5,
     "severityMax": 20,
     "hintText": "faint haze on the block, more embarrassing than serious",
@@ -65,7 +65,7 @@
   },
   {
     "id": "clutch-slip",
-    "zone": "drivetrain",
+    "componentId": "drivetrain",
     "severityMin": 10,
     "severityMax": 30,
     "hintText": "revs flare slightly under load",
@@ -73,7 +73,7 @@
   },
   {
     "id": "faded-paint-clearcoat",
-    "zone": "body",
+    "componentId": "body",
     "severityMin": 5,
     "severityMax": 20,
     "hintText": "clearcoat is peeling on the roof",

@@ -1,4 +1,4 @@
-import type { GameState, Zone } from '@midnight-garage/content'
+import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
@@ -7,7 +7,13 @@ import { createRng, hashStringToSeed, type Rng } from '../rng'
 import { bestFitBuyer } from '../selling'
 import { valuateCarForBuyer } from '../valuation'
 
-const ZONES: readonly Zone[] = ['engine', 'drivetrain', 'suspension', 'body', 'interior']
+const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
+  'engine',
+  'drivetrain',
+  'suspension',
+  'body',
+  'interior',
+]
 const REPAIR_THRESHOLD = 90
 const REPAIR_LABOR_SLOTS = 2
 const MAX_CONCURRENT_CARS = 3
@@ -42,7 +48,7 @@ interface ArchetypeProfile {
 const PROFILES: Record<Archetype, ArchetypeProfile> = {
   flip: { repairZonesBeforeSale: 1, sellChannel: 'walk-in' },
   mid: { repairZonesBeforeSale: 2, sellChannel: 'threshold' },
-  restore: { repairZonesBeforeSale: ZONES.length, sellChannel: 'list' },
+  restore: { repairZonesBeforeSale: REPAIRABLE_COMPONENTS.length, sellChannel: 'list' },
 }
 
 /**
@@ -97,18 +103,20 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
     const profile = PROFILES[archetypeForCar(car.id)]
-    const repairedCount = ZONES.filter((z) => car.condition[z] >= REPAIR_THRESHOLD).length
+    const repairedCount = REPAIRABLE_COMPONENTS.filter(
+      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    ).length
     if (repairedCount >= profile.repairZonesBeforeSale) continue
 
-    const worstZone = ZONES.reduce((worst, zone) =>
-      car.condition[zone] < car.condition[worst] ? zone : worst,
+    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
+      car.components[id].condition < car.components[worst].condition ? id : worst,
     )
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,
       kind: 'repair-zone',
-      zone: worstZone,
+      componentId: worstComponent,
       laborSlotsRequired: REPAIR_LABOR_SLOTS,
     })
     const slots = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
@@ -124,7 +132,9 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const profile = PROFILES[archetypeForCar(car.id)]
-    const repairedCount = ZONES.filter((z) => car.condition[z] >= REPAIR_THRESHOLD).length
+    const repairedCount = REPAIRABLE_COMPONENTS.filter(
+      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    ).length
     if (repairedCount < profile.repairZonesBeforeSale) continue
 
     if (profile.sellChannel === 'list') {

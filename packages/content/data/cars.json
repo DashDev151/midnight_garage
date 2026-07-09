@@ -16,8 +16,8 @@
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 180000,
     "hiddenIssueWeights": [
-      { "zone": "body", "weight": 0.8 },
-      { "zone": "engine", "weight": 0.3 }
+      { "componentId": "body", "weight": 0.8 },
+      { "componentId": "engine", "weight": 0.3 }
     ]
   },
   {
@@ -37,8 +37,8 @@
     "tags": ["FF", "NA", "Piston", "Kei", "90s", "JDM"],
     "bookValueYen": 220000,
     "hiddenIssueWeights": [
-      { "zone": "body", "weight": 0.6 },
-      { "zone": "suspension", "weight": 0.4 }
+      { "componentId": "body", "weight": 0.6 },
+      { "componentId": "suspension", "weight": 0.4 }
     ]
   },
   {
@@ -58,8 +58,8 @@
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
     "bookValueYen": 650000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.4 },
-      { "zone": "interior", "weight": 0.3 }
+      { "componentId": "engine", "weight": 0.4 },
+      { "componentId": "interior", "weight": 0.3 }
     ]
   },
   {
@@ -79,8 +79,8 @@
     "tags": ["FR", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 1400000,
     "hiddenIssueWeights": [
-      { "zone": "drivetrain", "weight": 0.5 },
-      { "zone": "suspension", "weight": 0.3 }
+      { "componentId": "drivetrain", "weight": 0.5 },
+      { "componentId": "suspension", "weight": 0.3 }
     ]
   },
   {
@@ -100,8 +100,8 @@
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 1100000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.5 },
-      { "zone": "body", "weight": 0.3 }
+      { "componentId": "engine", "weight": 0.5 },
+      { "componentId": "body", "weight": 0.3 }
     ]
   },
   {
@@ -121,8 +121,8 @@
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 1600000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.3 },
-      { "zone": "interior", "weight": 0.4 }
+      { "componentId": "engine", "weight": 0.3 },
+      { "componentId": "interior", "weight": 0.4 }
     ]
   },
   {
@@ -142,8 +142,8 @@
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 1500000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.5 },
-      { "zone": "suspension", "weight": 0.3 }
+      { "componentId": "engine", "weight": 0.5 },
+      { "componentId": "suspension", "weight": 0.3 }
     ]
   },
   {
@@ -163,8 +163,8 @@
     "tags": ["FR", "Turbo", "Rotary", "80s", "JDM"],
     "bookValueYen": 1800000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.7 },
-      { "zone": "body", "weight": 0.3 }
+      { "componentId": "engine", "weight": 0.7 },
+      { "componentId": "body", "weight": 0.3 }
     ]
   },
   {
@@ -184,8 +184,8 @@
     "tags": ["FR", "Turbo", "Rotary", "90s", "JDM"],
     "bookValueYen": 3200000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.7 },
-      { "zone": "drivetrain", "weight": 0.3 }
+      { "componentId": "engine", "weight": 0.7 },
+      { "componentId": "drivetrain", "weight": 0.3 }
     ]
   },
   {
@@ -205,8 +205,8 @@
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 4200000,
     "hiddenIssueWeights": [
-      { "zone": "engine", "weight": 0.3 },
-      { "zone": "drivetrain", "weight": 0.3 }
+      { "componentId": "engine", "weight": 0.3 },
+      { "componentId": "drivetrain", "weight": 0.3 }
     ]
   }
 ]

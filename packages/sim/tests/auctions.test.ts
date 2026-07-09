@@ -4,7 +4,7 @@ import {
   auctionTierForRarity,
   generateAuctionCarInstance,
   generateAuctionCatalog,
-  groupHiddenIssuesByZone,
+  groupHiddenIssuesByComponent,
   inspectLot,
   resolveHandoverCondition,
   resolveInspectLot,
@@ -38,7 +38,7 @@ function stateWithLots(
   }
 }
 
-const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
+const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 const HIDDEN_ISSUES_BY_ID = Object.fromEntries(HIDDEN_ISSUES.map((issue) => [issue.id, issue]))
 
 /** A synthetic Gaisha model — PoC-10 has none, so this proves the exclusion holds even when one exists in the pool. */
@@ -82,7 +82,7 @@ describe('generateAuctionCatalog never includes Gaisha', () => {
         const lots = generateAuctionCatalog(
           modelsWithGaisha,
           tier,
-          HIDDEN_ISSUES_BY_ZONE,
+          HIDDEN_ISSUES_BY_COMPONENT,
           7,
           5,
           7,
@@ -100,34 +100,62 @@ describe('generateAuctionCarInstance', () => {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!model) throw new Error('fixture car missing from seed content')
 
+  const COMPONENT_IDS = [
+    'engine',
+    'forcedInduction',
+    'drivetrain',
+    'suspension',
+    'brakes',
+    'wheels',
+    'body',
+    'interior',
+  ] as const
+
   it('rolls condition and authenticity within sane bounds', () => {
     const rng = createRng(1)
-    const instance = generateAuctionCarInstance(model, HIDDEN_ISSUES_BY_ZONE, 'car-test', rng)
-    for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
-      expect(instance.condition[zone]).toBeGreaterThanOrEqual(0)
-      expect(instance.condition[zone]).toBeLessThanOrEqual(100)
+    const instance = generateAuctionCarInstance(model, HIDDEN_ISSUES_BY_COMPONENT, 'car-test', rng)
+    for (const componentId of COMPONENT_IDS) {
+      expect(instance.components[componentId].condition).toBeGreaterThanOrEqual(0)
+      expect(instance.components[componentId].condition).toBeLessThanOrEqual(100)
     }
     expect(instance.authenticityPercent).toBeGreaterThanOrEqual(60)
     expect(instance.authenticityPercent).toBeLessThanOrEqual(95)
     expect(instance.year).toBeGreaterThanOrEqual(model.spec.yearFrom)
   })
 
-  it('starts stock — every build sheet slot is empty', () => {
+  it('rolled component conditions cluster around a shared per-car baseline (Sprint 12 decision 5)', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const instance = generateAuctionCarInstance(
+        model,
+        HIDDEN_ISSUES_BY_COMPONENT,
+        'car-test',
+        createRng(seed),
+      )
+      const conditions = COMPONENT_IDS.map((id) => instance.components[id].condition)
+      const spread = Math.max(...conditions) - Math.min(...conditions)
+      // Two components' conditions can each swing +/-15 from the shared
+      // baseline, so the worst-case spread within one car is 30 — never the
+      // near-100 spread independent rolls could produce (e.g. 100 vs 1).
+      expect(spread).toBeLessThanOrEqual(30)
+    }
+  })
+
+  it('starts stock — every component has nothing installed', () => {
     const instance = generateAuctionCarInstance(
       model,
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       'car-test',
       createRng(1),
     )
-    for (const part of Object.values(instance.buildSheet)) {
-      expect(part).toBeNull()
+    for (const componentId of COMPONENT_IDS) {
+      expect(instance.components[componentId].installed).toBeNull()
     }
   })
 
   it('hidden issues start unrevealed', () => {
     const instance = generateAuctionCarInstance(
       model,
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       'car-test',
       createRng(2),
     )
@@ -152,7 +180,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
     for (let seed = 0; seed < 30; seed++) {
       const instance = generateAuctionCarInstance(
         model,
-        HIDDEN_ISSUES_BY_ZONE,
+        HIDDEN_ISSUES_BY_COMPONENT,
         'car-test',
         createRng(seed),
         1996,
@@ -165,7 +193,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
     const lots = generateAuctionCatalog(
       [FUTURE_MODEL],
       'local-yard',
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       7,
       5,
       7,
@@ -179,7 +207,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
     const lots = generateAuctionCatalog(
       [FUTURE_MODEL],
       'local-yard',
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       7,
       5,
       7,
@@ -196,7 +224,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
     const lots = generateAuctionCatalog(
       [FUTURE_MODEL],
       'local-yard',
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       7,
       5,
       7,
@@ -213,7 +241,7 @@ describe('inspectLot', () => {
     const lots = generateAuctionCatalog(
       CARS,
       'local-yard',
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       7,
       10,
       7,
@@ -237,7 +265,7 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
     const [lot] = generateAuctionCatalog(
       [model],
       'premium',
-      HIDDEN_ISSUES_BY_ZONE,
+      HIDDEN_ISSUES_BY_COMPONENT,
       7,
       1,
       7,
@@ -291,7 +319,7 @@ describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
       const [lot] = generateAuctionCatalog(
         [model],
         'regional',
-        HIDDEN_ISSUES_BY_ZONE,
+        HIDDEN_ISSUES_BY_COMPONENT,
         7,
         1,
         7,
@@ -318,7 +346,7 @@ describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
       createRng(1),
     )
     // Same rng seed, same rolled severity — inspected outcomes don't vary with price.
-    expect(atBookValue.condition).toEqual(atSteal.condition)
+    expect(atBookValue.components).toEqual(atSteal.components)
   })
 
   it('an uninspected fair-price purchase dampens the outcome (never a full-severity showstopper)', () => {
@@ -331,8 +359,8 @@ describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
       HIDDEN_ISSUES_BY_ID,
       createRng(2),
     )
-    const before = lot.car.condition[issue.zone]
-    const after = resolved.condition[issue.zone]
+    const before = lot.car.components[issue.componentId].condition
+    const after = resolved.components[issue.componentId].condition
     expect(before - after).toBeLessThanOrEqual(issue.severityMax * 0.5 + 0.01)
   })
 

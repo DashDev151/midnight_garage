@@ -1,7 +1,7 @@
 [
   {
     "id": "repair-engine",
-    "work": { "kind": "repair", "zone": "engine" },
+    "work": { "kind": "repair", "componentId": "engine" },
     "payoutRangeYen": [28000, 38000],
     "baseReputation": 2,
     "flavorPool": [
@@ -13,19 +13,19 @@
   },
   {
     "id": "repair-drivetrain",
-    "work": { "kind": "repair", "zone": "drivetrain" },
+    "work": { "kind": "repair", "componentId": "drivetrain" },
     "payoutRangeYen": [30000, 42000],
     "baseReputation": 2,
     "flavorPool": [
       "Something's grinding when I shift. Sort the drivetrain out.",
-      "Power's not getting to the wheels like it should.",
+      "Power delivery feels off, like it's slipping somewhere.",
       "Clutch feels off and there's a whine on acceleration.",
       "Drivetrain's due for attention — it's been slipping."
     ]
   },
   {
     "id": "repair-suspension",
-    "work": { "kind": "repair", "zone": "suspension" },
+    "work": { "kind": "repair", "componentId": "suspension" },
     "payoutRangeYen": [20000, 32000],
     "baseReputation": 1,
     "flavorPool": [
@@ -37,7 +37,7 @@
   },
   {
     "id": "repair-body",
-    "work": { "kind": "repair", "zone": "body" },
+    "work": { "kind": "repair", "componentId": "body" },
     "payoutRangeYen": [32000, 45000],
     "baseReputation": 2,
     "flavorPool": [
@@ -49,7 +49,7 @@
   },
   {
     "id": "repair-interior",
-    "work": { "kind": "repair", "zone": "interior" },
+    "work": { "kind": "repair", "componentId": "interior" },
     "payoutRangeYen": [18000, 28000],
     "baseReputation": 1,
     "flavorPool": [
@@ -61,7 +61,7 @@
   },
   {
     "id": "install-engine",
-    "work": { "kind": "install", "slot": "engine" },
+    "work": { "kind": "install", "componentId": "engine" },
     "payoutRangeYen": [90000, 130000],
     "baseReputation": 3,
     "flavorPool": [
@@ -72,7 +72,7 @@
   },
   {
     "id": "install-forced-induction",
-    "work": { "kind": "install", "slot": "forcedInduction" },
+    "work": { "kind": "install", "componentId": "forcedInduction" },
     "payoutRangeYen": [110000, 150000],
     "baseReputation": 4,
     "flavorPool": [
@@ -83,7 +83,7 @@
   },
   {
     "id": "install-drivetrain",
-    "work": { "kind": "install", "slot": "drivetrain" },
+    "work": { "kind": "install", "componentId": "drivetrain" },
     "payoutRangeYen": [80000, 110000],
     "baseReputation": 3,
     "flavorPool": [
@@ -94,7 +94,7 @@
   },
   {
     "id": "install-suspension",
-    "work": { "kind": "install", "slot": "suspension" },
+    "work": { "kind": "install", "componentId": "suspension" },
     "payoutRangeYen": [85000, 105000],
     "baseReputation": 3,
     "flavorPool": [
@@ -105,7 +105,7 @@
   },
   {
     "id": "install-brakes",
-    "work": { "kind": "install", "slot": "brakes" },
+    "work": { "kind": "install", "componentId": "brakes" },
     "payoutRangeYen": [50000, 70000],
     "baseReputation": 2,
     "flavorPool": [
@@ -115,8 +115,8 @@
     ]
   },
   {
-    "id": "install-body-aero",
-    "work": { "kind": "install", "slot": "bodyAero" },
+    "id": "install-body",
+    "work": { "kind": "install", "componentId": "body" },
     "payoutRangeYen": [45000, 65000],
     "baseReputation": 2,
     "flavorPool": [
@@ -126,14 +126,25 @@
     ]
   },
   {
-    "id": "install-wheels-interior",
-    "work": { "kind": "install", "slot": "wheelsInterior" },
-    "payoutRangeYen": [70000, 95000],
+    "id": "install-wheels",
+    "work": { "kind": "install", "componentId": "wheels" },
+    "payoutRangeYen": [55000, 80000],
     "baseReputation": 2,
     "flavorPool": [
       "Mount a fresh set of wheels for me.",
       "Sort me some new wheels — I'm done with the stock look.",
-      "Interior needs the upgrade treatment. Fit something nice."
+      "Fit something sharper on the corners. New wheels, your call."
+    ]
+  },
+  {
+    "id": "install-interior",
+    "work": { "kind": "install", "componentId": "interior" },
+    "payoutRangeYen": [70000, 95000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Interior needs the upgrade treatment. Fit something nice.",
+      "Stock seat's falling apart. Get me a real bucket seat.",
+      "Want it feeling special inside, not just stock."
     ]
   }
 ]

@@ -138,6 +138,19 @@ export const AUCTION_TRAVEL_FEE_YEN: Readonly<Record<AuctionTier, number>> = {
   'collector-network': 40_000,
 }
 
+/**
+ * Correlated per-car condition roll (Sprint 12): a car's 8 components no
+ * longer roll condition independently (which let a car land a pristine
+ * engine and a wrecked transmission with no relationship between them) — one
+ * baseline is rolled per car, in this range, and each component jitters
+ * around it (see CAR_CONDITION_JITTER). Keeps today's 30-90 overall spread.
+ */
+export const CAR_CONDITION_BASE_MIN = 30
+export const CAR_CONDITION_BASE_MAX = 90
+
+/** Max +/- spread each component rolls away from its car's condition baseline. */
+export const CAR_CONDITION_JITTER = 15
+
 /** GDD 6.5: Collector Network is rep-gated. First-pass threshold. */
 export const COLLECTOR_NETWORK_MIN_REPUTATION: ReputationTier = 'respected'
 

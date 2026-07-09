@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { GradeSchema, SlotSchema, TagSchema } from './tags'
+import { ComponentIdSchema, GradeSchema, TagSchema } from './tags'
 import { StatModifierSchema } from './stats'
 
 /** Parts are parody-branded from day one (GDD 2.4) — no real/parody split. */
@@ -7,7 +7,7 @@ export const PartSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
   brand: z.string().min(1),
   name: z.string().min(1),
-  slot: SlotSchema,
+  componentId: ComponentIdSchema,
   grade: GradeSchema,
   requiredTags: z.array(TagSchema).default([]),
   statModifiers: StatModifierSchema,

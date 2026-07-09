@@ -10,7 +10,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
-import { generateAuctionCatalog, groupHiddenIssuesByZone } from '../src/auctions'
+import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
@@ -24,14 +24,14 @@ const CONTEXT = buildSimContext(
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
 )
-const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
+const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 
 function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
   const [lot] = generateAuctionCatalog(
     [model],
     'local-yard',
-    HIDDEN_ISSUES_BY_ZONE,
+    HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
     30,
@@ -62,7 +62,7 @@ describe('labor is gated by service-bay membership', () => {
         {
           carInstanceId: car.id,
           kind: 'repair-zone' as const,
-          zone: 'body' as const,
+          componentId: 'body' as const,
           laborSlotsRequired: 1,
         },
       ],
@@ -92,7 +92,7 @@ describe('labor is gated by service-bay membership', () => {
         {
           carInstanceId: car.id,
           kind: 'repair-zone' as const,
-          zone: 'body' as const,
+          componentId: 'body' as const,
           laborSlotsRequired: 1,
         },
       ],
@@ -100,7 +100,7 @@ describe('labor is gated by service-bay membership', () => {
     }
     const { state: next } = advanceDay(won, actions, 2, CONTEXT)
     expect(next.jobs).toHaveLength(0) // completed and removed same day
-    expect(next.ownedCars[0]?.condition.body).toBe(100)
+    expect(next.ownedCars[0]?.components.body.condition).toBe(100)
   })
 })
 

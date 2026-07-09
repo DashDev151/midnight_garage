@@ -22,8 +22,18 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   correct, since that save's day genuinely hadn't spent any labor under a
  *   mechanic that didn't exist yet. A v4-or-later save always carries its
  *   real value, mid-day or not — no explicit `MIGRATIONS[3]` step needed.
+ * - v5 (Sprint 12): `CarInstance`'s `condition`/`buildSheet` split collapsed
+ *   into one unified `components` map (zones+slots -> components refactor).
+ *   Deliberately **no `MIGRATIONS[4]` step** — the maintainer confirmed there
+ *   are no existing saves worth preserving, so a pre-v5 save's `CarInstance`
+ *   simply no longer matches the schema and `GameStateSchema.parse` below
+ *   throws. That's intentional, not a gap: `hydrate()`/`importSaveCode()`
+ *   (packages/game/src/stores/gameStore.ts) already catch a `decodeSave`
+ *   failure and fall back to a fresh career, so nothing new needed building
+ *   for it, only testing (saveCodec.test.ts confirms a pre-v5 code fails
+ *   cleanly rather than crashing).
  */
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -121,12 +121,14 @@ describe('market: buying parts', () => {
   it('buying a part lands in inventory instantly and is then installable', () => {
     const game = useGameStore()
     // A power part + a compatible car, so the bought part is actually installable.
-    let pair: { partId: string; slot: (typeof PARTS)[number]['slot']; modelId: string } | undefined
+    let pair:
+      | { partId: string; componentId: (typeof PARTS)[number]['componentId']; modelId: string }
+      | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
       const model = CARS.find((c) => part.requiredTags.every((t) => c.tags.includes(t)))
       if (model) {
-        pair = { partId: part.id, slot: part.slot, modelId: model.id }
+        pair = { partId: part.id, componentId: part.componentId, modelId: model.id }
         break
       }
     }
@@ -141,7 +143,9 @@ describe('market: buying parts', () => {
     expect(game.gameState.partInventory).toHaveLength(1)
     expect(game.cashYen).toBeLessThan(cashBefore)
     const bought = game.gameState.partInventory[0]!
-    expect(game.installablePartsFor(car.id, pair.slot).some((pi) => pi.id === bought.id)).toBe(true)
+    expect(
+      game.installablePartsFor(car.id, pair.componentId).some((pi) => pi.id === bought.id),
+    ).toBe(true)
   })
 
   it('buyPart ignores an unknown part id', () => {

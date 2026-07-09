@@ -1,4 +1,4 @@
-import { CARS, PARTS, type Slot } from '@midnight-garage/content'
+import { CARS, PARTS, type ComponentId } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { repairLaborSlotsFor } from '../constants'
@@ -38,9 +38,16 @@ describe('garage: instant repair and labor', () => {
 
   it('repairing completes and lifts the zone to 100 over the right number of days', () => {
     const game = useGameStore()
-    game.devGrantCar(CARS[0]!.id)
-    const car = game.gameState.ownedCars[0]!
-    const before = car.condition.engine
+    // Correlated condition rolls (Sprint 12) can occasionally clamp a
+    // component to 100 even on a "rough" car — retry grants until the
+    // engine specifically needs work, since that's what this test exercises.
+    let car = game.gameState.ownedCars.at(-1)
+    for (let i = 0; i < 30 && (!car || car.components.engine.condition >= 100); i++) {
+      game.devGrantCar(CARS[0]!.id)
+      car = game.gameState.ownedCars.at(-1)!
+    }
+    if (!car) throw new Error('expected a granted car')
+    const before = car.components.engine.condition
     expect(before).toBeLessThan(100) // generated cars are rough
 
     const needed = repairLaborSlotsFor(before)
@@ -65,7 +72,7 @@ describe('garage: instant repair and labor', () => {
       }
     }
 
-    expect(game.gameState.ownedCars[0]!.condition.engine).toBe(100)
+    expect(game.carDetail(car.id)!.car.components.engine.condition).toBe(100)
     // The job is consumed once complete.
     expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
   })
@@ -85,14 +92,15 @@ describe('garage: instant repair and labor', () => {
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
     const perDay = game.laborSlotsPerDay
-    // Repair all five zones instantly — collectively far more labor than one day.
-    for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
-      game.repair(car.id, zone)
+    // Repair all five repairable components instantly — collectively far more labor than one day.
+    for (const componentId of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
+      game.repair(car.id, componentId)
     }
-    // After spending today's budget, total labor spent across jobs cannot exceed it.
-    const spent = game.gameState.jobs.reduce((s, j) => s + j.laborSlotsSpent, 0)
-    expect(spent).toBeLessThanOrEqual(perDay)
-    expect(spent).toBeGreaterThan(0)
+    // The live daily counter is the authoritative spend — reconstructing it
+    // from remaining *open* jobs undercounts whenever a repair completes and
+    // its job is removed the same day (correlated condition rolls, Sprint
+    // 12, make same-cost repairs across components common).
+    expect(game.gameState.laborSlotsSpentToday).toBe(perDay)
     expect(game.laborSlotsRemainingToday).toBe(0)
   })
 })
@@ -104,12 +112,12 @@ describe('garage: instant part install', () => {
     const game = useGameStore()
     // Find a real power part and a model whose tags satisfy its requiredTags.
     // Power has no upper clamp, so an install is guaranteed to move that axis.
-    let pair: { partId: string; slot: Slot; modelId: string } | undefined
+    let pair: { partId: string; componentId: ComponentId; modelId: string } | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
       const model = CARS.find((c) => part.requiredTags.every((t) => c.tags.includes(t)))
       if (model) {
-        pair = { partId: part.id, slot: part.slot, modelId: model.id }
+        pair = { partId: part.id, componentId: part.componentId, modelId: model.id }
         break
       }
     }
@@ -122,19 +130,19 @@ describe('garage: instant part install', () => {
     const partInstance = game.gameState.partInventory[0]!
 
     const powerBefore = game.carDetail(car.id)!.stats.power
-    // The compatibility filter offers exactly this part for the slot.
-    const offered = game.installablePartsFor(car.id, pair.slot)
+    // The compatibility filter offers exactly this part for the component.
+    const offered = game.installablePartsFor(car.id, pair.componentId)
     expect(offered.some((pi) => pi.id === partInstance.id)).toBe(true)
 
-    game.install(car.id, pair.slot, partInstance.id) // a single-slot job, completes instantly
+    game.install(car.id, pair.componentId, partInstance.id) // a single-component job, completes instantly
 
     const after = game.gameState.ownedCars[0]!
-    expect(after.buildSheet[pair.slot]?.partId).toBe(pair.partId)
+    expect(after.components[pair.componentId].installed?.partId).toBe(pair.partId)
     expect(game.gameState.partInventory).toHaveLength(0) // consumed from inventory
     expect(game.carDetail(car.id)!.stats.power).toBeGreaterThan(powerBefore)
   })
 
-  it('installablePartsFor excludes a slot that is already occupied', () => {
+  it('installablePartsFor excludes a component that is already occupied', () => {
     const game = useGameStore()
     const part = PARTS.find((p) => p.requiredTags.length === 0)!
     game.devGrantCar(CARS[0]!.id)
@@ -142,9 +150,9 @@ describe('garage: instant part install', () => {
     game.moveCar(car.id, 'service')
     game.devGrantPart(part.id)
     const partInstance = game.gameState.partInventory[0]!
-    game.install(car.id, part.slot, partInstance.id)
-    // Slot now filled - a second grant of the same part is not offered for it.
+    game.install(car.id, part.componentId, partInstance.id)
+    // Component now filled - a second grant of the same part is not offered for it.
     game.devGrantPart(part.id)
-    expect(game.installablePartsFor(car.id, part.slot)).toHaveLength(0)
+    expect(game.installablePartsFor(car.id, part.componentId)).toHaveLength(0)
   })
 })

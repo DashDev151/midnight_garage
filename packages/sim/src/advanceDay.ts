@@ -65,7 +65,7 @@ export function advanceDay(
   // 1. Bots' queued job creation. The player never populates this — an
   // instant repair/install click finds-or-creates its own job
   // (jobs.ts's resolveJobLabor/findOrCreateJob) using a different,
-  // car+zone/slot-derived id scheme. Bots predict `job-${day}-${i}` ids in
+  // car+componentId-derived id scheme. Bots predict `job-${day}-${i}` ids in
   // the same tick to reference in laborAssignments below, so this id scheme
   // stays exactly as it was — the two schemes never need to agree, because a
   // given GameState is only ever a bot's or only ever a player's.
