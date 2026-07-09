@@ -2,13 +2,19 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
 
 /**
  * Save schema version. The Save law (CLAUDE.md engineering law 4): every
- * future change to the GameState shape bumps this, adds a `migrate` case,
- * and updates the golden-save test in the same PR. This is the first save
- * ever written — version 1.
+ * change to the GameState shape bumps this, adds a `migrate` case if needed,
+ * and updates the golden-save test in the same PR.
+ *
+ * - v1: first save (Sprint 07).
+ * - v2 (Sprint 08): added `reputationPoints`, `serviceJobOffers`,
+ *   `activeServiceJobs` to GameState. Purely additive with schema defaults, so
+ *   a v1 save decodes under v2 with the new fields default-filled — no explicit
+ *   `MIGRATIONS[1]` step is needed (the golden-save test pins that a v1 code
+ *   still loads).
  */
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 
-/** Human-spottable prefix so a mistyped/garbage paste fails fast, not cryptically. */
+/** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
 
 interface SaveEnvelope {

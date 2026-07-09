@@ -7,6 +7,7 @@ import type {
   Job,
   PartInstance,
   PublicListing,
+  ServiceJob,
 } from '@midnight-garage/content'
 import type { DayActions } from './actions'
 import { generateAuctionCatalog, inspectLot, resolveHandoverCondition } from './auctions'
@@ -18,6 +19,9 @@ import {
   AUCTION_TRAVEL_FEE_YEN,
   COLLECTOR_NETWORK_MIN_REPUTATION,
   PUBLIC_LISTING_WAIT_DAYS,
+  SERVICE_JOB_DEADLINE_DAYS,
+  SERVICE_JOB_EXPIRY_DAYS,
+  SERVICE_JOB_OFFERS_PER_REFRESH,
 } from './constants'
 import type { SimContext } from './context'
 import { applyWeeklyRentAndWages } from './finances'
@@ -26,6 +30,7 @@ import { availableLaborSlots } from './laborSlots'
 import { driftMarketHeat } from './marketHeat'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
+import { generateServiceJobOffers, resolveServiceJob } from './serviceJobs'
 import { listPubliclyAskingPrice, sellViaWalkIn } from './selling'
 
 export interface AdvanceDayResult {
@@ -107,6 +112,27 @@ export function advanceDay(
     })
   })
 
+  // 1c. Accept queued service jobs (GDD Act 1 "job cards"). Accepting simply
+  // moves the offer into activeServiceJobs — the customer's car is now sitting
+  // in the shop. The player then does the actual work on it (buy parts, assign
+  // labor via the normal job system) and clicks "Complete Job" when it's done.
+  const offersById = new Map(next.serviceJobOffers.map((offer) => [offer.id, offer]))
+  const newActiveServiceJobs: ServiceJob[] = []
+  for (const action of queuedActions.acceptServiceJobs) {
+    const offer = offersById.get(action.offerId)
+    if (!offer) continue
+    offersById.delete(offer.id)
+    // Stamp the work deadline now — the player has SERVICE_JOB_DEADLINE_DAYS
+    // from acceptance to finish and hand the car back.
+    newActiveServiceJobs.push({ ...offer, dueOnDay: next.day + SERVICE_JOB_DEADLINE_DAYS })
+    log.push({ type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id })
+  }
+  next = {
+    ...next,
+    serviceJobOffers: Array.from(offersById.values()),
+    activeServiceJobs: [...next.activeServiceJobs, ...newActiveServiceJobs],
+  }
+
   // 2. Labor budget for the day, shared by lot inspections and job assignments.
   const available = availableLaborSlots(next)
   let remainingLabor = available
@@ -135,6 +161,9 @@ export function advanceDay(
     })
   }
 
+  // Labor applies to jobs, which target either an owned car or a customer's
+  // car sitting in a service job — both worked through the same job/labor
+  // system, so there's a single code path here.
   const jobsById = new Map(next.jobs.map((job) => [job.id, job]))
   for (const assignment of queuedActions.laborAssignments) {
     if (remainingLabor <= 0) break
@@ -171,6 +200,10 @@ export function advanceDay(
     })
   }
   next = { ...next, jobs: stillOpen }
+
+  // 3b. Service-job completion is NOT resolved here — the player resolves it the
+  // instant they click "Complete Job" (a store call to resolveServiceJob). The
+  // only End-Day involvement is the deadline backstop in step 8b below.
 
   // 4. Resolve queued auction actions. Buyouts first (guaranteed purchase at
   // a premium, no contest), then competitive bids on what's left.
@@ -320,6 +353,36 @@ export function advanceDay(
       log.push({ type: 'auction-catalog-refreshed', tier, lotCount: lots.length })
     }
     next = { ...next, activeAuctionLots: [...next.activeAuctionLots, ...freshLots] }
+  }
+
+  // 8b. Expire stale service-job offers, then post a fresh batch weekly.
+  const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
+  next = { ...next, serviceJobOffers: unexpiredOffers }
+  if (next.day % 7 === 0) {
+    const freshOffers = generateServiceJobOffers(
+      context.serviceJobTemplates,
+      context.models,
+      context.hiddenIssuesByZone,
+      next.day,
+      SERVICE_JOB_OFFERS_PER_REFRESH,
+      SERVICE_JOB_EXPIRY_DAYS,
+      rng,
+    )
+    if (freshOffers.length > 0) {
+      next = { ...next, serviceJobOffers: [...next.serviceJobOffers, ...freshOffers] }
+    }
+  }
+
+  // 8c. Deadline backstop: any accepted job now at/past its due day is handed
+  // back automatically via the same resolver the player's click uses — paid if
+  // the work got done in time, failed (reputation penalty, no pay) if not.
+  const overdueJobIds = next.activeServiceJobs
+    .filter((sj) => sj.dueOnDay !== null && sj.dueOnDay <= next.day)
+    .map((sj) => sj.id)
+  for (const jobId of overdueJobIds) {
+    const resolution = resolveServiceJob(next, jobId, context)
+    next = resolution.state
+    log.push(...resolution.log)
   }
 
   // 9. Daily service-bay income.

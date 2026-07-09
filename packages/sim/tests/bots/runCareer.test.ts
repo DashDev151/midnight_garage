@@ -1,14 +1,15 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS } from '@midnight-garage/content'
+import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, SERVICE_JOB_TEMPLATES } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { balancedPlayerStrategy } from '../../src/bots/balancedPlayer'
 import { cautiousRestorerStrategy } from '../../src/bots/cautiousRestorer'
 import { flipperStrategy } from '../../src/bots/flipper'
 import { passiveGrinderStrategy } from '../../src/bots/passiveGrinder'
 import { randomStrategy } from '../../src/bots/randomStrategy'
+import { serviceGrinderStrategy } from '../../src/bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../../src/bots/runCareer'
 import { buildSimContext } from '../../src/context'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES)
 
 const STRATEGIES: Record<string, BotStrategy> = {
   'passive-grinder': passiveGrinderStrategy,
@@ -16,6 +17,7 @@ const STRATEGIES: Record<string, BotStrategy> = {
   'cautious-restorer': cautiousRestorerStrategy,
   'balanced-player': balancedPlayerStrategy,
   random: randomStrategy,
+  'service-grinder': serviceGrinderStrategy,
 }
 
 describe.each(Object.entries(STRATEGIES))('%s strategy', (_name, strategy) => {
@@ -42,5 +44,16 @@ describe('Passive Grinder', () => {
     for (const snapshot of snapshots) {
       expect(snapshot.carsOwned).toBe(0)
     }
+  })
+})
+
+describe('Service Grinder (the Act 1 floor)', () => {
+  it('earns from service jobs — out-earns the do-nothing Passive Grinder by day 100', () => {
+    const grinder = runCareer(serviceGrinderStrategy, 1, 100, CONTEXT)
+    const passive = runCareer(passiveGrinderStrategy, 1, 100, CONTEXT)
+    // Both start equal and pay the same rent; the difference is job income.
+    expect(grinder[99]!.cashYen).toBeGreaterThan(passive[99]!.cashYen)
+    // ...and it never owns a car (service work is on cars it doesn't own).
+    expect(grinder.every((s) => s.carsOwned === 0)).toBe(true)
   })
 })

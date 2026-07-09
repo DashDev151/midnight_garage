@@ -32,7 +32,7 @@ describe('saveCodec', () => {
     expect(() => GameStateSchema.parse(decoded)).not.toThrow()
   })
 
-  it('decodes the pinned golden v1 save (Save law)', () => {
+  it('decodes the pinned golden v1 save under the current version (Save law)', () => {
     const decoded = decodeSave(GOLDEN_V1_CODE)
     expect(decoded.day).toBe(5)
     expect(decoded.cashYen).toBe(900_000)
@@ -40,6 +40,11 @@ describe('saveCodec', () => {
     // Schema defaults fill the arrays a minimal v1 save omitted.
     expect(decoded.ownedCars).toEqual([])
     expect(decoded.activeListings).toEqual([])
+    // v1 -> v2 migration is pure default-fill: the Sprint-08 fields a v1 save
+    // never had come back at their defaults, proving old saves still load.
+    expect(decoded.reputationPoints).toBe(0)
+    expect(decoded.serviceJobOffers).toEqual([])
+    expect(decoded.activeServiceJobs).toEqual([])
   })
 
   it('rejects a non-save string', () => {

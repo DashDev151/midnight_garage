@@ -10,6 +10,7 @@ const EMPTY_ACTIONS = {
   sellViaWalkIn: [],
   listForSale: [],
   buyParts: [],
+  acceptServiceJobs: [],
 }
 
 describe('DayActionsSchema', () => {

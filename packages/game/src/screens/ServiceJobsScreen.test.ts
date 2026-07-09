@@ -1,0 +1,40 @@
+import { mount, RouterLinkStub } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { useGameStore } from '../stores/gameStore'
+import ServiceJobsScreen from './ServiceJobsScreen.vue'
+
+function mountScreen() {
+  return mount(ServiceJobsScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+}
+
+function warpToOffers(game: ReturnType<typeof useGameStore>) {
+  for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
+}
+
+describe('ServiceJobsScreen', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('shows the empty board before any offers, then the offers after', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const wrapper = mountScreen()
+    expect(wrapper.text()).toContain('No jobs on the board')
+
+    warpToOffers(game)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).not.toContain('No jobs on the board')
+    expect(wrapper.findAll('.offer').length).toBe(game.serviceJobOffers.length)
+  })
+
+  it('accepting a job queues it to bring the car into the shop', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    warpToOffers(game)
+    const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
+    if (!offer) throw new Error('expected a repair offer')
+    const wrapper = mountScreen()
+    await wrapper.find(`[data-test="accept-${offer.id}"]`).trigger('click')
+    expect(game.pending.acceptServiceJobs.some((a) => a.offerId === offer.id)).toBe(true)
+  })
+})

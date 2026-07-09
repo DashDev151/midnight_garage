@@ -1,0 +1,244 @@
+import {
+  BUYERS,
+  CARS,
+  HIDDEN_ISSUES,
+  PARTS,
+  SERVICE_JOB_TEMPLATES,
+  type CarInstance,
+  type GameState,
+  type Job,
+  type PartInstance,
+  type ServiceJob,
+  type ServiceJobTemplate,
+} from '@midnight-garage/content'
+import { describe, expect, it } from 'vitest'
+import { DayActionsSchema } from '../src/actions'
+import { advanceDay } from '../src/advanceDay'
+import { generateAuctionCarInstance } from '../src/auctions'
+import { SERVICE_JOB_DEADLINE_DAYS } from '../src/constants'
+import { buildSimContext } from '../src/context'
+import { createInitialGameState } from '../src/newGame'
+import { createRng } from '../src/rng'
+import {
+  generateServiceJobOffers,
+  reputationForCompletion,
+  reputationForFailure,
+  resolveServiceJob,
+} from '../src/serviceJobs'
+
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES)
+
+const repairTemplate = SERVICE_JOB_TEMPLATES.find((t) => t.work.kind === 'repair')!
+const installTemplate = SERVICE_JOB_TEMPLATES.find(
+  (t) => t.work.kind === 'install' && t.work.slot === 'brakes',
+)!
+
+/** An active (accepted) service job carrying a real car, ready to resolve. */
+function activeJob(
+  template: ServiceJobTemplate,
+  carOverrides: Partial<CarInstance> = {},
+): ServiceJob {
+  const car = generateAuctionCarInstance(
+    CARS[0]!,
+    CONTEXT.hiddenIssuesByZone,
+    `svc-car-${template.id}`,
+    createRng(42),
+  )
+  return {
+    id: `svc-${template.id}`,
+    templateId: template.id,
+    customerName: template.customerName,
+    description: template.description,
+    work: template.work,
+    car: { ...car, ...carOverrides },
+    payoutYen: template.payoutYen,
+    baseReputation: template.baseReputation,
+    expiresOnDay: 30,
+    dueOnDay: 8,
+  }
+}
+
+function makeCondition(zone: string, value: number): CarInstance['condition'] {
+  return { engine: 100, drivetrain: 100, suspension: 100, body: 100, interior: 100, [zone]: value }
+}
+
+function emptyBuildSheet(): CarInstance['buildSheet'] {
+  return {
+    engine: null,
+    forcedInduction: null,
+    drivetrain: null,
+    suspension: null,
+    brakes: null,
+    bodyAero: null,
+    wheelsInterior: null,
+  }
+}
+
+const repairZone = repairTemplate.work.kind === 'repair' ? repairTemplate.work.zone : 'engine'
+const installSlot = installTemplate.work.kind === 'install' ? installTemplate.work.slot : 'brakes'
+
+function partInstance(partId: string): PartInstance {
+  return { id: `pi-${partId}`, partId, conditionPercent: 100, genuinePeriod: false }
+}
+
+function stateWith(job: ServiceJob, overrides: Partial<GameState> = {}): GameState {
+  return { ...createInitialGameState(CONTEXT, 1), activeServiceJobs: [job], ...overrides }
+}
+
+describe('generateServiceJobOffers', () => {
+  it('offers the requested count with unique ids, a real car, no deadline yet', () => {
+    const offers = generateServiceJobOffers(
+      SERVICE_JOB_TEMPLATES,
+      CARS,
+      CONTEXT.hiddenIssuesByZone,
+      7,
+      4,
+      10,
+      createRng(1),
+    )
+    expect(offers).toHaveLength(4)
+    expect(new Set(offers.map((o) => o.id)).size).toBe(4)
+    expect(offers.every((o) => o.expiresOnDay === 17)).toBe(true)
+    expect(offers.every((o) => o.dueOnDay === null)).toBe(true) // deadline is stamped on accept
+    expect(offers.every((o) => o.car.id.length > 0)).toBe(true)
+  })
+
+  it('returns nothing with no templates or models', () => {
+    expect(
+      generateServiceJobOffers([], CARS, CONTEXT.hiddenIssuesByZone, 7, 4, 10, createRng(1)),
+    ).toEqual([])
+    expect(
+      generateServiceJobOffers(
+        SERVICE_JOB_TEMPLATES,
+        [],
+        CONTEXT.hiddenIssuesByZone,
+        7,
+        4,
+        10,
+        createRng(1),
+      ),
+    ).toEqual([])
+  })
+})
+
+describe('reputation helpers', () => {
+  it('a pricier grade earns more reputation on completion', () => {
+    expect(reputationForCompletion(3, null)).toBe(3)
+    expect(reputationForCompletion(3, 'sport')).toBeGreaterThan(reputationForCompletion(3, 'stock'))
+    expect(reputationForCompletion(3, 'race')).toBeGreaterThan(reputationForCompletion(3, 'sport'))
+  })
+
+  it('failure costs reputation, scaled by the job base', () => {
+    expect(reputationForFailure(3)).toBeGreaterThan(0)
+    expect(reputationForFailure(3)).toBeGreaterThan(reputationForFailure(1))
+  })
+})
+
+describe('resolveServiceJob (the single resolution path)', () => {
+  it('pays out + grants reputation when the work is done, and the car leaves', () => {
+    const job = activeJob(repairTemplate, { condition: makeCondition(repairZone, 100) })
+    const leftover: Job = {
+      id: 'job-x',
+      carInstanceId: job.car.id,
+      kind: 'repair-zone',
+      zone: repairZone,
+      laborSlotsRequired: 1,
+      laborSlotsSpent: 1,
+    }
+    const state = stateWith(job, { jobs: [leftover] })
+    const cashBefore = state.cashYen
+
+    const { state: next, outcome, log } = resolveServiceJob(state, job.id, CONTEXT)
+    expect(outcome).toBe('paid')
+    expect(next.cashYen).toBe(cashBefore + job.payoutYen)
+    expect(next.reputationPoints).toBe(job.baseReputation)
+    expect(next.activeServiceJobs).toHaveLength(0)
+    expect(next.ownedCars).toHaveLength(0) // never owned
+    expect(next.jobs).toHaveLength(0) // leftover jobs on the departed car dropped
+    expect(log[0]).toMatchObject({ type: 'service-job-completed', payoutYen: job.payoutYen })
+  })
+
+  it('fails (no pay, reputation penalty) when the work is not done', () => {
+    const job = activeJob(repairTemplate, { condition: makeCondition(repairZone, 40) })
+    const state = stateWith(job, { reputationPoints: 50 })
+    const cashBefore = state.cashYen
+
+    const { state: next, outcome, log } = resolveServiceJob(state, job.id, CONTEXT)
+    expect(outcome).toBe('failed')
+    expect(next.cashYen).toBe(cashBefore) // no pay
+    expect(next.reputationPoints).toBe(50 - reputationForFailure(job.baseReputation))
+    expect(next.activeServiceJobs).toHaveLength(0) // car still leaves
+    expect(log[0]).toMatchObject({ type: 'service-job-failed' })
+  })
+
+  it('clamps the reputation penalty at zero', () => {
+    const job = activeJob(repairTemplate, { condition: makeCondition(repairZone, 40) })
+    const state = stateWith(job) // reputationPoints starts at 0
+    const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
+    expect(next.reputationPoints).toBe(0)
+  })
+
+  it('is a no-op for an unknown job id', () => {
+    const job = activeJob(repairTemplate)
+    const state = stateWith(job)
+    const { state: next, outcome } = resolveServiceJob(state, 'nope', CONTEXT)
+    expect(outcome).toBe('not-found')
+    expect(next).toBe(state)
+  })
+
+  it('an install job pays; a pricier installed grade earns more reputation', () => {
+    const budget = PARTS.find((p) => p.slot === installSlot && p.grade === 'stock')!
+    const pricey = PARTS.find((p) => p.slot === installSlot && p.grade !== 'stock')!
+
+    function repWith(part: (typeof PARTS)[number]): number {
+      const job = activeJob(installTemplate, {
+        buildSheet: { ...emptyBuildSheet(), [installSlot]: partInstance(part.id) },
+      })
+      return resolveServiceJob(stateWith(job), job.id, CONTEXT).state.reputationPoints
+    }
+
+    expect(repWith(pricey)).toBeGreaterThan(repWith(budget))
+  })
+})
+
+describe('service jobs in advanceDay', () => {
+  it('accepting brings the car into the shop and stamps the deadline', () => {
+    const offer = { ...activeJob(repairTemplate), dueOnDay: null }
+    const state = { ...createInitialGameState(CONTEXT, 1), serviceJobOffers: [offer] }
+    const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
+    const { state: next } = advanceDay(state, actions, 1, CONTEXT)
+
+    expect(next.activeServiceJobs).toHaveLength(1)
+    expect(next.activeServiceJobs[0]!.dueOnDay).toBe(1 + SERVICE_JOB_DEADLINE_DAYS)
+    expect(next.ownedCars).toHaveLength(0)
+  })
+
+  it('the deadline backstop pays a finished job and fails an unfinished one', () => {
+    const done = activeJob(repairTemplate, { condition: makeCondition(repairZone, 100) })
+    const paidState = { ...createInitialGameState(CONTEXT, 1), day: 8, activeServiceJobs: [done] }
+    const paidBefore = paidState.cashYen
+    const paid = advanceDay(paidState, DayActionsSchema.parse({}), 8, CONTEXT).state
+    expect(paid.cashYen).toBe(paidBefore + done.payoutYen)
+    expect(paid.activeServiceJobs).toHaveLength(0)
+
+    const undone = activeJob(repairTemplate, { condition: makeCondition(repairZone, 40) })
+    const failState = {
+      ...createInitialGameState(CONTEXT, 1),
+      day: 8,
+      reputationPoints: 50,
+      activeServiceJobs: [undone],
+    }
+    const failBefore = failState.cashYen
+    const failed = advanceDay(failState, DayActionsSchema.parse({}), 8, CONTEXT).state
+    expect(failed.cashYen).toBe(failBefore) // no pay
+    expect(failed.reputationPoints).toBe(50 - reputationForFailure(undone.baseReputation))
+    expect(failed.activeServiceJobs).toHaveLength(0)
+  })
+
+  it('stale offers expire', () => {
+    const offer = { ...activeJob(repairTemplate), dueOnDay: null, expiresOnDay: 1 }
+    const state = { ...createInitialGameState(CONTEXT, 1), day: 1, serviceJobOffers: [offer] }
+    const { state: next } = advanceDay(state, DayActionsSchema.parse({}), 1, CONTEXT)
+    expect(next.serviceJobOffers).toHaveLength(0)
+  })
+})

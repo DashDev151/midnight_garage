@@ -1,4 +1,4 @@
-import type { GameState, Job } from '@midnight-garage/content'
+import type { CarInstance, GameState, Job, PartInstance } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 
 export function createJob(spec: NewJobSpec, id: string): Job {
@@ -34,44 +34,80 @@ export interface JobCompletionResult {
   blockedByOccupiedSlot: boolean
 }
 
-/**
- * Applies a completed job's effect (zone repair or part install) to
- * GameState. Does not remove the job from state.jobs — the caller
- * (advanceDay) owns list bookkeeping.
- */
-export function completeJob(state: GameState, job: Job): JobCompletionResult {
-  const carIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
-  const car = carIndex === -1 ? undefined : state.ownedCars[carIndex]
-  if (!car) {
-    throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
-  }
+interface CarEffect {
+  car: CarInstance
+  partInventory: PartInstance[]
+  blockedByOccupiedSlot: boolean
+}
 
+/**
+ * The pure "apply a completed job to a car" core, shared by owned cars and
+ * service-job cars. Zone repair -> condition 100; part install -> the part
+ * moves from inventory onto the build sheet (skipped if the slot is occupied).
+ */
+function applyJobToCar(
+  car: CarInstance,
+  job: Job,
+  partInventory: readonly PartInstance[],
+): CarEffect {
   if (job.kind === 'repair-zone') {
     if (!job.zone) throw new Error(`repair-zone job ${job.id} has no zone`)
-    const updatedCar = { ...car, condition: { ...car.condition, [job.zone]: 100 } }
-    const ownedCars = [...state.ownedCars]
-    ownedCars[carIndex] = updatedCar
-    return { state: { ...state, ownedCars }, blockedByOccupiedSlot: false }
+    return {
+      car: { ...car, condition: { ...car.condition, [job.zone]: 100 } },
+      partInventory: [...partInventory],
+      blockedByOccupiedSlot: false,
+    }
   }
 
-  // install-part
   if (!job.slot || !job.partInstanceId) {
     throw new Error(`install-part job ${job.id} missing slot/partInstanceId`)
   }
   if (car.buildSheet[job.slot]) {
-    return { state, blockedByOccupiedSlot: true }
+    return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
   }
-
-  const partIndex = state.partInventory.findIndex((p) => p.id === job.partInstanceId)
-  const partInstance = partIndex === -1 ? undefined : state.partInventory[partIndex]
+  const partIndex = partInventory.findIndex((p) => p.id === job.partInstanceId)
+  const partInstance = partIndex === -1 ? undefined : partInventory[partIndex]
   if (!partInstance) {
     throw new Error(`install-part job ${job.id} references a part not in inventory`)
   }
+  return {
+    car: { ...car, buildSheet: { ...car.buildSheet, [job.slot]: partInstance } },
+    partInventory: partInventory.filter((_, i) => i !== partIndex),
+    blockedByOccupiedSlot: false,
+  }
+}
 
-  const updatedCar = { ...car, buildSheet: { ...car.buildSheet, [job.slot]: partInstance } }
-  const ownedCars = [...state.ownedCars]
-  ownedCars[carIndex] = updatedCar
-  const partInventory = state.partInventory.filter((_, i) => i !== partIndex)
+/**
+ * Applies a completed job's effect (zone repair or part install) to GameState.
+ * The target car may be an owned car OR a customer car sitting in a service
+ * job (the player works both with the same job system). Does not remove the
+ * job from state.jobs — the caller (advanceDay) owns list bookkeeping.
+ */
+export function completeJob(state: GameState, job: Job): JobCompletionResult {
+  const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
+  if (ownedIndex !== -1) {
+    const effect = applyJobToCar(state.ownedCars[ownedIndex]!, job, state.partInventory)
+    if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
+    const ownedCars = [...state.ownedCars]
+    ownedCars[ownedIndex] = effect.car
+    return {
+      state: { ...state, ownedCars, partInventory: effect.partInventory },
+      blockedByOccupiedSlot: false,
+    }
+  }
 
-  return { state: { ...state, ownedCars, partInventory }, blockedByOccupiedSlot: false }
+  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === job.carInstanceId)
+  if (serviceIndex !== -1) {
+    const serviceJob = state.activeServiceJobs[serviceIndex]!
+    const effect = applyJobToCar(serviceJob.car, job, state.partInventory)
+    if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
+    const activeServiceJobs = [...state.activeServiceJobs]
+    activeServiceJobs[serviceIndex] = { ...serviceJob, car: effect.car }
+    return {
+      state: { ...state, activeServiceJobs, partInventory: effect.partInventory },
+      blockedByOccupiedSlot: false,
+    }
+  }
+
+  throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
 }

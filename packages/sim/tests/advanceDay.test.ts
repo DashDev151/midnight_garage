@@ -1,4 +1,4 @@
-import type { DayActions } from '../src/actions'
+import { emptyDayActions, type DayActions } from '../src/actions'
 import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
@@ -27,6 +27,9 @@ function initialState(): GameState {
     seed: 42,
     cashYen: 1_200_000,
     reputationTier: 'unknown',
+    reputationPoints: 0,
+    serviceJobOffers: [],
+    activeServiceJobs: [],
     ownedCars: [
       {
         id: 'car-0001',
@@ -65,16 +68,7 @@ function initialState(): GameState {
   }
 }
 
-const noActions: DayActions = {
-  createJobs: [],
-  laborAssignments: [],
-  bidsOnLots: [],
-  buyoutLots: [],
-  inspectLots: [],
-  sellViaWalkIn: [],
-  listForSale: [],
-  buyParts: [],
-}
+const noActions: DayActions = emptyDayActions()
 
 /**
  * Scripted 30-day career: day 1 opens a repair-zone job (body, 3 slots)
@@ -128,7 +122,7 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('1d81d4c2')
+    expect(hashState(finalState)).toBe('5faa7474')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -206,6 +200,6 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    expect(hashState(acquisitionCareer().sold)).toBe('30516541')
+    expect(hashState(acquisitionCareer().sold)).toBe('84b393cb')
   })
 })

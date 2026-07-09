@@ -1,4 +1,4 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS } from '@midnight-garage/content'
+import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, SERVICE_JOB_TEMPLATES } from '@midnight-garage/content'
 import type {
   AuctionLot,
   AuctionTier,
@@ -11,6 +11,7 @@ import type {
   Part,
   PartInstance,
   PublicListing,
+  ServiceJob,
   Slot,
   StatBlock,
   Zone,
@@ -30,7 +31,10 @@ import {
   createRng,
   DayActionsSchema,
   generateAuctionCarInstance,
+  isServiceWorkDone,
   listPubliclyAskingPrice,
+  reputationForFailure,
+  resolveServiceJob,
   valuateCarForBuyer,
   type AuctionBidder,
   type DayActions,
@@ -79,6 +83,44 @@ export interface DetailedCar {
 export interface CarDetail extends DetailedCar {
   jobs: Job[]
   pendingJobs: NewJobSpec[]
+  /** Set when this car belongs to a service job the player is working. */
+  serviceJob?: ServiceJobView
+}
+
+/** A short human label for a service job's required work. */
+function serviceWorkLabel(job: ServiceJob): string {
+  return job.work.kind === 'repair' ? `Repair ${job.work.zone}` : `Install ${job.work.slot} part`
+}
+
+/** A service-job offer on the board (accept to bring the car into the shop). */
+export interface ServiceJobOfferView {
+  id: string
+  customerName: string
+  description: string
+  workLabel: string
+  carName: string
+  payoutYen: number
+  baseReputation: number
+  expiresOnDay: number
+  accepted: boolean
+}
+
+/** A service job in the shop, tracked against its car's real work state. */
+export interface ServiceJobView {
+  id: string
+  customerName: string
+  description: string
+  workLabel: string
+  carId: string
+  carName: string
+  payoutYen: number
+  baseReputation: number
+  /** True once the required work has actually been done on the car. */
+  workDone: boolean
+  /** Reputation lost if this job is failed (handed back unfinished / overdue). */
+  failureReputationPenalty: number
+  /** Days remaining before the deadline auto-resolves it (null if somehow unset). */
+  daysLeft: number | null
 }
 
 /** An auction lot with the derived numbers the auction screen shows. */
@@ -120,7 +162,9 @@ export interface DayReport {
  */
 export const useGameStore = defineStore('game', () => {
   // Content catalogs are static and heavy; shallowRef avoids deep reactivity we never mutate.
-  const context = shallowRef<SimContext>(buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES))
+  const context = shallowRef<SimContext>(
+    buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES),
+  )
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
   const dayLog = ref<DayLogEntry[]>([])
   // The player's not-yet-committed plan for the current day - the full set of
@@ -137,9 +181,35 @@ export const useGameStore = defineStore('game', () => {
   const day = computed(() => gameState.value.day)
   const cashYen = computed(() => gameState.value.cashYen)
   const reputationTier = computed(() => gameState.value.reputationTier)
+  const reputationPoints = computed(() => gameState.value.reputationPoints)
   const ownedCarCount = computed(() => gameState.value.ownedCars.length)
   const laborSlotsPerDay = computed(() => availableLaborSlots(gameState.value))
+  const serviceJobOffers = computed(() => gameState.value.serviceJobOffers)
+  const activeServiceJobs = computed(() => gameState.value.activeServiceJobs)
   const pendingJobs = computed(() => pending.value.createJobs)
+
+  /** Service-job offers on the board, presented for the accept screen. */
+  const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
+    gameState.value.serviceJobOffers.map((offer) => {
+      const model = context.value.modelsById[offer.car.modelId]
+      return {
+        id: offer.id,
+        customerName: offer.customerName,
+        description: offer.description,
+        workLabel: serviceWorkLabel(offer),
+        carName: model ? resolveCarDisplayName(model) : offer.car.modelId,
+        payoutYen: offer.payoutYen,
+        baseReputation: offer.baseReputation,
+        expiresOnDay: offer.expiresOnDay,
+        accepted: pending.value.acceptServiceJobs.some((a) => a.offerId === offer.id),
+      }
+    }),
+  )
+
+  /** Accepted service jobs in the shop, with each car's live work state. */
+  const activeServiceJobViews = computed<ServiceJobView[]>(() =>
+    gameState.value.activeServiceJobs.map(serviceJobViewFor),
+  )
 
   function detailFor(car: CarInstance): DetailedCar {
     const model = context.value.modelsById[car.modelId]
@@ -167,14 +237,46 @@ export const useGameStore = defineStore('game', () => {
     return part ? `${part.brand} ${part.name}` : partId
   }
 
-  /** Full detail bundle for one owned car, or undefined if not owned. */
+  /**
+   * A car the player can work on — either an owned car or a customer's car
+   * sitting in an active service job. Both are worked through the same job
+   * system, so the car-detail screen resolves either.
+   */
+  function findWorkableCar(carId: string): CarInstance | undefined {
+    return (
+      gameState.value.ownedCars.find((c) => c.id === carId) ??
+      gameState.value.activeServiceJobs.find((sj) => sj.car.id === carId)?.car
+    )
+  }
+
+  /** Full detail bundle for one workable car (owned or in-shop), or undefined. */
   function carDetail(carId: string): CarDetail | undefined {
-    const car = gameState.value.ownedCars.find((c) => c.id === carId)
+    const car = findWorkableCar(carId)
     if (!car) return undefined
+    const serviceJob = gameState.value.activeServiceJobs.find((sj) => sj.car.id === carId)
     return {
       ...detailFor(car),
       jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
       pendingJobs: pendingJobs.value.filter((j) => j.carInstanceId === carId),
+      serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
+    }
+  }
+
+  /** Present one active service job with its resolved car name and work state. */
+  function serviceJobViewFor(job: ServiceJob): ServiceJobView {
+    const model = context.value.modelsById[job.car.modelId]
+    return {
+      id: job.id,
+      customerName: job.customerName,
+      description: job.description,
+      workLabel: serviceWorkLabel(job),
+      carId: job.car.id,
+      carName: model ? resolveCarDisplayName(model) : job.car.modelId,
+      payoutYen: job.payoutYen,
+      baseReputation: job.baseReputation,
+      workDone: isServiceWorkDone(job),
+      failureReputationPenalty: reputationForFailure(job.baseReputation),
+      daysLeft: job.dueOnDay === null ? null : job.dueOnDay - gameState.value.day,
     }
   }
 
@@ -252,7 +354,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** Parts in inventory that fit an empty slot on the given car (slot + required tags). */
   function installablePartsFor(carId: string, slot: Slot): PartInstance[] {
-    const car = gameState.value.ownedCars.find((c) => c.id === carId)
+    const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model || car.buildSheet[slot]) return []
     return gameState.value.partInventory.filter((pi) => {
@@ -276,7 +378,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** Queue a zone repair for the current day (committed on End Day). */
   function queueRepair(carId: string, zone: Zone): void {
-    const car = gameState.value.ownedCars.find((c) => c.id === carId)
+    const car = findWorkableCar(carId)
     if (!car || isZoneBusy(carId, zone)) return
     const spec: NewJobSpec = {
       carInstanceId: carId,
@@ -328,6 +430,34 @@ export const useGameStore = defineStore('game', () => {
     const part = context.value.partsById[partId]
     if (!part) return
     pending.value = { ...pending.value, buyParts: [...pending.value.buyParts, { partId }] }
+  }
+
+  /**
+   * Queue accepting a service job — the customer's car enters the shop on End
+   * Day, where the player then does the real work (buy parts, assign labor).
+   */
+  function queueAcceptServiceJob(offerId: string): void {
+    const offer = gameState.value.serviceJobOffers.find((o) => o.id === offerId)
+    if (!offer) return
+    if (pending.value.acceptServiceJobs.some((a) => a.offerId === offerId)) return
+    pending.value = {
+      ...pending.value,
+      acceptServiceJobs: [...pending.value.acceptServiceJobs, { offerId }],
+    }
+  }
+
+  /**
+   * "Complete Job" — resolves the service job **immediately** (not on End Day):
+   * if the work is done the payout lands and reputation is granted; if not, the
+   * job is failed (reputation penalty, no pay). Either way the car leaves now.
+   * Returns the outcome so the UI can show instant feedback.
+   */
+  function completeServiceJob(jobId: string): 'paid' | 'failed' | 'not-found' {
+    const resolution = resolveServiceJob(gameState.value, jobId, context.value)
+    if (resolution.outcome === 'not-found') return 'not-found'
+    gameState.value = resolution.state
+    dayLog.value.push(...resolution.log)
+    return resolution.outcome
   }
 
   /** Queue selling an owned car via a same-day walk-in offer. */
@@ -529,8 +659,13 @@ export const useGameStore = defineStore('game', () => {
     day,
     cashYen,
     reputationTier,
+    reputationPoints,
     ownedCarCount,
     laborSlotsPerDay,
+    serviceJobOffers,
+    activeServiceJobs,
+    serviceJobOfferViews,
+    activeServiceJobViews,
     carsDetailed,
     ownedCarNames,
     partsCatalog,
@@ -552,6 +687,8 @@ export const useGameStore = defineStore('game', () => {
     queueBuyPart,
     queueSellWalkIn,
     queueListForSale,
+    queueAcceptServiceJob,
+    completeServiceJob,
     clearPending,
     endDay,
     commitDay,

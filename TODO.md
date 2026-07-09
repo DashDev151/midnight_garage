@@ -10,18 +10,13 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
 
 ## Next focus (agreed 2026-07-08)
 
-- [ ] **Interactive service / walk-in jobs — the next major feature.** A customer brings in a car
-  with a request (repair a body panel, fit these wheels, diagnose+fix a drivetrain issue); the
-  player accepts, the car takes a bay, labor + parts go in, the job completes, and the player is paid
-  a **guaranteed profit** — the player never owns the car (Car Mechanic Sim / PC Building Sim style).
-  **Why it matters:** it's the Act 1 early-game floor (carries the player when capital is scarce) and
-  the natural tutorial vehicle; right now the player is auction-only, which is punishing early. Only
-  *passive* service-bay income exists in code (needs staff nobody has yet). **Economy design goal:**
-  service jobs carry the early game, then auction flipping should overtake them in profitability by
-  the midgame — the balance harness can pin the crossover. Needs a dedicated sprint; **sequencing vs.
-  Sprint 07 (persistence) is a user call** — the user said "focus on this next," which may reorder
-  the roadmap. The GDD already scopes Act 1 service jobs + the landlord tutorial, so this is
-  elaborating planned scope, not new scope.
+- [x] **Interactive service / walk-in jobs.** **In progress as Sprint 08** — see
+  `docs/sprints/sprint08.md`. A customer brings a request (some jobs pure repair, no part needed;
+  others require installing a part of a given slot, bought at the real parts market — the job pays a
+  fixed amount regardless of part choice, so a pricier part trades profit for a reputation-gain
+  multiplier); the player never owns the car. Carries the early game; flipping should overtake it by
+  the midgame (harness-validated). Bays are deliberately NOT capped this sprint (see
+  `docs/design/facilities-bays.md`, its own sprint directly after).
 
 ## Engineering
 
@@ -80,10 +75,27 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Facilities & bays — the sprint DIRECTLY AFTER service jobs.** Two-tier bay system: *service
+  bays* (work capacity — a car must be in one to receive labor; start 1 → 2 → ~5) vs *parking bays*
+  (storage — hold owned + accepted-job cars; start 3 → ~10-15), a move-between-bays action, and
+  bay expansion as a purchase (the "Tools, not levels" spine). Cross-cutting: gates owned-car builds
+  *and* service jobs. Models the labor↔bays↔staff growth loop. Full requirements:
+  `docs/design/facilities-bays.md`. Detailed end-to-end design finalized when the sprint starts.
+
 - [ ] **Skill / XP progression** — learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
   with the staff system (Sprint 13); player-character skill is new v1.0 scope, slotted against the
   service-jobs feature. Full design: `docs/design/skill-progression.md`.
+
+- [ ] **Repair vs. Replace equipment progression — fully designed, targets the Sprint 14 slot.**
+  Every part category has two paths: *replace* (buy the part + labor — available from day one) and
+  *repair* (labor only, but requires owning that category's repair equipment). Early game forces
+  replacement (parts cost = the pain); buying equipment converts that opex to capex; post-investment,
+  repair dominates restoration and replacement becomes the *upgrade* path. Equipment unlocks in
+  real-world-difficulty order (tire machine → brake lathe → ... → machine-shop/full engine rebuild),
+  doubling as act progression. Does NOT block Sprint 08 (its repair-only vs. part-install job split
+  is this system's seam). Full design incl. the zone/slot reconciliation question, economic
+  guardrails, and harness columns: `docs/design/repair-replace-progression.md`.
 
 ## Design decisions
 

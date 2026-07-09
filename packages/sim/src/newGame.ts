@@ -23,6 +23,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     seed,
     cashYen: STARTING_CASH_YEN,
     reputationTier: 'unknown',
+    reputationPoints: 0,
     ownedCars: [],
     partInventory: [],
     staff: [],
@@ -30,5 +31,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     marketHeat: Object.fromEntries(context.models.map((model) => [model.id, 100])),
     activeAuctionLots: [],
     activeListings: [],
+    serviceJobOffers: [],
+    activeServiceJobs: [],
   }
 }

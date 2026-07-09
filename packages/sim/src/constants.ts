@@ -1,7 +1,47 @@
-import type { AuctionTier, ReputationTier } from '@midnight-garage/content'
+import type { AuctionTier, Grade, ReputationTier } from '@midnight-garage/content'
 
 /** GDD 3.2: base labor slots per day before any staff bonus. */
 export const PLAYER_BASE_LABOR_SLOTS = 2
+
+/**
+ * Labor-slots a zone repair costs, scaled by how damaged the zone is so a
+ * badly hurt zone can span multiple days against the daily slot budget
+ * (making the labor-scarcity tension visible). A stock 2-slot day clears a
+ * lightly damaged zone same-day; a wrecked one takes two. Provisional PoC
+ * heuristic — belongs in content JSON once the job taxonomy firms up.
+ */
+export function repairLaborSlotsFor(conditionPercent: number): number {
+  return Math.max(1, Math.ceil((100 - conditionPercent) / 30))
+}
+
+/** A bolt-on install is a single-slot job for now. */
+export const INSTALL_LABOR_SLOTS = 1
+
+/** Service-job offers refreshed onto the board each week, and how long they last. */
+export const SERVICE_JOB_OFFERS_PER_REFRESH = 4
+export const SERVICE_JOB_EXPIRY_DAYS = 10
+
+/** Days the player has to finish + hand back a job after accepting it. */
+export const SERVICE_JOB_DEADLINE_DAYS = 7
+
+/**
+ * Reputation penalty for a failed job (handed back unfinished, or the deadline
+ * passed with the work undone), as a multiple of the job's base reputation —
+ * failing stings more than completing rewards at the stock rate.
+ */
+export const SERVICE_JOB_FAILURE_REP_MULTIPLIER = 2
+
+/**
+ * Reputation multiplier by installed part grade (Sprint 08): a pricier,
+ * higher-grade part earns more reputation for a part-install service job (and
+ * costs the player more profit) — repair-only jobs use the stock/1.0 rate.
+ */
+export const GRADE_REPUTATION_MULTIPLIER: Readonly<Record<Grade, number>> = {
+  stock: 1.0,
+  street: 1.3,
+  sport: 1.7,
+  race: 2.2,
+}
 
 /**
  * v1 rule (GDD 3.2 "base 2, more with skill"): a staff member with Hustle

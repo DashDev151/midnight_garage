@@ -28,6 +28,7 @@ const SAMPLES: DayLogEntry[] = [
   },
   { type: 'car-sold', carInstanceId: 'car-1', channel: 'walk-in-offer', priceYen: 180_000 },
   { type: 'part-bought', partId: 'khs-street-ecu', partInstanceId: 'part-7-0', priceYen: 60_000 },
+  { type: 'service-job-completed', jobId: 'svc-1', payoutYen: 42_000, reputationGained: 4 },
 ]
 
 describe('describeLogEntry', () => {

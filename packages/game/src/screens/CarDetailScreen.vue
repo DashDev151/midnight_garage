@@ -45,6 +45,15 @@ function installFor(slot: Slot) {
   return detail.value ? game.installablePartsFor(detail.value.car.id, slot) : []
 }
 
+/**
+ * Resolve a customer job immediately (paid if the work's done, forfeited with a
+ * reputation hit if not). The car then leaves the shop, so the detail computed
+ * goes undefined and the watcher above returns us to the garage.
+ */
+function onCompleteJob(jobId: string): void {
+  game.completeServiceJob(jobId)
+}
+
 const walkIn = computed(() => game.walkInEstimate(carId.value))
 const listPrice = computed(() => game.listingEstimate(carId.value))
 const sellQueued = computed(() => {
@@ -68,6 +77,46 @@ const sellQueued = computed(() => {
       </p>
       <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
     </header>
+
+    <section v-if="detail.serviceJob" class="service-banner">
+      <h3>Customer job — {{ detail.serviceJob.customerName }}</h3>
+      <p class="svc-desc">"{{ detail.serviceJob.description }}"</p>
+      <p class="svc-req">
+        Required: {{ detail.serviceJob.workLabel }} · pays
+        {{ formatYen(detail.serviceJob.payoutYen) }} · +{{ detail.serviceJob.baseReputation }} rep
+        base
+      </p>
+      <p
+        v-if="detail.serviceJob.daysLeft !== null"
+        class="svc-deadline"
+        :class="{ urgent: detail.serviceJob.daysLeft <= 2 }"
+      >
+        {{
+          detail.serviceJob.daysLeft <= 0
+            ? 'Due today — hand it back or it fails on End Day.'
+            : detail.serviceJob.daysLeft + ' day(s) left to finish and hand back.'
+        }}
+      </p>
+      <div class="complete-row">
+        <span class="svc-status" :class="{ done: detail.serviceJob.workDone }">
+          {{
+            detail.serviceJob.workDone
+              ? 'Work done — hand it back to get paid now.'
+              : 'Work unfinished — completing now forfeits the job (−' +
+                detail.serviceJob.failureReputationPenalty +
+                ' rep).'
+          }}
+        </span>
+        <button
+          class="primary"
+          :class="{ danger: !detail.serviceJob.workDone }"
+          data-test="complete-service-job"
+          @click="onCompleteJob(detail.serviceJob.id)"
+        >
+          {{ detail.serviceJob.workDone ? 'Complete Job' : 'Give Up Job' }}
+        </button>
+      </div>
+    </section>
 
     <div class="cols">
       <div class="radar-col">
@@ -120,7 +169,7 @@ const sellQueued = computed(() => {
       </ul>
     </section>
 
-    <section class="sell">
+    <section v-if="!detail.serviceJob" class="sell">
       <h3>Sell</h3>
       <div class="sell-options">
         <div class="sell-option">
@@ -214,6 +263,56 @@ h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   margin: var(--mg-space-1) 0;
+}
+
+.service-banner {
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-neon-violet);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  margin: var(--mg-space-3) 0;
+}
+
+.svc-desc {
+  margin: var(--mg-space-1) 0;
+}
+
+.svc-req {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+  margin: var(--mg-space-1) 0 var(--mg-space-2);
+}
+
+.complete-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+}
+
+.svc-status {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.svc-status.done {
+  color: var(--mg-success);
+}
+
+.svc-deadline {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: var(--mg-space-1) 0 var(--mg-space-2);
+}
+
+.svc-deadline.urgent {
+  color: var(--mg-neon-pink);
+}
+
+button.primary.danger {
+  background: var(--mg-panel);
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
 }
 
 .cols {

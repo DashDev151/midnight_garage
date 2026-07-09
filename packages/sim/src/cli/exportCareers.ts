@@ -17,12 +17,19 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS } from '../../../content/src/data'
+import {
+  BUYERS,
+  CARS,
+  HIDDEN_ISSUES,
+  PARTS,
+  SERVICE_JOB_TEMPLATES,
+} from '../../../content/src/data'
 import { balancedPlayerStrategy } from '../bots/balancedPlayer'
 import { cautiousRestorerStrategy } from '../bots/cautiousRestorer'
 import { flipperStrategy } from '../bots/flipper'
 import { passiveGrinderStrategy } from '../bots/passiveGrinder'
 import { randomStrategy } from '../bots/randomStrategy'
+import { serviceGrinderStrategy } from '../bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../bots/runCareer'
 import { buildSimContext } from '../context'
 
@@ -43,6 +50,7 @@ const STRATEGIES: ReadonlyArray<{ name: string; strategy: BotStrategy }> = [
   { name: 'balanced-player', strategy: balancedPlayerStrategy },
   { name: 'random', strategy: randomStrategy },
   { name: 'passive-grinder', strategy: passiveGrinderStrategy },
+  { name: 'service-grinder', strategy: serviceGrinderStrategy },
 ]
 
 const COLUMNS = [
@@ -56,7 +64,7 @@ const COLUMNS = [
 ] as const
 
 function main(): void {
-  const context = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+  const context = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES)
   const rows: string[] = []
 
   for (const { name, strategy } of STRATEGIES) {

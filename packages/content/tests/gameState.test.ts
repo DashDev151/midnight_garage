@@ -8,6 +8,7 @@ describe('GameState / DayLog round-trip', () => {
       seed: 1995,
       cashYen: 1_200_000,
       reputationTier: 'unknown',
+      reputationPoints: 0,
       ownedCars: [
         {
           id: 'car-0001',
@@ -48,6 +49,8 @@ describe('GameState / DayLog round-trip', () => {
       marketHeat: {},
       activeAuctionLots: [],
       activeListings: [],
+      serviceJobOffers: [],
+      activeServiceJobs: [],
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -70,6 +73,12 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'auction-bid-won', lotId: 'lot-0001', finalPriceYen: 150_000 },
       { type: 'auction-bid-lost', lotId: 'lot-0002', winningPriceYen: 200_000 },
       { type: 'lot-bought-out', lotId: 'lot-0003', priceYen: 240_000 },
+      {
+        type: 'service-job-completed',
+        jobId: 'svc-0001',
+        payoutYen: 42_000,
+        reputationGained: 4,
+      },
       {
         type: 'listing-created',
         listingId: 'listing-0001',

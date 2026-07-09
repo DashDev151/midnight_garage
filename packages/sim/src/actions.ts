@@ -37,6 +37,8 @@ const BuyPartActionSchema = z.object({ partId: z.string().min(1) })
 
 const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
 
+const AcceptServiceJobActionSchema = z.object({ offerId: z.string().min(1) })
+
 export const DayActionsSchema = z.object({
   createJobs: z.array(NewJobSpecSchema).default([]),
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
@@ -46,7 +48,12 @@ export const DayActionsSchema = z.object({
   sellViaWalkIn: z.array(SellViaWalkInActionSchema).default([]),
   listForSale: z.array(ListForSaleActionSchema).default([]),
   buyParts: z.array(BuyPartActionSchema).default([]),
+  acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
 })
+// Note: completing a service job is NOT a DayAction. The player resolves it
+// immediately (a store call to resolveServiceJob) the moment they click
+// "Complete Job", and advanceDay only enforces the per-job deadline as a
+// backstop — End Day never decides a player's job is done.
 
 export type NewJobSpec = z.infer<typeof NewJobSpecSchema>
 export type LaborAssignment = z.infer<typeof LaborAssignmentSchema>
@@ -56,6 +63,7 @@ export type SellViaWalkInAction = z.infer<typeof SellViaWalkInActionSchema>
 export type ListForSaleAction = z.infer<typeof ListForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
 export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
+export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
 export type DayActions = z.infer<typeof DayActionsSchema>
 
 /**

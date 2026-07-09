@@ -6,12 +6,15 @@ import { StaffMemberSchema } from './staff'
 import { JobKindSchema, JobSchema } from './job'
 import { AuctionLotSchema, AuctionTierSchema } from './auction'
 import { PublicListingSchema, SaleChannelSchema } from './sale'
+import { ServiceJobSchema } from './serviceJob'
 
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
   cashYen: z.number().int(),
   reputationTier: ReputationTierSchema,
+  /** Accrued reputation points (Sprint 08 scaffold; tier derivation is future). */
+  reputationPoints: z.number().int().nonnegative().default(0),
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
   staff: z.array(StaffMemberSchema).default([]),
@@ -20,6 +23,10 @@ export const GameStateSchema = z.object({
   marketHeat: z.record(z.string(), z.number()).default({}),
   activeAuctionLots: z.array(AuctionLotSchema).default([]),
   activeListings: z.array(PublicListingSchema).default([]),
+  /** Service jobs offered for the player to accept (GDD Act 1). */
+  serviceJobOffers: z.array(ServiceJobSchema).default([]),
+  /** Service jobs the player has accepted and is working. */
+  activeServiceJobs: z.array(ServiceJobSchema).default([]),
 })
 
 /**
@@ -87,6 +94,22 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('lot-bought-out'),
     lotId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('service-job-accepted'),
+    jobId: z.string().min(1),
+    carInstanceId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('service-job-completed'),
+    jobId: z.string().min(1),
+    payoutYen: z.number().int().nonnegative(),
+    reputationGained: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('service-job-failed'),
+    jobId: z.string().min(1),
+    reputationLost: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal('listing-created'),
