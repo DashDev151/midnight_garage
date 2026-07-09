@@ -64,4 +64,3 @@ export function bellNormal(mean: number, sd: number, rng: Rng): number {
   for (let i = 0; i < 12; i++) sum += rng.next()
   return mean + sd * (sum - 6)
 }
-// test comment
