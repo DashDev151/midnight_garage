@@ -1,4 +1,4 @@
-import { SlotSchema, ZoneSchema } from '@midnight-garage/content'
+import { BayKindSchema, SlotSchema, ZoneSchema } from '@midnight-garage/content'
 import { z } from 'zod'
 
 /**
@@ -39,6 +39,13 @@ const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
 
 const AcceptServiceJobActionSchema = z.object({ offerId: z.string().min(1) })
 
+const MoveCarActionSchema = z.object({
+  carInstanceId: z.string().min(1),
+  to: BayKindSchema,
+})
+
+const BuyBayActionSchema = z.object({ kind: BayKindSchema })
+
 export const DayActionsSchema = z.object({
   createJobs: z.array(NewJobSpecSchema).default([]),
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
@@ -49,6 +56,11 @@ export const DayActionsSchema = z.object({
   listForSale: z.array(ListForSaleActionSchema).default([]),
   buyParts: z.array(BuyPartActionSchema).default([]),
   acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
+  /** Bots' only path to moving cars between bays — the player moves instantly
+   * via a direct store call (see sim/facilities.ts's applyMoves doc). */
+  moveCars: z.array(MoveCarActionSchema).default([]),
+  /** Bots' only path to buying a bay — the player buys instantly likewise. */
+  buyBays: z.array(BuyBayActionSchema).default([]),
 })
 // Note: completing a service job is NOT a DayAction. The player resolves it
 // immediately (a store call to resolveServiceJob) the moment they click
@@ -64,6 +76,8 @@ export type ListForSaleAction = z.infer<typeof ListForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
 export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
+export type MoveCarAction = z.infer<typeof MoveCarActionSchema>
+export type BuyBayAction = z.infer<typeof BuyBayActionSchema>
 export type DayActions = z.infer<typeof DayActionsSchema>
 
 /**

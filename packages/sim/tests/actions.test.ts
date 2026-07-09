@@ -11,6 +11,8 @@ const EMPTY_ACTIONS = {
   listForSale: [],
   buyParts: [],
   acceptServiceJobs: [],
+  moveCars: [],
+  buyBays: [],
 }
 
 describe('DayActionsSchema', () => {

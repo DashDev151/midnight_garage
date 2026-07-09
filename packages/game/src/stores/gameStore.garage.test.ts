@@ -42,6 +42,9 @@ describe('garage: repair queue and labor', () => {
     const before = car.condition.engine
     expect(before).toBeLessThan(100) // generated cars are rough
 
+    // A dev-granted car lands in parking like any real acquisition — labor
+    // only reaches a car in the service bay.
+    game.moveCar(car.id, 'service')
     game.queueRepair(car.id, 'engine')
     const detail = game.carDetail(car.id)!
     expect(detail.pendingJobs).toHaveLength(1)
@@ -69,6 +72,7 @@ describe('garage: repair queue and labor', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
+    game.moveCar(car.id, 'service')
     // Queue repairs on all five zones - collectively far more labor than one day.
     for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
       game.queueRepair(car.id, zone)
@@ -102,6 +106,7 @@ describe('garage: part install', () => {
 
     game.devGrantCar(pair.modelId)
     const car = game.gameState.ownedCars[0]!
+    game.moveCar(car.id, 'service')
     game.devGrantPart(pair.partId)
     const partInstance = game.gameState.partInventory[0]!
 
@@ -124,6 +129,7 @@ describe('garage: part install', () => {
     const part = PARTS.find((p) => p.requiredTags.length === 0)!
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
+    game.moveCar(car.id, 'service')
     game.devGrantPart(part.id)
     const partInstance = game.gameState.partInventory[0]!
     game.queueInstall(car.id, part.slot, partInstance.id)

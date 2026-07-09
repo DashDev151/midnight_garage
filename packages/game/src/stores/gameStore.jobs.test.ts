@@ -46,6 +46,9 @@ describe('service jobs in the store', () => {
     game.commitDay()
 
     const carId = offer.car.id
+    // The customer's car lands in parking on acceptance — move it into the
+    // service bay so the repairs below can actually receive labor.
+    game.moveCar(carId, 'service')
     let outcome: string | undefined
     for (let i = 0; i < 12; i++) {
       const view = game.carDetail(carId)?.serviceJob

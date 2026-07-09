@@ -65,22 +65,29 @@ function initialState(): GameState {
     marketHeat: Object.fromEntries(POC_10_MODEL_IDS.map((id) => [id, 100])),
     activeAuctionLots: [],
     activeListings: [],
+    serviceBayCount: 1,
+    parkingBayCount: 3,
+    serviceBayCarIds: [],
   }
 }
 
 const noActions: DayActions = emptyDayActions()
 
 /**
- * Scripted 30-day career: day 1 opens a repair-zone job (body, 3 slots)
- * and works it to completion, then opens an install-part job for the
- * spare coilovers and completes it; the remaining days pass idle so
- * weekly rent (days 7/14/21/28) and market-heat drift exercise on
- * schedule. Seed 42 per the roadmap's own golden-master example.
+ * Scripted 30-day career: day 1 moves the car into the (sole, starting)
+ * service bay and opens a repair-zone job (body, 3 slots) and works it to
+ * completion, then opens an install-part job for the spare coilovers and
+ * completes it; the remaining days pass idle so weekly rent (days
+ * 7/14/21/28) and market-heat drift exercise on schedule. Seed 42 per the
+ * roadmap's own golden-master example. The car stays in the service bay for
+ * the rest of the career (moves are free, but nothing here needs to move it
+ * back out) — labor only reaches a job whose car is in a service bay.
  */
 function scriptedActionsForDay(day: number): DayActions {
   if (day === 1) {
     return {
       ...noActions,
+      moveCars: [{ carInstanceId: 'car-0001', to: 'service' }],
       createJobs: [
         { carInstanceId: 'car-0001', kind: 'repair-zone', zone: 'body', laborSlotsRequired: 3 },
       ],
@@ -122,7 +129,7 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('5faa7474')
+    expect(hashState(finalState)).toBe('49b9eb4a')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -200,6 +207,6 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    expect(hashState(acquisitionCareer().sold)).toBe('84b393cb')
+    expect(hashState(acquisitionCareer().sold)).toBe('afc3eaf7')
   })
 })

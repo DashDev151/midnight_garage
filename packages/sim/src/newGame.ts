@@ -33,5 +33,8 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     activeListings: [],
     serviceJobOffers: [],
     activeServiceJobs: [],
+    serviceBayCount: context.facilities.service.startCount,
+    parkingBayCount: context.facilities.parking.startCount,
+    serviceBayCarIds: [],
   }
 }

@@ -11,6 +11,7 @@ import type {
 import { generateAuctionCarInstance } from './auctions'
 import { GRADE_REPUTATION_MULTIPLIER, SERVICE_JOB_FAILURE_REP_MULTIPLIER } from './constants'
 import type { SimContext } from './context'
+import { releaseCarFromServiceBay } from './facilities'
 import type { Rng } from './rng'
 
 /**
@@ -103,8 +104,9 @@ export function resolveServiceJob(
   const job = state.activeServiceJobs.find((sj) => sj.id === jobId)
   if (!job) return { state, log: [], outcome: 'not-found' }
 
-  const activeServiceJobs = state.activeServiceJobs.filter((sj) => sj.id !== jobId)
-  const jobs = state.jobs.filter((j) => j.carInstanceId !== job.car.id)
+  const releasedState = releaseCarFromServiceBay(state, job.car.id)
+  const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
+  const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
 
   if (isServiceWorkDone(job)) {
     const reputationGained = reputationForCompletion(
@@ -113,9 +115,9 @@ export function resolveServiceJob(
     )
     return {
       state: {
-        ...state,
-        cashYen: state.cashYen + job.payoutYen,
-        reputationPoints: state.reputationPoints + reputationGained,
+        ...releasedState,
+        cashYen: releasedState.cashYen + job.payoutYen,
+        reputationPoints: releasedState.reputationPoints + reputationGained,
         activeServiceJobs,
         jobs,
       },
@@ -132,11 +134,11 @@ export function resolveServiceJob(
   }
 
   const penalty = reputationForFailure(job.baseReputation)
-  const reputationLost = Math.min(penalty, state.reputationPoints)
+  const reputationLost = Math.min(penalty, releasedState.reputationPoints)
   return {
     state: {
-      ...state,
-      reputationPoints: state.reputationPoints - reputationLost,
+      ...releasedState,
+      reputationPoints: releasedState.reputationPoints - reputationLost,
       activeServiceJobs,
       jobs,
     },

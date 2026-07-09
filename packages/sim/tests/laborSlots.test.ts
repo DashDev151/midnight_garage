@@ -18,6 +18,9 @@ function baseState(staff: StaffMember[]): GameState {
     marketHeat: {},
     activeAuctionLots: [],
     activeListings: [],
+    serviceBayCount: 1,
+    parkingBayCount: 3,
+    serviceBayCarIds: [],
   }
 }
 

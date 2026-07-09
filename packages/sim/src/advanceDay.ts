@@ -25,6 +25,12 @@ import {
 } from './constants'
 import type { SimContext } from './context'
 import { applyWeeklyRentAndWages } from './finances'
+import {
+  applyBayPurchases,
+  applyMoves,
+  hasParkingSpace,
+  releaseCarFromServiceBay,
+} from './facilities'
 import { applyLaborToJob, completeJob, createJob, isJobComplete } from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { driftMarketHeat } from './marketHeat'
@@ -73,6 +79,19 @@ export function advanceDay(
   const rng = createRng(seed)
   let next: GameState = state
 
+  // 0. Resolve bots' bay purchases then moves (the player does both instantly
+  // via direct store calls — resolveServiceJob's precedent — so only queued
+  // DayActions from headless bots reach this step; the pure applyBayPurchases
+  // / applyMoves cores are the single resolution path either way). Bays
+  // purchased today are usable by the moves and labor below, same day.
+  const bayPurchases = applyBayPurchases(next, queuedActions.buyBays, context.facilities)
+  next = bayPurchases.state
+  log.push(...bayPurchases.log)
+
+  const moves = applyMoves(next, queuedActions.moveCars)
+  next = moves.state
+  log.push(...moves.log)
+
   // 1. Create today's queued jobs.
   const jobs: Job[] = [...next.jobs]
   queuedActions.createJobs.forEach((spec, i) => {
@@ -114,24 +133,27 @@ export function advanceDay(
 
   // 1c. Accept queued service jobs (GDD Act 1 "job cards"). Accepting simply
   // moves the offer into activeServiceJobs — the customer's car is now sitting
-  // in the shop. The player then does the actual work on it (buy parts, assign
-  // labor via the normal job system) and clicks "Complete Job" when it's done.
+  // in the shop (in parking; the player moves it into a service bay to work
+  // it). The player then does the actual work (buy parts, assign labor via
+  // the normal job system) and clicks "Complete Job" when it's done. Needs a
+  // free parking space to take delivery — `next` updates per-accept so
+  // multiple accepts in one day are checked against each other live.
   const offersById = new Map(next.serviceJobOffers.map((offer) => [offer.id, offer]))
-  const newActiveServiceJobs: ServiceJob[] = []
   for (const action of queuedActions.acceptServiceJobs) {
     const offer = offersById.get(action.offerId)
     if (!offer) continue
+    if (!hasParkingSpace(next)) {
+      log.push({ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-parking' })
+      continue
+    }
     offersById.delete(offer.id)
     // Stamp the work deadline now — the player has SERVICE_JOB_DEADLINE_DAYS
     // from acceptance to finish and hand the car back.
-    newActiveServiceJobs.push({ ...offer, dueOnDay: next.day + SERVICE_JOB_DEADLINE_DAYS })
+    const activeJob: ServiceJob = { ...offer, dueOnDay: next.day + SERVICE_JOB_DEADLINE_DAYS }
+    next = { ...next, activeServiceJobs: [...next.activeServiceJobs, activeJob] }
     log.push({ type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id })
   }
-  next = {
-    ...next,
-    serviceJobOffers: Array.from(offersById.values()),
-    activeServiceJobs: [...next.activeServiceJobs, ...newActiveServiceJobs],
-  }
+  next = { ...next, serviceJobOffers: Array.from(offersById.values()) }
 
   // 2. Labor budget for the day, shared by lot inspections and job assignments.
   const available = availableLaborSlots(next)
@@ -163,12 +185,18 @@ export function advanceDay(
 
   // Labor applies to jobs, which target either an owned car or a customer's
   // car sitting in a service job — both worked through the same job/labor
-  // system, so there's a single code path here.
+  // system, so there's a single code path here. Either way, the car must be
+  // sitting in a service bay right now (after step 0's moves) to receive any
+  // labor — a job on a parked car makes no progress until moved in.
   const jobsById = new Map(next.jobs.map((job) => [job.id, job]))
   for (const assignment of queuedActions.laborAssignments) {
     if (remainingLabor <= 0) break
     const job = jobsById.get(assignment.jobId)
     if (!job || isJobComplete(job)) continue
+    if (!next.serviceBayCarIds.includes(job.carInstanceId)) {
+      log.push({ type: 'job-blocked', jobId: job.id, reason: 'not-in-service-bay' })
+      continue
+    }
     const need = job.laborSlotsRequired - job.laborSlotsSpent
     const slotsToApply = Math.min(assignment.laborSlots, remainingLabor, need)
     if (slotsToApply <= 0) continue
@@ -215,6 +243,13 @@ export function advanceDay(
     if (!lot) continue
     const priceYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
     if (next.cashYen < priceYen) continue
+    // A buyout is guaranteed and has no rival contest, so a full garage just
+    // means the purchase doesn't happen today — no money spent, the lot stays
+    // on the board for a retry once space frees up.
+    if (!hasParkingSpace(next)) {
+      log.push({ type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' })
+      continue
+    }
     remainingLots.delete(lotId)
     const car = resolveHandoverCondition(lot, priceYen, context.hiddenIssuesById, rng)
     next = { ...next, cashYen: next.cashYen - priceYen, ownedCars: [...next.ownedCars, car] }
@@ -232,6 +267,13 @@ export function advanceDay(
 
     remainingLots.delete(bid.lotId)
     if (result.winner === 'player') {
+      // Unlike a buyout, rivals already contested this lot — a full garage
+      // doesn't put the auction on hold, it forfeits the win to them.
+      if (!hasParkingSpace(next)) {
+        log.push({ type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-parking' })
+        log.push({ type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: result.finalPriceYen })
+        continue
+      }
       const finalCar = resolveHandoverCondition(
         lot,
         result.finalPriceYen,
@@ -259,6 +301,7 @@ export function advanceDay(
     if (!model || context.buyers.length === 0) continue
 
     const offer = sellViaWalkIn(car, model, context.buyers, context.partsById, rng)
+    next = releaseCarFromServiceBay(next, carInstanceId)
     next = {
       ...next,
       cashYen: next.cashYen + offer.priceYen,
@@ -298,6 +341,7 @@ export function advanceDay(
       resolvesOnDay: next.day + waitDays,
     }
     newListings.push(listing)
+    next = releaseCarFromServiceBay(next, action.carInstanceId)
     next = { ...next, ownedCars: next.ownedCars.filter((c) => c.id !== action.carInstanceId) }
     log.push({
       type: 'listing-created',

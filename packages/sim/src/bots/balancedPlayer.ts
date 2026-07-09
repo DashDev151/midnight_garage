@@ -1,5 +1,6 @@
 import type { GameState, Zone } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
@@ -42,12 +43,15 @@ export function balancedPlayerStrategy(
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
+  const bayBudget = serviceBayBudget(state)
 
-  // 1. Continue any in-progress repair job from a prior day.
+  // 1. Continue any in-progress repair job from a prior day — only if its
+  // car is in the service bay (moved in first, if there's room today).
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
     const need = job.laborSlotsRequired - job.laborSlotsSpent
     if (need <= 0) continue
+    if (!claimServiceBay(state, job.carInstanceId, actions, bayBudget)) continue
     const slots = Math.min(need, laborBudget)
     actions.laborAssignments.push({ jobId: job.id, laborSlots: slots })
     laborBudget -= slots
@@ -55,7 +59,8 @@ export function balancedPlayerStrategy(
 
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
 
-  // 2. Fix the worst zone per job-free owned car, up to two critical repairs total.
+  // 2. Fix the worst zone per job-free owned car, up to two critical repairs
+  // total, bay space permitting.
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
@@ -65,6 +70,7 @@ export function balancedPlayerStrategy(
     const worstZone = ZONES.reduce((worst, zone) =>
       car.condition[zone] < car.condition[worst] ? zone : worst,
     )
+    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,

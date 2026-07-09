@@ -11,6 +11,14 @@ import { decodeSave, encodeSave, SAVE_VERSION } from './saveCodec'
 const GOLDEN_V1_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjoxLCJnYW1lU3RhdGUiOnsiZGF5Ijo1LCJzZWVkIjoxLCJjYXNoWWVuIjo5MDAwMDAsInJlcHV0YXRpb25UaWVyIjoidW5rbm93biJ9fQ=='
 
+/**
+ * A save code produced by version 2 (Sprint 08), pinned as a literal — same
+ * Save law as the v1 code above. Carries non-default `reputationPoints` so
+ * the test can distinguish "preserved" from "defaulted."
+ */
+const GOLDEN_V2_CODE =
+  'MGSAVE1.eyJ2ZXJzaW9uIjoyLCJnYW1lU3RhdGUiOnsiZGF5IjoxMiwic2VlZCI6OTksImNhc2hZZW4iOjExMDAwMDAsInJlcHV0YXRpb25UaWVyIjoibG9jYWwiLCJyZXB1dGF0aW9uUG9pbnRzIjo1LCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdfX0='
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -45,6 +53,26 @@ describe('saveCodec', () => {
     expect(decoded.reputationPoints).toBe(0)
     expect(decoded.serviceJobOffers).toEqual([])
     expect(decoded.activeServiceJobs).toEqual([])
+    // v2 -> v3 migration is likewise pure default-fill: a v1 save never had
+    // the Sprint-09 bay fields either, and comes back at a fresh game's
+    // starting counts (matching facilities.json's startCounts).
+    expect(decoded.serviceBayCount).toBe(1)
+    expect(decoded.parkingBayCount).toBe(3)
+    expect(decoded.serviceBayCarIds).toEqual([])
+  })
+
+  it('decodes the pinned golden v2 save under the current version (Save law)', () => {
+    const decoded = decodeSave(GOLDEN_V2_CODE)
+    expect(decoded.day).toBe(12)
+    expect(decoded.cashYen).toBe(1_100_000)
+    expect(decoded.reputationTier).toBe('local')
+    // v2 fields are preserved unchanged, not reset to their defaults.
+    expect(decoded.reputationPoints).toBe(5)
+    // v2 -> v3 migration is pure default-fill: the Sprint-09 bay fields a v2
+    // save never had come back at a fresh game's starting counts.
+    expect(decoded.serviceBayCount).toBe(1)
+    expect(decoded.parkingBayCount).toBe(3)
+    expect(decoded.serviceBayCarIds).toEqual([])
   })
 
   it('rejects a non-save string', () => {

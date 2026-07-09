@@ -45,16 +45,29 @@ describe('GarageScreen', () => {
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
   })
 
-  it('renders a card per owned car once one is granted', async () => {
+  it('a granted car lands in parking (never straight into a bay)', async () => {
     const game = useGameStore()
     const wrapper = mountScreen()
-    expect(wrapper.text()).toContain('No cars yet')
+    expect(wrapper.text()).toContain('Nothing parked')
+    expect(wrapper.text()).toContain('empty bay')
 
     game.devGrantCar(CARS[0]!.id)
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).not.toContain('No cars yet')
-    expect(wrapper.findAll('.car-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('Nothing parked')
+    expect(wrapper.findAll('.parking-row')).toHaveLength(1)
     expect(wrapper.text()).toContain(game.carsDetailed[0]!.displayName)
+  })
+
+  it('moving a parked car into the service bay updates both lists', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    const wrapper = mountScreen()
+
+    await wrapper.get(`[data-test="move-service-${carId}"]`).trigger('click')
+    expect(wrapper.findAll('.parking-row')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('empty bay')
+    expect(wrapper.find(`[data-test="move-parking-${carId}"]`).exists()).toBe(true)
   })
 })

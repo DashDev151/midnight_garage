@@ -1,5 +1,6 @@
 import type { GameState, Zone } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
@@ -41,6 +42,7 @@ export function cautiousRestorerStrategy(
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
+  const bayBudget = serviceBayBudget(state)
 
   // 1. Inspect one uninspected regional lot per day. Premium tier's book
   // values (rare, Y2-6M) are out of reach for a Y1.5M-capital, 2-car bot
@@ -79,6 +81,7 @@ export function cautiousRestorerStrategy(
     if (jobbedCarIds.has(car.id)) continue
     const zone = ZONES.find((z) => car.condition[z] < REPAIR_THRESHOLD)
     if (!zone) continue
+    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({

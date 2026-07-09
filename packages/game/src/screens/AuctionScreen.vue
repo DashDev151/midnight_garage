@@ -54,6 +54,11 @@ const INTEREST_LABEL: Record<string, string> = {
       (or use the dev console to warp).
     </p>
 
+    <p v-if="game.parkingFull" class="parking-warning">
+      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) — a won lot has
+      nowhere to go and will be lost to a rival. Free up a bay or buy more parking first.
+    </p>
+
     <div v-for="group in detailedGroups" :key="group.tier" class="tier">
       <h3>{{ group.tier }}</h3>
       <ul class="lots">
@@ -174,6 +179,12 @@ h3 {
 
 .empty {
   color: var(--mg-text-dim);
+}
+
+.parking-warning {
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-3);
 }
 
 .lots {

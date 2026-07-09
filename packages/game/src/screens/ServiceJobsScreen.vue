@@ -25,6 +25,11 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
       assign labor — then hand it back from the car's page to get paid.
     </p>
 
+    <p v-if="game.parkingFull" class="parking-warning">
+      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) — accepting a
+      job won't bring the car in until a bay frees up.
+    </p>
+
     <section class="board">
       <h3>Job board</h3>
       <p v-if="!hasOffers" class="empty">
@@ -114,6 +119,12 @@ h3 {
 
 .empty {
   color: var(--mg-text-dim);
+}
+
+.parking-warning {
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-3);
 }
 
 .offers {

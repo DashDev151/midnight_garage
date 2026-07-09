@@ -7,6 +7,7 @@ import { JobKindSchema, JobSchema } from './job'
 import { AuctionLotSchema, AuctionTierSchema } from './auction'
 import { PublicListingSchema, SaleChannelSchema } from './sale'
 import { ServiceJobSchema } from './serviceJob'
+import { BayKindSchema } from './facilities'
 
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
@@ -27,6 +28,19 @@ export const GameStateSchema = z.object({
   serviceJobOffers: z.array(ServiceJobSchema).default([]),
   /** Service jobs the player has accepted and is working. */
   activeServiceJobs: z.array(ServiceJobSchema).default([]),
+  /**
+   * Facilities (Sprint 09). Defaults here are the save-migration fallback for
+   * pre-v3 saves that never had a bay system — kept in sync with
+   * facilities.json's `startCount`s, which is what a genuinely new game reads
+   * (see sim's createInitialGameState). Two sources of the same "1" / "3"
+   * because they answer different questions (migrate an old save vs. seed a
+   * new one), not duplication to clean up.
+   */
+  serviceBayCount: z.number().int().positive().default(1),
+  parkingBayCount: z.number().int().positive().default(3),
+  /** Ids of cars (owned or an active service job's car) currently occupying a
+   * service bay — capped at serviceBayCount. Everything else is in parking. */
+  serviceBayCarIds: z.array(z.string().min(1)).default([]),
 })
 
 /**
@@ -61,7 +75,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('job-blocked'),
     jobId: z.string().min(1),
-    reason: z.enum(['slot-occupied']),
+    reason: z.enum(['slot-occupied', 'not-in-service-bay']),
   }),
   z.object({
     type: z.literal('labor-overbooked'),
@@ -129,6 +143,21 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     partId: z.string().min(1),
     partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('car-moved'),
+    carInstanceId: z.string().min(1),
+    to: BayKindSchema,
+  }),
+  z.object({
+    type: z.literal('bay-purchased'),
+    kind: BayKindSchema,
+    priceYen: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('acquisition-blocked'),
+    kind: z.enum(['auction-win', 'buyout', 'service-accept']),
+    reason: z.enum(['no-parking']),
   }),
 ])
 

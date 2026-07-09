@@ -1,5 +1,6 @@
 import type { GameState, Zone } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import type { Rng } from '../rng'
 
@@ -40,12 +41,15 @@ export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = PLAYER_LABOR_SLOTS
+  const bayBudget = serviceBayBudget(state)
 
-  // 1. Continue any in-progress repair job from a prior day.
+  // 1. Continue any in-progress repair job from a prior day — only if its
+  // car is in the service bay (moved in first, if there's room today).
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
     const need = job.laborSlotsRequired - job.laborSlotsSpent
     if (need <= 0) continue
+    if (!claimServiceBay(state, job.carInstanceId, actions, bayBudget)) continue
     const slots = Math.min(need, laborBudget)
     actions.laborAssignments.push({ jobId: job.id, laborSlots: slots })
     laborBudget -= slots
@@ -53,7 +57,8 @@ export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng
 
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
 
-  // 2. Start one new repair job (worst zone) per job-free owned car, budget permitting.
+  // 2. Start one new repair job (worst zone) per job-free owned car, budget
+  // and bay space permitting.
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
@@ -61,6 +66,7 @@ export function flipperStrategy(state: GameState, _context: SimContext, rng: Rng
       car.condition[zone] < car.condition[worst] ? zone : worst,
     )
     if (car.condition[worstZone] >= 90) continue
+    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({

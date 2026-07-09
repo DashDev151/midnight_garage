@@ -50,6 +50,9 @@ describe('CarDetailScreen', () => {
     const id = car.id
     const { wrapper } = await mountAt(id)
 
+    // A dev-granted car lands in parking; move it into the service bay first
+    // so the repair job it's about to queue can actually receive labor.
+    await wrapper.find('[data-test="toggle-bay"]').trigger('click')
     await wrapper.find('[data-test="repair-engine"]').trigger('click')
     // End enough days for the repair to finish (bounded loop).
     for (let i = 0; i < 6 && game.gameState.ownedCars[0]!.condition.engine < 100; i++) {

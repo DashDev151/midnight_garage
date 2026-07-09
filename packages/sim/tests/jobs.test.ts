@@ -50,6 +50,9 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     marketHeat: {},
     activeAuctionLots: [],
     activeListings: [],
+    serviceBayCount: 1,
+    parkingBayCount: 3,
+    serviceBayCarIds: [],
     ...overrides,
   }
 }

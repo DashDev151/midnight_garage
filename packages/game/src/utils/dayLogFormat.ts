@@ -53,5 +53,11 @@ export function describeLogEntry(
       return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep)`
     case 'service-job-failed':
       return `Service job failed (-${entry.reputationLost} rep)`
+    case 'car-moved':
+      return `Moved ${entry.carInstanceId} to ${entry.to}`
+    case 'bay-purchased':
+      return `Bought a ${entry.kind} bay for ${formatYen(entry.priceYen)}`
+    case 'acquisition-blocked':
+      return `${entry.kind} blocked — no parking space`
   }
 }

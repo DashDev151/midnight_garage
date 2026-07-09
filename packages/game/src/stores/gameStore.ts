@@ -1,7 +1,15 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, SERVICE_JOB_TEMPLATES } from '@midnight-garage/content'
+import {
+  BUYERS,
+  CARS,
+  FACILITIES,
+  HIDDEN_ISSUES,
+  PARTS,
+  SERVICE_JOB_TEMPLATES,
+} from '@midnight-garage/content'
 import type {
   AuctionLot,
   AuctionTier,
+  BayKind,
   Buyer,
   CarInstance,
   CarModel,
@@ -19,6 +27,8 @@ import type {
 import { resolveCarDisplayName } from '@midnight-garage/content'
 import {
   advanceDay,
+  applyBayPurchase,
+  applyMoves,
   AUCTION_BUYOUT_PREMIUM,
   AUCTION_RESERVE_PRICE_FRACTION,
   AUCTION_TRAVEL_FEE_YEN,
@@ -31,8 +41,11 @@ import {
   createRng,
   DayActionsSchema,
   generateAuctionCarInstance,
+  hasParkingSpace,
   isServiceWorkDone,
   listPubliclyAskingPrice,
+  nextBayPriceYen,
+  parkingOccupancy,
   reputationForFailure,
   resolveServiceJob,
   valuateCarForBuyer,
@@ -85,6 +98,16 @@ export interface CarDetail extends DetailedCar {
   pendingJobs: NewJobSpec[]
   /** Set when this car belongs to a service job the player is working. */
   serviceJob?: ServiceJobView
+  /** Whether this car is currently in a service bay (labor only reaches it if so). */
+  inServiceBay: boolean
+}
+
+/** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
+export interface ShopCarView {
+  carId: string
+  displayName: string
+  /** True for a customer's car in for a service job — never owned. */
+  isCustomerCar: boolean
 }
 
 /** A short human label for a service job's required work. */
@@ -163,7 +186,7 @@ export interface DayReport {
 export const useGameStore = defineStore('game', () => {
   // Content catalogs are static and heavy; shallowRef avoids deep reactivity we never mutate.
   const context = shallowRef<SimContext>(
-    buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES),
+    buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES, FACILITIES),
   )
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
   const dayLog = ref<DayLogEntry[]>([])
@@ -259,6 +282,7 @@ export const useGameStore = defineStore('game', () => {
       jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
       pendingJobs: pendingJobs.value.filter((j) => j.carInstanceId === carId),
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
+      inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
     }
   }
 
@@ -362,6 +386,92 @@ export const useGameStore = defineStore('game', () => {
       if (!part || part.slot !== slot) return false
       return part.requiredTags.every((tag) => model.tags.includes(tag))
     })
+  }
+
+  // --- facilities (bays) -------------------------------------------------
+
+  /** Resolve one car currently in the shop (owned or a customer's), for the bay layout. */
+  function shopCarView(carId: string): ShopCarView | undefined {
+    const owned = gameState.value.ownedCars.find((c) => c.id === carId)
+    if (owned) {
+      const model = context.value.modelsById[owned.modelId]
+      return {
+        carId,
+        displayName: model ? resolveCarDisplayName(model) : owned.modelId,
+        isCustomerCar: false,
+      }
+    }
+    const serviceCar = gameState.value.activeServiceJobs.find((sj) => sj.car.id === carId)
+    if (serviceCar) {
+      const model = context.value.modelsById[serviceCar.car.modelId]
+      return {
+        carId,
+        displayName: model ? resolveCarDisplayName(model) : serviceCar.car.modelId,
+        isCustomerCar: true,
+      }
+    }
+    return undefined
+  }
+
+  /** One entry per service bay slot — the car in it, or null if empty. */
+  const serviceBaysView = computed<(ShopCarView | null)[]>(() => {
+    const slots: (ShopCarView | null)[] = gameState.value.serviceBayCarIds
+      .map(shopCarView)
+      .filter((v): v is ShopCarView => v !== undefined)
+    while (slots.length < gameState.value.serviceBayCount) slots.push(null)
+    return slots
+  })
+
+  /** Every shop car not currently in a service bay (owned + customer cars alike). */
+  const parkingView = computed<ShopCarView[]>(() => {
+    const inBay = new Set(gameState.value.serviceBayCarIds)
+    const ownedParked = gameState.value.ownedCars
+      .filter((c) => !inBay.has(c.id))
+      .map((c) => shopCarView(c.id)!)
+    const customerParked = gameState.value.activeServiceJobs
+      .filter((sj) => !inBay.has(sj.car.id))
+      .map((sj) => shopCarView(sj.car.id)!)
+    return [...ownedParked, ...customerParked]
+  })
+
+  const parkingCapacity = computed(() => gameState.value.parkingBayCount)
+  const parkingOccupancyCount = computed(() => parkingOccupancy(gameState.value))
+  const parkingFull = computed(() => !hasParkingSpace(gameState.value))
+  const serviceBayCount = computed(() => gameState.value.serviceBayCount)
+  const serviceBayFreeCount = computed(
+    () => gameState.value.serviceBayCount - gameState.value.serviceBayCarIds.length,
+  )
+
+  /** Price of the next bay of this kind, or null once it's maxed out. */
+  function nextBayPrice(kind: BayKind): number | null {
+    return nextBayPriceYen(gameState.value, kind, context.value.facilities)
+  }
+
+  /**
+   * Move a car between parking and a service bay — instant and free, no
+   * limit on how many times a day (mirrors resolveServiceJob's pattern: a
+   * pure sim core the store calls directly, rather than a queued DayAction).
+   * Returns whether the move actually happened (false if the car isn't in
+   * the shop, is already there, or the destination has no room).
+   */
+  function moveCar(carId: string, to: BayKind): boolean {
+    const result = applyMoves(gameState.value, [{ carInstanceId: carId, to }])
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
+   * Buy the next bay of this kind — instant, usable the same day. Returns
+   * false if already at the max count or unaffordable.
+   */
+  function buyBay(kind: BayKind): boolean {
+    const result = applyBayPurchase(gameState.value, kind, context.value.facilities)
+    if (!result.applied) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
   }
 
   // --- day planning -----------------------------------------------------
@@ -488,14 +598,20 @@ export const useGameStore = defineStore('game', () => {
    * Auto-allocates the day's labor slots (inspections eat a slot each first,
    * matching advanceDay's order, then in-progress jobs, then newly-queued
    * jobs) and returns the full DayActions to commit. Predicted ids for new
-   * jobs match advanceDay's `job-${day}-${index}` scheme.
+   * jobs match advanceDay's `job-${day}-${index}` scheme. Only jobs whose car
+   * is CURRENTLY in a service bay get labor — moves are instant, so any move
+   * the player made is already reflected in gameState by the time this runs;
+   * a job on a parked car is left queued but makes no progress (advanceDay
+   * would skip it anyway — this just avoids spending the labor budget on it).
    */
   function planActions(): DayActions {
     let remaining = Math.max(0, laborSlotsPerDay.value - pending.value.inspectLots.length)
     const laborAssignments: LaborAssignment[] = []
+    const inServiceBay = (carId: string) => gameState.value.serviceBayCarIds.includes(carId)
 
     for (const job of gameState.value.jobs) {
       if (remaining <= 0) break
+      if (!inServiceBay(job.carInstanceId)) continue
       const need = job.laborSlotsRequired - job.laborSlotsSpent
       if (need <= 0) continue
       const slots = Math.min(need, remaining)
@@ -505,6 +621,7 @@ export const useGameStore = defineStore('game', () => {
 
     pending.value.createJobs.forEach((spec, i) => {
       if (remaining <= 0) return
+      if (!inServiceBay(spec.carInstanceId)) return
       const slots = Math.min(spec.laborSlotsRequired, remaining)
       laborAssignments.push({ jobId: `job-${gameState.value.day}-${i}`, laborSlots: slots })
       remaining -= slots
@@ -679,6 +796,16 @@ export const useGameStore = defineStore('game', () => {
     walkInEstimate,
     listingEstimate,
     installablePartsFor,
+    serviceBaysView,
+    parkingView,
+    parkingCapacity,
+    parkingOccupancyCount,
+    parkingFull,
+    serviceBayCount,
+    serviceBayFreeCount,
+    nextBayPrice,
+    moveCar,
+    buyBay,
     queueRepair,
     queueInstall,
     queueInspect,

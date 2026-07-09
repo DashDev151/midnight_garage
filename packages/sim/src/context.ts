@@ -1,12 +1,24 @@
 import type {
   Buyer,
   CarModel,
+  Facilities,
   HiddenIssue,
   Part,
   ServiceJobTemplate,
   Zone,
 } from '@midnight-garage/content'
 import { groupHiddenIssuesByZone } from './auctions'
+
+/**
+ * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
+ * pass a facilities arg keep compiling and still get sane new-game start
+ * counts (1 service / 3 parking) — just with no bays purchasable (max ==
+ * start). Real gameplay passes content's actual FACILITIES.
+ */
+const DEFAULT_FACILITIES: Facilities = {
+  service: { startCount: 1, maxCount: 1, bayPricesYen: [] },
+  parking: { startCount: 3, maxCount: 3, bayPricesYen: [] },
+}
 
 /**
  * Static content catalogs advanceDay needs for auction generation and
@@ -26,6 +38,7 @@ export interface SimContext {
   hiddenIssuesById: Readonly<Record<string, HiddenIssue>>
   hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>
   serviceJobTemplates: readonly ServiceJobTemplate[]
+  facilities: Facilities
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -42,6 +55,7 @@ export function buildSimContext(
   buyers: readonly Buyer[],
   hiddenIssues: readonly HiddenIssue[],
   serviceJobTemplates: readonly ServiceJobTemplate[] = [],
+  facilities: Facilities = DEFAULT_FACILITIES,
 ): SimContext {
   return {
     models,
@@ -52,5 +66,6 @@ export function buildSimContext(
     hiddenIssuesById: indexById(hiddenIssues),
     hiddenIssuesByZone: groupHiddenIssuesByZone(hiddenIssues),
     serviceJobTemplates,
+    facilities,
   }
 }

@@ -75,13 +75,6 @@ Remove an item once it's actioned; note which sprint/commit picked it up.
 
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **Facilities & bays — the sprint DIRECTLY AFTER service jobs.** Two-tier bay system: *service
-  bays* (work capacity — a car must be in one to receive labor; start 1 → 2 → ~5) vs *parking bays*
-  (storage — hold owned + accepted-job cars; start 3 → ~10-15), a move-between-bays action, and
-  bay expansion as a purchase (the "Tools, not levels" spine). Cross-cutting: gates owned-car builds
-  *and* service jobs. Models the labor↔bays↔staff growth loop. Full requirements:
-  `docs/design/facilities-bays.md`. Detailed end-to-end design finalized when the sprint starts.
-
 - [ ] **Skill / XP progression** — learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
   with the staff system (Sprint 13); player-character skill is new v1.0 scope, slotted against the

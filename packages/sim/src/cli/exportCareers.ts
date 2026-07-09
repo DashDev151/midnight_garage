@@ -20,6 +20,7 @@ import { join } from 'node:path'
 import {
   BUYERS,
   CARS,
+  FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
   SERVICE_JOB_TEMPLATES,
@@ -64,7 +65,14 @@ const COLUMNS = [
 ] as const
 
 function main(): void {
-  const context = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES)
+  const context = buildSimContext(
+    CARS,
+    PARTS,
+    BUYERS,
+    HIDDEN_ISSUES,
+    SERVICE_JOB_TEMPLATES,
+    FACILITIES,
+  )
   const rows: string[] = []
 
   for (const { name, strategy } of STRATEGIES) {

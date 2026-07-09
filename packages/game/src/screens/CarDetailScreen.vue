@@ -54,6 +54,13 @@ function onCompleteJob(jobId: string): void {
   game.completeServiceJob(jobId)
 }
 
+/** Move this car between parking and the service bay — instant, free. */
+function toggleBay(): void {
+  const d = detail.value
+  if (!d) return
+  game.moveCar(d.car.id, d.inServiceBay ? 'parking' : 'service')
+}
+
 const walkIn = computed(() => game.walkInEstimate(carId.value))
 const listPrice = computed(() => game.listingEstimate(carId.value))
 const sellQueued = computed(() => {
@@ -77,6 +84,20 @@ const sellQueued = computed(() => {
       </p>
       <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
     </header>
+
+    <div class="bay-status">
+      <span class="bay-loc" :class="{ inBay: detail.inServiceBay }">
+        {{ detail.inServiceBay ? 'In the service bay' : 'Parked' }}
+      </span>
+      <span v-if="!detail.inServiceBay" class="bay-hint">no work progresses until moved in</span>
+      <button
+        :disabled="!detail.inServiceBay && game.serviceBayFreeCount <= 0"
+        data-test="toggle-bay"
+        @click="toggleBay"
+      >
+        {{ detail.inServiceBay ? 'Move to parking' : 'Move to service bay' }}
+      </button>
+    </div>
 
     <section v-if="detail.serviceJob" class="service-banner">
       <h3>Customer job — {{ detail.serviceJob.customerName }}</h3>
@@ -263,6 +284,33 @@ h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   margin: var(--mg-space-1) 0;
+}
+
+.bay-status {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  margin: var(--mg-space-2) 0;
+}
+
+.bay-loc {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.bay-loc.inBay {
+  color: var(--mg-success);
+}
+
+.bay-hint {
+  color: var(--mg-neon-pink);
+  font-size: var(--mg-fs-sm);
+}
+
+.bay-status button {
+  padding: 2px 10px;
+  font-size: var(--mg-fs-sm);
 }
 
 .service-banner {

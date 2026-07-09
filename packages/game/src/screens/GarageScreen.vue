@@ -17,10 +17,8 @@ const recentLog = computed(() =>
     })),
 )
 
-/** Worst zone condition, as a quick garage-card health read. */
-function worstZone(condition: Record<string, number>): number {
-  return Math.min(...Object.values(condition))
-}
+const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
+const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
 </script>
 
 <template>
@@ -52,19 +50,75 @@ function worstZone(condition: Record<string, number>): number {
     </div>
 
     <section class="bays">
-      <h3>Bays</h3>
-      <p v-if="game.carsDetailed.length === 0" class="empty">
-        No cars yet. Grant one from the dev console (auctions arrive in Sprint 06).
+      <h3>Service bays ({{ game.serviceBayFreeCount }}/{{ game.serviceBayCount }} free)</h3>
+      <p class="how">
+        Labor only reaches a car sitting in a service bay. Moves are free and instant.
       </p>
-      <ul v-else class="car-grid">
-        <li v-for="detailed in game.carsDetailed" :key="detailed.car.id" class="car-card">
-          <RouterLink :to="{ name: 'car', params: { id: detailed.car.id } }">
-            <span class="car-name">{{ detailed.displayName }}</span>
-            <span class="car-meta">{{ detailed.model.tier }} · {{ detailed.car.year }}</span>
-            <span class="car-health">worst zone {{ worstZone(detailed.car.condition) }}/100</span>
-          </RouterLink>
+      <ul class="bay-slots">
+        <li v-for="(slot, i) in game.serviceBaysView" :key="i" class="bay-slot">
+          <template v-if="slot">
+            <RouterLink :to="{ name: 'car', params: { id: slot.carId } }" class="slot-car">
+              {{ slot.displayName }}
+              <span v-if="slot.isCustomerCar" class="badge">customer job</span>
+            </RouterLink>
+            <button
+              :data-test="'move-parking-' + slot.carId"
+              @click="game.moveCar(slot.carId, 'parking')"
+            >
+              &rarr; parking
+            </button>
+          </template>
+          <span v-else class="slot-empty">empty bay</span>
         </li>
       </ul>
+    </section>
+
+    <section class="parking">
+      <h3>Parking ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }})</h3>
+      <p v-if="game.parkingView.length === 0" class="empty">Nothing parked.</p>
+      <ul v-else class="parking-list">
+        <li v-for="car in game.parkingView" :key="car.carId" class="parking-row">
+          <RouterLink :to="{ name: 'car', params: { id: car.carId } }" class="slot-car">
+            {{ car.displayName }}
+            <span v-if="car.isCustomerCar" class="badge">customer job</span>
+          </RouterLink>
+          <button
+            :disabled="game.serviceBayFreeCount <= 0"
+            :data-test="'move-service-' + car.carId"
+            @click="game.moveCar(car.carId, 'service')"
+          >
+            &rarr; service bay
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <section class="facilities">
+      <h3>Facilities</h3>
+      <div class="facility-row">
+        <span>Service bays: {{ game.serviceBayCount }}</span>
+        <button
+          v-if="nextServiceBayPriceYen !== null"
+          :disabled="game.cashYen < nextServiceBayPriceYen"
+          data-test="buy-service-bay"
+          @click="game.buyBay('service')"
+        >
+          Buy next bay ({{ formatYen(nextServiceBayPriceYen) }})
+        </button>
+        <span v-else class="maxed">maxed out</span>
+      </div>
+      <div class="facility-row">
+        <span>Parking bays: {{ game.parkingCapacity }}</span>
+        <button
+          v-if="nextParkingBayPriceYen !== null"
+          :disabled="game.cashYen < nextParkingBayPriceYen"
+          data-test="buy-parking-bay"
+          @click="game.buyBay('parking')"
+        >
+          Buy next bay ({{ formatYen(nextParkingBayPriceYen) }})
+        </button>
+        <span v-else class="maxed">maxed out</span>
+      </div>
     </section>
 
     <section v-if="game.activeListings.length" class="listings">
@@ -150,38 +204,93 @@ button.primary {
   border-color: var(--mg-neon-pink);
 }
 
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .empty {
   color: var(--mg-text-dim);
 }
 
-.car-grid {
+.how {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-3);
+}
+
+.bay-slots,
+.parking-list {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--mg-space-4);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--mg-space-3);
 }
 
-.car-card a {
+.bay-slot,
+.parking-row {
   display: flex;
   flex-direction: column;
-  gap: var(--mg-space-1);
+  gap: var(--mg-space-2);
   background: var(--mg-panel);
   border: var(--mg-border);
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
-  text-decoration: none;
-  color: var(--mg-text);
 }
 
-.car-name {
-  color: var(--mg-neon-cyan);
-}
-
-.car-meta,
-.car-health {
+.slot-empty {
   color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.slot-car {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-1);
+  color: var(--mg-neon-cyan);
+  text-decoration: none;
+  font-size: var(--mg-fs-sm);
+}
+
+.badge {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bay-slot button,
+.parking-row button {
+  align-self: flex-start;
+  padding: 2px 10px;
+  font-size: var(--mg-fs-sm);
+}
+
+.facilities {
+  display: grid;
+  gap: var(--mg-space-2);
+  margin-bottom: var(--mg-space-4);
+}
+
+.facility-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+}
+
+.facility-row button {
+  padding: 2px 10px;
+  font-size: var(--mg-fs-sm);
+}
+
+.maxed {
+  color: var(--mg-success);
   font-size: var(--mg-fs-sm);
 }
 

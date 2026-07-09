@@ -11,8 +11,12 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   a v1 save decodes under v2 with the new fields default-filled — no explicit
  *   `MIGRATIONS[1]` step is needed (the golden-save test pins that a v1 code
  *   still loads).
+ * - v3 (Sprint 09): added `serviceBayCount`, `parkingBayCount`,
+ *   `serviceBayCarIds` to GameState. Also purely additive with schema
+ *   defaults (1 / 3 / [] — matching a fresh game's starting bays), so a v1 or
+ *   v2 save decodes under v3 with no explicit `MIGRATIONS[2]` step needed.
  */
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
