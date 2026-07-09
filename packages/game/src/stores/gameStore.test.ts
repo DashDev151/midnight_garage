@@ -1,7 +1,7 @@
 import { GameStateSchema } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { emptyActions, useGameStore } from './gameStore'
+import { useGameStore } from './gameStore'
 
 describe('useGameStore', () => {
   beforeEach(() => {
@@ -57,12 +57,12 @@ describe('useGameStore', () => {
   it('is deterministic: same seed, same end-days, identical state', () => {
     const a = useGameStore()
     a.newGame(99)
-    for (let i = 0; i < 20; i++) a.endDay(emptyActions())
+    for (let i = 0; i < 20; i++) a.endDay()
 
     setActivePinia(createPinia())
     const b = useGameStore()
     b.newGame(99)
-    for (let i = 0; i < 20; i++) b.endDay(emptyActions())
+    for (let i = 0; i < 20; i++) b.endDay()
 
     expect(a.gameState).toEqual(b.gameState)
     expect(a.dayLog).toEqual(b.dayLog)

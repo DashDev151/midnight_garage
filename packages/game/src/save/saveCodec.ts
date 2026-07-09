@@ -15,8 +15,15 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   `serviceBayCarIds` to GameState. Also purely additive with schema
  *   defaults (1 / 3 / [] — matching a fresh game's starting bays), so a v1 or
  *   v2 save decodes under v3 with no explicit `MIGRATIONS[2]` step needed.
+ * - v4 (Sprint 11): added `laborSlotsSpentToday` to GameState (the live daily
+ *   labor counter instant actions decrement, replacing the old client-only
+ *   `pending`/commit-at-End-Day plan). Purely additive with a schema default
+ *   of 0, so a pre-v4 save decodes under v4 with the field default-filled —
+ *   correct, since that save's day genuinely hadn't spent any labor under a
+ *   mechanic that didn't exist yet. A v4-or-later save always carries its
+ *   real value, mid-day or not — no explicit `MIGRATIONS[3]` step needed.
  */
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

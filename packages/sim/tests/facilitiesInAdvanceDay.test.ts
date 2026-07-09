@@ -4,7 +4,8 @@ import {
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
-  SERVICE_JOB_TEMPLATES,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
@@ -19,8 +20,9 @@ const CONTEXT = buildSimContext(
   PARTS,
   BUYERS,
   HIDDEN_ISSUES,
-  SERVICE_JOB_TEMPLATES,
+  SERVICE_JOB_TYPES,
   FACILITIES,
+  SERVICE_JOB_CUSTOMER_NAMES,
 )
 const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
 

@@ -16,7 +16,7 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
       <h2>Service jobs</h2>
       <p class="rep">
         {{ game.reputationPoints }} rep · {{ formatYen(game.cashYen) }} · labor
-        {{ game.laborSlotsPerDay }}/day
+        {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }}
       </p>
     </header>
 
@@ -46,14 +46,9 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
             </span>
           </div>
           <div class="offer-foot">
-            <button
-              :disabled="offer.accepted"
-              :data-test="'accept-' + offer.id"
-              @click="game.queueAcceptServiceJob(offer.id)"
-            >
-              {{ offer.accepted ? 'accepted' : 'Accept' }}
+            <button :data-test="'accept-' + offer.id" @click="game.acceptServiceJob(offer.id)">
+              Accept
             </button>
-            <span v-if="offer.accepted" class="queued-note">queued — arrives after End Day</span>
           </div>
         </li>
       </ul>
@@ -80,7 +75,7 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
       </ul>
     </section>
 
-    <button class="primary" data-test="end-day" @click="game.commitDay()">End Day</button>
+    <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
   </section>
 </template>
 
@@ -163,11 +158,6 @@ h3 {
   display: flex;
   align-items: center;
   gap: var(--mg-space-3);
-}
-
-.queued-note {
-  color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-sm);
 }
 
 .active ul {

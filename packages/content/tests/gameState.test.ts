@@ -54,6 +54,7 @@ describe('GameState / DayLog round-trip', () => {
       serviceBayCount: 1,
       parkingBayCount: 3,
       serviceBayCarIds: ['car-0001'],
+      laborSlotsSpentToday: 0,
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -97,6 +98,7 @@ describe('GameState / DayLog round-trip', () => {
         priceYen: 60_000,
       },
       { type: 'car-moved', carInstanceId: 'car-0001', to: 'service' },
+      { type: 'cars-swapped', serviceCarId: 'car-0001', parkingCarId: 'car-0002' },
       { type: 'bay-purchased', kind: 'service', priceYen: 300_000 },
       { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' },
     ]

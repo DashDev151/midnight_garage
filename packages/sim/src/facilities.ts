@@ -76,6 +76,35 @@ export function moveCar(state: GameState, carInstanceId: string, to: BayKind): M
   }
 }
 
+/**
+ * Atomically exchanges a service-bay car and a parking car's positions
+ * (Sprint 11, round-2 playtest #3). `moveCar` requires a free slot at the
+ * destination, so a shop that's exactly full (services + parking == total
+ * shop cars, zero slack — a legitimate, reachable state) soft-locks: neither
+ * direction has anywhere to go. A swap's net occupancy change in each
+ * location is zero, so it always succeeds when a direct move wouldn't.
+ * No-op (not an error) if either car isn't where the caller claims.
+ */
+export function swapCars(state: GameState, serviceCarId: string, parkingCarId: string): MoveResult {
+  if (!state.serviceBayCarIds.includes(serviceCarId)) return { state, changed: false }
+  const parkingCarInShop =
+    state.ownedCars.some((c) => c.id === parkingCarId) ||
+    state.activeServiceJobs.some((sj) => sj.car.id === parkingCarId)
+  if (!parkingCarInShop || state.serviceBayCarIds.includes(parkingCarId)) {
+    return { state, changed: false }
+  }
+
+  return {
+    state: {
+      ...state,
+      serviceBayCarIds: state.serviceBayCarIds
+        .filter((id) => id !== serviceCarId)
+        .concat(parkingCarId),
+    },
+    changed: true,
+  }
+}
+
 /** Applies a batch of moves in order, logging only the ones that actually changed something. */
 export function applyMoves(
   state: GameState,

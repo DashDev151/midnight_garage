@@ -4,7 +4,8 @@ import {
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
-  SERVICE_JOB_TEMPLATES,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
 } from '@midnight-garage/content'
 import type {
   AuctionLot,
@@ -26,20 +27,20 @@ import type {
 } from '@midnight-garage/content'
 import { resolveCarDisplayName } from '@midnight-garage/content'
 import {
-  advanceDay,
   applyBayPurchase,
   applyMoves,
   AUCTION_BUYOUT_PREMIUM,
   AUCTION_RESERVE_PRICE_FRACTION,
   AUCTION_TRAVEL_FEE_YEN,
   availableLaborSlots,
+  advanceDay,
   bestFitBuyer,
   buildSimContext,
   computeDerivedStats,
   computeLotInterest,
   createInitialGameState,
   createRng,
-  DayActionsSchema,
+  emptyDayActions,
   generateAuctionCarInstance,
   hasParkingSpace,
   isServiceWorkDone,
@@ -47,10 +48,17 @@ import {
   nextBayPriceYen,
   parkingOccupancy,
   reputationForFailure,
+  resolveAcceptServiceJob,
+  resolveBidInstant,
+  resolveBuyoutInstant,
+  resolveBuyPart,
+  resolveInspectLot,
+  resolveJobLabor,
+  resolveListForSale,
+  resolveSellViaWalkIn,
   resolveServiceJob,
+  swapCars as swapCarsCore,
   valuateCarForBuyer,
-  type DayActions,
-  type LaborAssignment,
   type LotInterest,
   type NewJobSpec,
   type ServiceJobOutcome,
@@ -61,11 +69,6 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from '../constants'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { loadSave, writeSave } from '../save/saveDb'
-
-/** A fully-defaulted, typed empty action set - End Day with nothing queued. */
-export function emptyActions(): DayActions {
-  return DayActionsSchema.parse({})
-}
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -94,8 +97,8 @@ export interface DetailedCar {
 
 /** Everything the car-detail screen needs for one car. */
 export interface CarDetail extends DetailedCar {
+  /** Jobs currently in progress on this car — created and labored on instantly (Sprint 11). */
   jobs: Job[]
-  pendingJobs: NewJobSpec[]
   /** Set when this car belongs to a service job the player is working. */
   serviceJob?: ServiceJobView
   /** Whether this car is currently in a service bay (labor only reaches it if so). */
@@ -125,7 +128,6 @@ export interface ServiceJobOfferView {
   payoutYen: number
   baseReputation: number
   expiresOnDay: number
-  accepted: boolean
 }
 
 /** A service job in the shop, tracked against its car's real work state. */
@@ -161,6 +163,12 @@ export interface ServiceJobResultView {
   daysSpent?: number
 }
 
+/** Immediate feedback for a resolved bid (Sprint 11) — shown inline on the lot's card. */
+export interface BidResultView {
+  outcome: 'won' | 'lost' | 'no-sale'
+  priceYen: number
+}
+
 /** An auction lot with the derived numbers the auction screen shows. */
 export interface LotDetail {
   lot: AuctionLot
@@ -174,6 +182,8 @@ export interface LotDetail {
   interest: LotInterest
   /** Revealed hidden issues (only populated once the lot is inspected). */
   revealedIssues: { zone: Zone; hintText: string }[]
+  /** The last bid this session resolved against this lot, if any. */
+  lastBidResult?: BidResultView
 }
 
 /** The estimated same-day walk-in offer for an owned car. */
@@ -190,33 +200,40 @@ export interface DayReport {
 }
 
 /**
- * The state bridge between the pure sim and Vue. Holds the one object
- * Dexie will persist in Sprint 7 (`gameState`), the static content
- * `context` (rebuilt each session, never saved), the running day log, and
- * the player's not-yet-committed job plan (`pendingJobs`) for the current
- * day. The interactive per-day seed uses the same `seed + day` derivation
- * as the balance harness, so a played game is as reproducible as a bot
- * career.
+ * The state bridge between the pure sim and Vue. Holds the one object Dexie
+ * persists (`gameState`), the static content `context` (rebuilt each
+ * session, never saved), and the running day log. Sprint 11: every player
+ * action resolves the instant it's clicked (a direct call to the matching
+ * sim instant resolver) — there is no queued plan anymore. `endDay()` is
+ * purely a day-boundary tick (labor reset, rent, market drift, catalog
+ * refresh). The interactive per-day seed uses the same `seed + day`
+ * derivation as the balance harness, so a played game is as reproducible as
+ * a bot career.
  */
 export const useGameStore = defineStore('game', () => {
   // Content catalogs are static and heavy; shallowRef avoids deep reactivity we never mutate.
   const context = shallowRef<SimContext>(
-    buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES, FACILITIES),
+    buildSimContext(
+      CARS,
+      PARTS,
+      BUYERS,
+      HIDDEN_ISSUES,
+      SERVICE_JOB_TYPES,
+      FACILITIES,
+      SERVICE_JOB_CUSTOMER_NAMES,
+    ),
   )
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
   const dayLog = ref<DayLogEntry[]>([])
-  // The player's not-yet-committed plan for the current day - the full set of
-  // actions (jobs, bids, inspections, sells, listings, part buys) assembled
-  // over the day and applied on End Day. laborAssignments are auto-planned at
-  // commit, so this holds everything except that.
-  const pending = ref<DayActions>(emptyActions())
   // Monotonic counter for dev-granted content ids (dev-only, so non-deterministic is fine).
   const grantCounter = ref(0)
-  // End-of-day report shown after a player-committed day.
+  // End-of-day report shown after End Day.
   const lastDayReport = ref<DayReport | null>(null)
   const reportVisible = ref(false)
   // Immediate feedback shown after a "Complete Job" resolution (paid or failed).
   const lastJobResult = ref<ServiceJobResultView | null>(null)
+  // Immediate feedback per lot, shown inline on the auction screen (Sprint 11 decision 3).
+  const bidResults = ref<Record<string, BidResultView>>({})
 
   const day = computed(() => gameState.value.day)
   const cashYen = computed(() => gameState.value.cashYen)
@@ -224,9 +241,11 @@ export const useGameStore = defineStore('game', () => {
   const reputationPoints = computed(() => gameState.value.reputationPoints)
   const ownedCarCount = computed(() => gameState.value.ownedCars.length)
   const laborSlotsPerDay = computed(() => availableLaborSlots(gameState.value))
+  const laborSlotsRemainingToday = computed(() =>
+    Math.max(0, laborSlotsPerDay.value - gameState.value.laborSlotsSpentToday),
+  )
   const serviceJobOffers = computed(() => gameState.value.serviceJobOffers)
   const activeServiceJobs = computed(() => gameState.value.activeServiceJobs)
-  const pendingJobs = computed(() => pending.value.createJobs)
 
   /** Service-job offers on the board, presented for the accept screen. */
   const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
@@ -241,7 +260,6 @@ export const useGameStore = defineStore('game', () => {
         payoutYen: offer.payoutYen,
         baseReputation: offer.baseReputation,
         expiresOnDay: offer.expiresOnDay,
-        accepted: pending.value.acceptServiceJobs.some((a) => a.offerId === offer.id),
       }
     }),
   )
@@ -297,7 +315,6 @@ export const useGameStore = defineStore('game', () => {
     return {
       ...detailFor(car),
       jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
-      pendingJobs: pendingJobs.value.filter((j) => j.carInstanceId === carId),
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
     }
@@ -361,6 +378,7 @@ export const useGameStore = defineStore('game', () => {
       // precision 0 for now; a future auction-scout staff trait raises it.
       interest: computeLotInterest(lot, model, context.value.buyers, context.value.partsById, 0),
       revealedIssues,
+      lastBidResult: bidResults.value[lotId],
     }
   }
 
@@ -453,6 +471,8 @@ export const useGameStore = defineStore('game', () => {
   const serviceBayFreeCount = computed(
     () => gameState.value.serviceBayCount - gameState.value.serviceBayCarIds.length,
   )
+  /** True when neither side has a free slot — a direct move can never succeed, only a swap can. */
+  const shopAtCapacity = computed(() => parkingFull.value && serviceBayFreeCount.value <= 0)
 
   /** Price of the next bay of this kind, or null once it's maxed out. */
   function nextBayPrice(kind: BayKind): number | null {
@@ -461,16 +481,31 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Move a car between parking and a service bay — instant and free, no
-   * limit on how many times a day (mirrors resolveServiceJob's pattern: a
-   * pure sim core the store calls directly, rather than a queued DayAction).
-   * Returns whether the move actually happened (false if the car isn't in
-   * the shop, is already there, or the destination has no room).
+   * limit on how many times a day (a pure sim core the store calls
+   * directly). Returns whether the move actually happened (false if the car
+   * isn't in the shop, is already there, or the destination has no room —
+   * see `swapCars` for that last case).
    */
   function moveCar(carId: string, to: BayKind): boolean {
     const result = applyMoves(gameState.value, [{ carInstanceId: carId, to }])
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
+   * Swap a service-bay car and a parking car's positions atomically (Sprint
+   * 11, round-2 playtest #3) — the fix for a shop that's exactly full
+   * (services + parking cars == total capacity, zero slack): neither
+   * direction of `moveCar` has anywhere to go, but a swap's net occupancy
+   * change in each location is zero, so it always succeeds.
+   */
+  function swapCars(serviceCarId: string, parkingCarId: string): boolean {
+    const result = swapCarsCore(gameState.value, serviceCarId, parkingCarId)
+    if (!result.changed) return false
+    gameState.value = result.state
+    dayLog.value.push({ type: 'cars-swapped', serviceCarId, parkingCarId })
     return true
   }
 
@@ -486,33 +521,31 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  // --- day planning -----------------------------------------------------
+  // --- instant actions (Sprint 11) ---------------------------------------
 
-  function isZoneBusy(carId: string, zone: Zone): boolean {
-    const inProgress = gameState.value.jobs.some(
-      (j) => j.carInstanceId === carId && j.kind === 'repair-zone' && j.zone === zone,
-    )
-    const queued = pending.value.createJobs.some(
-      (j) => j.carInstanceId === carId && j.kind === 'repair-zone' && j.zone === zone,
-    )
-    return inProgress || queued
-  }
-
-  /** Queue a zone repair for the current day (committed on End Day). */
-  function queueRepair(carId: string, zone: Zone): void {
+  /**
+   * Repair a zone — instant. Finds the car's already-open repair job for
+   * this zone (if the player already started it on an earlier day) or
+   * starts a new one, then immediately spends up to today's remaining labor
+   * on it. A repeat click just continues the same job; no separate "add
+   * labor" control needed.
+   */
+  function repair(carId: string, zone: Zone): void {
     const car = findWorkableCar(carId)
-    if (!car || isZoneBusy(carId, zone)) return
+    if (!car) return
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'repair-zone',
       zone,
       laborSlotsRequired: repairLaborSlotsFor(car.condition[zone]),
     }
-    pending.value = { ...pending.value, createJobs: [...pending.value.createJobs, spec] }
+    const result = resolveJobLabor(gameState.value, spec, laborSlotsRemainingToday.value)
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
   }
 
-  /** Queue installing an owned part into an empty slot (committed on End Day). */
-  function queueInstall(carId: string, slot: Slot, partInstanceId: string): void {
+  /** Install an owned part into an empty slot — instant, same continuation rule as `repair`. */
+  function install(carId: string, slot: Slot, partInstanceId: string): void {
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'install-part',
@@ -520,52 +553,72 @@ export const useGameStore = defineStore('game', () => {
       partInstanceId,
       laborSlotsRequired: INSTALL_LABOR_SLOTS,
     }
-    pending.value = { ...pending.value, createJobs: [...pending.value.createJobs, spec] }
+    const result = resolveJobLabor(gameState.value, spec, laborSlotsRemainingToday.value)
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
   }
 
-  /** Queue inspecting an auction lot (costs a labor slot + travel fee on End Day). */
-  function queueInspect(lotId: string): void {
-    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
-    if (!lot || lot.inspected) return
-    if (pending.value.inspectLots.some((a) => a.lotId === lotId)) return
-    pending.value = { ...pending.value, inspectLots: [...pending.value.inspectLots, { lotId }] }
-  }
-
-  /** Queue a max bid on an auction lot (resolved second-price on End Day). */
-  function queueBid(lotId: string, maxBidYen: number): void {
-    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
-    if (!lot || maxBidYen <= 0) return
-    const rest = pending.value.bidsOnLots.filter((b) => b.lotId !== lotId)
-    pending.value = { ...pending.value, bidsOnLots: [...rest, { lotId, maxBidYen }] }
-  }
-
-  /** Queue an instant buyout of a lot (guaranteed win at a premium on End Day). */
-  function queueBuyout(lotId: string): void {
-    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
-    if (!lot) return
-    if (pending.value.buyoutLots.some((a) => a.lotId === lotId)) return
-    pending.value = { ...pending.value, buyoutLots: [...pending.value.buyoutLots, { lotId }] }
-  }
-
-  /** Queue buying a catalog part into inventory (paid on End Day). */
-  function queueBuyPart(partId: string): void {
-    const part = context.value.partsById[partId]
-    if (!part) return
-    pending.value = { ...pending.value, buyParts: [...pending.value.buyParts, { partId }] }
+  /** Inspect an auction lot — instant, reveals hidden issues for the cash travel fee only. */
+  function inspectLot(lotId: string): boolean {
+    const result = resolveInspectLot(gameState.value, lotId)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
   }
 
   /**
-   * Queue accepting a service job — the customer's car enters the shop on End
-   * Day, where the player then does the real work (buy parts, assign labor).
+   * Place a max bid on an auction lot — resolves instantly (second-price,
+   * against the lot's already-seeded rival field). Populates the per-lot
+   * `lastBidResult` so `AuctionScreen` can show "won at ¥X" / "lost to ¥X"
+   * inline on the lot's own card, replacing the old "bid queued" text.
    */
-  function queueAcceptServiceJob(offerId: string): void {
-    const offer = gameState.value.serviceJobOffers.find((o) => o.id === offerId)
-    if (!offer) return
-    if (pending.value.acceptServiceJobs.some((a) => a.offerId === offerId)) return
-    pending.value = {
-      ...pending.value,
-      acceptServiceJobs: [...pending.value.acceptServiceJobs, { offerId }],
-    }
+  function placeBid(lotId: string, maxBidYen: number): void {
+    if (maxBidYen <= 0) return
+    const result = resolveBidInstant(gameState.value, lotId, maxBidYen, context.value)
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+
+    const won = result.log.find((e) => e.type === 'auction-bid-won')
+    const lost = result.log.find((e) => e.type === 'auction-bid-lost')
+    const view: BidResultView =
+      won?.type === 'auction-bid-won'
+        ? { outcome: 'won', priceYen: won.finalPriceYen }
+        : lost?.type === 'auction-bid-lost'
+          ? { outcome: 'lost', priceYen: lost.winningPriceYen }
+          : { outcome: 'no-sale', priceYen: 0 }
+    bidResults.value = { ...bidResults.value, [lotId]: view }
+  }
+
+  /** Buy out a lot instantly — guaranteed purchase at a premium, no rival contest. */
+  function buyout(lotId: string): boolean {
+    const result = resolveBuyoutInstant(gameState.value, lotId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /** Buy a catalog part into inventory — instant, installable immediately. */
+  function buyPart(partId: string): boolean {
+    const result = resolveBuyPart(gameState.value, partId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
+   * Accept a service-job offer — instant. The customer's car arrives in the
+   * shop (parking) the moment this is called, not "next day" — needs a free
+   * parking space to take delivery.
+   */
+  function acceptServiceJob(offerId: string): boolean {
+    const result = resolveAcceptServiceJob(gameState.value, offerId)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
   }
 
   /**
@@ -610,73 +663,42 @@ export const useGameStore = defineStore('game', () => {
     lastJobResult.value = null
   }
 
-  /** Queue selling an owned car via a same-day walk-in offer. */
-  function queueSellWalkIn(carId: string): void {
-    if (!gameState.value.ownedCars.some((c) => c.id === carId)) return
-    if (pending.value.sellViaWalkIn.some((a) => a.carInstanceId === carId)) return
-    pending.value = {
-      ...pending.value,
-      sellViaWalkIn: [...pending.value.sellViaWalkIn, { carInstanceId: carId }],
-    }
-  }
-
-  /** Queue listing an owned car publicly (resolves after the wait). */
-  function queueListForSale(carId: string, waitDays?: number): void {
-    if (!gameState.value.ownedCars.some((c) => c.id === carId)) return
-    if (pending.value.listForSale.some((a) => a.carInstanceId === carId)) return
-    pending.value = {
-      ...pending.value,
-      listForSale: [...pending.value.listForSale, { carInstanceId: carId, waitDays }],
-    }
-  }
-
-  function clearPending(): void {
-    pending.value = emptyActions()
+  /** Sell an owned car via a same-day walk-in offer — instant. */
+  function sellWalkIn(carId: string): boolean {
+    const result = resolveSellViaWalkIn(gameState.value, carId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
   }
 
   /**
-   * Auto-allocates the day's labor slots (inspections eat a slot each first,
-   * matching advanceDay's order, then in-progress jobs, then newly-queued
-   * jobs) and returns the full DayActions to commit. Predicted ids for new
-   * jobs match advanceDay's `job-${day}-${index}` scheme. Only jobs whose car
-   * is CURRENTLY in a service bay get labor — moves are instant, so any move
-   * the player made is already reflected in gameState by the time this runs;
-   * a job on a parked car is left queued but makes no progress (advanceDay
-   * would skip it anyway — this just avoids spending the labor budget on it).
+   * List an owned car publicly — instant creation, at the asking price
+   * locked in right now; the sale itself still resolves after the wait
+   * (GDD 6.3's intentional "slow, market price" mechanic).
    */
-  function planActions(): DayActions {
-    let remaining = Math.max(0, laborSlotsPerDay.value - pending.value.inspectLots.length)
-    const laborAssignments: LaborAssignment[] = []
-    const inServiceBay = (carId: string) => gameState.value.serviceBayCarIds.includes(carId)
-
-    for (const job of gameState.value.jobs) {
-      if (remaining <= 0) break
-      if (!inServiceBay(job.carInstanceId)) continue
-      const need = job.laborSlotsRequired - job.laborSlotsSpent
-      if (need <= 0) continue
-      const slots = Math.min(need, remaining)
-      laborAssignments.push({ jobId: job.id, laborSlots: slots })
-      remaining -= slots
-    }
-
-    pending.value.createJobs.forEach((spec, i) => {
-      if (remaining <= 0) return
-      if (!inServiceBay(spec.carInstanceId)) return
-      const slots = Math.min(spec.laborSlotsRequired, remaining)
-      laborAssignments.push({ jobId: `job-${gameState.value.day}-${i}`, laborSlots: slots })
-      remaining -= slots
-    })
-
-    return DayActionsSchema.parse({ ...pending.value, laborAssignments })
+  function listForSale(carId: string, waitDays?: number): boolean {
+    const result = resolveListForSale(gameState.value, carId, context.value, waitDays)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
   }
 
   // --- day advance ------------------------------------------------------
 
-  function advance(actions: DayActions): void {
+  /**
+   * End Day — purely a day-boundary tick now (Sprint 11): labor resets,
+   * weekly rent/wages and market-heat drift fire on the 7-day boundary,
+   * catalogs refresh and expire, and the service-job deadline backstop
+   * runs. Nothing here *decides* a player action anymore — that already
+   * happened, instantly, at the moment of each click.
+   */
+  function endDay(): void {
     const state = gameState.value
     const endedDay = state.day
     const cashBefore = state.cashYen
-    const result = advanceDay(state, actions, state.seed + state.day, context.value)
+    const result = advanceDay(state, emptyDayActions(), state.seed + state.day, context.value)
     gameState.value = result.state
     dayLog.value.push(...result.log)
     lastDayReport.value = {
@@ -684,17 +706,6 @@ export const useGameStore = defineStore('game', () => {
       entries: result.log,
       cashDeltaYen: result.state.cashYen - cashBefore,
     }
-  }
-
-  /** Low-level advance (dev warp, tests). Does not touch the pending plan or pop the report. */
-  function endDay(actions: DayActions = emptyActions()): void {
-    advance(actions)
-  }
-
-  /** Player-facing End Day: commit the queued plan, then show the day's report. */
-  function commitDay(): void {
-    advance(planActions())
-    clearPending()
     reportVisible.value = true
   }
 
@@ -706,7 +717,7 @@ export const useGameStore = defineStore('game', () => {
   function newGame(seed: number = randomSeed()): void {
     gameState.value = createInitialGameState(context.value, seed)
     dayLog.value = []
-    clearPending()
+    bidResults.value = {}
     lastDayReport.value = null
     reportVisible.value = false
   }
@@ -728,7 +739,7 @@ export const useGameStore = defineStore('game', () => {
     try {
       gameState.value = decodeSave(code)
       dayLog.value = []
-      clearPending()
+      bidResults.value = {}
     } catch {
       // Corrupt/unreadable save - start fresh rather than crash.
       newGame()
@@ -746,7 +757,7 @@ export const useGameStore = defineStore('game', () => {
       const state = decodeSave(code)
       gameState.value = state
       dayLog.value = []
-      clearPending()
+      bidResults.value = {}
       lastDayReport.value = null
       reportVisible.value = false
       return { ok: true }
@@ -811,14 +822,13 @@ export const useGameStore = defineStore('game', () => {
   return {
     gameState,
     dayLog,
-    pending,
-    pendingJobs,
     day,
     cashYen,
     reputationTier,
     reputationPoints,
     ownedCarCount,
     laborSlotsPerDay,
+    laborSlotsRemainingToday,
     serviceJobOffers,
     activeServiceJobs,
     serviceJobOfferViews,
@@ -843,24 +853,24 @@ export const useGameStore = defineStore('game', () => {
     parkingFull,
     serviceBayCount,
     serviceBayFreeCount,
+    shopAtCapacity,
     nextBayPrice,
     moveCar,
+    swapCars,
     buyBay,
-    queueRepair,
-    queueInstall,
-    queueInspect,
-    queueBid,
-    queueBuyout,
-    queueBuyPart,
-    queueSellWalkIn,
-    queueListForSale,
-    queueAcceptServiceJob,
+    repair,
+    install,
+    inspectLot,
+    placeBid,
+    buyout,
+    buyPart,
+    sellWalkIn,
+    listForSale,
+    acceptServiceJob,
     completeServiceJob,
     lastJobResult,
     dismissJobResult,
-    clearPending,
     endDay,
-    commitDay,
     lastDayReport,
     reportVisible,
     dismissReport,

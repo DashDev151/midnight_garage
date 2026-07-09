@@ -23,14 +23,15 @@ describe('ServiceJobsScreen', () => {
     expect(wrapper.findAll('.offer').length).toBe(game.serviceJobOffers.length)
   })
 
-  it('accepting a job queues it to bring the car into the shop', async () => {
+  it('accepting a job brings the car into the shop instantly (Sprint 11)', async () => {
     const game = useGameStore()
     game.newGame(1)
     warpToOffers(game)
-    const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
-    if (!offer) throw new Error('expected a repair offer')
+    const offer = game.serviceJobOffers[0]
+    if (!offer) throw new Error('expected an offer on the board')
     const wrapper = mountScreen()
     await wrapper.find(`[data-test="accept-${offer.id}"]`).trigger('click')
-    expect(game.pending.acceptServiceJobs.some((a) => a.offerId === offer.id)).toBe(true)
+    expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(true)
+    expect(game.serviceJobOffers.some((o) => o.id === offer.id)).toBe(false)
   })
 })

@@ -4,7 +4,8 @@ import {
   FACILITIES,
   HIDDEN_ISSUES,
   PARTS,
-  SERVICE_JOB_TEMPLATES,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { refreshCatalogs } from '../src/catalogs'
@@ -17,8 +18,9 @@ const CONTEXT = buildSimContext(
   PARTS,
   BUYERS,
   HIDDEN_ISSUES,
-  SERVICE_JOB_TEMPLATES,
+  SERVICE_JOB_TYPES,
   FACILITIES,
+  SERVICE_JOB_CUSTOMER_NAMES,
 )
 
 describe('refreshCatalogs', () => {
@@ -49,8 +51,9 @@ describe('refreshCatalogs', () => {
       PARTS,
       BUYERS,
       HIDDEN_ISSUES,
-      SERVICE_JOB_TEMPLATES,
+      SERVICE_JOB_TYPES,
       FACILITIES,
+      SERVICE_JOB_CUSTOMER_NAMES,
     )
     const state = { ...createInitialGameState(context, 1), reputationTier: 'respected' as const }
     const { lotsByTier } = refreshCatalogs(state, context, 1, createRng(1))

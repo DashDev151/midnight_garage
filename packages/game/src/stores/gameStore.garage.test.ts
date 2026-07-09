@@ -5,10 +5,11 @@ import { repairLaborSlotsFor } from '../constants'
 import { useGameStore } from './gameStore'
 
 /**
- * The Sprint 05 garage logic: granting content, queuing work, and the
- * labor-planning + commit pipeline. These assert real outcomes (a zone
- * actually reaches 100, stats actually change, labor is actually capped),
- * not just that methods run.
+ * The Sprint 05 garage logic, updated for Sprint 11's instant actions: repair
+ * and install resolve the moment they're clicked, spending whatever labor is
+ * available right now. These assert real outcomes (a zone actually reaches
+ * 100, stats actually change, labor is actually capped), not just that
+ * methods run.
  */
 describe('garage: grant + detail', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -32,64 +33,74 @@ describe('garage: grant + detail', () => {
   })
 })
 
-describe('garage: repair queue and labor', () => {
+describe('garage: instant repair and labor', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('a queued repair completes and lifts the zone to 100 over the right number of days', () => {
+  it('repairing completes and lifts the zone to 100 over the right number of days', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     const before = car.condition.engine
     expect(before).toBeLessThan(100) // generated cars are rough
 
+    const needed = repairLaborSlotsFor(before)
+    const days = Math.ceil(needed / game.laborSlotsPerDay)
+
     // A dev-granted car lands in parking like any real acquisition — labor
     // only reaches a car in the service bay.
     game.moveCar(car.id, 'service')
-    game.queueRepair(car.id, 'engine')
-    const detail = game.carDetail(car.id)!
-    expect(detail.pendingJobs).toHaveLength(1)
-    expect(detail.pendingJobs[0]!.laborSlotsRequired).toBe(repairLaborSlotsFor(before))
+    game.repair(car.id, 'engine')
 
-    const needed = repairLaborSlotsFor(before)
-    const days = Math.ceil(needed / game.laborSlotsPerDay)
-    for (let i = 0; i < days; i++) game.commitDay()
+    if (days === 1) {
+      // Mild-enough damage finishes in the very first click — the job is
+      // already gone, same as any other same-day completion.
+      expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
+    } else {
+      const detail = game.carDetail(car.id)!
+      expect(detail.jobs).toHaveLength(1)
+      expect(detail.jobs[0]!.laborSlotsRequired).toBe(needed)
+      for (let i = 1; i < days; i++) {
+        game.endDay() // replenish tomorrow's labor
+        game.repair(car.id, 'engine') // continue the same job
+      }
+    }
 
     expect(game.gameState.ownedCars[0]!.condition.engine).toBe(100)
     // The job is consumed once complete.
     expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
   })
 
-  it('does not double-queue a repair for a zone already queued or in progress', () => {
+  it('a repeat click continues the same job for a zone, not a duplicate', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
-    game.queueRepair(car.id, 'body')
-    game.queueRepair(car.id, 'body')
-    expect(game.pendingJobs).toHaveLength(1)
+    game.repair(car.id, 'body')
+    game.repair(car.id, 'body')
+    expect(game.carDetail(car.id)!.jobs).toHaveLength(1)
   })
 
-  it('never allocates more than the daily labor slots in a single commit', () => {
+  it('never spends more than the daily labor slots across repairs in one day', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
-    // Queue repairs on all five zones - collectively far more labor than one day.
-    for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
-      game.queueRepair(car.id, zone)
-    }
     const perDay = game.laborSlotsPerDay
-    game.commitDay()
-    // After one day, total labor spent across jobs cannot exceed the daily budget.
+    // Repair all five zones instantly — collectively far more labor than one day.
+    for (const zone of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
+      game.repair(car.id, zone)
+    }
+    // After spending today's budget, total labor spent across jobs cannot exceed it.
     const spent = game.gameState.jobs.reduce((s, j) => s + j.laborSlotsSpent, 0)
     expect(spent).toBeLessThanOrEqual(perDay)
     expect(spent).toBeGreaterThan(0)
+    expect(game.laborSlotsRemainingToday).toBe(0)
   })
 })
 
-describe('garage: part install', () => {
+describe('garage: instant part install', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('installs a compatible part, moving it to the build sheet and changing stats', () => {
+  it('installs a compatible part instantly, moving it to the build sheet and changing stats', () => {
     const game = useGameStore()
     // Find a real power part and a model whose tags satisfy its requiredTags.
     // Power has no upper clamp, so an install is guaranteed to move that axis.
@@ -115,8 +126,7 @@ describe('garage: part install', () => {
     const offered = game.installablePartsFor(car.id, pair.slot)
     expect(offered.some((pi) => pi.id === partInstance.id)).toBe(true)
 
-    game.queueInstall(car.id, pair.slot, partInstance.id)
-    game.commitDay() // install is a single-slot job
+    game.install(car.id, pair.slot, partInstance.id) // a single-slot job, completes instantly
 
     const after = game.gameState.ownedCars[0]!
     expect(after.buildSheet[pair.slot]?.partId).toBe(pair.partId)
@@ -132,8 +142,7 @@ describe('garage: part install', () => {
     game.moveCar(car.id, 'service')
     game.devGrantPart(part.id)
     const partInstance = game.gameState.partInventory[0]!
-    game.queueInstall(car.id, part.slot, partInstance.id)
-    game.commitDay()
+    game.install(car.id, part.slot, partInstance.id)
     // Slot now filled - a second grant of the same part is not offered for it.
     game.devGrantPart(part.id)
     expect(game.installablePartsFor(car.id, part.slot)).toHaveLength(0)

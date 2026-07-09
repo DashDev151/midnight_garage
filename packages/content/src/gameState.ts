@@ -41,6 +41,14 @@ export const GameStateSchema = z.object({
   /** Ids of cars (owned or an active service job's car) currently occupying a
    * service bay — capped at serviceBayCount. Everything else is in parking. */
   serviceBayCarIds: z.array(z.string().min(1)).default([]),
+  /**
+   * Labor slots already spent today (Sprint 11). Instant actions (repair,
+   * install, inspect) decrement against `availableLaborSlots(state) -
+   * laborSlotsSpentToday` the moment they're clicked, instead of a
+   * client-only queue deciding allocation at End Day. Reset to 0 by
+   * advanceDay's day-boundary tick.
+   */
+  laborSlotsSpentToday: z.number().int().nonnegative().default(0),
 })
 
 /**
@@ -154,6 +162,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('car-moved'),
     carInstanceId: z.string().min(1),
     to: BayKindSchema,
+  }),
+  z.object({
+    type: z.literal('cars-swapped'),
+    serviceCarId: z.string().min(1),
+    parkingCarId: z.string().min(1),
   }),
   z.object({
     type: z.literal('bay-purchased'),

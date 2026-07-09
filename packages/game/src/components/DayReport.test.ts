@@ -7,13 +7,13 @@ import DayReport from './DayReport.vue'
 describe('DayReport', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('is hidden until a day is committed, then shows the day and dismisses', async () => {
+  it('is hidden until a day ends, then shows the day and dismisses', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mount(DayReport)
     expect(wrapper.find('[data-test="day-report"]').exists()).toBe(false)
 
-    game.commitDay()
+    game.endDay()
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-test="day-report"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Day 1 complete')

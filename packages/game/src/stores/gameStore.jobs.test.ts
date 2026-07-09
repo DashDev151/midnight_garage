@@ -8,6 +8,19 @@ function warpToOffers(game: ReturnType<typeof useGameStore>) {
   for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
 }
 
+/**
+ * End days (crossing weekly refreshes as needed) until a repair-kind offer
+ * appears. Sprint 11's pool-based generation (12 types, ~5 repair-zone / 7
+ * install-slot) means a single day's small batch can legitimately contain
+ * zero repair offers — unlike the old 8-template system's repair majority,
+ * `warpToOffers`'s "any offer at all" check is no longer enough.
+ */
+function warpToRepairOffer(game: ReturnType<typeof useGameStore>) {
+  for (let i = 0; i < 30 && !game.serviceJobOffers.some((o) => o.work.kind === 'repair'); i++) {
+    game.endDay()
+  }
+}
+
 describe('service jobs in the store', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
@@ -17,13 +30,12 @@ describe('service jobs in the store', () => {
     expect(game.serviceJobOffers.length).toBeGreaterThan(0)
   })
 
-  it('accepting brings the customer car into the shop as workable, owning nothing', () => {
+  it('accepting brings the customer car into the shop instantly, owning nothing', () => {
     const game = useGameStore()
     game.newGame(1)
     warpToOffers(game)
     const offer = game.serviceJobOffers[0]!
-    game.queueAcceptServiceJob(offer.id)
-    game.commitDay()
+    game.acceptServiceJob(offer.id)
 
     expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(true)
     expect(game.ownedCarCount).toBe(0)
@@ -34,18 +46,17 @@ describe('service jobs in the store', () => {
   it('doing the repair then clicking Complete pays out immediately and gains reputation', () => {
     const game = useGameStore()
     game.newGame(1)
-    warpToOffers(game)
+    warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')
     const zone = offer.work.kind === 'repair' ? offer.work.zone : 'engine'
 
     const repBefore = game.reputationPoints
-    game.queueAcceptServiceJob(offer.id)
-    game.commitDay()
+    game.acceptServiceJob(offer.id)
 
     const carId = offer.car.id
     // The customer's car lands in parking on acceptance — move it into the
-    // service bay so the repairs below can actually receive labor.
+    // service bay so repairs below can actually receive labor.
     game.moveCar(carId, 'service')
     let outcome: string | undefined
     for (let i = 0; i < 12; i++) {
@@ -55,8 +66,13 @@ describe('service jobs in the store', () => {
         outcome = game.completeServiceJob(offer.id) // immediate — no End Day involved
         break
       }
-      game.queueRepair(carId, zone)
-      game.commitDay()
+      game.repair(carId, zone) // instant — spends today's labor right now
+      const after = game.carDetail(carId)?.serviceJob
+      if (after?.workDone) {
+        outcome = game.completeServiceJob(offer.id)
+        break
+      }
+      game.endDay() // replenishes tomorrow's labor budget
     }
 
     expect(outcome).toBe('paid')
@@ -68,11 +84,10 @@ describe('service jobs in the store', () => {
   it('clicking Complete before the work is done fails the job immediately, no pay', () => {
     const game = useGameStore()
     game.newGame(1)
-    warpToOffers(game)
+    warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')
-    game.queueAcceptServiceJob(offer.id)
-    game.commitDay()
+    game.acceptServiceJob(offer.id)
 
     const cashBefore = game.cashYen
     const outcome = game.completeServiceJob(offer.id) // work not done
@@ -84,11 +99,10 @@ describe('service jobs in the store', () => {
   it('an untouched job auto-fails at its deadline (no pay)', () => {
     const game = useGameStore()
     game.newGame(1)
-    warpToOffers(game)
+    warpToRepairOffer(game)
     const offer = game.serviceJobOffers.find((o) => o.work.kind === 'repair')
     if (!offer) throw new Error('expected a repair offer on the board')
-    game.queueAcceptServiceJob(offer.id)
-    game.commitDay()
+    game.acceptServiceJob(offer.id)
 
     const cashBefore = game.cashYen
     // Never touch the car; run past the deadline.

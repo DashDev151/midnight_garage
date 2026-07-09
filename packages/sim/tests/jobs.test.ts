@@ -1,6 +1,14 @@
 import type { CarInstance, GameState, Job, PartInstance } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { applyLaborToJob, completeJob, createJob, isJobComplete } from '../src/jobs'
+import {
+  applyAvailableLaborToJob,
+  applyLaborToJob,
+  completeJob,
+  createJob,
+  findOrCreateJob,
+  isJobComplete,
+  resolveJobLabor,
+} from '../src/jobs'
 
 function emptyBuildSheet() {
   return {
@@ -53,6 +61,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
+    laborSlotsSpentToday: 0,
     ...overrides,
   }
 }
@@ -136,5 +145,125 @@ describe('completeJob', () => {
     expect(result.blockedByOccupiedSlot).toBe(true)
     expect(result.state.ownedCars[0]?.buildSheet.suspension?.id).toBe('pi-existing')
     expect(result.state.partInventory).toHaveLength(1)
+  })
+})
+
+describe('findOrCreateJob (Sprint 11)', () => {
+  it('creates a new job when none is open for this car+zone', () => {
+    const result = findOrCreateJob(baseState(), {
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      zone: 'body',
+      laborSlotsRequired: 3,
+    })
+    expect(result.job.laborSlotsSpent).toBe(0)
+    expect(result.state.jobs).toHaveLength(1)
+  })
+
+  it('returns the same already-open job on a repeat call, not a duplicate', () => {
+    const spec = {
+      carInstanceId: car.id,
+      kind: 'repair-zone' as const,
+      zone: 'body' as const,
+      laborSlotsRequired: 3,
+    }
+    const first = findOrCreateJob(baseState(), spec)
+    const second = findOrCreateJob(first.state, spec)
+    expect(second.job.id).toBe(first.job.id)
+    expect(second.state.jobs).toHaveLength(1)
+  })
+
+  it('a different zone on the same car gets its own job', () => {
+    const first = findOrCreateJob(baseState(), {
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      zone: 'body',
+      laborSlotsRequired: 3,
+    })
+    const second = findOrCreateJob(first.state, {
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      zone: 'engine',
+      laborSlotsRequired: 2,
+    })
+    expect(second.job.id).not.toBe(first.job.id)
+    expect(second.state.jobs).toHaveLength(2)
+  })
+})
+
+describe('applyAvailableLaborToJob (Sprint 11)', () => {
+  it('applies up to the offered labor, clamped to what the job needs, and books the daily spend', () => {
+    const created = findOrCreateJob(baseState({ serviceBayCarIds: [car.id] }), {
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      zone: 'body',
+      laborSlotsRequired: 3,
+    })
+    const result = applyAvailableLaborToJob(created.state, created.job.id, 2)
+    expect(result.laborSlotsUsed).toBe(2)
+    expect(result.state.laborSlotsSpentToday).toBe(2)
+    expect(result.state.jobs[0]?.laborSlotsSpent).toBe(2)
+  })
+
+  it('completes and removes the job the instant it crosses its requirement', () => {
+    const created = findOrCreateJob(baseState({ serviceBayCarIds: [car.id] }), {
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      zone: 'body',
+      laborSlotsRequired: 2,
+    })
+    const result = applyAvailableLaborToJob(created.state, created.job.id, 5)
+    expect(result.laborSlotsUsed).toBe(2) // clamped to what the job needed, not the offer
+    expect(result.state.jobs).toHaveLength(0)
+    expect(result.state.ownedCars[0]?.condition.body).toBe(100)
+    expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
+  })
+
+  it('does nothing for a car not sitting in a service bay (labor never reaches it)', () => {
+    const created = findOrCreateJob(baseState(), {
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      zone: 'body',
+      laborSlotsRequired: 3,
+    })
+    const result = applyAvailableLaborToJob(created.state, created.job.id, 2)
+    expect(result.laborSlotsUsed).toBe(0)
+    expect(result.state.jobs[0]?.laborSlotsSpent).toBe(0)
+    expect(result.log.some((e) => e.type === 'job-blocked')).toBe(true)
+  })
+
+  it('is a no-op for an unknown job id', () => {
+    const state = baseState()
+    const result = applyAvailableLaborToJob(state, 'no-such-job', 5)
+    expect(result).toEqual({ state, log: [], laborSlotsUsed: 0 })
+  })
+})
+
+describe('resolveJobLabor (Sprint 11) — the instant player-facing resolver', () => {
+  it('composes find-or-create + apply-labor in one call', () => {
+    const state = baseState({ serviceBayCarIds: [car.id] })
+    const spec = {
+      carInstanceId: car.id,
+      kind: 'repair-zone' as const,
+      zone: 'body' as const,
+      laborSlotsRequired: 3,
+    }
+    const result = resolveJobLabor(state, spec, 2)
+    expect(result.laborSlotsUsed).toBe(2)
+    expect(result.state.jobs[0]?.laborSlotsSpent).toBe(2)
+  })
+
+  it('a repeat click continues the same job instead of creating a duplicate', () => {
+    const state = baseState({ serviceBayCarIds: [car.id] })
+    const spec = {
+      carInstanceId: car.id,
+      kind: 'repair-zone' as const,
+      zone: 'body' as const,
+      laborSlotsRequired: 3,
+    }
+    const first = resolveJobLabor(state, spec, 1)
+    const second = resolveJobLabor(first.state, spec, 5)
+    expect(second.state.jobs).toHaveLength(0) // completed and removed
+    expect(second.state.ownedCars[0]?.condition.body).toBe(100)
   })
 })

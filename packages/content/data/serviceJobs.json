@@ -1,66 +1,139 @@
 [
   {
-    "id": "brake-refresh-corolla",
-    "customerName": "Mrs. Watanabe",
-    "description": "Brakes are shot — sort them out before I end up in a ditch.",
-    "work": { "kind": "repair", "zone": "suspension" },
-    "payoutYen": 22000,
-    "baseReputation": 1
-  },
-  {
-    "id": "suspension-tidy-sunny",
-    "customerName": "Ms. Kobayashi",
-    "description": "Suspension's tired — freshen it up for me.",
-    "work": { "kind": "repair", "zone": "suspension" },
-    "payoutYen": 30000,
-    "baseReputation": 2
-  },
-  {
-    "id": "engine-service-city",
-    "customerName": "Mr. Tanaka",
-    "description": "Give the engine a proper going-over — it's been running rough.",
+    "id": "repair-engine",
     "work": { "kind": "repair", "zone": "engine" },
-    "payoutYen": 35000,
-    "baseReputation": 2
+    "payoutRangeYen": [28000, 38000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Give the engine a proper going-over — it's been running rough.",
+      "Something's off under the hood. Sort it before it strands me.",
+      "Losing power on hills. Can you take a look at the engine?",
+      "Rough idle, hesitant on throttle — needs an engine once-over."
+    ]
   },
   {
-    "id": "bodywork-tidy-mira",
-    "customerName": "Old Man Sato",
-    "description": "Sort the rusty panel before the shaken.",
+    "id": "repair-drivetrain",
+    "work": { "kind": "repair", "zone": "drivetrain" },
+    "payoutRangeYen": [30000, 42000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Something's grinding when I shift. Sort the drivetrain out.",
+      "Power's not getting to the wheels like it should.",
+      "Clutch feels off and there's a whine on acceleration.",
+      "Drivetrain's due for attention — it's been slipping."
+    ]
+  },
+  {
+    "id": "repair-suspension",
+    "work": { "kind": "repair", "zone": "suspension" },
+    "payoutRangeYen": [20000, 32000],
+    "baseReputation": 1,
+    "flavorPool": [
+      "Suspension's tired — freshen it up for me.",
+      "The ride's gone soft and wallowy. Needs sorting.",
+      "Bouncing over every bump these days. Suspension's had it.",
+      "It's wandering all over the lane. Check the suspension."
+    ]
+  },
+  {
+    "id": "repair-body",
     "work": { "kind": "repair", "zone": "body" },
-    "payoutYen": 40000,
-    "baseReputation": 2
+    "payoutRangeYen": [32000, 45000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Sort the rusty panel before the shaken.",
+      "Bodywork's looking rough — tidy it up for me.",
+      "Picked up some dents and scrapes. Can you fix the body?",
+      "Rust is spreading. Needs bodywork before it gets worse."
+    ]
   },
   {
-    "id": "interior-refresh-levin",
-    "customerName": "A touge regular",
-    "description": "Interior's rough — tidy it up.",
+    "id": "repair-interior",
     "work": { "kind": "repair", "zone": "interior" },
-    "payoutYen": 24000,
-    "baseReputation": 1
+    "payoutRangeYen": [18000, 28000],
+    "baseReputation": 1,
+    "flavorPool": [
+      "Interior's rough — tidy it up.",
+      "Cabin's seen better days. Freshen up the interior.",
+      "Seats and trim are falling apart in there.",
+      "Interior needs a refresh — it's embarrassing to drive like this."
+    ]
   },
   {
-    "id": "fit-coilovers-civic",
-    "customerName": "College kid",
-    "description": "Fit some coilovers for me — I've got nothing, you source them.",
+    "id": "install-engine",
+    "work": { "kind": "install", "slot": "engine" },
+    "payoutRangeYen": [90000, 130000],
+    "baseReputation": 3,
+    "flavorPool": [
+      "Want more out of the engine — set me up with an upgrade.",
+      "Stock engine's boring me. Build it up.",
+      "Looking for real power under the hood. Sort me an engine build."
+    ]
+  },
+  {
+    "id": "install-forced-induction",
+    "work": { "kind": "install", "slot": "forcedInduction" },
+    "payoutRangeYen": [110000, 150000],
+    "baseReputation": 4,
+    "flavorPool": [
+      "I want boost. Get me set up with forced induction.",
+      "Time to go forced induction — build me some real power.",
+      "Naturally aspirated isn't cutting it anymore. Fit a turbo setup."
+    ]
+  },
+  {
+    "id": "install-drivetrain",
+    "work": { "kind": "install", "slot": "drivetrain" },
+    "payoutRangeYen": [80000, 110000],
+    "baseReputation": 3,
+    "flavorPool": [
+      "Stock drivetrain can't handle the power. Upgrade it.",
+      "Need a stronger drivetrain before I break something.",
+      "Fit me a proper drivetrain setup — I'm done breaking parts."
+    ]
+  },
+  {
+    "id": "install-suspension",
     "work": { "kind": "install", "slot": "suspension" },
-    "payoutYen": 98000,
-    "baseReputation": 3
+    "payoutRangeYen": [85000, 105000],
+    "baseReputation": 3,
+    "flavorPool": [
+      "Fit some coilovers for me — I've got nothing, you source them.",
+      "Want it lower and sharper. Sort the suspension.",
+      "Stock suspension's too soft for how I drive. Upgrade it."
+    ]
   },
   {
-    "id": "fit-brakes-corolla",
-    "customerName": "Ken from the parts shop",
-    "description": "Upgrade the brakes — I want it to actually stop.",
+    "id": "install-brakes",
     "work": { "kind": "install", "slot": "brakes" },
-    "payoutYen": 60000,
-    "baseReputation": 3
+    "payoutRangeYen": [50000, 70000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Upgrade the brakes — I want it to actually stop.",
+      "Stock brakes can't keep up anymore. Fit something better.",
+      "I need real stopping power. Sort me some brakes."
+    ]
   },
   {
-    "id": "fit-wheels-city",
-    "customerName": "Mr. Tanaka",
-    "description": "Mount a fresh set of wheels for me.",
+    "id": "install-body-aero",
+    "work": { "kind": "install", "slot": "bodyAero" },
+    "payoutRangeYen": [45000, 65000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Fit me some aero — I want it to look and drive the part.",
+      "Give it some body kit work, make it stand out.",
+      "Time for an aero upgrade. You know what it needs."
+    ]
+  },
+  {
+    "id": "install-wheels-interior",
     "work": { "kind": "install", "slot": "wheelsInterior" },
-    "payoutYen": 82000,
-    "baseReputation": 2
+    "payoutRangeYen": [70000, 95000],
+    "baseReputation": 2,
+    "flavorPool": [
+      "Mount a fresh set of wheels for me.",
+      "Sort me some new wheels — I'm done with the stock look.",
+      "Interior needs the upgrade treatment. Fit something nice."
+    ]
   }
 ]

@@ -25,24 +25,43 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="bid-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('placing a bid queues it in the pending plan', async () => {
+  it('placing a bid resolves instantly (Sprint 11), showing the real outcome inline', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
     await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    expect(game.pending.bidsOnLots.some((b) => b.lotId === lot.id)).toBe(true)
+    // The lot either won (it's gone from state) or shows a real win/lose result.
+    const stillListed = game.gameState.activeAuctionLots.some((l) => l.id === lot.id)
+    if (stillListed) {
+      expect(wrapper.text()).toMatch(/lost — sold for|no sale/)
+    } else {
+      expect(game.gameState.ownedCars.length).toBeGreaterThan(0)
+    }
   })
 
-  it('shows an interest read per lot and offers a buyout', async () => {
+  it('shows an interest read per lot and offers an instant buyout', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
     // One of the interest labels renders somewhere on the screen.
     expect(wrapper.text()).toMatch(/Quiet|Warm|Hot|Feeding frenzy/)
-    // Buyout is offered and queues on click.
+    const carsBefore = game.ownedCarCount
     await wrapper.find(`[data-test="buyout-${lot.id}"]`).trigger('click')
-    expect(game.pending.buyoutLots.some((b) => b.lotId === lot.id)).toBe(true)
+    expect(game.ownedCarCount).toBe(carsBefore + 1)
+    expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
+  })
+
+  it('inspecting a lot resolves instantly with no labor cost', async () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    const lot = game.gameState.activeAuctionLots.find((l) => !l.inspected)
+    if (!lot) throw new Error('expected an uninspected lot')
+    const wrapper = mountScreen()
+    const laborBefore = game.laborSlotsRemainingToday
+    await wrapper.find(`[data-test="inspect-${lot.id}"]`).trigger('click')
+    expect(game.gameState.activeAuctionLots.find((l) => l.id === lot.id)?.inspected).toBe(true)
+    expect(game.laborSlotsRemainingToday).toBe(laborBefore)
   })
 })

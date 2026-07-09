@@ -14,31 +14,40 @@ export const ServiceJobWorkSchema = z.discriminatedUnion('kind', [
 ])
 
 /**
- * A service-job template (GDD Act 1 "job cards"). A customer brings a car the
- * player never owns; on acceptance the car enters the shop and the player does
- * the required work (buying parts + assigning labor exactly like an owned car),
- * getting paid a fixed `payoutYen` on completion.
+ * A service-job type (GDD Act 1 "job cards") — one entry per repair zone or
+ * install slot (Sprint 11), not one entry per customer. A generated offer
+ * composes a type + an independently-picked customer name + an independently
+ * -picked flavor line, so a flavor line can never be paired with a `work` it
+ * wasn't written for (Sprint 10's "brakes" flavor text on a suspension job
+ * bug is structurally impossible under this model — see sprint11.md decision
+ * 5). `flavorPool` needs at least 2 entries so generation has real variety.
  */
-export const ServiceJobTemplateSchema = z.object({
+export const ServiceJobTypeSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
-  customerName: z.string().min(1),
-  description: z.string().min(1),
   work: ServiceJobWorkSchema,
-  payoutYen: z.number().int().positive(),
+  payoutRangeYen: z
+    .tuple([z.number().int().positive(), z.number().int().positive()])
+    .refine(([min, max]) => min <= max, 'payoutRangeYen must be [min, max] with min <= max'),
   /** Reputation for completing (multiplied by the installed part's grade for install jobs). */
   baseReputation: z.number().int().nonnegative(),
+  flavorPool: z.array(z.string().min(1)).min(2, 'each job type needs at least 2 flavor variants'),
 })
 
-export const ServiceJobTemplatesSchema = z.array(ServiceJobTemplateSchema).min(1)
+export const ServiceJobTypesSchema = z.array(ServiceJobTypeSchema).min(1)
+
+/** Customer names, decoupled entirely from job type — a name has nothing to do with what's broken. */
+export const ServiceJobCustomerNamesSchema = z.array(z.string().min(1)).min(1)
 
 /**
- * A live offered/accepted service job — a snapshot of its template plus the
- * actual customer car (offered ones show it; accepted ones have it in the shop).
- * The work is tracked on the car via the normal job/labor system, not here.
+ * A live offered/accepted service job — a snapshot of the generated
+ * composition (type + rolled payout + picked name + picked flavor line) plus
+ * the actual customer car (offered ones show it; accepted ones have it in
+ * the shop). The work is tracked on the car via the normal job/labor system,
+ * not here.
  */
 export const ServiceJobSchema = z.object({
   id: z.string().min(1),
-  templateId: z.string().min(1),
+  typeId: z.string().min(1),
   customerName: z.string().min(1),
   description: z.string().min(1),
   work: ServiceJobWorkSchema,
@@ -59,5 +68,5 @@ export const ServiceJobSchema = z.object({
 export const ServiceJobsSchema = z.array(ServiceJobSchema)
 
 export type ServiceJobWork = z.infer<typeof ServiceJobWorkSchema>
-export type ServiceJobTemplate = z.infer<typeof ServiceJobTemplateSchema>
+export type ServiceJobType = z.infer<typeof ServiceJobTypeSchema>
 export type ServiceJob = z.infer<typeof ServiceJobSchema>

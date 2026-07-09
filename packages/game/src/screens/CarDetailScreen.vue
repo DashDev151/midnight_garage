@@ -36,9 +36,13 @@ const SLOTS: readonly Slot[] = [
 function zoneBusy(zone: Zone): boolean {
   const d = detail.value
   if (!d) return false
-  const inProgress = d.jobs.some((j) => j.kind === 'repair-zone' && j.zone === zone)
-  const queued = d.pendingJobs.some((j) => j.kind === 'repair-zone' && j.zone === zone)
-  return inProgress || queued
+  return d.jobs.some((j) => j.kind === 'repair-zone' && j.zone === zone)
+}
+
+function slotBusy(slot: Slot): boolean {
+  const d = detail.value
+  if (!d) return false
+  return d.jobs.some((j) => j.kind === 'install-part' && j.slot === slot)
 }
 
 function installFor(slot: Slot) {
@@ -63,12 +67,6 @@ function toggleBay(): void {
 
 const walkIn = computed(() => game.walkInEstimate(carId.value))
 const listPrice = computed(() => game.listingEstimate(carId.value))
-const sellQueued = computed(() => {
-  const id = carId.value
-  const walkInQueued = game.pending.sellViaWalkIn.some((a) => a.carInstanceId === id)
-  const listQueued = game.pending.listForSale.some((a) => a.carInstanceId === id)
-  return { walkIn: walkInQueued, list: listQueued, any: walkInQueued || listQueued }
-})
 </script>
 
 <template>
@@ -154,11 +152,11 @@ const sellQueued = computed(() => {
             /></span>
             <span class="zone-val">{{ detail.car.condition[zone] }}</span>
             <button
-              :disabled="zoneBusy(zone) || detail.car.condition[zone] >= 100"
+              :disabled="detail.car.condition[zone] >= 100 || game.laborSlotsRemainingToday <= 0"
               :data-test="'repair-' + zone"
-              @click="game.queueRepair(detail.car.id, zone)"
+              @click="game.repair(detail.car.id, zone)"
             >
-              Repair
+              {{ zoneBusy(zone) ? 'Continue repair' : 'Repair' }}
             </button>
           </li>
         </ul>
@@ -173,14 +171,18 @@ const sellQueued = computed(() => {
           <template v-if="detail.car.buildSheet[slot]">
             <span class="installed">{{ game.partName(detail.car.buildSheet[slot]!.partId) }}</span>
           </template>
+          <template v-else-if="slotBusy(slot)">
+            <span class="slot-empty">installing…</span>
+          </template>
           <template v-else>
             <span v-if="installFor(slot).length === 0" class="slot-empty">empty</span>
             <span v-else class="slot-install">
               <button
                 v-for="pi in installFor(slot)"
                 :key="pi.id"
+                :disabled="game.laborSlotsRemainingToday <= 0"
                 :data-test="'install-' + slot"
-                @click="game.queueInstall(detail.car.id, slot, pi.id)"
+                @click="game.install(detail.car.id, slot, pi.id)"
               >
                 install {{ game.partName(pi.partId) }}
               </button>
@@ -199,41 +201,21 @@ const sellQueued = computed(() => {
             ~{{ formatYen(walkIn.offerYen)
             }}<span v-if="walkIn.buyerId"> · {{ walkIn.buyerId }}</span>
           </span>
-          <button
-            :disabled="sellQueued.any"
-            data-test="sell-walkin"
-            @click="game.queueSellWalkIn(detail.car.id)"
-          >
-            {{ sellQueued.walkIn ? 'queued' : 'Sell now' }}
-          </button>
+          <button data-test="sell-walkin" @click="game.sellWalkIn(detail.car.id)">Sell now</button>
         </div>
         <div class="sell-option">
           <span class="sell-label">List publicly</span>
           <span class="sell-est">asking {{ formatYen(listPrice) }}</span>
-          <button
-            :disabled="sellQueued.any"
-            data-test="sell-list"
-            @click="game.queueListForSale(detail.car.id)"
-          >
-            {{ sellQueued.list ? 'queued' : 'List' }}
-          </button>
+          <button data-test="sell-list" @click="game.listForSale(detail.car.id)">List</button>
         </div>
       </div>
     </section>
 
     <section class="jobs">
       <h3>Work</h3>
-      <p class="labor">Labor: {{ game.laborSlotsPerDay }} slots/day</p>
-
-      <div v-if="detail.pendingJobs.length" class="job-group">
-        <h4>Queued for today</h4>
-        <ul>
-          <li v-for="(job, i) in detail.pendingJobs" :key="i">
-            {{ job.kind === 'repair-zone' ? 'repair ' + job.zone : 'install part' }} ·
-            {{ job.laborSlotsRequired }} slots
-          </li>
-        </ul>
-      </div>
+      <p class="labor">
+        Labor: {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} slots left today
+      </p>
 
       <div v-if="detail.jobs.length" class="job-group">
         <h4>In progress</h4>
@@ -245,11 +227,9 @@ const sellQueued = computed(() => {
         </ul>
       </div>
 
-      <p v-if="!detail.pendingJobs.length && !detail.jobs.length" class="empty">
-        No work queued. Queue a repair or install, then End Day.
-      </p>
+      <p v-else class="empty">No work in progress. Repair a zone or install a part to start.</p>
 
-      <button class="primary" data-test="end-day" @click="game.commitDay()">
+      <button class="primary" data-test="end-day" @click="game.endDay()">
         End Day ({{ formatYen(game.cashYen) }})
       </button>
     </section>

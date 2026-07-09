@@ -1,4 +1,10 @@
-import type { CarInstance, GameState, Job, PartInstance } from '@midnight-garage/content'
+import type {
+  CarInstance,
+  DayLogEntry,
+  GameState,
+  Job,
+  PartInstance,
+} from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 
 export function createJob(spec: NewJobSpec, id: string): Job {
@@ -110,4 +116,108 @@ export function completeJob(state: GameState, job: Job): JobCompletionResult {
   }
 
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
+}
+
+/** An open job's stable id — one job per car+zone(repair) or car+slot(install) at a time. */
+function jobIdFor(spec: NewJobSpec): string {
+  const target = spec.kind === 'repair-zone' ? spec.zone : spec.slot
+  return `job-${spec.carInstanceId}-${spec.kind}-${target}`
+}
+
+/**
+ * Finds the car's already-open job matching this spec's kind+zone/slot, or
+ * creates one (Sprint 11). A car can only have one open job per zone/slot at
+ * a time, so a repeat click on the same repair/install just continues the
+ * existing job rather than creating a duplicate — the id is derived
+ * deterministically from car+kind+zone/slot instead of a day/index counter,
+ * so "the same job" is recognizable across days without extra bookkeeping.
+ */
+export function findOrCreateJob(
+  state: GameState,
+  spec: NewJobSpec,
+): { state: GameState; job: Job } {
+  const id = jobIdFor(spec)
+  const existing = state.jobs.find((j) => j.id === id)
+  if (existing) return { state, job: existing }
+
+  const job = createJob(spec, id)
+  return { state: { ...state, jobs: [...state.jobs, job] }, job }
+}
+
+export interface LaborApplicationResult {
+  state: GameState
+  log: DayLogEntry[]
+  /** How much of the caller's offered labor was actually consumed — 0 if the job was already complete. */
+  laborSlotsUsed: number
+}
+
+/**
+ * Applies up to `laborAvailable` labor to one job (by id), completing it
+ * immediately if that's enough — the single-job core shared by the player's
+ * instant repair/install click and advanceDay's bot batch loop (Sprint 11).
+ * Bumps `laborSlotsSpentToday` by exactly what was used, so the caller never
+ * has to track the daily budget separately from the state transition itself.
+ */
+export function applyAvailableLaborToJob(
+  state: GameState,
+  jobId: string,
+  laborAvailable: number,
+): LaborApplicationResult {
+  const job = state.jobs.find((j) => j.id === jobId)
+  if (!job || isJobComplete(job) || laborAvailable <= 0) {
+    return { state, log: [], laborSlotsUsed: 0 }
+  }
+  if (!state.serviceBayCarIds.includes(job.carInstanceId)) {
+    return {
+      state,
+      log: [{ type: 'job-blocked', jobId: job.id, reason: 'not-in-service-bay' }],
+      laborSlotsUsed: 0,
+    }
+  }
+
+  const need = job.laborSlotsRequired - job.laborSlotsSpent
+  const slotsToApply = Math.min(laborAvailable, need)
+  if (slotsToApply <= 0) return { state, log: [], laborSlotsUsed: 0 }
+
+  const updatedJob = applyLaborToJob(job, slotsToApply)
+  let next: GameState = {
+    ...state,
+    jobs: state.jobs.map((j) => (j.id === jobId ? updatedJob : j)),
+    laborSlotsSpentToday: state.laborSlotsSpentToday + slotsToApply,
+  }
+  const log: DayLogEntry[] = [{ type: 'job-progress', jobId, laborSlotsSpent: slotsToApply }]
+
+  if (isJobComplete(updatedJob)) {
+    const result = completeJob(next, updatedJob)
+    next = result.state
+    if (result.blockedByOccupiedSlot) {
+      log.push({ type: 'job-blocked', jobId, reason: 'slot-occupied' })
+    } else {
+      next = { ...next, jobs: next.jobs.filter((j) => j.id !== jobId) }
+      log.push({
+        type: 'job-completed',
+        jobId,
+        carInstanceId: updatedJob.carInstanceId,
+        kind: updatedJob.kind,
+      })
+    }
+  }
+
+  return { state: next, log, laborSlotsUsed: slotsToApply }
+}
+
+/**
+ * The instant player-facing resolver (Sprint 11): find-or-create the job for
+ * this car+zone/slot, then apply as much of today's remaining labor as it
+ * needs. Composes `findOrCreateJob` + `applyAvailableLaborToJob` — the same
+ * two primitives advanceDay's bot batch loop uses, just for a single click
+ * instead of a whole day's queue.
+ */
+export function resolveJobLabor(
+  state: GameState,
+  spec: NewJobSpec,
+  laborAvailable: number,
+): LaborApplicationResult {
+  const created = findOrCreateJob(state, spec)
+  return applyAvailableLaborToJob(created.state, created.job.id, laborAvailable)
 }

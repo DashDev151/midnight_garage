@@ -7,7 +7,7 @@ import {
   PartsSchema,
   REAL_BRANDS,
   REAL_MODEL_TOKENS,
-  ServiceJobTemplatesSchema,
+  ServiceJobTypesSchema,
   resolveCarBrand,
   resolveCarDisplayName,
 } from '../src'
@@ -50,14 +50,18 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
    * Sprint 10 item 2: a job's customer description once named a specific
    * model that didn't match the car the job actually attached to. The fix
    * made every description car-agnostic; this guards against that
-   * mismatch recurring by ensuring no description names a car at all.
+   * mismatch recurring by ensuring no flavor line names a car at all.
    */
-  it('no service-job description references a specific car model or brand', () => {
-    const parsedJobs = ServiceJobTemplatesSchema.parse(serviceJobs)
-    for (const job of parsedJobs) {
-      const text = job.description.toLowerCase()
-      for (const token of realTokens) {
-        expect(text.includes(token), `job "${job.id}" description leaks "${token}"`).toBe(false)
+  it('no service-job flavor line references a specific car model or brand', () => {
+    const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
+    for (const type of parsedTypes) {
+      for (const line of type.flavorPool) {
+        const text = line.toLowerCase()
+        for (const token of realTokens) {
+          expect(text.includes(token), `job type "${type.id}" flavor line leaks "${token}"`).toBe(
+            false,
+          )
+        }
       }
     }
   })

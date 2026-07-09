@@ -29,13 +29,25 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   couldn't be run end-to-end — see the new Engineering item below.
   **Deferred to a later "auction depth" sprint:** more distinct buyer archetypes (richer valuation
   variety) + magnitude tuning toward the top of the 3–9 band.
-- [ ] **Sprint 11 — Instant action resolution.** Generalizes the moveCar/buyBay/completeServiceJob
-  pattern (Sprint 08/09) to every remaining action — repairs, installs, bids, buyouts, sells,
-  listings, part buys all resolve the instant the player clicks, not queued for End Day. `End Day`
-  becomes purely a day-boundary tick (labor refill + weekly effects). Also gives service-job
-  acceptance its real "arrives tomorrow" mechanic (an explicit `arrivesOnDay` field), finishing what
-  Sprint 10 only labels. Not yet written up as a full sprint doc — sequencing vs. Sprint 12 below is
-  an open call.
+- [x] **Sprint 11 — Instant actions, a real content-authoring system, round-2 playtest fixes.**
+  Implemented, ready for review — see `docs/sprints/sprint11.md`. Generalized the
+  moveCar/buyBay/completeServiceJob pattern (Sprint 08/09) to every remaining action — repair,
+  install, inspect, bid, buyout, buy-part, accept-service-job, sell-walk-in, list-for-sale all resolve
+  the instant the player clicks (a new `laborSlotsSpentToday` live daily budget on GameState,
+  `SAVE_VERSION` 3→4, makes repeated same-day clicks possible). `advanceDay` is now purely a
+  day-boundary tick, still resolving bots' queued `DayActions` through the *same* instant resolvers.
+  Service-job acceptance is now genuinely instant (the car arrives in parking the moment you click,
+  not "next day") — finishes what Sprint 10 only labeled, no separate `arrivesOnDay` field needed since
+  there's no longer a queue to arrive *from*. Round-2 playtest fixes bundled in: recalibrated the
+  "feeding frenzy" badge (was firing on ~30-50% of auctions, Sprint 10's own miss); dropped inspect's
+  labor cost; new `swapCars` fixes a real full-shop soft-lock; the sell-side buyer pool is now gated
+  the same way auction bidding already was (fixes backwards walk-in-vs-listing pricing and
+  collectors bidding on shitboxes). Replaced the fixed 8-template service-job content model with a
+  12-type job-type + flavor-pool catalog (`ServiceJobTypeSchema`) — a real fix for the "brakes on a
+  suspension job" bug class, not another one-line patch, after the maintainer found a *second*
+  instance of it and asked for a structural fix. 295 tests (was 251); all checks green.
+  **Deferred (per the maintainer, tracked as their own future sprints):** staff (playtest #9), the
+  parts-market cart/checkout overhaul (playtest #7).
 - [ ] **Sprint 12 — Component model refactor.** The zones+slots → unified per-component model from
   `docs/design/repair-replace-progression.md` ("Option B," already fully designed). Foundational,
   major save-law migration, touches nearly every sim module. Not yet written up as a full sprint doc.
@@ -49,8 +61,9 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   should target `componentId` (Sprint 12) and be instant-buy (Sprint 11), so building it earlier would
   mean redoing it. Not yet written up as a full sprint doc.
 
-Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro,
-not yet explicitly confirmed — revisit before writing 11-14's full docs if the order changes.
+Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro.
+10 and 11 are both done; 12-14's order past this point is not yet explicitly confirmed — revisit
+before writing 12's full doc if it changes.
 
 ## Engineering
 

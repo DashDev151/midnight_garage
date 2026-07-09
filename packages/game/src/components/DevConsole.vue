@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
-import { emptyActions } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -15,7 +14,7 @@ const grantPartId = ref('')
 
 function warp(): void {
   for (let i = 0; i < warpDays.value; i++) {
-    game.endDay(emptyActions())
+    game.endDay()
   }
 }
 </script>

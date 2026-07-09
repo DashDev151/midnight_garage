@@ -30,6 +30,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
+    laborSlotsSpentToday: 0,
   }
 }
 

@@ -1,4 +1,4 @@
-import { CARS, HIDDEN_ISSUES, type CarModel } from '@midnight-garage/content'
+import { CARS, HIDDEN_ISSUES, type CarModel, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
   auctionTierForRarity,
@@ -7,8 +7,36 @@ import {
   groupHiddenIssuesByZone,
   inspectLot,
   resolveHandoverCondition,
+  resolveInspectLot,
 } from '../src/auctions'
+import { AUCTION_TRAVEL_FEE_YEN } from '../src/constants'
 import { createRng } from '../src/rng'
+
+function stateWithLots(
+  lots: ReturnType<typeof generateAuctionCatalog>,
+  cashYen = 1_000_000,
+): GameState {
+  return {
+    day: 1,
+    seed: 1,
+    cashYen,
+    reputationTier: 'unknown',
+    reputationPoints: 0,
+    ownedCars: [],
+    partInventory: [],
+    staff: [],
+    jobs: [],
+    marketHeat: {},
+    activeAuctionLots: lots,
+    activeListings: [],
+    serviceJobOffers: [],
+    activeServiceJobs: [],
+    serviceBayCount: 1,
+    parkingBayCount: 3,
+    serviceBayCarIds: [],
+    laborSlotsSpentToday: 0,
+  }
+}
 
 const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
 const HIDDEN_ISSUES_BY_ID = Object.fromEntries(HIDDEN_ISSUES.map((issue) => [issue.id, issue]))
@@ -198,6 +226,58 @@ describe('inspectLot', () => {
     for (const issue of inspected.car.hiddenIssues) {
       expect(issue.revealed).toBe(true)
     }
+  })
+})
+
+describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
+  const model = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
+  if (!model) throw new Error('fixture car missing from seed content')
+
+  const sampleLot = (seed: number) => {
+    const [lot] = generateAuctionCatalog(
+      [model],
+      'premium',
+      HIDDEN_ISSUES_BY_ZONE,
+      7,
+      1,
+      7,
+      createRng(seed),
+    )
+    if (!lot) throw new Error('expected a lot')
+    return lot
+  }
+
+  it('reveals the lot and charges only the cash travel fee — no labor cost (decision 4)', () => {
+    const lot = sampleLot(1)
+    const fee = AUCTION_TRAVEL_FEE_YEN[lot.tier]
+    const state = stateWithLots([lot], 1_000_000)
+    const result = resolveInspectLot(state, lot.id)
+    expect(result.state.activeAuctionLots[0]?.inspected).toBe(true)
+    expect(result.state.cashYen).toBe(1_000_000 - fee)
+    expect(result.state.laborSlotsSpentToday).toBe(0) // untouched — inspect never spends labor
+    expect(result.log).toEqual([{ type: 'lot-inspected', lotId: lot.id }])
+  })
+
+  it('is a no-op when the fee is unaffordable', () => {
+    const lot = sampleLot(2)
+    const state = stateWithLots([lot], 0)
+    const result = resolveInspectLot(state, lot.id)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('is a no-op for an already-inspected lot', () => {
+    const lot = inspectLot(sampleLot(3))
+    const state = stateWithLots([lot])
+    const result = resolveInspectLot(state, lot.id)
+    expect(result.state).toBe(state)
+  })
+
+  it('is a no-op for an unknown lot id', () => {
+    const state = stateWithLots([sampleLot(4)])
+    const result = resolveInspectLot(state, 'no-such-lot')
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
   })
 })
 

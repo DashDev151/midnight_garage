@@ -3,10 +3,13 @@ import type {
   AuctionTier,
   CarInstance,
   CarModel,
+  DayLogEntry,
+  GameState,
   HiddenIssue,
   RarityTier,
   Zone,
 } from '@midnight-garage/content'
+import { AUCTION_TRAVEL_FEE_YEN } from './constants'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
@@ -161,6 +164,34 @@ export function inspectLot(lot: AuctionLot): AuctionLot {
     ...lot,
     inspected: true,
     car: { ...lot.car, hiddenIssues: lot.car.hiddenIssues.map((i) => ({ ...i, revealed: true })) },
+  }
+}
+
+export interface InspectLotResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * The instant inspect resolver (Sprint 11): reveals a lot's hidden issues
+ * the moment it's clicked, for its cash travel fee only — no labor cost
+ * (decision 4: labor is the tightest resource in the game, and gating a
+ * look-before-you-buy action behind it wasn't buying any real tension).
+ * Shared by the player's instant click and advanceDay's bot batch loop.
+ */
+export function resolveInspectLot(state: GameState, lotId: string): InspectLotResult {
+  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
+  if (!lot || lot.inspected) return { state, log: [] }
+  const fee = AUCTION_TRAVEL_FEE_YEN[lot.tier]
+  if (state.cashYen < fee) return { state, log: [] }
+  const inspected = inspectLot(lot)
+  return {
+    state: {
+      ...state,
+      cashYen: state.cashYen - fee,
+      activeAuctionLots: state.activeAuctionLots.map((l) => (l.id === lotId ? inspected : l)),
+    },
+    log: [{ type: 'lot-inspected', lotId }],
   }
 }
 

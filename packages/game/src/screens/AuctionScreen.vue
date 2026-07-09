@@ -6,7 +6,7 @@ import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 
-// Per-lot max-bid input; empty defaults to book value at queue time.
+// Per-lot max-bid input; empty defaults to book value.
 const bidInputs = reactive<Record<string, number | undefined>>({})
 
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
@@ -23,16 +23,6 @@ const daysUntilCatalog = computed(() => {
   return d === 0 ? 7 : d
 })
 
-function pendingBid(lotId: string): number | undefined {
-  return game.pending.bidsOnLots.find((b) => b.lotId === lotId)?.maxBidYen
-}
-function isInspectQueued(lotId: string): boolean {
-  return game.pending.inspectLots.some((a) => a.lotId === lotId)
-}
-function isBuyoutQueued(lotId: string): boolean {
-  return game.pending.buyoutLots.some((a) => a.lotId === lotId)
-}
-
 const INTEREST_LABEL: Record<string, string> = {
   quiet: 'Quiet',
   warm: 'Warm',
@@ -46,7 +36,11 @@ const INTEREST_LABEL: Record<string, string> = {
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
     <header class="head">
       <h2>Auctions</h2>
-      <p class="cash">{{ formatYen(game.cashYen) }} · labor {{ game.laborSlotsPerDay }}/day</p>
+      <p class="cash">
+        {{ formatYen(game.cashYen) }} · labor {{ game.laborSlotsRemainingToday }}/{{
+          game.laborSlotsPerDay
+        }}
+      </p>
     </header>
 
     <p v-if="!hasLots" class="empty">
@@ -101,13 +95,12 @@ const INTEREST_LABEL: Record<string, string> = {
             </template>
             <template v-else>
               <button
-                :disabled="isInspectQueued(d.lot.id) || game.cashYen < d.inspectionFeeYen"
+                :disabled="game.cashYen < d.inspectionFeeYen"
                 :data-test="'inspect-' + d.lot.id"
-                @click="game.queueInspect(d.lot.id)"
+                @click="game.inspectLot(d.lot.id)"
               >
-                Inspect ({{ formatYen(d.inspectionFeeYen) }} + 1 labor)
+                Inspect ({{ formatYen(d.inspectionFeeYen) }})
               </button>
-              <span v-if="isInspectQueued(d.lot.id)" class="queued">queued</span>
             </template>
           </div>
 
@@ -123,28 +116,33 @@ const INTEREST_LABEL: Record<string, string> = {
             </label>
             <button
               :data-test="'bid-' + d.lot.id"
-              @click="game.queueBid(d.lot.id, bidInputs[d.lot.id] ?? d.bookValueYen)"
+              @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.bookValueYen)"
             >
               Place bid
             </button>
-            <span v-if="pendingBid(d.lot.id) !== undefined" class="queued">
-              bid {{ formatYen(pendingBid(d.lot.id) ?? 0) }} queued
+            <span v-if="d.lastBidResult" class="bid-result" :class="d.lastBidResult.outcome">
+              <template v-if="d.lastBidResult.outcome === 'won'">
+                won at {{ formatYen(d.lastBidResult.priceYen) }}
+              </template>
+              <template v-else-if="d.lastBidResult.outcome === 'lost'">
+                lost — sold for {{ formatYen(d.lastBidResult.priceYen) }}
+              </template>
+              <template v-else>no sale — reserve not met</template>
             </span>
             <button
               class="buyout"
-              :disabled="isBuyoutQueued(d.lot.id) || game.cashYen < d.buyoutPriceYen"
+              :disabled="game.cashYen < d.buyoutPriceYen"
               :data-test="'buyout-' + d.lot.id"
-              @click="game.queueBuyout(d.lot.id)"
+              @click="game.buyout(d.lot.id)"
             >
               Buy now ({{ formatYen(d.buyoutPriceYen) }})
             </button>
-            <span v-if="isBuyoutQueued(d.lot.id)" class="queued">buyout queued</span>
           </div>
         </li>
       </ul>
     </div>
 
-    <button class="primary" data-test="end-day" @click="game.commitDay()">End Day</button>
+    <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
   </section>
 </template>
 
@@ -291,9 +289,17 @@ h3 {
   font-family: inherit;
 }
 
-.queued {
-  color: var(--mg-neon-violet);
+.bid-result {
   font-size: var(--mg-fs-sm);
+}
+
+.bid-result.won {
+  color: var(--mg-success);
+}
+
+.bid-result.lost,
+.bid-result.no-sale {
+  color: var(--mg-text-dim);
 }
 
 button {

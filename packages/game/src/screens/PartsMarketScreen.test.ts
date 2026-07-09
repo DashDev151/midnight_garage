@@ -20,10 +20,12 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
   })
 
-  it('clicking Buy queues the purchase in the pending plan', async () => {
+  it('clicking Buy purchases instantly (Sprint 11)', async () => {
     const game = useGameStore()
+    const cashBefore = game.cashYen
     const wrapper = mountScreen()
     await wrapper.find(`[data-test="buy-${cheapest.id}"]`).trigger('click')
-    expect(game.pending.buyParts).toContainEqual({ partId: cheapest.id })
+    expect(game.gameState.partInventory.some((pi) => pi.partId === cheapest.id)).toBe(true)
+    expect(game.cashYen).toBe(cashBefore - cheapest.priceYen)
   })
 })

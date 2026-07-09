@@ -1,4 +1,12 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, SERVICE_JOB_TEMPLATES } from '@midnight-garage/content'
+import {
+  BUYERS,
+  CARS,
+  FACILITIES,
+  HIDDEN_ISSUES,
+  PARTS,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { balancedPlayerStrategy } from '../../src/bots/balancedPlayer'
 import { cautiousRestorerStrategy } from '../../src/bots/cautiousRestorer'
@@ -9,7 +17,15 @@ import { serviceGrinderStrategy } from '../../src/bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../../src/bots/runCareer'
 import { buildSimContext } from '../../src/context'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, SERVICE_JOB_TEMPLATES)
+const CONTEXT = buildSimContext(
+  CARS,
+  PARTS,
+  BUYERS,
+  HIDDEN_ISSUES,
+  SERVICE_JOB_TYPES,
+  FACILITIES,
+  SERVICE_JOB_CUSTOMER_NAMES,
+)
 
 const STRATEGIES: Record<string, BotStrategy> = {
   'passive-grinder': passiveGrinderStrategy,

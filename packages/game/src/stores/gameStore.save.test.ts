@@ -8,8 +8,8 @@ describe('persistence: export / import save code', () => {
   it('a career exported to a code restores into a fresh store', () => {
     const a = useGameStore()
     a.newGame(1)
-    a.commitDay()
-    a.commitDay()
+    a.endDay()
+    a.endDay()
     a.devGiveCash(500_000)
     const code = a.exportSaveCode()
     const savedDay = a.day
@@ -38,12 +38,12 @@ describe('persistence: export / import save code', () => {
 describe('persistence: end-of-day report', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('commitDay records the ended day + cash delta and shows the report', () => {
+  it('endDay records the ended day + cash delta and shows the report', () => {
     const game = useGameStore()
     game.newGame(1)
     expect(game.reportVisible).toBe(false)
 
-    game.commitDay()
+    game.endDay()
 
     expect(game.reportVisible).toBe(true)
     expect(game.lastDayReport?.day).toBe(1) // the day that just ended
@@ -56,7 +56,7 @@ describe('persistence: end-of-day report', () => {
   it('newGame clears any prior report', () => {
     const game = useGameStore()
     game.newGame(1)
-    game.commitDay()
+    game.endDay()
     game.newGame(2)
     expect(game.reportVisible).toBe(false)
     expect(game.lastDayReport).toBeNull()

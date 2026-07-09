@@ -4,7 +4,7 @@ import type {
   Facilities,
   HiddenIssue,
   Part,
-  ServiceJobTemplate,
+  ServiceJobType,
   Zone,
 } from '@midnight-garage/content'
 import { groupHiddenIssuesByZone } from './auctions'
@@ -37,7 +37,8 @@ export interface SimContext {
   buyers: readonly Buyer[]
   hiddenIssuesById: Readonly<Record<string, HiddenIssue>>
   hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>
-  serviceJobTemplates: readonly ServiceJobTemplate[]
+  serviceJobTypes: readonly ServiceJobType[]
+  serviceJobCustomerNames: readonly string[]
   facilities: Facilities
 }
 
@@ -54,8 +55,9 @@ export function buildSimContext(
   parts: readonly Part[],
   buyers: readonly Buyer[],
   hiddenIssues: readonly HiddenIssue[],
-  serviceJobTemplates: readonly ServiceJobTemplate[] = [],
+  serviceJobTypes: readonly ServiceJobType[] = [],
   facilities: Facilities = DEFAULT_FACILITIES,
+  serviceJobCustomerNames: readonly string[] = [],
 ): SimContext {
   return {
     models,
@@ -65,7 +67,8 @@ export function buildSimContext(
     buyers,
     hiddenIssuesById: indexById(hiddenIssues),
     hiddenIssuesByZone: groupHiddenIssuesByZone(hiddenIssues),
-    serviceJobTemplates,
+    serviceJobTypes,
+    serviceJobCustomerNames,
     facilities,
   }
 }

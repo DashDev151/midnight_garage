@@ -55,6 +55,8 @@ export function describeLogEntry(
       return `Service job failed (-${entry.reputationLost} rep)`
     case 'car-moved':
       return `Moved ${entry.carInstanceId} to ${entry.to}`
+    case 'cars-swapped':
+      return `Swapped ${entry.serviceCarId} and ${entry.parkingCarId}`
     case 'bay-purchased':
       return `Bought a ${entry.kind} bay for ${formatYen(entry.priceYen)}`
     case 'acquisition-blocked':

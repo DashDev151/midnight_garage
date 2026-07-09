@@ -20,6 +20,7 @@ import {
   nextBayPriceYen,
   parkingOccupancy,
   releaseCarFromServiceBay,
+  swapCars,
 } from '../src/facilities'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
@@ -57,7 +58,7 @@ function serviceCar(id: string): ServiceJob {
   const car = generateAuctionCarInstance(CARS[0]!, CONTEXT.hiddenIssuesByZone, id, createRng(1))
   return {
     id: `svc-${id}`,
-    templateId: 'brake-refresh-corolla',
+    typeId: 'repair-engine',
     customerName: 'Test Customer',
     description: 'test',
     work: { kind: 'repair', zone: 'engine' },
@@ -164,6 +165,66 @@ describe('moveCar', () => {
     const state = baseState({ activeServiceJobs: [serviceCar('car-1')] })
     const result = moveCar(state, 'car-1', 'service')
     expect(result.changed).toBe(true)
+  })
+})
+
+describe('swapCars (Sprint 11, round-2 playtest #3)', () => {
+  it('exchanges a service-bay car and a parking car even when the shop is exactly full', () => {
+    // 1 service bay, 1 parking bay, both occupied — a direct move in either
+    // direction is illegal (zero slack anywhere), but a swap's net change in
+    // each location is zero, so it must still succeed.
+    const state = baseState({
+      ownedCars: [ownedCar('service-car'), ownedCar('parking-car')],
+      serviceBayCount: 1,
+      parkingBayCount: 1,
+      serviceBayCarIds: ['service-car'],
+    })
+    expect(moveCar(state, 'parking-car', 'service').changed).toBe(false) // sanity: direct move fails
+    const result = swapCars(state, 'service-car', 'parking-car')
+    expect(result.changed).toBe(true)
+    expect(result.state.serviceBayCarIds).toEqual(['parking-car'])
+  })
+
+  it('is a no-op if the claimed service car is not actually in a bay', () => {
+    const state = baseState({ ownedCars: [ownedCar('car-1'), ownedCar('car-2')] })
+    const result = swapCars(state, 'car-1', 'car-2')
+    expect(result.changed).toBe(false)
+    expect(result.state).toBe(state)
+  })
+
+  it('is a no-op if the claimed parking car is actually also in a service bay', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1'), ownedCar('car-2')],
+      serviceBayCount: 2,
+      serviceBayCarIds: ['car-1', 'car-2'],
+    })
+    const result = swapCars(state, 'car-1', 'car-2')
+    expect(result.changed).toBe(false)
+  })
+
+  it('is a no-op if the parking car is not in the shop at all', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCarIds: ['car-1'],
+    })
+    const result = swapCars(state, 'car-1', 'ghost-car')
+    expect(result.changed).toBe(false)
+  })
+
+  it('preserves total occupancy — the net change in each location is zero', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('service-car'), ownedCar('parking-car')],
+      serviceBayCount: 1,
+      parkingBayCount: 1,
+      serviceBayCarIds: ['service-car'],
+    })
+    const before = { service: state.serviceBayCarIds.length, parking: parkingOccupancy(state) }
+    const result = swapCars(state, 'service-car', 'parking-car')
+    const after = {
+      service: result.state.serviceBayCarIds.length,
+      parking: parkingOccupancy(result.state),
+    }
+    expect(after).toEqual(before)
   })
 })
 

@@ -5,7 +5,7 @@ import type {
   Grade,
   HiddenIssue,
   ServiceJob,
-  ServiceJobTemplate,
+  ServiceJobType,
   Zone,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
@@ -15,20 +15,25 @@ import {
   SERVICE_JOB_FAILURE_REP_MULTIPLIER,
 } from './constants'
 import type { SimContext } from './context'
-import { releaseCarFromServiceBay } from './facilities'
+import { hasParkingSpace, releaseCarFromServiceBay } from './facilities'
 import type { Rng } from './rng'
 
 /**
- * Offer a fresh batch of service jobs. Each carries a real customer car (rolled
- * like an auction car, so repair jobs land on an already-worn zone and install
- * jobs land on an empty slot) that enters the shop on acceptance for the player
- * to actually work on. `currentYear` (Sprint 10, default Infinity =
+ * Offer a fresh batch of service jobs (Sprint 11: composed from a job-type +
+ * flavor-pool catalog, not a fixed 1:1 template). Each carries a real
+ * customer car (rolled like an auction car, so repair jobs land on an
+ * already-worn zone and install jobs land on an empty slot) that enters the
+ * shop on acceptance for the player to actually work on. A type, a customer
+ * name, and a flavor line are picked independently — a flavor line can never
+ * be paired with a `work` it wasn't written for, since it only ever lives in
+ * its own type's pool. `currentYear` (Sprint 10, default Infinity =
  * unrestricted) excludes still-unreleased models and clamps the rolled car's
  * year, same as auction generation — a customer's car is bound by the same
  * in-game calendar a lot is.
  */
 export function generateServiceJobOffers(
-  templates: readonly ServiceJobTemplate[],
+  types: readonly ServiceJobType[],
+  customerNames: readonly string[],
   models: readonly CarModel[],
   hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
   day: number,
@@ -38,11 +43,12 @@ export function generateServiceJobOffers(
   currentYear: number = Infinity,
 ): ServiceJob[] {
   const eligibleModels = models.filter((model) => model.spec.yearFrom <= currentYear)
-  if (templates.length === 0 || eligibleModels.length === 0) return []
+  if (types.length === 0 || customerNames.length === 0 || eligibleModels.length === 0) return []
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const template = rng.pick(templates)
+    const type = rng.pick(types)
     const model = rng.pick(eligibleModels)
+    const [minPayout, maxPayout] = type.payoutRangeYen
     const car = generateAuctionCarInstance(
       model,
       hiddenIssuesByZone,
@@ -52,18 +58,52 @@ export function generateServiceJobOffers(
     )
     offers.push({
       id: `svc-${day}-${i}`,
-      templateId: template.id,
-      customerName: template.customerName,
-      description: template.description,
-      work: template.work,
+      typeId: type.id,
+      customerName: rng.pick(customerNames),
+      description: rng.pick(type.flavorPool),
+      work: type.work,
       car,
-      payoutYen: template.payoutYen,
-      baseReputation: template.baseReputation,
+      payoutYen: rng.int(minPayout, maxPayout),
+      baseReputation: type.baseReputation,
       expiresOnDay: day + expiresInDays,
       dueOnDay: null,
     })
   }
   return offers
+}
+
+export interface AcceptServiceJobResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * The instant accept resolver (Sprint 11): moves an offer into
+ * activeServiceJobs the moment the player clicks Accept — the customer's car
+ * is now sitting in parking (the player moves it into a service bay to work
+ * it). Needs a free parking space to take delivery; a full shop just leaves
+ * the offer on the board rather than spending anything. Shared by the
+ * player's instant click and advanceDay's bot batch loop (one queued accept
+ * per call, matching every other Sprint 11 instant resolver's shape).
+ */
+export function resolveAcceptServiceJob(state: GameState, offerId: string): AcceptServiceJobResult {
+  const offer = state.serviceJobOffers.find((o) => o.id === offerId)
+  if (!offer) return { state, log: [] }
+  if (!hasParkingSpace(state)) {
+    return {
+      state,
+      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-parking' }],
+    }
+  }
+  const activeJob: ServiceJob = { ...offer, dueOnDay: state.day + SERVICE_JOB_DEADLINE_DAYS }
+  return {
+    state: {
+      ...state,
+      serviceJobOffers: state.serviceJobOffers.filter((o) => o.id !== offerId),
+      activeServiceJobs: [...state.activeServiceJobs, activeJob],
+    },
+    log: [{ type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id }],
+  }
 }
 
 /** Whether the customer's required work has actually been done on their car. */

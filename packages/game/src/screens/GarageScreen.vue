@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useGameStore } from '../stores/gameStore'
+import { useGameStore, type ShopCarView } from '../stores/gameStore'
 import { describeLogEntry } from '../utils/dayLogFormat'
 import { formatYen } from '../utils/formatYen'
 
@@ -19,6 +19,27 @@ const recentLog = computed(() =>
 
 const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
 const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
+
+const occupiedServiceCars = computed(() =>
+  game.serviceBaysView.filter((s): s is ShopCarView => s !== null),
+)
+
+// Sprint 11, round-2 playtest #3: a direct move needs a free slot at the
+// destination — when the shop is exactly full (zero slack anywhere), that's
+// never true in either direction. The swap picker below is the only way out.
+const swapPicks = reactive<Record<string, string>>({})
+
+function swapServiceCarWithPick(serviceCarId: string): void {
+  const parkingCarId = swapPicks[serviceCarId]
+  if (!parkingCarId) return
+  if (game.swapCars(serviceCarId, parkingCarId)) swapPicks[serviceCarId] = ''
+}
+
+function swapParkingCarWithPick(parkingCarId: string): void {
+  const serviceCarId = swapPicks[parkingCarId]
+  if (!serviceCarId) return
+  if (game.swapCars(serviceCarId, parkingCarId)) swapPicks[parkingCarId] = ''
+}
 </script>
 
 <template>
@@ -45,9 +66,14 @@ const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
     </dl>
 
     <div class="controls">
-      <button class="primary" data-test="end-day" @click="game.commitDay()">End Day</button>
+      <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
       <button data-test="new-game" @click="game.newGame()">New Game</button>
     </div>
+
+    <p v-if="game.shopAtCapacity" class="capacity-warning">
+      Shop is completely full — services and parking are both at capacity, so a direct move has
+      nowhere to go. Use "swap with…" below to rearrange.
+    </p>
 
     <section class="bays">
       <h3>Service bays ({{ game.serviceBayFreeCount }}/{{ game.serviceBayCount }} free)</h3>
@@ -62,11 +88,27 @@ const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
               <span v-if="slot.isCustomerCar" class="badge">customer job</span>
             </RouterLink>
             <button
+              :disabled="game.parkingFull"
               :data-test="'move-parking-' + slot.carId"
               @click="game.moveCar(slot.carId, 'parking')"
             >
               &rarr; parking
             </button>
+            <div v-if="game.parkingFull && game.parkingView.length > 0" class="swap-row">
+              <select v-model="swapPicks[slot.carId]" :data-test="'swap-pick-' + slot.carId">
+                <option value="">swap with…</option>
+                <option v-for="p in game.parkingView" :key="p.carId" :value="p.carId">
+                  {{ p.displayName }}
+                </option>
+              </select>
+              <button
+                :disabled="!swapPicks[slot.carId]"
+                :data-test="'swap-' + slot.carId"
+                @click="swapServiceCarWithPick(slot.carId)"
+              >
+                swap
+              </button>
+            </div>
           </template>
           <span v-else class="slot-empty">empty bay</span>
         </li>
@@ -89,6 +131,24 @@ const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
           >
             &rarr; service bay
           </button>
+          <div
+            v-if="game.serviceBayFreeCount <= 0 && occupiedServiceCars.length > 0"
+            class="swap-row"
+          >
+            <select v-model="swapPicks[car.carId]" :data-test="'swap-pick-' + car.carId">
+              <option value="">swap with…</option>
+              <option v-for="s in occupiedServiceCars" :key="s.carId" :value="s.carId">
+                {{ s.displayName }}
+              </option>
+            </select>
+            <button
+              :disabled="!swapPicks[car.carId]"
+              :data-test="'swap-' + car.carId"
+              @click="swapParkingCarWithPick(car.carId)"
+            >
+              swap
+            </button>
+          </div>
         </li>
       </ul>
     </section>
@@ -264,6 +324,35 @@ button:disabled {
 .bay-slot button,
 .parking-row button {
   align-self: flex-start;
+  padding: 2px 10px;
+  font-size: var(--mg-fs-sm);
+}
+
+.capacity-warning {
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-3);
+}
+
+.swap-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+.swap-row select {
+  flex: 1;
+  min-width: 0;
+  background: var(--mg-night-deep);
+  color: var(--mg-text);
+  border: var(--mg-border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-family: inherit;
+  font-size: var(--mg-fs-sm);
+}
+
+.swap-row button {
   padding: 2px 10px;
   font-size: var(--mg-fs-sm);
 }

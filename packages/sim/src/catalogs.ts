@@ -67,7 +67,8 @@ export function refreshCatalogs(
   }
 
   const freshOffers = generateServiceJobOffers(
-    context.serviceJobTemplates,
+    context.serviceJobTypes,
+    context.serviceJobCustomerNames,
     context.models,
     context.hiddenIssuesByZone,
     day,

@@ -13,30 +13,49 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('market: bidding', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('a high max bid on a local-yard lot wins it into the garage', () => {
+  it('a high max bid on a local-yard lot wins it into the garage instantly', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot after the first catalog')
 
     const carsBefore = game.ownedCarCount
-    game.queueBid(lot.id, lot.bookValueYen * 3) // well over market -> should win (second-price)
-    game.commitDay()
+    game.placeBid(lot.id, lot.bookValueYen * 3) // well over market -> should win (second-price)
 
     expect(game.ownedCarCount).toBe(carsBefore + 1)
     // The won lot is gone from the catalog.
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
 
-  it('queueInspect marks a lot for inspection in the pending plan', () => {
+  it('placeBid populates lotDetail.lastBidResult with the real outcome when the lot survives', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
-    game.queueInspect(lot.id)
-    expect(game.pending.inspectLots).toContainEqual({ lotId: lot.id })
-    // Committing spends a labor slot + fee and reveals the lot.
-    game.commitDay()
+    expect(game.lotDetail(lot.id)?.lastBidResult).toBeUndefined()
+    game.placeBid(lot.id, lot.bookValueYen * 3)
+    // A won lot leaves activeAuctionLots entirely — its card, and lotDetail,
+    // are legitimately gone (the win itself, via the owned-car count, is the
+    // feedback). Only a lost/no-sale bid leaves the lot in place to show a result on.
+    const stillListed = game.gameState.activeAuctionLots.some((l) => l.id === lot.id)
+    if (stillListed) {
+      const result = game.lotDetail(lot.id)?.lastBidResult
+      expect(result).toBeDefined()
+      expect(['lost', 'no-sale']).toContain(result!.outcome)
+    } else {
+      expect(game.gameState.ownedCars.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('inspectLot reveals the lot instantly, for cash only', () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    const lot = game.gameState.activeAuctionLots[0]!
+    const cashBefore = game.cashYen
+    const laborBefore = game.laborSlotsRemainingToday
+    game.inspectLot(lot.id)
     expect(game.gameState.activeAuctionLots.find((l) => l.id === lot.id)?.inspected).toBe(true)
+    expect(game.cashYen).toBeLessThan(cashBefore)
+    expect(game.laborSlotsRemainingToday).toBe(laborBefore) // no labor cost (Sprint 11 decision 4)
   })
 
   it('lotDetail carries an interest read and a buyout price', () => {
@@ -48,14 +67,12 @@ describe('market: bidding', () => {
     expect(detail.buyoutPriceYen).toBeGreaterThan(detail.bookValueYen) // a premium
   })
 
-  it('a buyout is guaranteed: the lot becomes an owned car on End Day', () => {
+  it('a buyout is guaranteed and instant: the lot becomes an owned car immediately', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')!
     const carsBefore = game.ownedCarCount
-    game.queueBuyout(lot.id)
-    expect(game.pending.buyoutLots).toContainEqual({ lotId: lot.id })
-    game.commitDay()
+    game.buyout(lot.id)
     expect(game.ownedCarCount).toBe(carsBefore + 1)
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
@@ -64,35 +81,34 @@ describe('market: bidding', () => {
 describe('market: selling', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('a walk-in sell removes the car and adds cash', () => {
+  it('a walk-in sell removes the car and adds cash instantly', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const cashBefore = game.cashYen
     const est = game.walkInEstimate(game.gameState.ownedCars[0]!.id)
     expect(est.offerYen).toBeGreaterThan(0)
 
-    game.queueSellWalkIn(game.gameState.ownedCars[0]!.id)
-    game.commitDay()
+    game.sellWalkIn(game.gameState.ownedCars[0]!.id)
 
     expect(game.ownedCarCount).toBe(0)
     expect(game.cashYen).toBeGreaterThan(cashBefore)
   })
 
-  it('listing publicly removes the car and creates a listing that resolves later', () => {
+  it('listing publicly removes the car instantly and creates a listing that resolves later', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
     expect(game.listingEstimate(id)).toBeGreaterThan(0)
 
-    game.queueListForSale(id)
-    game.commitDay()
+    game.listForSale(id)
 
     expect(game.ownedCarCount).toBe(0)
     expect(game.activeListings).toHaveLength(1)
     // The listing carries the model so the garage panel can name it.
     expect(game.activeListings[0]!.modelId).toBe(CARS[0]!.id)
     const cashBefore = game.cashYen
-    // End days until the listing resolves (bounded).
+    // End days until the listing resolves (bounded) — the wait itself is
+    // still the intentional multi-day "slow, market price" mechanic.
     for (let i = 0; i < 10 && game.activeListings.length > 0; i++) game.endDay()
     expect(game.activeListings).toHaveLength(0)
     expect(game.cashYen).toBeGreaterThan(cashBefore) // sale proceeds landed
@@ -102,7 +118,7 @@ describe('market: selling', () => {
 describe('market: buying parts', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('a queued part buy lands in inventory and is then installable', () => {
+  it('buying a part lands in inventory instantly and is then installable', () => {
     const game = useGameStore()
     // A power part + a compatible car, so the bought part is actually installable.
     let pair: { partId: string; slot: (typeof PARTS)[number]['slot']; modelId: string } | undefined
@@ -120,8 +136,7 @@ describe('market: buying parts', () => {
     const car = game.gameState.ownedCars[0]!
     const cashBefore = game.cashYen
 
-    game.queueBuyPart(pair.partId)
-    game.commitDay()
+    game.buyPart(pair.partId)
 
     expect(game.gameState.partInventory).toHaveLength(1)
     expect(game.cashYen).toBeLessThan(cashBefore)
@@ -129,10 +144,10 @@ describe('market: buying parts', () => {
     expect(game.installablePartsFor(car.id, pair.slot).some((pi) => pi.id === bought.id)).toBe(true)
   })
 
-  it('queueBuyPart ignores an unknown part id', () => {
+  it('buyPart ignores an unknown part id', () => {
     const game = useGameStore()
-    game.queueBuyPart('no-such-part')
-    expect(game.pending.buyParts).toHaveLength(0)
+    expect(game.buyPart('no-such-part')).toBe(false)
+    expect(game.gameState.partInventory).toHaveLength(0)
   })
 
   it('the cheapest part is affordable from the starting balance', () => {

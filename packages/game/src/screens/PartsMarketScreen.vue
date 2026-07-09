@@ -19,10 +19,6 @@ function fitsAnyOwnedCar(part: Part): boolean {
   return part.requiredTags.every((t) => ownedTags.value.has(t))
 }
 
-function pendingBuyCount(partId: string): number {
-  return game.pending.buyParts.filter((b) => b.partId === partId).length
-}
-
 function statSummary(part: Part): string {
   return (['power', 'handling', 'style', 'reliability', 'authenticity'] as const)
     .map((k) => ({ k, v: part.statModifiers[k] }))
@@ -57,18 +53,15 @@ function statSummary(part: Part): string {
           <button
             :disabled="game.cashYen < part.priceYen"
             :data-test="'buy-' + part.id"
-            @click="game.queueBuyPart(part.id)"
+            @click="game.buyPart(part.id)"
           >
             Buy
           </button>
-          <span v-if="pendingBuyCount(part.id) > 0" class="queued"
-            >x{{ pendingBuyCount(part.id) }} queued</span
-          >
         </div>
       </li>
     </ul>
 
-    <button class="primary" data-test="end-day" @click="game.commitDay()">End Day</button>
+    <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
   </section>
 </template>
 
@@ -142,11 +135,6 @@ h2 {
 
 .price {
   color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-}
-
-.queued {
-  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
 }
 

@@ -1,4 +1,12 @@
-import type { AuctionLot, Buyer, CarModel, Part } from '@midnight-garage/content'
+import type {
+  AuctionLot,
+  Buyer,
+  CarModel,
+  DayLogEntry,
+  GameState,
+  Part,
+} from '@midnight-garage/content'
+import { resolveHandoverCondition } from './auctions'
 import {
   AUCTION_BID_INCREMENT_YEN,
   AUCTION_BIDDER_NOISE_RANGE,
@@ -9,6 +17,8 @@ import {
   AUCTION_INTEREST_BASE_BAND,
   AUCTION_RESERVE_PRICE_FRACTION,
 } from './constants'
+import type { SimContext } from './context'
+import { hasParkingSpace } from './facilities'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 import { auctionBidValueFor } from './valuation'
 
@@ -35,9 +45,11 @@ function buyoutPriceYen(lot: AuctionLot): number {
  * Buyer archetypes with a genuinely stated interest in a model's tier — the
  * gate (Sprint 10). No entry for a tier means that archetype never bids on
  * it; there is no default fallback (that fallback was the original "every
- * buyer wants every car" bug).
+ * buyer wants every car" bug). Exported (Sprint 11) so `selling.ts` can
+ * apply the identical gate to walk-in/listing buyers — the same rule was
+ * missing on the sell side, not a different rule.
  */
-function interestedBuyers(
+export function interestedBuyers(
   model: CarModel,
   buyers: readonly Buyer[],
 ): { buyer: Buyer; weight: number }[] {
@@ -112,8 +124,15 @@ export function computeLotInterest(
     .sort((a, b) => b - a)
   const contenders = bids.length
 
+  // Recalibrated (Sprint 11, round-2 playtest #1): the Sprint 10 thresholds
+  // (frenzy above 5) never accounted for the new field's own average size
+  // (~6.2, confirmed by the real balance harness) — "frenzy" was firing on
+  // roughly a quarter to half of every auction depending on tier. Empirically
+  // measured against the contenders distribution (2,000-sample probe on a
+  // broadly-wanted "rare" tier): `contenders > 11` lands at ~7% of lots,
+  // squarely in the 5-10% economic frenzy target instead of eyeballed.
   const level: LotInterest['level'] =
-    contenders === 0 ? 'quiet' : contenders <= 2 ? 'warm' : contenders <= 5 ? 'hot' : 'frenzy'
+    contenders === 0 ? 'quiet' : contenders <= 3 ? 'warm' : contenders <= 11 ? 'hot' : 'frenzy'
 
   // The number that actually wins is the TOP bid, not the second-price
   // clearing number — bidding above a "clearing price" estimate could still
@@ -173,5 +192,118 @@ export function resolveAuction(
   return {
     winner: top.isPlayer ? 'player' : 'ai',
     finalPriceYen,
+  }
+}
+
+export interface AcquisitionResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * The car-condition roll on a won lot (the sliding-scale lemon rule) needs
+ * an RNG, but there's no meaningful "day" for an instant, single-click
+ * acquisition to derive one from — seeded on the lot's own id instead
+ * (distinct from the rival-field seed, `hashStringToSeed(lot.id)`, via a
+ * suffix) so the outcome is reproducible regardless of when the click
+ * happens, matching the rest of Sprint 10's per-lot-id-seeded philosophy.
+ */
+function handoverRng(lotId: string) {
+  return createRng(hashStringToSeed(`${lotId}:handover`))
+}
+
+/**
+ * The instant bid resolver (Sprint 11): resolves the moment it's placed.
+ * `buildRivalField` is seeded purely on the lot's id, never the day or a
+ * bid's timing, so resolving instantly produces an identical outcome to
+ * resolving at End Day — nothing about the auction math needs a day
+ * boundary. Shared by the player's instant click and advanceDay's bot batch
+ * loop (one queued bid per call, same as every other Sprint 11 resolver).
+ */
+export function resolveBidInstant(
+  state: GameState,
+  lotId: string,
+  maxBidYen: number,
+  context: SimContext,
+): AcquisitionResult {
+  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
+  if (!lot) return { state, log: [] }
+  const model = context.modelsById[lot.modelId]
+  if (!model) return { state, log: [] }
+
+  const result = resolveAuction(lot, model, maxBidYen, context.buyers, context.partsById)
+  if (result.winner === 'no-sale') return { state, log: [] }
+
+  const remainingLots = state.activeAuctionLots.filter((l) => l.id !== lotId)
+
+  if (result.winner === 'ai') {
+    return {
+      state: { ...state, activeAuctionLots: remainingLots },
+      log: [{ type: 'auction-bid-lost', lotId, winningPriceYen: result.finalPriceYen }],
+    }
+  }
+
+  // The player won — but unlike a buyout, rivals already contested this
+  // lot, so a full garage doesn't put the auction on hold, it forfeits the
+  // win to them (the lot is already gone either way).
+  if (!hasParkingSpace(state)) {
+    return {
+      state: { ...state, activeAuctionLots: remainingLots },
+      log: [
+        { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-parking' },
+        { type: 'auction-bid-lost', lotId, winningPriceYen: result.finalPriceYen },
+      ],
+    }
+  }
+
+  const finalCar = resolveHandoverCondition(
+    lot,
+    result.finalPriceYen,
+    context.hiddenIssuesById,
+    handoverRng(lotId),
+  )
+  return {
+    state: {
+      ...state,
+      cashYen: state.cashYen - result.finalPriceYen,
+      ownedCars: [...state.ownedCars, finalCar],
+      activeAuctionLots: remainingLots,
+    },
+    log: [{ type: 'auction-bid-won', lotId, finalPriceYen: result.finalPriceYen }],
+  }
+}
+
+/**
+ * The instant buyout resolver (Sprint 11): a guaranteed purchase at a
+ * premium, no rival contest — a full garage just means the purchase doesn't
+ * happen right now (no money spent), the lot stays on the board for a retry
+ * once space frees up. Shared by the player's instant click and advanceDay's
+ * bot batch loop.
+ */
+export function resolveBuyoutInstant(
+  state: GameState,
+  lotId: string,
+  context: SimContext,
+): AcquisitionResult {
+  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
+  if (!lot) return { state, log: [] }
+  const priceYen = buyoutPriceYen(lot)
+  if (state.cashYen < priceYen) return { state, log: [] }
+  if (!hasParkingSpace(state)) {
+    return {
+      state,
+      log: [{ type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' }],
+    }
+  }
+
+  const car = resolveHandoverCondition(lot, priceYen, context.hiddenIssuesById, handoverRng(lotId))
+  return {
+    state: {
+      ...state,
+      cashYen: state.cashYen - priceYen,
+      ownedCars: [...state.ownedCars, car],
+      activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
+    },
+    log: [{ type: 'lot-bought-out', lotId, priceYen }],
   }
 }

@@ -1,37 +1,19 @@
-import type {
-  DayLog,
-  DayLogEntry,
-  GameState,
-  Job,
-  PartInstance,
-  PublicListing,
-  ServiceJob,
-} from '@midnight-garage/content'
+import type { DayLog, DayLogEntry, GameState, Job, PublicListing } from '@midnight-garage/content'
 import type { DayActions } from './actions'
-import { inspectLot, resolveHandoverCondition } from './auctions'
-import { resolveAuction } from './bidding'
+import { resolveBidInstant, resolveBuyoutInstant } from './bidding'
+import { resolveInspectLot } from './auctions'
 import { refreshCatalogs } from './catalogs'
-import {
-  AUCTION_BUYOUT_PREMIUM,
-  AUCTION_TRAVEL_FEE_YEN,
-  PUBLIC_LISTING_WAIT_DAYS,
-  SERVICE_JOB_DEADLINE_DAYS,
-} from './constants'
 import type { SimContext } from './context'
 import { applyWeeklyRentAndWages } from './finances'
-import {
-  applyBayPurchases,
-  applyMoves,
-  hasParkingSpace,
-  releaseCarFromServiceBay,
-} from './facilities'
-import { applyLaborToJob, completeJob, createJob, isJobComplete } from './jobs'
+import { applyBayPurchases, applyMoves } from './facilities'
+import { applyAvailableLaborToJob, completeJob, createJob, isJobComplete } from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { driftMarketHeat } from './marketHeat'
+import { resolveBuyPart } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
-import { resolveServiceJob } from './serviceJobs'
-import { listPubliclyAskingPrice, sellViaWalkIn } from './selling'
+import { resolveAcceptServiceJob, resolveServiceJob } from './serviceJobs'
+import { resolveListForSale, resolveSellViaWalkIn } from './selling'
 
 export interface AdvanceDayResult {
   state: GameState
@@ -46,6 +28,18 @@ export interface AdvanceDayResult {
  * addition) carries the static content catalogs — models, parts, buyers,
  * hidden issues — that auction generation and valuation need; sim has no
  * data loader of its own, so the caller builds it once and passes it in.
+ *
+ * Sprint 11: this function shrank from resolving every player action to a
+ * pure day-boundary tick. Every action that used to resolve here now has its
+ * own instant resolver (bidding.ts, auctions.ts, selling.ts, serviceJobs.ts,
+ * parts.ts, jobs.ts) that the store calls directly the moment the player
+ * clicks. `queuedActions` still exists because bots decide a whole day at
+ * once (they're headless — they can't click); advanceDay resolves their
+ * batch by calling the exact same instant resolvers in a loop, one call per
+ * queued action, so there is one resolution path, not two. What's left
+ * inline below is genuinely day-boundary-only: labor reset, weekly rent and
+ * market-heat drift, catalog refresh and expiry, and the service-job
+ * deadline backstop.
  */
 export function advanceDay(
   state: GameState,
@@ -57,11 +51,9 @@ export function advanceDay(
   const rng = createRng(seed)
   let next: GameState = state
 
-  // 0. Resolve bots' bay purchases then moves (the player does both instantly
-  // via direct store calls — resolveServiceJob's precedent — so only queued
-  // DayActions from headless bots reach this step; the pure applyBayPurchases
-  // / applyMoves cores are the single resolution path either way). Bays
-  // purchased today are usable by the moves and labor below, same day.
+  // 0. Bots' bay purchases then moves (the player does both instantly via a
+  // direct store call — the same pure cores either way). Bays purchased
+  // today are usable by the moves and labor below, same day.
   const bayPurchases = applyBayPurchases(next, queuedActions.buyBays, context.facilities)
   next = bayPurchases.state
   log.push(...bayPurchases.log)
@@ -70,7 +62,13 @@ export function advanceDay(
   next = moves.state
   log.push(...moves.log)
 
-  // 1. Create today's queued jobs.
+  // 1. Bots' queued job creation. The player never populates this — an
+  // instant repair/install click finds-or-creates its own job
+  // (jobs.ts's resolveJobLabor/findOrCreateJob) using a different,
+  // car+zone/slot-derived id scheme. Bots predict `job-${day}-${i}` ids in
+  // the same tick to reference in laborAssignments below, so this id scheme
+  // stays exactly as it was — the two schemes never need to agree, because a
+  // given GameState is only ever a bot's or only ever a player's.
   const jobs: Job[] = [...next.jobs]
   queuedActions.createJobs.forEach((spec, i) => {
     const job = createJob(spec, `job-${next.day}-${i}`)
@@ -84,74 +82,38 @@ export function advanceDay(
   })
   next = { ...next, jobs }
 
-  // 1b. Buy parts from the market (GDD 3.1 "buy parts"). Turn-based: a bought
-  // part lands in inventory this tick and is installable from the next day
-  // (an install job can't reference a part-instance id that doesn't exist yet).
-  queuedActions.buyParts.forEach((action, i) => {
-    const part = context.partsById[action.partId]
-    if (!part || next.cashYen < part.priceYen) return
-    const partInstance: PartInstance = {
-      id: `part-${next.day}-${i}`,
-      partId: part.id,
-      conditionPercent: 100,
-      genuinePeriod: false,
-    }
-    next = {
-      ...next,
-      cashYen: next.cashYen - part.priceYen,
-      partInventory: [...next.partInventory, partInstance],
-    }
-    log.push({
-      type: 'part-bought',
-      partId: part.id,
-      partInstanceId: partInstance.id,
-      priceYen: part.priceYen,
-    })
-  })
-
-  // 1c. Accept queued service jobs (GDD Act 1 "job cards"). Accepting simply
-  // moves the offer into activeServiceJobs — the customer's car is now sitting
-  // in the shop (in parking; the player moves it into a service bay to work
-  // it). The player then does the actual work (buy parts, assign labor via
-  // the normal job system) and clicks "Complete Job" when it's done. Needs a
-  // free parking space to take delivery — `next` updates per-accept so
-  // multiple accepts in one day are checked against each other live.
-  const offersById = new Map(next.serviceJobOffers.map((offer) => [offer.id, offer]))
-  for (const action of queuedActions.acceptServiceJobs) {
-    const offer = offersById.get(action.offerId)
-    if (!offer) continue
-    if (!hasParkingSpace(next)) {
-      log.push({ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-parking' })
-      continue
-    }
-    offersById.delete(offer.id)
-    // Stamp the work deadline now — the player has SERVICE_JOB_DEADLINE_DAYS
-    // from acceptance to finish and hand the car back.
-    const activeJob: ServiceJob = { ...offer, dueOnDay: next.day + SERVICE_JOB_DEADLINE_DAYS }
-    next = { ...next, activeServiceJobs: [...next.activeServiceJobs, activeJob] }
-    log.push({ type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id })
+  // 1b. Bots' queued part purchases — the player buys instantly via
+  // resolveBuyPart directly from the store.
+  for (const { partId } of queuedActions.buyParts) {
+    const result = resolveBuyPart(next, partId, context)
+    next = result.state
+    log.push(...result.log)
   }
-  next = { ...next, serviceJobOffers: Array.from(offersById.values()) }
 
-  // 2. Labor budget for the day, shared by lot inspections and job assignments.
-  const available = availableLaborSlots(next)
-  let remainingLabor = available
+  // 1c. Bots' queued service-job accepts — the player accepts instantly via
+  // resolveAcceptServiceJob directly from the store.
+  for (const { offerId } of queuedActions.acceptServiceJobs) {
+    const result = resolveAcceptServiceJob(next, offerId)
+    next = result.state
+    log.push(...result.log)
+  }
 
-  // 2a. Inspect lots (GDD 6.5: 1 labor slot + a travel fee, reveals hidden issues).
-  const lotsById = new Map(next.activeAuctionLots.map((lot) => [lot.id, lot]))
+  // 1d. Bots' queued lot inspections — the player inspects instantly via
+  // resolveInspectLot directly from the store. No longer costs labor
+  // (Sprint 11 decision 4) — just the cash travel fee resolveInspectLot
+  // already applies internally.
   for (const { lotId } of queuedActions.inspectLots) {
-    const lot = lotsById.get(lotId)
-    if (!lot || lot.inspected || remainingLabor <= 0) continue
-    const fee = AUCTION_TRAVEL_FEE_YEN[lot.tier]
-    if (next.cashYen < fee) continue
-    lotsById.set(lotId, inspectLot(lot))
-    remainingLabor -= 1
-    next = { ...next, cashYen: next.cashYen - fee }
-    log.push({ type: 'lot-inspected', lotId })
+    const result = resolveInspectLot(next, lotId)
+    next = result.state
+    log.push(...result.log)
   }
-  next = { ...next, activeAuctionLots: Array.from(lotsById.values()) }
 
-  // 2b. Apply labor assignments to jobs, clamped to what's left of the budget.
+  // 2. Apply labor assignments to jobs, clamped to what's left of the day's
+  // budget. `applyAvailableLaborToJob` is the same single-job core the
+  // player's instant repair/install click uses — bots just call it once per
+  // queued assignment instead of once per click, and it books the spend into
+  // `laborSlotsSpentToday` exactly the same way either path does.
+  let remainingLabor = availableLaborSlots(next) - next.laborSlotsSpentToday
   const requestedJobLabor = queuedActions.laborAssignments.reduce((sum, a) => sum + a.laborSlots, 0)
   if (requestedJobLabor > remainingLabor) {
     log.push({
@@ -161,30 +123,21 @@ export function advanceDay(
     })
   }
 
-  // Labor applies to jobs, which target either an owned car or a customer's
-  // car sitting in a service job — both worked through the same job/labor
-  // system, so there's a single code path here. Either way, the car must be
-  // sitting in a service bay right now (after step 0's moves) to receive any
-  // labor — a job on a parked car makes no progress until moved in.
-  const jobsById = new Map(next.jobs.map((job) => [job.id, job]))
   for (const assignment of queuedActions.laborAssignments) {
     if (remainingLabor <= 0) break
-    const job = jobsById.get(assignment.jobId)
-    if (!job || isJobComplete(job)) continue
-    if (!next.serviceBayCarIds.includes(job.carInstanceId)) {
-      log.push({ type: 'job-blocked', jobId: job.id, reason: 'not-in-service-bay' })
-      continue
-    }
-    const need = job.laborSlotsRequired - job.laborSlotsSpent
-    const slotsToApply = Math.min(assignment.laborSlots, remainingLabor, need)
-    if (slotsToApply <= 0) continue
-    jobsById.set(job.id, applyLaborToJob(job, slotsToApply))
-    remainingLabor -= slotsToApply
-    log.push({ type: 'job-progress', jobId: job.id, laborSlotsSpent: slotsToApply })
+    const offered = Math.min(assignment.laborSlots, remainingLabor)
+    const result = applyAvailableLaborToJob(next, assignment.jobId, offered)
+    next = result.state
+    log.push(...result.log)
+    remainingLabor -= result.laborSlotsUsed
   }
-  next = { ...next, jobs: Array.from(jobsById.values()) }
 
-  // 3. Complete any jobs that hit their labor requirement today.
+  // 2b. Retry any job that's already fully-labored but was blocked from
+  // completing on a prior day (its target slot was occupied) — checked every
+  // day regardless of whether new labor was assigned today, same as before
+  // this function was split apart. A job `applyAvailableLaborToJob` just
+  // completed above is already gone from `next.jobs`, so this never
+  // double-processes it.
   const stillOpen: Job[] = []
   for (const job of next.jobs) {
     if (!isJobComplete(job)) {
@@ -207,128 +160,44 @@ export function advanceDay(
   }
   next = { ...next, jobs: stillOpen }
 
-  // 3b. Service-job completion is NOT resolved here — the player resolves it the
-  // instant they click "Complete Job" (a store call to resolveServiceJob). The
-  // only End-Day involvement is the deadline backstop in step 8b below.
+  // 3. Service-job completion is NOT resolved here — the player resolves it
+  // the instant they click "Complete Job" (a store call to
+  // resolveServiceJob). The only day-boundary involvement is the deadline
+  // backstop below.
 
-  // 4. Resolve queued auction actions. Buyouts first (guaranteed purchase at
-  // a premium, no contest), then competitive bids on what's left.
-  const remainingLots = new Map(next.activeAuctionLots.map((lot) => [lot.id, lot]))
-
+  // 4. Bots' queued auction actions — buyouts first (guaranteed, no
+  // contest), then competitive bids on what's left. The player resolves
+  // both instantly via resolveBuyoutInstant/resolveBidInstant directly from
+  // the store; these are the exact same functions, called in a loop.
   for (const { lotId } of queuedActions.buyoutLots) {
-    const lot = remainingLots.get(lotId)
-    if (!lot) continue
-    const priceYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
-    if (next.cashYen < priceYen) continue
-    // A buyout is guaranteed and has no rival contest, so a full garage just
-    // means the purchase doesn't happen today — no money spent, the lot stays
-    // on the board for a retry once space frees up.
-    if (!hasParkingSpace(next)) {
-      log.push({ type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' })
-      continue
-    }
-    remainingLots.delete(lotId)
-    const car = resolveHandoverCondition(lot, priceYen, context.hiddenIssuesById, rng)
-    next = { ...next, cashYen: next.cashYen - priceYen, ownedCars: [...next.ownedCars, car] }
-    log.push({ type: 'lot-bought-out', lotId, priceYen })
+    const result = resolveBuyoutInstant(next, lotId, context)
+    next = result.state
+    log.push(...result.log)
   }
 
   for (const bid of queuedActions.bidsOnLots) {
-    const lot = remainingLots.get(bid.lotId)
-    if (!lot) continue
-    const model = context.modelsById[lot.modelId]
-    if (!model) continue
-
-    const result = resolveAuction(lot, model, bid.maxBidYen, context.buyers, context.partsById)
-    if (result.winner === 'no-sale') continue
-
-    remainingLots.delete(bid.lotId)
-    if (result.winner === 'player') {
-      // Unlike a buyout, rivals already contested this lot — a full garage
-      // doesn't put the auction on hold, it forfeits the win to them.
-      if (!hasParkingSpace(next)) {
-        log.push({ type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-parking' })
-        log.push({ type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: result.finalPriceYen })
-        continue
-      }
-      const finalCar = resolveHandoverCondition(
-        lot,
-        result.finalPriceYen,
-        context.hiddenIssuesById,
-        rng,
-      )
-      next = {
-        ...next,
-        cashYen: next.cashYen - result.finalPriceYen,
-        ownedCars: [...next.ownedCars, finalCar],
-      }
-      log.push({ type: 'auction-bid-won', lotId: lot.id, finalPriceYen: result.finalPriceYen })
-    } else {
-      log.push({ type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: result.finalPriceYen })
-    }
+    const result = resolveBidInstant(next, bid.lotId, bid.maxBidYen, context)
+    next = result.state
+    log.push(...result.log)
   }
-  next = { ...next, activeAuctionLots: Array.from(remainingLots.values()) }
 
-  // 5. Sell via walk-in offer (same-day resolution).
+  // 5. Bots' queued walk-in sells — the player sells instantly via
+  // resolveSellViaWalkIn directly from the store.
   for (const { carInstanceId } of queuedActions.sellViaWalkIn) {
-    const carIndex = next.ownedCars.findIndex((c) => c.id === carInstanceId)
-    const car = carIndex === -1 ? undefined : next.ownedCars[carIndex]
-    if (!car) continue
-    const model = context.modelsById[car.modelId]
-    if (!model || context.buyers.length === 0) continue
-
-    const offer = sellViaWalkIn(car, model, context.buyers, context.partsById, rng)
-    next = releaseCarFromServiceBay(next, carInstanceId)
-    next = {
-      ...next,
-      cashYen: next.cashYen + offer.priceYen,
-      ownedCars: next.ownedCars.filter((c) => c.id !== carInstanceId),
-    }
-    log.push({
-      type: 'car-sold',
-      carInstanceId,
-      channel: 'walk-in-offer',
-      priceYen: offer.priceYen,
-    })
+    const result = resolveSellViaWalkIn(next, carInstanceId, context)
+    next = result.state
+    log.push(...result.log)
   }
 
-  // 6. List for sale (multi-day, GDD 6.3: "slow, market price").
-  const newListings: PublicListing[] = []
-  queuedActions.listForSale.forEach((action, i) => {
-    const carIndex = next.ownedCars.findIndex((c) => c.id === action.carInstanceId)
-    const car = carIndex === -1 ? undefined : next.ownedCars[carIndex]
-    if (!car) return
-    const model = context.modelsById[car.modelId]
-    if (!model || context.buyers.length === 0) return
-
-    const marketHeatPercent = next.marketHeat[car.modelId] ?? 100
-    const askingPriceYen = listPubliclyAskingPrice(
-      car,
-      model,
-      context.buyers,
-      context.partsById,
-      marketHeatPercent,
-    )
-    const waitDays = action.waitDays ?? PUBLIC_LISTING_WAIT_DAYS
-    const listing: PublicListing = {
-      id: `listing-${next.day}-${i}`,
-      carInstanceId: action.carInstanceId,
-      modelId: car.modelId,
-      askingPriceYen,
-      resolvesOnDay: next.day + waitDays,
-    }
-    newListings.push(listing)
-    next = releaseCarFromServiceBay(next, action.carInstanceId)
-    next = { ...next, ownedCars: next.ownedCars.filter((c) => c.id !== action.carInstanceId) }
-    log.push({
-      type: 'listing-created',
-      listingId: listing.id,
-      carInstanceId: action.carInstanceId,
-      askingPriceYen,
-      resolvesOnDay: listing.resolvesOnDay,
-    })
-  })
-  next = { ...next, activeListings: [...next.activeListings, ...newListings] }
+  // 6. Bots' queued public listings — the player creates a listing instantly
+  // via resolveListForSale directly from the store. The listing's own
+  // resolvesOnDay wait is the intentional multi-day mechanic; only its
+  // *creation* is instant now.
+  for (const action of queuedActions.listForSale) {
+    const result = resolveListForSale(next, action.carInstanceId, context, action.waitDays)
+    next = result.state
+    log.push(...result.log)
+  }
 
   // 7. Resolve public listings due today — a guaranteed sale at the locked asking price.
   const stillListed: PublicListing[] = []
@@ -394,8 +263,8 @@ export function advanceDay(
   next = heat.state
   log.push(...heat.log)
 
-  // 11. The day itself passes.
-  next = { ...next, day: next.day + 1 }
+  // 11. The day itself passes, and today's labor budget replenishes for the next one.
+  next = { ...next, day: next.day + 1, laborSlotsSpentToday: 0 }
 
   return { state: next, log }
 }

@@ -1,9 +1,49 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, type AuctionLot, type Buyer } from '@midnight-garage/content'
+import {
+  BUYERS,
+  CARS,
+  HIDDEN_ISSUES,
+  PARTS,
+  type AuctionLot,
+  type Buyer,
+  type GameState,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { computeLotInterest, resolveAuction } from '../src/bidding'
+import {
+  computeLotInterest,
+  resolveAuction,
+  resolveBidInstant,
+  resolveBuyoutInstant,
+} from '../src/bidding'
 import { generateAuctionCatalog, groupHiddenIssuesByZone } from '../src/auctions'
 import { AUCTION_BUYOUT_PREMIUM, AUCTION_RESERVE_PRICE_FRACTION } from '../src/constants'
+import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
+
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+
+function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): GameState {
+  return {
+    day: 1,
+    seed: 1,
+    cashYen: 10_000_000,
+    reputationTier: 'unknown',
+    reputationPoints: 0,
+    ownedCars: [],
+    partInventory: [],
+    staff: [],
+    jobs: [],
+    marketHeat: {},
+    activeAuctionLots: lots,
+    activeListings: [],
+    serviceJobOffers: [],
+    activeServiceJobs: [],
+    serviceBayCount: 1,
+    parkingBayCount: 3,
+    serviceBayCarIds: [],
+    laborSlotsSpentToday: 0,
+    ...overrides,
+  }
+}
 
 const HIDDEN_ISSUES_BY_ZONE = groupHiddenIssuesByZone(HIDDEN_ISSUES)
 
@@ -101,6 +141,18 @@ describe('computeLotInterest / resolveAuction — the calibrated rival field (Sp
     expect(average).toBeLessThanOrEqual(10)
   })
 
+  it('the "frenzy" badge is genuinely rare, not roughly half of everything (Sprint 11, round-2 playtest #1)', () => {
+    // Sprint 10 shipped the level thresholds unrecalibrated for the new
+    // field's own average size (~6.2, confirmed by the real balance harness)
+    // — "frenzy" (`contenders > 5`) fired on close to half of every auction,
+    // which is exactly the bug the maintainer's second playtest caught.
+    const levels = statLots(SAMPLE_SIZE).map(
+      (lot) => computeLotInterest(lot, model, BUYERS, {}).level,
+    )
+    const frenzyShare = levels.filter((l) => l === 'frenzy').length / levels.length
+    expect(frenzyShare).toBeLessThan(0.15)
+  })
+
   it('the win-price distribution is a bell — steal and frenzy are both rare, mid is the majority', () => {
     const reserveYen = Math.round(model.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
     const buyoutPriceYen = Math.round(model.bookValueYen * AUCTION_BUYOUT_PREMIUM)
@@ -141,5 +193,72 @@ describe('computeLotInterest / resolveAuction — the calibrated rival field (Sp
       checked++
     }
     expect(checked).toBeGreaterThan(0)
+  })
+})
+
+describe('resolveBidInstant / resolveBuyoutInstant (Sprint 11 instant resolvers)', () => {
+  it('resolveBidInstant produces the exact same outcome as resolveAuction, plus the state transition', () => {
+    const { lot, model } = sampleLot(10)
+    const expected = resolveAuction(lot, model, lot.bookValueYen * 3, BUYERS, {})
+    const state = stateWithLots([lot])
+    const result = resolveBidInstant(state, lot.id, lot.bookValueYen * 3, CONTEXT)
+    expect(result.state.activeAuctionLots).toHaveLength(0) // the lot always leaves the board
+    if (expected.winner === 'player') {
+      expect(result.state.ownedCars).toHaveLength(1)
+      expect(result.state.cashYen).toBe(state.cashYen - expected.finalPriceYen)
+      expect(result.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
+    } else if (expected.winner === 'ai') {
+      expect(result.state.ownedCars).toHaveLength(0)
+      expect(result.log.some((e) => e.type === 'auction-bid-lost')).toBe(true)
+    }
+  })
+
+  it('is a no-op for an unknown lot id', () => {
+    const state = stateWithLots([sampleLot(11).lot])
+    const result = resolveBidInstant(state, 'no-such-lot', 1_000_000, CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('a won lot forfeits to rivals (not held) when there is no parking space', () => {
+    const { lot, model } = sampleLot(12)
+    // A wildly over-market bid guarantees a player win if any lot resolves at all.
+    const state = stateWithLots([lot], { ownedCars: [], parkingBayCount: 0 })
+    const result = resolveBidInstant(state, lot.id, lot.bookValueYen * 5, CONTEXT)
+    if (resolveAuction(lot, model, lot.bookValueYen * 5, BUYERS, {}).winner === 'player') {
+      expect(result.state.ownedCars).toHaveLength(0)
+      expect(result.state.cashYen).toBe(state.cashYen) // no money spent
+      expect(result.log.some((e) => e.type === 'acquisition-blocked')).toBe(true)
+    }
+  })
+
+  it('resolveBuyoutInstant buys the lot at buyoutPriceYen, guaranteed', () => {
+    const { lot } = sampleLot(13)
+    const priceYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
+    const state = stateWithLots([lot])
+    const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+    expect(result.state.ownedCars).toHaveLength(1)
+    expect(result.state.cashYen).toBe(state.cashYen - priceYen)
+    expect(result.state.activeAuctionLots).toHaveLength(0)
+    expect(result.log).toEqual([{ type: 'lot-bought-out', lotId: lot.id, priceYen }])
+  })
+
+  it('resolveBuyoutInstant is a no-op when unaffordable, leaving the lot on the board', () => {
+    const { lot } = sampleLot(14)
+    const state = stateWithLots([lot], { cashYen: 0 })
+    const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('resolveBuyoutInstant leaves the lot on the board (no money spent) when parking is full', () => {
+    const { lot } = sampleLot(15)
+    const state = stateWithLots([lot], { parkingBayCount: 0 })
+    const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+    expect(result.state.activeAuctionLots).toHaveLength(1) // still there, for a retry later
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.log).toEqual([
+      { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' },
+    ])
   })
 })

@@ -68,6 +68,7 @@ function initialState(): GameState {
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
+    laborSlotsSpentToday: 0,
   }
 }
 
@@ -127,11 +128,14 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 10: the weekly auction/service refresh at days
-    // 7/14/21/28 now runs through the reworked catalogs/bidding RNG path.
+    // Re-pinned Sprint 11: advanceDay was rewritten into a pure day-boundary
+    // tick around new instant resolvers (jobs, auctions, selling), changing
+    // RNG consumption order (e.g. the handover roll is now seeded per-lot-id
+    // instead of drawn from the day's shared stream) and adding the new
+    // laborSlotsSpentToday field to state.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('62ad3fbb')
+    expect(hashState(finalState)).toBe('2f9ef05f')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -209,8 +213,9 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 10: createInitialGameState now seeds day-1 catalogs,
-    // and the rival field itself was reworked — both change RNG consumption.
-    expect(hashState(acquisitionCareer().sold)).toBe('9caa0d4f')
+    // Re-pinned Sprint 11: same reasons as the scripted-career hash above —
+    // advanceDay's instant-resolver rewrite changes RNG consumption order
+    // and adds laborSlotsSpentToday to state.
+    expect(hashState(acquisitionCareer().sold)).toBe('917565d6')
   })
 })
