@@ -109,6 +109,75 @@ describe('generateAuctionCarInstance', () => {
   })
 })
 
+describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () => {
+  const model = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!model) throw new Error('fixture car missing from seed content')
+
+  /** yearFrom 2005 — released well after a 1995 campaign start. */
+  const FUTURE_MODEL: CarModel = {
+    ...model,
+    id: 'future-test-model',
+    spec: { ...model.spec, yearFrom: 2005 },
+  }
+
+  it('generateAuctionCarInstance never rolls a year past currentYear', () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const instance = generateAuctionCarInstance(
+        model,
+        HIDDEN_ISSUES_BY_ZONE,
+        'car-test',
+        createRng(seed),
+        1996,
+      )
+      expect(instance.year).toBeLessThanOrEqual(1996)
+    }
+  })
+
+  it('generateAuctionCatalog excludes a model whose yearFrom postdates currentYear', () => {
+    const lots = generateAuctionCatalog(
+      [FUTURE_MODEL],
+      'local-yard',
+      HIDDEN_ISSUES_BY_ZONE,
+      7,
+      5,
+      7,
+      createRng(1),
+      1995,
+    )
+    expect(lots).toHaveLength(0)
+  })
+
+  it('generateAuctionCatalog includes that same model once the calendar reaches its release year', () => {
+    const lots = generateAuctionCatalog(
+      [FUTURE_MODEL],
+      'local-yard',
+      HIDDEN_ISSUES_BY_ZONE,
+      7,
+      5,
+      7,
+      createRng(1),
+      2005,
+    )
+    expect(lots.length).toBeGreaterThan(0)
+    for (const lot of lots) {
+      expect(lot.car.year).toBeLessThanOrEqual(2005)
+    }
+  })
+
+  it('defaults to unrestricted (Infinity) when currentYear is omitted', () => {
+    const lots = generateAuctionCatalog(
+      [FUTURE_MODEL],
+      'local-yard',
+      HIDDEN_ISSUES_BY_ZONE,
+      7,
+      5,
+      7,
+      createRng(1),
+    )
+    expect(lots.length).toBeGreaterThan(0)
+  })
+})
+
 describe('inspectLot', () => {
   it('reveals every hidden issue and marks the lot inspected', () => {
     const model = CARS.find((c) => c.id === 'honda-city-e-aa')

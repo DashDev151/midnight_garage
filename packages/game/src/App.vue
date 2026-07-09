@@ -2,6 +2,7 @@
 import { defineAsyncComponent } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import DayReport from './components/DayReport.vue'
+import JobCompleteModal from './components/JobCompleteModal.vue'
 import SaveMenu from './components/SaveMenu.vue'
 import { useUiStore } from './stores/uiStore'
 
@@ -34,6 +35,7 @@ const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevCo
   </main>
 
   <DayReport />
+  <JobCompleteModal />
   <component :is="DevConsole" v-if="DevConsole" />
 </template>
 

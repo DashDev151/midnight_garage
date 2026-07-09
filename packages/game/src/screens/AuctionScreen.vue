@@ -81,10 +81,10 @@ const INTEREST_LABEL: Record<string, string> = {
               {{ INTEREST_LABEL[d.interest.level] }}
             </span>
             <span v-if="d.interest.estimateHighYen > 0" class="estimate">
-              likely sells {{ formatYen(d.interest.estimateLowYen) }}–{{
+              bid {{ formatYen(d.interest.estimateLowYen) }}–{{
                 formatYen(d.interest.estimateHighYen)
               }}
-              · {{ d.interest.contenders }} rival{{ d.interest.contenders === 1 ? '' : 's' }}
+              to win · {{ d.interest.contenders }} rival{{ d.interest.contenders === 1 ? '' : 's' }}
             </span>
             <span v-else class="estimate">no rival interest expected</span>
           </div>

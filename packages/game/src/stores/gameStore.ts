@@ -49,11 +49,11 @@ import {
   reputationForFailure,
   resolveServiceJob,
   valuateCarForBuyer,
-  type AuctionBidder,
   type DayActions,
   type LaborAssignment,
   type LotInterest,
   type NewJobSpec,
+  type ServiceJobOutcome,
   type SimContext,
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
@@ -146,6 +146,21 @@ export interface ServiceJobView {
   daysLeft: number | null
 }
 
+/** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
+export interface ServiceJobResultView {
+  outcome: 'paid' | 'failed'
+  customerName: string
+  workLabel: string
+  payoutYen: number
+  /** Positive for a paid job, negative (or zero) for a failed one. */
+  reputationDelta: number
+  /** Set for a paid install job: the installed part's cost and the resulting profit. */
+  partCostYen?: number
+  profitYen?: number
+  /** Days between acceptance and this resolution. */
+  daysSpent?: number
+}
+
 /** An auction lot with the derived numbers the auction screen shows. */
 export interface LotDetail {
   lot: AuctionLot
@@ -200,6 +215,8 @@ export const useGameStore = defineStore('game', () => {
   // End-of-day report shown after a player-committed day.
   const lastDayReport = ref<DayReport | null>(null)
   const reportVisible = ref(false)
+  // Immediate feedback shown after a "Complete Job" resolution (paid or failed).
+  const lastJobResult = ref<ServiceJobResultView | null>(null)
 
   const day = computed(() => gameState.value.day)
   const cashYen = computed(() => gameState.value.cashYen)
@@ -306,11 +323,6 @@ export const useGameStore = defineStore('game', () => {
 
   // --- auction & market selectors --------------------------------------
 
-  // The rival bidder field is the same for every lot; build it once.
-  const aiBidders = computed<AuctionBidder[]>(() =>
-    context.value.buyers.map((buyer) => ({ id: buyer.id, buyer })),
-  )
-
   const activeListings = computed<PublicListing[]>(() => gameState.value.activeListings)
 
   /** Current auction catalog grouped by tier (only tiers with lots present). */
@@ -347,7 +359,7 @@ export const useGameStore = defineStore('game', () => {
       inspectionFeeYen: AUCTION_TRAVEL_FEE_YEN[lot.tier],
       buyoutPriceYen: Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM),
       // precision 0 for now; a future auction-scout staff trait raises it.
-      interest: computeLotInterest(lot, model, aiBidders.value, context.value.partsById, 0),
+      interest: computeLotInterest(lot, model, context.value.buyers, context.value.partsById, 0),
       revealedIssues,
     }
   }
@@ -560,14 +572,42 @@ export const useGameStore = defineStore('game', () => {
    * "Complete Job" — resolves the service job **immediately** (not on End Day):
    * if the work is done the payout lands and reputation is granted; if not, the
    * job is failed (reputation penalty, no pay). Either way the car leaves now.
-   * Returns the outcome so the UI can show instant feedback.
+   * Populates `lastJobResult` for the completion feedback modal and returns
+   * the outcome too, for callers that just need the bare result.
    */
-  function completeServiceJob(jobId: string): 'paid' | 'failed' | 'not-found' {
+  function completeServiceJob(jobId: string): ServiceJobOutcome {
+    const job = gameState.value.activeServiceJobs.find((sj) => sj.id === jobId)
     const resolution = resolveServiceJob(gameState.value, jobId, context.value)
-    if (resolution.outcome === 'not-found') return 'not-found'
+    if (resolution.outcome === 'not-found' || !job) return 'not-found'
     gameState.value = resolution.state
     dayLog.value.push(...resolution.log)
+
+    const entry = resolution.log[0]
+    if (entry?.type === 'service-job-completed') {
+      lastJobResult.value = {
+        outcome: 'paid',
+        customerName: job.customerName,
+        workLabel: serviceWorkLabel(job),
+        payoutYen: entry.payoutYen,
+        reputationDelta: entry.reputationGained,
+        partCostYen: entry.partCostYen,
+        profitYen: entry.profitYen,
+        daysSpent: entry.daysSpent,
+      }
+    } else if (entry?.type === 'service-job-failed') {
+      lastJobResult.value = {
+        outcome: 'failed',
+        customerName: job.customerName,
+        workLabel: serviceWorkLabel(job),
+        payoutYen: 0,
+        reputationDelta: -entry.reputationLost,
+      }
+    }
     return resolution.outcome
+  }
+
+  function dismissJobResult(): void {
+    lastJobResult.value = null
   }
 
   /** Queue selling an owned car via a same-day walk-in offer. */
@@ -816,6 +856,8 @@ export const useGameStore = defineStore('game', () => {
     queueListForSale,
     queueAcceptServiceJob,
     completeServiceJob,
+    lastJobResult,
+    dismissJobResult,
     clearPending,
     endDay,
     commitDay,

@@ -127,9 +127,11 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
+    // Re-pinned Sprint 10: the weekly auction/service refresh at days
+    // 7/14/21/28 now runs through the reworked catalogs/bidding RNG path.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('49b9eb4a')
+    expect(hashState(finalState)).toBe('62ad3fbb')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -207,6 +209,8 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    expect(hashState(acquisitionCareer().sold)).toBe('afc3eaf7')
+    // Re-pinned Sprint 10: createInitialGameState now seeds day-1 catalogs,
+    // and the rival field itself was reworked — both change RNG consumption.
+    expect(hashState(acquisitionCareer().sold)).toBe('9caa0d4f')
   })
 })

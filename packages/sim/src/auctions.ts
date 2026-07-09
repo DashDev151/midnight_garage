@@ -63,12 +63,17 @@ export function groupHiddenIssuesByZone(
  * until inspection or the sliding-scale lemon rule at handover
  * (resolveHandoverCondition). Always stock: buildSheet is empty, since an
  * auction car hasn't been touched yet (GDD: "buy rough, restore/build").
+ * `currentYear` (Sprint 10, default Infinity = unrestricted) clamps the
+ * rolled model year to the in-game calendar — see calendar.ts — so an
+ * individual instance can't roll a still-impossible year even when its
+ * model is otherwise eligible.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
   hiddenIssuesByZone: Readonly<Record<Zone, readonly HiddenIssue[]>>,
   id: string,
   rng: Rng,
+  currentYear: number = Infinity,
 ): CarInstance {
   const hiddenIssues = model.hiddenIssueWeights.flatMap((weighted) => {
     if (rng.next() >= weighted.weight) return []
@@ -80,7 +85,7 @@ export function generateAuctionCarInstance(
   return {
     id,
     modelId: model.id,
-    year: model.spec.yearFrom + rng.int(0, 8),
+    year: Math.min(model.spec.yearFrom + rng.int(0, 8), currentYear),
     mileageKm: rng.int(30_000, 180_000),
     color: rng.pick(COLOR_POOL),
     provenanceNote: rng.pick(PROVENANCE_POOL),
@@ -105,7 +110,13 @@ export function generateAuctionCarInstance(
   }
 }
 
-/** Weekly catalog for one tier: one lot per eligible model that's in stock this week, up to `count`. */
+/**
+ * Weekly catalog for one tier: one lot per eligible model that's in stock
+ * this week, up to `count`. `currentYear` (Sprint 10, default Infinity =
+ * unrestricted) also excludes any model whose `yearFrom` postdates the
+ * in-game calendar — see calendar.ts — so a still-unreleased model can't
+ * appear at auction (GDD 2.2: "new model years appear at auction over time").
+ */
 export function generateAuctionCatalog(
   models: readonly CarModel[],
   tier: AuctionTier,
@@ -114,15 +125,24 @@ export function generateAuctionCatalog(
   count: number,
   expiresInDays: number,
   rng: Rng,
+  currentYear: number = Infinity,
 ): AuctionLot[] {
-  const eligible = models.filter((model) => auctionTierForRarity(model.tier) === tier)
+  const eligible = models.filter(
+    (model) => auctionTierForRarity(model.tier) === tier && model.spec.yearFrom <= currentYear,
+  )
   if (eligible.length === 0) return []
 
   const lots: AuctionLot[] = []
   for (let i = 0; i < count; i++) {
     const model = rng.pick(eligible)
     const lotId = `lot-${day}-${tier}-${i}`
-    const car = generateAuctionCarInstance(model, hiddenIssuesByZone, `car-${lotId}`, rng)
+    const car = generateAuctionCarInstance(
+      model,
+      hiddenIssuesByZone,
+      `car-${lotId}`,
+      rng,
+      currentYear,
+    )
     lots.push({
       id: lotId,
       tier,

@@ -15,14 +15,8 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('AuctionScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('shows the empty state before any catalog exists', () => {
-    const wrapper = mountScreen()
-    expect(wrapper.text()).toContain('No lots listed')
-  })
-
-  it('renders lots once a catalog arrives, with inspect and bid controls', () => {
+  it('renders lots already on day 1 (Sprint 10: no empty first week), with inspect and bid controls', () => {
     const game = useGameStore()
-    warpToCatalog(game)
     const wrapper = mountScreen()
     expect(wrapper.text()).not.toContain('No lots listed')
     expect(wrapper.findAll('.lot').length).toBe(game.gameState.activeAuctionLots.length)

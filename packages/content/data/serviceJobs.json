@@ -2,7 +2,7 @@
   {
     "id": "brake-refresh-corolla",
     "customerName": "Mrs. Watanabe",
-    "description": "Brakes are shot on my AE100 Corolla — sort them out.",
+    "description": "Brakes are shot — sort them out before I end up in a ditch.",
     "work": { "kind": "repair", "zone": "suspension" },
     "payoutYen": 22000,
     "baseReputation": 1
@@ -10,7 +10,7 @@
   {
     "id": "suspension-tidy-sunny",
     "customerName": "Ms. Kobayashi",
-    "description": "The Sunny's suspension is tired — freshen it up.",
+    "description": "Suspension's tired — freshen it up for me.",
     "work": { "kind": "repair", "zone": "suspension" },
     "payoutYen": 30000,
     "baseReputation": 2
@@ -18,7 +18,7 @@
   {
     "id": "engine-service-city",
     "customerName": "Mr. Tanaka",
-    "description": "Give the old City's engine a proper going-over.",
+    "description": "Give the engine a proper going-over — it's been running rough.",
     "work": { "kind": "repair", "zone": "engine" },
     "payoutYen": 35000,
     "baseReputation": 2
@@ -26,7 +26,7 @@
   {
     "id": "bodywork-tidy-mira",
     "customerName": "Old Man Sato",
-    "description": "Sort the rusty panel on my Mira before the shaken.",
+    "description": "Sort the rusty panel before the shaken.",
     "work": { "kind": "repair", "zone": "body" },
     "payoutYen": 40000,
     "baseReputation": 2
@@ -42,7 +42,7 @@
   {
     "id": "fit-coilovers-civic",
     "customerName": "College kid",
-    "description": "Fit some coilovers on the Civic — customer supplies nothing, you source them.",
+    "description": "Fit some coilovers for me — I've got nothing, you source them.",
     "work": { "kind": "install", "slot": "suspension" },
     "payoutYen": 98000,
     "baseReputation": 3
@@ -58,7 +58,7 @@
   {
     "id": "fit-wheels-city",
     "customerName": "Mr. Tanaka",
-    "description": "Mount a fresh set of wheels on the City.",
+    "description": "Mount a fresh set of wheels for me.",
     "work": { "kind": "install", "slot": "wheelsInterior" },
     "payoutYen": 82000,
     "baseReputation": 2

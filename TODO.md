@@ -8,17 +8,74 @@ before Sprint 8 — live in their sprint docs instead and aren't duplicated here
 
 Remove an item once it's actioned; note which sprint/commit picked it up.
 
-## Next focus (agreed 2026-07-08)
+## Next focus (agreed 2026-07-09, playtest-driven)
 
-- [x] **Interactive service / walk-in jobs.** **In progress as Sprint 08** — see
-  `docs/sprints/sprint08.md`. A customer brings a request (some jobs pure repair, no part needed;
-  others require installing a part of a given slot, bought at the real parts market — the job pays a
-  fixed amount regardless of part choice, so a pricier part trades profit for a reputation-gain
-  multiplier); the player never owns the car. Carries the early game; flipping should overtake it by
-  the midgame (harness-validated). Bays are deliberately NOT capped this sprint (see
-  `docs/design/facilities-bays.md`, its own sprint directly after).
+The maintainer played a full career through Sprint 09 and filed 11 concrete notes (see
+`docs/sprints/sprint10.md`'s source line for the verbatim list). Explicit direction: **not chasing
+polish or balance — the goal is landing on something playable and fun**, found by playing and noting
+what breaks, not by pre-planning. Expect this section to keep churning sprint-to-sprint as more
+playtest notes come in; that's the intended workflow now, not a one-time list.
+
+- [x] **Sprint 10 — Auction realism, pacing, feedback.** Implemented, ready for review — see
+  `docs/sprints/sprint10.md`. Day-1 content seeding (no more empty first week); service-job
+  description/car-mismatch fix; a **full auction rework** — rivals bid a *fraction* of resale value
+  (discipline) so bidding is winnable at a profit, a **variable bell-distributed field** of anonymous
+  bidders (avg ~6, 3–9 band, replacing the fixed 5) gated by explicit tier interest, a hard buyout
+  ceiling on rival bids, and a "bid ~X to win" estimate re-centered on the top bid; the win-price
+  distribution is a calibrated bell (STEAL ~10% / MID ~82% / FRENZY ~8%), verified against many
+  seeded synthetic lots in `bidding.test.ts`/`lotInterest.test.ts`. Plus a calendar (GDD §2.2: model
+  years gated by in-game year, advances with reputation) and an instant job-completion feedback
+  modal. 251 tests (was 231); all checks green. The harness got the win-price bucket metric too, but
+  couldn't be run end-to-end — see the new Engineering item below.
+  **Deferred to a later "auction depth" sprint:** more distinct buyer archetypes (richer valuation
+  variety) + magnitude tuning toward the top of the 3–9 band.
+- [ ] **Sprint 11 — Instant action resolution.** Generalizes the moveCar/buyBay/completeServiceJob
+  pattern (Sprint 08/09) to every remaining action — repairs, installs, bids, buyouts, sells,
+  listings, part buys all resolve the instant the player clicks, not queued for End Day. `End Day`
+  becomes purely a day-boundary tick (labor refill + weekly effects). Also gives service-job
+  acceptance its real "arrives tomorrow" mechanic (an explicit `arrivesOnDay` field), finishing what
+  Sprint 10 only labels. Not yet written up as a full sprint doc — sequencing vs. Sprint 12 below is
+  an open call.
+- [ ] **Sprint 12 — Component model refactor.** The zones+slots → unified per-component model from
+  `docs/design/repair-replace-progression.md` ("Option B," already fully designed). Foundational,
+  major save-law migration, touches nearly every sim module. Not yet written up as a full sprint doc.
+- [ ] **Sprint 13 — Equipment & repair-vs-replace economy.** The maintainer called this **critical,
+  not a nice-to-have** (2026-07-09) — repair gated by owned equipment, replace always available via
+  the parts market. Full design already exists in `docs/design/repair-replace-progression.md`; this
+  sprint builds the equipment catalog + purchase actions + gated repair on top of Sprint 12's
+  component model.
+- [ ] **Sprint 14 — Parts market overhaul.** Sorting/filtering, more grades (a junk/scrapyard tier
+  below stock), multiple vendors (scrapyard vs. performance house). Deliberately sequenced last — it
+  should target `componentId` (Sprint 12) and be instant-buy (Sprint 11), so building it earlier would
+  mean redoing it. Not yet written up as a full sprint doc.
+
+Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro,
+not yet explicitly confirmed — revisit before writing 11-14's full docs if the order changes.
 
 ## Engineering
+
+- [x] **`pnpm balance:run` failed end-to-end — `@midnight-garage/content`'s live-source `exports`
+  couldn't be resolved by plain Node.** **Fixed 2026-07-09**, same session as Sprint 10.
+  `packages/content/package.json` has `"exports": {".": "./src/index.ts"}` (a raw TypeScript file) so
+  Vite/Vitest can resolve it via their own transform, but the CLI runs as compiled, plain `node`, which
+  can't execute `.ts` or resolve a bare `require("@midnight-garage/content")`. Fix: `tsconfig.cli.json`
+  now includes `content/src/index.ts` as an explicit compile root (so tsc actually emits a real
+  `dist/packages/content/src/index.js`, not just the handful of content submodules other files happened
+  to reach via type-erased imports), and a new `packages/sim/scripts/fixContentRequires.cjs`
+  post-build step rewrites every compiled `require("@midnight-garage/content")` to the correct relative
+  path into that dist file. Verified with a real, full `pnpm balance:run` (600,000 career rows, 126,093
+  auction-win rows, 24,000 field-size rows) and `python -m balance.cli check` (all 4 gated invariants
+  pass).
+- [ ] **Auction calibration, real-data finding (2026-07-09): FRENZY essentially never happens.** The
+  first real `pnpm balance:run` since the fix above shows STEAL 8.2% / MID 91.8% / FRENZY 0.0% against
+  a target of STEAL/FRENZY 5-10% each — MID is winning far more than the unit-level Monte Carlo
+  predicted (STEAL 10% / MID 82% / FRENZY 8%), because real bots don't isolate the AI-only clearing
+  price the way the unit tests do (a token bid), and apparently rarely push a lot all the way to the
+  buyout-capped top of the range. Average field size (6.2) is on target. Not retuned yet — the
+  three knobs (`AUCTION_FIELD_BASE`/`PER_INTEREST`/`SD`, `AUCTION_BIDDER_DISCIPLINE`) are still at
+  Sprint 10's first-pass values; a frenzy-tail nudge (probably raising discipline, or a bot
+  buyout-decision model per the buyout-premium item below) is a candidate for the next auction-tuning
+  pass. See `tools/balance/report.md` for the live numbers.
 
 - [ ] **Wire the balance harness into CI — DEADLINE: before Phase 5 (Sprint 19) content waves.**
   `pnpm balance:run` + `python -m balance.cli check` only run locally by hand (user deferred CI

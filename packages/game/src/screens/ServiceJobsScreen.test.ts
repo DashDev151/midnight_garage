@@ -15,14 +15,10 @@ function warpToOffers(game: ReturnType<typeof useGameStore>) {
 describe('ServiceJobsScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('shows the empty board before any offers, then the offers after', async () => {
+  it('shows the job board with offers already on it on day 1 (Sprint 10)', () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
-    expect(wrapper.text()).toContain('No jobs on the board')
-
-    warpToOffers(game)
-    await wrapper.vm.$nextTick()
     expect(wrapper.text()).not.toContain('No jobs on the board')
     expect(wrapper.findAll('.offer').length).toBe(game.serviceJobOffers.length)
   })

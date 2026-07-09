@@ -1,5 +1,7 @@
 import type { GameState } from '@midnight-garage/content'
+import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
+import { createRng } from './rng'
 
 /**
  * Balance-harness finding (Sprint 03): 100 days of WEEKLY_RENT_YEN
@@ -16,9 +18,16 @@ export const STARTING_CASH_YEN = 1_500_000
  * interactive game (the Sprint 04 Pinia bridge) and the headless balance
  * harness. Lives here rather than in the bots module because a fresh game
  * is not a "bot career"; bots just happened to be the first caller.
+ *
+ * Sprint 10: day 1 is seeded with a real auction catalog and service-job
+ * board (via the same `refreshCatalogs` the weekly boundary uses) — a new
+ * career used to be completely empty until day 7's first refresh, which
+ * meant every playtest opened by "skip a week." The seed rng is derived
+ * from the career `seed` alone (day 1 has no prior day to fold in), so a
+ * given seed still produces a fully reproducible opening board.
  */
 export function createInitialGameState(context: SimContext, seed: number): GameState {
-  return {
+  const base: GameState = {
     day: 1,
     seed,
     cashYen: STARTING_CASH_YEN,
@@ -36,5 +45,12 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     serviceBayCount: context.facilities.service.startCount,
     parkingBayCount: context.facilities.parking.startCount,
     serviceBayCarIds: [],
+  }
+
+  const refresh = refreshCatalogs(base, context, base.day, createRng(seed))
+  return {
+    ...base,
+    activeAuctionLots: refresh.freshLots,
+    serviceJobOffers: refresh.freshOffers,
   }
 }

@@ -53,6 +53,7 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
             >
               {{ offer.accepted ? 'accepted' : 'Accept' }}
             </button>
+            <span v-if="offer.accepted" class="queued-note">queued — arrives after End Day</span>
           </div>
         </li>
       </ul>
@@ -162,6 +163,11 @@ h3 {
   display: flex;
   align-items: center;
   gap: var(--mg-space-3);
+}
+
+.queued-note {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
 }
 
 .active ul {

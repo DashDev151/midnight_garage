@@ -119,6 +119,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     jobId: z.string().min(1),
     payoutYen: z.number().int().nonnegative(),
     reputationGained: z.number().int().nonnegative(),
+    /** Set for install jobs only: the installed part's price and the resulting
+     * profit (payoutYen - partCostYen). Absent for repair jobs (no part cost). */
+    partCostYen: z.number().int().nonnegative().optional(),
+    profitYen: z.number().int().optional(),
+    /** Days between acceptance and this completion, for the feedback modal. */
+    daysSpent: z.number().int().nonnegative().optional(),
   }),
   z.object({
     type: z.literal('service-job-failed'),

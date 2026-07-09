@@ -82,8 +82,33 @@ export const AUCTION_BUYOUT_PREMIUM = 1.1
  * auction-scout staff trait narrows this via the `precision` parameter. */
 export const AUCTION_INTEREST_BASE_BAND = 0.2
 
-/** Persistent per-bidder aggression range (Sprint 03 decision 4a). */
+/**
+ * Per-bid aggression range (Sprint 03 decision 4a; re-scoped Sprint 10 from
+ * a persistent per-buyer-id multiplier to a fresh roll per anonymous rival
+ * bidder — see AUCTION_FIELD_* below). Each rival in a lot's field bids
+ * independently within this range around their disciplined valuation.
+ */
 export const AUCTION_BIDDER_NOISE_RANGE: readonly [number, number] = [0.85, 1.15]
+
+/**
+ * Bell-curve calibration for the auction rival field (Sprint 10), tuned via
+ * Monte Carlo against the real 5-buyer roster to land the win-price
+ * distribution at roughly STEAL 10% / MID 82% / FRENZY 8% (see
+ * docs/sprints/sprint10.md decision 4f) with an average field around 6
+ * bidders, mostly in the 3-9 band:
+ * - AUCTION_FIELD_BASE / AUCTION_FIELD_PER_INTEREST set the field-size mean:
+ *   fieldMean = BASE + PER_INTEREST * (sum of interested archetypes' tier
+ *   weights for that car). A broadly-loved car draws a bigger field.
+ * - AUCTION_FIELD_SIZE_SD sets how fat the "small field, cheap win" tail is.
+ * - AUCTION_BIDDER_DISCIPLINE sets where the winning price centers and how
+ *   fat the "big field, near-buyout" tail is: a rival bids
+ *   `valuateCarForBuyer * discipline`, well below what a customer would pay
+ *   for the same car finished, since a dealer needs resale margin.
+ */
+export const AUCTION_FIELD_BASE = 3
+export const AUCTION_FIELD_PER_INTEREST = 1.5
+export const AUCTION_FIELD_SIZE_SD = 3.5
+export const AUCTION_BIDDER_DISCIPLINE = 0.7
 
 /**
  * Walk-in offers vary around true valuation for the convenience of an

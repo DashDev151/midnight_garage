@@ -50,3 +50,17 @@ export function hashStringToSeed(value: string): number {
   }
   return hash >>> 0
 }
+
+/**
+ * An approximately-normal(mean, sd) sample via the Irwin-Hall trick: the sum
+ * of 12 uniform(0,1) draws has variance exactly 1, so subtracting its mean
+ * (6) gives a cheap, deterministic, bell-shaped value with no external
+ * dependency (no Box-Muller trig, no rejection sampling). Good enough where
+ * "vaguely bell-shaped" matters more than statistical exactness — e.g.
+ * rolling how many rival bidders show up to an auction lot.
+ */
+export function bellNormal(mean: number, sd: number, rng: Rng): number {
+  let sum = 0
+  for (let i = 0; i < 12; i++) sum += rng.next()
+  return mean + sd * (sum - 6)
+}

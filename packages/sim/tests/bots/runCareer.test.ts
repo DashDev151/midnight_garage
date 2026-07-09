@@ -22,7 +22,7 @@ const STRATEGIES: Record<string, BotStrategy> = {
 
 describe.each(Object.entries(STRATEGIES))('%s strategy', (_name, strategy) => {
   it('runs 100 days without throwing and produces sane output', () => {
-    const snapshots = runCareer(strategy, 1, 100, CONTEXT)
+    const { snapshots } = runCareer(strategy, 1, 100, CONTEXT)
     expect(snapshots).toHaveLength(100)
     for (const snapshot of snapshots) {
       expect(Number.isFinite(snapshot.cashYen)).toBe(true)
@@ -40,7 +40,7 @@ describe.each(Object.entries(STRATEGIES))('%s strategy', (_name, strategy) => {
 
 describe('Passive Grinder', () => {
   it('never buys a car — it has none by day 100', () => {
-    const snapshots = runCareer(passiveGrinderStrategy, 1, 100, CONTEXT)
+    const { snapshots } = runCareer(passiveGrinderStrategy, 1, 100, CONTEXT)
     for (const snapshot of snapshots) {
       expect(snapshot.carsOwned).toBe(0)
     }
@@ -49,11 +49,23 @@ describe('Passive Grinder', () => {
 
 describe('Service Grinder (the Act 1 floor)', () => {
   it('earns from service jobs — out-earns the do-nothing Passive Grinder by day 100', () => {
-    const grinder = runCareer(serviceGrinderStrategy, 1, 100, CONTEXT)
-    const passive = runCareer(passiveGrinderStrategy, 1, 100, CONTEXT)
+    const grinder = runCareer(serviceGrinderStrategy, 1, 100, CONTEXT).snapshots
+    const passive = runCareer(passiveGrinderStrategy, 1, 100, CONTEXT).snapshots
     // Both start equal and pay the same rent; the difference is job income.
     expect(grinder[99]!.cashYen).toBeGreaterThan(passive[99]!.cashYen)
     // ...and it never owns a car (service work is on cars it doesn't own).
     expect(grinder.every((s) => s.carsOwned === 0)).toBe(true)
+  })
+})
+
+describe('auction win-price samples (Sprint 10 harness metric)', () => {
+  it('every sample lands inside [0, 1] and buckets consistently with its fraction', () => {
+    const { auctionWins } = runCareer(flipperStrategy, 1, 100, CONTEXT)
+    for (const win of auctionWins) {
+      expect(win.fraction).toBeGreaterThanOrEqual(0)
+      expect(win.fraction).toBeLessThanOrEqual(1)
+      const expectedBucket = win.fraction < 0.2 ? 'steal' : win.fraction > 0.8 ? 'frenzy' : 'mid'
+      expect(win.bucket).toBe(expectedBucket)
+    }
   })
 })

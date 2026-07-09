@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
 import parts from '../data/parts.json'
+import serviceJobs from '../data/serviceJobs.json'
 import {
   CarModelsSchema,
   PartsSchema,
   REAL_BRANDS,
   REAL_MODEL_TOKENS,
+  ServiceJobTemplatesSchema,
   resolveCarBrand,
   resolveCarDisplayName,
 } from '../src'
@@ -41,6 +43,22 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
     const realBrandsLower = REAL_BRANDS.map((b) => b.toLowerCase())
     for (const part of parsedParts) {
       expect(realBrandsLower.includes(part.brand.toLowerCase())).toBe(false)
+    }
+  })
+
+  /**
+   * Sprint 10 item 2: a job's customer description once named a specific
+   * model that didn't match the car the job actually attached to. The fix
+   * made every description car-agnostic; this guards against that
+   * mismatch recurring by ensuring no description names a car at all.
+   */
+  it('no service-job description references a specific car model or brand', () => {
+    const parsedJobs = ServiceJobTemplatesSchema.parse(serviceJobs)
+    for (const job of parsedJobs) {
+      const text = job.description.toLowerCase()
+      for (const token of realTokens) {
+        expect(text.includes(token), `job "${job.id}" description leaks "${token}"`).toBe(false)
+      }
     }
   })
 })

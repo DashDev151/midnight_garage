@@ -1,6 +1,4 @@
 import type {
-  AuctionLot,
-  AuctionTier,
   DayLog,
   DayLogEntry,
   GameState,
@@ -10,18 +8,14 @@ import type {
   ServiceJob,
 } from '@midnight-garage/content'
 import type { DayActions } from './actions'
-import { generateAuctionCatalog, inspectLot, resolveHandoverCondition } from './auctions'
-import { type AuctionBidder, resolveAuction } from './bidding'
+import { inspectLot, resolveHandoverCondition } from './auctions'
+import { resolveAuction } from './bidding'
+import { refreshCatalogs } from './catalogs'
 import {
   AUCTION_BUYOUT_PREMIUM,
-  AUCTION_LOT_EXPIRY_DAYS,
-  AUCTION_LOTS_PER_TIER,
   AUCTION_TRAVEL_FEE_YEN,
-  COLLECTOR_NETWORK_MIN_REPUTATION,
   PUBLIC_LISTING_WAIT_DAYS,
   SERVICE_JOB_DEADLINE_DAYS,
-  SERVICE_JOB_EXPIRY_DAYS,
-  SERVICE_JOB_OFFERS_PER_REFRESH,
 } from './constants'
 import type { SimContext } from './context'
 import { applyWeeklyRentAndWages } from './finances'
@@ -36,28 +30,12 @@ import { availableLaborSlots } from './laborSlots'
 import { driftMarketHeat } from './marketHeat'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
-import { generateServiceJobOffers, resolveServiceJob } from './serviceJobs'
+import { resolveServiceJob } from './serviceJobs'
 import { listPubliclyAskingPrice, sellViaWalkIn } from './selling'
 
 export interface AdvanceDayResult {
   state: GameState
   log: DayLog
-}
-
-const AUCTION_TIERS: readonly AuctionTier[] = [
-  'local-yard',
-  'regional',
-  'premium',
-  'collector-network',
-]
-
-const REPUTATION_ORDER = ['unknown', 'local', 'known', 'respected', 'legend'] as const
-
-function reputationAtLeast(
-  current: GameState['reputationTier'],
-  min: GameState['reputationTier'],
-): boolean {
-  return REPUTATION_ORDER.indexOf(current) >= REPUTATION_ORDER.indexOf(min)
 }
 
 /**
@@ -236,7 +214,6 @@ export function advanceDay(
   // 4. Resolve queued auction actions. Buyouts first (guaranteed purchase at
   // a premium, no contest), then competitive bids on what's left.
   const remainingLots = new Map(next.activeAuctionLots.map((lot) => [lot.id, lot]))
-  const aiBidders: AuctionBidder[] = context.buyers.map((buyer) => ({ id: buyer.id, buyer }))
 
   for (const { lotId } of queuedActions.buyoutLots) {
     const lot = remainingLots.get(lotId)
@@ -262,7 +239,7 @@ export function advanceDay(
     const model = context.modelsById[lot.modelId]
     if (!model) continue
 
-    const result = resolveAuction(lot, model, bid.maxBidYen, aiBidders, context.partsById)
+    const result = resolveAuction(lot, model, bid.maxBidYen, context.buyers, context.partsById)
     if (result.winner === 'no-sale') continue
 
     remainingLots.delete(bid.lotId)
@@ -370,54 +347,26 @@ export function advanceDay(
   }
   next = { ...next, activeListings: stillListed }
 
-  // 8. Expire unsold auction lots, then refresh weekly catalogs (day 7 boundary).
+  // 8. Expire unsold auction lots and stale service-job offers, then refresh
+  // both weekly catalogs (day 7 boundary) via the same generator day-1
+  // seeding uses (catalogs.ts's refreshCatalogs) — one generation path, not two.
   const unexpiredLots = next.activeAuctionLots.filter((lot) => lot.expiresOnDay > next.day)
-  next = { ...next, activeAuctionLots: unexpiredLots }
-
-  if (next.day % 7 === 0) {
-    const freshLots: AuctionLot[] = []
-    for (const tier of AUCTION_TIERS) {
-      if (
-        tier === 'collector-network' &&
-        !reputationAtLeast(next.reputationTier, COLLECTOR_NETWORK_MIN_REPUTATION)
-      ) {
-        continue
-      }
-      const lots = generateAuctionCatalog(
-        context.models,
-        tier,
-        context.hiddenIssuesByZone,
-        next.day,
-        AUCTION_LOTS_PER_TIER[tier],
-        AUCTION_LOT_EXPIRY_DAYS,
-        rng,
-      )
-      if (lots.length === 0) continue
-      freshLots.push(...lots)
-      log.push({ type: 'auction-catalog-refreshed', tier, lotCount: lots.length })
-    }
-    next = { ...next, activeAuctionLots: [...next.activeAuctionLots, ...freshLots] }
-  }
-
-  // 8b. Expire stale service-job offers, then post a fresh batch weekly.
   const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
-  next = { ...next, serviceJobOffers: unexpiredOffers }
+  next = { ...next, activeAuctionLots: unexpiredLots, serviceJobOffers: unexpiredOffers }
+
   if (next.day % 7 === 0) {
-    const freshOffers = generateServiceJobOffers(
-      context.serviceJobTemplates,
-      context.models,
-      context.hiddenIssuesByZone,
-      next.day,
-      SERVICE_JOB_OFFERS_PER_REFRESH,
-      SERVICE_JOB_EXPIRY_DAYS,
-      rng,
-    )
-    if (freshOffers.length > 0) {
-      next = { ...next, serviceJobOffers: [...next.serviceJobOffers, ...freshOffers] }
+    const refresh = refreshCatalogs(next, context, next.day, rng)
+    for (const { tier, lotCount } of refresh.lotsByTier) {
+      log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
+    }
+    next = {
+      ...next,
+      activeAuctionLots: [...next.activeAuctionLots, ...refresh.freshLots],
+      serviceJobOffers: [...next.serviceJobOffers, ...refresh.freshOffers],
     }
   }
 
-  // 8c. Deadline backstop: any accepted job now at/past its due day is handed
+  // 8b. Deadline backstop: any accepted job now at/past its due day is handed
   // back automatically via the same resolver the player's click uses — paid if
   // the work got done in time, failed (reputation penalty, no pay) if not.
   const overdueJobIds = next.activeServiceJobs

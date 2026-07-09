@@ -11,11 +11,9 @@ function warpToOffers(game: ReturnType<typeof useGameStore>) {
 describe('service jobs in the store', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('offers appear on the weekly board', () => {
+  it('offers are already on the board on day 1 (Sprint 10: no empty first week)', () => {
     const game = useGameStore()
     game.newGame(1)
-    expect(game.serviceJobOffers).toHaveLength(0)
-    warpToOffers(game)
     expect(game.serviceJobOffers.length).toBeGreaterThan(0)
   })
 

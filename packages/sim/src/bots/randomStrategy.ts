@@ -47,12 +47,13 @@ const PROFILES: Record<Archetype, ArchetypeProfile> = {
 
 /**
  * A car's playstyle is derived deterministically from its own instance id
- * (same hashing pattern as biddingNoiseFactor in bidding.ts) rather than
- * re-rolled per day — so a given car is played consistently from purchase
- * to sale (a quick flip stays a quick flip), while different cars still
- * land on genuinely different approaches. This is what makes the bot read
- * as "an inconsistent player," not "an incoherent one": no per-day mashing,
- * no buying a car and instantly reselling it at a nonsensical loss.
+ * (same hash-a-stable-id-to-seed-a-roll pattern as bidding.ts's per-lot
+ * rival field) rather than re-rolled per day — so a given car is played
+ * consistently from purchase to sale (a quick flip stays a quick flip),
+ * while different cars still land on genuinely different approaches. This
+ * is what makes the bot read as "an inconsistent player," not "an
+ * incoherent one": no per-day mashing, no buying a car and instantly
+ * reselling it at a nonsensical loss.
  */
 function archetypeForCar(carInstanceId: string): Archetype {
   const rng = createRng(hashStringToSeed(carInstanceId))

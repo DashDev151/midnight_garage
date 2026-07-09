@@ -15,5 +15,5 @@
     "rootDir": "../..",
     "noEmit": false
   },
-  "include": ["src/cli/exportCareers.ts"]
+  "include": ["src/cli/exportCareers.ts", "../content/src/index.ts"]
 }

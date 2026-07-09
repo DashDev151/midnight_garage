@@ -8,7 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build:cli": "tsc -p tsconfig.cli.json && node scripts/mark-commonjs.cjs dist",
+    "build:cli": "tsc -p tsconfig.cli.json && node scripts/mark-commonjs.cjs dist && node scripts/fixContentRequires.cjs dist",
     "balance:run": "pnpm build:cli && node dist/packages/sim/src/cli/exportCareers.js"
   },
   "dependencies": {

@@ -9,7 +9,11 @@ import type {
   Zone,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
-import { GRADE_REPUTATION_MULTIPLIER, SERVICE_JOB_FAILURE_REP_MULTIPLIER } from './constants'
+import {
+  GRADE_REPUTATION_MULTIPLIER,
+  SERVICE_JOB_DEADLINE_DAYS,
+  SERVICE_JOB_FAILURE_REP_MULTIPLIER,
+} from './constants'
 import type { SimContext } from './context'
 import { releaseCarFromServiceBay } from './facilities'
 import type { Rng } from './rng'
@@ -18,7 +22,10 @@ import type { Rng } from './rng'
  * Offer a fresh batch of service jobs. Each carries a real customer car (rolled
  * like an auction car, so repair jobs land on an already-worn zone and install
  * jobs land on an empty slot) that enters the shop on acceptance for the player
- * to actually work on.
+ * to actually work on. `currentYear` (Sprint 10, default Infinity =
+ * unrestricted) excludes still-unreleased models and clamps the rolled car's
+ * year, same as auction generation — a customer's car is bound by the same
+ * in-game calendar a lot is.
  */
 export function generateServiceJobOffers(
   templates: readonly ServiceJobTemplate[],
@@ -28,13 +35,21 @@ export function generateServiceJobOffers(
   count: number,
   expiresInDays: number,
   rng: Rng,
+  currentYear: number = Infinity,
 ): ServiceJob[] {
-  if (templates.length === 0 || models.length === 0) return []
+  const eligibleModels = models.filter((model) => model.spec.yearFrom <= currentYear)
+  if (templates.length === 0 || eligibleModels.length === 0) return []
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
     const template = rng.pick(templates)
-    const model = rng.pick(models)
-    const car = generateAuctionCarInstance(model, hiddenIssuesByZone, `svc-car-${day}-${i}`, rng)
+    const model = rng.pick(eligibleModels)
+    const car = generateAuctionCarInstance(
+      model,
+      hiddenIssuesByZone,
+      `svc-car-${day}-${i}`,
+      rng,
+      currentYear,
+    )
     offers.push({
       id: `svc-${day}-${i}`,
       templateId: template.id,
@@ -80,11 +95,11 @@ export interface ServiceJobResolution {
   outcome: ServiceJobOutcome
 }
 
-/** Grade of the part installed for an install job's slot (null for repair jobs). */
-function installedGrade(job: ServiceJob, context: SimContext): Grade | null {
-  if (job.work.kind !== 'install') return null
+/** The catalog part installed for an install job's slot (undefined for repair jobs). */
+function installedPart(job: ServiceJob, context: SimContext) {
+  if (job.work.kind !== 'install') return undefined
   const part = job.car.buildSheet[job.work.slot]
-  return part ? (context.partsById[part.partId]?.grade ?? null) : null
+  return part ? context.partsById[part.partId] : undefined
 }
 
 /**
@@ -109,10 +124,10 @@ export function resolveServiceJob(
   const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
 
   if (isServiceWorkDone(job)) {
-    const reputationGained = reputationForCompletion(
-      job.baseReputation,
-      installedGrade(job, context),
-    )
+    const part = installedPart(job, context)
+    const reputationGained = reputationForCompletion(job.baseReputation, part?.grade ?? null)
+    const partCostYen = part?.priceYen
+    const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - SERVICE_JOB_DEADLINE_DAYS
     return {
       state: {
         ...releasedState,
@@ -127,6 +142,10 @@ export function resolveServiceJob(
           jobId: job.id,
           payoutYen: job.payoutYen,
           reputationGained,
+          ...(partCostYen !== undefined
+            ? { partCostYen, profitYen: job.payoutYen - partCostYen }
+            : {}),
+          ...(acceptedOnDay !== null ? { daysSpent: releasedState.day - acceptedOnDay } : {}),
         },
       ],
       outcome: 'paid',
