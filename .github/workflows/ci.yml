@@ -30,9 +30,62 @@ jobs:
           name: coverage-report
           path: coverage/
 
+  # External review 2026-07 finding 1: a content/sim PR can silently break the
+  # economy since the balance harness only ran locally. Path-filtered (not
+  # every push) since a 1000-career-per-strategy run takes real minutes and
+  # only sim/content-data changes can affect its output.
+  balance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect sim/content changes
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if git diff --name-only "$BASE" HEAD 2>/dev/null | grep -qE '^(packages/sim/|packages/content/data/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.filter.outputs.changed == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.changed == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        if: steps.filter.outputs.changed == 'true'
+        with:
+          python-version: '3.11'
+      - run: pnpm install --frozen-lockfile
+        if: steps.filter.outputs.changed == 'true'
+      - run: pip install -e tools/balance
+        if: steps.filter.outputs.changed == 'true'
+      - run: pnpm balance:run
+        if: steps.filter.outputs.changed == 'true'
+      - run: python -m balance.cli report --data-dir tools/balance/data --out tools/balance/report.md
+        if: steps.filter.outputs.changed == 'true'
+      - run: python -m balance.cli check --data-dir tools/balance/data
+        if: steps.filter.outputs.changed == 'true'
+      - uses: actions/upload-artifact@v4
+        if: steps.filter.outputs.changed == 'true'
+        with:
+          name: balance-report
+          path: tools/balance/report.md
+
   deploy:
-    needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, balance]
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.check.result == 'success' &&
+      (needs.balance.result == 'success' || needs.balance.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

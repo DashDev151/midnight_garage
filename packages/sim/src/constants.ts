@@ -78,6 +78,19 @@ export const AUCTION_BID_INCREMENT_YEN = 10_000
  * expected auction clearing price, the convenience tax for certainty. */
 export const AUCTION_BUYOUT_PREMIUM = 1.1
 
+/**
+ * How much extra a bot is willing to pay for certainty, on top of the lot's
+ * own shown "bid this high to win" estimate (`LotInterest.estimateHighYen`,
+ * `bidding.ts`) — the harness's buyout-vs-bid telemetry (external review
+ * 2026-07 finding 2; `TODO.md`). Deliberately compared against the
+ * *expected clearing price*, not a bot's own arbitrary bid ceiling, so the
+ * decision means the same thing regardless of which strategy is asking: pay
+ * out when the field is competitive enough that you'd likely have to bid
+ * close to buyout anyway, don't bother when a lot is quiet and cheap to win.
+ * First-pass number, openly adjustable like every other constant here.
+ */
+export const AUCTION_BUYOUT_TOLERANCE_FRACTION = 0.05
+
 /** Default +/- fuzz band on the shown "expected clearing" estimate. A future
  * auction-scout staff trait narrows this via the `precision` parameter. */
 export const AUCTION_INTEREST_BASE_BAND = 0.2

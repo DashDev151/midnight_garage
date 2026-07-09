@@ -31,3 +31,9 @@ def load_auction_field_sizes(data_dir: Path) -> pl.DataFrame:
     """Sprint 10 decision 4f: rival field size sampled once per newly
     appeared auction lot, strategy-independent."""
     return _load(data_dir, "auctionFieldSizes.manifest.json", "auctionFieldSizes.csv")
+
+
+def load_acquisitions(data_dir: Path) -> pl.DataFrame:
+    """External review 2026-07 finding 2: one row per successful auction
+    acquisition, tagged by channel (bid vs. buyout)."""
+    return _load(data_dir, "acquisitions.manifest.json", "acquisitions.csv")

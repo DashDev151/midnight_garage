@@ -9,7 +9,7 @@ from pathlib import Path
 
 import polars as pl
 
-from balance.data import load_auction_field_sizes, load_auction_wins, load_careers
+from balance.data import load_acquisitions, load_auction_field_sizes, load_auction_wins, load_careers
 
 CHECKPOINT_DAYS = [25, 40, 70, 100]
 
@@ -67,7 +67,54 @@ def render_auction_section(bucket_summary: pl.DataFrame, field_sizes: pl.DataFra
     return lines
 
 
-def render_markdown(summary: pl.DataFrame, auction_section: list[str]) -> str:
+def summarize_acquisitions(df: pl.DataFrame) -> pl.DataFrame:
+    """External review 2026-07 finding 2: fraction of acquisitions made via
+    instant buyout vs. a won competitive bid, per strategy — if a strategy
+    converges on always-buyout, the bidding screen is dead for it and
+    AUCTION_BUYOUT_PREMIUM needs to hurt more."""
+    if df.height == 0:
+        return df
+    return (
+        df.group_by(["strategy", "channel"])
+        .agg(pl.len().alias("count"))
+        .with_columns(
+            (pl.col("count") / pl.col("count").sum().over("strategy")).alias("share"),
+        )
+        .sort(["strategy", "channel"])
+    )
+
+
+def render_acquisitions_section(acquisitions_summary: pl.DataFrame) -> list[str]:
+    lines = [
+        "## Buyout vs. bid (external review 2026-07, finding 2)",
+        "",
+        "Share of successful auction acquisitions made via instant buyout vs. a won "
+        "competitive bid, per strategy. A strategy near 100% buyout means the bidding "
+        "screen is effectively dead for it and `AUCTION_BUYOUT_PREMIUM` (currently a "
+        "10% premium over book) is cheap enough that certainty always wins.",
+        "",
+        "| Strategy | Bid | Buyout |",
+        "|---|---|---|",
+    ]
+    if acquisitions_summary.height == 0:
+        lines.append("| *(no acquisitions this run)* | - | - |")
+        lines.append("")
+        return lines
+
+    shares: dict[str, dict[str, float]] = {}
+    for row in acquisitions_summary.iter_rows(named=True):
+        shares.setdefault(row["strategy"], {})[row["channel"]] = row["share"]
+    for strategy in sorted(shares):
+        bid = shares[strategy].get("bid", 0.0)
+        buyout = shares[strategy].get("buyout", 0.0)
+        lines.append(f"| {strategy} | {bid:.1%} | {buyout:.1%} |")
+    lines.append("")
+    return lines
+
+
+def render_markdown(
+    summary: pl.DataFrame, auction_section: list[str], acquisitions_section: list[str]
+) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
         "",
@@ -85,6 +132,7 @@ def render_markdown(summary: pl.DataFrame, auction_section: list[str]) -> str:
         )
     lines.append("")
     lines.extend(auction_section)
+    lines.extend(acquisitions_section)
     return "\n".join(lines)
 
 
@@ -98,9 +146,11 @@ def main(argv: list[str] | None = None) -> int:
     df = load_careers(data_dir)
     auction_wins = load_auction_wins(data_dir)
     field_sizes = load_auction_field_sizes(data_dir)
+    acquisitions = load_acquisitions(data_dir)
 
     auction_section = render_auction_section(summarize_auction_wins(auction_wins), field_sizes)
-    report = render_markdown(summarize(df), auction_section)
+    acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
+    report = render_markdown(summarize(df), auction_section, acquisitions_section)
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)
     return 0

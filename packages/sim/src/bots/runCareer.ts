@@ -36,24 +36,41 @@ const bucketFor = (fraction: number): AuctionWinSample['bucket'] =>
   fraction < 0.2 ? 'steal' : fraction > 0.8 ? 'frenzy' : 'mid'
 
 /**
- * Plays one bot strategy for `days`. Returns one cash/car snapshot per day
- * plus, separately, every auction the bot actually bid on and lost, or won
- * — the underlying harness data for the Sprint 10 win-price bucket metric
- * (`pnpm balance:run` → `python -m balance.cli report`). The bot's own
- * decision-making draws from a separate seeded RNG stream than advanceDay's
- * internal resolution (auction generation, the lemon rule, market-heat
- * drift) — both fully deterministic from the one career `seed`, but never
- * sharing draws with each other.
+ * One successful auction acquisition, by channel — the harness's telemetry
+ * for external review 2026-07 finding 2 ("is the buyout premium too cheap"):
+ * if bots converge on buyout, the competitive-bidding screen is effectively
+ * dead and `AUCTION_BUYOUT_PREMIUM` needs to hurt more.
+ */
+export interface AcquisitionSample {
+  day: number
+  tier: AuctionTier
+  channel: 'bid' | 'buyout'
+}
+
+/**
+ * Plays one bot strategy for `days`. Returns one cash/car snapshot per day,
+ * every auction the bot actually bid on and lost, or won (the Sprint 10
+ * win-price bucket metric), and every successful acquisition by channel
+ * (finding 2's buyout-vs-bid telemetry) — all three `pnpm balance:run` →
+ * `python -m balance.cli report`. The bot's own decision-making draws from a
+ * separate seeded RNG stream than advanceDay's internal resolution (auction
+ * generation, the lemon rule, market-heat drift) — both fully deterministic
+ * from the one career `seed`, but never sharing draws with each other.
  */
 export function runCareer(
   strategy: BotStrategy,
   seed: number,
   days: number,
   context: SimContext,
-): { snapshots: CareerSnapshot[]; auctionWins: AuctionWinSample[] } {
+): {
+  snapshots: CareerSnapshot[]
+  auctionWins: AuctionWinSample[]
+  acquisitions: AcquisitionSample[]
+} {
   let state = createInitialGameState(context, seed)
   const snapshots: CareerSnapshot[] = []
   const auctionWins: AuctionWinSample[] = []
+  const acquisitions: AcquisitionSample[] = []
 
   for (let day = 1; day <= days; day++) {
     const lotsBeforeById = new Map(state.activeAuctionLots.map((lot) => [lot.id, lot]))
@@ -63,6 +80,17 @@ export function runCareer(
     state = result.state
 
     for (const entry of result.log) {
+      if (entry.type === 'auction-bid-won' || entry.type === 'lot-bought-out') {
+        const lot = lotsBeforeById.get(entry.lotId)
+        if (lot) {
+          acquisitions.push({
+            day,
+            tier: lot.tier,
+            channel: entry.type === 'auction-bid-won' ? 'bid' : 'buyout',
+          })
+        }
+      }
+
       if (entry.type !== 'auction-bid-won' && entry.type !== 'auction-bid-lost') continue
       const priceYen =
         entry.type === 'auction-bid-won' ? entry.finalPriceYen : entry.winningPriceYen
@@ -89,7 +117,7 @@ export function runCareer(
     })
   }
 
-  return { snapshots, auctionWins }
+  return { snapshots, auctionWins, acquisitions }
 }
 
 /**

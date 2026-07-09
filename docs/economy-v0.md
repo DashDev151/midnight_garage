@@ -112,9 +112,12 @@ past with a stricter invariant.
   players *want* to restore, and does the payoff feel worth the time? A candidate economy fix is
   raising the reward for a fully-restored, high-authenticity car (collector valuation), but validate
   the desire first, then tune.
-- **Buyout premium (`AUCTION_BUYOUT_PREMIUM = 1.1`) may be too cheap.** 10% over book might make
-  instant certainty dominate the bidding game. Needs harness telemetry (buyout-vs-won-bid fraction,
-  once a bot models buyout) before tuning the constant up. Tracked in `TODO.md`.
+- **Buyout premium (`AUCTION_BUYOUT_PREMIUM = 1.1`) — measured 2026-07-09, not obviously too cheap.**
+  All 6 auction-bidding bots now consider buyout (`shouldBuyout`, `sim/bots/buyoutHelpers.ts`) against
+  the lot's own expected-clearing estimate; the real harness shows buyout at only 0.7-5.3% of
+  acquisitions depending on strategy — no convergence toward always-buyout. Not a final tuning verdict
+  (a different buyout heuristic could read differently), but real telemetry now exists where none did.
+  See `TODO.md` and `tools/balance/report.md`.
 
 ## Open questions for the spreadsheet pass
 

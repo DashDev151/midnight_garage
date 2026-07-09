@@ -226,22 +226,52 @@ starts.
   buyout-decision model per the buyout-premium item below) is a candidate for the next auction-tuning
   pass. See `tools/balance/report.md` for the live numbers.
 
-- [ ] **Wire the balance harness into CI — DEADLINE: before Phase 5 (Sprint 19) content waves.**
-  `pnpm balance:run` + `python -m balance.cli check` only run locally by hand (user deferred CI
-  wiring in Sprint 03). **External review (2026-07, finding 1) flags this as high priority:** without
-  it, a content PR can silently break the economy, and Phase 5 is exactly when roster/parts PRs pile
-  up. Recommended shape: a CI job **path-filtered to `packages/sim/**` and `packages/content/data/**`**
-  that runs `balance:run` + the invariants and **uploads `report.md` as a build artifact**. Revisit
-  the Sprint-03 deferral before Phase 5. Update CLAUDE.md's Test law + Commands when it lands. See
-  `docs/reviews/external-review-2026-07.md`.
+- [x] **Wire the balance harness into CI — DONE 2026-07-09** (external review 2026-07, finding 1;
+  originally deadlined "before Phase 5," landed well ahead of that). A new path-filtered `balance` job
+  in `.github/workflows/ci.yml` (`packages/sim/**` / `packages/content/data/**`) runs `pnpm balance:run`
+  → `python -m balance.cli report` → `python -m balance.cli check`, uploading `report.md` as a build
+  artifact; skipped (not failed) on pushes/PRs that don't touch sim or content data. `deploy` now needs
+  both `check` and `balance` (a skipped `balance` still counts as passing). CLAUDE.md's Test law +
+  Commands updated. **Immediately proved its worth**: the first real run under this job surfaced a
+  genuine, previously-undetected Flipper solvency regression — see the new item below — exactly the
+  failure mode finding 1 warned about.
+- [x] **Buyout premium needs a leash + telemetry — DONE 2026-07-09** (external review 2026-07, finding
+  2). Every auction-bidding bot (all 6: flipper, balanced-player, cautious-restorer, random, handyman,
+  investor) now runs a shared `shouldBuyout` decision (`sim/bots/buyoutHelpers.ts`) before queuing a
+  bid: buy out only when the guaranteed price is within a small tolerance
+  (`AUCTION_BUYOUT_TOLERANCE_FRACTION = 0.05`, first-pass/adjustable) of the lot's own "bid this high
+  to win" estimate — the same read a player sees on the auction screen, not the bot's personal bid
+  ceiling, so the decision means the same thing regardless of which strategy is asking. `runCareer`/`exportCareers.ts` now export a
+  new `acquisitions.csv` (channel: bid/buyout per successful acquisition); `report.py` renders a
+  buyout-vs-bid share per strategy. **Honest real-data finding: no convergence.** Across the full
+  1000-career-per-strategy run, buyout accounts for only 0.7-5.3% of acquisitions depending on
+  strategy (cautious-restorer highest at 5.3%, since it already inspects and bids closest to buyout
+  price) — bots do **not** converge on always-buyout under this model, so `AUCTION_BUYOUT_PREMIUM`
+  (currently 1.1) doesn't look obviously too cheap. Not proof the premium is perfectly tuned (a
+  different buyout heuristic could behave differently), but a real, reassuring data point against the
+  original concern. See `tools/balance/report.md`'s "Buyout vs. bid" section.
 
-- [ ] **Buyout premium needs a leash + telemetry (external review 2026-07, finding 2).**
-  `AUCTION_BUYOUT_PREMIUM = 1.1` may make instant certainty too cheap and hollow out the bidding
-  game. Add a balance-report column for **fraction of acquisitions via buyout vs. won bids**; if
-  bots converge on always-buyout, raise the premium. **Blocker:** the harness bots only bid today
-  (never buy out), so the fraction is 0 by construction — a bot must first model the buyout decision
-  (bid vs. buy-out-if-cheap). Target: the Fun Gate (Sprint 08) tuning pass. Also noted in
-  `docs/economy-v0.md`.
+- [ ] **Real-data finding (2026-07-09): Flipper's day100 solvency invariant now fails — a genuine,
+  pre-existing regression, not caused by the buyout/CI work above.** The first real harness run under
+  the newly-wired CI job shows Flipper's day100 median cash at ¥-256,650 (1000-seed run), against the
+  hard-gated invariant requiring `> 0` — and against the last *committed* report (Sprint 10), which
+  showed Flipper at a healthy +¥820,475. **Verified the cause isn't today's changes**: ran Flipper with
+  and without the new buyout logic across 300 seeds each — both come back deeply negative (-¥219k and
+  -¥177k respectively) — so this predates 2026-07-09 entirely and was silently accumulating across
+  Sprints 11-14 with no CI gate to catch it (the exact scenario external review finding 1 warned
+  about). **Not root-caused yet** — the likely suspect, not confirmed, is Sprint 13's equipment/
+  consumables costs landing on Flipper's "one cheap repair before flipping" without anyone re-checking
+  its economics against the new capex, but Sprints 11/12/14 also touched cost-relevant mechanics
+  (delivery timing, correlated condition rolls) and haven't been ruled out. **Maintainer's explicit
+  call (2026-07-09): commit the buyout/CI work as-is with this invariant honestly failing, track the
+  regression here, fix it as its own follow-up** — not silently patched or downgraded to informational
+  without investigation. This is now a real, high-priority item: until it's fixed, every CI run on a
+  sim/content change will correctly report the `balance` job red.
+
+- [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
+  It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider
+  `useGarageStore` / `useAuctionStore` / `useStaffStore` behind the current surface rather than one
+  growing store.
 
 - [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
   It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider

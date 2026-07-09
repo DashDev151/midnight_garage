@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -122,7 +123,9 @@ export function balancedPlayerStrategy(
     }
   }
 
-  // 4. Bid fair value on a mid-priced lot if there's room for another car.
+  // 4. Bid fair value on a mid-priced lot if there's room for another car —
+  // or buy out instead when the lot's already expected to clear near buyout
+  // price (external review 2026-07 finding 2).
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
   if (roomForMoreCars > 0) {
     const candidates = state.activeAuctionLots.filter(
@@ -133,10 +136,18 @@ export function balancedPlayerStrategy(
     )
     if (candidates.length > 0) {
       const chosen = rng.pick(candidates)
-      actions.bidsOnLots.push({
-        lotId: chosen.id,
-        maxBidYen: Math.round(chosen.bookValueYen * FAIR_BID_MULTIPLIER),
-      })
+      const model = context.modelsById[chosen.modelId]
+      const maxBidYen = Math.round(chosen.bookValueYen * FAIR_BID_MULTIPLIER)
+      acquireLot(
+        state,
+        chosen,
+        model,
+        maxBidYen,
+        actions,
+        context,
+        auctionAcquisitionBudget(),
+        CASH_BUFFER_MULTIPLIER,
+      )
     }
   }
 

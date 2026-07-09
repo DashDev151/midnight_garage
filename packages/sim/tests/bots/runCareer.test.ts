@@ -119,3 +119,27 @@ describe('auction win-price samples (Sprint 10 harness metric)', () => {
     }
   })
 })
+
+describe('acquisitions telemetry (external review 2026-07 finding 2)', () => {
+  it('every strategy that actually bids records at least some real acquisitions, each a valid channel', () => {
+    // A bidding-heavy strategy across a full career should win at least one
+    // lot by some channel — otherwise the telemetry itself would be silently
+    // broken (nothing to measure), not just a low buyout share.
+    const { acquisitions } = runCareer(flipperStrategy, 1, 100, CONTEXT)
+    expect(acquisitions.length).toBeGreaterThan(0)
+    for (const acquisition of acquisitions) {
+      expect(['bid', 'buyout']).toContain(acquisition.channel)
+      expect(acquisition.day).toBeGreaterThanOrEqual(1)
+      expect(acquisition.day).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('every bid-channel acquisition is a subset of auctionWins (which also includes losses)', () => {
+    // auctionWins tracks every bid outcome (won AND lost); bid-channel
+    // acquisitions are only the wins, so it can never exceed auctionWins.
+    const { auctionWins, acquisitions } = runCareer(flipperStrategy, 1, 100, CONTEXT)
+    const bidAcquisitions = acquisitions.filter((a) => a.channel === 'bid')
+    expect(bidAcquisitions.length).toBeLessThanOrEqual(auctionWins.length)
+    expect(bidAcquisitions.length).toBeGreaterThan(0)
+  })
+})

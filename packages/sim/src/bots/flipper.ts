@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -106,21 +107,36 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     actions.sellViaWalkIn.push({ carInstanceId: car.id })
   }
 
-  // 4. Bid on fresh, cheap local-yard lots if there's room for another car.
+  // 4. Bid on fresh, cheap local-yard lots if there's room for another car —
+  // or buy out instead when the lot's already expected to clear near buyout
+  // price (external review 2026-07 finding 2).
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
   if (roomForMoreCars > 0) {
     const candidates = [...state.activeAuctionLots]
       .filter((lot) => lot.tier === 'local-yard' && lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN)
       .sort(() => rng.next() - 0.5)
 
-    let cashCommitted = 0
+    const acquisitionBudget = auctionAcquisitionBudget()
     const bidCap = Math.min(MAX_BIDS_PER_DAY, roomForMoreCars)
+    let acquisitionsQueued = 0
     for (const lot of candidates) {
-      if (actions.bidsOnLots.length >= bidCap) break
+      if (acquisitionsQueued >= bidCap) break
+      const model = context.modelsById[lot.modelId]
       const maxBidYen = Math.round(lot.bookValueYen * BID_FRACTION_OF_BOOK)
-      if (state.cashYen < (cashCommitted + maxBidYen) * CASH_BUFFER_MULTIPLIER) continue
-      actions.bidsOnLots.push({ lotId: lot.id, maxBidYen })
-      cashCommitted += maxBidYen
+      if (
+        acquireLot(
+          state,
+          lot,
+          model,
+          maxBidYen,
+          actions,
+          context,
+          acquisitionBudget,
+          CASH_BUFFER_MULTIPLIER,
+        )
+      ) {
+        acquisitionsQueued += 1
+      }
     }
   }
 

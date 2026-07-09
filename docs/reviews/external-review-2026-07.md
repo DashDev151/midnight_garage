@@ -5,40 +5,42 @@ with disposition and where it's tracked. Update the status column as items land.
 
 | # | Finding | Priority | Status | Owner sprint / deadline |
 |---|---|---|---|---|
-| 1 | Balance harness not in CI | High | Tracked (user previously deferred CI wiring) | **Before Phase 5 (Sprint 19)** |
-| 2 | Buyout premium needs a leash + telemetry | High | Tracked; partial (see below) | Before Fun Gate (Sprint 08) tuning |
+| 1 | Balance harness not in CI | High | **Addressed 2026-07-09** (path-filtered CI job) | Done, ahead of the Phase 5 deadline |
+| 2 | Buyout premium needs a leash + telemetry | High | **Addressed 2026-07-09** (measured: no convergence, 0.7-5.3%) | Done |
 | 3 | `DEFAULT_SEED=1` → identical careers | High | **Addressed now** (randomized default) | Done Sprint 07 follow-up |
 | 4 | Cautious Restorer = restoration under-rewarded (design signal) | Med | Documented as a design signal | **Fun Gate interviews (Sprint 08)** |
 | 5a | `gameStore` trending toward a god-store | Low | Tracked | Sprint 13+ (staff/events) |
 | 5b | Golden master covers only the job loop | Low | **Addressed now** (added acquisition→sale golden) | Done Sprint 07 follow-up |
 
-## 1. Balance harness not in CI (High)
+## 1. Balance harness not in CI (High) — ADDRESSED
 
-The harness (`pnpm balance:run` + `python -m balance.cli check`) only runs locally; `report.md` is
-committed by hand and `ci.yml` has no Python step. A content PR can silently break the economy.
+The harness (`pnpm balance:run` + `python -m balance.cli check`) only ran locally; `report.md` was
+committed by hand and `ci.yml` had no Python step. A content PR could silently break the economy.
 **Recommended:** a CI job path-filtered to `packages/sim/**` and `packages/content/data/**` that runs
-`balance:run` + the invariants and uploads `report.md` as an artifact — **in place before Phase 5's
-content waves**, or it won't protect the roster work when it matters most.
+`balance:run` + the invariants and uploads `report.md` as an artifact.
 
-**Disposition:** valid and important. Note the tension: the maintainer *deliberately deferred* CI
-wiring in Sprint 03 ("run it locally first"). This review is the trigger to **revisit that deferral
-before Phase 5**. Not wired now (respecting the standing decision); tracked in `TODO.md` with the
-Phase-5 deadline and the reviewer's path-filter/artifact specifics.
+**Disposition:** **Fixed 2026-07-09**, well ahead of the Phase 5 deadline. A new `balance` job in
+`.github/workflows/ci.yml` does exactly the recommended shape — path-filtered, runs the full harness +
+invariant check, uploads `report.md`, and gates `deploy` (a skipped run, i.e. no relevant paths
+changed, still counts as passing). **It proved its value immediately**: the very first real run under
+this job caught a genuine, previously-undetected Flipper solvency regression (see `TODO.md`) — exactly
+the failure mode this finding warned about, now impossible to ship silently again.
 
-## 2. Buyout premium needs a leash + telemetry (High)
+## 2. Buyout premium needs a leash + telemetry (High) — ADDRESSED
 
 `AUCTION_BUYOUT_PREMIUM = 1.1` (10% over book) may make instant certainty too cheap and hollow out
 the bidding game (the GDD's intended auction tension). **Recommended:** add a harness report column
 for *fraction of acquisitions via buyout vs. won bids*; if flipper bots converge on always-buyout,
 the bidding screen is dead and the constant must hurt more.
 
-**Disposition:** legitimate balance risk. Context: buyout was a maintainer-requested feature, not an
-accidental GDD deviation — but "too cheap" is a real concern. **Blocker to measuring it:** the
-harness bots currently only *bid* (`bidsOnLots`), never buy out, so today's buyout-fraction is 0 by
-construction. To get the telemetry the reviewer wants, a bot must model the buyout decision (bid vs.
-buy-out-if-cheap). Tracked in `TODO.md`: (a) teach a bot to consider buyout, (b) add the
-buyout-vs-bid column to the balance report, (c) tune `AUCTION_BUYOUT_PREMIUM` up if convergence
-appears. Target: the Fun Gate tuning pass. Also flagged in `docs/economy-v0.md`.
+**Disposition:** **Fixed 2026-07-09.** All 6 auction-bidding bots now run a shared `shouldBuyout`
+decision (`sim/bots/buyoutHelpers.ts`) before queuing a bid — buy out only when the guaranteed price
+is within a small tolerance of the lot's own shown "bid this high to win" estimate, not the bot's
+personal bid ceiling. `report.py` renders the buyout-vs-bid share per strategy from a new
+`acquisitions.csv`. **Measured, not assumed:** across the real 1000-career-per-strategy run, buyout
+accounts for only 0.7-5.3% of acquisitions — no convergence toward always-buyout under this model, so
+the premium doesn't look obviously too cheap. Not a final word (a different buyout heuristic could
+behave differently), but a real data point answering the original concern, tracked in `TODO.md`.
 
 ## 3. `DEFAULT_SEED = 1` → identical careers (High) — ADDRESSED
 

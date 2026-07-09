@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -143,10 +144,18 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     )
     if (candidates.length > 0) {
       const chosen = rng.pick(candidates)
-      actions.bidsOnLots.push({
-        lotId: chosen.id,
-        maxBidYen: Math.round(chosen.bookValueYen * FAIR_BID_MULTIPLIER),
-      })
+      const model = context.modelsById[chosen.modelId]
+      const maxBidYen = Math.round(chosen.bookValueYen * FAIR_BID_MULTIPLIER)
+      acquireLot(
+        state,
+        chosen,
+        model,
+        maxBidYen,
+        actions,
+        context,
+        auctionAcquisitionBudget(),
+        CASH_BUFFER_MULTIPLIER,
+      )
     }
   }
 

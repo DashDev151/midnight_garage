@@ -93,6 +93,16 @@ const FIELD_SIZES_COLUMNS = [
   { name: 'fieldSize', type: 'int64' },
 ] as const
 
+/** One successful auction acquisition, by channel — external review 2026-07
+ * finding 2's buyout-vs-bid telemetry. */
+const ACQUISITIONS_COLUMNS = [
+  { name: 'strategy', type: 'string' },
+  { name: 'seed', type: 'int64' },
+  { name: 'day', type: 'int64' },
+  { name: 'tier', type: 'string' },
+  { name: 'channel', type: 'string' },
+] as const
+
 function writeCsv(
   filename: string,
   columns: ReadonlyArray<{ name: string; type: string }>,
@@ -119,10 +129,16 @@ function main(): void {
   )
   const rows: string[] = []
   const auctionWinRows: string[] = []
+  const acquisitionRows: string[] = []
 
   for (const { name, strategy } of STRATEGIES) {
     for (let seed = 1; seed <= CAREERS_PER_STRATEGY; seed++) {
-      const { snapshots, auctionWins } = runCareer(strategy, seed, DAYS_PER_CAREER, context)
+      const { snapshots, auctionWins, acquisitions } = runCareer(
+        strategy,
+        seed,
+        DAYS_PER_CAREER,
+        context,
+      )
       for (const snapshot of snapshots) {
         rows.push(
           [
@@ -140,6 +156,11 @@ function main(): void {
       for (const win of auctionWins) {
         auctionWinRows.push(
           [name, seed, win.day, win.tier, win.fraction.toFixed(4), win.bucket].join(','),
+        )
+      }
+      for (const acquisition of acquisitions) {
+        acquisitionRows.push(
+          [name, seed, acquisition.day, acquisition.tier, acquisition.channel].join(','),
         )
       }
     }
@@ -180,12 +201,19 @@ function main(): void {
     columns: FIELD_SIZES_COLUMNS,
   })
 
+  writeCsv('acquisitions.csv', ACQUISITIONS_COLUMNS, acquisitionRows)
+  writeManifest('acquisitions.manifest.json', {
+    simVersion: SIM_VERSION,
+    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
+    columns: ACQUISITIONS_COLUMNS,
+  })
+
   const strategyList = STRATEGIES.map((s) => s.name).join(', ')
   console.log(
     `Wrote ${rows.length} rows (${STRATEGIES.length} strategies [${strategyList}] x ${CAREERS_PER_STRATEGY} careers x ${DAYS_PER_CAREER} days) to ${OUTPUT_DIR}`,
   )
   console.log(
-    `Wrote ${auctionWinRows.length} auction-win rows and ${fieldSizeRows.length} field-size rows to ${OUTPUT_DIR}`,
+    `Wrote ${auctionWinRows.length} auction-win rows, ${fieldSizeRows.length} field-size rows, and ${acquisitionRows.length} acquisition rows to ${OUTPUT_DIR}`,
   )
 }
 
