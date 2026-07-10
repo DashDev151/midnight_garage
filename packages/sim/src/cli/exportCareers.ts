@@ -72,6 +72,7 @@ const COLUMNS = [
   { name: 'carsOwned', type: 'int64' },
   { name: 'netWorthEstimateYen', type: 'int64' },
   { name: 'reputationTier', type: 'string' },
+  { name: 'reputationPoints', type: 'int64' },
   { name: 'equipmentOwnedCount', type: 'int64' },
 ] as const
 
@@ -149,6 +150,7 @@ function main(): void {
             snapshot.carsOwned,
             snapshot.netWorthEstimateYen,
             snapshot.reputationTier,
+            snapshot.reputationPoints,
             snapshot.equipmentOwnedCount,
           ].join(','),
         )

@@ -43,8 +43,15 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   save decodes under v7 with no orders in transit and an empty cart —
  *   correct, since neither concept existed yet. No explicit `MIGRATIONS[6]`
  *   step needed.
+ * - v8 (Sprint 15): `PublicListing` (nested in `activeListings`) gained
+ *   `reputationDeltaOnSale` — the quality/lemon reputation effect of a
+ *   pending public-listing sale, captured at listing-creation time and
+ *   applied when the listing resolves. Purely additive with a schema
+ *   default of 0, so a pre-v8 save's already-pending listings resolve
+ *   reputation-neutral — correct, since the rule didn't exist when they
+ *   were created. No explicit `MIGRATIONS[7]` step needed.
  */
-export const SAVE_VERSION = 7
+export const SAVE_VERSION = 8
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

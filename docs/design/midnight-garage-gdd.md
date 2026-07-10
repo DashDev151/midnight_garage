@@ -271,7 +271,7 @@ Ten Legend cars exist. Acquiring one is an event in itself — some appear once 
 
 To **enshrine** a Legend in your showroom it must reach **90+ average condition** and either **95+ Authenticity** (period-correct restoration) *or* a **Signature Build** (all-Race-grade, dyno-proven — your masterpiece interpretation). Player chooses the philosophy per car.
 
-Enshrined cars are permanent (can't be repossessed or sold), grant a small daily rep/income aura, and fill the Hall — a single lovingly-rendered pixel showroom scene that grows from empty warehouse to museum.
+Enshrined cars are permanent (can't be repossessed or sold), grant a small daily rep/income aura, and fill the Hall — a single lovingly-rendered pixel showroom scene that grows from empty warehouse into a small, glowing space (90s city pop mood: sodium-vapor light, wet asphalt, neon reflected in rain puddles — nostalgic, not a sterile museum). See `midnight-garage-roster.md`'s Zero Legend entry for the fuller art-direction note.
 
 ### 9.3 Endgame → Sandbox
 Enshrining the 10th Legend rolls credits over the completed Hall. Sandbox continues seamlessly: era keeps advancing (2005+ models appear), the Rival escalates, a **New Game+ "Second Shop"** prestige option unlocks (restart with one enshrined car and a trait bonus).

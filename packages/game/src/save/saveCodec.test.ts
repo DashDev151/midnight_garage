@@ -50,6 +50,17 @@ const GOLDEN_V5_CODE =
 const GOLDEN_V6_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjo2LCJnYW1lU3RhdGUiOnsiZGF5Ijo1MCwic2VlZCI6MywiY2FzaFllbiI6NDUwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJyZXNwZWN0ZWQiLCJyZXB1dGF0aW9uUG9pbnRzIjozMCwic2VydmljZUpvYk9mZmVycyI6W10sImFjdGl2ZVNlcnZpY2VKb2JzIjpbXSwic2VydmljZUJheUNvdW50IjozLCJwYXJraW5nQmF5Q291bnQiOjYsInNlcnZpY2VCYXlDYXJJZHMiOltdLCJsYWJvclNsb3RzU3BlbnRUb2RheSI6MSwib3duZWRFcXVpcG1lbnRJZHMiOlsid2VsZGVyIiwidGlyZS1tYWNoaW5lIl19fQ=='
 
+/**
+ * A save code produced by version 7 (Sprint 14, post cart/checkout rework),
+ * pinned as a literal — same Save law again. Carries a real pending
+ * `activeListings` entry in the pre-v8 shape (no `reputationDeltaOnSale`),
+ * so the test can confirm the v7 -> v8 migration default-fills that field to
+ * 0 rather than throwing — a pre-existing pending sale created before the
+ * quality/lemon rule existed resolves reputation-neutral.
+ */
+const GOLDEN_V7_CODE =
+  'MGSAVE1.eyJ2ZXJzaW9uIjo3LCJnYW1lU3RhdGUiOnsiZGF5Ijo2MCwic2VlZCI6OSwiY2FzaFllbiI6NTAwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJrbm93biIsInJlcHV0YXRpb25Qb2ludHMiOjQwLCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdLCJzZXJ2aWNlQmF5Q291bnQiOjMsInBhcmtpbmdCYXlDb3VudCI6Nywic2VydmljZUJheUNhcklkcyI6W10sImxhYm9yU2xvdHNTcGVudFRvZGF5IjowLCJvd25lZEVxdWlwbWVudElkcyI6WyJ0aXJlLW1hY2hpbmUiXSwicGVuZGluZ1BhcnRPcmRlcnMiOltdLCJjYXJ0UGFydElkcyI6W10sImFjdGl2ZUxpc3RpbmdzIjpbeyJpZCI6Imxpc3RpbmctNTAtY2FyLTAwMDEiLCJjYXJJbnN0YW5jZUlkIjoiY2FyLTAwMDEiLCJtb2RlbElkIjoiaG9uZGEtY2l0eS1lLWFhIiwiYXNraW5nUHJpY2VZZW4iOjM1MDAwMCwicmVzb2x2ZXNPbkRheSI6NjV9XX19'
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -185,6 +196,22 @@ describe('saveCodec', () => {
     expect(decoded.cartPartIds).toEqual([])
   })
 
+  it('decodes the pinned golden v7 save under the current version (Save law)', () => {
+    const decoded = decodeSave(GOLDEN_V7_CODE)
+    expect(decoded.day).toBe(60)
+    expect(decoded.cashYen).toBe(5_000_000)
+    expect(decoded.reputationTier).toBe('known')
+    expect(decoded.reputationPoints).toBe(40)
+    // v7 fields are preserved unchanged, not reset to their defaults.
+    expect(decoded.ownedEquipmentIds).toEqual(['tire-machine'])
+    // v7 -> v8 migration (Sprint 15): a real pending listing created before
+    // the quality/lemon rule existed comes back reputation-neutral, not
+    // rejected — the field it never had default-fills to 0.
+    expect(decoded.activeListings).toHaveLength(1)
+    expect(decoded.activeListings[0]?.askingPriceYen).toBe(350_000)
+    expect(decoded.activeListings[0]?.reputationDeltaOnSale).toBe(0)
+  })
+
   it('rejects a non-save string', () => {
     expect(() => decodeSave('hello world')).toThrow(/not a Midnight Garage save code/i)
   })
@@ -254,6 +281,24 @@ describe('saveCodec', () => {
     }
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV5WithCar))
     expect(() => decodeSave(code)).toThrow()
+  })
+
+  it('round-trips a v8 state with a real pending listing carrying a reputation delta', () => {
+    const withListing: GameState = GameStateSchema.parse({
+      ...fullState,
+      activeListings: [
+        {
+          id: 'listing-40-car-0002',
+          carInstanceId: 'car-0002',
+          modelId: 'honda-city-e-aa',
+          askingPriceYen: 500_000,
+          resolvesOnDay: 45,
+          reputationDeltaOnSale: 3,
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withListing))
+    expect(decoded).toEqual(withListing)
   })
 
   it('round-trips a v7 state with real pending orders and cart contents', () => {

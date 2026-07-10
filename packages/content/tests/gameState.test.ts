@@ -51,7 +51,16 @@ describe('GameState / DayLog round-trip', () => {
       jobs: [],
       marketHeat: {},
       activeAuctionLots: [],
-      activeListings: [],
+      activeListings: [
+        {
+          id: 'listing-1-car-0002',
+          carInstanceId: 'car-0002',
+          modelId: 'honda-city-e-aa',
+          askingPriceYen: 500_000,
+          resolvesOnDay: 6,
+          reputationDeltaOnSale: -5,
+        },
+      ],
       serviceJobOffers: [],
       activeServiceJobs: [],
       serviceBayCount: 1,
@@ -96,7 +105,13 @@ describe('GameState / DayLog round-trip', () => {
         askingPriceYen: 300_000,
         resolvesOnDay: 10,
       },
-      { type: 'car-sold', carInstanceId: 'car-0001', channel: 'walk-in-offer', priceYen: 280_000 },
+      {
+        type: 'car-sold',
+        carInstanceId: 'car-0001',
+        channel: 'walk-in-offer',
+        priceYen: 280_000,
+        reputationDelta: 3,
+      },
       {
         type: 'part-bought',
         partId: 'khs-street-ecu',

@@ -105,15 +105,33 @@ Column key: **P** = PoC-10 · **L** = Go-Live · pack name = post-launch expansi
 4. **Nissan Fairlady Z432 (PS30)** — S20 engine shared with the KPGC10; numbers-matching provenance mechanic
 5. Subaru Impreza 22B STi
 6. Mitsubishi Lancer Evolution VI Tommi Mäkinen Edition
-7. **Toyota 2000GT (MF10)** — the grail; acquired only via the Collector's Quarter story lead, intended as the capstone enshrinement
+7. **Toyota 2000GT (MF10)** — acquired via the Collector's Quarter story lead
 8. Mazda Autozam AZ-1
 9. Mazda RX-7 Spirit R (FD3S)
 10. Toyota Supra RZ final edition (JZA80) *or* Nissan Silvia Spec-R (S15) — last slot decided in playtesting
 
+*Acquisition order across all 10 Legends is undecided — deliberately not fixed yet, and not to be
+weighted toward endgame (see GDD §9.2). No car here is "the" capstone.*
+
 *(Honda S2000 (AP1) moved to Rare roster — brilliant, but volume-produced; Legend slots are for unicorns.)*
 
 ## The Zero Legend (secret — do not document publicly)
-**Mazda 787B (#55).** Not a roster car — the hidden 11th enshrinement. The Hall of Legends is drawn with a **twelfth plinth, empty and unexplained**, from day one. It fills only if the player completes the **Rotary Pilgrimage** after the credits: enshrine the Spirit R, restore an FC3S, an Eunos Cosmo 20B, *and* a Cosmo Sport 110S (added to Kyusha Pack as the pilgrimage's rarest step) — then a fax arrives with no sender, just an address in Hiroshima and four rotors drawn in pen. The 787B is never bought, never sold, never flipped: it is *entrusted*. It cannot be modified; its build sheet is sealed ("R26B — 4 rotors — do not touch"). Put it on the dyno and the needle simply leaves the gauge while the whole screen shakes — the 280PS joke inverted at maximum volume. Enshrined, the Hall plays a different music sting: a sustained quad-rotor note under the synthwave, forever.
+**Mazda 787B (#55).** Not a roster car — the hidden 11th enshrinement (10 Legends + this one = 11
+total; no literal plinths, see the Hall's art direction below). From day one, the Hall holds one more
+space than it admits to — dark, unexplained, just a stretch of rain-slicked pavement under a single
+sodium lamp, reflecting nothing back yet. It fills only if the player completes the **Rotary
+Pilgrimage** after the credits: enshrine the Spirit R, restore an FC3S, an Eunos Cosmo 20B, *and* a
+Cosmo Sport 110S (added to Kyusha Pack as the pilgrimage's rarest step) — then a fax arrives with no
+sender, just an address in Hiroshima and four rotors drawn in pen. The 787B is never bought, never
+sold, never flipped: it is *entrusted*. It cannot be modified; its build sheet is sealed ("R26B — 4
+rotors — do not touch"). Put it on the dyno and the needle simply leaves the gauge while the whole
+screen shakes — the 280PS joke inverted at maximum volume. Enshrined, the Hall plays a different music
+sting: a sustained quad-rotor note under the synthwave, forever.
+
+**Hall of Legends art direction:** not a museum. 90s city pop nostalgia — sodium-vapor amber, wet
+asphalt, neon signage bleeding into rain-puddle reflections, a warm and happy melancholy (closer to
+*Akira*'s Neo-Tokyo street pixel work than a sterile display case). Each enshrined car sits under its
+own lamp rather than on a pedestal; condition and light both improve as the Hall fills.
 
 ## Gaisha (Go-Live: 8)
 190E 2.5-16 Evo II · BMW M3 (E30) · Lancia Delta HF Integrale Evo · Porsche 911 Turbo (930) · **Ferrari Testarossa** · **Lamborghini Countach LP5000 QV** (both one-off Collector's Quarter events, triggered by bubble-era market beats) · Alfa Romeo 75 · Rover Mini Cooper.

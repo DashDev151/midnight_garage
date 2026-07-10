@@ -16,6 +16,10 @@ export interface CareerSnapshot {
   /** Cash plus owned cars valued at book price — a simple, transparent proxy, not a real buyer valuation. */
   netWorthEstimateYen: number
   reputationTier: ReputationTier
+  /** Sprint 15: raw reputation points, alongside the derived tier — lets
+   * Sprint 16's gating ladder be tuned against real trajectories instead of
+   * guesses about how fast a bot climbs. */
+  reputationPoints: number
   /** Sprint 13: how many equipment items are owned — the harness's payback-curve signal. */
   equipmentOwnedCount: number
 }
@@ -113,6 +117,7 @@ export function runCareer(
       carsOwned: state.ownedCars.length,
       netWorthEstimateYen: state.cashYen + carsBookValue,
       reputationTier: state.reputationTier,
+      reputationPoints: state.reputationPoints,
       equipmentOwnedCount: state.ownedEquipmentIds.length,
     })
   }

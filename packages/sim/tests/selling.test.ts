@@ -190,3 +190,62 @@ describe('resolveListForSale (Sprint 11 instant resolver)', () => {
     expect(result.log).toEqual([])
   })
 })
+
+describe('reputation side effects (Sprint 15)', () => {
+  const qualityCar: CarInstance = {
+    ...car,
+    authenticityPercent: 90,
+    components: {
+      engine: { condition: 90, installed: null },
+      forcedInduction: { condition: 90, installed: null },
+      drivetrain: { condition: 90, installed: null },
+      suspension: { condition: 90, installed: null },
+      brakes: { condition: 90, installed: null },
+      wheels: { condition: 90, installed: null },
+      body: { condition: 90, installed: null },
+      interior: { condition: 90, installed: null },
+    },
+  }
+  const lemonCar: CarInstance = {
+    ...car,
+    components: {
+      engine: { condition: 5, installed: null },
+      forcedInduction: { condition: 80, installed: null },
+      drivetrain: { condition: 80, installed: null },
+      suspension: { condition: 80, installed: null },
+      brakes: { condition: 80, installed: null },
+      wheels: { condition: 80, installed: null },
+      body: { condition: 80, installed: null },
+      interior: { condition: 80, installed: null },
+    },
+  }
+
+  it('a walk-in sale of a quality car grants reputation immediately', () => {
+    const state = stateWithCar(qualityCar)
+    const result = resolveSellViaWalkIn(state, qualityCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBeGreaterThan(0)
+    expect(result.log[0]).toMatchObject({ reputationDelta: result.state.reputationPoints })
+  })
+
+  it('a walk-in sale of a lemon costs reputation immediately, clamped at zero', () => {
+    const state = stateWithCar(lemonCar)
+    const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(0) // started at 0, penalty clamps
+    expect(result.log[0]).toMatchObject({ reputationDelta: expect.any(Number) })
+    const delta = (result.log[0] as { reputationDelta: number }).reputationDelta
+    expect(delta).toBeLessThan(0)
+  })
+
+  it('a walk-in sale of an ordinary car carries no reputationDelta field', () => {
+    const state = stateWithCar(car) // fixture car: all components at 80, unremarkable
+    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+    expect(result.log[0]).not.toHaveProperty('reputationDelta')
+  })
+
+  it('a public listing captures the reputation delta at creation time, applying nothing yet', () => {
+    const state = stateWithCar(qualityCar)
+    const result = resolveListForSale(state, qualityCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(0) // not applied yet
+    expect(result.state.activeListings[0]?.reputationDeltaOnSale).toBeGreaterThan(0)
+  })
+})

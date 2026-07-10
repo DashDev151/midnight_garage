@@ -1,6 +1,6 @@
 # MIDNIGHT GARAGE — Development Roadmap
 ## Concept → Shipped Game — v1.0
-*Companion to the Game Design Document v0.4. This document is written to be self-contained and executable: every sprint has a deliverable and a definition of done, every risk has a mitigation, every gate has a kill/pivot criterion.*
+*Companion to the Game Design Document v0.5. This document is written to be self-contained and executable: every sprint has a deliverable and a definition of done, every risk has a mitigation, every gate has a kill/pivot criterion.*
 
 ---
 
@@ -92,6 +92,20 @@ Management sims routinely lose 60% of players in 10 minutes to onboarding.
 ## 3. Sprint-by-Sprint Plan
 
 Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint slips, the *next* sprint shrinks — the gates never move silently.
+
+> **Numbering reconciliation (2026-07-10).** The actual sprint sequence diverged from this plan
+> starting around actual-Sprint 09: since Sprint 10, development has been **playtest-driven** (play a
+> career, dump raw notes, design the next sprints from them) rather than following this plan's order.
+> The real sprint docs (`docs/sprints/sprintXX.md`) are the record of what each number actually meant
+> — from 09 onward the same number here refers to something entirely different (e.g. actual Sprint 15
+> is the reputation system; this plan's Sprint 15 is Events I). Read this plan's sprint numbers as a
+> **phase backlog**, not a calendar. What remains true and outstanding from this plan: the P2 **Fun
+> Gate** (strangers playing voluntarily) has **not** been run — all playtesting so far is
+> maintainer-only — and the "no art/audio money before the Fun Gate" rule still governs; the P3 art
+> phases haven't started; staff, commissions, events, the Rival, and era/280PS (this plan's Sprints
+> 13–18) remain unscheduled v1.0 scope. Partial mappings so far: actual Sprints 15/16 deliver the rep
+> tiers / act gating / equipment-unlock half of this plan's Sprint 14; actual Sprint 19's multi-day
+> decision-paced bidding is the surviving, reflex-free descendant of Sprint 6's "live bid escalation."
 
 ### PHASE 0 — Foundations
 

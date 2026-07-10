@@ -242,3 +242,58 @@ describe('advanceDay golden master — acquisition and sale path', () => {
     expect(hashState(acquisitionCareer().sold)).toBe('87e8338a')
   })
 })
+
+describe('advanceDay resolves a public listing with its captured reputation delta (Sprint 15)', () => {
+  it('applies the pending reputationDeltaOnSale alongside the cash payout, once, on resolvesOnDay', () => {
+    const state: GameState = {
+      ...initialState(),
+      day: 10,
+      ownedCars: [],
+      reputationPoints: 0,
+      activeListings: [
+        {
+          id: 'listing-5-car-x',
+          carInstanceId: 'car-x',
+          modelId: 'honda-city-e-aa',
+          askingPriceYen: 400_000,
+          resolvesOnDay: 10,
+          reputationDeltaOnSale: 3,
+        },
+      ],
+    }
+    const cashBefore = state.cashYen
+    const { state: next, log } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+    expect(next.cashYen).toBe(cashBefore + 400_000)
+    expect(next.reputationPoints).toBe(3)
+    expect(next.activeListings).toHaveLength(0)
+    expect(log).toContainEqual(
+      expect.objectContaining({
+        type: 'car-sold',
+        channel: 'list-publicly',
+        priceYen: 400_000,
+        reputationDelta: 3,
+      }),
+    )
+  })
+
+  it('a not-yet-due listing stays pending and applies nothing', () => {
+    const state: GameState = {
+      ...initialState(),
+      day: 10,
+      ownedCars: [],
+      activeListings: [
+        {
+          id: 'listing-5-car-x',
+          carInstanceId: 'car-x',
+          modelId: 'honda-city-e-aa',
+          askingPriceYen: 400_000,
+          resolvesOnDay: 20,
+          reputationDeltaOnSale: -5,
+        },
+      ],
+    }
+    const { state: next } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+    expect(next.activeListings).toHaveLength(1)
+    expect(next.reputationPoints).toBe(0)
+  })
+})

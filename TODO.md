@@ -117,13 +117,13 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   the buy/gate flow actually reads well or that the "why is repair disabled" messaging is clear in
   practice — same caveat as the still-open Sprint 12 Components-list check directly above. Check on
   next desktop session.
-- [ ] **Sprint 13 follow-up: filter repair-kind service-job offers by owned equipment at generation
-  time, not just block them at accept time.** Maintainer's read (2026-07-10): "these jobs should not
-  even be showing up if the player can not complete them yet." Correct critique — Sprint 13 ships the
-  simpler accept-time block (`resolveAcceptServiceJob` refuses, offer stays visible on the board) per
-  the maintainer's own "leave as is for now" call, but the better UX is `generateServiceJobOffers`
-  never rolling a repair-kind offer the player can't yet act on. Revisit once equipment ownership
-  meaningfully varies across playtested careers.
+- [x] **Sprint 13 follow-up: filter repair-kind service-job offers by owned equipment at generation
+  time, not just block them at accept time.** Maintainer's read (2026-07-09): "these jobs should not
+  even be showing up if the player can not complete them yet." Correct critique — Sprint 13 shipped
+  the simpler accept-time block per the maintainer's own "leave as is for now" call at the time.
+  **Picked up by `docs/sprints/sprint16.md`** (2026-07-10 playtest note #8) — with real nuance added
+  beyond a hard filter: mostly hide offers the player can't act on, but let a rare one through anyway
+  as a "here's what's next" hint rather than filtering to zero.
 - [ ] **Sprint 13 follow-up: deeper per-bot equipment strategy, if the harness shows the minimal
   buy-if-affordable logic isn't good enough.** Every repair-touching bot (5, including Service
   Grinder) gets a working equipment-purchase gate in Sprint 13 itself — no bot goes inert. What's
@@ -131,17 +131,19 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   Random Strategy) deliberately timing a purchase against its own payback math, the way the new
   Handyman bot does. Only pick this up if `pnpm balance:run` after Sprint 13 shows the plain
   buy-if-affordable heuristic produces bad-looking economics for one of the existing archetypes.
-- [ ] **`reputationTier` is never derived from `reputationPoints` anywhere in the sim — a real gap,
+- [x] **`reputationTier` is never derived from `reputationPoints` anywhere in the sim — a real gap,
   surfaced as load-bearing by Sprint 13.** Confirmed by grep: `reputationTier` is read (auction
   calendar, service-bay income) but nothing ever mutates it from `unknown`. Harmless while nothing
   gated on it mattered much; Sprint 13 originally gated the 3 priciest equipment items behind
   reputation tiers and found Service Grinder permanently stuck at `unknown`, locked out of 3 of 5
   repair components forever, going net-negative over 100 days — so Sprint 13 shipped with **no**
   reputation gate on equipment (all 7 items cash-only) rather than gate on a value that can't climb.
-  Needs its own scoped design (point thresholds per tier, where the derivation runs) before *any*
-  future system reputation-gates something with real economic stakes — auction-tier access
-  (Collector Network) has gotten away with it so far only because nothing forces reputation to
-  actually be reachable to test the gate meaningfully.
+  **Implemented by Sprint 15** (`docs/sprints/sprint15.md`, 2026-07-10, ready for review — not yet
+  committed) — the exact "own scoped design" this item called for: `deriveReputationTier` now derives
+  the tier from `reputationPoints` on every change (a first-pass, openly-adjustable point ladder), plus
+  two real new reputation sources beyond service jobs alone (a quality-car-sale bonus, a lemon-sale
+  penalty). No gating behavior changed yet — Sprint 16 spends the now-real tier on equipment/facility/
+  auction gating and the Collector Network caveat mentioned here.
 - [x] **Sprint 14 — Parts market: cart, checkout & delivery timing.** Implemented, ready for review —
   see `docs/sprints/sprint14.md`. **Scope corrected 2026-07-09**: the previous version of this bullet
   added "more grades (a junk/scrapyard tier), multiple vendors" — traced back through the docs and
@@ -182,9 +184,33 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   service jobs, which have real `dueOnDay` deadlines) actually needs the standard/express trade-off.
 
 Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro.
-10 through 14 are all done. A dedicated playtesting sprint is next, per the maintainer's explicit call
-(2026-07-09) — not a numbered roadmap sprint, so it isn't pre-written here; scope it when that session
-starts.
+10 through 14 are all done. **The 2026-07-10 playtest happened** (`docs/playtest-notes-2026-07-10.md`,
+11 raw notes) and turned directly into five designed sprints — **15 (reputation system), 16
+(progression gating + Upgrades tab), 17 (drag-and-drop foundation + garage UI), 18 (parts inventory +
+staged install/repair workflow), 19 (auction rework)** — sequenced by dependency, not by which item
+felt most urgent in the notes (Sprint 19, the auction rework, was flagged with the most urgency but
+sequenced last on size and blast radius — 15/16 reshape the auction population feeding it, so doing 19
+first would mean recalibrating it twice; 17/18 are genuinely independent of 19, so that pair and 19
+could swap order if the auction pain becomes unbearable first). All five designed 2026-07-10, reviewed
+and corrected 2026-07-10 (factual claims verified against the codebase; logic gaps fixed in the docs).
+**Sprint 15 implemented 2026-07-10** (`docs/sprints/sprint15.md`, ready for review — not yet
+committed); 16-19 remain designed, pending maintainer review before implementation starts. **Four**
+items from that playtest are in none of the five sprints — tracked directly below so they don't vanish
+(the review found the first draft of this paragraph claimed only two, and claimed they were listed
+here when they weren't):
+
+- [ ] **Playtest 2026-07-10 #1: End-Day cart warning.** Clicking "End Day" with items still in the
+  parts cart should warn ("you have unordered items in your cart — check out first?"). Small,
+  self-contained UI guard; fold into whichever of Sprints 15-19 ships first, or the next playtest-fix
+  pass.
+- [ ] **Playtest 2026-07-10 #9: British spelling — "tyre," not "tire," throughout; sweep for other
+  Americanisms while at it.** Mechanical but wide (game copy, content JSON display strings — note the
+  `tire-machine` equipment id: rename the *display* string, keep the id stable unless a migration is
+  deliberately chosen). No sprint assigned.
+- [ ] **Playtest 2026-07-10 #11: real main/pause menu** (Continue / Settings / New Game / Load Game,
+  "nice looking landing page"). Explicitly lower priority per the maintainer ("at some stage").
+- [ ] **Playtest 2026-07-10 #3 (deferred part): salvage & restore parts mechanic.** Maintainer said
+  they'll expand on this separately — parked until that expansion exists; don't design it unprompted.
 
 ## Engineering
 
@@ -347,6 +373,29 @@ starts.
 - [ ] **Naming Layer parody-flag default is undecided.** GDD explicitly defers whether the game
   ships with real brand names or parody names by default to closer to release — "nothing is lost
   by building real-first." Revisit once a release date is in sight.
+
+- [ ] **The recurring cast (landlord, bazaar auntie, the Rival) has no actual character design —
+  outright rejected by the maintainer, 2026-07-09.** GDD §2.3/§8 only ever gives roles, never names:
+  "the retired mechanic landlord," "the parts bazaar auntie," and a shop name ("Garage Tempest") with
+  no name for the person running it. Zero named individuals exist anywhere in the design docs — buyer
+  archetypes (Collector/Tuner/Stancer/Racer/First-timer/Gaisha) and staff traits are categories, not
+  characters either. Needs real character design (names, personality, at minimum) — the maintainer's
+  call on direction and timing, not something to invent unprompted.
+
+- [ ] **Hall of Legends acquisition cadence — the core "always chasing the next car" design is not yet
+  specified, 2026-07-09.** GDD §9.2 names the Hall of Legends as the explicit v1.0 win condition (10
+  Legend cars, Enshrine mechanic), but only 1 of the 10 (the Toyota 2000GT) ever had an acquisition
+  trigger written down, and that framing ("the grail... capstone enshrinement") was just corrected out
+  — order across all 10 is now explicitly undecided (`midnight-garage-roster.md`), not backloaded to
+  endgame. The maintainer's direction: surface Legend-acquisition chances at regular intervals across a
+  run, gated by some combination of rep/skill/staff/money — a Blacklist-style (NFS Most Wanted) "always
+  chasing the next car" structure, not an endgame dump. Real design work still needed: which specific
+  combination gates each of the 10, and the actual "story lead" writing/delivery (the phrase appears
+  twice in the roadmap, Sprint 22, and is undesigned both times). The 4-Act / 5-rep-tier structure
+  already provides a natural cadence spine (no new system needed for the gating backbone), and the
+  landlord/bazaar-auntie/Rival cast are the natural mouthpieces for leads once the character-design
+  item above is resolved. Also needs its own storytelling justification for *why* the player character
+  cares about collecting these specifically, per the maintainer's own framing.
 
 ## User-only tasks (air-gapped / purchases / accounts / legal)
 

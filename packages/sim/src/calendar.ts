@@ -1,4 +1,5 @@
-import { ReputationTierSchema, type ReputationTier } from '@midnight-garage/content'
+import { ReputationTierSchema, type GameState, type ReputationTier } from '@midnight-garage/content'
+import { REPUTATION_TIER_THRESHOLDS } from './constants'
 
 /** GDD 2.2: "starting in 1995." */
 const CALENDAR_START_YEAR = 1995
@@ -28,4 +29,28 @@ export function reputationAtLeast(current: ReputationTier, min: ReputationTier):
  */
 export function currentGameYear(reputationTier: ReputationTier): number {
   return CALENDAR_START_YEAR + YEARS_PER_REPUTATION_TIER * reputationTierIndex(reputationTier)
+}
+
+/**
+ * Turns accrued reputation points into a tier (Sprint 15) — the highest tier
+ * whose threshold `points` has reached, reading `REPUTATION_TIER_THRESHOLDS`
+ * so there is exactly one place the point/tier mapping is defined.
+ */
+export function deriveReputationTier(points: number): ReputationTier {
+  let tier: ReputationTier = 'unknown'
+  for (const candidate of ReputationTierSchema.options) {
+    if (points >= REPUTATION_TIER_THRESHOLDS[candidate]) tier = candidate
+  }
+  return tier
+}
+
+/**
+ * The single place `reputationPoints` ever changes (Sprint 15): clamps at
+ * zero (a penalty can never go negative — matches the pre-existing
+ * service-job-failure clamp) and re-derives `reputationTier` in the same
+ * step, so the tier is never stale relative to the points underneath it.
+ */
+export function applyReputationDelta(state: GameState, delta: number): GameState {
+  const reputationPoints = Math.max(0, state.reputationPoints + delta)
+  return { ...state, reputationPoints, reputationTier: deriveReputationTier(reputationPoints) }
 }

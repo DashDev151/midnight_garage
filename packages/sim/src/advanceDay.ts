@@ -2,6 +2,7 @@ import type { DayLog, DayLogEntry, GameState, Job, PublicListing } from '@midnig
 import type { DayActions } from './actions'
 import { resolveBidInstant, resolveBuyoutInstant } from './bidding'
 import { resolveInspectLot } from './auctions'
+import { applyReputationDelta } from './calendar'
 import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
 import { applyEquipmentPurchases } from './equipment'
@@ -231,12 +232,16 @@ export function advanceDay(
       stillListed.push(listing)
       continue
     }
+    next = applyReputationDelta(next, listing.reputationDeltaOnSale)
     next = { ...next, cashYen: next.cashYen + listing.askingPriceYen }
     log.push({
       type: 'car-sold',
       carInstanceId: listing.carInstanceId,
       channel: 'list-publicly',
       priceYen: listing.askingPriceYen,
+      ...(listing.reputationDeltaOnSale !== 0
+        ? { reputationDelta: listing.reputationDeltaOnSale }
+        : {}),
     })
   }
   next = { ...next, activeListings: stillListed }

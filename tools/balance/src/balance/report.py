@@ -23,6 +23,7 @@ def summarize(df: pl.DataFrame) -> pl.DataFrame:
             pl.col("cashYen").quantile(0.1).alias("cashYen_p10"),
             pl.col("cashYen").quantile(0.9).alias("cashYen_p90"),
             pl.col("carsOwned").median().alias("carsOwned_median"),
+            pl.col("reputationPoints").median().alias("reputationPoints_median"),
         )
         .sort(["strategy", "day"])
     )
@@ -121,14 +122,15 @@ def render_markdown(
         "One row per strategy per checkpoint day, across every seeded career "
         "(see `careers.manifest.json` for the run size).",
         "",
-        "| Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) |",
-        "|---|---|---|---|---|---|",
+        "| Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) "
+        "| Reputation pts (median) |",
+        "|---|---|---|---|---|---|---|",
     ]
     for row in summary.iter_rows(named=True):
         lines.append(
             f"| {row['strategy']} | {row['day']} "
             f"| Y{row['cashYen_p10']:,.0f} | Y{row['cashYen_median']:,.0f} | Y{row['cashYen_p90']:,.0f} "
-            f"| {row['carsOwned_median']:.1f} |"
+            f"| {row['carsOwned_median']:.1f} | {row['reputationPoints_median']:.1f} |"
         )
     lines.append("")
     lines.extend(auction_section)

@@ -9,6 +9,7 @@ import type {
   ServiceJobType,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
+import { applyReputationDelta } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
   SERVICE_JOB_DEADLINE_DAYS,
@@ -186,11 +187,11 @@ export function resolveServiceJob(
     const reputationGained = reputationForCompletion(job.baseReputation, part?.grade ?? null)
     const partCostYen = part?.priceYen
     const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - SERVICE_JOB_DEADLINE_DAYS
+    const withReputation = applyReputationDelta(releasedState, reputationGained)
     return {
       state: {
-        ...releasedState,
-        cashYen: releasedState.cashYen + job.payoutYen,
-        reputationPoints: releasedState.reputationPoints + reputationGained,
+        ...withReputation,
+        cashYen: withReputation.cashYen + job.payoutYen,
         activeServiceJobs,
         jobs,
       },
@@ -211,14 +212,10 @@ export function resolveServiceJob(
   }
 
   const penalty = reputationForFailure(job.baseReputation)
-  const reputationLost = Math.min(penalty, releasedState.reputationPoints)
+  const withReputation = applyReputationDelta(releasedState, -penalty)
+  const reputationLost = releasedState.reputationPoints - withReputation.reputationPoints
   return {
-    state: {
-      ...releasedState,
-      reputationPoints: releasedState.reputationPoints - reputationLost,
-      activeServiceJobs,
-      jobs,
-    },
+    state: { ...withReputation, activeServiceJobs, jobs },
     log: [{ type: 'service-job-failed', jobId: job.id, reputationLost }],
     outcome: 'failed',
   }

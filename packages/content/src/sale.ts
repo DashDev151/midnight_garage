@@ -19,6 +19,17 @@ export const PublicListingSchema = z.object({
    * drift while the listing is pending, but the asking price doesn't. */
   askingPriceYen: z.number().int().positive(),
   resolvesOnDay: z.number().int().positive(),
+  /**
+   * Reputation delta for this sale (Sprint 15's quality/lemon rule),
+   * computed and locked in at listing-creation time — the real CarInstance
+   * leaves state the instant a listing is created, days before it resolves,
+   * so there's nothing left to re-check condition against at resolution
+   * time. Applied alongside the cash payout when the listing resolves.
+   * Defaults to 0 so a pre-v8 save's already-pending listings resolve
+   * reputation-neutral (correct: the rule didn't exist when they were
+   * created).
+   */
+  reputationDeltaOnSale: z.number().int().default(0),
 })
 
 export const PublicListingsSchema = z.array(PublicListingSchema)

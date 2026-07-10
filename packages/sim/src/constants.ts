@@ -177,3 +177,45 @@ export const PUBLIC_LISTING_WAIT_DAYS = 5
  */
 export const PARTS_EXPRESS_SURCHARGE_FRACTION = 0.1
 export const PARTS_STANDARD_DELIVERY_DAYS = 1
+
+/**
+ * Reputation-point ladder (Sprint 15): first-pass, openly adjustable
+ * thresholds, scaled against what a service-job-only career can realistically
+ * earn (`baseReputation` in content is 1-4 per job, up to ~2.2x for a
+ * race-grade install). Not claimed correct — the shape (each tier
+ * meaningfully harder than the last) is what any future retune preserves,
+ * once real harness/playtest data exists (see the `reputationPoints` harness
+ * sample this sprint adds to careers.csv).
+ */
+export const REPUTATION_TIER_THRESHOLDS: Readonly<Record<ReputationTier, number>> = {
+  unknown: 0,
+  local: 15,
+  known: 50,
+  respected: 120,
+  legend: 300,
+}
+
+/**
+ * Selling a genuinely well-restored car (average component condition AND
+ * authenticity both clear this bar) earns a flat reputation bonus on top of
+ * the sale itself — flat constants, matching this codebase's existing
+ * preference over continuous formulas at this stage.
+ */
+export const QUALITY_SALE_MIN_CONDITION = 85
+export const QUALITY_SALE_MIN_AUTHENTICITY = 85
+export const QUALITY_SALE_REPUTATION_BONUS = 3
+
+/**
+ * Selling a "lemon" costs reputation instead: average component condition at
+ * or below `LEMON_MAX_AVERAGE_CONDITION`, **or** any single component at or
+ * below `LEMON_MAX_SINGLE_COMPONENT_CONDITION` regardless of the average (the
+ * maintainer's own framing — a car can average fine and still hide one dead
+ * component). These two thresholds can overlap (seven components at 96+ and
+ * one at <=10 still averages >=85) — `saleReputationDeltaFor` checks lemon
+ * first, so a car with a dead component is never scored as a quality sale.
+ * Deliberately does not apply to plain lowball/cheap-but-not-broken sales —
+ * only genuinely bad condition, so normal flipping stays reputation-neutral.
+ */
+export const LEMON_MAX_AVERAGE_CONDITION = 40
+export const LEMON_MAX_SINGLE_COMPONENT_CONDITION = 10
+export const LEMON_SALE_REPUTATION_PENALTY = 5

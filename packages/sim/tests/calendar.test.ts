@@ -1,6 +1,12 @@
-import { ReputationTierSchema, type ReputationTier } from '@midnight-garage/content'
+import { ReputationTierSchema, type GameState, type ReputationTier } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { currentGameYear, reputationAtLeast } from '../src/calendar'
+import {
+  applyReputationDelta,
+  currentGameYear,
+  deriveReputationTier,
+  reputationAtLeast,
+} from '../src/calendar'
+import { REPUTATION_TIER_THRESHOLDS } from '../src/constants'
 
 describe('currentGameYear', () => {
   it('starts the campaign in 1995 at unknown reputation (GDD 2.2)', () => {
@@ -34,5 +40,77 @@ describe('reputationAtLeast', () => {
         expect(reputationAtLeast(current, min)).toBe(i >= j)
       })
     })
+  })
+})
+
+describe('deriveReputationTier (Sprint 15)', () => {
+  it('returns unknown below every threshold', () => {
+    expect(deriveReputationTier(0)).toBe('unknown')
+    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.local - 1)).toBe('unknown')
+  })
+
+  it('lands exactly on a tier at its threshold, not one below', () => {
+    const tiers = ReputationTierSchema.options
+    for (const tier of tiers) {
+      expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS[tier])).toBe(tier)
+    }
+  })
+
+  it('stays on a tier one point below the next threshold', () => {
+    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.known - 1)).toBe('local')
+    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.legend - 1)).toBe('respected')
+  })
+
+  it('reaches legend at and above the top threshold', () => {
+    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.legend)).toBe('legend')
+    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.legend + 1_000)).toBe('legend')
+  })
+})
+
+describe('applyReputationDelta (Sprint 15)', () => {
+  function stateWith(reputationPoints: number): GameState {
+    return {
+      day: 1,
+      seed: 1,
+      cashYen: 0,
+      reputationTier: deriveReputationTier(reputationPoints),
+      reputationPoints,
+      ownedCars: [],
+      partInventory: [],
+      staff: [],
+      jobs: [],
+      marketHeat: {},
+      activeAuctionLots: [],
+      activeListings: [],
+      serviceJobOffers: [],
+      activeServiceJobs: [],
+      serviceBayCount: 1,
+      parkingBayCount: 3,
+      serviceBayCarIds: [],
+      laborSlotsSpentToday: 0,
+      ownedEquipmentIds: [],
+      pendingPartOrders: [],
+      cartPartIds: [],
+    }
+  }
+
+  it('adds a positive delta and re-derives the tier', () => {
+    const next = applyReputationDelta(stateWith(10), 10)
+    expect(next.reputationPoints).toBe(20)
+    expect(next.reputationTier).toBe(deriveReputationTier(20))
+  })
+
+  it('clamps a negative delta at zero rather than going negative', () => {
+    const next = applyReputationDelta(stateWith(3), -10)
+    expect(next.reputationPoints).toBe(0)
+    expect(next.reputationTier).toBe('unknown')
+  })
+
+  it('crossing a tier threshold updates reputationTier, not just reputationPoints', () => {
+    const justBelow = stateWith(REPUTATION_TIER_THRESHOLDS.known - 1)
+    expect(justBelow.reputationTier).toBe('local')
+    const next = applyReputationDelta(justBelow, 1)
+    expect(next.reputationPoints).toBe(REPUTATION_TIER_THRESHOLDS.known)
+    expect(next.reputationTier).toBe('known')
   })
 })

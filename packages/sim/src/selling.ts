@@ -8,6 +8,8 @@ import type {
   PublicListing,
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
+import { applyReputationDelta } from './calendar'
+import { saleReputationDeltaFor } from './carCondition'
 import { PUBLIC_LISTING_WAIT_DAYS, WALK_IN_OFFER_RANGE } from './constants'
 import type { SimContext } from './context'
 import { releaseCarFromServiceBay } from './facilities'
@@ -148,14 +150,26 @@ export function resolveSellViaWalkIn(
 
   const rng = createRng(hashStringToSeed(`${carInstanceId}:walkin:${state.day}`))
   const offer = sellViaWalkIn(car, model, context.buyers, context.partsById, rng)
-  const released = releaseCarFromServiceBay(state, carInstanceId)
+  const reputationDelta = saleReputationDeltaFor(car)
+  const released = applyReputationDelta(
+    releaseCarFromServiceBay(state, carInstanceId),
+    reputationDelta,
+  )
   return {
     state: {
       ...released,
       cashYen: released.cashYen + offer.priceYen,
       ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
     },
-    log: [{ type: 'car-sold', carInstanceId, channel: 'walk-in-offer', priceYen: offer.priceYen }],
+    log: [
+      {
+        type: 'car-sold',
+        carInstanceId,
+        channel: 'walk-in-offer',
+        priceYen: offer.priceYen,
+        ...(reputationDelta !== 0 ? { reputationDelta } : {}),
+      },
+    ],
   }
 }
 
@@ -191,6 +205,11 @@ export function resolveListForSale(
     modelId: car.modelId,
     askingPriceYen,
     resolvesOnDay: state.day + waitDays,
+    // Captured now, not at resolution: the real CarInstance leaves state the
+    // moment this listing is created, so its condition can't be re-read days
+    // later when the listing actually resolves (see selling.ts's own note
+    // above and sprint15.md decision 4).
+    reputationDeltaOnSale: saleReputationDeltaFor(car),
   }
   const released = releaseCarFromServiceBay(state, carInstanceId)
   return {

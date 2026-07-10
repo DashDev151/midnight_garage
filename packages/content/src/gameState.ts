@@ -13,8 +13,11 @@ export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
   cashYen: z.number().int(),
+  /** Derived from reputationPoints (Sprint 15's deriveReputationTier) every
+   * time the points change — never set directly anywhere else. */
   reputationTier: ReputationTierSchema,
-  /** Accrued reputation points (Sprint 08 scaffold; tier derivation is future). */
+  /** Accrued reputation points (Sprint 08 scaffold; Sprint 15 derives
+   * reputationTier from this via applyReputationDelta). */
   reputationPoints: z.number().int().nonnegative().default(0),
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
@@ -171,6 +174,9 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     carInstanceId: z.string().min(1),
     channel: SaleChannelSchema,
     priceYen: z.number().int().nonnegative(),
+    /** Set when the sale earned or cost reputation (Sprint 15's quality/lemon
+     * rule); absent for a reputation-neutral plain sale. */
+    reputationDelta: z.number().int().optional(),
   }),
   z.object({
     type: z.literal('part-bought'),
