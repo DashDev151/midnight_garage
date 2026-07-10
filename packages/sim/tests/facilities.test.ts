@@ -15,12 +15,14 @@ import {
   applyBayPurchase,
   applyBayPurchases,
   applyMoves,
+  assignToParking,
   hasParkingSpace,
   moveCar,
+  moveCarToSlot,
   nextBayMinReputationTier,
   nextBayPriceYen,
   parkingOccupancy,
-  releaseCarFromServiceBay,
+  releaseCarFromShop,
   swapCars,
 } from '../src/facilities'
 import { createInitialGameState } from '../src/newGame'
@@ -77,49 +79,93 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('parkingOccupancy / hasParkingSpace', () => {
-  it('counts every shop car not in a service bay', () => {
+  it('counts every real, explicitly-placed parking slot (Sprint 17: parking is real indexed state now)', () => {
     const state = baseState({
       ownedCars: [ownedCar('car-1'), ownedCar('car-2')],
       activeServiceJobs: [serviceCar('car-3')],
       serviceBayCarIds: ['car-1'],
+      parkingCarIds: ['car-2', 'car-3', null],
     })
-    expect(parkingOccupancy(state)).toBe(2) // car-2 and car-3; car-1 is in the bay
+    expect(parkingOccupancy(state)).toBe(2)
   })
 
   it('is full once occupancy reaches parkingBayCount', () => {
     const state = baseState({
       ownedCars: [ownedCar('car-1'), ownedCar('car-2'), ownedCar('car-3')],
       parkingBayCount: 3,
+      parkingCarIds: ['car-1', 'car-2', 'car-3'],
     })
     expect(hasParkingSpace(state)).toBe(false)
   })
 
   it('has space below capacity', () => {
-    const state = baseState({ ownedCars: [ownedCar('car-1')], parkingBayCount: 3 })
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      parkingBayCount: 3,
+      parkingCarIds: ['car-1', null, null],
+    })
     expect(hasParkingSpace(state)).toBe(true)
   })
 })
 
-describe('releaseCarFromServiceBay', () => {
-  it('drops the id if present', () => {
-    const state = baseState({ serviceBayCarIds: ['car-1', 'car-2'] })
-    const next = releaseCarFromServiceBay(state, 'car-1')
-    expect(next.serviceBayCarIds).toEqual(['car-2'])
+describe('assignToParking (Sprint 17)', () => {
+  it('places a car in the first empty parking slot', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      parkingCarIds: [null, null, null],
+    })
+    const next = assignToParking(state, 'car-1')
+    expect(next.parkingCarIds).toEqual(['car-1', null, null])
   })
 
-  it('is a no-op (same reference) if the car is not in a bay', () => {
-    const state = baseState({ serviceBayCarIds: ['car-2'] })
-    const next = releaseCarFromServiceBay(state, 'car-1')
+  it('appends a new slot if parking is genuinely full (the dev-console overflow path)', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+    })
+    const next = assignToParking(state, 'car-1')
+    expect(next.parkingCarIds).toEqual(['car-0', 'car-1'])
+  })
+
+  it('is idempotent for a car that already has a slot', () => {
+    const state = baseState({ ownedCars: [ownedCar('car-1')], parkingCarIds: ['car-1', null] })
+    const next = assignToParking(state, 'car-1')
+    expect(next).toBe(state)
+  })
+})
+
+describe('releaseCarFromShop (Sprint 17: renamed — releases from wherever the car actually sits)', () => {
+  it('clears the slot if the car is in a service bay', () => {
+    const state = baseState({ serviceBayCarIds: ['car-1', 'car-2'] })
+    const next = releaseCarFromShop(state, 'car-1')
+    expect(next.serviceBayCarIds).toEqual([null, 'car-2'])
+  })
+
+  it('clears the slot if the car is parked', () => {
+    const state = baseState({ parkingCarIds: ['car-1', 'car-2', null] })
+    const next = releaseCarFromShop(state, 'car-1')
+    expect(next.parkingCarIds).toEqual([null, 'car-2', null])
+  })
+
+  it('is a no-op (same reference) if the car has no slot anywhere', () => {
+    const state = baseState({ serviceBayCarIds: ['car-2'], parkingCarIds: ['car-3'] })
+    const next = releaseCarFromShop(state, 'car-1')
     expect(next).toBe(state)
   })
 })
 
 describe('moveCar', () => {
-  it('moves an owned car into a free service bay', () => {
-    const state = baseState({ ownedCars: [ownedCar('car-1')], serviceBayCount: 1 })
+  it('moves a parked car into a free service bay', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCount: 1,
+      parkingCarIds: ['car-1'],
+    })
     const result = moveCar(state, 'car-1', 'service')
     expect(result.changed).toBe(true)
     expect(result.state.serviceBayCarIds).toEqual(['car-1'])
+    expect(result.state.parkingCarIds).toEqual([null])
   })
 
   it('refuses to move into a full service bay', () => {
@@ -127,6 +173,7 @@ describe('moveCar', () => {
       ownedCars: [ownedCar('car-1'), ownedCar('car-2')],
       serviceBayCount: 1,
       serviceBayCarIds: ['car-1'],
+      parkingCarIds: ['car-2'],
     })
     const result = moveCar(state, 'car-2', 'service')
     expect(result.changed).toBe(false)
@@ -134,10 +181,15 @@ describe('moveCar', () => {
   })
 
   it('moves a car back to parking, freeing the bay', () => {
-    const state = baseState({ ownedCars: [ownedCar('car-1')], serviceBayCarIds: ['car-1'] })
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCarIds: ['car-1'],
+      parkingCarIds: [null, null, null],
+    })
     const result = moveCar(state, 'car-1', 'parking')
     expect(result.changed).toBe(true)
-    expect(result.state.serviceBayCarIds).toEqual([])
+    expect(result.state.serviceBayCarIds).toEqual([null])
+    expect(result.state.parkingCarIds).toEqual(['car-1', null, null])
   })
 
   it('refuses to move out of the service bay when parking is already full', () => {
@@ -145,8 +197,8 @@ describe('moveCar', () => {
       ownedCars: [ownedCar('car-1'), ownedCar('car-2'), ownedCar('car-3'), ownedCar('car-4')],
       parkingBayCount: 3,
       serviceBayCarIds: ['car-1'],
+      parkingCarIds: ['car-2', 'car-3', 'car-4'],
     })
-    // 3 cars already fill parking (car-2/3/4); pulling car-1 out has nowhere to go.
     const result = moveCar(state, 'car-1', 'parking')
     expect(result.changed).toBe(false)
   })
@@ -163,10 +215,88 @@ describe('moveCar', () => {
     expect(result.changed).toBe(false)
   })
 
-  it('works for a service-job car, not just an owned one', () => {
-    const state = baseState({ activeServiceJobs: [serviceCar('car-1')] })
+  it('is a no-op for a real shop car that has no slot anywhere yet (the placement invariant)', () => {
+    // Every real acquisition path (auction win, buyout, service-job accept,
+    // dev grant) assigns a parking slot the moment a car enters the shop
+    // (assignToParking) — a car that's in ownedCars/activeServiceJobs but
+    // in neither array shouldn't be reachable in real play. moveCar/
+    // moveCarToSlot deliberately don't paper over that with an implicit
+    // fallback, so a violation here is loud, not silently "handled".
+    const state = baseState({ ownedCars: [ownedCar('car-1')] }) // no slot assigned
     const result = moveCar(state, 'car-1', 'service')
+    expect(result.changed).toBe(false)
+  })
+
+  it('works for a service-job car, not just an owned one', () => {
+    const car = serviceCar('car-1')
+    const state = baseState({ activeServiceJobs: [car], parkingCarIds: [car.car.id] })
+    const result = moveCar(state, car.car.id, 'service')
     expect(result.changed).toBe(true)
+  })
+})
+
+describe('moveCarToSlot (Sprint 17 positional fix)', () => {
+  it('places a car in the exact empty slot targeted, not just "the first one"', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCount: 3,
+      serviceBayCarIds: [null, null, null],
+      parkingCarIds: ['car-1'],
+    })
+    const result = moveCarToSlot(state, 'car-1', 'service', 2)
+    expect(result.changed).toBe(true)
+    expect(result.state.serviceBayCarIds).toEqual([null, null, 'car-1'])
+  })
+
+  it('swapping onto an occupied slot exchanges both cars’ positions, same section', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-a'), ownedCar('car-b')],
+      serviceBayCount: 2,
+      serviceBayCarIds: ['car-a', 'car-b'],
+    })
+    const result = moveCarToSlot(state, 'car-a', 'service', 1)
+    expect(result.changed).toBe(true)
+    expect(result.state.serviceBayCarIds).toEqual(['car-b', 'car-a'])
+  })
+
+  it('swapping onto an occupied slot exchanges both cars’ positions, cross section', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('service-car'), ownedCar('parking-car')],
+      serviceBayCarIds: ['service-car'],
+      parkingCarIds: ['parking-car', null],
+    })
+    const result = moveCarToSlot(state, 'service-car', 'parking', 0)
+    expect(result.changed).toBe(true)
+    expect(result.state.parkingCarIds).toEqual(['service-car', null])
+    expect(result.state.serviceBayCarIds).toEqual(['parking-car'])
+  })
+
+  it('dropping onto its own slot is a no-op', () => {
+    const state = baseState({ ownedCars: [ownedCar('car-1')], serviceBayCarIds: ['car-1'] })
+    const result = moveCarToSlot(state, 'car-1', 'service', 0)
+    expect(result.changed).toBe(false)
+  })
+
+  it('refuses a slot index beyond the bay count', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCount: 1,
+      parkingCarIds: ['car-1'],
+    })
+    const result = moveCarToSlot(state, 'car-1', 'service', 5)
+    expect(result.changed).toBe(false)
+  })
+
+  it('tolerates a bay array shorter than its count (implicit trailing empty slots)', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCount: 2,
+      serviceBayCarIds: [], // shorter than serviceBayCount — index 1 is implicitly empty
+      parkingCarIds: ['car-1'],
+    })
+    const result = moveCarToSlot(state, 'car-1', 'service', 1)
+    expect(result.changed).toBe(true)
+    expect(result.state.serviceBayCarIds).toEqual([null, 'car-1'])
   })
 })
 
@@ -180,15 +310,20 @@ describe('swapCars (Sprint 11, round-2 playtest #3)', () => {
       serviceBayCount: 1,
       parkingBayCount: 1,
       serviceBayCarIds: ['service-car'],
+      parkingCarIds: ['parking-car'],
     })
     expect(moveCar(state, 'parking-car', 'service').changed).toBe(false) // sanity: direct move fails
     const result = swapCars(state, 'service-car', 'parking-car')
     expect(result.changed).toBe(true)
     expect(result.state.serviceBayCarIds).toEqual(['parking-car'])
+    expect(result.state.parkingCarIds).toEqual(['service-car'])
   })
 
   it('is a no-op if the claimed service car is not actually in a bay', () => {
-    const state = baseState({ ownedCars: [ownedCar('car-1'), ownedCar('car-2')] })
+    const state = baseState({
+      ownedCars: [ownedCar('car-1'), ownedCar('car-2')],
+      parkingCarIds: ['car-1', 'car-2'],
+    })
     const result = swapCars(state, 'car-1', 'car-2')
     expect(result.changed).toBe(false)
     expect(result.state).toBe(state)
@@ -219,11 +354,15 @@ describe('swapCars (Sprint 11, round-2 playtest #3)', () => {
       serviceBayCount: 1,
       parkingBayCount: 1,
       serviceBayCarIds: ['service-car'],
+      parkingCarIds: ['parking-car'],
     })
-    const before = { service: state.serviceBayCarIds.length, parking: parkingOccupancy(state) }
+    const before = {
+      service: state.serviceBayCarIds.filter((id) => id !== null).length,
+      parking: parkingOccupancy(state),
+    }
     const result = swapCars(state, 'service-car', 'parking-car')
     const after = {
-      service: result.state.serviceBayCarIds.length,
+      service: result.state.serviceBayCarIds.filter((id) => id !== null).length,
       parking: parkingOccupancy(result.state),
     }
     expect(after).toEqual(before)
@@ -232,7 +371,11 @@ describe('swapCars (Sprint 11, round-2 playtest #3)', () => {
 
 describe('applyMoves', () => {
   it('applies a free, unlimited shuffle within one day, logging only real changes', () => {
-    const state = baseState({ ownedCars: [ownedCar('car-1')], serviceBayCount: 1 })
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCount: 1,
+      parkingCarIds: ['car-1'],
+    })
     const result = applyMoves(state, [
       { carInstanceId: 'car-1', to: 'service' },
       { carInstanceId: 'car-1', to: 'parking' },
@@ -247,6 +390,7 @@ describe('applyMoves', () => {
       ownedCars: [ownedCar('car-1'), ownedCar('car-2')],
       serviceBayCount: 1,
       serviceBayCarIds: ['car-1'],
+      parkingCarIds: ['car-2'],
     })
     const result = applyMoves(state, [{ carInstanceId: 'car-2', to: 'service' }])
     expect(result.log).toHaveLength(0)
@@ -295,6 +439,15 @@ describe('applyBayPurchase / applyBayPurchases', () => {
     expect(result.state.cashYen).toBe(0)
     expect(result.state.serviceBayCount).toBe(FACILITIES.service.startCount + 1)
     expect(result.log).toEqual([{ type: 'bay-purchased', kind: 'service', priceYen: price }])
+  })
+
+  it('appends a new empty slot so the array keeps tracking the bought count', () => {
+    const price = FACILITIES.service.bayPricesYen[0]!
+    const rung1Tier = FACILITIES.service.minReputationTier[0]!
+    const state = baseState({ cashYen: price, reputationTier: rung1Tier })
+    const result = applyBayPurchase(state, 'service', FACILITIES)
+    expect(result.state.serviceBayCarIds).toHaveLength(state.serviceBayCarIds.length + 1)
+    expect(result.state.serviceBayCarIds.at(-1)).toBeNull()
   })
 
   it('refuses when unaffordable, with no state change', () => {

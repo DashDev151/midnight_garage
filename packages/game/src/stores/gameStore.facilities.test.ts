@@ -12,7 +12,7 @@ describe('facilities (bays) in the store', () => {
     expect(game.parkingCapacity).toBe(FACILITIES.parking.startCount)
     expect(game.serviceBayFreeCount).toBe(FACILITIES.service.startCount)
     expect(game.serviceBaysView).toEqual(Array(FACILITIES.service.startCount).fill(null))
-    expect(game.parkingView).toEqual([])
+    expect(game.parkingView).toEqual(Array(FACILITIES.parking.startCount).fill(null))
   })
 
   it('a granted car lands in parking, never straight into a bay', () => {
@@ -20,7 +20,7 @@ describe('facilities (bays) in the store', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
 
-    expect(game.parkingView.some((c) => c.carId === carId)).toBe(true)
+    expect(game.parkingView.some((c) => c?.carId === carId)).toBe(true)
     expect(game.serviceBaysView.every((slot) => slot === null)).toBe(true)
     expect(game.parkingOccupancyCount).toBe(1)
   })

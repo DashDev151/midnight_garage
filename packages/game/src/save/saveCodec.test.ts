@@ -212,6 +212,88 @@ describe('saveCodec', () => {
     expect(decoded.activeListings[0]?.reputationDeltaOnSale).toBe(0)
   })
 
+  /**
+   * v8 -> v9 (Sprint 17): a pre-v9 save's `serviceBayCarIds` is a compact
+   * list of only-occupied ids (no `parkingCarIds` at all) — the exclusion-
+   * based model every version before this used. `MIGRATIONS[8]` must
+   * reconstruct both real, index-addressable arrays rather than default-
+   * filling `parkingCarIds` to `[]`, which would silently strand every
+   * already-parked car (still present in `ownedCars`/`activeServiceJobs`,
+   * but invisible to the new parking view).
+   */
+  it('decodes a pre-v9 save, reconstructing indexed bay/parking arrays from the old exclusion model', () => {
+    const carComponents = {
+      engine: { condition: 80, installed: null },
+      forcedInduction: { condition: 80, installed: null },
+      drivetrain: { condition: 80, installed: null },
+      suspension: { condition: 80, installed: null },
+      brakes: { condition: 80, installed: null },
+      wheels: { condition: 80, installed: null },
+      body: { condition: 80, installed: null },
+      interior: { condition: 80, installed: null },
+    }
+    const ownedCar = (id: string) => ({
+      id,
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      color: 'White',
+      provenanceNote: '',
+      hiddenIssues: [],
+      authenticityPercent: 90,
+      components: carComponents,
+    })
+    const preV9 = {
+      version: 8,
+      gameState: {
+        day: 70,
+        seed: 5,
+        cashYen: 2_000_000,
+        reputationTier: 'known',
+        reputationPoints: 25,
+        // Only one of these two owned cars is in the old compact list — the
+        // other was "parked" purely by exclusion under the pre-v9 model.
+        ownedCars: [ownedCar('car-service-1'), ownedCar('car-parked-1')],
+        activeServiceJobs: [
+          {
+            id: 'svc-1',
+            typeId: 'repair-engine',
+            customerName: 'Test Customer',
+            description: 'test',
+            work: { kind: 'repair', componentId: 'engine' },
+            car: ownedCar('car-job-parked'), // also parked by exclusion
+            payoutYen: 20_000,
+            baseReputation: 1,
+            expiresOnDay: 80,
+            dueOnDay: 75,
+          },
+        ],
+        serviceBayCount: 2,
+        parkingBayCount: 3,
+        serviceBayCarIds: ['car-service-1'], // compact: only the real occupant, despite count 2
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV9))
+    const decoded = decodeSave(code)
+    expect(decoded.serviceBayCarIds).toEqual(['car-service-1', null])
+    // ownedCars-parked ids come before activeServiceJobs-parked ids (the
+    // same order the old exclusion-based parkingView used to derive them
+    // in), then padded with null up to parkingBayCount.
+    expect(decoded.parkingCarIds).toEqual(['car-parked-1', 'car-job-parked', null])
+  })
+
+  it('round-trips a v9 state preserving real, index-addressable bay/parking slots (empty slots included)', () => {
+    const withSlots: GameState = GameStateSchema.parse({
+      ...fullState,
+      serviceBayCount: 2,
+      parkingBayCount: 3,
+      serviceBayCarIds: ['car-0001', null],
+      parkingCarIds: [null, 'car-0002', null],
+    })
+    const decoded = decodeSave(encodeSave(withSlots))
+    expect(decoded).toEqual(withSlots)
+  })
+
   it('rejects a non-save string', () => {
     expect(() => decodeSave('hello world')).toThrow(/not a Midnight Garage save code/i)
   })

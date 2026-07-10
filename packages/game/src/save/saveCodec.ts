@@ -50,8 +50,30 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   default of 0, so a pre-v8 save's already-pending listings resolve
  *   reputation-neutral — correct, since the rule didn't exist when they
  *   were created. No explicit `MIGRATIONS[7]` step needed.
+ * - v9 (Sprint 17): `serviceBayCarIds` changed shape from a compact list of
+ *   only-occupied car ids to a real, index-addressable array — one entry
+ *   per physical bay, `null` for an empty one — the positional model
+ *   drag-and-drop needs (dropping onto "service bay 3" now means bay 3, not
+ *   wherever the array used to happen to render a car). A new sibling
+ *   `parkingCarIds` field gets the same treatment; before v9 "parking" had
+ *   no stored array at all — a car counted as parked purely by not
+ *   appearing in `serviceBayCarIds`. **This is the first genuinely
+ *   non-additive Save-law migration this codebase has needed** — every
+ *   prior version bump was a brand-new field with a safe schema default,
+ *   but a plain default-fill here would silently strand every real parked
+ *   car: `parkingCarIds` defaulting to `[]` makes an old save's already-
+ *   parked cars invisible to the new parking view even though they're
+ *   still sitting in `ownedCars`/`activeServiceJobs`. `MIGRATIONS[8]`
+ *   reconstructs both arrays instead: the old compact `serviceBayCarIds`
+ *   packs into the first N service slots, and every shop car NOT in that
+ *   old list (the same exclusion rule the pre-Sprint-17 `parkingView`
+ *   itself used) packs into `parkingCarIds` — both padded with `null` up to
+ *   their respective bay counts (or left un-padded/overflowing beyond count
+ *   if a save's real occupancy somehow exceeds it, so a migration never
+ *   silently drops a real car rather than erring on the side of keeping it
+ *   visible).
  */
-export const SAVE_VERSION = 8
+export const SAVE_VERSION = 9
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -76,11 +98,63 @@ function fromBase64(b64: string): string {
 }
 
 /**
- * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
- * into a version-`v+1` one. Empty today (v1 is the first save ever). The
- * Save law: a future version bump adds its step here.
+ * v8 -> v9 (Sprint 17): reconstructs the real, index-addressable
+ * `serviceBayCarIds`/`parkingCarIds` shape from a pre-v9 save's compact
+ * `serviceBayCarIds` list (see the SAVE_VERSION doc comment above for why
+ * this can't be a plain default-fill). Defensive against a malformed or
+ * hand-edited save — every field it reads is guarded with a runtime type
+ * check rather than assumed, since `gameState` here is still `unknown`.
  */
-const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {}
+function migrateV8ToV9(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+
+  const oldServiceBayIds = Array.isArray(state.serviceBayCarIds)
+    ? state.serviceBayCarIds.filter((id): id is string => typeof id === 'string')
+    : []
+  const serviceBayCount =
+    typeof state.serviceBayCount === 'number' ? state.serviceBayCount : oldServiceBayIds.length
+  const parkingBayCount = typeof state.parkingBayCount === 'number' ? state.parkingBayCount : 0
+
+  const ownedCars = Array.isArray(state.ownedCars) ? state.ownedCars : []
+  const activeServiceJobs = Array.isArray(state.activeServiceJobs) ? state.activeServiceJobs : []
+  const inOldServiceBay = new Set(oldServiceBayIds)
+  const parkedIds: string[] = []
+  for (const car of ownedCars) {
+    const id = (car as { id?: unknown } | null)?.id
+    if (typeof id === 'string' && !inOldServiceBay.has(id)) parkedIds.push(id)
+  }
+  for (const job of activeServiceJobs) {
+    const id = (job as { car?: { id?: unknown } } | null)?.car?.id
+    if (typeof id === 'string' && !inOldServiceBay.has(id)) parkedIds.push(id)
+  }
+
+  // Pad each reconstructed array to its real bay count with empty slots; a
+  // save whose real occupancy somehow exceeds its own count (shouldn't
+  // happen via normal play) keeps every id as a genuine overflow slot
+  // rather than silently dropping one.
+  const serviceBayCarIds: (string | null)[] = []
+  for (let i = 0; i < serviceBayCount; i++) serviceBayCarIds.push(oldServiceBayIds[i] ?? null)
+  for (let i = serviceBayCount; i < oldServiceBayIds.length; i++) {
+    serviceBayCarIds.push(oldServiceBayIds[i]!)
+  }
+
+  const parkingCarIds: (string | null)[] = []
+  for (let i = 0; i < parkingBayCount; i++) parkingCarIds.push(parkedIds[i] ?? null)
+  for (let i = parkingBayCount; i < parkedIds.length; i++) parkingCarIds.push(parkedIds[i]!)
+
+  return { ...state, serviceBayCarIds, parkingCarIds }
+}
+
+/**
+ * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
+ * into a version-`v+1` one. The Save law: a future version bump adds its
+ * step here (a pure default-fill, like every version before v9, needs no
+ * entry at all — schema defaults already handle that case in `decodeSave`).
+ */
+const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
+  8: migrateV8ToV9,
+}
 
 /** Runs the chain of migrations from an older save up to the current version. */
 function migrate(gameState: unknown, fromVersion: number): unknown {

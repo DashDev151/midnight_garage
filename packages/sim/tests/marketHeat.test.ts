@@ -22,6 +22,7 @@ function stateOnDay(day: number, marketHeat: Record<string, number>): GameState 
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
+    parkingCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
     pendingPartOrders: [],

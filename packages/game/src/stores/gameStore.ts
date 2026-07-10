@@ -32,6 +32,7 @@ import {
   applyBayPurchase,
   applyEquipmentPurchase,
   applyMoves,
+  assignToParking,
   AUCTION_BUYOUT_PREMIUM,
   AUCTION_RESERVE_PRICE_FRACTION,
   AUCTION_TRAVEL_FEE_YEN,
@@ -43,16 +44,19 @@ import {
   computeLotInterest,
   createInitialGameState,
   createRng,
+  deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
   hasEquipmentFor,
   hasParkingSpace,
   isServiceWorkDone,
   listPubliclyAskingPrice,
+  moveCarToSlot as moveCarToSlotCore,
   nextBayMinReputationTier,
   nextBayPriceYen,
   parkingOccupancy,
   reputationAtLeast,
+  REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
   resolveAcceptServiceJob,
@@ -490,33 +494,29 @@ export const useGameStore = defineStore('game', () => {
     return undefined
   }
 
-  /** One entry per service bay slot — the car in it, or null if empty. */
-  const serviceBaysView = computed<(ShopCarView | null)[]>(() => {
-    const slots: (ShopCarView | null)[] = gameState.value.serviceBayCarIds
-      .map(shopCarView)
-      .filter((v): v is ShopCarView => v !== undefined)
-    while (slots.length < gameState.value.serviceBayCount) slots.push(null)
-    return slots
-  })
+  /**
+   * One entry per service bay slot — the car in it, or null if empty.
+   * Sprint 17: `serviceBayCarIds` is real, index-addressable state now (one
+   * entry per physical bay), so this is a direct map, not a compact-list-
+   * plus-padding reconstruction.
+   */
+  const serviceBaysView = computed<(ShopCarView | null)[]>(() =>
+    gameState.value.serviceBayCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
+  )
 
-  /** Every shop car not currently in a service bay (owned + customer cars alike). */
-  const parkingView = computed<ShopCarView[]>(() => {
-    const inBay = new Set(gameState.value.serviceBayCarIds)
-    const ownedParked = gameState.value.ownedCars
-      .filter((c) => !inBay.has(c.id))
-      .map((c) => shopCarView(c.id)!)
-    const customerParked = gameState.value.activeServiceJobs
-      .filter((sj) => !inBay.has(sj.car.id))
-      .map((sj) => shopCarView(sj.car.id)!)
-    return [...ownedParked, ...customerParked]
-  })
+  /** The parking counterpart to `serviceBaysView` above — same shape, same
+   * reasoning (Sprint 17: `parkingCarIds` is real indexed state now, not
+   * "every shop car not in a service bay"). */
+  const parkingView = computed<(ShopCarView | null)[]>(() =>
+    gameState.value.parkingCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
+  )
 
   const parkingCapacity = computed(() => gameState.value.parkingBayCount)
   const parkingOccupancyCount = computed(() => parkingOccupancy(gameState.value))
   const parkingFull = computed(() => !hasParkingSpace(gameState.value))
   const serviceBayCount = computed(() => gameState.value.serviceBayCount)
   const serviceBayFreeCount = computed(
-    () => gameState.value.serviceBayCount - gameState.value.serviceBayCarIds.length,
+    () => gameState.value.serviceBayCarIds.filter((id) => id === null).length,
   )
   /** True when neither side has a free slot — a direct move can never succeed, only a swap can. */
   const shopAtCapacity = computed(() => parkingFull.value && serviceBayFreeCount.value <= 0)
@@ -559,6 +559,24 @@ export const useGameStore = defineStore('game', () => {
     if (!result.changed) return false
     gameState.value = result.state
     dayLog.value.push({ type: 'cars-swapped', serviceCarId, parkingCarId })
+    return true
+  }
+
+  /**
+   * Move (or swap) a car into a SPECIFIC slot — the real positional path
+   * behind drag-and-drop (Sprint 17 playtest fix): dropping a car onto an
+   * empty slot places it exactly there; dropping onto a slot occupied by a
+   * different car exchanges their positions (same section or across
+   * service/parking alike); dropping onto its own slot is a no-op. Unlike
+   * `moveCar`/`swapCars` above (still used by the plain, non-positional
+   * "→ parking"/"→ service bay" buttons and the click-fallback), this is
+   * the only path that actually chooses which bay a car lands in.
+   */
+  function moveCarToSlot(carId: string, to: BayKind, slotIndex: number): boolean {
+    const result = moveCarToSlotCore(gameState.value, carId, to, slotIndex)
+    if (!result.changed) return false
+    gameState.value = result.state
+    dayLog.value.push({ type: 'car-moved', carInstanceId: carId, to })
     return true
   }
 
@@ -970,7 +988,14 @@ export const useGameStore = defineStore('game', () => {
       id,
       createRng(grantCounter.value),
     )
-    gameState.value = { ...gameState.value, ownedCars: [...gameState.value.ownedCars, car] }
+    // Sprint 17: parking is a real indexed array now — a granted car needs an
+    // actual slot, not just membership in `ownedCars` (assignToParking grows
+    // the array if parking happens to be nominally full, since this bypasses
+    // the normal `hasParkingSpace` gate on purpose, same as it always has).
+    gameState.value = assignToParking(
+      { ...gameState.value, ownedCars: [...gameState.value.ownedCars, car] },
+      id,
+    )
   }
 
   /** Add a part from the catalog to inventory as a new instance. */
@@ -996,6 +1021,44 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = {
       ...gameState.value,
       ownedEquipmentIds: [...gameState.value.ownedEquipmentIds, equipmentId],
+    }
+  }
+
+  /** Add one more bay of this kind for free, bypassing price/reputation — dev/test only.
+   * A no-op once the kind's ladder is already maxed (nothing to add). */
+  function devGrantBay(kind: BayKind): void {
+    const cfg = context.value.facilities[kind]
+    const current =
+      kind === 'service' ? gameState.value.serviceBayCount : gameState.value.parkingBayCount
+    if (current >= cfg.maxCount) return
+    gameState.value =
+      kind === 'service'
+        ? {
+            ...gameState.value,
+            serviceBayCount: current + 1,
+            serviceBayCarIds: [...gameState.value.serviceBayCarIds, null],
+          }
+        : {
+            ...gameState.value,
+            parkingBayCount: current + 1,
+            parkingCarIds: [...gameState.value.parkingCarIds, null],
+          }
+  }
+
+  /**
+   * Jump straight to a reputation tier, bypassing however many points it would
+   * normally take to earn — dev/test only. Sets `reputationPoints` to that
+   * tier's exact threshold (`REPUTATION_TIER_THRESHOLDS`) and re-derives
+   * `reputationTier` from it in the same step, the same way every real
+   * reputation change does (`applyReputationDelta`) — `reputationTier` is
+   * never set directly anywhere, including here.
+   */
+  function devSetReputationTier(tier: ReputationTier): void {
+    const reputationPoints = REPUTATION_TIER_THRESHOLDS[tier]
+    gameState.value = {
+      ...gameState.value,
+      reputationPoints,
+      reputationTier: deriveReputationTier(reputationPoints),
     }
   }
 
@@ -1042,6 +1105,7 @@ export const useGameStore = defineStore('game', () => {
     nextBayReputationGate,
     moveCar,
     swapCars,
+    moveCarToSlot,
     buyBay,
     equipmentCatalog,
     hasEquipmentForComponent,
@@ -1077,5 +1141,7 @@ export const useGameStore = defineStore('game', () => {
     devGrantCar,
     devGrantPart,
     devGrantEquipment,
+    devGrantBay,
+    devSetReputationTier,
   }
 })

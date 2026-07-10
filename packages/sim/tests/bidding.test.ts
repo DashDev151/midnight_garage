@@ -40,6 +40,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
+    parkingCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
     pendingPartOrders: [],

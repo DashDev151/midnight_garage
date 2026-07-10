@@ -139,6 +139,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [car.id],
+    parkingCarIds: [],
     laborSlotsSpentToday: 0,
     ownedEquipmentIds: [],
     pendingPartOrders: [],
@@ -152,7 +153,7 @@ describe('resolveSellViaWalkIn (Sprint 11 instant resolver)', () => {
     const state = stateWithCar(car)
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.state.serviceBayCarIds).toEqual([])
+    expect(result.state.serviceBayCarIds).toEqual([null]) // slot cleared, not removed
     expect(result.state.cashYen).toBeGreaterThan(0)
     expect(result.log[0]).toMatchObject({ type: 'car-sold', channel: 'walk-in-offer' })
   })
@@ -170,7 +171,7 @@ describe('resolveListForSale (Sprint 11 instant resolver)', () => {
     const state = stateWithCar(car)
     const result = resolveListForSale(state, car.id, CONTEXT)
     expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.state.serviceBayCarIds).toEqual([])
+    expect(result.state.serviceBayCarIds).toEqual([null]) // slot cleared, not removed
     expect(result.state.activeListings).toHaveLength(1)
     expect(result.state.activeListings[0]?.askingPriceYen).toBeGreaterThan(0)
     expect(result.state.cashYen).toBe(0) // the sale itself still waits for resolvesOnDay

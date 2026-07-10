@@ -198,13 +198,20 @@ sequenced last on size and blast radius — 15/16 reshape the auction population
 first would mean recalibrating it twice; 17/18 are genuinely independent of 19, so that pair and 19
 could swap order if the auction pain becomes unbearable first). All five designed 2026-07-10, reviewed
 and corrected 2026-07-10 (factual claims verified against the codebase; logic gaps fixed in the docs).
-**Sprints 15 and 16 implemented 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`, ready for
-review — Sprint 15 committed, Sprint 16 not yet); 17-19 remain designed, pending maintainer review
-before implementation starts. **Four**
+**Sprints 15, 16, and 17 implemented 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`/
+`sprint17.md`, ready for review — 15 and 16 committed, 17 not yet); 18-19 remain designed, pending
+maintainer review before implementation starts. **Four**
 items from that playtest are in none of the five sprints — tracked directly below so they don't vanish
 (the review found the first draft of this paragraph claimed only two, and claimed they were listed
 here when they weren't):
 
+- [ ] **Sprint 17 follow-up: manually verify the round-2 positional-slot fixes in a browser.** Round 1
+  shipped drag-and-drop as designed; the maintainer then actually ran `pnpm dev` and found three real
+  bugs no automated test was written to catch (ghost preview freezing mid-drag, same-section drops
+  refused outright, parking rendering no empty drop targets) — all fixed in the same session by making
+  bay/parking slot position real, persisted state (`serviceBayCarIds`/`parkingCarIds`, `SAVE_VERSION`
+  8→9). Those three original bugs were caught by hand; the fixes themselves haven't had their own
+  dedicated re-check yet. See `docs/sprints/sprint17.md`'s "Round 2" section.
 - [ ] **Playtest 2026-07-10 #1: End-Day cart warning.** Clicking "End Day" with items still in the
   parts cart should warn ("you have unordered items in your cart — check out first?"). Small,
   self-contained UI guard; fold into whichever of Sprints 15-19 ships first, or the next playtest-fix

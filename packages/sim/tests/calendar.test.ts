@@ -87,6 +87,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       serviceBayCount: 1,
       parkingBayCount: 3,
       serviceBayCarIds: [],
+      parkingCarIds: [],
       laborSlotsSpentToday: 0,
       ownedEquipmentIds: [],
       pendingPartOrders: [],

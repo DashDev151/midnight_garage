@@ -19,7 +19,7 @@ import {
 } from './constants'
 import type { SimContext } from './context'
 import { hasEquipmentFor, hasEquipmentForIds } from './equipment'
-import { hasParkingSpace, releaseCarFromServiceBay } from './facilities'
+import { assignToParking, hasParkingSpace, releaseCarFromShop } from './facilities'
 import type { Rng } from './rng'
 
 /** Attempts a fresh pick can't exceed before falling back to whatever was last rolled
@@ -150,12 +150,16 @@ export function resolveAcceptServiceJob(
     }
   }
   const activeJob: ServiceJob = { ...offer, dueOnDay: state.day + SERVICE_JOB_DEADLINE_DAYS }
-  return {
-    state: {
+  const withCar = assignToParking(
+    {
       ...state,
       serviceJobOffers: state.serviceJobOffers.filter((o) => o.id !== offerId),
       activeServiceJobs: [...state.activeServiceJobs, activeJob],
     },
+    offer.car.id,
+  )
+  return {
+    state: withCar,
     log: [{ type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id }],
   }
 }
@@ -212,7 +216,7 @@ export function resolveServiceJob(
   const job = state.activeServiceJobs.find((sj) => sj.id === jobId)
   if (!job) return { state, log: [], outcome: 'not-found' }
 
-  const releasedState = releaseCarFromServiceBay(state, job.car.id)
+  const releasedState = releaseCarFromShop(state, job.car.id)
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
   const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
 

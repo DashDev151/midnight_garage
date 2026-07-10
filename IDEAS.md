@@ -93,3 +93,27 @@ grade means every part-grade-driven formula — pricing, stat modifiers, reputat
 — gets audited for a new bottom rung) and a real vendor data model (`packages/content`), not just a
 content JSON tweak. Revisit only with an explicit ask, the same way the driving minigame is explicit
 opt-in scope rather than an assumed default.
+
+---
+
+## Bay-specific equipment (per-bay machinery, not shop-wide)
+
+*Added 2026-07-10, maintainer note during Sprint 17's drag-and-drop work: now that a car's specific
+bay is a real, physically-tracked position (not just shop-wide membership), equipment could plausibly
+attach to a *specific bay* instead of unlocking repair for the whole shop.*
+
+**The idea:** equipment (welder, engine crane, etc.) lives on a particular service bay rather than
+being owned shop-wide — repairing a car requires it to be sitting in a bay that actually has the tool,
+not just any bay. Could also mean needing to buy multiple copies of the same tool to equip more than
+one bay at once, and/or bay *upgrades* (a bay itself has a tier, not just a count).
+
+**Why it's not in scope now:** `EquipmentSchema`/`ownedEquipmentIds` (Sprint 13) are explicitly
+shop-wide with no per-bay concept at all — this would be a real data-model change (equipment moves
+from a flat owned-ids list to something keyed by bay), touching the repair gate, the Upgrades tab, the
+harness/bot equipment logic, and probably the price ladder (multiple copies changes the economy). Not
+a small follow-on to Sprint 17's positional-slot fix.
+
+**If pursued:** revisit once bay *count* growth (buying more bays) and reputation gating (Sprint 16)
+have real playtest signal — whether "more bays" alone is a satisfying upgrade path, or whether it
+needs the added texture of "which bays are tooled up," is an open design question, not just an
+engineering one.

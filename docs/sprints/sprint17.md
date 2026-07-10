@@ -4,7 +4,9 @@
 design conversation. Explicitly sequenced before Sprint 18 (parts inventory/install rework): the
 maintainer's own instruction was to build one shared drag-and-drop primitive and use it for both car-
 moving here *and* part-installing there ("hard agree, design as such") — this sprint proves it on the
-simpler consumer first. Status: **designed, pending review.**
+simpler consumer first. Status: **implemented and committed** (both rounds — the original design plus
+the round-2 playtest fixes below). See Exit for two deliberate implementation-time deviations from the
+design as written (no `setPointerCapture`; plain move buttons kept alongside drag).
 
 ## Goal
 
@@ -55,20 +57,20 @@ parts.
 
 ## Decisions (approve / adjust before implementation)
 
-1. **Pointer Events over native HTML5 DnD** — see reuse analysis above. Recommend, not yet confirmed
-   with you specifically on this point (the "hard agree" covered *building one shared primitive*, not
-   this particular technical choice) — flagging so it's a deliberate call, not a silent default.
-2. **Accessibility fallback: does drag-and-drop need a non-drag alternative?** Pointer-based dragging
-   is unusable for keyboard-only or switch-access players. Options: (a) ship drag-only for now, revisit
-   accessibility later, (b) keep a minimal click-based fallback (e.g., click a car to "pick it up",
-   click a destination to "place it" — same underlying drop-zone logic, different trigger) alongside
-   drag, so nothing is drag-only. Leaning toward (b) since it's cheap once the drop-zone logic exists
-   anyway (the composable can expose "programmatic drop" as well as pointer-driven drop), but this is
-   your call, not a default I should make silently. One extra data point for (b), found in review
-   (2026-07-10): the roadmap's own accessibility sprint and Launch Definition of Done already commit
-   to **full keyboard nav** — a drag-only interaction would create a known violation of that bar to
-   be paid down later, so (b) isn't just preference, it's the option consistent with the plan of
-   record.
+1. **Pointer Events over native HTML5 DnD — confirmed by the maintainer before implementation.**
+   See reuse analysis above. **Implementation-time deviation from this decision's own description:**
+   the composable does NOT use `setPointerCapture`. Captured pointer events route exclusively to the
+   capturing element, which would prevent a drop zone from ever receiving its own `pointerup` —
+   forcing hit-testing via `elementFromPoint` instead, which needs a real layout engine and isn't
+   reliably testable in this project's happy-dom test environment (confirmed: `elementFromPoint`
+   doesn't compute real hit-testing there). Skipping capture lets each drop zone's own `pointerup`
+   handler fire naturally via standard DOM event targeting — simpler, and directly testable by calling
+   the returned handlers, matching this doc's own testing task. No behavioral downside found: nothing
+   in this sprint's interactions needs the pointer to keep tracking off-window or over an iframe.
+2. **Accessibility fallback — confirmed by the maintainer: include it.** Click a car's "move…" button
+   to pick it up, click "Place here" on a valid target to complete the move/swap — the same `accepts`/
+   `onDrop` a live drag uses, different trigger. Matches the roadmap's full-keyboard-nav commitment
+   (found in review, still holds).
 3. **Drag threshold / accidental-drag prevention.** A plain click (e.g., following the existing
    `RouterLink` into a car's detail screen) needs to still work — dragging shouldn't hijack every
    click. Standard approach: require the pointer to move past a small distance threshold before a
@@ -80,30 +82,46 @@ parts.
 
 ### C. Game (`packages/game`) — this sprint is entirely game-layer, no sim/content changes
 
-- [ ] New composable, e.g. `composables/useDragAndDrop.ts`: exposes something like
-  `useDraggable(payload: Ref<T>)` (returns bindable pointer-event handlers + a `isDragging` ref) and
-  `useDropZone(accepts: (payload: T) => boolean, onDrop: (payload: T) => void)` (returns bindable
-  handlers + an `isActiveTarget` ref for styling) — generic over `T`, no car/part-specific knowledge
-  baked in.
-- [ ] `GarageScreen.vue`: bay slots and parking rows become drop zones (`useDropZone`); car cards
-  become draggable (`useDraggable`, payload = carId). Drop handler decides move-vs-swap exactly as the
-  current button/dropdown logic already does (empty slot → `moveCar`; occupied → `swapCars`), just
-  triggered by the drop instead of a click. `swapPicks` reactive state and the associated `<select>`/
-  swap button markup removed entirely.
-- [ ] Visual states (dragging/valid-target/invalid-target) styled with existing design tokens — no new
-  color palette.
-- [ ] If decision 2 lands on a click fallback: a minimal "select then place" mode reusing the same
-  drop-zone `onDrop` handlers programmatically.
+- [x] New composable `composables/useDragAndDrop.ts`: `useDraggable(getPayload: () => T)` (a function,
+  not a `Ref<T>`, so a `v-for` item can supply an always-current id) returns bindable pointer handlers
+  plus `isDragging`/`isPicked` computed refs and a `togglePick()` for the accessibility fallback;
+  `useDropZone(accepts, onDrop)` returns `isActiveTarget`, `onPointerUp` (live-drag drop), and `onClick`
+  (pick-fallback placement) — one `accepts` predicate gates both trigger paths. A module-level
+  `session` ref is the single shared "what's being dragged or picked right now," read via the also-
+  exported `useDragSession()` for ghost-preview rendering.
+- [x] `GarageScreen.vue`: bay slots and parking rows are drop zones; car cards are draggable
+  (payload = carId). Drop handler decides move-vs-swap exactly as the old logic did (empty slot →
+  `moveCar`; occupied → `swapCars`). `swapPicks` reactive state and the `<select>`/swap-button markup
+  are removed entirely, replaced by drag-and-drop and the click fallback. **Scope clarification:** the
+  plain single-purpose "→ parking"/"→ service bay" move buttons were *not* removed — only the swap
+  dropdown was ("the existing swap dropdown/button UI is removed entirely" in the DoD refers to that
+  select+button combo specifically). The plain buttons stay as the simple, always-available,
+  zero-gesture path for the common non-swap case, and give the accessibility fallback something to
+  build on rather than inventing a separate pick-up affordance from scratch.
+- [x] Visual states styled with existing design tokens — `--mg-neon-cyan` border for an active drop
+  target, opacity dim for a dragging card, a dashed `--mg-neon-violet` outline for a picked one — no
+  new color palette.
+- [x] Click fallback: a "move…" button toggles pick, a "Place here" button (shown only on zones that
+  would currently accept the picked payload) completes it — reuses the exact same `accepts`/`onDrop`
+  the live-drag path uses, per decision 2.
+- [x] New `components/ShopSlot.vue` — not explicitly called for in the original task breakdown, added
+  because `useDraggable`/`useDropZone` must each run in a persistent per-item scope (stable local
+  closure state for pointer tracking) — calling them fresh on every parent re-render inside a `v-for`
+  would reset an in-progress drag's threshold-tracking state on any unrelated reactive change. A small
+  presentational child component (car-or-empty, drag handlers, its own drop zone; move-vs-swap decided
+  by the parent via an `accepts`/`drop` prop pair) is the standard, correct Vue answer — and doubles as
+  the reusable "one slot" unit Sprint 18 can crib from for its own drop targets.
 
 ### D. Testing
 
-- [ ] Game: the composable tested directly — drag start/move/end lifecycle, threshold behavior
-  (decision 3), a drop that hits a valid zone vs. one that doesn't, without needing a real DOM
-  screen around it.
-- [ ] Game: `GarageScreen.test.ts` extended (or rewritten where it currently exercises the swap
-  dropdown) — drag-and-drop move/swap behavior via simulated pointer events, confirming the same
-  underlying `moveCar`/`swapCars` calls fire as the old UI made, and that the removed dropdown/button
-  markup is actually gone.
+- [x] Game: the composable tested directly (14 tests) — drag start/move/end lifecycle, threshold
+  behavior (decision 3), a drop that hits a valid zone vs. one that doesn't (rejecting is not the same
+  as cancelling — the session stays live until something actually resolves it), the window-level
+  cancel-on-release-over-nothing fallback, and the full click-fallback pick/place/cancel cycle.
+- [x] Game: `GarageScreen.test.ts` extended — drag-and-drop move/swap behavior via real simulated
+  pointer events (not just calling store methods directly), confirming the same underlying
+  `moveCar`/`swapCars` calls fire as the old UI made, that a refused drop changes nothing, and that the
+  removed `<select>`/swap-button markup is actually gone.
 
 ## Claude-implementable vs user-only
 
@@ -117,4 +135,114 @@ sprints.
 
 ## Exit
 
-*To be filled in once implemented.*
+Implemented as designed, with two deliberate deviations found and made during implementation, both
+documented inline above rather than silently: (1) no `setPointerCapture` — capturing would prevent a
+drop zone's own `pointerup` from ever firing, forcing `elementFromPoint`-based hit-testing that isn't
+reliably testable in this project's happy-dom environment; native, uncaptured event targeting does the
+same job more simply and is directly testable; (2) the plain "→ parking"/"→ service bay" move buttons
+were kept, not removed — only the swap `<select>` was actually called out for removal, and the plain
+buttons double as a zero-gesture accessible path plus the anchor the click-fallback's "move…" button
+sits next to.
+
+A new `components/ShopSlot.vue` wasn't anticipated in the original task breakdown but was necessary
+once implementation started: `useDraggable`/`useDropZone` need per-item persistent local state, which
+a `v-for` inside `GarageScreen.vue`'s own `<script setup>` can't safely provide (recreating the
+composables on every reactive re-render would reset an in-progress drag's threshold-tracking). This is
+exactly the kind of "genuinely reusable primitive" the design called for — Sprint 18 can reuse the same
+component shape for its own drop targets, not just the composable underneath it.
+
+Both decisions (Pointer Events over native HTML5 DnD; include the click-based accessibility fallback)
+were confirmed by the maintainer before implementation began, matching the recommended option in both
+cases.
+
+All checks green: `pnpm typecheck` / `lint` / `format` / `test:coverage` (436 tests, up from 416) /
+`build`. No new dependencies, no data-layer access (this sprint never touches `packages/sim` or
+`packages/content` at all — purely game-layer, as scoped).
+
+**Not yet done — real, not automated-testable feel:** playing it with an actual mouse/trackpad, and
+ideally a touch device, to confirm the drag gesture and the click-fallback both feel right. `pnpm dev`
+is the maintainer's to run per this project's standing rule (dev server is long-running, never started
+by Claude) — flagging this explicitly rather than claiming a UI feature is "done" on automated tests
+alone.
+
+## Round 2 — post-playtest fixes (real hand on a real trackpad, same session)
+
+The maintainer did run `pnpm dev` and drag real cards, per the "not yet done" note above — and found
+three real bugs no automated test had caught, since none of round 1's tests exercised these specific
+gestures on purpose. All three traced back to one root cause: **a car's position within a section was
+never actually stored anywhere.** `serviceBayCarIds` was a compact list of only-occupied ids (position
+= array order, not a real bay identity), and "parking" wasn't a stored array at all — a car counted as
+parked purely by not appearing in that list. Patching each symptom individually would have meant three
+separate special-cases; fixing the shared root cause fixed all three at once.
+
+**Reuse analysis (directive 15) for this round's fix:**
+
+| Concern | Existing mechanism | How this round uses it |
+| --- | --- | --- |
+| Move/swap resolution, capacity checks | `moveCar`/`swapCars` (`facilities.ts`) | Kept as the public store surface for the plain non-drag "→ parking"/"→ service bay" buttons and every bot (both "don't care which slot," just "move it somewhere free") — reimplemented underneath as thin wrappers over the new positional core rather than replaced. |
+| Drag-and-drop composable, `ShopSlot.vue` | `useDraggable`/`useDropZone` (round 1) | Untouched — the bug was in what a drop *resolved to* (a kind, not a slot), not in the gesture-detection mechanism itself. |
+| Ghost preview session | `useDragSession`/`session` ref (round 1) | Untouched by the position model change, but its own **separate** real bug (below) is fixed in the same file. |
+
+**Genuinely new this round:** the positional slot model. `serviceBayCarIds` changed shape from a
+compact occupied-only list to a real, index-addressable `(string | null)[]` — one entry per physical
+bay, `null` for empty — and gained a sibling `parkingCarIds` field with the same shape and invariant.
+A new `moveCarToSlot(state, carId, to, slotIndex)` (`sim/facilities.ts`) is the real positional core
+behind drag-and-drop: dropping onto an empty slot moves a car there exactly; dropping onto a slot
+occupied by a *different* car exchanges their positions, same section or across. `assignToParking`
+places a car entering the shop (auction win, buyout, service-job acceptance, dev grant) into the first
+empty parking slot. `releaseCarFromServiceBay` is renamed `releaseCarFromShop` and now clears whichever
+slot a car actually occupies (service or parking), not just a service-bay membership check.
+
+**Bug 1 (found in manual testing): the ghost preview froze mid-drag.** The dragged card's on-screen
+label only updated via `pointermove` bound to the origin card element — since pointer capture is
+deliberately not used (round 1 decision 1), the browser stops delivering `pointermove` to that element
+the instant the cursor leaves its bounding box, so the ghost froze wherever it last was while still over
+the source card. Fixed in `useDragAndDrop.ts`: a `window`-level `pointermove` listener (added only once
+a drag actually starts) is now the sole position source for the rest of the gesture; the origin
+element's own `onPointerMove` only ever needs to detect the initial threshold crossing.
+
+**Bug 2 (found in manual testing): same-section drops were refused outright.** Dragging a car from one
+service bay onto another occupied service bay (or one parking row onto another) did nothing and the
+drop target never highlighted — visually indistinguishable from a broken gesture, even though the
+"right" outcome is just "nothing meaningfully changes." Root cause: under the old exclusion-based
+model, position within a section carried no identity a same-section drop could meaningfully change, so
+it had to be special-cased away as a rejection. With real slot positions, a same-section drop is now a
+genuine reposition/swap (`moveCarToSlot` handles it identically to a cross-section drop) — accepted and
+completed cleanly, not silently refused.
+
+**Bug 3 (found in manual testing): parking had nothing to drop onto once it wasn't the padded-to-
+capacity view round 1 already gave service bays.** Before this round, `parkingView` was still derived
+by exclusion (every shop car not in `serviceBayCarIds`), so `GarageScreen.vue` needed its own
+screen-local `parkingSlots` computed to pad it out to capacity for empty-slot rendering. Now that
+`parkingCarIds` is itself real, capacity-sized state, `gameStore.ts`'s `parkingView` returns the padded
+shape directly and that screen-local computed is gone — one source of truth, not two.
+
+**A good catch made before it became a real problem:** many existing sim test fixtures set
+`serviceBayCarIds: []` alongside a nonzero `serviceBayCount` (an undersized array, since they never
+needed exact positions under the old model). Rather than hand-editing every fixture to be perfectly
+padded to its own bay count, `facilities.ts` gained `slotAt`/`withSlot` helpers that treat any index at
+or beyond a bay array's actual length as an implicit empty slot — robust to a shorter-than-expected
+array everywhere, not just tolerant of it in the handful of places that happened to need it.
+
+**Save law: `SAVE_VERSION` 8 -> 9 — the first genuinely non-additive migration this project has
+needed.** Every prior version bump was a brand-new field with a safe schema default; this one changes
+an *existing* field's shape and meaning. A plain default-fill (`parkingCarIds` defaulting to `[]`)
+would silently strand every already-parked car from a pre-v9 save — still present in `ownedCars`/
+`activeServiceJobs`, but invisible to the new parking view. `MIGRATIONS[8]` (`saveCodec.ts`)
+reconstructs both arrays instead: the old compact `serviceBayCarIds` packs into the first N service
+slots (padded with `null` beyond that), and every shop car NOT in that old list — the same exclusion
+rule the pre-Sprint-17 `parkingView` itself used — packs into `parkingCarIds`, padded to
+`parkingBayCount`. Golden-save test coverage added: one test decodes a hand-built pre-v9 save with both
+a service-bay car and cars parked only by exclusion (one owned, one an active service job's), asserting
+the reconstructed arrays land correctly; another round-trips a v9 state through real empty slots to
+confirm `null` positions survive encode/decode faithfully now that they carry real meaning.
+
+Both `advanceDay.test.ts` golden-master hashes re-pinned again — the shape change (and the new sibling
+field) alters `hashState`'s output even though no career script's actions or outcomes changed.
+
+All checks green again: `pnpm typecheck` / `lint` / `format` / `test:coverage` (460 tests, up from 436)
+/ `build`.
+
+**Verified 2026-07-10, same session:** the maintainer played it after the round-2 fixes landed — "working
+well... working much better," with more polish acknowledged as still wanted (tracked as ongoing feel
+work, not a specific open bug). Signed off; committed.

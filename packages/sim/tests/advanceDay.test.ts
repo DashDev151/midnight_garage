@@ -78,6 +78,10 @@ function initialState(): GameState {
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
+    // car-0001 starts parked (Sprint 17: parking is a real, explicit slot
+    // now, not "any owned car not in a service bay") — day 1's scripted
+    // move-to-service action needs a real source slot to move it out of.
+    parkingCarIds: ['car-0001', null, null],
     laborSlotsSpentToday: 0,
     // Pre-granted, not purchased through the script — the scripted day-1
     // body repair (below) needs it, and this fixture predates equipment
@@ -150,14 +154,14 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 16: `refreshCatalogs` now gates regional/premium
-    // auction tiers by reputation (not just collector-network), so a
-    // still-'unknown' career generates fewer tiers per weekly refresh —
-    // changing RNG consumption, and therefore every later draw's hash, even
-    // though this script's own GameState shape and actions are unchanged.
+    // Re-pinned Sprint 17: `serviceBayCarIds` changed shape (a real indexed
+    // array, one entry per bay, instead of a compact occupied-only list) and
+    // GameState gained the new sibling `parkingCarIds` field — both feed
+    // hashState, so the hash changes even though this script's own actions
+    // and their outcomes are unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('54d1ff17')
+    expect(hashState(finalState)).toBe('240146c2')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -238,12 +242,11 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 16: same reason as the primary golden master above —
-    // the reputation-gated auction tiers change RNG consumption from day 1
-    // (this career starts 'unknown', same as the primary script), cascading
-    // into a different lot, bid, and sale outcome even though the actions
-    // taken are identical.
-    expect(hashState(acquisitionCareer().sold)).toBe('feac3f7e')
+    // Re-pinned Sprint 17: same reason as the primary golden master above —
+    // the indexed serviceBayCarIds shape plus the new parkingCarIds field
+    // both feed hashState, even though the actions taken and their outcomes
+    // are unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('b8313c8a')
   })
 })
 

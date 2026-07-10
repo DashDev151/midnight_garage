@@ -41,9 +41,21 @@ export const GameStateSchema = z.object({
    */
   serviceBayCount: z.number().int().positive().default(1),
   parkingBayCount: z.number().int().positive().default(3),
-  /** Ids of cars (owned or an active service job's car) currently occupying a
-   * service bay — capped at serviceBayCount. Everything else is in parking. */
-  serviceBayCarIds: z.array(z.string().min(1)).default([]),
+  /**
+   * Real, index-addressable service-bay slots (Sprint 17 positional fix):
+   * `serviceBayCarIds[i]` is the car physically sitting in bay `i`, or
+   * `null` if that bay is empty. Array length tracks `serviceBayCount`
+   * exactly under normal play (`applyBayPurchase` appends a `null` slot
+   * when a new bay is bought) — a car's specific bay is real, persisted
+   * state now, not incidental array order recomputed by exclusion.
+   */
+  serviceBayCarIds: z.array(z.string().min(1).nullable()).default([]),
+  /** The parking counterpart to `serviceBayCarIds` above — same shape, same
+   * invariant (length tracks `parkingBayCount`). Before Sprint 17, "parking"
+   * was never its own stored array — a car counted as parked purely by not
+   * appearing in `serviceBayCarIds`, so a specific parking slot had no
+   * identity a drag-and-drop could target or a player could rely on. */
+  parkingCarIds: z.array(z.string().min(1).nullable()).default([]),
   /**
    * Labor slots already spent today (Sprint 11). Instant actions (repair,
    * install, inspect) decrement against `availableLaborSlots(state) -

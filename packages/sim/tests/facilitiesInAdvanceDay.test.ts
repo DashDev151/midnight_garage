@@ -68,7 +68,10 @@ describe('labor is gated by service-bay membership', () => {
       CONTEXT,
     ).state
     const car = won.ownedCars[0]!
-    expect(won.serviceBayCarIds).toEqual([]) // delivered straight to parking, not a bay
+    // Delivered straight to parking, not a service bay (Sprint 17: real
+    // indexed slots now, not a compact "who's occupied" list).
+    expect(won.serviceBayCarIds.every((id) => id !== car.id)).toBe(true)
+    expect(won.parkingCarIds).toContain(car.id)
 
     const actions = {
       ...noActions,

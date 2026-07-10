@@ -24,11 +24,14 @@ describe('createInitialGameState', () => {
     expect(state.ownedCars).toEqual([])
   })
 
-  it('seeds bay counts from the content facilities config', () => {
+  it('seeds bay counts from the content facilities config, with one real empty slot per bay', () => {
     const state = createInitialGameState(CONTEXT, 1)
     expect(state.serviceBayCount).toBe(FACILITIES.service.startCount)
     expect(state.parkingBayCount).toBe(FACILITIES.parking.startCount)
-    expect(state.serviceBayCarIds).toEqual([])
+    // Sprint 17: bay arrays are real, index-addressable state now — a fresh
+    // game starts with one null (empty) slot per bay, not an empty array.
+    expect(state.serviceBayCarIds).toEqual(new Array(FACILITIES.service.startCount).fill(null))
+    expect(state.parkingCarIds).toEqual(new Array(FACILITIES.parking.startCount).fill(null))
   })
 
   it('seeds market heat at base 100 for every model in the context', () => {

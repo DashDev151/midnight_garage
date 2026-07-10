@@ -1,4 +1,5 @@
-import { GameStateSchema } from '@midnight-garage/content'
+import { FACILITIES, GameStateSchema, ReputationTierSchema } from '@midnight-garage/content'
+import { REPUTATION_TIER_THRESHOLDS } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -74,6 +75,32 @@ describe('useGameStore', () => {
     const before = game.cashYen
     game.devGiveCash(250_000)
     expect(game.cashYen).toBe(before + 250_000)
+  })
+
+  it('devGrantBay adds a bay for free, bypassing cash and reputation', () => {
+    const game = useGameStore()
+    game.newGame(1) // reputationTier starts 'unknown'; devGiveCash never called
+    const before = game.serviceBayCount
+    game.devGrantBay('service')
+    expect(game.serviceBayCount).toBe(before + 1)
+    expect(game.cashYen).toBe(1_500_000) // unaffected
+  })
+
+  it('devGrantBay is a no-op once a kind is already at its max count', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    for (let i = 0; i < 20; i++) game.devGrantBay('service') // well past FACILITIES.service.maxCount
+    expect(game.serviceBayCount).toBe(FACILITIES.service.maxCount)
+  })
+
+  it('devSetReputationTier jumps straight to a tier, deriving from its exact point threshold', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    for (const tier of ReputationTierSchema.options) {
+      game.devSetReputationTier(tier)
+      expect(game.reputationTier).toBe(tier)
+      expect(game.reputationPoints).toBe(REPUTATION_TIER_THRESHOLDS[tier])
+    }
   })
 
   it('resolveModelName returns a display name for a known model', () => {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import ShopSlot from '../components/ShopSlot.vue'
+import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
 import { describeLogEntry } from '../utils/dayLogFormat'
 import { formatYen } from '../utils/formatYen'
@@ -20,23 +22,57 @@ const recentLog = computed(() =>
 const occupiedServiceCars = computed(() =>
   game.serviceBaysView.filter((s): s is ShopCarView => s !== null),
 )
+const occupiedParkingCars = computed(() =>
+  game.parkingView.filter((s): s is ShopCarView => s !== null),
+)
+const parkingCarIds = computed(() => new Set(occupiedParkingCars.value.map((c) => c.carId)))
+const serviceCarIds = computed(() => new Set(occupiedServiceCars.value.map((c) => c.carId)))
 
-// Sprint 11, round-2 playtest #3: a direct move needs a free slot at the
-// destination — when the shop is exactly full (zero slack anywhere), that's
-// never true in either direction. The swap picker below is the only way out.
-const swapPicks = reactive<Record<string, string>>({})
-
-function swapServiceCarWithPick(serviceCarId: string): void {
-  const parkingCarId = swapPicks[serviceCarId]
-  if (!parkingCarId) return
-  if (game.swapCars(serviceCarId, parkingCarId)) swapPicks[serviceCarId] = ''
+/**
+ * Every shop slot accepts any car currently in the shop — a car is always
+ * exactly one of "in parking" or "in service", so this is really "any real
+ * car", not a filter. Dropping a car back into its own section (occupied or
+ * empty) is a real, accepted gesture, not a rejection — `moveCarToSlot`
+ * (Sprint 17 positional fix) resolves same-section drops as a real
+ * reposition/swap rather than a no-op, so the target highlighting and the
+ * completed gesture both reflect something that actually happened.
+ * Rejecting it outright (the original design) made every same-section drag
+ * look broken: the drop target never highlighted and the gesture visibly
+ * "failed" instead of completing cleanly (found via real dragging, not
+ * something a unit test would have caught — same-section drags were never
+ * exercised on purpose).
+ */
+function acceptsIntoService(carId: string): boolean {
+  return parkingCarIds.value.has(carId) || serviceCarIds.value.has(carId)
+}
+function acceptsIntoParking(carId: string): boolean {
+  return serviceCarIds.value.has(carId) || parkingCarIds.value.has(carId)
 }
 
-function swapParkingCarWithPick(parkingCarId: string): void {
-  const serviceCarId = swapPicks[parkingCarId]
-  if (!serviceCarId) return
-  if (game.swapCars(serviceCarId, parkingCarId)) swapPicks[parkingCarId] = ''
+/** Drop a car onto service-bay slot `index` — moves it there if empty, swaps positions with
+ * whoever's there if occupied, same section or across (Sprint 17 positional fix: `moveCarToSlot`
+ * targets the exact slot dropped on, so there's one call for every case, including same-section
+ * reposition/swap, which used to need its own no-op guard here). */
+function onDropOnBaySlot(index: number, carId: string): void {
+  game.moveCarToSlot(carId, 'service', index)
 }
+function onDropOnParkingSlot(index: number, carId: string): void {
+  game.moveCarToSlot(carId, 'parking', index)
+}
+
+// Sprint 17: the ghost preview that follows the pointer during a live drag —
+// generic session data (payload is just a car id) resolved back to a
+// display name using the same data the slots already render from.
+const dragSession = useDragSession()
+const allShopCars = computed<ShopCarView[]>(() => [
+  ...occupiedServiceCars.value,
+  ...occupiedParkingCars.value,
+])
+const draggedCarName = computed(() => {
+  const payload = dragSession.value?.payload
+  if (typeof payload !== 'string' || !payload) return null
+  return allShopCars.value.find((c) => c.carId === payload)?.displayName ?? null
+})
 </script>
 
 <template>
@@ -68,9 +104,9 @@ function swapParkingCarWithPick(parkingCarId: string): void {
       <RouterLink :to="{ name: 'upgrades' }" class="upgrades-link">Upgrades &gt;</RouterLink>
     </div>
 
-    <p v-if="game.shopAtCapacity" class="capacity-warning">
-      Shop is completely full — services and parking are both at capacity, so a direct move has
-      nowhere to go. Use "swap with…" below to rearrange.
+    <p class="how drag-hint">
+      Drag a car onto another slot to move or swap it — or tap "move…" then "Place here" if dragging
+      isn't an option.
     </p>
 
     <section class="bays">
@@ -79,75 +115,36 @@ function swapParkingCarWithPick(parkingCarId: string): void {
         Labor only reaches a car sitting in a service bay. Moves are free and instant.
       </p>
       <ul class="bay-slots">
-        <li v-for="(slot, i) in game.serviceBaysView" :key="i" class="bay-slot">
-          <template v-if="slot">
-            <RouterLink :to="{ name: 'car', params: { id: slot.carId } }" class="slot-car">
-              {{ slot.displayName }}
-              <span v-if="slot.isCustomerCar" class="badge">customer job</span>
-            </RouterLink>
-            <button
-              :disabled="game.parkingFull"
-              :data-test="'move-parking-' + slot.carId"
-              @click="game.moveCar(slot.carId, 'parking')"
-            >
-              &rarr; parking
-            </button>
-            <div v-if="game.parkingFull && game.parkingView.length > 0" class="swap-row">
-              <select v-model="swapPicks[slot.carId]" :data-test="'swap-pick-' + slot.carId">
-                <option value="">swap with…</option>
-                <option v-for="p in game.parkingView" :key="p.carId" :value="p.carId">
-                  {{ p.displayName }}
-                </option>
-              </select>
-              <button
-                :disabled="!swapPicks[slot.carId]"
-                :data-test="'swap-' + slot.carId"
-                @click="swapServiceCarWithPick(slot.carId)"
-              >
-                swap
-              </button>
-            </div>
-          </template>
-          <span v-else class="slot-empty">empty bay</span>
-        </li>
+        <ShopSlot
+          v-for="(slot, i) in game.serviceBaysView"
+          :key="slot?.carId ?? 'empty-' + i"
+          :car="slot"
+          :accepts="acceptsIntoService"
+          move-label="&rarr; parking"
+          :move-disabled="game.parkingFull"
+          test-id-prefix="move-parking-"
+          :empty-slot-id="'empty-' + i"
+          @move="game.moveCar($event, 'parking')"
+          @drop="onDropOnBaySlot(i, $event)"
+        />
       </ul>
     </section>
 
     <section class="parking">
       <h3>Parking ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }})</h3>
-      <p v-if="game.parkingView.length === 0" class="empty">Nothing parked.</p>
-      <ul v-else class="parking-list">
-        <li v-for="car in game.parkingView" :key="car.carId" class="parking-row">
-          <RouterLink :to="{ name: 'car', params: { id: car.carId } }" class="slot-car">
-            {{ car.displayName }}
-            <span v-if="car.isCustomerCar" class="badge">customer job</span>
-          </RouterLink>
-          <button
-            :disabled="game.serviceBayFreeCount <= 0"
-            :data-test="'move-service-' + car.carId"
-            @click="game.moveCar(car.carId, 'service')"
-          >
-            &rarr; service bay
-          </button>
-          <div
-            v-if="game.serviceBayFreeCount <= 0 && occupiedServiceCars.length > 0"
-            class="swap-row"
-          >
-            <select v-model="swapPicks[car.carId]" :data-test="'swap-pick-' + car.carId">
-              <option value="">swap with…</option>
-              <option v-for="s in occupiedServiceCars" :key="s.carId" :value="s.carId">
-                {{ s.displayName }}
-              </option>
-            </select>
-            <button
-              :disabled="!swapPicks[car.carId]"
-              :data-test="'swap-' + car.carId"
-              @click="swapParkingCarWithPick(car.carId)"
-            >
-              swap
-            </button>
-          </div>
-        </li>
+      <ul class="parking-list">
+        <ShopSlot
+          v-for="(slot, i) in game.parkingView"
+          :key="slot?.carId ?? 'empty-parking-' + i"
+          :car="slot"
+          :accepts="acceptsIntoParking"
+          move-label="&rarr; service bay"
+          :move-disabled="game.serviceBayFreeCount <= 0"
+          test-id-prefix="move-service-"
+          :empty-slot-id="'empty-parking-' + i"
+          @move="game.moveCar($event, 'service')"
+          @drop="onDropOnParkingSlot(i, $event)"
+        />
       </ul>
     </section>
 
@@ -170,6 +167,14 @@ function swapParkingCarWithPick(parkingCarId: string): void {
         <li v-for="line in recentLog" :key="line.id">{{ line.text }}</li>
       </ul>
     </section>
+
+    <div
+      v-if="dragSession?.mode === 'drag' && draggedCarName"
+      class="drag-ghost"
+      :style="{ left: dragSession.x + 'px', top: dragSession.y + 'px' }"
+    >
+      {{ draggedCarName }}
+    </div>
   </section>
 </template>
 
@@ -215,6 +220,7 @@ h3 {
 
 .controls {
   display: flex;
+  align-items: center;
   gap: var(--mg-space-3);
   margin-bottom: var(--mg-space-4);
 }
@@ -249,6 +255,10 @@ button:disabled {
   margin: 0 0 var(--mg-space-3);
 }
 
+.drag-hint {
+  margin-top: calc(-1 * var(--mg-space-2));
+}
+
 .bay-slots,
 .parking-list {
   list-style: none;
@@ -257,74 +267,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--mg-space-3);
-}
-
-.bay-slot,
-.parking-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-2);
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-3);
-}
-
-.slot-empty {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.slot-car {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-1);
-  color: var(--mg-neon-cyan);
-  text-decoration: none;
-  font-size: var(--mg-fs-sm);
-}
-
-.badge {
-  color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.bay-slot button,
-.parking-row button {
-  align-self: flex-start;
-  padding: 2px 10px;
-  font-size: var(--mg-fs-sm);
-}
-
-.capacity-warning {
-  color: var(--mg-danger);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-3);
-}
-
-.swap-row {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-}
-
-.swap-row select {
-  flex: 1;
-  min-width: 0;
-  background: var(--mg-night-deep);
-  color: var(--mg-text);
-  border: var(--mg-border);
-  border-radius: 4px;
-  padding: 2px 4px;
-  font-family: inherit;
-  font-size: var(--mg-fs-sm);
-}
-
-.swap-row button {
-  padding: 2px 10px;
-  font-size: var(--mg-fs-sm);
 }
 
 .upgrades-link {
@@ -364,5 +306,23 @@ button:disabled {
 
 .log li:last-child {
   border-bottom: none;
+}
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  /* Offset up-and-right of the actual pointer position so the card itself
+     never sits directly under the cursor, hiding what's beneath it. */
+  transform: translate(12px, -50%) rotate(-2deg);
+  z-index: 1000;
+  background: var(--mg-neon-cyan);
+  color: var(--mg-night-deep);
+  border: 2px solid var(--mg-night-deep);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  font-size: var(--mg-fs-md);
+  font-weight: bold;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 </style>

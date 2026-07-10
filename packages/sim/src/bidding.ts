@@ -18,7 +18,7 @@ import {
   AUCTION_RESERVE_PRICE_FRACTION,
 } from './constants'
 import type { SimContext } from './context'
-import { hasParkingSpace } from './facilities'
+import { assignToParking, hasParkingSpace } from './facilities'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 import { auctionBidValueFor } from './valuation'
 
@@ -262,13 +262,17 @@ export function resolveBidInstant(
     context.hiddenIssuesById,
     handoverRng(lotId),
   )
-  return {
-    state: {
+  const withCar = assignToParking(
+    {
       ...state,
       cashYen: state.cashYen - result.finalPriceYen,
       ownedCars: [...state.ownedCars, finalCar],
       activeAuctionLots: remainingLots,
     },
+    finalCar.id,
+  )
+  return {
+    state: withCar,
     log: [{ type: 'auction-bid-won', lotId, finalPriceYen: result.finalPriceYen }],
   }
 }
@@ -297,13 +301,17 @@ export function resolveBuyoutInstant(
   }
 
   const car = resolveHandoverCondition(lot, priceYen, context.hiddenIssuesById, handoverRng(lotId))
-  return {
-    state: {
+  const withCar = assignToParking(
+    {
       ...state,
       cashYen: state.cashYen - priceYen,
       ownedCars: [...state.ownedCars, car],
       activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
     },
+    car.id,
+  )
+  return {
+    state: withCar,
     log: [{ type: 'lot-bought-out', lotId, priceYen }],
   }
 }

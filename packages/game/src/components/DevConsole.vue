@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ReputationTierSchema, type BayKind, type ReputationTier } from '@midnight-garage/content'
 import { ref } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
@@ -11,6 +12,10 @@ const giveAmount = ref(100_000)
 const warpDays = ref(7)
 const grantModelId = ref('')
 const grantPartId = ref('')
+const grantEquipmentId = ref('')
+const grantBayKind = ref<BayKind>('service')
+const setReputationTier = ref<ReputationTier>('unknown')
+const reputationTiers = ReputationTierSchema.options
 
 function warp(): void {
   for (let i = 0; i < warpDays.value; i++) {
@@ -59,6 +64,33 @@ function warp(): void {
         </option>
       </select>
       <button :disabled="!grantPartId" @click="game.devGrantPart(grantPartId)">grant part</button>
+    </div>
+
+    <div class="row">
+      <select v-model="grantEquipmentId">
+        <option value="">pick equipment</option>
+        <option v-for="e in game.equipmentCatalog" :key="e.id" :value="e.id" :disabled="e.owned">
+          {{ e.displayName }}{{ e.owned ? ' (owned)' : '' }}
+        </option>
+      </select>
+      <button :disabled="!grantEquipmentId" @click="game.devGrantEquipment(grantEquipmentId)">
+        grant equipment
+      </button>
+    </div>
+
+    <div class="row">
+      <select v-model="grantBayKind">
+        <option value="service">service bay</option>
+        <option value="parking">parking bay</option>
+      </select>
+      <button @click="game.devGrantBay(grantBayKind)">grant bay</button>
+    </div>
+
+    <div class="row">
+      <select v-model="setReputationTier">
+        <option v-for="t in reputationTiers" :key="t" :value="t">{{ t }}</option>
+      </select>
+      <button @click="game.devSetReputationTier(setReputationTier)">set reputation</button>
     </div>
   </aside>
 </template>
