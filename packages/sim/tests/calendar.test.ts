@@ -92,6 +92,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       ownedEquipmentIds: [],
       pendingPartOrders: [],
       cartPartIds: [],
+      stagedCarWork: {},
     }
   }
 

@@ -14,6 +14,7 @@ import { PUBLIC_LISTING_WAIT_DAYS, WALK_IN_OFFER_RANGE } from './constants'
 import type { SimContext } from './context'
 import { releaseCarFromShop } from './facilities'
 import { createRng, hashStringToSeed, type Rng } from './rng'
+import { clearStagedWork } from './stagedWork'
 import { valuateCarForBuyer } from './valuation'
 
 export interface SaleOffer {
@@ -151,7 +152,10 @@ export function resolveSellViaWalkIn(
   const rng = createRng(hashStringToSeed(`${carInstanceId}:walkin:${state.day}`))
   const offer = sellViaWalkIn(car, model, context.buyers, context.partsById, rng)
   const reputationDelta = saleReputationDeltaFor(car)
-  const released = applyReputationDelta(releaseCarFromShop(state, carInstanceId), reputationDelta)
+  const released = applyReputationDelta(
+    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    reputationDelta,
+  )
   return {
     state: {
       ...released,
@@ -208,7 +212,7 @@ export function resolveListForSale(
     // above and sprint15.md decision 4).
     reputationDeltaOnSale: saleReputationDeltaFor(car),
   }
-  const released = releaseCarFromShop(state, carInstanceId)
+  const released = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   return {
     state: {
       ...released,

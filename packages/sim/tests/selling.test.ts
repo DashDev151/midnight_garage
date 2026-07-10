@@ -144,6 +144,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     ownedEquipmentIds: [],
     pendingPartOrders: [],
     cartPartIds: [],
+    stagedCarWork: {},
     ...overrides,
   }
 }
@@ -164,6 +165,14 @@ describe('resolveSellViaWalkIn (Sprint 11 instant resolver)', () => {
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
+
+  it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
+    const state = stateWithCar(car, {
+      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine' }] },
+    })
+    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
+  })
 })
 
 describe('resolveListForSale (Sprint 11 instant resolver)', () => {
@@ -182,6 +191,14 @@ describe('resolveListForSale (Sprint 11 instant resolver)', () => {
     const state = stateWithCar(car)
     const result = resolveListForSale(state, car.id, CONTEXT, 3)
     expect(result.state.activeListings[0]?.resolvesOnDay).toBe(state.day + 3)
+  })
+
+  it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
+    const state = stateWithCar(car, {
+      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine' }] },
+    })
+    const result = resolveListForSale(state, car.id, CONTEXT)
+    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
   })
 
   it('is a no-op for a car not owned', () => {

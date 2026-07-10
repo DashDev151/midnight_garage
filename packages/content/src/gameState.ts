@@ -8,6 +8,7 @@ import { AuctionLotSchema, AuctionTierSchema } from './auction'
 import { PublicListingSchema, SaleChannelSchema } from './sale'
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema } from './facilities'
+import { StagedActionSchema } from './stagedWork'
 
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
@@ -84,6 +85,15 @@ export const GameStateSchema = z.object({
    * one — inert to the sim, read/written only by the game layer.
    */
   cartPartIds: z.array(z.string().min(1)).default([]),
+  /**
+   * Staged (not-yet-confirmed) repair/install work per car (Sprint 18),
+   * keyed by `carInstanceId`. Freely add/remove at zero cost — nothing here
+   * touches cash, labor, or a real `Job` until `confirmStagedWork` resolves
+   * it, mirroring the parts-market cart's own stage-then-confirm shape
+   * (Sprint 14). Every car-exit path (walk-in sale, listing, service-job
+   * resolution) drops its entry so staged work never outlives the car.
+   */
+  stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({}),
 })
 
 /**

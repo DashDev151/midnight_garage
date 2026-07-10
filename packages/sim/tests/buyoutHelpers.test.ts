@@ -50,6 +50,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     ownedEquipmentIds: [],
     pendingPartOrders: [],
     cartPartIds: [],
+    stagedCarWork: {},
     ...overrides,
   }
 }

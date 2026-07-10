@@ -72,8 +72,14 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   if a save's real occupancy somehow exceeds it, so a migration never
  *   silently drops a real car rather than erring on the side of keeping it
  *   visible).
+ * - v10 (Sprint 18): added `stagedCarWork` — per-car repair/install work the
+ *   player has staged but not yet confirmed (the parts-inventory + stage-
+ *   then-confirm workflow). Purely additive with a schema default of `{}`,
+ *   so a pre-v10 save decodes with nothing staged on any car — correct,
+ *   since the concept didn't exist yet. No explicit `MIGRATIONS[9]` step
+ *   needed (back to the normal additive case after v9's one-off migration).
  */
-export const SAVE_VERSION = 9
+export const SAVE_VERSION = 10
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

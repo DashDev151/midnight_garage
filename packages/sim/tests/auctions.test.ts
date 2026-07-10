@@ -39,6 +39,7 @@ function stateWithLots(
     ownedEquipmentIds: [],
     pendingPartOrders: [],
     cartPartIds: [],
+    stagedCarWork: {},
   }
 }
 

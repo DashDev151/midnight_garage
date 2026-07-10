@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { ComponentId } from '@midnight-garage/content'
-import { computed, watch } from 'vue'
+import type { ComponentId, StagedAction } from '@midnight-garage/content'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import StatRadar from '../components/StatRadar.vue'
+import { useDragSession, useDropZone, type DropZoneHandle } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -33,15 +35,34 @@ const COMPONENTS: readonly ComponentId[] = [
   'interior',
 ]
 
-/** True while a repair or install job is open against this component (either kind, either busy). */
-function componentBusy(componentId: ComponentId): boolean {
-  const d = detail.value
-  if (!d) return false
-  return d.jobs.some((j) => j.componentId === componentId)
+/** The open job against this component, if any (either kind). */
+function jobFor(componentId: ComponentId) {
+  return detail.value?.jobs.find((j) => j.componentId === componentId)
 }
 
-function installFor(componentId: ComponentId) {
-  return detail.value ? game.installablePartsFor(detail.value.car.id, componentId) : []
+/** True while a repair or install job is open against this component (either kind, either busy). */
+function componentBusy(componentId: ComponentId): boolean {
+  return jobFor(componentId) !== undefined
+}
+
+/**
+ * Continue whichever kind of job is actually open on this component — Sprint
+ * 18 exposes a case the old always-instant install flow never could: an
+ * install job (usually a single-slot job that completes the moment Confirm
+ * reaches it) can now be left open if Confirm ran out of labor before
+ * reaching it in the staged list. Calling `game.repair(...)` unconditionally
+ * here would silently create an unrelated *second* job instead of continuing
+ * this one (job ids are derived from kind, so a repair-zone spec never
+ * matches an existing install-part job) — dormant before this sprint (an
+ * install always finished in the same click it was created), real now that
+ * Confirm can leave one open.
+ */
+function continueJob(componentId: ComponentId): void {
+  const d = detail.value
+  const job = jobFor(componentId)
+  if (!d || !job) return
+  if (job.kind === 'repair-zone') game.repair(d.car.id, componentId)
+  else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId)
 }
 
 /** The equipment item covering this component, if the catalog has one (Sprint 13). */
@@ -67,6 +88,109 @@ function toggleBay(): void {
 
 const walkIn = computed(() => game.walkInEstimate(carId.value))
 const listPrice = computed(() => game.listingEstimate(carId.value))
+
+// --- Sprint 18 (round 2 — real playtest fix): Repair/Replace ------------
+// Every non-busy component shows exactly two controls: Repair (a toggle,
+// unchanged mechanically) and Replace. Replace opens a scoped side drawer
+// (ReplaceDrawer) right here on this screen — not a separate route — so a
+// part is always dragged from somewhere visibly on the same page as its
+// target, or just clicked directly in the drawer to stage it instantly.
+// Continuing an already-open job (componentBusy above) is untouched: that
+// keeps the existing single-click flow, never routed through staging
+// (decision 4).
+
+function stagedFor(componentId: ComponentId): StagedAction | undefined {
+  return detail.value?.stagedActions.find((a) => a.componentId === componentId)
+}
+
+function isStagedRepair(componentId: ComponentId): boolean {
+  return stagedFor(componentId)?.kind === 'repair'
+}
+
+function partInstanceDisplayName(partInstanceId: string): string {
+  const pi = game.gameState.partInventory.find((p) => p.id === partInstanceId)
+  return pi ? game.partName(pi.partId) : partInstanceId
+}
+
+/** Display name of the part staged for install on this component, if any. */
+function stagedInstallName(componentId: ComponentId): string | undefined {
+  const staged = stagedFor(componentId)
+  return staged?.kind === 'install' ? partInstanceDisplayName(staged.partInstanceId) : undefined
+}
+
+function toggleRepairStage(componentId: ComponentId): void {
+  const d = detail.value
+  if (!d) return
+  if (isStagedRepair(componentId)) game.unstageAction(d.car.id, componentId)
+  else game.stageAction(d.car.id, { kind: 'repair', componentId })
+}
+
+/** Which component's Replace drawer is open right now, if any — only one at a time. */
+const activeReplaceComponent = ref<ComponentId | null>(null)
+
+const dragSession = useDragSession()
+
+/**
+ * Whether `partInstanceId` can land on this component right now. Gated on
+ * the drawer actually being open *for this component* — a live drag can only
+ * ever originate from a part card rendered inside that open drawer, so no
+ * other row is ever a real drop target regardless of fit.
+ */
+function acceptsInstall(componentId: ComponentId, partInstanceId: string): boolean {
+  const d = detail.value
+  if (!d) return false
+  if (activeReplaceComponent.value !== componentId) return false
+  if (d.car.components[componentId].installed) return false
+  if (componentBusy(componentId)) return false
+  if (game.isPartStagedAnywhere(partInstanceId)) return false
+  return game.installablePartsFor(d.car.id, componentId).some((p) => p.id === partInstanceId)
+}
+
+/** One drop zone per component, built once (COMPONENTS is fixed) so each keeps its own
+ * persistent pointer-tracking state — the same reasoning Sprint 17's ShopSlot.vue was built for. */
+const dropZones = Object.fromEntries(
+  COMPONENTS.map((componentId) => [
+    componentId,
+    useDropZone<string>(
+      (partInstanceId) => acceptsInstall(componentId, partInstanceId),
+      (partInstanceId) => {
+        const d = detail.value
+        if (d) game.stageAction(d.car.id, { kind: 'install', componentId, partInstanceId })
+        activeReplaceComponent.value = null
+      },
+    ),
+  ]),
+) as Record<ComponentId, DropZoneHandle>
+
+/**
+ * Clicking "Replace": if a part is currently *picked* (the click-based
+ * accessibility fallback — possibly picked from a different component's
+ * drawer, or even before this one was ever opened), complete that placement
+ * immediately, matching the same `accepts`/`onDrop` a live drag uses.
+ * Otherwise, open (or close, on a repeat click of the same row) this
+ * component's drawer.
+ */
+function onReplaceClick(componentId: ComponentId): void {
+  if (dragSession.value?.mode === 'pick') {
+    dropZones[componentId].onClick()
+    return
+  }
+  activeReplaceComponent.value = activeReplaceComponent.value === componentId ? null : componentId
+}
+
+/** Confirm — locks in every staged action on this car at once (Sprint 18). */
+function onConfirm(): void {
+  const d = detail.value
+  if (d) game.confirmCarWork(d.car.id)
+}
+
+// The ghost preview that follows the pointer while dragging a part.
+const draggedPartName = computed(() => {
+  const payload = dragSession.value?.payload
+  if (typeof payload !== 'string' || !payload) return null
+  const pi = game.gameState.partInventory.find((p) => p.id === payload)
+  return pi ? game.partName(pi.partId) : null
+})
 </script>
 
 <template>
@@ -144,6 +268,10 @@ const listPrice = computed(() => game.listingEstimate(carId.value))
 
       <div class="components-col">
         <h3>Components</h3>
+        <p class="how">
+          Repair or Replace each component — Replace opens a drawer to pick a part. Nothing happens
+          until you Confirm.
+        </p>
         <ul class="components">
           <li v-for="componentId in COMPONENTS" :key="componentId" class="component-row">
             <span class="component-name">{{ componentId }}</span>
@@ -153,50 +281,122 @@ const listPrice = computed(() => game.listingEstimate(carId.value))
                 :style="{ width: detail.car.components[componentId].condition + '%' }"
             /></span>
             <span class="component-val">{{ detail.car.components[componentId].condition }}</span>
-            <button
-              :disabled="
-                detail.car.components[componentId].condition >= 100 ||
-                game.laborSlotsRemainingToday <= 0 ||
-                !game.hasEquipmentForComponent(componentId)
-              "
-              :data-test="'repair-' + componentId"
-              @click="game.repair(detail.car.id, componentId)"
-            >
-              {{ componentBusy(componentId) ? 'Continue repair' : 'Repair' }}
-            </button>
-            <span
-              v-if="
-                detail.car.components[componentId].condition < 100 &&
-                !game.hasEquipmentForComponent(componentId)
-              "
-              class="equip-hint"
-            >
-              needs {{ equipmentFor(componentId)?.displayName ?? 'equipment' }}
-            </span>
-            <template v-if="detail.car.components[componentId].installed">
-              <span class="installed">{{
-                game.partName(detail.car.components[componentId].installed?.partId ?? '')
-              }}</span>
-            </template>
-            <template v-else-if="componentBusy(componentId)">
-              <span class="slot-empty">installing…</span>
-            </template>
-            <template v-else>
-              <span v-if="installFor(componentId).length === 0" class="slot-empty">empty</span>
-              <span v-else class="slot-install">
-                <button
-                  v-for="pi in installFor(componentId)"
-                  :key="pi.id"
-                  :disabled="game.laborSlotsRemainingToday <= 0"
-                  :data-test="'install-' + componentId"
-                  @click="game.install(detail.car.id, componentId, pi.id)"
-                >
-                  install {{ game.partName(pi.partId) }}
-                </button>
+
+            <template v-if="componentBusy(componentId)">
+              <button
+                :disabled="
+                  game.laborSlotsRemainingToday <= 0 ||
+                  (jobFor(componentId)?.kind === 'repair-zone' &&
+                    (detail.car.components[componentId].condition >= 100 ||
+                      !game.hasEquipmentForComponent(componentId)))
+                "
+                :data-test="'repair-' + componentId"
+                @click="continueJob(componentId)"
+              >
+                {{
+                  jobFor(componentId)?.kind === 'repair-zone'
+                    ? 'Continue repair'
+                    : 'Continue install'
+                }}
+              </button>
+              <span v-if="detail.car.components[componentId].installed" class="installed">
+                {{ game.partName(detail.car.components[componentId].installed?.partId ?? '') }}
               </span>
+              <span v-else class="slot-empty">installing…</span>
+            </template>
+
+            <template v-else>
+              <button
+                v-if="detail.car.components[componentId].condition < 100"
+                :disabled="!game.hasEquipmentForComponent(componentId)"
+                :data-test="'stage-repair-' + componentId"
+                @click="toggleRepairStage(componentId)"
+              >
+                {{ isStagedRepair(componentId) ? 'Unstage repair' : 'Repair' }}
+              </button>
+              <span
+                v-if="
+                  detail.car.components[componentId].condition < 100 &&
+                  !game.hasEquipmentForComponent(componentId)
+                "
+                class="equip-hint"
+              >
+                needs {{ equipmentFor(componentId)?.displayName ?? 'equipment' }}
+              </span>
+
+              <template v-if="detail.car.components[componentId].installed">
+                <span class="installed">
+                  {{ game.partName(detail.car.components[componentId].installed?.partId ?? '') }}
+                </span>
+              </template>
+              <template v-else>
+                <template v-if="stagedInstallName(componentId)">
+                  <span class="staged-install">staged: {{ stagedInstallName(componentId) }}</span>
+                  <button
+                    type="button"
+                    :data-test="'unstage-' + componentId"
+                    @click="game.unstageAction(detail.car.id, componentId)"
+                  >
+                    unstage
+                  </button>
+                </template>
+                <button
+                  type="button"
+                  class="replace-btn"
+                  :class="{ 'active-target': dropZones[componentId].isActiveTarget.value }"
+                  :data-test="'replace-' + componentId"
+                  @pointerup="dropZones[componentId].onPointerUp"
+                  @click="onReplaceClick(componentId)"
+                >
+                  {{ dropZones[componentId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                </button>
+              </template>
             </template>
           </li>
         </ul>
+
+        <ReplaceDrawer
+          v-if="activeReplaceComponent"
+          :car-id="detail.car.id"
+          :component-id="activeReplaceComponent"
+          @close="activeReplaceComponent = null"
+        />
+
+        <section class="staged-panel">
+          <h4>Staged work ({{ detail.stagedActions.length }})</h4>
+          <p v-if="detail.stagedActions.length === 0" class="empty">
+            Nothing staged yet — free to add and remove until you Confirm.
+          </p>
+          <ul v-else class="staged-list">
+            <li v-for="action in detail.stagedActions" :key="action.componentId" class="staged-row">
+              <span>
+                {{
+                  action.kind === 'repair'
+                    ? 'Repair ' + action.componentId
+                    : 'Install ' +
+                      partInstanceDisplayName(action.partInstanceId) +
+                      ' → ' +
+                      action.componentId
+                }}
+              </span>
+              <button
+                type="button"
+                :data-test="'unstage-summary-' + action.componentId"
+                @click="game.unstageAction(detail.car.id, action.componentId)"
+              >
+                remove
+              </button>
+            </li>
+          </ul>
+          <button
+            class="primary confirm-lever"
+            data-test="confirm-work"
+            :disabled="detail.stagedActions.length === 0"
+            @click="onConfirm"
+          >
+            Confirm ({{ game.laborSlotsRemainingToday }} labor left today)
+          </button>
+        </section>
       </div>
     </div>
 
@@ -235,12 +435,22 @@ const listPrice = computed(() => game.listingEstimate(carId.value))
         </ul>
       </div>
 
-      <p v-else class="empty">No work in progress. Repair a zone or install a part to start.</p>
+      <p v-else class="empty">
+        No work in progress. Stage a repair or install and Confirm to start.
+      </p>
 
       <button class="primary" data-test="end-day" @click="game.endDay()">
         End Day ({{ formatYen(game.cashYen) }})
       </button>
     </section>
+
+    <div
+      v-if="dragSession?.mode === 'drag' && draggedPartName"
+      class="drag-ghost"
+      :style="{ left: dragSession.x + 'px', top: dragSession.y + 'px' }"
+    >
+      {{ draggedPartName }}
+    </div>
   </section>
 </template>
 
@@ -358,6 +568,12 @@ button.primary.danger {
   margin: var(--mg-space-4) 0;
 }
 
+.how {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-2);
+}
+
 .components {
   list-style: none;
   padding: 0;
@@ -384,6 +600,16 @@ button.primary.danger {
 .component-row .bar {
   flex: 1 1 80px;
   min-width: 60px;
+}
+
+.replace-btn.active-target {
+  border-color: var(--mg-neon-cyan);
+  color: var(--mg-neon-cyan);
+}
+
+.staged-install {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
 }
 
 .sell-options {
@@ -432,14 +658,9 @@ button.primary.danger {
   flex-shrink: 0;
 }
 
-.slot-install {
-  display: flex;
-  gap: var(--mg-space-2);
-  flex-wrap: wrap;
-}
-
 .slot-empty {
   color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .equip-hint {
@@ -449,6 +670,38 @@ button.primary.danger {
 
 .installed {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+}
+
+.staged-panel {
+  margin-top: var(--mg-space-3);
+  padding-top: var(--mg-space-3);
+  border-top: var(--mg-border);
+}
+
+.staged-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-3);
+  display: grid;
+  gap: var(--mg-space-1);
+}
+
+.staged-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+}
+
+.confirm-lever {
+  width: 100%;
+}
+
+.empty {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .labor {
@@ -478,5 +731,21 @@ button.primary {
   padding: var(--mg-space-2) var(--mg-space-4);
   font-size: var(--mg-fs-md);
   margin-top: var(--mg-space-3);
+}
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  transform: translate(12px, -50%) rotate(-2deg);
+  z-index: 1000;
+  background: var(--mg-neon-cyan);
+  color: var(--mg-night-deep);
+  border: 2px solid var(--mg-night-deep);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  font-size: var(--mg-fs-md);
+  font-weight: bold;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 </style>

@@ -21,6 +21,7 @@ import type { SimContext } from './context'
 import { hasEquipmentFor, hasEquipmentForIds } from './equipment'
 import { assignToParking, hasParkingSpace, releaseCarFromShop } from './facilities'
 import type { Rng } from './rng'
+import { clearStagedWork } from './stagedWork'
 
 /** Attempts a fresh pick can't exceed before falling back to whatever was last rolled
  * (an extremely rare edge case — every type gated and every hint roll missing). */
@@ -216,7 +217,7 @@ export function resolveServiceJob(
   const job = state.activeServiceJobs.find((sj) => sj.id === jobId)
   if (!job) return { state, log: [], outcome: 'not-found' }
 
-  const releasedState = releaseCarFromShop(state, job.car.id)
+  const releasedState = clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id)
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
   const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
 

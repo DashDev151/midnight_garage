@@ -198,20 +198,37 @@ sequenced last on size and blast radius — 15/16 reshape the auction population
 first would mean recalibrating it twice; 17/18 are genuinely independent of 19, so that pair and 19
 could swap order if the auction pain becomes unbearable first). All five designed 2026-07-10, reviewed
 and corrected 2026-07-10 (factual claims verified against the codebase; logic gaps fixed in the docs).
-**Sprints 15, 16, and 17 implemented 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`/
-`sprint17.md`, ready for review — 15 and 16 committed, 17 not yet); 18-19 remain designed, pending
-maintainer review before implementation starts. **Four**
+**Sprints 15-18 implemented and committed 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`/
+`sprint17.md`/`sprint18.md`); 19 remains designed, pending maintainer review before implementation
+starts. **Four**
 items from that playtest are in none of the five sprints — tracked directly below so they don't vanish
 (the review found the first draft of this paragraph claimed only two, and claimed they were listed
 here when they weren't):
 
-- [ ] **Sprint 17 follow-up: manually verify the round-2 positional-slot fixes in a browser.** Round 1
-  shipped drag-and-drop as designed; the maintainer then actually ran `pnpm dev` and found three real
-  bugs no automated test was written to catch (ghost preview freezing mid-drag, same-section drops
-  refused outright, parking rendering no empty drop targets) — all fixed in the same session by making
-  bay/parking slot position real, persisted state (`serviceBayCarIds`/`parkingCarIds`, `SAVE_VERSION`
-  8→9). Those three original bugs were caught by hand; the fixes themselves haven't had their own
-  dedicated re-check yet. See `docs/sprints/sprint17.md`'s "Round 2" section.
+- [x] **Sprint 17 follow-up: manually verify the round-2 positional-slot fixes in a browser.**
+  Round 1 shipped drag-and-drop as designed; the maintainer then actually ran `pnpm dev` and found
+  three real bugs no automated test was written to catch (ghost preview freezing mid-drag,
+  same-section drops refused outright, parking rendering no empty drop targets) — all fixed in the
+  same session by making bay/parking slot position real, persisted state
+  (`serviceBayCarIds`/`parkingCarIds`, `SAVE_VERSION` 8→9). **Verified 2026-07-10**: the maintainer
+  played the round-2 fixes and confirmed they work ("working well... working much better"), with more
+  general polish wanted but no specific bug called out. See `docs/sprints/sprint17.md`'s "Round 2"
+  section. Sprint 17 committed.
+- [x] **Sprint 18 follow-up: manually verify the parts-inventory staging flow in a browser.** The
+  maintainer checked round 1 and found it genuinely broken, not a polish nit: every component row had
+  its own always-visible "drag a part" drop zone, but the actual parts lived in a panel embedded far
+  below the Confirm button (off-screen in a normal viewport) — indistinguishable from the separate
+  `/inventory` route, so it read as "drag across tabs," not possible in a browser. **Fixed same day
+  (round 2)**: every component now shows exactly two controls, Repair and Replace; Replace opens an
+  in-page `ReplaceDrawer.vue` scoped to that component, where a part can be clicked (instant stage) or
+  dragged onto the row that opened it — source and target always on screen together. See
+  `docs/sprints/sprint18.md`'s "Round 2" section.
+- [x] **Sprint 18 round-2 follow-up: manually verify the Repair/Replace + drawer redesign in a
+  browser.** **Quick-checked 2026-07-10**: the maintainer confirmed it looks successful. A full
+  playtest pass — drawer width/dock position, whether toggling Replace to close is discoverable, and
+  the per-car (not global) Confirm once several cars are staged at once (the risk
+  `docs/sprints/sprint18.md`'s own design doc flagged) — is planned for the next dedicated playtest
+  session, not this quick check. Sprint 18 committed.
 - [ ] **Playtest 2026-07-10 #1: End-Day cart warning.** Clicking "End Day" with items still in the
   parts cart should warn ("you have unordered items in your cart — check out first?"). Small,
   self-contained UI guard; fold into whichever of Sprints 15-19 ships first, or the next playtest-fix

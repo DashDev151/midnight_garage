@@ -282,6 +282,44 @@ describe('saveCodec', () => {
     expect(decoded.parkingCarIds).toEqual(['car-parked-1', 'car-job-parked', null])
   })
 
+  it('decodes a pre-v10 save with nothing staged (Sprint 18: purely additive, back to the normal case)', () => {
+    const preV10 = {
+      version: 9,
+      gameState: {
+        day: 80,
+        seed: 11,
+        cashYen: 3_000_000,
+        reputationTier: 'respected',
+        reputationPoints: 130,
+        serviceBayCount: 2,
+        parkingBayCount: 3,
+        serviceBayCarIds: [null, null],
+        parkingCarIds: [null, null, null],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV10))
+    const decoded = decodeSave(code)
+    expect(decoded.day).toBe(80)
+    expect(decoded.reputationPoints).toBe(130)
+    // v9 -> v10 migration is pure default-fill: a v9 save never had the
+    // Sprint-18 staged-work field either.
+    expect(decoded.stagedCarWork).toEqual({})
+  })
+
+  it('round-trips a v10 state with real staged work', () => {
+    const withStagedWork: GameState = GameStateSchema.parse({
+      ...fullState,
+      stagedCarWork: {
+        'car-0001': [
+          { kind: 'repair', componentId: 'engine' },
+          { kind: 'install', componentId: 'suspension', partInstanceId: 'pi-0001' },
+        ],
+      },
+    })
+    const decoded = decodeSave(encodeSave(withStagedWork))
+    expect(decoded).toEqual(withStagedWork)
+  })
+
   it('round-trips a v9 state preserving real, index-addressable bay/parking slots (empty slots included)', () => {
     const withSlots: GameState = GameStateSchema.parse({
       ...fullState,

@@ -90,6 +90,7 @@ function initialState(): GameState {
     ownedEquipmentIds: [WELDER_ID],
     pendingPartOrders: [],
     cartPartIds: [],
+    stagedCarWork: {},
   }
 }
 
@@ -154,14 +155,13 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 17: `serviceBayCarIds` changed shape (a real indexed
-    // array, one entry per bay, instead of a compact occupied-only list) and
-    // GameState gained the new sibling `parkingCarIds` field — both feed
-    // hashState, so the hash changes even though this script's own actions
-    // and their outcomes are unchanged.
+    // Re-pinned Sprint 18: GameState gained the new `stagedCarWork` field
+    // (Sprint 18's stage-then-confirm repair/install workflow), which feeds
+    // hashState even though this script never stages anything and its
+    // actions/outcomes are unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('240146c2')
+    expect(hashState(finalState)).toBe('91ed875d')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -242,11 +242,10 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 17: same reason as the primary golden master above —
-    // the indexed serviceBayCarIds shape plus the new parkingCarIds field
-    // both feed hashState, even though the actions taken and their outcomes
-    // are unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('b8313c8a')
+    // Re-pinned Sprint 18: same reason as the primary golden master above —
+    // the new `stagedCarWork` field feeds hashState even though this career
+    // never stages anything and its actions/outcomes are unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('4793d4f5')
   })
 })
 

@@ -5,7 +5,8 @@ same-day design conversation. Depends on Sprint 17 for the drag-and-drop primiti
 explicit instruction: build it once, reuse it here). The maintainer clarified the workflow precisely:
 same two-step shape as the Sprint 14 parts cart — stage freely, nothing real happens until one
 Confirm — which also resolves #4.1 (undo) as a side effect rather than a separate feature. Status:
-**designed, pending review.**
+**implemented and committed** (round 1 plus the round-2 Repair/Replace redesign below). See Exit for
+implementation-time findings.
 
 ## Goal
 
@@ -108,58 +109,68 @@ switch to stage a repair), freely add/remove, then one Confirm locks everything 
 
 ### A. Content (`packages/content`)
 
-- [ ] New `StagedActionSchema` (discriminated union: `{kind: 'repair', componentId}` |
-  `{kind: 'install', componentId, partInstanceId}`).
-- [ ] `gameState.ts`: `GameState` gains `stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({})`
+- [x] New `StagedActionSchema` (discriminated union: `{kind: 'repair', componentId}` |
+  `{kind: 'install', componentId, partInstanceId}`) — new file `stagedWork.ts`.
+- [x] `gameState.ts`: `GameState` gains `stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({})`
   keyed by `carInstanceId` (decision 1).
 
 ### B. Sim (`packages/sim`)
 
-- [ ] New `confirmStagedWork(state, carInstanceId, context): {state, log}` — the Confirm resolver:
-  reads `state.stagedCarWork[carInstanceId]`, loops each staged action through the existing
-  `resolveJobLabor`/`findOrCreateJob` machinery against the day's shared remaining labor budget.
-  (Precision note, verified 2026-07-10: `laborSlotsRemainingToday` is a *game-store computed*, not a
-  sim helper — today's per-click flow passes its value into `resolveJobLabor` as a parameter, and the
-  sim side computes the same quantity inline in `advanceDay`. `confirmStagedWork` should take the
-  budget as a parameter the same way `resolveJobLabor` does, decrementing it across the loop — not
-  reach for a helper that doesn't exist in `packages/sim`.) Clears the car's staged
-  list on completion (whether or not every action could be fully labored today — a partially-started
-  repair just continues normally via the existing "Continue repair" path afterward, per decision 4).
-- [ ] Small staging mutators (`stageAction`/`unstageAction` — plain, instant `GameState` mutations, no
-  new sim logic beyond the cross-car guard from decision 3) — likely thin enough to live directly in
-  the game-layer store rather than needing their own sim module, similar to how cart add/remove are
-  plain store mutations today; confirm exact placement at implementation time.
+- [x] New `confirmStagedWork(state, carInstanceId, laborAvailable, context): {state, log}` — the
+  Confirm resolver: reads `state.stagedCarWork[carInstanceId]`, loops each staged action through the
+  existing `resolveJobLabor`/`findOrCreateJob` machinery against the day's shared remaining labor
+  budget, taking it as a parameter exactly as the design's own precision note called for. Clears the
+  car's staged list on completion whether or not every action could be fully labored today. A new
+  `findWorkableCar(state, carInstanceId)` (`jobs.ts`) — not anticipated in the design doc — was
+  extracted so `confirmStagedWork` and the game store's own pre-existing identical lookup share one
+  implementation instead of two independent copies (directive 3/15).
+- [x] Small staging mutators (`stageAction`/`unstageAction`) confirmed to live directly in the
+  game-layer store, as the design doc's own "likely" prediction called it — plain `GameState`
+  mutations plus the cross-car guard (decision 3) and the busy-component guard (decision 4), both
+  enforced as real guards in the mutator, not just UI affordances.
+- [x] New `clearStagedWork(state, carInstanceId)` (`stagedWork.ts`) — not explicitly named in the
+  original plan, but required by decision 7: wired into `resolveSellViaWalkIn`, `resolveListForSale`,
+  and `resolveServiceJob` (the last covers click-complete, give-up, *and* the deadline backstop, since
+  all three already share that one resolver — see sprint08.md/sprint11.md's own precedent).
 
 ### C. Game (`packages/game`)
 
-- [ ] New `screens/PartsInventoryScreen.vue` (or similar) — standalone route, and a reusable inner
-  component extracted for embedding.
-- [ ] `CarDetailScreen.vue`: components section reworked — repair toggle per row (styled switch, using
-  Sprint 17's drop-zone/draggable primitives where install staging needs them), an inventory panel
-  (the same component from the point above, in "pick a part to drag" mode, respecting decision 3's
-  cross-car guard) shown while any staging is in progress, a running staged-actions list (cart-style,
-  freely removable), and one Confirm lever per car.
-- [ ] `router/index.ts`: new inventory route.
-- [ ] `gameStore.ts`: `stageAction`/`unstageAction`/`confirmStagedWork` wired to the new sim pieces;
-  computed views for "what's staged on car X" and "which part instances are currently staged
-  anywhere" (for decision 3's greying-out).
+- [x] New `screens/PartsInventoryScreen.vue` — standalone `/inventory` route (added to the persistent
+  top nav, not a contextual link, given how central this screen is) — plus a reusable inner
+  `components/PartsInventoryPanel.vue`, embedded unmodified in both places.
+- [x] `CarDetailScreen.vue`: components section reworked — a repair checkbox per non-busy row, a
+  drop-zone per non-busy empty component (Sprint 17's `useDropZone`), the embedded inventory panel, a
+  running staged-actions list (cart-style, freely removable), and one Confirm lever per car. A
+  continuing job (decision 4) keeps the pre-existing single-click UI untouched.
+- [x] `router/index.ts`: new `/inventory` route.
+- [x] `gameStore.ts`: `stageAction`/`unstageAction`/`confirmCarWork` wired to the new sim pieces;
+  `stagedActionsFor`/`stageableParts`/`isPartStagedAnywhere` computed views for "what's staged on car
+  X" and "which part instances are currently staged anywhere" (decision 3's "omit," the simpler of the
+  two design-sanctioned options, rather than grey-out).
+- [x] New `components/PartCard.vue` — not in the original task breakdown, needed for the same reason
+  Sprint 17 built `ShopSlot.vue`: a dynamically-changing `v-for` over owned parts needs each card's own
+  persistent `useDraggable` state, which a single parent `<script setup>` can't safely provide.
 
 ### D. Testing
 
-- [ ] Sim: `confirmStagedWork` — multiple staged actions sharing one labor budget, the equipment gate
+- [x] Sim: `confirmStagedWork` — multiple staged actions sharing one labor budget, the equipment gate
   still refusing a staged repair at confirm time, a part staged then unstaged never creates a job,
-  partial-labor-today leaves a normal continuable job behind.
-- [ ] Sim/game: decision 7's lifecycle cleanup — staged work dropped on every car-exit path (walk-in
-  sale, listing, service-job resolution via click *and* via the deadline backstop, give-up), and the
-  displaced parts return to the stageable pool.
-- [ ] Content: schema/fixture updates for `stagedCarWork`.
-- [ ] Game: staging/unstaging costs nothing (cash and labor both unchanged until Confirm); the cross-
-  car guard (decision 3); the inventory screen's standalone render; drag-to-stage via Sprint 17's
-  composable.
-- [ ] Save: `SAVE_VERSION` bump (next in sequence — Sprint 15 already takes 7→8) + golden-save
-  additive test for the new `stagedCarWork` field, matching every prior additive-bump precedent.
-- [ ] Golden masters re-pinned (new `GameState` field changes every hash, same as every prior sprint
-  that added one).
+  partial-labor-today leaves a normal continuable job behind (`stagedWork.test.ts`).
+- [x] Sim/game: decision 7's lifecycle cleanup — staged work dropped on walk-in sale, listing, and
+  service-job resolution via both click and the deadline backstop (`selling.test.ts`,
+  `serviceJobs.test.ts`, `gameStore.stagedWork.test.ts`), and the displaced parts return to the
+  stageable pool (decision 8's replace behavior).
+- [x] Content: schema/fixture updates for `stagedCarWork` across every raw `GameState` test fixture
+  (the same mechanical ripple Sprint 17's `parkingCarIds` addition needed).
+- [x] Game: staging/unstaging costs nothing (cash and labor both unchanged until Confirm); the
+  cross-car guard (decision 3); the busy-component guard (decision 4); the inventory screen's
+  standalone render and its omission of staged-elsewhere parts; drag-to-stage via Sprint 17's
+  composable, including a real simulated-pointer-event drag (not just calling store methods).
+- [x] Save: `SAVE_VERSION` bump 9→10 (Sprint 17 already took 8→9, correcting this doc's original
+  "next in sequence — Sprint 15 already takes 7→8" guess) + golden-save additive test for the new
+  `stagedCarWork` field, matching every prior additive-bump precedent.
+- [x] Golden masters re-pinned (the new `GameState` field changes every hash, same as every prior
+  sprint that added one).
 
 ## Claude-implementable vs user-only
 
@@ -172,4 +183,98 @@ sprints.
 
 ## Exit
 
-*To be filled in once implemented.*
+Implemented as designed, with the reuse table's predictions holding up well against the real
+codebase — `resolveJobLabor`/`findOrCreateJob`/`repairJobGate` are untouched, called by
+`confirmStagedWork` exactly as planned, and the cart's stage-then-confirm shape (Sprint 14) really
+was the direct template it was expected to be.
+
+**A real, dormant bug was found and fixed, exposed by this sprint's own change, not introduced by
+it.** The busy-branch "Continue repair" button called `game.repair(...)` unconditionally regardless
+of which *kind* of job was actually open on a component. Before this sprint that was harmless — an
+install job always completed in the exact click that created it (a single labor slot, and the old
+button was disabled below that) — so a component could never be "busy" with an incomplete install
+job in practice. Confirm's batch resolution changes that: an install staged *after* a repair in the
+same car's list can now be left open if the repair consumed the day's whole labor budget first.
+Fixed with a kind-aware `continueJob` helper (`CarDetailScreen.vue`) that calls `game.repair(...)` or
+`game.install(...)` depending on the actual open job's `kind`, rather than always assuming repair.
+
+**Two new components weren't in the original task breakdown, both following Sprint 17's own
+precedent for the same underlying reason:** `components/PartCard.vue` (a single draggable part,
+needed because the owned-parts list is genuinely dynamic — the same "persistent per-item composable
+state" problem `ShopSlot.vue` was built to solve) and a new shared `findWorkableCar` (`sim/jobs.ts`,
+extracted from a lookup the game store already had privately, so `confirmStagedWork` doesn't
+duplicate it — a real, if small, reuse win directive 15 calls for).
+
+**`PartsInventoryPanel.vue` was originally embedded, unmodified, in both the standalone `/inventory`
+screen and `CarDetailScreen.vue`, exactly as the design asked — see Round 2 below for why the
+`CarDetailScreen.vue` embedding was replaced.** Picking a part up on the standalone screen, then
+navigating to a specific car and placing it there via the click-fallback, still works for free either
+way: the drag/pick session is shared, module-level state (Sprint 17), not scoped to whichever screen
+is mounted, so nothing extra needed building for that to work correctly across navigation.
+
+**Decision 3 (the cross-car guard) implemented as "omit," the simpler of the two design-sanctioned
+options** — a part staged anywhere simply disappears from every inventory view (standalone or
+embedded) until unstaged or confirmed, rather than rendering greyed-out. **Decision 8 (replace)**
+turned out to need no special-casing between repair and install: `stageAction` always drops any
+existing staged action for the target component before adding the new one, uniformly for both kinds,
+so dragging a part onto a component that already has a staged *repair* also cleanly replaces it (not
+just install-over-install, which is all the design doc's own wording anticipated).
+
+**Save law:** `SAVE_VERSION` 9→10, purely additive (`stagedCarWork` defaults to `{}`) — ordinary,
+unlike Sprint 17's one-off non-additive migration for `parkingCarIds`. The doc's original "next in
+sequence — Sprint 15 already takes 7→8" note was stale (Sprint 17 had already taken 8→9 by the time
+this sprint actually implemented); corrected in the task breakdown above.
+
+Both `advanceDay.test.ts` golden masters re-pinned — the new field changes `hashState`'s output even
+though no career script stages or confirms anything.
+
+490 tests (was 460); all checks green: `pnpm typecheck` / `lint` / `format` / `test:coverage` /
+`build`. No new dependencies, no data-layer access.
+
+## Round 2 — real playtest fix (same day)
+
+The maintainer actually opened `CarDetailScreen.vue` and found the round-1 design genuinely broken in
+practice, not a polish nit to defer: every component row rendered its own always-visible "drag a part"
+drop zone, while the actual draggable parts lived in a `PartsInventoryPanel` embedded far below the
+Confirm button — off-screen in a normal viewport, easy to mistake for "you have to drag from the
+separate `/inventory` page" (which *looks* identical, since it's the same panel). A screenshot made
+the clutter concrete: eight rows' worth of checkboxes, drop zones, and equipment hints, with no visible
+drag source anywhere in frame.
+
+**The fix, per the maintainer's explicit direction:** every non-busy component now shows exactly two
+controls — **Repair** (unchanged mechanically, now a plain toggle button instead of a checkbox) and
+**Replace**. Clicking Replace opens a new `components/ReplaceDrawer.vue` — an in-page side panel
+(`position: fixed`, docked right), scoped to that one component, never a separate route. From the
+drawer, every stageable part (`game.stageableParts`, unchanged from round 1) is listed with a
+fits/doesn't-fit flag against the target component; a fitting part can be **clicked directly** (stages
+instantly, closes the drawer — the fast path the maintainer asked for) **or dragged** onto the
+component row that opened the drawer (still visible on the same screen, side by side with the
+drawer — the source and the target are never more than one glance apart).
+
+**Genuinely new, not anticipated at round 1:** `PartCard.vue` gained a `select` emit (a plain click,
+distinct from the existing drag gesture and the "move…" pick-toggle button) and a `fits` prop
+(dims a non-fitting card and makes it inert to the click path, without hiding it — the player still
+sees their whole inventory, just told what won't work here). The install drop-zone's `accepts` check
+now also requires the drawer to be open *for that specific component* — a live drag can only ever
+originate from a card rendered inside the currently-open drawer, so no other row is ever a real target
+regardless of fit, keeping the mental model to "Replace scopes everything to this one row."
+
+**`CarDetailScreen.vue` no longer embeds `PartsInventoryPanel.vue` at all** — the permanent
+bottom-of-screen list is gone, replaced entirely by the on-demand drawer. The standalone
+`/inventory` route keeps using `PartsInventoryPanel.vue` unchanged, for plain browsing.
+
+**The existing click-based accessibility fallback (pick a part via "move…", then click a target) still
+works, and needed no changes** — `onReplaceClick` checks whether a part is currently *picked* first;
+if so, clicking Replace completes that placement immediately (the same `accepts`/`onDrop` a live drag
+uses) instead of opening the drawer. This means a part can be picked from the standalone `/inventory`
+screen and placed on a car's Replace button without ever opening that car's drawer at all — the
+pick/place path and the new drawer path coexist without conflicting, both resolving through the same
+underlying `useDropZone`.
+
+493 tests (was 490); all checks green again: `pnpm typecheck` / `lint` / `format` / `test:coverage` /
+`build`.
+
+**Verified 2026-07-10, same session:** the maintainer ran a quick check of the Repair/Replace + drawer
+redesign and confirmed it looks successful. A full playtest pass (per-car Confirm feel with several
+cars staged at once, drawer width/dock position, general polish) is planned for the next dedicated
+playtest session, not this quick check — tracked in `TODO.md`. Signed off; committed.

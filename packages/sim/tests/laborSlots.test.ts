@@ -26,6 +26,7 @@ function baseState(staff: StaffMember[]): GameState {
     ownedEquipmentIds: [],
     pendingPartOrders: [],
     cartPartIds: [],
+    stagedCarWork: {},
   }
 }
 

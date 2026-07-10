@@ -25,6 +25,7 @@ import type {
   PublicListing,
   ReputationTier,
   ServiceJob,
+  StagedAction,
   StatBlock,
 } from '@midnight-garage/content'
 import { resolveCarDisplayName } from '@midnight-garage/content'
@@ -42,6 +43,7 @@ import {
   buildSimContext,
   computeDerivedStats,
   computeLotInterest,
+  confirmStagedWork,
   createInitialGameState,
   createRng,
   deriveReputationTier,
@@ -115,6 +117,8 @@ export interface CarDetail extends DetailedCar {
   serviceJob?: ServiceJobView
   /** Whether this car is currently in a service bay (labor only reaches it if so). */
   inServiceBay: boolean
+  /** Repair/install work staged on this car but not yet confirmed (Sprint 18). */
+  stagedActions: StagedAction[]
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -138,6 +142,12 @@ export interface CartItemView {
   part: Part
   quantity: number
   subtotalYen: number
+}
+
+/** One owned part paired with its catalog entry, for the staging inventory panel (Sprint 18). */
+export interface StageablePartView {
+  instance: PartInstance
+  part: Part
 }
 
 /** A short human label for a service job's required work. */
@@ -368,6 +378,7 @@ export const useGameStore = defineStore('game', () => {
       jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
+      stagedActions: gameState.value.stagedCarWork[carId] ?? [],
     }
   }
 
@@ -672,6 +683,98 @@ export const useGameStore = defineStore('game', () => {
    */
   function hasEquipmentForComponent(componentId: ComponentId): boolean {
     return hasEquipmentFor(gameState.value, componentId, context.value)
+  }
+
+  // --- staged repair/install work (Sprint 18) -----------------------------
+
+  /**
+   * True if this exact part instance is staged as an install anywhere in the
+   * shop — on this car or a different one, any component. A staged part is
+   * unavailable to stage again until its stage resolves (Confirm) or is
+   * explicitly unstaged (decision 3): the inventory panel uses this to omit
+   * it from what's currently pickable, and `stageAction` below enforces the
+   * same rule as a real guard, not just a UI nicety.
+   */
+  function isPartStagedAnywhere(partInstanceId: string): boolean {
+    return Object.values(gameState.value.stagedCarWork).some((actions) =>
+      actions.some((a) => a.kind === 'install' && a.partInstanceId === partInstanceId),
+    )
+  }
+
+  /** Everything currently staged on one car — empty if nothing is. */
+  function stagedActionsFor(carId: string): StagedAction[] {
+    return gameState.value.stagedCarWork[carId] ?? []
+  }
+
+  /**
+   * Every owned part not currently staged anywhere, paired with its catalog
+   * entry — the pick list for staging an install (decision 3), shared by the
+   * standalone inventory screen and the panel embedded on a car's detail
+   * screen (both show the exact same "available to stage" set).
+   */
+  const stageableParts = computed<StageablePartView[]>(() => {
+    const entries: StageablePartView[] = []
+    for (const instance of gameState.value.partInventory) {
+      if (isPartStagedAnywhere(instance.id)) continue
+      const part = context.value.partsById[instance.partId]
+      if (part) entries.push({ instance, part })
+    }
+    return entries
+  })
+
+  /**
+   * Stage a repair or install on a car's component — free, instant, and
+   * fully reversible until Confirm. Refuses (returns false, no state change)
+   * for an unknown car, a component that already has an open `Job` (decision
+   * 4: staging never applies to work already in progress — that keeps its
+   * existing single-click "Continue repair" flow), or an install whose part
+   * is already staged elsewhere (decision 3). Staging over a component that
+   * already has a *different* staged action there replaces it (decision 8) —
+   * the displaced entry (and its part, for a displaced install) simply stops
+   * being staged, freeing it up again.
+   */
+  function stageAction(carId: string, action: StagedAction): boolean {
+    if (!findWorkableCar(carId)) return false
+    const busy = gameState.value.jobs.some(
+      (j) => j.carInstanceId === carId && j.componentId === action.componentId,
+    )
+    if (busy) return false
+    if (action.kind === 'install' && isPartStagedAnywhere(action.partInstanceId)) return false
+
+    const existing = stagedActionsFor(carId).filter((a) => a.componentId !== action.componentId)
+    gameState.value = {
+      ...gameState.value,
+      stagedCarWork: { ...gameState.value.stagedCarWork, [carId]: [...existing, action] },
+    }
+    return true
+  }
+
+  /** Un-stage whatever's staged on this car's component, if anything — free, no-op if nothing was staged. */
+  function unstageAction(carId: string, componentId: ComponentId): void {
+    const remaining = stagedActionsFor(carId).filter((a) => a.componentId !== componentId)
+    const stagedCarWork = { ...gameState.value.stagedCarWork }
+    if (remaining.length === 0) delete stagedCarWork[carId]
+    else stagedCarWork[carId] = remaining
+    gameState.value = { ...gameState.value, stagedCarWork }
+  }
+
+  /**
+   * Confirm — locks in every staged action on this car at once: creates or
+   * continues the real jobs and spends today's remaining labor (and any
+   * repair consumables) for real, through the exact same resolvers the old
+   * instant-click flow always used (Sprint 18). The staged list is cleared
+   * whether or not every action could be fully labored today — a
+   * partial-labor action just leaves a normal continuable job behind.
+   */
+  function confirmCarWork(carId: string): void {
+    const result = confirmStagedWork(
+      gameState.value,
+      carId,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
   }
 
   /** Inspect an auction lot — instant, reveals hidden issues for the cash travel fee only. */
@@ -1112,6 +1215,12 @@ export const useGameStore = defineStore('game', () => {
     buyEquipment,
     repair,
     install,
+    isPartStagedAnywhere,
+    stagedActionsFor,
+    stageableParts,
+    stageAction,
+    unstageAction,
+    confirmCarWork,
     inspectLot,
     placeBid,
     buyout,

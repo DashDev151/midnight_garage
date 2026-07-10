@@ -9,6 +9,20 @@ import type { NewJobSpec } from './actions'
 import type { SimContext } from './context'
 import { hasEquipmentFor } from './equipment'
 
+/**
+ * A car the player can work on — either an owned car or a customer's car
+ * sitting in an active service job. Both are worked through the same job
+ * system, so any job/labor/staging resolver resolves either the same way.
+ * Shared home for a lookup every one of those (and the game-layer store's own
+ * view-building `findWorkableCar`) needs identically.
+ */
+export function findWorkableCar(state: GameState, carInstanceId: string): CarInstance | undefined {
+  return (
+    state.ownedCars.find((c) => c.id === carInstanceId) ??
+    state.activeServiceJobs.find((sj) => sj.car.id === carInstanceId)?.car
+  )
+}
+
 export function createJob(spec: NewJobSpec, id: string): Job {
   return {
     id,

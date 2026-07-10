@@ -342,6 +342,24 @@ describe('resolveServiceJob (the single resolution path)', () => {
     expect(next).toBe(state)
   })
 
+  it('drops the car’s staged work (Sprint 18) whether the job pays or fails', () => {
+    const paidJob = activeJob(repairType, { components: makeComponents(repairComponent, 100) })
+    const paidState = stateWith(paidJob, {
+      stagedCarWork: { [paidJob.car.id]: [{ kind: 'repair', componentId: 'wheels' }] },
+    })
+    const paid = resolveServiceJob(paidState, paidJob.id, CONTEXT)
+    expect(paid.outcome).toBe('paid')
+    expect(paid.state.stagedCarWork[paidJob.car.id]).toBeUndefined()
+
+    const failedJob = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const failedState = stateWith(failedJob, {
+      stagedCarWork: { [failedJob.car.id]: [{ kind: 'repair', componentId: 'wheels' }] },
+    })
+    const failed = resolveServiceJob(failedState, failedJob.id, CONTEXT)
+    expect(failed.outcome).toBe('failed')
+    expect(failed.state.stagedCarWork[failedJob.car.id]).toBeUndefined()
+  })
+
   it('an install job pays; a pricier installed grade earns more reputation', () => {
     const budget = PARTS.find((p) => p.componentId === installComponent && p.grade === 'stock')!
     const pricey = PARTS.find((p) => p.componentId === installComponent && p.grade !== 'stock')!
@@ -508,6 +526,21 @@ describe('service jobs in advanceDay', () => {
     expect(failed.cashYen).toBe(failBefore) // no pay
     expect(failed.reputationPoints).toBe(50 - reputationForFailure(undone.baseReputation))
     expect(failed.activeServiceJobs).toHaveLength(0)
+  })
+
+  it('the deadline backstop drops staged work too (Sprint 18) — the same resolver, not a second path', () => {
+    const undone = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      day: 8,
+      activeServiceJobs: [undone],
+      stagedCarWork: {
+        [undone.car.id]: [{ kind: 'repair' as const, componentId: 'wheels' as const }],
+      },
+    }
+    const { state: next } = advanceDay(state, DayActionsSchema.parse({}), 8, CONTEXT)
+    expect(next.activeServiceJobs).toHaveLength(0)
+    expect(next.stagedCarWork[undone.car.id]).toBeUndefined()
   })
 
   it('stale offers expire', () => {
