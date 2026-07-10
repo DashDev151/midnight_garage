@@ -2,13 +2,28 @@
   "service": {
     "startCount": 1,
     "maxCount": 5,
-    "bayPricesYen": [300000, 750000, 1500000, 3000000]
+    "bayPricesYen": [300000, 750000, 1500000, 3000000],
+    "minReputationTier": ["local", "local", "known", "known"]
   },
   "parking": {
     "startCount": 3,
     "maxCount": 15,
     "bayPricesYen": [
       80000, 120000, 160000, 220000, 300000, 400000, 520000, 650000, 780000, 900000, 950000, 1000000
+    ],
+    "minReputationTier": [
+      "local",
+      "local",
+      "local",
+      "local",
+      "known",
+      "known",
+      "known",
+      "known",
+      "respected",
+      "respected",
+      "respected",
+      "respected"
     ]
   }
 }

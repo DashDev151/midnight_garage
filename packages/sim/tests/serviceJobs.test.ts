@@ -185,6 +185,98 @@ describe('generateServiceJobOffers', () => {
   })
 })
 
+describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
+  it('mostly filters a repair-kind type whose equipment is not owned, but not to zero', () => {
+    const rng = createRng(7)
+    let repairOffers = 0
+    let totalOffers = 0
+    for (let week = 0; week < 100; week++) {
+      const offers = generateServiceJobOffers(
+        SERVICE_JOB_TYPES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+        CARS,
+        CONTEXT.hiddenIssuesByComponent,
+        week * 7,
+        4,
+        10,
+        rng,
+        Infinity,
+        [], // nothing owned — every repair-kind candidate is filtered/hinted
+        CONTEXT.equipmentById,
+      )
+      totalOffers += offers.length
+      repairOffers += offers.filter((o) => o.work.kind === 'repair').length
+    }
+    // Statistical, not exact — matching how every other probabilistic sim
+    // mechanic in this codebase is tested. "Mostly filtered, rarely not":
+    // real share should land well under an even (types-weighted) split, but
+    // still clearly nonzero across a large sample.
+    const repairShare = repairOffers / totalOffers
+    expect(repairShare).toBeGreaterThan(0)
+    expect(repairShare).toBeLessThan(0.2)
+  })
+
+  it('never filters a repair-kind type whose equipment is already owned', () => {
+    const rng = createRng(7)
+    const ownedIds = EQUIPMENT.map((e) => e.id) // everything owned
+    let sawRepairOfEquippedComponent = false
+    for (let week = 0; week < 40 && !sawRepairOfEquippedComponent; week++) {
+      const offers = generateServiceJobOffers(
+        SERVICE_JOB_TYPES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+        CARS,
+        CONTEXT.hiddenIssuesByComponent,
+        week * 7,
+        4,
+        10,
+        rng,
+        Infinity,
+        ownedIds,
+        CONTEXT.equipmentById,
+      )
+      if (offers.some((o) => o.work.kind === 'repair')) sawRepairOfEquippedComponent = true
+    }
+    // With everything owned, no candidate is ever a "needs unowned equipment"
+    // case, so repair types appear at their normal, unfiltered rate.
+    expect(sawRepairOfEquippedComponent).toBe(true)
+  })
+
+  it('install-kind types are never filtered by the hinting policy, owned or not', () => {
+    const rng = createRng(3)
+    const offers = generateServiceJobOffers(
+      SERVICE_JOB_TYPES,
+      SERVICE_JOB_CUSTOMER_NAMES,
+      CARS,
+      CONTEXT.hiddenIssuesByComponent,
+      7,
+      200,
+      10,
+      rng,
+      Infinity,
+      [],
+      CONTEXT.equipmentById,
+    )
+    const installTypeCount = SERVICE_JOB_TYPES.filter((t) => t.work.kind === 'install').length
+    expect(offers.filter((o) => o.work.kind === 'install').length).toBeGreaterThan(
+      installTypeCount, // sanity: install offers show up plenty across 200 rolls
+    )
+  })
+
+  it('defaults to nothing owned when the new params are omitted (existing call sites unaffected)', () => {
+    const withDefaults = generateServiceJobOffers(
+      SERVICE_JOB_TYPES,
+      SERVICE_JOB_CUSTOMER_NAMES,
+      CARS,
+      CONTEXT.hiddenIssuesByComponent,
+      7,
+      4,
+      10,
+      createRng(1),
+    )
+    expect(withDefaults).toHaveLength(4)
+  })
+})
+
 describe('reputation helpers', () => {
   it('a pricier grade earns more reputation on completion', () => {
     expect(reputationForCompletion(3, null)).toBe(3)

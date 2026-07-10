@@ -1,4 +1,11 @@
-import type { BayKind, DayLogEntry, Facilities, GameState } from '@midnight-garage/content'
+import type {
+  BayKind,
+  DayLogEntry,
+  Facilities,
+  GameState,
+  ReputationTier,
+} from '@midnight-garage/content'
+import { reputationAtLeast } from './calendar'
 import type { BuyBayAction, MoveCarAction } from './actions'
 
 /**
@@ -139,6 +146,27 @@ export function nextBayPriceYen(
   return cfg.bayPricesYen[owned - cfg.startCount] ?? null
 }
 
+/**
+ * The reputation tier required for the next bay of this kind (Sprint 16
+ * decision 2), or null if it's already met (or there's no gate, or the
+ * ladder is maxed). Kept separate from `nextBayPriceYen` — same as cash
+ * affordability, which `nextBayPriceYen` also doesn't check — so a UI can
+ * tell "not enough reputation yet" apart from "maxed out" instead of both
+ * collapsing into the same null.
+ */
+export function nextBayMinReputationTier(
+  state: GameState,
+  kind: BayKind,
+  facilities: Facilities,
+): ReputationTier | null {
+  const cfg = facilities[kind]
+  const owned = currentCount(state, kind)
+  if (owned >= cfg.maxCount) return null
+  const required = cfg.minReputationTier[owned - cfg.startCount]
+  if (!required || reputationAtLeast(state.reputationTier, required)) return null
+  return required
+}
+
 export interface BayPurchaseResult {
   state: GameState
   log: DayLogEntry[]
@@ -148,7 +176,8 @@ export interface BayPurchaseResult {
 /**
  * The pure "buy one more bay" core — same instant-for-the-player /
  * DayAction-for-bots pattern as moveCar. A no-op (not an error) if the price
- * is unknown (at the max) or unaffordable.
+ * is unknown (at the max), unaffordable, or (Sprint 16) the required
+ * reputation tier hasn't been reached yet.
  */
 export function applyBayPurchase(
   state: GameState,
@@ -157,6 +186,9 @@ export function applyBayPurchase(
 ): BayPurchaseResult {
   const priceYen = nextBayPriceYen(state, kind, facilities)
   if (priceYen === null || state.cashYen < priceYen) {
+    return { state, log: [], applied: false }
+  }
+  if (nextBayMinReputationTier(state, kind, facilities) !== null) {
     return { state, log: [], applied: false }
   }
   const next: GameState =

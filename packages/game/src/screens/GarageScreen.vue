@@ -17,9 +17,6 @@ const recentLog = computed(() =>
     })),
 )
 
-const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
-const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
-
 const occupiedServiceCars = computed(() =>
   game.serviceBaysView.filter((s): s is ShopCarView => s !== null),
 )
@@ -68,6 +65,7 @@ function swapParkingCarWithPick(parkingCarId: string): void {
     <div class="controls">
       <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
       <button data-test="new-game" @click="game.newGame()">New Game</button>
+      <RouterLink :to="{ name: 'upgrades' }" class="upgrades-link">Upgrades &gt;</RouterLink>
     </div>
 
     <p v-if="game.shopAtCapacity" class="capacity-warning">
@@ -149,57 +147,6 @@ function swapParkingCarWithPick(parkingCarId: string): void {
               swap
             </button>
           </div>
-        </li>
-      </ul>
-    </section>
-
-    <section class="facilities">
-      <h3>Facilities</h3>
-      <div class="facility-row">
-        <span>Service bays: {{ game.serviceBayCount }}</span>
-        <button
-          v-if="nextServiceBayPriceYen !== null"
-          :disabled="game.cashYen < nextServiceBayPriceYen"
-          data-test="buy-service-bay"
-          @click="game.buyBay('service')"
-        >
-          Buy next bay ({{ formatYen(nextServiceBayPriceYen) }})
-        </button>
-        <span v-else class="maxed">maxed out</span>
-      </div>
-      <div class="facility-row">
-        <span>Parking bays: {{ game.parkingCapacity }}</span>
-        <button
-          v-if="nextParkingBayPriceYen !== null"
-          :disabled="game.cashYen < nextParkingBayPriceYen"
-          data-test="buy-parking-bay"
-          @click="game.buyBay('parking')"
-        >
-          Buy next bay ({{ formatYen(nextParkingBayPriceYen) }})
-        </button>
-        <span v-else class="maxed">maxed out</span>
-      </div>
-    </section>
-
-    <section class="equipment">
-      <h3>Equipment</h3>
-      <p class="how">
-        Owning a component's equipment is what unlocks Repair for it — Replace (buy a part, install
-        it) never needs equipment.
-      </p>
-      <ul class="equipment-list">
-        <li v-for="item in game.equipmentCatalog" :key="item.id" class="equipment-row">
-          <span class="equip-name">{{ item.displayName }}</span>
-          <span class="equip-components">{{ item.componentIds.join(', ') }}</span>
-          <span v-if="item.owned" class="maxed">owned</span>
-          <button
-            v-else
-            :disabled="game.cashYen < item.priceYen"
-            :data-test="'buy-equipment-' + item.id"
-            @click="game.buyEquipment(item.id)"
-          >
-            Buy ({{ formatYen(item.priceYen) }})
-          </button>
         </li>
       </ul>
     </section>
@@ -380,62 +327,10 @@ button:disabled {
   font-size: var(--mg-fs-sm);
 }
 
-.facilities {
-  display: grid;
-  gap: var(--mg-space-2);
-  margin-bottom: var(--mg-space-4);
-}
-
-.facility-row {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-3);
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-2) var(--mg-space-3);
-}
-
-.facility-row button {
-  padding: 2px 10px;
-  font-size: var(--mg-fs-sm);
-}
-
-.maxed {
-  color: var(--mg-success);
-  font-size: var(--mg-fs-sm);
-}
-
-.equipment-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--mg-space-4);
-  display: grid;
-  gap: var(--mg-space-2);
-}
-
-.equipment-row {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-3);
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-2) var(--mg-space-3);
-  font-size: var(--mg-fs-sm);
-}
-
-.equip-name {
-  flex: 1 1 auto;
-}
-
-.equip-components {
-  color: var(--mg-text-dim);
-  text-transform: capitalize;
-}
-
-.equipment-row button {
-  padding: 2px 10px;
+.upgrades-link {
+  align-self: center;
+  color: var(--mg-neon-violet);
+  text-decoration: none;
   font-size: var(--mg-fs-sm);
 }
 

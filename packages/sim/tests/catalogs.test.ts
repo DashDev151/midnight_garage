@@ -39,6 +39,27 @@ describe('refreshCatalogs', () => {
     expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(false)
   })
 
+  it('holds back regional and premium lots below their Sprint 16 reputation gates', () => {
+    const state = createInitialGameState(CONTEXT, 1) // reputationTier: 'unknown'
+    const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
+    expect(lotsByTier.some((t) => t.tier === 'regional')).toBe(false)
+    expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(false)
+    expect(lotsByTier.some((t) => t.tier === 'local-yard')).toBe(true) // always open
+  })
+
+  it('regional resumes once reputation reaches local; premium stays gated until known', () => {
+    const state = { ...createInitialGameState(CONTEXT, 1), reputationTier: 'local' as const }
+    const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
+    expect(lotsByTier.some((t) => t.tier === 'regional')).toBe(true)
+    expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(false)
+  })
+
+  it('premium resumes once reputation reaches known', () => {
+    const state = { ...createInitialGameState(CONTEXT, 1), reputationTier: 'known' as const }
+    const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
+    expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(true)
+  })
+
   it('generates collector-network lots once reputation clears the gate', () => {
     // The seed roster has no 'legend'-tier car yet (see CLAUDE.md's easter
     // egg note), so exercise the gate itself with a synthetic legend model —

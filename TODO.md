@@ -121,9 +121,10 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   time, not just block them at accept time.** Maintainer's read (2026-07-09): "these jobs should not
   even be showing up if the player can not complete them yet." Correct critique — Sprint 13 shipped
   the simpler accept-time block per the maintainer's own "leave as is for now" call at the time.
-  **Picked up by `docs/sprints/sprint16.md`** (2026-07-10 playtest note #8) — with real nuance added
-  beyond a hard filter: mostly hide offers the player can't act on, but let a rare one through anyway
-  as a "here's what's next" hint rather than filtering to zero.
+  **Implemented by Sprint 16** (`docs/sprints/sprint16.md`, 2026-07-10, ready for review — not yet
+  committed) — with real nuance added beyond a hard filter: mostly hides offers the player can't act
+  on, but lets a rare one through anyway (`JOB_HINT_OFFER_CHANCE = 0.15`) as a "here's what's next"
+  hint rather than filtering to zero.
 - [ ] **Sprint 13 follow-up: deeper per-bot equipment strategy, if the harness shows the minimal
   buy-if-affordable logic isn't good enough.** Every repair-touching bot (5, including Service
   Grinder) gets a working equipment-purchase gate in Sprint 13 itself — no bot goes inert. What's
@@ -142,8 +143,12 @@ playtest notes come in; that's the intended workflow now, not a one-time list.
   committed) — the exact "own scoped design" this item called for: `deriveReputationTier` now derives
   the tier from `reputationPoints` on every change (a first-pass, openly-adjustable point ladder), plus
   two real new reputation sources beyond service jobs alone (a quality-car-sale bonus, a lemon-sale
-  penalty). No gating behavior changed yet — Sprint 16 spends the now-real tier on equipment/facility/
-  auction gating and the Collector Network caveat mentioned here.
+  penalty). **Sprint 16 (also implemented, 2026-07-10, ready for review) spends the now-real tier** on
+  equipment/facility/auction gating and the Collector Network caveat mentioned here — and found a real
+  catch-22 doing it: gating every one of Service Grinder's five possible repair-kind equipment targets
+  left it with no way to ever earn its first point of reputation. Fixed by leaving `upholstery-bench`
+  ungated (see sprint16.md's decision 1 revision), the real-content counterpart to this item's own
+  "gate on a value that can't climb" lesson from Sprint 13.
 - [x] **Sprint 14 — Parts market: cart, checkout & delivery timing.** Implemented, ready for review —
   see `docs/sprints/sprint14.md`. **Scope corrected 2026-07-09**: the previous version of this bullet
   added "more grades (a junk/scrapyard tier), multiple vendors" — traced back through the docs and
@@ -193,8 +198,9 @@ sequenced last on size and blast radius — 15/16 reshape the auction population
 first would mean recalibrating it twice; 17/18 are genuinely independent of 19, so that pair and 19
 could swap order if the auction pain becomes unbearable first). All five designed 2026-07-10, reviewed
 and corrected 2026-07-10 (factual claims verified against the codebase; logic gaps fixed in the docs).
-**Sprint 15 implemented 2026-07-10** (`docs/sprints/sprint15.md`, ready for review — not yet
-committed); 16-19 remain designed, pending maintainer review before implementation starts. **Four**
+**Sprints 15 and 16 implemented 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`, ready for
+review — Sprint 15 committed, Sprint 16 not yet); 17-19 remain designed, pending maintainer review
+before implementation starts. **Four**
 items from that playtest are in none of the five sprints — tracked directly below so they don't vanish
 (the review found the first draft of this paragraph claimed only two, and claimed they were listed
 here when they weren't):

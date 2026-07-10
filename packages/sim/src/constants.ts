@@ -25,6 +25,17 @@ export const SERVICE_JOB_EXPIRY_DAYS = 10
 export const SERVICE_JOB_DEADLINE_DAYS = 7
 
 /**
+ * Job-board equipment hinting (Sprint 16 decision 4): a repair-kind offer
+ * candidate whose equipment isn't owned is normally rerolled during
+ * generation; this flat per-candidate probability lets it through anyway as
+ * a "here's what's next" hint instead of a hard filter to zero. A flat
+ * per-candidate roll (not a cap count) naturally produces "usually 0,
+ * occasionally 1" across a typical weekly batch. Install-kind offers are
+ * never filtered (unaffected, as already true since Sprint 13).
+ */
+export const JOB_HINT_OFFER_CHANCE = 0.15
+
+/**
  * Reputation penalty for a failed job (handed back unfinished, or the deadline
  * passed with the work undone), as a multiple of the job's base reputation —
  * failing stings more than completing rewards at the stock rate.
@@ -164,8 +175,19 @@ export const CAR_CONDITION_BASE_MAX = 90
 /** Max +/- spread each component rolls away from its car's condition baseline. */
 export const CAR_CONDITION_JITTER = 15
 
-/** GDD 6.5: Collector Network is rep-gated. First-pass threshold. */
-export const COLLECTOR_NETWORK_MIN_REPUTATION: ReputationTier = 'respected'
+/**
+ * Auction tier reputation ladder (Sprint 16 decision 3): extends the
+ * pre-existing Collector Network gate (GDD 6.5) to the other three tiers —
+ * a clean 1:1 mapping onto 4 of the 5 reputation tiers, `legend` reserved
+ * for something rarer than a mere auction tier. `local-yard: unknown` means
+ * "no gate" (every tier is at least `unknown`).
+ */
+export const AUCTION_TIER_MIN_REPUTATION: Readonly<Record<AuctionTier, ReputationTier>> = {
+  'local-yard': 'unknown',
+  regional: 'local',
+  premium: 'known',
+  'collector-network': 'respected',
+}
 
 /** Default wait for a list-publicly sale to resolve (GDD 6.3: "slow, market price"). */
 export const PUBLIC_LISTING_WAIT_DAYS = 5

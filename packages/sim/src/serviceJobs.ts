@@ -2,6 +2,7 @@ import type {
   CarModel,
   ComponentId,
   DayLogEntry,
+  Equipment,
   GameState,
   Grade,
   HiddenIssue,
@@ -12,13 +13,42 @@ import { generateAuctionCarInstance } from './auctions'
 import { applyReputationDelta } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
+  JOB_HINT_OFFER_CHANCE,
   SERVICE_JOB_DEADLINE_DAYS,
   SERVICE_JOB_FAILURE_REP_MULTIPLIER,
 } from './constants'
 import type { SimContext } from './context'
-import { hasEquipmentFor } from './equipment'
+import { hasEquipmentFor, hasEquipmentForIds } from './equipment'
 import { hasParkingSpace, releaseCarFromServiceBay } from './facilities'
 import type { Rng } from './rng'
+
+/** Attempts a fresh pick can't exceed before falling back to whatever was last rolled
+ * (an extremely rare edge case — every type gated and every hint roll missing). */
+const MAX_TYPE_PICK_ATTEMPTS = 20
+
+/**
+ * Picks one service-job type for an offer (Sprint 16 decision 4): a
+ * repair-kind type whose equipment isn't owned is normally rerolled, but a
+ * flat `JOB_HINT_OFFER_CHANCE` per-candidate probability lets it through
+ * anyway as a "here's what's next" hint. Install-kind types are never
+ * filtered — replace is always available, gated on nothing.
+ */
+function pickServiceJobType(
+  types: readonly ServiceJobType[],
+  ownedEquipmentIds: readonly string[],
+  equipmentById: Readonly<Record<string, Equipment>>,
+  rng: Rng,
+): ServiceJobType {
+  let picked = types[0]!
+  for (let attempt = 0; attempt < MAX_TYPE_PICK_ATTEMPTS; attempt++) {
+    picked = rng.pick(types)
+    const needsUnownedEquipment =
+      picked.work.kind === 'repair' &&
+      !hasEquipmentForIds(ownedEquipmentIds, equipmentById, picked.work.componentId)
+    if (!needsUnownedEquipment || rng.next() < JOB_HINT_OFFER_CHANCE) return picked
+  }
+  return picked
+}
 
 /**
  * Offer a fresh batch of service jobs (Sprint 11: composed from a job-type +
@@ -31,7 +61,9 @@ import type { Rng } from './rng'
  * its own type's pool. `currentYear` (Sprint 10, default Infinity =
  * unrestricted) excludes still-unreleased models and clamps the rolled car's
  * year, same as auction generation — a customer's car is bound by the same
- * in-game calendar a lot is.
+ * in-game calendar a lot is. `ownedEquipmentIds`/`equipmentById` (Sprint 16,
+ * both default to "nothing owned") drive the job-board equipment hinting
+ * policy above — mostly filter out repair offers the player can't act on yet.
  */
 export function generateServiceJobOffers(
   types: readonly ServiceJobType[],
@@ -43,12 +75,14 @@ export function generateServiceJobOffers(
   expiresInDays: number,
   rng: Rng,
   currentYear: number = Infinity,
+  ownedEquipmentIds: readonly string[] = [],
+  equipmentById: Readonly<Record<string, Equipment>> = {},
 ): ServiceJob[] {
   const eligibleModels = models.filter((model) => model.spec.yearFrom <= currentYear)
   if (types.length === 0 || customerNames.length === 0 || eligibleModels.length === 0) return []
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const type = rng.pick(types)
+    const type = pickServiceJobType(types, ownedEquipmentIds, equipmentById, rng)
     const model = rng.pick(eligibleModels)
     const [minPayout, maxPayout] = type.payoutRangeYen
     const car = generateAuctionCarInstance(

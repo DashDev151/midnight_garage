@@ -150,12 +150,14 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 14: `pendingPartOrders` and `cartPartIds` are now
-    // part of every state, changing the hash even though this script never
-    // touches either.
+    // Re-pinned Sprint 16: `refreshCatalogs` now gates regional/premium
+    // auction tiers by reputation (not just collector-network), so a
+    // still-'unknown' career generates fewer tiers per weekly refresh —
+    // changing RNG consumption, and therefore every later draw's hash, even
+    // though this script's own GameState shape and actions are unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('9def8a35')
+    expect(hashState(finalState)).toBe('54d1ff17')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -236,10 +238,12 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 14: `pendingPartOrders` and `cartPartIds` are now
-    // part of every state, changing the hash even for a path that never
-    // touches either.
-    expect(hashState(acquisitionCareer().sold)).toBe('87e8338a')
+    // Re-pinned Sprint 16: same reason as the primary golden master above —
+    // the reputation-gated auction tiers change RNG consumption from day 1
+    // (this career starts 'unknown', same as the primary script), cascading
+    // into a different lot, bid, and sale outcome even though the actions
+    // taken are identical.
+    expect(hashState(acquisitionCareer().sold)).toBe('feac3f7e')
   })
 })
 

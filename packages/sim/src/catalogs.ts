@@ -4,7 +4,7 @@ import { currentGameYear, reputationAtLeast } from './calendar'
 import {
   AUCTION_LOT_EXPIRY_DAYS,
   AUCTION_LOTS_PER_TIER,
-  COLLECTOR_NETWORK_MIN_REPUTATION,
+  AUCTION_TIER_MIN_REPUTATION,
   SERVICE_JOB_EXPIRY_DAYS,
   SERVICE_JOB_OFFERS_PER_REFRESH,
 } from './constants'
@@ -45,10 +45,7 @@ export function refreshCatalogs(
   const freshLots: AuctionLot[] = []
   const lotsByTier: { tier: AuctionTier; lotCount: number }[] = []
   for (const tier of AUCTION_TIERS) {
-    if (
-      tier === 'collector-network' &&
-      !reputationAtLeast(state.reputationTier, COLLECTOR_NETWORK_MIN_REPUTATION)
-    ) {
+    if (!reputationAtLeast(state.reputationTier, AUCTION_TIER_MIN_REPUTATION[tier])) {
       continue
     }
     const lots = generateAuctionCatalog(
@@ -76,6 +73,8 @@ export function refreshCatalogs(
     SERVICE_JOB_EXPIRY_DAYS,
     rng,
     year,
+    state.ownedEquipmentIds,
+    context.equipmentById,
   )
 
   return { freshLots, freshOffers, lotsByTier }

@@ -17,8 +17,8 @@ import { groupHiddenIssuesByComponent } from './auctions'
  * start). Real gameplay passes content's actual FACILITIES.
  */
 const DEFAULT_FACILITIES: Facilities = {
-  service: { startCount: 1, maxCount: 1, bayPricesYen: [] },
-  parking: { startCount: 3, maxCount: 3, bayPricesYen: [] },
+  service: { startCount: 1, maxCount: 1, bayPricesYen: [], minReputationTier: [] },
+  parking: { startCount: 3, maxCount: 3, bayPricesYen: [], minReputationTier: [] },
 }
 
 /**

@@ -20,6 +20,11 @@ export const router = createRouter({
     },
     { path: '/parts', name: 'parts', component: () => import('../screens/PartsMarketScreen.vue') },
     { path: '/jobs', name: 'jobs', component: () => import('../screens/ServiceJobsScreen.vue') },
+    {
+      path: '/upgrades',
+      name: 'upgrades',
+      component: () => import('../screens/UpgradesScreen.vue'),
+    },
     { path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') },
   ],
 })

@@ -23,6 +23,7 @@ import type {
   Part,
   PartInstance,
   PublicListing,
+  ReputationTier,
   ServiceJob,
   StatBlock,
 } from '@midnight-garage/content'
@@ -48,8 +49,10 @@ import {
   hasParkingSpace,
   isServiceWorkDone,
   listPubliclyAskingPrice,
+  nextBayMinReputationTier,
   nextBayPriceYen,
   parkingOccupancy,
+  reputationAtLeast,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
   resolveAcceptServiceJob,
@@ -118,9 +121,11 @@ export interface ShopCarView {
   isCustomerCar: boolean
 }
 
-/** One catalog equipment item plus whether it's owned, for the purchase UI (Sprint 13). */
+/** One catalog equipment item plus whether it's owned, for the purchase UI (Sprint 13).
+ * `reputationOk` (Sprint 16) is true when the item has no reputation gate or it's already met. */
 export interface EquipmentView extends Equipment {
   owned: boolean
+  reputationOk: boolean
 }
 
 /** One line of the parts-market cart, aggregated by part (repeats in
@@ -521,6 +526,12 @@ export const useGameStore = defineStore('game', () => {
     return nextBayPriceYen(gameState.value, kind, context.value.facilities)
   }
 
+  /** Reputation tier still needed for the next bay of this kind (Sprint 16),
+   * or null if that's already met, ungated, or the ladder is maxed. */
+  function nextBayReputationGate(kind: BayKind): ReputationTier | null {
+    return nextBayMinReputationTier(gameState.value, kind, context.value.facilities)
+  }
+
   /**
    * Move a car between parking and a service bay — instant and free, no
    * limit on how many times a day (a pure sim core the store calls
@@ -570,6 +581,9 @@ export const useGameStore = defineStore('game', () => {
     context.value.equipment.map((e) => ({
       ...e,
       owned: gameState.value.ownedEquipmentIds.includes(e.id),
+      reputationOk:
+        !e.minReputationTier ||
+        reputationAtLeast(gameState.value.reputationTier, e.minReputationTier),
     })),
   )
 
@@ -1025,6 +1039,7 @@ export const useGameStore = defineStore('game', () => {
     serviceBayFreeCount,
     shopAtCapacity,
     nextBayPrice,
+    nextBayReputationGate,
     moveCar,
     swapCars,
     buyBay,

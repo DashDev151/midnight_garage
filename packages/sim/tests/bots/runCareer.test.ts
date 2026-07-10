@@ -71,30 +71,58 @@ describe('Passive Grinder', () => {
 
 describe('Service Grinder (the Act 1 floor)', () => {
   /**
-   * Sprint 13 finding, honestly disclosed rather than papered over (same
-   * precedent as Sprint 03's "Cautious Restorer's day100 result is honestly
-   * negative"): now that repair-only service jobs require owning equipment,
-   * Service Grinder — a narrow, job-income-only archetype with no other
-   * revenue — no longer reliably out-earns doing nothing within a single
-   * 100-day career. Equipment (¥350k-¥1.5M) is expensive relative to a
-   * repair job's payout (¥18k-¥45k); recouping even the cheapest tool needs
-   * more repair-of-that-category offers than a 100-day, ~4-offers-a-week
-   * board reliably produces. This is a real balance question (equipment
-   * pricing vs. service-job volume/payout), not a code bug — tracked in
-   * TODO.md as a Sprint 13 follow-up (deeper per-bot equipment strategy /
-   * a balance pass), not silently fixed by loosening what this test claims.
-   * What's still verified here is that the *mechanism* genuinely works:
-   * equipment gets bought, jobs get worked and paid.
+   * Sprint 16 finding, investigated and fixed (not just disclosed) rather
+   * than papered over: gating equipment by reputation (decision 1) initially
+   * created a genuine catch-22 for this archetype, not just a harder economy.
+   * Service Grinder only ever works repair-kind service jobs, and content
+   * only defines repair-kind types for 5 of 8 components (engine/drivetrain/
+   * suspension/body/interior — confirmed by grep, `serviceJobs.json`); its
+   * only reputation source is completing one of those. Gating all 5 of their
+   * equipment items meant it could never complete a first job to earn the
+   * reputation needed to unlock the equipment to complete a first job —
+   * verified empirically (0/30 seeds ever bought equipment, cash flat at
+   * the exact rent-only floor every time — not rare, permanent). Fixed by
+   * leaving `upholstery-bench` (interior) ungated, mirroring exactly how
+   * Sprint 13 first discovered and resolved this same class of problem
+   * (see TODO.md) — this is that fix's real-content counterpart. A real
+   * player who only ever works customer jobs and never buys/sells a car
+   * would hit the identical dead end without it.
+   *
+   * What's left, and genuinely probabilistic, is *when* within a career the
+   * bootstrap happens: a repair-interior offer still needs to survive the
+   * job-board hint roll (`JOB_HINT_OFFER_CHANCE`) before Service Grinder can
+   * see one to accept. Re-sampled across seeds (Sprint 13's own precedent —
+   * "Cautious Restorer's day100 result is honestly negative" — is to report
+   * a real distribution, not force one seed to look healthy), a clear
+   * majority break into the repair economy within 100 days; a single fixed
+   * seed is the wrong bar for a mechanic that's deliberately probabilistic.
    */
-  it('buys equipment and gets paid for at least one service job over 100 days', () => {
-    const grinder = runCareer(serviceGrinderStrategy, 1, 100, CONTEXT).snapshots
-    expect(grinder.some((s) => s.equipmentOwnedCount > 0)).toBe(true)
-    // Cash dips below the rent-only baseline at some point (equipment cost)
-    // but a completed job still moves cash upward at least once — proof
-    // service jobs are actually being finished and paid, not just attempted.
+  const SEED_SAMPLE_SIZE = 30
+
+  it('a clear majority of 100-day careers bootstrap into equipment ownership via the ungated component', () => {
+    let successes = 0
+    for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
+      const grinder = runCareer(serviceGrinderStrategy, seed, 100, CONTEXT).snapshots
+      if (grinder.some((s) => s.equipmentOwnedCount > 0)) successes++
+    }
+    expect(successes).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
+  })
+
+  it('a successful career actually gets a job worked and paid, not just equipment bought', () => {
+    // Find a seed that bootstraps (the majority do, per the test above) and
+    // confirm the payoff is real: cash moves up at least once (a completed,
+    // paid job), and it never owns a car (service work is on cars it doesn't own).
+    let grinder: ReturnType<typeof runCareer>['snapshots'] | undefined
+    for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
+      const candidate = runCareer(serviceGrinderStrategy, seed, 100, CONTEXT).snapshots
+      if (candidate.some((s) => s.equipmentOwnedCount > 0)) {
+        grinder = candidate
+        break
+      }
+    }
+    if (!grinder) throw new Error('no seed in range bootstrapped — see the majority test above')
     const cashDeltas = grinder.slice(1).map((s, i) => s.cashYen - grinder[i]!.cashYen)
     expect(cashDeltas.some((delta) => delta > 0)).toBe(true)
-    // ...and it never owns a car (service work is on cars it doesn't own).
     expect(grinder.every((s) => s.carsOwned === 0)).toBe(true)
   })
 })

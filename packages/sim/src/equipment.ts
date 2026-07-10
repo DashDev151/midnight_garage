@@ -1,7 +1,23 @@
-import type { ComponentId, DayLogEntry, GameState } from '@midnight-garage/content'
+import type { ComponentId, DayLogEntry, Equipment, GameState } from '@midnight-garage/content'
 import { reputationAtLeast } from './calendar'
 import type { SimContext } from './context'
 import type { BuyEquipmentAction } from './actions'
+
+/**
+ * The pure ownership lookup (Sprint 16 decision 5): whether `ownedEquipmentIds`
+ * covers `componentId`, given nothing but the loose pieces a caller might
+ * have — no `GameState` required. Extracted because `generateServiceJobOffers`
+ * (offer generation) never has a full `GameState`, only a bot/harness caller's
+ * loose content pieces, so it can't call `hasEquipmentFor` below without one.
+ * One real check, two callers.
+ */
+export function hasEquipmentForIds(
+  ownedEquipmentIds: readonly string[],
+  equipmentById: Readonly<Record<string, Equipment>>,
+  componentId: ComponentId,
+): boolean {
+  return ownedEquipmentIds.some((id) => equipmentById[id]?.componentIds.includes(componentId))
+}
 
 /** Whether the shop currently owns equipment covering this component — what REPAIR is gated on. */
 export function hasEquipmentFor(
@@ -9,9 +25,7 @@ export function hasEquipmentFor(
   componentId: ComponentId,
   context: SimContext,
 ): boolean {
-  return state.ownedEquipmentIds.some((id) =>
-    context.equipmentById[id]?.componentIds.includes(componentId),
-  )
+  return hasEquipmentForIds(state.ownedEquipmentIds, context.equipmentById, componentId)
 }
 
 export interface EquipmentPurchaseResult {

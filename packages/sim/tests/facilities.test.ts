@@ -17,6 +17,7 @@ import {
   applyMoves,
   hasParkingSpace,
   moveCar,
+  nextBayMinReputationTier,
   nextBayPriceYen,
   parkingOccupancy,
   releaseCarFromServiceBay,
@@ -265,10 +266,30 @@ describe('nextBayPriceYen', () => {
   })
 })
 
+describe('nextBayMinReputationTier (Sprint 16)', () => {
+  it('reports the ladder’s first rung requirement at a fresh, unranked game', () => {
+    const state = baseState()
+    expect(nextBayMinReputationTier(state, 'service', FACILITIES)).toBe(
+      FACILITIES.service.minReputationTier[0],
+    )
+  })
+
+  it('is null once the tier is already met', () => {
+    const state = baseState({ reputationTier: FACILITIES.service.minReputationTier[0]! })
+    expect(nextBayMinReputationTier(state, 'service', FACILITIES)).toBeNull()
+  })
+
+  it('is null once maxCount is reached (nothing left to gate)', () => {
+    const state = baseState({ serviceBayCount: FACILITIES.service.maxCount })
+    expect(nextBayMinReputationTier(state, 'service', FACILITIES)).toBeNull()
+  })
+})
+
 describe('applyBayPurchase / applyBayPurchases', () => {
-  it('buys a bay, deducts cash, and the new bay is usable', () => {
+  it('buys a bay, deducts cash, and the new bay is usable, once reputation clears the gate', () => {
     const price = FACILITIES.service.bayPricesYen[0]!
-    const state = baseState({ cashYen: price })
+    const rung1Tier = FACILITIES.service.minReputationTier[0]!
+    const state = baseState({ cashYen: price, reputationTier: rung1Tier })
     const result = applyBayPurchase(state, 'service', FACILITIES)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
@@ -277,20 +298,32 @@ describe('applyBayPurchase / applyBayPurchases', () => {
   })
 
   it('refuses when unaffordable, with no state change', () => {
-    const state = baseState({ cashYen: 0 })
+    const rung1Tier = FACILITIES.service.minReputationTier[0]!
+    const state = baseState({ cashYen: 0, reputationTier: rung1Tier })
     const result = applyBayPurchase(state, 'service', FACILITIES)
     expect(result.applied).toBe(false)
     expect(result.state).toBe(state)
   })
 
   it('refuses at the max count even with unlimited cash', () => {
-    const state = baseState({ cashYen: 999_999_999, serviceBayCount: FACILITIES.service.maxCount })
+    const state = baseState({
+      cashYen: 999_999_999,
+      reputationTier: 'legend',
+      serviceBayCount: FACILITIES.service.maxCount,
+    })
     const result = applyBayPurchase(state, 'service', FACILITIES)
     expect(result.applied).toBe(false)
   })
 
+  it('refuses a reputation-gated rung even with unlimited cash', () => {
+    const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
+    const result = applyBayPurchase(state, 'service', FACILITIES)
+    expect(result.applied).toBe(false)
+    expect(result.state).toBe(state)
+  })
+
   it('a batch purchase re-prices each subsequent bay off the escalating ladder', () => {
-    const state = baseState({ cashYen: 999_999_999 })
+    const state = baseState({ cashYen: 999_999_999, reputationTier: 'legend' })
     const result = applyBayPurchases(state, [{ kind: 'service' }, { kind: 'service' }], FACILITIES)
     expect(result.state.serviceBayCount).toBe(FACILITIES.service.startCount + 2)
     expect(result.log).toHaveLength(2)

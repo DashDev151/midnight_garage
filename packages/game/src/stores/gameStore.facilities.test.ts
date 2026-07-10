@@ -49,8 +49,9 @@ describe('facilities (bays) in the store', () => {
     expect(game.moveCar(carB!.id, 'service')).toBe(false)
   })
 
-  it('buyBay deducts cash and the new bay is usable immediately', () => {
+  it('buyBay deducts cash and the new bay is usable immediately, once reputation clears the gate', () => {
     const game = useGameStore()
+    game.gameState = { ...game.gameState, reputationTier: 'local' } // rung 1 needs 'local'
     const price = game.nextBayPrice('service')!
     const cashBefore = game.cashYen
 
@@ -67,7 +68,17 @@ describe('facilities (bays) in the store', () => {
 
   it('buyBay refuses when unaffordable', () => {
     const game = useGameStore()
+    game.gameState = { ...game.gameState, reputationTier: 'local' }
     game.devGiveCash(-game.cashYen) // drain to zero
+    expect(game.buyBay('service')).toBe(false)
+    expect(game.serviceBayCount).toBe(FACILITIES.service.startCount)
+  })
+
+  it('buyBay refuses a reputation-gated rung even with unlimited cash', () => {
+    const game = useGameStore()
+    const price = game.nextBayPrice('service')!
+    game.devGiveCash(price) // cash covers it, but reputationTier is still 'unknown'
+    expect(game.nextBayReputationGate('service')).toBe('local')
     expect(game.buyBay('service')).toBe(false)
     expect(game.serviceBayCount).toBe(FACILITIES.service.startCount)
   })

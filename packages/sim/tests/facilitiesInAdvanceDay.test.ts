@@ -169,10 +169,11 @@ describe('acquisitions require a free parking space at delivery, never at biddin
 })
 
 describe('buying bays via DayActions (the bots’ path)', () => {
-  it('a purchased bay is usable the same day it is bought', () => {
+  it('a purchased bay is usable the same day it is bought, once reputation clears the gate', () => {
     const price = FACILITIES.service.bayPricesYen[0]!
+    const rung1Tier = FACILITIES.service.minReputationTier[0]!
     const base = createInitialGameState(CONTEXT, 1)
-    const state = { ...base, cashYen: price }
+    const state = { ...base, cashYen: price, reputationTier: rung1Tier }
     const actions = DayActionsSchema.parse({ buyBays: [{ kind: 'service' }] })
     const { state: next, log } = advanceDay(state, actions, 1, CONTEXT)
     expect(next.serviceBayCount).toBe(base.serviceBayCount + 1)
@@ -181,5 +182,15 @@ describe('buying bays via DayActions (the bots’ path)', () => {
       kind: 'service',
       priceYen: price,
     })
+  })
+
+  it('refuses a reputation-gated bay purchase, even queued via DayActions', () => {
+    const price = FACILITIES.service.bayPricesYen[0]!
+    const base = createInitialGameState(CONTEXT, 1)
+    const state = { ...base, cashYen: price } // reputationTier stays 'unknown'
+    const actions = DayActionsSchema.parse({ buyBays: [{ kind: 'service' }] })
+    const { state: next } = advanceDay(state, actions, 1, CONTEXT)
+    expect(next.serviceBayCount).toBe(base.serviceBayCount)
+    expect(next.cashYen).toBe(price)
   })
 })
