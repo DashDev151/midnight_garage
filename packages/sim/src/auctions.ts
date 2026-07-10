@@ -10,6 +10,11 @@ import type {
   RarityTier,
 } from '@midnight-garage/content'
 import {
+  AUCTION_DURATION_FLASH_DAYS,
+  AUCTION_DURATION_LONG_RANGE_DAYS,
+  AUCTION_DURATION_STANDARD_RANGE_DAYS,
+  AUCTION_FLASH_CHANCE,
+  AUCTION_LONG_CHANCE_UNCOMMON_RARE,
   AUCTION_TRAVEL_FEE_YEN,
   CAR_CONDITION_BASE_MAX,
   CAR_CONDITION_BASE_MIN,
@@ -57,6 +62,27 @@ export function auctionTierForRarity(tier: RarityTier): AuctionTier | null {
     case 'gaisha':
       return null
   }
+}
+
+/**
+ * Duration by rarity (Sprint 19 decision 1): a rare flash-sale roll applies
+ * to any tier first (an occasional short event, not tied to one rarity);
+ * otherwise legend cars always get a long sale, uncommon/rare occasionally
+ * do, and everything else gets the standard band. First-pass day ranges,
+ * openly adjustable.
+ */
+export function rollAuctionDurationDays(rarity: RarityTier, rng: Rng): number {
+  if (rng.next() < AUCTION_FLASH_CHANCE) return AUCTION_DURATION_FLASH_DAYS
+  const [longMin, longMax] = AUCTION_DURATION_LONG_RANGE_DAYS
+  if (rarity === 'legend') return rng.int(longMin, longMax)
+  if (
+    (rarity === 'uncommon' || rarity === 'rare') &&
+    rng.next() < AUCTION_LONG_CHANCE_UNCOMMON_RARE
+  ) {
+    return rng.int(longMin, longMax)
+  }
+  const [stdMin, stdMax] = AUCTION_DURATION_STANDARD_RANGE_DAYS
+  return rng.int(stdMin, stdMax)
 }
 
 export function groupHiddenIssuesByComponent(
@@ -147,6 +173,9 @@ export function generateAuctionCarInstance(
  * unrestricted) also excludes any model whose `yearFrom` postdates the
  * in-game calendar — see calendar.ts — so a still-unreleased model can't
  * appear at auction (GDD 2.2: "new model years appear at auction over time").
+ * Each lot's own duration is rolled independently off its model's rarity
+ * (Sprint 19 decision 1) — replacing the old flat `expiresInDays` shared by
+ * every lot in the batch.
  */
 export function generateAuctionCatalog(
   models: readonly CarModel[],
@@ -154,7 +183,6 @@ export function generateAuctionCatalog(
   hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
   day: number,
   count: number,
-  expiresInDays: number,
   rng: Rng,
   currentYear: number = Infinity,
 ): AuctionLot[] {
@@ -181,7 +209,9 @@ export function generateAuctionCatalog(
       car,
       bookValueYen: model.bookValueYen,
       inspected: false,
-      expiresOnDay: day + expiresInDays,
+      expiresOnDay: day + rollAuctionDurationDays(model.tier, rng),
+      playerMaxBidYen: null,
+      rivalEscalatedBidsYen: [],
     })
   }
   return lots

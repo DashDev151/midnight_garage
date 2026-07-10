@@ -1,6 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
+import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { INSTALL_LABOR_SLOTS } from '../constants'
@@ -147,12 +147,13 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
   }
 
   // 4. Bid fair value on a mid-priced lot if there's room for another car.
-  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
   if (roomForMoreCars > 0) {
     const candidates = state.activeAuctionLots.filter(
       (lot) =>
         lot.bookValueYen >= MIN_TARGET_BOOK_VALUE_YEN &&
         lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
+        lot.playerMaxBidYen === null &&
         state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (candidates.length > 0) {
@@ -166,7 +167,7 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
         maxBidYen,
         actions,
         context,
-        auctionAcquisitionBudget(),
+        auctionAcquisitionBudget(state),
         CASH_BUFFER_MULTIPLIER,
       )
     }

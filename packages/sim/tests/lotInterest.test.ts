@@ -15,7 +15,6 @@ function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium',
     HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
-    7,
     createRng(seed),
   )
   if (!lot) throw new Error('expected a lot')

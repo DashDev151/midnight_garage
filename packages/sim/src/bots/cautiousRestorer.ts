@@ -1,6 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
+import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -69,9 +69,12 @@ export function cautiousRestorerStrategy(
   }
 
   // 2. Bid fair value on an already-inspected lot, if there's room for another car.
-  if (state.ownedCars.length < MAX_CONCURRENT_CARS) {
+  if (state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS) {
     const inspected = state.activeAuctionLots.filter(
-      (lot) => lot.inspected && state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
+      (lot) =>
+        lot.inspected &&
+        lot.playerMaxBidYen === null &&
+        state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (inspected.length > 0) {
       const chosen = rng.pick(inspected)
@@ -84,7 +87,7 @@ export function cautiousRestorerStrategy(
         maxBidYen,
         actions,
         context,
-        auctionAcquisitionBudget(),
+        auctionAcquisitionBudget(state),
         CASH_BUFFER_MULTIPLIER,
       )
     }

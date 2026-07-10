@@ -8,12 +8,16 @@ import type {
 } from '@midnight-garage/content'
 import { resolveHandoverCondition } from './auctions'
 import {
-  AUCTION_BID_INCREMENT_YEN,
   AUCTION_BIDDER_NOISE_RANGE,
   AUCTION_BUYOUT_PREMIUM,
+  AUCTION_ESCALATION_DAILY_CHANCE,
+  AUCTION_ESCALATION_STEP_FRACTION,
   AUCTION_FIELD_BASE,
   AUCTION_FIELD_PER_INTEREST,
   AUCTION_FIELD_SIZE_SD,
+  AUCTION_HEADROOM_MODERATE_MIN_FRACTION,
+  AUCTION_HEADROOM_PLENTY_MIN_FRACTION,
+  AUCTION_HEADROOM_TIGHT_MIN_FRACTION,
   AUCTION_INTEREST_BASE_BAND,
   AUCTION_RESERVE_PRICE_FRACTION,
 } from './constants'
@@ -37,8 +41,36 @@ export interface LotInterest {
   estimateHighYen: number
 }
 
-function buyoutPriceYen(lot: AuctionLot): number {
+/** The static floor — book value times the fixed premium, ignoring any live
+ * bidding. Not what buyout actually charges (see `computeBuyoutPriceYen`
+ * below) — this is the number a quiet, uncontested lot's buyout settles at. */
+function baseBuyoutPriceYen(lot: AuctionLot): number {
   return Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
+}
+
+/** The real current leading bid — player's committed max vs. the highest
+ * rival escalated position so far. Shared by `computeBidHeadroom` (the
+ * player-facing read, where it's exposed as `BidHeadroom.currentTopBidYen`)
+ * and `computeBuyoutPriceYen` (Sprint 19c) below, so both agree on exactly
+ * the same number. */
+function leadingBidYen(lot: AuctionLot): number {
+  return Math.max(lot.playerMaxBidYen ?? 0, 0, ...lot.rivalEscalatedBidsYen)
+}
+
+/**
+ * The real, chargeable instant-buyout price (Sprint 19c) — the base floor
+ * (`baseBuyoutPriceYen`), or the current leading bid, whichever is higher.
+ * Rival ceilings are no longer capped at buyout (see `buildRivalField`'s own
+ * comment), so a hot lot can genuinely out-bid the old fixed premium; rather
+ * than let a live auction undercut the "guaranteed win" promise, buyout
+ * itself rises to match — "when a bid goes above buyout price, the buyout
+ * price increases to the max bid," the maintainer's own framing. Only reacts
+ * to *revealed* bids (the player's own, or a rival's actual escalated
+ * position) — never a hidden ceiling nobody has bid yet, so this never
+ * leaks information escalation itself hasn't already surfaced.
+ */
+export function computeBuyoutPriceYen(lot: AuctionLot): number {
+  return Math.max(baseBuyoutPriceYen(lot), leadingBidYen(lot))
 }
 
 /**
@@ -64,12 +96,21 @@ export function interestedBuyers(
  * many anonymous bidders show up (a bell roll around a mean that scales with
  * how many archetypes want the car) and what each of them bids (drawn from
  * an interested archetype weighted by preference strength, disciplined below
- * resale value, noised per-bidder, and capped at the lot's buyout price so no
- * rival can ever outbid instant certainty). Seeded entirely on the lot's id,
- * so `computeLotInterest` and `resolveAuction` always construct the
- * identical field — the shown read and the real resolution never disagree.
+ * resale value, noised per-bidder). Seeded entirely on the lot's id, so
+ * `computeLotInterest` and `resolveAuction` always construct the identical
+ * field — the shown read and the real resolution never disagree.
+ *
+ * **Uncapped since Sprint 19c** — a rival's bid used to be clamped at the
+ * lot's (fixed) buyout price, "so no rival can ever outbid instant
+ * certainty." That's still true, but the fix moved to the other side:
+ * buyout itself now rises to match a bid that clears it
+ * (`computeBuyoutPriceYen`), instead of silently capping rivals below a
+ * static number — the maintainer's explicit call, needed to let real bids
+ * exceed book value at all (previously `AUCTION_BIDDER_DISCIPLINE` alone
+ * already kept most bids well under the old cap, but the cap still existed
+ * as an invisible ceiling nothing could ever test).
  */
-function buildRivalField(
+export function buildRivalField(
   lot: AuctionLot,
   model: CarModel,
   buyers: readonly Buyer[],
@@ -83,7 +124,6 @@ function buildRivalField(
   const fieldMean = AUCTION_FIELD_BASE + AUCTION_FIELD_PER_INTEREST * interestBreadth
   const fieldSize = Math.max(0, Math.round(bellNormal(fieldMean, AUCTION_FIELD_SIZE_SD, rng)))
 
-  const cap = buyoutPriceYen(lot)
   const [noiseMin, noiseMax] = AUCTION_BIDDER_NOISE_RANGE
   const bids: number[] = []
   for (let i = 0; i < fieldSize; i++) {
@@ -98,7 +138,7 @@ function buildRivalField(
     }
     const noise = noiseMin + rng.next() * (noiseMax - noiseMin)
     const rawBid = auctionBidValueFor(archetype, model, lot.car, partsById) * noise
-    bids.push(Math.round(Math.min(rawBid, cap)))
+    bids.push(Math.round(rawBid))
   }
   return bids
 }
@@ -134,10 +174,11 @@ export function computeLotInterest(
   const level: LotInterest['level'] =
     contenders === 0 ? 'quiet' : contenders <= 3 ? 'warm' : contenders <= 11 ? 'hot' : 'frenzy'
 
-  // The number that actually wins is the TOP bid, not the second-price
-  // clearing number — bidding above a "clearing price" estimate could still
-  // lose to a single aggressive top bidder, which is the exact bug this
-  // re-centering fixes.
+  // The number that actually wins IS the number you'd pay (Sprint 19b:
+  // first-price) — centering on the top bid was already correct before this
+  // change (Sprint 11 re-centered it away from a second-price clearing
+  // number to fix bidding-above-the-estimate-still-losing), it's just also
+  // now literally the price a winning bid pays, not merely the bar to clear.
   const center = bids[0] ?? 0
   const band = AUCTION_INTEREST_BASE_BAND * (1 - Math.max(0, Math.min(1, precision)))
   const roundTo10k = (n: number) => Math.round(n / 10_000) * 10_000
@@ -151,26 +192,29 @@ export function computeLotInterest(
 }
 
 /**
- * Second-price sealed-bid resolution (Sprint 03 decision 4; reworked Sprint
- * 10 around the variable rival field). The winner pays the second-highest
- * bid plus a small increment — never their own max — so the player can
- * occasionally win well under what they were willing to pay (decision 4b).
+ * The pure top-bid-wins, pay-your-own-bid math (Sprint 03 decision 4 through
+ * Sprint 10's variable rival field; extracted Sprint 19 so both "resolve
+ * against full rival ceilings" (`resolveAuction` below) and "resolve against
+ * wherever multi-day escalation currently stands" (`resolveDueAuctionLot`)
+ * share one implementation instead of two). **Reworked Sprint 19b: first-price,
+ * not second-price** — the winner pays exactly what they bid, never a
+ * discounted "second-highest + increment" number. The maintainer's own
+ * framing: "you should pay what you bid" — second-price is a real, studied
+ * auction mechanism (this is what a Vickrey auction / eBay proxy bidding
+ * actually does), but its one real advantage — freeing a bidder from having
+ * to guess the minimum winning number — doesn't pay for itself here, since
+ * the game already shows a "bid X-Y to win" estimate (`computeLotInterest`).
+ * Paying what you bid is simpler to reason about and was the explicit ask.
  */
-export function resolveAuction(
-  lot: AuctionLot,
-  model: CarModel,
+function resolveTopBidAuction(
+  rivalBidsYen: readonly number[],
   playerMaxBidYen: number | null,
-  buyers: readonly Buyer[],
-  partsById: Readonly<Record<string, Part>>,
+  reserveYen: number,
 ): AuctionResult {
-  const reserveYen = Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
-
-  const bids: { isPlayer: boolean; maxBidYen: number }[] = buildRivalField(
-    lot,
-    model,
-    buyers,
-    partsById,
-  ).map((maxBidYen) => ({ isPlayer: false, maxBidYen }))
+  const bids: { isPlayer: boolean; maxBidYen: number }[] = rivalBidsYen.map((maxBidYen) => ({
+    isPlayer: false,
+    maxBidYen,
+  }))
   if (playerMaxBidYen !== null && playerMaxBidYen > 0) {
     bids.push({ isPlayer: true, maxBidYen: playerMaxBidYen })
   }
@@ -184,15 +228,126 @@ export function resolveAuction(
     return { winner: 'no-sale', finalPriceYen: 0 }
   }
 
-  const second = eligible[1]
-  const finalPriceYen = second
-    ? Math.min(top.maxBidYen, second.maxBidYen + AUCTION_BID_INCREMENT_YEN)
-    : Math.min(top.maxBidYen, reserveYen + AUCTION_BID_INCREMENT_YEN)
-
   return {
     winner: top.isPlayer ? 'player' : 'ai',
-    finalPriceYen,
+    finalPriceYen: top.maxBidYen,
   }
+}
+
+/**
+ * Resolves an auction against rivals' full, unescalated ceilings — "what
+ * would happen if this lot resolved right now with complete information."
+ * No longer called by the day-boundary resolution path (Sprint 19: that
+ * uses whatever rivals have actually escalated to by the lot's due day, via
+ * `resolveDueAuctionLot`) — kept as the calibration/testing surface for the
+ * underlying rival-field statistics (`buildRivalField`'s bell curve, bidder
+ * discipline, tier gating).
+ */
+export function resolveAuction(
+  lot: AuctionLot,
+  model: CarModel,
+  playerMaxBidYen: number | null,
+  buyers: readonly Buyer[],
+  partsById: Readonly<Record<string, Part>>,
+): AuctionResult {
+  const reserveYen = Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
+  const rivalBidsYen = buildRivalField(lot, model, buyers, partsById)
+  return resolveTopBidAuction(rivalBidsYen, playerMaxBidYen, reserveYen)
+}
+
+/**
+ * Advances one lot's rival escalation by exactly one day (Sprint 19 decision
+ * 2 — the core new mechanic): every rival whose fixed ceiling
+ * (`buildRivalField`'s unchanged output) still exceeds the current top bid,
+ * and hasn't yet reached that ceiling, has a flat per-day chance to raise
+ * partway toward it. Rivals already beaten (their ceiling can't win anyway)
+ * or already at their ceiling never move. Seeded on the lot id *and* the
+ * day, so each day's roll is independent but still fully reproducible.
+ * `rivalEscalatedBidsYen` is read defensively by index rather than assumed
+ * pre-sized — the same robustness Sprint 17 established for indexed arrays
+ * whose real size isn't known where they're created. A stored `0` always
+ * means "hasn't made a real move yet" (never a valid *escalated* position,
+ * since every real raise is at least 1 yen and a rival's first raise jumps
+ * straight past the reserve floor — see below), so it doubles safely as the
+ * "untouched" sentinel with no separate tracking needed.
+ *
+ * (Sprint 19b) A rival's *first successful* raise lands at the reserve
+ * price plus a step from there, not a step up from ¥0: a real bidder was
+ * never going to show up below the seller's own floor, so climbing from 0
+ * just wasted early escalation days walking through territory that could
+ * never have won anyway, worsening the "auctions barely move within their
+ * own duration" tuning problem. A rival who's dominated (their ceiling
+ * already can't beat the current top bid) still never moves at all, exactly
+ * as before — untouched stays untouched, not silently promoted to the
+ * reserve floor for a fight they were never going to enter.
+ */
+export function applyDailyEscalation(
+  lot: AuctionLot,
+  model: CarModel,
+  buyers: readonly Buyer[],
+  partsById: Readonly<Record<string, Part>>,
+  day: number,
+): AuctionLot {
+  const ceilings = buildRivalField(lot, model, buyers, partsById)
+  if (ceilings.length === 0) return lot
+
+  const reserveYen = Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
+  const rng = createRng(hashStringToSeed(`${lot.id}:escalate:${day}`))
+  const currentTopYen = leadingBidYen(lot)
+
+  const rivalEscalatedBidsYen = ceilings.map((ceiling, i) => {
+    const stored = lot.rivalEscalatedBidsYen[i] ?? 0
+    const current = stored === 0 ? Math.min(ceiling, reserveYen) : stored
+    if (ceiling <= currentTopYen) return stored // never a real threat; frozen
+    if (current >= ceiling) return stored // already maxed (or never clears reserve); nothing to add
+    if (rng.next() >= AUCTION_ESCALATION_DAILY_CHANCE) return stored // no move today
+    const raise = Math.max(1, Math.round((ceiling - current) * AUCTION_ESCALATION_STEP_FRACTION))
+    return Math.min(ceiling, current + raise)
+  })
+
+  return { ...lot, rivalEscalatedBidsYen }
+}
+
+/** The live standings and headroom read for a lot with an active bid (Sprint 19 decision 3) —
+ * distinct from `computeLotInterest`'s pre-bid estimate: this answers "given where the bidding
+ * stands right now, how much room is left for it to move against me," which only makes sense
+ * once bidding is already live over multiple days. Obfuscated the same way (a qualitative
+ * bucket, not a yen figure for what a rival would actually pay). */
+export interface BidHeadroom {
+  level: 'none' | 'plenty' | 'moderate' | 'tight' | 'critical'
+  /** The real current top bid — unlike the headroom level, this is not obfuscated: it's already
+   * happened, not a forecast. */
+  currentTopBidYen: number
+  /** True when the player's own committed max bid is currently the top bid. */
+  playerIsWinning: boolean
+}
+
+export function computeBidHeadroom(
+  lot: AuctionLot,
+  model: CarModel,
+  buyers: readonly Buyer[],
+  partsById: Readonly<Record<string, Part>>,
+): BidHeadroom {
+  const ceilings = buildRivalField(lot, model, buyers, partsById)
+  const maxCeilingYen = Math.max(0, ...ceilings)
+  const topRivalBidYen = Math.max(0, ...lot.rivalEscalatedBidsYen)
+  const currentTopBidYen = leadingBidYen(lot)
+  const playerIsWinning = lot.playerMaxBidYen !== null && lot.playerMaxBidYen >= topRivalBidYen
+
+  if (maxCeilingYen === 0) {
+    return { level: 'none', currentTopBidYen, playerIsWinning }
+  }
+  const headroomFraction = Math.max(0, (maxCeilingYen - currentTopBidYen) / maxCeilingYen)
+  const level: BidHeadroom['level'] =
+    headroomFraction >= AUCTION_HEADROOM_PLENTY_MIN_FRACTION
+      ? 'plenty'
+      : headroomFraction >= AUCTION_HEADROOM_MODERATE_MIN_FRACTION
+        ? 'moderate'
+        : headroomFraction >= AUCTION_HEADROOM_TIGHT_MIN_FRACTION
+          ? 'tight'
+          : 'critical'
+
+  return { level, currentTopBidYen, playerIsWinning }
 }
 
 export interface AcquisitionResult {
@@ -213,45 +368,102 @@ function handoverRng(lotId: string) {
 }
 
 /**
- * The instant bid resolver (Sprint 11): resolves the moment it's placed.
- * `buildRivalField` is seeded purely on the lot's id, never the day or a
- * bid's timing, so resolving instantly produces an identical outcome to
- * resolving at End Day — nothing about the auction math needs a day
- * boundary. Shared by the player's instant click and advanceDay's bot batch
- * loop (one queued bid per call, same as every other Sprint 11 resolver).
+ * Places or raises a bid (Sprint 19 — replaces the old instant resolver:
+ * multi-day bidding means a bid no longer resolves anything by itself, it
+ * just records/raises the player's own committed max on the lot). Never
+ * lowers an existing bid — the same "you can always raise, never retract"
+ * rule a real proxy-bidding auction uses. Shared by the player's instant
+ * click and advanceDay's bot batch loop (one queued bid per call, same as
+ * every other resolver in this codebase).
  */
-export function resolveBidInstant(
+export function resolvePlaceBid(
   state: GameState,
   lotId: string,
   maxBidYen: number,
   context: SimContext,
 ): AcquisitionResult {
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
-  if (!lot) return { state, log: [] }
+  if (!lot || maxBidYen <= 0) return { state, log: [] }
   const model = context.modelsById[lot.modelId]
   if (!model) return { state, log: [] }
 
-  const result = resolveAuction(lot, model, maxBidYen, context.buyers, context.partsById)
-  if (result.winner === 'no-sale') return { state, log: [] }
+  const nextMaxBidYen = Math.max(lot.playerMaxBidYen ?? 0, maxBidYen)
+  if (nextMaxBidYen === lot.playerMaxBidYen) return { state, log: [] } // not actually a raise
 
-  const remainingLots = state.activeAuctionLots.filter((l) => l.id !== lotId)
+  const updatedLot: AuctionLot = { ...lot, playerMaxBidYen: nextMaxBidYen }
+  return {
+    state: {
+      ...state,
+      activeAuctionLots: state.activeAuctionLots.map((l) => (l.id === lotId ? updatedLot : l)),
+    },
+    log: [{ type: 'auction-bid-placed', lotId, maxBidYen: nextMaxBidYen }],
+  }
+}
 
-  if (result.winner === 'ai') {
-    return {
-      state: { ...state, activeAuctionLots: remainingLots },
-      log: [{ type: 'auction-bid-lost', lotId, winningPriceYen: result.finalPriceYen }],
-    }
+/**
+ * Resolves one lot on its due day (Sprint 19 — the multi-day counterpart to
+ * the old instant `resolveBidInstant`): runs one final escalation pass, then
+ * the real top-bid-wins math against wherever standings land — rivals'
+ * *current escalated* bids, not their full ceilings, so a short auction that
+ * never gave rivals many chances to raise naturally produces more "won
+ * cheap" outcomes (decision 2). Called once per lot from `advanceDay`'s
+ * day-boundary step, for every lot whose duration has elapsed — including
+ * ones the player never bid on at all, which simply resolve with no player
+ * winner and no log (unchanged from today's silent "expired unsold").
+ */
+export function resolveDueAuctionLot(
+  state: GameState,
+  lot: AuctionLot,
+  context: SimContext,
+  day: number,
+): AcquisitionResult {
+  const model = context.modelsById[lot.modelId]
+  const removeLot = (s: GameState): GameState => ({
+    ...s,
+    activeAuctionLots: s.activeAuctionLots.filter((l) => l.id !== lot.id),
+  })
+  if (!model) return { state: removeLot(state), log: [] }
+
+  const escalated = applyDailyEscalation(lot, model, context.buyers, context.partsById, day)
+  const reserveYen = Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
+  const result = resolveTopBidAuction(
+    escalated.rivalEscalatedBidsYen,
+    lot.playerMaxBidYen,
+    reserveYen,
+  )
+
+  if (result.winner !== 'player') {
+    // An AI win (or no-sale) is only worth logging if the player actually
+    // had skin in this lot — one they never bid on just quietly expires,
+    // exactly like today's silent unsold-lot removal.
+    const log: DayLogEntry[] =
+      result.winner === 'ai' && lot.playerMaxBidYen !== null
+        ? [{ type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: result.finalPriceYen }]
+        : []
+    return { state: removeLot(state), log }
   }
 
-  // The player won — but unlike a buyout, rivals already contested this
-  // lot, so a full garage doesn't put the auction on hold, it forfeits the
-  // win to them (the lot is already gone either way).
+  // The player won. Unlike a buyout, rivals already contested this lot, so
+  // a blocked win forfeits it to them rather than holding the auction open.
   if (!hasParkingSpace(state)) {
     return {
-      state: { ...state, activeAuctionLots: remainingLots },
+      state: removeLot(state),
       log: [
         { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-parking' },
-        { type: 'auction-bid-lost', lotId, winningPriceYen: result.finalPriceYen },
+        { type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: result.finalPriceYen },
+      ],
+    }
+  }
+  // Decision 7: multi-day bidding has no escrow — cash is only checked now,
+  // on resolution day, not back when the bid was placed. Forfeits the same
+  // way a blocked win for lack of parking already does: no money spent, the
+  // win is simply lost, not retried.
+  if (state.cashYen < result.finalPriceYen) {
+    return {
+      state: removeLot(state),
+      log: [
+        { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-cash' },
+        { type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: result.finalPriceYen },
       ],
     }
   }
@@ -260,20 +472,19 @@ export function resolveBidInstant(
     lot,
     result.finalPriceYen,
     context.hiddenIssuesById,
-    handoverRng(lotId),
+    handoverRng(lot.id),
   )
   const withCar = assignToParking(
     {
-      ...state,
+      ...removeLot(state),
       cashYen: state.cashYen - result.finalPriceYen,
       ownedCars: [...state.ownedCars, finalCar],
-      activeAuctionLots: remainingLots,
     },
     finalCar.id,
   )
   return {
     state: withCar,
-    log: [{ type: 'auction-bid-won', lotId, finalPriceYen: result.finalPriceYen }],
+    log: [{ type: 'auction-bid-won', lotId: lot.id, finalPriceYen: result.finalPriceYen }],
   }
 }
 
@@ -282,7 +493,9 @@ export function resolveBidInstant(
  * premium, no rival contest — a full garage just means the purchase doesn't
  * happen right now (no money spent), the lot stays on the board for a retry
  * once space frees up. Shared by the player's instant click and advanceDay's
- * bot batch loop.
+ * bot batch loop. Price is the real, possibly-risen `computeBuyoutPriceYen`
+ * (Sprint 19c), not the static premium — a hot lot costs more to skip the
+ * wait on than a quiet one.
  */
 export function resolveBuyoutInstant(
   state: GameState,
@@ -291,7 +504,7 @@ export function resolveBuyoutInstant(
 ): AcquisitionResult {
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
   if (!lot) return { state, log: [] }
-  const priceYen = buyoutPriceYen(lot)
+  const priceYen = computeBuyoutPriceYen(lot)
   if (state.cashYen < priceYen) return { state, log: [] }
   if (!hasParkingSpace(state)) {
     return {

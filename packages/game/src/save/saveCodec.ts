@@ -78,8 +78,16 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   so a pre-v10 save decodes with nothing staged on any car — correct,
  *   since the concept didn't exist yet. No explicit `MIGRATIONS[9]` step
  *   needed (back to the normal additive case after v9's one-off migration).
+ * - v11 (Sprint 19): `AuctionLot` (nested in `activeAuctionLots`) gained
+ *   `playerMaxBidYen` and `rivalEscalatedBidsYen` — the multi-day bidding
+ *   rework's live standings, replacing same-day instant bid resolution.
+ *   Both purely additive with schema defaults (`null` / `[]`), so a pre-v11
+ *   save's already-listed lots decode with no bid in progress and no
+ *   escalation yet — correct, since a v10-or-earlier save could never have
+ *   had a bid mid-flight (bidding always resolved the instant it was
+ *   placed). No explicit `MIGRATIONS[10]` step needed.
  */
-export const SAVE_VERSION = 10
+export const SAVE_VERSION = 11
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

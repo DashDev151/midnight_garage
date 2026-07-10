@@ -1,6 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
+import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -181,10 +181,11 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   // same bid size regardless of which archetype the car will turn out to
   // be played as (see BID_MULTIPLIER's comment: no archetype has an
   // informational edge at this stage, so none should pay a premium).
-  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
   if (roomForMoreCars > 0) {
     const affordable = state.activeAuctionLots.filter(
-      (lot) => state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
+      (lot) =>
+        lot.playerMaxBidYen === null && state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (affordable.length > 0) {
       const lot = rng.pick(affordable)
@@ -197,7 +198,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
         maxBidYen,
         actions,
         context,
-        auctionAcquisitionBudget(),
+        auctionAcquisitionBudget(state),
         CASH_BUFFER_MULTIPLIER,
       )
     }

@@ -320,6 +320,100 @@ describe('saveCodec', () => {
     expect(decoded).toEqual(withStagedWork)
   })
 
+  it('decodes a pre-v11 save with an active lot that never had a bid (Sprint 19: purely additive)', () => {
+    const carComponents = {
+      engine: { condition: 60, installed: null },
+      forcedInduction: { condition: 100, installed: null },
+      drivetrain: { condition: 60, installed: null },
+      suspension: { condition: 60, installed: null },
+      brakes: { condition: 100, installed: null },
+      wheels: { condition: 100, installed: null },
+      body: { condition: 60, installed: null },
+      interior: { condition: 60, installed: null },
+    }
+    const preV11 = {
+      version: 10,
+      gameState: {
+        day: 90,
+        seed: 13,
+        cashYen: 2_500_000,
+        reputationTier: 'known',
+        reputationPoints: 40,
+        serviceBayCount: 2,
+        parkingBayCount: 3,
+        serviceBayCarIds: [null, null],
+        parkingCarIds: [null, null, null],
+        activeAuctionLots: [
+          {
+            id: 'lot-90-honda-city-e-aa',
+            tier: 'local-yard',
+            modelId: 'honda-city-e-aa',
+            bookValueYen: 200_000,
+            expiresOnDay: 93,
+            car: {
+              id: 'lot-car-1',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 120_000,
+              color: 'White',
+              provenanceNote: '',
+              hiddenIssues: [],
+              authenticityPercent: 85,
+              components: carComponents,
+            },
+          },
+        ],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV11))
+    const decoded = decodeSave(code)
+    expect(decoded.day).toBe(90)
+    expect(decoded.activeAuctionLots).toHaveLength(1)
+    // v10 -> v11 migration is pure default-fill: a v10 save's lots never had
+    // a bid in progress (bidding always resolved the instant it was placed).
+    expect(decoded.activeAuctionLots[0]?.playerMaxBidYen).toBeNull()
+    expect(decoded.activeAuctionLots[0]?.rivalEscalatedBidsYen).toEqual([])
+  })
+
+  it('round-trips a v11 state with a real active bid and rival escalation on a lot', () => {
+    const withActiveBid: GameState = GameStateSchema.parse({
+      ...fullState,
+      activeAuctionLots: [
+        {
+          id: 'lot-42-honda-city-e-aa',
+          tier: 'local-yard',
+          modelId: 'honda-city-e-aa',
+          bookValueYen: 200_000,
+          expiresOnDay: 45,
+          playerMaxBidYen: 220_000,
+          rivalEscalatedBidsYen: [150_000, 90_000],
+          car: {
+            id: 'lot-car-2',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 120_000,
+            color: 'White',
+            provenanceNote: '',
+            hiddenIssues: [],
+            authenticityPercent: 85,
+            components: {
+              engine: { condition: 60, installed: null },
+              forcedInduction: { condition: 100, installed: null },
+              drivetrain: { condition: 60, installed: null },
+              suspension: { condition: 60, installed: null },
+              brakes: { condition: 100, installed: null },
+              wheels: { condition: 100, installed: null },
+              body: { condition: 60, installed: null },
+              interior: { condition: 60, installed: null },
+            },
+          },
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withActiveBid))
+    expect(decoded).toEqual(withActiveBid)
+  })
+
   it('round-trips a v9 state preserving real, index-addressable bay/parking slots (empty slots included)', () => {
     const withSlots: GameState = GameStateSchema.parse({
       ...fullState,

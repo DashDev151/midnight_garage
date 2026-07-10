@@ -155,13 +155,12 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 18: GameState gained the new `stagedCarWork` field
-    // (Sprint 18's stage-then-confirm repair/install workflow), which feeds
-    // hashState even though this script never stages anything and its
-    // actions/outcomes are unchanged.
+    // Re-pinned Sprint 19c: AUCTION_ESCALATION_DAILY_CHANCE (0.4->0.6) and
+    // AUCTION_BIDDER_DISCIPLINE (0.7->0.95) both feed weekly catalog refresh
+    // and escalation RNG/values even though this script never places a bid.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('91ed875d')
+    expect(hashState(finalState)).toBe('38f17402')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -215,13 +214,19 @@ describe('advanceDay golden master — acquisition and sale path', () => {
     }
     const lot = state.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot to appear')
-    // An over-market max bid wins under second-price resolution.
+    // An over-market max bid — well above the buyout cap every rival bid is
+    // capped at — guarantees a win once the lot's own duration elapses
+    // (Sprint 19: bidding no longer resolves the instant it's placed).
     state = advanceDay(
       state,
       { ...noActions, bidsOnLots: [{ lotId: lot.id, maxBidYen: lot.bookValueYen * 3 }] },
       state.seed + state.day,
       CONTEXT,
     ).state
+    guard = 0
+    while (state.activeAuctionLots.some((l) => l.id === lot.id) && guard++ < 30) {
+      state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
+    }
     const won = state
     const car = won.ownedCars[0]
     if (!car) throw new Error('expected to win the lot')
@@ -242,10 +247,10 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 18: same reason as the primary golden master above —
-    // the new `stagedCarWork` field feeds hashState even though this career
-    // never stages anything and its actions/outcomes are unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('4793d4f5')
+    // Re-pinned Sprint 19c: same reason as the primary golden master above
+    // — the retuned discipline/escalation constants change real rival
+    // ceilings and this career's own won price.
+    expect(hashState(acquisitionCareer().sold)).toBe('f21377e0')
   })
 })
 

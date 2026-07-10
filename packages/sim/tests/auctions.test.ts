@@ -90,7 +90,6 @@ describe('generateAuctionCatalog never includes Gaisha', () => {
           HIDDEN_ISSUES_BY_COMPONENT,
           7,
           5,
-          7,
           createRng(seed),
         )
         for (const lot of lots) {
@@ -201,7 +200,6 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
       HIDDEN_ISSUES_BY_COMPONENT,
       7,
       5,
-      7,
       createRng(1),
       1995,
     )
@@ -215,7 +213,6 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
       HIDDEN_ISSUES_BY_COMPONENT,
       7,
       5,
-      7,
       createRng(1),
       2005,
     )
@@ -232,7 +229,6 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
       HIDDEN_ISSUES_BY_COMPONENT,
       7,
       5,
-      7,
       createRng(1),
     )
     expect(lots.length).toBeGreaterThan(0)
@@ -249,7 +245,6 @@ describe('inspectLot', () => {
       HIDDEN_ISSUES_BY_COMPONENT,
       7,
       10,
-      7,
       createRng(3),
     )
     const lotWithIssue = lots.find((lot) => lot.car.hiddenIssues.length > 0)
@@ -273,7 +268,6 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
       HIDDEN_ISSUES_BY_COMPONENT,
       7,
       1,
-      7,
       createRng(seed),
     )
     if (!lot) throw new Error('expected a lot')
@@ -327,7 +321,6 @@ describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
         HIDDEN_ISSUES_BY_COMPONENT,
         7,
         1,
-        7,
         createRng(attempt),
       )
       if (lot && lot.car.hiddenIssues.length > 0) return lot

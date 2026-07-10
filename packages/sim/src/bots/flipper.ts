@@ -1,6 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, auctionAcquisitionBudget } from './buyoutHelpers'
+import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -10,12 +10,14 @@ const MAX_CONCURRENT_CARS = 3
 const MAX_BIDS_PER_DAY = 2
 const PLAYER_LABOR_SLOTS = 2 // flipper never hires staff
 /**
- * Bid book value itself, not a lowball fraction of it. Empirically (this
- * sprint's balance harness), lowballing toward the reserve floor never
- * wins against the AI bidder pool — the second-price auction already
- * extracts most of a car's value at auction time, so a bid needs to be
- * competitive to win at all; the flip's margin comes from the repair
- * value-add (below), not from buying at an artificial discount.
+ * Bid book value itself, not a lowball fraction of it. Empirically (Sprint
+ * 03's balance harness), lowballing toward the reserve floor never wins
+ * against the AI bidder pool — a bid needs to be competitive to win at all;
+ * the flip's margin comes from the repair value-add (below), not from
+ * buying at a discount. Under Sprint 19b's first-price rework, winning at
+ * this bid now costs exactly book value (no more automatic second-price
+ * discount when it wins) — a real tightening of this bot's margin, not yet
+ * re-verified against the balance harness (tracked in `TODO.md`).
  */
 const BID_FRACTION_OF_BOOK = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.3
@@ -109,14 +111,22 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
 
   // 4. Bid on fresh, cheap local-yard lots if there's room for another car —
   // or buy out instead when the lot's already expected to clear near buyout
-  // price (external review 2026-07 finding 2).
-  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
+  // price (external review 2026-07 finding 2). Room already spoken for by a
+  // still-unresolved active bid (Sprint 19: bidding is multi-day now) counts
+  // the same as an owned car, so this doesn't overcommit across several
+  // pending bids at once.
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
   if (roomForMoreCars > 0) {
     const candidates = [...state.activeAuctionLots]
-      .filter((lot) => lot.tier === 'local-yard' && lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN)
+      .filter(
+        (lot) =>
+          lot.tier === 'local-yard' &&
+          lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
+          lot.playerMaxBidYen === null,
+      )
       .sort(() => rng.next() - 0.5)
 
-    const acquisitionBudget = auctionAcquisitionBudget()
+    const acquisitionBudget = auctionAcquisitionBudget(state)
     const bidCap = Math.min(MAX_BIDS_PER_DAY, roomForMoreCars)
     let acquisitionsQueued = 0
     for (const lot of candidates) {

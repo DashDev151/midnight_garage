@@ -19,7 +19,6 @@ function stateWithLot(seed: number) {
     HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
-    30,
     createRng(seed),
   )
   const base = createInitialGameState(CONTEXT, 1)

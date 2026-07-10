@@ -148,6 +148,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('lot-inspected'), lotId: z.string().min(1) }),
   z.object({
+    type: z.literal('auction-bid-placed'),
+    lotId: z.string().min(1),
+    maxBidYen: z.number().int().positive(),
+  }),
+  z.object({
     type: z.literal('auction-bid-won'),
     lotId: z.string().min(1),
     finalPriceYen: z.number().int().nonnegative(),
@@ -237,7 +242,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('acquisition-blocked'),
     kind: z.enum(['auction-win', 'buyout', 'service-accept']),
-    reason: z.enum(['no-parking', 'no-equipment']),
+    /** `no-cash` (Sprint 19): a winning bid can no longer be covered on the lot's resolution
+     * day — cash was reserved at bid time under the old instant-resolve model, but multi-day
+     * bidding has no escrow, so affordability is only checked again when the lot actually
+     * resolves. Mirrors `no-parking`'s existing forfeit shape exactly: no money spent, the win
+     * is forfeited rather than the purchase failing loudly. */
+    reason: z.enum(['no-parking', 'no-equipment', 'no-cash']),
   }),
   z.object({
     type: z.literal('equipment-purchased'),

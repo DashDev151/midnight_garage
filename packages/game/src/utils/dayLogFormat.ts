@@ -35,6 +35,8 @@ export function describeLogEntry(
       return `New ${entry.tier} auction catalog: ${entry.lotCount} lots`
     case 'lot-inspected':
       return `Inspected lot ${entry.lotId}`
+    case 'auction-bid-placed':
+      return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
     case 'auction-bid-won':
       return `Won lot ${entry.lotId} for ${formatYen(entry.finalPriceYen)}`
     case 'auction-bid-lost':
@@ -64,7 +66,13 @@ export function describeLogEntry(
     case 'bay-purchased':
       return `Bought a ${entry.kind} bay for ${formatYen(entry.priceYen)}`
     case 'acquisition-blocked':
-      return `${entry.kind} blocked — ${entry.reason === 'no-parking' ? 'no parking space' : 'equipment not owned'}`
+      return `${entry.kind} blocked — ${
+        entry.reason === 'no-parking'
+          ? 'no parking space'
+          : entry.reason === 'no-cash'
+            ? 'not enough cash'
+            : 'equipment not owned'
+      }`
     case 'equipment-purchased':
       return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
   }

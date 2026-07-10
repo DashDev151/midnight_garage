@@ -13,37 +13,47 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('market: bidding', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('a high max bid on a local-yard lot wins it into the garage instantly', () => {
+  it('a high max bid on a local-yard lot eventually wins it into the garage (Sprint 19: multi-day)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot after the first catalog')
 
     const carsBefore = game.ownedCarCount
-    game.placeBid(lot.id, lot.bookValueYen * 3) // well over market -> should win (second-price)
+    // Well over market -> should win once the lot's own rolled duration
+    // elapses — bidding no longer resolves instantly.
+    expect(game.placeBid(lot.id, lot.bookValueYen * 3)).toBe(true)
+    let guard = 0
+    while (game.gameState.activeAuctionLots.some((l) => l.id === lot.id) && guard++ < 20) {
+      game.endDay()
+    }
 
     expect(game.ownedCarCount).toBe(carsBefore + 1)
-    // The won lot is gone from the catalog.
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
 
-  it('placeBid populates lotDetail.lastBidResult with the real outcome when the lot survives', () => {
+  it('placeBid records the max bid on the lot and lotDetail/myActiveBids reflect it', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
-    expect(game.lotDetail(lot.id)?.lastBidResult).toBeUndefined()
-    game.placeBid(lot.id, lot.bookValueYen * 3)
-    // A won lot leaves activeAuctionLots entirely — its card, and lotDetail,
-    // are legitimately gone (the win itself, via the owned-car count, is the
-    // feedback). Only a lost/no-sale bid leaves the lot in place to show a result on.
-    const stillListed = game.gameState.activeAuctionLots.some((l) => l.id === lot.id)
-    if (stillListed) {
-      const result = game.lotDetail(lot.id)?.lastBidResult
-      expect(result).toBeDefined()
-      expect(['lost', 'no-sale']).toContain(result!.outcome)
-    } else {
-      expect(game.gameState.ownedCars.length).toBeGreaterThan(0)
-    }
+    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBeNull()
+    expect(game.myActiveBids).toHaveLength(0)
+
+    game.placeBid(lot.id, lot.bookValueYen)
+
+    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBe(lot.bookValueYen)
+    expect(game.myActiveBids.map((b) => b.lot.id)).toContain(lot.id)
+  })
+
+  it('placeBid can only raise an existing bid, never lower it', () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    const lot = game.gameState.activeAuctionLots[0]!
+    expect(game.placeBid(lot.id, lot.bookValueYen)).toBe(true)
+    expect(game.placeBid(lot.id, 1)).toBe(false) // not a raise -> no-op
+    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBe(lot.bookValueYen)
+    expect(game.placeBid(lot.id, lot.bookValueYen * 2)).toBe(true)
+    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBe(lot.bookValueYen * 2)
   })
 
   it('inspectLot reveals the lot instantly, for cash only', () => {

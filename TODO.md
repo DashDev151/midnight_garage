@@ -199,8 +199,28 @@ first would mean recalibrating it twice; 17/18 are genuinely independent of 19, 
 could swap order if the auction pain becomes unbearable first). All five designed 2026-07-10, reviewed
 and corrected 2026-07-10 (factual claims verified against the codebase; logic gaps fixed in the docs).
 **Sprints 15-18 implemented and committed 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`/
-`sprint17.md`/`sprint18.md`); 19 remains designed, pending maintainer review before implementation
-starts. **Four**
+`sprint17.md`/`sprint18.md`). **Sprint 19 (auction rework: multi-day bidding) implemented 2026-07-10**
+(`docs/sprints/sprint19.md`), all checks green, not yet committed — the escalation model (day-by-day
+rival raises toward unchanged fixed ceilings, one final resolution on the lot's own due day) was
+confirmed via `AskUserQuestion` before implementation, matching the maintainer's own proposal exactly.
+**Sprint 19b (auction bidding fixes) implemented the same day** (`docs/sprints/sprint19b.md`), bundled
+with Sprint 19 in the same not-yet-committed working tree — direct maintainer feedback on Sprint 19
+itself before it shipped: switched from second-price to first-price resolution ("you should pay what
+you bid"), fixed rival escalation to start from the reserve price instead of ¥0 (wasted early-auction
+days below a floor that could never win anyway), and fixed a real UI gap where the already-computed
+real current top bid was never actually shown on screen. A real bug was found and fixed mid-implementation
+(a dominated rival was getting a phantom reserve-floor value written into its stored position even
+though it never actually got a turn) — see the sprint doc's Exit for detail.
+**Sprint 19c (auction economics retune) implemented the same day** (`docs/sprints/sprint19c.md`),
+also bundled in — three more maintainer decisions, each verified against real data before
+implementing: raised `AUCTION_ESCALATION_DAILY_CHANCE` 0.4→0.6 (real-lot-sweep-verified), retuned
+`AUCTION_BIDDER_DISCIPLINE` 0.7→0.95 so rival ceilings land in the requested 0.8-1.1x-book band
+(grounded in a real 12,000-pair valuation sample, not an assumed average), and made the buyout price
+dynamic (`computeBuyoutPriceYen`) — it rises to match a real bid that clears the old static floor,
+instead of capping rival bids below it. A real bug was found and fixed in the *verification tooling*
+itself (a `generateAuctionCatalog(..., count=1, ...)` loop was silently reusing one frozen lot id
+across every "sample," caught by cross-checking against the real test's own result) — disclosed since
+an uncaught version of it would have produced a false "this is fine" reading. **Four**
 items from that playtest are in none of the five sprints — tracked directly below so they don't vanish
 (the review found the first draft of this paragraph claimed only two, and claimed they were listed
 here when they weren't):
@@ -229,6 +249,38 @@ here when they weren't):
   the per-car (not global) Confirm once several cars are staged at once (the risk
   `docs/sprints/sprint18.md`'s own design doc flagged) — is planned for the next dedicated playtest
   session, not this quick check. Sprint 18 committed.
+- [ ] **Sprint 19/19b/19c follow-up: manually verify multi-day bidding (first-price, real current-bid
+  display, dynamic buyout) in a browser, and re-run `pnpm balance:run`.** Never visually checked — same
+  recurring blocker as every prior sprint's UI work: `pnpm dev` is the maintainer's to run.
+  Component-mount tests confirm "My Active Bids," the always-visible current-bid figure, and the
+  raise-vs-fresh-bid control switch exist and behave correctly under scripted state, not that the
+  escalation pacing *feels* tense-but-fair rather than confusing, or that "pay exactly what you bid"
+  and a buyout price that can visibly climb mid-auction actually read as clearer in practice. Also
+  re-run the balance harness — three independent reasons now: (1) the win-price bucket and
+  buyout-vs-bid telemetry haven't been checked against the new multi-day timing at population scale,
+  (2) first-price removes the automatic second-price discount a winning bid used to get, and (3)
+  `AUCTION_BIDDER_DISCIPLINE`'s retune (0.7→0.95) directly raises every bot's real acquisition costs —
+  none of this has been checked against real bot economics at scale; sim-level unit/statistical tests
+  confirm the mechanisms work, not that the numbers Sprint 10/2026-07-09 calibrated against still hold.
+- [ ] **Sprint 19c follow-up: auction duration has too much effect on how competitive an auction
+  feels, even *within* the standard (2-4 day) tier — a real, unresolved calibration finding, not yet
+  fixed.** Verified via a real sweep (real roster, real escalation): frenzy share climbs from 0.1% at 2
+  days to 6.0% at 3 days to 14.3% at 4 days — a ~140x swing between the shortest and longest "standard"
+  duration, which the player never sees rolled and which isn't meant to carry that much weight (unlike
+  the flash-vs-long tier split, which *is* intentionally that different, per decision 1). Root cause:
+  `AUCTION_ESCALATION_DAILY_CHANCE` × `AUCTION_ESCALATION_STEP_FRACTION` (currently 0.6 × 0.35 = 0.21)
+  is the single product that governs how fast the escalation curve (`1-(1-p×step)^days`) converges for
+  *every* duration at once — there's currently no way to flatten the standard-band swing without also
+  slowing down how dramatic a long (7-10 day, legend-tier) auction gets, since both durations share the
+  same two constants. Likely fix direction: give the standard and long duration bands their own
+  separate escalation parameters instead of one shared pair — not implemented, since this is a felt-
+  experience question better judged from actually watching auctions resolve than from another
+  spreadsheet-driven constant guess. Two smaller, related observations from the same sweep, also
+  unaddressed: ~5% of flash (1-day) auctions have literally zero rival bids at all (an uncontested win
+  if the reserve is cleared — probably fine, matches flash's intended character, but undocumented
+  anywhere until now); and the "mid" bucket (20-80% of the reserve-to-buyout band) is wide enough that
+  "mid dominates" could still be hiding its own internal clustering/fairness texture that hasn't been
+  measured at a finer grain. Revisit after a real playtest pass, not before.
 - [ ] **Playtest 2026-07-10 #1: End-Day cart warning.** Clicking "End Day" with items still in the
   parts cart should warn ("you have unordered items in your cart — check out first?"). Small,
   self-contained UI guard; fold into whichever of Sprints 15-19 ships first, or the next playtest-fix

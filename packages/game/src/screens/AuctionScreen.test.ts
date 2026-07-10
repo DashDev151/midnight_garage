@@ -25,19 +25,34 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="bid-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('placing a bid resolves instantly (Sprint 11), showing the real outcome inline', async () => {
+  it('placing a bid records it (Sprint 19: multi-day — no instant resolution) and lists it under My Active Bids', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
     await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    // The lot either won (it's gone from state) or shows a real win/lose result.
-    const stillListed = game.gameState.activeAuctionLots.some((l) => l.id === lot.id)
-    if (stillListed) {
-      expect(wrapper.text()).toMatch(/lost — sold for|no sale/)
-    } else {
-      expect(game.gameState.ownedCars.length).toBeGreaterThan(0)
-    }
+    // The bid is recorded, not resolved — the lot stays on the board and
+    // its own resolution waits for its rolled duration to elapse.
+    expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
+    expect(game.lotDetail(lot.id)?.myMaxBidYen).not.toBeNull()
+    expect(wrapper.text()).toContain('My Active Bids')
+    expect(wrapper.find(`[data-test="raise-${lot.id}"]`).exists()).toBe(true)
+  })
+
+  it('always shows the real current bid on every lot (Sprint 19b) — "no bids yet" before anyone has bid, a real yen figure once someone has', async () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    const lot = game.gameState.activeAuctionLots[0]!
+    const wrapper = mountScreen()
+    // Every fresh lot starts with no real bid recorded yet.
+    expect(wrapper.text()).toContain('no bids yet')
+
+    const maxBidYen = lot.bookValueYen
+    await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
+    // The real number (not an obfuscated bucket) shows up immediately —
+    // matches the player's own bid since nothing else has escalated yet.
+    expect(wrapper.text()).toContain(`current bid`)
+    expect(game.lotDetail(lot.id)?.headroom.currentTopBidYen).toBe(maxBidYen)
   })
 
   it('shows an interest read per lot and offers an instant buyout', async () => {

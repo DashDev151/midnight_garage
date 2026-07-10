@@ -117,3 +117,62 @@ a small follow-on to Sprint 17's positional-slot fix.
 have real playtest signal — whether "more bays" alone is a satisfying upgrade path, or whether it
 needs the added texture of "which bays are tooled up," is an open design question, not just an
 engineering one.
+
+---
+
+## Part restoration + car stripping (two related salvage/parts-economy features)
+
+*Added 2026-07-10, maintainer note during the Sprint 19/19b/19c auction-economics work. Two distinct
+ideas raised together because they naturally feed each other, but each is its own scope — neither is
+designed or scheduled.*
+
+### 1. Restore damaged parts
+
+**The idea:** buy or otherwise acquire a *damaged* part (not the always-100%-condition parts the
+market sells today) and repair it back up to usable condition, instead of only ever buying pristine
+stock or scrapping worn parts outright.
+
+**Why it's not a small extension of today's repair system:** `PartInstance` already carries its own
+`conditionPercent` (Sprint 12), so the *data* to represent a damaged part already exists — but the
+entire repair/labor/job system (`jobs.ts`, the equipment gate, `repairJobGate`) is scoped to a car
+sitting in a service bay (`Job.carInstanceId` + `componentId`), not a loose inventory item. Repairing a
+part outside a car would be a genuinely new job *kind*, not a reskin of the existing repair-zone job —
+worth an explicit reuse-analysis pass (directive 15) before design starts: which parts of the
+job/labor/equipment machinery generalize cleanly to "the target is a `PartInstance` in inventory, not a
+car in a bay," and which need real new plumbing.
+
+**Not the same idea as** the already-parked "Parts market: a junk/scrapyard grade tier" above — that
+one is about a part's *grade* (a 5th tier below Stock, explicitly out of the GDD's frozen 4-grade
+system). This is about a part's *condition* (already a real, continuous field on every `PartInstance`,
+independent of grade) — a Stock or a Race part can both show up damaged. Worth keeping the distinction
+clear if either is ever picked up, since they'd touch different schema fields.
+
+### 2. Strip a car for parts
+
+**The idea:** instead of repairing and selling a car (or selling it as-is), pull it apart: every
+component that has a real aftermarket `PartInstance` installed gets extracted into the player's parts
+inventory, and whatever's left (the stripped chassis, plus any still-stock components with no
+installed part) sells for scrap — a low, flat value, well under any real sale channel.
+
+**Reuse note:** `CarInstance.components[id].installed: PartInstance | null` (Sprint 12) already *is*
+the real part sitting in that slot — extraction is conceptually just moving that object from the car
+into `GameState.partInventory`, the same shape `resolveBuyPart` already populates. The genuinely new
+piece is the scrap-sale valuation (a new, deliberately low formula — likely a small fraction of book
+value, distinct from `valuateCarForBuyer`, since a chassis with nothing installed and no going concern
+as a car isn't the same thing today's buyer-valuation formula was built to price) and the UI flow for
+"pick apart this car" as a third disposal path alongside walk-in and public listing.
+
+**A real design wrinkle to resolve before this is designed properly:** a bone-stock car (nothing
+aftermarket ever installed) yields *no* real parts at all under this model — every component is just a
+condition score, not a `Part` the catalog knows how to price or reinstall elsewhere. Stripping only
+pays off on a car that's already been built up, which may be exactly the intended feel (strip a
+project car you over-invested in) or may need its own stock-component salvage concept to feel worth
+doing on a rougher, more typical acquisition.
+
+**How the two connect:** a stripped part (idea 2) is the natural, thematic *source* of a damaged part
+(idea 1) — it was ripped out of a running car, not bought new, so it's a plausible candidate to enter
+inventory below 100% condition rather than pristine. Neither needs the other to be built first, but a
+combined design pass would likely make both feel more coherent than designing them in isolation.
+
+**Status:** both ideas only, no reuse-analysis, no task breakdown, no sprint attached — parked here
+per the standing rule (frozen v1.0 GDD scope), not a near-term commitment.

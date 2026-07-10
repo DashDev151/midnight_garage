@@ -19,7 +19,6 @@ function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium',
     HIDDEN_ISSUES_BY_COMPONENT,
     7,
     1,
-    7,
     createRng(seed),
   )
   if (!lot) throw new Error('expected a lot')
@@ -98,12 +97,31 @@ describe('shouldBuyout', () => {
   })
 })
 
+/** Finds a seed among the first `count` where `shouldBuyout` reads `false` for
+ * this model/tier — mirrors the file's existing "search for a seed where it's
+ * true" pattern, so this test stays robust to future discipline/buyout
+ * retuning instead of depending on one hardcoded seed happening to land quiet
+ * forever (Sprint 19c retuning flipped the original hardcoded seed here). */
+function findQuietSeed(
+  modelId: string,
+  tier: 'local-yard' | 'regional' | 'premium',
+  baseSeed: number,
+  count: number,
+) {
+  const model = CARS.find((c) => c.id === modelId)!
+  for (let i = 0; i < count; i++) {
+    const { lot } = sampleLot(modelId, tier, baseSeed + i)
+    if (!shouldBuyout(lot, model, CONTEXT)) return { lot, model }
+  }
+  throw new Error('expected at least one quiet (shouldBuyout=false) sample')
+}
+
 describe('acquireLot', () => {
   it('queues a bid when shouldBuyout is false', () => {
-    const { lot, model } = sampleLot('honda-city-e-aa', 'local-yard', 200)
+    const { lot, model } = findQuietSeed('honda-city-e-aa', 'local-yard', 200, 80)
     const state = baseState()
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget()
+    const budget = auctionAcquisitionBudget(state)
     const acted = acquireLot(state, lot, model, lot.bookValueYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(true)
     expect(actions.bidsOnLots).toEqual([{ lotId: lot.id, maxBidYen: lot.bookValueYen }])
@@ -126,7 +144,7 @@ describe('acquireLot', () => {
 
     const state = baseState()
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget()
+    const budget = auctionAcquisitionBudget(state)
     const buyoutPriceYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
     const acted = acquireLot(state, lot, model, lot.bookValueYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(true)
@@ -139,7 +157,7 @@ describe('acquireLot', () => {
     const { lot, model } = sampleLot('honda-city-e-aa', 'local-yard', 200)
     const state = baseState({ cashYen: 1 })
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget()
+    const budget = auctionAcquisitionBudget(state)
     const acted = acquireLot(state, lot, model, lot.bookValueYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(false)
     expect(actions.bidsOnLots).toEqual([])
@@ -151,18 +169,18 @@ describe('acquireLot', () => {
     const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 200)
     const state = baseState()
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget()
+    const budget = auctionAcquisitionBudget(state)
     acquireLot(state, lot, undefined, lot.bookValueYen, actions, CONTEXT, budget, 1.2)
     expect(actions.buyoutLots).toEqual([])
     expect(actions.bidsOnLots).toEqual([{ lotId: lot.id, maxBidYen: lot.bookValueYen }])
   })
 
   it('accumulates cashCommitted across repeated calls sharing one budget', () => {
-    const { lot: lot1, model } = sampleLot('honda-city-e-aa', 'local-yard', 201)
-    const { lot: lot2 } = sampleLot('honda-city-e-aa', 'local-yard', 202)
+    const { lot: lot1, model } = findQuietSeed('honda-city-e-aa', 'local-yard', 201, 40)
+    const { lot: lot2 } = findQuietSeed('honda-city-e-aa', 'local-yard', 241, 40)
     const state = baseState()
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget()
+    const budget = auctionAcquisitionBudget(state)
     acquireLot(state, lot1, model, lot1.bookValueYen, actions, CONTEXT, budget, 1.2)
     acquireLot(state, lot2, model, lot2.bookValueYen, actions, CONTEXT, budget, 1.2)
     expect(budget.cashCommitted).toBe(lot1.bookValueYen + lot2.bookValueYen)

@@ -29,6 +29,25 @@ const INTEREST_LABEL: Record<string, string> = {
   hot: 'Hot',
   frenzy: 'Feeding frenzy',
 }
+
+const HEADROOM_LABEL: Record<string, string> = {
+  none: 'no rivals',
+  plenty: 'plenty',
+  moderate: 'moderate',
+  tight: 'tight',
+  critical: 'critical',
+}
+
+function daysLabel(n: number): string {
+  return `${n} day${n === 1 ? '' : 's'} left`
+}
+
+/** The real current leading bid, always shown — never a "no idea" state
+ * (Sprint 19b: this number already existed in `BidHeadroom`, it just wasn't
+ * wired into the screen — a real gap, now fixed on every lot, bid on or not). */
+function currentBidLabel(currentTopBidYen: number): string {
+  return currentTopBidYen > 0 ? `current bid ${formatYen(currentTopBidYen)}` : 'no bids yet'
+}
 </script>
 
 <template>
@@ -53,6 +72,24 @@ const INTEREST_LABEL: Record<string, string> = {
       nowhere to go and will be lost to a rival. Free up a bay or buy more parking first.
     </p>
 
+    <section v-if="game.myActiveBids.length > 0" class="my-bids">
+      <h3>My Active Bids</h3>
+      <ul>
+        <li v-for="b in game.myActiveBids" :key="b.lot.id" class="my-bid-row">
+          <span class="lot-name">{{ b.displayName }}</span>
+          <span class="my-bid-amount">your bid {{ formatYen(b.myMaxBidYen) }}</span>
+          <span class="current-bid">{{ currentBidLabel(b.headroom.currentTopBidYen) }}</span>
+          <span class="winning-state" :class="b.headroom.playerIsWinning ? 'winning' : 'outbid'">
+            {{ b.headroom.playerIsWinning ? 'winning' : 'outbid' }}
+          </span>
+          <span class="headroom" :class="'headroom-' + b.headroom.level">
+            headroom: {{ HEADROOM_LABEL[b.headroom.level] }}
+          </span>
+          <span class="days-left">{{ daysLabel(b.daysLeft) }}</span>
+        </li>
+      </ul>
+    </section>
+
     <div v-for="group in detailedGroups" :key="group.tier" class="tier">
       <h3>{{ group.tier }}</h3>
       <ul class="lots">
@@ -67,7 +104,8 @@ const INTEREST_LABEL: Record<string, string> = {
           <div class="lot-nums">
             <span>book {{ formatYen(d.bookValueYen) }}</span>
             <span>reserve {{ formatYen(d.reserveYen) }}</span>
-            <span>expires day {{ d.lot.expiresOnDay }}</span>
+            <span class="current-bid">{{ currentBidLabel(d.headroom.currentTopBidYen) }}</span>
+            <span>{{ daysLabel(d.daysLeft) }}</span>
           </div>
 
           <div class="lot-interest">
@@ -105,30 +143,50 @@ const INTEREST_LABEL: Record<string, string> = {
           </div>
 
           <div class="lot-bid">
-            <label>
-              max bid
-              <input
-                v-model.number="bidInputs[d.lot.id]"
-                type="number"
-                step="10000"
-                :placeholder="String(d.bookValueYen)"
-              />
-            </label>
-            <button
-              :data-test="'bid-' + d.lot.id"
-              @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.bookValueYen)"
-            >
-              Place bid
-            </button>
-            <span v-if="d.lastBidResult" class="bid-result" :class="d.lastBidResult.outcome">
-              <template v-if="d.lastBidResult.outcome === 'won'">
-                won at {{ formatYen(d.lastBidResult.priceYen) }}
-              </template>
-              <template v-else-if="d.lastBidResult.outcome === 'lost'">
-                lost — sold for {{ formatYen(d.lastBidResult.priceYen) }}
-              </template>
-              <template v-else>no sale — reserve not met</template>
-            </span>
+            <template v-if="d.myMaxBidYen !== null">
+              <span class="my-bid-amount">your bid {{ formatYen(d.myMaxBidYen) }}</span>
+              <span
+                class="winning-state"
+                :class="d.headroom.playerIsWinning ? 'winning' : 'outbid'"
+              >
+                {{ d.headroom.playerIsWinning ? 'winning' : 'outbid' }}
+              </span>
+              <span class="headroom" :class="'headroom-' + d.headroom.level">
+                headroom: {{ HEADROOM_LABEL[d.headroom.level] }}
+              </span>
+              <label>
+                raise to
+                <input
+                  v-model.number="bidInputs[d.lot.id]"
+                  type="number"
+                  step="10000"
+                  :placeholder="String(d.myMaxBidYen)"
+                />
+              </label>
+              <button
+                :data-test="'raise-' + d.lot.id"
+                @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.myMaxBidYen)"
+              >
+                Raise bid
+              </button>
+            </template>
+            <template v-else>
+              <label>
+                max bid
+                <input
+                  v-model.number="bidInputs[d.lot.id]"
+                  type="number"
+                  step="10000"
+                  :placeholder="String(d.bookValueYen)"
+                />
+              </label>
+              <button
+                :data-test="'bid-' + d.lot.id"
+                @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.bookValueYen)"
+              >
+                Place bid
+              </button>
+            </template>
             <button
               class="buyout"
               :disabled="game.cashYen < d.buyoutPriceYen"
@@ -289,17 +347,77 @@ h3 {
   font-family: inherit;
 }
 
-.bid-result {
-  font-size: var(--mg-fs-sm);
+.my-bids {
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  margin: 0 0 var(--mg-space-4);
 }
 
-.bid-result.won {
+.my-bids h3 {
+  margin-top: 0;
+}
+
+.my-bids ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.my-bid-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+}
+
+.my-bid-amount,
+.current-bid {
+  color: var(--mg-yen);
+}
+
+.days-left {
+  color: var(--mg-text-dim);
+}
+
+.winning-state {
+  font-size: var(--mg-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.winning-state.winning {
   color: var(--mg-success);
 }
 
-.bid-result.lost,
-.bid-result.no-sale {
-  color: var(--mg-text-dim);
+.winning-state.outbid {
+  color: var(--mg-danger);
+}
+
+.headroom {
+  font-size: var(--mg-fs-sm);
+}
+
+.headroom-plenty {
+  color: var(--mg-success);
+}
+
+.headroom-moderate {
+  color: var(--mg-neon-cyan);
+}
+
+.headroom-tight {
+  color: var(--mg-yen);
+}
+
+.headroom-critical,
+.headroom-none {
+  color: var(--mg-danger);
 }
 
 button {
