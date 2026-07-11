@@ -2,6 +2,7 @@ import {
   EQUIPMENT,
   type CarInstance,
   type GameState,
+  type HiddenIssue,
   type Job,
   type PartInstance,
 } from '@midnight-garage/content'
@@ -19,6 +20,18 @@ import {
 import { buildSimContext } from '../src/context'
 
 const CONTEXT = buildSimContext([], [], [], [], [], undefined, [], EQUIPMENT)
+
+/** Sprint 22: `fix-issue` fixture — severity 50 costs exactly `repairCostBaseYen`
+ * (economy.json's `costDivisor` default). */
+const ENGINE_ISSUE: HiddenIssue = {
+  id: 'test-engine-knock',
+  componentId: 'engine',
+  severityMin: 10,
+  severityMax: 90,
+  hintText: 'a worrying knock',
+  repairCostBaseYen: 100_000,
+}
+const CONTEXT_WITH_ISSUE = buildSimContext([], [], [], [ENGINE_ISSUE], [], undefined, [], EQUIPMENT)
 
 /** Equipment ids covering the components these tests repair — owned by default so job-creation
  * tests aren't incidentally blocked by the Sprint 13 equipment gate, which has its own tests below. */
@@ -141,6 +154,30 @@ describe('completeJob', () => {
     // doc — the pre-Sprint-12 model had no way to couple install to condition.
     expect(result.state.ownedCars[0]?.components.suspension.condition).toBe(100)
     expect(result.state.partInventory).toHaveLength(0)
+  })
+
+  it('a completed fix-issue job flips repaired without touching condition (Sprint 22)', () => {
+    const carWithIssue: CarInstance = {
+      ...car,
+      hiddenIssues: [
+        { issueId: ENGINE_ISSUE.id, revealed: true, severityPercent: 50, repaired: false },
+      ],
+    }
+    const job: Job = {
+      id: 'job-4',
+      carInstanceId: car.id,
+      kind: 'fix-issue',
+      componentId: 'engine',
+      issueId: ENGINE_ISSUE.id,
+      laborSlotsRequired: 2,
+      laborSlotsSpent: 2,
+    }
+    const result = completeJob(baseState({ ownedCars: [carWithIssue] }), job)
+    expect(result.blockedByOccupiedSlot).toBe(false)
+    const fixedCar = result.state.ownedCars[0]!
+    expect(fixedCar.hiddenIssues[0]?.repaired).toBe(true)
+    // Fixing the issue is NOT a repair-zone — raw condition is untouched.
+    expect(fixedCar.components.engine.condition).toBe(40)
   })
 
   it('an install-part job into an occupied component is blocked, not overwritten', () => {
@@ -299,6 +336,45 @@ describe('repairJobGate (Sprint 13)', () => {
       CONTEXT,
     )
     expect(gate).toEqual({ ok: true, state })
+  })
+
+  describe('fix-issue (Sprint 22)', () => {
+    const carWithIssue: CarInstance = {
+      ...car,
+      hiddenIssues: [
+        { issueId: ENGINE_ISSUE.id, revealed: true, severityPercent: 50, repaired: false },
+      ],
+    }
+    const spec = {
+      carInstanceId: car.id,
+      kind: 'fix-issue' as const,
+      componentId: 'engine' as const,
+      issueId: ENGINE_ISSUE.id,
+      laborSlotsRequired: 2,
+    }
+
+    it('refuses without the component equipment', () => {
+      const state = baseState({ ownedCars: [carWithIssue], ownedEquipmentIds: [] })
+      const gate = repairJobGate(state, spec, CONTEXT_WITH_ISSUE)
+      expect(gate.ok).toBe(false)
+    })
+
+    it('refuses silently when cash cannot cover consumables + the issue cost', () => {
+      const state = baseState({ ownedCars: [carWithIssue], cashYen: 0 })
+      const gate = repairJobGate(state, spec, CONTEXT_WITH_ISSUE)
+      expect(gate).toEqual({ ok: false, log: [] })
+    })
+
+    it('succeeds and charges consumables + the issue repair cost (severity 50 -> exactly repairCostBaseYen)', () => {
+      const state = baseState({ ownedCars: [carWithIssue], cashYen: 1_000_000 })
+      const gate = repairJobGate(state, spec, CONTEXT_WITH_ISSUE)
+      expect(gate.ok).toBe(true)
+      if (!gate.ok) throw new Error('expected gate to pass')
+      const craneConsumables = ENGINE_CRANE.consumablesCostYen
+      expect(state.cashYen - gate.state.cashYen).toBe(
+        craneConsumables + ENGINE_ISSUE.repairCostBaseYen,
+      )
+    })
   })
 })
 

@@ -16,6 +16,11 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     componentId: ComponentIdSchema,
     partInstanceId: z.string().min(1),
   }),
+  z.object({
+    kind: z.literal('fix-issue'),
+    componentId: ComponentIdSchema,
+    issueId: z.string().min(1),
+  }),
 ])
 
 export const StagedActionsSchema = z.array(StagedActionSchema)

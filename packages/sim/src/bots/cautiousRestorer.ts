@@ -11,6 +11,7 @@ import { reputationAtLeast } from '../calendar'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
+import { issueLaborSlots } from '../issues'
 import type { Rng } from '../rng'
 
 const MAX_CONCURRENT_CARS = 2
@@ -186,13 +187,59 @@ export function cautiousRestorerStrategy(
     carsGettingJobsToday.add(car.id)
   }
 
-  // 5. List fully-restored, job-free cars publicly for the best price.
+  // 4b. Fix any unrepaired hidden issue on an owned, job-free car — "fully
+  // restores every zone" (Sprint 03 decision 2) now includes issues, not
+  // just condition (Sprint 22): repainting a car does not fix its apex
+  // seals, so step 5's listing gate below additionally requires zero
+  // unrepaired issues. One issue at a time, same shape as step 4's repair
+  // loop (equipment gate, shared bay/labor budget).
+  for (const car of state.ownedCars) {
+    if (laborBudget <= 0) break
+    if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
+    const unrepaired = car.hiddenIssues.find((ri) => !ri.repaired)
+    if (!unrepaired) continue
+    const issue = context.hiddenIssuesById[unrepaired.issueId]
+    if (!issue) continue
+    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
+    if (
+      !ensureEquipmentFor(
+        state,
+        issue.componentId,
+        actions,
+        context,
+        equipBudget,
+        CASH_BUFFER_MULTIPLIER,
+      )
+    )
+      continue
+
+    const laborSlotsRequired = issueLaborSlots(unrepaired.severityPercent, context.economy)
+    const jobIndex = actions.createJobs.length
+    actions.createJobs.push({
+      carInstanceId: car.id,
+      kind: 'fix-issue',
+      componentId: issue.componentId,
+      issueId: unrepaired.issueId,
+      laborSlotsRequired,
+    })
+    const slotsToApply = Math.min(laborSlotsRequired, laborBudget)
+    actions.laborAssignments.push({
+      jobId: `job-${state.day}-${jobIndex}`,
+      laborSlots: slotsToApply,
+    })
+    laborBudget -= slotsToApply
+    carsGettingJobsToday.add(car.id)
+  }
+
+  // 5. List fully-restored, job-free cars publicly for the best price —
+  // "fully restored" also requires zero unrepaired hidden issues (Sprint 22).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
     const isRestored = REPAIRABLE_COMPONENTS.every(
       (id) => car.components[id].condition >= REPAIR_THRESHOLD,
     )
-    if (isRestored) {
+    const hasUnrepairedIssue = car.hiddenIssues.some((ri) => !ri.repaired)
+    if (isRestored && !hasUnrepairedIssue) {
       actions.listForSale.push({ carInstanceId: car.id })
     }
   }

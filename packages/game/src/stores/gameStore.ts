@@ -47,9 +47,12 @@ import {
   deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
+  effectiveComponentCondition,
   hasEquipmentFor,
   hasParkingSpace,
   isServiceWorkDone,
+  issueRepairCostYen,
+  issueSeverityBand,
   listPubliclyAskingPrice,
   moveCarToSlot as moveCarToSlotCore,
   nextBayMinReputationTier,
@@ -73,6 +76,7 @@ import {
   turnoutBand,
   valuateCarForBuyer,
   type DeliverySpeed,
+  type IssueSeverityBand,
   type NewJobSpec,
   type ServiceJobOutcome,
   type SimContext,
@@ -109,6 +113,23 @@ export interface DetailedCar {
   stats: StatBlock
 }
 
+/**
+ * One hidden issue on an owned car (Sprint 22) — a named, persistent,
+ * individually priced defect until actually fixed. Issues are always
+ * revealed post-purchase (decision 7), so this list needs no "revealed"
+ * filter the way `LotDetail.revealedIssues` does.
+ */
+export interface CarIssueView {
+  issueId: string
+  componentId: ComponentId
+  hintText: string
+  severityBand: IssueSeverityBand
+  costYen: number
+  repaired: boolean
+  /** True if a `fix-issue` staged action already exists for this issue on this car. */
+  staged: boolean
+}
+
 /** Everything the car-detail screen needs for one car. */
 export interface CarDetail extends DetailedCar {
   /** Jobs currently in progress on this car — created and labored on instantly (Sprint 11). */
@@ -119,6 +140,8 @@ export interface CarDetail extends DetailedCar {
   inServiceBay: boolean
   /** Repair/install work staged on this car but not yet confirmed (Sprint 18). */
   stagedActions: StagedAction[]
+  /** Hidden issues on this car, unrepaired and repaired alike (Sprint 22). */
+  issues: CarIssueView[]
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -242,8 +265,25 @@ export interface LotDetail {
   nextRaiseYen: number
   /** Set true on the player's first raise on this lot, never reset. */
   playerHasBid: boolean
-  /** Revealed hidden issues (only populated once the lot is inspected). */
-  revealedIssues: { componentId: ComponentId; hintText: string }[]
+  /**
+   * Revealed hidden issues (only populated once the lot is inspected) — a
+   * severity band + fix-cost estimate now that severity is rolled at
+   * generation time (Sprint 22), not just which component is affected.
+   */
+  revealedIssues: {
+    issueId: string
+    componentId: ComponentId
+    hintText: string
+    severityBand: IssueSeverityBand
+    costYen: number
+  }[]
+  /**
+   * Components this MODEL is known to carry issue risk on (public knowledge,
+   * from `hiddenIssueWeights` — "these are known for rust") — always
+   * visible, independent of whether THIS lot has been inspected (decision 5:
+   * the trade prices the average, inspection reveals the actual instance).
+   */
+  modelRiskComponents: ComponentId[]
   /** This lot's backstop close day (the Sprint 19 duration roll) — activity-
    * based closing (quiet-day hammer) usually resolves it sooner than this. */
   expiresOnDay: number
@@ -372,7 +412,13 @@ export const useGameStore = defineStore('game', () => {
       car,
       model,
       displayName: resolveCarDisplayName(model),
-      stats: computeDerivedStats(model, car, context.value.partsById, context.value.economy),
+      stats: computeDerivedStats(
+        model,
+        car,
+        context.value.partsById,
+        context.value.hiddenIssuesById,
+        context.value.economy,
+      ),
     }
   }
 
@@ -403,6 +449,46 @@ export const useGameStore = defineStore('game', () => {
     )
   }
 
+  /**
+   * A component's effective condition (Sprint 22 decision 2) — cosmetically
+   * repaired (raw `condition` 100) but still hiding an unfixed issue reads
+   * lower here. Reuses the exact sim formula rather than re-deriving it in
+   * the template — `CarIssueView.severityBand` is a display word, not the
+   * numeric severity this needs.
+   */
+  function effectiveConditionFor(carId: string, componentId: ComponentId): number {
+    const car = findWorkableCar(carId)
+    if (!car) return 0
+    return effectiveComponentCondition(car, componentId, context.value.hiddenIssuesById)
+  }
+
+  /**
+   * A car's hidden issues (Sprint 22) — always revealed once owned (decision
+   * 7: no concealment mechanic post-purchase), so no "revealed" filter here.
+   */
+  function issuesFor(car: CarInstance, carId: string): CarIssueView[] {
+    const staged = stagedActionsFor(carId)
+    return car.hiddenIssues.flatMap((revealedIssue) => {
+      const catalogEntry = context.value.hiddenIssuesById[revealedIssue.issueId]
+      if (!catalogEntry) return []
+      return [
+        {
+          issueId: revealedIssue.issueId,
+          componentId: catalogEntry.componentId,
+          hintText: catalogEntry.hintText,
+          severityBand: issueSeverityBand(revealedIssue.severityPercent, context.value.economy),
+          costYen: issueRepairCostYen(
+            catalogEntry,
+            revealedIssue.severityPercent,
+            context.value.economy,
+          ),
+          repaired: revealedIssue.repaired,
+          staged: staged.some((a) => a.kind === 'fix-issue' && a.issueId === revealedIssue.issueId),
+        },
+      ]
+    })
+  }
+
   /** Full detail bundle for one workable car (owned or in-shop), or undefined. */
   function carDetail(carId: string): CarDetail | undefined {
     const car = findWorkableCar(carId)
@@ -414,6 +500,7 @@ export const useGameStore = defineStore('game', () => {
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
       stagedActions: gameState.value.stagedCarWork[carId] ?? [],
+      issues: issuesFor(car, carId),
     }
   }
 
@@ -461,9 +548,22 @@ export const useGameStore = defineStore('game', () => {
           .filter((i) => i.revealed)
           .flatMap((i) => {
             const issue = context.value.hiddenIssuesById[i.issueId]
-            return issue ? [{ componentId: issue.componentId, hintText: issue.hintText }] : []
+            return issue
+              ? [
+                  {
+                    issueId: i.issueId,
+                    componentId: issue.componentId,
+                    hintText: issue.hintText,
+                    severityBand: issueSeverityBand(i.severityPercent, context.value.economy),
+                    costYen: issueRepairCostYen(issue, i.severityPercent, context.value.economy),
+                  },
+                ]
+              : []
           })
       : []
+    const modelRiskComponents = model.hiddenIssueWeights
+      .filter((w) => w.weight > 0)
+      .map((w) => w.componentId)
     return {
       lot,
       model,
@@ -482,6 +582,7 @@ export const useGameStore = defineStore('game', () => {
       nextRaiseYen: nextRaiseYen(lot, context.value.economy),
       playerHasBid: lot.playerHasBid,
       revealedIssues,
+      modelRiskComponents,
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
     }
@@ -533,10 +634,19 @@ export const useGameStore = defineStore('game', () => {
       context.value.buyers,
       context.value.partsById,
       heat,
+      context.value.hiddenIssuesById,
       context.value.economy,
     )
     const offerYen = buyer
-      ? valuateCarForBuyer(buyer, model, car, context.value.partsById, heat, context.value.economy)
+      ? valuateCarForBuyer(
+          buyer,
+          model,
+          car,
+          context.value.partsById,
+          heat,
+          context.value.hiddenIssuesById,
+          context.value.economy,
+        )
       : 0
     return { buyerId: buyer?.id, offerYen: Math.round(offerYen) }
   }
@@ -553,6 +663,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.buyers,
       context.value.partsById,
       heat,
+      context.value.hiddenIssuesById,
       context.value.economy,
     )
   }
@@ -1280,6 +1391,7 @@ export const useGameStore = defineStore('game', () => {
     resolveModelName,
     partName,
     carDetail,
+    effectiveConditionFor,
     lotDetail,
     walkInEstimate,
     listingEstimate,

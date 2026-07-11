@@ -3,9 +3,11 @@ import type {
   CarModel,
   ComponentId,
   EconomyConfig,
+  HiddenIssue,
   Part,
   StatBlock,
 } from '@midnight-garage/content'
+import { effectiveComponentCondition } from './issues'
 
 const COMPONENT_IDS: readonly ComponentId[] = [
   'engine',
@@ -46,25 +48,33 @@ function clamp(value: number, min: number, max: number): number {
  * Value no longer flows through these formulas at all (see marketValue.ts);
  * they now decide buyer *taste* only (valuation.ts), so whether the caps
  * themselves should rise is a taste-tuning question, deferred.
+ *
+ * Sprint 22 decision 2: every condition read here is EFFECTIVE condition —
+ * a component whose raw `condition` is 100 but carries an unrepaired hidden
+ * issue still drags these stats down, the same as any other low-condition
+ * component. `issuesById` resolves each rolled issue's componentId (the
+ * instance stores only `issueId`).
  */
 export function computeDerivedStats(
   model: CarModel,
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): StatBlock {
   const { components } = instance
   const { powerConditionFloor, handlingBase, handlingWeightDivisor, styleCap, reliabilityCap } =
     economy.statFormulas
-  const engineConditionFraction = components.engine.condition / 100
+  const effective = (componentId: ComponentId) =>
+    effectiveComponentCondition(instance, componentId, issuesById)
+  const engineConditionFraction = effective('engine') / 100
   const powerConditionScale =
     powerConditionFloor + (1 - powerConditionFloor) * engineConditionFraction
   let power = model.spec.stockPowerPs * powerConditionScale
   let handling =
-    handlingBase * (components.suspension.condition / 100) -
-    model.spec.curbWeightKg / handlingWeightDivisor
-  let style = (components.body.condition / 100) * styleCap
-  const reliabilityCondition = (components.engine.condition + components.drivetrain.condition) / 200
+    handlingBase * (effective('suspension') / 100) - model.spec.curbWeightKg / handlingWeightDivisor
+  let style = (effective('body') / 100) * styleCap
+  const reliabilityCondition = (effective('engine') + effective('drivetrain')) / 200
   let reliability = reliabilityCap * reliabilityCondition
   let authenticity = instance.authenticityPercent
 

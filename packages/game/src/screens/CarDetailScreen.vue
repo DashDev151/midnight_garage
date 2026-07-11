@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import StatRadar from '../components/StatRadar.vue'
 import { useDragSession, useDropZone, type DropZoneHandle } from '../composables/useDragAndDrop'
-import { useGameStore } from '../stores/gameStore'
+import { useGameStore, type CarIssueView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -184,6 +184,22 @@ function onConfirm(): void {
   if (d) game.confirmCarWork(d.car.id)
 }
 
+/** Stage (or unstage) fixing one hidden issue (Sprint 22) — same
+ * stage-then-Confirm flow as repair/install, through the shared store call. */
+function toggleIssueStage(issue: CarIssueView): void {
+  const d = detail.value
+  if (!d) return
+  if (issue.staged) {
+    game.unstageAction(d.car.id, issue.componentId)
+  } else {
+    game.stageAction(d.car.id, {
+      kind: 'fix-issue',
+      componentId: issue.componentId,
+      issueId: issue.issueId,
+    })
+  }
+}
+
 // The ghost preview that follows the pointer while dragging a part.
 const draggedPartName = computed(() => {
   const payload = dragSession.value?.payload
@@ -278,9 +294,21 @@ const draggedPartName = computed(() => {
             <span class="bar"
               ><span
                 class="fill"
-                :style="{ width: detail.car.components[componentId].condition + '%' }"
+                :style="{ width: game.effectiveConditionFor(detail.car.id, componentId) + '%' }"
             /></span>
-            <span class="component-val">{{ detail.car.components[componentId].condition }}</span>
+            <span class="component-val">
+              {{ game.effectiveConditionFor(detail.car.id, componentId) }}
+              <span
+                v-if="
+                  game.effectiveConditionFor(detail.car.id, componentId) !==
+                  detail.car.components[componentId].condition
+                "
+                class="cosmetic-val"
+                :title="'Cosmetic condition: ' + detail.car.components[componentId].condition"
+              >
+                ({{ detail.car.components[componentId].condition }} cosmetic)
+              </span>
+            </span>
 
             <template v-if="componentBusy(componentId)">
               <button
@@ -373,10 +401,12 @@ const draggedPartName = computed(() => {
                 {{
                   action.kind === 'repair'
                     ? 'Repair ' + action.componentId
-                    : 'Install ' +
-                      partInstanceDisplayName(action.partInstanceId) +
-                      ' → ' +
-                      action.componentId
+                    : action.kind === 'install'
+                      ? 'Install ' +
+                        partInstanceDisplayName(action.partInstanceId) +
+                        ' → ' +
+                        action.componentId
+                      : 'Fix issue on ' + action.componentId
                 }}
               </span>
               <button
@@ -399,6 +429,36 @@ const draggedPartName = computed(() => {
         </section>
       </div>
     </div>
+
+    <section class="issues">
+      <h3>Issues</h3>
+      <p v-if="detail.issues.length === 0" class="empty">No hidden issues found on this car.</p>
+      <ul v-else class="issue-list">
+        <li
+          v-for="issue in detail.issues"
+          :key="issue.issueId"
+          class="issue-row"
+          :class="{ fixed: issue.repaired }"
+        >
+          <span class="issue-text">
+            <strong>{{ issue.componentId }}</strong> — {{ issue.hintText }}
+            <span class="issue-band">({{ issue.severityBand }})</span>
+          </span>
+          <span v-if="issue.repaired" class="issue-fixed-label">fixed</span>
+          <template v-else>
+            <span class="issue-cost">{{ formatYen(issue.costYen) }}</span>
+            <button
+              type="button"
+              :disabled="!game.hasEquipmentForComponent(issue.componentId)"
+              :data-test="'stage-fix-issue-' + issue.issueId"
+              @click="toggleIssueStage(issue)"
+            >
+              {{ issue.staged ? 'Unstage fix' : 'Fix' }}
+            </button>
+          </template>
+        </li>
+      </ul>
+    </section>
 
     <section v-if="!detail.serviceJob" class="sell">
       <h3>Sell</h3>
@@ -610,6 +670,54 @@ button.primary.danger {
 .staged-install {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
+}
+
+.cosmetic-val {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-weight: normal;
+}
+
+.issue-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--mg-space-2) 0 0;
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.issue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+}
+
+.issue-row.fixed {
+  opacity: 0.6;
+}
+
+.issue-row.fixed .issue-text {
+  text-decoration: line-through;
+}
+
+.issue-band {
+  color: var(--mg-text-dim);
+  text-transform: capitalize;
+}
+
+.issue-cost {
+  color: var(--mg-yen);
+}
+
+.issue-fixed-label {
+  color: var(--mg-success);
 }
 
 .sell-options {

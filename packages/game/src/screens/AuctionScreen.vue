@@ -111,6 +111,9 @@ function backstopLabel(expiresOnDay: number): string {
               {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
               {{ d.lot.car.color }}
             </span>
+            <span v-if="d.modelRiskComponents.length > 0" class="risk-hint">
+              known for {{ d.modelRiskComponents.join(', ') }} issues
+            </span>
           </div>
           <div class="lot-nums">
             <span>book {{ formatYen(d.bookValueYen) }}</span>
@@ -133,8 +136,11 @@ function backstopLabel(expiresOnDay: number): string {
               <span class="inspected">Inspected:</span>
               <span v-if="d.revealedIssues.length === 0" class="clean">no hidden issues</span>
               <span v-else class="issues">
-                <span v-for="(iss, i) in d.revealedIssues" :key="i">
-                  {{ iss.componentId }}: {{ iss.hintText }}
+                <span v-for="iss in d.revealedIssues" :key="iss.issueId" class="issue-entry">
+                  {{ iss.componentId }}: {{ iss.hintText }} ({{ iss.severityBand }}, ~{{
+                    formatYen(iss.costYen)
+                  }}
+                  to fix)
                 </span>
               </span>
             </template>
@@ -314,8 +320,21 @@ h3 {
   color: var(--mg-danger);
 }
 
+.issue-entry {
+  font-size: var(--mg-fs-sm);
+}
+
 .clean {
   color: var(--mg-success);
+}
+
+/* Sprint 22 decision 5: public trade knowledge about the MODEL, not this
+   specific instance — always visible, independent of inspection. */
+.risk-hint {
+  display: block;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
 }
 
 .lot-bid {

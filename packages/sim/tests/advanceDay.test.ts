@@ -48,7 +48,9 @@ function initialState(): GameState {
         mileageKm: 128_000,
         color: 'Sodium Amber',
         provenanceNote: 'one-owner, garage kept, Gunma plates',
-        hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
+        hiddenIssues: [
+          { issueId: 'rusted-rails', revealed: false, severityPercent: 0, repaired: false },
+        ],
         authenticityPercent: 88,
         components: {
           engine: { condition: 55, installed: null },
@@ -166,9 +168,14 @@ describe('advanceDay golden master', () => {
     // heat's own weekly update rule, and the new marketLedger field on
     // GameState), so this hash moves even though the script itself is
     // unchanged.
+    // Re-pinned again Sprint 22 (hidden issues): severity is now rolled at
+    // car generation (a new rng draw inside generateAuctionCarInstance), and
+    // effective condition (issues.ts) now feeds derivedStats/marketValue/
+    // reputation everywhere raw condition used to — moves the hash even
+    // though this script never touches an issue directly.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('a2efcf89')
+    expect(hashState(finalState)).toBe('723227b0')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -264,7 +271,10 @@ describe('advanceDay golden master — acquisition and sale path', () => {
     // Re-pinned again Sprint 21 (value model): the auction anchor and the
     // walk-in sale price both now flow through marketValueYen, moving both
     // the winning bid and the sale price this career resolves to.
-    expect(hashState(acquisitionCareer().sold)).toBe('24842ca3')
+    // Re-pinned again Sprint 22 (hidden issues): the auction anchor now
+    // carries a model risk discount and severity is rolled at generation,
+    // shifting the won price; the walk-in sale reads issue-adjusted value.
+    expect(hashState(acquisitionCareer().sold)).toBe('78f34c53')
   })
 })
 

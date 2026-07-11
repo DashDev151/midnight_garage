@@ -8,6 +8,7 @@ import type {
 import type { NewJobSpec } from './actions'
 import type { SimContext } from './context'
 import { hasEquipmentFor } from './equipment'
+import { issueRepairCostYen } from './issues'
 
 /**
  * A car the player can work on — either an owned car or a customer's car
@@ -30,6 +31,7 @@ export function createJob(spec: NewJobSpec, id: string): Job {
     kind: spec.kind,
     componentId: spec.componentId,
     partInstanceId: spec.partInstanceId,
+    issueId: spec.issueId,
     laborSlotsRequired: spec.laborSlotsRequired,
     laborSlotsSpent: 0,
   }
@@ -89,6 +91,26 @@ function applyJobToCar(
       car: {
         ...car,
         components: { ...car.components, [job.componentId]: { ...component, condition: 100 } },
+      },
+      partInventory: [...partInventory],
+      blockedByOccupiedSlot: false,
+    }
+  }
+
+  if (job.kind === 'fix-issue') {
+    if (!job.issueId) {
+      throw new Error(`fix-issue job ${job.id} missing issueId`)
+    }
+    const issueId = job.issueId
+    // Sprint 22: fixes the ISSUE, never the component's own `condition` —
+    // repainting a car does not fix its apex seals. `effectiveComponentCondition`
+    // (issues.ts) is what actually reflects this fix in every consumer.
+    return {
+      car: {
+        ...car,
+        hiddenIssues: car.hiddenIssues.map((issue) =>
+          issue.issueId === issueId ? { ...issue, repaired: true } : issue,
+        ),
       },
       partInventory: [...partInventory],
       blockedByOccupiedSlot: false,
@@ -163,21 +185,23 @@ export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: D
 
 /**
  * Sprint 13: the equipment + consumables gate on *starting* a new repair-zone
- * job — checked once, at creation, never again. Equipment ownership is
- * monotonic (nothing in the sim ever removes it), so a job that passed this
- * gate never needs re-checking once it exists; unlike the service-bay gate
- * (which toggles as cars move and is re-checked every labor application),
- * this one only ever needs to fire at the single moment a job is born.
- * Shared by the player's instant `findOrCreateJob` path and advanceDay's bot
- * batch job-creation loop — one gate, two callers, matching every other
- * Sprint 11 instant-resolver precedent.
+ * (Sprint 22: or fix-issue) job — checked once, at creation, never again.
+ * Equipment ownership is monotonic (nothing in the sim ever removes it), so
+ * a job that passed this gate never needs re-checking once it exists; unlike
+ * the service-bay gate (which toggles as cars move and is re-checked every
+ * labor application), this one only ever needs to fire at the single moment
+ * a job is born. `install-part` is a no-op here (it has never charged
+ * anything beyond the part itself, bought separately). Shared by the
+ * player's instant `findOrCreateJob` path and advanceDay's bot batch
+ * job-creation loop — one gate, two callers, matching every other Sprint 11
+ * instant-resolver precedent.
  */
 export function repairJobGate(
   state: GameState,
   spec: NewJobSpec,
   context: SimContext,
 ): RepairJobGate {
-  if (spec.kind !== 'repair-zone') return { ok: true, state }
+  if (spec.kind === 'install-part') return { ok: true, state }
 
   const id = jobIdFor(spec)
   if (!hasEquipmentFor(state, spec.componentId, context)) {
@@ -189,14 +213,33 @@ export function repairJobGate(
 
   const equipment = context.equipment.find((e) => e.componentIds.includes(spec.componentId))
   const consumablesCostYen = equipment?.consumablesCostYen ?? 0
-  if (state.cashYen < consumablesCostYen) {
-    // Equipment owned, just can't afford the consumables right now — a
-    // silent refusal, matching every other can't-afford-it gate in this
-    // codebase (resolveBuyPart, applyBayPurchase, resolveBuyoutInstant).
-    return { ok: false, log: [] }
+
+  if (spec.kind === 'repair-zone') {
+    if (state.cashYen < consumablesCostYen) {
+      // Equipment owned, just can't afford the consumables right now — a
+      // silent refusal, matching every other can't-afford-it gate in this
+      // codebase (resolveBuyPart, applyBayPurchase, resolveBuyoutInstant).
+      return { ok: false, log: [] }
+    }
+    return { ok: true, state: { ...state, cashYen: state.cashYen - consumablesCostYen } }
   }
 
-  return { ok: true, state: { ...state, cashYen: state.cashYen - consumablesCostYen } }
+  // fix-issue (Sprint 22 decision 3): consumables + the issue's own repair
+  // cost, resolved from the actual rolled severity on the target car (the
+  // spec itself only carries the issueId, not the severity).
+  if (!spec.issueId) return { ok: false, log: [] }
+  const issue = context.hiddenIssuesById[spec.issueId]
+  if (!issue) return { ok: false, log: [] }
+  const car = findWorkableCar(state, spec.carInstanceId)
+  const revealedIssue = car?.hiddenIssues.find((ri) => ri.issueId === spec.issueId)
+  if (!revealedIssue) return { ok: false, log: [] }
+
+  const totalCostYen =
+    consumablesCostYen + issueRepairCostYen(issue, revealedIssue.severityPercent, context.economy)
+  if (state.cashYen < totalCostYen) {
+    return { ok: false, log: [] }
+  }
+  return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
 }
 
 /**
@@ -296,6 +339,13 @@ export function applyAvailableLaborToJob(
         carInstanceId: updatedJob.carInstanceId,
         kind: updatedJob.kind,
       })
+      if (updatedJob.kind === 'fix-issue' && updatedJob.issueId) {
+        log.push({
+          type: 'issue-fixed',
+          carInstanceId: updatedJob.carInstanceId,
+          issueId: updatedJob.issueId,
+        })
+      }
     }
   }
 

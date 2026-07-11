@@ -133,7 +133,21 @@ export function generateAuctionCarInstance(
     if (rng.next() >= weighted.weight) return []
     const candidates = hiddenIssuesByComponent[weighted.componentId]
     if (candidates.length === 0) return []
-    return [{ issueId: rng.pick(candidates).id, revealed: false }]
+    const picked = rng.pick(candidates)
+    return [
+      {
+        issueId: picked.id,
+        revealed: false,
+        // Sprint 22: severity is rolled ONCE, here, and stays fixed for the
+        // instance's whole life — no handover re-roll, no discount-scaled
+        // variance. Inserting this draw shifts every later roll in the
+        // shared catalog rng (baseline condition, jitter, year, mileage,
+        // color, provenance, authenticity, and any later lot in the same
+        // batch) — accepted; golden masters re-pin at sprint end.
+        severityPercent: rng.int(picked.severityMin, picked.severityMax),
+        repaired: false,
+      },
+    ]
   })
 
   const conditionBaseline = rng.int(CAR_CONDITION_BASE_MIN, CAR_CONDITION_BASE_MAX)
@@ -255,59 +269,29 @@ export function resolveInspectLot(
   }
 }
 
-function applyIssueSeverity(
-  car: CarInstance,
-  componentId: ComponentId,
-  severity: number,
-): CarInstance {
-  const component = car.components[componentId]
-  return {
-    ...car,
-    components: {
-      ...car.components,
-      [componentId]: { ...component, condition: Math.max(0, component.condition - severity) },
-    },
-  }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
+export interface HandoverResult {
+  car: CarInstance
+  log: DayLogEntry[]
 }
 
 /**
- * The sliding-scale lemon rule (GDD 6.5, Sprint 03 decision 2). Inspected
- * lots apply their rolled hidden-issue severity in full — no surprise, the
- * player saw it coming. Uninspected lots run each issue through a
- * discount-scaled variance roll: buying at or above book value dampens
- * the outcome to half the rolled severity (an annoyance, never a
- * showstopper); the further under book value the final price is, the
- * wider the swing opens both ways — near-zero (goldmine) to up to 3x the
- * rolled severity (lemon). First-pass formula, explicitly tunable.
+ * Sprint 22: replaces the old sliding-scale lemon rule outright — severity
+ * is already fixed (rolled at generation, see `generateAuctionCarInstance`),
+ * so handover never mutates `condition`; it only reveals what's already
+ * true. An inspected lot showed the player these facts on the auction
+ * screen already, so there's nothing left to report. An uninspected lot
+ * that rolled at least one real issue gets a discovery beat on handover day
+ * — the moment the player learns what they actually bought.
  */
-export function resolveHandoverCondition(
-  lot: AuctionLot,
-  finalPriceYen: number,
-  hiddenIssueCatalog: Readonly<Record<string, HiddenIssue>>,
-  rng: Rng,
-): CarInstance {
-  let car = lot.car
-  const revealed = lot.inspected
-
-  const discount = clamp((lot.bookValueYen - finalPriceYen) / lot.bookValueYen, -1, 1)
-  const varianceFactor = Math.max(0, discount)
-
-  for (const issue of car.hiddenIssues) {
-    const catalogEntry = hiddenIssueCatalog[issue.issueId]
-    if (!catalogEntry) continue
-    const rolledSeverity = rng.int(catalogEntry.severityMin, catalogEntry.severityMax)
-    const multiplier = revealed
-      ? 1
-      : varianceFactor === 0
-        ? 0.5
-        : rng.next() * (1 + varianceFactor * 2)
-    const finalSeverity = clamp(rolledSeverity * multiplier, 0, 100)
-    car = applyIssueSeverity(car, catalogEntry.componentId, finalSeverity)
+export function revealIssuesAtHandover(lot: AuctionLot, wasInspected: boolean): HandoverResult {
+  const car: CarInstance = {
+    ...lot.car,
+    hiddenIssues: lot.car.hiddenIssues.map((issue) => ({ ...issue, revealed: true })),
   }
-
-  return { ...car, hiddenIssues: car.hiddenIssues.map((i) => ({ ...i, revealed: true })) }
+  const issueIds = car.hiddenIssues.map((issue) => issue.issueId)
+  const log: DayLogEntry[] =
+    !wasInspected && issueIds.length > 0
+      ? [{ type: 'issues-discovered', carInstanceId: car.id, issueIds }]
+      : []
+  return { car, log }
 }

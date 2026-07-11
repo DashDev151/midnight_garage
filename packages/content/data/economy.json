@@ -66,5 +66,14 @@
     "styleCap": 20,
     "reliabilityCap": 70,
     "powerNormalizationCeiling": 300
+  },
+  "issues": {
+    "penaltyMultiplier": 1.3,
+    "riskDiscountWeight": 0.9,
+    "maxRiskDiscount": 0.25,
+    "severityBands": [30, 60],
+    "laborSlotsByBand": [1, 2, 3],
+    "costDivisor": 50,
+    "lemonSeverityThreshold": 40
   }
 }

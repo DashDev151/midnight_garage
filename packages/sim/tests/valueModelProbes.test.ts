@@ -191,6 +191,7 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
         CONTEXT.buyers,
         CONTEXT.partsById,
         100,
+        CONTEXT.hiddenIssuesById,
         CONTEXT.economy,
       )
       marginFractions.push((salePriceYen - wonPriceYen) / PROBE_MODEL.bookValueYen)

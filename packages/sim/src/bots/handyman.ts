@@ -129,11 +129,27 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     const model = context.modelsById[car.modelId]
     const heatPercent = state.marketHeat[car.modelId] ?? 100
     const buyer = model
-      ? bestFitBuyer(car, model, context.buyers, context.partsById, heatPercent, context.economy)
+      ? bestFitBuyer(
+          car,
+          model,
+          context.buyers,
+          context.partsById,
+          heatPercent,
+          context.hiddenIssuesById,
+          context.economy,
+        )
       : undefined
     const estimatedOfferYen =
       model && buyer
-        ? valuateCarForBuyer(buyer, model, car, context.partsById, heatPercent, context.economy)
+        ? valuateCarForBuyer(
+            buyer,
+            model,
+            car,
+            context.partsById,
+            heatPercent,
+            context.hiddenIssuesById,
+            context.economy,
+          )
         : 0
     if (model && estimatedOfferYen >= model.bookValueYen * ACCEPTABLE_WALKIN_FRACTION) {
       actions.sellViaWalkIn.push({ carInstanceId: car.id })

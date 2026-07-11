@@ -2,6 +2,7 @@ import type { DayLogEntry, GameState } from '@midnight-garage/content'
 import { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from './constants'
 import type { SimContext } from './context'
 import { findWorkableCar, resolveJobLabor } from './jobs'
+import { issueLaborSlots } from './issues'
 import type { NewJobSpec } from './actions'
 
 /**
@@ -55,21 +56,37 @@ export function confirmStagedWork(
     const car = findWorkableCar(current, carInstanceId)
     if (!car) break // the car left the shop mid-loop — nothing left to work on
 
-    const spec: NewJobSpec =
-      action.kind === 'repair'
-        ? {
-            carInstanceId,
-            kind: 'repair-zone',
-            componentId: action.componentId,
-            laborSlotsRequired: repairLaborSlotsFor(car.components[action.componentId].condition),
-          }
-        : {
-            carInstanceId,
-            kind: 'install-part',
-            componentId: action.componentId,
-            partInstanceId: action.partInstanceId,
-            laborSlotsRequired: INSTALL_LABOR_SLOTS,
-          }
+    let spec: NewJobSpec | null = null
+    if (action.kind === 'repair') {
+      spec = {
+        carInstanceId,
+        kind: 'repair-zone',
+        componentId: action.componentId,
+        laborSlotsRequired: repairLaborSlotsFor(car.components[action.componentId].condition),
+      }
+    } else if (action.kind === 'install') {
+      spec = {
+        carInstanceId,
+        kind: 'install-part',
+        componentId: action.componentId,
+        partInstanceId: action.partInstanceId,
+        laborSlotsRequired: INSTALL_LABOR_SLOTS,
+      }
+    } else {
+      // fix-issue (Sprint 22): severity lives on the car instance, not the
+      // staged action itself — resolve it here to size the labor band.
+      const revealedIssue = car.hiddenIssues.find((ri) => ri.issueId === action.issueId)
+      if (revealedIssue) {
+        spec = {
+          carInstanceId,
+          kind: 'fix-issue',
+          componentId: action.componentId,
+          issueId: action.issueId,
+          laborSlotsRequired: issueLaborSlots(revealedIssue.severityPercent, context.economy),
+        }
+      }
+    }
+    if (!spec) continue // the staged issue no longer exists on this car — nothing to do
 
     const result = resolveJobLabor(current, spec, remainingLabor, context)
     current = result.state

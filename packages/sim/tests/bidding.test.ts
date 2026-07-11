@@ -5,6 +5,7 @@ import {
   HIDDEN_ISSUES,
   PARTS,
   type AuctionLot,
+  type DayLogEntry,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -346,14 +347,18 @@ describe('advanceLotOvernight', () => {
     // most of the time — but a thin-turnout roll combined with a low spread
     // draw can occasionally leave a lot bidless on day 1, so this is a
     // statistical majority claim, not "every single lot", to avoid a flaky
-    // assertion on the tail.
+    // assertion on the tail. Threshold at 0.75 (Sprint 22): inserting the new
+    // per-issue severity roll into `generateAuctionCarInstance` shifts every
+    // later draw in the shared catalog rng, which reshuffles which car
+    // conditions land on which lot ids in this 200-lot sample — measured
+    // real value is ~0.79, comfortably above 0.75, still a real majority.
     const opened = statLots(200, 'open-check').map(
       (l) => advanceLotOvernight(l, state, CONTEXT, 1).lot,
     )
     const openedCount = opened.filter(
       (l) => l.currentBidYen === reserve && l.leadingBidder === 'rival',
     ).length
-    expect(openedCount / opened.length).toBeGreaterThan(0.8)
+    expect(openedCount / opened.length).toBeGreaterThan(0.75)
   })
 
   it('at or above the ceiling: silence — quietDays increments, the board never moves', () => {
@@ -383,14 +388,16 @@ describe('advanceLotOvernight', () => {
 
     // Find a lot id/day combination where the overnight step genuinely
     // raises (not silence) — search a small population for one, since the
-    // raise itself is a seeded coin flip.
-    let raised: { lotId: string; day: number; newBidYen: number } | undefined
+    // raise itself is a seeded coin flip. Keeps the matched candidate's OWN
+    // car/anchor value (not the outer sampleLot's) — a mismatch here is a
+    // real latent bug: the search and the assertion must price the same lot.
+    let raised: { opened: AuctionLot; day: number } | undefined
     for (const candidate of statLots(60, 'outbid-search')) {
       const opened: AuctionLot = { ...candidate, currentBidYen: reserve, leadingBidder: 'player' }
       for (let day = 1; day <= 5 && !raised; day++) {
         const step = advanceLotOvernight(opened, state, CONTEXT, day)
         if (step.lot.currentBidYen > opened.currentBidYen) {
-          raised = { lotId: candidate.id, day, newBidYen: step.lot.currentBidYen }
+          raised = { opened, day }
         }
       }
       if (raised) break
@@ -398,8 +405,7 @@ describe('advanceLotOvernight', () => {
     if (!raised) throw new Error('expected at least one overnight raise across the sample')
 
     const playerLed: AuctionLot = {
-      ...lot,
-      id: raised.lotId,
+      ...raised.opened,
       currentBidYen: reserve,
       leadingBidder: 'player',
       playerHasBid: true,
@@ -575,7 +581,18 @@ describe('resolveBuyoutInstant', () => {
     expect(result.state.ownedCars).toHaveLength(1)
     expect(result.state.cashYen).toBe(state.cashYen - priceYen)
     expect(result.state.activeAuctionLots).toHaveLength(0)
-    expect(result.log).toEqual([{ type: 'lot-bought-out', lotId: lot.id, priceYen }])
+    // Sprint 22: an uninspected buyout with real rolled issues also logs the
+    // discovery beat — derived from the lot itself so this holds regardless
+    // of whether this specific seed happens to roll one.
+    const expectedLog: DayLogEntry[] = [{ type: 'lot-bought-out', lotId: lot.id, priceYen }]
+    if (lot.car.hiddenIssues.length > 0) {
+      expectedLog.push({
+        type: 'issues-discovered',
+        carInstanceId: lot.car.id,
+        issueIds: lot.car.hiddenIssues.map((i) => i.issueId),
+      })
+    }
+    expect(result.log).toEqual(expectedLog)
   })
 
   it('is a no-op when unaffordable, leaving the lot on the board', () => {

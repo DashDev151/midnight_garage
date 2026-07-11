@@ -63,14 +63,22 @@ const firstTimer: Buyer = {
 
 describe('valuateCarForBuyer', () => {
   it('is pure: identical inputs produce an identical value', () => {
-    const a = valuateCarForBuyer(collector, model, stockInstance, {}, 100, ECONOMY)
-    const b = valuateCarForBuyer(collector, model, stockInstance, {}, 100, ECONOMY)
+    const a = valuateCarForBuyer(collector, model, stockInstance, {}, 100, {}, ECONOMY)
+    const b = valuateCarForBuyer(collector, model, stockInstance, {}, 100, {}, ECONOMY)
     expect(a).toBe(b)
   })
 
   it('a high-authenticity car is worth more to a Collector than a First-timer', () => {
-    const collectorValue = valuateCarForBuyer(collector, model, stockInstance, {}, 100, ECONOMY)
-    const firstTimerValue = valuateCarForBuyer(firstTimer, model, stockInstance, {}, 100, ECONOMY)
+    const collectorValue = valuateCarForBuyer(collector, model, stockInstance, {}, 100, {}, ECONOMY)
+    const firstTimerValue = valuateCarForBuyer(
+      firstTimer,
+      model,
+      stockInstance,
+      {},
+      100,
+      {},
+      ECONOMY,
+    )
     expect(collectorValue).toBeGreaterThan(firstTimerValue)
   })
 
@@ -89,7 +97,7 @@ describe('valuateCarForBuyer', () => {
       },
       authenticityPercent: 0,
     }
-    const value = valuateCarForBuyer(firstTimer, model, wornOut, {}, 100, ECONOMY)
+    const value = valuateCarForBuyer(firstTimer, model, wornOut, {}, 100, {}, ECONOMY)
     expect(value).toBeGreaterThanOrEqual(0)
   })
 
@@ -105,7 +113,7 @@ describe('valuateCarForBuyer', () => {
     it('stays within [1 - tasteSpread, 1 + tasteSpread] of marketValueYen for any buyer', () => {
       const value = marketValueYen(model, stockInstance, 100, {}, ECONOMY)
       for (const buyer of [collector, firstTimer]) {
-        const valuation = valuateCarForBuyer(buyer, model, stockInstance, {}, 100, ECONOMY)
+        const valuation = valuateCarForBuyer(buyer, model, stockInstance, {}, 100, {}, ECONOMY)
         expect(valuation).toBeGreaterThanOrEqual(Math.round(value * (1 - spread)))
         expect(valuation).toBeLessThanOrEqual(Math.round(value * (1 + spread)))
       }
@@ -121,13 +129,22 @@ describe('valuateCarForBuyer', () => {
         ...collector,
         statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 },
       }
-      const enthusiastValue = valuateCarForBuyer(enthusiast, model, stockInstance, {}, 100, ECONOMY)
+      const enthusiastValue = valuateCarForBuyer(
+        enthusiast,
+        model,
+        stockInstance,
+        {},
+        100,
+        {},
+        ECONOMY,
+      )
       const indifferentValue = valuateCarForBuyer(
         indifferent,
         model,
         stockInstance,
         {},
         100,
+        {},
         ECONOMY,
       )
       expect(enthusiastValue).toBeGreaterThan(indifferentValue)

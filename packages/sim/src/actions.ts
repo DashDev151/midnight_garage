@@ -7,9 +7,11 @@ import { z } from 'zod'
  */
 const NewJobSpecSchema = z.object({
   carInstanceId: z.string().min(1),
-  kind: z.enum(['repair-zone', 'install-part']),
+  kind: z.enum(['repair-zone', 'install-part', 'fix-issue']),
   componentId: ComponentIdSchema,
   partInstanceId: z.string().min(1).optional(),
+  /** Set for `fix-issue` jobs only — which rolled hidden issue this job fixes. */
+  issueId: z.string().min(1).optional(),
   laborSlotsRequired: z.number().int().positive(),
 })
 

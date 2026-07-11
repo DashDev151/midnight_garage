@@ -23,9 +23,18 @@ const ComponentsSchema = z.object({
   interior: ComponentSchema,
 })
 
+/**
+ * Sprint 22: severity is rolled once, at car generation, and stays fixed for
+ * the life of the instance — `revealed` only controls whether the PLAYER has
+ * seen it yet (inspection, or a post-purchase discovery beat), never whether
+ * it mechanically applies. `repaired` is the only thing a `fix-issue` job
+ * ever flips; it never touches the component's own `condition`.
+ */
 const RevealedIssueSchema = z.object({
   issueId: z.string().min(1),
   revealed: z.boolean().default(false),
+  severityPercent: z.number().int().min(0).max(100).default(0),
+  repaired: z.boolean().default(false),
 })
 
 export const CarInstanceSchema = z.object({

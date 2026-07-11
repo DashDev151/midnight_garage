@@ -12,8 +12,8 @@ import {
   generateAuctionCatalog,
   groupHiddenIssuesByComponent,
   inspectLot,
-  resolveHandoverCondition,
   resolveInspectLot,
+  revealIssuesAtHandover,
 } from '../src/auctions'
 import { createRng } from '../src/rng'
 
@@ -50,7 +50,6 @@ function stateWithLots(
 }
 
 const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
-const HIDDEN_ISSUES_BY_ID = Object.fromEntries(HIDDEN_ISSUES.map((issue) => [issue.id, issue]))
 
 /** A synthetic Gaisha model — PoC-10 has none, so this proves the exclusion holds even when one exists in the pool. */
 const GAISHA_MODEL: CarModel = {
@@ -320,7 +319,7 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
   })
 })
 
-describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
+describe('revealIssuesAtHandover (Sprint 22 — severity is fixed at generation, handover never mutates condition)', () => {
   const model = CARS.find((c) => c.id === 'mazda-savanna-rx7-fc3s')
   if (!model) throw new Error('fixture car missing from seed content')
 
@@ -342,49 +341,34 @@ describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
     throw new Error('could not roll a lot with a hidden issue in 20 attempts')
   }
 
-  it('an inspected lot applies issues at full rolled severity regardless of price', () => {
-    const lot = inspectLot(lotWithIssue(1))
-    const atBookValue = resolveHandoverCondition(
-      lot,
-      lot.bookValueYen,
-      HIDDEN_ISSUES_BY_ID,
-      createRng(1),
-    )
-    const atSteal = resolveHandoverCondition(
-      lot,
-      Math.round(lot.bookValueYen * 0.1),
-      HIDDEN_ISSUES_BY_ID,
-      createRng(1),
-    )
-    // Same rng seed, same rolled severity — inspected outcomes don't vary with price.
-    expect(atBookValue.components).toEqual(atSteal.components)
-  })
-
-  it('an uninspected fair-price purchase dampens the outcome (never a full-severity showstopper)', () => {
-    const lot = lotWithIssue(2)
-    const issue = HIDDEN_ISSUES_BY_ID[lot.car.hiddenIssues[0]?.issueId ?? '']
-    if (!issue) throw new Error('expected a rolled hidden issue')
-    const resolved = resolveHandoverCondition(
-      lot,
-      lot.bookValueYen,
-      HIDDEN_ISSUES_BY_ID,
-      createRng(2),
-    )
-    const before = lot.car.components[issue.componentId].condition
-    const after = resolved.components[issue.componentId].condition
-    expect(before - after).toBeLessThanOrEqual(issue.severityMax * 0.5 + 0.01)
+  it('never changes any component condition, inspected or not', () => {
+    const lot = lotWithIssue(1)
+    const inspectedResult = revealIssuesAtHandover(inspectLot(lot), true)
+    const uninspectedResult = revealIssuesAtHandover(lot, false)
+    expect(inspectedResult.car.components).toEqual(lot.car.components)
+    expect(uninspectedResult.car.components).toEqual(lot.car.components)
   })
 
   it('every issue is revealed after handover, inspected or not', () => {
     const lot = lotWithIssue(3)
-    const resolved = resolveHandoverCondition(
-      lot,
-      lot.bookValueYen,
-      HIDDEN_ISSUES_BY_ID,
-      createRng(3),
-    )
-    for (const issue of resolved.hiddenIssues) {
+    const { car } = revealIssuesAtHandover(lot, false)
+    for (const issue of car.hiddenIssues) {
       expect(issue.revealed).toBe(true)
     }
+  })
+
+  it('logs a discovery beat only when uninspected AND at least one issue rolled', () => {
+    const lot = lotWithIssue(4)
+    const uninspected = revealIssuesAtHandover(lot, false)
+    expect(uninspected.log).toEqual([
+      {
+        type: 'issues-discovered',
+        carInstanceId: lot.car.id,
+        issueIds: lot.car.hiddenIssues.map((i) => i.issueId),
+      },
+    ])
+
+    const inspected = revealIssuesAtHandover(inspectLot(lot), true)
+    expect(inspected.log).toEqual([])
   })
 })

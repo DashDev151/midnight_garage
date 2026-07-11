@@ -77,5 +77,9 @@ export function describeLogEntry(
       }`
     case 'equipment-purchased':
       return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
+    case 'issues-discovered':
+      return `Discovered hidden issue${entry.issueIds.length > 1 ? 's' : ''} on ${entry.carInstanceId}: ${entry.issueIds.join(', ')}`
+    case 'issue-fixed':
+      return `Fixed issue ${entry.issueId} on ${entry.carInstanceId}`
   }
 }

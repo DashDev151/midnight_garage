@@ -562,6 +562,140 @@ describe('saveCodec', () => {
     expect(decoded).toEqual(withLedger)
   })
 
+  /**
+   * v13 -> v14 (Sprint 22, hidden issues): every pre-v14 `hiddenIssues` entry
+   * — on an owned car, an active-lot car, AND an `activeServiceJobs[].car`
+   * (the third `CarInstance` population, per the SAVE_VERSION doc comment) —
+   * gets `severityPercent: 0, repaired: true`, regardless of which
+   * population it's in.
+   */
+  it('decodes a pre-v14 save, marking every hiddenIssues entry severityPercent 0 / repaired true (Sprint 22 migration)', () => {
+    const carComponents = {
+      engine: { condition: 60, installed: null },
+      forcedInduction: { condition: 100, installed: null },
+      drivetrain: { condition: 60, installed: null },
+      suspension: { condition: 60, installed: null },
+      brakes: { condition: 100, installed: null },
+      wheels: { condition: 100, installed: null },
+      body: { condition: 60, installed: null },
+      interior: { condition: 60, installed: null },
+    }
+    const preV14 = {
+      version: 13,
+      gameState: {
+        day: 50,
+        seed: 9,
+        cashYen: 1_000_000,
+        reputationTier: 'unknown',
+        reputationPoints: 0,
+        ownedCars: [
+          {
+            id: 'owned-car',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 120_000,
+            color: 'White',
+            provenanceNote: '',
+            hiddenIssues: [{ issueId: 'rusted-rails', revealed: true }],
+            authenticityPercent: 85,
+            components: carComponents,
+          },
+        ],
+        activeAuctionLots: [
+          {
+            id: 'lot-50-local-yard',
+            tier: 'local-yard',
+            modelId: 'honda-city-e-aa',
+            bookValueYen: 200_000,
+            expiresOnDay: 55,
+            currentBidYen: 0,
+            leadingBidder: null,
+            quietDays: 0,
+            playerHasBid: false,
+            car: {
+              id: 'lot-car',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 120_000,
+              color: 'White',
+              provenanceNote: '',
+              hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
+              authenticityPercent: 85,
+              components: carComponents,
+            },
+          },
+        ],
+        activeServiceJobs: [
+          {
+            id: 'service-job-1',
+            typeId: 'repair-engine',
+            customerName: 'Tanaka-san',
+            description: 'oil change',
+            work: { kind: 'repair', componentId: 'engine' },
+            payoutYen: 15_000,
+            baseReputation: 1,
+            expiresOnDay: 60,
+            dueOnDay: 55,
+            car: {
+              id: 'service-car',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 120_000,
+              color: 'White',
+              provenanceNote: '',
+              hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
+              authenticityPercent: 85,
+              components: carComponents,
+            },
+          },
+        ],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV14))
+    const decoded = decodeSave(code)
+
+    const ownedIssue = decoded.ownedCars[0]?.hiddenIssues[0]
+    expect(ownedIssue).toMatchObject({ severityPercent: 0, repaired: true })
+
+    const lotIssue = decoded.activeAuctionLots[0]?.car.hiddenIssues[0]
+    expect(lotIssue).toMatchObject({ severityPercent: 0, repaired: true })
+
+    const serviceCarIssue = decoded.activeServiceJobs[0]?.car.hiddenIssues[0]
+    expect(serviceCarIssue).toMatchObject({ severityPercent: 0, repaired: true })
+  })
+
+  it('round-trips a v14 state with real severity/repaired hidden-issue state', () => {
+    const withIssue: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'owned-with-issue',
+          modelId: 'honda-city-e-aa',
+          year: 1984,
+          mileageKm: 120_000,
+          color: 'White',
+          provenanceNote: '',
+          hiddenIssues: [
+            { issueId: 'rusted-rails', revealed: true, severityPercent: 42, repaired: false },
+          ],
+          authenticityPercent: 85,
+          components: {
+            engine: { condition: 60, installed: null },
+            forcedInduction: { condition: 100, installed: null },
+            drivetrain: { condition: 60, installed: null },
+            suspension: { condition: 60, installed: null },
+            brakes: { condition: 100, installed: null },
+            wheels: { condition: 100, installed: null },
+            body: { condition: 60, installed: null },
+            interior: { condition: 60, installed: null },
+          },
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withIssue))
+    expect(decoded).toEqual(withIssue)
+  })
+
   it('rejects a non-save string', () => {
     expect(() => decodeSave('hello world')).toThrow(/not a Midnight Garage save code/i)
   })

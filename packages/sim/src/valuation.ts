@@ -1,6 +1,13 @@
-import type { Buyer, CarInstance, CarModel, EconomyConfig, Part } from '@midnight-garage/content'
+import type {
+  Buyer,
+  CarInstance,
+  CarModel,
+  EconomyConfig,
+  HiddenIssue,
+  Part,
+} from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
-import { marketValueYen } from './marketValue'
+import { issueAdjustedValueYen } from './marketValue'
 
 const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
 
@@ -18,9 +25,10 @@ function tasteMultiplier(
   model: CarModel,
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): number {
-  const stats = computeDerivedStats(model, instance, partsById, economy)
+  const stats = computeDerivedStats(model, instance, partsById, issuesById, economy)
   const weights = buyer.statWeights
   const powerCeiling = economy.statFormulas.powerNormalizationCeiling
 
@@ -52,6 +60,11 @@ function tasteMultiplier(
  * outright: the old `fitComponent`/`tierComponent`/`priceAdjusted` price
  * math (see sprint21.md's "Deleted outright" section) — `buyer.priceSensitivity`
  * stays in the schema/content as a reserved, currently-unused field.
+ *
+ * Sprint 22 decision 4: re-based from `marketValueYen` onto
+ * `issueAdjustedValueYen` — every sale-side buyer valuation now sees the
+ * real, issue-adjusted truth (issues are always revealed post-purchase;
+ * there is no concealment mechanic once a car is owned).
  */
 export function valuateCarForBuyer(
   buyer: Buyer,
@@ -59,9 +72,10 @@ export function valuateCarForBuyer(
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
   heatPercent: number,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): number {
-  const value = marketValueYen(model, instance, heatPercent, partsById, economy)
-  const taste = tasteMultiplier(buyer, model, instance, partsById, economy)
+  const value = issueAdjustedValueYen(model, instance, heatPercent, partsById, issuesById, economy)
+  const taste = tasteMultiplier(buyer, model, instance, partsById, issuesById, economy)
   return Math.round(Math.max(0, value * taste))
 }

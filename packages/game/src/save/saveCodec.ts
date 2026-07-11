@@ -108,8 +108,21 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   both counters empty — correct, since the concept didn't exist yet and a
  *   fresh pair of empty counters behaves exactly like a brand-new career's.
  *   No explicit `MIGRATIONS[12]` step needed.
+ * - v14 (Sprint 22, hidden issues): every `CarInstance.hiddenIssues[]` entry
+ *   gains `severityPercent`/`repaired`. Not a plain default-fill:
+ *   `MIGRATIONS` are pure structural transforms with no content-catalog
+ *   access, so there's no way to re-roll a real severity for an old entry
+ *   here. `migrateV13ToV14` instead marks EVERY pre-v14 issue (on owned
+ *   cars, active-lot cars, and `activeServiceJobs[].car` — a third
+ *   `CarInstance` population generated the same way) as `severityPercent: 0,
+ *   repaired: true`. Correct for owned cars (the old sliding-scale handover
+ *   rule already applied their severity to `condition` directly, so treating
+ *   them as "already dealt with" avoids double-punishing); for the small
+ *   number of in-flight lot/service cars in any given save, this simply
+ *   means they carry no live issue — the next weekly catalog refresh brings
+ *   freshly-rolled ones under the new rules.
  */
-export const SAVE_VERSION = 13
+export const SAVE_VERSION = 14
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -219,6 +232,52 @@ function migrateV11ToV12(gameState: unknown): unknown {
 }
 
 /**
+ * v13 -> v14 (Sprint 22, hidden issues): marks every existing `CarInstance`
+ * hidden-issue entry (owned cars, active-lot cars, and
+ * `activeServiceJobs[].car`) `severityPercent: 0, repaired: true` — see the
+ * SAVE_VERSION doc comment above for why. Defensive against a malformed or
+ * hand-edited save, same shape as the migrations above.
+ */
+function migrateHiddenIssues(hiddenIssues: unknown): unknown {
+  if (!Array.isArray(hiddenIssues)) return hiddenIssues
+  return hiddenIssues.map((issue) => {
+    if (typeof issue !== 'object' || issue === null) return issue
+    return { ...issue, severityPercent: 0, repaired: true }
+  })
+}
+
+function migrateCarInstance(car: unknown): unknown {
+  if (typeof car !== 'object' || car === null) return car
+  const c = car as Record<string, unknown>
+  return { ...c, hiddenIssues: migrateHiddenIssues(c.hiddenIssues) }
+}
+
+function migrateV13ToV14(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+
+  const ownedCars = Array.isArray(state.ownedCars)
+    ? state.ownedCars.map(migrateCarInstance)
+    : state.ownedCars
+  const activeAuctionLots = Array.isArray(state.activeAuctionLots)
+    ? state.activeAuctionLots.map((lot) => {
+        if (typeof lot !== 'object' || lot === null) return lot
+        const l = lot as Record<string, unknown>
+        return { ...l, car: migrateCarInstance(l.car) }
+      })
+    : state.activeAuctionLots
+  const activeServiceJobs = Array.isArray(state.activeServiceJobs)
+    ? state.activeServiceJobs.map((sj) => {
+        if (typeof sj !== 'object' || sj === null) return sj
+        const s = sj as Record<string, unknown>
+        return { ...s, car: migrateCarInstance(s.car) }
+      })
+    : state.activeServiceJobs
+
+  return { ...state, ownedCars, activeAuctionLots, activeServiceJobs }
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -227,6 +286,7 @@ function migrateV11ToV12(gameState: unknown): unknown {
 const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   8: migrateV8ToV9,
   11: migrateV11ToV12,
+  13: migrateV13ToV14,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

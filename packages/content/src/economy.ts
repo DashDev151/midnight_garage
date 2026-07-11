@@ -22,6 +22,18 @@ const AscendingFractionPairSchema = z
   .tuple([z.number().positive(), z.number().positive()])
   .refine(([low, high]) => low <= high, { message: 'pair low must be <= high' })
 
+/** An ascending [low, high] pair of 0-100 severity-percent breakpoints. */
+const AscendingSeverityPairSchema = z
+  .tuple([z.number().int().min(0).max(100), z.number().int().min(0).max(100)])
+  .refine(([low, high]) => low <= high, { message: 'pair low must be <= high' })
+
+/** Labor slots for [minor, serious, severe] issue bands, each a positive int. */
+const LaborSlotsByBandSchema = z.tuple([
+  z.number().int().positive(),
+  z.number().int().positive(),
+  z.number().int().positive(),
+])
+
 /**
  * Sprint 21: per-component weight (0-1) toward `conditionFactor`'s weighted
  * condition — the 8 real components (same set as `ComponentIdSchema` in
@@ -228,6 +240,40 @@ export const EconomyConfigSchema = z.object({
      * against (was the file-local `POWER_NORMALIZATION_CEILING` constant in
      * valuation.ts). */
     powerNormalizationCeiling: z.number().positive(),
+  }),
+  /**
+   * Sprint 22: hidden issues become a real, priced defect instead of a
+   * one-time condition subtraction. `issueRepairCostYen` is computed inline
+   * in `issues.ts` (`repairCostBaseYen * severityPercent / costDivisor`,
+   * rounded to the nearest Y1,000) — everything else here tunes how that
+   * cost turns into a market-value penalty (owned cars) or a risk discount
+   * (auction lots), and how much labor fixing one costs.
+   */
+  issues: z.object({
+    /** Owned/sale-side penalty multiplier (decision 4): an unrepaired issue
+     * costs more in lost sale value than it costs to actually fix — the
+     * incentive that makes fixing-before-selling profitable by construction. */
+    penaltyMultiplier: z.number().positive(),
+    /** Weight applied to a model's average issue-repair-cost fraction when
+     * computing its auction lot risk discount (decision 5). */
+    riskDiscountWeight: z.number().min(0).max(1),
+    /** Hard cap on how far a model's known issue risk can discount its
+     * auction anchor, regardless of how bad its hiddenIssueWeights look. */
+    maxRiskDiscount: z.number().min(0).max(1),
+    /** [minor-vs-serious, serious-vs-severe] severity-percent breakpoints —
+     * also the labor band's own breakpoints (decision 3). */
+    severityBands: AscendingSeverityPairSchema,
+    /** Labor slots to fix an issue, by band: [minor, serious, severe]. */
+    laborSlotsByBand: LaborSlotsByBandSchema,
+    /** Divisor in `repairCostBaseYen * severityPercent / costDivisor` — a
+     * severity roll exactly equal to this value costs exactly the catalog's
+     * base repair cost. */
+    costDivisor: z.number().positive(),
+    /** Decision 6: an unrepaired issue at or above this severity triggers
+     * the lemon reputation penalty on sale, on top of the existing
+     * condition-based lemon check (Sprint 15) — a distinct number from
+     * `severityBands` (those size labor, not reputation). */
+    lemonSeverityThreshold: z.number().int().min(0).max(100),
   }),
 })
 

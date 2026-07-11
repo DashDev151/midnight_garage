@@ -6,9 +6,10 @@ import type {
   EconomyConfig,
   GameState,
 } from '@midnight-garage/content'
-import { resolveHandoverCondition } from './auctions'
+import { revealIssuesAtHandover } from './auctions'
 import type { SimContext } from './context'
 import { assignToParking, hasParkingSpace } from './facilities'
+import { modelRiskDiscount } from './issues'
 import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 
@@ -46,6 +47,13 @@ export function interestedBuyers(
  * nobody does (the demand ceiling then sits below any reserve, so the lot
  * simply never opens on its own) — but no longer selects *which* buyer's
  * valuation to use, since `marketValueYen` doesn't take a buyer.
+ *
+ * Sprint 22 decision 5: the anchor is discounted by `modelRiskDiscount` —
+ * what everyone in the trade knows about this MODEL's hidden-issue risk
+ * ("these are known for rust"), never the actual rolled issues on this one
+ * instance. `marketValueYen` itself stays issue-blind (decision 4's
+ * separation, shared with `issueAdjustedValueYen` on the sell side) — the
+ * discount is applied here, once, at the lot-pricing layer only.
  */
 export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
   const model = context.modelsById[lot.modelId]
@@ -53,7 +61,9 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
   const interested = interestedBuyers(model, context.buyers)
   if (interested.length === 0) return 0
   const heatPercent = state.marketHeat[lot.modelId] ?? 100
-  return marketValueYen(model, lot.car, heatPercent, context.partsById, context.economy)
+  const baseValue = marketValueYen(model, lot.car, heatPercent, context.partsById, context.economy)
+  const riskDiscount = modelRiskDiscount(model, context.hiddenIssuesByComponent, context.economy)
+  return Math.round(baseValue * (1 - riskDiscount))
 }
 
 /** Seller's floor under a deal (GDD 6.5): a fraction of book value. Bidding
@@ -238,17 +248,6 @@ export interface AcquisitionResult {
 }
 
 /**
- * The car-condition roll on a won lot (the sliding-scale lemon rule) needs
- * an RNG, but there's no meaningful "day" for an instant, single-click
- * acquisition to derive one from — seeded on the lot's own id instead
- * (distinct from the ceiling/overnight seeds, via a suffix) so the outcome
- * is reproducible regardless of when the click happens.
- */
-function handoverRng(lotId: string) {
-  return createRng(hashStringToSeed(`${lotId}:handover`))
-}
-
-/**
  * Places or raises a bid (Sprint 20 — open-raise semantics replace sealed
  * proxy bidding): the amount passed is the literal number that lands on the
  * board, not a hidden max. Must clear `minRaiseYen` (reserve to open an
@@ -362,21 +361,19 @@ export function resolveLotForDay(
     return { state: removeLot(state), log }
   }
 
-  const finalCar = resolveHandoverCondition(
-    updatedLot,
-    updatedLot.currentBidYen,
-    context.hiddenIssuesById,
-    handoverRng(lot.id),
-  )
+  const handover = revealIssuesAtHandover(updatedLot, updatedLot.inspected)
   const withCar = assignToParking(
     {
       ...removeLot(state),
       cashYen: state.cashYen - updatedLot.currentBidYen,
-      ownedCars: [...state.ownedCars, finalCar],
+      ownedCars: [...state.ownedCars, handover.car],
     },
-    finalCar.id,
+    handover.car.id,
   )
-  log.push({ type: 'auction-bid-won', lotId: lot.id, finalPriceYen: updatedLot.currentBidYen })
+  log.push(
+    { type: 'auction-bid-won', lotId: lot.id, finalPriceYen: updatedLot.currentBidYen },
+    ...handover.log,
+  )
   return { state: withCar, log }
 }
 
@@ -403,18 +400,18 @@ export function resolveBuyoutInstant(
     }
   }
 
-  const car = resolveHandoverCondition(lot, priceYen, context.hiddenIssuesById, handoverRng(lotId))
+  const handover = revealIssuesAtHandover(lot, lot.inspected)
   const withCar = assignToParking(
     {
       ...state,
       cashYen: state.cashYen - priceYen,
-      ownedCars: [...state.ownedCars, car],
+      ownedCars: [...state.ownedCars, handover.car],
       activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
     },
-    car.id,
+    handover.car.id,
   )
   return {
     state: withCar,
-    log: [{ type: 'lot-bought-out', lotId, priceYen }],
+    log: [{ type: 'lot-bought-out', lotId, priceYen }, ...handover.log],
   }
 }

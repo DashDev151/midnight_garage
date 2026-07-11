@@ -3,8 +3,10 @@ import type {
   CarModel,
   ComponentId,
   EconomyConfig,
+  HiddenIssue,
   Part,
 } from '@midnight-garage/content'
+import { issuePenaltyYen } from './issues'
 
 const COMPONENT_IDS: readonly ComponentId[] = [
   'engine',
@@ -91,4 +93,29 @@ export function marketValueYen(
   const heatFraction = heatPercent / 100
   const baseValue = Math.round(model.bookValueYen * conditionFactor(car, economy) * heatFraction)
   return baseValue + installedPartsValueYen(car, partsById, economy)
+}
+
+/**
+ * Sprint 22 decision 4: the owned/sale-side truth — `marketValueYen` stays
+ * issue-blind (that separation is what makes decision 5's lot-side risk
+ * discount implementable: the board price basis never reacts to a specific
+ * instance's actual rolled issues), but a sale channel needs to see reality.
+ * A known unfixed defect scares buyers more than what it actually costs to
+ * fix, so `issuePenaltyYen` outweighing its own repair cost (via
+ * `penaltyMultiplier`) is what makes fixing-before-selling profitable by
+ * construction. Floored at 10% of book — even a car riddled with unrepaired
+ * issues still has real scrap/chassis value.
+ */
+export function issueAdjustedValueYen(
+  model: CarModel,
+  car: CarInstance,
+  heatPercent: number,
+  partsById: Readonly<Record<string, Part>>,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
+  economy: EconomyConfig,
+): number {
+  const baseValue = marketValueYen(model, car, heatPercent, partsById, economy)
+  const penalty = issuePenaltyYen(car, issuesById, economy)
+  const floor = Math.round(model.bookValueYen * 0.1)
+  return Math.max(floor, baseValue - penalty)
 }

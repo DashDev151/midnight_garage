@@ -5,6 +5,7 @@ import type {
   DayLogEntry,
   EconomyConfig,
   GameState,
+  HiddenIssue,
   Part,
   PublicListing,
 } from '@midnight-garage/content'
@@ -53,13 +54,14 @@ export function sellViaWalkIn(
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
   heatPercent: number,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
   rng: Rng,
 ): SaleOffer {
   const candidates = saleCandidates(model, buyers)
   const valuations = candidates.map((buyer) => ({
     buyer,
-    value: valuateCarForBuyer(buyer, model, car, partsById, heatPercent, economy),
+    value: valuateCarForBuyer(buyer, model, car, partsById, heatPercent, issuesById, economy),
   }))
   const totalValue = valuations.reduce((sum, v) => sum + v.value, 0)
 
@@ -109,12 +111,15 @@ export function listPubliclyAskingPrice(
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
   marketHeatPercent: number,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): number {
   const candidates = saleCandidates(model, buyers)
   if (candidates.length === 0) return 0
   const total = candidates.reduce((sum, buyer) => {
-    return sum + valuateCarForBuyer(buyer, model, car, partsById, marketHeatPercent, economy)
+    return (
+      sum + valuateCarForBuyer(buyer, model, car, partsById, marketHeatPercent, issuesById, economy)
+    )
   }, 0)
   const average = total / candidates.length
   return Math.round(average * economy.valuation.listingPatiencePremium)
@@ -131,11 +136,12 @@ export function bestFitBuyer(
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
   heatPercent: number,
+  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): Buyer | undefined {
   let best: { buyer: Buyer; value: number } | undefined
   for (const buyer of saleCandidates(model, buyers)) {
-    const value = valuateCarForBuyer(buyer, model, car, partsById, heatPercent, economy)
+    const value = valuateCarForBuyer(buyer, model, car, partsById, heatPercent, issuesById, economy)
     if (!best || value > best.value) {
       best = { buyer, value }
     }
@@ -172,10 +178,11 @@ export function resolveSellViaWalkIn(
     context.buyers,
     context.partsById,
     heatPercent,
+    context.hiddenIssuesById,
     context.economy,
     rng,
   )
-  const reputationDelta = saleReputationDeltaFor(car)
+  const reputationDelta = saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy)
   const released = applyReputationDelta(
     clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
     reputationDelta,
@@ -225,6 +232,7 @@ export function resolveListForSale(
     context.buyers,
     context.partsById,
     marketHeatPercent,
+    context.hiddenIssuesById,
     context.economy,
   )
   const waitDays = waitDaysOverride ?? PUBLIC_LISTING_WAIT_DAYS
@@ -238,7 +246,7 @@ export function resolveListForSale(
     // moment this listing is created, so its condition can't be re-read days
     // later when the listing actually resolves (see selling.ts's own note
     // above and sprint15.md decision 4).
-    reputationDeltaOnSale: saleReputationDeltaFor(car),
+    reputationDeltaOnSale: saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy),
   }
   const released = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   return {

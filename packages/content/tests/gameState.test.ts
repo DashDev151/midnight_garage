@@ -17,7 +17,9 @@ describe('GameState / DayLog round-trip', () => {
           mileageKm: 128_000,
           color: 'Sodium Amber',
           provenanceNote: 'one-owner, garage kept, Gunma plates',
-          hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
+          hiddenIssues: [
+            { issueId: 'rusted-rails', revealed: false, severityPercent: 0, repaired: false },
+          ],
           authenticityPercent: 88,
           components: {
             engine: {

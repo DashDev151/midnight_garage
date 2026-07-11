@@ -1,7 +1,11 @@
-import type { CarInstance } from '@midnight-garage/content'
+import { ECONOMY, type CarInstance, type HiddenIssue } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { averageConditionPercent, saleReputationDeltaFor } from '../src/carCondition'
 import { LEMON_SALE_REPUTATION_PENALTY, QUALITY_SALE_REPUTATION_BONUS } from '../src/constants'
+
+// No fixture in this file rolls a real hidden issue — every car here has
+// hiddenIssues: [], so an empty catalog is always correct.
+const NO_ISSUES: Readonly<Record<string, HiddenIssue>> = {}
 
 function carWith(overrides: {
   authenticityPercent?: number
@@ -35,7 +39,7 @@ describe('averageConditionPercent', () => {
   it('averages all 8 components evenly', () => {
     const car = carWith({ conditions: { engine: 100, brakes: 0 } })
     // 6 components at 90, one at 100, one at 0 -> (6*90 + 100 + 0) / 8
-    expect(averageConditionPercent(car)).toBeCloseTo((6 * 90 + 100 + 0) / 8)
+    expect(averageConditionPercent(car, NO_ISSUES)).toBeCloseTo((6 * 90 + 100 + 0) / 8)
   })
 
   it('is 100 when every component is pristine', () => {
@@ -51,24 +55,24 @@ describe('averageConditionPercent', () => {
         interior: 100,
       },
     })
-    expect(averageConditionPercent(car)).toBe(100)
+    expect(averageConditionPercent(car, NO_ISSUES)).toBe(100)
   })
 })
 
 describe('saleReputationDeltaFor', () => {
   it('grants the quality bonus when average condition and authenticity both clear the bar', () => {
     const car = carWith({ authenticityPercent: 90 }) // every component at 90
-    expect(saleReputationDeltaFor(car)).toBe(QUALITY_SALE_REPUTATION_BONUS)
+    expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(QUALITY_SALE_REPUTATION_BONUS)
   })
 
   it('is neutral when condition clears the bar but authenticity does not', () => {
     const car = carWith({ authenticityPercent: 50 })
-    expect(saleReputationDeltaFor(car)).toBe(0)
+    expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(0)
   })
 
   it('is neutral for an ordinary, unremarkable sale', () => {
     const car = carWith({ conditions: { engine: 60 }, authenticityPercent: 60 })
-    expect(saleReputationDeltaFor(car)).toBe(0)
+    expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(0)
   })
 
   it('penalizes a lemon by low average condition', () => {
@@ -84,15 +88,15 @@ describe('saleReputationDeltaFor', () => {
         interior: 30,
       },
     })
-    expect(saleReputationDeltaFor(car)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
+    expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
   })
 
   it('penalizes a lemon by a single severely damaged component, even with a fine average', () => {
     const car = carWith({ conditions: { engine: 5 } }) // 7 components at 90, one at 5
     // Above LEMON_MAX_AVERAGE_CONDITION (40) on its own — the single-component
     // rule is the only thing that can catch this car.
-    expect(averageConditionPercent(car)).toBeGreaterThan(40)
-    expect(saleReputationDeltaFor(car)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
+    expect(averageConditionPercent(car, NO_ISSUES)).toBeGreaterThan(40)
+    expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
   })
 
   it('lemon takes precedence over quality when a car with a dead component still averages high enough', () => {
@@ -110,7 +114,7 @@ describe('saleReputationDeltaFor', () => {
       },
       authenticityPercent: 90,
     })
-    expect(averageConditionPercent(car)).toBeGreaterThanOrEqual(85)
-    expect(saleReputationDeltaFor(car)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
+    expect(averageConditionPercent(car, NO_ISSUES)).toBeGreaterThanOrEqual(85)
+    expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
   })
 })

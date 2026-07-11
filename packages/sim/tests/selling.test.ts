@@ -50,29 +50,29 @@ const car: CarInstance = {
 describe('sellViaWalkIn', () => {
   it("offers at or below the chosen buyer's true valuation", () => {
     const rng = createRng(1)
-    const offer = sellViaWalkIn(car, model, BUYERS, {}, 100, ECONOMY, rng)
+    const offer = sellViaWalkIn(car, model, BUYERS, {}, 100, {}, ECONOMY, rng)
     const buyer = BUYERS.find((b) => b.id === offer.buyerId)
     if (!buyer) throw new Error('offer referenced an unknown buyer')
-    const trueValue = valuateCarForBuyer(buyer, model, car, {}, 100, ECONOMY)
+    const trueValue = valuateCarForBuyer(buyer, model, car, {}, 100, {}, ECONOMY)
     expect(offer.priceYen).toBeLessThanOrEqual(trueValue)
   })
 
   it('is deterministic for the same seed', () => {
-    const a = sellViaWalkIn(car, model, BUYERS, {}, 100, ECONOMY, createRng(7))
-    const b = sellViaWalkIn(car, model, BUYERS, {}, 100, ECONOMY, createRng(7))
+    const a = sellViaWalkIn(car, model, BUYERS, {}, 100, {}, ECONOMY, createRng(7))
+    const b = sellViaWalkIn(car, model, BUYERS, {}, 100, {}, ECONOMY, createRng(7))
     expect(a).toEqual(b)
   })
 })
 
 describe('listPubliclyAskingPrice', () => {
   it('scales up with market heat', () => {
-    const cool = listPubliclyAskingPrice(car, model, BUYERS, {}, 80, ECONOMY)
-    const hot = listPubliclyAskingPrice(car, model, BUYERS, {}, 130, ECONOMY)
+    const cool = listPubliclyAskingPrice(car, model, BUYERS, {}, 80, {}, ECONOMY)
+    const hot = listPubliclyAskingPrice(car, model, BUYERS, {}, 130, {}, ECONOMY)
     expect(hot).toBeGreaterThan(cool)
   })
 
   it('returns 0 with no buyers to value the car', () => {
-    expect(listPubliclyAskingPrice(car, model, [], {}, 100, ECONOMY)).toBe(0)
+    expect(listPubliclyAskingPrice(car, model, [], {}, 100, {}, ECONOMY)).toBe(0)
   })
 
   /**
@@ -85,8 +85,8 @@ describe('listPubliclyAskingPrice', () => {
    * a double-count would instead compound to ~1.44x.
    */
   it('applies market heat exactly once (no double-count with marketValueYen)', () => {
-    const heatBase = listPubliclyAskingPrice(car, model, BUYERS, {}, 100, ECONOMY)
-    const heatHigh = listPubliclyAskingPrice(car, model, BUYERS, {}, 120, ECONOMY)
+    const heatBase = listPubliclyAskingPrice(car, model, BUYERS, {}, 100, {}, ECONOMY)
+    const heatHigh = listPubliclyAskingPrice(car, model, BUYERS, {}, 120, {}, ECONOMY)
     expect(heatHigh / heatBase).toBeCloseTo(1.2, 1)
   })
 })
@@ -96,19 +96,19 @@ describe('bestFitBuyer', () => {
     // Sprint 11: bestFitBuyer only ever picks from the gated (tier-interested)
     // pool, same as sellViaWalkIn/listPubliclyAskingPrice — an uninterested
     // archetype's raw valuation is irrelevant, it was never a candidate.
-    const best = bestFitBuyer(car, model, BUYERS, {}, 100, ECONOMY)
+    const best = bestFitBuyer(car, model, BUYERS, {}, 100, {}, ECONOMY)
     if (!best) throw new Error('expected a best-fit buyer')
-    const bestValue = valuateCarForBuyer(best, model, car, {}, 100, ECONOMY)
+    const bestValue = valuateCarForBuyer(best, model, car, {}, 100, {}, ECONOMY)
     const candidates = interestedBuyers(model, BUYERS).map((i) => i.buyer)
     expect(candidates.length).toBeGreaterThan(0)
     for (const buyer of candidates) {
-      const value = valuateCarForBuyer(buyer, model, car, {}, 100, ECONOMY)
+      const value = valuateCarForBuyer(buyer, model, car, {}, 100, {}, ECONOMY)
       expect(value).toBeLessThanOrEqual(bestValue)
     }
   })
 
   it('returns undefined with no buyers', () => {
-    expect(bestFitBuyer(car, model, [], {}, 100, ECONOMY)).toBeUndefined()
+    expect(bestFitBuyer(car, model, [], {}, 100, {}, ECONOMY)).toBeUndefined()
   })
 })
 
@@ -127,6 +127,7 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
         BUYERS,
         {},
         100,
+        {},
         ECONOMY,
         createRng(seed),
       )
@@ -138,13 +139,22 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
     // Shitbox has exactly one interested archetype (first-timer) — the gated
     // price should equal that buyer's own valuation exactly, not be dragged
     // down by averaging in four buyers who were never real candidates.
-    const gatedPrice = listPubliclyAskingPrice(shitboxCar, shitboxModel, BUYERS, {}, 100, ECONOMY)
+    const gatedPrice = listPubliclyAskingPrice(
+      shitboxCar,
+      shitboxModel,
+      BUYERS,
+      {},
+      100,
+      {},
+      ECONOMY,
+    )
     const firstTimerValuation = valuateCarForBuyer(
       BUYERS.find((b) => b.id === 'first-timer')!,
       shitboxModel,
       shitboxCar,
       {},
       100,
+      {},
       ECONOMY,
     )
     const premium = ECONOMY.valuation.listingPatiencePremium
