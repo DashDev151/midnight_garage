@@ -371,11 +371,105 @@ describe('saveCodec', () => {
     expect(decoded.activeAuctionLots).toHaveLength(1)
     // v10 -> v11 migration is pure default-fill: a v10 save's lots never had
     // a bid in progress (bidding always resolved the instant it was placed).
-    expect(decoded.activeAuctionLots[0]?.playerMaxBidYen).toBeNull()
-    expect(decoded.activeAuctionLots[0]?.rivalEscalatedBidsYen).toEqual([])
+    // v11 -> v12 (Sprint 20) then converts that "no bid at all" state into
+    // the new open-bidding shape: nobody has raised, so the lot hasn't even
+    // opened yet.
+    expect(decoded.activeAuctionLots[0]?.currentBidYen).toBe(0)
+    expect(decoded.activeAuctionLots[0]?.leadingBidder).toBeNull()
+    expect(decoded.activeAuctionLots[0]?.quietDays).toBe(0)
+    expect(decoded.activeAuctionLots[0]?.playerHasBid).toBe(false)
   })
 
-  it('round-trips a v11 state with a real active bid and rival escalation on a lot', () => {
+  /**
+   * v11 -> v12 (Sprint 20, auction rework II): a real save with an in-flight
+   * bid — the player leading over a rival's escalated position, and a
+   * second lot where a rival leads instead — must migrate to the new open-
+   * bidding shape without losing that live standing (see the SAVE_VERSION
+   * doc comment: this is the one genuinely non-additive step in this
+   * migration, same category as v9's bay/parking reconstruction).
+   */
+  it('decodes a pre-v12 save with in-flight bids, reconstructing open-bidding state (Sprint 20 migration)', () => {
+    const carComponents = {
+      engine: { condition: 60, installed: null },
+      forcedInduction: { condition: 100, installed: null },
+      drivetrain: { condition: 60, installed: null },
+      suspension: { condition: 60, installed: null },
+      brakes: { condition: 100, installed: null },
+      wheels: { condition: 100, installed: null },
+      body: { condition: 60, installed: null },
+      interior: { condition: 60, installed: null },
+    }
+    const lotCar = (id: string) => ({
+      id,
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 120_000,
+      color: 'White',
+      provenanceNote: '',
+      hiddenIssues: [],
+      authenticityPercent: 85,
+      components: carComponents,
+    })
+    const preV12 = {
+      version: 11,
+      gameState: {
+        day: 100,
+        seed: 21,
+        cashYen: 3_000_000,
+        reputationTier: 'known',
+        reputationPoints: 60,
+        serviceBayCount: 2,
+        parkingBayCount: 3,
+        serviceBayCarIds: [null, null],
+        parkingCarIds: [null, null, null],
+        activeAuctionLots: [
+          {
+            // Player is leading over the highest rival escalation so far.
+            id: 'lot-100-player-leads',
+            tier: 'local-yard',
+            modelId: 'honda-city-e-aa',
+            bookValueYen: 200_000,
+            expiresOnDay: 105,
+            playerMaxBidYen: 220_000,
+            rivalEscalatedBidsYen: [150_000, 90_000],
+            car: lotCar('lot-car-a'),
+          },
+          {
+            // A rival is leading — the player bid, but a rival went higher.
+            id: 'lot-100-rival-leads',
+            tier: 'local-yard',
+            modelId: 'honda-city-e-aa',
+            bookValueYen: 200_000,
+            expiresOnDay: 105,
+            playerMaxBidYen: 180_000,
+            rivalEscalatedBidsYen: [210_000],
+            car: lotCar('lot-car-b'),
+          },
+        ],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV12))
+    const decoded = decodeSave(code)
+    expect(decoded.day).toBe(100)
+    expect(decoded.activeAuctionLots).toHaveLength(2)
+
+    const playerLeads = decoded.activeAuctionLots.find((l) => l.id === 'lot-100-player-leads')
+    expect(playerLeads?.currentBidYen).toBe(220_000)
+    expect(playerLeads?.leadingBidder).toBe('player')
+    expect(playerLeads?.quietDays).toBe(0)
+    expect(playerLeads?.playerHasBid).toBe(true)
+
+    const rivalLeads = decoded.activeAuctionLots.find((l) => l.id === 'lot-100-rival-leads')
+    expect(rivalLeads?.currentBidYen).toBe(210_000)
+    expect(rivalLeads?.leadingBidder).toBe('rival')
+    expect(rivalLeads?.quietDays).toBe(0)
+    // playerHasBid stays true even though a rival currently leads — it never
+    // resets once set (the "My Active Bids" panel deliberately keeps
+    // showing a lot the player is currently losing).
+    expect(rivalLeads?.playerHasBid).toBe(true)
+  })
+
+  it('round-trips a v12 state with real open-bidding state on a lot', () => {
     const withActiveBid: GameState = GameStateSchema.parse({
       ...fullState,
       activeAuctionLots: [
@@ -385,8 +479,10 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           bookValueYen: 200_000,
           expiresOnDay: 45,
-          playerMaxBidYen: 220_000,
-          rivalEscalatedBidsYen: [150_000, 90_000],
+          currentBidYen: 220_000,
+          leadingBidder: 'player',
+          quietDays: 1,
+          playerHasBid: true,
           car: {
             id: 'lot-car-2',
             modelId: 'honda-city-e-aa',

@@ -1,5 +1,4 @@
 import type { Buyer, CarInstance, CarModel, Part } from '@midnight-garage/content'
-import { AUCTION_BIDDER_DISCIPLINE } from './constants'
 import { computeDerivedStats } from './derivedStats'
 
 const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
@@ -52,22 +51,4 @@ export function valuateCarForBuyer(
   const priceAdjusted = baseValue * (1 - buyer.priceSensitivity * 0.15)
 
   return Math.round(Math.max(0, priceAdjusted))
-}
-
-/**
- * What a rival dealer bids to ACQUIRE a rough car at auction (Sprint 10) —
- * distinct from `valuateCarForBuyer`, which is what a customer pays for the
- * player's already-finished car. A dealer needs resale margin, so this is a
- * disciplined fraction of the full resale valuation; without the gap, the
- * player could never win an auction at a price that leaves room to profit.
- */
-export function auctionBidValueFor(
-  buyer: Buyer,
-  model: CarModel,
-  instance: CarInstance,
-  partsById: Readonly<Record<string, Part>>,
-): number {
-  return Math.round(
-    valuateCarForBuyer(buyer, model, instance, partsById) * AUCTION_BIDDER_DISCIPLINE,
-  )
 }

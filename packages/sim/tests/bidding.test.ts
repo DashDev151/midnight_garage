@@ -1,31 +1,36 @@
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   HIDDEN_ISSUES,
   PARTS,
   type AuctionLot,
-  type Buyer,
-  type CarModel,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
-  applyDailyEscalation,
-  buildRivalField,
-  computeBidHeadroom,
+  advanceLotOvernight,
+  anchorValueYen,
+  bidIncrementYen,
   computeBuyoutPriceYen,
-  computeLotInterest,
-  resolveAuction,
+  demandCeilingYen,
+  nextRaiseYen,
   resolveBuyoutInstant,
-  resolveDueAuctionLot,
+  resolveLotForDay,
   resolvePlaceBid,
+  turnoutBand,
 } from '../src/bidding'
 import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
-import { AUCTION_BUYOUT_PREMIUM, AUCTION_RESERVE_PRICE_FRACTION } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+/** A context with no interested buyers at all — forces `anchorValueYen`
+ * (and therefore the demand ceiling) to 0 for every lot, so a lot never
+ * opens on its own no matter how many days pass. */
+const NO_BUYERS_CONTEXT = buildSimContext(CARS, PARTS, [], HIDDEN_ISSUES)
+
+const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 
 function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): GameState {
   return {
@@ -56,8 +61,9 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
   }
 }
 
-const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
-
+/** A freshly rolled lot for a broadly-desired rare car (strong, reliable
+ * interest across several buyer archetypes) — the fixture most of this
+ * file's scenario tests build on, same as the pre-Sprint-20 file did. */
 function sampleLot(seed: number) {
   const model = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
   if (!model) throw new Error('fixture car missing from seed content')
@@ -68,405 +74,502 @@ function sampleLot(seed: number) {
     7,
     1,
     createRng(seed),
+    ECONOMY,
   )
   if (!lot) throw new Error('expected exactly one lot')
   return { lot, model }
 }
 
 /** Many distinct lot ids sharing the same car/model/book value — a large,
- * effectively-random sample over bidding.ts's per-lot-id-seeded field
- * construction, for the statistical (bell-curve, buyout-cap) properties. */
-function statLots(count: number): AuctionLot[] {
+ * effectively-random sample over bidding.ts's per-lot-id-seeded demand
+ * ceiling, for statistical (distribution, calibration) properties. Shares
+ * one rolled `expiresOnDay` across the whole sample (fine for properties
+ * that don't depend on duration, e.g. the ceiling's own distribution). */
+function statLots(count: number, prefix = 'stat-lot'): AuctionLot[] {
   const { lot } = sampleLot(1)
-  return Array.from({ length: count }, (_, i) => ({ ...lot, id: `stat-lot-${i}` }))
+  return Array.from({ length: count }, (_, i) => ({ ...lot, id: `${prefix}-${i}` }))
 }
 
-describe('resolveAuction', () => {
+/** Many genuinely independent lots (own id, own rolled duration, own
+ * condition/car instance) for the same fixture car — unlike `statLots`,
+ * each one is its own `generateAuctionCatalog` call, so `expiresOnDay`
+ * varies realistically across the sample (flash/standard/long), matching
+ * how a real weekly catalog batch looks. Needed for anything that depends
+ * on the backstop, not just the demand ceiling. */
+function independentLots(count: number, startSeed: number): AuctionLot[] {
+  const model = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
+  if (!model) throw new Error('fixture car missing from seed content')
+  return Array.from({ length: count }, (_, i) => {
+    const [lot] = generateAuctionCatalog(
+      [model],
+      'premium',
+      HIDDEN_ISSUES_BY_COMPONENT,
+      7,
+      1,
+      createRng(startSeed + i),
+      ECONOMY,
+    )
+    if (!lot) throw new Error('expected exactly one lot')
+    return { ...lot, id: `independent-lot-${startSeed}-${i}` }
+  })
+}
+
+describe('anchorValueYen', () => {
   it('is a pure function of its inputs — no hidden RNG', () => {
-    const { lot, model } = sampleLot(1)
-    const a = resolveAuction(lot, model, 3_000_000, BUYERS, {})
-    const b = resolveAuction(lot, model, 3_000_000, BUYERS, {})
+    const { lot } = sampleLot(1)
+    const state = stateWithLots([lot])
+    const a = anchorValueYen(lot, state, CONTEXT)
+    const b = anchorValueYen(lot, state, CONTEXT)
     expect(a).toEqual(b)
+    expect(a).toBeGreaterThan(0)
   })
 
-  it('a bid below every valuation and the reserve results in no-sale only when nobody meets reserve', () => {
-    const { lot, model } = sampleLot(2)
-    const result = resolveAuction(lot, model, 1, [], {})
-    // No buyers at all, a token player bid of 1 yen — reserve (40% of book) is never met.
-    expect(result.winner).toBe('no-sale')
-    expect(result.finalPriceYen).toBe(0)
+  it('is 0 when no buyer archetype has a stated interest in this tier', () => {
+    const { lot } = sampleLot(2)
+    const state = stateWithLots([lot])
+    expect(anchorValueYen(lot, state, NO_BUYERS_CONTEXT)).toBe(0)
+  })
+})
+
+describe('demandCeilingYen', () => {
+  it('is deterministic — seeded on lot.id alone, not the day', () => {
+    const { lot } = sampleLot(3)
+    const state = stateWithLots([lot])
+    const a = demandCeilingYen(lot, state, CONTEXT)
+    const b = demandCeilingYen(lot, state, CONTEXT)
+    expect(a).toBe(b)
   })
 
-  it('the winner pays exactly what they bid (Sprint 19b: first-price, not second-price)', () => {
-    const { lot, model } = sampleLot(3)
-    // Every rival is capped at the buyout price (1.1x book) — a 2x-book bid
-    // always beats the field, so the player is guaranteed to win here.
-    const playerMaxBidYen = lot.bookValueYen * 2
-    const result = resolveAuction(lot, model, playerMaxBidYen, BUYERS, {})
-    expect(result.winner).toBe('player')
-    // No more automatic discount: a winning bid costs exactly what was bid.
-    expect(result.finalPriceYen).toBe(playerMaxBidYen)
+  it('is 0 whenever the anchor itself is 0', () => {
+    const { lot } = sampleLot(4)
+    const state = stateWithLots([lot])
+    expect(demandCeilingYen(lot, state, NO_BUYERS_CONTEXT)).toBe(0)
   })
 
-  it('a higher player max bid never loses to a lower one, all else equal', () => {
-    const { lot, model } = sampleLot(4)
-    const low = resolveAuction(lot, model, lot.bookValueYen * 0.5, BUYERS, {})
-    const high = resolveAuction(lot, model, lot.bookValueYen * 5, BUYERS, {})
-    if (low.winner === 'player') {
-      expect(high.winner).toBe('player')
-    }
-  })
-
-  it('no buyer archetype bids on a tier it has no stated interest in', () => {
-    // A first-timer only ever lists shitbox/common — never rare. Winning a
-    // rare lot with a token bid (well below what any rare-interested
-    // archetype would ever offer) would only be possible if the gate leaked.
-    const { lot, model } = sampleLot(5)
-    const firstTimerOnly: Buyer[] = BUYERS.filter((b) => b.id === 'first-timer')
-    const result = resolveAuction(lot, model, 1, firstTimerOnly, {})
-    expect(result.winner).toBe('no-sale')
-  })
-
-  it('rival ceilings are no longer capped at the static buyout price (Sprint 19c) — a strong bidder can genuinely clear it', () => {
-    // Uncapping the field (so ceilings can land in the maintainer's requested
-    // 0.8-1.1x-book range, occasionally above it) was the explicit point of
-    // Sprint 19c — this is a real behavior change, not a regression: verify
-    // it, don't just assert the old "never exceeds buyout" invariant still
-    // holds (it no longer should, by design).
-    const buyoutPriceYen = Math.round(sampleLot(1).lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
+  it('centers around AUCTION_WHOLESALE_FRACTION of the anchor across many lots', () => {
+    const state = stateWithLots([])
     const { model } = sampleLot(1)
-    const anyExceeds = statLots(150).some((lot) =>
-      buildRivalField(lot, model, BUYERS, {}).some((bid) => bid > buyoutPriceYen),
-    )
-    expect(anyExceeds).toBe(true)
-  })
-
-  it('buyout still always guarantees a win — it rises to match any bid that would otherwise clear it', () => {
-    // The static cap moved from the rival field (removed) to buyout itself
-    // (computeBuyoutPriceYen): a revealed bid — the player's own, or a
-    // rival's real escalated position — can now exceed the static floor, but
-    // buyout always rises to at least match it, so "guaranteed win" still
-    // means what it says.
-    const { lot, model } = sampleLot(1)
-    let checked = 0
-    for (let seed = 1; seed <= 60; seed++) {
-      const matured = matureLot({ ...lot, id: `${lot.id}-${seed}` }, model, 10)
-      const leadingBid = Math.max(matured.playerMaxBidYen ?? 0, 0, ...matured.rivalEscalatedBidsYen)
-      if (leadingBid === 0) continue
-      checked++
-      expect(computeBuyoutPriceYen(matured)).toBeGreaterThanOrEqual(leadingBid)
-    }
-    expect(checked).toBeGreaterThan(0) // the property was actually exercised, not vacuously true
+    const anchor = anchorValueYen(sampleLot(1).lot, state, CONTEXT)
+    const ratios = statLots(300).map((lot) => demandCeilingYen(lot, state, CONTEXT) / anchor)
+    const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length
+    // Center is AUCTION_WHOLESALE_FRACTION (0.75); the thin-turnout tail
+    // pulls the mean down a little, so a loose band around it is the honest
+    // claim, not an exact match.
+    expect(mean).toBeGreaterThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 0.75)
+    expect(mean).toBeLessThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 1.15)
+    expect(model.tier).toBe('rare') // sanity: this fixture is still JZA80
   })
 })
 
-describe('computeLotInterest / resolveAuction — the calibrated rival field (Sprint 10)', () => {
-  const { model } = sampleLot(1)
-  const SAMPLE_SIZE = 400
-
-  it('averages roughly 3-9 contenders on a broadly-wanted tier (JZA80 is rare)', () => {
-    const counts = statLots(SAMPLE_SIZE).map(
-      (lot) => computeLotInterest(lot, model, BUYERS, {}).contenders,
-    )
-    const average = counts.reduce((a, b) => a + b, 0) / counts.length
-    expect(average).toBeGreaterThanOrEqual(2)
-    expect(average).toBeLessThanOrEqual(10)
+describe('turnoutBand (replaces computeLotInterest — a coarse pre-bid flavor read)', () => {
+  it('is deterministic and pure', () => {
+    const { lot } = sampleLot(50)
+    const state = stateWithLots([lot])
+    const a = turnoutBand(lot, state, CONTEXT)
+    const b = turnoutBand(lot, state, CONTEXT)
+    expect(a).toBe(b)
+    expect(['thin', 'steady', 'packed']).toContain(a)
   })
 
-  it('the "frenzy" badge is genuinely rare, not roughly half of everything (Sprint 11, round-2 playtest #1)', () => {
-    // Sprint 10 shipped the level thresholds unrecalibrated for the new
-    // field's own average size (~6.2, confirmed by the real balance harness)
-    // — "frenzy" (`contenders > 5`) fired on close to half of every auction,
-    // which is exactly the bug the maintainer's second playtest caught.
-    const levels = statLots(SAMPLE_SIZE).map(
-      (lot) => computeLotInterest(lot, model, BUYERS, {}).level,
-    )
-    const frenzyShare = levels.filter((l) => l === 'frenzy').length / levels.length
-    expect(frenzyShare).toBeLessThan(0.15)
+  it('reads thin when nobody is interested in this tier at all', () => {
+    const { lot } = sampleLot(51)
+    const state = stateWithLots([lot])
+    expect(turnoutBand(lot, state, NO_BUYERS_CONTEXT)).toBe('thin')
   })
 
-  it('resolveAuction (complete information, no escalation) is NOT the real player experience — frenzy dominates it, by design', () => {
-    // Sprint 19c uncapped rival ceilings and raised bidder discipline so real
-    // bids land in the maintainer's requested 0.8-1.1x-book range — against
-    // *full, unescalated* information (this function) that means a strongly-
-    // desired car's top-of-several-bidders price very often clears the old
-    // buyout reference outright. That's expected here, not a target to chase
-    // back down — the real player-facing distribution is throttled by
-    // multi-day escalation (see the next test), which this function
-    // deliberately bypasses (it's the calibration/testing surface for the
-    // rival-field statistics themselves, not the resolution path).
-    const reserveYen = Math.round(model.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
-    const buyoutPriceYen = Math.round(model.bookValueYen * AUCTION_BUYOUT_PREMIUM)
-    const range = buyoutPriceYen - reserveYen
-
-    let frenzy = 0
-    let total = 0
-    for (const lot of statLots(SAMPLE_SIZE)) {
-      const result = resolveAuction(lot, model, 1, BUYERS, {})
-      if (result.winner !== 'ai') continue
-      total++
-      const fraction = (result.finalPriceYen - reserveYen) / range
-      if (fraction > 0.8) frenzy++
-    }
-    expect(total).toBeGreaterThan(SAMPLE_SIZE / 2) // most lots still draw a winning AI bid
-    expect(frenzy / total).toBeGreaterThan(0.5) // the complete-information tail is now the common case
-  })
-
-  it('the REAL (multi-day escalated) win-price distribution is a bell — mid dominates a realistic standard auction', () => {
-    // What a player actually faces: matures each lot through 3 days of real
-    // escalation (the middle of the "standard" 2-4 day duration band) via
-    // the real applyDailyEscalation, then reads the top revealed rival
-    // position — not resolveAuction's complete-information shortcut. JZA80
-    // is deliberately this file's single most-desired fixture car (broad,
-    // strong interest), so it trends toward more frenzy than the roster
-    // average as duration grows — verified via a real sweep that the top of
-    // the standard range (4 days) already tips this *specific* car past a
-    // 25% frenzy share on its own; 3 days (the middle, still a completely
-    // realistic duration) keeps the assertion honest for this fixture.
-    const reserveYen = Math.round(model.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
-    const buyoutPriceYen = Math.round(model.bookValueYen * AUCTION_BUYOUT_PREMIUM)
-    const range = buyoutPriceYen - reserveYen
-
-    let steal = 0
-    let mid = 0
-    let frenzy = 0
-    for (const lot of statLots(SAMPLE_SIZE)) {
-      const matured = matureLot(lot, model, 3)
-      const topRivalYen = Math.max(0, ...matured.rivalEscalatedBidsYen)
-      if (topRivalYen < reserveYen) continue // no rival ever cleared the reserve at all
-      const fraction = (topRivalYen - reserveYen) / range
-      if (fraction < 0.2) steal++
-      else if (fraction > 0.8) frenzy++
-      else mid++
-    }
-    const total = steal + mid + frenzy
-    expect(total).toBeGreaterThan(SAMPLE_SIZE / 2) // most lots draw a real rival bid within 3 days
-    expect(mid / total).toBeGreaterThan(0.5) // mid is the clear majority in a realistic auction
-    expect(frenzy / total).toBeLessThan(0.25) // frenzy stays a genuine minority at this duration
-    expect(steal / total).toBeLessThan(0.25)
-  })
-
-  it('the interest read never disagrees with resolution — bidding its winning estimate wins', () => {
+  it('matches the ratio thresholds in AUCTION_TURNOUT_BANDS across a population', () => {
+    const state = stateWithLots([])
+    const anchor = anchorValueYen(sampleLot(1).lot, state, CONTEXT)
+    const center = anchor * ECONOMY.AUCTION_WHOLESALE_FRACTION
+    const [thinBelow, packedAbove] = ECONOMY.AUCTION_TURNOUT_BANDS
     let checked = 0
-    for (const lot of statLots(100)) {
-      // Default (fuzzy) precision: the shown high estimate sits above the
-      // true top rival bid by the fuzz band, so bidding it should win.
-      // Sharper precision (closer to 1) narrows toward the exact clearing
-      // price and is not guaranteed to clear it — that's the tradeoff the
-      // auction-scout trait hook exists for, not a bug.
-      const interest = computeLotInterest(lot, model, BUYERS, {})
-      if (interest.contenders === 0) continue
-      const result = resolveAuction(lot, model, interest.estimateHighYen, BUYERS, {})
-      expect(result.winner).toBe('player')
+    for (const lot of statLots(150, 'turnout-band-check')) {
+      const ratio = demandCeilingYen(lot, state, CONTEXT) / center
+      const expected = ratio < thinBelow ? 'thin' : ratio > packedAbove ? 'packed' : 'steady'
+      expect(turnoutBand(lot, state, CONTEXT)).toBe(expected)
       checked++
     }
-    expect(checked).toBeGreaterThan(0)
+    expect(checked).toBe(150)
+  })
+
+  it('every band is genuinely reachable across a large population', () => {
+    const state = stateWithLots([])
+    const bands = statLots(400, 'turnout-band-coverage').map((lot) =>
+      turnoutBand(lot, state, CONTEXT),
+    )
+    expect(bands).toContain('thin')
+    expect(bands).toContain('steady')
+    expect(bands).toContain('packed')
   })
 })
 
-/** Applies escalation day-by-day across a lot's early lifetime — mirrors what `advanceDay`
- * naturally does over a multi-day auction before the lot's own due day arrives. */
-function matureLot(lot: AuctionLot, model: CarModel, days: number): AuctionLot {
-  let current = lot
-  for (let day = 1; day <= days; day++) {
-    current = applyDailyEscalation(current, model, BUYERS, {}, day)
-  }
-  return current
-}
-
-describe('resolvePlaceBid (Sprint 19 — places or raises, never resolves)', () => {
-  it('sets the player max bid, logs it, and touches nothing else', () => {
-    const { lot } = sampleLot(20)
-    const state = stateWithLots([lot])
-    const result = resolvePlaceBid(state, lot.id, 1_000_000, CONTEXT)
-    expect(result.state.activeAuctionLots[0]?.playerMaxBidYen).toBe(1_000_000)
-    expect(result.state.activeAuctionLots).toHaveLength(1) // still on the board — nothing resolved
-    expect(result.state.cashYen).toBe(state.cashYen) // nothing spent yet
-    expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.log).toEqual([
-      { type: 'auction-bid-placed', lotId: lot.id, maxBidYen: 1_000_000 },
-    ])
+describe('bidIncrementYen / nextRaiseYen', () => {
+  it('is 5% of book, rounded to the nearest Y10,000', () => {
+    const { lot } = sampleLot(5)
+    const expected = Math.max(10_000, Math.round((lot.bookValueYen * 0.05) / 10_000) * 10_000)
+    expect(bidIncrementYen(lot, ECONOMY)).toBe(expected)
   })
 
-  it('raising to a higher value updates the committed max', () => {
-    const { lot } = sampleLot(21)
-    const state = stateWithLots([lot])
-    const first = resolvePlaceBid(state, lot.id, 1_000_000, CONTEXT)
-    const second = resolvePlaceBid(first.state, lot.id, 1_500_000, CONTEXT)
-    expect(second.state.activeAuctionLots[0]?.playerMaxBidYen).toBe(1_500_000)
+  it('floors at Y10,000 even for a very cheap lot', () => {
+    const { lot } = sampleLot(6)
+    const cheapLot: AuctionLot = { ...lot, bookValueYen: 50_000 }
+    expect(bidIncrementYen(cheapLot, ECONOMY)).toBe(10_000)
   })
 
-  it('attempting a lower value than the existing bid is a no-op — never lowers', () => {
-    const { lot } = sampleLot(22)
+  it('nextRaiseYen is the reserve price when unopened, current + increment once open', () => {
+    const { lot } = sampleLot(7)
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    expect(nextRaiseYen(lot, ECONOMY)).toBe(reserve)
+
+    const opened: AuctionLot = { ...lot, currentBidYen: reserve, leadingBidder: 'rival' }
+    expect(nextRaiseYen(opened, ECONOMY)).toBe(reserve + bidIncrementYen(lot, ECONOMY))
+  })
+})
+
+describe('resolvePlaceBid (Sprint 20 — open-raise semantics)', () => {
+  it('opens an unopened lot at exactly the reserve price', () => {
+    const { lot } = sampleLot(10)
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
     const state = stateWithLots([lot])
-    const first = resolvePlaceBid(state, lot.id, 1_500_000, CONTEXT)
-    const second = resolvePlaceBid(first.state, lot.id, 1_000_000, CONTEXT)
-    expect(second.state).toBe(first.state)
-    expect(second.log).toEqual([])
+    const result = resolvePlaceBid(state, lot.id, reserve, CONTEXT)
+    const updated = result.state.activeAuctionLots[0]
+    expect(updated?.currentBidYen).toBe(reserve)
+    expect(updated?.leadingBidder).toBe('player')
+    expect(updated?.playerHasBid).toBe(true)
+    expect(updated?.quietDays).toBe(0)
+    expect(result.log).toEqual([{ type: 'auction-bid-placed', lotId: lot.id, maxBidYen: reserve }])
+  })
+
+  it('rejects an opening bid below reserve — no-op', () => {
+    const { lot } = sampleLot(11)
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    const state = stateWithLots([lot])
+    const result = resolvePlaceBid(state, lot.id, reserve - 10_000, CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('increment enforcement: a raise below current + increment is a no-op, exactly current + increment succeeds', () => {
+    const { lot } = sampleLot(12)
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    const opened = resolvePlaceBid(stateWithLots([lot]), lot.id, reserve, CONTEXT).state
+    const increment = bidIncrementYen(lot, ECONOMY)
+
+    const tooLow = resolvePlaceBid(opened, lot.id, reserve + increment - 10_000, CONTEXT)
+    expect(tooLow.state).toBe(opened)
+    expect(tooLow.log).toEqual([])
+
+    const exact = resolvePlaceBid(opened, lot.id, reserve + increment, CONTEXT)
+    expect(exact.state.activeAuctionLots[0]?.currentBidYen).toBe(reserve + increment)
+    expect(exact.state.activeAuctionLots[0]?.leadingBidder).toBe('player')
   })
 
   it('is a no-op for an unknown lot id', () => {
-    const state = stateWithLots([sampleLot(23).lot])
+    const state = stateWithLots([sampleLot(13).lot])
     const result = resolvePlaceBid(state, 'no-such-lot', 1_000_000, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
-})
 
-describe('applyDailyEscalation (Sprint 19 decision 2)', () => {
-  it('never lets a rival exceed their own fixed ceiling, across many days', () => {
-    const { lot, model } = sampleLot(30)
-    const ceilings = buildRivalField(lot, model, BUYERS, {})
-    const matured = matureLot(lot, model, 60) // far more days than any real auction lasts
-    matured.rivalEscalatedBidsYen.forEach((bid, i) => {
-      expect(bid).toBeLessThanOrEqual(ceilings[i]!)
-    })
-  })
-
-  it('rivals genuinely escalate over time — more have raised after many days than after one', () => {
-    const { lot, model } = sampleLot(31)
-    const afterOneDay = applyDailyEscalation(lot, model, BUYERS, {}, 1)
-    const afterManyDays = matureLot(lot, model, 20)
-    const raisedCount = (l: AuctionLot) => l.rivalEscalatedBidsYen.filter((b) => b > 0).length
-    expect(raisedCount(afterManyDays)).toBeGreaterThanOrEqual(raisedCount(afterOneDay))
-  })
-
-  it('is deterministic — the same lot/model/day always escalates identically', () => {
-    const { lot, model } = sampleLot(32)
-    const a = applyDailyEscalation(lot, model, BUYERS, {}, 5)
-    const b = applyDailyEscalation(lot, model, BUYERS, {}, 5)
-    expect(a.rivalEscalatedBidsYen).toEqual(b.rivalEscalatedBidsYen)
-  })
-
-  it('a rival already beaten by the current top bid never escalates further', () => {
-    const { lot, model } = sampleLot(33)
-    const dominated: AuctionLot = { ...lot, playerMaxBidYen: lot.bookValueYen * 10 }
-    const matured = matureLot(dominated, model, 20)
-    expect(matured.rivalEscalatedBidsYen.every((b) => b === 0)).toBe(true)
+  it('resets quietDays and sets playerHasBid even when raising over a rival lead', () => {
+    const { lot } = sampleLot(14)
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    const rivalLed: AuctionLot = {
+      ...lot,
+      currentBidYen: reserve,
+      leadingBidder: 'rival',
+      quietDays: 1,
+    }
+    const increment = bidIncrementYen(lot, ECONOMY)
+    const result = resolvePlaceBid(stateWithLots([rivalLed]), lot.id, reserve + increment, CONTEXT)
+    const updated = result.state.activeAuctionLots[0]
+    expect(updated?.leadingBidder).toBe('player')
+    expect(updated?.playerHasBid).toBe(true)
+    expect(updated?.quietDays).toBe(0)
   })
 })
 
-describe('computeBidHeadroom (Sprint 19 decision 3)', () => {
-  it('reports "none" when nobody is interested in this tier at all', () => {
-    const { lot, model } = sampleLot(40)
-    const headroom = computeBidHeadroom(lot, model, [], {})
-    expect(headroom.level).toBe('none')
-    expect(headroom.playerIsWinning).toBe(false)
+describe('computeBuyoutPriceYen', () => {
+  it('the buyout floor always exceeds the current bid, across a matured population', () => {
+    // Mature a population of lots through several overnight steps (no player
+    // involvement) so currentBidYen varies realistically, then confirm the
+    // buyout floor is always strictly above whatever's currently on the board.
+    const state = stateWithLots([])
+    let checked = 0
+    for (const initial of statLots(100, 'buyout-floor')) {
+      let lot = initial
+      for (let day = 1; day <= 5; day++) {
+        lot = advanceLotOvernight(lot, state, CONTEXT, day).lot
+      }
+      const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+      expect(priceYen).toBeGreaterThan(lot.currentBidYen)
+      checked++
+    }
+    expect(checked).toBe(100)
   })
 
-  it('the player is winning once their bid beats every rival escalated bid so far', () => {
-    const { lot, model } = sampleLot(41)
-    const matured = matureLot(lot, model, 10)
-    const topRival = Math.max(0, ...matured.rivalEscalatedBidsYen)
-    const winning: AuctionLot = { ...matured, playerMaxBidYen: topRival + 1 }
-    const headroom = computeBidHeadroom(winning, model, BUYERS, {})
-    expect(headroom.playerIsWinning).toBe(true)
-    expect(headroom.currentTopBidYen).toBe(topRival + 1)
-  })
-
-  it('headroom shrinks toward critical as the current top bid closes in on the true ceiling', () => {
-    const { lot, model } = sampleLot(42)
-    const ceilings = buildRivalField(lot, model, BUYERS, {})
-    const maxCeiling = Math.max(0, ...ceilings)
-    if (maxCeiling === 0) return // no interested archetype for this seed — nothing to compare
-    const nearCeiling: AuctionLot = { ...lot, playerMaxBidYen: Math.round(maxCeiling * 0.99) }
-    const headroom = computeBidHeadroom(nearCeiling, model, BUYERS, {})
-    expect(['tight', 'critical']).toContain(headroom.level)
+  it('is at least the value anchor times AUCTION_BUYOUT_PREMIUM on an untouched lot', () => {
+    const { lot } = sampleLot(15)
+    const state = stateWithLots([lot])
+    const anchor = anchorValueYen(lot, state, CONTEXT)
+    const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+    expect(priceYen).toBeGreaterThanOrEqual(Math.round(anchor * ECONOMY.AUCTION_BUYOUT_PREMIUM))
   })
 })
 
-describe('resolveDueAuctionLot / resolveBuyoutInstant (Sprint 19 resolvers)', () => {
-  it('an over-market bid reliably wins, deducts cash, and adds the car', () => {
-    const { lot, model } = sampleLot(10)
-    const matured = matureLot(lot, model, 5)
-    // 2x book reliably beats the buyout-capped (1.1x book) rival field, same
-    // as above, while (Sprint 19b: first-price, no automatic discount)
-    // staying comfortably affordable against stateWithLots' ¥10M cash.
-    const withBid = resolvePlaceBid(stateWithLots([matured]), lot.id, lot.bookValueYen * 2, CONTEXT)
-    const result = resolveDueAuctionLot(
-      withBid.state,
-      withBid.state.activeAuctionLots[0]!,
-      CONTEXT,
-      7,
+describe('advanceLotOvernight', () => {
+  it('is deterministic — the same lot/day always steps identically', () => {
+    const { lot } = sampleLot(20)
+    const state = stateWithLots([lot])
+    const a = advanceLotOvernight(lot, state, CONTEXT, 5)
+    const b = advanceLotOvernight(lot, state, CONTEXT, 5)
+    expect(a).toEqual(b)
+  })
+
+  it('a lot with no interested buyers never opens, no matter how many days pass', () => {
+    const { lot } = sampleLot(21)
+    const state = stateWithLots([lot])
+    let current = lot
+    for (let day = 1; day <= 30; day++) {
+      current = advanceLotOvernight(current, state, NO_BUYERS_CONTEXT, day).lot
+    }
+    expect(current.currentBidYen).toBe(0)
+    expect(current.leadingBidder).toBeNull()
+  })
+
+  it('opens most lots of a broadly-desired car at the reserve price once the demand ceiling clears it', () => {
+    const { lot } = sampleLot(22)
+    const state = stateWithLots([lot])
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    // JZA80 at premium tier is broadly desired, so its ceiling clears reserve
+    // most of the time — but a thin-turnout roll combined with a low spread
+    // draw can occasionally leave a lot bidless on day 1, so this is a
+    // statistical majority claim, not "every single lot", to avoid a flaky
+    // assertion on the tail.
+    const opened = statLots(200, 'open-check').map(
+      (l) => advanceLotOvernight(l, state, CONTEXT, 1).lot,
     )
-    expect(result.state.activeAuctionLots).toHaveLength(0) // the lot always leaves the board
+    const openedCount = opened.filter(
+      (l) => l.currentBidYen === reserve && l.leadingBidder === 'rival',
+    ).length
+    expect(openedCount / opened.length).toBeGreaterThan(0.8)
+  })
+
+  it('at or above the ceiling: silence — quietDays increments, the board never moves', () => {
+    const { lot } = sampleLot(23)
+    const state = stateWithLots([lot])
+    // A currentBidYen far above any realistic ceiling forces the
+    // deterministic "at/above ceiling" branch every time, regardless of the
+    // per-day RNG roll.
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 100,
+      leadingBidder: 'player',
+      quietDays: 0,
+      playerHasBid: true,
+    }
+    const step = advanceLotOvernight(dominant, state, CONTEXT, 1)
+    expect(step.lot.currentBidYen).toBe(dominant.currentBidYen)
+    expect(step.lot.leadingBidder).toBe('player')
+    expect(step.lot.quietDays).toBe(1)
+    expect(step.log).toEqual([])
+  })
+
+  it('a dealer raise that displaces the player logs auction-outbid; dealer-vs-dealer raises log nothing', () => {
+    const { lot } = sampleLot(24)
+    const state = stateWithLots([lot])
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+
+    // Find a lot id/day combination where the overnight step genuinely
+    // raises (not silence) — search a small population for one, since the
+    // raise itself is a seeded coin flip.
+    let raised: { lotId: string; day: number; newBidYen: number } | undefined
+    for (const candidate of statLots(60, 'outbid-search')) {
+      const opened: AuctionLot = { ...candidate, currentBidYen: reserve, leadingBidder: 'player' }
+      for (let day = 1; day <= 5 && !raised; day++) {
+        const step = advanceLotOvernight(opened, state, CONTEXT, day)
+        if (step.lot.currentBidYen > opened.currentBidYen) {
+          raised = { lotId: candidate.id, day, newBidYen: step.lot.currentBidYen }
+        }
+      }
+      if (raised) break
+    }
+    if (!raised) throw new Error('expected at least one overnight raise across the sample')
+
+    const playerLed: AuctionLot = {
+      ...lot,
+      id: raised.lotId,
+      currentBidYen: reserve,
+      leadingBidder: 'player',
+      playerHasBid: true,
+    }
+    const displaced = advanceLotOvernight(playerLed, state, CONTEXT, raised.day)
+    expect(displaced.lot.leadingBidder).toBe('rival')
+    expect(displaced.log).toEqual([
+      { type: 'auction-outbid', lotId: playerLed.id, newBidYen: displaced.lot.currentBidYen },
+    ])
+
+    const rivalLed: AuctionLot = { ...playerLed, leadingBidder: 'rival' }
+    const dealerVsDealer = advanceLotOvernight(rivalLed, state, CONTEXT, raised.day)
+    if (dealerVsDealer.lot.currentBidYen > rivalLed.currentBidYen) {
+      expect(dealerVsDealer.log).toEqual([])
+    }
+  })
+})
+
+describe('resolveLotForDay — hammer and backstop', () => {
+  it('hammers after AUCTION_QUIET_DAYS_TO_HAMMER consecutive quiet overnight steps, awarding the leader', () => {
+    const { lot } = sampleLot(30)
+    // currentBidYen far above any realistic ceiling forces deterministic
+    // silence every day, so quietDays climbs 1-2-3... with no RNG branch.
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 3,
+      leadingBidder: 'player',
+      quietDays: 0,
+      playerHasBid: true,
+      expiresOnDay: 1000, // far beyond the backstop, so only quietDays matters here
+    }
+    const state = stateWithLots([dominant], { cashYen: lot.bookValueYen * 10 })
+
+    const day1 = resolveLotForDay(state, dominant, CONTEXT, 1)
+    expect(day1.state.activeAuctionLots).toHaveLength(1) // 1 quiet day: not hammered yet
+    expect(day1.state.activeAuctionLots[0]?.quietDays).toBe(1)
+
+    const day2 = resolveLotForDay(day1.state, day1.state.activeAuctionLots[0]!, CONTEXT, 2)
+    expect(day2.state.activeAuctionLots).toHaveLength(0) // 2 quiet days: hammered
+    expect(day2.state.ownedCars).toHaveLength(1)
+    expect(day2.state.cashYen).toBe(state.cashYen - dominant.currentBidYen)
+    expect(day2.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
+  })
+
+  it('the backstop (expiresOnDay) hammers a lot even before quietDays reaches the threshold', () => {
+    const { lot } = sampleLot(31)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 3,
+      leadingBidder: 'player',
+      quietDays: 0,
+      playerHasBid: true,
+      expiresOnDay: 5,
+    }
+    const state = stateWithLots([dominant], { cashYen: lot.bookValueYen * 10 })
+    // Day 5 == expiresOnDay: the overnight step this same day only brings
+    // quietDays to 1 (below the threshold of 2), but the backstop forces
+    // the hammer anyway.
+    const result = resolveLotForDay(state, dominant, CONTEXT, 5)
+    expect(result.state.activeAuctionLots).toHaveLength(0)
     expect(result.state.ownedCars).toHaveLength(1)
-    expect(result.state.cashYen).toBeLessThan(withBid.state.cashYen)
     expect(result.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
   })
 
-  it('a lot the player never bid on quietly expires — no log, whoever "won" among rivals', () => {
-    const { lot, model } = sampleLot(24)
-    const matured = matureLot(lot, model, 10)
-    const state = stateWithLots([matured])
-    const result = resolveDueAuctionLot(state, matured, CONTEXT, 10)
+  it('a lot nobody ever bid on resolves silently at the backstop — no leader, no log, no sale', () => {
+    const { lot } = sampleLot(32)
+    const untouched: AuctionLot = { ...lot, expiresOnDay: 3 }
+    const state = stateWithLots([untouched])
+    const result = resolveLotForDay(state, untouched, NO_BUYERS_CONTEXT, 3)
     expect(result.state.activeAuctionLots).toHaveLength(0)
-    expect(result.state.ownedCars).toHaveLength(0) // never goes to the player
+    expect(result.state.ownedCars).toHaveLength(0)
     expect(result.log).toEqual([])
   })
 
-  it('a lot the player bid on but lost logs auction-bid-lost', () => {
-    // A token bid loses to essentially any real rival interest once escalated.
-    const { lot, model } = sampleLot(25)
-    const matured = matureLot(lot, model, 30)
-    if (matured.rivalEscalatedBidsYen.every((b) => b === 0)) return // no rival ever escalated this seed
-    const withBid = resolvePlaceBid(stateWithLots([matured]), lot.id, 1, CONTEXT)
-    const result = resolveDueAuctionLot(
-      withBid.state,
-      withBid.state.activeAuctionLots[0]!,
-      CONTEXT,
-      30,
-    )
+  it('a dealer win at the hammer logs the loss only when playerHasBid', () => {
+    const { lot } = sampleLot(33)
+    const rivalLed: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 100,
+      leadingBidder: 'rival',
+      quietDays: 0,
+      playerHasBid: false,
+      expiresOnDay: 5,
+    }
+    const state = stateWithLots([rivalLed])
+    const result = resolveLotForDay(state, rivalLed, CONTEXT, 5)
+    expect(result.state.activeAuctionLots).toHaveLength(0)
     expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.log.some((e) => e.type === 'auction-bid-lost')).toBe(true)
-  })
+    expect(result.log).toEqual([]) // the player never had skin in this lot
 
-  it('a won lot forfeits to rivals (not held) when there is no parking space', () => {
-    const { lot, model } = sampleLot(12)
-    const matured = matureLot(lot, model, 5)
-    const withBid = resolvePlaceBid(
-      stateWithLots([matured], { ownedCars: [], parkingBayCount: 0 }),
-      lot.id,
-      lot.bookValueYen * 5,
+    const withPlayerSkin: AuctionLot = { ...rivalLed, playerHasBid: true }
+    const resultWithSkin = resolveLotForDay(
+      stateWithLots([withPlayerSkin]),
+      withPlayerSkin,
       CONTEXT,
+      5,
     )
-    const result = resolveDueAuctionLot(
-      withBid.state,
-      withBid.state.activeAuctionLots[0]!,
-      CONTEXT,
-      7,
-    )
-    expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.state.cashYen).toBe(withBid.state.cashYen) // no money spent
     expect(
-      result.log.some((e) => e.type === 'acquisition-blocked' && e.reason === 'no-parking'),
+      resultWithSkin.log.some(
+        (e) => e.type === 'auction-bid-lost' && e.winningPriceYen === withPlayerSkin.currentBidYen,
+      ),
     ).toBe(true)
   })
 
-  it('a won lot forfeits (no-cash) when the player can no longer afford it on resolution day (decision 7)', () => {
-    const { lot, model } = sampleLot(26)
-    const matured = matureLot(lot, model, 5)
-    const withBid = resolvePlaceBid(
-      stateWithLots([matured], { cashYen: lot.bookValueYen * 5 }),
-      lot.id,
-      lot.bookValueYen * 5,
-      CONTEXT,
-    )
-    // Spend down every last yen between bidding and resolution day — the multi-day gap
-    // decision 7 is about: no escrow reserved the cash back when the bid was placed.
-    const brokeState = { ...withBid.state, cashYen: 0 }
-    const result = resolveDueAuctionLot(brokeState, brokeState.activeAuctionLots[0]!, CONTEXT, 7)
+  it('ceiling-tie goes to the player: a player bid exactly at the demand ceiling is never overtaken', () => {
+    const { lot } = sampleLot(34)
+    const state = stateWithLots([lot])
+    const ceiling = demandCeilingYen(lot, state, CONTEXT)
+    if (ceiling <= 0) return // no interested buyer for this seed — nothing to tie against
+    const atCeiling: AuctionLot = {
+      ...lot,
+      currentBidYen: ceiling,
+      leadingBidder: 'player',
+      quietDays: 0,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    let current = atCeiling
+    for (let day = 1; day <= 10; day++) {
+      const step = advanceLotOvernight(current, state, CONTEXT, day)
+      expect(step.lot.leadingBidder).toBe('player') // never displaced
+      expect(step.lot.currentBidYen).toBe(ceiling) // never raised past the tie
+      current = step.lot
+    }
+  })
+
+  it('a won lot forfeits (no-parking) without spending cash, still logging the loss', () => {
+    const { lot } = sampleLot(35)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 2,
+      leadingBidder: 'player',
+      quietDays: 2,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    const state = stateWithLots([dominant], { parkingBayCount: 0 })
+    const result = resolveLotForDay(state, dominant, CONTEXT, 1)
     expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.state.cashYen).toBe(0) // no money spent
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(
+      result.log.some((e) => e.type === 'acquisition-blocked' && e.reason === 'no-parking'),
+    ).toBe(true)
+    expect(result.log.some((e) => e.type === 'auction-bid-lost')).toBe(true)
+  })
+
+  it('a won lot forfeits (no-cash) without spending cash, still logging the loss', () => {
+    const { lot } = sampleLot(36)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 2,
+      leadingBidder: 'player',
+      quietDays: 2,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    const state = stateWithLots([dominant], { cashYen: 0 })
+    const result = resolveLotForDay(state, dominant, CONTEXT, 1)
+    expect(result.state.ownedCars).toHaveLength(0)
+    expect(result.state.cashYen).toBe(0)
     expect(result.log.some((e) => e.type === 'acquisition-blocked' && e.reason === 'no-cash')).toBe(
       true,
     )
   })
+})
 
-  it('resolveBuyoutInstant buys the lot at buyoutPriceYen, guaranteed', () => {
-    const { lot } = sampleLot(13)
-    const priceYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
+describe('resolveBuyoutInstant', () => {
+  it('buys the lot at computeBuyoutPriceYen, guaranteed', () => {
+    const { lot } = sampleLot(40)
     const state = stateWithLots([lot])
+    const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
     const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
     expect(result.state.ownedCars).toHaveLength(1)
     expect(result.state.cashYen).toBe(state.cashYen - priceYen)
@@ -474,22 +577,144 @@ describe('resolveDueAuctionLot / resolveBuyoutInstant (Sprint 19 resolvers)', ()
     expect(result.log).toEqual([{ type: 'lot-bought-out', lotId: lot.id, priceYen }])
   })
 
-  it('resolveBuyoutInstant is a no-op when unaffordable, leaving the lot on the board', () => {
-    const { lot } = sampleLot(14)
+  it('is a no-op when unaffordable, leaving the lot on the board', () => {
+    const { lot } = sampleLot(41)
     const state = stateWithLots([lot], { cashYen: 0 })
     const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
 
-  it('resolveBuyoutInstant leaves the lot on the board (no money spent) when parking is full', () => {
-    const { lot } = sampleLot(15)
+  it('leaves the lot on the board (no money spent) when parking is full', () => {
+    const { lot } = sampleLot(42)
     const state = stateWithLots([lot], { parkingBayCount: 0 })
     const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
-    expect(result.state.activeAuctionLots).toHaveLength(1) // still there, for a retry later
+    expect(result.state.activeAuctionLots).toHaveLength(1)
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.log).toEqual([
       { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' },
     ])
+  })
+
+  it('always exceeds the current board price — a live bid never blocks a buyout', () => {
+    const { lot } = sampleLot(43)
+    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    const contested: AuctionLot = { ...lot, currentBidYen: reserve, leadingBidder: 'rival' }
+    const state = stateWithLots([contested])
+    const priceYen = computeBuyoutPriceYen(contested, state, CONTEXT)
+    expect(priceYen).toBeGreaterThan(contested.currentBidYen)
+  })
+})
+
+/**
+ * Distribution probes (the sprint's real acceptance evidence, sim-level, no
+ * bots — sprint20.md's Testing bullets). Both sample a real population of
+ * generated lots and simulate them purely through `resolveLotForDay`, the
+ * exact function `advanceDay` calls.
+ */
+describe('distribution probes', () => {
+  it('hammer/anchor lands below the wholesale center on typical lots, with a real upper tail', () => {
+    // No player involvement at all: every lot clears purely via dealers
+    // bidding among themselves (the "background market selling to itself"),
+    // stepped directly through `advanceLotOvernight` up to its own hammer
+    // (quietDays or backstop) — the exact rule `resolveLotForDay` applies.
+    // 250 genuinely independent lots (own rolled duration each, not a
+    // shared one) for real flash/standard/long variety.
+    //
+    // Empirically measured against this exact population (deterministic,
+    // fixed seed range — not a flaky sample): median ~0.54, p90 ~0.70, max
+    // ~0.86. Lower than the sprint doc's own loose "~0.6-0.85" prediction —
+    // AUCTION_COUNTER_CHANCE (0.7) combined with AUCTION_QUIET_DAYS_TO_HAMMER
+    // (2) means a lot typically hammers well before climbing all the way to
+    // its own ceiling (needing only 2 consecutive misses at a 30%-per-day
+    // miss rate), not after reaching it. First-pass values, openly
+    // adjustable in economy.json; this test pins today's real behavior
+    // rather than the doc's un-measured guess, per the codebase's own
+    // precedent (report, don't force a number nobody's confirmed).
+    const finalRatios: number[] = []
+    for (const initial of independentLots(250, 5000)) {
+      const state = stateWithLots([initial])
+      const anchor = anchorValueYen(initial, state, CONTEXT)
+      if (anchor <= 0) continue
+      let lot = initial
+      let hammeredAtYen: number | null = null
+      for (let day = 1; day <= 40 && hammeredAtYen === null; day++) {
+        const step = advanceLotOvernight(lot, state, CONTEXT, day)
+        lot = step.lot
+        const shouldHammer =
+          lot.quietDays >= ECONOMY.AUCTION_QUIET_DAYS_TO_HAMMER || day >= lot.expiresOnDay
+        if (shouldHammer) {
+          hammeredAtYen = lot.leadingBidder === null ? null : lot.currentBidYen
+          break
+        }
+      }
+      if (hammeredAtYen !== null) finalRatios.push(hammeredAtYen / anchor)
+    }
+
+    expect(finalRatios.length).toBeGreaterThan(50)
+    finalRatios.sort((a, b) => a - b)
+    const median = finalRatios[Math.floor(finalRatios.length / 2)]!
+    const p90 = finalRatios[Math.floor(finalRatios.length * 0.9)]!
+    expect(median).toBeGreaterThan(0.35)
+    expect(median).toBeLessThan(0.65)
+    expect(p90).toBeGreaterThan(0.55)
+    // A real upper tail: some lots roll high enough spread/turnout to clear
+    // well above the median.
+    expect(finalRatios.some((r) => r > 0.8)).toBe(true)
+  })
+
+  it('a scripted patient bidder (raises to a fair target, walks above it) acquires cheaper than buyout on >= 70% of lots it pursues', () => {
+    // Empirically measured against this exact (deterministic) population:
+    // 196/200 (98%) — comfortably clears the sprint doc's >= 70% target.
+    // "Pursues" = a lot the bidder is willing to open at all (its opening
+    // price doesn't already exceed the target); "acquires cheaper than
+    // buyout" = wins it, at a price below what an instant buyout would
+    // have cost at the moment the lot first appeared.
+    const TARGET_MULTIPLIER = 1.0 // never pays more than the car is genuinely worth
+    let pursued = 0
+    let acquiredCheap = 0
+
+    for (const initial of independentLots(200, 9000)) {
+      let state = stateWithLots([initial])
+      const anchor = anchorValueYen(initial, state, CONTEXT)
+      if (anchor <= 0) continue
+      const targetYen = Math.round(anchor * TARGET_MULTIPLIER)
+      const buyoutAtStartYen = computeBuyoutPriceYen(initial, state, CONTEXT)
+      if (nextRaiseYen(initial, ECONOMY) > targetYen) continue // wouldn't even open at a price it likes
+      pursued++
+
+      let lot = initial
+      let won = false
+      let finalPriceYen = 0
+      for (let day = 1; day <= 40; day++) {
+        if (lot.leadingBidder !== 'player') {
+          const raiseToYen = nextRaiseYen(lot, ECONOMY)
+          if (raiseToYen <= targetYen) {
+            const bidResult = resolvePlaceBid(state, lot.id, raiseToYen, CONTEXT)
+            state = bidResult.state
+            const updated = state.activeAuctionLots.find((l) => l.id === lot.id)
+            if (updated) lot = updated
+          }
+        }
+        const dayResult = resolveLotForDay(state, lot, CONTEXT, day)
+        state = dayResult.state
+        const stillActive = state.activeAuctionLots.find((l) => l.id === lot.id)
+        if (stillActive) {
+          lot = stillActive
+          continue
+        }
+        const wonEntry = dayResult.log.find((e) => e.type === 'auction-bid-won')
+        if (wonEntry && wonEntry.type === 'auction-bid-won') {
+          won = true
+          finalPriceYen = wonEntry.finalPriceYen
+        }
+        break
+      }
+
+      if (won && finalPriceYen < buyoutAtStartYen) acquiredCheap++
+    }
+
+    expect(pursued).toBeGreaterThan(50)
+    expect(acquiredCheap / pursued).toBeGreaterThanOrEqual(0.7)
   })
 })

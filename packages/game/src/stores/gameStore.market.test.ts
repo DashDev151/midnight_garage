@@ -1,4 +1,5 @@
-import { CARS, PARTS } from '@midnight-garage/content'
+import { CARS, ECONOMY, PARTS } from '@midnight-garage/content'
+import { bidIncrementYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -32,28 +33,66 @@ describe('market: bidding', () => {
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
 
-  it('placeBid records the max bid on the lot and lotDetail/myActiveBids reflect it', () => {
+  it('placeBid opens the board and lotDetail/myActiveBids reflect the new leader (Sprint 20: open bidding)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
-    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBeNull()
+    const before = game.lotDetail(lot.id)!
+    expect(before.currentBidYen).toBe(0)
+    expect(before.leadingBidder).toBeNull()
+    expect(before.playerHasBid).toBe(false)
     expect(game.myActiveBids).toHaveLength(0)
 
-    game.placeBid(lot.id, lot.bookValueYen)
+    const openingBidYen = before.nextRaiseYen // reserve, since bidding hasn't opened
+    expect(game.placeBid(lot.id, openingBidYen)).toBe(true)
 
-    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBe(lot.bookValueYen)
+    const after = game.lotDetail(lot.id)!
+    expect(after.currentBidYen).toBe(openingBidYen)
+    expect(after.leadingBidder).toBe('player')
+    expect(after.playerHasBid).toBe(true)
     expect(game.myActiveBids.map((b) => b.lot.id)).toContain(lot.id)
   })
 
-  it('placeBid can only raise an existing bid, never lower it', () => {
+  it('placeBid refuses any raise below the minimum next-raise ladder (Sprint 20, mirrors the sim rule)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
-    expect(game.placeBid(lot.id, lot.bookValueYen)).toBe(true)
-    expect(game.placeBid(lot.id, 1)).toBe(false) // not a raise -> no-op
-    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBe(lot.bookValueYen)
-    expect(game.placeBid(lot.id, lot.bookValueYen * 2)).toBe(true)
-    expect(game.lotDetail(lot.id)?.myMaxBidYen).toBe(lot.bookValueYen * 2)
+    const openingBidYen = game.lotDetail(lot.id)!.nextRaiseYen
+    expect(game.placeBid(lot.id, openingBidYen)).toBe(true)
+
+    const afterOpening = game.lotDetail(lot.id)!
+    expect(game.placeBid(lot.id, 1)).toBe(false) // far below the ladder -> refused
+    expect(game.placeBid(lot.id, afterOpening.currentBidYen)).toBe(false) // a tie is not a raise
+    expect(game.lotDetail(lot.id)?.currentBidYen).toBe(afterOpening.currentBidYen)
+
+    const minRaiseYen = afterOpening.nextRaiseYen
+    expect(game.placeBid(lot.id, minRaiseYen)).toBe(true)
+    expect(game.lotDetail(lot.id)?.currentBidYen).toBe(minRaiseYen)
+  })
+
+  it("myActiveBids keeps showing a lot after the player is outbid — that view is the panel's whole point (Sprint 20)", () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+
+    // Open the minimum bid on every lot on today's board, then run the
+    // overnight counter step for a while: with dealers answering most
+    // overnight steps, at least one lot should come back over the player.
+    for (const lot of game.gameState.activeAuctionLots) {
+      game.placeBid(lot.id, game.lotDetail(lot.id)!.nextRaiseYen)
+    }
+
+    let outbidLotId: string | undefined
+    for (let i = 0; i < 15 && !outbidLotId; i++) {
+      game.endDay()
+      outbidLotId = game.myActiveBids.find((b) => b.leadingBidder === 'rival')?.lot.id
+    }
+
+    expect(outbidLotId).toBeDefined()
+    const outbidEntry = game.myActiveBids.find((b) => b.lot.id === outbidLotId)!
+    expect(outbidEntry.isWinning).toBe(false)
+    expect(outbidEntry.leadingBidder).toBe('rival')
+    // The lot is still fully addressable — the player can raise again.
+    expect(game.lotDetail(outbidLotId!)?.playerHasBid).toBe(true)
   })
 
   it('inspectLot reveals the lot instantly, for cash only', () => {
@@ -68,13 +107,21 @@ describe('market: bidding', () => {
     expect(game.laborSlotsRemainingToday).toBe(laborBefore) // no labor cost (Sprint 11 decision 4)
   })
 
-  it('lotDetail carries an interest read and a buyout price', () => {
+  it('lotDetail carries a turnout read and a buyout price floored above the current bid by at least an increment (Sprint 20)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const detail = game.lotDetail(lot.id)!
-    expect(['quiet', 'warm', 'hot', 'frenzy']).toContain(detail.interest.level)
-    expect(detail.buyoutPriceYen).toBeGreaterThan(detail.bookValueYen) // a premium
+    expect(['thin', 'steady', 'packed']).toContain(detail.turnout)
+    const increment = bidIncrementYen(lot, ECONOMY)
+    expect(detail.buyoutPriceYen).toBeGreaterThanOrEqual(detail.currentBidYen + increment)
+
+    // Still true once the lot is actually contested, not just pre-bid.
+    game.placeBid(lot.id, detail.nextRaiseYen)
+    const afterBid = game.lotDetail(lot.id)!
+    expect(afterBid.buyoutPriceYen).toBeGreaterThanOrEqual(
+      afterBid.currentBidYen + bidIncrementYen(lot, ECONOMY),
+    )
   })
 
   it('a buyout is guaranteed and instant: the lot becomes an owned car immediately', () => {

@@ -37,6 +37,8 @@ export function describeLogEntry(
       return `Inspected lot ${entry.lotId}`
     case 'auction-bid-placed':
       return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
+    case 'auction-outbid':
+      return `Outbid overnight on lot ${entry.lotId} — now ${formatYen(entry.newBidYen)}`
     case 'auction-bid-won':
       return `Won lot ${entry.lotId} for ${formatYen(entry.finalPriceYen)}`
     case 'auction-bid-lost':

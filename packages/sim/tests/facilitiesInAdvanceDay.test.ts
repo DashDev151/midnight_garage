@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
@@ -41,6 +42,7 @@ function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
     7,
     1,
     createRng(seed),
+    ECONOMY,
   )
   const base = createInitialGameState(CONTEXT, 1)
   return {

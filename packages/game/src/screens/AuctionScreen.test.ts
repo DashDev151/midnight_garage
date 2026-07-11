@@ -25,21 +25,24 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="bid-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('placing a bid records it (Sprint 19: multi-day — no instant resolution) and lists it under My Active Bids', async () => {
+  it('placing a bid opens (or raises) it, never resolves the lot instantly, and lists it under My Active Bids (Sprint 20)', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
     await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    // The bid is recorded, not resolved — the lot stays on the board and
-    // its own resolution waits for its rolled duration to elapse.
+    // The bid lands on the board — it doesn't resolve the lot outright; the
+    // lot stays active until it hammers (quiet-day close or backstop).
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
-    expect(game.lotDetail(lot.id)?.myMaxBidYen).not.toBeNull()
+    expect(game.lotDetail(lot.id)?.playerHasBid).toBe(true)
+    expect(game.lotDetail(lot.id)?.leadingBidder).toBe('player')
     expect(wrapper.text()).toContain('My Active Bids')
+    // The catalog card's own control switches from "bid" to "raise" once
+    // the player already holds a position on this lot.
     expect(wrapper.find(`[data-test="raise-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('always shows the real current bid on every lot (Sprint 19b) — "no bids yet" before anyone has bid, a real yen figure once someone has', async () => {
+  it('always shows the real current bid and who holds it (Sprint 20 open bidding) — "no bids yet" before anyone has bid, "you lead" once the player has', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
@@ -47,21 +50,24 @@ describe('AuctionScreen', () => {
     // Every fresh lot starts with no real bid recorded yet.
     expect(wrapper.text()).toContain('no bids yet')
 
-    const maxBidYen = lot.bookValueYen
+    const openingBidYen = game.lotDetail(lot.id)!.nextRaiseYen
     await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    // The real number (not an obfuscated bucket) shows up immediately —
-    // matches the player's own bid since nothing else has escalated yet.
-    expect(wrapper.text()).toContain(`current bid`)
-    expect(game.lotDetail(lot.id)?.headroom.currentTopBidYen).toBe(maxBidYen)
+    // The real number (never an obfuscated bucket) shows up immediately,
+    // along with who's holding it.
+    expect(wrapper.text()).toContain('you lead')
+    expect(game.lotDetail(lot.id)?.currentBidYen).toBe(openingBidYen)
   })
 
-  it('shows an interest read per lot and offers an instant buyout', async () => {
+  it('shows a turnout read per lot and offers an always-visible instant buyout', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    // One of the interest labels renders somewhere on the screen.
-    expect(wrapper.text()).toMatch(/Quiet|Warm|Hot|Feeding frenzy/)
+    // One of the turnout labels renders somewhere on the screen — flavor
+    // only (maintainer decision 3), not a numeric gauge.
+    expect(wrapper.text()).toMatch(/Thin turnout|Steady turnout|Packed turnout/)
+    // Buy Now is offered on every lot, bid on or not (maintainer decision 2).
+    expect(wrapper.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
     const carsBefore = game.ownedCarCount
     await wrapper.find(`[data-test="buyout-${lot.id}"]`).trigger('click')
     expect(game.ownedCarCount).toBe(carsBefore + 1)

@@ -1,6 +1,11 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
+import {
+  acquireLot,
+  activeBidCount,
+  auctionAcquisitionBudget,
+  walkAwayTargetYen,
+} from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -109,12 +114,12 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     actions.sellViaWalkIn.push({ carInstanceId: car.id })
   }
 
-  // 4. Bid on fresh, cheap local-yard lots if there's room for another car —
-  // or buy out instead when the lot's already expected to clear near buyout
-  // price (external review 2026-07 finding 2). Room already spoken for by a
-  // still-unresolved active bid (Sprint 19: bidding is multi-day now) counts
-  // the same as an owned car, so this doesn't overcommit across several
-  // pending bids at once.
+  // 4. Join or continue a war on fresh, cheap local-yard lots if there's
+  // room for another car (Sprint 20: open bidding — `leadingBidder !==
+  // 'player'` covers both a fresh lot and one this bot was outbid on but is
+  // still willing to chase under its walk-away target). Room already spoken
+  // for by a still-unresolved bid counts the same as an owned car, so this
+  // doesn't overcommit across several pending wars at once.
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
   if (roomForMoreCars > 0) {
     const candidates = [...state.activeAuctionLots]
@@ -122,7 +127,7 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
         (lot) =>
           lot.tier === 'local-yard' &&
           lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
-          lot.playerMaxBidYen === null,
+          lot.leadingBidder !== 'player',
       )
       .sort(() => rng.next() - 0.5)
 
@@ -131,14 +136,12 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     let acquisitionsQueued = 0
     for (const lot of candidates) {
       if (acquisitionsQueued >= bidCap) break
-      const model = context.modelsById[lot.modelId]
-      const maxBidYen = Math.round(lot.bookValueYen * BID_FRACTION_OF_BOOK)
+      const targetYen = walkAwayTargetYen(lot, state, context, BID_FRACTION_OF_BOOK)
       if (
         acquireLot(
           state,
           lot,
-          model,
-          maxBidYen,
+          targetYen,
           actions,
           context,
           acquisitionBudget,

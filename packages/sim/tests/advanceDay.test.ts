@@ -155,12 +155,14 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Re-pinned Sprint 19c: AUCTION_ESCALATION_DAILY_CHANCE (0.4->0.6) and
-    // AUCTION_BIDDER_DISCIPLINE (0.7->0.95) both feed weekly catalog refresh
-    // and escalation RNG/values even though this script never places a bid.
+    // Re-pinned Sprint 20 (auction rework II): the AuctionLot schema, the
+    // overnight-step/hammer mechanics, and WEEKLY_RENT_YEN (90,000 -> 0) all
+    // change this hash even though this script never places a bid — weekly
+    // catalog refresh and the day-boundary auction resolution loop both
+    // still run every day regardless.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('38f17402')
+    expect(hashState(finalState)).toBe('9a805efb')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -189,13 +191,14 @@ describe('advanceDay golden master', () => {
     expect(tiers.has('local-yard')).toBe(true)
   })
 
-  it('rent is deducted on every 7-day boundary through day 30', () => {
+  it('rent is 0 (Sprint 20: temporarily zeroed until the reworked auction economy works end-to-end)', () => {
     const finalState = runCareer(30)
-    const rentPayments = 4 // days 7, 14, 21, 28
     // Sprint 13: the day-1 body repair also charges its equipment's flat
-    // consumables cost once, on top of rent.
+    // consumables cost once, on top of rent — rent itself is 0 as of Sprint
+    // 20 (economy.json's WEEKLY_RENT_YEN, restored as a tuned knob in
+    // Sprint 23), so the only deduction left here is that one-time cost.
     const consumablesCostYen = EQUIPMENT.find((e) => e.id === WELDER_ID)!.consumablesCostYen
-    expect(finalState.cashYen).toBe(1_200_000 - rentPayments * 90_000 - consumablesCostYen)
+    expect(finalState.cashYen).toBe(1_200_000 - consumablesCostYen)
   })
 })
 
@@ -214,9 +217,11 @@ describe('advanceDay golden master — acquisition and sale path', () => {
     }
     const lot = state.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot to appear')
-    // An over-market max bid — well above the buyout cap every rival bid is
-    // capped at — guarantees a win once the lot's own duration elapses
-    // (Sprint 19: bidding no longer resolves the instant it's placed).
+    // An over-market bid — well above any realistic demand ceiling — takes
+    // the lead immediately and stays there (the overnight step's
+    // at-or-above-ceiling branch is silence, not a counter-raise), so this
+    // hammers to the player once quietDays or the backstop resolves it
+    // (Sprint 20: bidding no longer resolves the instant it's placed).
     state = advanceDay(
       state,
       { ...noActions, bidsOnLots: [{ lotId: lot.id, maxBidYen: lot.bookValueYen * 3 }] },
@@ -247,10 +252,10 @@ describe('advanceDay golden master — acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned Sprint 19c: same reason as the primary golden master above
-    // — the retuned discipline/escalation constants change real rival
-    // ceilings and this career's own won price.
-    expect(hashState(acquisitionCareer().sold)).toBe('f21377e0')
+    // Re-pinned Sprint 20 (auction rework II): the new open-bidding schema,
+    // demand-ceiling-anchored clearing, and WEEKLY_RENT_YEN -> 0 all change
+    // this career's exact won price and final state.
+    expect(hashState(acquisitionCareer().sold)).toBe('f120f5fb')
   })
 })
 

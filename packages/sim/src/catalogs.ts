@@ -2,7 +2,6 @@ import type { AuctionLot, AuctionTier, GameState, ServiceJob } from '@midnight-g
 import { generateAuctionCatalog } from './auctions'
 import { currentGameYear, reputationAtLeast } from './calendar'
 import {
-  AUCTION_LOTS_PER_TIER,
   AUCTION_TIER_MIN_REPUTATION,
   SERVICE_JOB_EXPIRY_DAYS,
   SERVICE_JOB_OFFERS_PER_REFRESH,
@@ -52,8 +51,9 @@ export function refreshCatalogs(
       tier,
       context.hiddenIssuesByComponent,
       day,
-      AUCTION_LOTS_PER_TIER[tier],
+      context.economy.AUCTION_LOTS_PER_TIER[tier],
       rng,
+      context.economy,
       year,
     )
     if (lots.length === 0) continue

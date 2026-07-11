@@ -249,38 +249,47 @@ here when they weren't):
   the per-car (not global) Confirm once several cars are staged at once (the risk
   `docs/sprints/sprint18.md`'s own design doc flagged) — is planned for the next dedicated playtest
   session, not this quick check. Sprint 18 committed.
-- [ ] **Sprint 19/19b/19c follow-up: manually verify multi-day bidding (first-price, real current-bid
-  display, dynamic buyout) in a browser, and re-run `pnpm balance:run`.** Never visually checked — same
-  recurring blocker as every prior sprint's UI work: `pnpm dev` is the maintainer's to run.
-  Component-mount tests confirm "My Active Bids," the always-visible current-bid figure, and the
-  raise-vs-fresh-bid control switch exist and behave correctly under scripted state, not that the
-  escalation pacing *feels* tense-but-fair rather than confusing, or that "pay exactly what you bid"
-  and a buyout price that can visibly climb mid-auction actually read as clearer in practice. Also
-  re-run the balance harness — three independent reasons now: (1) the win-price bucket and
-  buyout-vs-bid telemetry haven't been checked against the new multi-day timing at population scale,
-  (2) first-price removes the automatic second-price discount a winning bid used to get, and (3)
-  `AUCTION_BIDDER_DISCIPLINE`'s retune (0.7→0.95) directly raises every bot's real acquisition costs —
-  none of this has been checked against real bot economics at scale; sim-level unit/statistical tests
-  confirm the mechanisms work, not that the numbers Sprint 10/2026-07-09 calibrated against still hold.
-- [ ] **Sprint 19c follow-up: auction duration has too much effect on how competitive an auction
-  feels, even *within* the standard (2-4 day) tier — a real, unresolved calibration finding, not yet
-  fixed.** Verified via a real sweep (real roster, real escalation): frenzy share climbs from 0.1% at 2
-  days to 6.0% at 3 days to 14.3% at 4 days — a ~140x swing between the shortest and longest "standard"
-  duration, which the player never sees rolled and which isn't meant to carry that much weight (unlike
-  the flash-vs-long tier split, which *is* intentionally that different, per decision 1). Root cause:
-  `AUCTION_ESCALATION_DAILY_CHANCE` × `AUCTION_ESCALATION_STEP_FRACTION` (currently 0.6 × 0.35 = 0.21)
-  is the single product that governs how fast the escalation curve (`1-(1-p×step)^days`) converges for
-  *every* duration at once — there's currently no way to flatten the standard-band swing without also
-  slowing down how dramatic a long (7-10 day, legend-tier) auction gets, since both durations share the
-  same two constants. Likely fix direction: give the standard and long duration bands their own
-  separate escalation parameters instead of one shared pair — not implemented, since this is a felt-
-  experience question better judged from actually watching auctions resolve than from another
-  spreadsheet-driven constant guess. Two smaller, related observations from the same sweep, also
-  unaddressed: ~5% of flash (1-day) auctions have literally zero rival bids at all (an uncontested win
-  if the reserve is cleared — probably fine, matches flash's intended character, but undocumented
-  anywhere until now); and the "mid" bucket (20-80% of the reserve-to-buyout band) is wide enough that
-  "mid dominates" could still be hiding its own internal clustering/fairness texture that hasn't been
-  measured at a finer grain. Revisit after a real playtest pass, not before.
+- [x] **Sprint 19/19b/19c follow-up: manually verify multi-day bidding (first-price, real current-bid
+  display, dynamic buyout) in a browser, and re-run `pnpm balance:run`.** **Superseded by Sprint 20
+  (auction rework II)**, not actioned as originally written: the whole sealed-proxy-bid +
+  hidden-rival-escalation mechanism this item was about (first-price resolution over full rival
+  ceilings, `AUCTION_BIDDER_DISCIPLINE`, dynamic buyout coupled to escalated bids) was deleted outright
+  and replaced with open, visible bidding (`currentBidYen`/`leadingBidder`/`quietDays`, a wholesale-
+  anchored demand ceiling, activity-based hammer). The browser feel-check this item asked for is still
+  needed, but against the new board, not the old escalation pacing — that's a fresh Sprint 20 user-only
+  task (see `docs/sprints/sprint20.md`), not this one. `pnpm balance:run` has been re-run against the
+  new mechanism — see the fresh finding below.
+- [x] **Sprint 19c follow-up: auction duration has too much effect on how competitive an auction
+  feels, even *within* the standard (2-4 day) tier.** **Superseded by Sprint 20**, not actioned as
+  originally written: the root cause named here (`AUCTION_ESCALATION_DAILY_CHANCE` ×
+  `AUCTION_ESCALATION_STEP_FRACTION` governing every duration band's escalation curve from one shared
+  pair) no longer exists — both constants, and the escalation mechanism they drove, were deleted.
+  Sprint 20's activity-based closing (hammer after `AUCTION_QUIET_DAYS_TO_HAMMER` consecutive quiet
+  overnight steps, or the `expiresOnDay` backstop, whichever comes first) structurally changes how
+  duration affects outcome; whether *it* has its own duration-sensitivity problem is an open question
+  for a future balance pass, not yet measured, not the same problem as the one filed here.
+- [ ] **Maintainer finding, 2026-07-10: the whole inspect-lot / hidden-issues mechanic (apex seals etc.)
+  does nothing useful — needs a real rethink, not a patch.** Verified against the actual code, not just
+  the complaint: a `HiddenIssue`'s `repairCostBaseYen` field is defined in the schema and set on every
+  entry in `hidden-issues.json`, but is never read anywhere in `packages/sim` or `packages/game` —
+  completely dead data. Once a hidden issue's rolled severity is applied at handover
+  (`applyIssueSeverity`, `auctions.ts`), it's just a subtraction from a component's `condition` number —
+  mechanically indistinguishable from that component simply having rolled low in the first place; the
+  repair system has no concept of "this deficit came from a hidden issue" at all, so there's no distinct
+  cost, no distinct repair path, nothing. Inspecting (`resolveInspectLot`) doesn't reveal the actual
+  severity number or repair cost either — only flavor `hintText` plus which component is affected — and
+  its only real mechanical effect is making the eventual severity roll deterministic instead of
+  variance-scaled (the sliding-scale lemon rule), a difference invisible to the player either way. Once
+  a car is owned, all trace of it having had a hidden issue disappears from the UI entirely (confirmed:
+  `CarDetailScreen.vue` never references `hiddenIssues`, only the pre-purchase auction lot view does) —
+  no "you fixed the apex seals" moment, no persistent story thread, nothing. Net effect: hidden issues
+  currently function as an opaque, one-time condition penalty with a flavor label attached, not a real
+  mechanic — inspecting only barely matters (removes some randomness in a number you never see anyway).
+  Needs a real design pass, not scoped here: candidates include giving each hidden issue a real,
+  distinct repair cost/path (finally using `repairCostBaseYen`), surfacing it as a named, trackable
+  problem on the owned-car screen until actually fixed, and/or tying it into the parked "restore damaged
+  parts" idea in `IDEAS.md` if hidden issues end up living on parts rather than just components. No
+  sprint attached — this is a rethink-the-system item, not a bugfix.
 - [ ] **Playtest 2026-07-10 #1: End-Day cart warning.** Clicking "End Day" with items still in the
   parts cart should warn ("you have unordered items in your cart — check out first?"). Small,
   self-contained UI guard; fold into whichever of Sprints 15-19 ships first, or the next playtest-fix
@@ -323,16 +332,31 @@ here when they weren't):
   pushes there too; the HTML/lcov report uploads as a build artifact. No coverage backfill work was
   done to hit a higher number — the point was making regression visible, not retroactively maximizing
   the metric.
-- [ ] **Auction calibration, real-data finding (2026-07-09): FRENZY essentially never happens.** The
-  first real `pnpm balance:run` since the fix above shows STEAL 8.2% / MID 91.8% / FRENZY 0.0% against
-  a target of STEAL/FRENZY 5-10% each — MID is winning far more than the unit-level Monte Carlo
-  predicted (STEAL 10% / MID 82% / FRENZY 8%), because real bots don't isolate the AI-only clearing
-  price the way the unit tests do (a token bid), and apparently rarely push a lot all the way to the
-  buyout-capped top of the range. Average field size (6.2) is on target. Not retuned yet — the
-  three knobs (`AUCTION_FIELD_BASE`/`PER_INTEREST`/`SD`, `AUCTION_BIDDER_DISCIPLINE`) are still at
-  Sprint 10's first-pass values; a frenzy-tail nudge (probably raising discipline, or a bot
-  buyout-decision model per the buyout-premium item below) is a candidate for the next auction-tuning
-  pass. See `tools/balance/report.md` for the live numbers.
+- [x] **Auction calibration, real-data finding (2026-07-09): FRENZY essentially never happens.**
+  **Superseded by Sprint 20 (auction rework II)**: the whole rival-field/discipline mechanism this
+  finding was about (`AUCTION_FIELD_BASE`/`PER_INTEREST`/`SD`, `AUCTION_BIDDER_DISCIPLINE`,
+  `computeLotInterest`'s STEAL/MID/FRENZY buckets over [reserve, buyout]) was deleted outright and
+  replaced with wholesale-anchored open bidding. See the fresh Sprint 20 finding below for where the
+  new mechanism's real bucket shares land.
+- [ ] **Auction calibration, real-data finding (2026-07-11, Sprint 20 auction rework II): the new
+  hammer/anchor bucket distribution runs far steal-heavier than the sprint doc's own first-pass
+  targets.** The first real `pnpm balance:run` under the new open-bidding mechanism (800,000 career
+  rows, 92,905 auction-win rows) shows STEAL 85.4% / MID 14.6% / FRENZY 0.0% against
+  `sprint20.md`'s stated targets (steal 10-25%, mid the majority, frenzy 5-15%). A matching sim-level
+  probe (no bots at all — `bidding.test.ts`'s "hammer/anchor lands below the wholesale center"
+  distribution test) confirms this isn't a bot-specific artifact: even pure dealer-vs-dealer clearing
+  (no player/bot involvement) has a median hammer/anchor of only ~0.54, well under the 0.65 "mid"
+  threshold. Root cause, verified: `AUCTION_COUNTER_CHANCE` (0.7) combined with
+  `AUCTION_QUIET_DAYS_TO_HAMMER` (2) means a lot typically hammers after only ~2-4 real days of back-
+  and-forth (2 consecutive misses at a 30%-per-day miss rate arrives fast), well before the price
+  climbs anywhere near its own demand ceiling — so most lots (bot or dealer-only) clear cheap by
+  construction, not just when a bot gets lucky. This is exactly the good news for the sprint's actual
+  design goal ("patient bidding beats buyout most of the time") but the bucket *shape* itself doesn't
+  match the doc's own prediction. Not retuned — first-pass values, openly adjustable in
+  `economy.json`; a future balance pass should consider raising `AUCTION_COUNTER_CHANCE` and/or
+  `AUCTION_QUIET_DAYS_TO_HAMMER` if a punchier mid/frenzy presence is wanted, but that's a felt-
+  experience tuning call, not implied by anything in Stage B's scope. See `tools/balance/report.md`
+  for the live numbers.
 
 - [x] **Wire the balance harness into CI — DONE 2026-07-09** (external review 2026-07, finding 1;
   originally deadlined "before Phase 5," landed well ahead of that). A new path-filtered `balance` job

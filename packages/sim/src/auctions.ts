@@ -5,21 +5,12 @@ import type {
   CarModel,
   ComponentId,
   DayLogEntry,
+  EconomyConfig,
   GameState,
   HiddenIssue,
   RarityTier,
 } from '@midnight-garage/content'
-import {
-  AUCTION_DURATION_FLASH_DAYS,
-  AUCTION_DURATION_LONG_RANGE_DAYS,
-  AUCTION_DURATION_STANDARD_RANGE_DAYS,
-  AUCTION_FLASH_CHANCE,
-  AUCTION_LONG_CHANCE_UNCOMMON_RARE,
-  AUCTION_TRAVEL_FEE_YEN,
-  CAR_CONDITION_BASE_MAX,
-  CAR_CONDITION_BASE_MIN,
-  CAR_CONDITION_JITTER,
-} from './constants'
+import { CAR_CONDITION_BASE_MAX, CAR_CONDITION_BASE_MIN, CAR_CONDITION_JITTER } from './constants'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
@@ -69,19 +60,23 @@ export function auctionTierForRarity(tier: RarityTier): AuctionTier | null {
  * to any tier first (an occasional short event, not tied to one rarity);
  * otherwise legend cars always get a long sale, uncommon/rare occasionally
  * do, and everything else gets the standard band. First-pass day ranges,
- * openly adjustable.
+ * openly adjustable (content/economy.json, Sprint 20 step 0).
  */
-export function rollAuctionDurationDays(rarity: RarityTier, rng: Rng): number {
-  if (rng.next() < AUCTION_FLASH_CHANCE) return AUCTION_DURATION_FLASH_DAYS
-  const [longMin, longMax] = AUCTION_DURATION_LONG_RANGE_DAYS
+export function rollAuctionDurationDays(
+  rarity: RarityTier,
+  rng: Rng,
+  economy: EconomyConfig,
+): number {
+  if (rng.next() < economy.AUCTION_FLASH_CHANCE) return economy.AUCTION_DURATION_FLASH_DAYS
+  const [longMin, longMax] = economy.AUCTION_DURATION_LONG_RANGE_DAYS
   if (rarity === 'legend') return rng.int(longMin, longMax)
   if (
     (rarity === 'uncommon' || rarity === 'rare') &&
-    rng.next() < AUCTION_LONG_CHANCE_UNCOMMON_RARE
+    rng.next() < economy.AUCTION_LONG_CHANCE_UNCOMMON_RARE
   ) {
     return rng.int(longMin, longMax)
   }
-  const [stdMin, stdMax] = AUCTION_DURATION_STANDARD_RANGE_DAYS
+  const [stdMin, stdMax] = economy.AUCTION_DURATION_STANDARD_RANGE_DAYS
   return rng.int(stdMin, stdMax)
 }
 
@@ -184,6 +179,7 @@ export function generateAuctionCatalog(
   day: number,
   count: number,
   rng: Rng,
+  economy: EconomyConfig,
   currentYear: number = Infinity,
 ): AuctionLot[] {
   const eligible = models.filter(
@@ -209,9 +205,11 @@ export function generateAuctionCatalog(
       car,
       bookValueYen: model.bookValueYen,
       inspected: false,
-      expiresOnDay: day + rollAuctionDurationDays(model.tier, rng),
-      playerMaxBidYen: null,
-      rivalEscalatedBidsYen: [],
+      expiresOnDay: day + rollAuctionDurationDays(model.tier, rng, economy),
+      currentBidYen: 0,
+      leadingBidder: null,
+      quietDays: 0,
+      playerHasBid: false,
     })
   }
   return lots
@@ -237,10 +235,14 @@ export interface InspectLotResult {
  * look-before-you-buy action behind it wasn't buying any real tension).
  * Shared by the player's instant click and advanceDay's bot batch loop.
  */
-export function resolveInspectLot(state: GameState, lotId: string): InspectLotResult {
+export function resolveInspectLot(
+  state: GameState,
+  lotId: string,
+  economy: EconomyConfig,
+): InspectLotResult {
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
   if (!lot || lot.inspected) return { state, log: [] }
-  const fee = AUCTION_TRAVEL_FEE_YEN[lot.tier]
+  const fee = economy.AUCTION_TRAVEL_FEE_YEN[lot.tier]
   if (state.cashYen < fee) return { state, log: [] }
   const inspected = inspectLot(lot)
   return {

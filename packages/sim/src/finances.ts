@@ -1,5 +1,4 @@
-import type { DayLogEntry, GameState } from '@midnight-garage/content'
-import { WEEKLY_RENT_YEN } from './constants'
+import type { DayLogEntry, EconomyConfig, GameState } from '@midnight-garage/content'
 
 export interface WeeklyFinancesResult {
   state: GameState
@@ -7,13 +6,16 @@ export interface WeeklyFinancesResult {
 }
 
 /** Deducts rent + every staff member's wage on 7-day boundaries (GDD 6.2). */
-export function applyWeeklyRentAndWages(state: GameState): WeeklyFinancesResult {
+export function applyWeeklyRentAndWages(
+  state: GameState,
+  economy: EconomyConfig,
+): WeeklyFinancesResult {
   if (state.day % 7 !== 0) {
     return { state, log: [] }
   }
 
-  const log: DayLogEntry[] = [{ type: 'rent-paid', amountYen: -WEEKLY_RENT_YEN }]
-  let cashYen = state.cashYen - WEEKLY_RENT_YEN
+  const log: DayLogEntry[] = [{ type: 'rent-paid', amountYen: -economy.WEEKLY_RENT_YEN }]
+  let cashYen = state.cashYen - economy.WEEKLY_RENT_YEN
 
   for (const member of state.staff) {
     cashYen -= member.weeklyWageYen

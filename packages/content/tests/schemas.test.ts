@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
+import economy from '../data/economy.json'
 import equipment from '../data/equipment.json'
 import facilities from '../data/facilities.json'
 import hiddenIssues from '../data/hidden-issues.json'
@@ -9,6 +10,7 @@ import traits from '../data/traits.json'
 import {
   BuyersSchema,
   CarModelsSchema,
+  EconomyConfigSchema,
   EquipmentsSchema,
   FacilitiesSchema,
   HiddenIssuesSchema,
@@ -65,6 +67,28 @@ describe('seed content validates against schemas', () => {
     expect(result.data.parking.minReputationTier.length).toBe(
       result.data.parking.bayPricesYen.length,
     )
+  })
+
+  it('economy.json', () => {
+    const result = EconomyConfigSchema.safeParse(economy)
+    if (!result.success) throw new Error(result.error.message)
+    // Sprint 20's own bidding rework (stage B) deliberately changes these
+    // two values from stage A's pure-relocation pins: rent zeroed until the
+    // reworked auction economy works end-to-end (restored as a tuned knob
+    // in Sprint 23), buyout premium re-pointed at the value anchor and
+    // raised from 1.1x book to 1.25x anchor.
+    expect(result.data.WEEKLY_RENT_YEN).toBe(0)
+    expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
+    expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
+    // New Sprint 20 auction-rework knobs, born in JSON from day one.
+    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.75)
+    expect(result.data.AUCTION_DEMAND_SPREAD_SD).toBe(0.12)
+    expect(result.data.AUCTION_THIN_TURNOUT_CHANCE).toBe(0.15)
+    expect(result.data.AUCTION_THIN_TURNOUT_FACTOR).toBe(0.6)
+    expect(result.data.AUCTION_COUNTER_CHANCE).toBe(0.7)
+    expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(2)
+    expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
+    expect(result.data.AUCTION_TURNOUT_BANDS).toEqual([0.85, 1.12])
   })
 })
 

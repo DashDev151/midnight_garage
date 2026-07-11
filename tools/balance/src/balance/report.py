@@ -9,7 +9,7 @@ from pathlib import Path
 
 import polars as pl
 
-from balance.data import load_acquisitions, load_auction_field_sizes, load_auction_wins, load_careers
+from balance.data import load_acquisitions, load_auction_wins, load_careers
 
 CHECKPOINT_DAYS = [25, 40, 70, 100]
 
@@ -29,25 +29,33 @@ def summarize(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-BUCKET_TARGETS = {"steal": (0.05, 0.10), "mid": (0.80, 0.90), "frenzy": (0.05, 0.10)}
+BUCKET_TARGETS = {"steal": (0.10, 0.25), "mid": (0.50, 1.00), "frenzy": (0.05, 0.15)}
 
 
 def summarize_auction_wins(df: pl.DataFrame) -> pl.DataFrame:
-    """Sprint 10 decision 4f: bucket share of the win price within
-    [reserve, buyout] — the bell-curve calibration target, checked against
-    real bot play rather than only the unit-level formula tests."""
+    """Sprint 20 (auction rework II): bucket share of the hammer price as a
+    fraction of the lot's own anchorValueYen — the wholesale-anchored
+    clearing calibration target, checked against real bot play rather than
+    only the unit-level formula tests."""
     total = df.height
     counts = df.group_by("bucket").agg(pl.len().alias("count")).sort("bucket")
     return counts.with_columns((pl.col("count") / total).alias("share")) if total else counts
 
 
-def render_auction_section(bucket_summary: pl.DataFrame, field_sizes: pl.DataFrame) -> list[str]:
+def render_auction_section(bucket_summary: pl.DataFrame) -> list[str]:
+    """Basis (Sprint 20): fraction = hammer price / anchorValueYen (the best
+    interested buyer's valuation of the rolled car) — steal < 0.65, mid
+    0.65-0.9, frenzy > 0.9. Replaces the Sprint 10 [reserve, buyout]-fraction
+    basis, which stopped meaning anything once buyout re-pointed at the
+    value anchor and reserve stopped bounding real outcomes."""
     lines = [
-        "## Auction calibration (Sprint 10 decision 4f)",
+        "## Auction calibration (Sprint 20, auction rework II)",
         "",
-        "Win price as a fraction of [reserve, buyout], bucketed, across every lot a bot "
+        "Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot "
         "bid on and lost or won (see `auctionWins.manifest.json` for the run size). "
-        "Target: steal/frenzy 5-10% each, mid the majority.",
+        "steal < 0.65, mid 0.65-0.9, frenzy > 0.9. "
+        "Target: steal 10-25% (patient bidding beating buyout most of the time), "
+        "mid the majority, frenzy 5-15%.",
         "",
         "| Bucket | Share | Target |",
         "|---|---|---|",
@@ -57,14 +65,6 @@ def render_auction_section(bucket_summary: pl.DataFrame, field_sizes: pl.DataFra
         share = shares.get(bucket, 0.0)
         lines.append(f"| {bucket} | {share:.1%} | {lo:.0%}-{hi:.0%} |")
     lines.append("")
-
-    if field_sizes.height:
-        avg_field = field_sizes.select(pl.col("fieldSize").mean()).item()
-        lines.append(
-            f"Average rival field size: {avg_field:.1f} contenders "
-            f"(target 3-9, see `auctionFieldSizes.manifest.json`)."
-        )
-        lines.append("")
     return lines
 
 
@@ -92,7 +92,11 @@ def render_acquisitions_section(acquisitions_summary: pl.DataFrame) -> list[str]
         "Share of successful auction acquisitions made via instant buyout vs. a won "
         "competitive bid, per strategy. A strategy near 100% buyout means the bidding "
         "screen is effectively dead for it and `AUCTION_BUYOUT_PREMIUM` (currently a "
-        "10% premium over book) is cheap enough that certainty always wins.",
+        "25% premium over the value anchor, Sprint 20) is cheap enough that certainty "
+        "always wins. Bots never buy out as of Sprint 20 (buyout is a player-impatience "
+        "valve only), so this section's bot-side numbers are expected to read as 0% "
+        "buyout going forward — kept for the player-side telemetry hook and as a "
+        "regression check that bots really have stopped buying out.",
         "",
         "| Strategy | Bid | Buyout |",
         "|---|---|---|",
@@ -147,10 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     data_dir = Path(args.data_dir)
     df = load_careers(data_dir)
     auction_wins = load_auction_wins(data_dir)
-    field_sizes = load_auction_field_sizes(data_dir)
     acquisitions = load_acquisitions(data_dir)
 
-    auction_section = render_auction_section(summarize_auction_wins(auction_wins), field_sizes)
+    auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
     report = render_markdown(summarize(df), auction_section, acquisitions_section)
     Path(args.out).write_text(report, encoding="utf-8")

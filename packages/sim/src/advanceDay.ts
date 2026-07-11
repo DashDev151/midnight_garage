@@ -1,11 +1,6 @@
 import type { DayLog, DayLogEntry, GameState, Job, PublicListing } from '@midnight-garage/content'
 import type { DayActions } from './actions'
-import {
-  applyDailyEscalation,
-  resolveBuyoutInstant,
-  resolveDueAuctionLot,
-  resolvePlaceBid,
-} from './bidding'
+import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
 import { resolveInspectLot } from './auctions'
 import { applyReputationDelta } from './calendar'
 import { refreshCatalogs } from './catalogs'
@@ -134,7 +129,7 @@ export function advanceDay(
   // (Sprint 11 decision 4) — just the cash travel fee resolveInspectLot
   // already applies internally.
   for (const { lotId } of queuedActions.inspectLots) {
-    const result = resolveInspectLot(next, lotId)
+    const result = resolveInspectLot(next, lotId, context.economy)
     next = result.state
     log.push(...result.log)
   }
@@ -261,31 +256,27 @@ export function advanceDay(
   next = deliveries.state
   log.push(...deliveries.log)
 
-  // 8. Resolve every auction lot whose duration elapses today — a real
-  // top-bid-wins outcome (Sprint 19; first-price since 19b), not just silent
-  // removal, whether or not the player ever bid on it (resolveDueAuctionLot logs nothing for a
-  // lot the player never engaged with, matching the old silent-expiry
-  // behavior). Every lot still active gets one day's rival escalation
-  // (decision 2) so multi-day bidding actually has something to escalate
-  // toward resolution day. Stale service-job offers expire the same way
-  // they always have. Then refresh both weekly catalogs (day 7 boundary)
-  // via the same generator day-1 seeding uses (catalogs.ts's
-  // refreshCatalogs) — one generation path, not two.
-  const dueLots = next.activeAuctionLots.filter((lot) => lot.expiresOnDay <= next.day)
-  const stillActiveLots = next.activeAuctionLots.filter((lot) => lot.expiresOnDay > next.day)
-  for (const lot of dueLots) {
-    const resolution = resolveDueAuctionLot(next, lot, context, next.day)
+  // 8. Resolve every active auction lot for today (Sprint 20: activity-based
+  // closing replaces the old fixed-due-day filter + separate escalation
+  // pass) — one call per lot runs its overnight step (dealers may raise,
+  // stay silent, or open a not-yet-bid lot) and then hammers it if either
+  // `quietDays` has reached the threshold or today is its `expiresOnDay`
+  // backstop; otherwise the lot simply carries its updated board state into
+  // tomorrow. Processes lots sequentially against the accumulating state so
+  // two lots hammering the same day see each other's cash/parking effects,
+  // exactly like every other per-item loop in this function. Stale
+  // service-job offers expire the same way they always have. Then refresh
+  // both weekly catalogs (day 7 boundary) via the same generator day-1
+  // seeding uses (catalogs.ts's refreshCatalogs) — one generation path, not
+  // two.
+  const lotsToday = next.activeAuctionLots
+  for (const lot of lotsToday) {
+    const resolution = resolveLotForDay(next, lot, context, next.day)
     next = resolution.state
     log.push(...resolution.log)
   }
-  const escalatedLots = stillActiveLots.map((lot) => {
-    const model = context.modelsById[lot.modelId]
-    return model
-      ? applyDailyEscalation(lot, model, context.buyers, context.partsById, next.day)
-      : lot
-  })
   const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
-  next = { ...next, activeAuctionLots: escalatedLots, serviceJobOffers: unexpiredOffers }
+  next = { ...next, serviceJobOffers: unexpiredOffers }
 
   if (next.day % 7 === 0) {
     const refresh = refreshCatalogs(next, context, next.day, rng)
@@ -319,7 +310,7 @@ export function advanceDay(
   }
 
   // 10. Weekly rent/wages + market-heat drift (both fire on 7-day boundaries).
-  const finances = applyWeeklyRentAndWages(next)
+  const finances = applyWeeklyRentAndWages(next, context.economy)
   next = finances.state
   log.push(...finances.log)
 

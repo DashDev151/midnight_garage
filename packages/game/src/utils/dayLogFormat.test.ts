@@ -16,6 +16,8 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'market-heat-shift', modelId: 'honda-city-e-aa', deltaPercent: -3 },
   { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
   { type: 'lot-inspected', lotId: 'lot-1' },
+  { type: 'auction-bid-placed', lotId: 'lot-1', maxBidYen: 110_000 },
+  { type: 'auction-outbid', lotId: 'lot-1', newBidYen: 140_000 },
   { type: 'auction-bid-won', lotId: 'lot-1', finalPriceYen: 120_000 },
   { type: 'auction-bid-lost', lotId: 'lot-1', winningPriceYen: 130_000 },
   { type: 'lot-bought-out', lotId: 'lot-1', priceYen: 240_000 },
@@ -49,5 +51,11 @@ describe('describeLogEntry', () => {
     )
     expect(heat).toContain('Test Car')
     expect(heat).toContain('+5%')
+  })
+
+  it('renders the Sprint 20 overnight-outbid beat with the new board price', () => {
+    const line = describeLogEntry({ type: 'auction-outbid', lotId: 'lot-1', newBidYen: 1_240_000 })
+    expect(line).toContain('Outbid')
+    expect(line).toContain('¥1,240,000')
   })
 })

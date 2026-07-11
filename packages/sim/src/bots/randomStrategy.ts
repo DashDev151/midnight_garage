@@ -1,6 +1,11 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
+import {
+  acquireLot,
+  activeBidCount,
+  auctionAcquisitionBudget,
+  walkAwayTargetYen,
+} from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -177,25 +182,27 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     actions.inspectLots.push({ lotId: rng.pick(uninspected).id })
   }
 
-  // 5. Bid on one affordable lot if there's room for another car — the
-  // same bid size regardless of which archetype the car will turn out to
-  // be played as (see BID_MULTIPLIER's comment: no archetype has an
-  // informational edge at this stage, so none should pay a premium).
+  // 5. Join or continue a war on one affordable lot if there's room for
+  // another car — the same target multiplier regardless of which archetype
+  // the car will turn out to be played as (see BID_MULTIPLIER's comment: no
+  // archetype has an informational edge at this stage, so none should pay a
+  // premium). Sprint 20: open bidding — `leadingBidder !== 'player'` covers
+  // both a fresh lot and one this bot was outbid on but is still willing to
+  // chase under its walk-away target.
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
   if (roomForMoreCars > 0) {
     const affordable = state.activeAuctionLots.filter(
       (lot) =>
-        lot.playerMaxBidYen === null && state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
+        lot.leadingBidder !== 'player' &&
+        state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (affordable.length > 0) {
       const lot = rng.pick(affordable)
-      const model = context.modelsById[lot.modelId]
-      const maxBidYen = Math.round(lot.bookValueYen * BID_MULTIPLIER)
+      const targetYen = walkAwayTargetYen(lot, state, context, BID_MULTIPLIER)
       acquireLot(
         state,
         lot,
-        model,
-        maxBidYen,
+        targetYen,
         actions,
         context,
         auctionAcquisitionBudget(state),

@@ -1,6 +1,11 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
-import { acquireLot, activeBidCount, auctionAcquisitionBudget } from './buyoutHelpers'
+import {
+  acquireLot,
+  activeBidCount,
+  auctionAcquisitionBudget,
+  walkAwayTargetYen,
+} from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
@@ -123,27 +128,26 @@ export function balancedPlayerStrategy(
     }
   }
 
-  // 4. Bid fair value on a mid-priced lot if there's room for another car —
-  // or buy out instead when the lot's already expected to clear near buyout
-  // price (external review 2026-07 finding 2).
+  // 4. Join or continue a bidding war on a mid-priced lot if there's room
+  // for another car (Sprint 20: open bidding — `leadingBidder !== 'player'`
+  // covers both a fresh lot and one this bot was outbid on but is still
+  // willing to chase under its walk-away target).
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
   if (roomForMoreCars > 0) {
     const candidates = state.activeAuctionLots.filter(
       (lot) =>
         lot.bookValueYen >= MIN_TARGET_BOOK_VALUE_YEN &&
         lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
-        lot.playerMaxBidYen === null &&
+        lot.leadingBidder !== 'player' &&
         state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (candidates.length > 0) {
       const chosen = rng.pick(candidates)
-      const model = context.modelsById[chosen.modelId]
-      const maxBidYen = Math.round(chosen.bookValueYen * FAIR_BID_MULTIPLIER)
+      const targetYen = walkAwayTargetYen(chosen, state, context, FAIR_BID_MULTIPLIER)
       acquireLot(
         state,
         chosen,
-        model,
-        maxBidYen,
+        targetYen,
         actions,
         context,
         auctionAcquisitionBudget(state),

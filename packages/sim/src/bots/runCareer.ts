@@ -1,8 +1,7 @@
 import type { AuctionTier, GameState, ReputationTier } from '@midnight-garage/content'
-import { emptyDayActions, type DayActions } from '../actions'
+import type { DayActions } from '../actions'
 import { advanceDay } from '../advanceDay'
-import { computeLotInterest } from '../bidding'
-import { AUCTION_BUYOUT_PREMIUM, AUCTION_RESERVE_PRICE_FRACTION } from '../constants'
+import { anchorValueYen } from '../bidding'
 import type { SimContext } from '../context'
 import { createInitialGameState } from '../newGame'
 import { createRng, type Rng } from '../rng'
@@ -26,8 +25,15 @@ export interface CareerSnapshot {
 
 /**
  * One lot the bot actually bid on and lost, or won — the harness's real-play
- * check on the Sprint 10 auction rework's bell-curve calibration (decision
- * 4f): where the clearing price landed within [reserve, buyout].
+ * check on the Sprint 20 auction rework's wholesale-anchored clearing
+ * calibration. `fraction` is the hammer price as a fraction of the lot's
+ * own `anchorValueYen` (Sprint 20's basis change from the old
+ * [reserve, buyout]-fraction basis, which stopped meaning anything once
+ * buyout re-pointed at the value anchor and reserve stopped bounding real
+ * outcomes): steal < 0.65 (won for meaningfully less than it's worth — a
+ * genuine steal, typically a thin-turnout lot), mid 0.65-0.9 (patient
+ * bidding paid a fair wholesale-ish price), frenzy > 0.9 (bid the price up
+ * toward or past what the car is actually worth).
  */
 export interface AuctionWinSample {
   day: number
@@ -37,7 +43,7 @@ export interface AuctionWinSample {
 }
 
 const bucketFor = (fraction: number): AuctionWinSample['bucket'] =>
-  fraction < 0.2 ? 'steal' : fraction > 0.8 ? 'frenzy' : 'mid'
+  fraction < 0.65 ? 'steal' : fraction > 0.9 ? 'frenzy' : 'mid'
 
 /**
  * One successful auction acquisition, by channel — the harness's telemetry
@@ -77,6 +83,7 @@ export function runCareer(
   const acquisitions: AcquisitionSample[] = []
 
   for (let day = 1; day <= days; day++) {
+    const stateBeforeToday = state
     const lotsBeforeById = new Map(state.activeAuctionLots.map((lot) => [lot.id, lot]))
     const decisionRng = createRng(seed * 7919 + day)
     const actions = strategy(state, context, decisionRng)
@@ -100,9 +107,9 @@ export function runCareer(
         entry.type === 'auction-bid-won' ? entry.finalPriceYen : entry.winningPriceYen
       const lot = lotsBeforeById.get(entry.lotId)
       if (!lot) continue
-      const reserveYen = Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION)
-      const buyoutYen = Math.round(lot.bookValueYen * AUCTION_BUYOUT_PREMIUM)
-      const fraction = Math.max(0, Math.min(1, (priceYen - reserveYen) / (buyoutYen - reserveYen)))
+      const anchorYen = anchorValueYen(lot, stateBeforeToday, context)
+      if (anchorYen <= 0) continue // no interested buyer archetype — nothing to compare against
+      const fraction = priceYen / anchorYen
       auctionWins.push({ day, tier: lot.tier, fraction, bucket: bucketFor(fraction) })
     }
 
@@ -123,29 +130,4 @@ export function runCareer(
   }
 
   return { snapshots, auctionWins, acquisitions }
-}
-
-/**
- * Rival-field size the auction screen would have shown for every lot on the
- * day it first appeared — the population-level companion to `auctionWins`
- * above (target: average 3-9 contenders, decision 4f). Runs a second,
- * read-only pass so bidding on the field never influences the sample.
- */
-export function sampleFieldSizes(seed: number, days: number, context: SimContext): number[] {
-  let state = createInitialGameState(context, seed)
-  const samples: number[] = []
-  const seenLotIds = new Set<string>()
-
-  for (let day = 1; day <= days; day++) {
-    for (const lot of state.activeAuctionLots) {
-      if (seenLotIds.has(lot.id)) continue
-      seenLotIds.add(lot.id)
-      const model = context.modelsById[lot.modelId]
-      if (!model) continue
-      samples.push(computeLotInterest(lot, model, context.buyers, context.partsById).contenders)
-    }
-    state = advanceDay(state, emptyDayActions(), seed + state.day, context).state
-  }
-
-  return samples
 }

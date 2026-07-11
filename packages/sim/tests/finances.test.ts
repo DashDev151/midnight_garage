@@ -1,6 +1,5 @@
-import type { GameState, StaffMember } from '@midnight-garage/content'
+import { ECONOMY, type GameState, type StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { WEEKLY_RENT_YEN } from '../src/constants'
 import { applyWeeklyRentAndWages } from '../src/finances'
 
 const staffMember: StaffMember = {
@@ -41,22 +40,24 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
 
 describe('applyWeeklyRentAndWages', () => {
   it('does nothing off a 7-day boundary', () => {
-    const result = applyWeeklyRentAndWages(stateOnDay(3))
+    const result = applyWeeklyRentAndWages(stateOnDay(3), ECONOMY)
     expect(result.log).toHaveLength(0)
     expect(result.state.cashYen).toBe(1_000_000)
   })
 
   it('deducts rent on day 7', () => {
-    const result = applyWeeklyRentAndWages(stateOnDay(7))
-    expect(result.state.cashYen).toBe(1_000_000 - WEEKLY_RENT_YEN)
-    expect(result.log).toEqual([{ type: 'rent-paid', amountYen: -WEEKLY_RENT_YEN }])
+    const result = applyWeeklyRentAndWages(stateOnDay(7), ECONOMY)
+    expect(result.state.cashYen).toBe(1_000_000 - ECONOMY.WEEKLY_RENT_YEN)
+    expect(result.log).toEqual([{ type: 'rent-paid', amountYen: -ECONOMY.WEEKLY_RENT_YEN }])
   })
 
   it('deducts rent and every staff wage on day 14', () => {
-    const result = applyWeeklyRentAndWages(stateOnDay(14, [staffMember]))
-    expect(result.state.cashYen).toBe(1_000_000 - WEEKLY_RENT_YEN - staffMember.weeklyWageYen)
+    const result = applyWeeklyRentAndWages(stateOnDay(14, [staffMember]), ECONOMY)
+    expect(result.state.cashYen).toBe(
+      1_000_000 - ECONOMY.WEEKLY_RENT_YEN - staffMember.weeklyWageYen,
+    )
     expect(result.log).toEqual([
-      { type: 'rent-paid', amountYen: -WEEKLY_RENT_YEN },
+      { type: 'rent-paid', amountYen: -ECONOMY.WEEKLY_RENT_YEN },
       { type: 'wage-paid', staffId: staffMember.id, amountYen: -staffMember.weeklyWageYen },
     ])
   })

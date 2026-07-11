@@ -22,15 +22,10 @@ def load_careers(data_dir: Path) -> pl.DataFrame:
 
 
 def load_auction_wins(data_dir: Path) -> pl.DataFrame:
-    """Sprint 10 decision 4f: one row per lot a bot bid on and lost, or won,
-    with the win price as a fraction of [reserve, buyout] and its bucket."""
+    """Sprint 20 (auction rework II): one row per lot a bot bid on and lost,
+    or won, with the hammer price as a fraction of the lot's own
+    anchorValueYen (the best-interested-buyer valuation) and its bucket."""
     return _load(data_dir, "auctionWins.manifest.json", "auctionWins.csv")
-
-
-def load_auction_field_sizes(data_dir: Path) -> pl.DataFrame:
-    """Sprint 10 decision 4f: rival field size sampled once per newly
-    appeared auction lot, strategy-independent."""
-    return _load(data_dir, "auctionFieldSizes.manifest.json", "auctionFieldSizes.csv")
 
 
 def load_acquisitions(data_dir: Path) -> pl.DataFrame:

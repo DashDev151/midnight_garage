@@ -152,6 +152,16 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     lotId: z.string().min(1),
     maxBidYen: z.number().int().positive(),
   }),
+  /**
+   * Sprint 20 (auction rework II): the overnight-step "you were outbid"
+   * beat — fires only when the dealers' raise displaces the player as
+   * `leadingBidder` (never on a dealer-vs-dealer raise, which logs nothing).
+   */
+  z.object({
+    type: z.literal('auction-outbid'),
+    lotId: z.string().min(1),
+    newBidYen: z.number().int().nonnegative(),
+  }),
   z.object({
     type: z.literal('auction-bid-won'),
     lotId: z.string().min(1),

@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
@@ -34,16 +35,12 @@ import {
   applyEquipmentPurchase,
   applyMoves,
   assignToParking,
-  AUCTION_RESERVE_PRICE_FRACTION,
-  AUCTION_TRAVEL_FEE_YEN,
   availableLaborSlots,
   advanceDay,
   bestFitBuyer,
   buildSimContext,
-  computeBidHeadroom,
   computeBuyoutPriceYen,
   computeDerivedStats,
-  computeLotInterest,
   confirmStagedWork,
   createInitialGameState,
   createRng,
@@ -57,6 +54,7 @@ import {
   moveCarToSlot as moveCarToSlotCore,
   nextBayMinReputationTier,
   nextBayPriceYen,
+  nextRaiseYen,
   parkingOccupancy,
   reputationAtLeast,
   REPUTATION_TIER_THRESHOLDS,
@@ -72,13 +70,13 @@ import {
   resolveSellViaWalkIn,
   resolveServiceJob,
   swapCars as swapCarsCore,
+  turnoutBand,
   valuateCarForBuyer,
-  type BidHeadroom,
   type DeliverySpeed,
-  type LotInterest,
   type NewJobSpec,
   type ServiceJobOutcome,
   type SimContext,
+  type TurnoutBand,
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
@@ -215,7 +213,12 @@ export interface ServiceJobResultView {
   daysSpent?: number
 }
 
-/** An auction lot with the derived numbers the auction screen shows. */
+/**
+ * An auction lot with the derived numbers the auction screen shows (Sprint
+ * 20: the open-bidding board replaces the old sealed-bid headroom/interest
+ * gauges — the state itself is now visible, so there's nothing left to
+ * fuzz).
+ */
 export interface LotDetail {
   lot: AuctionLot
   model: CarModel
@@ -223,27 +226,50 @@ export interface LotDetail {
   bookValueYen: number
   reserveYen: number
   inspectionFeeYen: number
+  /** Always visible, on every lot (maintainer decision 2). */
   buyoutPriceYen: number
-  /** Fuzzy rival-demand read for bid calibration (pre-bid, obfuscated). */
-  interest: LotInterest
+  /** The literal price on the board — 0 before bidding opens. */
+  currentBidYen: number
+  /** Who holds `currentBidYen` — null only while it's still 0. */
+  leadingBidder: 'player' | 'rival' | null
+  /** Consecutive quiet overnight steps with no raise; hammers at `hammerThreshold`. */
+  quietDays: number
+  /** `AUCTION_QUIET_DAYS_TO_HAMMER` — lets the UI say "hammer at 2". */
+  hammerThreshold: number
+  /** Subtle pre-bid turnout flavor (thin/steady/packed) — price is king, no numeric gauge. */
+  turnout: TurnoutBand
+  /** The smallest valid raise right now — pre-fills the raise input. */
+  nextRaiseYen: number
+  /** Set true on the player's first raise on this lot, never reset. */
+  playerHasBid: boolean
   /** Revealed hidden issues (only populated once the lot is inspected). */
   revealedIssues: { componentId: ComponentId; hintText: string }[]
-  /** Days remaining before this lot's own rolled duration resolves it (Sprint 19). */
+  /** This lot's backstop close day (the Sprint 19 duration roll) — activity-
+   * based closing (quiet-day hammer) usually resolves it sooner than this. */
+  expiresOnDay: number
+  /** Days remaining until the backstop, for the countdown label. */
   daysLeft: number
-  /** The player's own committed max bid on this lot, or null if none placed yet. */
-  myMaxBidYen: number | null
-  /** Live standings + headroom once bidding is underway (Sprint 19 decision 3). */
-  headroom: BidHeadroom
 }
 
-/** One of the player's still-unresolved active bids, for the "My Active Bids" section (Sprint 19). */
+/**
+ * One of the player's still-unresolved active bids, for the "My Active
+ * Bids" section. Sprint 20: deliberately keeps showing a lot the player is
+ * currently LOSING (`leadingBidder !== 'player'`) — "you're being outbid,
+ * go raise" is the panel's whole point, not just a list of wins-so-far.
+ */
 export interface MyActiveBidView {
   lot: AuctionLot
   model: CarModel
   displayName: string
-  myMaxBidYen: number
+  currentBidYen: number
+  leadingBidder: 'player' | 'rival' | null
+  isWinning: boolean
+  nextRaiseYen: number
+  quietDays: number
+  hammerThreshold: number
+  turnout: TurnoutBand
+  expiresOnDay: number
   daysLeft: number
-  headroom: BidHeadroom
 }
 
 /** The estimated same-day walk-in offer for an owned car. */
@@ -282,6 +308,7 @@ export const useGameStore = defineStore('game', () => {
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
       EQUIPMENT,
+      ECONOMY,
     ),
   )
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
@@ -442,27 +469,37 @@ export const useGameStore = defineStore('game', () => {
       model,
       displayName: resolveCarDisplayName(model),
       bookValueYen: lot.bookValueYen,
-      reserveYen: Math.round(lot.bookValueYen * AUCTION_RESERVE_PRICE_FRACTION),
-      inspectionFeeYen: AUCTION_TRAVEL_FEE_YEN[lot.tier],
-      buyoutPriceYen: computeBuyoutPriceYen(lot),
-      // precision 0 for now; a future auction-scout staff trait raises it.
-      interest: computeLotInterest(lot, model, context.value.buyers, context.value.partsById, 0),
+      reserveYen: Math.round(
+        lot.bookValueYen * context.value.economy.AUCTION_RESERVE_PRICE_FRACTION,
+      ),
+      inspectionFeeYen: context.value.economy.AUCTION_TRAVEL_FEE_YEN[lot.tier],
+      buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
+      currentBidYen: lot.currentBidYen,
+      leadingBidder: lot.leadingBidder,
+      quietDays: lot.quietDays,
+      hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
+      turnout: turnoutBand(lot, gameState.value, context.value),
+      nextRaiseYen: nextRaiseYen(lot, context.value.economy),
+      playerHasBid: lot.playerHasBid,
       revealedIssues,
+      expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
-      myMaxBidYen: lot.playerMaxBidYen,
-      headroom: computeBidHeadroom(lot, model, context.value.buyers, context.value.partsById),
     }
   }
 
   /**
-   * Every lot the player still has an unresolved max bid on (Sprint 19) — a
-   * pure filter over `activeAuctionLots`, not a separate tracked list (a lot
-   * with a bid is already fully addressable through the existing catalog, so
-   * a parallel "active bids" array would just be the same data twice).
+   * Every lot the player has ever raised on (Sprint 20: `playerHasBid`,
+   * never reset) — a pure filter over `activeAuctionLots`, not a separate
+   * tracked list (a lot with a bid is already fully addressable through the
+   * existing catalog, so a parallel "active bids" array would just be the
+   * same data twice). `activeAuctionLots` only ever holds still-active lots,
+   * so "lot still active" needs no separate check here. Deliberately
+   * INCLUDES lots the player is currently losing — "you're being outbid, go
+   * raise" is the panel's whole point.
    */
   const myActiveBids = computed<MyActiveBidView[]>(() =>
     gameState.value.activeAuctionLots.flatMap((lot) => {
-      if (lot.playerMaxBidYen === null) return []
+      if (!lot.playerHasBid) return []
       const model = context.value.modelsById[lot.modelId]
       if (!model) return []
       return [
@@ -470,9 +507,15 @@ export const useGameStore = defineStore('game', () => {
           lot,
           model,
           displayName: resolveCarDisplayName(model),
-          myMaxBidYen: lot.playerMaxBidYen,
+          currentBidYen: lot.currentBidYen,
+          leadingBidder: lot.leadingBidder,
+          isWinning: lot.leadingBidder === 'player',
+          nextRaiseYen: nextRaiseYen(lot, context.value.economy),
+          quietDays: lot.quietDays,
+          hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
+          turnout: turnoutBand(lot, gameState.value, context.value),
+          expiresOnDay: lot.expiresOnDay,
           daysLeft: lot.expiresOnDay - gameState.value.day,
-          headroom: computeBidHeadroom(lot, model, context.value.buyers, context.value.partsById),
         },
       ]
     }),
@@ -813,7 +856,7 @@ export const useGameStore = defineStore('game', () => {
 
   /** Inspect an auction lot — instant, reveals hidden issues for the cash travel fee only. */
   function inspectLot(lotId: string): boolean {
-    const result = resolveInspectLot(gameState.value, lotId)
+    const result = resolveInspectLot(gameState.value, lotId, context.value.economy)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -821,17 +864,23 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Place or raise a max bid on an auction lot (Sprint 19: bidding is
-   * multi-day now — this only records/raises the player's committed max, it
-   * never resolves anything itself). The lot resolves on its own due day via
+   * Place or raise a bid on an auction lot (Sprint 20: open-raise semantics
+   * — the amount is the literal number that lands on the board, not a
+   * hidden max). The lot resolves via the overnight/hammer step in
    * `endDay`; the win/loss outcome shows up in that day's report like any
-   * other day-boundary event, not as inline per-lot feedback. Returns false
-   * if the lot doesn't exist or this wasn't actually a raise over an
-   * existing bid.
+   * other day-boundary event, not as inline per-lot feedback. Validates the
+   * increment ladder at the store level (`bidYen >= nextRaiseYen`) before
+   * ever calling the resolver — mirrors, rather than replaces, the sim's own
+   * identical check in `resolvePlaceBid`, so a UI misclick is refused here
+   * without a round trip through the resolver's no-op path. Returns false if
+   * the lot doesn't exist or the amount doesn't clear the ladder.
    */
-  function placeBid(lotId: string, maxBidYen: number): boolean {
-    if (maxBidYen <= 0) return false
-    const result = resolvePlaceBid(gameState.value, lotId, maxBidYen, context.value)
+  function placeBid(lotId: string, bidYen: number): boolean {
+    if (bidYen <= 0) return false
+    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
+    if (!lot) return false
+    if (bidYen < nextRaiseYen(lot, context.value.economy)) return false
+    const result = resolvePlaceBid(gameState.value, lotId, bidYen, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)

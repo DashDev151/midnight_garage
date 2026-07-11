@@ -2,12 +2,14 @@ import type {
   Buyer,
   CarModel,
   ComponentId,
+  EconomyConfig,
   Equipment,
   Facilities,
   HiddenIssue,
   Part,
   ServiceJobType,
 } from '@midnight-garage/content'
+import { ECONOMY } from '@midnight-garage/content'
 import { groupHiddenIssuesByComponent } from './auctions'
 
 /**
@@ -43,6 +45,7 @@ export interface SimContext {
   facilities: Facilities
   equipment: readonly Equipment[]
   equipmentById: Readonly<Record<string, Equipment>>
+  economy: EconomyConfig
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -53,6 +56,15 @@ function indexById<T extends { id: string }>(items: readonly T[]): Record<string
   return result
 }
 
+/**
+ * `economy` (Sprint 20 step 0) is deliberately the LAST parameter, defaulted
+ * to the real parsed `economy.json` (content's `ECONOMY`) — every other
+ * `buildSimContext` call site (the ~16 sim test files that call this
+ * positionally) keeps compiling and gets the real economy config with no
+ * changes, since a trailing default doesn't shift any existing positional
+ * argument. Callers that want a different economy (none do yet) pass it
+ * explicitly.
+ */
 export function buildSimContext(
   models: readonly CarModel[],
   parts: readonly Part[],
@@ -62,6 +74,7 @@ export function buildSimContext(
   facilities: Facilities = DEFAULT_FACILITIES,
   serviceJobCustomerNames: readonly string[] = [],
   equipment: readonly Equipment[] = [],
+  economy: EconomyConfig = ECONOMY,
 ): SimContext {
   return {
     models,
@@ -76,5 +89,6 @@ export function buildSimContext(
     facilities,
     equipment,
     equipmentById: indexById(equipment),
+    economy,
   }
 }

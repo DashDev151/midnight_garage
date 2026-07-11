@@ -86,8 +86,23 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   escalation yet — correct, since a v10-or-earlier save could never have
  *   had a bid mid-flight (bidding always resolved the instant it was
  *   placed). No explicit `MIGRATIONS[10]` step needed.
+ * - v12 (Sprint 20, auction rework II): `AuctionLot` swaps its whole bid-state
+ *   shape — `playerMaxBidYen`/`rivalEscalatedBidsYen` (sealed player max +
+ *   hidden per-rival escalation) replaced by `currentBidYen`/`leadingBidder`/
+ *   `quietDays`/`playerHasBid` (open, visible bidding). Not a plain
+ *   default-fill: a v11 lot with a real bid in flight would otherwise decode
+ *   with `currentBidYen: 0` and lose its standing entirely. `MIGRATIONS[11]`
+ *   (`migrateV11ToV12`) reconstructs the new shape instead: `currentBidYen =
+ *   max(playerMaxBidYen ?? 0, ...rivalEscalatedBidsYen)`, `leadingBidder` is
+ *   whichever side held that max (`'player'` on an exact tie — consistent
+ *   with the new ties-go-to-player hammer rule; `null` if the max is 0, i.e.
+ *   nobody had bid), `quietDays` resets to 0 (a fresh count under the new
+ *   activity-based-closing rule), and `playerHasBid = playerMaxBidYen !==
+ *   null`. The old fields are left in place on the migrated object rather
+ *   than explicitly deleted — `GameStateSchema.parse` strips any key the
+ *   schema no longer declares, the same as every other migration here.
  */
-export const SAVE_VERSION = 11
+export const SAVE_VERSION = 12
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -161,6 +176,42 @@ function migrateV8ToV9(gameState: unknown): unknown {
 }
 
 /**
+ * v11 -> v12 (Sprint 20, auction rework II): reconstructs each active lot's
+ * open-bidding state (`currentBidYen`/`leadingBidder`/`quietDays`/
+ * `playerHasBid`) from the old sealed-max + per-rival-escalation shape — see
+ * the SAVE_VERSION doc comment above for why a plain default-fill would
+ * silently drop a real in-flight bid. Defensive against a malformed or
+ * hand-edited save, same as `migrateV8ToV9` above.
+ */
+function migrateV11ToV12(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+  if (!Array.isArray(state.activeAuctionLots)) return state
+
+  const activeAuctionLots = state.activeAuctionLots.map((lot) => {
+    if (typeof lot !== 'object' || lot === null) return lot
+    const l = lot as Record<string, unknown>
+    const playerMaxBidYen = typeof l.playerMaxBidYen === 'number' ? l.playerMaxBidYen : null
+    const rivalEscalatedBidsYen = Array.isArray(l.rivalEscalatedBidsYen)
+      ? l.rivalEscalatedBidsYen.filter((n): n is number => typeof n === 'number')
+      : []
+    const topRivalYen = Math.max(0, ...rivalEscalatedBidsYen)
+    const currentBidYen = Math.max(playerMaxBidYen ?? 0, topRivalYen)
+    const leadingBidder: 'player' | 'rival' | null =
+      currentBidYen === 0 ? null : (playerMaxBidYen ?? 0) >= topRivalYen ? 'player' : 'rival'
+    return {
+      ...l,
+      currentBidYen,
+      leadingBidder,
+      quietDays: 0,
+      playerHasBid: playerMaxBidYen !== null,
+    }
+  })
+
+  return { ...state, activeAuctionLots }
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -168,6 +219,7 @@ function migrateV8ToV9(gameState: unknown): unknown {
  */
 const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   8: migrateV8ToV9,
+  11: migrateV11ToV12,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

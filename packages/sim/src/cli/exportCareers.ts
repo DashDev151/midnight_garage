@@ -20,6 +20,7 @@ import { join } from 'node:path'
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   EQUIPMENT,
   FACILITIES,
   HIDDEN_ISSUES,
@@ -35,15 +36,11 @@ import { investorStrategy } from '../bots/investor'
 import { passiveGrinderStrategy } from '../bots/passiveGrinder'
 import { randomStrategy } from '../bots/randomStrategy'
 import { serviceGrinderStrategy } from '../bots/serviceGrinder'
-import { runCareer, sampleFieldSizes, type BotStrategy } from '../bots/runCareer'
+import { runCareer, type BotStrategy } from '../bots/runCareer'
 import { buildSimContext } from '../context'
 
 const CAREERS_PER_STRATEGY = 1000
 const DAYS_PER_CAREER = 100
-/** Field size is strategy-independent (catalog generation never reads
- * DayActions) — a much smaller, separate seed range is enough for a stable
- * average without re-deriving it once per strategy. */
-const FIELD_SIZE_SAMPLE_SEEDS = 200
 const SIM_VERSION = '0.0.1'
 // `__dirname` here is inside the compiled output tree (dist/packages/sim/...),
 // whose nesting depth depends on tsc's rootDir/outDir mirroring, not the
@@ -87,13 +84,6 @@ const AUCTION_WINS_COLUMNS = [
   { name: 'bucket', type: 'string' },
 ] as const
 
-/** Rival field size the auction screen would have shown for each newly
- * appeared lot — strategy-independent, so one seed range covers every run. */
-const FIELD_SIZES_COLUMNS = [
-  { name: 'seed', type: 'int64' },
-  { name: 'fieldSize', type: 'int64' },
-] as const
-
 /** One successful auction acquisition, by channel — external review 2026-07
  * finding 2's buyout-vs-bid telemetry. */
 const ACQUISITIONS_COLUMNS = [
@@ -127,6 +117,7 @@ function main(): void {
     FACILITIES,
     SERVICE_JOB_CUSTOMER_NAMES,
     EQUIPMENT,
+    ECONOMY,
   )
   const rows: string[] = []
   const auctionWinRows: string[] = []
@@ -168,13 +159,6 @@ function main(): void {
     }
   }
 
-  const fieldSizeRows: string[] = []
-  for (let seed = 1; seed <= FIELD_SIZE_SAMPLE_SEEDS; seed++) {
-    for (const fieldSize of sampleFieldSizes(seed, DAYS_PER_CAREER, context)) {
-      fieldSizeRows.push([seed, fieldSize].join(','))
-    }
-  }
-
   mkdirSync(OUTPUT_DIR, { recursive: true })
 
   writeCsv('careers.csv', COLUMNS, rows)
@@ -194,15 +178,6 @@ function main(): void {
     columns: AUCTION_WINS_COLUMNS,
   })
 
-  writeCsv('auctionFieldSizes.csv', FIELD_SIZES_COLUMNS, fieldSizeRows)
-  writeManifest('auctionFieldSizes.manifest.json', {
-    simVersion: SIM_VERSION,
-    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
-    sampleSeeds: FIELD_SIZE_SAMPLE_SEEDS,
-    daysPerCareer: DAYS_PER_CAREER,
-    columns: FIELD_SIZES_COLUMNS,
-  })
-
   writeCsv('acquisitions.csv', ACQUISITIONS_COLUMNS, acquisitionRows)
   writeManifest('acquisitions.manifest.json', {
     simVersion: SIM_VERSION,
@@ -215,7 +190,7 @@ function main(): void {
     `Wrote ${rows.length} rows (${STRATEGIES.length} strategies [${strategyList}] x ${CAREERS_PER_STRATEGY} careers x ${DAYS_PER_CAREER} days) to ${OUTPUT_DIR}`,
   )
   console.log(
-    `Wrote ${auctionWinRows.length} auction-win rows, ${fieldSizeRows.length} field-size rows, and ${acquisitionRows.length} acquisition rows to ${OUTPUT_DIR}`,
+    `Wrote ${auctionWinRows.length} auction-win rows and ${acquisitionRows.length} acquisition rows to ${OUTPUT_DIR}`,
   )
 }
 

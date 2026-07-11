@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useGameStore, type LotDetail } from '../stores/gameStore'
+import { useGameStore, type LotDetail, type MyActiveBidView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 
-// Per-lot max-bid input; empty defaults to book value.
+// Per-lot raise input; empty defaults to the minimum next raise.
 const bidInputs = reactive<Record<string, number | undefined>>({})
 
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
@@ -23,30 +23,35 @@ const daysUntilCatalog = computed(() => {
   return d === 0 ? 7 : d
 })
 
-const INTEREST_LABEL: Record<string, string> = {
-  quiet: 'Quiet',
-  warm: 'Warm',
-  hot: 'Hot',
-  frenzy: 'Feeding frenzy',
+/** Subtle pre-bid turnout flavor (Sprint 20 maintainer decision 3) — one
+ * word of texture, never a numeric gauge. Price is king. */
+const TURNOUT_LABEL: Record<string, string> = {
+  thin: 'Thin turnout',
+  steady: 'Steady turnout',
+  packed: 'Packed turnout',
 }
 
-const HEADROOM_LABEL: Record<string, string> = {
-  none: 'no rivals',
-  plenty: 'plenty',
-  moderate: 'moderate',
-  tight: 'tight',
-  critical: 'critical',
+/** "current bid + who holds it" (Sprint 20) — the board's headline number,
+ * always the real figure, never obfuscated. */
+function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' | null): string {
+  if (currentBidYen <= 0) return 'no bids yet'
+  return leadingBidder === 'player'
+    ? `you lead at ${formatYen(currentBidYen)}`
+    : `dealer leads at ${formatYen(currentBidYen)}`
 }
 
-function daysLabel(n: number): string {
-  return `${n} day${n === 1 ? '' : 's'} left`
+/** "going once, going twice" read (Sprint 20): silence while bidding is open
+ * reads as a countdown to the hammer; unopened or actively-raised lots have
+ * nothing to report here. */
+function quietStateLabel(d: LotDetail | MyActiveBidView): string {
+  if (d.currentBidYen <= 0) return ''
+  if (d.quietDays <= 0) return 'bidding active'
+  const since = d.quietDays === 1 ? 'yesterday' : `in ${d.quietDays} days`
+  return `no new bids ${since} — hammer at ${d.hammerThreshold}`
 }
 
-/** The real current leading bid, always shown — never a "no idea" state
- * (Sprint 19b: this number already existed in `BidHeadroom`, it just wasn't
- * wired into the screen — a real gap, now fixed on every lot, bid on or not). */
-function currentBidLabel(currentTopBidYen: number): string {
-  return currentTopBidYen > 0 ? `current bid ${formatYen(currentTopBidYen)}` : 'no bids yet'
+function backstopLabel(expiresOnDay: number): string {
+  return `backstop: no later than day ${expiresOnDay}`
 }
 </script>
 
@@ -77,15 +82,21 @@ function currentBidLabel(currentTopBidYen: number): string {
       <ul>
         <li v-for="b in game.myActiveBids" :key="b.lot.id" class="my-bid-row">
           <span class="lot-name">{{ b.displayName }}</span>
-          <span class="my-bid-amount">your bid {{ formatYen(b.myMaxBidYen) }}</span>
-          <span class="current-bid">{{ currentBidLabel(b.headroom.currentTopBidYen) }}</span>
-          <span class="winning-state" :class="b.headroom.playerIsWinning ? 'winning' : 'outbid'">
-            {{ b.headroom.playerIsWinning ? 'winning' : 'outbid' }}
+          <span class="current-bid">{{ bidStateLabel(b.currentBidYen, b.leadingBidder) }}</span>
+          <span class="winning-state" :class="b.isWinning ? 'winning' : 'outbid'">
+            {{ b.isWinning ? 'winning' : 'outbid' }}
           </span>
-          <span class="headroom" :class="'headroom-' + b.headroom.level">
-            headroom: {{ HEADROOM_LABEL[b.headroom.level] }}
-          </span>
-          <span class="days-left">{{ daysLabel(b.daysLeft) }}</span>
+          <span class="quiet-state">{{ quietStateLabel(b) }}</span>
+          <span class="days-left">{{ backstopLabel(b.expiresOnDay) }}</span>
+          <!-- Outbid is the call to action: raise straight from this panel. -->
+          <button
+            v-if="!b.isWinning"
+            class="quick-raise"
+            :data-test="'quick-raise-' + b.lot.id"
+            @click="game.placeBid(b.lot.id, b.nextRaiseYen)"
+          >
+            Raise to {{ formatYen(b.nextRaiseYen) }}
+          </button>
         </li>
       </ul>
     </section>
@@ -104,21 +115,17 @@ function currentBidLabel(currentTopBidYen: number): string {
           <div class="lot-nums">
             <span>book {{ formatYen(d.bookValueYen) }}</span>
             <span>reserve {{ formatYen(d.reserveYen) }}</span>
-            <span class="current-bid">{{ currentBidLabel(d.headroom.currentTopBidYen) }}</span>
-            <span>{{ daysLabel(d.daysLeft) }}</span>
+            <span class="current-bid" :class="{ 'current-bid-mine': d.leadingBidder === 'player' }">
+              {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
+            </span>
+            <span class="backstop">{{ backstopLabel(d.expiresOnDay) }}</span>
           </div>
 
-          <div class="lot-interest">
-            <span class="interest-badge" :class="'interest-' + d.interest.level">
-              {{ INTEREST_LABEL[d.interest.level] }}
+          <div class="lot-turnout">
+            <span class="turnout-badge" :class="'turnout-' + d.turnout">
+              {{ TURNOUT_LABEL[d.turnout] }}
             </span>
-            <span v-if="d.interest.estimateHighYen > 0" class="estimate">
-              bid {{ formatYen(d.interest.estimateLowYen) }}–{{
-                formatYen(d.interest.estimateHighYen)
-              }}
-              to win · {{ d.interest.contenders }} rival{{ d.interest.contenders === 1 ? '' : 's' }}
-            </span>
-            <span v-else class="estimate">no rival interest expected</span>
+            <span v-if="quietStateLabel(d)" class="quiet-state">{{ quietStateLabel(d) }}</span>
           </div>
 
           <div class="lot-inspect">
@@ -143,50 +150,28 @@ function currentBidLabel(currentTopBidYen: number): string {
           </div>
 
           <div class="lot-bid">
-            <template v-if="d.myMaxBidYen !== null">
-              <span class="my-bid-amount">your bid {{ formatYen(d.myMaxBidYen) }}</span>
-              <span
-                class="winning-state"
-                :class="d.headroom.playerIsWinning ? 'winning' : 'outbid'"
-              >
-                {{ d.headroom.playerIsWinning ? 'winning' : 'outbid' }}
-              </span>
-              <span class="headroom" :class="'headroom-' + d.headroom.level">
-                headroom: {{ HEADROOM_LABEL[d.headroom.level] }}
-              </span>
-              <label>
-                raise to
-                <input
-                  v-model.number="bidInputs[d.lot.id]"
-                  type="number"
-                  step="10000"
-                  :placeholder="String(d.myMaxBidYen)"
-                />
-              </label>
-              <button
-                :data-test="'raise-' + d.lot.id"
-                @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.myMaxBidYen)"
-              >
-                Raise bid
-              </button>
-            </template>
-            <template v-else>
-              <label>
-                max bid
-                <input
-                  v-model.number="bidInputs[d.lot.id]"
-                  type="number"
-                  step="10000"
-                  :placeholder="String(d.bookValueYen)"
-                />
-              </label>
-              <button
-                :data-test="'bid-' + d.lot.id"
-                @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.bookValueYen)"
-              >
-                Place bid
-              </button>
-            </template>
+            <span
+              v-if="d.playerHasBid"
+              class="winning-state"
+              :class="d.leadingBidder === 'player' ? 'winning' : 'outbid'"
+            >
+              {{ d.leadingBidder === 'player' ? 'you lead' : 'outbid' }}
+            </span>
+            <label>
+              raise to
+              <input
+                v-model.number="bidInputs[d.lot.id]"
+                type="number"
+                step="10000"
+                :placeholder="String(d.nextRaiseYen)"
+              />
+            </label>
+            <button
+              :data-test="(d.playerHasBid ? 'raise-' : 'bid-') + d.lot.id"
+              @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.nextRaiseYen)"
+            >
+              {{ d.playerHasBid ? 'Raise bid' : 'Place bid' }}
+            </button>
             <button
               class="buyout"
               :disabled="game.cashYen < d.buyoutPriceYen"
@@ -268,19 +253,21 @@ h3 {
 .lot-meta,
 .lot-nums,
 .lot-inspect,
-.lot-interest {
+.lot-turnout {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 
-.lot-interest {
+.lot-turnout {
   display: flex;
   align-items: center;
   gap: var(--mg-space-2);
   flex-wrap: wrap;
 }
 
-.interest-badge {
+/* Flavor only (maintainer decision 3) — no urgency coloring, just a subtle
+   shift so "packed" reads warmer than "thin" without shouting. */
+.turnout-badge {
   padding: 1px 8px;
   border-radius: 999px;
   border: 1px solid currentColor;
@@ -289,24 +276,21 @@ h3 {
   letter-spacing: 0.05em;
 }
 
-.interest-quiet {
+.turnout-thin {
   color: var(--mg-text-dim);
 }
 
-.interest-warm {
+.turnout-steady {
   color: var(--mg-neon-cyan);
 }
 
-.interest-hot {
+.turnout-packed {
   color: var(--mg-yen);
 }
 
-.interest-frenzy {
-  color: var(--mg-danger);
-}
-
-.estimate {
+.quiet-state {
   color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .buyout {
@@ -318,6 +302,10 @@ h3 {
   display: flex;
   gap: var(--mg-space-3);
   flex-wrap: wrap;
+}
+
+.backstop {
+  color: var(--mg-text-dim);
 }
 
 .issues {
@@ -376,9 +364,12 @@ h3 {
   color: var(--mg-text-dim);
 }
 
-.my-bid-amount,
 .current-bid {
   color: var(--mg-yen);
+}
+
+.current-bid-mine {
+  color: var(--mg-success);
 }
 
 .days-left {
@@ -399,24 +390,8 @@ h3 {
   color: var(--mg-danger);
 }
 
-.headroom {
-  font-size: var(--mg-fs-sm);
-}
-
-.headroom-plenty {
-  color: var(--mg-success);
-}
-
-.headroom-moderate {
-  color: var(--mg-neon-cyan);
-}
-
-.headroom-tight {
-  color: var(--mg-yen);
-}
-
-.headroom-critical,
-.headroom-none {
+.quick-raise {
+  border-color: var(--mg-danger);
   color: var(--mg-danger);
 }
 

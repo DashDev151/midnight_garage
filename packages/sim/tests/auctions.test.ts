@@ -1,4 +1,10 @@
-import { CARS, HIDDEN_ISSUES, type CarModel, type GameState } from '@midnight-garage/content'
+import {
+  CARS,
+  ECONOMY,
+  HIDDEN_ISSUES,
+  type CarModel,
+  type GameState,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
   auctionTierForRarity,
@@ -9,7 +15,6 @@ import {
   resolveHandoverCondition,
   resolveInspectLot,
 } from '../src/auctions'
-import { AUCTION_TRAVEL_FEE_YEN } from '../src/constants'
 import { createRng } from '../src/rng'
 
 function stateWithLots(
@@ -91,6 +96,7 @@ describe('generateAuctionCatalog never includes Gaisha', () => {
           7,
           5,
           createRng(seed),
+          ECONOMY,
         )
         for (const lot of lots) {
           expect(lot.modelId).not.toBe(GAISHA_MODEL.id)
@@ -201,6 +207,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
       7,
       5,
       createRng(1),
+      ECONOMY,
       1995,
     )
     expect(lots).toHaveLength(0)
@@ -214,6 +221,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
       7,
       5,
       createRng(1),
+      ECONOMY,
       2005,
     )
     expect(lots.length).toBeGreaterThan(0)
@@ -230,6 +238,7 @@ describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () =
       7,
       5,
       createRng(1),
+      ECONOMY,
     )
     expect(lots.length).toBeGreaterThan(0)
   })
@@ -246,6 +255,7 @@ describe('inspectLot', () => {
       7,
       10,
       createRng(3),
+      ECONOMY,
     )
     const lotWithIssue = lots.find((lot) => lot.car.hiddenIssues.length > 0)
     if (!lotWithIssue) return // seed happened to roll no issues this run — nothing to assert
@@ -269,6 +279,7 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
       7,
       1,
       createRng(seed),
+      ECONOMY,
     )
     if (!lot) throw new Error('expected a lot')
     return lot
@@ -276,9 +287,9 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
 
   it('reveals the lot and charges only the cash travel fee — no labor cost (decision 4)', () => {
     const lot = sampleLot(1)
-    const fee = AUCTION_TRAVEL_FEE_YEN[lot.tier]
+    const fee = ECONOMY.AUCTION_TRAVEL_FEE_YEN[lot.tier]
     const state = stateWithLots([lot], 1_000_000)
-    const result = resolveInspectLot(state, lot.id)
+    const result = resolveInspectLot(state, lot.id, ECONOMY)
     expect(result.state.activeAuctionLots[0]?.inspected).toBe(true)
     expect(result.state.cashYen).toBe(1_000_000 - fee)
     expect(result.state.laborSlotsSpentToday).toBe(0) // untouched — inspect never spends labor
@@ -288,7 +299,7 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
   it('is a no-op when the fee is unaffordable', () => {
     const lot = sampleLot(2)
     const state = stateWithLots([lot], 0)
-    const result = resolveInspectLot(state, lot.id)
+    const result = resolveInspectLot(state, lot.id, ECONOMY)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
@@ -296,13 +307,13 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
   it('is a no-op for an already-inspected lot', () => {
     const lot = inspectLot(sampleLot(3))
     const state = stateWithLots([lot])
-    const result = resolveInspectLot(state, lot.id)
+    const result = resolveInspectLot(state, lot.id, ECONOMY)
     expect(result.state).toBe(state)
   })
 
   it('is a no-op for an unknown lot id', () => {
     const state = stateWithLots([sampleLot(4)])
-    const result = resolveInspectLot(state, 'no-such-lot')
+    const result = resolveInspectLot(state, 'no-such-lot', ECONOMY)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
@@ -322,6 +333,7 @@ describe('resolveHandoverCondition — sliding-scale lemon rule', () => {
         7,
         1,
         createRng(attempt),
+        ECONOMY,
       )
       if (lot && lot.car.hiddenIssues.length > 0) return lot
       attempt += 1000

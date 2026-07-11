@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   FACILITIES,
   GameStateSchema,
   HIDDEN_ISSUES,
@@ -8,7 +9,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
-import { createInitialGameState, STARTING_CASH_YEN } from '../src/newGame'
+import { createInitialGameState } from '../src/newGame'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, [], FACILITIES)
 
@@ -18,8 +19,8 @@ describe('createInitialGameState', () => {
     expect(() => GameStateSchema.parse(state)).not.toThrow()
     expect(state.day).toBe(1)
     expect(state.seed).toBe(42)
-    expect(state.cashYen).toBe(STARTING_CASH_YEN)
-    expect(STARTING_CASH_YEN).toBe(1_500_000)
+    expect(state.cashYen).toBe(ECONOMY.STARTING_CASH_YEN)
+    expect(ECONOMY.STARTING_CASH_YEN).toBe(1_500_000)
     expect(state.reputationTier).toBe('unknown')
     expect(state.ownedCars).toEqual([])
   })
