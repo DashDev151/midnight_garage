@@ -35,6 +35,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
+    marketLedger: { lotSupply: {}, playerSales: {} },
   }
 }
 

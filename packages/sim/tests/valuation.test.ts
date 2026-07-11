@@ -1,5 +1,6 @@
-import type { Buyer, CarInstance, CarModel } from '@midnight-garage/content'
+import { ECONOMY, type Buyer, type CarInstance, type CarModel } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { marketValueYen } from '../src/marketValue'
 import { valuateCarForBuyer } from '../src/valuation'
 
 const model: CarModel = {
@@ -62,23 +63,15 @@ const firstTimer: Buyer = {
 
 describe('valuateCarForBuyer', () => {
   it('is pure: identical inputs produce an identical value', () => {
-    const a = valuateCarForBuyer(collector, model, stockInstance, {})
-    const b = valuateCarForBuyer(collector, model, stockInstance, {})
+    const a = valuateCarForBuyer(collector, model, stockInstance, {}, 100, ECONOMY)
+    const b = valuateCarForBuyer(collector, model, stockInstance, {}, 100, ECONOMY)
     expect(a).toBe(b)
   })
 
   it('a high-authenticity car is worth more to a Collector than a First-timer', () => {
-    const collectorValue = valuateCarForBuyer(collector, model, stockInstance, {})
-    const firstTimerValue = valuateCarForBuyer(firstTimer, model, stockInstance, {})
+    const collectorValue = valuateCarForBuyer(collector, model, stockInstance, {}, 100, ECONOMY)
+    const firstTimerValue = valuateCarForBuyer(firstTimer, model, stockInstance, {}, 100, ECONOMY)
     expect(collectorValue).toBeGreaterThan(firstTimerValue)
-  })
-
-  it('higher priceSensitivity depresses value', () => {
-    const lowSensitivity: Buyer = { ...collector, priceSensitivity: 0 }
-    const highSensitivity: Buyer = { ...collector, priceSensitivity: 1 }
-    const low = valuateCarForBuyer(lowSensitivity, model, stockInstance, {})
-    const high = valuateCarForBuyer(highSensitivity, model, stockInstance, {})
-    expect(high).toBeLessThan(low)
   })
 
   it('never returns a negative value', () => {
@@ -96,7 +89,51 @@ describe('valuateCarForBuyer', () => {
       },
       authenticityPercent: 0,
     }
-    const value = valuateCarForBuyer({ ...firstTimer, priceSensitivity: 1 }, model, wornOut, {})
+    const value = valuateCarForBuyer(firstTimer, model, wornOut, {}, 100, ECONOMY)
     expect(value).toBeGreaterThanOrEqual(0)
+  })
+
+  /**
+   * Sprint 21: value and taste are now two separate, testable pieces —
+   * `valuateCarForBuyer` is exactly `marketValueYen x taste`, so a buyer's
+   * valuation of a fixed car must always land within `[1 - tasteSpread, 1 +
+   * tasteSpread]` of that car's taste-free market value (decision 4).
+   */
+  describe('taste (marketValue x bounded taste multiplier)', () => {
+    const spread = ECONOMY.valuation.tasteSpread
+
+    it('stays within [1 - tasteSpread, 1 + tasteSpread] of marketValueYen for any buyer', () => {
+      const value = marketValueYen(model, stockInstance, 100, {}, ECONOMY)
+      for (const buyer of [collector, firstTimer]) {
+        const valuation = valuateCarForBuyer(buyer, model, stockInstance, {}, 100, ECONOMY)
+        expect(valuation).toBeGreaterThanOrEqual(Math.round(value * (1 - spread)))
+        expect(valuation).toBeLessThanOrEqual(Math.round(value * (1 + spread)))
+      }
+    })
+
+    it('is monotonic in stat fit: a buyer weighting every stat outvalues one weighting none', () => {
+      const value = marketValueYen(model, stockInstance, 100, {}, ECONOMY)
+      const enthusiast: Buyer = {
+        ...collector,
+        statWeights: { power: 1, handling: 1, style: 1, reliability: 1, authenticity: 1 },
+      }
+      const indifferent: Buyer = {
+        ...collector,
+        statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 },
+      }
+      const enthusiastValue = valuateCarForBuyer(enthusiast, model, stockInstance, {}, 100, ECONOMY)
+      const indifferentValue = valuateCarForBuyer(
+        indifferent,
+        model,
+        stockInstance,
+        {},
+        100,
+        ECONOMY,
+      )
+      expect(enthusiastValue).toBeGreaterThan(indifferentValue)
+      // indifferent (normalizedStatScore undefined -> 0 via the sum-of-weights
+      // guard) lands at the taste floor.
+      expect(indifferentValue).toBe(Math.round(value * (1 - spread)))
+    })
   })
 })

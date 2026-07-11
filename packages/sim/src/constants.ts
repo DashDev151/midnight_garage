@@ -73,9 +73,6 @@ export const REPUTATION_INCOME_MULTIPLIER: Readonly<Record<ReputationTier, numbe
 /** Yen of daily service-bay income per point of a staff member's Hustle stat (v1, GDD 3.4). */
 export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
 
-/** Weekly market-heat drift (GDD 6.4): inclusive random-walk bounds. */
-export const MARKET_HEAT_WEEKLY_DRIFT_RANGE: readonly [number, number] = [-4, 4]
-
 /**
  * Walk-in offers vary around true valuation for the convenience of an
  * instant sale (GDD 6.3: "fast, variable") — centered closer to 1.0 than

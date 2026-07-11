@@ -522,6 +522,46 @@ describe('saveCodec', () => {
     expect(decoded).toEqual(withSlots)
   })
 
+  /**
+   * v12 -> v13 (Sprint 21, value model): a pre-v13 save never tracked the
+   * supply/demand ledger — purely additive, so it decodes with both
+   * counters empty rather than needing an explicit migration step.
+   */
+  it('decodes a pre-v13 save with no market ledger (Sprint 21: purely additive)', () => {
+    const preV13 = {
+      version: 12,
+      gameState: {
+        day: 105,
+        seed: 3,
+        cashYen: 1_800_000,
+        reputationTier: 'known',
+        reputationPoints: 45,
+        serviceBayCount: 2,
+        parkingBayCount: 3,
+        serviceBayCarIds: [null, null],
+        parkingCarIds: [null, null, null],
+        marketHeat: { 'honda-city-e-aa': 112 },
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV13))
+    const decoded = decodeSave(code)
+    expect(decoded.day).toBe(105)
+    expect(decoded.marketHeat).toEqual({ 'honda-city-e-aa': 112 })
+    expect(decoded.marketLedger).toEqual({ lotSupply: {}, playerSales: {} })
+  })
+
+  it('round-trips a v13 state with real market-ledger counters', () => {
+    const withLedger: GameState = GameStateSchema.parse({
+      ...fullState,
+      marketLedger: {
+        lotSupply: { 'honda-city-e-aa': 2.5 },
+        playerSales: { 'honda-city-e-aa': 1 },
+      },
+    })
+    const decoded = decodeSave(encodeSave(withLedger))
+    expect(decoded).toEqual(withLedger)
+  })
+
   it('rejects a non-save string', () => {
     expect(() => decodeSave('hello world')).toThrow(/not a Midnight Garage save code/i)
   })

@@ -27,6 +27,7 @@ function baseState(staff: StaffMember[]): GameState {
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
+    marketLedger: { lotSupply: {}, playerSales: {} },
   }
 }
 

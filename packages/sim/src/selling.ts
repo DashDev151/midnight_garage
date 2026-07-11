@@ -3,6 +3,7 @@ import type {
   CarInstance,
   CarModel,
   DayLogEntry,
+  EconomyConfig,
   GameState,
   Part,
   PublicListing,
@@ -13,6 +14,7 @@ import { saleReputationDeltaFor } from './carCondition'
 import { PUBLIC_LISTING_WAIT_DAYS, WALK_IN_OFFER_RANGE } from './constants'
 import type { SimContext } from './context'
 import { releaseCarFromShop } from './facilities'
+import { bumpPlayerSales } from './marketHeat'
 import { createRng, hashStringToSeed, type Rng } from './rng'
 import { clearStagedWork } from './stagedWork'
 import { valuateCarForBuyer } from './valuation'
@@ -50,12 +52,14 @@ export function sellViaWalkIn(
   model: CarModel,
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
+  heatPercent: number,
+  economy: EconomyConfig,
   rng: Rng,
 ): SaleOffer {
   const candidates = saleCandidates(model, buyers)
   const valuations = candidates.map((buyer) => ({
     buyer,
-    value: valuateCarForBuyer(buyer, model, car, partsById),
+    value: valuateCarForBuyer(buyer, model, car, partsById, heatPercent, economy),
   }))
   const totalValue = valuations.reduce((sum, v) => sum + v.value, 0)
 
@@ -86,9 +90,18 @@ export function sellViaWalkIn(
  * genuinely-interested buyer archetype (Sprint 11: gated, same as walk-in —
  * averaging in buyers with no real interest was dragging the "market
  * price" below what a single well-matched buyer would pay, inverting this
- * channel's intended fast/cheap vs. slow/valuable relationship), scaled by
- * market heat, locked in at listing time (the asking price doesn't drift
- * with market heat while the listing waits).
+ * channel's intended fast/cheap vs. slow/valuable relationship), locked in
+ * at listing time (the asking price doesn't drift with market heat while
+ * the listing waits).
+ *
+ * Sprint 21 decision 6: `marketHeatPercent` is still forwarded into each
+ * `valuateCarForBuyer` call (heat still moves this price) but the function
+ * itself no longer multiplies by heat a second time — that extra multiply
+ * was the double-count (heat now applies exactly once, inside
+ * `marketValueYen`). In its place, listing gains a flat patience premium
+ * (`LISTING_PATIENCE_PREMIUM`, economy.json's `listingPatiencePremium`) so
+ * "slow, market price" stays the better-but-slower channel against walk-in's
+ * `[0.85, 1.1]` roll.
  */
 export function listPubliclyAskingPrice(
   car: CarInstance,
@@ -96,15 +109,15 @@ export function listPubliclyAskingPrice(
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
   marketHeatPercent: number,
+  economy: EconomyConfig,
 ): number {
   const candidates = saleCandidates(model, buyers)
   if (candidates.length === 0) return 0
-  const total = candidates.reduce(
-    (sum, buyer) => sum + valuateCarForBuyer(buyer, model, car, partsById),
-    0,
-  )
+  const total = candidates.reduce((sum, buyer) => {
+    return sum + valuateCarForBuyer(buyer, model, car, partsById, marketHeatPercent, economy)
+  }, 0)
   const average = total / candidates.length
-  return Math.round(average * (marketHeatPercent / 100))
+  return Math.round(average * economy.valuation.listingPatiencePremium)
 }
 
 /**
@@ -117,10 +130,12 @@ export function bestFitBuyer(
   model: CarModel,
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
+  heatPercent: number,
+  economy: EconomyConfig,
 ): Buyer | undefined {
   let best: { buyer: Buyer; value: number } | undefined
   for (const buyer of saleCandidates(model, buyers)) {
-    const value = valuateCarForBuyer(buyer, model, car, partsById)
+    const value = valuateCarForBuyer(buyer, model, car, partsById, heatPercent, economy)
     if (!best || value > best.value) {
       best = { buyer, value }
     }
@@ -149,19 +164,31 @@ export function resolveSellViaWalkIn(
   const model = context.modelsById[car.modelId]
   if (!model || context.buyers.length === 0) return { state, log: [] }
 
+  const heatPercent = state.marketHeat[car.modelId] ?? 100
   const rng = createRng(hashStringToSeed(`${carInstanceId}:walkin:${state.day}`))
-  const offer = sellViaWalkIn(car, model, context.buyers, context.partsById, rng)
+  const offer = sellViaWalkIn(
+    car,
+    model,
+    context.buyers,
+    context.partsById,
+    heatPercent,
+    context.economy,
+    rng,
+  )
   const reputationDelta = saleReputationDeltaFor(car)
   const released = applyReputationDelta(
     clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
     reputationDelta,
   )
   return {
-    state: {
-      ...released,
-      cashYen: released.cashYen + offer.priceYen,
-      ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
-    },
+    state: bumpPlayerSales(
+      {
+        ...released,
+        cashYen: released.cashYen + offer.priceYen,
+        ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
+      },
+      car.modelId,
+    ),
     log: [
       {
         type: 'car-sold',
@@ -198,6 +225,7 @@ export function resolveListForSale(
     context.buyers,
     context.partsById,
     marketHeatPercent,
+    context.economy,
   )
   const waitDays = waitDaysOverride ?? PUBLIC_LISTING_WAIT_DAYS
   const listing: PublicListing = {

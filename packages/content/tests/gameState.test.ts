@@ -72,6 +72,7 @@ describe('GameState / DayLog round-trip', () => {
       pendingPartOrders: [],
       cartPartIds: [],
       stagedCarWork: {},
+      marketLedger: { lotSupply: {}, playerSales: {} },
     }
 
     const parsed = GameStateSchema.parse(fixture)

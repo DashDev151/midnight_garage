@@ -89,6 +89,22 @@ describe('seed content validates against schemas', () => {
     expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(2)
     expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
     expect(result.data.AUCTION_TURNOUT_BANDS).toEqual([0.85, 1.12])
+    // Sprint 21 (value model): new valuation/marketPressure/statFormulas
+    // blocks, born in JSON from day one.
+    expect(result.data.valuation.conditionFloor).toBe(0.35)
+    expect(result.data.valuation.conditionCeiling).toBe(1.1)
+    expect(result.data.valuation.conditionExponent).toBe(1.3)
+    expect(result.data.valuation.tasteSpread).toBe(0.12)
+    expect(result.data.valuation.listingPatiencePremium).toBe(1.05)
+    const weightSum = Object.values(result.data.valuation.componentValueWeights).reduce(
+      (sum, w) => sum + w,
+      0,
+    )
+    expect(weightSum).toBeCloseTo(1, 6)
+    expect(result.data.marketPressure.HEAT_MIN).toBe(70)
+    expect(result.data.marketPressure.HEAT_MAX).toBe(140)
+    expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)
+    expect(result.data.statFormulas.powerNormalizationCeiling).toBe(300)
   })
 })
 

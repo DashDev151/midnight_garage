@@ -45,6 +45,7 @@ function stateWithLots(
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
+    marketLedger: { lotSupply: {}, playerSales: {} },
   }
 }
 

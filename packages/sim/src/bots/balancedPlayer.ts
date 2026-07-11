@@ -118,9 +118,14 @@ export function balancedPlayerStrategy(
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const model = context.modelsById[car.modelId]
-    const buyer = model ? bestFitBuyer(car, model, context.buyers, context.partsById) : undefined
+    const heatPercent = state.marketHeat[car.modelId] ?? 100
+    const buyer = model
+      ? bestFitBuyer(car, model, context.buyers, context.partsById, heatPercent, context.economy)
+      : undefined
     const estimatedOfferYen =
-      model && buyer ? valuateCarForBuyer(buyer, model, car, context.partsById) : 0
+      model && buyer
+        ? valuateCarForBuyer(buyer, model, car, context.partsById, heatPercent, context.economy)
+        : 0
     if (model && estimatedOfferYen >= model.bookValueYen * ACCEPTABLE_WALKIN_FRACTION) {
       actions.sellViaWalkIn.push({ carInstanceId: car.id })
     } else {

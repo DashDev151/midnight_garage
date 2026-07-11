@@ -91,6 +91,7 @@ function initialState(): GameState {
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
+    marketLedger: { lotSupply: {}, playerSales: {} },
   }
 }
 
@@ -160,9 +161,14 @@ describe('advanceDay golden master', () => {
     // change this hash even though this script never places a bid — weekly
     // catalog refresh and the day-boundary auction resolution loop both
     // still run every day regardless.
+    // Re-pinned again Sprint 21 (value model): marketValueYen replaces the
+    // old capped-stat valuation pipeline everywhere (auction anchor, market
+    // heat's own weekly update rule, and the new marketLedger field on
+    // GameState), so this hash moves even though the script itself is
+    // unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('9a805efb')
+    expect(hashState(finalState)).toBe('a2efcf89')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -255,7 +261,10 @@ describe('advanceDay golden master — acquisition and sale path', () => {
     // Re-pinned Sprint 20 (auction rework II): the new open-bidding schema,
     // demand-ceiling-anchored clearing, and WEEKLY_RENT_YEN -> 0 all change
     // this career's exact won price and final state.
-    expect(hashState(acquisitionCareer().sold)).toBe('f120f5fb')
+    // Re-pinned again Sprint 21 (value model): the auction anchor and the
+    // walk-in sale price both now flow through marketValueYen, moving both
+    // the winning bid and the sale price this career resolves to.
+    expect(hashState(acquisitionCareer().sold)).toBe('24842ca3')
   })
 })
 

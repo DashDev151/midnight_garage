@@ -16,7 +16,7 @@ import {
   repairJobGate,
 } from './jobs'
 import { availableLaborSlots } from './laborSlots'
-import { driftMarketHeat } from './marketHeat'
+import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from './marketHeat'
 import { resolveBuyPart, resolvePartDeliveries } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
@@ -46,7 +46,7 @@ export interface AdvanceDayResult {
  * batch by calling the exact same instant resolvers in a loop, one call per
  * queued action, so there is one resolution path, not two. What's left
  * inline below is genuinely day-boundary-only: labor reset, weekly rent and
- * market-heat drift, catalog refresh and expiry, and the service-job
+ * market-heat update, catalog refresh and expiry, and the service-job
  * deadline backstop.
  */
 export function advanceDay(
@@ -236,7 +236,10 @@ export function advanceDay(
       continue
     }
     next = applyReputationDelta(next, listing.reputationDeltaOnSale)
-    next = { ...next, cashYen: next.cashYen + listing.askingPriceYen }
+    next = bumpPlayerSales(
+      { ...next, cashYen: next.cashYen + listing.askingPriceYen },
+      listing.modelId,
+    )
     log.push({
       type: 'car-sold',
       carInstanceId: listing.carInstanceId,
@@ -283,11 +286,14 @@ export function advanceDay(
     for (const { tier, lotCount } of refresh.lotsByTier) {
       log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
     }
-    next = {
-      ...next,
-      activeAuctionLots: [...next.activeAuctionLots, ...refresh.freshLots],
-      serviceJobOffers: [...next.serviceJobOffers, ...refresh.freshOffers],
-    }
+    next = bumpLotSupply(
+      {
+        ...next,
+        activeAuctionLots: [...next.activeAuctionLots, ...refresh.freshLots],
+        serviceJobOffers: [...next.serviceJobOffers, ...refresh.freshOffers],
+      },
+      refresh.freshLots.map((lot) => lot.modelId),
+    )
   }
 
   // 8b. Deadline backstop: any accepted job now at/past its due day is handed
@@ -309,12 +315,12 @@ export function advanceDay(
     log.push({ type: 'service-bay-income', amountYen: serviceIncome })
   }
 
-  // 10. Weekly rent/wages + market-heat drift (both fire on 7-day boundaries).
+  // 10. Weekly rent/wages + market-heat update (both fire on 7-day boundaries).
   const finances = applyWeeklyRentAndWages(next, context.economy)
   next = finances.state
   log.push(...finances.log)
 
-  const heat = driftMarketHeat(next, rng)
+  const heat = updateMarketHeat(next, context)
   next = heat.state
   log.push(...heat.log)
 

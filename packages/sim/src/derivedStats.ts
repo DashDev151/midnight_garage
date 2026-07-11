@@ -1,4 +1,11 @@
-import type { CarInstance, CarModel, ComponentId, Part, StatBlock } from '@midnight-garage/content'
+import type {
+  CarInstance,
+  CarModel,
+  ComponentId,
+  EconomyConfig,
+  Part,
+  StatBlock,
+} from '@midnight-garage/content'
 
 const COMPONENT_IDS: readonly ComponentId[] = [
   'engine',
@@ -32,17 +39,33 @@ function clamp(value: number, min: number, max: number): number {
  * smuggled into a refactor. They're tracked and readable; nothing consumes
  * them for stats until Sprint 13 gives repair-vs-replace on those
  * components real stakes.
+ *
+ * Sprint 21 decision 8: the five magic numbers below (power's condition
+ * floor, handling's base/weight-divisor, style's cap, reliability's cap)
+ * moved to `economy.json.statFormulas` — same values, zero behavior change.
+ * Value no longer flows through these formulas at all (see marketValue.ts);
+ * they now decide buyer *taste* only (valuation.ts), so whether the caps
+ * themselves should rise is a taste-tuning question, deferred.
  */
 export function computeDerivedStats(
   model: CarModel,
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
 ): StatBlock {
   const { components } = instance
-  let power = model.spec.stockPowerPs * (0.5 + 0.5 * (components.engine.condition / 100))
-  let handling = 50 * (components.suspension.condition / 100) - model.spec.curbWeightKg / 50
-  let style = (components.body.condition / 100) * 20
-  let reliability = 70 * ((components.engine.condition + components.drivetrain.condition) / 200)
+  const { powerConditionFloor, handlingBase, handlingWeightDivisor, styleCap, reliabilityCap } =
+    economy.statFormulas
+  const engineConditionFraction = components.engine.condition / 100
+  const powerConditionScale =
+    powerConditionFloor + (1 - powerConditionFloor) * engineConditionFraction
+  let power = model.spec.stockPowerPs * powerConditionScale
+  let handling =
+    handlingBase * (components.suspension.condition / 100) -
+    model.spec.curbWeightKg / handlingWeightDivisor
+  let style = (components.body.condition / 100) * styleCap
+  const reliabilityCondition = (components.engine.condition + components.drivetrain.condition) / 200
+  let reliability = reliabilityCap * reliabilityCondition
   let authenticity = instance.authenticityPercent
 
   for (const componentId of COMPONENT_IDS) {

@@ -372,7 +372,7 @@ export const useGameStore = defineStore('game', () => {
       car,
       model,
       displayName: resolveCarDisplayName(model),
-      stats: computeDerivedStats(model, car, context.value.partsById),
+      stats: computeDerivedStats(model, car, context.value.partsById, context.value.economy),
     }
   }
 
@@ -526,13 +526,18 @@ export const useGameStore = defineStore('game', () => {
     const car = gameState.value.ownedCars.find((c) => c.id === carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model) return { buyerId: undefined, offerYen: 0 }
+    const heat = gameState.value.marketHeat[car.modelId] ?? 100
     const buyer: Buyer | undefined = bestFitBuyer(
       car,
       model,
       context.value.buyers,
       context.value.partsById,
+      heat,
+      context.value.economy,
     )
-    const offerYen = buyer ? valuateCarForBuyer(buyer, model, car, context.value.partsById) : 0
+    const offerYen = buyer
+      ? valuateCarForBuyer(buyer, model, car, context.value.partsById, heat, context.value.economy)
+      : 0
     return { buyerId: buyer?.id, offerYen: Math.round(offerYen) }
   }
 
@@ -542,7 +547,14 @@ export const useGameStore = defineStore('game', () => {
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model) return 0
     const heat = gameState.value.marketHeat[car.modelId] ?? 100
-    return listPubliclyAskingPrice(car, model, context.value.buyers, context.value.partsById, heat)
+    return listPubliclyAskingPrice(
+      car,
+      model,
+      context.value.buyers,
+      context.value.partsById,
+      heat,
+      context.value.economy,
+    )
   }
 
   /** Parts in inventory that fit an empty component on the given car (component + required tags). */

@@ -101,8 +101,15 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   null`. The old fields are left in place on the migrated object rather
  *   than explicitly deleted — `GameStateSchema.parse` strips any key the
  *   schema no longer declares, the same as every other migration here.
+ * - v13 (Sprint 21, value model): added `marketLedger` to GameState — the
+ *   two supply/demand counters (`lotSupply`/`playerSales`) the reworked
+ *   weekly market-heat update reads. Purely additive with a schema default
+ *   of `{ lotSupply: {}, playerSales: {} }`, so a pre-v13 save decodes with
+ *   both counters empty — correct, since the concept didn't exist yet and a
+ *   fresh pair of empty counters behaves exactly like a brand-new career's.
+ *   No explicit `MIGRATIONS[12]` step needed.
  */
-export const SAVE_VERSION = 12
+export const SAVE_VERSION = 13
 
 /** Stable format marker (NOT the schema version — that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

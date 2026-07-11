@@ -9,8 +9,8 @@ import type {
 import { resolveHandoverCondition } from './auctions'
 import type { SimContext } from './context'
 import { assignToParking, hasParkingSpace } from './facilities'
+import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
-import { valuateCarForBuyer } from './valuation'
 
 /**
  * Buyer archetypes with a genuinely stated interest in a model's tier — the
@@ -31,31 +31,29 @@ export function interestedBuyers(
 }
 
 /**
- * The single value anchor (Sprint 20, auction rework II) — the best
- * interested buyer's `valuateCarForBuyer` of the rolled car. Every other
- * money number in this file (`demandCeilingYen`, `computeBuyoutPriceYen`,
- * `turnoutBand`) calls this ONE function, never `valuateCarForBuyer`
- * directly — a hard requirement, not a style preference: Sprint 21 swaps
- * this single body for its taste-free `marketValueYen` formula and every
- * auction-money number re-anchors at once. Returns 0 when no buyer
- * archetype has a stated interest in this model's tier (nobody's going to
- * show up — the demand ceiling then sits below any reserve, so the lot
- * simply never opens on its own).
+ * The single value anchor (Sprint 20, auction rework II; body swapped
+ * Sprint 21). Every other money number in this file (`demandCeilingYen`,
+ * `computeBuyoutPriceYen`, `turnoutBand`) calls this ONE function, never
+ * `marketValueYen` directly — that isolation is what let Sprint 21 re-anchor
+ * every auction-money number at once by swapping one function's body.
  *
- * `state` is currently unused — kept in the signature because Sprint 21's
- * replacement formula is expected to read live game state (e.g. market
- * heat), and threading it through every call site now means that swap
- * doesn't need a second signature change.
+ * Sprint 21 decision 7: dealers buy at wholesale off the taste-free market
+ * value (`marketValueYen`, the rolled lot car's condition/parts/heat, no
+ * buyer stat-fit) — taste belongs to end customers, not the trade. The
+ * `interestedBuyers` tier gate stays (reuse table: "still gates ... auction
+ * participation") as a precondition, not a value input: it still answers
+ * "does ANY dealer archetype care about this tier at all", returning 0 when
+ * nobody does (the demand ceiling then sits below any reserve, so the lot
+ * simply never opens on its own) — but no longer selects *which* buyer's
+ * valuation to use, since `marketValueYen` doesn't take a buyer.
  */
 export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
   const model = context.modelsById[lot.modelId]
   if (!model) return 0
   const interested = interestedBuyers(model, context.buyers)
   if (interested.length === 0) return 0
-  const values = interested.map((i) =>
-    valuateCarForBuyer(i.buyer, model, lot.car, context.partsById),
-  )
-  return Math.max(...values)
+  const heatPercent = state.marketHeat[lot.modelId] ?? 100
+  return marketValueYen(model, lot.car, heatPercent, context.partsById, context.economy)
 }
 
 /** Seller's floor under a deal (GDD 6.5): a fraction of book value. Bidding

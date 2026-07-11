@@ -57,6 +57,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
+    marketLedger: { lotSupply: {}, playerSales: {} },
     ...overrides,
   }
 }
@@ -622,15 +623,18 @@ describe('distribution probes', () => {
     // shared one) for real flash/standard/long variety.
     //
     // Empirically measured against this exact population (deterministic,
-    // fixed seed range — not a flaky sample): median ~0.54, p90 ~0.70, max
-    // ~0.86. Lower than the sprint doc's own loose "~0.6-0.85" prediction —
-    // AUCTION_COUNTER_CHANCE (0.7) combined with AUCTION_QUIET_DAYS_TO_HAMMER
-    // (2) means a lot typically hammers well before climbing all the way to
-    // its own ceiling (needing only 2 consecutive misses at a 30%-per-day
-    // miss rate), not after reaching it. First-pass values, openly
-    // adjustable in economy.json; this test pins today's real behavior
-    // rather than the doc's un-measured guess, per the codebase's own
-    // precedent (report, don't force a number nobody's confirmed).
+    // fixed seed range — not a flaky sample), AFTER Sprint 21 re-anchored
+    // `anchorValueYen` onto taste-free `marketValueYen` (decision 7): p10
+    // ~0.51, median ~0.71. Sprint 20's own original measurement (median
+    // ~0.54) was against the pre-Sprint-21 anchor, which included buyer
+    // taste (`valuateCarForBuyer`, bounded [0.88, 1.12]) on top of market
+    // value — removing that taste multiplier from the anchor's denominator
+    // is exactly why the ratio rose; the underlying hammer mechanics
+    // (AUCTION_COUNTER_CHANCE 0.7, AUCTION_QUIET_DAYS_TO_HAMMER 2) are
+    // unchanged. First-pass values, openly adjustable in economy.json; this
+    // test pins today's real behavior rather than a guessed number, per the
+    // codebase's own precedent (report, don't force a number nobody's
+    // confirmed).
     const finalRatios: number[] = []
     for (const initial of independentLots(250, 5000)) {
       const state = stateWithLots([initial])
@@ -653,10 +657,12 @@ describe('distribution probes', () => {
 
     expect(finalRatios.length).toBeGreaterThan(50)
     finalRatios.sort((a, b) => a - b)
+    const p10 = finalRatios[Math.floor(finalRatios.length * 0.1)]!
     const median = finalRatios[Math.floor(finalRatios.length / 2)]!
     const p90 = finalRatios[Math.floor(finalRatios.length * 0.9)]!
-    expect(median).toBeGreaterThan(0.35)
-    expect(median).toBeLessThan(0.65)
+    expect(p10).toBeGreaterThan(0.35)
+    expect(median).toBeGreaterThan(0.55)
+    expect(median).toBeLessThan(0.85)
     expect(p90).toBeGreaterThan(0.55)
     // A real upper tail: some lots roll high enough spread/turnout to clear
     // well above the median.

@@ -1,4 +1,4 @@
-import type { CarInstance, CarModel, Part } from '@midnight-garage/content'
+import { ECONOMY, type CarInstance, type CarModel, type Part } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { computeDerivedStats } from '../src/derivedStats'
 
@@ -55,7 +55,7 @@ const coilovers: Part = {
 
 describe('computeDerivedStats', () => {
   it('a stock car at full condition returns the platform baseline', () => {
-    const stats = computeDerivedStats(model, baseInstance, {})
+    const stats = computeDerivedStats(model, baseInstance, {}, ECONOMY)
     expect(stats.power).toBe(model.spec.stockPowerPs)
     expect(stats.authenticity).toBe(90)
   })
@@ -76,8 +76,8 @@ describe('computeDerivedStats', () => {
         },
       },
     }
-    const withPart = computeDerivedStats(model, instance, { [coilovers.id]: coilovers })
-    const stock = computeDerivedStats(model, baseInstance, {})
+    const withPart = computeDerivedStats(model, instance, { [coilovers.id]: coilovers }, ECONOMY)
+    const stock = computeDerivedStats(model, baseInstance, {}, ECONOMY)
     expect(withPart.handling).toBe(stock.handling + 8)
     expect(withPart.style).toBe(stock.style + 3)
   })
@@ -98,8 +98,8 @@ describe('computeDerivedStats', () => {
         },
       },
     }
-    const worn = computeDerivedStats(model, instance, { [coilovers.id]: coilovers })
-    const stock = computeDerivedStats(model, baseInstance, {})
+    const worn = computeDerivedStats(model, instance, { [coilovers.id]: coilovers }, ECONOMY)
+    const stock = computeDerivedStats(model, baseInstance, {}, ECONOMY)
     expect(worn.handling).toBe(stock.handling + 4)
   })
 
@@ -125,7 +125,7 @@ describe('computeDerivedStats', () => {
         },
       },
     }
-    const stats = computeDerivedStats(model, instance, { [brokenPart.id]: brokenPart })
+    const stats = computeDerivedStats(model, instance, { [brokenPart.id]: brokenPart }, ECONOMY)
     expect(stats.power).toBe(0)
   })
 
@@ -150,7 +150,8 @@ describe('computeDerivedStats', () => {
         },
       },
     }
-    const stats = computeDerivedStats(model, instance, { [modifiedPart.id]: modifiedPart })
+    const partsById = { [modifiedPart.id]: modifiedPart }
+    const stats = computeDerivedStats(model, instance, partsById, ECONOMY)
     expect(stats.authenticity).toBe(75)
   })
 
@@ -163,7 +164,7 @@ describe('computeDerivedStats', () => {
    * Sprint 13 gives repair-vs-replace on those components real stakes.
    */
   it('brakes/wheels/forcedInduction/interior condition changes produce zero stat delta', () => {
-    const baseline = computeDerivedStats(model, baseInstance, {})
+    const baseline = computeDerivedStats(model, baseInstance, {}, ECONOMY)
     const damaged: CarInstance = {
       ...baseInstance,
       components: {
@@ -174,6 +175,6 @@ describe('computeDerivedStats', () => {
         interior: { condition: 5, installed: null },
       },
     }
-    expect(computeDerivedStats(model, damaged, {})).toEqual(baseline)
+    expect(computeDerivedStats(model, damaged, {}, ECONOMY)).toEqual(baseline)
   })
 })

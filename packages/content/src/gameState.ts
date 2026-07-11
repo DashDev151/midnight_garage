@@ -10,6 +10,21 @@ import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema } from './facilities'
 import { StagedActionSchema } from './stagedWork'
 
+/**
+ * Sprint 21: the two exponentially-decayed counters `marketHeat.ts`'s
+ * weekly supply/demand update reads — `lotSupply` (fresh auction lots of
+ * this model, bumped on catalog refresh) and `playerSales` (the player's own
+ * resolved sales of this model, bumped on walk-in/listing resolution). Plain
+ * `Record<modelId, number>` maps, default `{}` for both — a model with no
+ * entry simply hasn't had a lot or a sale counted yet.
+ */
+export const MarketLedgerSchema = z.object({
+  lotSupply: z.record(z.string(), z.number()).default({}),
+  playerSales: z.record(z.string(), z.number()).default({}),
+})
+
+export type MarketLedger = z.infer<typeof MarketLedgerSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -26,6 +41,11 @@ export const GameStateSchema = z.object({
   jobs: z.array(JobSchema).default([]),
   /** Demand index per CarModel id, base 100 (GDD 6.4). */
   marketHeat: z.record(z.string(), z.number()).default({}),
+  /** Sprint 21: the supply/demand counters `marketHeat.ts`'s weekly update
+   * reads to compute each model's target heat. Purely additive (v12 -> v13
+   * save migration): a pre-v13 save never tracked these, so it defaults to
+   * both counters empty — correct, since the concept didn't exist yet. */
+  marketLedger: MarketLedgerSchema.default({ lotSupply: {}, playerSales: {} }),
   activeAuctionLots: z.array(AuctionLotSchema).default([]),
   activeListings: z.array(PublicListingSchema).default([]),
   /** Service jobs offered for the player to accept (GDD Act 1). */

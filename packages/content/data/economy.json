@@ -27,5 +27,44 @@
   "AUCTION_COUNTER_CHANCE": 0.7,
   "AUCTION_QUIET_DAYS_TO_HAMMER": 2,
   "AUCTION_BID_INCREMENT_FRACTION": 0.05,
-  "AUCTION_TURNOUT_BANDS": [0.85, 1.12]
+  "AUCTION_TURNOUT_BANDS": [0.85, 1.12],
+  "valuation": {
+    "componentValueWeights": {
+      "engine": 0.3,
+      "body": 0.2,
+      "drivetrain": 0.15,
+      "suspension": 0.1,
+      "interior": 0.1,
+      "brakes": 0.05,
+      "wheels": 0.05,
+      "forcedInduction": 0.05
+    },
+    "conditionFloor": 0.35,
+    "conditionCeiling": 1.1,
+    "conditionExponent": 1.3,
+    "partsRetention": 0.55,
+    "genuinePeriodMultiplier": 1.25,
+    "tasteSpread": 0.12,
+    "listingPatiencePremium": 1.05
+  },
+  "marketPressure": {
+    "WAVE_AMPLITUDE": 12,
+    "WAVE_PERIOD_WEEKS": 24,
+    "SUPPLY_WEIGHT": 4,
+    "SALES_WEIGHT": 6,
+    "SCARCITY_THRESHOLD": 0.5,
+    "SCARCITY_BONUS": 8,
+    "HEAT_MIN": 70,
+    "HEAT_MAX": 140,
+    "SMOOTHING": 0.25,
+    "LEDGER_DECAY": 0.75
+  },
+  "statFormulas": {
+    "powerConditionFloor": 0.5,
+    "handlingBase": 50,
+    "handlingWeightDivisor": 50,
+    "styleCap": 20,
+    "reliabilityCap": 70,
+    "powerNormalizationCeiling": 300
+  }
 }
