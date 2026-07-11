@@ -7,40 +7,44 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { bandFactor, costWeightedBandFactor, isPartPresent } from './bands'
+import { bandFactor, carCostToMintYen, isPartPresent } from './bands'
 
 /**
- * Sprint 21 - the taste-free "what is this car worth" answer, shared by
- * every price in the game (`marketValueYen` = `bookValueYen x
- * conditionFactor x heat + installedPartsValueYen`).
+ * Sprint 27 - the taste-free "what is this car worth" answer, shared by
+ * every price in the game: `marketValueYen` = `instanceValue +
+ * installedPartsValueYen`, where `instanceValue` is clean value (book value
+ * scaled by market heat) minus a hassle-weighted restoration bill, floored.
+ * Replaces the Sprint 26 cost-weighted band-factor shim entirely.
  */
 
 /**
- * Weighted condition run through a floor-to-ceiling curve (decision 2):
- * `floor + (ceiling - floor) x weighted^exponent`. Worked examples (first-
- * pass values: floor 0.35, ceiling 1.10, exponent 1.3):
- *   weighted 0.15 (every part scrap) -> ~0.42
- *   weighted 0.65 (every part worn)  -> ~0.78
- *   weighted 1.0  (every part mint)  -> 1.10 (a perfect restoration clears book value)
- *
- * Sprint 26 decision 4: `weighted` is now `costWeightedBandFactor` (bands.ts)
- * - a 0.15-1.0 mean of every present part's band factor, weighted by that
- * part's own share of the car's total `costToMint`. A scrap turbo (an
- * expensive part to bring back to mint) drags this further down than scrap
- * brakes on an otherwise-identical car - the maintainer's own worked case.
- * Replaces the old hand-authored `componentValueWeights` entirely. This is a
- * shim for this sprint only; Sprint 27 replaces the whole formula with the
- * full restoration-bill deduction model.
+ * The restoration-bill deduction (decision 1):
+ * `max(floor, cleanValue - hassleFactor * restorationBill)`, where
+ * `cleanValue = bookValueYen * (heatPercent / 100)` (heat applies exactly
+ * once - the Sprint 21 heat-once law - nowhere else in the game multiplies
+ * by market heat a second time) and `restorationBill` is
+ * `carCostToMintYen` (bands.ts): the sum of every present part's real cost
+ * to bring to mint - an unfitted forced-induction slot contributes zero (an
+ * NA car isn't "missing" a turbo), and a scrap part prices at its
+ * `stockReplacementPriceYen` (bands.ts decision 5), since scrap has no
+ * repair path to draw a step cost from. `hassleFactor` (above 1.0) means a
+ * buyer discounts MORE than the raw bill - real buyers price in the hassle
+ * of getting work done, not just the parts-and-labor total. `floor =
+ * floorFraction * cleanValue` - a wreck whose bill would drive it below
+ * zero still has scrap-level worth, never literally nothing.
  */
-export function conditionFactor(
+function instanceBaseValueYen(
+  model: CarModel,
   car: CarInstance,
+  heatPercent: number,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
-  const { conditionFloor, conditionCeiling, conditionExponent } = economy.valuation
-  const weighted = costWeightedBandFactor(car, partsTaxonomyById, economy)
-  const range = conditionCeiling - conditionFloor
-  return conditionFloor + range * Math.pow(weighted, conditionExponent)
+  const { hassleFactor, floorFraction } = economy.valuation
+  const cleanValue = model.bookValueYen * (heatPercent / 100)
+  const restorationBill = carCostToMintYen(car, partsTaxonomyById)
+  const floor = floorFraction * cleanValue
+  return Math.max(floor, cleanValue - hassleFactor * restorationBill)
 }
 
 /**
@@ -72,12 +76,14 @@ export function installedPartsValueYen(
 }
 
 /**
- * The single shared value answer (decision 1): `round(bookValueYen x
- * conditionFactor x (heatPercent/100)) + installedPartsValueYen`. Heat
- * applies exactly once, here (decision 6) - no other price in the game
- * multiplies by market heat a second time. Every other price (the auction
- * anchor, walk-in offers, listing asking price, buyer taste) is this value
- * times a bounded multiplier, never a competing formula.
+ * The single shared value answer (Sprint 27 decision 1): `round(instanceValue)
+ * + installedPartsValueYen`, where `instanceValue` is `instanceBaseValueYen`
+ * above - clean value minus the hassle-weighted restoration bill, floored.
+ * Heat applies exactly once, inside clean value (decision 6, unchanged from
+ * Sprint 21) - no other price in the game multiplies by market heat a second
+ * time. Every other price (the auction anchor, walk-in offers, listing
+ * asking price, buyer taste, bot walk-away targets) is this value times a
+ * bounded multiplier, never a competing formula.
  */
 export function marketValueYen(
   model: CarModel,
@@ -87,9 +93,8 @@ export function marketValueYen(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
-  const heatFraction = heatPercent / 100
   const baseValue = Math.round(
-    model.bookValueYen * conditionFactor(car, partsTaxonomyById, economy) * heatFraction,
+    instanceBaseValueYen(model, car, heatPercent, partsTaxonomyById, economy),
   )
   return baseValue + installedPartsValueYen(car, partsById, economy)
 }

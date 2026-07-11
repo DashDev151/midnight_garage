@@ -2,6 +2,7 @@ import type { AuctionLot, GameState } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
 import { anchorValueYen, nextRaiseYen } from '../bidding'
 import type { SimContext } from '../context'
+import { bellNormal, createRng, hashStringToSeed } from '../rng'
 
 /**
  * Cash already committed to auction acquisitions this tick - mirrors
@@ -66,7 +67,7 @@ export function acquireLot(
   cashBufferMultiplier: number,
 ): boolean {
   if (lot.leadingBidder === 'player') return false // already leading - nothing to do
-  const raiseToYen = nextRaiseYen(lot, context.economy)
+  const raiseToYen = nextRaiseYen(lot, state, context)
   if (raiseToYen > walkAwayTargetYen) return false // the next raise would exceed what it's worth
   if (state.cashYen < (budget.cashCommitted + raiseToYen) * cashBufferMultiplier) return false
   actions.bidsOnLots.push({ lotId: lot.id, maxBidYen: raiseToYen })
@@ -74,14 +75,27 @@ export function acquireLot(
   return true
 }
 
-/** A bot's walk-away target for a lot: the value anchor times its own
- * strategy multiplier - the Sprint 20 basis change from the old
- * fraction-of-book bid multipliers (documented per call site). */
+/**
+ * A bot's walk-away target for a lot: the value anchor (Sprint 27:
+ * `instanceValue`, via `anchorValueYen`) times its own strategy multiplier -
+ * the Sprint 20 basis change from the old fraction-of-book bid multipliers
+ * (documented per call site) - with a small private spread layered on top
+ * (Sprint 27 decision 4). Every bidder reads the identical transparent
+ * bands, but a private read of what a specific car is worth is never
+ * perfectly identical to the shared anchor - `economy.valuation.walkAwaySpread`
+ * bounds how far. Seeded on the lot id alone, not lot+day (unlike the demand
+ * ceiling's daily reroll): a bidder's private valuation of a SPECIFIC car is
+ * a fixed read that doesn't randomly change day to day while the lot is
+ * still on the board.
+ */
 export function walkAwayTargetYen(
   lot: AuctionLot,
   state: GameState,
   context: SimContext,
   strategyMultiplier: number,
 ): number {
-  return Math.round(anchorValueYen(lot, state, context) * strategyMultiplier)
+  const anchor = anchorValueYen(lot, state, context)
+  const spreadRng = createRng(hashStringToSeed(`walk-away:${lot.id}`))
+  const spreadMultiplier = bellNormal(1, context.economy.valuation.walkAwaySpread, spreadRng)
+  return Math.round(anchor * strategyMultiplier * spreadMultiplier)
 }

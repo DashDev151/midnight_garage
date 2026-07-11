@@ -64,8 +64,9 @@ function tasteMultiplier(
  *
  * Sprint 26: re-based straight onto `marketValueYen` - the paused hidden-
  * issue system's `issueAdjustedValueYen` wrapper is gone; a part's `band` is
- * the single truth `marketValueYen` already reads via `conditionFactor`,
- * with no separate "issue-adjusted" layer on top anymore.
+ * the single truth `marketValueYen` reads directly (Sprint 27: via the
+ * restoration-bill deduction, `marketValue.ts`'s own doc comment), with no
+ * separate "issue-adjusted" layer on top anymore.
  */
 export function valuateCarForBuyer(
   buyer: Buyer,

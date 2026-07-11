@@ -155,16 +155,17 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 26 (banded parts model) re-pins this hash outright: CarInstance
-    // moved from 8 flat `components` to 29 keyed `parts`, repair-zone jobs
-    // now charge a real per-grade yen cost on top of consumables, and every
-    // downstream value/stat formula reads bands instead of condition
-    // percentages - every prior sprint's own re-pin note above this one is
-    // now historical (the shape they were re-pinning against no longer
-    // exists), so this replaces rather than adds to that history.
+    // Sprint 27 (restoration-bill deduction + reserve rebased onto guide
+    // value) re-pins this hash outright: `marketValueYen` replaces the Sprint
+    // 26 cost-weighted band-factor shim with clean-value-minus-hassle-weighted-
+    // restoration-bill, floored, AND `reserveYen` now derives from that guide
+    // value instead of book value (Sprint 30 decision 2 pulled forward) - both
+    // deliberate value-formula changes (not bugs), so every prior sprint's own
+    // re-pin note above this one is now historical (the shape they were
+    // re-pinning against no longer exists).
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('e71e96c9')
+    expect(hashState(finalState)).toBe('95a90748')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -270,10 +271,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Sprint 26 re-pins this hash outright, same reasoning as the golden
-    // master above: the banded parts model changes generation, valuation,
-    // and the sale-side reputation classification everywhere.
-    expect(hashState(acquisitionCareer().sold)).toBe('849ec1ef')
+    // Sprint 27 re-pins this hash outright, same reasoning as the golden
+    // master above: the restoration-bill value rewrite plus the guide-value
+    // reserve rebase change every acquisition-price and sale-price number in
+    // this scripted path.
+    expect(hashState(acquisitionCareer().sold)).toBe('d6eefd67')
   })
 })
 

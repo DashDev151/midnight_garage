@@ -1,5 +1,6 @@
 import type { AuctionTier, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { carCostToMintYen } from '../bands'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
 import {
   acquireLot,
@@ -40,12 +41,32 @@ const FAIR_BID_MULTIPLIER = 1.1
 const CASH_BUFFER_MULTIPLIER = 1.15
 
 /**
+ * Sprint 27 decision 4: this bot's identity shifts from "inspects first" to
+ * "only buys cars whose restoration bill is small relative to clean value" -
+ * a real selectivity criterion now that both numbers are transparent
+ * (`carCostToMintYen` vs `model.bookValueYen * heatFraction`), not a fixed
+ * fraction of book value or an inspection gate. Applied only once this bot
+ * reaches its real operating tier (`regional`, once `local` reputation is
+ * cleared): local-yard/shitbox-tier book values (Y180k-650k) sit well below
+ * the fixed per-part step-cost total (~Y524k across all 29 parts at one
+ * grade each), so a whole-car ratio filter there would starve the
+ * reputation bootstrap this bot needs just to ever see a regional lot -
+ * exactly the catch-22 documented below, just recreated by a new gate. At
+ * regional book values (Y1.1M-1.8M) the ratio is meaningful: a car whose
+ * bill exceeds `MAX_RESTORATION_TO_CLEAN_VALUE_RATIO` of its clean value
+ * reads as a real fixer-upper this cautious bot would rather skip than
+ * gamble a fair-price bid on the labor still owed.
+ */
+const MAX_RESTORATION_TO_CLEAN_VALUE_RATIO = 0.6
+
+/**
  * Only buys at-or-above fair price, fully restores every zone before
  * selling via list-publicly for the best price the market offers (Sprint 03
  * decision 2). Sprint 26: the inspect-before-bidding step it used to run is
  * gone with the paused hidden-issue/inspection system - every lot is
  * transparent now, so this bot's real edge is patience and a fair-price
- * floor, not information.
+ * floor, not information. Sprint 27: also a restoration-bill floor once
+ * targeting regional tier - see `MAX_RESTORATION_TO_CLEAN_VALUE_RATIO`.
  *
  * Targets regional tier once it can - Premium tier's book values (rare,
  * Y2-6M) are out of reach for a Y1.5M-capital, 2-car bot even at fair price,
@@ -107,14 +128,24 @@ export function cautiousRestorerStrategy(
   // transparent now - no separate inspect step, every lot is immediately
   // biddable). Sprint 20: open bidding - `leadingBidder !== 'player'` covers
   // both a fresh lot and one this bot was outbid on but is still willing to
-  // chase under its walk-away target.
+  // chase under its walk-away target. Sprint 27: once targeting regional
+  // tier, also skips any lot whose restoration bill isn't small relative to
+  // its clean value (see `MAX_RESTORATION_TO_CLEAN_VALUE_RATIO`'s own doc
+  // comment for why the bootstrap-phase local-yard fallback is exempt).
   if (state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS) {
-    const candidates = state.activeAuctionLots.filter(
-      (lot) =>
-        lot.tier === targetTier &&
-        lot.leadingBidder !== 'player' &&
-        state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
-    )
+    const candidates = state.activeAuctionLots.filter((lot) => {
+      if (lot.tier !== targetTier) return false
+      if (lot.leadingBidder === 'player') return false
+      if (state.cashYen < lot.bookValueYen * CASH_BUFFER_MULTIPLIER) return false
+      if (targetTier !== 'regional') return true
+      const model = context.modelsById[lot.modelId]
+      if (!model) return false
+      const heatPercent = state.marketHeat[lot.modelId] ?? 100
+      const cleanValue = model.bookValueYen * (heatPercent / 100)
+      if (cleanValue <= 0) return false
+      const restorationBill = carCostToMintYen(lot.car, context.partsTaxonomyById)
+      return restorationBill <= cleanValue * MAX_RESTORATION_TO_CLEAN_VALUE_RATIO
+    })
     if (candidates.length > 0) {
       const chosen = rng.pick(candidates)
       const targetYen = walkAwayTargetYen(chosen, state, context, FAIR_BID_MULTIPLIER)

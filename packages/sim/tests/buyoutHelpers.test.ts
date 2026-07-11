@@ -16,7 +16,7 @@ import {
   auctionAcquisitionBudget,
   walkAwayTargetYen,
 } from '../src/bots/buyoutHelpers'
-import { createRng } from '../src/rng'
+import { bellNormal, createRng, hashStringToSeed } from '../src/rng'
 
 const CONTEXT = buildSimContext(CARS, [], BUYERS, PARTS_TAXONOMY)
 
@@ -58,12 +58,43 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-describe('walkAwayTargetYen', () => {
-  it('is the value anchor times the strategy multiplier', () => {
+describe('walkAwayTargetYen (Sprint 27: instanceValue x multiplier x private spread)', () => {
+  /** Mirrors `walkAwayTargetYen`'s own seeded spread exactly, so the test
+   * proves the wiring (anchor x multiplier x spread) rather than re-deriving
+   * a competing formula. */
+  function expectedTargetYen(
+    lot: ReturnType<typeof sampleLot>['lot'],
+    state: GameState,
+    strategyMultiplier: number,
+  ): number {
+    const anchor = anchorValueYen(lot, state, CONTEXT)
+    const spreadRng = createRng(hashStringToSeed(`walk-away:${lot.id}`))
+    const spreadMultiplier = bellNormal(1, CONTEXT.economy.valuation.walkAwaySpread, spreadRng)
+    return Math.round(anchor * strategyMultiplier * spreadMultiplier)
+  }
+
+  it('is the value anchor times the strategy multiplier times a private per-lot spread', () => {
     const { lot } = sampleLot('toyota-supra-rz-jza80', 'premium', 1)
     const state = baseState({ activeAuctionLots: [lot] })
+    expect(walkAwayTargetYen(lot, state, CONTEXT, 1.1)).toBe(expectedTargetYen(lot, state, 1.1))
+  })
+
+  it('is deterministic for the same lot id - repeated calls agree', () => {
+    const { lot } = sampleLot('toyota-supra-rz-jza80', 'premium', 2)
+    const state = baseState({ activeAuctionLots: [lot] })
+    const a = walkAwayTargetYen(lot, state, CONTEXT, 1.0)
+    const b = walkAwayTargetYen(lot, state, CONTEXT, 1.0)
+    expect(a).toBe(b)
+  })
+
+  it('bounds the spread to +/- 6 standard deviations of walkAwaySpread (bellNormal Irwin-Hall bound)', () => {
+    const { lot } = sampleLot('toyota-supra-rz-jza80', 'premium', 3)
+    const state = baseState({ activeAuctionLots: [lot] })
     const anchor = anchorValueYen(lot, state, CONTEXT)
-    expect(walkAwayTargetYen(lot, state, CONTEXT, 1.1)).toBe(Math.round(anchor * 1.1))
+    const spread = CONTEXT.economy.valuation.walkAwaySpread
+    const target = walkAwayTargetYen(lot, state, CONTEXT, 1.0)
+    expect(target).toBeGreaterThanOrEqual(Math.round(anchor * (1 - 6 * spread)))
+    expect(target).toBeLessThanOrEqual(Math.round(anchor * (1 + 6 * spread)))
   })
 })
 
@@ -73,7 +104,7 @@ describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
     const state = baseState()
     const actions = emptyDayActions()
     const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(lot, CONTEXT.economy)
+    const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
     const acted = acquireLot(state, lot, raiseToYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(true)
     expect(actions.bidsOnLots).toEqual([{ lotId: lot.id, maxBidYen: raiseToYen }])
@@ -85,7 +116,7 @@ describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
     const state = baseState()
     const actions = emptyDayActions()
     const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(lot, CONTEXT.economy)
+    const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
     const acted = acquireLot(state, lot, raiseToYen - 1, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(false)
     expect(actions.bidsOnLots).toEqual([])
@@ -117,7 +148,7 @@ describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
     const state = baseState({ cashYen: 1 })
     const actions = emptyDayActions()
     const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(lot, CONTEXT.economy)
+    const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
     const acted = acquireLot(state, lot, raiseToYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(false)
     expect(actions.bidsOnLots).toEqual([])
@@ -127,8 +158,13 @@ describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
   it('accumulates cashCommitted across repeated calls sharing one budget, never overcommitting', () => {
     const { lot: lot1 } = sampleLot('honda-city-e-aa', 'local-yard', 204)
     const { lot: lot2 } = sampleLot('honda-city-e-aa', 'local-yard', 205)
-    const raise1 = nextRaiseYen(lot1, CONTEXT.economy)
-    const raise2 = nextRaiseYen(lot2, CONTEXT.economy)
+    // Sprint 27: reserve (hence the unopened-lot nextRaise) is guide-value-
+    // based, not cash-dependent, so computing the raises against a probe state
+    // and then funding the real state off them is safe - reserveYen never
+    // reads cashYen.
+    const probeState = baseState()
+    const raise1 = nextRaiseYen(lot1, probeState, CONTEXT)
+    const raise2 = nextRaiseYen(lot2, probeState, CONTEXT)
     const state = baseState({ cashYen: Math.round((raise1 + raise2) * 1.2) })
     const actions = emptyDayActions()
     const budget = auctionAcquisitionBudget(state)
@@ -151,7 +187,7 @@ describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
     const state = baseState()
     const actions = emptyDayActions()
     const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(outbid, CONTEXT.economy)
+    const raiseToYen = nextRaiseYen(outbid, state, CONTEXT)
     const acted = acquireLot(state, outbid, raiseToYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(true)
     expect(actions.bidsOnLots).toEqual([{ lotId: outbid.id, maxBidYen: raiseToYen }])

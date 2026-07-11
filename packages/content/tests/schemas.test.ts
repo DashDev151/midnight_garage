@@ -116,11 +116,13 @@ describe('seed content validates against schemas', () => {
     expect(result.data.AUCTION_TURNOUT_BANDS).toEqual([0.85, 1.12])
     // Sprint 21 (value model): new valuation/marketPressure/statFormulas
     // blocks, born in JSON from day one.
-    expect(result.data.valuation.conditionFloor).toBe(0.35)
-    expect(result.data.valuation.conditionCeiling).toBe(1.1)
-    expect(result.data.valuation.conditionExponent).toBe(1.3)
     expect(result.data.valuation.tasteSpread).toBe(0.12)
     expect(result.data.valuation.listingPatiencePremium).toBe(1.05)
+    // Sprint 27 (restoration-bill deduction): replaces the retired
+    // conditionFloor/Ceiling/Exponent curve tunables above.
+    expect(result.data.valuation.hassleFactor).toBe(1.2)
+    expect(result.data.valuation.floorFraction).toBe(0.1)
+    expect(result.data.valuation.walkAwaySpread).toBe(0.05)
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)

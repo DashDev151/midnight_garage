@@ -173,13 +173,13 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
       const anchor = anchorValueYen(initial, state, CONTEXT)
       if (anchor <= 0) continue
       const targetYen = anchor // never pay more than the car is genuinely worth
-      if (nextRaiseYen(initial, ECONOMY) > targetYen) continue // wouldn't even open at a price it likes
+      if (nextRaiseYen(initial, state, CONTEXT) > targetYen) continue // wouldn't even open at a price it likes
 
       let lot = initial
       let wonPriceYen: number | null = null
       for (let day = 1; day <= 40 && wonPriceYen === null; day++) {
         if (lot.leadingBidder !== 'player') {
-          const raiseToYen = nextRaiseYen(lot, ECONOMY)
+          const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
           if (raiseToYen <= targetYen) {
             const bidResult = resolvePlaceBid(state, lot.id, raiseToYen, CONTEXT)
             state = bidResult.state

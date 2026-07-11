@@ -135,11 +135,26 @@ describe('listPubliclyAskingPrice', () => {
    * Sprint 21 decision 6: heat applies exactly once, inside `marketValueYen`
    * (via `valuateCarForBuyer`) - `listPubliclyAskingPrice` no longer
    * multiplies by heat a second time on top of that (the old double-count).
+   *
+   * Sprint 27: value is now clean-value-minus-restoration-bill, so the whole
+   * price no longer scales purely proportionally with heat once a car
+   * carries any restoration bill - only cleanValue's own share does (see
+   * marketValue.test.ts's dedicated "heat applies exactly once" tests for
+   * the formula-level proof; the old flat `heatHigh/heatBase ~= 1.2` ratio
+   * check no longer holds in general). What this test checks instead: the
+   * real listing price, reconstructed from the same interested-buyer pool
+   * `listPubliclyAskingPrice` itself averages over - proves there's no
+   * second, hidden heat multiplication layered on top, without assuming a
+   * ratio shape the new formula doesn't produce.
    */
   it('applies market heat exactly once (no double-count with marketValueYen)', () => {
-    const heatBase = listingPrice(car, model, BUYERS, 100)
-    const heatHigh = listingPrice(car, model, BUYERS, 120)
-    expect(heatHigh / heatBase).toBeCloseTo(1.2, 1)
+    const candidates = interestedBuyers(model, BUYERS).map((i) => i.buyer)
+    const expectedAt = (heat: number): number => {
+      const total = candidates.reduce((sum, buyer) => sum + valuate(buyer, car, model, heat), 0)
+      return Math.round((total / candidates.length) * ECONOMY.valuation.listingPatiencePremium)
+    }
+    expect(listingPrice(car, model, BUYERS, 100)).toBe(expectedAt(100))
+    expect(listingPrice(car, model, BUYERS, 120)).toBe(expectedAt(120))
   })
 })
 

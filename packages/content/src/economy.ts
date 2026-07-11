@@ -58,7 +58,17 @@ export const EconomyConfigSchema = z.object({
    * per-flip margin, not a guess.
    */
   WEEKLY_RENT_YEN: z.number().int().nonnegative(),
-  /** Seller's floor under a deal, as a fraction of book value (GDD 6.5). */
+  /**
+   * Seller's floor under a deal, as a fraction of the lot's GUIDE VALUE
+   * (`bidding.ts`'s `anchorValueYen` = `marketValueYen`, the Sprint 27
+   * restoration-bill `instanceValue`) - NOT book value. Sprint 27 (Sprint 30
+   * decision 2 pulled forward) rebased `reserveYen` off the guide value so the
+   * reserve moves with a specific worn car instead of a static per-model
+   * constant; the old 0.4 was calibrated against book value and is meaningless
+   * on this basis (a book-value reserve sat above most worn cars' actual guide
+   * value, seizing the whole auction market). 0.5 is Sprint 30 decision 2's
+   * proposed value on the new basis (GDD 6.5).
+   */
   AUCTION_RESERVE_PRICE_FRACTION: z.number().positive().max(1),
   /** New lots per tier on each weekly catalog refresh. */
   AUCTION_LOTS_PER_TIER: ByAuctionTierSchema,
@@ -111,23 +121,25 @@ export const EconomyConfigSchema = z.object({
    * second, steady between - flavor only, price is king. */
   AUCTION_TURNOUT_BANDS: AscendingFractionPairSchema,
   /**
-   * Sprint 21 (per-component weights); Sprint 26 decision 4 replaces the old
+   * Sprint 21 (per-component weights); Sprint 26 decision 4 replaced the old
    * hand-authored `componentValueWeights` with a cost-weighted mean of band
-   * factors computed at valuation time (each part's weight is its own share
-   * of the car's total `costToMint`) - nothing here needs to author that
-   * weighting anymore, only the curve shape it feeds.
+   * factors; Sprint 27 replaces THAT shim outright with a transparent
+   * restoration-bill deduction (`marketValueYen`'s own doc comment carries
+   * the formula) - `hassleFactor`/`floorFraction` are its two tunables.
    */
   valuation: z.object({
-    /** `conditionFactor`'s floor at weighted condition 0 - a wreck still has
-     * chassis/parts scrap value, never worth literally nothing. */
-    conditionFloor: z.number().nonnegative(),
-    /** `conditionFactor`'s ceiling at weighted condition 100 - a perfect
-     * restoration clears book value, giving genuine headroom for a profitable
-     * flip (mirrors the old `valuateCarForBuyer` fit-component's own note on
-     * why a formula that can never clear book breaks the economy). */
-    conditionCeiling: z.number().positive(),
-    /** Curve shape between floor and ceiling: `(weighted/100)^exponent`. */
-    conditionExponent: z.number().positive(),
+    /**
+     * Sprint 27 decision 1: `restorationBill`'s weight in `instanceValue =
+     * max(floor, cleanValue - hassleFactor * restorationBill) +
+     * installedPartsValueYen`. Above 1.0 (propose 1.2) so a buyer discounts
+     * MORE than the raw bill - the old 1.3 issue-penalty multiplier's intent,
+     * now applied to a real, transparent number instead of a hidden one.
+     */
+    hassleFactor: z.number().positive(),
+    /** Sprint 27 decision 1: `instanceValue`'s floor as a fraction of clean
+     * value - a wreck whose restoration bill would drive it below zero still
+     * has chassis/parts scrap value, never worth literally nothing. */
+    floorFraction: z.number().min(0).max(1),
     /** Installed-part value retention: a part is worth this fraction of its
      * catalog price toward the car's market value (real markets: mods return
      * cents on the yen, they don't multiply the chassis price). */
@@ -146,6 +158,15 @@ export const EconomyConfigSchema = z.object({
      * used to come from double-applying market heat (removed, decision 6:
      * heat now applies exactly once, inside `marketValueYen`). */
     listingPatiencePremium: z.number().positive(),
+    /**
+     * Sprint 27 decision 4: a bot's walk-away target
+     * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) is `instanceValue x
+     * strategyMultiplier` times a small private spread, bell-shaped around
+     * 1.0 with this standard deviation - even though every bidder reads the
+     * identical transparent bands, no two private valuations of the same car
+     * land exactly on the shared anchor.
+     */
+    walkAwaySpread: z.number().nonnegative(),
   }),
   /**
    * Sprint 21: deterministic supply/demand market pressure - replaces the

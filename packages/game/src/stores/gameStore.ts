@@ -43,6 +43,7 @@ import {
   bandIndex,
   bestFitBuyer,
   buildSimContext,
+  carCostToMintYen,
   computeBuyoutPriceYen,
   computeDerivedStats,
   confirmStagedWork,
@@ -71,6 +72,7 @@ import {
   resolveAcceptServiceJob,
   resolveBuyoutInstant,
   resolveBuyPart,
+  reserveYen,
   resolveJobLabor,
   resolveListForSale,
   resolvePlaceBid,
@@ -108,6 +110,18 @@ const DEFAULT_SEED = 1
 function randomSeed(): number {
   return Math.floor(Math.random() * 2_147_483_647)
 }
+
+/** The 6 real component groups, in a stable display order - shared by every
+ * group-level and per-part view builder below (Sprint 26/27) so the order
+ * lives in exactly one place. */
+const REAL_COMPONENT_GROUPS: readonly ComponentId[] = [
+  'engine',
+  'drivetrain',
+  'suspension',
+  'wheels',
+  'body',
+  'interior',
+]
 
 /** One real part within a group, for the car-detail screen's per-part breakdown (Sprint 26). */
 export interface CarPartRowView {
@@ -265,9 +279,11 @@ export interface LotDetail {
    * No `bookValueYen` field on purpose (Sprint 25 task 5, maintainer
    * decision): it's a static per-model constant unrelated to this specific
    * rolled car's actual condition, so showing it next to a condition-derived
-   * reserve/buyout only invited "why doesn't this match" confusion. Sprint
-   * 30 replaces it with a real per-instance guide value; until then, reserve
-   * and buyout are the only price anchors shown.
+   * reserve/buyout only invited "why doesn't this match" confusion. Sprint 27
+   * (Sprint 30 decision 2 pulled forward) rebased `reserveYen` itself onto the
+   * per-instance guide value (`marketValueYen` = `instanceValue`), so reserve
+   * and buyout now both derive from this specific car's real worth - they move
+   * together with condition, no static book anchor left to reconcile against.
    */
   reserveYen: number
   /** Always visible, on every lot (maintainer decision 2). */
@@ -289,10 +305,23 @@ export interface LotDetail {
   /**
    * Each of the 6 real groups' worst present-part band (Sprint 26 decision
    * 10) - lots are transparent now, no reveal machinery: this is always
-   * populated, not gated behind an inspection step. A real per-part
-   * breakdown is Sprint 27 scope.
+   * populated, not gated behind an inspection step.
    */
   groupBands: Record<ComponentId, ConditionBand>
+  /**
+   * The full 29-part band list (Sprint 27 decision 3), read-only - "opening"
+   * a lot shows exactly this, the same per-part row shape the owned-car
+   * screen already uses. Player and bots see identical information.
+   */
+  partRows: CarPartRowView[]
+  /**
+   * The real cost to bring every present part on this specific car to mint,
+   * at the player's current (equipment-independent, per Sprint 26 decision
+   * 7) repair-step costs - the same `restorationBill` `instanceValue`
+   * itself deducts (Sprint 27 decision 1), surfaced directly so the player
+   * can see exactly what the price already prices in.
+   */
+  restorationBillYen: number
   /** This lot's backstop close day (the Sprint 19 duration roll) - activity-
    * based closing (quiet-day hammer) usually resolves it sooner than this. */
   expiresOnDay: number
@@ -451,16 +480,8 @@ export const useGameStore = defineStore('game', () => {
    * unfitted, and every group has other members) reports `'mint'`.
    */
   function groupBandsForCar(car: CarInstance): Record<ComponentId, ConditionBand> {
-    const groups: ComponentId[] = [
-      'engine',
-      'drivetrain',
-      'suspension',
-      'wheels',
-      'body',
-      'interior',
-    ]
     const result = {} as Record<ComponentId, ConditionBand>
-    for (const groupId of groups) {
+    for (const groupId of REAL_COMPONENT_GROUPS) {
       const partIds = presentPartIdsInGroup(car, groupId, context.value.partIdsByGroup)
       let worst: ConditionBand = 'mint'
       for (const partId of partIds) {
@@ -472,15 +493,14 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Every real part present in `componentId`'s group on this car (Sprint 26
-   * decision 13) - the per-part breakdown the car-detail screen shows below
-   * a group's headline band, since a group can hold several parts now. A
-   * lot-detail per-part breakdown is Sprint 27 scope; this is the owned-car
-   * screen's own natural evolution of what it already showed per component.
+   * Every real part present in `componentId`'s group on `car` (Sprint 26
+   * decision 13) - operates on a `CarInstance` directly so both the
+   * owned-car screen (`partsInGroup`, below, looked up by car id) and the
+   * auction lot-detail screen (Sprint 27 decision 3, which has no owned car
+   * to look up) share one row-building implementation rather than each
+   * re-deriving it.
    */
-  function partsInGroup(carId: string, componentId: ComponentId): CarPartRowView[] {
-    const car = findWorkableCar(carId)
-    if (!car) return []
+  function carPartRowsInGroup(car: CarInstance, componentId: ComponentId): CarPartRowView[] {
     return presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup).map((partId) => {
       const state = car.parts[partId]
       return {
@@ -490,6 +510,27 @@ export const useGameStore = defineStore('game', () => {
         installedPartName: state.installed ? partName(state.installed.partId) : null,
       }
     })
+  }
+
+  /**
+   * Every real part present in `componentId`'s group on this owned/workable
+   * car - the per-part breakdown the car-detail screen shows below a
+   * group's headline band, since a group can hold several parts now.
+   */
+  function partsInGroup(carId: string, componentId: ComponentId): CarPartRowView[] {
+    const car = findWorkableCar(carId)
+    if (!car) return []
+    return carPartRowsInGroup(car, componentId)
+  }
+
+  /**
+   * The full 29-part band list for `car`, grouped in `REAL_COMPONENT_GROUPS`
+   * order (Sprint 27 decision 3) - the auction lot-detail's "open the lot"
+   * view: every real part, always visible, never gated behind an inspection
+   * step. Player and bots see identical information.
+   */
+  function allCarPartRows(car: CarInstance): CarPartRowView[] {
+    return REAL_COMPONENT_GROUPS.flatMap((groupId) => carPartRowsInGroup(car, groupId))
   }
 
   const carsDetailed = computed<DetailedCar[]>(() => gameState.value.ownedCars.map(detailFor))
@@ -616,18 +657,18 @@ export const useGameStore = defineStore('game', () => {
       lot,
       model,
       displayName: resolveCarDisplayName(model),
-      reserveYen: Math.round(
-        lot.bookValueYen * context.value.economy.AUCTION_RESERVE_PRICE_FRACTION,
-      ),
+      reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       currentBidYen: lot.currentBidYen,
       leadingBidder: lot.leadingBidder,
       quietDays: lot.quietDays,
       hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
       turnout: turnoutBand(lot, gameState.value, context.value, gameState.value.day),
-      nextRaiseYen: nextRaiseYen(lot, context.value.economy),
+      nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
       playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(lot.car),
+      partRows: allCarPartRows(lot.car),
+      restorationBillYen: carCostToMintYen(lot.car, context.value.partsTaxonomyById),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
     }
@@ -656,7 +697,7 @@ export const useGameStore = defineStore('game', () => {
           currentBidYen: lot.currentBidYen,
           leadingBidder: lot.leadingBidder,
           isWinning: lot.leadingBidder === 'player',
-          nextRaiseYen: nextRaiseYen(lot, context.value.economy),
+          nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
           quietDays: lot.quietDays,
           hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
           turnout: turnoutBand(lot, gameState.value, context.value, gameState.value.day),
@@ -1114,7 +1155,7 @@ export const useGameStore = defineStore('game', () => {
     if (bidYen <= 0) return false
     const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
     if (!lot) return false
-    if (bidYen < nextRaiseYen(lot, context.value.economy)) return false
+    if (bidYen < nextRaiseYen(lot, gameState.value, context.value)) return false
     const result = resolvePlaceBid(gameState.value, lotId, bidYen, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state

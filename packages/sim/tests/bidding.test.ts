@@ -15,6 +15,7 @@ import {
   computeBuyoutPriceYen,
   demandCeilingYen,
   nextRaiseYen,
+  reserveYen,
   resolveBuyoutInstant,
   resolveLotForDay,
   resolvePlaceBid,
@@ -170,7 +171,7 @@ describe('demandCeilingYen (Sprint 25 task 4: re-seeded daily)', () => {
     const candidates = statLots(300, 'reopen-check')
     let found = false
     for (const lot of candidates) {
-      const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+      const reserve = reserveYen(lot, state, CONTEXT)
       if (demandCeilingYen(lot, state, CONTEXT, 1) >= reserve) continue // already opens day 1
       for (let day = 2; day <= 30 && !found; day++) {
         if (demandCeilingYen(lot, state, CONTEXT, day) >= reserve) found = true
@@ -204,7 +205,7 @@ describe('turnoutBand (replaces computeLotInterest - a coarse pre-bid flavor rea
     const [thinBelow, packedAbove] = ECONOMY.AUCTION_TURNOUT_BANDS
     let checked = 0
     for (const lot of statLots(150, 'turnout-band-check')) {
-      const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+      const reserve = reserveYen(lot, state, CONTEXT)
       const ceiling = demandCeilingYen(lot, state, CONTEXT, 1)
       const ratio = ceiling / center
       // Sprint 25 task 4: below-reserve always reads thin, regardless of ratio.
@@ -244,7 +245,7 @@ describe('turnoutBand (replaces computeLotInterest - a coarse pre-bid flavor rea
     const state = stateWithLots([])
     let checked = 0
     for (const lot of statLots(200, 'packed-honesty-check')) {
-      const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+      const reserve = reserveYen(lot, state, CONTEXT)
       for (let day = 1; day <= 5; day++) {
         const ceiling = demandCeilingYen(lot, state, CONTEXT, day)
         if (ceiling < reserve) {
@@ -272,19 +273,20 @@ describe('bidIncrementYen / nextRaiseYen', () => {
 
   it('nextRaiseYen is the reserve price when unopened, current + increment once open', () => {
     const { lot } = sampleLot(7)
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
-    expect(nextRaiseYen(lot, ECONOMY)).toBe(reserve)
+    const state = stateWithLots([lot])
+    const reserve = reserveYen(lot, state, CONTEXT)
+    expect(nextRaiseYen(lot, state, CONTEXT)).toBe(reserve)
 
     const opened: AuctionLot = { ...lot, currentBidYen: reserve, leadingBidder: 'rival' }
-    expect(nextRaiseYen(opened, ECONOMY)).toBe(reserve + bidIncrementYen(lot, ECONOMY))
+    expect(nextRaiseYen(opened, state, CONTEXT)).toBe(reserve + bidIncrementYen(lot, ECONOMY))
   })
 })
 
 describe('resolvePlaceBid (Sprint 20 - open-raise semantics)', () => {
   it('opens an unopened lot at exactly the reserve price', () => {
     const { lot } = sampleLot(10)
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
     const state = stateWithLots([lot])
+    const reserve = reserveYen(lot, state, CONTEXT)
     const result = resolvePlaceBid(state, lot.id, reserve, CONTEXT)
     const updated = result.state.activeAuctionLots[0]
     expect(updated?.currentBidYen).toBe(reserve)
@@ -296,8 +298,8 @@ describe('resolvePlaceBid (Sprint 20 - open-raise semantics)', () => {
 
   it('rejects an opening bid below reserve - no-op', () => {
     const { lot } = sampleLot(11)
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
     const state = stateWithLots([lot])
+    const reserve = reserveYen(lot, state, CONTEXT)
     const result = resolvePlaceBid(state, lot.id, reserve - 10_000, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
@@ -305,8 +307,9 @@ describe('resolvePlaceBid (Sprint 20 - open-raise semantics)', () => {
 
   it('increment enforcement: a raise below current + increment is a no-op, exactly current + increment succeeds', () => {
     const { lot } = sampleLot(12)
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
-    const opened = resolvePlaceBid(stateWithLots([lot]), lot.id, reserve, CONTEXT).state
+    const state = stateWithLots([lot])
+    const reserve = reserveYen(lot, state, CONTEXT)
+    const opened = resolvePlaceBid(state, lot.id, reserve, CONTEXT).state
     const increment = bidIncrementYen(lot, ECONOMY)
 
     const tooLow = resolvePlaceBid(opened, lot.id, reserve + increment - 10_000, CONTEXT)
@@ -327,7 +330,8 @@ describe('resolvePlaceBid (Sprint 20 - open-raise semantics)', () => {
 
   it('resets quietDays and sets playerHasBid even when raising over a rival lead', () => {
     const { lot } = sampleLot(14)
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    const state = stateWithLots([lot])
+    const reserve = reserveYen(lot, state, CONTEXT)
     const rivalLed: AuctionLot = {
       ...lot,
       currentBidYen: reserve,
@@ -394,23 +398,34 @@ describe('advanceLotOvernight', () => {
   it('opens most lots of a broadly-desired car at the reserve price once the demand ceiling clears it', () => {
     const { lot } = sampleLot(22)
     const state = stateWithLots([lot])
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    // `statLots` below all copy sampleLot(1)'s car, and each opens at ITS OWN
+    // guide-value reserve. Sprint 27 rebased reserve off `anchorValueYen`
+    // (guide value), so the reserve is no longer a per-model book constant -
+    // compute it from the same car the sample uses (sampleLot(1)), not
+    // sampleLot(22), whose independently-rolled condition gives a different
+    // guide value hence a different reserve.
+    const reserve = reserveYen(sampleLot(1).lot, state, CONTEXT)
     // JZA80 at premium tier is broadly desired, so its ceiling clears reserve
     // most of the time - but a thin-turnout roll combined with a low spread
     // draw can occasionally leave a lot bidless on day 1, so this is a
     // statistical majority claim, not "every single lot", to avoid a flaky
-    // assertion on the tail. Threshold at 0.65 (Sprint 25 task 4): re-seeding
-    // demandCeilingYen on `lot.id:day` instead of `lot.id` alone changes every
-    // draw against this 200-lot sample (the point of the fix - a lot's
-    // ceiling isn't the same fixed roll forever) - measured real value on
-    // day 1 is 146/200 = 0.73, comfortably above 0.65, still a real majority.
+    // assertion on the tail.
+    //
+    // Re-measured, not re-derived, after Sprint 27's TWO value-model changes
+    // (the restoration-bill `instanceValue` rewrite AND rebasing reserve off
+    // guide value at fraction 0.5): the ceiling now centers at
+    // AUCTION_WHOLESALE_FRACTION (0.75) of the guide value while reserve sits
+    // at 0.5 of the SAME guide value, so the ceiling clears reserve reliably
+    // on the new basis. Real measured value on day 1 is 171/200 = 0.855; the
+    // bar stays a plain "clear majority" (> 0.5) with generous headroom rather
+    // than pinning the exact rate, per this test's own established pattern.
     const opened = statLots(200, 'open-check').map(
       (l) => advanceLotOvernight(l, state, CONTEXT, 1).lot,
     )
     const openedCount = opened.filter(
       (l) => l.currentBidYen === reserve && l.leadingBidder === 'rival',
     ).length
-    expect(openedCount / opened.length).toBeGreaterThan(0.65)
+    expect(openedCount / opened.length).toBeGreaterThan(0.5)
   })
 
   it('at or above the ceiling: silence - quietDays increments, the board never moves', () => {
@@ -436,16 +451,22 @@ describe('advanceLotOvernight', () => {
   it('a dealer raise that displaces the player logs auction-outbid; dealer-vs-dealer raises log nothing', () => {
     const { lot } = sampleLot(24)
     const state = stateWithLots([lot])
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
 
     // Find a lot id/day combination where the overnight step genuinely
     // raises (not silence) - search a small population for one, since the
-    // raise itself is a seeded coin flip. Keeps the matched candidate's OWN
-    // car/anchor value (not the outer sampleLot's) - a mismatch here is a
-    // real latent bug: the search and the assertion must price the same lot.
+    // raise itself is a seeded coin flip. Each candidate is opened at ITS OWN
+    // guide-value reserve (Sprint 27: reserve is per-instance now, not a
+    // per-model book constant) - the search and the assertion must price the
+    // same lot, so `raised.opened` carries that candidate's own reserve
+    // forward.
     let raised: { opened: AuctionLot; day: number } | undefined
     for (const candidate of statLots(60, 'outbid-search')) {
-      const opened: AuctionLot = { ...candidate, currentBidYen: reserve, leadingBidder: 'player' }
+      const candidateReserve = reserveYen(candidate, state, CONTEXT)
+      const opened: AuctionLot = {
+        ...candidate,
+        currentBidYen: candidateReserve,
+        leadingBidder: 'player',
+      }
       for (let day = 1; day <= 5 && !raised; day++) {
         const step = advanceLotOvernight(opened, state, CONTEXT, day)
         if (step.lot.currentBidYen > opened.currentBidYen) {
@@ -458,7 +479,6 @@ describe('advanceLotOvernight', () => {
 
     const playerLed: AuctionLot = {
       ...raised.opened,
-      currentBidYen: reserve,
       leadingBidder: 'player',
       playerHasBid: true,
     }
@@ -668,9 +688,9 @@ describe('resolveBuyoutInstant', () => {
 
   it('always exceeds the current board price - a live bid never blocks a buyout', () => {
     const { lot } = sampleLot(43)
-    const reserve = Math.round(lot.bookValueYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+    const state = stateWithLots([lot])
+    const reserve = reserveYen(lot, state, CONTEXT)
     const contested: AuctionLot = { ...lot, currentBidYen: reserve, leadingBidder: 'rival' }
-    const state = stateWithLots([contested])
     const priceYen = computeBuyoutPriceYen(contested, state, CONTEXT)
     expect(priceYen).toBeGreaterThan(contested.currentBidYen)
   })
@@ -755,7 +775,7 @@ describe('distribution probes', () => {
       if (anchor <= 0) continue
       const targetYen = Math.round(anchor * TARGET_MULTIPLIER)
       const buyoutAtStartYen = computeBuyoutPriceYen(initial, state, CONTEXT)
-      if (nextRaiseYen(initial, ECONOMY) > targetYen) continue // wouldn't even open at a price it likes
+      if (nextRaiseYen(initial, state, CONTEXT) > targetYen) continue // wouldn't even open at a price it likes
       pursued++
 
       let lot = initial
@@ -763,7 +783,7 @@ describe('distribution probes', () => {
       let finalPriceYen = 0
       for (let day = 1; day <= 40; day++) {
         if (lot.leadingBidder !== 'player') {
-          const raiseToYen = nextRaiseYen(lot, ECONOMY)
+          const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
           if (raiseToYen <= targetYen) {
             const bidResult = resolvePlaceBid(state, lot.id, raiseToYen, CONTEXT)
             state = bidResult.state

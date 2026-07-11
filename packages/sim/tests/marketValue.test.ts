@@ -8,8 +8,9 @@ import {
   type Part,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { conditionFactor, installedPartsValueYen, marketValueYen } from '../src/marketValue'
-import { buildCarInstance, uniformCarParts } from './testFixtures'
+import { carCostToMintYen } from '../src/bands'
+import { installedPartsValueYen, marketValueYen } from '../src/marketValue'
+import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
@@ -33,6 +34,11 @@ const model: CarModel = {
   bookValueYen: 4_200_000,
 }
 
+/** A cheap-book fixture (shitbox-range) - the only way to actually trip the
+ * floor clamp: the Supra's book value is high enough that even an all-scrap
+ * restoration bill doesn't out-discount it (see the floor test below). */
+const cheapModel: CarModel = { ...model, id: 'test-shitbox', bookValueYen: 300_000 }
+
 function carAtUniformBand(band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint'): CarInstance {
   return buildCarInstance({
     modelId: model.id,
@@ -42,59 +48,209 @@ function carAtUniformBand(band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint'): Ca
   })
 }
 
-/** `conditionFactor`'s closed form at a given weighted band factor - reads
- * economy config directly rather than hardcoding a number, so a retune of
- * `economy.json` doesn't make this test lie about what the formula does. */
-function expectedFactor(weighted: number): number {
-  const { conditionFloor, conditionCeiling, conditionExponent } = ECONOMY.valuation
-  return (
-    conditionFloor + (conditionCeiling - conditionFloor) * Math.pow(weighted, conditionExponent)
-  )
+/**
+ * Sprint 27 decision 1's formula, read straight from `economy.json` rather
+ * than hardcoded, so a retune of `hassleFactor`/`floorFraction` doesn't make
+ * this test lie about what `marketValueYen` actually does. Mirrors the
+ * pre-Sprint-27 `expectedFactor` helper's own reasoning.
+ */
+function expectedBaseValueYen(car: CarInstance, forModel: CarModel, heatPercent = 100): number {
+  const { hassleFactor, floorFraction } = ECONOMY.valuation
+  const cleanValue = forModel.bookValueYen * (heatPercent / 100)
+  const restorationBill = carCostToMintYen(car, PARTS_TAXONOMY_BY_ID)
+  const floor = floorFraction * cleanValue
+  return Math.round(Math.max(floor, cleanValue - hassleFactor * restorationBill))
 }
 
-describe('conditionFactor (Sprint 26 decision 4: cost-weighted band factor)', () => {
-  it('every part mint returns the ceiling exactly', () => {
-    expect(conditionFactor(carAtUniformBand('mint'), PARTS_TAXONOMY_BY_ID, ECONOMY)).toBeCloseTo(
-      ECONOMY.valuation.conditionCeiling,
-      6,
+describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
+  it('is pure: identical inputs produce an identical value', () => {
+    const car = carAtUniformBand('worn')
+    const a = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const b = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    expect(a).toBe(b)
+  })
+
+  it('an all-mint car (zero restoration bill) is worth exactly clean value at heat 100', () => {
+    const mintCar = buildCarInstance({ modelId: model.id, parts: mintCarParts() })
+    expect(marketValueYen(model, mintCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      model.bookValueYen,
     )
   })
 
-  it('every part scrap matches the closed-form floor+range*scrapFactor^exponent', () => {
-    const expected = expectedFactor(ECONOMY.bands.bandFactors.scrap)
-    expect(conditionFactor(carAtUniformBand('scrap'), PARTS_TAXONOMY_BY_ID, ECONOMY)).toBeCloseTo(
-      expected,
-      6,
+  it('matches the closed-form clean-value-minus-hassle-weighted-bill formula across every band', () => {
+    for (const band of ['scrap', 'poor', 'worn', 'fine', 'mint'] as const) {
+      const car = carAtUniformBand(band)
+      expect(marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+        expectedBaseValueYen(car, model),
+      )
+    }
+  })
+
+  it('is monotonically non-increasing in restoration bill: a worse band is never worth more', () => {
+    const scrap = marketValueYen(
+      model,
+      carAtUniformBand('scrap'),
+      100,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const poor = marketValueYen(
+      model,
+      carAtUniformBand('poor'),
+      100,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const worn = marketValueYen(
+      model,
+      carAtUniformBand('worn'),
+      100,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const fine = marketValueYen(
+      model,
+      carAtUniformBand('fine'),
+      100,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const mint = marketValueYen(
+      model,
+      carAtUniformBand('mint'),
+      100,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    expect(scrap).toBeLessThanOrEqual(poor)
+    expect(poor).toBeLessThanOrEqual(worn)
+    expect(worn).toBeLessThanOrEqual(fine)
+    expect(fine).toBeLessThanOrEqual(mint)
+  })
+
+  /**
+   * Sprint 27 decision 5, verbatim: two otherwise-identical cars, one with a
+   * scrap forcedInduction (fitted) and the other with scrap brakePadsDiscs,
+   * must differ in value by exactly `hassleFactor * (stockReplacementPriceYen(FI)
+   * - stockReplacementPriceYen(brakePadsDiscs))` - FI being the costlier part
+   * by content, so the turbo car is worth strictly less.
+   */
+  it("differs by hassleFactor x the stock-price gap between a scrap-turbo car and a scrap-brakes car (the maintainer's worked case)", () => {
+    const scrapTurboCar = buildCarInstance({
+      modelId: model.id,
+      parts: mintCarParts({ forcedInduction: { band: 'scrap' } }),
+    })
+    const scrapBrakesCar = buildCarInstance({
+      modelId: model.id,
+      parts: mintCarParts({ brakePadsDiscs: { band: 'scrap' } }),
+    })
+
+    const fiPriceYen = PARTS_TAXONOMY_BY_ID.forcedInduction.stockReplacementPriceYen
+    const brakesPriceYen = PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen
+    expect(fiPriceYen).toBeGreaterThan(brakesPriceYen)
+
+    const turboValue = marketValueYen(model, scrapTurboCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const brakesValue = marketValueYen(
+      model,
+      scrapBrakesCar,
+      100,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const expectedDiffYen = Math.round(
+      ECONOMY.valuation.hassleFactor * (fiPriceYen - brakesPriceYen),
+    )
+    expect(brakesValue - turboValue).toBe(expectedDiffYen)
+    expect(turboValue).toBeLessThan(brakesValue)
+  })
+
+  it('an unfitted forcedInduction slot contributes zero to the bill regardless of its rolled band', () => {
+    const naCarWithScrapFi = buildCarInstance({
+      modelId: model.id,
+      parts: mintCarParts({ forcedInduction: { band: 'scrap', fitted: false } }),
+    })
+    const fullyMintCar = buildCarInstance({ modelId: model.id, parts: mintCarParts() })
+    expect(marketValueYen(model, naCarWithScrapFi, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      marketValueYen(model, fullyMintCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
     )
   })
 
-  it('is monotonically increasing from scrap to mint', () => {
-    const scrap = conditionFactor(carAtUniformBand('scrap'), PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const poor = conditionFactor(carAtUniformBand('poor'), PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const worn = conditionFactor(carAtUniformBand('worn'), PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const fine = conditionFactor(carAtUniformBand('fine'), PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const mint = conditionFactor(carAtUniformBand('mint'), PARTS_TAXONOMY_BY_ID, ECONOMY)
-    expect(scrap).toBeLessThan(poor)
-    expect(poor).toBeLessThan(worn)
-    expect(worn).toBeLessThan(fine)
-    expect(fine).toBeLessThan(mint)
+  it('clamps at floorFraction x cleanValue when the restoration bill would drive it below zero', () => {
+    const wreck = buildCarInstance({ modelId: cheapModel.id, parts: uniformCarParts('scrap') })
+    const restorationBill = carCostToMintYen(wreck, PARTS_TAXONOMY_BY_ID)
+    const cleanValue = cheapModel.bookValueYen
+    // Sanity: this fixture must actually exceed clean value once weighted by
+    // hassleFactor, otherwise the floor never engages and the test proves
+    // nothing.
+    expect(ECONOMY.valuation.hassleFactor * restorationBill).toBeGreaterThan(cleanValue)
+    const expectedFloor = Math.round(ECONOMY.valuation.floorFraction * cleanValue)
+    expect(marketValueYen(cheapModel, wreck, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      expectedFloor,
+    )
   })
 
-  it('a scrap turbo (expensive to mint) drags value further than scrap brakes (cheap) on an otherwise-identical car', () => {
-    // The maintainer's own worked case: cost-weighting means the same "one
-    // scrap part" defect hurts differently depending on what that part
-    // actually costs to bring back to mint.
-    const expensivePartScrap = uniformCarParts('mint')
-    expensivePartScrap.forcedInduction = { ...expensivePartScrap.forcedInduction, band: 'scrap' }
-    const cheapPartScrap = uniformCarParts('mint')
-    cheapPartScrap.brakePadsDiscs = { ...cheapPartScrap.brakePadsDiscs, band: 'scrap' }
+  it('heat applies exactly once: an all-mint car scales linearly with heat', () => {
+    const mintCar = buildCarInstance({ modelId: model.id, parts: mintCarParts() })
+    const at100 = marketValueYen(model, mintCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const at120 = marketValueYen(model, mintCar, 120, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    expect(at120).toBe(Math.round(at100 * 1.2))
+  })
 
-    const expensiveCar = buildCarInstance({ modelId: model.id, parts: expensivePartScrap })
-    const cheapCar = buildCarInstance({ modelId: model.id, parts: cheapPartScrap })
+  it('heat applies exactly once for a part-worn car too, matching the closed-form formula at each heat', () => {
+    const car = carAtUniformBand('worn')
+    for (const heatPercent of [80, 100, 120]) {
+      expect(marketValueYen(model, car, heatPercent, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+        expectedBaseValueYen(car, model, heatPercent),
+      )
+    }
+  })
 
-    const expensiveFactor = conditionFactor(expensiveCar, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const cheapFactor = conditionFactor(cheapCar, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    expect(expensiveFactor).toBeLessThan(cheapFactor)
+  it('adds installed-parts value on top, additively (not multiplied into the base)', () => {
+    const suspensionKit: Part = {
+      id: 'tanuki-street-coilovers',
+      brand: 'Tanuki',
+      name: 'Street Coilovers',
+      carPartId: 'dampers',
+      grade: 'street',
+      requiredTags: [],
+      statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+      priceYen: 100_000,
+    }
+    const partsById = { [suspensionKit.id]: suspensionKit }
+    const car = carAtUniformBand('fine')
+    const withPart: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        dampers: {
+          band: 'fine',
+          fitted: true,
+          installed: {
+            id: 'pi-0001',
+            partId: suspensionKit.id,
+            band: 'mint',
+            genuinePeriod: false,
+          },
+        },
+      },
+    }
+    const bare = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const withInstalled = marketValueYen(
+      model,
+      withPart,
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const partValue = installedPartsValueYen(withPart, partsById, ECONOMY)
+    expect(withInstalled).toBe(bare + partValue)
   })
 })
 
@@ -173,63 +329,5 @@ describe('installedPartsValueYen', () => {
     const one = installedPartsValueYen(car, partsById, ECONOMY)
     const two = installedPartsValueYen(withTwo, partsById, ECONOMY)
     expect(two).toBe(one * 2)
-  })
-})
-
-describe('marketValueYen', () => {
-  it('equals round(bookValue x conditionFactor x heat/100) with no installed parts', () => {
-    const car = carAtUniformBand('fine')
-    const factor = conditionFactor(car, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const expected = Math.round(model.bookValueYen * factor * 1.0)
-    expect(marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(expected)
-  })
-
-  it('scales linearly with heat', () => {
-    const car = carAtUniformBand('fine')
-    const at100 = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const at120 = marketValueYen(model, car, 120, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    expect(at120 / at100).toBeCloseTo(1.2, 1)
-  })
-
-  it('adds installed-parts value on top, additively (not multiplied into the base)', () => {
-    const suspensionKit: Part = {
-      id: 'tanuki-street-coilovers',
-      brand: 'Tanuki',
-      name: 'Street Coilovers',
-      carPartId: 'dampers',
-      grade: 'street',
-      requiredTags: [],
-      statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
-      priceYen: 100_000,
-    }
-    const partsById = { [suspensionKit.id]: suspensionKit }
-    const car = carAtUniformBand('fine')
-    const withPart: CarInstance = {
-      ...car,
-      parts: {
-        ...car.parts,
-        dampers: {
-          band: 'fine',
-          fitted: true,
-          installed: {
-            id: 'pi-0001',
-            partId: suspensionKit.id,
-            band: 'mint',
-            genuinePeriod: false,
-          },
-        },
-      },
-    }
-    const bare = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const withInstalled = marketValueYen(
-      model,
-      withPart,
-      100,
-      partsById,
-      PARTS_TAXONOMY_BY_ID,
-      ECONOMY,
-    )
-    const partValue = installedPartsValueYen(withPart, partsById, ECONOMY)
-    expect(withInstalled).toBe(bare + partValue)
   })
 })

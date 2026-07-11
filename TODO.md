@@ -51,6 +51,18 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **Model-independent part restoration costs make cheap cars not restore-worthy (Sprint 27,
+  flag-and-tune-later per maintainer).** `restorationBill` (`carCostToMintYen`, all 29 real parts)
+  is priced from `parts-taxonomy.json`'s flat, model-independent step costs, so a realistically-
+  worn car's bill (~Y400k-1.4M) routinely dwarfs a shitbox/common car's own Y180k-650k book value
+  while being a small fraction of a premium car's Y2-6M. The Sprint 27 auction-seizure symptom
+  (worn cars priced below a static book-value reserve) is FIXED - reserve was rebased onto the
+  guide value (`sprint27.md` Exit follow-up, Sprint 30 decision 2 pulled forward) - but the deeper
+  structural point remains: a cheap car whose restoration bill exceeds its own clean value is
+  genuinely not worth restoring under the current taxonomy. The maintainer chose to flag this and
+  tune later (via `hassleFactor`/`floorFraction`, or eventually model-scaled restoration costs)
+  rather than restructure the frozen taxonomy now. Not blocking; a real balance call for the
+  harness pass.
 - [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
   sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
   behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not

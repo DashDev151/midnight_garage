@@ -72,7 +72,28 @@ describe('market: bidding', () => {
 
   it("myActiveBids keeps showing a lot after the player is outbid - that view is the panel's whole point (Sprint 20)", () => {
     const game = useGameStore()
-    warpToCatalog(game)
+    // Sprint 27: unlocks premium tier before the catalog rolls. Under the
+    // restoration-bill value model a fixed per-part repair cost is a much
+    // smaller fraction of a premium car's own book value, so premium lots
+    // reliably clear reserve and draw real dealer interest (measured:
+    // 600/600 rolled premium lots vs local-yard's ~2%) - this is a test-
+    // fixture choice to reach a tier where the rival counter-raise this test
+    // actually exercises fires reliably; the mechanic itself is identical at
+    // every tier.
+    game.devSetReputationTier('known')
+    // `createInitialGameState` already rolls day-1's catalog before this
+    // test ever runs (so a new career isn't empty for a week), at
+    // reputation 'unknown' - `warpToCatalog` sees that stale, local-yard-
+    // only board immediately and returns without advancing. Keep ending
+    // days until a premium lot actually appears (the next weekly refresh,
+    // now unlocked) rather than trusting the pre-existing board.
+    for (
+      let i = 0;
+      i < 20 && !game.gameState.activeAuctionLots.some((l) => l.tier === 'premium');
+      i++
+    ) {
+      game.endDay()
+    }
 
     // Open the minimum bid on every lot on today's board, then run the
     // overnight counter step for a while: with dealers answering most

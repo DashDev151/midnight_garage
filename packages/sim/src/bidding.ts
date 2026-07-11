@@ -66,12 +66,29 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
   )
 }
 
-/** Seller's floor under a deal (GDD 6.5): a fraction of book value. Bidding
- * opens here; a lot whose demand ceiling never clears it simply never opens
- * on its own (nobody came for it) - it can still be bought out, or bid on
- * directly by the player. */
-function reserveYen(lot: AuctionLot, economy: EconomyConfig): number {
-  return Math.round(lot.bookValueYen * economy.AUCTION_RESERVE_PRICE_FRACTION)
+/**
+ * Seller's floor under a deal (GDD 6.5): a fraction of the lot's GUIDE VALUE.
+ * Bidding opens here; a lot whose demand ceiling never clears it simply never
+ * opens on its own (nobody came for it) - it can still be bought out, or bid
+ * on directly by the player.
+ *
+ * Sprint 27 (Sprint 30 decision 2 pulled forward) rebased this off
+ * `anchorValueYen` (= `marketValueYen` = the new restoration-bill
+ * `instanceValue`), replacing the old `bookValueYen` basis. Once car value
+ * dropped to reflect a worn car's restoration bill, a static book-value
+ * reserve sat *above* most worn cars' actual guide value, so no lot could
+ * clear and the whole auction market seized (balance harness: acquisitions
+ * -95%, Flipper down to the do-nothing baseline). Coupling the reserve to the
+ * same value everything else prices from (the auction anchor, buyout, walk-in
+ * offers, bot bid caps) fixes that by construction: the reserve now moves with
+ * this specific worn car, not with a static per-model constant. `state`/
+ * `context` are threaded through purely to reach `anchorValueYen`, exactly
+ * like `computeBuyoutPriceYen`/`demandCeilingYen` already do.
+ */
+export function reserveYen(lot: AuctionLot, state: GameState, context: SimContext): number {
+  return Math.round(
+    anchorValueYen(lot, state, context) * context.economy.AUCTION_RESERVE_PRICE_FRACTION,
+  )
 }
 
 /**
@@ -139,7 +156,7 @@ export function turnoutBand(
   day: number,
 ): TurnoutBand {
   const ceiling = demandCeilingYen(lot, state, context, day)
-  if (ceiling < reserveYen(lot, context.economy)) return 'thin'
+  if (ceiling < reserveYen(lot, state, context)) return 'thin'
   const anchor = anchorValueYen(lot, state, context)
   const center = anchor * context.economy.AUCTION_WHOLESALE_FRACTION
   if (center <= 0) return 'thin'
@@ -169,10 +186,15 @@ export function bidIncrementYen(lot: AuctionLot, economy: EconomyConfig): number
  * UI (the raise control, pre-filled to this) share the exact same ladder
  * math `resolvePlaceBid` itself validates against, rather than each
  * re-deriving reserve-or-increment logic independently.
+ *
+ * Sprint 27: takes `state`/`context` (was `economy`) so the reserve branch
+ * can reach the new guide-value-based `reserveYen`. The increment branch is
+ * unchanged - `bidIncrementYen` is still a fixed fraction of book value (a
+ * ladder step, not a value floor), so it doesn't move with condition.
  */
-export function nextRaiseYen(lot: AuctionLot, economy: EconomyConfig): number {
-  if (lot.currentBidYen === 0) return reserveYen(lot, economy)
-  return lot.currentBidYen + bidIncrementYen(lot, economy)
+export function nextRaiseYen(lot: AuctionLot, state: GameState, context: SimContext): number {
+  if (lot.currentBidYen === 0) return reserveYen(lot, state, context)
+  return lot.currentBidYen + bidIncrementYen(lot, context.economy)
 }
 
 /**
@@ -236,13 +258,19 @@ export function advanceLotOvernight(
 
   if (lot.currentBidYen === 0) {
     const ceiling = demandCeilingYen(lot, state, context, day)
-    if (ceiling < reserveYen(lot, economy)) {
+    const reserve = reserveYen(lot, state, context)
+    // Sprint 27: reserve is guide-value-based now, so a lot with no interested
+    // buyer archetype (anchor 0) has reserve 0 too - and its ceiling is
+    // likewise 0. The old book-value reserve was always positive, which
+    // implicitly kept such a lot bidless; explicitly require a positive
+    // reserve so a no-demand lot never opens at a Y0 rival bid.
+    if (reserve <= 0 || ceiling < reserve) {
       return { lot, log: [] } // nobody's come for it (yet) - stays bidless
     }
     return {
       lot: {
         ...lot,
-        currentBidYen: reserveYen(lot, economy),
+        currentBidYen: reserve,
         leadingBidder: 'rival',
         quietDays: 0,
       },
@@ -292,7 +320,7 @@ export function resolvePlaceBid(
 ): AcquisitionResult {
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
   if (!lot || bidYen <= 0) return { state, log: [] }
-  if (bidYen < nextRaiseYen(lot, context.economy)) return { state, log: [] }
+  if (bidYen < nextRaiseYen(lot, state, context)) return { state, log: [] }
 
   const updatedLot: AuctionLot = {
     ...lot,

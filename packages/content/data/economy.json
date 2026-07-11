@@ -1,7 +1,7 @@
 {
   "STARTING_CASH_YEN": 1500000,
   "WEEKLY_RENT_YEN": 20000,
-  "AUCTION_RESERVE_PRICE_FRACTION": 0.4,
+  "AUCTION_RESERVE_PRICE_FRACTION": 0.5,
   "AUCTION_LOTS_PER_TIER": {
     "local-yard": 3,
     "regional": 3,
@@ -29,13 +29,13 @@
   "AUCTION_BID_INCREMENT_FRACTION": 0.05,
   "AUCTION_TURNOUT_BANDS": [0.85, 1.12],
   "valuation": {
-    "conditionFloor": 0.35,
-    "conditionCeiling": 1.1,
-    "conditionExponent": 1.3,
+    "hassleFactor": 1.2,
+    "floorFraction": 0.1,
     "partsRetention": 0.55,
     "genuinePeriodMultiplier": 1.25,
     "tasteSpread": 0.12,
-    "listingPatiencePremium": 1.05
+    "listingPatiencePremium": 1.05,
+    "walkAwaySpread": 0.05
   },
   "marketPressure": {
     "WAVE_AMPLITUDE": 12,

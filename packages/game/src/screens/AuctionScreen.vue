@@ -11,6 +11,27 @@ const game = useGameStore()
 // Per-lot raise input; empty defaults to the minimum next raise.
 const bidInputs = reactive<Record<string, number | undefined>>({})
 
+// Which lots currently have their full 29-part condition report open
+// (Sprint 27 decision 3: read-only, always available, never gated).
+const expandedLotIds = reactive(new Set<string>())
+
+function isLotExpanded(lotId: string): boolean {
+  return expandedLotIds.has(lotId)
+}
+
+function toggleLotDetail(lotId: string): void {
+  if (expandedLotIds.has(lotId)) expandedLotIds.delete(lotId)
+  else expandedLotIds.add(lotId)
+}
+
+/** Group label for a real part's row - empty string is unreachable in
+ * practice (every taxonomy entry has a group), kept only to satisfy the
+ * lookup's `undefined` return type. */
+function partGroupLabel(partId: Parameters<typeof game.groupForCarPart>[0]): string {
+  const groupId = game.groupForCarPart(partId)
+  return groupId ? game.componentLabel(groupId) : ''
+}
+
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
 const detailedGroups = computed(() =>
   game.auctionLotsByTier.map((g) => ({
@@ -146,6 +167,37 @@ function backstopLabel(expiresOnDay: number): string {
             >
               {{ game.componentLabel(groupId) }}: {{ band }}
             </span>
+          </div>
+
+          <div class="lot-condition-report">
+            <button
+              class="details-toggle"
+              :data-test="'toggle-detail-' + d.lot.id"
+              @click="toggleLotDetail(d.lot.id)"
+            >
+              {{
+                isLotExpanded(d.lot.id)
+                  ? 'Hide full condition report'
+                  : 'Show full condition report'
+              }}
+            </button>
+            <div v-if="isLotExpanded(d.lot.id)" class="lot-parts">
+              <p class="restoration-bill">
+                Restoration bill (every part to mint): {{ formatYen(d.restorationBillYen) }}
+              </p>
+              <ul class="part-rows">
+                <li
+                  v-for="row in d.partRows"
+                  :key="row.partId"
+                  class="part-row"
+                  :class="'band-' + row.band"
+                >
+                  <span class="part-group">{{ partGroupLabel(row.partId) }}</span>
+                  <span class="part-name">{{ row.displayName }}</span>
+                  <span class="part-band">{{ row.band }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div class="lot-bid">
@@ -289,6 +341,77 @@ h3 {
 .band-chip.band-scrap {
   color: var(--mg-neon-pink);
   border-color: var(--mg-neon-pink);
+}
+
+.lot-condition-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-2);
+}
+
+.details-toggle {
+  align-self: flex-start;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.lot-parts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-2);
+  padding: var(--mg-space-2);
+  background: var(--mg-night-deep);
+  border-radius: var(--mg-radius);
+}
+
+.restoration-bill {
+  margin: 0;
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+}
+
+.part-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--mg-space-1);
+}
+
+.part-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+}
+
+.part-row .part-group {
+  color: var(--mg-text-dim);
+  opacity: 0.7;
+}
+
+.part-row .part-name {
+  flex: 1;
+  color: var(--mg-text);
+}
+
+.part-row .part-band {
+  text-transform: capitalize;
+}
+
+.part-row.band-mint .part-band {
+  color: var(--mg-success);
+}
+
+.part-row.band-fine .part-band {
+  color: var(--mg-neon-cyan);
+}
+
+.part-row.band-poor .part-band,
+.part-row.band-scrap .part-band {
+  color: var(--mg-neon-pink);
 }
 
 .lot-turnout {
