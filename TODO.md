@@ -2,514 +2,109 @@
 
 Deliberately deferred items that are **not** tied to any specific future sprint number, so they
 won't surface again just by reading `docs/sprints/sprintXX.md` in order. Check this file
-separately when planning a new sprint. (Deferrals that already have a sprint number attached — e.g.
-the service-grinder bot in Sprint 13, the event-chaser bot in Sprint 16, Cloudflare Pages secrets
-before Sprint 8 — live in their sprint docs instead and aren't duplicated here.)
+separately when planning a new sprint. (Deferrals that already have a sprint number attached live
+in their sprint docs instead and aren't duplicated here.)
 
-Remove an item once it's actioned; note which sprint/commit picked it up.
+**This file holds only what's still open.** Once an item is fully resolved, it's removed outright —
+the sprint doc (`docs/sprints/sprintNN.md`) or the commit that picked it up is the permanent
+historical record; this file doesn't re-narrate it. (Last full pass: 2026-07-11, after the
+foundational-economy arc — Sprints 20-24 — landed; see `git log` for every sprint's commit hash.)
 
-## Next focus (agreed 2026-07-09, playtest-driven)
+## Next playtest checklist
 
-The maintainer played a full career through Sprint 09 and filed 11 concrete notes (see
-`docs/sprints/sprint10.md`'s source line for the verbatim list). Explicit direction: **not chasing
-polish or balance — the goal is landing on something playable and fun**, found by playing and noting
-what breaks, not by pre-planning. Expect this section to keep churning sprint-to-sprint as more
-playtest notes come in; that's the intended workflow now, not a one-time list.
+The maintainer's next real `pnpm dev` session — nothing here has ever been checked in a browser.
+Consolidates every standing "verify this UI in person" item (Sprints 12/13/14) with Sprint 24's own
+Human Validation section, so there's one list to work through instead of several scattered ones:
 
-- [x] **Sprint 10 — Auction realism, pacing, feedback.** Implemented, ready for review — see
-  `docs/sprints/sprint10.md`. Day-1 content seeding (no more empty first week); service-job
-  description/car-mismatch fix; a **full auction rework** — rivals bid a *fraction* of resale value
-  (discipline) so bidding is winnable at a profit, a **variable bell-distributed field** of anonymous
-  bidders (avg ~6, 3–9 band, replacing the fixed 5) gated by explicit tier interest, a hard buyout
-  ceiling on rival bids, and a "bid ~X to win" estimate re-centered on the top bid; the win-price
-  distribution is a calibrated bell (STEAL ~10% / MID ~82% / FRENZY ~8%), verified against many
-  seeded synthetic lots in `bidding.test.ts`/`lotInterest.test.ts`. Plus a calendar (GDD §2.2: model
-  years gated by in-game year, advances with reputation) and an instant job-completion feedback
-  modal. 251 tests (was 231); all checks green. The harness got the win-price bucket metric too, but
-  couldn't be run end-to-end — see the new Engineering item below.
-  **Deferred to a later "auction depth" sprint:** more distinct buyer archetypes (richer valuation
-  variety) + magnitude tuning toward the top of the 3–9 band.
-- [x] **Sprint 11 — Instant actions, a real content-authoring system, round-2 playtest fixes.**
-  Implemented, ready for review — see `docs/sprints/sprint11.md`. Generalized the
-  moveCar/buyBay/completeServiceJob pattern (Sprint 08/09) to every remaining action — repair,
-  install, inspect, bid, buyout, buy-part, accept-service-job, sell-walk-in, list-for-sale all resolve
-  the instant the player clicks (a new `laborSlotsSpentToday` live daily budget on GameState,
-  `SAVE_VERSION` 3→4, makes repeated same-day clicks possible). `advanceDay` is now purely a
-  day-boundary tick, still resolving bots' queued `DayActions` through the *same* instant resolvers.
-  Service-job acceptance is now genuinely instant (the car arrives in parking the moment you click,
-  not "next day") — finishes what Sprint 10 only labeled, no separate `arrivesOnDay` field needed since
-  there's no longer a queue to arrive *from*. Round-2 playtest fixes bundled in: recalibrated the
-  "feeding frenzy" badge (was firing on ~30-50% of auctions, Sprint 10's own miss); dropped inspect's
-  labor cost; new `swapCars` fixes a real full-shop soft-lock; the sell-side buyer pool is now gated
-  the same way auction bidding already was (fixes backwards walk-in-vs-listing pricing and
-  collectors bidding on shitboxes). Replaced the fixed 8-template service-job content model with a
-  12-type job-type + flavor-pool catalog (`ServiceJobTypeSchema`) — a real fix for the "brakes on a
-  suspension job" bug class, not another one-line patch, after the maintainer found a *second*
-  instance of it and asked for a structural fix. 295 tests (was 251); all checks green.
-  **Deferred (per the maintainer, tracked as their own future sprints):** staff (playtest #9), the
-  parts-market cart/checkout overhaul (playtest #7).
-- [x] **Sprint 12 — Component model refactor.** Implemented, ready for review — see
-  `docs/sprints/sprint12.md`. The zones+slots split (5 `condition` zones + 7 `buildSheet` slots, no
-  shared identity between them) is gone, replaced by one unified 8-key `components` map
-  (`{condition, installed}` per component: engine/forcedInduction/drivetrain/suspension/brakes/wheels/
-  body/interior) on `CarInstanceSchema` — the foundation Sprint 13's repair-vs-replace economy needs.
-  Ripple touched `computeDerivedStats` (condition-to-stat feed deliberately stays scoped to the same 4
-  components as before — brakes/wheels/forcedInduction stay inert on stats this sprint, an explicit
-  anti-balance-change guard), auction/service-job car generation, the job/labor core, all 5 bots +
-  service-grinder, the car-detail UI (collapsed into one 8-row Components list), and the parts catalog
-  (`wheelsInterior`'s 3 parts reclassified by name: `enkai-mesh-15`/`vulk-ve37` → `wheels`,
-  `zashiki-bucket-seat` → `interior`). Two decisions were revised mid-flow at the maintainer's explicit
-  direction: **no save migration** ("nuke" — no existing saves worth preserving, so `SAVE_VERSION` 4→5
-  ships with no `MIGRATIONS[4]` transform; a pre-v5 save with a car now fails `decodeSave` cleanly and
-  the store's existing hydrate/import fallback already handles it), and **correlated condition rolls**
-  (a car's 8 components now roll around one shared per-car baseline ± jitter instead of fully
-  independently, fixing a "pristine engine, wrecked transmission" realism gap that existed even in the
-  old 5-zone model). Also split the old `install-wheels-interior` service-job type's mixed-theme
-  flavor pool into separate `install-wheels`/`install-interior` types (13 types total, up from 12) —
-  a real instance of the exact flavor/work mismatch class Sprint 11's type+pool model exists to
-  prevent, surfaced by giving wheels and interior real separate identities. Both golden-master hashes
-  re-pinned (`27aa1230`/`a7dc17af`). 301 tests (was 296; two content/resolution coverage gaps found in
-  self-review after the fact and closed — see the two open items directly below). All checks green.
-- [ ] **Sprint 12 follow-up: manually verify `CarDetailScreen.vue`'s unified Components list in a
-  browser.** Never visually checked — `pnpm dev` is long-running and the maintainer's to run, not
-  Claude's. Component-mount tests (`CarDetailScreen.test.ts`) confirm the right elements exist with the
-  right `data-test` hooks, not that the 8-row layout actually reads well replacing the old two-section
-  Condition/Build-sheet view. Check on next playtest pass.
-- [ ] **Sprint 12 follow-up: run `pnpm balance:run` to check the correlated-condition-roll change
-  (decision 5) at population scale.** Unit tests confirm the mechanics (shared per-car baseline +
-  bounded jitter) are correct in isolation, but components now more often need the *same* number of
-  repair labor slots (they cluster near one baseline instead of rolling independently) — this is
-  exactly what broke one `gameStore.garage.test.ts` assertion during implementation, fixed there, but
-  never checked against real bot economy behavior at the 100-day-career scale the harness exercises.
-  Per Sprint 10/11's own precedent: unit tests passing isn't proof the economy is still right. Can be
-  folded into Sprint 13's own harness work if that's more efficient than a standalone run now.
-- [x] **Sprint 13 — Equipment & repair-vs-replace economy.** Implemented, ready for review — see
-  `docs/sprints/sprint13.md`. The maintainer called this **critical, not a nice-to-have**
-  (2026-07-09). A new 7-item `equipment.json` catalog gates REPAIR: `findOrCreateJob` refuses to open
-  a new repair-zone job (logging `job-blocked`/`equipment-missing`) without the component's equipment,
-  and charges a flat one-time consumables cost on successful creation; `resolveAcceptServiceJob`
-  applies the same gate to repair-kind service-job offers (install-kind is never gated). Buying
-  equipment is instant for the player and bot-batchable, following the `applyBayPurchase` template
-  exactly. REPLACE (buy a part + install) is untouched and stays equipment-free, as a fix found
-  mid-implementation (`applyJobToCar`'s install branch never restored `condition` — a pre-Sprint-12
-  gap, closed since Sprint 13 is exactly the sprint that makes Replace a complete alternative to
-  Repair). **Reversed mid-implementation:** the original design reputation-gated the 3 priciest items,
-  but `reputationTier` turned out to never be mutated anywhere in the sim — gating on it would be
-  permanent denial, not a climbable ladder, so all 7 items shipped cash-only (see the follow-up item
-  below). All 5 pre-existing bots got a shared `bots/equipmentHelpers.ts` gate (mirroring
-  `bayHelpers.ts`); two new bots, Handyman (buys equipment aggressively, then repairs) and Investor
-  (never buys equipment, replace-only), exist specifically to make the payback curve measurable.
-  Testing surfaced a genuine balance finding, not a bug: Service Grinder's repair-only income can't
-  currently pay back real equipment prices within a 100-day career — resolved the same way Sprint 03
-  handled Cautious Restorer's honest negative result (the test asserts the mechanism works, not a
-  profitability claim that isn't true yet), tracked as its own follow-up below rather than patched
-  away. Also fixed, opportunistically, a pre-existing and unrelated bug found while wiring the harness
-  CLI: `cli/exportCareers.ts` had been silently generating zero service-job offers in every real
-  `pnpm balance:run` since Sprint 11 shipped (stale `SERVICE_JOB_TEMPLATES` import, missing customer
-  names). `SAVE_VERSION` 5→6, purely additive. 336 tests (was 301); all checks green.
-- [ ] **Sprint 13 follow-up: manually verify the equipment UI in a browser.** Never visually
-  checked — `pnpm dev` is the maintainer's to run, not Claude's, and not currently possible from
-  mobile (2026-07-09). Covers `GarageScreen.vue`'s new Equipment section (owned/unowned, price, buy
-  button), `CarDetailScreen.vue`'s disabled-repair-button + "needs `<equipment>`" hint, and
-  `ServiceJobsScreen.vue`'s disabled-accept + hint for repair-kind offers. Component-mount tests
-  (`gameStore.equipment.test.ts`, `CarDetailScreen.test.ts`) confirm the right elements exist with the
-  right `data-test` hooks and the right disabled state under the right game-state conditions, not that
-  the buy/gate flow actually reads well or that the "why is repair disabled" messaging is clear in
-  practice — same caveat as the still-open Sprint 12 Components-list check directly above. Check on
-  next desktop session.
-- [x] **Sprint 13 follow-up: filter repair-kind service-job offers by owned equipment at generation
-  time, not just block them at accept time.** Maintainer's read (2026-07-09): "these jobs should not
-  even be showing up if the player can not complete them yet." Correct critique — Sprint 13 shipped
-  the simpler accept-time block per the maintainer's own "leave as is for now" call at the time.
-  **Implemented by Sprint 16** (`docs/sprints/sprint16.md`, 2026-07-10, ready for review — not yet
-  committed) — with real nuance added beyond a hard filter: mostly hides offers the player can't act
-  on, but lets a rare one through anyway (`JOB_HINT_OFFER_CHANCE = 0.15`) as a "here's what's next"
-  hint rather than filtering to zero.
-- [ ] **Sprint 13 follow-up: deeper per-bot equipment strategy, if the harness shows the minimal
-  buy-if-affordable logic isn't good enough.** Every repair-touching bot (5, including Service
-  Grinder) gets a working equipment-purchase gate in Sprint 13 itself — no bot goes inert. What's
-  deferred is *strategic* depth: an existing bot (Flipper, Cautious Restorer, Balanced Player,
-  Random Strategy) deliberately timing a purchase against its own payback math, the way the new
-  Handyman bot does. Only pick this up if `pnpm balance:run` after Sprint 13 shows the plain
-  buy-if-affordable heuristic produces bad-looking economics for one of the existing archetypes.
-- [x] **`reputationTier` is never derived from `reputationPoints` anywhere in the sim — a real gap,
-  surfaced as load-bearing by Sprint 13.** Confirmed by grep: `reputationTier` is read (auction
-  calendar, service-bay income) but nothing ever mutates it from `unknown`. Harmless while nothing
-  gated on it mattered much; Sprint 13 originally gated the 3 priciest equipment items behind
-  reputation tiers and found Service Grinder permanently stuck at `unknown`, locked out of 3 of 5
-  repair components forever, going net-negative over 100 days — so Sprint 13 shipped with **no**
-  reputation gate on equipment (all 7 items cash-only) rather than gate on a value that can't climb.
-  **Implemented by Sprint 15** (`docs/sprints/sprint15.md`, 2026-07-10, ready for review — not yet
-  committed) — the exact "own scoped design" this item called for: `deriveReputationTier` now derives
-  the tier from `reputationPoints` on every change (a first-pass, openly-adjustable point ladder), plus
-  two real new reputation sources beyond service jobs alone (a quality-car-sale bonus, a lemon-sale
-  penalty). **Sprint 16 (also implemented, 2026-07-10, ready for review) spends the now-real tier** on
-  equipment/facility/auction gating and the Collector Network caveat mentioned here — and found a real
-  catch-22 doing it: gating every one of Service Grinder's five possible repair-kind equipment targets
-  left it with no way to ever earn its first point of reputation. Fixed by leaving `upholstery-bench`
-  ungated (see sprint16.md's decision 1 revision), the real-content counterpart to this item's own
-  "gate on a value that can't climb" lesson from Sprint 13.
-- [x] **Sprint 14 — Parts market: cart, checkout & delivery timing.** Implemented, ready for review —
-  see `docs/sprints/sprint14.md`. **Scope corrected 2026-07-09**: the previous version of this bullet
-  added "more grades (a junk/scrapyard tier), multiple vendors" — traced back through the docs and
-  found to be scope invented in an earlier session, not the GDD's 4-grade system
-  (Stock/Street/Sport/Race) nor any sourced playtest note. Moved to `IDEAS.md` as an unapproved idea.
-  Actual scope, grounded directly with the maintainer same day: the real, sourced playtest ask (#7)
-  turned out to be a genuine misclick-safety problem (accidentally bought a ¥500k part in one click
-  during playtesting) — `PartsMarketScreen.vue` now has a real cart (Add to cart, running total, one
-  deliberate Checkout click; nothing spends cash until then) plus a delivery-speed choice at checkout:
-  **express** (a 10% surcharge, arrives same-day, today's old behavior) or **standard** (sticker price,
-  arrives next day via a new `pendingPartOrders` queue resolved by `advanceDay`, modeled directly on
-  `PublicListingSchema`'s `resolvesOnDay` pattern) — a deliberate narrow pull-forward of what the
-  roadmap assigned to Sprint 16 ("order deliveries / lead times / parts scouts"), plus sorting/filtering
-  the catalog. **The cart is persistent** (maintainer's explicit call, reversing the original
-  ephemeral-ref proposal): it lives on `GameState` (`cartPartIds`), riding the existing autosave/
-  save-code mechanism for free rather than a new persistence layer. **A design assumption was revised
-  mid-implementation**: the planned deadline-aware bot `decideDeliverySpeed` helper turned out to have
-  exactly one real caller (`investor.ts`), whose existing same-tick install mechanic structurally can't
-  use standard delivery at all — so Investor is pinned to express with a comment instead of shipping an
-  unused generic helper (tracked as its own follow-up below). `SAVE_VERSION` 6→7, purely additive.
-  361 tests (was 336); all checks green. Deliberately sequenced last in the 10→11→12→13→14 run — it
-  targets `componentId` (Sprint 12) and is instant-buy (Sprint 11), so building it earlier would have
-  meant redoing it.
-- [ ] **Sprint 14 follow-up: manually verify the cart/checkout/delivery-timing flow in a browser.**
-  Never visually checked — not currently possible from mobile (2026-07-09), same recurring blocker as
-  Sprints 12/13. Component-mount tests confirm the right elements exist and the right state transitions
-  happen, not that the cart *feels* like a safeguard, that the "On order" pending-deliveries section is
-  discoverable, or that the checkout-disabled-when-unaffordable state reads clearly. Check on next
-  desktop session — this is also the first thing the upcoming playtesting sprint should exercise.
-- [ ] **Sprint 14 follow-up: a deadline-aware bot delivery-speed helper, once a second part-buying bot
-  actually needs it.** Sprint 14's design originally planned a shared `decideDeliverySpeed` helper
-  (standard by default, express only under real time pressure) for every part-buying bot. Implementation
-  found `buyParts`/`resolveBuyPart` has exactly one bot caller today — `investor.ts` — and its existing
-  mechanic structurally requires express (it predicts a part's `partInstanceId` and installs it the same
-  tick; a standard order wouldn't create that `PartInstance` until a later day). Building a deadline-aware
-  helper for a single caller that can't use its "wait" branch would be dead generality, so Investor is
-  pinned to express with a comment instead. Revisit if/when a future bot (e.g. one that installs parts for
-  service jobs, which have real `dueOnDay` deadlines) actually needs the standard/express trade-off.
+- [ ] **Components list** (`CarDetailScreen.vue`) — the 8-row Repair/Replace layout, restructured in
+  Sprint 24 into a name+bar+percent line with buttons/hints on their own line below it. Never
+  visually confirmed, in either the original Sprint 12 layout or the Sprint 24 restructure.
+- [ ] **Equipment UI** — Upgrades tab's buy flow, `CarDetailScreen`'s disabled-repair + "needs
+  `<equipment>`" hint, `ServiceJobsScreen`'s disabled-accept + hint for repair-kind offers.
+- [ ] **Cart/checkout/delivery flow** (`PartsMarketScreen.vue`) — does the cart actually feel like a
+  misclick safeguard, is "On order" (pending standard-delivery parts) discoverable, does
+  checkout-disabled-when-unaffordable read clearly.
+- [ ] **Drag-and-drop hover highlight** (Sprint 24 hotfix) — only the bay/slot actually under the
+  pointer should highlight teal during a live drag now, not every valid target at once. Confirm it
+  feels right, not just that it's technically correct.
+- [ ] **Full economy loop**: win an auction war (get outbid overnight, then hammer), lose one on
+  purpose, buy one out, inspect a risky lot and walk away, discover an issue on a blind buy, fix it,
+  clean-sale and concours-sale a car, flood one model's market, feel rent.
+- [ ] **Export the session log** (`SaveMenu.vue` → "Export session log") from the session — the
+  first real artifact for the recorded-play idea below.
+- [ ] Triage afterward: whatever breaks or feels off becomes the next sprint's input, same as every
+  playtest before this one.
 
-Sequencing (10 → 11 → 12 → 13 → 14) is the maintainer-facing recommendation in `sprint10.md`'s intro.
-10 through 14 are all done. **The 2026-07-10 playtest happened** (`docs/playtest-notes-2026-07-10.md`,
-11 raw notes) and turned directly into five designed sprints — **15 (reputation system), 16
-(progression gating + Upgrades tab), 17 (drag-and-drop foundation + garage UI), 18 (parts inventory +
-staged install/repair workflow), 19 (auction rework)** — sequenced by dependency, not by which item
-felt most urgent in the notes (Sprint 19, the auction rework, was flagged with the most urgency but
-sequenced last on size and blast radius — 15/16 reshape the auction population feeding it, so doing 19
-first would mean recalibrating it twice; 17/18 are genuinely independent of 19, so that pair and 19
-could swap order if the auction pain becomes unbearable first). All five designed 2026-07-10, reviewed
-and corrected 2026-07-10 (factual claims verified against the codebase; logic gaps fixed in the docs).
-**Sprints 15-18 implemented and committed 2026-07-10** (`docs/sprints/sprint15.md`/`sprint16.md`/
-`sprint17.md`/`sprint18.md`). **Sprint 19 (auction rework: multi-day bidding) implemented 2026-07-10**
-(`docs/sprints/sprint19.md`), all checks green, not yet committed — the escalation model (day-by-day
-rival raises toward unchanged fixed ceilings, one final resolution on the lot's own due day) was
-confirmed via `AskUserQuestion` before implementation, matching the maintainer's own proposal exactly.
-**Sprint 19b (auction bidding fixes) implemented the same day** (`docs/sprints/sprint19b.md`), bundled
-with Sprint 19 in the same not-yet-committed working tree — direct maintainer feedback on Sprint 19
-itself before it shipped: switched from second-price to first-price resolution ("you should pay what
-you bid"), fixed rival escalation to start from the reserve price instead of ¥0 (wasted early-auction
-days below a floor that could never win anyway), and fixed a real UI gap where the already-computed
-real current top bid was never actually shown on screen. A real bug was found and fixed mid-implementation
-(a dominated rival was getting a phantom reserve-floor value written into its stored position even
-though it never actually got a turn) — see the sprint doc's Exit for detail.
-**Sprint 19c (auction economics retune) implemented the same day** (`docs/sprints/sprint19c.md`),
-also bundled in — three more maintainer decisions, each verified against real data before
-implementing: raised `AUCTION_ESCALATION_DAILY_CHANCE` 0.4→0.6 (real-lot-sweep-verified), retuned
-`AUCTION_BIDDER_DISCIPLINE` 0.7→0.95 so rival ceilings land in the requested 0.8-1.1x-book band
-(grounded in a real 12,000-pair valuation sample, not an assumed average), and made the buyout price
-dynamic (`computeBuyoutPriceYen`) — it rises to match a real bid that clears the old static floor,
-instead of capping rival bids below it. A real bug was found and fixed in the *verification tooling*
-itself (a `generateAuctionCatalog(..., count=1, ...)` loop was silently reusing one frozen lot id
-across every "sample," caught by cross-checking against the real test's own result) — disclosed since
-an uncaught version of it would have produced a false "this is fine" reading. **Four**
-items from that playtest are in none of the five sprints — tracked directly below so they don't vanish
-(the review found the first draft of this paragraph claimed only two, and claimed they were listed
-here when they weren't):
+## Standing concerns
 
-- [x] **Sprint 17 follow-up: manually verify the round-2 positional-slot fixes in a browser.**
-  Round 1 shipped drag-and-drop as designed; the maintainer then actually ran `pnpm dev` and found
-  three real bugs no automated test was written to catch (ghost preview freezing mid-drag,
-  same-section drops refused outright, parking rendering no empty drop targets) — all fixed in the
-  same session by making bay/parking slot position real, persisted state
-  (`serviceBayCarIds`/`parkingCarIds`, `SAVE_VERSION` 8→9). **Verified 2026-07-10**: the maintainer
-  played the round-2 fixes and confirmed they work ("working well... working much better"), with more
-  general polish wanted but no specific bug called out. See `docs/sprints/sprint17.md`'s "Round 2"
-  section. Sprint 17 committed.
-- [x] **Sprint 18 follow-up: manually verify the parts-inventory staging flow in a browser.** The
-  maintainer checked round 1 and found it genuinely broken, not a polish nit: every component row had
-  its own always-visible "drag a part" drop zone, but the actual parts lived in a panel embedded far
-  below the Confirm button (off-screen in a normal viewport) — indistinguishable from the separate
-  `/inventory` route, so it read as "drag across tabs," not possible in a browser. **Fixed same day
-  (round 2)**: every component now shows exactly two controls, Repair and Replace; Replace opens an
-  in-page `ReplaceDrawer.vue` scoped to that component, where a part can be clicked (instant stage) or
-  dragged onto the row that opened it — source and target always on screen together. See
-  `docs/sprints/sprint18.md`'s "Round 2" section.
-- [x] **Sprint 18 round-2 follow-up: manually verify the Repair/Replace + drawer redesign in a
-  browser.** **Quick-checked 2026-07-10**: the maintainer confirmed it looks successful. A full
-  playtest pass — drawer width/dock position, whether toggling Replace to close is discoverable, and
-  the per-car (not global) Confirm once several cars are staged at once (the risk
-  `docs/sprints/sprint18.md`'s own design doc flagged) — is planned for the next dedicated playtest
-  session, not this quick check. Sprint 18 committed.
-- [x] **Sprint 19/19b/19c follow-up: manually verify multi-day bidding (first-price, real current-bid
-  display, dynamic buyout) in a browser, and re-run `pnpm balance:run`.** **Superseded by Sprint 20
-  (auction rework II)**, not actioned as originally written: the whole sealed-proxy-bid +
-  hidden-rival-escalation mechanism this item was about (first-price resolution over full rival
-  ceilings, `AUCTION_BIDDER_DISCIPLINE`, dynamic buyout coupled to escalated bids) was deleted outright
-  and replaced with open, visible bidding (`currentBidYen`/`leadingBidder`/`quietDays`, a wholesale-
-  anchored demand ceiling, activity-based hammer). The browser feel-check this item asked for is still
-  needed, but against the new board, not the old escalation pacing — that's a fresh Sprint 20 user-only
-  task (see `docs/sprints/sprint20.md`), not this one. `pnpm balance:run` has been re-run against the
-  new mechanism — see the fresh finding below.
-- [x] **Sprint 19c follow-up: auction duration has too much effect on how competitive an auction
-  feels, even *within* the standard (2-4 day) tier.** **Superseded by Sprint 20**, not actioned as
-  originally written: the root cause named here (`AUCTION_ESCALATION_DAILY_CHANCE` ×
-  `AUCTION_ESCALATION_STEP_FRACTION` governing every duration band's escalation curve from one shared
-  pair) no longer exists — both constants, and the escalation mechanism they drove, were deleted.
-  Sprint 20's activity-based closing (hammer after `AUCTION_QUIET_DAYS_TO_HAMMER` consecutive quiet
-  overnight steps, or the `expiresOnDay` backstop, whichever comes first) structurally changes how
-  duration affects outcome; whether *it* has its own duration-sensitivity problem is an open question
-  for a future balance pass, not yet measured, not the same problem as the one filed here.
-- [x] **Maintainer finding, 2026-07-10: the whole inspect-lot / hidden-issues mechanic (apex seals etc.)
-  does nothing useful — needs a real rethink, not a patch.** **Resolved by Sprint 22 (2026-07-11,
-  "hidden issues and inspection: the information game")** — exactly the rethink this item called for,
-  not a patch: `repairCostBaseYen` is now real (`issueRepairCostYen`, `issues.ts`), a hidden issue has
-  its own distinct `fix-issue` job/cost/labor separate from a component's condition repair, inspecting
-  reveals real severity and repair cost (not just flavor text), and `CarDetailScreen.vue`/
-  `AuctionScreen.vue` both surface issues in the UI now (a persistent, trackable problem until fixed,
-  addressing the "no apex-seals moment" complaint directly). See `docs/sprints/sprint22.md`.
-- [x] **Playtest 2026-07-10 #1: End-Day cart warning.** **Resolved by Sprint 24 fix 4 (2026-07-11).**
-  A shared `EndDayButton.vue` (replacing five separate inline `game.endDay()` buttons) now confirms
-  ("N part(s) in the cart haven't been ordered — end the day anyway?") when `cartPartIds` is non-empty;
-  proceed/cancel, `DevConsole.vue`'s dev-only call stays ungated.
-- [x] **Playtest 2026-07-10 #9: British spelling — "tyre," not "tire," throughout; sweep for other
-  Americanisms while at it.** **Resolved by Sprint 24 fix 6 (2026-07-11).** Player-visible copy only
-  (ids/code/CSS untouched, `tire-machine` id kept stable): "Tire Machine & Balancer" ->
-  "Tyre Machine & Balancer" (equipment.json displayName); "labor" -> "labour" everywhere it appeared as
-  literal player-facing text (Night Owl trait description, CarDetailScreen/ServiceJobsScreen labor
-  readouts, two day-log messages). Checked and NOT present anywhere in player copy: curb, aluminum,
-  gray, liter, meter. `-ize`/`-ise` deliberately left alone (era-neutral, per the sprint doc).
-- [ ] **Playtest 2026-07-10 #11: real main/pause menu** (Continue / Settings / New Game / Load Game,
-  "nice looking landing page"). Explicitly lower priority per the maintainer ("at some stage").
-- [ ] **Playtest 2026-07-10 #3 (deferred part): salvage & restore parts mechanic.** Maintainer said
-  they'll expand on this separately — parked until that expansion exists; don't design it unprompted.
+Not single tasks — revisit when related work comes up, don't treat either as resolved by "checks
+pass."
 
-## Engineering
+- [ ] **Whether the balance harness (bots + invariants) actually reflects real gameplay is still an
+  open doubt**, restated increasingly sharply since 2026-07-08: bots may behave consistently with
+  each other without resembling how a real player plays. Sprint 23's fresh harness run sharpened
+  this further — every active strategy underperforms a do-nothing baseline at day 100 under current
+  mechanics (see `tools/balance/src/balance/invariants.py`'s module docstring for the numbers) — a
+  genuine finding about the economy's pacing/cost curve, not yet resolved. "N invariants pass" is
+  evidence the mechanism works, never evidence the game is fun or the bots are realistic.
+- [ ] **Recorded-play idea** (user-proposed 2026-07-09): parse real play sessions into per-archetype
+  statistical rulesets — rates and biases ("bids X% below book," "does these repairs, buys that
+  part"), not literal replay, and **phase-aware** (a career can drift mid-run; today's bots don't).
+  Capture infrastructure (v0) shipped in Sprint 24 — a Dexie `sessionEvents` table, a `gameStore.ts`
+  hook on every player action, a JSON export button — but it's capture only. Still unscoped: how
+  many real sessions before a derived rate is trustworthy, how phase-drift gets detected/encoded,
+  and how a derived ruleset plugs into the existing `(state, context) => DayActions` bot shape.
+  Blocked on there being real play data to parse — the next playtest (above) is the first session
+  this can actually capture.
 
-- [x] **`pnpm balance:run` failed end-to-end — `@midnight-garage/content`'s live-source `exports`
-  couldn't be resolved by plain Node.** **Fixed 2026-07-09**, same session as Sprint 10.
-  `packages/content/package.json` has `"exports": {".": "./src/index.ts"}` (a raw TypeScript file) so
-  Vite/Vitest can resolve it via their own transform, but the CLI runs as compiled, plain `node`, which
-  can't execute `.ts` or resolve a bare `require("@midnight-garage/content")`. Fix: `tsconfig.cli.json`
-  now includes `content/src/index.ts` as an explicit compile root (so tsc actually emits a real
-  `dist/packages/content/src/index.js`, not just the handful of content submodules other files happened
-  to reach via type-erased imports), and a new `packages/sim/scripts/fixContentRequires.cjs`
-  post-build step rewrites every compiled `require("@midnight-garage/content")` to the correct relative
-  path into that dist file. Verified with a real, full `pnpm balance:run` (600,000 career rows, 126,093
-  auction-win rows, 24,000 field-size rows) and `python -m balance.cli check` (all 4 gated invariants
-  pass).
-- [x] **Pre-commit/pre-push hooks and test coverage gating — added 2026-07-09** (maintainer request, a
-  self-assessment turned up both as real gaps versus a typical Python `uv`/`ruff`/`prek`/`pytest`
-  toolchain). Husky + lint-staged: `pre-commit` runs ESLint --fix + Prettier --write on staged files
-  only (fast); `pre-push` runs the full local gate (`typecheck` → `lint` → `format` → `test:coverage`)
-  so a broken push is caught locally, not only by CI. Coverage via `@vitest/coverage-v8`, configured at
-  the root `vitest.config.ts` (workspace/projects mode aggregates coverage at the root, not per
-  package) — thresholds (statements 80 / branches 65 / functions 78 / lines 82) are ratcheted to the
-  real measured baseline (86.19/70.97/84.59/89.41 at the time), not an aspirational number picked in
-  advance; a handful of legitimately-untestable files are excluded with a reason each (Pixi rendering,
-  the Sprint 00 art-spike/dev-sandbox screens, the dev-only console tree-shaken from prod, and
-  `saveDb.ts` — deliberately a thin Dexie wrapper by Sprint 07 design so tests don't need
-  fake-indexeddb). CI's `pnpm test` step swapped for `pnpm test:coverage` so the same threshold gates
-  pushes there too; the HTML/lcov report uploads as a build artifact. No coverage backfill work was
-  done to hit a higher number — the point was making regression visible, not retroactively maximizing
-  the metric.
-- [x] **Auction calibration, real-data finding (2026-07-09): FRENZY essentially never happens.**
-  **Superseded by Sprint 20 (auction rework II)**: the whole rival-field/discipline mechanism this
-  finding was about (`AUCTION_FIELD_BASE`/`PER_INTEREST`/`SD`, `AUCTION_BIDDER_DISCIPLINE`,
-  `computeLotInterest`'s STEAL/MID/FRENZY buckets over [reserve, buyout]) was deleted outright and
-  replaced with wholesale-anchored open bidding. See the fresh Sprint 20 finding below for where the
-  new mechanism's real bucket shares land.
-- [x] **Auction calibration, real-data finding (2026-07-11, Sprint 20 auction rework II): the new
-  hammer/anchor bucket distribution runs far steal-heavier than the sprint doc's own first-pass
-  targets.** **Superseded by Sprints 21-23's real mechanics changes — resolved 2026-07-11.** The
-  original finding (800,000 careers, STEAL 85.4% / MID 14.6% / FRENZY 0.0%) is stale: a fresh
-  1000-career-per-strategy run under Sprint 23's committed state shows STEAL 10.9% / MID 69.0% /
-  FRENZY 20.1% — steal and mid now land inside `sprint20.md`'s own target bands (10-25% / majority);
-  frenzy runs a bit hot (20.1% vs a 5-15% target), a real but much smaller residual gap than the
-  original finding, now tracked as Sprint 23 decision 7's informational invariant 4
-  (`tools/balance/src/balance/invariants.py`) rather than an untracked observation. `AUCTION_COUNTER_
-  CHANCE`/`AUCTION_QUIET_DAYS_TO_HAMMER` were never touched to get here — the shift came from Sprint
-  21's value-model rework and Sprint 22/23's economy changes shifting what bidders are willing to
-  chase. See `tools/balance/report.md` for the live numbers.
+## Open engineering
 
-- [x] **Wire the balance harness into CI — DONE 2026-07-09** (external review 2026-07, finding 1;
-  originally deadlined "before Phase 5," landed well ahead of that). A new path-filtered `balance` job
-  in `.github/workflows/ci.yml` (`packages/sim/**` / `packages/content/data/**`) runs `pnpm balance:run`
-  → `python -m balance.cli report` → `python -m balance.cli check`, uploading `report.md` as a build
-  artifact; skipped (not failed) on pushes/PRs that don't touch sim or content data. `deploy` now needs
-  both `check` and `balance` (a skipped `balance` still counts as passing). CLAUDE.md's Test law +
-  Commands updated. **Immediately useful**: the first real run under this job showed Flipper's day100
-  cash had gone solidly negative since the last committed report (Sprint 10) — see the item below for
-  why that's a data point worth having, not a "regression" (no baseline was ever validated as correct).
-- [x] **Buyout premium needs a leash + telemetry — DONE 2026-07-09** (external review 2026-07, finding
-  2). Every auction-bidding bot (all 6: flipper, balanced-player, cautious-restorer, random, handyman,
-  investor) now runs a shared `shouldBuyout` decision (`sim/bots/buyoutHelpers.ts`) before queuing a
-  bid: buy out only when the guaranteed price is within a small tolerance
-  (`AUCTION_BUYOUT_TOLERANCE_FRACTION = 0.05`, first-pass/adjustable) of the lot's own "bid this high
-  to win" estimate — the same read a player sees on the auction screen, not the bot's personal bid
-  ceiling, so the decision means the same thing regardless of which strategy is asking. `runCareer`/`exportCareers.ts` now export a
-  new `acquisitions.csv` (channel: bid/buyout per successful acquisition); `report.py` renders a
-  buyout-vs-bid share per strategy. **Honest real-data finding: no convergence.** Across the full
-  1000-career-per-strategy run, buyout accounts for only 0.7-5.3% of acquisitions depending on
-  strategy (cautious-restorer highest at 5.3%, since it already inspects and bids closest to buyout
-  price) — bots do **not** converge on always-buyout under this model, so `AUCTION_BUYOUT_PREMIUM`
-  (currently 1.1) doesn't look obviously too cheap. Not proof the premium is perfectly tuned (a
-  different buyout heuristic could behave differently), but a real, reassuring data point against the
-  original concern. See `tools/balance/report.md`'s "Buyout vs. bid" section.
+- [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
+  behind the current surface) once staff/events land — it's a fine façade now, but trending toward a
+  god-store.
 
-- [x] **Real-data observation (2026-07-09): Flipper's day100 median cash is now solidly negative —
-  not a regression, since no prior number was ever validated as correct.** **Superseded and
-  generalized by Sprint 23 decision 7 — resolved 2026-07-11.** This single-strategy observation
-  turned out to be one instance of a broader, now-formalized finding: Sprint 23's fresh full-harness
-  run showed EVERY active strategy (not just Flipper) underperforms Passive Grinder at day 100 under
-  current mechanics — see the "Sprint 23 real-data addition" entry under the standing "balance harness
-  proves gameplay" concern below for the full numbers, and `tools/balance/src/balance/invariants.py`'s
-  module docstring for the two invariants (day-100-beats-Passive, Flipper-beats-starting-cash) now
-  formally downgraded to informational with disclosure rather than left as an ungated observation
-  here. Same underlying finding, now tracked in one canonical place instead of two.
+## Open balance/economy questions
 
-- [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
-  It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider
-  `useGarageStore` / `useAuctionStore` / `useStaffStore` behind the current surface rather than one
-  growing store.
-
-## Balance / economy (from `docs/economy-v0.md`)
-
-- [x] **Parts acquisition has no sim mechanic yet.** **Long resolved — stale checkbox, corrected
-  2026-07-11.** Shipped in Sprint 14 (`buyParts`/`resolveBuyPart`, the cart/checkout flow, standard
-  vs. express delivery timing) — committed since. This item pre-dates that sprint and was never
-  struck off after.
-
-- [ ] **User doubts the balance harness proves anything about real gameplay — a standing, sharpening
-  concern, scope still not defined.** First stated 2026-07-08 (after Sprint 03): "there is still a LOT
-  of refinement that needs to be done here... I dont agree yet with how we are simulating, its too
-  simplified." Restated more sharply 2026-07-09 (after Sprint 13): "the simulation is a strong
-  framework, but does not yield any useful or valuable results. I'm not convinced yet that we are
-  simulating any real gameplay behaviour." The concern has moved from "the numbers feel simple" to a
-  construct-validity doubt about the bot archetypes themselves — do Flipper/Cautious Restorer/Balanced
-  Player/etc. actually resemble how a real player plays, or just behave consistently with each other?
-  Explicitly not blocking — the framework (auctions, valuation, bots, harness) is good enough to keep
-  building on — but "N invariants pass" / "all checks green" is evidence the mechanism works, never
-  evidence the game is fun or the bots are realistic; don't conflate the two when this comes up again.
-  See the recorded-play idea directly below, the user's own proposed way to actually close this gap.
-  **Sprint 23 real-data addition (2026-07-11), the sharpest instance of this concern yet:** a fresh
-  1000-career-per-strategy run (post-decisions 1-6, rent restored) shows every single active strategy
-  — Flipper, Cautious Restorer, Balanced Player, Random, Service Grinder, Handyman, Investor, and the
-  new `competent-policy` probe — has LOWER day-100 median cash (and, checked separately, lower net
-  worth including owned-car book value) than Passive Grinder, which does nothing at all but pay rent.
-  Root cause, verified rather than guessed: full restoration needs ¥150k-4.25M in equipment against a
-  ¥1.5M start, a single flip's acquisition-to-sale cycle alone measures ~16 days (Sprint 23 M1), and
-  100 days isn't long enough for that up-front investment to outrun a do-nothing baseline under the
-  current cost/pace numbers. Sprint 23's own two directly-affected invariants (day-100 cash beats
-  Passive Grinder; Flipper's day-100 cash beats starting cash) were downgraded to informational with
-  this disclosure rather than hard-gated on a target that fails for every strategy — see
-  `tools/balance/src/balance/invariants.py`'s module docstring. This is a genuine, larger finding
-  about the overall economy's pacing/cost curve, out of scope for Sprint 23's own decisions
-  (reputation pacing + rent sizing specifically) — a future balance pass should look at whether 100
-  days is simply too short a horizon to judge profitability against, or whether equipment/restoration
-  costs need to come down, before re-attempting to hard-gate either invariant.
-
-- [ ] **Idea (2026-07-09, user-proposed, refined same day, not scoped or sprint-assigned): record real
-  play sessions and *parse* them into per-archetype statistical rulesets, not literal replay.** Raised
-  in the same breath as the concern above: "if you could record my actions playing the game to get real
-  representative samples of actions every player archetype might take." Refined once the user clarified
-  intent: **not** 100%-replicating a session — the goal is deriving *rates and biases* from the action
-  log (e.g. "bids X% below book, wins Y% of contested lots," "does these types of repairs, buys that
-  type of part") and turning those into a **more specific ruleset than today's hand-authored bot
-  heuristics** — genuinely more granular archetype behavior, calibrated against evidence instead of
-  guessed. Explicit second requirement: the derived ruleset must be **phase-aware, not one static
-  profile per archetype** — a real career can *drift* mid-run (the user's own example: "start heavy in
-  jobs and gradually transition to only restorations"), and today's bots don't model that at all (each
-  one plays the same fixed heuristic day 1 through day 100). Feasible with the existing architecture —
-  Sprint 11 already made every player action an instant, self-contained resolver call (`repair`/
-  `install`/`placeBid`/`buyout`/`buyPart`/`sellWalkIn`/`listForSale`/`acceptServiceJob`/`moveCar`/
-  `buyBay`/`buyEquipment`/`inspectLot` in `gameStore.ts`), so capturing a session is "wrap each call
-  site, append `{day, actionType, params, outcome}` to a log, export it," not a new architecture. Still
-  needs its own scoped design before it's a sprint: recording format, how many real sessions before a
-  derived rate is trustworthy (one session is an anecdote, not a distribution), how phase-drift gets
-  detected and encoded (a fixed day-range split? a rolling window? explicit player-declared phases?),
-  and how a derived ruleset plugs into the existing bot-strategy shape (`(state, context) => DayActions`)
-  without a parallel bot architecture. **Capture infrastructure (v0) now exists — Sprint 24, 2026-07-11**:
-  a Dexie `sessionEvents` table (`saveDb.ts`) plus a private `gameStore.ts` hook logs every player action
-  (bid, buyout, inspect, stage/unstage/confirm, checkout, accept/complete service job, sell/list, move
-  car, buy equipment/bay, end day) as `{day, type, payload, timestamp}`; `SaveMenu.vue` exports the log
-  as a JSON file. Capture only — no parsing, no derived rates, no phase-drift detection yet; still
-  blocked on there being enough real play data to parse in the first place (the maintainer's Sprint 24
-  browser playtest is the first real session this can capture). The open design questions above (session
-  count for trust, phase-drift encoding, how a derived ruleset plugs into the bot-strategy shape) are
-  still genuinely unscoped — v0 only solves "how do we get the data," not "what do we do with it."
-
-- [x] **Invariant #5 (lemon cap) — disposition recorded, Sprint 23.** The mechanism this item was
-  about (`resolveHandoverCondition`'s dampened multiplier over `[reserve, buyout]`) was deleted
-  outright by Sprint 22's hidden-issues rework (severity is now rolled at generation and revealed via
-  inspection, not applied as a sliding-scale handover penalty) — there is no longer a "50% loss to
-  hidden issues" claim to check. Superseded by Sprint 23 decision 7's re-armed invariant set
-  (`tools/balance/src/balance/invariants.py`), which gates real, current mechanics instead.
-- [ ] **Invariant #6 (first-timer resale speed) — still open after Sprint 23.** "First-timer buyers
-  keep sub-¥500k Commons sellable within 7 days at book value or better" still has no bot modeling
-  first-timer-specific selling behavior. Sprint 23's new `competentPolicyStrategy` (measurement probe
-  for the reputation-pacing invariant) sells via the generic clean/concours faucet, not a first-timer-
-  buyer-targeted fast-resale check — it doesn't cover this claim. Still needs a purpose-built bot or
-  harness variant if this specific invariant is ever wanted.
-- [ ] **Forced-loan interest rate and repayment cadence** (GDD 6.6 says "painful," doesn't specify
-  how painful) — open question for the spreadsheet pass.
-- [ ] **Parts pricing curve per grade** (Stock/Street/Sport/Race) relative to car book value — open
+- [ ] **Invariant #6 (first-timer resale speed)** — "first-timer buyers keep sub-¥500k Commons
+  sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
+  behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not
+  this. Needs a purpose-built bot or harness variant if this specific invariant is ever wanted.
+- [ ] Forced-loan interest rate and repayment cadence (GDD 6.6 says "painful," doesn't specify how
+  painful) — open question for the spreadsheet pass.
+- [ ] Parts pricing curve per grade (Stock/Street/Sport/Race) relative to car book value — open
   question for the spreadsheet pass.
 
 ## Planned systems (designed, not yet scheduled)
 
 - [ ] **Skill / XP progression** — learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
-  with the staff system, still unscheduled (playtest #9, deferred by Sprint 11 — see the Next focus
-  section above); player-character skill is new v1.0 scope, slotted against the service-jobs feature.
-  Full design: `docs/design/skill-progression.md`.
+  with the staff system, still unscheduled; player-character skill is new v1.0 scope, slotted
+  against the service-jobs feature. Full design: `docs/design/skill-progression.md`.
 
-## Design decisions
+## Design decisions awaiting maintainer direction
 
 - [ ] **Naming Layer parody-flag default is undecided.** GDD explicitly defers whether the game
-  ships with real brand names or parody names by default to closer to release — "nothing is lost
-  by building real-first." Revisit once a release date is in sight.
-
-- [ ] **The recurring cast (landlord, bazaar auntie, the Rival) has no actual character design —
-  outright rejected by the maintainer, 2026-07-09.** GDD §2.3/§8 only ever gives roles, never names:
-  "the retired mechanic landlord," "the parts bazaar auntie," and a shop name ("Garage Tempest") with
-  no name for the person running it. Zero named individuals exist anywhere in the design docs — buyer
-  archetypes (Collector/Tuner/Stancer/Racer/First-timer/Gaisha) and staff traits are categories, not
-  characters either. Needs real character design (names, personality, at minimum) — the maintainer's
-  call on direction and timing, not something to invent unprompted.
-
-- [ ] **Hall of Legends acquisition cadence — the core "always chasing the next car" design is not yet
-  specified, 2026-07-09.** GDD §9.2 names the Hall of Legends as the explicit v1.0 win condition (10
-  Legend cars, Enshrine mechanic), but only 1 of the 10 (the Toyota 2000GT) ever had an acquisition
-  trigger written down, and that framing ("the grail... capstone enshrinement") was just corrected out
-  — order across all 10 is now explicitly undecided (`midnight-garage-roster.md`), not backloaded to
-  endgame. The maintainer's direction: surface Legend-acquisition chances at regular intervals across a
-  run, gated by some combination of rep/skill/staff/money — a Blacklist-style (NFS Most Wanted) "always
-  chasing the next car" structure, not an endgame dump. Real design work still needed: which specific
-  combination gates each of the 10, and the actual "story lead" writing/delivery (the phrase appears
-  twice in the roadmap, Sprint 22, and is undesigned both times). The 4-Act / 5-rep-tier structure
-  already provides a natural cadence spine (no new system needed for the gating backbone), and the
-  landlord/bazaar-auntie/Rival cast are the natural mouthpieces for leads once the character-design
-  item above is resolved. Also needs its own storytelling justification for *why* the player character
-  cares about collecting these specifically, per the maintainer's own framing.
+  ships with real brand names or parody names by default to closer to release. Revisit once a
+  release date is in sight.
+- [ ] **The recurring cast (landlord, bazaar auntie, the Rival) has no actual character design** —
+  GDD only ever gives roles, never names. Needs real character design (names, personality, at
+  minimum) — the maintainer's call on direction and timing, not something to invent unprompted.
+- [ ] **Hall of Legends acquisition cadence isn't specified.** GDD names it the explicit v1.0 win
+  condition (10 Legend cars, Enshrine mechanic) but only 1 of 10 ever had an acquisition trigger
+  written down, and acquisition order across all 10 is explicitly undecided
+  (`midnight-garage-roster.md`). Direction given: surface Legend-acquisition chances at regular
+  intervals across a run (Blacklist/NFS-Most-Wanted style "always chasing the next car," not an
+  endgame dump), gated by some combination of rep/skill/staff/money — but which combination gates
+  each of the 10, and the actual story-lead writing/delivery, are still undesigned. Depends on the
+  cast character-design item above for who delivers the leads.
+- [ ] Real main/pause menu (Continue / Settings / New Game / Load Game) — explicitly lower priority
+  ("at some stage").
+- [ ] Salvage & restore parts mechanic — maintainer said they'll expand on this separately; parked
+  until that expansion exists, don't design it unprompted.
 
 ## User-only tasks (air-gapped / purchases / accounts / legal)
 
 - [ ] Buy Aseprite; (optional, whenever convenient) draw a real car sprite to replace the
   programmatic placeholder from the Sprint 00 art spike.
-- [ ] Trademark search on the final title ("Midnight Garage" vs. alternates in the GDD); register
-  a domain if the search comes back clean.
-- [x] Create an `IDEAS.md` scope-creep parking lot (risk R3) — new mechanic ideas go there, not into
-  the GDD. **Done 2026-07-08.** Tracked in the repo (the maintainer chose visible over private).
-  First entry: a **wanted, purely-optional, zero-gameplay-weight** driving minigame
-  (top-down/isometric, Super-Woden-GP-simplified). It conflicts with the hard "no driving gameplay"
-  and "no reflex input" pillars, but the maintainer signed that off as an explicit opt-in exception;
-  parked as a post-launch/expansion addition (not a v1.0 sprint).
+- [ ] Trademark search on the final title ("Midnight Garage" vs. alternates in the GDD); register a
+  domain if the search comes back clean.

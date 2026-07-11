@@ -7,9 +7,9 @@ quality-sale bonus requires equipment gated behind the reputation it would earn 
 rent was switched off in Sprint 20 pending a functioning economy. With Sprints 20-22 making the loop
 profitable and skill-expressive, this sprint derives progression pacing and costs from explicit
 targets instead of guessed constants — and re-arms the balance harness's invariants as hard CI
-gates so the economy can never silently rot again. Status: **designed, not yet implemented.
-Depends on Sprints 20-22** — reuse rows below cite those sprints' mechanisms as they exist AFTER
-they land; none are in the codebase at `93e5e94`.*
+gates so the economy can never silently rot again. Status: **implemented; all checks green;
+committed (`ceda51e`).** (Originally designed depending on Sprints 20-22 landing first — they did,
+and this sprint's own reuse rows below were written against the codebase as it existed after.)*
 
 ## Goal
 

@@ -5,11 +5,10 @@ here is either (a) a confirmed defect from the 2026-07-10 external-style review 
 sprints didn't structurally eliminate, (b) a small playtest-note item from `TODO.md`, or (c) the
 arc's human validation: a full maintainer playtest of the redesigned economy plus v0 of the
 maintainer's own record-real-play idea (2026-07-09), so the balance harness can eventually be
-calibrated against how humans actually play. Status: **designed, not yet implemented. Depends on
-Sprints 20-23** (several review findings die structurally in 20 and are deliberately absent here).
-Note for the implementer: the fixes below were specced against the pre-arc codebase (commit
-`93e5e94`), so exact line references may drift as Sprints 20-23 land — re-grep the quoted code at
-implementation time; the root causes and required behaviors stand.*
+calibrated against how humans actually play. Status: **implemented; all checks green; committed
+(`473745c`).** The Human Validation section (below) is explicitly user-only and still open — see
+this doc's own Definition of Done. (Originally specced against the pre-arc codebase, commit
+`93e5e94`, depending on Sprints 20-23 landing first — they did.)*
 
 ## Goal
 

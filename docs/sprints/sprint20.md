@@ -8,7 +8,7 @@ acquisitions via buyout, 100% of won bids in the "frenzy" bucket) and experienti
 player is never actually outbid — the whole war happens inside a hidden per-rival array, with two
 gauge subsystems built just to hint at it). Maintainer: "design the system from scratch where it
 feels like you are organically in a real bidding war, but where it is worth it to bid and wait most
-of the time but not always." Status: **implemented; all checks green; pending commit.***
+of the time but not always." Status: **implemented; all checks green; committed (`a0c6e79`).***
 
 ## Goal
 

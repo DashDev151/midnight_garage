@@ -8,7 +8,7 @@ only ~10% of book more than a rough one, because value is routed through capped 
 (authenticity) ignores condition entirely. Maintainer: "the car valuation system needs a full rework.
 we need much better ways of determining value of the car based on base value, condition, market
 pressure (supply demand velocity.. like real markets) and installed parts."
-Status: **implemented; all checks green; pending commit.***
+Status: **implemented; all checks green; committed (`1aeb2d2`).***
 
 ## Goal
 

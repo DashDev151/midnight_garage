@@ -6,7 +6,7 @@ foundational-economy arc. The 2026-07-10 review verified the complaint: `repairC
 data; an applied issue is indistinguishable from ordinary low condition; nothing persists after
 purchase (`CarDetailScreen.vue` never mentions issues); and the handover rule actively *punishes*
 inspecting (inspected lots take full rolled severity, blind at-book buys average half — an
-inversion). Status: **implemented; all checks green.***
+inversion). Status: **implemented; all checks green; committed (`dc3a20a`).***
 
 ## Goal
 
