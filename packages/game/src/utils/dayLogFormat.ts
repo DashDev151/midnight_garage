@@ -47,8 +47,19 @@ export function describeLogEntry(
       return `Bought out lot ${entry.lotId} for ${formatYen(entry.priceYen)}`
     case 'listing-created':
       return `Listed ${entry.carInstanceId} at ${formatYen(entry.askingPriceYen)} (resolves day ${entry.resolvesOnDay})`
-    case 'car-sold':
-      return `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
+    case 'car-sold': {
+      const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
+      switch (entry.saleQuality) {
+        case 'concours':
+          return `${base} — sold as a concours example, reputation +${entry.reputationDelta}`
+        case 'clean':
+          return `${base} — sold as a clean example, reputation +${entry.reputationDelta}`
+        case 'lemon':
+          return `${base} — sold as a lemon, reputation ${entry.reputationDelta}`
+        default:
+          return base
+      }
+    }
     case 'part-bought':
       return `Bought ${entry.partId} for ${formatYen(entry.priceYen)}`
     case 'part-ordered':

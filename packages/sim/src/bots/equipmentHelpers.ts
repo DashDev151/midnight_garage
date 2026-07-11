@@ -5,6 +5,31 @@ import type { SimContext } from '../context'
 import { hasEquipmentFor } from '../equipment'
 
 /**
+ * All 8 real components, ordered by ascending equipment price
+ * (equipment.json: tire-machine Y150k/wheels, brake-lathe Y250k/brakes,
+ * upholstery-bench Y350k/interior, suspension-press Y400k/suspension, welder
+ * Y700k/body, transmission-bench Y900k/drivetrain, engine-crane
+ * Y1.5M/engine+forcedInduction — the last two share one tool, so both sit at
+ * the expensive end together). Shared by every bot that needs to try its OWN
+ * cheapest-to-unlock component first, not whatever order components happen
+ * to be declared in — a bot that only ever tries the first NEEDY component
+ * in an arbitrary order can permanently deadlock on a car whose first-listed
+ * need happens to require the single most expensive (or reputation-gated)
+ * tool in the game, even when a cheaper, reachable component also needs
+ * work (Sprint 19c/23 findings, `cautiousRestorer.ts`).
+ */
+export const ASCENDING_EQUIPMENT_COST_COMPONENTS: readonly ComponentId[] = [
+  'wheels',
+  'brakes',
+  'interior',
+  'suspension',
+  'body',
+  'drivetrain',
+  'engine',
+  'forcedInduction',
+]
+
+/**
  * Equipment ids a bot has already decided to buy earlier in the same day's
  * decision tick — `state` never mutates mid-strategy (bots only ever build a
  * `DayActions` object), so without this a bot iterating several cars that

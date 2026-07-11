@@ -256,6 +256,10 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     /** Set when the sale earned or cost reputation (Sprint 15's quality/lemon
      * rule); absent for a reputation-neutral plain sale. */
     reputationDelta: z.number().int().optional(),
+    /** Which of the quality/lemon outcomes fired (Sprint 23 decision 1's
+     * clean/concours split) — set exactly when `reputationDelta` is, lets the
+     * day report name the bonus instead of just its point value. */
+    saleQuality: z.enum(['lemon', 'clean', 'concours']).optional(),
   }),
   z.object({
     type: z.literal('part-bought'),

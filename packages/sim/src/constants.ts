@@ -138,16 +138,6 @@ export const REPUTATION_TIER_THRESHOLDS: Readonly<Record<ReputationTier, number>
 }
 
 /**
- * Selling a genuinely well-restored car (average component condition AND
- * authenticity both clear this bar) earns a flat reputation bonus on top of
- * the sale itself — flat constants, matching this codebase's existing
- * preference over continuous formulas at this stage.
- */
-export const QUALITY_SALE_MIN_CONDITION = 85
-export const QUALITY_SALE_MIN_AUTHENTICITY = 85
-export const QUALITY_SALE_REPUTATION_BONUS = 3
-
-/**
  * Selling a "lemon" costs reputation instead: average component condition at
  * or below `LEMON_MAX_AVERAGE_CONDITION`, **or** any single component at or
  * below `LEMON_MAX_SINGLE_COMPONENT_CONDITION` regardless of the average (the

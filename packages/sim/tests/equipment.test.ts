@@ -91,6 +91,41 @@ describe('applyEquipmentPurchase', () => {
   })
 })
 
+describe('Sprint 23 decision 3: equipment gate ladder', () => {
+  const SUSPENSION_PRESS = EQUIPMENT.find((e) => e.componentIds.includes('suspension'))!
+  const TRANSMISSION_BENCH = EQUIPMENT.find((e) => e.componentIds.includes('drivetrain'))!
+  const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!
+
+  it('suspension-press is fully ungated, buyable at unknown reputation', () => {
+    expect(SUSPENSION_PRESS.minReputationTier).toBeUndefined()
+    const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
+    const result = applyEquipmentPurchase(state, SUSPENSION_PRESS.id, CONTEXT)
+    expect(result.applied).toBe(true)
+  })
+
+  it('welder and transmission-bench require local, not known — an unknown player cannot buy either', () => {
+    expect(WELDER.minReputationTier).toBe('local')
+    expect(TRANSMISSION_BENCH.minReputationTier).toBe('local')
+    const unknownState = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
+    expect(applyEquipmentPurchase(unknownState, WELDER.id, CONTEXT).applied).toBe(false)
+    expect(applyEquipmentPurchase(unknownState, TRANSMISSION_BENCH.id, CONTEXT).applied).toBe(false)
+  })
+
+  it('a local player can buy the welder and transmission-bench', () => {
+    const localState = baseState({ cashYen: 999_999_999, reputationTier: 'local' })
+    expect(applyEquipmentPurchase(localState, WELDER.id, CONTEXT).applied).toBe(true)
+    expect(applyEquipmentPurchase(localState, TRANSMISSION_BENCH.id, CONTEXT).applied).toBe(true)
+  })
+
+  it('engine-crane requires known, not respected — a local player cannot buy it, a known player can', () => {
+    expect(ENGINE_CRANE.minReputationTier).toBe('known')
+    const localState = baseState({ cashYen: 999_999_999, reputationTier: 'local' })
+    expect(applyEquipmentPurchase(localState, ENGINE_CRANE.id, CONTEXT).applied).toBe(false)
+    const knownState = baseState({ cashYen: 999_999_999, reputationTier: 'known' })
+    expect(applyEquipmentPurchase(knownState, ENGINE_CRANE.id, CONTEXT).applied).toBe(true)
+  })
+})
+
 describe('applyEquipmentPurchases (bots’ batch path)', () => {
   it('buys every affordable item in order, skipping ones that fail', () => {
     const state = baseState({ cashYen: UPHOLSTERY_BENCH.priceYen })

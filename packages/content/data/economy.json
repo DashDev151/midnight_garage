@@ -1,6 +1,6 @@
 {
   "STARTING_CASH_YEN": 1500000,
-  "WEEKLY_RENT_YEN": 0,
+  "WEEKLY_RENT_YEN": 20000,
   "AUCTION_RESERVE_PRICE_FRACTION": 0.4,
   "AUCTION_LOTS_PER_TIER": {
     "local-yard": 3,
@@ -75,5 +75,11 @@
     "laborSlotsByBand": [1, 2, 3],
     "costDivisor": 50,
     "lemonSeverityThreshold": 40
+  },
+  "reputation": {
+    "cleanSaleMinConditionPercent": 85,
+    "cleanSaleBonus": 2,
+    "concoursSaleMinAuthenticityPercent": 85,
+    "concoursSaleBonus": 4
   }
 }

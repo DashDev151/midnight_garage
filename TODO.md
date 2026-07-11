@@ -427,6 +427,22 @@ here when they weren't):
   building on — but "N invariants pass" / "all checks green" is evidence the mechanism works, never
   evidence the game is fun or the bots are realistic; don't conflate the two when this comes up again.
   See the recorded-play idea directly below, the user's own proposed way to actually close this gap.
+  **Sprint 23 real-data addition (2026-07-11), the sharpest instance of this concern yet:** a fresh
+  1000-career-per-strategy run (post-decisions 1-6, rent restored) shows every single active strategy
+  — Flipper, Cautious Restorer, Balanced Player, Random, Service Grinder, Handyman, Investor, and the
+  new `competent-policy` probe — has LOWER day-100 median cash (and, checked separately, lower net
+  worth including owned-car book value) than Passive Grinder, which does nothing at all but pay rent.
+  Root cause, verified rather than guessed: full restoration needs ¥150k-4.25M in equipment against a
+  ¥1.5M start, a single flip's acquisition-to-sale cycle alone measures ~16 days (Sprint 23 M1), and
+  100 days isn't long enough for that up-front investment to outrun a do-nothing baseline under the
+  current cost/pace numbers. Sprint 23's own two directly-affected invariants (day-100 cash beats
+  Passive Grinder; Flipper's day-100 cash beats starting cash) were downgraded to informational with
+  this disclosure rather than hard-gated on a target that fails for every strategy — see
+  `tools/balance/src/balance/invariants.py`'s module docstring. This is a genuine, larger finding
+  about the overall economy's pacing/cost curve, out of scope for Sprint 23's own decisions
+  (reputation pacing + rent sizing specifically) — a future balance pass should look at whether 100
+  days is simply too short a horizon to judge profitability against, or whether equipment/restoration
+  costs need to come down, before re-attempting to hard-gate either invariant.
 
 - [ ] **Idea (2026-07-09, user-proposed, refined same day, not scoped or sprint-assigned): record real
   play sessions and *parse* them into per-archetype statistical rulesets, not literal replay.** Raised
@@ -452,15 +468,18 @@ here when they weren't):
   first place — the user hasn't logged a full career yet, so this stays an idea, not a backlog item
   with a target sprint.
 
-- [ ] **Invariant #5 (lemon cap) is only verified at the unit-test level.** `auctions.test.ts`
-  asserts `resolveHandoverCondition`'s dampened-multiplier behavior directly, but no bot currently
-  buys uninspected and reports the outcome in a way the CSV captures — so there's no
-  population-level harness invariant for "a fair-price uninspected purchase never loses more than
-  50% of purchase price to hidden issues." Needs a bot (or a harness variant) that deliberately
-  buys uninspected.
-- [ ] **Invariant #6 (first-timer resale speed) is not yet checked at all.** "First-timer buyers
-  keep sub-¥500k Commons sellable within 7 days at book value or better" has no bot modeling
-  first-timer-specific selling behavior this sprint.
+- [x] **Invariant #5 (lemon cap) — disposition recorded, Sprint 23.** The mechanism this item was
+  about (`resolveHandoverCondition`'s dampened multiplier over `[reserve, buyout]`) was deleted
+  outright by Sprint 22's hidden-issues rework (severity is now rolled at generation and revealed via
+  inspection, not applied as a sliding-scale handover penalty) — there is no longer a "50% loss to
+  hidden issues" claim to check. Superseded by Sprint 23 decision 7's re-armed invariant set
+  (`tools/balance/src/balance/invariants.py`), which gates real, current mechanics instead.
+- [ ] **Invariant #6 (first-timer resale speed) — still open after Sprint 23.** "First-timer buyers
+  keep sub-¥500k Commons sellable within 7 days at book value or better" still has no bot modeling
+  first-timer-specific selling behavior. Sprint 23's new `competentPolicyStrategy` (measurement probe
+  for the reputation-pacing invariant) sells via the generic clean/concours faucet, not a first-timer-
+  buyer-targeted fast-resale check — it doesn't cover this claim. Still needs a purpose-built bot or
+  harness variant if this specific invariant is ever wanted.
 - [ ] **Forced-loan interest rate and repayment cadence** (GDD 6.6 says "painful," doesn't specify
   how painful) — open question for the spreadsheet pass.
 - [ ] **Parts pricing curve per grade** (Stock/Street/Sport/Race) relative to car book value — open

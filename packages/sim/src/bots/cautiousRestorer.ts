@@ -1,4 +1,4 @@
-import type { AuctionTier, ComponentId, GameState } from '@midnight-garage/content'
+import type { AuctionTier, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import {
   acquireLot,
@@ -9,7 +9,11 @@ import {
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import { reputationAtLeast } from '../calendar'
 import type { SimContext } from '../context'
-import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
+import {
+  ASCENDING_EQUIPMENT_COST_COMPONENTS,
+  equipmentBudget,
+  ensureEquipmentFor,
+} from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import { issueLaborSlots } from '../issues'
 import type { Rng } from '../rng'
@@ -36,28 +40,6 @@ const FAIR_BID_MULTIPLIER = 1.1
 const CASH_BUFFER_MULTIPLIER = 1.15
 const REPAIR_THRESHOLD = 90
 const REPAIR_LABOR_SLOTS = 2
-/**
- * Ordered by ascending equipment price (equipment.json: upholstery-bench
- * Y350k, suspension-press Y400k, welder Y700k, transmission-bench Y900k,
- * engine-crane Y1.5M — more than this bot's entire starting capital on its
- * own), not the arbitrary engine-first order used elsewhere. Sprint 19c
- * harness finding: step 3 below repairs only the *first* needy component in
- * this list and gives up on the whole car for the day if that one
- * component's equipment is unaffordable — with the old engine-first order,
- * any car needing engine work (a plurality, given the 30-90 baseline roll)
- * permanently deadlocked this bot the instant it owned a car: it could never
- * afford the single most expensive tool in the game, first, every time,
- * verified via a real day-by-day trace (0 equipment ever bought, 0 repairs
- * ever started, across every seed checked). Cheapest-first gives it a real
- * shot at unlocking *something* with whatever cash survived acquisition.
- */
-const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
-  'interior',
-  'suspension',
-  'body',
-  'drivetrain',
-  'engine',
-]
 
 /**
  * Always inspects before bidding, only buys at-or-above fair price, fully
@@ -154,27 +136,44 @@ export function cautiousRestorerStrategy(
     }
   }
 
-  // 4. Repair every owned, job-free car one zone at a time.
+  // 4. Repair the cheapest-to-unlock NEEDY component on each owned, job-free
+  // car, one zone at a time — tries every needy component in ascending
+  // equipment-cost order instead of stopping at the first needy one and
+  // giving up on the whole car if THAT component's equipment isn't
+  // reachable yet (Sprint 23 fix, real bug found by real measurement, not
+  // guessed at). Sprint 19c's original fix reordered the list cheapest-first
+  // but still only ever tried the SINGLE first-needy entry via `.find()` —
+  // with Sprint 16's reputation-gated equipment ladder (suspension-press
+  // needs `local`, welder/transmission-bench need `known`+, per this
+  // sprint's own decision 3), a car whose first needy component in the list
+  // happened to be reputation-gated deadlocked permanently even when a
+  // cheaper, already-reachable component on the SAME car also needed work —
+  // and it claimed the shop's only starting service bay while doing it,
+  // starving every other owned car too. Now: check obtainability for every
+  // needy component (cheapest-first) BEFORE claiming a bay, and only claim
+  // one once a real, reachable job is actually found.
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
   const carsGettingJobsToday = new Set<string>()
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const componentId = REPAIRABLE_COMPONENTS.find(
-      (id) => car.components[id].condition < REPAIR_THRESHOLD,
-    )
-    if (!componentId) continue
+
+    let componentToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
+    for (const id of ASCENDING_EQUIPMENT_COST_COMPONENTS) {
+      if (car.components[id].condition >= REPAIR_THRESHOLD) continue
+      if (ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER)) {
+        componentToRepair = id
+        break
+      }
+    }
+    if (!componentToRepair) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(state, componentId, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER)
-    )
-      continue
 
     const jobIndex = actions.createJobs.length
     actions.createJobs.push({
       carInstanceId: car.id,
       kind: 'repair-zone',
-      componentId,
+      componentId: componentToRepair,
       laborSlotsRequired: REPAIR_LABOR_SLOTS,
     })
     const slotsToApply = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
@@ -235,7 +234,7 @@ export function cautiousRestorerStrategy(
   // "fully restored" also requires zero unrepaired hidden issues (Sprint 22).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const isRestored = REPAIRABLE_COMPONENTS.every(
+    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every(
       (id) => car.components[id].condition >= REPAIR_THRESHOLD,
     )
     const hasUnrepairedIssue = car.hiddenIssues.some((ri) => !ri.repaired)

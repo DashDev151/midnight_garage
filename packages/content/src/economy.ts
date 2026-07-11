@@ -83,9 +83,14 @@ export const EconomyConfigSchema = z.object({
    */
   STARTING_CASH_YEN: z.number().int().positive(),
   /**
-   * Weekly rent, deducted alongside staff wages on 7-day boundaries.
-   * Temporarily 0 per maintainer decision 2026-07-10 until the economy
-   * works end-to-end; restored as a tuned knob in Sprint 23.
+   * Weekly rent, deducted alongside staff wages on 7-day boundaries. Set to 0
+   * for Sprints 20-22 (maintainer decision 2026-07-10) until the economy
+   * worked end-to-end; restored in Sprint 23 decision 4's sizing rule: 0.3 x
+   * measured median weekly gross margin (M1: 274 local-yard flips, median
+   * margin Y168,569 at 16 median days-per-flip -> 0.4375 flips/week, well
+   * under the 2/week cap), rounded to the nearest Y10,000 -> Y20,000. "Real
+   * but beatable" (sprint23.md's Goal) at this size relative to the median
+   * per-flip margin, not a guess.
    */
   WEEKLY_RENT_YEN: z.number().int().nonnegative(),
   /** Seller's floor under a deal, as a fraction of book value (GDD 6.5). */
@@ -274,6 +279,31 @@ export const EconomyConfigSchema = z.object({
      * condition-based lemon check (Sprint 15) — a distinct number from
      * `severityBands` (those size labor, not reputation). */
     lemonSeverityThreshold: z.number().int().min(0).max(100),
+  }),
+  /**
+   * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar
+   * (`QUALITY_SALE_MIN_CONDITION`/`_MIN_AUTHENTICITY`/`_REPUTATION_BONUS`,
+   * retired from constants.ts) with two reachable tiers. Clean requires only
+   * player effort (every component's effective condition clears the bar, no
+   * unrepaired issues); concours additionally requires authenticityPercent
+   * to clear its own bar — a value the player can never raise, rolled 60-95
+   * at generation, so concours stays a genuine bonus for a well-matched car
+   * rather than the only way to earn anything at all. Lemon's penalty and
+   * thresholds (`LEMON_MAX_AVERAGE_CONDITION` etc.) are untouched by this
+   * block, unchanged since Sprint 15.
+   */
+  reputation: z.object({
+    /** Every one of the 8 components' effective condition must clear this to
+     * count as a clean sale — stricter than an average (Sprint 23's fix for
+     * "seven great components can't hide one neglected one"), but reachable
+     * by effort alone, unlike the authenticity roll below. */
+    cleanSaleMinConditionPercent: z.number().int().min(0).max(100),
+    cleanSaleBonus: z.number().int().nonnegative(),
+    /** Concours also requires the car's (unmodifiable) authenticityPercent to
+     * clear this bar — on top of, not instead of, the clean condition bar. */
+    concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
+    /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
+    concoursSaleBonus: z.number().int().nonnegative(),
   }),
 })
 

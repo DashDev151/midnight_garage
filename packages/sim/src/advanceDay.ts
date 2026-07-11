@@ -3,6 +3,7 @@ import type { DayActions } from './actions'
 import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
 import { resolveInspectLot } from './auctions'
 import { applyReputationDelta } from './calendar'
+import { saleQualityFor } from './carCondition'
 import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
 import { applyEquipmentPurchases } from './equipment'
@@ -246,7 +247,11 @@ export function advanceDay(
       channel: 'list-publicly',
       priceYen: listing.askingPriceYen,
       ...(listing.reputationDeltaOnSale !== 0
-        ? { reputationDelta: listing.reputationDeltaOnSale }
+        ? {
+            reputationDelta: listing.reputationDeltaOnSale,
+            saleQuality:
+              saleQualityFor(listing.reputationDeltaOnSale, context.economy) ?? undefined,
+          }
         : {}),
     })
   }

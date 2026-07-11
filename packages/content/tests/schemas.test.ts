@@ -74,10 +74,12 @@ describe('seed content validates against schemas', () => {
     if (!result.success) throw new Error(result.error.message)
     // Sprint 20's own bidding rework (stage B) deliberately changes these
     // two values from stage A's pure-relocation pins: rent zeroed until the
-    // reworked auction economy works end-to-end (restored as a tuned knob
-    // in Sprint 23), buyout premium re-pointed at the value anchor and
-    // raised from 1.1x book to 1.25x anchor.
-    expect(result.data.WEEKLY_RENT_YEN).toBe(0)
+    // reworked auction economy worked end-to-end, buyout premium re-pointed
+    // at the value anchor and raised from 1.1x book to 1.25x anchor. Sprint
+    // 23 decision 4 restores rent as a tuned knob (0.3x measured median
+    // weekly gross margin, rounded to the nearest Y10,000 — see economy.ts's
+    // own doc comment for the full derivation).
+    expect(result.data.WEEKLY_RENT_YEN).toBe(20_000)
     expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
     expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
     // New Sprint 20 auction-rework knobs, born in JSON from day one.
@@ -105,6 +107,12 @@ describe('seed content validates against schemas', () => {
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)
     expect(result.data.statFormulas.powerNormalizationCeiling).toBe(300)
+    // Sprint 23 decision 1: the clean/concours sale-quality bars and bonuses,
+    // born in JSON from day one.
+    expect(result.data.reputation.cleanSaleMinConditionPercent).toBe(85)
+    expect(result.data.reputation.cleanSaleBonus).toBe(2)
+    expect(result.data.reputation.concoursSaleMinAuthenticityPercent).toBe(85)
+    expect(result.data.reputation.concoursSaleBonus).toBe(4)
   })
 })
 

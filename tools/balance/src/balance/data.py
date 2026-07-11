@@ -21,6 +21,14 @@ def load_careers(data_dir: Path) -> pl.DataFrame:
     return _load(data_dir, "careers.manifest.json", "careers.csv")
 
 
+def load_careers_manifest(data_dir: Path) -> dict:
+    """Sprint 23: `startingCashYen`/`weeklyRentYen` live here, sourced from the
+    same `economy.json` the export actually ran with, so a Python-side check
+    validates against the real run instead of a second, drift-prone copy of
+    the same numbers hardcoded in this package."""
+    return json.loads((data_dir / "careers.manifest.json").read_text(encoding="utf-8"))
+
+
 def load_auction_wins(data_dir: Path) -> pl.DataFrame:
     """Sprint 20 (auction rework II): one row per lot a bot bid on and lost,
     or won, with the hammer price as a fraction of the lot's own

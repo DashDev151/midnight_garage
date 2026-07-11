@@ -173,9 +173,16 @@ describe('advanceDay golden master', () => {
     // effective condition (issues.ts) now feeds derivedStats/marketValue/
     // reputation everywhere raw condition used to — moves the hash even
     // though this script never touches an issue directly.
+    // Re-pinned again Sprint 23 (progression pacing + rent): WEEKLY_RENT_YEN
+    // restored (0 -> 20,000) and this career's 30 days cross 4 weekly rent
+    // boundaries, so cashYen (and the hash) moves even though the script
+    // itself is unchanged; the clean/concours reputation-bonus split and
+    // retuned baseReputation values are also in scope for any future career
+    // that sells a car or works a service job, though this specific script
+    // does neither.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('723227b0')
+    expect(hashState(finalState)).toBe('d0c08928')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -204,14 +211,16 @@ describe('advanceDay golden master', () => {
     expect(tiers.has('local-yard')).toBe(true)
   })
 
-  it('rent is 0 (Sprint 20: temporarily zeroed until the reworked auction economy works end-to-end)', () => {
+  it('rent is charged again, every 7 days (Sprint 23 decision 4: restored from 0)', () => {
     const finalState = runCareer(30)
     // Sprint 13: the day-1 body repair also charges its equipment's flat
-    // consumables cost once, on top of rent — rent itself is 0 as of Sprint
-    // 20 (economy.json's WEEKLY_RENT_YEN, restored as a tuned knob in
-    // Sprint 23), so the only deduction left here is that one-time cost.
+    // consumables cost once, on top of rent. Rent charges on days 7/14/21/28
+    // within a 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
     const consumablesCostYen = EQUIPMENT.find((e) => e.id === WELDER_ID)!.consumablesCostYen
-    expect(finalState.cashYen).toBe(1_200_000 - consumablesCostYen)
+    const rentChargeCount = 4
+    expect(finalState.cashYen).toBe(
+      1_200_000 - consumablesCostYen - rentChargeCount * CONTEXT.economy.WEEKLY_RENT_YEN,
+    )
   })
 })
 

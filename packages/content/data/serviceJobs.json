@@ -3,7 +3,7 @@
     "id": "repair-engine",
     "work": { "kind": "repair", "componentId": "engine" },
     "payoutRangeYen": [28000, 38000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Give the engine a proper going-over — it's been running rough.",
       "Something's off under the hood. Sort it before it strands me.",
@@ -15,7 +15,7 @@
     "id": "repair-drivetrain",
     "work": { "kind": "repair", "componentId": "drivetrain" },
     "payoutRangeYen": [30000, 42000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Something's grinding when I shift. Sort the drivetrain out.",
       "Power delivery feels off, like it's slipping somewhere.",
@@ -27,7 +27,7 @@
     "id": "repair-suspension",
     "work": { "kind": "repair", "componentId": "suspension" },
     "payoutRangeYen": [20000, 32000],
-    "baseReputation": 1,
+    "baseReputation": 8,
     "flavorPool": [
       "Suspension's tired — freshen it up for me.",
       "The ride's gone soft and wallowy. Needs sorting.",
@@ -39,7 +39,7 @@
     "id": "repair-body",
     "work": { "kind": "repair", "componentId": "body" },
     "payoutRangeYen": [32000, 45000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Sort the rusty panel before the shaken.",
       "Bodywork's looking rough — tidy it up for me.",
@@ -51,7 +51,7 @@
     "id": "repair-interior",
     "work": { "kind": "repair", "componentId": "interior" },
     "payoutRangeYen": [18000, 28000],
-    "baseReputation": 1,
+    "baseReputation": 8,
     "flavorPool": [
       "Interior's rough — tidy it up.",
       "Cabin's seen better days. Freshen up the interior.",
@@ -63,7 +63,7 @@
     "id": "install-engine",
     "work": { "kind": "install", "componentId": "engine" },
     "payoutRangeYen": [90000, 130000],
-    "baseReputation": 3,
+    "baseReputation": 24,
     "flavorPool": [
       "Want more out of the engine — set me up with an upgrade.",
       "Stock engine's boring me. Build it up.",
@@ -74,7 +74,7 @@
     "id": "install-forced-induction",
     "work": { "kind": "install", "componentId": "forcedInduction" },
     "payoutRangeYen": [110000, 150000],
-    "baseReputation": 4,
+    "baseReputation": 32,
     "flavorPool": [
       "I want boost. Get me set up with forced induction.",
       "Time to go forced induction — build me some real power.",
@@ -85,7 +85,7 @@
     "id": "install-drivetrain",
     "work": { "kind": "install", "componentId": "drivetrain" },
     "payoutRangeYen": [80000, 110000],
-    "baseReputation": 3,
+    "baseReputation": 24,
     "flavorPool": [
       "Stock drivetrain can't handle the power. Upgrade it.",
       "Need a stronger drivetrain before I break something.",
@@ -96,7 +96,7 @@
     "id": "install-suspension",
     "work": { "kind": "install", "componentId": "suspension" },
     "payoutRangeYen": [85000, 105000],
-    "baseReputation": 3,
+    "baseReputation": 24,
     "flavorPool": [
       "Fit some coilovers for me — I've got nothing, you source them.",
       "Want it lower and sharper. Sort the suspension.",
@@ -107,7 +107,7 @@
     "id": "install-brakes",
     "work": { "kind": "install", "componentId": "brakes" },
     "payoutRangeYen": [50000, 70000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Upgrade the brakes — I want it to actually stop.",
       "Stock brakes can't keep up anymore. Fit something better.",
@@ -118,7 +118,7 @@
     "id": "install-body",
     "work": { "kind": "install", "componentId": "body" },
     "payoutRangeYen": [45000, 65000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Fit me some aero — I want it to look and drive the part.",
       "Give it some body kit work, make it stand out.",
@@ -129,7 +129,7 @@
     "id": "install-wheels",
     "work": { "kind": "install", "componentId": "wheels" },
     "payoutRangeYen": [55000, 80000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Mount a fresh set of wheels for me.",
       "Sort me some new wheels — I'm done with the stock look.",
@@ -140,7 +140,7 @@
     "id": "install-interior",
     "work": { "kind": "install", "componentId": "interior" },
     "payoutRangeYen": [70000, 95000],
-    "baseReputation": 2,
+    "baseReputation": 16,
     "flavorPool": [
       "Interior needs the upgrade treatment. Fit something nice.",
       "Stock seat's falling apart. Get me a real bucket seat.",

@@ -10,6 +10,7 @@ from pathlib import Path
 import polars as pl
 
 from balance.data import load_acquisitions, load_auction_wins, load_careers
+from balance.invariants import COMPETENT_POLICY_STRATEGY, days_to_tier, percentile
 
 CHECKPOINT_DAYS = [25, 40, 70, 100]
 
@@ -117,8 +118,57 @@ def render_acquisitions_section(acquisitions_summary: pl.DataFrame) -> list[str]
     return lines
 
 
+def render_days_to_tier_section(df: pl.DataFrame) -> list[str]:
+    """Sprint 23: days-to-tier percentiles for the `competent-policy` probe -
+    the reputation-pacing claim invariant 3 gates on `local`'s p50 alone;
+    this table shows the full picture (including the two tiers sprint23.md's
+    pacing table targets but doesn't hard-gate)."""
+    lines = [
+        "## Days-to-tier (Sprint 23, competent-policy probe)",
+        "",
+        "First day each seeded `competent-policy` career reaches each reputation tier "
+        "or better. `local` (p50 in [15, 35]) is the only hard-gated row (invariant 3); "
+        "`known`/`respected` are informational against sprint23.md's own pacing targets "
+        "(day 50-70 and day 90-120 respectively).",
+        "",
+        "| Tier | Reached | p10 | p50 | p90 |",
+        "|---|---|---|---|---|",
+    ]
+    total_seeds = df.filter(pl.col("strategy") == COMPETENT_POLICY_STRATEGY)["seed"].n_unique()
+    for tier in ("local", "known", "respected"):
+        days = days_to_tier(df, tier)
+        if days.len() == 0:
+            lines.append(f"| {tier} | 0/{total_seeds} | - | - | - |")
+            continue
+        lines.append(
+            f"| {tier} | {days.len()}/{total_seeds} "
+            f"| {percentile(days, 0.1):.0f} | {percentile(days, 0.5):.0f} "
+            f"| {percentile(days, 0.9):.0f} |"
+        )
+    lines.append("")
+    return lines
+
+
+INVARIANTS_ENFORCED_SECTION = [
+    "## Invariants enforced (Sprint 23 decision 7)",
+    "",
+    "`balance.cli check` hard-gates 5 checks against this data: days-to-`local` p50 "
+    "in [15, 35] (competent-policy probe), buyout share of acquisitions < 30%, and the "
+    "3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive "
+    "separation, sanity floor). 3 more are measured and reported but NOT gated - real "
+    "measurement showed every active strategy's day-100 cash below Passive Grinder's, "
+    "Flipper below its own starting cash, and the auction frenzy tail outside its "
+    "target band; see `invariants.py`'s module docstring for the full disclosure "
+    "rather than a silently loosened band.",
+    "",
+]
+
+
 def render_markdown(
-    summary: pl.DataFrame, auction_section: list[str], acquisitions_section: list[str]
+    summary: pl.DataFrame,
+    auction_section: list[str],
+    acquisitions_section: list[str],
+    days_to_tier_section: list[str],
 ) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
@@ -137,8 +187,10 @@ def render_markdown(
             f"| {row['carsOwned_median']:.1f} | {row['reputationPoints_median']:.1f} |"
         )
     lines.append("")
+    lines.extend(days_to_tier_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
+    lines.extend(INVARIANTS_ENFORCED_SECTION)
     return "\n".join(lines)
 
 
@@ -155,7 +207,8 @@ def main(argv: list[str] | None = None) -> int:
 
     auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
-    report = render_markdown(summarize(df), auction_section, acquisitions_section)
+    days_to_tier_section = render_days_to_tier_section(df)
+    report = render_markdown(summarize(df), auction_section, acquisitions_section, days_to_tier_section)
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)
     return 0

@@ -30,6 +30,7 @@ import {
 } from '../../../content/src/data'
 import { balancedPlayerStrategy } from '../bots/balancedPlayer'
 import { cautiousRestorerStrategy } from '../bots/cautiousRestorer'
+import { competentPolicyStrategy } from '../bots/competentPolicy'
 import { flipperStrategy } from '../bots/flipper'
 import { handymanStrategy } from '../bots/handyman'
 import { investorStrategy } from '../bots/investor'
@@ -59,6 +60,7 @@ const STRATEGIES: ReadonlyArray<{ name: string; strategy: BotStrategy }> = [
   { name: 'service-grinder', strategy: serviceGrinderStrategy },
   { name: 'handyman', strategy: handymanStrategy },
   { name: 'investor', strategy: investorStrategy },
+  { name: 'competent-policy', strategy: competentPolicyStrategy },
 ]
 
 const COLUMNS = [
@@ -169,6 +171,10 @@ function main(): void {
     daysPerCareer: DAYS_PER_CAREER,
     strategies: STRATEGIES.map((s) => s.name),
     columns: COLUMNS,
+    // Sprint 23: so the Python check validates against the values that
+    // actually ran this export, not a second, drift-prone copy in Python.
+    startingCashYen: ECONOMY.STARTING_CASH_YEN,
+    weeklyRentYen: ECONOMY.WEEKLY_RENT_YEN,
   })
 
   writeCsv('auctionWins.csv', AUCTION_WINS_COLUMNS, auctionWinRows)

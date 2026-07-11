@@ -18,8 +18,7 @@
     "displayName": "Suspension Press & Spring Tools",
     "componentIds": ["suspension"],
     "priceYen": 400000,
-    "consumablesCostYen": 10000,
-    "minReputationTier": "local"
+    "consumablesCostYen": 10000
   },
   {
     "id": "upholstery-bench",
@@ -34,7 +33,7 @@
     "componentIds": ["body"],
     "priceYen": 700000,
     "consumablesCostYen": 6000,
-    "minReputationTier": "known"
+    "minReputationTier": "local"
   },
   {
     "id": "transmission-bench",
@@ -42,7 +41,7 @@
     "componentIds": ["drivetrain"],
     "priceYen": 900000,
     "consumablesCostYen": 9000,
-    "minReputationTier": "known"
+    "minReputationTier": "local"
   },
   {
     "id": "engine-crane",
@@ -50,6 +49,6 @@
     "componentIds": ["engine", "forcedInduction"],
     "priceYen": 1500000,
     "consumablesCostYen": 8000,
-    "minReputationTier": "respected"
+    "minReputationTier": "known"
   }
 ]

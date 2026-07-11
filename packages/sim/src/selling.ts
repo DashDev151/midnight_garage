@@ -11,7 +11,7 @@ import type {
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
 import { applyReputationDelta } from './calendar'
-import { saleReputationDeltaFor } from './carCondition'
+import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import { PUBLIC_LISTING_WAIT_DAYS, WALK_IN_OFFER_RANGE } from './constants'
 import type { SimContext } from './context'
 import { releaseCarFromShop } from './facilities'
@@ -202,7 +202,12 @@ export function resolveSellViaWalkIn(
         carInstanceId,
         channel: 'walk-in-offer',
         priceYen: offer.priceYen,
-        ...(reputationDelta !== 0 ? { reputationDelta } : {}),
+        ...(reputationDelta !== 0
+          ? {
+              reputationDelta,
+              saleQuality: saleQualityFor(reputationDelta, context.economy) ?? undefined,
+            }
+          : {}),
       },
     ],
   }
