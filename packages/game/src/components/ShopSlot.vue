@@ -39,6 +39,8 @@ const dropZone = useDropZone<string>(
     class="shop-slot"
     :class="{ 'active-target': dropZone.isActiveTarget.value }"
     @pointerup="dropZone.onPointerUp"
+    @pointerenter="dropZone.onPointerEnter"
+    @pointerleave="dropZone.onPointerLeave"
   >
     <template v-if="car">
       <div

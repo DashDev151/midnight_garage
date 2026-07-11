@@ -182,11 +182,14 @@ const draggedCarName = computed(() => {
 <style scoped>
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
+  margin: 0 0 var(--mg-space-2);
 }
 
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
 }
 
 .stats {

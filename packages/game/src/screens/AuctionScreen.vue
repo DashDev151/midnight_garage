@@ -208,16 +208,20 @@ function backstopLabel(expiresOnDay: number): string {
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
+  margin: var(--mg-space-2) 0 var(--mg-space-3);
 }
 
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
+  margin: 0;
 }
 
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
   text-transform: capitalize;
+  margin: 0 0 var(--mg-space-2);
 }
 
 .cash {
@@ -227,12 +231,13 @@ h3 {
 
 .empty {
   color: var(--mg-text-dim);
+  margin: var(--mg-space-3) 0;
 }
 
 .parking-warning {
   color: var(--mg-danger);
   font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-3);
+  margin: var(--mg-space-3) 0;
 }
 
 .lots {
@@ -361,10 +366,6 @@ h3 {
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
   margin: 0 0 var(--mg-space-4);
-}
-
-.my-bids h3 {
-  margin-top: 0;
 }
 
 .my-bids ul {

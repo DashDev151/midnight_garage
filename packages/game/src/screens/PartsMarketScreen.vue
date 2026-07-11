@@ -192,15 +192,19 @@ function onCheckout(): void {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  margin: var(--mg-space-2) 0 var(--mg-space-3);
 }
 
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
+  margin: 0;
 }
 
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
 }
 
 .cash {

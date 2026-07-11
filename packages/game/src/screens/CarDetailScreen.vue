@@ -324,14 +324,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </p>
         <ul class="components">
           <li v-for="componentId in COMPONENTS" :key="componentId" class="component-row">
-            <span class="component-name">{{ componentId }}</span>
-            <span class="bar"
-              ><span
-                class="fill"
-                :style="{ width: game.effectiveConditionFor(detail.car.id, componentId) + '%' }"
-            /></span>
-            <span class="component-val">
-              {{ game.effectiveConditionFor(detail.car.id, componentId) }}
+            <div class="meter-line">
+              <span class="component-name">{{ componentId }}</span>
+              <span class="bar"
+                ><span
+                  class="fill"
+                  :style="{ width: game.effectiveConditionFor(detail.car.id, componentId) + '%' }"
+              /></span>
+              <span class="component-val">
+                {{ game.effectiveConditionFor(detail.car.id, componentId) }}%
+              </span>
+            </div>
+
+            <div class="action-line">
               <span
                 v-if="
                   game.effectiveConditionFor(detail.car.id, componentId) !==
@@ -340,80 +345,82 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 class="cosmetic-val"
                 :title="'Cosmetic condition: ' + detail.car.components[componentId].condition"
               >
-                ({{ detail.car.components[componentId].condition }} cosmetic)
-              </span>
-            </span>
-
-            <template v-if="componentBusy(componentId)">
-              <button
-                :disabled="
-                  game.laborSlotsRemainingToday <= 0 ||
-                  (jobFor(componentId)?.kind === 'repair-zone' &&
-                    (detail.car.components[componentId].condition >= 100 ||
-                      !game.hasEquipmentForComponent(componentId)))
-                "
-                :data-test="'repair-' + componentId"
-                @click="continueJob(componentId)"
-              >
-                {{
-                  jobFor(componentId)?.kind === 'repair-zone'
-                    ? 'Continue repair'
-                    : 'Continue install'
-                }}
-              </button>
-              <span v-if="detail.car.components[componentId].installed" class="installed">
-                {{ game.partName(detail.car.components[componentId].installed?.partId ?? '') }}
-              </span>
-              <span v-else class="slot-empty">installing…</span>
-            </template>
-
-            <template v-else>
-              <button
-                v-if="detail.car.components[componentId].condition < 100"
-                :disabled="!game.hasEquipmentForComponent(componentId)"
-                :data-test="'stage-repair-' + componentId"
-                @click="toggleRepairStage(componentId)"
-              >
-                {{ isStagedRepair(componentId) ? 'Unstage repair' : 'Repair' }}
-              </button>
-              <span
-                v-if="
-                  detail.car.components[componentId].condition < 100 &&
-                  !game.hasEquipmentForComponent(componentId)
-                "
-                class="equip-hint"
-              >
-                needs {{ equipmentFor(componentId)?.displayName ?? 'equipment' }}
+                cosmetic {{ detail.car.components[componentId].condition }}
               </span>
 
-              <template v-if="detail.car.components[componentId].installed">
-                <span class="installed">
+              <template v-if="componentBusy(componentId)">
+                <button
+                  :disabled="
+                    game.laborSlotsRemainingToday <= 0 ||
+                    (jobFor(componentId)?.kind === 'repair-zone' &&
+                      (detail.car.components[componentId].condition >= 100 ||
+                        !game.hasEquipmentForComponent(componentId)))
+                  "
+                  :data-test="'repair-' + componentId"
+                  @click="continueJob(componentId)"
+                >
+                  {{
+                    jobFor(componentId)?.kind === 'repair-zone'
+                      ? 'Continue repair'
+                      : 'Continue install'
+                  }}
+                </button>
+                <span v-if="detail.car.components[componentId].installed" class="installed">
                   {{ game.partName(detail.car.components[componentId].installed?.partId ?? '') }}
                 </span>
+                <span v-else class="slot-empty">installing…</span>
               </template>
+
               <template v-else>
-                <template v-if="stagedInstallName(componentId)">
-                  <span class="staged-install">staged: {{ stagedInstallName(componentId) }}</span>
+                <button
+                  v-if="detail.car.components[componentId].condition < 100"
+                  :disabled="!game.hasEquipmentForComponent(componentId)"
+                  :data-test="'stage-repair-' + componentId"
+                  @click="toggleRepairStage(componentId)"
+                >
+                  {{ isStagedRepair(componentId) ? 'Unstage repair' : 'Repair' }}
+                </button>
+                <span
+                  v-if="
+                    detail.car.components[componentId].condition < 100 &&
+                    !game.hasEquipmentForComponent(componentId)
+                  "
+                  class="equip-hint"
+                >
+                  needs {{ equipmentFor(componentId)?.displayName ?? 'equipment' }}
+                </span>
+
+                <template v-if="detail.car.components[componentId].installed">
+                  <span class="installed">
+                    {{ game.partName(detail.car.components[componentId].installed?.partId ?? '') }}
+                  </span>
+                </template>
+                <template v-else>
+                  <template v-if="stagedInstallName(componentId)">
+                    <span class="staged-install">staged: {{ stagedInstallName(componentId) }}</span>
+                    <button
+                      type="button"
+                      :data-test="'unstage-' + componentId"
+                      @click="game.unstageAction(detail.car.id, componentId)"
+                    >
+                      unstage
+                    </button>
+                  </template>
                   <button
                     type="button"
-                    :data-test="'unstage-' + componentId"
-                    @click="game.unstageAction(detail.car.id, componentId)"
+                    class="replace-btn"
+                    :class="{ 'active-target': dropZones[componentId].isActiveTarget.value }"
+                    :data-test="'replace-' + componentId"
+                    @pointerup="dropZones[componentId].onPointerUp"
+                    @pointerenter="dropZones[componentId].onPointerEnter"
+                    @pointerleave="dropZones[componentId].onPointerLeave"
+                    @click="onReplaceClick(componentId)"
                   >
-                    unstage
+                    {{ dropZones[componentId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
                   </button>
                 </template>
-                <button
-                  type="button"
-                  class="replace-btn"
-                  :class="{ 'active-target': dropZones[componentId].isActiveTarget.value }"
-                  :data-test="'replace-' + componentId"
-                  @pointerup="dropZones[componentId].onPointerUp"
-                  @click="onReplaceClick(componentId)"
-                >
-                  {{ dropZones[componentId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
-                </button>
               </template>
-            </template>
+            </div>
           </li>
         </ul>
 
@@ -559,12 +566,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
   margin: var(--mg-space-2) 0 0;
 }
 
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
 }
 
 h4 {
@@ -612,7 +621,7 @@ h4 {
   border: 1px solid var(--mg-neon-violet);
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
-  margin: var(--mg-space-3) 0;
+  margin: var(--mg-space-4) 0;
 }
 
 .svc-desc {
@@ -678,24 +687,52 @@ button.primary.danger {
 
 .component-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mg-space-2);
+  flex-direction: column;
+  gap: var(--mg-space-1);
   margin-bottom: var(--mg-space-2);
   padding-bottom: var(--mg-space-2);
   border-bottom: var(--mg-border);
 }
 
+/* Name, bar, and percent always stay on one crisp line — nothing here ever
+   wraps, so this line reads the same for every component regardless of how
+   much status text or how many buttons the row below it needs. */
+.meter-line {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
 .component-name {
-  width: 110px;
+  width: 96px;
   flex-shrink: 0;
   text-transform: capitalize;
   font-size: var(--mg-fs-sm);
 }
 
-.component-row .bar {
-  flex: 1 1 80px;
+.meter-line .bar {
+  flex: 1 1 auto;
   min-width: 60px;
+}
+
+.component-val {
+  font-size: var(--mg-fs-sm);
+  text-align: right;
+  width: 36px;
+  flex-shrink: 0;
+}
+
+/* Buttons, hints, and installed/staged status — free to wrap onto as many
+   lines as they need without ever disturbing the meter line above. Indented
+   to sit under the bar rather than the name, so it reads as detail on the
+   meter, not a second, unrelated row. */
+.action-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  padding-left: calc(96px + var(--mg-space-2));
+  font-size: var(--mg-fs-sm);
 }
 
 .replace-btn.active-target {
@@ -711,7 +748,10 @@ button.primary.danger {
 .cosmetic-val {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-  font-weight: normal;
+}
+
+.issues {
+  margin: var(--mg-space-4) 0;
 }
 
 .issue-list {
@@ -756,6 +796,10 @@ button.primary.danger {
   color: var(--mg-success);
 }
 
+.sell {
+  margin: var(--mg-space-4) 0;
+}
+
 .sell-options {
   display: flex;
   gap: var(--mg-space-3);
@@ -793,13 +837,6 @@ button.primary.danger {
   display: block;
   height: 100%;
   background: var(--mg-neon-cyan);
-}
-
-.component-val {
-  font-size: var(--mg-fs-sm);
-  text-align: right;
-  width: 28px;
-  flex-shrink: 0;
 }
 
 .slot-empty {
@@ -846,6 +883,10 @@ button.primary.danger {
 .empty {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+.jobs {
+  margin: var(--mg-space-4) 0;
 }
 
 .labor {

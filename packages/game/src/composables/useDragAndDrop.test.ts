@@ -129,17 +129,49 @@ describe('useDraggable / useDropZone (Sprint 17)', () => {
     expect(b.isDragging.value).toBe(false)
   })
 
-  it('isActiveTarget reflects accepts() only while a drag or pick is in progress', () => {
+  it('during a live drag, isActiveTarget is only true for the zone the pointer is actually over', () => {
+    // Real playtest finding: every accepting zone used to light up the moment
+    // a drag started, regardless of where the pointer was. Highlighting must
+    // track genuine hover, not just "would this zone accept a drop."
     const draggable = useDraggable(() => 'car-1')
     const zone = useDropZone<string>((payload) => payload === 'car-1', vi.fn())
     expect(zone.isActiveTarget.value).toBe(false) // nothing in progress yet
 
     draggable.onPointerDown(pointerEvent())
     draggable.onPointerMove(pointerEvent({ clientX: 20 }))
+    expect(zone.isActiveTarget.value).toBe(false) // dragging, but not hovering this zone yet
+
+    zone.onPointerEnter()
     expect(zone.isActiveTarget.value).toBe(true)
 
+    zone.onPointerLeave()
+    expect(zone.isActiveTarget.value).toBe(false) // moved off before dropping
+
+    zone.onPointerEnter()
     zone.onPointerUp()
     expect(zone.isActiveTarget.value).toBe(false) // resolved, nothing in progress
+  })
+
+  it('two zones: only the hovered one highlights, not both, even though both would accept', () => {
+    const draggable = useDraggable(() => 'car-1')
+    const zoneA = useDropZone<string>(() => true, vi.fn())
+    const zoneB = useDropZone<string>(() => true, vi.fn())
+    draggable.onPointerDown(pointerEvent())
+    draggable.onPointerMove(pointerEvent({ clientX: 20 }))
+
+    zoneA.onPointerEnter()
+    expect(zoneA.isActiveTarget.value).toBe(true)
+    expect(zoneB.isActiveTarget.value).toBe(false)
+  })
+
+  it('the click-based pick fallback has no pointer to hover, so every accepting zone highlights at once', () => {
+    const draggable = useDraggable(() => 'car-1')
+    const zoneA = useDropZone<string>(() => true, vi.fn())
+    const zoneB = useDropZone<string>(() => true, vi.fn())
+    draggable.togglePick()
+
+    expect(zoneA.isActiveTarget.value).toBe(true)
+    expect(zoneB.isActiveTarget.value).toBe(true)
   })
 
   it('isActiveTarget is false for a zone that would refuse the current payload', () => {

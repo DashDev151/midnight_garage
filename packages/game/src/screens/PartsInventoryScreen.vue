@@ -24,6 +24,7 @@ import PartsInventoryPanel from '../components/PartsInventoryPanel.vue'
 
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
   margin: var(--mg-space-2) 0 0;
 }
 

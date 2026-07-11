@@ -106,12 +106,14 @@ const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking
 
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
   margin: 0;
 }
 
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
 }
 
 .rep {

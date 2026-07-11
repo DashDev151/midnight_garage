@@ -99,15 +99,19 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
+  margin: var(--mg-space-2) 0 var(--mg-space-3);
 }
 
 h2 {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-lg);
+  margin: 0;
 }
 
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
 }
 
 .rep {
@@ -123,6 +127,7 @@ h3 {
 
 .empty {
   color: var(--mg-text-dim);
+  margin: var(--mg-space-2) 0 0;
 }
 
 .parking-warning {

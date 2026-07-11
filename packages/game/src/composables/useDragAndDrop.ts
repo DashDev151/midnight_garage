@@ -142,11 +142,20 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
 }
 
 export interface DropZoneHandle {
-  /** True whenever a drag or pick is in progress and this zone would accept it — for
-   * "valid drop targets highlight, invalid ones don't" (Sprint 17 DoD). */
+  /** True while this specific zone should highlight as a drop target — for "valid drop targets
+   * highlight, invalid ones don't" (Sprint 17 DoD). During a live pointer drag this means "the
+   * pointer is actually over this zone right now" (bound via `onPointerEnter`/`onPointerLeave`),
+   * not "every zone that would accept this payload somewhere on the page" — the latter lit up
+   * every bay at once the moment a drag started, regardless of where the pointer was (found by
+   * playtest). The click-based "pick" fallback has no pointer position to hover, so every
+   * accepting zone still highlights in that mode — that's the whole point of the fallback. */
   isActiveTarget: ComputedRef<boolean>
   /** Bind on the zone's root element: resolves a live pointer-drag dropped here. */
   onPointerUp: () => void
+  /** Bind on the zone's root element: marks the pointer as having entered this zone during a drag. */
+  onPointerEnter: () => void
+  /** Bind on the zone's root element: clears the hover flag set by `onPointerEnter`. */
+  onPointerLeave: () => void
   /** Bind on the zone's root element: completes a "picked" session (the accessibility fallback). */
   onClick: () => void
 }
@@ -157,18 +166,32 @@ export function useDropZone<T>(
   accepts: (payload: T) => boolean,
   onDrop: (payload: T) => void,
 ): DropZoneHandle {
+  const isHovering = ref(false)
+
   function resolve(): void {
     if (!session.value) return
     const payload = session.value.payload as T
     if (!accepts(payload)) return
     onDrop(payload)
     session.value = null
+    isHovering.value = false
   }
 
   return {
-    isActiveTarget: computed(() => session.value !== null && accepts(session.value.payload as T)),
+    isActiveTarget: computed(() => {
+      if (!session.value || !accepts(session.value.payload as T)) return false
+      // Pick mode has no pointer to hover — show every valid target. Drag mode only
+      // highlights the zone the pointer is actually over right now.
+      return session.value.mode === 'pick' || isHovering.value
+    }),
     onPointerUp(): void {
       if (session.value?.mode === 'drag') resolve()
+    },
+    onPointerEnter(): void {
+      if (session.value?.mode === 'drag') isHovering.value = true
+    },
+    onPointerLeave(): void {
+      isHovering.value = false
     },
     onClick(): void {
       if (session.value?.mode === 'pick') resolve()
