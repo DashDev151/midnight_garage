@@ -268,36 +268,25 @@ here when they weren't):
   overnight steps, or the `expiresOnDay` backstop, whichever comes first) structurally changes how
   duration affects outcome; whether *it* has its own duration-sensitivity problem is an open question
   for a future balance pass, not yet measured, not the same problem as the one filed here.
-- [ ] **Maintainer finding, 2026-07-10: the whole inspect-lot / hidden-issues mechanic (apex seals etc.)
-  does nothing useful — needs a real rethink, not a patch.** Verified against the actual code, not just
-  the complaint: a `HiddenIssue`'s `repairCostBaseYen` field is defined in the schema and set on every
-  entry in `hidden-issues.json`, but is never read anywhere in `packages/sim` or `packages/game` —
-  completely dead data. Once a hidden issue's rolled severity is applied at handover
-  (`applyIssueSeverity`, `auctions.ts`), it's just a subtraction from a component's `condition` number —
-  mechanically indistinguishable from that component simply having rolled low in the first place; the
-  repair system has no concept of "this deficit came from a hidden issue" at all, so there's no distinct
-  cost, no distinct repair path, nothing. Inspecting (`resolveInspectLot`) doesn't reveal the actual
-  severity number or repair cost either — only flavor `hintText` plus which component is affected — and
-  its only real mechanical effect is making the eventual severity roll deterministic instead of
-  variance-scaled (the sliding-scale lemon rule), a difference invisible to the player either way. Once
-  a car is owned, all trace of it having had a hidden issue disappears from the UI entirely (confirmed:
-  `CarDetailScreen.vue` never references `hiddenIssues`, only the pre-purchase auction lot view does) —
-  no "you fixed the apex seals" moment, no persistent story thread, nothing. Net effect: hidden issues
-  currently function as an opaque, one-time condition penalty with a flavor label attached, not a real
-  mechanic — inspecting only barely matters (removes some randomness in a number you never see anyway).
-  Needs a real design pass, not scoped here: candidates include giving each hidden issue a real,
-  distinct repair cost/path (finally using `repairCostBaseYen`), surfacing it as a named, trackable
-  problem on the owned-car screen until actually fixed, and/or tying it into the parked "restore damaged
-  parts" idea in `IDEAS.md` if hidden issues end up living on parts rather than just components. No
-  sprint attached — this is a rethink-the-system item, not a bugfix.
-- [ ] **Playtest 2026-07-10 #1: End-Day cart warning.** Clicking "End Day" with items still in the
-  parts cart should warn ("you have unordered items in your cart — check out first?"). Small,
-  self-contained UI guard; fold into whichever of Sprints 15-19 ships first, or the next playtest-fix
-  pass.
-- [ ] **Playtest 2026-07-10 #9: British spelling — "tyre," not "tire," throughout; sweep for other
-  Americanisms while at it.** Mechanical but wide (game copy, content JSON display strings — note the
-  `tire-machine` equipment id: rename the *display* string, keep the id stable unless a migration is
-  deliberately chosen). No sprint assigned.
+- [x] **Maintainer finding, 2026-07-10: the whole inspect-lot / hidden-issues mechanic (apex seals etc.)
+  does nothing useful — needs a real rethink, not a patch.** **Resolved by Sprint 22 (2026-07-11,
+  "hidden issues and inspection: the information game")** — exactly the rethink this item called for,
+  not a patch: `repairCostBaseYen` is now real (`issueRepairCostYen`, `issues.ts`), a hidden issue has
+  its own distinct `fix-issue` job/cost/labor separate from a component's condition repair, inspecting
+  reveals real severity and repair cost (not just flavor text), and `CarDetailScreen.vue`/
+  `AuctionScreen.vue` both surface issues in the UI now (a persistent, trackable problem until fixed,
+  addressing the "no apex-seals moment" complaint directly). See `docs/sprints/sprint22.md`.
+- [x] **Playtest 2026-07-10 #1: End-Day cart warning.** **Resolved by Sprint 24 fix 4 (2026-07-11).**
+  A shared `EndDayButton.vue` (replacing five separate inline `game.endDay()` buttons) now confirms
+  ("N part(s) in the cart haven't been ordered — end the day anyway?") when `cartPartIds` is non-empty;
+  proceed/cancel, `DevConsole.vue`'s dev-only call stays ungated.
+- [x] **Playtest 2026-07-10 #9: British spelling — "tyre," not "tire," throughout; sweep for other
+  Americanisms while at it.** **Resolved by Sprint 24 fix 6 (2026-07-11).** Player-visible copy only
+  (ids/code/CSS untouched, `tire-machine` id kept stable): "Tire Machine & Balancer" ->
+  "Tyre Machine & Balancer" (equipment.json displayName); "labor" -> "labour" everywhere it appeared as
+  literal player-facing text (Night Owl trait description, CarDetailScreen/ServiceJobsScreen labor
+  readouts, two day-log messages). Checked and NOT present anywhere in player copy: curb, aluminum,
+  gray, liter, meter. `-ize`/`-ise` deliberately left alone (era-neutral, per the sprint doc).
 - [ ] **Playtest 2026-07-10 #11: real main/pause menu** (Continue / Settings / New Game / Load Game,
   "nice looking landing page"). Explicitly lower priority per the maintainer ("at some stage").
 - [ ] **Playtest 2026-07-10 #3 (deferred part): salvage & restore parts mechanic.** Maintainer said
@@ -338,25 +327,18 @@ here when they weren't):
   `computeLotInterest`'s STEAL/MID/FRENZY buckets over [reserve, buyout]) was deleted outright and
   replaced with wholesale-anchored open bidding. See the fresh Sprint 20 finding below for where the
   new mechanism's real bucket shares land.
-- [ ] **Auction calibration, real-data finding (2026-07-11, Sprint 20 auction rework II): the new
+- [x] **Auction calibration, real-data finding (2026-07-11, Sprint 20 auction rework II): the new
   hammer/anchor bucket distribution runs far steal-heavier than the sprint doc's own first-pass
-  targets.** The first real `pnpm balance:run` under the new open-bidding mechanism (800,000 career
-  rows, 92,905 auction-win rows) shows STEAL 85.4% / MID 14.6% / FRENZY 0.0% against
-  `sprint20.md`'s stated targets (steal 10-25%, mid the majority, frenzy 5-15%). A matching sim-level
-  probe (no bots at all — `bidding.test.ts`'s "hammer/anchor lands below the wholesale center"
-  distribution test) confirms this isn't a bot-specific artifact: even pure dealer-vs-dealer clearing
-  (no player/bot involvement) has a median hammer/anchor of only ~0.54, well under the 0.65 "mid"
-  threshold. Root cause, verified: `AUCTION_COUNTER_CHANCE` (0.7) combined with
-  `AUCTION_QUIET_DAYS_TO_HAMMER` (2) means a lot typically hammers after only ~2-4 real days of back-
-  and-forth (2 consecutive misses at a 30%-per-day miss rate arrives fast), well before the price
-  climbs anywhere near its own demand ceiling — so most lots (bot or dealer-only) clear cheap by
-  construction, not just when a bot gets lucky. This is exactly the good news for the sprint's actual
-  design goal ("patient bidding beats buyout most of the time") but the bucket *shape* itself doesn't
-  match the doc's own prediction. Not retuned — first-pass values, openly adjustable in
-  `economy.json`; a future balance pass should consider raising `AUCTION_COUNTER_CHANCE` and/or
-  `AUCTION_QUIET_DAYS_TO_HAMMER` if a punchier mid/frenzy presence is wanted, but that's a felt-
-  experience tuning call, not implied by anything in Stage B's scope. See `tools/balance/report.md`
-  for the live numbers.
+  targets.** **Superseded by Sprints 21-23's real mechanics changes — resolved 2026-07-11.** The
+  original finding (800,000 careers, STEAL 85.4% / MID 14.6% / FRENZY 0.0%) is stale: a fresh
+  1000-career-per-strategy run under Sprint 23's committed state shows STEAL 10.9% / MID 69.0% /
+  FRENZY 20.1% — steal and mid now land inside `sprint20.md`'s own target bands (10-25% / majority);
+  frenzy runs a bit hot (20.1% vs a 5-15% target), a real but much smaller residual gap than the
+  original finding, now tracked as Sprint 23 decision 7's informational invariant 4
+  (`tools/balance/src/balance/invariants.py`) rather than an untracked observation. `AUCTION_COUNTER_
+  CHANCE`/`AUCTION_QUIET_DAYS_TO_HAMMER` were never touched to get here — the shift came from Sprint
+  21's value-model rework and Sprint 22/23's economy changes shifting what bidders are willing to
+  chase. See `tools/balance/report.md` for the live numbers.
 
 - [x] **Wire the balance harness into CI — DONE 2026-07-09** (external review 2026-07, finding 1;
   originally deadlined "before Phase 5," landed well ahead of that). A new path-filtered `balance` job
@@ -383,23 +365,16 @@ here when they weren't):
   different buyout heuristic could behave differently), but a real, reassuring data point against the
   original concern. See `tools/balance/report.md`'s "Buyout vs. bid" section.
 
-- [ ] **Real-data observation (2026-07-09): Flipper's day100 median cash is now solidly negative
-  (¥-256,650, 1000-seed run) — not a regression, since no prior number was ever validated as correct.**
-  The last *committed* report (Sprint 10) showed Flipper at +¥820,475, and the original Sprint 03
-  invariant hard-gated `> 0`. **Maintainer's correction (2026-07-09), and the right read:** "regression"
-  implies a known-good baseline that broke; nothing here was ever confirmed as correct in the first
-  place — the sim produced a number in Sprint 10, several sprints of real logic changes landed since
-  (equipment/consumables costs, delivery timing, correlated condition rolls, and more), and the sim now
-  produces a different number. That's expected behavior for a simulation nobody has validated against
-  real play yet, not evidence of breakage — directly consistent with the standing, sharpening concern
-  (see the "balance harness proves gameplay" item above) that this harness's output isn't yet proven to
-  reflect real behavior at all. **Accordingly, the invariant itself was softened to informational**
-  (`tools/balance/src/balance/invariants.py`), matching Cautious Restorer's existing precedent exactly
-  — report the number, don't assert a target nobody has actually confirmed. `check` is green again.
-  **Verified, for the record, that today's buyout/CI work isn't the cause** (Flipper A/B-tested with
-  and without the new buyout logic across 300 seeds each, both deeply negative) — kept here not as
-  proof of a bug, just so the number isn't mistaken for noise from today's changes specifically. No
-  further action implied; revisit only if/when there's an actual validated target to check against.
+- [x] **Real-data observation (2026-07-09): Flipper's day100 median cash is now solidly negative —
+  not a regression, since no prior number was ever validated as correct.** **Superseded and
+  generalized by Sprint 23 decision 7 — resolved 2026-07-11.** This single-strategy observation
+  turned out to be one instance of a broader, now-formalized finding: Sprint 23's fresh full-harness
+  run showed EVERY active strategy (not just Flipper) underperforms Passive Grinder at day 100 under
+  current mechanics — see the "Sprint 23 real-data addition" entry under the standing "balance harness
+  proves gameplay" concern below for the full numbers, and `tools/balance/src/balance/invariants.py`'s
+  module docstring for the two invariants (day-100-beats-Passive, Flipper-beats-starting-cash) now
+  formally downgraded to informational with disclosure rather than left as an ungated observation
+  here. Same underlying finding, now tracked in one canonical place instead of two.
 
 - [ ] **Split `gameStore` into domain stores when staff/events land (external review, finding 5a).**
   It's a fine façade now, but trending toward a god-store; at Sprint 13+ (staff, events) consider
@@ -408,12 +383,10 @@ here when they weren't):
 
 ## Balance / economy (from `docs/economy-v0.md`)
 
-- [ ] **Parts acquisition has no sim mechanic yet.** The sim can install parts (`install-part` jobs)
-  but there is no way to *buy* a part into inventory — no `buyParts` action, no parts market. Sprint
-  05 exercises the install flow against dev-granted parts; Sprint 06 is slotted to add the real
-  parts market alongside car auctions (`docs/sprints/sprint05.md` decision 1). The richer "order
-  deliveries / lead times / parts scouts" layer is separately Sprint 16. Flagged so the Sprint 06
-  design remembers to carry parts, not just cars.
+- [x] **Parts acquisition has no sim mechanic yet.** **Long resolved — stale checkbox, corrected
+  2026-07-11.** Shipped in Sprint 14 (`buyParts`/`resolveBuyPart`, the cart/checkout flow, standard
+  vs. express delivery timing) — committed since. This item pre-dates that sprint and was never
+  struck off after.
 
 - [ ] **User doubts the balance harness proves anything about real gameplay — a standing, sharpening
   concern, scope still not defined.** First stated 2026-07-08 (after Sprint 03): "there is still a LOT
@@ -464,9 +437,15 @@ here when they weren't):
   derived rate is trustworthy (one session is an anecdote, not a distribution), how phase-drift gets
   detected and encoded (a fixed day-range split? a rolling window? explicit player-declared phases?),
   and how a derived ruleset plugs into the existing bot-strategy shape (`(state, context) => DayActions`)
-  without a parallel bot architecture. Blocked on there being enough real play data to parse in the
-  first place — the user hasn't logged a full career yet, so this stays an idea, not a backlog item
-  with a target sprint.
+  without a parallel bot architecture. **Capture infrastructure (v0) now exists — Sprint 24, 2026-07-11**:
+  a Dexie `sessionEvents` table (`saveDb.ts`) plus a private `gameStore.ts` hook logs every player action
+  (bid, buyout, inspect, stage/unstage/confirm, checkout, accept/complete service job, sell/list, move
+  car, buy equipment/bay, end day) as `{day, type, payload, timestamp}`; `SaveMenu.vue` exports the log
+  as a JSON file. Capture only — no parsing, no derived rates, no phase-drift detection yet; still
+  blocked on there being enough real play data to parse in the first place (the maintainer's Sprint 24
+  browser playtest is the first real session this can capture). The open design questions above (session
+  count for trust, phase-drift encoding, how a derived ruleset plugs into the bot-strategy shape) are
+  still genuinely unscoped — v0 only solves "how do we get the data," not "what do we do with it."
 
 - [x] **Invariant #5 (lemon cap) — disposition recorded, Sprint 23.** The mechanism this item was
   about (`resolveHandoverCondition`'s dampened multiplier over `[reserve, buyout]`) was deleted

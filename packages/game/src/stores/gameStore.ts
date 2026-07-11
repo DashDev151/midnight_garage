@@ -59,6 +59,7 @@ import {
   nextBayPriceYen,
   nextRaiseYen,
   parkingOccupancy,
+  partFitsCar,
   reputationAtLeast,
   REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
@@ -86,7 +87,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from '../constants'
 import { decodeSave, encodeSave } from '../save/saveCodec'
-import { loadSave, writeSave } from '../save/saveDb'
+import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -360,6 +361,18 @@ export const useGameStore = defineStore('game', () => {
   const reportVisible = ref(false)
   // Immediate feedback shown after a "Complete Job" resolution (paid or failed).
   const lastJobResult = ref<ServiceJobResultView | null>(null)
+
+  /**
+   * Session log v0 (Sprint 24, the record-real-play seed — maintainer idea
+   * 2026-07-09): appends one raw event per player action, for a future
+   * offline pass to parse into per-archetype rates/biases (see `TODO.md`).
+   * Fire-and-forget by design — never awaited in an action path, since a
+   * lost telemetry write must never break play (matches `writeSave`'s own
+   * best-effort shape, `saveDb.ts`).
+   */
+  function logSessionEvent(type: string, payload: Record<string, unknown>): void {
+    void appendSessionEvent({ day: gameState.value.day, type, payload, timestamp: Date.now() })
+  }
 
   const day = computed(() => gameState.value.day)
   const cashYen = computed(() => gameState.value.cashYen)
@@ -675,8 +688,7 @@ export const useGameStore = defineStore('game', () => {
     if (!car || !model || car.components[componentId].installed) return []
     return gameState.value.partInventory.filter((pi) => {
       const part = context.value.partsById[pi.partId]
-      if (!part || part.componentId !== componentId) return false
-      return part.requiredTags.every((tag) => model.tags.includes(tag))
+      return part ? partFitsCar(part, model, componentId) : false
     })
   }
 
@@ -755,6 +767,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('moveCar', { carId, to })
     return true
   }
 
@@ -770,6 +783,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.changed) return false
     gameState.value = result.state
     dayLog.value.push({ type: 'cars-swapped', serviceCarId, parkingCarId })
+    logSessionEvent('swapCars', { serviceCarId, parkingCarId })
     return true
   }
 
@@ -788,6 +802,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.changed) return false
     gameState.value = result.state
     dayLog.value.push({ type: 'car-moved', carInstanceId: carId, to })
+    logSessionEvent('moveCarToSlot', { carId, to, slotIndex })
     return true
   }
 
@@ -800,6 +815,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('buyBay', { kind })
     return true
   }
 
@@ -826,6 +842,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('buyEquipment', { equipmentId })
     return true
   }
 
@@ -934,18 +951,30 @@ export const useGameStore = defineStore('game', () => {
    * being staged, freeing it up again.
    */
   function stageAction(carId: string, action: StagedAction): boolean {
-    if (!findWorkableCar(carId)) return false
+    const car = findWorkableCar(carId)
+    if (!car) return false
     const busy = gameState.value.jobs.some(
       (j) => j.carInstanceId === carId && j.componentId === action.componentId,
     )
     if (busy) return false
-    if (action.kind === 'install' && isPartStagedAnywhere(action.partInstanceId)) return false
+    if (action.kind === 'install') {
+      if (isPartStagedAnywhere(action.partInstanceId)) return false
+      // Sprint 24 fix 2: refuse a part/component/model mismatch here too —
+      // not just at Confirm's job-creation time — so a caller that bypasses
+      // the UI's own filtered drawer (a bot, the dev console, a future
+      // client) can't stage an install that would only fail silently later.
+      const model = context.value.modelsById[car.modelId]
+      const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
+      const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
+      if (!model || !part || !partFitsCar(part, model, action.componentId)) return false
+    }
 
     const existing = stagedActionsFor(carId).filter((a) => a.componentId !== action.componentId)
     gameState.value = {
       ...gameState.value,
       stagedCarWork: { ...gameState.value.stagedCarWork, [carId]: [...existing, action] },
     }
+    logSessionEvent('stageAction', { carId, action })
     return true
   }
 
@@ -956,6 +985,7 @@ export const useGameStore = defineStore('game', () => {
     if (remaining.length === 0) delete stagedCarWork[carId]
     else stagedCarWork[carId] = remaining
     gameState.value = { ...gameState.value, stagedCarWork }
+    logSessionEvent('unstageAction', { carId, componentId })
   }
 
   /**
@@ -975,6 +1005,7 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('confirmCarWork', { carId })
   }
 
   /** Inspect an auction lot — instant, reveals hidden issues for the cash travel fee only. */
@@ -983,6 +1014,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('inspectLot', { lotId })
     return true
   }
 
@@ -1007,6 +1039,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('placeBid', { lotId, bidYen })
     return true
   }
 
@@ -1016,6 +1049,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('buyout', { lotId })
     return true
   }
 
@@ -1099,6 +1133,11 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     gameState.value = { ...gameState.value, cartPartIds: remaining }
+    logSessionEvent('checkoutCart', {
+      deliverySpeed,
+      boughtCount,
+      remainingCount: remaining.length,
+    })
     return { boughtCount, remainingCount: remaining.length }
   }
 
@@ -1115,6 +1154,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('acceptServiceJob', { offerId })
     return true
   }
 
@@ -1153,6 +1193,7 @@ export const useGameStore = defineStore('game', () => {
         reputationDelta: -entry.reputationLost,
       }
     }
+    logSessionEvent('completeServiceJob', { jobId, outcome: resolution.outcome })
     return resolution.outcome
   }
 
@@ -1166,6 +1207,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('sellWalkIn', { carId })
     return true
   }
 
@@ -1179,6 +1221,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    logSessionEvent('listForSale', { carId, waitDays })
     return true
   }
 
@@ -1195,6 +1238,7 @@ export const useGameStore = defineStore('game', () => {
     const state = gameState.value
     const endedDay = state.day
     const cashBefore = state.cashYen
+    logSessionEvent('endDay', { endedDay })
     const result = advanceDay(state, emptyDayActions(), state.seed + state.day, context.value)
     gameState.value = result.state
     dayLog.value.push(...result.log)

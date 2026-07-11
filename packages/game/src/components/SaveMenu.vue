@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { loadSessionEvents } from '../save/saveDb'
 import { useGameStore } from '../stores/gameStore'
 
 const game = useGameStore()
@@ -25,6 +26,24 @@ function importCode(): void {
   status.value = result.ok ? 'Save loaded.' : result.error
   if (result.ok) importText.value = ''
 }
+
+/**
+ * Session log v0 (Sprint 24) — capture only, no replay this sprint. No
+ * download pattern exists elsewhere to reuse (the save export above copies
+ * to the clipboard); this is the small standard Blob + object-URL + anchor-
+ * click helper, kept local here until a second consumer needs it.
+ */
+async function exportSessionLog(): Promise<void> {
+  const events = await loadSessionEvents()
+  const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `midnight-garage-session-day${game.day}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+  status.value = `Exported ${events.length} session event(s).`
+}
 </script>
 
 <template>
@@ -42,6 +61,7 @@ function importCode(): void {
       <button :disabled="!importText.trim()" data-test="import-save" @click="importCode">
         Load pasted code
       </button>
+      <button data-test="export-session-log" @click="exportSessionLog">Export session log</button>
       <p v-if="status" class="status">{{ status }}</p>
     </div>
   </div>

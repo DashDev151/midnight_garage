@@ -9,6 +9,7 @@ import type { NewJobSpec } from './actions'
 import type { SimContext } from './context'
 import { hasEquipmentFor } from './equipment'
 import { issueRepairCostYen } from './issues'
+import { partFitsCar } from './parts'
 
 /**
  * A car the player can work on — either an owned car or a customer's car
@@ -242,6 +243,43 @@ export function repairJobGate(
   return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
 }
 
+export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
+
+/**
+ * Sprint 24 fix 2: the sim never validated part-component fit on install —
+ * only the UI's own inline copy (`gameStore.installablePartsFor`) did,
+ * leaving a staged action or a bot's queued install job free to install any
+ * part onto any component. A separate, small gate beside `repairJobGate`
+ * (not folded into it — that function deliberately opens with `if (kind !==
+ * 'repair-zone') return ok` and, post-Sprint-22, branches per kind; fit is
+ * its own concern) — exported and called from both `findOrCreateJob` below
+ * (the player's instant path) AND `advanceDay`'s bot batch job-creation
+ * loop directly (that loop calls `repairJobGate` inline, never
+ * `findOrCreateJob`, mirroring `repairJobGate`'s own "one gate, two
+ * callers" precedent). Refuses the same way an unaffordable/ungated repair
+ * does: a blocked-and-logged no-op, never a throw (a bot's queued spec or
+ * the dev console must not crash the tick).
+ */
+export function installFitGate(
+  state: GameState,
+  spec: NewJobSpec,
+  context: SimContext,
+): InstallFitGate {
+  if (spec.kind !== 'install-part') return { ok: true }
+  const id = jobIdFor(spec)
+  if (!spec.partInstanceId)
+    return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
+
+  const car = findWorkableCar(state, spec.carInstanceId)
+  const model = car ? context.modelsById[car.modelId] : undefined
+  const partInstance = state.partInventory.find((p) => p.id === spec.partInstanceId)
+  const part = partInstance ? context.partsById[partInstance.partId] : undefined
+  if (!car || !model || !part || !partFitsCar(part, model, spec.componentId)) {
+    return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
+  }
+  return { ok: true }
+}
+
 /**
  * Finds the car's already-open job matching this spec's kind+component, or
  * creates one (Sprint 11). A car can only have one open job per component at
@@ -252,7 +290,8 @@ export function repairJobGate(
  * bookkeeping. Sprint 13: a *new* repair-zone job additionally passes
  * `repairJobGate` (equipment owned + consumables affordable) before it's
  * created — `job` comes back `null` when the gate refuses, since nothing was
- * created to return.
+ * created to return. Sprint 24: a *new* install-part job likewise passes
+ * `installFitGate` (fix 2).
  */
 export function findOrCreateJob(
   state: GameState,
@@ -262,6 +301,9 @@ export function findOrCreateJob(
   const id = jobIdFor(spec)
   const existing = state.jobs.find((j) => j.id === id)
   if (existing) return { state, job: existing, log: [] }
+
+  const fitGate = installFitGate(state, spec, context)
+  if (!fitGate.ok) return { state, job: null, log: fitGate.log }
 
   const gate = repairJobGate(state, spec, context)
   if (!gate.ok) return { state, job: null, log: gate.log }

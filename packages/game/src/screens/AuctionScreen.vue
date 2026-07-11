@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
+import EndDayButton from '../components/EndDayButton.vue'
 import { useGameStore, type LotDetail, type MyActiveBidView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -191,7 +192,7 @@ function backstopLabel(expiresOnDay: number): string {
       </ul>
     </div>
 
-    <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
+    <EndDayButton />
   </section>
 </template>
 

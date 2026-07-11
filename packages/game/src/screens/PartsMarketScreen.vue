@@ -2,6 +2,7 @@
 import type { ComponentId, Grade, Part } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import EndDayButton from '../components/EndDayButton.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -176,7 +177,7 @@ function onCheckout(): void {
       </div>
     </section>
 
-    <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
+    <EndDayButton />
   </section>
 </template>
 

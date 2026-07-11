@@ -1,5 +1,7 @@
 import {
+  CARS,
   EQUIPMENT,
+  PARTS,
   type CarInstance,
   type GameState,
   type HiddenIssue,
@@ -19,7 +21,10 @@ import {
 } from '../src/jobs'
 import { buildSimContext } from '../src/context'
 
-const CONTEXT = buildSimContext([], [], [], [], [], undefined, [], EQUIPMENT)
+// Real CARS/PARTS (not empty arrays) since Sprint 24 fix 2: `findOrCreateJob`
+// now validates install-part fit against the actual model/part catalog, so
+// an install spec needs both to resolve to something real.
+const CONTEXT = buildSimContext(CARS, PARTS, [], [], [], undefined, [], EQUIPMENT)
 
 /** Sprint 22: `fix-issue` fixture — severity 50 costs exactly `repairCostBaseYen`
  * (economy.json's `costDivisor` default). */
@@ -317,6 +322,57 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT,
       )
       expect(result.job).not.toBeNull()
+    })
+  })
+
+  describe('the install-fit gate (Sprint 24 fix 2)', () => {
+    it('refuses a part that does not fit the target component, state unchanged', () => {
+      const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+      const wrongInstance: PartInstance = {
+        id: 'pi-wrong',
+        partId: wrongPart.id,
+        conditionPercent: 100,
+        genuinePeriod: false,
+      }
+      const state = baseState({ partInventory: [sparePart, wrongInstance] })
+      const result = findOrCreateJob(
+        state,
+        {
+          carInstanceId: car.id,
+          kind: 'install-part',
+          componentId: 'suspension',
+          partInstanceId: wrongInstance.id,
+          laborSlotsRequired: 1,
+        },
+        CONTEXT,
+      )
+      expect(result.job).toBeNull()
+      expect(result.state).toBe(state)
+      expect(result.log).toEqual([
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-install-part-suspension',
+          reason: 'part-does-not-fit',
+        },
+      ])
+      // Nothing moved — inventory and the car's own components are untouched.
+      expect(result.state.partInventory).toHaveLength(2)
+      expect(result.state.ownedCars[0]?.components.suspension.installed).toBeNull()
+    })
+
+    it('refuses a partInstanceId that does not exist in inventory', () => {
+      const result = findOrCreateJob(
+        baseState(),
+        {
+          carInstanceId: car.id,
+          kind: 'install-part',
+          componentId: 'suspension',
+          partInstanceId: 'not-a-real-instance',
+          laborSlotsRequired: 1,
+        },
+        CONTEXT,
+      )
+      expect(result.job).toBeNull()
     })
   })
 })

@@ -289,13 +289,21 @@ describe('reputation side effects (Sprint 15)', () => {
     expect(result.log[0]).toMatchObject({ reputationDelta: result.state.reputationPoints })
   })
 
-  it('a walk-in sale of a lemon costs reputation immediately, clamped at zero', () => {
-    const state = stateWithCar(lemonCar)
+  it('a walk-in sale of a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
+    // A player at 2 points selling a lemon (nominal -5) only has 2 to lose —
+    // `applyReputationDelta` floors at 0. Before this fix, the log entry
+    // carried the nominal -5 regardless of what actually applied.
+    const state = stateWithCar(lemonCar, { reputationPoints: 2 })
     const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
-    expect(result.state.reputationPoints).toBe(0) // started at 0, penalty clamps
-    expect(result.log[0]).toMatchObject({ reputationDelta: expect.any(Number) })
-    const delta = (result.log[0] as { reputationDelta: number }).reputationDelta
-    expect(delta).toBeLessThan(0)
+    expect(result.state.reputationPoints).toBe(0)
+    expect(result.log[0]).toMatchObject({ reputationDelta: -2, saleQuality: 'lemon' })
+  })
+
+  it('a walk-in sale of a lemon already at zero reputation has nothing left to lose, so logs no reputationDelta', () => {
+    const state = stateWithCar(lemonCar) // reputationPoints: 0
+    const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(0)
+    expect(result.log[0]).not.toHaveProperty('reputationDelta')
   })
 
   it('a walk-in sale of an ordinary car carries no reputationDelta field', () => {

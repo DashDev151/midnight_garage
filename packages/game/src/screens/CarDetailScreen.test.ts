@@ -268,6 +268,70 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).exists()).toBe(false)
     })
 
+    it('Sprint 24 fix 1: a picked part that fits the still-open drawer completes on a second Replace click', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const componentId = 'suspension'
+      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      game.devGrantPart(part.id)
+      const partInstanceId = game.gameState.partInventory[0]!.id
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find(`[data-test="replace-${componentId}"]`).trigger('click')
+      await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
+      // Picking doesn't close the drawer, and the drawer's own row still
+      // renders — clicking it again (the accessibility-fallback completion
+      // path) stages the install.
+      await wrapper.find(`[data-test="replace-${componentId}"]`).trigger('click')
+
+      expect(wrapper.text()).toContain('staged:')
+      expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
+    })
+
+    it('Sprint 24 fix 1: a pick that does not fit the clicked row falls through to opening that drawer, not a silent no-op', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      // Pick a brakes-only part from suspension's drawer (doesn't fit suspension).
+      const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+      game.devGrantPart(wrongPart.id)
+      const partInstanceId = game.gameState.partInventory[0]!.id
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="replace-suspension"]').trigger('click')
+      await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
+
+      // Close suspension's drawer, then click a different, not-yet-open row
+      // (brakes) while the pick is still live — before the fix this was a
+      // silent no-op (early return); now it opens brakes' own drawer.
+      await wrapper.find('[data-test="close-drawer"]').trigger('click')
+      expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
+      await wrapper.find('[data-test="replace-brakes"]').trigger('click')
+      expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
+    })
+
+    it('Sprint 24 fix 1: shows a "placing" chip while a pick is active, cleared by Escape', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const componentId = 'suspension'
+      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      game.devGrantPart(part.id)
+      const partInstanceId = game.gameState.partInventory[0]!.id
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find(`[data-test="replace-${componentId}"]`).trigger('click')
+      expect(wrapper.find('[data-test="pick-chip"]').exists()).toBe(false)
+
+      await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
+      expect(wrapper.find('[data-test="pick-chip"]').exists()).toBe(true)
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="pick-chip"]').exists()).toBe(false)
+    })
+
     it('unstaging frees the part up to stage elsewhere', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)

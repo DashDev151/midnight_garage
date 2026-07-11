@@ -207,7 +207,7 @@ win-price bucket and buyout-vs-bid telemetry still land in reasonable ranges und
 
 ## Exit
 
-**Status: implemented, all checks green, not yet committed.**
+**Status: implemented, all checks green, committed (`93e5e94`, bundled with 19b/19c).**
 
 The core mechanic landed as decision 2 described and confirmed (via `AskUserQuestion` before
 implementation, matching the maintainer's own proposal exactly): every lot rolls a duration by rarity

@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import type { ComponentId, StagedAction } from '@midnight-garage/content'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import EndDayButton from '../components/EndDayButton.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import StatRadar from '../components/StatRadar.vue'
-import { useDragSession, useDropZone, type DropZoneHandle } from '../composables/useDragAndDrop'
+import {
+  clearDragSession,
+  useDragSession,
+  useDropZone,
+  type DropZoneHandle,
+} from '../composables/useDragAndDrop'
 import { useGameStore, type CarIssueView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -165,13 +171,18 @@ const dropZones = Object.fromEntries(
 /**
  * Clicking "Replace": if a part is currently *picked* (the click-based
  * accessibility fallback — possibly picked from a different component's
- * drawer, or even before this one was ever opened), complete that placement
- * immediately, matching the same `accepts`/`onDrop` a live drag uses.
- * Otherwise, open (or close, on a repeat click of the same row) this
- * component's drawer.
+ * drawer, or even before this one was ever opened) AND it actually fits
+ * this component, complete that placement immediately, matching the same
+ * `accepts`/`onDrop` a live drag uses. Otherwise, open (or close, on a
+ * repeat click of the same row) this component's drawer — including when a
+ * pick is active but doesn't fit here (Sprint 24 fix 1): the pick stays
+ * alive, since the user may have meant a different row, rather than
+ * silently doing nothing.
  */
 function onReplaceClick(componentId: ComponentId): void {
-  if (dragSession.value?.mode === 'pick') {
+  const picked = dragSession.value
+  const payload = picked?.mode === 'pick' ? picked.payload : null
+  if (typeof payload === 'string' && acceptsInstall(componentId, payload)) {
     dropZones[componentId].onClick()
     return
   }
@@ -207,6 +218,29 @@ const draggedPartName = computed(() => {
   const pi = game.gameState.partInventory.find((p) => p.id === payload)
   return pi ? game.partName(pi.partId) : null
 })
+
+/**
+ * Sprint 24 fix 1: the accessibility-fallback counterpart to the drag ghost
+ * above — a picked part (via `togglePick`, no pointer drag involved) is
+ * otherwise invisible outside the drawer it was picked from, so a player who
+ * navigates within the screen or just forgets what they picked has no way
+ * to tell a pick is still live. Shown whenever a pick is active, anywhere on
+ * this screen — not gated to the currently-open drawer, since the whole
+ * point of "pick, then click a different Replace slot" is picking from one
+ * row and completing on another.
+ */
+const pickedPartName = computed(() => {
+  const s = dragSession.value
+  if (s?.mode !== 'pick' || typeof s.payload !== 'string') return null
+  const pi = game.gameState.partInventory.find((p) => p.id === s.payload)
+  return pi ? game.partName(pi.partId) : null
+})
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && dragSession.value?.mode === 'pick') clearDragSession()
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
@@ -482,7 +516,7 @@ const draggedPartName = computed(() => {
     <section class="jobs">
       <h3>Work</h3>
       <p class="labor">
-        Labor: {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} slots left today
+        Labour: {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} slots left today
       </p>
 
       <div v-if="detail.jobs.length" class="job-group">
@@ -499,9 +533,7 @@ const draggedPartName = computed(() => {
         No work in progress. Stage a repair or install and Confirm to start.
       </p>
 
-      <button class="primary" data-test="end-day" @click="game.endDay()">
-        End Day ({{ formatYen(game.cashYen) }})
-      </button>
+      <EndDayButton show-cash />
     </section>
 
     <div
@@ -510,6 +542,10 @@ const draggedPartName = computed(() => {
       :style="{ left: dragSession.x + 'px', top: dragSession.y + 'px' }"
     >
       {{ draggedPartName }}
+    </div>
+
+    <div v-if="pickedPartName" class="pick-chip" data-test="pick-chip">
+      placing: {{ pickedPartName }} — click a Replace slot, or Esc to cancel
     </div>
   </section>
 </template>
@@ -852,6 +888,23 @@ button.primary {
   border-radius: var(--mg-radius);
   padding: var(--mg-space-2) var(--mg-space-3);
   font-size: var(--mg-fs-md);
+  font-weight: bold;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.pick-chip {
+  position: fixed;
+  left: 50%;
+  bottom: var(--mg-space-3);
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--mg-neon-cyan);
+  color: var(--mg-night-deep);
+  border: 2px solid var(--mg-night-deep);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
   font-weight: bold;
   white-space: nowrap;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);

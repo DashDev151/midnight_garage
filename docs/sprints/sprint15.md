@@ -1,6 +1,6 @@
 # Sprint 15 — Reputation system
 
-*Status: implemented, ready for review — not yet committed. See Exit.*
+*Status: implemented, committed (`7e70f5a`). See Exit.*
 
 *Source: 2026-07-10 playtest session (`docs/playtest-notes-2026-07-10.md`, items #7/#10) plus the
 same-day design conversation that followed. The maintainer wants equipment and facility purchases,
@@ -217,4 +217,4 @@ Not done this sprint (by design, Sprint 16's job): no gating behavior changed an
 facilities, and auction access all still behave exactly as before. `reputationTier` is real now,
 but nothing reads it to block anything yet.
 
-Ready for review — not committed pending the maintainer's sign-off per the sprint workflow.
+Committed (`7e70f5a`).

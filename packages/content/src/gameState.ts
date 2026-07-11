@@ -148,7 +148,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('job-blocked'),
     jobId: z.string().min(1),
-    reason: z.enum(['slot-occupied', 'not-in-service-bay', 'equipment-missing']),
+    reason: z.enum([
+      'slot-occupied',
+      'not-in-service-bay',
+      'equipment-missing',
+      /** Sprint 24 fix 2: the sim's own install-fit check refused a
+       * part/component/model mismatch, independent of the UI's filter. */
+      'part-does-not-fit',
+    ]),
   }),
   z.object({
     type: z.literal('labor-overbooked'),

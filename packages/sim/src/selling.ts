@@ -182,11 +182,16 @@ export function resolveSellViaWalkIn(
     context.economy,
     rng,
   )
-  const reputationDelta = saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy)
-  const released = applyReputationDelta(
-    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
-    reputationDelta,
-  )
+  const nominalDelta = saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy)
+  const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
+  const released = applyReputationDelta(clearedState, nominalDelta)
+  // Sprint 24 fix 3: log what actually happened, not the nominal delta —
+  // `applyReputationDelta` floors `reputationPoints` at 0, so a player at 2
+  // points selling a lemon (nominal -5) only ever loses 2, not 5. The
+  // *label* still comes from the nominal delta (`saleQualityFor`) — the
+  // sale was still mechanically a lemon regardless of how much was left to
+  // lose — but the logged number is the real, applied one.
+  const appliedDelta = released.reputationPoints - clearedState.reputationPoints
   return {
     state: bumpPlayerSales(
       {
@@ -202,10 +207,10 @@ export function resolveSellViaWalkIn(
         carInstanceId,
         channel: 'walk-in-offer',
         priceYen: offer.priceYen,
-        ...(reputationDelta !== 0
+        ...(appliedDelta !== 0
           ? {
-              reputationDelta,
-              saleQuality: saleQualityFor(reputationDelta, context.economy) ?? undefined,
+              reputationDelta: appliedDelta,
+              saleQuality: saleQualityFor(nominalDelta, context.economy) ?? undefined,
             }
           : {}),
       },

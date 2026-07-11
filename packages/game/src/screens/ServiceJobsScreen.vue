@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import EndDayButton from '../components/EndDayButton.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -15,14 +16,14 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
     <header class="head">
       <h2>Service jobs</h2>
       <p class="rep">
-        {{ game.reputationPoints }} rep · {{ formatYen(game.cashYen) }} · labor
+        {{ game.reputationPoints }} rep · {{ formatYen(game.cashYen) }} · labour
         {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }}
       </p>
     </header>
 
     <p class="how">
       Accept a job and the customer's car comes into your shop. Do the work it needs — buy parts,
-      assign labor — then hand it back from the car's page to get paid.
+      assign labour — then hand it back from the car's page to get paid.
     </p>
 
     <p v-if="game.parkingFull" class="parking-warning">
@@ -82,7 +83,7 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
       </ul>
     </section>
 
-    <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
+    <EndDayButton />
   </section>
 </template>
 

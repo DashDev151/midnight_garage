@@ -137,6 +137,21 @@ describe('staged repair/install work (Sprint 18)', () => {
     expect(game.gameState.stagedCarWork[carId]).toBeUndefined()
   })
 
+  it('refuses to stage a part onto a component it does not fit (Sprint 24 fix 2)', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    // A brakes-only part staged onto suspension — a real mismatch.
+    const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+    game.devGrantPart(wrongPart.id)
+    const partInstanceId = game.gameState.partInventory[0]!.id
+
+    expect(
+      game.stageAction(carId, { kind: 'install', componentId: 'suspension', partInstanceId }),
+    ).toBe(false)
+    expect(game.stagedActionsFor(carId)).toEqual([])
+  })
+
   it('the staged-work map survives a save round-trip', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)

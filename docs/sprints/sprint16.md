@@ -5,7 +5,7 @@ same-day design conversation. Depends on Sprint 15 (reputation system) for #7/#1
 the reputation tier Sprint 15 makes real. #8 (job-board equipment hinting) doesn't actually depend on
 Sprint 15 at all (it's equipment-only), and #6 (Upgrades tab) is pure UI — both ride along here because
 they're the same "shop progression" surface, not because they share a technical dependency. Status:
-**implemented, ready for review — not yet committed.** Decision 1's equipment ladder was revised
+**implemented, committed (`8e74448`).** Decision 1's equipment ladder was revised
 mid-implementation after a real catch-22 was found (see Exit) — not just disclosed, fixed, the way
 Sprint 13 first handled this exact class of problem.
 
@@ -235,4 +235,4 @@ question): no bot gained deliberate reputation-*seeking* behavior — every bot'
 trajectory is still whatever falls out of its existing decisions, reported honestly via Sprint 15's
 harness sampling rather than engineered toward a target.
 
-Ready for review — not committed pending the maintainer's sign-off per the sprint workflow.
+Committed (`8e74448`).

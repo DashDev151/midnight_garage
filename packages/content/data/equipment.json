@@ -1,7 +1,7 @@
 [
   {
     "id": "tire-machine",
-    "displayName": "Tire Machine & Balancer",
+    "displayName": "Tyre Machine & Balancer",
     "componentIds": ["wheels"],
     "priceYen": 150000,
     "consumablesCostYen": 8000

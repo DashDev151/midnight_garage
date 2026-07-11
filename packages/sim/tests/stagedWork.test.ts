@@ -1,5 +1,7 @@
 import {
+  CARS,
   EQUIPMENT,
+  PARTS,
   type CarInstance,
   type GameState,
   type PartInstance,
@@ -8,7 +10,9 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { clearStagedWork, confirmStagedWork } from '../src/stagedWork'
 
-const CONTEXT = buildSimContext([], [], [], [], [], undefined, [], EQUIPMENT)
+// Real CARS/PARTS (Sprint 24 fix 2: findOrCreateJob validates install-part
+// fit against the real catalog, so an install spec needs both to resolve).
+const CONTEXT = buildSimContext(CARS, PARTS, [], [], [], undefined, [], EQUIPMENT)
 
 /** Equipment covering the components these tests repair — owned by default so confirm tests
  * aren't incidentally blocked by the equipment gate, which has its own dedicated test below. */

@@ -7,8 +7,7 @@ bid;" (2) rival escalation starting from ¥0 wastes early auction days climbing 
 the reserve price, worsening the tuning problem already flagged; (3) the real current top bid was
 computed (`BidHeadroom.currentTopBidYen`, explicitly commented "not obfuscated") but never actually
 surfaced anywhere in the UI — a genuine gap between what was built and what shipped, not a design
-choice. Status: **implemented, all checks green, pending review — bundled with Sprint 19, neither yet
-committed.**
+choice. Status: **implemented, all checks green, committed (`93e5e94`, bundled with Sprint 19/19c).**
 
 ## Goal
 
@@ -111,7 +110,7 @@ the maintainer's to run once both 19 and 19b are reviewed together.
 
 ## Exit
 
-**Status: implemented, all checks green, not yet committed — bundled with Sprint 19.**
+**Status: implemented, all checks green, committed (`93e5e94`, bundled with Sprint 19).**
 
 All three fixes shipped as scoped. `resolveTopBidAuction` (renamed from `resolveSecondPriceAuction`)
 now pays the winner exactly their own bid; `applyDailyEscalation` seeds a rival's first real move from
@@ -159,5 +158,6 @@ even for a career that never bids, since `applyDailyEscalation` runs every day r
 covering the always-visible current-bid figure). All checks green
 (`pnpm typecheck`/`lint`/`format`/`test:coverage`/`build`).
 
-**Not yet verified with real play or `pnpm balance:run`** — same standing gap as Sprint 19 itself, both
-bundled into the same not-yet-committed working tree and both the maintainer's to run.
+**Not yet verified with real play or `pnpm balance:run`** at the time this sprint shipped — same
+standing gap as Sprint 19 itself. Superseded since: `pnpm balance:run` has been run repeatedly across
+Sprints 20-23, and the browser-verify task moved to Sprint 24's own human-validation section.

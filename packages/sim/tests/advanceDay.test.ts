@@ -320,6 +320,35 @@ describe('advanceDay resolves a public listing with its captured reputation delt
     )
   })
 
+  it('logs the applied loss, not the nominal penalty, when resolution would floor reputationPoints at zero (Sprint 24 fix 3)', () => {
+    const state: GameState = {
+      ...initialState(),
+      day: 10,
+      ownedCars: [],
+      reputationPoints: 2,
+      activeListings: [
+        {
+          id: 'listing-5-car-x',
+          carInstanceId: 'car-x',
+          modelId: 'honda-city-e-aa',
+          askingPriceYen: 400_000,
+          resolvesOnDay: 10,
+          reputationDeltaOnSale: -5,
+        },
+      ],
+    }
+    const { state: next, log } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+    expect(next.reputationPoints).toBe(0)
+    expect(log).toContainEqual(
+      expect.objectContaining({
+        type: 'car-sold',
+        channel: 'list-publicly',
+        reputationDelta: -2,
+        saleQuality: 'lemon',
+      }),
+    )
+  })
+
   it('a not-yet-due listing stays pending and applies nothing', () => {
     const state: GameState = {
       ...initialState(),

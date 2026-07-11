@@ -1,6 +1,9 @@
 import type {
+  CarModel,
+  ComponentId,
   DayLogEntry,
   GameState,
+  Part,
   PartInstance,
   PendingPartOrder,
 } from '@midnight-garage/content'
@@ -8,6 +11,20 @@ import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '
 import type { SimContext } from './context'
 
 export type DeliverySpeed = 'standard' | 'express'
+
+/**
+ * Sprint 24 fix 2: the one real fit rule (right component slot + every
+ * required tag present on the model) — previously only enforced by the UI's
+ * own inline copy (`gameStore.installablePartsFor`), so the sim itself (a
+ * staged action, or a bot's queued install job) never actually validated
+ * fit and would install any part onto any component if asked. Sim-level
+ * source of truth now; the UI predicate calls this instead of duplicating it.
+ */
+export function partFitsCar(part: Part, model: CarModel, componentId: ComponentId): boolean {
+  return (
+    part.componentId === componentId && part.requiredTags.every((tag) => model.tags.includes(tag))
+  )
+}
 
 export interface BuyPartResult {
   state: GameState

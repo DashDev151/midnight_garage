@@ -1,4 +1,5 @@
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { clearDragSession } from '../composables/useDragAndDrop'
 
 /**
  * Memory-history routing (decision 1, sprint04.md): the router API - named
@@ -33,3 +34,14 @@ export const router = createRouter({
     { path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') },
   ],
 })
+
+/**
+ * Sprint 24 fix 1: a drag/pick session is module-level state that outlives
+ * the component that started it (`useDragAndDrop.ts`'s own header comment).
+ * Without this, navigating away mid-pick (e.g. picking a part, then tapping
+ * back to the garage) left a stale session alive — the next screen's
+ * Replace click would silently short-circuit against a payload the user has
+ * no way to see or intend anymore. A navigation always ends any in-flight
+ * pick/drag.
+ */
+router.afterEach(() => clearDragSession())

@@ -4,8 +4,7 @@
 more corrections to Sprint 19's auction rework before it ships, driven by the maintainer's own
 real-data analysis requests (a synthetic-ratio escalation sweep that got corrected into a real-data
 one, then a "why are rival ceilings so low" question that traced to the bidder-discipline formula).
-Status: **implemented, all checks green, pending review — bundled with Sprint 19/19b, none yet
-committed.**
+Status: **implemented, all checks green, committed (`93e5e94`, bundled with Sprint 19/19b).**
 
 ## Goal
 
@@ -114,7 +113,7 @@ across every bot).
 
 ## Exit
 
-**Status: implemented, all checks green, not yet committed — bundled with Sprint 19/19b.**
+**Status: implemented, all checks green, committed (`93e5e94`, bundled with Sprint 19/19b).**
 
 All three decisions shipped as given, each grounded in real data before implementation rather than
 estimated:

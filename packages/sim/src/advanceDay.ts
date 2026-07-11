@@ -13,6 +13,7 @@ import {
   applyAvailableLaborToJob,
   completeJob,
   createJob,
+  installFitGate,
   isJobComplete,
   repairJobGate,
 } from './jobs'
@@ -87,9 +88,18 @@ export function advanceDay(
   // a repair-zone spec passes through the same `repairJobGate` the player's
   // instant path uses (equipment owned + consumables affordable) before
   // it's created — a gate refusal just skips that one queued spec, logging
-  // why, rather than creating a job that could never receive labor.
+  // why, rather than creating a job that could never receive labor. Sprint
+  // 24 fix 2: an install-part spec likewise passes `installFitGate` — this
+  // loop calls `findOrCreateJob`'s two gates directly rather than
+  // `findOrCreateJob` itself (see that function's own doc comment on the
+  // differing id schemes), so both gates need calling here explicitly.
   const jobs: Job[] = [...next.jobs]
   queuedActions.createJobs.forEach((spec, i) => {
+    const fitGate = installFitGate(next, spec, context)
+    if (!fitGate.ok) {
+      log.push(...fitGate.log)
+      return
+    }
     const gate = repairJobGate(next, spec, context)
     if (!gate.ok) {
       log.push(...gate.log)
@@ -236,7 +246,16 @@ export function advanceDay(
       stillListed.push(listing)
       continue
     }
+    // Sprint 24 fix 3: log the applied delta, not the nominal one captured
+    // at listing-creation time (selling.ts) — `applyReputationDelta` floors
+    // `reputationPoints` at 0, using whatever the real point total is HERE,
+    // at resolution (which may be days later, and a different total than
+    // when the listing was created), not back when the nominal number was
+    // captured. The label (`saleQuality`) still comes from the nominal
+    // value — the sale was still mechanically whatever it was.
+    const pointsBefore = next.reputationPoints
     next = applyReputationDelta(next, listing.reputationDeltaOnSale)
+    const appliedDelta = next.reputationPoints - pointsBefore
     next = bumpPlayerSales(
       { ...next, cashYen: next.cashYen + listing.askingPriceYen },
       listing.modelId,
@@ -246,9 +265,9 @@ export function advanceDay(
       carInstanceId: listing.carInstanceId,
       channel: 'list-publicly',
       priceYen: listing.askingPriceYen,
-      ...(listing.reputationDeltaOnSale !== 0
+      ...(appliedDelta !== 0
         ? {
-            reputationDelta: listing.reputationDeltaOnSale,
+            reputationDelta: appliedDelta,
             saleQuality:
               saleQualityFor(listing.reputationDeltaOnSale, context.economy) ?? undefined,
           }

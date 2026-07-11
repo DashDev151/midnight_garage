@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import EndDayButton from '../components/EndDayButton.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
@@ -99,7 +100,7 @@ const draggedCarName = computed(() => {
     </dl>
 
     <div class="controls">
-      <button class="primary" data-test="end-day" @click="game.endDay()">End Day</button>
+      <EndDayButton />
       <button data-test="new-game" @click="game.newGame()">New Game</button>
       <RouterLink :to="{ name: 'upgrades' }" class="upgrades-link">Upgrades &gt;</RouterLink>
     </div>

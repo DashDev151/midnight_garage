@@ -20,13 +20,13 @@ export function describeLogEntry(
     case 'job-created':
       return `Job started (${entry.kind}) on ${entry.carInstanceId}`
     case 'job-progress':
-      return `Job ${entry.jobId}: +${entry.laborSlotsSpent} labor`
+      return `Job ${entry.jobId}: +${entry.laborSlotsSpent} labour`
     case 'job-completed':
       return `Job complete (${entry.kind}) on ${entry.carInstanceId}`
     case 'job-blocked':
       return `Job ${entry.jobId} blocked (${entry.reason})`
     case 'labor-overbooked':
-      return `Labor overbooked: wanted ${entry.requestedSlots}, had ${entry.availableSlots}`
+      return `Labour overbooked: wanted ${entry.requestedSlots}, had ${entry.availableSlots}`
     case 'service-bay-income':
       return `Service bay income: ${formatYen(entry.amountYen)}`
     case 'market-heat-shift':

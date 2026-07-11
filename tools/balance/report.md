@@ -24,10 +24,10 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 | handyman | 40 | Y-10,000 | Y92,738 | Y222,000 | 2.0 | 0.0 |
 | handyman | 70 | Y-110,000 | Y-7,262 | Y122,000 | 2.0 | 0.0 |
 | handyman | 100 | Y-190,000 | Y-87,262 | Y42,000 | 2.0 | 0.0 |
-| investor | 25 | Y202,082 | Y615,973 | Y1,145,084 | 1.0 | 0.0 |
-| investor | 40 | Y9,386 | Y158,642 | Y798,319 | 1.0 | 0.0 |
-| investor | 70 | Y-90,929 | Y-27,276 | Y90,556 | 2.0 | 0.0 |
-| investor | 100 | Y-170,929 | Y-107,276 | Y-2,840 | 2.0 | 0.0 |
+| investor | 25 | Y3,000 | Y48,000 | Y548,000 | 2.0 | 0.0 |
+| investor | 40 | Y-37,000 | Y-3,104 | Y155,074 | 2.0 | 0.0 |
+| investor | 70 | Y-137,000 | Y-103,104 | Y-42,000 | 2.0 | 0.0 |
+| investor | 100 | Y-217,000 | Y-183,104 | Y-122,000 | 2.0 | 0.0 |
 | passive-grinder | 25 | Y1,440,000 | Y1,440,000 | Y1,440,000 | 0.0 | 0.0 |
 | passive-grinder | 40 | Y1,400,000 | Y1,400,000 | Y1,400,000 | 0.0 | 0.0 |
 | passive-grinder | 70 | Y1,300,000 | Y1,300,000 | Y1,300,000 | 0.0 | 0.0 |
@@ -57,9 +57,9 @@ Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot b
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 10.9% | 10%-25% |
-| mid | 69.0% | 50%-100% |
-| frenzy | 20.1% | 5%-15% |
+| steal | 10.7% | 10%-25% |
+| mid | 68.7% | 50%-100% |
+| frenzy | 20.6% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 
