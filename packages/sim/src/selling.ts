@@ -26,11 +26,11 @@ export interface SaleOffer {
 }
 
 /**
- * The candidate buyer pool for a sale — only archetypes with a genuinely
+ * The candidate buyer pool for a sale - only archetypes with a genuinely
  * stated interest in the car's tier (Sprint 11, round-2 playtest #4: a
  * collector was making walk-in offers on a shitbox because nothing gated
  * who's even a candidate buyer on the sell side). Reuses the exact gate
- * `bidding.ts` already applies to auction rivals — the same rule, the
+ * `bidding.ts` already applies to auction rivals - the same rule, the
  * second place it was missing, not a different one.
  */
 function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
@@ -38,14 +38,14 @@ function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
 }
 
 /**
- * GDD 6.3: "fast, variable" — a buyer archetype rolls up the same day,
+ * GDD 6.3: "fast, variable" - a buyer archetype rolls up the same day,
  * offering somewhat under their true valuation for the convenience of an
  * instant sale. Weighted by fit, not uniformly random: a buyer who
- * actually wants this car is more likely to be the one who walks in —
+ * actually wants this car is more likely to be the one who walks in -
  * "someone happens by," not "a stranger is offered a car they don't
  * care about." Uniform selection made this channel punishing for any
  * car that didn't match the randomly-chosen archetype's taste, on top
- * of the discount below — a double penalty that made flipping
+ * of the discount below - a double penalty that made flipping
  * unviable regardless of how cheap the purchase was.
  */
 export function sellViaWalkIn(
@@ -88,8 +88,8 @@ export function sellViaWalkIn(
 }
 
 /**
- * GDD 6.3: "slow, market price" — the average valuation across every
- * genuinely-interested buyer archetype (Sprint 11: gated, same as walk-in —
+ * GDD 6.3: "slow, market price" - the average valuation across every
+ * genuinely-interested buyer archetype (Sprint 11: gated, same as walk-in -
  * averaging in buyers with no real interest was dragging the "market
  * price" below what a single well-matched buyer would pay, inverting this
  * channel's intended fast/cheap vs. slow/valuable relationship), locked in
@@ -98,7 +98,7 @@ export function sellViaWalkIn(
  *
  * Sprint 21 decision 6: `marketHeatPercent` is still forwarded into each
  * `valuateCarForBuyer` call (heat still moves this price) but the function
- * itself no longer multiplies by heat a second time — that extra multiply
+ * itself no longer multiplies by heat a second time - that extra multiply
  * was the double-count (heat now applies exactly once, inside
  * `marketValueYen`). In its place, listing gains a flat patience premium
  * (`LISTING_PATIENCE_PREMIUM`, economy.json's `listingPatiencePremium`) so
@@ -126,7 +126,7 @@ export function listPubliclyAskingPrice(
 }
 
 /**
- * The best-fit buyer for a resolved public listing — flavor/log purposes
+ * The best-fit buyer for a resolved public listing - flavor/log purposes
  * only. The actual sale price is the locked askingPriceYen from listing
  * time, not recomputed against this buyer.
  */
@@ -185,12 +185,12 @@ export function resolveSellViaWalkIn(
   const nominalDelta = saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy)
   const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   const released = applyReputationDelta(clearedState, nominalDelta)
-  // Sprint 24 fix 3: log what actually happened, not the nominal delta —
+  // Sprint 24 fix 3: log what actually happened, not the nominal delta -
   // `applyReputationDelta` floors `reputationPoints` at 0, so a player at 2
   // points selling a lemon (nominal -5) only ever loses 2, not 5. The
-  // *label* still comes from the nominal delta (`saleQualityFor`) — the
+  // *label* still comes from the nominal delta (`saleQualityFor`) - the
   // sale was still mechanically a lemon regardless of how much was left to
-  // lose — but the logged number is the real, applied one.
+  // lose - but the logged number is the real, applied one.
   const appliedDelta = released.reputationPoints - clearedState.reputationPoints
   return {
     state: bumpPlayerSales(
@@ -221,7 +221,7 @@ export function resolveSellViaWalkIn(
 /**
  * The instant list-creation resolver (Sprint 11): the listing itself (and
  * its locked asking price) appears the moment it's clicked; the sale still
- * resolves after `waitDays` — that multi-day wait is the intentional "slow,
+ * resolves after `waitDays` - that multi-day wait is the intentional "slow,
  * market price" mechanic, not a queue artifact.
  */
 export function resolveListForSale(

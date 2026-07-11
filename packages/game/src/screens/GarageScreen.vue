@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
@@ -30,17 +29,17 @@ const parkingCarIds = computed(() => new Set(occupiedParkingCars.value.map((c) =
 const serviceCarIds = computed(() => new Set(occupiedServiceCars.value.map((c) => c.carId)))
 
 /**
- * Every shop slot accepts any car currently in the shop — a car is always
+ * Every shop slot accepts any car currently in the shop - a car is always
  * exactly one of "in parking" or "in service", so this is really "any real
  * car", not a filter. Dropping a car back into its own section (occupied or
- * empty) is a real, accepted gesture, not a rejection — `moveCarToSlot`
+ * empty) is a real, accepted gesture, not a rejection - `moveCarToSlot`
  * (Sprint 17 positional fix) resolves same-section drops as a real
  * reposition/swap rather than a no-op, so the target highlighting and the
  * completed gesture both reflect something that actually happened.
  * Rejecting it outright (the original design) made every same-section drag
  * look broken: the drop target never highlighted and the gesture visibly
  * "failed" instead of completing cleanly (found via real dragging, not
- * something a unit test would have caught — same-section drags were never
+ * something a unit test would have caught - same-section drags were never
  * exercised on purpose).
  */
 function acceptsIntoService(carId: string): boolean {
@@ -50,7 +49,7 @@ function acceptsIntoParking(carId: string): boolean {
   return serviceCarIds.value.has(carId) || parkingCarIds.value.has(carId)
 }
 
-/** Drop a car onto service-bay slot `index` — moves it there if empty, swaps positions with
+/** Drop a car onto service-bay slot `index` - moves it there if empty, swaps positions with
  * whoever's there if occupied, same section or across (Sprint 17 positional fix: `moveCarToSlot`
  * targets the exact slot dropped on, so there's one call for every case, including same-section
  * reposition/swap, which used to need its own no-op guard here). */
@@ -61,7 +60,7 @@ function onDropOnParkingSlot(index: number, carId: string): void {
   game.moveCarToSlot(carId, 'parking', index)
 }
 
-// Sprint 17: the ghost preview that follows the pointer during a live drag —
+// Sprint 17: the ghost preview that follows the pointer during a live drag -
 // generic session data (payload is just a car id) resolved back to a
 // display name using the same data the slots already render from.
 const dragSession = useDragSession()
@@ -102,11 +101,10 @@ const draggedCarName = computed(() => {
     <div class="controls">
       <EndDayButton />
       <button data-test="new-game" @click="game.newGame()">New Game</button>
-      <RouterLink :to="{ name: 'upgrades' }" class="upgrades-link">Upgrades &gt;</RouterLink>
     </div>
 
     <p class="how drag-hint">
-      Drag a car onto another slot to move or swap it — or tap "move…" then "Place here" if dragging
+      Drag a car onto another slot to move or swap it - or tap "move…" then "Place here" if dragging
       isn't an option.
     </p>
 
@@ -153,7 +151,7 @@ const draggedCarName = computed(() => {
       <h3>Listings ({{ game.activeListings.length }})</h3>
       <ul>
         <li v-for="listing in game.activeListings" :key="listing.id">
-          {{ game.resolveModelName(listing.modelId) }} — asking
+          {{ game.resolveModelName(listing.modelId) }} - asking
           {{ formatYen(listing.askingPriceYen) }}, resolves day {{ listing.resolvesOnDay }}
         </li>
       </ul>
@@ -271,13 +269,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--mg-space-3);
-}
-
-.upgrades-link {
-  align-self: center;
-  color: var(--mg-neon-violet);
-  text-decoration: none;
-  font-size: var(--mg-fs-sm);
 }
 
 .listings ul {

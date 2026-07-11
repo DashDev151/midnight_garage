@@ -14,7 +14,7 @@ export interface ServiceBayBudget {
 export function serviceBayBudget(state: GameState): ServiceBayBudget {
   // Sprint 17: `serviceBayCarIds` is a real, fixed-length indexed array now
   // (one entry per physical bay, `null` = empty) rather than a compact list
-  // of only-occupied ids — free slots are a null count, not a length
+  // of only-occupied ids - free slots are a null count, not a length
   // subtraction (which would always come out to ~0 under the new shape).
   return { free: state.serviceBayCarIds.filter((id) => id === null).length }
 }
@@ -22,7 +22,7 @@ export function serviceBayBudget(state: GameState): ServiceBayBudget {
 /**
  * If `carId` isn't already in the service bay, queues a move for it when
  * there's room left in `budget`. Returns whether the car is (or will be) in
- * the bay this tick — a bot only queues labor for a car this returns true
+ * the bay this tick - a bot only queues labor for a car this returns true
  * for, since a job on a parked car makes no progress (advanceDay's labor
  * step gates on service-bay membership). Shared by every repair-driven bot
  * so "respect bay capacity" is one implementation, not five that can drift.

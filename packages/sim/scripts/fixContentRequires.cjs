@@ -3,7 +3,7 @@
 //
 // `@midnight-garage/content`'s package.json points its "exports" straight at
 // `./src/index.ts` (a live-source export Vite/Vitest can transform on the
-// fly) — plain `node`, which the CLI runs under, cannot execute TypeScript
+// fly) - plain `node`, which the CLI runs under, cannot execute TypeScript
 // or resolve that specifier, so any bare-specifier `require()` left in the
 // compiled JS fails at runtime with ERR_MODULE_NOT_FOUND. tsconfig.cli.json
 // adds `content/src/index.ts` as an explicit compile root so tsc emits a
@@ -21,7 +21,7 @@ const SPECIFIER = '@midnight-garage/content'
 const target = path.join(dir, 'packages', 'content', 'src', 'index.js')
 if (!fs.existsSync(target)) {
   throw new Error(
-    `expected a compiled content entry point at ${target} — is content/src/index.ts still an explicit include root in tsconfig.cli.json?`,
+    `expected a compiled content entry point at ${target} - is content/src/index.ts still an explicit include root in tsconfig.cli.json?`,
   )
 }
 

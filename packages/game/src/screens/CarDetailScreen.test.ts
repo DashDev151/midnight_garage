@@ -29,7 +29,7 @@ async function mountAt(carId: string) {
   return { wrapper, router }
 }
 
-/** Drags an element past the composable's movement threshold — pointerdown
+/** Drags an element past the composable's movement threshold - pointerdown
  * at the origin, then a pointermove far enough away to count as a drag. */
 async function dragPast(
   wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
@@ -102,7 +102,7 @@ describe('CarDetailScreen', () => {
 
     await wrapper.find('[data-test="confirm-work"]').trigger('click')
     expect(wrapper.text()).toContain('Staged work (0)')
-    // Confirm actually spent labor against a real job — either it finished in this
+    // Confirm actually spent labor against a real job - either it finished in this
     // same confirm (today's budget covered it) or it's left open, continuable below.
     expect(
       game.gameState.ownedCars[0]!.components.body.condition === 100 ||
@@ -131,7 +131,7 @@ describe('CarDetailScreen', () => {
     expect(game.gameState.jobs).toHaveLength(0)
   })
 
-  it('disables the Repair button (with a reason) when the equipment is not owned (Sprint 13)', async () => {
+  it('disables the Repair button (with a reason in its tooltip) when the equipment is not owned (Sprint 13, tooltip since Sprint 25)', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
@@ -139,7 +139,8 @@ describe('CarDetailScreen', () => {
 
     const button = wrapper.find('[data-test="stage-repair-body"]')
     expect(button.attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('needs')
+    expect(button.attributes('title')).toContain('Needs')
+    expect(wrapper.text()).not.toContain('needs')
   })
 
   it('redirects to the garage when the car id is not owned', async () => {
@@ -264,7 +265,7 @@ describe('CarDetailScreen', () => {
 
       const { wrapper } = await mountAt(carB!.id)
       await wrapper.find(`[data-test="replace-${componentId}"]`).trigger('click')
-      // Already staged on carA — omitted from carB's own drawer (decision 3).
+      // Already staged on carA - omitted from carB's own drawer (decision 3).
       expect(wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).exists()).toBe(false)
     })
 
@@ -281,7 +282,7 @@ describe('CarDetailScreen', () => {
       await wrapper.find(`[data-test="replace-${componentId}"]`).trigger('click')
       await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
       // Picking doesn't close the drawer, and the drawer's own row still
-      // renders — clicking it again (the accessibility-fallback completion
+      // renders - clicking it again (the accessibility-fallback completion
       // path) stages the install.
       await wrapper.find(`[data-test="replace-${componentId}"]`).trigger('click')
 
@@ -303,7 +304,7 @@ describe('CarDetailScreen', () => {
       await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
 
       // Close suspension's drawer, then click a different, not-yet-open row
-      // (brakes) while the pick is still live — before the fix this was a
+      // (brakes) while the pick is still live - before the fix this was a
       // silent no-op (early return); now it opens brakes' own drawer.
       await wrapper.find('[data-test="close-drawer"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)

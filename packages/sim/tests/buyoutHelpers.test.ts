@@ -76,7 +76,7 @@ describe('walkAwayTargetYen', () => {
   })
 })
 
-describe('acquireLot (Sprint 20 — join/continue a war under a target)', () => {
+describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
   it('queues a raise when the next valid raise is within the walk-away target', () => {
     const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 200)
     const state = baseState()
@@ -112,7 +112,7 @@ describe('acquireLot (Sprint 20 — join/continue a war under a target)', () => 
     expect(actions.bidsOnLots).toEqual([])
   })
 
-  it('never buys out — buyoutLots is never populated regardless of target size', () => {
+  it('never buys out - buyoutLots is never populated regardless of target size', () => {
     const { lot } = sampleLot('toyota-supra-rz-jza80', 'premium', 300)
     const state = baseState()
     const actions = emptyDayActions()

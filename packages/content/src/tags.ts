@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 /**
  * Closed set of platform tags (GDD 4.4). Tags drive part compatibility,
- * buyer preferences, and event suitability — kept as an enum, not free
+ * buyer preferences, and event suitability - kept as an enum, not free
  * strings, so a typo can never silently create an unmatched tag.
  */
 export const TagSchema = z.enum([
@@ -32,7 +32,7 @@ export const TagSchema = z.enum([
 ])
 
 /**
- * The 8 real car components (Sprint 12 — replaces the old split of 5
+ * The 8 real car components (Sprint 12 - replaces the old split of 5
  * `condition` zones + 7 `buildSheet` slots, which had different key sets and
  * no shared identity; see docs/design/repair-replace-progression.md). Every
  * component has both a condition and an optional installed part.

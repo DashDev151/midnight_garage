@@ -10,7 +10,7 @@ import { createRng } from './rng'
  * is not a "bot career"; bots just happened to be the first caller.
  *
  * Sprint 10: day 1 is seeded with a real auction catalog and service-job
- * board (via the same `refreshCatalogs` the weekly boundary uses) — a new
+ * board (via the same `refreshCatalogs` the weekly boundary uses) - a new
  * career used to be completely empty until day 7's first refresh, which
  * meant every playtest opened by "skip a week." The seed rng is derived
  * from the career `seed` alone (day 1 has no prior day to fold in), so a

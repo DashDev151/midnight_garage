@@ -6,7 +6,7 @@ import { createInitialGameState } from '../src/newGame'
 
 const CONTEXT = buildSimContext([], [], [], [], [], undefined, [], EQUIPMENT)
 
-/** Ungated per the Sprint 16 ladder (day-1 accessible) — the plain purchase
+/** Ungated per the Sprint 16 ladder (day-1 accessible) - the plain purchase
  * flow's fixture, kept separate from the reputation-gate tests below. */
 const UPHOLSTERY_BENCH = EQUIPMENT.find((e) => e.componentIds.includes('interior'))!
 /**
@@ -103,7 +103,7 @@ describe('Sprint 23 decision 3: equipment gate ladder', () => {
     expect(result.applied).toBe(true)
   })
 
-  it('welder and transmission-bench require local, not known — an unknown player cannot buy either', () => {
+  it('welder and transmission-bench require local, not known - an unknown player cannot buy either', () => {
     expect(WELDER.minReputationTier).toBe('local')
     expect(TRANSMISSION_BENCH.minReputationTier).toBe('local')
     const unknownState = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
@@ -117,7 +117,7 @@ describe('Sprint 23 decision 3: equipment gate ladder', () => {
     expect(applyEquipmentPurchase(localState, TRANSMISSION_BENCH.id, CONTEXT).applied).toBe(true)
   })
 
-  it('engine-crane requires known, not respected — a local player cannot buy it, a known player can', () => {
+  it('engine-crane requires known, not respected - a local player cannot buy it, a known player can', () => {
     expect(ENGINE_CRANE.minReputationTier).toBe('known')
     const localState = baseState({ cashYen: 999_999_999, reputationTier: 'local' })
     expect(applyEquipmentPurchase(localState, ENGINE_CRANE.id, CONTEXT).applied).toBe(false)

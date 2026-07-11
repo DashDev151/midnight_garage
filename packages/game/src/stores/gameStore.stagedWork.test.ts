@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
 
-/** A part with no required tags always fits any car — avoids incidental tag mismatches. */
+/** A part with no required tags always fits any car - avoids incidental tag mismatches. */
 function untaggedPartFor(componentId: string) {
   return PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
 }
@@ -64,7 +64,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.stageAction(carId, { kind: 'install', componentId, partInstanceId: partAInstanceId })
     expect(game.isPartStagedAnywhere(partAInstanceId)).toBe(true)
 
-    // Staging a repair over the same component displaces the install stage —
+    // Staging a repair over the same component displaces the install stage -
     // the displaced part becomes stageable again.
     game.stageAction(carId, { kind: 'repair', componentId })
     expect(game.stagedActionsFor(carId)).toEqual([{ kind: 'repair', componentId }])
@@ -141,7 +141,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    // A brakes-only part staged onto suspension — a real mismatch.
+    // A brakes-only part staged onto suspension - a real mismatch.
     const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
     game.devGrantPart(wrongPart.id)
     const partInstanceId = game.gameState.partInventory[0]!.id

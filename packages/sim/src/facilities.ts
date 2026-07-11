@@ -12,7 +12,7 @@ import type { BuyBayAction, MoveCarAction } from './actions'
  * Reads slot `index` from a bay array, treating any index at or beyond the
  * array's actual length as an implicit empty slot. `serviceBayCarIds`/
  * `parkingCarIds` are meant to track their bay count exactly (every mutator
- * below keeps them in sync), but nothing enforces that at the schema level —
+ * below keeps them in sync), but nothing enforces that at the schema level -
  * a shorter array (an older fixture, a hand-built test state) is still
  * handled correctly rather than throwing or under-counting real capacity.
  */
@@ -36,7 +36,7 @@ function withSlot(
 /**
  * How many cars are currently sitting in parking. Sprint 17: `parkingCarIds`
  * is real, index-addressable state now (a specific slot, not "everyone not
- * in a service bay") — occupancy is just its non-null count.
+ * in a service bay") - occupancy is just its non-null count.
  */
 export function parkingOccupancy(state: GameState): number {
   return state.parkingCarIds.filter((id) => id !== null).length
@@ -48,7 +48,7 @@ export function hasParkingSpace(state: GameState): boolean {
 }
 
 /**
- * Clears a car's slot — wherever it currently sits, service or parking —
+ * Clears a car's slot - wherever it currently sits, service or parking -
  * called whenever a car leaves the shop entirely (sold, listed, or a
  * service job resolved) so the freed slot is immediately reusable, not
  * haunted by a stale id. Before Sprint 17 this only ever needed to check
@@ -69,11 +69,11 @@ export function releaseCarFromShop(state: GameState, carInstanceId: string): Gam
 
 /**
  * Assigns a car that just entered the shop (won at auction, a service-job
- * customer's car, a dev grant) to a parking slot — the first empty one
+ * customer's car, a dev grant) to a parking slot - the first empty one
  * (real or implicit, up to `parkingBayCount`), or a genuinely appended slot
  * beyond that if none is free. Every normal acquisition path already checks
  * `hasParkingSpace` before calling this, so the overflow branch should only
- * ever be reached via a capacity-bypassing path (the dev console) — it
+ * ever be reached via a capacity-bypassing path (the dev console) - it
  * exists so a car is never silently unplaced, not as a workaround for real
  * gameplay capacity.
  */
@@ -82,7 +82,7 @@ export function assignToParking(state: GameState, carInstanceId: string): GameSt
     state.serviceBayCarIds.includes(carInstanceId) ||
     state.parkingCarIds.includes(carInstanceId)
   ) {
-    return state // already has a slot somewhere — shouldn't happen, but idempotent
+    return state // already has a slot somewhere - shouldn't happen, but idempotent
   }
   for (let i = 0; i < state.parkingBayCount; i++) {
     if (slotAt(state.parkingCarIds, i) === null) {
@@ -108,15 +108,15 @@ function locate(state: GameState, carInstanceId: string): { from: BayKind; index
 }
 
 /**
- * Moves (or swaps) a car into a SPECIFIC slot — the real positional core
+ * Moves (or swaps) a car into a SPECIFIC slot - the real positional core
  * behind drag-and-drop (Sprint 17 playtest fix). Dropping a car onto an
  * empty slot moves it there; dropping onto a slot occupied by a DIFFERENT
  * car exchanges their positions (same section or across service/parking
- * alike — "occupied service bay 1 onto occupied service bay 2" is now a
+ * alike - "occupied service bay 1 onto occupied service bay 2" is now a
  * real swap, not the no-op it briefly was); dropping onto its own slot is a
- * no-op. Slot position is real, persisted state now — "parking bay 4" means
+ * no-op. Slot position is real, persisted state now - "parking bay 4" means
  * bay 4, not wherever the array used to happen to render a car. `slotIndex`
- * is checked against the bay *count*, not the array's current length —
+ * is checked against the bay *count*, not the array's current length -
  * see `slotAt`/`withSlot`.
  */
 export function moveCarToSlot(
@@ -141,7 +141,7 @@ export function moveCarToSlot(
   const occupant = slotAt(destArray, slotIndex)
 
   if (source.from === to) {
-    // Same-section reorder or swap — one array, mutated twice.
+    // Same-section reorder or swap - one array, mutated twice.
     const arr = withSlot(withSlot(destArray, source.index, occupant), slotIndex, carInstanceId)
     return {
       state:
@@ -166,7 +166,7 @@ export function moveCarToSlot(
 }
 
 /**
- * Moves a car into the FIRST available slot of `to` — for callers that
+ * Moves a car into the FIRST available slot of `to` - for callers that
  * don't care which specific slot (every bot, and the plain "→ parking"/
  * "→ service bay" buttons that don't require a drag gesture). A thin
  * wrapper over `moveCarToSlot` so there's exactly one resolution path.
@@ -182,13 +182,13 @@ export function moveCar(state: GameState, carInstanceId: string, to: BayKind): M
 
 /**
  * Atomically exchanges a service-bay car and a parking car's positions
- * (Sprint 11, round-2 playtest #3) — the fix for a shop that's exactly full
+ * (Sprint 11, round-2 playtest #3) - the fix for a shop that's exactly full
  * (services + parking cars == total capacity, zero slack): neither
  * direction of `moveCar` has anywhere to go, but a swap's net occupancy
  * change in each location is zero, so it always succeeds. A thin wrapper
  * over `moveCarToSlot` (Sprint 17): resolves `parkingCarId`'s current slot
- * and moves `serviceCarId` there, which — since that slot is occupied by a
- * different car — is exactly a swap. No-op (not an error) if either car
+ * and moves `serviceCarId` there, which - since that slot is occupied by a
+ * different car - is exactly a swap. No-op (not an error) if either car
  * isn't where the caller claims.
  */
 export function swapCars(state: GameState, serviceCarId: string, parkingCarId: string): MoveResult {
@@ -235,8 +235,8 @@ export function nextBayPriceYen(
 /**
  * The reputation tier required for the next bay of this kind (Sprint 16
  * decision 2), or null if it's already met (or there's no gate, or the
- * ladder is maxed). Kept separate from `nextBayPriceYen` — same as cash
- * affordability, which `nextBayPriceYen` also doesn't check — so a UI can
+ * ladder is maxed). Kept separate from `nextBayPriceYen` - same as cash
+ * affordability, which `nextBayPriceYen` also doesn't check - so a UI can
  * tell "not enough reputation yet" apart from "maxed out" instead of both
  * collapsing into the same null.
  */
@@ -260,7 +260,7 @@ export interface BayPurchaseResult {
 }
 
 /**
- * The pure "buy one more bay" core — same instant-for-the-player /
+ * The pure "buy one more bay" core - same instant-for-the-player /
  * DayAction-for-bots pattern as moveCar. A no-op (not an error) if the price
  * is unknown (at the max), unaffordable, or (Sprint 16) the required
  * reputation tier hasn't been reached yet. Appends a new empty slot to the

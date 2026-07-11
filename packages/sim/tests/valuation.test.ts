@@ -102,7 +102,7 @@ describe('valuateCarForBuyer', () => {
   })
 
   /**
-   * Sprint 21: value and taste are now two separate, testable pieces —
+   * Sprint 21: value and taste are now two separate, testable pieces -
    * `valuateCarForBuyer` is exactly `marketValueYen x taste`, so a buyer's
    * valuation of a fixed car must always land within `[1 - tasteSpread, 1 +
    * tasteSpread]` of that car's taste-free market value (decision 4).

@@ -3,19 +3,19 @@ import { computed, ref, type ComputedRef } from 'vue'
 /**
  * A general-purpose drag-and-drop primitive (Sprint 17), built on the
  * Pointer Events API so mouse and touch work identically with the same
- * code — no native HTML5 Drag-and-Drop (poor/nonexistent touch support) and
+ * code - no native HTML5 Drag-and-Drop (poor/nonexistent touch support) and
  * no new dependency. Generic over payload type `T` (a car id today,
- * Sprint 18's part id tomorrow) — this file has zero domain knowledge.
+ * Sprint 18's part id tomorrow) - this file has zero domain knowledge.
  *
  * Deliberately does NOT use `setPointerCapture` or `elementFromPoint`: a
  * drop zone's own `onPointerUp` handler fires naturally via standard DOM
  * event targeting (the browser already knows which element is under the
- * pointer at release time) — simpler, and reliably testable without a real
+ * pointer at release time) - simpler, and reliably testable without a real
  * rendering engine computing layout (this project's test environment is
  * happy-dom, which doesn't).
  *
  * One module-level `session` is shared across every `useDraggable`/
- * `useDropZone` pair on the page — a drag can only ever originate from one
+ * `useDropZone` pair on the page - a drag can only ever originate from one
  * draggable and land on one zone, so there is exactly one "what's currently
  * being dragged or picked" at a time, not one per component instance.
  */
@@ -37,7 +37,7 @@ export function useDragSession(): ComputedRef<DragSession | null> {
 }
 
 /** Pixels the pointer must move past `pointerdown` before this counts as a
- * drag rather than a click — small enough to feel responsive, large enough
+ * drag rather than a click - small enough to feel responsive, large enough
  * that a plain click (e.g. a `RouterLink` underneath) still navigates. */
 const DRAG_THRESHOLD_PX = 6
 
@@ -71,7 +71,7 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
    * `window` level, not the origin card: pointer events are deliberately
    * uncaptured (see file header), so the moment the pointer moves off the
    * card it started on, the browser simply stops delivering `pointermove`
-   * to that element — the ghost would freeze in place over the origin
+   * to that element - the ghost would freeze in place over the origin
    * instead of following the cursor to the drop target (a real bug, found
    * by actually dragging, not something a handler-level unit test alone
    * would catch). `onPointerMove` below only ever needs to detect the
@@ -88,7 +88,7 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
     window.removeEventListener('pointerup', endDrag)
     window.removeEventListener('pointercancel', endDrag)
     // A no-op if a drop zone's own pointerup already resolved and cleared
-    // the session — this only cancels an unhandled drop (released over
+    // the session - this only cancels an unhandled drop (released over
     // nothing, or somewhere with no matching zone).
     if (started && isMine()) session.value = null
     started = false
@@ -104,7 +104,7 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
   }
 
   function onPointerMove(event: PointerEvent): void {
-    // Only detects the initial threshold crossing — once `started`, position
+    // Only detects the initial threshold crossing - once `started`, position
     // tracking moves to `onWindowPointerMove` above, so this returns early
     // rather than doing (now-redundant, and origin-bound) work.
     if (pointerId === null || event.pointerId !== pointerId || started) return
@@ -120,7 +120,7 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
 
   function onPointerUp(event: PointerEvent): void {
     // Real cleanup happens in endDrag (window-level, fires after any drop
-    // zone's own target-phase handler) — this exists only so a plain click
+    // zone's own target-phase handler) - this exists only so a plain click
     // that never left the draggable resets pointerId without waiting on it.
     if (!started && pointerId !== null && event.pointerId === pointerId) pointerId = null
   }
@@ -142,13 +142,13 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
 }
 
 export interface DropZoneHandle {
-  /** True while this specific zone should highlight as a drop target — for "valid drop targets
+  /** True while this specific zone should highlight as a drop target - for "valid drop targets
    * highlight, invalid ones don't" (Sprint 17 DoD). During a live pointer drag this means "the
    * pointer is actually over this zone right now" (bound via `onPointerEnter`/`onPointerLeave`),
-   * not "every zone that would accept this payload somewhere on the page" — the latter lit up
+   * not "every zone that would accept this payload somewhere on the page" - the latter lit up
    * every bay at once the moment a drag started, regardless of where the pointer was (found by
    * playtest). The click-based "pick" fallback has no pointer position to hover, so every
-   * accepting zone still highlights in that mode — that's the whole point of the fallback. */
+   * accepting zone still highlights in that mode - that's the whole point of the fallback. */
   isActiveTarget: ComputedRef<boolean>
   /** Bind on the zone's root element: resolves a live pointer-drag dropped here. */
   onPointerUp: () => void
@@ -161,7 +161,7 @@ export interface DropZoneHandle {
 }
 
 /** A drop target accepting payloads of type `T`. `accepts` gates both the live-drag drop and the
- * click-fallback placement — one predicate, two trigger paths. */
+ * click-fallback placement - one predicate, two trigger paths. */
 export function useDropZone<T>(
   accepts: (payload: T) => boolean,
   onDrop: (payload: T) => void,
@@ -180,7 +180,7 @@ export function useDropZone<T>(
   return {
     isActiveTarget: computed(() => {
       if (!session.value || !accepts(session.value.payload as T)) return false
-      // Pick mode has no pointer to hover — show every valid target. Drag mode only
+      // Pick mode has no pointer to hover - show every valid target. Drag mode only
       // highlights the zone the pointer is actually over right now.
       return session.value.mode === 'pick' || isHovering.value
     }),

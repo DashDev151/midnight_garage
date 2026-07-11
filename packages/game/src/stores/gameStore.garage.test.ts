@@ -41,7 +41,7 @@ describe('garage: instant repair and labor', () => {
     // Sprint 13: repair now requires owning the component's equipment.
     for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     // Correlated condition rolls (Sprint 12) can occasionally clamp a
-    // component to 100 even on a "rough" car — retry grants until the
+    // component to 100 even on a "rough" car - retry grants until the
     // engine specifically needs work, since that's what this test exercises.
     let car = game.gameState.ownedCars.at(-1)
     for (let i = 0; i < 30 && (!car || car.components.engine.condition >= 100); i++) {
@@ -55,13 +55,13 @@ describe('garage: instant repair and labor', () => {
     const needed = repairLaborSlotsFor(before)
     const days = Math.ceil(needed / game.laborSlotsPerDay)
 
-    // A dev-granted car lands in parking like any real acquisition — labor
+    // A dev-granted car lands in parking like any real acquisition - labor
     // only reaches a car in the service bay.
     game.moveCar(car.id, 'service')
     game.repair(car.id, 'engine')
 
     if (days === 1) {
-      // Mild-enough damage finishes in the very first click — the job is
+      // Mild-enough damage finishes in the very first click - the job is
       // already gone, same as any other same-day completion.
       expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
     } else {
@@ -96,11 +96,11 @@ describe('garage: instant repair and labor', () => {
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
     const perDay = game.laborSlotsPerDay
-    // Repair all five repairable components instantly — collectively far more labor than one day.
+    // Repair all five repairable components instantly - collectively far more labor than one day.
     for (const componentId of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
       game.repair(car.id, componentId)
     }
-    // The live daily counter is the authoritative spend — reconstructing it
+    // The live daily counter is the authoritative spend - reconstructing it
     // from remaining *open* jobs undercounts whenever a repair completes and
     // its job is removed the same day (correlated condition rolls, Sprint
     // 12, make same-cost repairs across components common).

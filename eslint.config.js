@@ -23,7 +23,7 @@ export default tseslint.config(
   },
   {
     // Plain CommonJS Node scripts (build helpers, not part of any TS
-    // project) — .cjs always runs as CommonJS regardless of package.json
+    // project) - .cjs always runs as CommonJS regardless of package.json
     // "type", so require()/process are expected here.
     files: ['**/*.cjs'],
     languageOptions: { globals: globals.node, sourceType: 'commonjs' },

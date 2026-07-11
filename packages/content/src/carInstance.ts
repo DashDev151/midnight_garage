@@ -8,7 +8,7 @@ const ComponentSchema = z.object({
 })
 
 /**
- * The 8 real car components (Sprint 12 — replaces the old split
+ * The 8 real car components (Sprint 12 - replaces the old split
  * `condition`/`buildSheet` maps, which had different key sets and no shared
  * identity between them; see docs/design/repair-replace-progression.md).
  */
@@ -25,7 +25,7 @@ const ComponentsSchema = z.object({
 
 /**
  * Sprint 22: severity is rolled once, at car generation, and stays fixed for
- * the life of the instance — `revealed` only controls whether the PLAYER has
+ * the life of the instance - `revealed` only controls whether the PLAYER has
  * seen it yet (inspection, or a post-purchase discovery beat), never whether
  * it mechanically applies. `repaired` is the only thing a `fix-issue` job
  * ever flips; it never touches the component's own `condition`.

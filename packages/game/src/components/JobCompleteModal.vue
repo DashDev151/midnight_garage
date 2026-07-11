@@ -7,13 +7,20 @@ const game = useGameStore()
 
 const result = computed(() => game.lastJobResult)
 
-/** One flavor line, varying by outcome — no garage-name templating (no such field exists yet). */
+/**
+ * One flavor line, varying by outcome - no garage-name templating (no such
+ * field exists yet). `workLabel` is already a clean, properly-spaced noun
+ * phrase (Sprint 25 task 6: "Engine repair", "Forced Induction install") -
+ * rendered as-is, never wholesale-lowercased, since a blind `.toLowerCase()`
+ * on an assembled string is exactly what mangled a camelCase id into
+ * "forcedinduction" before this fix.
+ */
 const flavorLine = computed(() => {
   const r = result.value
   if (!r) return ''
   return r.outcome === 'paid'
-    ? `Thanks — ${r.workLabel.toLowerCase()} looks great!`
-    : `${r.customerName} isn't happy — that wasn't what they asked for.`
+    ? `Thanks - ${r.workLabel} looks great!`
+    : `${r.customerName} isn't happy - that wasn't what they asked for.`
 })
 </script>
 

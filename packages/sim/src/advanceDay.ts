@@ -22,7 +22,11 @@ import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from './marketHeat'
 import { resolveBuyPart, resolvePartDeliveries } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
-import { resolveAcceptServiceJob, resolveServiceJob } from './serviceJobs'
+import {
+  resolveAcceptServiceJob,
+  resolveServiceJob,
+  resolveServiceJobArrivals,
+} from './serviceJobs'
 import { resolveListForSale, resolveSellViaWalkIn } from './selling'
 
 export interface AdvanceDayResult {
@@ -35,8 +39,8 @@ export interface AdvanceDayResult {
  * `seed` is caller-derived per day (e.g. state.seed + state.day), not read
  * from state.seed directly, so every day gets a distinct but fully
  * reproducible RNG stream from one career seed. `context` (Sprint 03
- * addition) carries the static content catalogs — models, parts, buyers,
- * hidden issues — that auction generation and valuation need; sim has no
+ * addition) carries the static content catalogs - models, parts, buyers,
+ * hidden issues - that auction generation and valuation need; sim has no
  * data loader of its own, so the caller builds it once and passes it in.
  *
  * Sprint 11: this function shrank from resolving every player action to a
@@ -44,7 +48,7 @@ export interface AdvanceDayResult {
  * own instant resolver (bidding.ts, auctions.ts, selling.ts, serviceJobs.ts,
  * parts.ts, jobs.ts) that the store calls directly the moment the player
  * clicks. `queuedActions` still exists because bots decide a whole day at
- * once (they're headless — they can't click); advanceDay resolves their
+ * once (they're headless - they can't click); advanceDay resolves their
  * batch by calling the exact same instant resolvers in a loop, one call per
  * queued action, so there is one resolution path, not two. What's left
  * inline below is genuinely day-boundary-only: labor reset, weekly rent and
@@ -62,7 +66,7 @@ export function advanceDay(
   let next: GameState = state
 
   // 0. Bots' equipment and bay purchases, then moves (the player does all
-  // three instantly via a direct store call — the same pure cores either
+  // three instantly via a direct store call - the same pure cores either
   // way). Equipment/bays bought today gate/enable the job creation and
   // labor below, same day. Equipment first since job creation (step 1) reads
   // ownership.
@@ -78,18 +82,18 @@ export function advanceDay(
   next = moves.state
   log.push(...moves.log)
 
-  // 1. Bots' queued job creation. The player never populates this — an
+  // 1. Bots' queued job creation. The player never populates this - an
   // instant repair/install click finds-or-creates its own job
   // (jobs.ts's resolveJobLabor/findOrCreateJob) using a different,
   // car+componentId-derived id scheme. Bots predict `job-${day}-${i}` ids in
   // the same tick to reference in laborAssignments below, so this id scheme
-  // stays exactly as it was — the two schemes never need to agree, because a
+  // stays exactly as it was - the two schemes never need to agree, because a
   // given GameState is only ever a bot's or only ever a player's. Sprint 13:
   // a repair-zone spec passes through the same `repairJobGate` the player's
   // instant path uses (equipment owned + consumables affordable) before
-  // it's created — a gate refusal just skips that one queued spec, logging
+  // it's created - a gate refusal just skips that one queued spec, logging
   // why, rather than creating a job that could never receive labor. Sprint
-  // 24 fix 2: an install-part spec likewise passes `installFitGate` — this
+  // 24 fix 2: an install-part spec likewise passes `installFitGate` - this
   // loop calls `findOrCreateJob`'s two gates directly rather than
   // `findOrCreateJob` itself (see that function's own doc comment on the
   // differing id schemes), so both gates need calling here explicitly.
@@ -117,7 +121,7 @@ export function advanceDay(
   })
   next = { ...next, jobs }
 
-  // 1b. Bots' queued part purchases — the player buys instantly via
+  // 1b. Bots' queued part purchases - the player buys instantly via
   // resolveBuyPart directly from the store (via the cart/checkout flow,
   // Sprint 14). Bots choose deliverySpeed themselves (partDeliveryHelpers.ts)
   // before queuing the action; this loop just calls the same resolver.
@@ -127,7 +131,7 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 1c. Bots' queued service-job accepts — the player accepts instantly via
+  // 1c. Bots' queued service-job accepts - the player accepts instantly via
   // resolveAcceptServiceJob directly from the store.
   for (const { offerId } of queuedActions.acceptServiceJobs) {
     const result = resolveAcceptServiceJob(next, offerId, context)
@@ -135,9 +139,9 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 1d. Bots' queued lot inspections — the player inspects instantly via
+  // 1d. Bots' queued lot inspections - the player inspects instantly via
   // resolveInspectLot directly from the store. No longer costs labor
-  // (Sprint 11 decision 4) — just the cash travel fee resolveInspectLot
+  // (Sprint 11 decision 4) - just the cash travel fee resolveInspectLot
   // already applies internally.
   for (const { lotId } of queuedActions.inspectLots) {
     const result = resolveInspectLot(next, lotId, context.economy)
@@ -147,7 +151,7 @@ export function advanceDay(
 
   // 2. Apply labor assignments to jobs, clamped to what's left of the day's
   // budget. `applyAvailableLaborToJob` is the same single-job core the
-  // player's instant repair/install click uses — bots just call it once per
+  // player's instant repair/install click uses - bots just call it once per
   // queued assignment instead of once per click, and it books the spend into
   // `laborSlotsSpentToday` exactly the same way either path does.
   let remainingLabor = availableLaborSlots(next) - next.laborSlotsSpentToday
@@ -170,7 +174,7 @@ export function advanceDay(
   }
 
   // 2b. Retry any job that's already fully-labored but was blocked from
-  // completing on a prior day (its target slot was occupied) — checked every
+  // completing on a prior day (its target slot was occupied) - checked every
   // day regardless of whether new labor was assigned today, same as before
   // this function was split apart. A job `applyAvailableLaborToJob` just
   // completed above is already gone from `next.jobs`, so this never
@@ -197,16 +201,16 @@ export function advanceDay(
   }
   next = { ...next, jobs: stillOpen }
 
-  // 3. Service-job completion is NOT resolved here — the player resolves it
+  // 3. Service-job completion is NOT resolved here - the player resolves it
   // the instant they click "Complete Job" (a store call to
   // resolveServiceJob). The only day-boundary involvement is the deadline
   // backstop below.
 
-  // 4. Bots' queued auction actions — buyouts first (guaranteed, no
+  // 4. Bots' queued auction actions - buyouts first (guaranteed, no
   // contest), then bids on what's left. The player resolves both instantly
   // via resolveBuyoutInstant/resolvePlaceBid directly from the store; these
   // are the exact same functions, called in a loop. Sprint 19: a bid no
-  // longer resolves anything by itself — it just places/raises the bot's
+  // longer resolves anything by itself - it just places/raises the bot's
   // own committed max, same as the player's click. Real resolution happens
   // in step 8 below, on whichever day each lot's duration elapses.
   for (const { lotId } of queuedActions.buyoutLots) {
@@ -221,7 +225,7 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 5. Bots' queued walk-in sells — the player sells instantly via
+  // 5. Bots' queued walk-in sells - the player sells instantly via
   // resolveSellViaWalkIn directly from the store.
   for (const { carInstanceId } of queuedActions.sellViaWalkIn) {
     const result = resolveSellViaWalkIn(next, carInstanceId, context)
@@ -229,7 +233,7 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 6. Bots' queued public listings — the player creates a listing instantly
+  // 6. Bots' queued public listings - the player creates a listing instantly
   // via resolveListForSale directly from the store. The listing's own
   // resolvesOnDay wait is the intentional multi-day mechanic; only its
   // *creation* is instant now.
@@ -239,7 +243,12 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 7. Resolve public listings due today — a guaranteed sale at the locked asking price.
+  // 7. Resolve public listings due today - a guaranteed sale at the locked asking price.
+  // Same pre-increment next.day-vs-resolvesOnDay pattern as resolvePartDeliveries
+  // (parts.ts) - deliberately left as `> next.day`, not `> next.day + 1`, here:
+  // listings are removed outright in Sprint 31, so it's not worth touching, and
+  // the multi-day wait already reads as intended for a "resolves after N days"
+  // mechanic (no reported off-by-one complaint for listings, unlike parts).
   const stillListed: PublicListing[] = []
   for (const listing of next.activeListings) {
     if (listing.resolvesOnDay > next.day) {
@@ -247,12 +256,12 @@ export function advanceDay(
       continue
     }
     // Sprint 24 fix 3: log the applied delta, not the nominal one captured
-    // at listing-creation time (selling.ts) — `applyReputationDelta` floors
+    // at listing-creation time (selling.ts) - `applyReputationDelta` floors
     // `reputationPoints` at 0, using whatever the real point total is HERE,
     // at resolution (which may be days later, and a different total than
     // when the listing was created), not back when the nominal number was
     // captured. The label (`saleQuality`) still comes from the nominal
-    // value — the sale was still mechanically whatever it was.
+    // value - the sale was still mechanically whatever it was.
     const pointsBefore = next.reputationPoints
     next = applyReputationDelta(next, listing.reputationDeltaOnSale)
     const appliedDelta = next.reputationPoints - pointsBefore
@@ -276,16 +285,23 @@ export function advanceDay(
   }
   next = { ...next, activeListings: stillListed }
 
-  // 7b. Resolve standard-delivery part orders due today (Sprint 14) — the
+  // 7b. Resolve standard-delivery part orders due today (Sprint 14) - the
   // purchase counterpart to step 7 above, same "due today resolves, the
   // rest stays pending" shape.
   const deliveries = resolvePartDeliveries(next)
   next = deliveries.state
   log.push(...deliveries.log)
 
+  // 7c. Clear arrivesOnDay on any accepted service job whose customer car
+  // reaches the shop today (Sprint 25 task 2) - same "due today resolves"
+  // shape as 7b, immediately above.
+  const arrivals = resolveServiceJobArrivals(next)
+  next = arrivals.state
+  log.push(...arrivals.log)
+
   // 8. Resolve every active auction lot for today (Sprint 20: activity-based
   // closing replaces the old fixed-due-day filter + separate escalation
-  // pass) — one call per lot runs its overnight step (dealers may raise,
+  // pass) - one call per lot runs its overnight step (dealers may raise,
   // stay silent, or open a not-yet-bid lot) and then hammers it if either
   // `quietDays` has reached the threshold or today is its `expiresOnDay`
   // backstop; otherwise the lot simply carries its updated board state into
@@ -294,7 +310,7 @@ export function advanceDay(
   // exactly like every other per-item loop in this function. Stale
   // service-job offers expire the same way they always have. Then refresh
   // both weekly catalogs (day 7 boundary) via the same generator day-1
-  // seeding uses (catalogs.ts's refreshCatalogs) — one generation path, not
+  // seeding uses (catalogs.ts's refreshCatalogs) - one generation path, not
   // two.
   const lotsToday = next.activeAuctionLots
   for (const lot of lotsToday) {
@@ -321,8 +337,13 @@ export function advanceDay(
   }
 
   // 8b. Deadline backstop: any accepted job now at/past its due day is handed
-  // back automatically via the same resolver the player's click uses — paid if
+  // back automatically via the same resolver the player's click uses - paid if
   // the work got done in time, failed (reputation penalty, no pay) if not.
+  // Same pre-increment next.day pattern as resolvePartDeliveries (parts.ts) -
+  // deliberately left as `<= next.day`, not `<= next.day + 1`, here: it gives
+  // the player a one-day grace window before a deadline actually bites (the
+  // job stays workable through its nominal due day and only fails on the day
+  // after), which is a kindness worth keeping, not a bug to close.
   const overdueJobIds = next.activeServiceJobs
     .filter((sj) => sj.dueOnDay !== null && sj.dueOnDay <= next.day)
     .map((sj) => sj.id)

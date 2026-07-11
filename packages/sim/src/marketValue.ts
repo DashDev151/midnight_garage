@@ -20,7 +20,7 @@ const COMPONENT_IDS: readonly ComponentId[] = [
 ]
 
 /**
- * Sprint 21 — the taste-free "what is this car worth" answer, shared by
+ * Sprint 21 - the taste-free "what is this car worth" answer, shared by
  * every price in the game (`marketValueYen` = `bookValueYen x
  * conditionFactor x heat + installedPartsValueYen`). This module is
  * deliberately issue-blind: hidden, unrepaired issues never discount this
@@ -51,7 +51,7 @@ export function conditionFactor(car: CarInstance, economy: EconomyConfig): numbe
 
 /**
  * Installed parts add real yen, additively rather than multiplicatively
- * (decision 3 — real markets: mods return cents on the yen, they don't
+ * (decision 3 - real markets: mods return cents on the yen, they don't
  * multiply the chassis price). Per installed part instance:
  * `part.priceYen x partsRetention x (conditionPercent/100) x
  * (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed and rounded.
@@ -78,7 +78,7 @@ export function installedPartsValueYen(
 /**
  * The single shared value answer (decision 1): `round(bookValueYen x
  * conditionFactor x (heatPercent/100)) + installedPartsValueYen`. Heat
- * applies exactly once, here (decision 6) — no other price in the game
+ * applies exactly once, here (decision 6) - no other price in the game
  * multiplies by market heat a second time. Every other price (the auction
  * anchor, walk-in offers, listing asking price, buyer taste) is this value
  * times a bounded multiplier, never a competing formula.
@@ -96,14 +96,14 @@ export function marketValueYen(
 }
 
 /**
- * Sprint 22 decision 4: the owned/sale-side truth — `marketValueYen` stays
+ * Sprint 22 decision 4: the owned/sale-side truth - `marketValueYen` stays
  * issue-blind (that separation is what makes decision 5's lot-side risk
  * discount implementable: the board price basis never reacts to a specific
  * instance's actual rolled issues), but a sale channel needs to see reality.
  * A known unfixed defect scares buyers more than what it actually costs to
  * fix, so `issuePenaltyYen` outweighing its own repair cost (via
  * `penaltyMultiplier`) is what makes fixing-before-selling profitable by
- * construction. Floored at 10% of book — even a car riddled with unrepaired
+ * construction. Floored at 10% of book - even a car riddled with unrepaired
  * issues still has real scrap/chassis value.
  */
 export function issueAdjustedValueYen(

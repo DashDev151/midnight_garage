@@ -16,7 +16,7 @@ describe('the parts-market cart (Sprint 14)', () => {
     expect(game.cartStandardTotalYen).toBe(0)
   })
 
-  it('addToCart spends nothing — the core misclick safeguard', () => {
+  it('addToCart spends nothing - the core misclick safeguard', () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     game.addToCart(cheapest.id)
@@ -98,7 +98,7 @@ describe('the parts-market cart (Sprint 14)', () => {
   it('checkoutCart leaves unaffordable items in the cart rather than failing all-or-nothing', () => {
     const game = useGameStore()
     game.addToCart(cheapest.id)
-    game.devGiveCash(-game.cashYen) // drain to zero — nothing is affordable now
+    game.devGiveCash(-game.cashYen) // drain to zero - nothing is affordable now
     const result = game.checkoutCart('standard')
     expect(result).toEqual({ boughtCount: 0, remainingCount: 1 })
     expect(game.cartItems).toHaveLength(1)

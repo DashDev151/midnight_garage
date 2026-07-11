@@ -1,18 +1,18 @@
 /**
  * Balance-harness data export (Sprint 03 decision 1). Compiled separately
  * (tsconfig.cli.json) to plain CommonJS and run via `node`, not
- * Vite/Vitest — the harness needs a real Node process to write files, and
+ * Vite/Vitest - the harness needs a real Node process to write files, and
  * plain Node can't execute TypeScript or resolve `@midnight-garage/content`'s
  * live-source package export at runtime the way Vite's dev/test transform
  * does. This file therefore reaches into content's source via a relative
- * path instead of the normal package specifier — a deliberate, scoped
+ * path instead of the normal package specifier - a deliberate, scoped
  * exception for this one build-and-run CLI entry point; every other sim
  * file keeps the clean `@midnight-garage/content` import.
  *
- * Emits CSV, not Parquet — the sim/analysis boundary is the contract, not
+ * Emits CSV, not Parquet - the sim/analysis boundary is the contract, not
  * the file format. `tools/balance/data/careers.manifest.json` carries an
  * explicit schema alongside the CSV so the Python side parses strictly
- * (declared dtypes), not by inference — that's the one real thing raw CSV
+ * (declared dtypes), not by inference - that's the one real thing raw CSV
  * loses versus Parquet.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -45,7 +45,7 @@ const DAYS_PER_CAREER = 100
 const SIM_VERSION = '0.0.1'
 // `__dirname` here is inside the compiled output tree (dist/packages/sim/...),
 // whose nesting depth depends on tsc's rootDir/outDir mirroring, not the
-// source tree — fragile to key relative paths off. `pnpm balance:run`
+// source tree - fragile to key relative paths off. `pnpm balance:run`
 // always runs with cwd set to packages/sim (pnpm's per-package script
 // convention), so cwd + a fixed, shallow relative path is the stable
 // anchor instead.
@@ -75,7 +75,7 @@ const COLUMNS = [
   { name: 'equipmentOwnedCount', type: 'int64' },
 ] as const
 
-/** win price as a fraction of [reserve, buyout], bucketed — the Sprint 10
+/** win price as a fraction of [reserve, buyout], bucketed - the Sprint 10
  * decision 4f calibration target, checked against real bot play. */
 const AUCTION_WINS_COLUMNS = [
   { name: 'strategy', type: 'string' },
@@ -86,7 +86,7 @@ const AUCTION_WINS_COLUMNS = [
   { name: 'bucket', type: 'string' },
 ] as const
 
-/** One successful auction acquisition, by channel — external review 2026-07
+/** One successful auction acquisition, by channel - external review 2026-07
  * finding 2's buyout-vs-bid telemetry. */
 const ACQUISITIONS_COLUMNS = [
   { name: 'strategy', type: 'string' },

@@ -12,25 +12,25 @@ export interface CareerSnapshot {
   day: number
   cashYen: number
   carsOwned: number
-  /** Cash plus owned cars valued at book price — a simple, transparent proxy, not a real buyer valuation. */
+  /** Cash plus owned cars valued at book price - a simple, transparent proxy, not a real buyer valuation. */
   netWorthEstimateYen: number
   reputationTier: ReputationTier
-  /** Sprint 15: raw reputation points, alongside the derived tier — lets
+  /** Sprint 15: raw reputation points, alongside the derived tier - lets
    * Sprint 16's gating ladder be tuned against real trajectories instead of
    * guesses about how fast a bot climbs. */
   reputationPoints: number
-  /** Sprint 13: how many equipment items are owned — the harness's payback-curve signal. */
+  /** Sprint 13: how many equipment items are owned - the harness's payback-curve signal. */
   equipmentOwnedCount: number
 }
 
 /**
- * One lot the bot actually bid on and lost, or won — the harness's real-play
+ * One lot the bot actually bid on and lost, or won - the harness's real-play
  * check on the Sprint 20 auction rework's wholesale-anchored clearing
  * calibration. `fraction` is the hammer price as a fraction of the lot's
  * own `anchorValueYen` (Sprint 20's basis change from the old
  * [reserve, buyout]-fraction basis, which stopped meaning anything once
  * buyout re-pointed at the value anchor and reserve stopped bounding real
- * outcomes): steal < 0.65 (won for meaningfully less than it's worth — a
+ * outcomes): steal < 0.65 (won for meaningfully less than it's worth - a
  * genuine steal, typically a thin-turnout lot), mid 0.65-0.9 (patient
  * bidding paid a fair wholesale-ish price), frenzy > 0.9 (bid the price up
  * toward or past what the car is actually worth).
@@ -46,7 +46,7 @@ const bucketFor = (fraction: number): AuctionWinSample['bucket'] =>
   fraction < 0.65 ? 'steal' : fraction > 0.9 ? 'frenzy' : 'mid'
 
 /**
- * One successful auction acquisition, by channel — the harness's telemetry
+ * One successful auction acquisition, by channel - the harness's telemetry
  * for external review 2026-07 finding 2 ("is the buyout premium too cheap"):
  * if bots converge on buyout, the competitive-bidding screen is effectively
  * dead and `AUCTION_BUYOUT_PREMIUM` needs to hurt more.
@@ -61,10 +61,10 @@ export interface AcquisitionSample {
  * Plays one bot strategy for `days`. Returns one cash/car snapshot per day,
  * every auction the bot actually bid on and lost, or won (the Sprint 10
  * win-price bucket metric), and every successful acquisition by channel
- * (finding 2's buyout-vs-bid telemetry) — all three `pnpm balance:run` →
+ * (finding 2's buyout-vs-bid telemetry) - all three `pnpm balance:run` →
  * `python -m balance.cli report`. The bot's own decision-making draws from a
  * separate seeded RNG stream than advanceDay's internal resolution (auction
- * generation, the lemon rule, market-heat drift) — both fully deterministic
+ * generation, the lemon rule, market-heat drift) - both fully deterministic
  * from the one career `seed`, but never sharing draws with each other.
  */
 export function runCareer(
@@ -108,7 +108,7 @@ export function runCareer(
       const lot = lotsBeforeById.get(entry.lotId)
       if (!lot) continue
       const anchorYen = anchorValueYen(lot, stateBeforeToday, context)
-      if (anchorYen <= 0) continue // no interested buyer archetype — nothing to compare against
+      if (anchorYen <= 0) continue // no interested buyer archetype - nothing to compare against
       const fraction = priceYen / anchorYen
       auctionWins.push({ day, tier: lot.tier, fraction, bucket: bucketFor(fraction) })
     }

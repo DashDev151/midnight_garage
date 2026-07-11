@@ -22,7 +22,7 @@ describe('market: bidding', () => {
 
     const carsBefore = game.ownedCarCount
     // Well over market -> should win once the lot's own rolled duration
-    // elapses — bidding no longer resolves instantly.
+    // elapses - bidding no longer resolves instantly.
     expect(game.placeBid(lot.id, lot.bookValueYen * 3)).toBe(true)
     let guard = 0
     while (game.gameState.activeAuctionLots.some((l) => l.id === lot.id) && guard++ < 20) {
@@ -70,7 +70,7 @@ describe('market: bidding', () => {
     expect(game.lotDetail(lot.id)?.currentBidYen).toBe(minRaiseYen)
   })
 
-  it("myActiveBids keeps showing a lot after the player is outbid — that view is the panel's whole point (Sprint 20)", () => {
+  it("myActiveBids keeps showing a lot after the player is outbid - that view is the panel's whole point (Sprint 20)", () => {
     const game = useGameStore()
     warpToCatalog(game)
 
@@ -91,7 +91,7 @@ describe('market: bidding', () => {
     const outbidEntry = game.myActiveBids.find((b) => b.lot.id === outbidLotId)!
     expect(outbidEntry.isWinning).toBe(false)
     expect(outbidEntry.leadingBidder).toBe('rival')
-    // The lot is still fully addressable — the player can raise again.
+    // The lot is still fully addressable - the player can raise again.
     expect(game.lotDetail(outbidLotId!)?.playerHasBid).toBe(true)
   })
 
@@ -164,7 +164,7 @@ describe('market: selling', () => {
     // The listing carries the model so the garage panel can name it.
     expect(game.activeListings[0]!.modelId).toBe(CARS[0]!.id)
     const cashBefore = game.cashYen
-    // End days until the listing resolves (bounded) — the wait itself is
+    // End days until the listing resolves (bounded) - the wait itself is
     // still the intentional multi-day "slow, market price" mechanic.
     for (let i = 0; i < 10 && game.activeListings.length > 0; i++) game.endDay()
     expect(game.activeListings).toHaveLength(0)

@@ -3,7 +3,7 @@ import { ComponentIdSchema } from './tags'
 
 /**
  * `fix-issue` (Sprint 22) is a repair with a real per-issue cash cost, on top
- * of consumables — `repair-zone`/`install-part` never charge more than
+ * of consumables - `repair-zone`/`install-part` never charge more than
  * consumables, so it's its own kind rather than a repair-zone variant.
  */
 export const JobKindSchema = z.enum(['repair-zone', 'install-part', 'fix-issue'])

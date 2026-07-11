@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie'
 
 /**
  * Thin IndexedDB wrapper (via Dexie) for the single autosave slot. It
- * stores the opaque save *code* from saveCodec, not the raw state — the
+ * stores the opaque save *code* from saveCodec, not the raw state - the
  * codec owns versioning/validation, this owns bytes-on-disk. Every method
  * is a no-op when IndexedDB is unavailable (e.g. the happy-dom test env),
  * so store logic tests run without a fake IndexedDB dependency.
@@ -14,12 +14,12 @@ interface SaveRow {
 }
 
 /**
- * Sprint 24 (session log v0 — the record-real-play seed, maintainer idea
+ * Sprint 24 (session log v0 - the record-real-play seed, maintainer idea
  * 2026-07-09): one row per player action, append-only. `payload` is a plain
- * object specific to `type` (e.g. `{ lotId, maxBidYen }` for a bid) — no
+ * object specific to `type` (e.g. `{ lotId, maxBidYen }` for a bid) - no
  * schema per event type here, since this is raw capture for a future
  * offline parsing pass, not a validated, replay-driving format. `timestamp`
- * is wall-clock (game layer, not sim — never read by anything
+ * is wall-clock (game layer, not sim - never read by anything
  * deterministic).
  */
 export interface SessionEvent {
@@ -39,7 +39,7 @@ class SaveDatabase extends Dexie {
   constructor() {
     super('midnight-garage')
     this.version(1).stores({ saves: 'slot' })
-    // IndexedDB versioning, not GameState's SAVE_VERSION — no save migration,
+    // IndexedDB versioning, not GameState's SAVE_VERSION - no save migration,
     // no golden-save changes; this table is independent of save content.
     this.version(2).stores({ saves: 'slot', sessionEvents: '++id, day, type' })
   }
@@ -92,7 +92,7 @@ export async function clearSave(): Promise<void> {
   }
 }
 
-/** Fire-and-forget by design — callers never `await` this in a player-action
+/** Fire-and-forget by design - callers never `await` this in a player-action
  * path (see `gameStore.ts`'s `logSessionEvent`); a lost telemetry event must
  * never break play, matching `writeSave`'s own best-effort shape. */
 export async function appendSessionEvent(event: SessionEvent): Promise<void> {

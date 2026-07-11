@@ -56,7 +56,7 @@ export function hashStringToSeed(value: string): number {
  * of 12 uniform(0,1) draws has variance exactly 1, so subtracting its mean
  * (6) gives a cheap, deterministic, bell-shaped value with no external
  * dependency (no Box-Muller trig, no rejection sampling). Good enough where
- * "vaguely bell-shaped" matters more than statistical exactness — e.g.
+ * "vaguely bell-shaped" matters more than statistical exactness - e.g.
  * rolling how many rival bidders show up to an auction lot.
  */
 export function bellNormal(mean: number, sd: number, rng: Rng): number {

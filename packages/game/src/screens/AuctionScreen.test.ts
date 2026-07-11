@@ -31,7 +31,7 @@ describe('AuctionScreen', () => {
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
     await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    // The bid lands on the board — it doesn't resolve the lot outright; the
+    // The bid lands on the board - it doesn't resolve the lot outright; the
     // lot stays active until it hammers (quiet-day close or backstop).
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
     expect(game.lotDetail(lot.id)?.playerHasBid).toBe(true)
@@ -42,7 +42,7 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="raise-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('always shows the real current bid and who holds it (Sprint 20 open bidding) — "no bids yet" before anyone has bid, "you lead" once the player has', async () => {
+  it('always shows the real current bid and who holds it (Sprint 20 open bidding) - "no bids yet" before anyone has bid, "you lead" once the player has', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
@@ -63,7 +63,7 @@ describe('AuctionScreen', () => {
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    // One of the turnout labels renders somewhere on the screen — flavor
+    // One of the turnout labels renders somewhere on the screen - flavor
     // only (maintainer decision 3), not a numeric gauge.
     expect(wrapper.text()).toMatch(/Thin turnout|Steady turnout|Packed turnout/)
     // Buy Now is offered on every lot, bid on or not (maintainer decision 2).

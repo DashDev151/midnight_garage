@@ -30,7 +30,7 @@ const CONTEXT = buildSimContext(
 const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 /** Covers 'body' (the repair component these labor/bay tests exercise) plus, for the
  * parking-gate test below, every other component too so whichever offer comes up first
- * never trips the Sprint 13 equipment gate — that test is about parking, not equipment. */
+ * never trips the Sprint 13 equipment gate - that test is about parking, not equipment. */
 const ALL_EQUIPMENT_IDS = EQUIPMENT.map((e) => e.id)
 
 function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
@@ -137,16 +137,16 @@ describe('acquisitions require a free parking space at delivery, never at biddin
     })
   })
 
-  it('a won bid is forfeited to the rivals when parking is full — bid never blocked', () => {
+  it('a won bid is forfeited to the rivals when parking is full - bid never blocked', () => {
     const { state, lot } = stateWithLot(1, { parkingBayCount: 0 })
-    // An over-market bid — well above the buyout cap every rival is capped
-    // at — guarantees a win once the lot's own duration elapses (Sprint 19:
+    // An over-market bid - well above the buyout cap every rival is capped
+    // at - guarantees a win once the lot's own duration elapses (Sprint 19:
     // bidding no longer resolves same-day, so this places the bid, then
     // advances until the lot actually resolves, accumulating every day's
     // log). A parallel no-bid control run over the same number of days
     // proves the bid itself spent nothing, regardless of how many weekly
     // rent boundaries the wait happens to cross (rent moves cash too, for
-    // reasons unrelated to the auction) — both runs consume the exact same
+    // reasons unrelated to the auction) - both runs consume the exact same
     // shared day-tick RNG stream either way, since placing a bid and the
     // per-lot escalation pass both draw from their own separate RNGs.
     const actions = DayActionsSchema.parse({

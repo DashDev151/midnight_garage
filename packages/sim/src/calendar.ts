@@ -24,7 +24,7 @@ export function reputationAtLeast(current: ReputationTier, min: ReputationTier):
 /**
  * The in-game calendar year for a reputation tier (GDD 2.2: "1995 -> 2005
  * over a full campaign, ~2 years per tier"). Gates which car model years can
- * plausibly appear at auction or as a service-job customer's car — a
+ * plausibly appear at auction or as a service-job customer's car - a
  * first-pass formula, explicitly tunable like every other constant here.
  */
 export function currentGameYear(reputationTier: ReputationTier): number {
@@ -32,7 +32,7 @@ export function currentGameYear(reputationTier: ReputationTier): number {
 }
 
 /**
- * Turns accrued reputation points into a tier (Sprint 15) — the highest tier
+ * Turns accrued reputation points into a tier (Sprint 15) - the highest tier
  * whose threshold `points` has reached, reading `REPUTATION_TIER_THRESHOLDS`
  * so there is exactly one place the point/tier mapping is defined.
  */
@@ -46,7 +46,7 @@ export function deriveReputationTier(points: number): ReputationTier {
 
 /**
  * The single place `reputationPoints` ever changes (Sprint 15): clamps at
- * zero (a penalty can never go negative — matches the pre-existing
+ * zero (a penalty can never go negative - matches the pre-existing
  * service-job-failure clamp) and re-derives `reputationTier` in the same
  * step, so the tier is never stale relative to the points underneath it.
  */

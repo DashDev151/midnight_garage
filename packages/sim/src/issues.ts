@@ -10,7 +10,7 @@ import type {
  * Sprint 22: hidden issues become a real, priced, persistent defect instead
  * of a one-time condition subtraction applied at handover. Severity is
  * rolled once, at car generation (`auctions.ts`'s `generateAuctionCarInstance`),
- * and stored on the instance forever — this module never re-rolls it, only
+ * and stored on the instance forever - this module never re-rolls it, only
  * reads it. `CarInstance.hiddenIssues[]` stores only `issueId`; every helper
  * here that needs a component or a repair-cost figure takes the catalog
  * (`issuesById`/`issuesByComponent`, both already on `SimContext`) to
@@ -43,10 +43,10 @@ export function maxUnrepairedSeverity(
 /**
  * Decision 2: a component can be cosmetically repaired (raw `condition` at
  * 100) while a mechanically distinct hidden issue still drags its EFFECTIVE
- * condition down — repainting a car does not fix its apex seals. Raw
+ * condition down - repainting a car does not fix its apex seals. Raw
  * `condition` is untouched by this; it stays exactly what repair-zone jobs
  * set, and stays what the repair-button visibility check reads (decision
- * 2's explicit UI split — CarDetail's condition BAR reads effective, the
+ * 2's explicit UI split - CarDetail's condition BAR reads effective, the
  * button's `condition < 100` gate reads raw).
  */
 export function effectiveComponentCondition(
@@ -76,7 +76,7 @@ export function issueRepairCostYen(
 
 /**
  * Decision 4: the total owned/sale-side penalty for every unrepaired issue
- * on `car` — `issueAdjustedValueYen` (`marketValue.ts`) subtracts this from
+ * on `car` - `issueAdjustedValueYen` (`marketValue.ts`) subtracts this from
  * the issue-blind `marketValueYen`. A known unfixed defect scares buyers
  * more than the repair costs, so fixing before selling is profitable by
  * construction.
@@ -100,10 +100,10 @@ export function issuePenaltyYen(
 
 /**
  * Decision 5: what everyone in the market knows about this MODEL's issue
- * risk, as a fraction of book value — never the actual rolled issues on any
+ * risk, as a fraction of book value - never the actual rolled issues on any
  * one instance (that stays the player's private, inspection-earned edge).
  * For each of the model's `hiddenIssueWeights` entries (a per-component
- * "how likely is SOME issue on this component" weight — the actual issue is
+ * "how likely is SOME issue on this component" weight - the actual issue is
  * only picked at generation time, per `generateAuctionCarInstance`), this
  * averages the repair cost (at each candidate issue's midpoint severity)
  * across every catalog issue that could land on that component, weights it
@@ -142,7 +142,7 @@ export function issueLaborSlots(severityPercent: number, economy: EconomyConfig)
 export type IssueSeverityBand = 'minor' | 'serious' | 'severe'
 
 /** The severity band word for a given roll (same breakpoints `issueLaborSlots`
- * uses) — exposed separately for UI display (CarDetail/AuctionScreen). */
+ * uses) - exposed separately for UI display (CarDetail/AuctionScreen). */
 export function issueSeverityBand(
   severityPercent: number,
   economy: EconomyConfig,

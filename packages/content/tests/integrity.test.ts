@@ -54,7 +54,7 @@ describe('referential integrity', () => {
   /**
    * Sprint 12: the old `wheelsInterior` slot's 3 parts were hand-reclassified
    * by name onto the new `wheels`/`interior` components (no schema check can
-   * catch a swap here — `componentId` is a valid enum value either way, so
+   * catch a swap here - `componentId` is a valid enum value either way, so
    * this is the only thing that would catch e.g. the bucket seat accidentally
    * landing on `wheels`).
    */
@@ -69,7 +69,7 @@ describe('referential integrity', () => {
   /**
    * Sprint 11: the job-type + flavor-pool model (replacing Sprint 10's fixed
    * 1:1 templates) exists specifically so a flavor line can never be paired
-   * with a `work` it wasn't written for — Sprint 10's own "Brakes are shot"
+   * with a `work` it wasn't written for - Sprint 10's own "Brakes are shot"
    * line on a suspension-zone job is the exact bug this structurally
    * prevents. This guards against a future editing mistake reintroducing it:
    * no repair-zone type's flavor pool names a *different* component (Sprint
@@ -100,6 +100,39 @@ describe('referential integrity', () => {
           ).toBe(false)
         }
       }
+    }
+  })
+
+  /**
+   * Sprint 25 task 10: a job's worst-roll payout must clear the cheapest
+   * catalog part that could fulfill it by a real margin. This is the exact
+   * bug this test exists to keep out: install-forced-induction paid as
+   * little as 110,000 yen while the cheapest turbo cost 180,000 - a
+   * guaranteed loss no player choice could avoid. Interim guard (payouts are
+   * still hand-authored) - Sprint 29 replaces authored payouts with derived
+   * ones, but this invariant survives regardless of how payout gets
+   * computed.
+   */
+  it('every install-kind job pays enough at worst roll to clear the cheapest fitting part by 1.2x', () => {
+    const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
+    const parsedParts = PartsSchema.parse(parts)
+    const installTypes = parsedTypes.filter((t) => t.work.kind === 'install')
+    expect(installTypes.length).toBeGreaterThan(0)
+    for (const type of installTypes) {
+      if (type.work.kind !== 'install') continue
+      const componentId = type.work.componentId
+      const fittingParts = parsedParts.filter((p) => p.componentId === componentId)
+      expect(
+        fittingParts.length,
+        `no catalog part fits component "${componentId}" (job type "${type.id}")`,
+      ).toBeGreaterThan(0)
+      const cheapest = Math.min(...fittingParts.map((p) => p.priceYen))
+      const [minPayout] = type.payoutRangeYen
+      const requiredFloor = Math.round(cheapest * 1.2)
+      expect(
+        minPayout,
+        `${type.id}'s worst payout (${minPayout}) doesn't clear 1.2x the cheapest fitting part (${cheapest}, needs >= ${requiredFloor})`,
+      ).toBeGreaterThanOrEqual(requiredFloor)
     }
   })
 })

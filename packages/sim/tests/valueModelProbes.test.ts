@@ -21,7 +21,7 @@ import { listPubliclyAskingPrice } from '../src/selling'
 /**
  * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
  * "Full-flip" Testing bullets). Both reuse Sprint 20's probe harness shape
- * (`bidding.test.ts`'s `independentLots`/`stateWithLots`) — a real generated
+ * (`bidding.test.ts`'s `independentLots`/`stateWithLots`) - a real generated
  * lot population, resolved purely through the same functions `advanceDay`
  * calls, not a bot or a mocked shortcut.
  */
@@ -75,7 +75,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
 }
 
 /** Many genuinely independent lots (own id, own rolled duration, own
- * condition/car instance) for the same fixture car — mirrors bidding.test.ts's
+ * condition/car instance) for the same fixture car - mirrors bidding.test.ts's
  * helper of the same name/shape. */
 function independentLots(count: number, startSeed: number): AuctionLot[] {
   return Array.from({ length: count }, (_, i) => {
@@ -93,8 +93,8 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
   })
 }
 
-/** Every one of the 8 real components set to condition 100 — a full
- * restoration — installed parts (never present on a fresh auction car, per
+/** Every one of the 8 real components set to condition 100 - a full
+ * restoration - installed parts (never present on a fresh auction car, per
  * `generateAuctionCarInstance`) are left untouched either way. */
 function fullyRestored(car: CarInstance): CarInstance {
   const components = { ...car.components }
@@ -114,7 +114,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
     // Sanity note carried from the doc: the formula's theoretical max uplift
     // is 75% of book (weighted 0 -> 100), but the generator's baseline roll
     // is 30-90 (CAR_CONDITION_BASE_MIN/MAX), so the population MEDIAN lands
-    // mid-band — individual wrecks may exceed 60%.
+    // mid-band - individual wrecks may exceed 60%.
     const upliftFractions = independentLots(300, 1000).map((lot) => {
       const asRolledValue = marketValueYen(PROBE_MODEL, lot.car, 100, {}, ECONOMY)
       const restoredValue = marketValueYen(PROBE_MODEL, fullyRestored(lot.car), 100, {}, ECONOMY)
@@ -123,7 +123,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
 
     const upliftMedian = median(upliftFractions)
     // Measured (2026-07-11, this exact deterministic population): 36.7% of
-    // book — clears the floor but by a real margin, not a coincidence of
+    // book - clears the floor but by a real margin, not a coincidence of
     // rounding; see sprint21.md's Exit for the full measured set.
     expect(upliftMedian).toBeGreaterThan(0.35)
     expect(upliftMedian).toBeLessThan(0.6)
@@ -140,10 +140,10 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
 
 describe('full-flip probe (acceptance, sprint21.md)', () => {
   it('acquire (scripted patient bidder) -> full restoration -> best-channel sale nets a positive margin most of the time', () => {
-    // Rent is 0 (Sprint 20 decision, restored in Sprint 23) — this measures
+    // Rent is 0 (Sprint 20 decision, restored in Sprint 23) - this measures
     // the acquisition-restoration-sale loop itself, not the cost treadmill.
     // "Best-channel" sale price is `listPubliclyAskingPrice` (GDD 6.3's
-    // "slow, market price" channel) — deterministic, unlike walk-in's rolled
+    // "slow, market price" channel) - deterministic, unlike walk-in's rolled
     // discount, so the probe measures the value model, not channel RNG.
     const marginFractions: number[] = []
 
@@ -201,7 +201,7 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
     const marginMedian = median(marginFractions)
     const positiveShare = marginFractions.filter((m) => m > 0).length / marginFractions.length
     // Measured (2026-07-11, this exact deterministic population, n=197):
-    // median margin 66.0% of book, 100% of flips positive — see sprint21.md's
+    // median margin 66.0% of book, 100% of flips positive - see sprint21.md's
     // Exit for the full measured set.
 
     expect(marginMedian).toBeGreaterThanOrEqual(0.15)

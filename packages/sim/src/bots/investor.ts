@@ -33,20 +33,20 @@ const ALL_COMPONENTS: readonly ComponentId[] = [
 ]
 
 /**
- * Sprint 13: the control for the payback-curve question — never buys
+ * Sprint 13: the control for the payback-curve question - never buys
  * equipment, ever, and restores cars entirely through Replace (buy a
  * catalog part, install it) instead of Repair. Every component is fair game
  * (not just the 5 that feed stat formulas), since Replace was always
  * available everywhere and Investor's whole premise is "skip the
  * investment, pay per-job instead." Should end up *worse* than Handyman
  * post-investment (paying full part price every time beats no restoration
- * at all, but loses to labor-only repair once the tool's paid for) — the
+ * at all, but loses to labor-only repair once the tool's paid for) - the
  * harness's payback-curve columns (sprint13.md decision 11) are what turn
  * that "should" into a measured fact.
  *
  * The one piece of real complexity: an install-part job needs a real
  * `partInstanceId` that only exists once `resolveBuyPart`'s queued purchase
- * resolves — but bots decide their whole day from one immutable state
+ * resolves - but bots decide their whole day from one immutable state
  * snapshot, and `buyParts` resolves *after* `createJobs` in advanceDay's
  * step order. So the id is predicted the same way bots already predict
  * `job-${day}-${i}` ids: `resolveBuyPart` assigns `part-${day}-${index}`,
@@ -60,11 +60,11 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
   const bayBudget = serviceBayBudget(state)
   let nextPartIndex = state.partInventory.length
   // Tracks cash already committed to a part queued earlier *this same tick*
-  // — without it, two cars each independently checking the same undiminished
+  // - without it, two cars each independently checking the same undiminished
   // `state.cashYen` could both queue a purchase the shop can't actually
   // afford both of, leaving the second install job referencing a part that
   // never lands in inventory (a hard crash in applyJobToCar, not a graceful
-  // no-op — resolveBuyPart's own affordability check happens later, at
+  // no-op - resolveBuyPart's own affordability check happens later, at
   // resolution time, using whichever cash is left by then).
   let cashCommitted = 0
 
@@ -83,7 +83,7 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
 
   // 2. Replace one empty component per job-free owned car: buy the cheapest
   // fitting catalog part, install it. A component with nothing installed is
-  // the only thing Investor can act on — an occupied-but-worn component
+  // the only thing Investor can act on - an occupied-but-worn component
   // would need Repair, which this bot refuses to ever do.
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
@@ -108,7 +108,7 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     // Sprint 14: pinned to express, not a policy choice. The predicted
-    // partInstanceId below is referenced by this same tick's install job —
+    // partInstanceId below is referenced by this same tick's install job -
     // only an express (same-day) purchase actually creates that PartInstance
     // in time; a standard order wouldn't land until a later day's delivery
     // step, and the install job would crash looking for a part that doesn't
@@ -133,7 +133,7 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     jobbedCarIds.add(car.id)
   }
 
-  // 3. Sell any job-free car with nothing left worth replacing cheaply —
+  // 3. Sell any job-free car with nothing left worth replacing cheaply -
   // "good enough" for Investor means every component has *something*
   // installed, not that every condition is high (it never repairs).
   for (const car of state.ownedCars) {
@@ -173,7 +173,7 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
   }
 
   // 4. Join or continue a war on a mid-priced lot if there's room for
-  // another car (Sprint 20: open bidding — `leadingBidder !== 'player'`
+  // another car (Sprint 20: open bidding - `leadingBidder !== 'player'`
   // covers both a fresh lot and one this bot was outbid on but is still
   // willing to chase under its walk-away target).
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)

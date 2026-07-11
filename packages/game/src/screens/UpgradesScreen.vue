@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
@@ -10,6 +11,11 @@ const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
 const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
 const nextServiceBayRepGate = computed(() => game.nextBayReputationGate('service'))
 const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking'))
+
+/** Display-name join for an equipment item's covered components (Sprint 25 task 6). */
+function componentListLabel(ids: ComponentId[]): string {
+  return ids.map((id) => game.componentLabel(id)).join(', ')
+}
 </script>
 
 <template>
@@ -21,7 +27,7 @@ const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking
     </header>
 
     <p class="how">
-      Bays and equipment both take cash — and, past a certain rung, reputation. Money alone never
+      Bays and equipment both take cash - and, past a certain rung, reputation. Money alone never
       skips the climb.
     </p>
 
@@ -64,13 +70,13 @@ const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking
     <section class="equipment">
       <h3>Equipment</h3>
       <p class="how">
-        Owning a component's equipment is what unlocks Repair for it — Replace (buy a part, install
+        Owning a component's equipment is what unlocks Repair for it - Replace (buy a part, install
         it) never needs equipment.
       </p>
       <ul class="equipment-list">
         <li v-for="item in game.equipmentCatalog" :key="item.id" class="equipment-row">
           <span class="equip-name">{{ item.displayName }}</span>
-          <span class="equip-components">{{ item.componentIds.join(', ') }}</span>
+          <span class="equip-components">{{ componentListLabel(item.componentIds) }}</span>
           <span v-if="item.owned" class="maxed">owned</span>
           <template v-else>
             <button
@@ -183,7 +189,6 @@ h3 {
 
 .equip-components {
   color: var(--mg-text-dim);
-  text-transform: capitalize;
 }
 
 .equipment-row button {

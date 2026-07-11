@@ -6,7 +6,7 @@ import { issueLaborSlots } from './issues'
 import type { NewJobSpec } from './actions'
 
 /**
- * Drops a car's staged-work entry, wherever it stands — called by every
+ * Drops a car's staged-work entry, wherever it stands - called by every
  * car-exit resolver (walk-in sale, public listing, service-job resolution)
  * so staged work never outlives the car it was staged on. A car that leaves
  * with staged installs still pending would otherwise leave those specific
@@ -31,11 +31,11 @@ export interface StagedWorkResolution {
  * The Confirm resolver (Sprint 18): resolves every staged action on one car
  * at once, against a single shared remaining-labor budget, through the exact
  * same `resolveJobLabor`/`findOrCreateJob` machinery the old per-click instant
- * flow always used — Confirm is a loop over that machinery, not a new
+ * flow always used - Confirm is a loop over that machinery, not a new
  * resolution path. Staged actions are processed in list order (first staged,
  * first dibs on today's labor); an action whose gate refuses (e.g. the
  * repair equipment gate) or that only partially labors today still leaves
- * behind a normal, continuable `Job` — nothing here changes what happens to
+ * behind a normal, continuable `Job` - nothing here changes what happens to
  * an already-open job afterward (decision 4: that's the existing
  * single-click "Continue repair" flow, not staging). The car's staged list
  * is cleared unconditionally at the end, whether or not every action could
@@ -54,7 +54,7 @@ export function confirmStagedWork(
 
   for (const action of staged) {
     const car = findWorkableCar(current, carInstanceId)
-    if (!car) break // the car left the shop mid-loop — nothing left to work on
+    if (!car) break // the car left the shop mid-loop - nothing left to work on
 
     let spec: NewJobSpec | null = null
     if (action.kind === 'repair') {
@@ -74,7 +74,7 @@ export function confirmStagedWork(
       }
     } else {
       // fix-issue (Sprint 22): severity lives on the car instance, not the
-      // staged action itself — resolve it here to size the labor band.
+      // staged action itself - resolve it here to size the labor band.
       const revealedIssue = car.hiddenIssues.find((ri) => ri.issueId === action.issueId)
       if (revealedIssue) {
         spec = {
@@ -86,7 +86,7 @@ export function confirmStagedWork(
         }
       }
     }
-    if (!spec) continue // the staged issue no longer exists on this car — nothing to do
+    if (!spec) continue // the staged issue no longer exists on this car - nothing to do
 
     const result = resolveJobLabor(current, spec, remainingLabor, context)
     current = result.state

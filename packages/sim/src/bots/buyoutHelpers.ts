@@ -4,12 +4,12 @@ import { anchorValueYen, nextRaiseYen } from '../bidding'
 import type { SimContext } from '../context'
 
 /**
- * Cash already committed to auction acquisitions this tick — mirrors
+ * Cash already committed to auction acquisitions this tick - mirrors
  * `EquipmentBudget`/`ServiceBayBudget`'s mutable-counter-threaded-through-a-
  * tick shape. Sprint 20 (open bidding): only a lot the bot is CURRENTLY
  * leading is a real cash exposure (a lot it's been outbid on costs nothing
  * unless it re-raises, which `acquireLot` below adds to this same counter
- * the moment it queues that raise) — seeding from every already-active bid
+ * the moment it queues that raise) - seeding from every already-active bid
  * regardless of standing, the way the old sealed-bid model had to, would
  * over-budget a bot that's simply losing several wars at once.
  */
@@ -26,7 +26,7 @@ export function auctionAcquisitionBudget(state: GameState): AuctionAcquisitionBu
 }
 
 /**
- * Lots the bot is still meaningfully pursuing — `playerHasBid` (Sprint 20),
+ * Lots the bot is still meaningfully pursuing - `playerHasBid` (Sprint 20),
  * not just "currently leading": a bot outbid overnight on a lot still under
  * its walk-away target is still in that war and should still count toward
  * its "how many cars am I chasing" budget, exactly like the player-facing
@@ -39,13 +39,13 @@ export function activeBidCount(state: GameState): number {
 /**
  * The shared "join or continue a bidding war, under a walk-away target"
  * decision every auction-bidding bot calls once per candidate lot (Sprint
- * 20 — replaces the old sealed-max "bid or buy out" helper). Bots read the
+ * 20 - replaces the old sealed-max "bid or buy out" helper). Bots read the
  * same open board the player does: if this lot isn't already led by the
- * bot, and the next valid raise (`nextRaiseYen` — reserve to open an
+ * bot, and the next valid raise (`nextRaiseYen` - reserve to open an
  * unopened lot, one increment above the board otherwise) doesn't exceed
  * `walkAwayTargetYen`, it raises exactly that amount; otherwise it holds
  * (already leading) or walks away (the next raise would cost more than the
- * car is worth to it). Bots never buy out — buyout is a player-impatience
+ * car is worth to it). Bots never buy out - buyout is a player-impatience
  * valve, and a bot has no impatience to price out.
  *
  * `walkAwayTargetYen` is caller-supplied (typically `anchorValueYen(...) *
@@ -65,9 +65,9 @@ export function acquireLot(
   budget: AuctionAcquisitionBudget,
   cashBufferMultiplier: number,
 ): boolean {
-  if (lot.leadingBidder === 'player') return false // already leading — nothing to do
+  if (lot.leadingBidder === 'player') return false // already leading - nothing to do
   // Sprint 22: an inspected lot revealing a real severe issue is a known,
-  // priced risk — every bidding bot skips it here, in the one shared
+  // priced risk - every bidding bot skips it here, in the one shared
   // helper, rather than each bot needing its own inspection-aware filter.
   const [, severeThreshold] = context.economy.issues.severityBands
   if (
@@ -87,7 +87,7 @@ export function acquireLot(
 }
 
 /** A bot's walk-away target for a lot: the value anchor times its own
- * strategy multiplier — the Sprint 20 basis change from the old
+ * strategy multiplier - the Sprint 20 basis change from the old
  * fraction-of-book bid multipliers (documented per call site). */
 export function walkAwayTargetYen(
   lot: AuctionLot,

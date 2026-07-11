@@ -8,23 +8,23 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  * - v1: first save (Sprint 07).
  * - v2 (Sprint 08): added `reputationPoints`, `serviceJobOffers`,
  *   `activeServiceJobs` to GameState. Purely additive with schema defaults, so
- *   a v1 save decodes under v2 with the new fields default-filled — no explicit
+ *   a v1 save decodes under v2 with the new fields default-filled - no explicit
  *   `MIGRATIONS[1]` step is needed (the golden-save test pins that a v1 code
  *   still loads).
  * - v3 (Sprint 09): added `serviceBayCount`, `parkingBayCount`,
  *   `serviceBayCarIds` to GameState. Also purely additive with schema
- *   defaults (1 / 3 / [] — matching a fresh game's starting bays), so a v1 or
+ *   defaults (1 / 3 / [] - matching a fresh game's starting bays), so a v1 or
  *   v2 save decodes under v3 with no explicit `MIGRATIONS[2]` step needed.
  * - v4 (Sprint 11): added `laborSlotsSpentToday` to GameState (the live daily
  *   labor counter instant actions decrement, replacing the old client-only
  *   `pending`/commit-at-End-Day plan). Purely additive with a schema default
- *   of 0, so a pre-v4 save decodes under v4 with the field default-filled —
+ *   of 0, so a pre-v4 save decodes under v4 with the field default-filled -
  *   correct, since that save's day genuinely hadn't spent any labor under a
  *   mechanic that didn't exist yet. A v4-or-later save always carries its
- *   real value, mid-day or not — no explicit `MIGRATIONS[3]` step needed.
+ *   real value, mid-day or not - no explicit `MIGRATIONS[3]` step needed.
  * - v5 (Sprint 12): `CarInstance`'s `condition`/`buildSheet` split collapsed
  *   into one unified `components` map (zones+slots -> components refactor).
- *   Deliberately **no `MIGRATIONS[4]` step** — the maintainer confirmed there
+ *   Deliberately **no `MIGRATIONS[4]` step** - the maintainer confirmed there
  *   are no existing saves worth preserving, so a pre-v5 save's `CarInstance`
  *   simply no longer matches the schema and `GameStateSchema.parse` below
  *   throws. That's intentional, not a gap: `hydrate()`/`importSaveCode()`
@@ -33,32 +33,32 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   for it, only testing (saveCodec.test.ts confirms a pre-v5 code fails
  *   cleanly rather than crashing).
  * - v6 (Sprint 13): added `ownedEquipmentIds` to GameState (what REPAIR is
- *   gated on — the equipment/repair-vs-replace economy). Purely additive
+ *   gated on - the equipment/repair-vs-replace economy). Purely additive
  *   with a schema default of `[]`, so a pre-v6 save decodes under v6 with no
- *   equipment owned — correct, since equipment didn't exist as a concept
+ *   equipment owned - correct, since equipment didn't exist as a concept
  *   yet. No explicit `MIGRATIONS[5]` step needed.
  * - v7 (Sprint 14): added `pendingPartOrders` and `cartPartIds` to GameState
  *   (standard-delivery orders in transit, and the persistent parts-market
  *   cart). Both purely additive with a schema default of `[]`, so a pre-v7
- *   save decodes under v7 with no orders in transit and an empty cart —
+ *   save decodes under v7 with no orders in transit and an empty cart -
  *   correct, since neither concept existed yet. No explicit `MIGRATIONS[6]`
  *   step needed.
  * - v8 (Sprint 15): `PublicListing` (nested in `activeListings`) gained
- *   `reputationDeltaOnSale` — the quality/lemon reputation effect of a
+ *   `reputationDeltaOnSale` - the quality/lemon reputation effect of a
  *   pending public-listing sale, captured at listing-creation time and
  *   applied when the listing resolves. Purely additive with a schema
  *   default of 0, so a pre-v8 save's already-pending listings resolve
- *   reputation-neutral — correct, since the rule didn't exist when they
+ *   reputation-neutral - correct, since the rule didn't exist when they
  *   were created. No explicit `MIGRATIONS[7]` step needed.
  * - v9 (Sprint 17): `serviceBayCarIds` changed shape from a compact list of
- *   only-occupied car ids to a real, index-addressable array — one entry
- *   per physical bay, `null` for an empty one — the positional model
+ *   only-occupied car ids to a real, index-addressable array - one entry
+ *   per physical bay, `null` for an empty one - the positional model
  *   drag-and-drop needs (dropping onto "service bay 3" now means bay 3, not
  *   wherever the array used to happen to render a car). A new sibling
  *   `parkingCarIds` field gets the same treatment; before v9 "parking" had
- *   no stored array at all — a car counted as parked purely by not
+ *   no stored array at all - a car counted as parked purely by not
  *   appearing in `serviceBayCarIds`. **This is the first genuinely
- *   non-additive Save-law migration this codebase has needed** — every
+ *   non-additive Save-law migration this codebase has needed** - every
  *   prior version bump was a brand-new field with a safe schema default,
  *   but a plain default-fill here would silently strand every real parked
  *   car: `parkingCarIds` defaulting to `[]` makes an old save's already-
@@ -67,45 +67,45 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   reconstructs both arrays instead: the old compact `serviceBayCarIds`
  *   packs into the first N service slots, and every shop car NOT in that
  *   old list (the same exclusion rule the pre-Sprint-17 `parkingView`
- *   itself used) packs into `parkingCarIds` — both padded with `null` up to
+ *   itself used) packs into `parkingCarIds` - both padded with `null` up to
  *   their respective bay counts (or left un-padded/overflowing beyond count
  *   if a save's real occupancy somehow exceeds it, so a migration never
  *   silently drops a real car rather than erring on the side of keeping it
  *   visible).
- * - v10 (Sprint 18): added `stagedCarWork` — per-car repair/install work the
+ * - v10 (Sprint 18): added `stagedCarWork` - per-car repair/install work the
  *   player has staged but not yet confirmed (the parts-inventory + stage-
  *   then-confirm workflow). Purely additive with a schema default of `{}`,
- *   so a pre-v10 save decodes with nothing staged on any car — correct,
+ *   so a pre-v10 save decodes with nothing staged on any car - correct,
  *   since the concept didn't exist yet. No explicit `MIGRATIONS[9]` step
  *   needed (back to the normal additive case after v9's one-off migration).
  * - v11 (Sprint 19): `AuctionLot` (nested in `activeAuctionLots`) gained
- *   `playerMaxBidYen` and `rivalEscalatedBidsYen` — the multi-day bidding
+ *   `playerMaxBidYen` and `rivalEscalatedBidsYen` - the multi-day bidding
  *   rework's live standings, replacing same-day instant bid resolution.
  *   Both purely additive with schema defaults (`null` / `[]`), so a pre-v11
  *   save's already-listed lots decode with no bid in progress and no
- *   escalation yet — correct, since a v10-or-earlier save could never have
+ *   escalation yet - correct, since a v10-or-earlier save could never have
  *   had a bid mid-flight (bidding always resolved the instant it was
  *   placed). No explicit `MIGRATIONS[10]` step needed.
  * - v12 (Sprint 20, auction rework II): `AuctionLot` swaps its whole bid-state
- *   shape — `playerMaxBidYen`/`rivalEscalatedBidsYen` (sealed player max +
+ *   shape - `playerMaxBidYen`/`rivalEscalatedBidsYen` (sealed player max +
  *   hidden per-rival escalation) replaced by `currentBidYen`/`leadingBidder`/
  *   `quietDays`/`playerHasBid` (open, visible bidding). Not a plain
  *   default-fill: a v11 lot with a real bid in flight would otherwise decode
  *   with `currentBidYen: 0` and lose its standing entirely. `MIGRATIONS[11]`
  *   (`migrateV11ToV12`) reconstructs the new shape instead: `currentBidYen =
  *   max(playerMaxBidYen ?? 0, ...rivalEscalatedBidsYen)`, `leadingBidder` is
- *   whichever side held that max (`'player'` on an exact tie — consistent
+ *   whichever side held that max (`'player'` on an exact tie - consistent
  *   with the new ties-go-to-player hammer rule; `null` if the max is 0, i.e.
  *   nobody had bid), `quietDays` resets to 0 (a fresh count under the new
  *   activity-based-closing rule), and `playerHasBid = playerMaxBidYen !==
  *   null`. The old fields are left in place on the migrated object rather
- *   than explicitly deleted — `GameStateSchema.parse` strips any key the
+ *   than explicitly deleted - `GameStateSchema.parse` strips any key the
  *   schema no longer declares, the same as every other migration here.
- * - v13 (Sprint 21, value model): added `marketLedger` to GameState — the
+ * - v13 (Sprint 21, value model): added `marketLedger` to GameState - the
  *   two supply/demand counters (`lotSupply`/`playerSales`) the reworked
  *   weekly market-heat update reads. Purely additive with a schema default
  *   of `{ lotSupply: {}, playerSales: {} }`, so a pre-v13 save decodes with
- *   both counters empty — correct, since the concept didn't exist yet and a
+ *   both counters empty - correct, since the concept didn't exist yet and a
  *   fresh pair of empty counters behaves exactly like a brand-new career's.
  *   No explicit `MIGRATIONS[12]` step needed.
  * - v14 (Sprint 22, hidden issues): every `CarInstance.hiddenIssues[]` entry
@@ -113,18 +113,26 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   `MIGRATIONS` are pure structural transforms with no content-catalog
  *   access, so there's no way to re-roll a real severity for an old entry
  *   here. `migrateV13ToV14` instead marks EVERY pre-v14 issue (on owned
- *   cars, active-lot cars, and `activeServiceJobs[].car` — a third
+ *   cars, active-lot cars, and `activeServiceJobs[].car` - a third
  *   `CarInstance` population generated the same way) as `severityPercent: 0,
  *   repaired: true`. Correct for owned cars (the old sliding-scale handover
  *   rule already applied their severity to `condition` directly, so treating
  *   them as "already dealt with" avoids double-punishing); for the small
  *   number of in-flight lot/service cars in any given save, this simply
- *   means they carry no live issue — the next weekly catalog refresh brings
+ *   means they carry no live issue - the next weekly catalog refresh brings
  *   freshly-rolled ones under the new rules.
+ * - v15 (Sprint 25 task 2): `ServiceJob` gained `arrivesOnDay` - accepting a
+ *   job no longer places the customer's car in the shop instantly; it
+ *   arrives the following morning. Purely additive with a schema default of
+ *   `null`, and `null` is also the semantically correct value for every
+ *   pre-v15 accepted job: under the old instant-placement rule every such
+ *   car was already fully in the shop, so decoding it as "already arrived"
+ *   is exactly right, not a simplification. No explicit `MIGRATIONS[14]`
+ *   step needed.
  */
-export const SAVE_VERSION = 14
+export const SAVE_VERSION = 15
 
-/** Stable format marker (NOT the schema version — that lives in the envelope). */
+/** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
 
 interface SaveEnvelope {
@@ -151,7 +159,7 @@ function fromBase64(b64: string): string {
  * `serviceBayCarIds`/`parkingCarIds` shape from a pre-v9 save's compact
  * `serviceBayCarIds` list (see the SAVE_VERSION doc comment above for why
  * this can't be a plain default-fill). Defensive against a malformed or
- * hand-edited save — every field it reads is guarded with a runtime type
+ * hand-edited save - every field it reads is guarded with a runtime type
  * check rather than assumed, since `gameState` here is still `unknown`.
  */
 function migrateV8ToV9(gameState: unknown): unknown {
@@ -198,7 +206,7 @@ function migrateV8ToV9(gameState: unknown): unknown {
 /**
  * v11 -> v12 (Sprint 20, auction rework II): reconstructs each active lot's
  * open-bidding state (`currentBidYen`/`leadingBidder`/`quietDays`/
- * `playerHasBid`) from the old sealed-max + per-rival-escalation shape — see
+ * `playerHasBid`) from the old sealed-max + per-rival-escalation shape - see
  * the SAVE_VERSION doc comment above for why a plain default-fill would
  * silently drop a real in-flight bid. Defensive against a malformed or
  * hand-edited save, same as `migrateV8ToV9` above.
@@ -234,7 +242,7 @@ function migrateV11ToV12(gameState: unknown): unknown {
 /**
  * v13 -> v14 (Sprint 22, hidden issues): marks every existing `CarInstance`
  * hidden-issue entry (owned cars, active-lot cars, and
- * `activeServiceJobs[].car`) `severityPercent: 0, repaired: true` — see the
+ * `activeServiceJobs[].car`) `severityPercent: 0, repaired: true` - see the
  * SAVE_VERSION doc comment above for why. Defensive against a malformed or
  * hand-edited save, same shape as the migrations above.
  */
@@ -281,7 +289,7 @@ function migrateV13ToV14(gameState: unknown): unknown {
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
- * entry at all — schema defaults already handle that case in `decodeSave`).
+ * entry at all - schema defaults already handle that case in `decodeSave`).
  */
 const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   8: migrateV8ToV9,

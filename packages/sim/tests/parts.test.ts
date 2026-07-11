@@ -40,7 +40,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-describe('resolveBuyPart — express (Sprint 11 instant resolver, surcharge added Sprint 14)', () => {
+describe('resolveBuyPart - express (Sprint 11 instant resolver, surcharge added Sprint 14)', () => {
   it('deducts the surcharged price and adds an immediately-installable part instance', () => {
     const state = baseState()
     const result = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'express')
@@ -91,7 +91,7 @@ describe('resolveBuyPart — express (Sprint 11 instant resolver, surcharge adde
   })
 })
 
-describe('resolveBuyPart — standard delivery (Sprint 14)', () => {
+describe('resolveBuyPart - standard delivery (Sprint 14)', () => {
   it('deducts sticker price (no surcharge) and creates a pending order instead of an instant part', () => {
     const state = baseState()
     const result = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'standard')
@@ -124,7 +124,7 @@ describe('resolveBuyPart — standard delivery (Sprint 14)', () => {
   })
 })
 
-describe('resolvePartDeliveries (Sprint 14)', () => {
+describe('resolvePartDeliveries (Sprint 14, day arithmetic fixed Sprint 25 task 3)', () => {
   it('is a no-op when nothing is pending', () => {
     const state = baseState()
     const result = resolvePartDeliveries(state)
@@ -132,20 +132,39 @@ describe('resolvePartDeliveries (Sprint 14)', () => {
     expect(result.log).toEqual([])
   })
 
-  it('leaves an order pending before its arrivesOnDay', () => {
+  /**
+   * A synthetic order further out than the real 1-day constant, so the
+   * "still pending" branch has an observable state to exercise - with the
+   * real PARTS_STANDARD_DELIVERY_DAYS (1) an order is always due on the
+   * very next resolvePartDeliveries call (see the regression test below),
+   * so there is no reachable "still pending" state for it in real play.
+   */
+  it('leaves a multi-day order pending until one day before its arrivesOnDay', () => {
     const ordered = resolveBuyPart(baseState(), CHEAPEST.id, CONTEXT, 'standard').state
-    const stillToday = { ...ordered, day: ordered.pendingPartOrders[0]!.arrivesOnDay - 1 }
-    const result = resolvePartDeliveries(stillToday)
-    expect(result.state).toBe(stillToday)
+    const order = { ...ordered.pendingPartOrders[0]!, arrivesOnDay: ordered.day + 3 }
+    const twoDaysOut = { ...ordered, pendingPartOrders: [order], day: order.arrivesOnDay - 2 }
+    const result = resolvePartDeliveries(twoDaysOut)
+    expect(result.state).toBe(twoDaysOut)
     expect(result.state.pendingPartOrders).toHaveLength(1)
     expect(result.state.partInventory).toHaveLength(0)
   })
 
-  it('delivers an order once arrivesOnDay is reached, logging part-delivered', () => {
-    const ordered = resolveBuyPart(baseState(), CHEAPEST.id, CONTEXT, 'standard').state
+  /**
+   * Sprint 25 task 3: `advanceDay` never mutates `state.day` until the very
+   * last line of its own body, so the one `advanceDay` call that takes day
+   * N to day N + 1 calls this function with `state.day` still at N - not
+   * N + 1. This is exactly that call: a standard order bought on day N must
+   * already be in inventory by the time this single call returns, so it's
+   * there the moment the player lands on day N + 1 (one End Day click, not
+   * two).
+   */
+  it('regression: a standard order bought on day N delivers in the very next resolvePartDeliveries call', () => {
+    const dayN = 5
+    const ordered = resolveBuyPart(baseState({ day: dayN }), CHEAPEST.id, CONTEXT, 'standard').state
     const order = ordered.pendingPartOrders[0]!
-    const dueToday = { ...ordered, day: order.arrivesOnDay }
-    const result = resolvePartDeliveries(dueToday)
+    expect(order.arrivesOnDay).toBe(dayN + PARTS_STANDARD_DELIVERY_DAYS)
+
+    const result = resolvePartDeliveries(ordered)
     expect(result.state.pendingPartOrders).toHaveLength(0)
     expect(result.state.partInventory).toHaveLength(1)
     expect(result.state.partInventory[0]).toMatchObject({
@@ -162,15 +181,13 @@ describe('resolvePartDeliveries (Sprint 14)', () => {
     ])
   })
 
-  it('delivers only the orders due today, leaving later ones pending', () => {
-    let state = baseState()
-    state = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'standard').state // day 1 -> day 2
-    const soon = state.pendingPartOrders[0]!
-    state = { ...state, day: soon.arrivesOnDay } // jump to day 2
-    state = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'standard').state // ordered day 2 -> arrives day 3
+  it('delivers only the orders due today, leaving a further-out order pending', () => {
+    const ordered = resolveBuyPart(baseState(), CHEAPEST.id, CONTEXT, 'standard').state
+    const dueOrder = ordered.pendingPartOrders[0]!
+    const laterOrder = { ...dueOrder, id: 'order-later', arrivesOnDay: dueOrder.arrivesOnDay + 5 }
+    const state = { ...ordered, pendingPartOrders: [dueOrder, laterOrder] }
     const result = resolvePartDeliveries(state)
-    expect(result.state.partInventory).toHaveLength(1) // only the first order resolves
-    expect(result.state.pendingPartOrders).toHaveLength(1)
-    expect(result.state.pendingPartOrders[0]!.arrivesOnDay).toBeGreaterThan(state.day)
+    expect(result.state.partInventory).toHaveLength(1)
+    expect(result.state.pendingPartOrders).toEqual([laterOrder])
   })
 })

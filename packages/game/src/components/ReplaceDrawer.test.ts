@@ -8,7 +8,7 @@ import ReplaceDrawer from './ReplaceDrawer.vue'
 describe('ReplaceDrawer (Sprint 24 fix 5)', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('renders every owned, unstaged part — fitting and non-fitting alike — each flagged correctly', () => {
+  it('renders every owned, unstaged part - fitting and non-fitting alike - each flagged correctly', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -24,7 +24,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5)', () => {
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
 
-    // Shown either way (Sprint 18 round-2 decision) — not filtered down.
+    // Shown either way (Sprint 18 round-2 decision) - not filtered down.
     expect(wrapper.findAll('.part-card')).toHaveLength(2)
     expect(wrapper.findAll('.part-card.no-fit')).toHaveLength(1)
   })

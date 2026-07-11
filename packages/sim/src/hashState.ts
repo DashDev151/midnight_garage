@@ -1,6 +1,6 @@
 /**
  * Deterministic string hash (FNV-1a) over a canonical JSON serialization
- * of a value — used for golden-master state comparisons. Object keys are
+ * of a value - used for golden-master state comparisons. Object keys are
  * sorted first so field-order churn from spreading never changes the
  * hash; only the actual data does.
  */

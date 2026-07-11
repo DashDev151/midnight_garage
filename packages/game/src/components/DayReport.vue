@@ -23,7 +23,7 @@ const lines = computed(() =>
         {{ formatYenDelta(report.cashDeltaYen) }}
       </p>
 
-      <p v-if="lines.length === 0" class="quiet">A quiet day — nothing to report.</p>
+      <p v-if="lines.length === 0" class="quiet">A quiet day - nothing to report.</p>
       <ul v-else>
         <li v-for="line in lines" :key="line.id">{{ line.text }}</li>
       </ul>

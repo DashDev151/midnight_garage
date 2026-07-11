@@ -1,5 +1,5 @@
-# MIDNIGHT GARAGE — Car Roster
-## Inspiration Pool & Scope Ladder — v1.2
+# MIDNIGHT GARAGE - Car Roster
+## Inspiration Pool & Scope Ladder - v1.2
 *Companion to GDD v0.4 §4. This is the full inspiration pool; curation happens per scope tier. Real specs per GDD §2.4 naming layer.*
 
 ## Scope Ladder
@@ -32,7 +32,7 @@ Column key: **P** = PoC-10 · **L** = Go-Live · pack name = post-launch expansi
 | Honda Acty (HA3) | E07A | **Shop utility mechanic:** owning one cuts transport/delivery fees | **L** |
 | Suzuki Cappuccino (EA11R) | F6A T | FR kei roadster | Kei Pack |
 | Honda Beat (PP1) | E07A MTREC | MR NA scream | Kei Pack |
-| **Honda Motocompo** | NC50 | **Easter egg:** appears at Local Yard as "box of scooter parts — ¥5,000", no hint. Restore on the workbench → shop runabout, −1 day scout deliveries | **L** |
+| **Honda Motocompo** | NC50 | **Easter egg:** appears at Local Yard as "box of scooter parts - ¥5,000", no hint. Restore on the workbench → shop runabout, −1 day scout deliveries | **L** |
 
 ## Fast FWD (Honda et al.)
 | Car | Engine | Notes | Scope |
@@ -94,41 +94,41 @@ Column key: **P** = PoC-10 · **L** = Go-Live · pack name = post-launch expansi
 ## Kyusha (old-school)
 | Car | Engine | Notes | Scope |
 |---|---|---|---|
-| Nissan Fairlady 240ZG (HS30) | L24 | **Midnight blue default livery** — you know why | **L** |
+| Nissan Fairlady 240ZG (HS30) | L24 | **Midnight blue default livery** - you know why | **L** |
 | Datsun 510 / Bluebird | L16 | Eventually / Kyusha Pack |
 | Nissan Skyline 2000GT-X Kenmeri | L20 | Kyusha Pack |
 
-## The 10 Legends (GDD §9.2 — final list, locked candidates)
+## The 10 Legends (GDD §9.2 - final list, locked candidates)
 1. Nissan Skyline GT-R V-Spec II (BNR34)
 2. Honda NSX-R (NA1)
 3. Nissan Skyline GT-R hakosuka (KPGC10)
-4. **Nissan Fairlady Z432 (PS30)** — S20 engine shared with the KPGC10; numbers-matching provenance mechanic
+4. **Nissan Fairlady Z432 (PS30)** - S20 engine shared with the KPGC10; numbers-matching provenance mechanic
 5. Subaru Impreza 22B STi
 6. Mitsubishi Lancer Evolution VI Tommi Mäkinen Edition
-7. **Toyota 2000GT (MF10)** — acquired via the Collector's Quarter story lead
+7. **Toyota 2000GT (MF10)** - acquired via the Collector's Quarter story lead
 8. Mazda Autozam AZ-1
 9. Mazda RX-7 Spirit R (FD3S)
-10. Toyota Supra RZ final edition (JZA80) *or* Nissan Silvia Spec-R (S15) — last slot decided in playtesting
+10. Toyota Supra RZ final edition (JZA80) *or* Nissan Silvia Spec-R (S15) - last slot decided in playtesting
 
-*Acquisition order across all 10 Legends is undecided — deliberately not fixed yet, and not to be
+*Acquisition order across all 10 Legends is undecided - deliberately not fixed yet, and not to be
 weighted toward endgame (see GDD §9.2). No car here is "the" capstone.*
 
-*(Honda S2000 (AP1) moved to Rare roster — brilliant, but volume-produced; Legend slots are for unicorns.)*
+*(Honda S2000 (AP1) moved to Rare roster - brilliant, but volume-produced; Legend slots are for unicorns.)*
 
-## The Zero Legend (secret — do not document publicly)
-**Mazda 787B (#55).** Not a roster car — the hidden 11th enshrinement (10 Legends + this one = 11
+## The Zero Legend (secret - do not document publicly)
+**Mazda 787B (#55).** Not a roster car - the hidden 11th enshrinement (10 Legends + this one = 11
 total; no literal plinths, see the Hall's art direction below). From day one, the Hall holds one more
-space than it admits to — dark, unexplained, just a stretch of rain-slicked pavement under a single
+space than it admits to - dark, unexplained, just a stretch of rain-slicked pavement under a single
 sodium lamp, reflecting nothing back yet. It fills only if the player completes the **Rotary
 Pilgrimage** after the credits: enshrine the Spirit R, restore an FC3S, an Eunos Cosmo 20B, *and* a
-Cosmo Sport 110S (added to Kyusha Pack as the pilgrimage's rarest step) — then a fax arrives with no
+Cosmo Sport 110S (added to Kyusha Pack as the pilgrimage's rarest step) - then a fax arrives with no
 sender, just an address in Hiroshima and four rotors drawn in pen. The 787B is never bought, never
-sold, never flipped: it is *entrusted*. It cannot be modified; its build sheet is sealed ("R26B — 4
-rotors — do not touch"). Put it on the dyno and the needle simply leaves the gauge while the whole
-screen shakes — the 280PS joke inverted at maximum volume. Enshrined, the Hall plays a different music
+sold, never flipped: it is *entrusted*. It cannot be modified; its build sheet is sealed ("R26B - 4
+rotors - do not touch"). Put it on the dyno and the needle simply leaves the gauge while the whole
+screen shakes - the 280PS joke inverted at maximum volume. Enshrined, the Hall plays a different music
 sting: a sustained quad-rotor note under the synthwave, forever.
 
-**Hall of Legends art direction:** not a museum. 90s city pop nostalgia — sodium-vapor amber, wet
+**Hall of Legends art direction:** not a museum. 90s city pop nostalgia - sodium-vapor amber, wet
 asphalt, neon signage bleeding into rain-puddle reflections, a warm and happy melancholy (closer to
 *Akira*'s Neo-Tokyo street pixel work than a sterile display case). Each enshrined car sits under its
 own lamp rather than on a pedestal; condition and light both improve as the Hall fills.
@@ -141,7 +141,7 @@ own lamp rather than on a pedestal; condition and light both improve as the Hall
 Nissan 350Z (Z33) · Mazda RX-8 · Evo VIII MR · Honda Integra DC5 · Daihatsu Copen.
 
 ## Hyper Wave (2007+ extreme sandbox)
-**Nissan GT-R (R35)** — arrives as a market-shaking news event redefining the GT-R name · **Lexus LFA** — 1LR-GUE V10, the late-sandbox grail at domestic-gaisha pricing · Honda NSX (NC1) candidate.
+**Nissan GT-R (R35)** - arrives as a market-shaking news event redefining the GT-R name · **Lexus LFA** - 1LR-GUE V10, the late-sandbox grail at domestic-gaisha pricing · Honda NSX (NC1) candidate.
 
 ## Expansion Pack Map (post-launch, from IDEAS.md)
 **Kei Pack** · **Kyusha Pack** (incl. bosozoku style parts) · **Drift Pack** · **VIP Pack** (Celsior, Cima, bippu parts) · **Gaisha II** · **2004+ Wave** · **Hyper Wave (2007+)**.

@@ -13,7 +13,7 @@ import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from '../src/marketH
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
 const { HEAT_MIN, HEAT_MAX } = CONTEXT.economy.marketPressure
 
-// Two real, distinct model ids — used as "the model under test" / "the
+// Two real, distinct model ids - used as "the model under test" / "the
 // untouched control" across the probes below.
 const MODEL_A = 'honda-city-e-aa'
 const MODEL_B = 'toyota-supra-rz-jza80'
@@ -103,7 +103,7 @@ describe('updateMarketHeat', () => {
 
   it('clamps every model’s new heat to [HEAT_MIN, HEAT_MAX], even under sustained extreme pressure', () => {
     // Heavily re-flood MODEL_A's playerSales every week for 50 weeks straight
-    // — the target heat is clamped before smoothing, so heat itself can never
+    // - the target heat is clamped before smoothing, so heat itself can never
     // leave [HEAT_MIN, HEAT_MAX] even under this sustained worst case.
     let state = stateOnDay(7, { [MODEL_A]: 100 })
     for (let week = 0; week < 50; week++) {

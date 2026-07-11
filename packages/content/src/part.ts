@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { ComponentIdSchema, GradeSchema, TagSchema } from './tags'
 import { StatModifierSchema } from './stats'
 
-/** Parts are parody-branded from day one (GDD 2.4) — no real/parody split. */
+/** Parts are parody-branded from day one (GDD 2.4) - no real/parody split. */
 export const PartSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
   brand: z.string().min(1),
@@ -35,7 +35,7 @@ export type PartInstance = z.infer<typeof PartInstanceSchema>
  * A standard-delivery part purchase in transit (Sprint 14): cash is deducted
  * and the price locked in the moment it's ordered, but the part doesn't land
  * in `partInventory` as a real `PartInstance` until `arrivesOnDay`. Mirrors
- * `PublicListingSchema`'s `resolvesOnDay` shape — the same "commit now,
+ * `PublicListingSchema`'s `resolvesOnDay` shape - the same "commit now,
  * resolves automatically on a future day" pattern, just for a purchase
  * instead of a sale.
  */

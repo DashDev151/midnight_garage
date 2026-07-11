@@ -28,7 +28,7 @@ export interface CatalogRefresh {
  * Generates one fresh batch of auction lots (per eligible tier) and service-
  * job offers for `day`, gated by the in-game calendar and (for Collector
  * Network) reputation. The single generation path both `createInitialGameState`
- * (day 1 — Sprint 10, so a new career isn't empty for a week) and
+ * (day 1 - Sprint 10, so a new career isn't empty for a week) and
  * `advanceDay`'s weekly boundary call, so "which tiers, how many, how long"
  * exists in exactly one place.
  */
@@ -73,6 +73,7 @@ export function refreshCatalogs(
     year,
     state.ownedEquipmentIds,
     context.equipmentById,
+    state.reputationTier,
   )
 
   return { freshLots, freshOffers, lotsByTier }

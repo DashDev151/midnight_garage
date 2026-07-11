@@ -17,24 +17,24 @@ const PLAYER_LABOR_SLOTS = 2 // flipper never hires staff
 /**
  * Bid book value itself, not a lowball fraction of it. Empirically (Sprint
  * 03's balance harness), lowballing toward the reserve floor never wins
- * against the AI bidder pool — a bid needs to be competitive to win at all;
+ * against the AI bidder pool - a bid needs to be competitive to win at all;
  * the flip's margin comes from the repair value-add (below), not from
  * buying at a discount. Under Sprint 19b's first-price rework, winning at
  * this bid now costs exactly book value (no more automatic second-price
- * discount when it wins) — a real tightening of this bot's margin, not yet
+ * discount when it wins) - a real tightening of this bot's margin, not yet
  * re-verified against the balance harness (tracked in `TODO.md`).
  */
 const BID_FRACTION_OF_BOOK = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.3
-/** Shitbox-range only — local-yard also carries Common-tier lots (e.g. an
+/** Shitbox-range only - local-yard also carries Common-tier lots (e.g. an
  * EG6 at 650k book) whose much larger absolute swings don't fit a bot
  * that does one cheap repair and flips fast. */
 const MAX_TARGET_BOOK_VALUE_YEN = 300_000
 /**
- * One cheap repair (the worst zone) before flipping — not a full
+ * One cheap repair (the worst zone) before flipping - not a full
  * restoration, but enough real value-add to make a flip profitable.
  * Buying near the competitive auction price and reselling the same car
- * instantly, untouched, is structurally a break-even-or-losing trade —
+ * instantly, untouched, is structurally a break-even-or-losing trade -
  * no value was added, so there's nothing to sell for more than was
  * paid. GDD 9.0's own first-flip example includes an oil change, not a
  * same-day resale.
@@ -59,7 +59,7 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
   const bayBudget = serviceBayBudget(state)
   const equipBudget = equipmentBudget()
 
-  // 1. Continue any in-progress repair job from a prior day — only if its
+  // 1. Continue any in-progress repair job from a prior day - only if its
   // car is in the service bay (moved in first, if there's room today).
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
@@ -115,7 +115,7 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
   }
 
   // 4. Join or continue a war on fresh, cheap local-yard lots if there's
-  // room for another car (Sprint 20: open bidding — `leadingBidder !==
+  // room for another car (Sprint 20: open bidding - `leadingBidder !==
   // 'player'` covers both a fresh lot and one this bot was outbid on but is
   // still willing to chase under its walk-away target). Room already spoken
   // for by a still-unresolved bid counts the same as an owned car, so this

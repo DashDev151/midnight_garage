@@ -25,10 +25,10 @@ function decayedEntry(
 
 /**
  * Bumps `lotSupply[modelId]` by 1 for each fresh lot generated this catalog
- * refresh (Sprint 21) — one entry per lot, so a tier that generates 3 lots
+ * refresh (Sprint 21) - one entry per lot, so a tier that generates 3 lots
  * of the same model bumps that model 3 times. Called from `advanceDay.ts`'s
  * weekly refresh block, right beside the `freshLots` append (`catalogs.ts`'s
- * `refreshCatalogs` itself stays pure — it never touches state).
+ * `refreshCatalogs` itself stays pure - it never touches state).
  */
 export function bumpLotSupply(state: GameState, modelIds: readonly string[]): GameState {
   if (modelIds.length === 0) return state
@@ -41,7 +41,7 @@ export function bumpLotSupply(state: GameState, modelIds: readonly string[]): Ga
 
 /**
  * Bumps `playerSales[modelId]` by 1 for one resolved player sale (Sprint
- * 21) — called from `resolveSellViaWalkIn` (selling.ts) and the public-
+ * 21) - called from `resolveSellViaWalkIn` (selling.ts) and the public-
  * listing resolution step in `advanceDay.ts`.
  */
 export function bumpPlayerSales(state: GameState, modelId: string): GameState {
@@ -51,16 +51,16 @@ export function bumpPlayerSales(state: GameState, modelId: string): GameState {
 }
 
 /**
- * Weekly market-pressure update (Sprint 21 — replaces the old pure random
+ * Weekly market-pressure update (Sprint 21 - replaces the old pure random
  * walk, `+/-4` weekly on every tracked model). Three deterministic signals
  * combine into a target heat each model's real heat smooths toward:
  *
  * 1. A slow per-model demand wave (`WAVE_AMPLITUDE x sin(...)`), phase-offset
  *    per model by `hashStringToSeed(modelId)` so models don't all crest
  *    together.
- * 2. A supply-glut penalty (`SUPPLY_WEIGHT x lotSupply`) — a model the
+ * 2. A supply-glut penalty (`SUPPLY_WEIGHT x lotSupply`) - a model the
  *    catalog keeps producing runs cooler.
- * 3. A flood-the-market penalty (`SALES_WEIGHT x playerSales`) — the player
+ * 3. A flood-the-market penalty (`SALES_WEIGHT x playerSales`) - the player
  *    dumping copies of one model softens its own price for a few weeks.
  *
  * Plus a flat scarcity bonus when `lotSupply` is below `SCARCITY_THRESHOLD`
@@ -69,7 +69,7 @@ export function bumpPlayerSales(state: GameState, modelId: string): GameState {
  * to it per update, so heat drifts rather than jumps. Both ledger counters
  * decay by `LEDGER_DECAY` first (dropped below `LEDGER_PRUNE_THRESHOLD`),
  * so a burst of activity fades over a few weeks rather than lingering
- * forever. Fully deterministic — no `Date.now()`/`Math.random()` — and a
+ * forever. Fully deterministic - no `Date.now()`/`Math.random()` - and a
  * no-op off the day-7 boundary, same pipeline position `driftMarketHeat`
  * used to occupy.
  */

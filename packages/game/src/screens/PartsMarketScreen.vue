@@ -80,7 +80,9 @@ function onCheckout(): void {
     <div class="filters">
       <select v-model="componentFilter" data-test="filter-component">
         <option value="">all components</option>
-        <option v-for="c in COMPONENT_OPTIONS" :key="c" :value="c">{{ c }}</option>
+        <option v-for="c in COMPONENT_OPTIONS" :key="c" :value="c">
+          {{ game.componentLabel(c) }}
+        </option>
       </select>
       <select v-model="gradeFilter" data-test="filter-grade">
         <option value="">all grades</option>
@@ -96,7 +98,7 @@ function onCheckout(): void {
         <div class="part-main">
           <span class="part-name">{{ part.brand }} {{ part.name }}</span>
           <span class="part-meta"
-            >{{ part.componentId }} · {{ part.grade }} ·
+            >{{ game.componentLabel(part.componentId) }} · {{ part.grade }} ·
             {{ statSummary(part) || 'no stat change' }}</span
           >
           <span v-if="part.requiredTags.length" class="part-tags">
@@ -117,7 +119,7 @@ function onCheckout(): void {
       <h3>On order</h3>
       <ul>
         <li v-for="order in game.pendingPartOrders" :key="order.id">
-          {{ game.partName(order.partId) }} — arrives day {{ order.arrivesOnDay }}
+          {{ game.partName(order.partId) }} - arrives day {{ order.arrivesOnDay }}
         </li>
       </ul>
     </section>
@@ -148,7 +150,7 @@ function onCheckout(): void {
               value="standard"
               data-test="delivery-standard"
             />
-            Standard — {{ formatYen(game.cartStandardTotalYen) }} (arrives next day)
+            Standard - {{ formatYen(game.cartStandardTotalYen) }} (arrives next day)
           </label>
           <label>
             <input
@@ -157,7 +159,7 @@ function onCheckout(): void {
               value="express"
               data-test="delivery-express"
             />
-            Express — {{ formatYen(game.cartExpressTotalYen) }} (arrives today)
+            Express - {{ formatYen(game.cartExpressTotalYen) }} (arrives today)
           </label>
         </div>
         <button
@@ -172,7 +174,7 @@ function onCheckout(): void {
           v-if="lastCheckoutResult && lastCheckoutResult.remainingCount > 0"
           class="checkout-warning"
         >
-          Bought {{ lastCheckoutResult.boughtCount }} — couldn't afford the rest, still in cart.
+          Bought {{ lastCheckoutResult.boughtCount }} - couldn't afford the rest, still in cart.
         </p>
       </div>
     </section>

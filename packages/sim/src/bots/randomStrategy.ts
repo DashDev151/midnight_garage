@@ -32,14 +32,14 @@ const ARCHETYPES: readonly Archetype[] = ['flip', 'restore', 'mid']
 
 /**
  * Bid size deliberately does NOT vary by archetype. Cautious Restorer's
- * real 1.1x premium is earned — it always inspects before it bids, so it's
+ * real 1.1x premium is earned - it always inspects before it bids, so it's
  * paying for genuine information an uninspected AI bidder doesn't have.
  * Random's archetype is assigned to a car independently of whether that
- * specific lot was ever inspected (see step 4/5 below — inspection and
+ * specific lot was ever inspected (see step 4/5 below - inspection and
  * bidding target different, unrelated random picks), so a "restore"-typed
  * bid has no informational edge to justify paying more. Bidding higher
  * with no edge doesn't express a preference, it just wins more auctions
- * it should be losing — a real, earlier version of this bot did exactly
+ * it should be losing - a real, earlier version of this bot did exactly
  * that (see sprint03.md finding 8's follow-up) and the resulting 78%
  * restore-trade share was pure winner's-curse, not a playstyle mix.
  */
@@ -61,7 +61,7 @@ const PROFILES: Record<Archetype, ArchetypeProfile> = {
 /**
  * A car's playstyle is derived deterministically from its own instance id
  * (same hash-a-stable-id-to-seed-a-roll pattern as bidding.ts's per-lot
- * rival field) rather than re-rolled per day — so a given car is played
+ * rival field) rather than re-rolled per day - so a given car is played
  * consistently from purchase to sale (a quick flip stays a quick flip),
  * while different cars still land on genuinely different approaches. This
  * is what makes the bot read as "an inconsistent player," not "an
@@ -75,7 +75,7 @@ function archetypeForCar(carInstanceId: string): Archetype {
 
 /**
  * "Someone with no consistent judgment about which strategy fits which
- * car" — the control this harness was missing alongside Passive Grinder's
+ * car" - the control this harness was missing alongside Passive Grinder's
  * do-nothing baseline. Every car it touches is played out coherently as a
  * quick flip, a careful restoration, or a mid-of-the-road approach (the
  * same three playstyles as the other bots), but *which* playstyle applies
@@ -91,7 +91,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   const bayBudget = serviceBayBudget(state)
   const equipBudget = equipmentBudget()
 
-  // 1. Continue any in-progress repair job from a prior day — only if its
+  // 1. Continue any in-progress repair job from a prior day - only if its
   // car is in the service bay (moved in first, if there's room today).
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
@@ -196,7 +196,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     }
   }
 
-  // 4. Inspect one uninspected lot at random, if labor allows — every
+  // 4. Inspect one uninspected lot at random, if labor allows - every
   // archetype benefits from information, so this isn't gated by playstyle.
   const uninspected = state.activeAuctionLots.filter((lot) => !lot.inspected)
   if (uninspected.length > 0 && laborBudget > 0) {
@@ -204,10 +204,10 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   }
 
   // 5. Join or continue a war on one affordable lot if there's room for
-  // another car — the same target multiplier regardless of which archetype
+  // another car - the same target multiplier regardless of which archetype
   // the car will turn out to be played as (see BID_MULTIPLIER's comment: no
   // archetype has an informational edge at this stage, so none should pay a
-  // premium). Sprint 20: open bidding — `leadingBidder !== 'player'` covers
+  // premium). Sprint 20: open bidding - `leadingBidder !== 'player'` covers
   // both a fresh lot and one this bot was outbid on but is still willing to
   // chase under its walk-away target.
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import UpgradesScreen from './UpgradesScreen.vue'
 
-/** Ungated per the Sprint 16 ladder — day-1 accessible without reputation. */
+/** Ungated per the Sprint 16 ladder - day-1 accessible without reputation. */
 const TIRE_MACHINE = EQUIPMENT.find((e) => e.componentIds.includes('wheels'))!
 /** Reputation-gated per the Sprint 16 ladder (requires 'known'). */
 const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!

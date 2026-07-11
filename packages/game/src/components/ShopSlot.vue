@@ -4,7 +4,7 @@ import type { ShopCarView } from '../stores/gameStore'
 import { useDraggable, useDropZone } from '../composables/useDragAndDrop'
 
 /**
- * One shop slot — a service bay or a parking row — draggable if occupied,
+ * One shop slot - a service bay or a parking row - draggable if occupied,
  * and always its own drop zone (Sprint 17). Purely presentational: the
  * parent decides what "accepts" means and what a drop actually does (move
  * vs. swap), since that depends on which list this slot belongs to and the
@@ -16,7 +16,7 @@ const props = defineProps<{
   moveLabel: string
   moveDisabled: boolean
   testIdPrefix: string
-  /** A stable id for this slot when `car` is null, e.g. `empty-parking-2` — several empty
+  /** A stable id for this slot when `car` is null, e.g. `empty-parking-2` - several empty
    * slots can render at once (Sprint 17 playtest fix), so a single hardcoded "empty" would
    * collide across all of them in the "Place here" button's `data-test`. */
   emptySlotId: string
@@ -32,6 +32,26 @@ const dropZone = useDropZone<string>(
   (carId) => props.accepts(carId),
   (carId) => emit('drop', carId),
 )
+
+/**
+ * Sprint 25 task 2: a customer's car still in transit occupies its slot
+ * (the parking spot was claimed at accept time) but hasn't actually arrived
+ * - there's nothing there yet to pick up or move, so the drag/pick gesture
+ * is a no-op while `arrivingTomorrow` is true, same as the grab-handle
+ * button being hidden entirely below.
+ */
+function onCardPointerDown(event: PointerEvent): void {
+  if (props.car?.arrivingTomorrow) return
+  draggable.onPointerDown(event)
+}
+function onCardPointerMove(event: PointerEvent): void {
+  if (props.car?.arrivingTomorrow) return
+  draggable.onPointerMove(event)
+}
+function onCardPointerUp(event: PointerEvent): void {
+  if (props.car?.arrivingTomorrow) return
+  draggable.onPointerUp(event)
+}
 </script>
 
 <template>
@@ -45,10 +65,14 @@ const dropZone = useDropZone<string>(
     <template v-if="car">
       <div
         class="car-card"
-        :class="{ dragging: draggable.isDragging.value, picked: draggable.isPicked.value }"
-        @pointerdown="draggable.onPointerDown"
-        @pointermove="draggable.onPointerMove"
-        @pointerup="draggable.onPointerUp"
+        :class="{
+          dragging: draggable.isDragging.value,
+          picked: draggable.isPicked.value,
+          'in-transit': car.arrivingTomorrow,
+        }"
+        @pointerdown="onCardPointerDown"
+        @pointermove="onCardPointerMove"
+        @pointerup="onCardPointerUp"
       >
         <RouterLink
           :to="{ name: 'car', params: { id: car.carId } }"
@@ -56,9 +80,11 @@ const dropZone = useDropZone<string>(
           draggable="false"
         >
           {{ car.displayName }}
-          <span v-if="car.isCustomerCar" class="badge">customer job</span>
+          <span v-if="car.arrivingTomorrow" class="badge arriving">arriving tomorrow</span>
+          <span v-else-if="car.isCustomerCar" class="badge">customer job</span>
         </RouterLink>
         <button
+          v-if="!car.arrivingTomorrow"
           type="button"
           class="grab-handle"
           :aria-pressed="draggable.isPicked.value"
@@ -70,7 +96,7 @@ const dropZone = useDropZone<string>(
       </div>
       <button
         type="button"
-        :disabled="moveDisabled"
+        :disabled="moveDisabled || car.arrivingTomorrow"
         :data-test="testIdPrefix + car.carId"
         @click="emit('move', car.carId)"
       >
@@ -100,7 +126,7 @@ const dropZone = useDropZone<string>(
   display: flex;
   flex-direction: column;
   gap: var(--mg-space-2);
-  /* Every slot — occupied or empty — gets the same minimum footprint, so an
+  /* Every slot - occupied or empty - gets the same minimum footprint, so an
      empty slot is exactly as easy to aim a drop at as an occupied one; a
      bare "empty bay" label with no min-height left almost nothing to hit. */
   min-height: 84px;
@@ -158,6 +184,12 @@ const dropZone = useDropZone<string>(
   outline-offset: 4px;
 }
 
+/* Sprint 25 task 2: nothing to pick up yet - dimmed, no grab cursor. */
+.car-card.in-transit {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .slot-car {
   display: flex;
   flex-direction: column;
@@ -165,7 +197,7 @@ const dropZone = useDropZone<string>(
   color: var(--mg-neon-cyan);
   text-decoration: none;
   font-size: var(--mg-fs-sm);
-  /* Belt-and-suspenders alongside the `draggable="false"` attribute — some
+  /* Belt-and-suspenders alongside the `draggable="false"` attribute - some
      WebKit browsers still need this to fully suppress native link dragging. */
   -webkit-user-drag: none;
   user-select: none;
@@ -176,6 +208,10 @@ const dropZone = useDropZone<string>(
   font-size: var(--mg-fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.badge.arriving {
+  color: var(--mg-text-dim);
 }
 
 .grab-handle {

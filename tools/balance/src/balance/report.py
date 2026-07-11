@@ -35,7 +35,7 @@ BUCKET_TARGETS = {"steal": (0.10, 0.25), "mid": (0.50, 1.00), "frenzy": (0.05, 0
 
 def summarize_auction_wins(df: pl.DataFrame) -> pl.DataFrame:
     """Sprint 20 (auction rework II): bucket share of the hammer price as a
-    fraction of the lot's own anchorValueYen — the wholesale-anchored
+    fraction of the lot's own anchorValueYen - the wholesale-anchored
     clearing calibration target, checked against real bot play rather than
     only the unit-level formula tests."""
     total = df.height
@@ -45,7 +45,7 @@ def summarize_auction_wins(df: pl.DataFrame) -> pl.DataFrame:
 
 def render_auction_section(bucket_summary: pl.DataFrame) -> list[str]:
     """Basis (Sprint 20): fraction = hammer price / anchorValueYen (the best
-    interested buyer's valuation of the rolled car) — steal < 0.65, mid
+    interested buyer's valuation of the rolled car) - steal < 0.65, mid
     0.65-0.9, frenzy > 0.9. Replaces the Sprint 10 [reserve, buyout]-fraction
     basis, which stopped meaning anything once buyout re-pointed at the
     value anchor and reserve stopped bounding real outcomes."""
@@ -71,7 +71,7 @@ def render_auction_section(bucket_summary: pl.DataFrame) -> list[str]:
 
 def summarize_acquisitions(df: pl.DataFrame) -> pl.DataFrame:
     """External review 2026-07 finding 2: fraction of acquisitions made via
-    instant buyout vs. a won competitive bid, per strategy — if a strategy
+    instant buyout vs. a won competitive bid, per strategy - if a strategy
     converges on always-buyout, the bidding screen is dead for it and
     AUCTION_BUYOUT_PREMIUM needs to hurt more."""
     if df.height == 0:
@@ -96,7 +96,7 @@ def render_acquisitions_section(acquisitions_summary: pl.DataFrame) -> list[str]
         "25% premium over the value anchor, Sprint 20) is cheap enough that certainty "
         "always wins. Bots never buy out as of Sprint 20 (buyout is a player-impatience "
         "valve only), so this section's bot-side numbers are expected to read as 0% "
-        "buyout going forward — kept for the player-side telemetry hook and as a "
+        "buyout going forward - kept for the player-side telemetry hook and as a "
         "regression check that bots really have stopped buying out.",
         "",
         "| Strategy | Bid | Buyout |",

@@ -3,10 +3,10 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
 
-/** Ungated per the Sprint 16 ladder (day-1 accessible) — the plain purchase
+/** Ungated per the Sprint 16 ladder (day-1 accessible) - the plain purchase
  * flow's fixture, so these tests aren't entangled with the reputation gate. */
 const TIRE_MACHINE = EQUIPMENT.find((e) => e.componentIds.includes('wheels'))!
-/** Reputation-gated per the Sprint 16 ladder (requires 'known') — used
+/** Reputation-gated per the Sprint 16 ladder (requires 'known') - used
  * specifically to exercise the gate below. */
 const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
 
@@ -44,7 +44,7 @@ describe('equipment in the store (Sprint 13)', () => {
 
     const cashBefore = game.cashYen
     game.repair(car.id, 'wheels')
-    // No job created, no consumables charged — the gate refuses before any
+    // No job created, no consumables charged - the gate refuses before any
     // job exists, mirroring the existing `condition >= 100` early-return.
     expect(game.carDetail(car.id)?.jobs).toHaveLength(0)
     expect(game.cashYen).toBe(cashBefore)
@@ -59,7 +59,7 @@ describe('equipment in the store (Sprint 13)', () => {
 
     game.repair(car.id, 'wheels')
     // A single day's labor may be enough to finish the job outright (in
-    // which case it's already gone from the in-progress list) — either an
+    // which case it's already gone from the in-progress list) - either an
     // open job or a completed repair proves the gate let it through.
     const detail = game.carDetail(car.id)
     const jobOpened = detail?.jobs.some((j) => j.componentId === 'wheels') ?? false

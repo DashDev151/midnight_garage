@@ -12,7 +12,7 @@ function mountScreen() {
   return mount(GarageScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
 }
 
-/** Drags an element past the composable's movement threshold — pointerdown
+/** Drags an element past the composable's movement threshold - pointerdown
  * at the origin, then a pointermove far enough away to count as a drag. */
 async function dragPast(
   wrapper: ReturnType<typeof mountScreen>,
@@ -31,7 +31,7 @@ async function dropOn(
   await wrapper.get(zoneSelector).trigger('pointerup', { pointerId: 1 })
 }
 
-/** Same as `dragPast`, but targets the Nth match — for tests with two occupied cards in the
+/** Same as `dragPast`, but targets the Nth match - for tests with two occupied cards in the
  * same list, where a plain selector would otherwise grab the same element for both source and target. */
 async function dragPastAt(
   wrapper: ReturnType<typeof mountScreen>,
@@ -93,7 +93,7 @@ describe('GarageScreen', () => {
     const game = useGameStore()
     const wrapper = mountScreen()
     // Sprint 17 playtest fix: parking always renders its full capacity as
-    // slots (occupied + empty), mirroring service bays — so "empty bay"
+    // slots (occupied + empty), mirroring service bays - so "empty bay"
     // placeholders (real drop targets now) are present from the start.
     expect(wrapper.findAll('.parking-list .car-card')).toHaveLength(0)
     expect(wrapper.text()).toContain('empty bay')
@@ -154,7 +154,7 @@ describe('GarageScreen', () => {
       game.moveCar(carA!.id, 'service') // fills the sole starting service bay
       const wrapper = mountScreen()
 
-      // carA is in the (only) service slot, carB sits in parking — at whichever real slot index
+      // carA is in the (only) service slot, carB sits in parking - at whichever real slot index
       // it was originally assigned (Sprint 17: a genuine position, not "whichever parking row
       // renders first"), so the drop must target carB's occupied slot specifically, not just the
       // first parking `.shop-slot` in DOM order (that could just as easily be an empty one now).
@@ -165,14 +165,14 @@ describe('GarageScreen', () => {
       expect(game.parkingView.some((c) => c?.carId === carA!.id)).toBe(true)
     })
 
-    it('dragging a service-bay car onto an empty parking slot moves it (not just swap) — the reported bug', async () => {
+    it('dragging a service-bay car onto an empty parking slot moves it (not just swap) - the reported bug', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const carId = game.gameState.ownedCars[0]!.id
       game.moveCar(carId, 'service')
       const wrapper = mountScreen()
 
-      // Parking is entirely empty at this point — every parking-list slot
+      // Parking is entirely empty at this point - every parking-list slot
       // rendered is an empty placeholder, a real drop target since the
       // playtest fix (parking used to render zero slots when nothing was
       // parked, leaving nothing to drop onto).
@@ -185,16 +185,16 @@ describe('GarageScreen', () => {
 
     /**
      * Real bug reported from manual testing: same-section drops (service→
-     * service, parking→parking) were outright *refused* — the drop target
+     * service, parking→parking) were outright *refused* - the drop target
      * never highlighted and the gesture visibly failed, even though slot
      * position carries no gameplay meaning and the "right" outcome is just
      * "nothing changes." A refused drop and an accepted no-op look
      * identical in terms of final game state, but very different to a
-     * player mid-drag — these lock in that same-section drops are now
+     * player mid-drag - these lock in that same-section drops are now
      * *accepted* (the target highlights, the gesture completes cleanly),
      * not silently rejected.
      */
-    describe('same-section drops (previously refused — the reported bug)', () => {
+    describe('same-section drops (previously refused - the reported bug)', () => {
       it('occupied service onto an empty service slot completes cleanly and changes nothing', async () => {
         const game = useGameStore()
         game.devGrantBay('service') // a second bay, so there's an empty slot alongside the occupied one
@@ -233,7 +233,7 @@ describe('GarageScreen', () => {
         game.moveCar(carB!.id, 'service')
         const wrapper = mountScreen()
 
-        // Two distinct occupied service cards — drag the first, drop on the second.
+        // Two distinct occupied service cards - drag the first, drop on the second.
         await dragPastAt(wrapper, '.bay-slots .car-card', 0)
         await dropOnAt(wrapper, '.bay-slots .shop-slot:has(.car-card)', 1)
 
@@ -249,7 +249,7 @@ describe('GarageScreen', () => {
         const [carA, carB] = game.gameState.ownedCars
         const wrapper = mountScreen()
 
-        // Two distinct occupied parking cards — drag the first, drop on the second.
+        // Two distinct occupied parking cards - drag the first, drop on the second.
         await dragPastAt(wrapper, '.parking-list .car-card', 0)
         await dropOnAt(wrapper, '.parking-list .shop-slot:has(.car-card)', 1)
 
@@ -261,7 +261,7 @@ describe('GarageScreen', () => {
   })
 
   describe('click-based accessibility fallback (Sprint 17 decision 2)', () => {
-    it('pick a parked car, then place it on the service bay — no drag gesture at all', async () => {
+    it('pick a parked car, then place it on the service bay - no drag gesture at all', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const carId = game.gameState.ownedCars[0]!.id

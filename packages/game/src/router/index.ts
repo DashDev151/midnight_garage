@@ -39,7 +39,7 @@ export const router = createRouter({
  * Sprint 24 fix 1: a drag/pick session is module-level state that outlives
  * the component that started it (`useDragAndDrop.ts`'s own header comment).
  * Without this, navigating away mid-pick (e.g. picking a part, then tapping
- * back to the garage) left a stale session alive — the next screen's
+ * back to the garage) left a stale session alive - the next screen's
  * Replace click would silently short-circuit against a payload the user has
  * no way to see or intend anymore. A navigation always ends any in-flight
  * pick/drag.

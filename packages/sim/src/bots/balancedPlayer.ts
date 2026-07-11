@@ -15,7 +15,7 @@ import { bestFitBuyer } from '../selling'
 import { valuateCarForBuyer } from '../valuation'
 
 const MAX_CONCURRENT_CARS = 2
-/** Mid-range only — not the cheapest shitboxes, not the priciest rares. */
+/** Mid-range only - not the cheapest shitboxes, not the priciest rares. */
 const MIN_TARGET_BOOK_VALUE_YEN = 150_000
 const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.0
@@ -59,7 +59,7 @@ export function balancedPlayerStrategy(
   const bayBudget = serviceBayBudget(state)
   const equipBudget = equipmentBudget()
 
-  // 1. Continue any in-progress repair job from a prior day — only if its
+  // 1. Continue any in-progress repair job from a prior day - only if its
   // car is in the service bay (moved in first, if there's room today).
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
@@ -150,7 +150,7 @@ export function balancedPlayerStrategy(
   }
 
   // 4. Join or continue a bidding war on a mid-priced lot if there's room
-  // for another car (Sprint 20: open bidding — `leadingBidder !== 'player'`
+  // for another car (Sprint 20: open bidding - `leadingBidder !== 'player'`
   // covers both a fresh lot and one this bot was outbid on but is still
   // willing to chase under its walk-away target).
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)

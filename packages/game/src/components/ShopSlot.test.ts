@@ -8,6 +8,7 @@ const car: ShopCarView = {
   carId: 'car-1',
   displayName: 'Test Civic',
   isCustomerCar: false,
+  arrivingTomorrow: false,
 }
 
 function baseProps() {
@@ -94,5 +95,22 @@ describe('ShopSlot (Sprint 24 fix 5)', () => {
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
     expect(wrapper.find('[data-test="slot-car-1"]').attributes('disabled')).toBeDefined()
+  })
+
+  /**
+   * Sprint 25 task 2: a customer's car still in transit occupies its slot
+   * but isn't there yet - nothing to grab, drag, or move.
+   */
+  it('an in-transit car shows "arriving tomorrow", hides the grab-handle, and disables the move button', () => {
+    const arriving: ShopCarView = { ...car, isCustomerCar: true, arrivingTomorrow: true }
+    const wrapper = mount(ShopSlot, {
+      props: { ...baseProps(), car: arriving },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    expect(wrapper.text()).toContain('arriving tomorrow')
+    expect(wrapper.find(`[data-test="slot-pick-${arriving.carId}"]`).exists()).toBe(false)
+    expect(
+      wrapper.find(`[data-test="slot-${arriving.carId}"]`).attributes('disabled'),
+    ).toBeDefined()
   })
 })

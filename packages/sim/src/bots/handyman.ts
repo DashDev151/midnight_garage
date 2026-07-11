@@ -18,7 +18,7 @@ const MAX_CONCURRENT_CARS = 2
 const MIN_TARGET_BOOK_VALUE_YEN = 150_000
 const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.0
-/** Same headroom style as every other bot's cash buffer — equipment purchases use it too. */
+/** Same headroom style as every other bot's cash buffer - equipment purchases use it too. */
 const CASH_BUFFER_MULTIPLIER = 1.2
 const REPAIR_THRESHOLD = 90
 const REPAIR_LABOR_SLOTS = 2
@@ -33,9 +33,9 @@ const ACCEPTABLE_WALKIN_FRACTION = 0.85
 
 /**
  * Sprint 13: the payback-curve archetype the design doc's equipment ladder
- * is meant to reward — "invest fast, harvest the labor-only margin." Buys
+ * is meant to reward - "invest fast, harvest the labor-only margin." Buys
  * the cheapest equipment it doesn't yet own, every day it can afford one
- * with headroom to spare, *before* deciding what to do with its cars —
+ * with headroom to spare, *before* deciding what to do with its cars -
  * equipment is the priority spend, not an afterthought. Once equipped,
  * behaves like a disciplined restorer: fixes the worst component per car
  * (repair, now genuinely free of part cost thanks to the tool already
@@ -61,7 +61,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     laborBudget -= slots
   }
 
-  // 2. Buy the cheapest unowned, affordable, reputation-eligible equipment —
+  // 2. Buy the cheapest unowned, affordable, reputation-eligible equipment -
   // the investment priority. One purchase per day: buying everything at once
   // would strand the bot broke on tools with nothing left to run the shop.
   const unowned = context.equipment
@@ -79,7 +79,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
 
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
 
-  // 3. Repair the worst repairable component per job-free owned car —
+  // 3. Repair the worst repairable component per job-free owned car -
   // ensureEquipmentFor buys the tool here too if step 2 skipped it (e.g. no
   // unowned equipment covered a component this car actually needs).
   for (const car of state.ownedCars) {
@@ -159,8 +159,8 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
   }
 
   // 5. Join or continue a war on a mid-priced lot if there's room for
-  // another car — modest scale, since equipment competes for the same cash
-  // (Sprint 20: open bidding — `leadingBidder !== 'player'` covers both a
+  // another car - modest scale, since equipment competes for the same cash
+  // (Sprint 20: open bidding - `leadingBidder !== 'player'` covers both a
   // fresh lot and one this bot was outbid on but is still willing to chase
   // under its walk-away target).
   const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)

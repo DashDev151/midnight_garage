@@ -38,7 +38,7 @@ export function describeLogEntry(
     case 'auction-bid-placed':
       return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
     case 'auction-outbid':
-      return `Outbid overnight on lot ${entry.lotId} — now ${formatYen(entry.newBidYen)}`
+      return `Outbid overnight on lot ${entry.lotId} - now ${formatYen(entry.newBidYen)}`
     case 'auction-bid-won':
       return `Won lot ${entry.lotId} for ${formatYen(entry.finalPriceYen)}`
     case 'auction-bid-lost':
@@ -51,11 +51,11 @@ export function describeLogEntry(
       const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
       switch (entry.saleQuality) {
         case 'concours':
-          return `${base} — sold as a concours example, reputation +${entry.reputationDelta}`
+          return `${base} - sold as a concours example, reputation +${entry.reputationDelta}`
         case 'clean':
-          return `${base} — sold as a clean example, reputation +${entry.reputationDelta}`
+          return `${base} - sold as a clean example, reputation +${entry.reputationDelta}`
         case 'lemon':
-          return `${base} — sold as a lemon, reputation ${entry.reputationDelta}`
+          return `${base} - sold as a lemon, reputation ${entry.reputationDelta}`
         default:
           return base
       }
@@ -67,7 +67,9 @@ export function describeLogEntry(
     case 'part-delivered':
       return `Delivery arrived: ${entry.partId}`
     case 'service-job-accepted':
-      return `Service job accepted — customer car ${entry.carInstanceId} in the shop`
+      // Sprint 25 task 2: acceptance no longer places the car instantly, so
+      // this reads as the customer's own promise, not a status update.
+      return `Thanks - I'll drop it off first thing in the morning.`
     case 'service-job-completed':
       return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep)`
     case 'service-job-failed':
@@ -79,7 +81,7 @@ export function describeLogEntry(
     case 'bay-purchased':
       return `Bought a ${entry.kind} bay for ${formatYen(entry.priceYen)}`
     case 'acquisition-blocked':
-      return `${entry.kind} blocked — ${
+      return `${entry.kind} blocked - ${
         entry.reason === 'no-parking'
           ? 'no parking space'
           : entry.reason === 'no-cash'

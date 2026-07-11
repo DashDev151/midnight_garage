@@ -11,11 +11,11 @@ import { isServiceWorkDone } from '../serviceJobs'
 const CASH_BUFFER_MULTIPLIER = 1.1
 
 /**
- * Takes repair-only service jobs and actually works them — the player-hands
+ * Takes repair-only service jobs and actually works them - the player-hands
  * version of the Act 1 floor (never buys a car, never touches the parts
  * market). A customer's car sits in the shop; the bot moves it into the
  * (starting: one) service bay, creates a repair job on it, feeds it labor,
- * and — once the work is done — moves it back out to free the bay for the
+ * and - once the work is done - moves it back out to free the bay for the
  * next one. It never clicks "Complete Job" (that's a store-only, player-hands
  * action); a finished car just waits in the shop until the deadline backstop
  * pays out and sends it home, matching how a real headless bot has no click
@@ -23,11 +23,11 @@ const CASH_BUFFER_MULTIPLIER = 1.1
  * survive on jobs alone.
  *
  * Sprint 13: repair-only service jobs now require owning the matching
- * equipment (both to *accept* the offer and to actually work it) — without
+ * equipment (both to *accept* the offer and to actually work it) - without
  * equipment-purchase logic, this bot would have gone fully inert the moment
  * that shipped, since repair-only offers are its entire reason to exist.
  * Buying equipment is a deliberate, necessary exception to "never touches
- * the parts market" above (that line is about buying *parts*, not tools —
+ * the parts market" above (that line is about buying *parts*, not tools -
  * the tools are what make this bot's whole premise possible under the new
  * gate). Ignores the `rng` arg of BotStrategy (fewer params satisfies the
  * type) but now needs `context` for the equipment catalog.
@@ -45,7 +45,7 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
 
     const carId = serviceJob.car.id
 
-    // Finished? Free the bay for the next car — the deadline backstop pays
+    // Finished? Free the bay for the next car - the deadline backstop pays
     // out and sends this one home once its due day arrives.
     if (isServiceWorkDone(serviceJob)) {
       if (state.serviceBayCarIds.includes(carId)) {
@@ -90,10 +90,10 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
   }
 
   // Spare labor and an empty bay (after this tick's moves)? Bring the next
-  // repair-only car into the shop — it moves into the bay and starts work
+  // repair-only car into the shop - it moves into the bay and starts work
   // from the following day, once it's actually a real active job. Sprint 13:
   // accepting now requires owning the offer's equipment (resolveAcceptServiceJob
-  // refuses otherwise) — buy it first if affordable (equipment purchases
+  // refuses otherwise) - buy it first if affordable (equipment purchases
   // resolve before accepts in advanceDay's step order, so a same-tick buy
   // really does unlock this same-tick accept), else look for a different
   // offer this bot can actually equip for rather than wasting the day on one

@@ -4,7 +4,7 @@ import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 /**
- * The shared "End Day" control (Sprint 24 fix 4) — five screen templates
+ * The shared "End Day" control (Sprint 24 fix 4) - five screen templates
  * (Garage, CarDetail, ServiceJobs, Auction, PartsMarket) used to call
  * `game.endDay()` inline, each its own copy of the same button; the cart
  * warning (playtest 2026-07-10 #1) needed one place to land, not five.
@@ -42,7 +42,7 @@ function cancel(): void {
     <div class="modal">
       <h3>Items still in your cart</h3>
       <p class="flavor">
-        {{ game.gameState.cartPartIds.length }} part(s) in the cart haven't been ordered — end the
+        {{ game.gameState.cartPartIds.length }} part(s) in the cart haven't been ordered - end the
         day anyway?
       </p>
       <div class="actions">

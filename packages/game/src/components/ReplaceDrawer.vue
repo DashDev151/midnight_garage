@@ -5,9 +5,9 @@ import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * The Replace flow (Sprint 18, round 2 — real playtest fix): clicking a
+ * The Replace flow (Sprint 18, round 2 - real playtest fix): clicking a
  * component's "Replace" button opens this as an in-page side panel, scoped to
- * that one component. It never lives on a separate route — the reported bug
+ * that one component. It never lives on a separate route - the reported bug
  * was a player having no idea a part had to come from a *different tab* to
  * drag onto a component here; this renders directly alongside the components
  * list so the source and the drop target are visible at once.
@@ -22,7 +22,7 @@ const emit = defineEmits<{ close: [] }>()
 const game = useGameStore()
 
 /** Every stageable part, each flagged with whether it actually fits this
- * specific component (right slot + required tags) — shown either way so the
+ * specific component (right slot + required tags) - shown either way so the
  * player sees their whole inventory, not a mysteriously filtered subset. */
 const entries = computed(() => {
   const fitting = new Set(game.installablePartsFor(props.carId, props.componentId).map((p) => p.id))
@@ -42,7 +42,7 @@ function onSelect(partInstanceId: string): void {
 <template>
   <aside class="drawer" data-test="replace-drawer">
     <header class="drawer-head">
-      <h3>Replace {{ componentId }}</h3>
+      <h3>Replace {{ game.componentLabel(componentId) }}</h3>
       <button type="button" class="close" data-test="close-drawer" @click="emit('close')">
         &times;
       </button>
@@ -51,7 +51,7 @@ function onSelect(partInstanceId: string): void {
       Click a fitting part to install it here, or drag it onto the component instead.
     </p>
     <p v-if="entries.length === 0" class="empty">
-      No parts on hand — visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
+      No parts on hand - visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>
     <ul v-else class="parts-list">
       <PartCard

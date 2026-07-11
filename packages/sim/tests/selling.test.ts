@@ -77,11 +77,11 @@ describe('listPubliclyAskingPrice', () => {
 
   /**
    * Sprint 21 decision 6: heat applies exactly once, inside `marketValueYen`
-   * (via `valuateCarForBuyer`) — `listPubliclyAskingPrice` no longer
+   * (via `valuateCarForBuyer`) - `listPubliclyAskingPrice` no longer
    * multiplies by heat a second time on top of that (the old double-count).
    * Proof: since neither `conditionFactor` nor `tasteMultiplier` depends on
    * heat, and `LISTING_PATIENCE_PREMIUM` is a flat constant, a 1.2x change
-   * in heat should produce almost exactly a 1.2x change in the final price —
+   * in heat should produce almost exactly a 1.2x change in the final price -
    * a double-count would instead compound to ~1.44x.
    */
   it('applies market heat exactly once (no double-count with marketValueYen)', () => {
@@ -94,7 +94,7 @@ describe('listPubliclyAskingPrice', () => {
 describe('bestFitBuyer', () => {
   it('returns the highest-valuing buyer among those genuinely interested in this tier', () => {
     // Sprint 11: bestFitBuyer only ever picks from the gated (tier-interested)
-    // pool, same as sellViaWalkIn/listPubliclyAskingPrice — an uninterested
+    // pool, same as sellViaWalkIn/listPubliclyAskingPrice - an uninterested
     // archetype's raw valuation is irrelevant, it was never a candidate.
     const best = bestFitBuyer(car, model, BUYERS, {}, 100, {}, ECONOMY)
     if (!best) throw new Error('expected a best-fit buyer')
@@ -119,7 +119,7 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
 
   it('a collector never appears as the walk-in buyer for a shitbox-tier car', () => {
     // Per buyers.json, collector's tierPreferences list legend/gaisha/rare/
-    // uncommon only — no shitbox entry at all.
+    // uncommon only - no shitbox entry at all.
     for (let seed = 0; seed < 50; seed++) {
       const offer = sellViaWalkIn(
         shitboxCar,
@@ -136,7 +136,7 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
   })
 
   it('listPubliclyAskingPrice only averages genuinely-interested buyers, not the full roster', () => {
-    // Shitbox has exactly one interested archetype (first-timer) — the gated
+    // Shitbox has exactly one interested archetype (first-timer) - the gated
     // price should equal that buyer's own valuation exactly, not be dragged
     // down by averaging in four buyers who were never real candidates.
     const gatedPrice = listPubliclyAskingPrice(
@@ -290,7 +290,7 @@ describe('reputation side effects (Sprint 15)', () => {
   })
 
   it('a walk-in sale of a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
-    // A player at 2 points selling a lemon (nominal -5) only has 2 to lose —
+    // A player at 2 points selling a lemon (nominal -5) only has 2 to lose -
     // `applyReputationDelta` floors at 0. Before this fix, the log entry
     // carried the nominal -5 regardless of what actually applied.
     const state = stateWithCar(lemonCar, { reputationPoints: 2 })

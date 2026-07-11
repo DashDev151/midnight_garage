@@ -14,7 +14,7 @@ import { clearStagedWork, confirmStagedWork } from '../src/stagedWork'
 // fit against the real catalog, so an install spec needs both to resolve).
 const CONTEXT = buildSimContext(CARS, PARTS, [], [], [], undefined, [], EQUIPMENT)
 
-/** Equipment covering the components these tests repair — owned by default so confirm tests
+/** Equipment covering the components these tests repair - owned by default so confirm tests
  * aren't incidentally blocked by the equipment gate, which has its own dedicated test below. */
 const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
 const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!

@@ -9,7 +9,7 @@ export const StatBlockSchema = z.object({
   authenticity: z.number(),
 })
 
-/** A part's effect on the five stats — deltas, so any sign, no change by default. */
+/** A part's effect on the five stats - deltas, so any sign, no change by default. */
 export const StatModifierSchema = z.object({
   power: z.number().default(0),
   handling: z.number().default(0),

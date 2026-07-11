@@ -3,7 +3,7 @@ import { REPUTATION_INCOME_MULTIPLIER, SERVICE_BAY_YEN_PER_HUSTLE } from './cons
 
 /**
  * Passive daily service-bay income (GDD 3.4), scaled by staff Hustle and
- * shop reputation. Zero with no staff — matches GDD 9.0's Act 1 framing,
+ * shop reputation. Zero with no staff - matches GDD 9.0's Act 1 framing,
  * where service jobs are hand-played until staff exist (hiring is
  * Sprint 13); the formula is wired now so it's already correct then.
  */

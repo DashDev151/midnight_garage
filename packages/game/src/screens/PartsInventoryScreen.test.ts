@@ -29,7 +29,7 @@ describe('PartsInventoryScreen', () => {
     expect(wrapper.findAll('.part-card')).toHaveLength(2)
   })
 
-  it('omits a part currently staged on a car — the same set CarDetailScreen uses (decision 3)', () => {
+  it('omits a part currently staged on a car - the same set CarDetailScreen uses (decision 3)', () => {
     const game = useGameStore()
     game.devGrantPart(PARTS[0]!.id)
     const partInstanceId = game.gameState.partInventory[0]!.id

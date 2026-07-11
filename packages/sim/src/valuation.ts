@@ -16,7 +16,7 @@ const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenti
  * weights fit this car's derived stats, `[1 - tasteSpread, 1 + tasteSpread]`
  * (economy.json's first-pass `tasteSpread` of 0.12 bounds it to [0.88, 1.12],
  * centered near 1.0 for an average car). Kept verbatim from the pre-Sprint-21
- * fit-score math — stats stop being the value pipeline (`marketValueYen` is
+ * fit-score math - stats stop being the value pipeline (`marketValueYen` is
  * both issue-blind and stat-blind), but they still decide who pays a bit
  * more, never whether the car is worth anything.
  */
@@ -49,20 +49,20 @@ function tasteMultiplier(
 /**
  * What a buyer archetype would pay for a car (GDD 6.3), shared by
  * bidding (as an AI competitor's true value) and selling (as an offer).
- * Sprint 03 decision 5: stays pure and deterministic — no RNG, no side
+ * Sprint 03 decision 5: stays pure and deterministic - no RNG, no side
  * effects. Bidder-side noise (decision 4) is layered on by the caller.
  *
- * Sprint 21 rewrite: `marketValue x taste` — `marketValueYen` (marketValue.ts)
+ * Sprint 21 rewrite: `marketValue x taste` - `marketValueYen` (marketValue.ts)
  * is the taste-free "what is this car worth" answer shared by every price in
  * the game (condition, installed parts, market heat); `tasteMultiplier`
  * above is the only place stat fit still matters, bounded so it can only
  * nudge the price, never invert whether the car is worth anything. Deleted
  * outright: the old `fitComponent`/`tierComponent`/`priceAdjusted` price
- * math (see sprint21.md's "Deleted outright" section) — `buyer.priceSensitivity`
+ * math (see sprint21.md's "Deleted outright" section) - `buyer.priceSensitivity`
  * stays in the schema/content as a reserved, currently-unused field.
  *
  * Sprint 22 decision 4: re-based from `marketValueYen` onto
- * `issueAdjustedValueYen` — every sale-side buyer valuation now sees the
+ * `issueAdjustedValueYen` - every sale-side buyer valuation now sees the
  * real, issue-adjusted truth (issues are always revealed post-purchase;
  * there is no concealment mechanic once a car is owned).
  */

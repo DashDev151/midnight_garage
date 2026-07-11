@@ -19,17 +19,19 @@ import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
 import { generateAuctionCarInstance } from '../src/auctions'
-import { SERVICE_JOB_DEADLINE_DAYS } from '../src/constants'
+import { SERVICE_JOB_ARRIVAL_DELAY_DAYS, SERVICE_JOB_DEADLINE_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
   generateServiceJobOffers,
+  isServiceJobInTransit,
   isServiceWorkDone,
   reputationForCompletion,
   reputationForFailure,
   resolveAcceptServiceJob,
   resolveServiceJob,
+  resolveServiceJobArrivals,
 } from '../src/serviceJobs'
 
 const CONTEXT = buildSimContext(
@@ -47,7 +49,7 @@ const repairType = SERVICE_JOB_TYPES.find((t) => t.work.kind === 'repair')!
 const installType = SERVICE_JOB_TYPES.find(
   (t) => t.work.kind === 'install' && t.work.componentId === 'brakes',
 )!
-/** The equipment covering repairType's component — owned by default in accept tests below
+/** The equipment covering repairType's component - owned by default in accept tests below
  * so they exercise their own intended gate (parking, unknown offer) rather than the new
  * Sprint 13 equipment gate, which has its own dedicated tests. */
 const REPAIR_EQUIPMENT = EQUIPMENT.find((e) =>
@@ -72,6 +74,7 @@ function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}
     payoutYen: type.payoutRangeYen[0],
     baseReputation: type.baseReputation,
     expiresOnDay: 30,
+    arrivesOnDay: null, // an already-arrived, workable job by default in these fixtures
     dueOnDay: 8,
   }
 }
@@ -201,13 +204,13 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
         10,
         rng,
         Infinity,
-        [], // nothing owned — every repair-kind candidate is filtered/hinted
+        [], // nothing owned - every repair-kind candidate is filtered/hinted
         CONTEXT.equipmentById,
       )
       totalOffers += offers.length
       repairOffers += offers.filter((o) => o.work.kind === 'repair').length
     }
-    // Statistical, not exact — matching how every other probabilistic sim
+    // Statistical, not exact - matching how every other probabilistic sim
     // mechanic in this codebase is tested. "Mostly filtered, rarely not":
     // real share should land well under an even (types-weighted) split, but
     // still clearly nonzero across a large sample.
@@ -274,6 +277,80 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
       createRng(1),
     )
     expect(withDefaults).toHaveLength(4)
+  })
+})
+
+/**
+ * Sprint 25 task 10: install-kind offers ("the parts market and a wrench")
+ * only start appearing at INSTALL_OFFER_MIN_REPUTATION ('local') or above -
+ * the playtest note this closes was literally a turbo-build offer on a
+ * brand-new game's first day.
+ */
+describe('install-offer reputation gate (Sprint 25 task 10)', () => {
+  it('a brand-new (unknown-reputation) game never offers an install-kind job', () => {
+    const rng = createRng(11)
+    let totalOffers = 0
+    for (let week = 0; week < 60; week++) {
+      const offers = generateServiceJobOffers(
+        SERVICE_JOB_TYPES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+        CARS,
+        CONTEXT.hiddenIssuesByComponent,
+        week * 7,
+        4,
+        10,
+        rng,
+        Infinity,
+        [],
+        CONTEXT.equipmentById,
+        'unknown',
+      )
+      totalOffers += offers.length
+      expect(offers.every((o) => o.work.kind !== 'install')).toBe(true)
+    }
+    expect(totalOffers).toBeGreaterThan(0) // sanity: this ran real generation, not a no-op
+  })
+
+  it('install-kind offers reappear once reputation reaches local', () => {
+    const rng = createRng(12)
+    let sawInstall = false
+    for (let week = 0; week < 60 && !sawInstall; week++) {
+      const offers = generateServiceJobOffers(
+        SERVICE_JOB_TYPES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+        CARS,
+        CONTEXT.hiddenIssuesByComponent,
+        week * 7,
+        4,
+        10,
+        rng,
+        Infinity,
+        [],
+        CONTEXT.equipmentById,
+        'local',
+      )
+      if (offers.some((o) => o.work.kind === 'install')) sawInstall = true
+    }
+    expect(sawInstall).toBe(true)
+  })
+
+  it('defaults to unrestricted (legend) when the reputation param is omitted', () => {
+    const rng = createRng(13)
+    let sawInstall = false
+    for (let week = 0; week < 40 && !sawInstall; week++) {
+      const offers = generateServiceJobOffers(
+        SERVICE_JOB_TYPES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+        CARS,
+        CONTEXT.hiddenIssuesByComponent,
+        week * 7,
+        4,
+        10,
+        rng,
+      )
+      if (offers.some((o) => o.work.kind === 'install')) sawInstall = true
+    }
+    expect(sawInstall).toBe(true)
   })
 })
 
@@ -382,7 +459,7 @@ describe('resolveServiceJob (the single resolution path)', () => {
    * flavor pool covering both wheels and interior parts) was split into
    * separate `install-wheels`/`install-interior` types once wheels and
    * interior became real, distinct components. The "install job pays" test
-   * above only exercises `brakes` (a pre-existing install type) — this
+   * above only exercises `brakes` (a pre-existing install type) - this
    * covers every install type in the real catalog, including the two new
    * ones, so a broken split (e.g. componentId pointing at the wrong
    * component, or a missing content entry) fails here instead of silently
@@ -416,7 +493,12 @@ describe('resolveServiceJob (the single resolution path)', () => {
 })
 
 describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
-  it('moves the offer into activeServiceJobs and stamps the deadline instantly', () => {
+  /**
+   * Sprint 25 task 2: acceptance claims the parking slot instantly (unchanged),
+   * but the car itself arrives `SERVICE_JOB_ARRIVAL_DELAY_DAYS` later, and the
+   * work deadline is counted from that arrival day, not from acceptance.
+   */
+  it('moves the offer into activeServiceJobs, marks it in transit, and counts the deadline from arrival', () => {
     const offer = { ...activeJob(repairType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -426,7 +508,12 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(0)
     expect(result.state.activeServiceJobs).toHaveLength(1)
-    expect(result.state.activeServiceJobs[0]!.dueOnDay).toBe(state.day + SERVICE_JOB_DEADLINE_DAYS)
+    const accepted = result.state.activeServiceJobs[0]!
+    expect(accepted.arrivesOnDay).toBe(state.day + SERVICE_JOB_ARRIVAL_DELAY_DAYS)
+    expect(accepted.dueOnDay).toBe(
+      state.day + SERVICE_JOB_ARRIVAL_DELAY_DAYS + SERVICE_JOB_DEADLINE_DAYS,
+    )
+    expect(isServiceJobInTransit(accepted, state.day)).toBe(true)
     expect(result.log).toEqual([
       { type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id },
     ])
@@ -457,11 +544,11 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
 
   /**
    * Sprint 13 decision 2: a repair-kind offer "can't even be accepted"
-   * without the matching equipment — install-kind offers are never gated
+   * without the matching equipment - install-kind offers are never gated
    * (replace is always available). The offer stays on the board either way
    * (the maintainer's own read is that an unreachable repair offer
-   * arguably shouldn't be generated at all — deliberately deferred, see
-   * TODO.md — this sprint ships the simpler accept-time block).
+   * arguably shouldn't be generated at all - deliberately deferred, see
+   * TODO.md - this sprint ships the simpler accept-time block).
    */
   it('refuses a repair-kind offer without the matching equipment, leaving it on the board', () => {
     const offer = { ...activeJob(repairType), dueOnDay: null }
@@ -491,7 +578,7 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver)', () => {
 })
 
 describe('service jobs in advanceDay', () => {
-  it('accepting brings the car into the shop and stamps the deadline', () => {
+  it('accepting claims a parking slot and stamps the deadline from the (delayed) arrival day', () => {
     const offer = { ...activeJob(repairType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -502,8 +589,34 @@ describe('service jobs in advanceDay', () => {
     const { state: next } = advanceDay(state, actions, 1, CONTEXT)
 
     expect(next.activeServiceJobs).toHaveLength(1)
-    expect(next.activeServiceJobs[0]!.dueOnDay).toBe(1 + SERVICE_JOB_DEADLINE_DAYS)
+    expect(next.activeServiceJobs[0]!.dueOnDay).toBe(
+      1 + SERVICE_JOB_ARRIVAL_DELAY_DAYS + SERVICE_JOB_DEADLINE_DAYS,
+    )
     expect(next.ownedCars).toHaveLength(0)
+  })
+
+  /**
+   * Sprint 25 task 2 regression, matching the sprint doc's exact required
+   * test: accept on day N, run exactly one advanceDay, and the car is
+   * already workable (arrivesOnDay cleared) - not still in transit for a
+   * second day, same off-by-one class as parts.ts's resolvePartDeliveries.
+   */
+  it('accept-then-advance places a workable (arrived) car after exactly one advanceDay', () => {
+    const offer = { ...activeJob(repairType), dueOnDay: null }
+    const dayN = 5
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      day: dayN,
+      serviceJobOffers: [offer],
+      ownedEquipmentIds: [REPAIR_EQUIPMENT.id],
+    }
+    const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
+    const { state: next } = advanceDay(state, actions, dayN, CONTEXT)
+
+    expect(next.day).toBe(dayN + 1)
+    const accepted = next.activeServiceJobs[0]!
+    expect(accepted.arrivesOnDay).toBeNull()
+    expect(isServiceJobInTransit(accepted, next.day)).toBe(false)
   })
 
   it('the deadline backstop pays a finished job and fails an unfinished one', () => {
@@ -528,7 +641,7 @@ describe('service jobs in advanceDay', () => {
     expect(failed.activeServiceJobs).toHaveLength(0)
   })
 
-  it('the deadline backstop drops staged work too (Sprint 18) — the same resolver, not a second path', () => {
+  it('the deadline backstop drops staged work too (Sprint 18) - the same resolver, not a second path', () => {
     const undone = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -548,5 +661,50 @@ describe('service jobs in advanceDay', () => {
     const state = { ...createInitialGameState(CONTEXT, 1), day: 1, serviceJobOffers: [offer] }
     const { state: next } = advanceDay(state, DayActionsSchema.parse({}), 1, CONTEXT)
     expect(next.serviceJobOffers).toHaveLength(0)
+  })
+})
+
+describe('isServiceJobInTransit', () => {
+  it('is false once the job has no arrivesOnDay set (already arrived)', () => {
+    const job = activeJob(repairType) // arrivesOnDay: null by default
+    expect(isServiceJobInTransit(job, 100)).toBe(false)
+  })
+
+  it('is true while the arrival day is still in the future, false once reached', () => {
+    const job = { ...activeJob(repairType), arrivesOnDay: 10 }
+    expect(isServiceJobInTransit(job, 9)).toBe(true)
+    expect(isServiceJobInTransit(job, 10)).toBe(false)
+    expect(isServiceJobInTransit(job, 11)).toBe(false)
+  })
+})
+
+describe('resolveServiceJobArrivals (Sprint 25 task 2, day arithmetic mirrors resolvePartDeliveries)', () => {
+  it('is a no-op when nothing is in transit', () => {
+    const job = activeJob(repairType) // already arrived
+    const state = { ...createInitialGameState(CONTEXT, 1), activeServiceJobs: [job] }
+    const result = resolveServiceJobArrivals(state)
+    expect(result.state).toBe(state)
+  })
+
+  it('leaves a further-out arrival pending until one day before it', () => {
+    const job = { ...activeJob(repairType), arrivesOnDay: 20 }
+    const state = { ...createInitialGameState(CONTEXT, 1), day: 18, activeServiceJobs: [job] }
+    const result = resolveServiceJobArrivals(state)
+    expect(result.state).toBe(state)
+    expect(result.state.activeServiceJobs[0]!.arrivesOnDay).toBe(20)
+  })
+
+  /**
+   * Same off-by-one class as parts.ts's resolvePartDeliveries: advanceDay
+   * never mutates state.day until the very end of its own body, so the one
+   * call that takes day N to day N + 1 must clear an arrivesOnDay: N + 1
+   * job right here, not on the following call.
+   */
+  it('regression: a job accepted on day N clears in the very next resolveServiceJobArrivals call', () => {
+    const dayN = 5
+    const job = { ...activeJob(repairType), arrivesOnDay: dayN + SERVICE_JOB_ARRIVAL_DELAY_DAYS }
+    const state = { ...createInitialGameState(CONTEXT, 1), day: dayN, activeServiceJobs: [job] }
+    const result = resolveServiceJobArrivals(state)
+    expect(result.state.activeServiceJobs[0]!.arrivesOnDay).toBeNull()
   })
 })

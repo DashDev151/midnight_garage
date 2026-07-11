@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentId } from '@midnight-garage/content'
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
@@ -19,12 +20,17 @@ const detailedGroups = computed(() =>
 )
 
 const hasLots = computed(() => detailedGroups.value.length > 0)
+
+/** Display-name join for a model's known risk components (Sprint 25 task 6). */
+function componentListLabel(ids: ComponentId[]): string {
+  return ids.map((id) => game.componentLabel(id)).join(', ')
+}
 const daysUntilCatalog = computed(() => {
   const d = 7 - (game.day % 7)
   return d === 0 ? 7 : d
 })
 
-/** Subtle pre-bid turnout flavor (Sprint 20 maintainer decision 3) — one
+/** Subtle pre-bid turnout flavor (Sprint 20 maintainer decision 3) - one
  * word of texture, never a numeric gauge. Price is king. */
 const TURNOUT_LABEL: Record<string, string> = {
   thin: 'Thin turnout',
@@ -32,7 +38,7 @@ const TURNOUT_LABEL: Record<string, string> = {
   packed: 'Packed turnout',
 }
 
-/** "current bid + who holds it" (Sprint 20) — the board's headline number,
+/** "current bid + who holds it" (Sprint 20) - the board's headline number,
  * always the real figure, never obfuscated. */
 function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' | null): string {
   if (currentBidYen <= 0) return 'no bids yet'
@@ -48,7 +54,7 @@ function quietStateLabel(d: LotDetail | MyActiveBidView): string {
   if (d.currentBidYen <= 0) return ''
   if (d.quietDays <= 0) return 'bidding active'
   const since = d.quietDays === 1 ? 'yesterday' : `in ${d.quietDays} days`
-  return `no new bids ${since} — hammer at ${d.hammerThreshold}`
+  return `no new bids ${since} - hammer at ${d.hammerThreshold}`
 }
 
 function backstopLabel(expiresOnDay: number): string {
@@ -69,12 +75,12 @@ function backstopLabel(expiresOnDay: number): string {
     </header>
 
     <p v-if="!hasLots" class="empty">
-      No lots listed. The next weekly catalog arrives in ~{{ daysUntilCatalog }} day(s) — End Day
+      No lots listed. The next weekly catalog arrives in ~{{ daysUntilCatalog }} day(s) - End Day
       (or use the dev console to warp).
     </p>
 
     <p v-if="game.parkingFull" class="parking-warning">
-      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) — a won lot has
+      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) - a won lot has
       nowhere to go and will be lost to a rival. Free up a bay or buy more parking first.
     </p>
 
@@ -113,11 +119,10 @@ function backstopLabel(expiresOnDay: number): string {
               {{ d.lot.car.color }}
             </span>
             <span v-if="d.modelRiskComponents.length > 0" class="risk-hint">
-              known for {{ d.modelRiskComponents.join(', ') }} issues
+              known for {{ componentListLabel(d.modelRiskComponents) }} issues
             </span>
           </div>
           <div class="lot-nums">
-            <span>book {{ formatYen(d.bookValueYen) }}</span>
             <span>reserve {{ formatYen(d.reserveYen) }}</span>
             <span class="current-bid" :class="{ 'current-bid-mine': d.leadingBidder === 'player' }">
               {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
@@ -138,10 +143,9 @@ function backstopLabel(expiresOnDay: number): string {
               <span v-if="d.revealedIssues.length === 0" class="clean">no hidden issues</span>
               <span v-else class="issues">
                 <span v-for="iss in d.revealedIssues" :key="iss.issueId" class="issue-entry">
-                  {{ iss.componentId }}: {{ iss.hintText }} ({{ iss.severityBand }}, ~{{
-                    formatYen(iss.costYen)
-                  }}
-                  to fix)
+                  {{ game.componentLabel(iss.componentId) }}: {{ iss.hintText }} ({{
+                    iss.severityBand
+                  }}, ~{{ formatYen(iss.costYen) }} to fix)
                 </span>
               </span>
             </template>
@@ -277,7 +281,7 @@ h3 {
   flex-wrap: wrap;
 }
 
-/* Flavor only (maintainer decision 3) — no urgency coloring, just a subtle
+/* Flavor only (maintainer decision 3) - no urgency coloring, just a subtle
    shift so "packed" reads warmer than "thin" without shouting. */
 .turnout-badge {
   padding: 1px 8px;
@@ -335,7 +339,7 @@ h3 {
 }
 
 /* Sprint 22 decision 5: public trade knowledge about the MODEL, not this
-   specific instance — always visible, independent of inspection. */
+   specific instance - always visible, independent of inspection. */
 .risk-hint {
   display: block;
   color: var(--mg-text-dim);

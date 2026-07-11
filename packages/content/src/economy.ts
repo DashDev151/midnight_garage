@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/** One yen/count value per auction tier — the same shape `AUCTION_LOTS_PER_TIER`
+/** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
  * and `AUCTION_TRAVEL_FEE_YEN` used as `Readonly<Record<AuctionTier, number>>`
  * in sim/constants.ts before this file existed. Explicit per-tier keys (not a
  * generic `z.record`) so a missing tier fails validation, matching
@@ -36,7 +36,7 @@ const LaborSlotsByBandSchema = z.tuple([
 
 /**
  * Sprint 21: per-component weight (0-1) toward `conditionFactor`'s weighted
- * condition — the 8 real components (same set as `ComponentIdSchema` in
+ * condition - the 8 real components (same set as `ComponentIdSchema` in
  * tags.ts), explicit keys rather than a generic `z.record` so a missing
  * component fails validation instead of silently contributing 0. Refined to
  * sum to 1.0 (within floating-point tolerance) so the weighted average stays
@@ -59,7 +59,7 @@ const ComponentValueWeightsSchema = z
 
 /**
  * Sprint 20 step 0 (maintainer ask, 2026-07-11): the content law says
- * designer-tunable numbers live in JSON, not in code — in practice the
+ * designer-tunable numbers live in JSON, not in code - in practice the
  * economy/auction family lived in `sim/constants.ts` (plus a stray
  * `STARTING_CASH_YEN` in `sim/newGame.ts`). This schema + `data/economy.json`
  * fix that, threaded through `SimContext` like every other content file.
@@ -68,7 +68,7 @@ const ComponentValueWeightsSchema = z
  * identical to what the old TS constants held (golden-master sim test
  * hashes are the proof the move changed no behavior). The new Sprint 20
  * auction-rework knobs (demand ceiling, overnight counter, turnout bands,
- * etc.) are NOT part of this schema yet — they're born here only once the
+ * etc.) are NOT part of this schema yet - they're born here only once the
  * bidding rework actually consumes them.
  */
 export const EconomyConfigSchema = z.object({
@@ -76,7 +76,7 @@ export const EconomyConfigSchema = z.object({
    * Day-1 starting cash (was `STARTING_CASH_YEN` in sim/newGame.ts). Balance-
    * harness finding (Sprint 03): 100 days of `WEEKLY_RENT_YEN` (Y1,260,000)
    * almost exactly consumed the original economy-v0.md draft of Y1,200,000,
-   * leaving zero operating margin for any strategy — even one with
+   * leaving zero operating margin for any strategy - even one with
    * genuinely profitable trades goes under from a single bad run or a slow
    * start. Bumped to give real working capital; economy-v0.md updated to
    * match.
@@ -111,17 +111,17 @@ export const EconomyConfigSchema = z.object({
   AUCTION_TRAVEL_FEE_YEN: ByAuctionTierSchema,
   /**
    * Instant-buyout premium over `bidding.ts`'s `anchorValueYen` (the same
-   * best-interested-buyer valuation the demand ceiling anchors to) — the
+   * best-interested-buyer valuation the demand ceiling anchors to) - the
    * floor half of `computeBuyoutPriceYen`'s `max(anchor * premium, current +
    * increment)`. Sprint 20: re-pointed from book value (was 1.1x book) to
    * the value anchor and raised to 1.25x, since wholesale clearing now runs
-   * ~0.6-0.8x value — buyout needs real separation from a patient bid to stay
+   * ~0.6-0.8x value - buyout needs real separation from a patient bid to stay
    * a price-not-forbidden deterrent (maintainer decision 2).
    */
   AUCTION_BUYOUT_PREMIUM: z.number().positive(),
   /**
    * Sprint 20 (auction rework II): dealers pay resale minus recon minus
-   * margin — the demand ceiling's wholesale anchor, applied to
+   * margin - the demand ceiling's wholesale anchor, applied to
    * `anchorValueYen` before the lot-seeded spread.
    */
   AUCTION_WHOLESALE_FRACTION: z.number().positive().max(1),
@@ -129,35 +129,35 @@ export const EconomyConfigSchema = z.object({
    * of the wholesale-anchored center) the demand ceiling rolls around. */
   AUCTION_DEMAND_SPREAD_SD: z.number().positive(),
   /** Chance a lot rolls a weak-turnout day, multiplying its demand ceiling by
-   * `AUCTION_THIN_TURNOUT_FACTOR` — the weak-day tail where steals live. */
+   * `AUCTION_THIN_TURNOUT_FACTOR` - the weak-day tail where steals live. */
   AUCTION_THIN_TURNOUT_CHANCE: z.number().min(0).max(1),
   AUCTION_THIN_TURNOUT_FACTOR: z.number().positive().max(1),
   /** Overnight odds the standing dealers answer with one increment toward
-   * the demand ceiling — unconditional on who currently leads. */
+   * the demand ceiling - unconditional on who currently leads. */
   AUCTION_COUNTER_CHANCE: z.number().min(0).max(1),
   /** Consecutive quiet overnight steps (no raise) before a lot hammers to
    * whoever currently leads (maintainer decision 1). */
   AUCTION_QUIET_DAYS_TO_HAMMER: z.number().int().positive(),
-  /** Bid increment as a fraction of book value, floored/rounded to Y10,000 —
+  /** Bid increment as a fraction of book value, floored/rounded to Y10,000 -
    * one ladder for the player, dealers, and bots alike. */
   AUCTION_BID_INCREMENT_FRACTION: z.number().positive(),
   /** Turnout-word thresholds over `demandCeiling / (anchorValueYen *
    * AUCTION_WHOLESALE_FRACTION)`: thin below the first, packed above the
-   * second, steady between — flavor only, price is king. */
+   * second, steady between - flavor only, price is king. */
   AUCTION_TURNOUT_BANDS: AscendingFractionPairSchema,
   /**
    * Sprint 21 (value model): per-component weight (0-1, sum 1.0) a car's 8
-   * real components contribute to `conditionFactor` — an engine matters far
+   * real components contribute to `conditionFactor` - an engine matters far
    * more to what a car is worth than its wheels. Explicit per-component keys
    * (not a generic `z.record`), matching `ByAuctionTierSchema`'s existing
    * preference for explicit shape over a bare map.
    */
   valuation: z.object({
     componentValueWeights: ComponentValueWeightsSchema,
-    /** `conditionFactor`'s floor at weighted condition 0 — a wreck still has
+    /** `conditionFactor`'s floor at weighted condition 0 - a wreck still has
      * chassis/parts scrap value, never worth literally nothing. */
     conditionFloor: z.number().nonnegative(),
-    /** `conditionFactor`'s ceiling at weighted condition 100 — a perfect
+    /** `conditionFactor`'s ceiling at weighted condition 100 - a perfect
      * restoration clears book value, giving genuine headroom for a profitable
      * flip (mirrors the old `valuateCarForBuyer` fit-component's own note on
      * why a formula that can never clear book breaks the economy). */
@@ -169,22 +169,22 @@ export const EconomyConfigSchema = z.object({
      * cents on the yen, they don't multiply the chassis price). */
     partsRetention: z.number().min(0).max(1),
     /** Multiplier applied to a genuine-period installed part's contribution
-     * (on top of `partsRetention`) — period-correct parts hold more value
+     * (on top of `partsRetention`) - period-correct parts hold more value
      * than a modern reproduction of the same catalog part. */
     genuinePeriodMultiplier: z.number().positive(),
     /** Buyer-taste spread (decision 4): `valuateCarForBuyer` bounds its taste
      * multiplier to `[1 - tasteSpread, 1 + tasteSpread]` around `marketValueYen`
-     * — how well a buyer archetype's stat weights fit this car, never whether
+     * - how well a buyer archetype's stat weights fit this car, never whether
      * the car is worth anything (that's `marketValueYen` alone). */
     tasteSpread: z.number().min(0).max(1),
     /** `listPubliclyAskingPrice`'s "slow, market price" premium over the
-     * plain average interested-buyer valuation — the reward for patience that
+     * plain average interested-buyer valuation - the reward for patience that
      * used to come from double-applying market heat (removed, decision 6:
      * heat now applies exactly once, inside `marketValueYen`). */
     listingPatiencePremium: z.number().positive(),
   }),
   /**
-   * Sprint 21: deterministic supply/demand market pressure — replaces the
+   * Sprint 21: deterministic supply/demand market pressure - replaces the
    * old pure random walk (`driftMarketHeat`'s +/-4 weekly). Three signals
    * (a slow per-model demand wave, a supply-glut penalty, a flood-the-market
    * penalty) combine into a target `marketHeat` value each model's actual
@@ -194,13 +194,13 @@ export const EconomyConfigSchema = z.object({
     .object({
       /** Amplitude (+/- percent) of each model's slow demand wave. */
       WAVE_AMPLITUDE: z.number().nonnegative(),
-      /** Wave period, in weeks — a full up-and-down cycle. */
+      /** Wave period, in weeks - a full up-and-down cycle. */
       WAVE_PERIOD_WEEKS: z.number().int().positive(),
       /** Heat-percent penalty per unit of decayed `lotSupply` (fresh catalog
        * lots of this model, exponentially decayed). */
       SUPPLY_WEIGHT: z.number().nonnegative(),
       /** Heat-percent penalty per unit of decayed `playerSales` (the
-       * player's own recent sales of this model — flooding the market). */
+       * player's own recent sales of this model - flooding the market). */
       SALES_WEIGHT: z.number().nonnegative(),
       /** Below this decayed `lotSupply`, a model counts as scarce and gets
        * `SCARCITY_BONUS` added to its target heat. */
@@ -211,7 +211,7 @@ export const EconomyConfigSchema = z.object({
       HEAT_MIN: z.number().positive(),
       HEAT_MAX: z.number().positive(),
       /** Fraction of the gap to the target each model's real heat closes,
-       * per weekly update — smoothing so heat drifts rather than jumps. */
+       * per weekly update - smoothing so heat drifts rather than jumps. */
       SMOOTHING: z.number().min(0).max(1),
       /** Weekly exponential decay applied to both `marketLedger` counters
        * before they feed the target-heat formula. */
@@ -222,9 +222,9 @@ export const EconomyConfigSchema = z.object({
     }),
   /**
    * Sprint 21: `derivedStats.ts`'s five magic numbers, moved here verbatim
-   * (decision 8 — same values, zero behavior change this sprint) so a future
+   * (decision 8 - same values, zero behavior change this sprint) so a future
    * sprint can retune them as data instead of a code edit.
-   * `powerNormalizationCeiling` isn't a `computeDerivedStats` input — it
+   * `powerNormalizationCeiling` isn't a `computeDerivedStats` input - it
    * feeds `valuateCarForBuyer`'s taste normalization instead (the old
    * `POWER_NORMALIZATION_CEILING` constant), but lives in this block since
    * it's part of the same "stat formula magic numbers" family.
@@ -250,13 +250,13 @@ export const EconomyConfigSchema = z.object({
    * Sprint 22: hidden issues become a real, priced defect instead of a
    * one-time condition subtraction. `issueRepairCostYen` is computed inline
    * in `issues.ts` (`repairCostBaseYen * severityPercent / costDivisor`,
-   * rounded to the nearest Y1,000) — everything else here tunes how that
+   * rounded to the nearest Y1,000) - everything else here tunes how that
    * cost turns into a market-value penalty (owned cars) or a risk discount
    * (auction lots), and how much labor fixing one costs.
    */
   issues: z.object({
     /** Owned/sale-side penalty multiplier (decision 4): an unrepaired issue
-     * costs more in lost sale value than it costs to actually fix — the
+     * costs more in lost sale value than it costs to actually fix - the
      * incentive that makes fixing-before-selling profitable by construction. */
     penaltyMultiplier: z.number().positive(),
     /** Weight applied to a model's average issue-repair-cost fraction when
@@ -265,18 +265,18 @@ export const EconomyConfigSchema = z.object({
     /** Hard cap on how far a model's known issue risk can discount its
      * auction anchor, regardless of how bad its hiddenIssueWeights look. */
     maxRiskDiscount: z.number().min(0).max(1),
-    /** [minor-vs-serious, serious-vs-severe] severity-percent breakpoints —
+    /** [minor-vs-serious, serious-vs-severe] severity-percent breakpoints -
      * also the labor band's own breakpoints (decision 3). */
     severityBands: AscendingSeverityPairSchema,
     /** Labor slots to fix an issue, by band: [minor, serious, severe]. */
     laborSlotsByBand: LaborSlotsByBandSchema,
-    /** Divisor in `repairCostBaseYen * severityPercent / costDivisor` — a
+    /** Divisor in `repairCostBaseYen * severityPercent / costDivisor` - a
      * severity roll exactly equal to this value costs exactly the catalog's
      * base repair cost. */
     costDivisor: z.number().positive(),
     /** Decision 6: an unrepaired issue at or above this severity triggers
      * the lemon reputation penalty on sale, on top of the existing
-     * condition-based lemon check (Sprint 15) — a distinct number from
+     * condition-based lemon check (Sprint 15) - a distinct number from
      * `severityBands` (those size labor, not reputation). */
     lemonSeverityThreshold: z.number().int().min(0).max(100),
   }),
@@ -286,7 +286,7 @@ export const EconomyConfigSchema = z.object({
    * retired from constants.ts) with two reachable tiers. Clean requires only
    * player effort (every component's effective condition clears the bar, no
    * unrepaired issues); concours additionally requires authenticityPercent
-   * to clear its own bar — a value the player can never raise, rolled 60-95
+   * to clear its own bar - a value the player can never raise, rolled 60-95
    * at generation, so concours stays a genuine bonus for a well-matched car
    * rather than the only way to earn anything at all. Lemon's penalty and
    * thresholds (`LEMON_MAX_AVERAGE_CONDITION` etc.) are untouched by this
@@ -294,13 +294,13 @@ export const EconomyConfigSchema = z.object({
    */
   reputation: z.object({
     /** Every one of the 8 components' effective condition must clear this to
-     * count as a clean sale — stricter than an average (Sprint 23's fix for
+     * count as a clean sale - stricter than an average (Sprint 23's fix for
      * "seven great components can't hide one neglected one"), but reachable
      * by effort alone, unlike the authenticity roll below. */
     cleanSaleMinConditionPercent: z.number().int().min(0).max(100),
     cleanSaleBonus: z.number().int().nonnegative(),
     /** Concours also requires the car's (unmodifiable) authenticityPercent to
-     * clear this bar — on top of, not instead of, the clean condition bar. */
+     * clear this bar - on top of, not instead of, the clean condition bar. */
     concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
     /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
     concoursSaleBonus: z.number().int().nonnegative(),

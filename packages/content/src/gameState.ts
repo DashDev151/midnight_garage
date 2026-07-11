@@ -12,10 +12,10 @@ import { StagedActionSchema } from './stagedWork'
 
 /**
  * Sprint 21: the two exponentially-decayed counters `marketHeat.ts`'s
- * weekly supply/demand update reads — `lotSupply` (fresh auction lots of
+ * weekly supply/demand update reads - `lotSupply` (fresh auction lots of
  * this model, bumped on catalog refresh) and `playerSales` (the player's own
  * resolved sales of this model, bumped on walk-in/listing resolution). Plain
- * `Record<modelId, number>` maps, default `{}` for both — a model with no
+ * `Record<modelId, number>` maps, default `{}` for both - a model with no
  * entry simply hasn't had a lot or a sale counted yet.
  */
 export const MarketLedgerSchema = z.object({
@@ -30,7 +30,7 @@ export const GameStateSchema = z.object({
   seed: z.number().int(),
   cashYen: z.number().int(),
   /** Derived from reputationPoints (Sprint 15's deriveReputationTier) every
-   * time the points change — never set directly anywhere else. */
+   * time the points change - never set directly anywhere else. */
   reputationTier: ReputationTierSchema,
   /** Accrued reputation points (Sprint 08 scaffold; Sprint 15 derives
    * reputationTier from this via applyReputationDelta). */
@@ -44,7 +44,7 @@ export const GameStateSchema = z.object({
   /** Sprint 21: the supply/demand counters `marketHeat.ts`'s weekly update
    * reads to compute each model's target heat. Purely additive (v12 -> v13
    * save migration): a pre-v13 save never tracked these, so it defaults to
-   * both counters empty — correct, since the concept didn't exist yet. */
+   * both counters empty - correct, since the concept didn't exist yet. */
   marketLedger: MarketLedgerSchema.default({ lotSupply: {}, playerSales: {} }),
   activeAuctionLots: z.array(AuctionLotSchema).default([]),
   activeListings: z.array(PublicListingSchema).default([]),
@@ -54,7 +54,7 @@ export const GameStateSchema = z.object({
   activeServiceJobs: z.array(ServiceJobSchema).default([]),
   /**
    * Facilities (Sprint 09). Defaults here are the save-migration fallback for
-   * pre-v3 saves that never had a bay system — kept in sync with
+   * pre-v3 saves that never had a bay system - kept in sync with
    * facilities.json's `startCount`s, which is what a genuinely new game reads
    * (see sim's createInitialGameState). Two sources of the same "1" / "3"
    * because they answer different questions (migrate an old save vs. seed a
@@ -67,13 +67,13 @@ export const GameStateSchema = z.object({
    * `serviceBayCarIds[i]` is the car physically sitting in bay `i`, or
    * `null` if that bay is empty. Array length tracks `serviceBayCount`
    * exactly under normal play (`applyBayPurchase` appends a `null` slot
-   * when a new bay is bought) — a car's specific bay is real, persisted
+   * when a new bay is bought) - a car's specific bay is real, persisted
    * state now, not incidental array order recomputed by exclusion.
    */
   serviceBayCarIds: z.array(z.string().min(1).nullable()).default([]),
-  /** The parking counterpart to `serviceBayCarIds` above — same shape, same
+  /** The parking counterpart to `serviceBayCarIds` above - same shape, same
    * invariant (length tracks `parkingBayCount`). Before Sprint 17, "parking"
-   * was never its own stored array — a car counted as parked purely by not
+   * was never its own stored array - a car counted as parked purely by not
    * appearing in `serviceBayCarIds`, so a specific parking slot had no
    * identity a drag-and-drop could target or a player could rely on. */
   parkingCarIds: z.array(z.string().min(1).nullable()).default([]),
@@ -86,13 +86,13 @@ export const GameStateSchema = z.object({
    */
   laborSlotsSpentToday: z.number().int().nonnegative().default(0),
   /**
-   * Ids of owned Equipment items (Sprint 13) — what REPAIR is gated on. Purely
+   * Ids of owned Equipment items (Sprint 13) - what REPAIR is gated on. Purely
    * additive: a pre-Sprint-13 save decodes with this defaulted to `[]`, which
    * is correct (no save ever owned equipment before this existed).
    */
   ownedEquipmentIds: z.array(z.string().min(1)).default([]),
   /**
-   * Standard-delivery part purchases in transit (Sprint 14) — resolved by
+   * Standard-delivery part purchases in transit (Sprint 14) - resolved by
    * advanceDay's day-boundary tick once `arrivesOnDay` is reached, exactly
    * like `activeListings`. Purely additive.
    */
@@ -102,12 +102,12 @@ export const GameStateSchema = z.object({
    * repeats meaning quantity > 1. Deliberately persistent (survives a
    * reload) per the maintainer's explicit call, so it lives on GameState and
    * rides the existing autosave/save-code mechanism rather than a separate
-   * one — inert to the sim, read/written only by the game layer.
+   * one - inert to the sim, read/written only by the game layer.
    */
   cartPartIds: z.array(z.string().min(1)).default([]),
   /**
    * Staged (not-yet-confirmed) repair/install work per car (Sprint 18),
-   * keyed by `carInstanceId`. Freely add/remove at zero cost — nothing here
+   * keyed by `carInstanceId`. Freely add/remove at zero cost - nothing here
    * touches cash, labor, or a real `Job` until `confirmStagedWork` resolves
    * it, mirroring the parts-market cart's own stage-then-confirm shape
    * (Sprint 14). Every car-exit path (walk-in sale, listing, service-job
@@ -118,7 +118,7 @@ export const GameStateSchema = z.object({
 
 /**
  * Sim contract: advanceDay(state, actions, seed) -> newState + eventLog.
- * DayLog is that eventLog — a typed record of what happened on a day, not
+ * DayLog is that eventLog - a typed record of what happened on a day, not
  * part of GameState itself.
  */
 export const DayLogEntrySchema = z.discriminatedUnion('type', [
@@ -181,7 +181,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   }),
   /**
    * Sprint 20 (auction rework II): the overnight-step "you were outbid"
-   * beat — fires only when the dealers' raise displaces the player as
+   * beat - fires only when the dealers' raise displaces the player as
    * `leadingBidder` (never on a dealer-vs-dealer raise, which logs nothing).
    */
   z.object({
@@ -206,7 +206,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   }),
   /**
    * Sprint 22: fires on handover ONLY when the car was bought uninspected
-   * and rolled at least one hidden issue — inspecting beforehand means the
+   * and rolled at least one hidden issue - inspecting beforehand means the
    * same facts were already on the auction screen, so there's no surprise
    * left to report.
    */
@@ -216,7 +216,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     issueIds: z.array(z.string().min(1)).min(1),
   }),
   /**
-   * Sprint 22: a `fix-issue` job's completion — distinct from `job-completed`
+   * Sprint 22: a `fix-issue` job's completion - distinct from `job-completed`
    * (which still fires alongside it, per the existing job lifecycle) so the
    * day report/modal can name the fixed issue without every job-completion
    * consumer needing to know about issues at all.
@@ -264,7 +264,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * rule); absent for a reputation-neutral plain sale. */
     reputationDelta: z.number().int().optional(),
     /** Which of the quality/lemon outcomes fired (Sprint 23 decision 1's
-     * clean/concours split) — set exactly when `reputationDelta` is, lets the
+     * clean/concours split) - set exactly when `reputationDelta` is, lets the
      * day report name the bonus instead of just its point value. */
     saleQuality: z.enum(['lemon', 'clean', 'concours']).optional(),
   }),
@@ -306,7 +306,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('acquisition-blocked'),
     kind: z.enum(['auction-win', 'buyout', 'service-accept']),
     /** `no-cash` (Sprint 19): a winning bid can no longer be covered on the lot's resolution
-     * day — cash was reserved at bid time under the old instant-resolve model, but multi-day
+     * day - cash was reserved at bid time under the old instant-resolve model, but multi-day
      * bidding has no escrow, so affordability is only checked again when the lot actually
      * resolves. Mirrors `no-parking`'s existing forfeit shape exactly: no money spent, the win
      * is forfeited rather than the purchase failing loudly. */

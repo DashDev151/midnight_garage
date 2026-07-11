@@ -21,7 +21,7 @@ import { listPubliclyAskingPrice } from '../src/selling'
  * Sprint 22 acceptance probes (sprint22.md's "Information-value" and
  * "Risk-discount" Testing bullets). Reuses Sprint 20/21's probe harness
  * shape (real generated lots, resolved purely through the same functions
- * `advanceDay` calls) — with two synthetic models built for full control
+ * `advanceDay` calls) - with two synthetic models built for full control
  * over risk profile: `HIGH_RISK_MODEL` almost always rolls a real engine
  * issue, `LOW_RISK_MODEL` never does, both sharing the same book value so
  * "equal value, different risk" is a real, controlled comparison rather
@@ -40,11 +40,11 @@ const ALL_COMPONENT_IDS: readonly ComponentId[] = [
 ]
 
 /** severityMin/Max straddles `lemonSeverityThreshold` (40), skewed so a
- * MINORITY of rolls trigger walk-away — a real mix of "safe to buy" and
+ * MINORITY of rolls trigger walk-away - a real mix of "safe to buy" and
  * "walk away" outcomes, not an all-or-nothing population. `repairCostBaseYen`
  * is deliberately large relative to book value: at severity >= 40 the fix
  * cost genuinely exceeds what a full restoration's value uplift can cover
- * (that's the whole point — the issue must be able to flip a lot from a
+ * (that's the whole point - the issue must be able to flip a lot from a
  * profitable buy into a real loser, or there is nothing for inspection to
  * protect against). */
 const HIGH_RISK_ISSUE: HiddenIssue = {
@@ -171,7 +171,7 @@ describe('risk-discount probe (acceptance, sprint22.md)', () => {
     )
     expect(predictedDiscount).toBeGreaterThan(0)
     const measuredDiscount = 1 - highMedian / lowMedian
-    // Same order of magnitude as the formula's own prediction — condition
+    // Same order of magnitude as the formula's own prediction - condition
     // noise (independent random rolls per lot) means this is never exact.
     expect(measuredDiscount).toBeGreaterThan(predictedDiscount * 0.5)
     expect(measuredDiscount).toBeLessThan(predictedDiscount * 1.5)
@@ -184,7 +184,7 @@ describe('information-value probe (acceptance, sprint22.md)', () => {
     // design: walking away is a MINORITY outcome at this fixture's severity
     // range (~38% of lots), so the MEDIAN margin is dominated by the
     // majority "would have bought safely either way" case, where informed
-    // buying is worse by exactly the inspection fee and nothing else — the
+    // buying is worse by exactly the inspection fee and nothing else - the
     // median is structurally blind to how catastrophic the AVOIDED lots
     // would have been. "Pays for itself" is an expected-value claim, so
     // MEAN margin (not median) is the correct statistic here; median stays
@@ -248,7 +248,7 @@ describe('information-value probe (acceptance, sprint22.md)', () => {
       if (!boughtCar) return null
 
       // Both policies fix every real issue post-purchase (matching the
-      // "fully restore" identity) — the only thing informed buying changes
+      // "fully restore" identity) - the only thing informed buying changes
       // is the pre-purchase walk-away decision above.
       const fixCostYen = boughtCar.hiddenIssues.reduce((sum, revealedIssue) => {
         const catalogEntry = CONTEXT.hiddenIssuesById[revealedIssue.issueId]
@@ -287,7 +287,7 @@ describe('information-value probe (acceptance, sprint22.md)', () => {
     // Measured (2026-07-11, this exact deterministic population, n=200,
     // ~43% roll a real severe issue): blind buying nets a NEGATIVE mean
     // margin (-20.1% of book) once severe repair costs are real money, not
-    // an afterthought — a car whose issue costs more to fix than the
+    // an afterthought - a car whose issue costs more to fix than the
     // restoration recovers. Informed buying, walking away from exactly
     // those lots, stays net positive (+3.2%). This is the actual claim:
     // inspection doesn't just make a good archetype slightly better, it's

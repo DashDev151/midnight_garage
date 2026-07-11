@@ -46,10 +46,10 @@ describe('useDraggable / useDropZone (Sprint 17)', () => {
     expect(useDragSession().value).toMatchObject({ payload: 'car-1', mode: 'drag', x: 20, y: 0 })
   })
 
-  it('once dragging, position tracks a window-level pointermove — the ghost must follow the cursor everywhere on the page, not just over the origin card', () => {
+  it('once dragging, position tracks a window-level pointermove - the ghost must follow the cursor everywhere on the page, not just over the origin card', () => {
     // Real bug: pointer events are deliberately uncaptured (see file header),
     // so once the cursor leaves the card it started on, the browser stops
-    // delivering pointermove to that element entirely — the ghost would
+    // delivering pointermove to that element entirely - the ghost would
     // freeze over the origin instead of following the cursor to the drop
     // target. Position tracking must come from a window-level listener,
     // not the origin element's own onPointerMove.
@@ -58,7 +58,7 @@ describe('useDraggable / useDropZone (Sprint 17)', () => {
     draggable.onPointerMove(pointerEvent({ clientX: 20, clientY: 0 }))
     expect(useDragSession().value).toMatchObject({ x: 20, y: 0 })
 
-    // Simulates the pointer now being over some other element entirely —
+    // Simulates the pointer now being over some other element entirely -
     // dispatched at window level, the only place still guaranteed to see it.
     window.dispatchEvent(
       pointerEvent({ clientX: 200, clientY: 150 }, 'pointermove') as unknown as Event,
@@ -99,7 +99,7 @@ describe('useDraggable / useDropZone (Sprint 17)', () => {
     zone.onPointerUp()
 
     expect(onDrop).not.toHaveBeenCalled()
-    // Rejecting a drop is not the same as cancelling it — the session is
+    // Rejecting a drop is not the same as cancelling it - the session is
     // still live until something actually resolves it (the window-level
     // pointerup fallback below), matching a real drag released over an
     // invalid target: nothing happens, but the gesture itself did occur.
@@ -112,7 +112,7 @@ describe('useDraggable / useDropZone (Sprint 17)', () => {
     draggable.onPointerMove(pointerEvent({ clientX: 20 }))
     expect(draggable.isDragging.value).toBe(true)
 
-    // No drop zone's onPointerUp ran (nothing was under the pointer) — only
+    // No drop zone's onPointerUp ran (nothing was under the pointer) - only
     // the window-level fallback `useDraggable` itself installed while
     // dragging is left to clean up an unresolved gesture.
     window.dispatchEvent(pointerEvent({}, 'pointerup') as unknown as Event)

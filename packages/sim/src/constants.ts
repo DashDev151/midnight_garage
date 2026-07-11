@@ -8,7 +8,7 @@ export const PLAYER_BASE_LABOR_SLOTS = 2
  * badly hurt zone can span multiple days against the daily slot budget
  * (making the labor-scarcity tension visible). A stock 2-slot day clears a
  * lightly damaged zone same-day; a wrecked one takes two. Provisional PoC
- * heuristic — belongs in content JSON once the job taxonomy firms up.
+ * heuristic - belongs in content JSON once the job taxonomy firms up.
  */
 export function repairLaborSlotsFor(conditionPercent: number): number {
   return Math.max(1, Math.ceil((100 - conditionPercent) / 30))
@@ -21,7 +21,14 @@ export const INSTALL_LABOR_SLOTS = 1
 export const SERVICE_JOB_OFFERS_PER_REFRESH = 4
 export const SERVICE_JOB_EXPIRY_DAYS = 10
 
-/** Days the player has to finish + hand back a job after accepting it. */
+/**
+ * Days between accepting a service job and the customer's car actually
+ * arriving in the shop (Sprint 25 task 2: accepting no longer teleports the
+ * car in instantly - "I'll drop it off first thing in the morning").
+ */
+export const SERVICE_JOB_ARRIVAL_DELAY_DAYS = 1
+
+/** Days the player has to finish + hand back a job after accepting it, counted from arrival. */
 export const SERVICE_JOB_DEADLINE_DAYS = 7
 
 /**
@@ -37,7 +44,7 @@ export const JOB_HINT_OFFER_CHANCE = 0.15
 
 /**
  * Reputation penalty for a failed job (handed back unfinished, or the deadline
- * passed with the work undone), as a multiple of the job's base reputation —
+ * passed with the work undone), as a multiple of the job's base reputation -
  * failing stings more than completing rewards at the stock rate.
  */
 export const SERVICE_JOB_FAILURE_REP_MULTIPLIER = 2
@@ -45,7 +52,7 @@ export const SERVICE_JOB_FAILURE_REP_MULTIPLIER = 2
 /**
  * Reputation multiplier by installed part grade (Sprint 08): a pricier,
  * higher-grade part earns more reputation for a part-install service job (and
- * costs the player more profit) — repair-only jobs use the stock/1.0 rate.
+ * costs the player more profit) - repair-only jobs use the stock/1.0 rate.
  */
 export const GRADE_REPUTATION_MULTIPLIER: Readonly<Record<Grade, number>> = {
   stock: 1.0,
@@ -75,7 +82,7 @@ export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
 
 /**
  * Walk-in offers vary around true valuation for the convenience of an
- * instant sale (GDD 6.3: "fast, variable") — centered closer to 1.0 than
+ * instant sale (GDD 6.3: "fast, variable") - centered closer to 1.0 than
  * strictly capped below it, since the buyer is already weighted toward
  * whoever wants this car most (sellViaWalkIn), not a uniformly random
  * stranger; an eager walk-in can occasionally beat true value.
@@ -85,7 +92,7 @@ export const WALK_IN_OFFER_RANGE: readonly [number, number] = [0.85, 1.1]
 /**
  * Correlated per-car condition roll (Sprint 12): a car's 8 components no
  * longer roll condition independently (which let a car land a pristine
- * engine and a wrecked transmission with no relationship between them) — one
+ * engine and a wrecked transmission with no relationship between them) - one
  * baseline is rolled per car, in this range, and each component jitters
  * around it (see CAR_CONDITION_JITTER). Keeps today's 30-90 overall spread.
  */
@@ -97,7 +104,7 @@ export const CAR_CONDITION_JITTER = 15
 
 /**
  * Auction tier reputation ladder (Sprint 16 decision 3): extends the
- * pre-existing Collector Network gate (GDD 6.5) to the other three tiers —
+ * pre-existing Collector Network gate (GDD 6.5) to the other three tiers -
  * a clean 1:1 mapping onto 4 of the 5 reputation tiers, `legend` reserved
  * for something rarer than a mere auction tier. `local-yard: unknown` means
  * "no gate" (every tier is at least `unknown`).
@@ -124,7 +131,7 @@ export const PARTS_STANDARD_DELIVERY_DAYS = 1
  * Reputation-point ladder (Sprint 15): first-pass, openly adjustable
  * thresholds, scaled against what a service-job-only career can realistically
  * earn (`baseReputation` in content is 1-4 per job, up to ~2.2x for a
- * race-grade install). Not claimed correct — the shape (each tier
+ * race-grade install). Not claimed correct - the shape (each tier
  * meaningfully harder than the last) is what any future retune preserves,
  * once real harness/playtest data exists (see the `reputationPoints` harness
  * sample this sprint adds to careers.csv).
@@ -141,11 +148,11 @@ export const REPUTATION_TIER_THRESHOLDS: Readonly<Record<ReputationTier, number>
  * Selling a "lemon" costs reputation instead: average component condition at
  * or below `LEMON_MAX_AVERAGE_CONDITION`, **or** any single component at or
  * below `LEMON_MAX_SINGLE_COMPONENT_CONDITION` regardless of the average (the
- * maintainer's own framing — a car can average fine and still hide one dead
+ * maintainer's own framing - a car can average fine and still hide one dead
  * component). These two thresholds can overlap (seven components at 96+ and
- * one at <=10 still averages >=85) — `saleReputationDeltaFor` checks lemon
+ * one at <=10 still averages >=85) - `saleReputationDeltaFor` checks lemon
  * first, so a car with a dead component is never scored as a quality sale.
- * Deliberately does not apply to plain lowball/cheap-but-not-broken sales —
+ * Deliberately does not apply to plain lowball/cheap-but-not-broken sales -
  * only genuinely bad condition, so normal flipping stays reputation-neutral.
  */
 export const LEMON_MAX_AVERAGE_CONDITION = 40

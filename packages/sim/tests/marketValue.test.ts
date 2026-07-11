@@ -21,7 +21,7 @@ const model: CarModel = {
   hiddenIssueWeights: [],
 }
 
-/** Every component at the same condition — since componentValueWeights sums
+/** Every component at the same condition - since componentValueWeights sums
  * to 1.0, this makes `conditionFactor`'s weighted average exactly equal that
  * condition, which is what lets the worked examples below assert exactly. */
 function carAtUniformCondition(condition: number): CarInstance {
@@ -71,7 +71,7 @@ describe('conditionFactor', () => {
     expect(mid).toBeLessThan(high)
   })
 
-  it('weights an engine far more than a wheel — same total condition delta, different impact', () => {
+  it('weights an engine far more than a wheel - same total condition delta, different impact', () => {
     const base = carAtUniformCondition(80)
     const engineDamaged: CarInstance = {
       ...base,

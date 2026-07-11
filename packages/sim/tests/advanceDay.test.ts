@@ -81,11 +81,11 @@ function initialState(): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [],
     // car-0001 starts parked (Sprint 17: parking is a real, explicit slot
-    // now, not "any owned car not in a service bay") — day 1's scripted
+    // now, not "any owned car not in a service bay") - day 1's scripted
     // move-to-service action needs a real source slot to move it out of.
     parkingCarIds: ['car-0001', null, null],
     laborSlotsSpentToday: 0,
-    // Pre-granted, not purchased through the script — the scripted day-1
+    // Pre-granted, not purchased through the script - the scripted day-1
     // body repair (below) needs it, and this fixture predates equipment
     // as a concept; hand-placing it here matches how the spare coilovers
     // above are also hand-placed rather than bought through the sim.
@@ -107,7 +107,7 @@ const noActions: DayActions = emptyDayActions()
  * 7/14/21/28) and market-heat drift exercise on schedule. Seed 42 per the
  * roadmap's own golden-master example. The car stays in the service bay for
  * the rest of the career (moves are free, but nothing here needs to move it
- * back out) — labor only reaches a job whose car is in a service bay.
+ * back out) - labor only reaches a job whose car is in a service bay.
  */
 function scriptedActionsForDay(day: number): DayActions {
   if (day === 1) {
@@ -160,7 +160,7 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     // Re-pinned Sprint 20 (auction rework II): the AuctionLot schema, the
     // overnight-step/hammer mechanics, and WEEKLY_RENT_YEN (90,000 -> 0) all
-    // change this hash even though this script never places a bid — weekly
+    // change this hash even though this script never places a bid - weekly
     // catalog refresh and the day-boundary auction resolution loop both
     // still run every day regardless.
     // Re-pinned again Sprint 21 (value model): marketValueYen replaces the
@@ -171,7 +171,7 @@ describe('advanceDay golden master', () => {
     // Re-pinned again Sprint 22 (hidden issues): severity is now rolled at
     // car generation (a new rng draw inside generateAuctionCarInstance), and
     // effective condition (issues.ts) now feeds derivedStats/marketValue/
-    // reputation everywhere raw condition used to — moves the hash even
+    // reputation everywhere raw condition used to - moves the hash even
     // though this script never touches an issue directly.
     // Re-pinned again Sprint 23 (progression pacing + rent): WEEKLY_RENT_YEN
     // restored (0 -> 20,000) and this career's 30 days cross 4 weekly rent
@@ -180,9 +180,17 @@ describe('advanceDay golden master', () => {
     // retuned baseReputation values are also in scope for any future career
     // that sells a car or works a service job, though this specific script
     // does neither.
+    // Re-pinned again Sprint 25 task 4 (auction pacing interim fix):
+    // demandCeilingYen now seeds on `lot.id:day` instead of `lot.id` alone
+    // (the fix for a lot whose one-time ceiling landed below reserve never
+    // receiving a single bid, ever) - every overnight auction step across
+    // this career's 30 days draws different demand-ceiling rolls than
+    // before, moving the hash even though the script itself never places a
+    // bid; the weekly catalog refresh and day-boundary auction resolution
+    // loop run every day regardless.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('d0c08928')
+    expect(hashState(finalState)).toBe('415f0ddc')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -230,7 +238,7 @@ describe('advanceDay golden master', () => {
  * applied) and selling the car. Pinned by hash so a regression here trips
  * the golden test, not only the unit tests. (External review 2026-07, 5b.)
  */
-describe('advanceDay golden master — acquisition and sale path', () => {
+describe('advanceDay golden master - acquisition and sale path', () => {
   function acquisitionCareer(): { won: GameState; sold: GameState } {
     let state = createInitialGameState(CONTEXT, 42)
     let guard = 0
@@ -239,7 +247,7 @@ describe('advanceDay golden master — acquisition and sale path', () => {
     }
     const lot = state.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot to appear')
-    // An over-market bid — well above any realistic demand ceiling — takes
+    // An over-market bid - well above any realistic demand ceiling - takes
     // the lead immediately and stays there (the overnight step's
     // at-or-above-ceiling branch is silence, not a counter-raise), so this
     // hammers to the player once quietDays or the backstop resolves it

@@ -16,7 +16,7 @@ export const TraitDefinitionSchema = z.object({
 
 export const TraitDefinitionsSchema = z.array(TraitDefinitionSchema).min(1)
 
-/** An individual hired staff member (GDD 7) — rolled stats, not catalog data. */
+/** An individual hired staff member (GDD 7) - rolled stats, not catalog data. */
 export const StaffMemberSchema = z.object({
   id: z.string().min(1),
   displayName: z.string().min(1),

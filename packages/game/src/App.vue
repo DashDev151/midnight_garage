@@ -25,6 +25,7 @@ const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevCo
       <RouterLink :to="{ name: 'auctions' }">Auctions</RouterLink>
       <RouterLink :to="{ name: 'parts' }">Parts</RouterLink>
       <RouterLink :to="{ name: 'inventory' }">Inventory</RouterLink>
+      <RouterLink :to="{ name: 'upgrades' }">Upgrades</RouterLink>
       <RouterLink :to="{ name: 'spike' }">Spike</RouterLink>
       <SaveMenu />
       <button v-if="isDev" class="dev-toggle" @click="ui.toggleDevConsole()">dev</button>

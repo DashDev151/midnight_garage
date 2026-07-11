@@ -1,5 +1,5 @@
 # MIDNIGHT GARAGE
-## Game Design Document — v0.5
+## Game Design Document - v0.5
 
 **Genre:** Medium-weight management sim with light idle elements
 **Platform:** Browser (desktop-first, playable on mobile)
@@ -15,22 +15,22 @@
 It's 1995 in Neo-Karuizawa, a fictional Japanese city at the foot of a famous mountain pass. You've just leased a two-bay garage with rusted shutters and a neon sign that only half works. Your dream: hunt down Japan's greatest performance cars at auction, restore and build them, earn the respect of the street, and one day enshrine all ten Legends in your own showroom.
 
 ### 1.2 The Fantasy
-The player is a **hunter-curator-craftsman**. The emotional core is not "number go up" — it is:
+The player is a **hunter-curator-craftsman**. The emotional core is not "number go up" - it is:
 
-1. **The Hunt** — spotting an undervalued rough-condition legend in an auction listing.
-2. **The Build** — making real, flavorful decisions about what a car becomes (period-correct restoration? 400hp street monster? style-first show car?).
-3. **The Respect** — the city noticing. Magazine features, meet invitations, rivals nodding at you.
+1. **The Hunt** - spotting an undervalued rough-condition legend in an auction listing.
+2. **The Build** - making real, flavorful decisions about what a car becomes (period-correct restoration? 400hp street monster? style-first show car?).
+3. **The Respect** - the city noticing. Magazine features, meet invitations, rivals nodding at you.
 
 ### 1.3 Design Pillars
-1. **Every car is a story.** Cars are individuals with history, quirks, and provenance — never interchangeable inventory.
+1. **Every car is a story.** Cars are individuals with history, quirks, and provenance - never interchangeable inventory.
 2. **Decisions, not clicks.** Fiz-weight: a session is 20–40 minutes of meaningful choices. No cookie-clicker tapping, no energy timers.
-3. **Culture is the content.** Chassis codes, buyer subcultures, touge nights, shaken inspections — authenticity is the differentiator against generic garage tycoons.
+3. **Culture is the content.** Chassis codes, buyer subcultures, touge nights, shaken inspections - authenticity is the differentiator against generic garage tycoons.
 4. **The vibe is a feature.** Synthwave pixel art, rain on neon, eurobeat on event nights. The game should feel like a VHS tape found in a Silvia's glovebox.
 
 ### 1.4 Explicit Non-Goals
 - No real-time waiting, energy systems, or monetized timers.
 - No driving/racing gameplay (races resolve via management decisions + stats).
-- **No reflex-based input anywhere** — no QTEs, no timing bars. Every mechanic is decision-paced (accessibility as a hard rule).
+- **No reflex-based input anywhere** - no QTEs, no timing bars. Every mechanic is decision-paced (accessibility as a hard rule).
 - No individual-bolt mechanic sim. Depth lives in *choices about parts*, not labor minigames.
 - No multiplayer in v1.0 (async leaderboards are a post-launch candidate).
 
@@ -39,7 +39,7 @@ The player is a **hunter-curator-craftsman**. The emotional core is not "number 
 ## 2. Setting, Tone & Legal Framing
 
 ### 2.1 Setting
-**Neo-Karuizawa, Japan — starting in 1995.** Districts unlock with reputation:
+**Neo-Karuizawa, Japan - starting in 1995.** Districts unlock with reputation:
 
 | District | Unlocks | Flavor |
 |---|---|---|
@@ -52,41 +52,41 @@ The player is a **hunter-curator-craftsman**. The emotional core is not "number 
 ### 2.2 Era Progression (light touch)
 The calendar advances ~2 in-game years per reputation tier (1995 → 2005 over a full campaign). New model years appear at auction over time; early cars get rarer and appreciate. This creates a natural "buy it when you see it" tension without heavy simulation.
 
-### 2.3 The Player Character — silent-ish, world does the talking
-The protagonist is a **minimal-dialogue avatar**: no monologues, no quips. Personality lives in a small recurring cast who talk *at* you — the retired mechanic landlord, the parts bazaar auntie, the Rival — plus occasional 2–3 option replies (dry / earnest / hungry) that add flavor and tiny rep shading but never gate content. Likeable through restraint: the player projects, the world charms. If a line risks being annoying, it gets cut.
+### 2.3 The Player Character - silent-ish, world does the talking
+The protagonist is a **minimal-dialogue avatar**: no monologues, no quips. Personality lives in a small recurring cast who talk *at* you - the retired mechanic landlord, the parts bazaar auntie, the Rival - plus occasional 2–3 option replies (dry / earnest / hungry) that add flavor and tiny rep shading but never gate content. Likeable through restraint: the player projects, the world charms. If a line risks being annoying, it gets cut.
 
 ### 2.4 Real Cars & the Licensing Reality
 **Design intent: real cars, real names, real specs.** An '84 Honda City should be an '84 Honda City.
 
-The legal facts (not legal advice): factual specs and chassis codes are unprotectable data — the game's simulation layer is safe. Model names are trademarks and vehicle likenesses are protected trade dress; this is why even funded commercial titles license manufacturers (and ship knockoffs when a manufacturer declines). Enforcement against a free indie browser game is unlikely but nonzero; monetization raises the stakes.
+The legal facts (not legal advice): factual specs and chassis codes are unprotectable data - the game's simulation layer is safe. Model names are trademarks and vehicle likenesses are protected trade dress; this is why even funded commercial titles license manufacturers (and ship knockoffs when a manufacturer declines). Enforcement against a free indie browser game is unlikely but nonzero; monetization raises the stakes.
 
-**Mitigation — the Naming Layer:** every vehicle's data record separates `spec` (real, immutable) from `display_name` / `brand` (swappable strings). The game is developed and balanced entirely on real data. A single config flag can ship parody names ("Toyoda Suprema JZA80") without touching gameplay. Decision deferred to release; nothing is lost by building real-first. Sprites are original pixel interpretations at 96px — low-res stylization is itself meaningful distance on trade dress.
+**Mitigation - the Naming Layer:** every vehicle's data record separates `spec` (real, immutable) from `display_name` / `brand` (swappable strings). The game is developed and balanced entirely on real data. A single config flag can ship parody names ("Toyoda Suprema JZA80") without touching gameplay. Decision deferred to release; nothing is lost by building real-first. Sprites are original pixel interpretations at 96px - low-res stylization is itself meaningful distance on trade dress.
 
-Parts brands ship as light parodies from day one ("KHS," "Tanuki Suspension," "Vulk Racing TE37-style") — that's where trademark risk is highest and parody is part of the charm anyway.
+Parts brands ship as light parodies from day one ("KHS," "Tanuki Suspension," "Vulk Racing TE37-style") - that's where trademark risk is highest and parody is part of the charm anyway.
 
 ---
 
 ## 3. Core Gameplay Loop
 
-### 3.1 Time System — Turn-Based Days
+### 3.1 Time System - Turn-Based Days
 The day advances **only when the player ends it.** One day = one turn. A week is 7 turns; rent, wages, and market ticks resolve weekly. A typical session comfortably covers 5–15 days.
 
 **Day structure (soft phases, all available until End Day):**
 
-1. **MORNING — The Mail & The Market.** Read mail (auction catalogs, commission offers, event invites, rumors). Browse today's listings.
-2. **WORKDAY — The Garage.** Assign staff and yourself to jobs. Each job consumes **labor slots** (see 3.2). Buy parts, order deliveries.
-3. **EVENING — The Scene.** Optional: attend a meet, enter a touge night, take a private buyer meeting. One evening action per day.
+1. **MORNING - The Mail & The Market.** Read mail (auction catalogs, commission offers, event invites, rumors). Browse today's listings.
+2. **WORKDAY - The Garage.** Assign staff and yourself to jobs. Each job consumes **labor slots** (see 3.2). Buy parts, order deliveries.
+3. **EVENING - The Scene.** Optional: attend a meet, enter a touge night, take a private buyer meeting. One evening action per day.
 4. **END DAY.** Work progresses, deliveries arrive, passive income resolves, events fire, autosave.
 
 ### 3.2 Labor Slots (the core resource)
 Each character (player + staff) provides labor slots per day (base 2, more with skill/tools). Jobs are defined in labor-slot costs, e.g.:
 
-- Inspect an auction car properly: 1 slot (else you bid on photos alone — risk!)
+- Inspect an auction car properly: 1 slot (else you bid on photos alone - risk!)
 - Swap coilovers: 1 slot
 - Engine rebuild: 6 slots (spread across days)
 - Full restoration of a rough Legend: 25–40 slots
 
-This makes "what do we work on today?" the central daily decision — the Fiz-style planning crunch.
+This makes "what do we work on today?" the central daily decision - the Fiz-style planning crunch.
 
 ### 3.3 The Loop, One Sentence
 **Hunt** cars and parts at auction → **build** them in the garage against a plan → **sell** to the right buyer, **keep** for the collection, or **campaign** them at events → convert profit and reputation into better access, staff, and tools → hunt bigger.
@@ -108,8 +108,8 @@ Every car instance carries:
 - **Year, mileage, color, provenance note** ("one-owner, garage kept, Gunma plates")
 - **Condition** per zone: Engine / Drivetrain / Suspension / Body / Interior, each 0–100
 - **Hidden issues** revealed only by inspection (rust in the rails, blown turbo seals, accident history)
-- **Authenticity %** — how period-correct/stock the car is (collectors pay for this; tuners don't care)
-- **Build sheet** — every installed part, visible as a spec list
+- **Authenticity %** - how period-correct/stock the car is (collectors pay for this; tuners don't care)
+- **Build sheet** - every installed part, visible as a spec list
 
 ### 4.2 Derived Stats (shown as a radar chart)
 **Power • Handling • Style • Reliability • Authenticity.** All five are derived from platform base + parts + condition + tune. No hidden math the player can't reason about.
@@ -124,13 +124,13 @@ Every car instance carries:
 | Gaisha | See §4.5 | Import prestige, late-game flex |
 | Legend (×10) | R34 GT-R V-Spec, NA1 NSX-R, hakosuka KPGC10, S2000 AP1, AZ-1, FD3S Spirit R, etc. | The collection. See §9 |
 
-**Full inspiration pool, PoC-10 picks, go-live roster and expansion packs live in the companion document `midnight-garage-roster.md`.** All entries use **real specs**: correct engine codes (E-series, B16B, SR20DET, 2JZ-GTE, 13B-REW, RB26DETT), real curb weights, real stock outputs — the sim is built on truth (see §2.3 for the naming layer).
+**Full inspiration pool, PoC-10 picks, go-live roster and expansion packs live in the companion document `midnight-garage-roster.md`.** All entries use **real specs**: correct engine codes (E-series, B16B, SR20DET, 2JZ-GTE, 13B-REW, RB26DETT), real curb weights, real stock outputs - the sim is built on truth (see §2.3 for the naming layer).
 
 ### 4.4 Platform Tags
-Every model carries tags — **FR / FF / AWD / MR, Turbo / NA / Rotary / Kei, decade, JDM / Gaisha** — which drive part compatibility, buyer preferences, and event suitability. Tags are the simple system that makes depth legible.
+Every model carries tags - **FR / FF / AWD / MR, Turbo / NA / Rotary / Kei, decade, JDM / Gaisha** - which drive part compatibility, buyer preferences, and event suitability. Tags are the simple system that makes depth legible.
 
 ### 4.5 Gaisha (imports)
-A curated late-game channel of **period-correct beloved imports** — the cars a 90s Japanese enthusiast actually revered:
+A curated late-game channel of **period-correct beloved imports** - the cars a 90s Japanese enthusiast actually revered:
 
 - Mercedes-Benz 190E 2.5-16 Evolution II
 - BMW M3 (E30)
@@ -140,10 +140,10 @@ A curated late-game channel of **period-correct beloved imports** — the cars a
 - Ferrari F355 (one-off Collector's Quarter appearance)
 
 **Mechanics that make imports feel foreign:**
-- Sourced only via the **Import Broker** (unlocks at Respected rep) — no auction luck, long lead times, landed-cost premium.
+- Sourced only via the **Import Broker** (unlocks at Respected rep) - no auction luck, long lead times, landed-cost premium.
 - **Parts scarcity:** no local shelf stock; every part comes via scout dispatch with multi-day shipping. Repairs cost more labor (unfamiliar engineering; a *Gaisha-fluent* staff trait negates this).
 - **LHD quirk** and shaken paperwork flavor on the build sheet.
-- A dedicated **Gaisha buyer archetype** (doctor/executive money: pays huge for condition + provenance, zero interest in modification — high Authenticity only).
+- A dedicated **Gaisha buyer archetype** (doctor/executive money: pays huge for condition + provenance, zero interest in modification - high Authenticity only).
 - Kept deliberately limited: ~6–8 models, never the core loop, always an occasion.
 
 ---
@@ -153,7 +153,7 @@ A curated late-game channel of **period-correct beloved imports** — the cars a
 ### 5.1 What a Part Is
 Parts are **named, branded (parody), graded items** with their own condition:
 
-> **KHS TR-500 Turbo Kit** — Engine slot • Grade: Sport • Requires: Turbo-tag platform • +Power ++, −Reliability −, used (72%)
+> **KHS TR-500 Turbo Kit** - Engine slot • Grade: Sport • Requires: Turbo-tag platform • +Power ++, −Reliability −, used (72%)
 
 ### 5.2 Slot Model
 Seven slots per car: **Engine, Forced Induction, Drivetrain, Suspension, Brakes, Body/Aero, Wheels/Interior.** Each slot holds one package-level part (a "turbo kit," not a wastegate). Grades: **Stock → Street → Sport → Race**.
@@ -163,7 +163,7 @@ Seven slots per car: **Engine, Forced Induction, Drivetrain, Suspension, Brakes,
 - **Engine swaps** are the marquee deep mechanic: any engine can go in any platform *if* you source/fabricate a mounting kit (expensive, high labor, small permanent Reliability tax if cross-family). Swaps tank Authenticity but unlock monster Power ceilings. The classic tension: restore the numbers-matching engine, or drop in the big turbo lump?
 - **Used parts** are cheaper, findable at meets/scouts, and carry condition risk. Genuine period parts add Authenticity; reproductions don't.
 
-### 5.4 The Tune (simplified dyno — the "3" part of 2.5)
+### 5.4 The Tune (simplified dyno - the "3" part of 2.5)
 After a build changes, run a **dyno session** (1 labor slot): a single screen with 2–3 sliders (e.g., Boost ↔ Reliability, Camber: Grip ↔ Tire wear/Style). A pixel-art dyno chart animates the result. This is where the "between 2 and 3" lands: real tradeoff decisions, zero part-by-part micromanagement.
 
 ### 5.5 What We Deliberately Don't Simulate
@@ -174,15 +174,15 @@ Individual gaskets, torque specs, fluid types, per-bolt disassembly. Labor slots
 ## 6. Economy & The Market
 
 ### 6.1 Money In
-1. **Flipping** — buy rough, restore/build, sell to the right buyer.
-2. **Commissions** — customers bring a car + a brief + a budget ("make my S14 analog a touge weapon, ¥900k"). Score vs. brief drives payout and rep.
-3. **Service Bay** — passive (see §3.4).
-4. **Event winnings** — touge/show purses (modest cash, big rep).
+1. **Flipping** - buy rough, restore/build, sell to the right buyer.
+2. **Commissions** - customers bring a car + a brief + a budget ("make my S14 analog a touge weapon, ¥900k"). Score vs. brief drives payout and rep.
+3. **Service Bay** - passive (see §3.4).
+4. **Event winnings** - touge/show purses (modest cash, big rep).
 
 ### 6.2 Money Out
 Rent (weekly), wages (weekly), parts, auction purchases, transport fees, event entry, loan interest.
 
-**Currency is era-authentic yen everywhere** — ¥2,500,000 on a fax-paper invoice hits different than "2,500cr". Numbers formatted with man/千 flavor in dialogue, plain digits in ledgers.
+**Currency is era-authentic yen everywhere** - ¥2,500,000 on a fax-paper invoice hits different than "2,500cr". Numbers formatted with man/千 flavor in dialogue, plain digits in ledgers.
 
 ### 6.3 Buyer Archetypes (who you sell to matters)
 | Buyer | Pays for | Ignores |
@@ -196,13 +196,13 @@ Rent (weekly), wages (weekly), parts, auction purchases, transport fees, event e
 Selling is a mini-decision: list publicly (slow, market price), sell to a walk-in offer (fast, variable), or match to a known buyer contact (best price, uses relationship).
 
 ### 6.4 Market Heat
-Each model has a demand index that drifts weekly and spikes on events: a magazine cover, a movie release ("*Midnight Wangan* premiered — kaido racer prices +40%"), a famous touge victory. Rumors in the morning mail telegraph some spikes, rewarding attention. This is the game's "stock market" — light, readable, flavorful.
+Each model has a demand index that drifts weekly and spikes on events: a magazine cover, a movie release ("*Midnight Wangan* premiered - kaido racer prices +40%"), a famous touge victory. Rumors in the morning mail telegraph some spikes, rewarding attention. This is the game's "stock market" - light, readable, flavorful.
 
 ### 6.5 Auctions (the crown jewel screen)
 - **Tiers:** Local Yard → Regional Auction → Premium Auction → Collector Network (rep-gated).
 - Weekly catalogs; each lot shows photos, mileage, an auction grade (paperwork), and *hints* ("smokes on startup").
 - **Inspection** (1 labor slot + travel fee) reveals hidden issues before bid day.
-- **The deal prices in the risk (sliding-scale lemons):** hidden-issue variance scales with discount from book value. Buy at a fair price and downside is capped — surprises are annoyances, not showstoppers. Buy a suspicious steal and the variance opens *both ways*: it's either a lemon (rusted shell, cracked block) or a goldmine (undisclosed rare options, genuine low mileage, one-owner history). Uninspected bargains are the game's slot machine — but a fair, honest purchase is always safe enough to learn on.
+- **The deal prices in the risk (sliding-scale lemons):** hidden-issue variance scales with discount from book value. Buy at a fair price and downside is capped - surprises are annoyances, not showstoppers. Buy a suspicious steal and the variance opens *both ways*: it's either a lemon (rusted shell, cracked block) or a goldmine (undisclosed rare options, genuine low mileage, one-owner history). Uninspected bargains are the game's slot machine - but a fair, honest purchase is always safe enough to learn on.
 - Bidding is a simple tense escalation vs. 1–3 AI bidders with visible personalities. Sniping a Legend under book value should feel like the best moment in the game.
 
 ### 6.6 Failure & Pressure
@@ -218,7 +218,7 @@ Miss rent/wages twice → forced loan at painful interest → deep debt triggers
   - *Auction rat:* free inspections at Local Yard
   - *Perfectionist:* +quality, −speed
   - *Night owl:* +1 slot if you attended an evening event
-- Staff level up in what they do (light, capped). No morale meters or scheduling sim — traits and assignment choices carry the personality.
+- Staff level up in what they do (light, capped). No morale meters or scheduling sim - traits and assignment choices carry the personality.
 
 ---
 
@@ -227,25 +227,25 @@ Miss rent/wages twice → forced loan at painful interest → deep debt triggers
 | Event | Cadence | Play |
 |---|---|---|
 | **Night Meet** | Weekly | Show a car → rep + buyer contacts + used-part stalls. Style-heavy cars shine. |
-| **Touge Night** | Bi-weekly | Enter car + driver (you/staff). Pre-run decisions only — pace dial (*cruise / attack / send it*), tire choice, driver instructions. Resolves **sector by sector** in an animated pixel cutaway with live gap readout — spectacle and tension with zero player input mid-run (no QTEs). Damage is real. |
+| **Touge Night** | Bi-weekly | Enter car + driver (you/staff). Pre-run decisions only - pace dial (*cruise / attack / send it*), tire choice, driver instructions. Resolves **sector by sector** in an animated pixel cutaway with live gap readout - spectacle and tension with zero player input mid-run (no QTEs). Damage is real. |
 | **Show & Shine** | Monthly | Style/Authenticity contest. Judged categories rotate. |
 | **Magazine Shoot** | Invitation | Feature a build → big rep + market heat spike for that model. |
 | **Private Meetings** | As offered | Collector leads, rival wagers, shady part deals (cheap, provenance risk). |
 
 **The Rival:** a mirrored AI shop ("Garage Tempest") that bids against you at auctions, campaigns at touge nights, and occasionally offers to buy your cars. Beating them is a rep multiplier; they keep sandbox mode alive.
 
-### 8.1 The Gentlemen's Agreement (280 PS) — a living easter egg
-The real-world 1989–2004 pact — Japanese manufacturers advertising no more than 280 PS regardless of truth — becomes a game system:
+### 8.1 The Gentlemen's Agreement (280 PS) - a living easter egg
+The real-world 1989–2004 pact - Japanese manufacturers advertising no more than 280 PS regardless of truth - becomes a game system:
 
-1. **The Wink on the Spec Sheet.** Every JDM performance car from 1989–2004 shows **"280 PS ※"** as its advertised power in listings and catalogs. Its *true* stock output is hidden until you dyno it. Some cars are famously underrated (a stock JZA80 or R34 pulling well over 300 on your dyno, the needle sweeping past 280 with a little "…gentlemen?" toast popup), some tired examples embarrassingly under. Auction listings for this era therefore never tell you real power — insider knowledge and inspection are rewarded, and the first time a new player dynos a "280 PS" car and watches it lie is the easter egg discovering *them*.
+1. **The Wink on the Spec Sheet.** Every JDM performance car from 1989–2004 shows **"280 PS ※"** as its advertised power in listings and catalogs. Its *true* stock output is hidden until you dyno it. Some cars are famously underrated (a stock JZA80 or R34 pulling well over 300 on your dyno, the needle sweeping past 280 with a little "…gentlemen?" toast popup), some tired examples embarrassingly under. Auction listings for this era therefore never tell you real power - insider knowledge and inspection are rewarded, and the first time a new player dynos a "280 PS" car and watches it lie is the easter egg discovering *them*.
 2. **The Gentleman's Class.** A recurring Show & Shine category: enter a car whose dyno reads **exactly 276–280 PS**. Precision-tuning down to the agreement number is a fun inversion of the power chase. Trophy: *"A Gentleman Never Tells."*
-3. **The News Event (2004).** When era progression reaches 2004, the morning fax reports the agreement's end — the market immediately begins honest power advertising, big-power cars spike in heat, and a one-time achievement unlocks if you're holding any 300+ PS-actual "280 PS" car: *"We All Knew."*
+3. **The News Event (2004).** When era progression reaches 2004, the morning fax reports the agreement's end - the market immediately begins honest power advertising, big-power cars spike in heat, and a one-time achievement unlocks if you're holding any 300+ PS-actual "280 PS" car: *"We All Knew."*
 
 ---
 
 ## 9. Progression & The Legendary Collection
 
-### 9.0 The Climb (progression arc — a core pillar)
+### 9.0 The Climb (progression arc - a core pillar)
 The game must *feel* like climbing from grease-stained nobody to Wangan royalty. Four acts, each changing what a "job" even is:
 
 | Act | Rep | What you're doing | Signature moment |
@@ -255,23 +255,23 @@ The game must *feel* like climbing from grease-stained nobody to Wangan royalty.
 | **3. Big Power** | Known → Respected | Engine swaps, 400–600hp builds, touge campaigns, Import Broker opens, the Rival notices you. Service bay fully passive. | First dyno pull past 500hp |
 | **4. Works Level** | Respected → Legend | **1000hp Wangan-spec JZA80 top-speed builds. Full time-attack works cars** (R32/R34 with aero you fabricate in-house). Legend restorations. | Your car on a magazine cover |
 
-**How the gate works — Tools, not levels.** Job tiers are unlocked by shop equipment purchases, each a visible pixel upgrade in the garage: **Basic tools → Two-post lift → Dyno cell → Engine crane & stand → TIG welder/fab corner → Aero/composites bench.** You can't build what you can't lift. Equipment + staff skill + rep gate the ceiling; money alone never skips the climb.
+**How the gate works - Tools, not levels.** Job tiers are unlocked by shop equipment purchases, each a visible pixel upgrade in the garage: **Basic tools → Two-post lift → Dyno cell → Engine crane & stand → TIG welder/fab corner → Aero/composites bench.** You can't build what you can't lift. Equipment + staff skill + rep gate the ceiling; money alone never skips the climb.
 
-**Power ceiling by act:** stock-ish (Act 1) → ~250hp street (Act 2) → ~600hp (Act 3) → 1000hp+ full race (Act 4). High-hp builds demand supporting mods (fuel, cooling, drivetrain grades) or Reliability collapses — a 1000hp build is a *project*, ~40 labor slots of earned mastery.
+**Power ceiling by act:** stock-ish (Act 1) → ~250hp street (Act 2) → ~600hp (Act 3) → 1000hp+ full race (Act 4). High-hp builds demand supporting mods (fuel, cooling, drivetrain grades) or Reliability collapses - a 1000hp build is a *project*, ~40 labor slots of earned mastery.
 
-**The Service Bay evolves with you:** in Act 1 those small jobs are hand-played job cards (pick the work, assign the slots, tight margins). As staff arrive they absorb them, until by Act 3 the bay is the passive hum described in §3.4. The idle element is literally *your own past gameplay, delegated* — that's the progression fantasy made mechanical.
+**The Service Bay evolves with you:** in Act 1 those small jobs are hand-played job cards (pick the work, assign the slots, tight margins). As staff arrive they absorb them, until by Act 3 the bay is the passive hum described in §3.4. The idle element is literally *your own past gameplay, delegated* - that's the progression fantasy made mechanical.
 
 **Late-game events unlock in Act 4:** **Wangan Top-Speed Night** (terminal-velocity runs; Power/Reliability heavy, high damage risk) and the annual **Attack Fest** time-attack (the WTAC fantasy: purpose-built aero monsters, one flying lap, national leaderboard vs. AI works teams).
 
 ### 9.1 Reputation Tiers
-**Unknown → Local → Known → Respected → Legend** (5 tiers, mapping to the acts above). Rep gates: auction access, districts, staff quality, commission budgets, Legend leads. Rep comes from great builds delivered, events, features — not raw cash.
+**Unknown → Local → Known → Respected → Legend** (5 tiers, mapping to the acts above). Rep gates: auction access, districts, staff quality, commission budgets, Legend leads. Rep comes from great builds delivered, events, features - not raw cash.
 
 ### 9.2 The Hall of Legends (win condition)
-Ten Legend cars exist. Acquiring one is an event in itself — some appear once at Collector Network auctions, some come from story leads ("an old man in the Quarter has a hakosuka under a tarp"), one is the Rival's personal car.
+Ten Legend cars exist. Acquiring one is an event in itself - some appear once at Collector Network auctions, some come from story leads ("an old man in the Quarter has a hakosuka under a tarp"), one is the Rival's personal car.
 
-To **enshrine** a Legend in your showroom it must reach **90+ average condition** and either **95+ Authenticity** (period-correct restoration) *or* a **Signature Build** (all-Race-grade, dyno-proven — your masterpiece interpretation). Player chooses the philosophy per car.
+To **enshrine** a Legend in your showroom it must reach **90+ average condition** and either **95+ Authenticity** (period-correct restoration) *or* a **Signature Build** (all-Race-grade, dyno-proven - your masterpiece interpretation). Player chooses the philosophy per car.
 
-Enshrined cars are permanent (can't be repossessed or sold), grant a small daily rep/income aura, and fill the Hall — a single lovingly-rendered pixel showroom scene that grows from empty warehouse into a small, glowing space (90s city pop mood: sodium-vapor light, wet asphalt, neon reflected in rain puddles — nostalgic, not a sterile museum). See `midnight-garage-roster.md`'s Zero Legend entry for the fuller art-direction note.
+Enshrined cars are permanent (can't be repossessed or sold), grant a small daily rep/income aura, and fill the Hall - a single lovingly-rendered pixel showroom scene that grows from empty warehouse into a small, glowing space (90s city pop mood: sodium-vapor light, wet asphalt, neon reflected in rain puddles - nostalgic, not a sterile museum). See `midnight-garage-roster.md`'s Zero Legend entry for the fuller art-direction note.
 
 ### 9.3 Endgame → Sandbox
 Enshrining the 10th Legend rolls credits over the completed Hall. Sandbox continues seamlessly: era keeps advancing (2005+ models appear), the Rival escalates, a **New Game+ "Second Shop"** prestige option unlocks (restart with one enshrined car and a trait bonus).
@@ -296,7 +296,7 @@ Enshrining the 10th Legend rolls credits over the completed Hall. Sandbox contin
 
 ## 11. Screens (v1.0)
 
-0. **City Map** (navigation): a semi-animated pixel map of Neo-Karuizawa — glowing district nodes, drifting clouds over Mt. Kirifuri, day/night tint, tiny traffic. Functionally a fancy menu (one click = one screen, zero friction), locked districts visible but dark.
+0. **City Map** (navigation): a semi-animated pixel map of Neo-Karuizawa - glowing district nodes, drifting clouds over Mt. Kirifuri, day/night tint, tiny traffic. Functionally a fancy menu (one click = one screen, zero friction), locked districts visible but dark.
 1. **Garage** (hub): bays with current cars, staff visible working, service bay, door to street.
 2. **Car Detail / Build Sheet**: radar chart, slots, condition zones, job queue.
 3. **Auction House**: catalog → inspection → live bid.
@@ -328,7 +328,7 @@ Async leaderboards (fastest Hall completion), weekly seeded challenge auctions, 
 
 ---
 
-## 13. Tech Stack (LOCKED — v0.4)
+## 13. Tech Stack (LOCKED - v0.4)
 
 **Architecture principle:** the game is 90% UI → DOM-first web app with canvas islands. Sim core is a pure, renderer-agnostic TypeScript package (the SOLID boundary).
 
@@ -338,8 +338,8 @@ Async leaderboards (fastest Hall completion), weekly seeded challenge auctions, 
 | UI framework | **Vue 3** (Composition API) | Team knows it; `computed()` reactivity is ideal for derived car stats |
 | State | **Pinia** | Vue's official store; single source of truth the sim writes into |
 | Build | **Vite** | Vue-native tooling, static output, instant HMR |
-| Canvas islands | **PixiJS v8** | Only for garage scene, animated city map, touge cutaway — mounted inside Vue components |
-| Styling | Custom CSS + design tokens | No component library — Vuetify/Material would kill the synthwave pixel identity |
+| Canvas islands | **PixiJS v8** | Only for garage scene, animated city map, touge cutaway - mounted inside Vue components |
+| Styling | Custom CSS + design tokens | No component library - Vuetify/Material would kill the synthwave pixel identity |
 | Persistence | **Dexie.js** over IndexedDB | Versioned schema migrations for save files (Django-migrations energy); autosave on End Day |
 | Save backup | Base64 export/import string | User-owned backups, cross-device by hand |
 | Content data | JSON tables validated with **Zod** | Cars/parts/buyers/events balanced without code changes; moddable later |
@@ -347,7 +347,7 @@ Async leaderboards (fastest Hall completion), weekly seeded challenge auctions, 
 | Testing | **Vitest** | Sim core unit-tested like backend code |
 | Audio | **Howler.js** | Standard web audio wrapper; music layers + SFX |
 | Deploy | Static hosting (itch.io / Cloudflare Pages) | Entire game is static files; zero backend in v1.0 |
-| Post-launch backend | Django + Postgres (thin API) | Leaderboards, weekly challenge seeds — only when needed |
+| Post-launch backend | Django + Postgres (thin API) | Leaderboards, weekly challenge seeds - only when needed |
 
 **Sim contract:** `advanceDay(state, queuedActions, seed) → newState + eventLog`. The sim package imports nothing from Vue/Pixi/DOM.
 
@@ -360,7 +360,7 @@ Async leaderboards (fastest Hall completion), weekly seeded challenge auctions, 
 1. **Touge interactivity:** purely managerial, hard no-QTE rule (accessibility). Tension via pre-run risk dial + sector-by-sector animated resolution. → §8
 2. **Player character:** silent-ish avatar; personality via recurring cast and rare light-touch reply choices. → §2.3
 3. **Currency:** era-authentic yen, everywhere. → §6.2
-4. **Auction risk:** sliding scale — variance correlates with discount from book value; fair prices are safe, steals are gambles (goldmine or lemon). → §6.5
+4. **Auction risk:** sliding scale - variance correlates with discount from book value; fair prices are safe, steals are gambles (goldmine or lemon). → §6.5
 5. **Navigation:** semi-animated city map as fancy menu. → §11
 
 ### Remaining open

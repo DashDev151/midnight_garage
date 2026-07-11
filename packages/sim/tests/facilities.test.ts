@@ -70,6 +70,7 @@ function serviceCar(id: string): ServiceJob {
     payoutYen: 20_000,
     baseReputation: 1,
     expiresOnDay: 30,
+    arrivesOnDay: null,
     dueOnDay: 10,
   }
 }
@@ -135,7 +136,7 @@ describe('assignToParking (Sprint 17)', () => {
   })
 })
 
-describe('releaseCarFromShop (Sprint 17: renamed — releases from wherever the car actually sits)', () => {
+describe('releaseCarFromShop (Sprint 17: renamed - releases from wherever the car actually sits)', () => {
   it('clears the slot if the car is in a service bay', () => {
     const state = baseState({ serviceBayCarIds: ['car-1', 'car-2'] })
     const next = releaseCarFromShop(state, 'car-1')
@@ -218,7 +219,7 @@ describe('moveCar', () => {
   it('is a no-op for a real shop car that has no slot anywhere yet (the placement invariant)', () => {
     // Every real acquisition path (auction win, buyout, service-job accept,
     // dev grant) assigns a parking slot the moment a car enters the shop
-    // (assignToParking) — a car that's in ownedCars/activeServiceJobs but
+    // (assignToParking) - a car that's in ownedCars/activeServiceJobs but
     // in neither array shouldn't be reachable in real play. moveCar/
     // moveCarToSlot deliberately don't paper over that with an implicit
     // fallback, so a violation here is loud, not silently "handled".
@@ -291,7 +292,7 @@ describe('moveCarToSlot (Sprint 17 positional fix)', () => {
     const state = baseState({
       ownedCars: [ownedCar('car-1')],
       serviceBayCount: 2,
-      serviceBayCarIds: [], // shorter than serviceBayCount — index 1 is implicitly empty
+      serviceBayCarIds: [], // shorter than serviceBayCount - index 1 is implicitly empty
       parkingCarIds: ['car-1'],
     })
     const result = moveCarToSlot(state, 'car-1', 'service', 1)
@@ -302,7 +303,7 @@ describe('moveCarToSlot (Sprint 17 positional fix)', () => {
 
 describe('swapCars (Sprint 11, round-2 playtest #3)', () => {
   it('exchanges a service-bay car and a parking car even when the shop is exactly full', () => {
-    // 1 service bay, 1 parking bay, both occupied — a direct move in either
+    // 1 service bay, 1 parking bay, both occupied - a direct move in either
     // direction is illegal (zero slack anywhere), but a swap's net change in
     // each location is zero, so it must still succeed.
     const state = baseState({
@@ -348,7 +349,7 @@ describe('swapCars (Sprint 11, round-2 playtest #3)', () => {
     expect(result.changed).toBe(false)
   })
 
-  it('preserves total occupancy — the net change in each location is zero', () => {
+  it('preserves total occupancy - the net change in each location is zero', () => {
     const state = baseState({
       ownedCars: [ownedCar('service-car'), ownedCar('parking-car')],
       serviceBayCount: 1,

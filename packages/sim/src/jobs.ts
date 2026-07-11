@@ -12,7 +12,7 @@ import { issueRepairCostYen } from './issues'
 import { partFitsCar } from './parts'
 
 /**
- * A car the player can work on — either an owned car or a customer's car
+ * A car the player can work on - either an owned car or a customer's car
  * sitting in an active service job. Both are worked through the same job
  * system, so any job/labor/staging resolver resolves either the same way.
  * Shared home for a lookup every one of those (and the game-layer store's own
@@ -52,7 +52,7 @@ export interface JobCompletionResult {
   state: GameState
   /**
    * True if an install-part job was skipped because its target slot was
-   * already occupied — the caller logs a job-blocked event rather than
+   * already occupied - the caller logs a job-blocked event rather than
    * silently overwriting the existing part.
    */
   blockedByOccupiedSlot: boolean
@@ -70,12 +70,12 @@ interface CarEffect {
  * install (Replace) -> the part moves from inventory onto the component AND
  * condition -> 100 (skipped entirely if the component is already occupied).
  *
- * Sprint 13 fix: the install branch used to leave `condition` untouched — a
+ * Sprint 13 fix: the install branch used to leave `condition` untouched - a
  * gap inherited from the pre-Sprint-12 model, where `condition` and
  * `buildSheet` were separate maps with no coupling at all, so installing a
  * part never had a way to affect condition. `docs/design/
  * repair-replace-progression.md` is explicit that Replace "sets condition ->
- * 100 and swaps installed" — Sprint 13 is exactly the sprint that makes
+ * 100 and swaps installed" - Sprint 13 is exactly the sprint that makes
  * Replace a real, complete alternative restoration path to Repair, so this
  * is the sprint that closes the gap, not a silent behavior change smuggled
  * in elsewhere.
@@ -103,7 +103,7 @@ function applyJobToCar(
       throw new Error(`fix-issue job ${job.id} missing issueId`)
     }
     const issueId = job.issueId
-    // Sprint 22: fixes the ISSUE, never the component's own `condition` —
+    // Sprint 22: fixes the ISSUE, never the component's own `condition` -
     // repainting a car does not fix its apex seals. `effectiveComponentCondition`
     // (issues.ts) is what actually reflects this fix in every consumer.
     return {
@@ -146,7 +146,7 @@ function applyJobToCar(
  * Applies a completed job's effect (zone repair or part install) to GameState.
  * The target car may be an owned car OR a customer car sitting in a service
  * job (the player works both with the same job system). Does not remove the
- * job from state.jobs — the caller (advanceDay) owns list bookkeeping.
+ * job from state.jobs - the caller (advanceDay) owns list bookkeeping.
  */
 export function completeJob(state: GameState, job: Job): JobCompletionResult {
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
@@ -177,7 +177,7 @@ export function completeJob(state: GameState, job: Job): JobCompletionResult {
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
 }
 
-/** An open job's stable id — one job per car+component+kind at a time. */
+/** An open job's stable id - one job per car+component+kind at a time. */
 function jobIdFor(spec: NewJobSpec): string {
   return `job-${spec.carInstanceId}-${spec.kind}-${spec.componentId}`
 }
@@ -186,7 +186,7 @@ export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: D
 
 /**
  * Sprint 13: the equipment + consumables gate on *starting* a new repair-zone
- * (Sprint 22: or fix-issue) job — checked once, at creation, never again.
+ * (Sprint 22: or fix-issue) job - checked once, at creation, never again.
  * Equipment ownership is monotonic (nothing in the sim ever removes it), so
  * a job that passed this gate never needs re-checking once it exists; unlike
  * the service-bay gate (which toggles as cars move and is re-checked every
@@ -194,7 +194,7 @@ export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: D
  * a job is born. `install-part` is a no-op here (it has never charged
  * anything beyond the part itself, bought separately). Shared by the
  * player's instant `findOrCreateJob` path and advanceDay's bot batch
- * job-creation loop — one gate, two callers, matching every other Sprint 11
+ * job-creation loop - one gate, two callers, matching every other Sprint 11
  * instant-resolver precedent.
  */
 export function repairJobGate(
@@ -217,7 +217,7 @@ export function repairJobGate(
 
   if (spec.kind === 'repair-zone') {
     if (state.cashYen < consumablesCostYen) {
-      // Equipment owned, just can't afford the consumables right now — a
+      // Equipment owned, just can't afford the consumables right now - a
       // silent refusal, matching every other can't-afford-it gate in this
       // codebase (resolveBuyPart, applyBayPurchase, resolveBuyoutInstant).
       return { ok: false, log: [] }
@@ -246,13 +246,13 @@ export function repairJobGate(
 export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
 
 /**
- * Sprint 24 fix 2: the sim never validated part-component fit on install —
+ * Sprint 24 fix 2: the sim never validated part-component fit on install -
  * only the UI's own inline copy (`gameStore.installablePartsFor`) did,
  * leaving a staged action or a bot's queued install job free to install any
  * part onto any component. A separate, small gate beside `repairJobGate`
- * (not folded into it — that function deliberately opens with `if (kind !==
+ * (not folded into it - that function deliberately opens with `if (kind !==
  * 'repair-zone') return ok` and, post-Sprint-22, branches per kind; fit is
- * its own concern) — exported and called from both `findOrCreateJob` below
+ * its own concern) - exported and called from both `findOrCreateJob` below
  * (the player's instant path) AND `advanceDay`'s bot batch job-creation
  * loop directly (that loop calls `repairJobGate` inline, never
  * `findOrCreateJob`, mirroring `repairJobGate`'s own "one gate, two
@@ -284,12 +284,12 @@ export function installFitGate(
  * Finds the car's already-open job matching this spec's kind+component, or
  * creates one (Sprint 11). A car can only have one open job per component at
  * a time, so a repeat click on the same repair/install just continues the
- * existing job rather than creating a duplicate — the id is derived
+ * existing job rather than creating a duplicate - the id is derived
  * deterministically from car+kind+componentId instead of a day/index
  * counter, so "the same job" is recognizable across days without extra
  * bookkeeping. Sprint 13: a *new* repair-zone job additionally passes
  * `repairJobGate` (equipment owned + consumables affordable) before it's
- * created — `job` comes back `null` when the gate refuses, since nothing was
+ * created - `job` comes back `null` when the gate refuses, since nothing was
  * created to return. Sprint 24: a *new* install-part job likewise passes
  * `installFitGate` (fix 2).
  */
@@ -328,13 +328,13 @@ export function findOrCreateJob(
 export interface LaborApplicationResult {
   state: GameState
   log: DayLogEntry[]
-  /** How much of the caller's offered labor was actually consumed — 0 if the job was already complete. */
+  /** How much of the caller's offered labor was actually consumed - 0 if the job was already complete. */
   laborSlotsUsed: number
 }
 
 /**
  * Applies up to `laborAvailable` labor to one job (by id), completing it
- * immediately if that's enough — the single-job core shared by the player's
+ * immediately if that's enough - the single-job core shared by the player's
  * instant repair/install click and advanceDay's bot batch loop (Sprint 11).
  * Bumps `laborSlotsSpentToday` by exactly what was used, so the caller never
  * has to track the daily budget separately from the state transition itself.
@@ -397,11 +397,11 @@ export function applyAvailableLaborToJob(
 /**
  * The instant player-facing resolver (Sprint 11): find-or-create the job for
  * this car+zone/slot, then apply as much of today's remaining labor as it
- * needs. Composes `findOrCreateJob` + `applyAvailableLaborToJob` — the same
+ * needs. Composes `findOrCreateJob` + `applyAvailableLaborToJob` - the same
  * two primitives advanceDay's bot batch loop uses, just for a single click
  * instead of a whole day's queue. Sprint 13: `findOrCreateJob` can now refuse
  * to create a repair-zone job at all (no equipment / can't afford
- * consumables) — `job` comes back `null` in that case, and there's nothing
+ * consumables) - `job` comes back `null` in that case, and there's nothing
  * left to apply labor to.
  */
 export function resolveJobLabor(

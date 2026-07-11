@@ -2,7 +2,7 @@ import { BayKindSchema, ComponentIdSchema } from '@midnight-garage/content'
 import { z } from 'zod'
 
 /**
- * Per-day input to advanceDay — ephemeral simulation input, not persisted
+ * Per-day input to advanceDay - ephemeral simulation input, not persisted
  * seed content, so it lives in sim rather than packages/content.
  */
 const NewJobSpecSchema = z.object({
@@ -10,7 +10,7 @@ const NewJobSpecSchema = z.object({
   kind: z.enum(['repair-zone', 'install-part', 'fix-issue']),
   componentId: ComponentIdSchema,
   partInstanceId: z.string().min(1).optional(),
-  /** Set for `fix-issue` jobs only — which rolled hidden issue this job fixes. */
+  /** Set for `fix-issue` jobs only - which rolled hidden issue this job fixes. */
   issueId: z.string().min(1).optional(),
   laborSlotsRequired: z.number().int().positive(),
 })
@@ -65,18 +65,18 @@ export const DayActionsSchema = z.object({
   listForSale: z.array(ListForSaleActionSchema).default([]),
   buyParts: z.array(BuyPartActionSchema).default([]),
   acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
-  /** Bots' only path to moving cars between bays — the player moves instantly
+  /** Bots' only path to moving cars between bays - the player moves instantly
    * via a direct store call (see sim/facilities.ts's applyMoves doc). */
   moveCars: z.array(MoveCarActionSchema).default([]),
-  /** Bots' only path to buying a bay — the player buys instantly likewise. */
+  /** Bots' only path to buying a bay - the player buys instantly likewise. */
   buyBays: z.array(BuyBayActionSchema).default([]),
-  /** Bots' only path to buying equipment — the player buys instantly likewise. */
+  /** Bots' only path to buying equipment - the player buys instantly likewise. */
   buyEquipment: z.array(BuyEquipmentActionSchema).default([]),
 })
 // Note: completing a service job is NOT a DayAction. The player resolves it
 // immediately (a store call to resolveServiceJob) the moment they click
 // "Complete Job", and advanceDay only enforces the per-job deadline as a
-// backstop — End Day never decides a player's job is done.
+// backstop - End Day never decides a player's job is done.
 
 export type NewJobSpec = z.infer<typeof NewJobSpecSchema>
 export type LaborAssignment = z.infer<typeof LaborAssignmentSchema>

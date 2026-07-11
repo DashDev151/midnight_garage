@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
+import componentDisplayNames from '../data/componentDisplayNames.json'
 import economy from '../data/economy.json'
 import equipment from '../data/equipment.json'
 import facilities from '../data/facilities.json'
@@ -10,6 +11,8 @@ import traits from '../data/traits.json'
 import {
   BuyersSchema,
   CarModelsSchema,
+  ComponentDisplayNamesSchema,
+  ComponentIdSchema,
   EconomyConfigSchema,
   EquipmentsSchema,
   FacilitiesSchema,
@@ -55,11 +58,29 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
+  /**
+   * Sprint 25 task 6: the raw camelCase ComponentId must never reach player
+   * copy - this map is the fix, so it must cover every real component and
+   * never contain a camelCase token itself (a display name that's just the
+   * id back again would defeat the whole point).
+   */
+  it('componentDisplayNames.json', () => {
+    const result = ComponentDisplayNamesSchema.safeParse(componentDisplayNames)
+    if (!result.success) throw new Error(result.error.message)
+    for (const id of ComponentIdSchema.options) {
+      const label = result.data[id]
+      expect(label, `${id} has no display name`).toBeTruthy()
+      expect(label, `${id}'s display name "${label}" is a raw camelCase token`).not.toMatch(
+        /[a-z][A-Z]/,
+      )
+    }
+  })
+
   it('facilities.json', () => {
     const result = FacilitiesSchema.safeParse(facilities)
     if (!result.success) throw new Error(result.error.message)
     // Sprint 16: minReputationTier must line up one-for-one with bayPricesYen
-    // for every bay kind — the schema's own refine already enforces this at
+    // for every bay kind - the schema's own refine already enforces this at
     // parse time; this just names the invariant for anyone reading the test.
     expect(result.data.service.minReputationTier.length).toBe(
       result.data.service.bayPricesYen.length,
@@ -77,7 +98,7 @@ describe('seed content validates against schemas', () => {
     // reworked auction economy worked end-to-end, buyout premium re-pointed
     // at the value anchor and raised from 1.1x book to 1.25x anchor. Sprint
     // 23 decision 4 restores rent as a tuned knob (0.3x measured median
-    // weekly gross margin, rounded to the nearest Y10,000 — see economy.ts's
+    // weekly gross margin, rounded to the nearest Y10,000 - see economy.ts's
     // own doc comment for the full derivation).
     expect(result.data.WEEKLY_RENT_YEN).toBe(20_000)
     expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)

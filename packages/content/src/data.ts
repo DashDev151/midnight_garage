@@ -1,5 +1,6 @@
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
+import componentDisplayNamesJson from '../data/componentDisplayNames.json'
 import economyJson from '../data/economy.json'
 import equipmentJson from '../data/equipment.json'
 import facilitiesJson from '../data/facilities.json'
@@ -10,6 +11,7 @@ import serviceJobsJson from '../data/serviceJobs.json'
 import traitsJson from '../data/traits.json'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
+import { ComponentDisplayNamesSchema } from './componentDisplayName'
 import { EconomyConfigSchema } from './economy'
 import { EquipmentsSchema } from './equipment'
 import { FacilitiesSchema } from './facilities'
@@ -19,7 +21,7 @@ import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJ
 import { TraitDefinitionsSchema } from './staff'
 
 /**
- * Parsed, schema-validated seed content — the single source of truth for
+ * Parsed, schema-validated seed content - the single source of truth for
  * both tests and the game. `packages/content`'s exports map only exposes
  * `src/index.ts`, not `data/*.json` directly, so other packages (sim,
  * game) get the data through here rather than a deep relative import
@@ -37,3 +39,4 @@ export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(
 export const FACILITIES = FacilitiesSchema.parse(facilitiesJson)
 export const EQUIPMENT = EquipmentsSchema.parse(equipmentJson)
 export const ECONOMY = EconomyConfigSchema.parse(economyJson)
+export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)

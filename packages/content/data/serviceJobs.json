@@ -5,10 +5,10 @@
     "payoutRangeYen": [28000, 38000],
     "baseReputation": 16,
     "flavorPool": [
-      "Give the engine a proper going-over — it's been running rough.",
+      "Give the engine a proper going-over - it's been running rough.",
       "Something's off under the hood. Sort it before it strands me.",
       "Losing power on hills. Can you take a look at the engine?",
-      "Rough idle, hesitant on throttle — needs an engine once-over."
+      "Rough idle, hesitant on throttle - needs an engine once-over."
     ]
   },
   {
@@ -20,7 +20,7 @@
       "Something's grinding when I shift. Sort the drivetrain out.",
       "Power delivery feels off, like it's slipping somewhere.",
       "Clutch feels off and there's a whine on acceleration.",
-      "Drivetrain's due for attention — it's been slipping."
+      "Drivetrain's due for attention - it's been slipping."
     ]
   },
   {
@@ -29,7 +29,7 @@
     "payoutRangeYen": [20000, 32000],
     "baseReputation": 8,
     "flavorPool": [
-      "Suspension's tired — freshen it up for me.",
+      "Suspension's tired - freshen it up for me.",
       "The ride's gone soft and wallowy. Needs sorting.",
       "Bouncing over every bump these days. Suspension's had it.",
       "It's wandering all over the lane. Check the suspension."
@@ -42,7 +42,7 @@
     "baseReputation": 16,
     "flavorPool": [
       "Sort the rusty panel before the shaken.",
-      "Bodywork's looking rough — tidy it up for me.",
+      "Bodywork's looking rough - tidy it up for me.",
       "Picked up some dents and scrapes. Can you fix the body?",
       "Rust is spreading. Needs bodywork before it gets worse."
     ]
@@ -53,10 +53,10 @@
     "payoutRangeYen": [18000, 28000],
     "baseReputation": 8,
     "flavorPool": [
-      "Interior's rough — tidy it up.",
+      "Interior's rough - tidy it up.",
       "Cabin's seen better days. Freshen up the interior.",
       "Seats and trim are falling apart in there.",
-      "Interior needs a refresh — it's embarrassing to drive like this."
+      "Interior needs a refresh - it's embarrassing to drive like this."
     ]
   },
   {
@@ -65,7 +65,7 @@
     "payoutRangeYen": [90000, 130000],
     "baseReputation": 24,
     "flavorPool": [
-      "Want more out of the engine — set me up with an upgrade.",
+      "Want more out of the engine - set me up with an upgrade.",
       "Stock engine's boring me. Build it up.",
       "Looking for real power under the hood. Sort me an engine build."
     ]
@@ -73,11 +73,11 @@
   {
     "id": "install-forced-induction",
     "work": { "kind": "install", "componentId": "forcedInduction" },
-    "payoutRangeYen": [110000, 150000],
+    "payoutRangeYen": [220000, 280000],
     "baseReputation": 32,
     "flavorPool": [
       "I want boost. Get me set up with forced induction.",
-      "Time to go forced induction — build me some real power.",
+      "Time to go forced induction - build me some real power.",
       "Naturally aspirated isn't cutting it anymore. Fit a turbo setup."
     ]
   },
@@ -89,7 +89,7 @@
     "flavorPool": [
       "Stock drivetrain can't handle the power. Upgrade it.",
       "Need a stronger drivetrain before I break something.",
-      "Fit me a proper drivetrain setup — I'm done breaking parts."
+      "Fit me a proper drivetrain setup - I'm done breaking parts."
     ]
   },
   {
@@ -98,7 +98,7 @@
     "payoutRangeYen": [85000, 105000],
     "baseReputation": 24,
     "flavorPool": [
-      "Fit some coilovers for me — I've got nothing, you source them.",
+      "Fit some coilovers for me - I've got nothing, you source them.",
       "Want it lower and sharper. Sort the suspension.",
       "Stock suspension's too soft for how I drive. Upgrade it."
     ]
@@ -109,7 +109,7 @@
     "payoutRangeYen": [50000, 70000],
     "baseReputation": 16,
     "flavorPool": [
-      "Upgrade the brakes — I want it to actually stop.",
+      "Upgrade the brakes - I want it to actually stop.",
       "Stock brakes can't keep up anymore. Fit something better.",
       "I need real stopping power. Sort me some brakes."
     ]
@@ -117,10 +117,10 @@
   {
     "id": "install-body",
     "work": { "kind": "install", "componentId": "body" },
-    "payoutRangeYen": [45000, 65000],
+    "payoutRangeYen": [55000, 78000],
     "baseReputation": 16,
     "flavorPool": [
-      "Fit me some aero — I want it to look and drive the part.",
+      "Fit me some aero - I want it to look and drive the part.",
       "Give it some body kit work, make it stand out.",
       "Time for an aero upgrade. You know what it needs."
     ]
@@ -128,18 +128,18 @@
   {
     "id": "install-wheels",
     "work": { "kind": "install", "componentId": "wheels" },
-    "payoutRangeYen": [55000, 80000],
+    "payoutRangeYen": [70000, 95000],
     "baseReputation": 16,
     "flavorPool": [
       "Mount a fresh set of wheels for me.",
-      "Sort me some new wheels — I'm done with the stock look.",
+      "Sort me some new wheels - I'm done with the stock look.",
       "Fit something sharper on the corners. New wheels, your call."
     ]
   },
   {
     "id": "install-interior",
     "work": { "kind": "install", "componentId": "interior" },
-    "payoutRangeYen": [70000, 95000],
+    "payoutRangeYen": [120000, 150000],
     "baseReputation": 16,
     "flavorPool": [
       "Interior needs the upgrade treatment. Fit something nice.",

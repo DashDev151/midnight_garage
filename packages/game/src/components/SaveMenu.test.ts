@@ -12,10 +12,10 @@ vi.mock('../save/saveDb', async (importOriginal) => {
 
 const loadSessionEvents = vi.mocked(saveDb.loadSessionEvents)
 
-describe('SaveMenu — export session log (Sprint 24 session log v0)', () => {
+describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    // happy-dom doesn't implement the Blob URL API — stub it so the download
+    // happy-dom doesn't implement the Blob URL API - stub it so the download
     // helper's `URL.createObjectURL`/`revokeObjectURL` calls don't throw.
     vi.stubGlobal('URL', {
       ...URL,

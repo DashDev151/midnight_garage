@@ -28,12 +28,12 @@ function clamp(value: number, min: number, max: number): number {
  * First-pass, transparent linear formula (GDD 4.2: "no hidden math the
  * player can't reason about"), pending real numbers from the Sprint 3
  * balance harness. `partsById` resolves each installed PartInstance's
- * statModifiers from the parts catalog — sim has no data loader of its
+ * statModifiers from the parts catalog - sim has no data loader of its
  * own, so the caller supplies it (built once from data/parts.json, or a
  * small test fixture).
  *
  * Sprint 12: only engine/suspension/body/drivetrain condition ever fed a
- * stat formula before the zones+slots -> components migration — brakes,
+ * stat formula before the zones+slots -> components migration - brakes,
  * wheels, and forcedInduction never had a condition-to-stat pathway (only
  * their installed part's own statModifiers counted), and interior condition
  * never fed anything either. Deliberately kept that way here: wiring the 3
@@ -44,12 +44,12 @@ function clamp(value: number, min: number, max: number): number {
  *
  * Sprint 21 decision 8: the five magic numbers below (power's condition
  * floor, handling's base/weight-divisor, style's cap, reliability's cap)
- * moved to `economy.json.statFormulas` — same values, zero behavior change.
+ * moved to `economy.json.statFormulas` - same values, zero behavior change.
  * Value no longer flows through these formulas at all (see marketValue.ts);
  * they now decide buyer *taste* only (valuation.ts), so whether the caps
  * themselves should rise is a taste-tuning question, deferred.
  *
- * Sprint 22 decision 2: every condition read here is EFFECTIVE condition —
+ * Sprint 22 decision 2: every condition read here is EFFECTIVE condition -
  * a component whose raw `condition` is 100 but carries an unrepaired hidden
  * issue still drags these stats down, the same as any other low-condition
  * component. `issuesById` resolves each rolled issue's componentId (the
@@ -91,7 +91,7 @@ export function computeDerivedStats(
     reliability += part.statModifiers.reliability * wear
     // GDD 5.3: genuine period parts add authenticity; reproductions never
     // add it, though a non-genuine part's *penalty* (a negative modifier)
-    // still applies — modification away from stock hurts either way.
+    // still applies - modification away from stock hurts either way.
     authenticity += installed.genuinePeriod
       ? part.statModifiers.authenticity
       : Math.min(0, part.statModifiers.authenticity)

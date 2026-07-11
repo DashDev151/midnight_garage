@@ -30,6 +30,7 @@ const SAMPLES: DayLogEntry[] = [
   },
   { type: 'car-sold', carInstanceId: 'car-1', channel: 'walk-in-offer', priceYen: 180_000 },
   { type: 'part-bought', partId: 'khs-street-ecu', partInstanceId: 'part-7-0', priceYen: 60_000 },
+  { type: 'service-job-accepted', jobId: 'svc-1', carInstanceId: 'car-1' },
   { type: 'service-job-completed', jobId: 'svc-1', payoutYen: 42_000, reputationGained: 4 },
 ]
 
@@ -57,5 +58,15 @@ describe('describeLogEntry', () => {
     const line = describeLogEntry({ type: 'auction-outbid', lotId: 'lot-1', newBidYen: 1_240_000 })
     expect(line).toContain('Outbid')
     expect(line).toContain('¥1,240,000')
+  })
+
+  it('Sprint 25 task 2: accepting a service job reads as the customer, not a raw car id', () => {
+    const line = describeLogEntry({
+      type: 'service-job-accepted',
+      jobId: 'svc-1',
+      carInstanceId: 'car-1',
+    })
+    expect(line).toBe("Thanks - I'll drop it off first thing in the morning.")
+    expect(line).not.toContain('car-1')
   })
 })

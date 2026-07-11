@@ -22,19 +22,19 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
     </header>
 
     <p class="how">
-      Accept a job and the customer's car comes into your shop. Do the work it needs — buy parts,
-      assign labour — then hand it back from the car's page to get paid.
+      Accept a job and the customer's car comes into your shop. Do the work it needs - buy parts,
+      assign labour - then hand it back from the car's page to get paid.
     </p>
 
     <p v-if="game.parkingFull" class="parking-warning">
-      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) — accepting a
+      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) - accepting a
       job won't bring the car in until a bay frees up.
     </p>
 
     <section class="board">
       <h3>Job board</h3>
       <p v-if="!hasOffers" class="empty">
-        No jobs on the board. A fresh batch comes in each week — End Day (or warp).
+        No jobs on the board. A fresh batch comes in each week - End Day (or warp).
       </p>
       <ul v-else class="offers">
         <li v-for="offer in game.serviceJobOfferViews" :key="offer.id" class="offer">
@@ -49,14 +49,17 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
           <div class="offer-foot">
             <button
               :disabled="!offer.canAccept"
+              :class="{ 'needs-equipment': !offer.canAccept }"
+              :title="
+                !offer.canAccept
+                  ? 'Needs ' + (offer.missingEquipmentName ?? 'equipment')
+                  : undefined
+              "
               :data-test="'accept-' + offer.id"
               @click="game.acceptServiceJob(offer.id)"
             >
               Accept
             </button>
-            <span v-if="!offer.canAccept" class="equip-hint">
-              needs {{ offer.missingEquipmentName ?? 'equipment' }}
-            </span>
           </div>
         </li>
       </ul>
@@ -71,7 +74,7 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
             <span class="terms">{{ job.carName }} · {{ job.workLabel }}</span>
           </div>
           <span class="status" :class="{ done: job.workDone }">
-            {{ job.workDone ? 'work done — hand back' : 'work outstanding' }}
+            {{ job.workDone ? 'work done - hand back' : 'work outstanding' }}
           </span>
           <span v-if="job.daysLeft !== null" class="days" :class="{ urgent: job.daysLeft <= 2 }">
             {{ job.daysLeft <= 0 ? 'due today' : job.daysLeft + 'd left' }}
@@ -173,9 +176,12 @@ h3 {
   gap: var(--mg-space-3);
 }
 
-.equip-hint {
-  color: var(--mg-neon-pink);
-  font-size: var(--mg-fs-sm);
+/* Compact disabled state for a missing-equipment lock (Sprint 25 task 9):
+   a colored border reads as "blocked, not just busy" at a glance, and the
+   full reason lives in the title tooltip instead of a separate text line. */
+button.needs-equipment {
+  border-color: var(--mg-neon-pink);
+  opacity: 0.6;
 }
 
 .active ul {

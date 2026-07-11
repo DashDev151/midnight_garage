@@ -16,14 +16,14 @@ const HiddenIssueWeightSchema = z.object({
 
 /**
  * Naming Layer (GDD 2.4, roadmap risk R5): `spec` holds real, immutable
- * data — unprotectable fact. `displayName`/`brand` (real) and
+ * data - unprotectable fact. `displayName`/`brand` (real) and
  * `parodyName`/`parodyBrand` are the only fields a naming-mode flip
  * touches; see naming.ts.
  *
  * There is no separate `spec.drivetrain` field: layout (FR/FF/AWD/MR/RR)
  * lives in `tags` like every other platform facet (GDD 4.4), and the
  * refinements below guarantee exactly one layout, induction, and
- * engine-family tag is present — see `layoutTagOf`.
+ * engine-family tag is present - see `layoutTagOf`.
  */
 export const CarModelSchema = z
   .object({
@@ -61,11 +61,11 @@ export const CarModelsSchema = z.array(CarModelSchema).min(1)
 
 export type CarModel = z.infer<typeof CarModelSchema>
 
-/** The car's layout tag (FR/FF/AWD/MR/RR) — schema-guaranteed to exist exactly once. */
+/** The car's layout tag (FR/FF/AWD/MR/RR) - schema-guaranteed to exist exactly once. */
 export function layoutTagOf(model: CarModel): Tag {
   const found = model.tags.find((t) => (LAYOUT_TAGS as readonly string[]).includes(t))
   if (!found) {
-    throw new Error(`car ${model.id} has no layout tag — should be impossible past schema parse`)
+    throw new Error(`car ${model.id} has no layout tag - should be impossible past schema parse`)
   }
   return found
 }

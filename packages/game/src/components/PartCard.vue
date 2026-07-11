@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { COMPONENT_DISPLAY_NAMES, componentDisplayName } from '@midnight-garage/content'
 import type { Part, PartInstance } from '@midnight-garage/content'
 import { useDraggable } from '../composables/useDragAndDrop'
 
 /**
  * One owned part instance, draggable onto a compatible component's drop zone
- * (Sprint 18 — the second consumer of Sprint 17's drag-and-drop composable).
+ * (Sprint 18 - the second consumer of Sprint 17's drag-and-drop composable).
  * Purely presentational: the parent decides what a drop actually does
  * (stage an install) and which components currently accept this part.
  */
@@ -14,8 +15,8 @@ const props = withDefaults(
     part: Part
     /**
      * Whether this part fits the current pick context (e.g. the component a
-     * `ReplaceDrawer` is scoped to). A non-fitting card still renders — the
-     * player sees their whole inventory, not a mysteriously shorter list —
+     * `ReplaceDrawer` is scoped to). A non-fitting card still renders - the
+     * player sees their whole inventory, not a mysteriously shorter list -
      * but is dimmed and inert to the click-to-select fast path; dragging it
      * onto an incompatible drop zone still simply fails to land, same as
      * before. Defaults to true: the standalone browse screen has no "fits
@@ -27,7 +28,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  /** A plain click (not the drag gesture, not the "move…" pick toggle) — the
+  /** A plain click (not the drag gesture, not the "move…" pick toggle) - the
    * fast path: select this part for whatever the parent's current context is. */
   select: [partInstanceId: string]
 }>()
@@ -48,6 +49,7 @@ function onCardClick(): void {
       picked: draggable.isPicked.value,
       'no-fit': !fits,
     }"
+    draggable="false"
     @pointerdown="draggable.onPointerDown"
     @pointermove="draggable.onPointerMove"
     @pointerup="draggable.onPointerUp"
@@ -55,7 +57,10 @@ function onCardClick(): void {
   >
     <div class="part-info">
       <span class="part-name">{{ part.brand }} {{ part.name }}</span>
-      <span class="part-meta">{{ part.componentId }} &middot; {{ part.grade }}</span>
+      <span class="part-meta">
+        {{ componentDisplayName(part.componentId, COMPONENT_DISPLAY_NAMES) }} &middot;
+        {{ part.grade }}
+      </span>
       <span v-if="!fits" class="no-fit-hint">doesn't fit here</span>
     </div>
     <button
@@ -82,6 +87,12 @@ function onCardClick(): void {
   padding: var(--mg-space-2) var(--mg-space-3);
   touch-action: none;
   cursor: pointer;
+  /* Sprint 25 task 7: pointer-drag (mousedown + move without releasing) was
+     selecting the card's text like a text drag, since nothing suppressed
+     native selection here - ShopSlot.vue already carried this pair for the
+     same reason. */
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .part-card.dragging {

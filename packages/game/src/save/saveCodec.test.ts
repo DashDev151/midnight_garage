@@ -12,7 +12,7 @@ const GOLDEN_V1_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjoxLCJnYW1lU3RhdGUiOnsiZGF5Ijo1LCJzZWVkIjoxLCJjYXNoWWVuIjo5MDAwMDAsInJlcHV0YXRpb25UaWVyIjoidW5rbm93biJ9fQ=='
 
 /**
- * A save code produced by version 2 (Sprint 08), pinned as a literal — same
+ * A save code produced by version 2 (Sprint 08), pinned as a literal - same
  * Save law as the v1 code above. Carries non-default `reputationPoints` so
  * the test can distinguish "preserved" from "defaulted."
  */
@@ -20,7 +20,7 @@ const GOLDEN_V2_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjoyLCJnYW1lU3RhdGUiOnsiZGF5IjoxMiwic2VlZCI6OTksImNhc2hZZW4iOjExMDAwMDAsInJlcHV0YXRpb25UaWVyIjoibG9jYWwiLCJyZXB1dGF0aW9uUG9pbnRzIjo1LCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdfX0='
 
 /**
- * A save code produced by version 3 (Sprint 09), pinned as a literal — same
+ * A save code produced by version 3 (Sprint 09), pinned as a literal - same
  * Save law again. Carries non-default `serviceBayCount`/`parkingBayCount` so
  * the test can distinguish "preserved" from "defaulted" for those, while
  * `laborSlotsSpentToday` (added in v4) is necessarily absent, proving the
@@ -31,7 +31,7 @@ const GOLDEN_V3_CODE =
 
 /**
  * A save code produced by version 5 (Sprint 12, post components-refactor),
- * pinned as a literal — same Save law again. Carries non-default
+ * pinned as a literal - same Save law again. Carries non-default
  * `laborSlotsSpentToday` so the test can distinguish "preserved" from
  * "defaulted", while `ownedEquipmentIds` (added in v6) is necessarily
  * absent, proving the v5 -> v6 migration default-fills it correctly.
@@ -41,7 +41,7 @@ const GOLDEN_V5_CODE =
 
 /**
  * A save code produced by version 6 (Sprint 13, post equipment economy),
- * pinned as a literal — same Save law again. Carries non-default
+ * pinned as a literal - same Save law again. Carries non-default
  * `ownedEquipmentIds` so the test can distinguish "preserved" from
  * "defaulted", while `pendingPartOrders`/`cartPartIds` (added in v7) are
  * necessarily absent, proving the v6 -> v7 migration default-fills them
@@ -52,10 +52,10 @@ const GOLDEN_V6_CODE =
 
 /**
  * A save code produced by version 7 (Sprint 14, post cart/checkout rework),
- * pinned as a literal — same Save law again. Carries a real pending
+ * pinned as a literal - same Save law again. Carries a real pending
  * `activeListings` entry in the pre-v8 shape (no `reputationDeltaOnSale`),
  * so the test can confirm the v7 -> v8 migration default-fills that field to
- * 0 rather than throwing — a pre-existing pending sale created before the
+ * 0 rather than throwing - a pre-existing pending sale created before the
  * quality/lemon rule existed resolves reputation-neutral.
  */
 const GOLDEN_V7_CODE =
@@ -169,7 +169,7 @@ describe('saveCodec', () => {
     expect(decoded.parkingBayCount).toBe(5)
     expect(decoded.laborSlotsSpentToday).toBe(3)
     // v5 -> v6 migration (Sprint 13): a v5 save never had the equipment list
-    // at all — correct, since equipment didn't exist as a concept yet, and
+    // at all - correct, since equipment didn't exist as a concept yet, and
     // this is the normal additive case, unlike Sprint 12's deliberate nuke.
     expect(decoded.ownedEquipmentIds).toEqual([])
     // v6 -> v7 migration is pure default-fill: a v5 save never had the
@@ -190,7 +190,7 @@ describe('saveCodec', () => {
     expect(decoded.laborSlotsSpentToday).toBe(1)
     expect(decoded.ownedEquipmentIds).toEqual(['welder', 'tire-machine'])
     // v6 -> v7 migration (Sprint 14): a v6 save never had the order/cart
-    // fields at all — correct, since neither concept existed yet, and this
+    // fields at all - correct, since neither concept existed yet, and this
     // is the normal additive case, unlike Sprint 12's deliberate nuke.
     expect(decoded.pendingPartOrders).toEqual([])
     expect(decoded.cartPartIds).toEqual([])
@@ -206,7 +206,7 @@ describe('saveCodec', () => {
     expect(decoded.ownedEquipmentIds).toEqual(['tire-machine'])
     // v7 -> v8 migration (Sprint 15): a real pending listing created before
     // the quality/lemon rule existed comes back reputation-neutral, not
-    // rejected — the field it never had default-fills to 0.
+    // rejected - the field it never had default-fills to 0.
     expect(decoded.activeListings).toHaveLength(1)
     expect(decoded.activeListings[0]?.askingPriceYen).toBe(350_000)
     expect(decoded.activeListings[0]?.reputationDeltaOnSale).toBe(0)
@@ -214,7 +214,7 @@ describe('saveCodec', () => {
 
   /**
    * v8 -> v9 (Sprint 17): a pre-v9 save's `serviceBayCarIds` is a compact
-   * list of only-occupied ids (no `parkingCarIds` at all) — the exclusion-
+   * list of only-occupied ids (no `parkingCarIds` at all) - the exclusion-
    * based model every version before this used. `MIGRATIONS[8]` must
    * reconstruct both real, index-addressable arrays rather than default-
    * filling `parkingCarIds` to `[]`, which would silently strand every
@@ -251,7 +251,7 @@ describe('saveCodec', () => {
         cashYen: 2_000_000,
         reputationTier: 'known',
         reputationPoints: 25,
-        // Only one of these two owned cars is in the old compact list — the
+        // Only one of these two owned cars is in the old compact list - the
         // other was "parked" purely by exclusion under the pre-v9 model.
         ownedCars: [ownedCar('car-service-1'), ownedCar('car-parked-1')],
         activeServiceJobs: [
@@ -382,8 +382,8 @@ describe('saveCodec', () => {
 
   /**
    * v11 -> v12 (Sprint 20, auction rework II): a real save with an in-flight
-   * bid — the player leading over a rival's escalated position, and a
-   * second lot where a rival leads instead — must migrate to the new open-
+   * bid - the player leading over a rival's escalated position, and a
+   * second lot where a rival leads instead - must migrate to the new open-
    * bidding shape without losing that live standing (see the SAVE_VERSION
    * doc comment: this is the one genuinely non-additive step in this
    * migration, same category as v9's bay/parking reconstruction).
@@ -435,7 +435,7 @@ describe('saveCodec', () => {
             car: lotCar('lot-car-a'),
           },
           {
-            // A rival is leading — the player bid, but a rival went higher.
+            // A rival is leading - the player bid, but a rival went higher.
             id: 'lot-100-rival-leads',
             tier: 'local-yard',
             modelId: 'honda-city-e-aa',
@@ -463,7 +463,7 @@ describe('saveCodec', () => {
     expect(rivalLeads?.currentBidYen).toBe(210_000)
     expect(rivalLeads?.leadingBidder).toBe('rival')
     expect(rivalLeads?.quietDays).toBe(0)
-    // playerHasBid stays true even though a rival currently leads — it never
+    // playerHasBid stays true even though a rival currently leads - it never
     // resets once set (the "My Active Bids" panel deliberately keeps
     // showing a lot the player is currently losing).
     expect(rivalLeads?.playerHasBid).toBe(true)
@@ -524,7 +524,7 @@ describe('saveCodec', () => {
 
   /**
    * v12 -> v13 (Sprint 21, value model): a pre-v13 save never tracked the
-   * supply/demand ledger — purely additive, so it decodes with both
+   * supply/demand ledger - purely additive, so it decodes with both
    * counters empty rather than needing an explicit migration step.
    */
   it('decodes a pre-v13 save with no market ledger (Sprint 21: purely additive)', () => {
@@ -564,8 +564,8 @@ describe('saveCodec', () => {
 
   /**
    * v13 -> v14 (Sprint 22, hidden issues): every pre-v14 `hiddenIssues` entry
-   * — on an owned car, an active-lot car, AND an `activeServiceJobs[].car`
-   * (the third `CarInstance` population, per the SAVE_VERSION doc comment) —
+   * - on an owned car, an active-lot car, AND an `activeServiceJobs[].car`
+   * (the third `CarInstance` population, per the SAVE_VERSION doc comment) -
    * gets `severityPercent: 0, repaired: true`, regardless of which
    * population it's in.
    */
@@ -694,6 +694,105 @@ describe('saveCodec', () => {
     })
     const decoded = decodeSave(encodeSave(withIssue))
     expect(decoded).toEqual(withIssue)
+  })
+
+  /**
+   * v14 -> v15 (Sprint 25 task 2): a pre-v15 save's accepted service jobs
+   * never had `arrivesOnDay` - it defaults to `null`, and null is exactly
+   * right here: under the old instant-placement rule, every such car was
+   * already fully in the shop, not still in transit.
+   */
+  it('decodes a pre-v15 save, treating every existing accepted service job as already arrived', () => {
+    const carComponents = {
+      engine: { condition: 60, installed: null },
+      forcedInduction: { condition: 100, installed: null },
+      drivetrain: { condition: 60, installed: null },
+      suspension: { condition: 60, installed: null },
+      brakes: { condition: 100, installed: null },
+      wheels: { condition: 100, installed: null },
+      body: { condition: 60, installed: null },
+      interior: { condition: 60, installed: null },
+    }
+    const preV15 = {
+      version: 14,
+      gameState: {
+        day: 50,
+        seed: 9,
+        cashYen: 1_000_000,
+        reputationTier: 'unknown',
+        reputationPoints: 0,
+        activeServiceJobs: [
+          {
+            id: 'service-job-1',
+            typeId: 'repair-engine',
+            customerName: 'Tanaka-san',
+            description: 'oil change',
+            work: { kind: 'repair', componentId: 'engine' },
+            payoutYen: 15_000,
+            baseReputation: 1,
+            expiresOnDay: 60,
+            dueOnDay: 55,
+            car: {
+              id: 'service-car',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 120_000,
+              color: 'White',
+              provenanceNote: '',
+              hiddenIssues: [],
+              authenticityPercent: 85,
+              components: carComponents,
+            },
+          },
+        ],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV15))
+    const decoded = decodeSave(code)
+    expect(decoded.activeServiceJobs[0]?.arrivesOnDay).toBeNull()
+  })
+
+  it('round-trips a v15 state with a real in-transit service job', () => {
+    const withInTransitJob: GameState = GameStateSchema.parse({
+      ...fullState,
+      activeServiceJobs: [
+        {
+          id: 'service-job-1',
+          typeId: 'repair-engine',
+          customerName: 'Tanaka-san',
+          description: 'oil change',
+          work: { kind: 'repair', componentId: 'engine' },
+          payoutYen: 15_000,
+          baseReputation: 1,
+          expiresOnDay: 60,
+          arrivesOnDay: 43,
+          dueOnDay: 50,
+          car: {
+            id: 'service-car',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 120_000,
+            color: 'White',
+            provenanceNote: '',
+            hiddenIssues: [],
+            authenticityPercent: 85,
+            components: {
+              engine: { condition: 60, installed: null },
+              forcedInduction: { condition: 100, installed: null },
+              drivetrain: { condition: 60, installed: null },
+              suspension: { condition: 60, installed: null },
+              brakes: { condition: 100, installed: null },
+              wheels: { condition: 100, installed: null },
+              body: { condition: 60, installed: null },
+              interior: { condition: 60, installed: null },
+            },
+          },
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withInTransitJob))
+    expect(decoded).toEqual(withInTransitJob)
+    expect(decoded.activeServiceJobs[0]?.arrivesOnDay).toBe(43)
   })
 
   it('rejects a non-save string', () => {

@@ -51,7 +51,7 @@ function stateWithLots(
 
 const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 
-/** A synthetic Gaisha model — PoC-10 has none, so this proves the exclusion holds even when one exists in the pool. */
+/** A synthetic Gaisha model - PoC-10 has none, so this proves the exclusion holds even when one exists in the pool. */
 const GAISHA_MODEL: CarModel = {
   id: 'bmw-m3-e30',
   displayName: 'BMW M3 (E30)',
@@ -144,13 +144,13 @@ describe('generateAuctionCarInstance', () => {
       const conditions = COMPONENT_IDS.map((id) => instance.components[id].condition)
       const spread = Math.max(...conditions) - Math.min(...conditions)
       // Two components' conditions can each swing +/-15 from the shared
-      // baseline, so the worst-case spread within one car is 30 — never the
+      // baseline, so the worst-case spread within one car is 30 - never the
       // near-100 spread independent rolls could produce (e.g. 100 vs 1).
       expect(spread).toBeLessThanOrEqual(30)
     }
   })
 
-  it('starts stock — every component has nothing installed', () => {
+  it('starts stock - every component has nothing installed', () => {
     const instance = generateAuctionCarInstance(
       model,
       HIDDEN_ISSUES_BY_COMPONENT,
@@ -175,11 +175,11 @@ describe('generateAuctionCarInstance', () => {
   })
 })
 
-describe('currentYear clamp — the rolling chronology (Sprint 10 item 6)', () => {
+describe('currentYear clamp - the rolling chronology (Sprint 10 item 6)', () => {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!model) throw new Error('fixture car missing from seed content')
 
-  /** yearFrom 2005 — released well after a 1995 campaign start. */
+  /** yearFrom 2005 - released well after a 1995 campaign start. */
   const FUTURE_MODEL: CarModel = {
     ...model,
     id: 'future-test-model',
@@ -258,7 +258,7 @@ describe('inspectLot', () => {
       ECONOMY,
     )
     const lotWithIssue = lots.find((lot) => lot.car.hiddenIssues.length > 0)
-    if (!lotWithIssue) return // seed happened to roll no issues this run — nothing to assert
+    if (!lotWithIssue) return // seed happened to roll no issues this run - nothing to assert
     const inspected = inspectLot(lotWithIssue)
     expect(inspected.inspected).toBe(true)
     for (const issue of inspected.car.hiddenIssues) {
@@ -285,14 +285,14 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
     return lot
   }
 
-  it('reveals the lot and charges only the cash travel fee — no labor cost (decision 4)', () => {
+  it('reveals the lot and charges only the cash travel fee - no labor cost (decision 4)', () => {
     const lot = sampleLot(1)
     const fee = ECONOMY.AUCTION_TRAVEL_FEE_YEN[lot.tier]
     const state = stateWithLots([lot], 1_000_000)
     const result = resolveInspectLot(state, lot.id, ECONOMY)
     expect(result.state.activeAuctionLots[0]?.inspected).toBe(true)
     expect(result.state.cashYen).toBe(1_000_000 - fee)
-    expect(result.state.laborSlotsSpentToday).toBe(0) // untouched — inspect never spends labor
+    expect(result.state.laborSlotsSpentToday).toBe(0) // untouched - inspect never spends labor
     expect(result.log).toEqual([{ type: 'lot-inspected', lotId: lot.id }])
   })
 
@@ -319,7 +319,7 @@ describe('resolveInspectLot (Sprint 11 instant resolver)', () => {
   })
 })
 
-describe('revealIssuesAtHandover (Sprint 22 — severity is fixed at generation, handover never mutates condition)', () => {
+describe('revealIssuesAtHandover (Sprint 22 - severity is fixed at generation, handover never mutates condition)', () => {
   const model = CARS.find((c) => c.id === 'mazda-savanna-rx7-fc3s')
   if (!model) throw new Error('fixture car missing from seed content')
 

@@ -3,24 +3,24 @@
 *Full requirements capture, written 2026-07-09 at the maintainer's request. This is the committed
 design for the **Facilities sprint**, which comes **directly after Sprint 08 (service jobs)**. The
 detailed end-to-end implementation design (exact schemas, action shapes, UI flows) is finalized when
-that sprint starts — this doc pins down **what the system must do and why**, so nothing is lost.
+that sprint starts - this doc pins down **what the system must do and why**, so nothing is lost.
 Elaborates GDD §258's "Tools, not levels" shop-equipment progression.*
 
 ## The core idea: two kinds of bay
 
 The garage has two distinct capacities, and separating them is the whole point:
 
-- **Parking bays = STORAGE.** How many cars you can *hold* at once — owned cars (won at auction /
+- **Parking bays = STORAGE.** How many cars you can *hold* at once - owned cars (won at auction /
   bought out, in inventory or mid-build) **and** accepted service-job cars waiting their turn. A car
   in a parking bay just sits there; no work happens.
 - **Service bays = WORK CAPACITY.** How many cars you can *actively work on* at once. **To apply
-  labor to a car — an owned-car build job OR a service job — it must be in a service bay.** Service
+  labor to a car - an owned-car build job OR a service job - it must be in a service bay.** Service
   bays are scarce; parking bays are plentiful.
 
 You **move cars between parking and service bays** (a player action). With few service bays, you
 shuffle: pull the finished car out to parking (or sell it), move the next one in.
 
-**This is cross-cutting.** It gates **owned-car builds too**, not just service jobs — an owned car
+**This is cross-cutting.** It gates **owned-car builds too**, not just service jobs - an owned car
 you're restoring can't progress its repair/install jobs unless it's in a service bay. That's exactly
 why this is its own sprint and not a bolt-on to service jobs.
 
@@ -28,18 +28,18 @@ why this is its own sprint and not a bolt-on to service jobs.
 
 | Capacity | Start | Early expansion | Late game |
 |---|---|---|---|
-| **Service bays** (work) | 1 | 2 (first month — the *building/expansion tutorial* beat) | ~5 |
+| **Service bays** (work) | 1 | 2 (first month - the *building/expansion tutorial* beat) | ~5 |
 | **Parking bays** (storage) | 3 | grows with the shop | ~10–15 |
 
 Ultra-early game with **one** service bay makes the first expansion (to two) a meaningful,
-teachable moment — the moment the player learns the shop itself is upgradable.
+teachable moment - the moment the player learns the shop itself is upgradable.
 
-## Expansion is a purchase — the "Tools, not levels" spine
+## Expansion is a purchase - the "Tools, not levels" spine
 
 Additional service and parking bays are **bought** (yen, possibly gated by reputation/equipment),
 each a visible upgrade in the garage (GDD §258: "Basic tools → Two-post lift → Dyno cell → …; you
 can't build what you can't lift. Equipment + staff skill + rep gate the ceiling; money alone never
-skips the climb"). Bays are one axis of that broader facility/equipment arc — expanding them is how
+skips the climb"). Bays are one axis of that broader facility/equipment arc - expanding them is how
 money converts into throughput ceiling, deliberately and visibly, never as an invisible level-up.
 
 ## The loop to model: labor ↔ bays ↔ staff (maintainer, 2026-07-09)
@@ -57,7 +57,7 @@ Two hard balance rules that fall out of this:
 
 1. **An extra service bay is dead weight without the labor to use it.** Bay count and labor pool must
    climb together; the economy pass tunes them jointly (never one in isolation).
-2. **Idle labor is wasted money** (you pay staff wages whether or not there's bay space) — which is
+2. **Idle labor is wasted money** (you pay staff wages whether or not there's bay space) - which is
    the pressure that makes expanding bays feel necessary, not optional.
 
 Sprint 08 ships the **labor** half of this (shared daily labor budget across owned-car jobs and
@@ -90,14 +90,14 @@ the triangle.
 
 **Tuning:**
 - Bay purchase prices and the start/expansion curve, tuned *with* the labor pool and (later) staff
-  wages via the balance harness — the crossover where "expand vs. hire" becomes the right call.
+  wages via the balance harness - the crossover where "expand vs. hire" becomes the right call.
 
 ## Open questions (resolve at sprint start)
 
 - Manual bay assignment vs. auto-fill-from-parking when a service bay frees.
-- Whether bays are the first slice of a broader **equipment** system (lifts, dyno, welder — GDD §258)
+- Whether bays are the first slice of a broader **equipment** system (lifts, dyno, welder - GDD §258)
   or ship standalone first.
-- Staff-to-bay assignment (does a staffer occupy/attach to a bay?) — coordinate with Sprint 13.
+- Staff-to-bay assignment (does a staffer occupy/attach to a bay?) - coordinate with Sprint 13.
 - How the store's labor auto-planner (`planActions`) chooses *which* in-service-bay jobs to feed when
   labor is scarce.
 

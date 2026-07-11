@@ -1,5 +1,5 @@
 // Marks a tsc build output directory as CommonJS, overriding the
-// package's own "type": "module" for that subtree — Node walks up to the
+// package's own "type": "module" for that subtree - Node walks up to the
 // nearest package.json to decide how to interpret a .js file, and
 // without this, compiled CommonJS `require()` calls would be rejected as
 // invalid ES module syntax. Written as a standalone .cjs script (not the

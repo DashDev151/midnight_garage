@@ -15,7 +15,7 @@ import { groupHiddenIssuesByComponent } from './auctions'
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
  * pass a facilities arg keep compiling and still get sane new-game start
- * counts (1 service / 3 parking) — just with no bays purchasable (max ==
+ * counts (1 service / 3 parking) - just with no bays purchasable (max ==
  * start). Real gameplay passes content's actual FACILITIES.
  */
 const DEFAULT_FACILITIES: Facilities = {
@@ -25,11 +25,11 @@ const DEFAULT_FACILITIES: Facilities = {
 
 /**
  * Static content catalogs advanceDay needs for auction generation and
- * valuation — car models, parts, buyers, hidden issues. Sim has no data
+ * valuation - car models, parts, buyers, hidden issues. Sim has no data
  * loader of its own (packages/content ships JSON, not a database), so
  * the caller builds this once from data/*.json and passes it through.
  * Kept separate from GameState because it's reference data, not
- * evolving game state — bundled into one object rather than threading
+ * evolving game state - bundled into one object rather than threading
  * four separate parameters through advanceDay and every function below it.
  */
 export interface SimContext {
@@ -58,7 +58,7 @@ function indexById<T extends { id: string }>(items: readonly T[]): Record<string
 
 /**
  * `economy` (Sprint 20 step 0) is deliberately the LAST parameter, defaulted
- * to the real parsed `economy.json` (content's `ECONOMY`) — every other
+ * to the real parsed `economy.json` (content's `ECONOMY`) - every other
  * `buildSimContext` call site (the ~16 sim test files that call this
  * positionally) keeps compiling and gets the real economy config with no
  * changes, since a trailing default doesn't shift any existing positional

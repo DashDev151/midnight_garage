@@ -14,11 +14,11 @@ import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 
 /**
- * Buyer archetypes with a genuinely stated interest in a model's tier — the
+ * Buyer archetypes with a genuinely stated interest in a model's tier - the
  * gate (Sprint 10). No entry for a tier means that archetype never bids on
  * it; there is no default fallback (that fallback was the original "every
  * buyer wants every car" bug). Exported (Sprint 11) so `selling.ts` can
- * apply the identical gate to walk-in/listing buyers — the same rule was
+ * apply the identical gate to walk-in/listing buyers - the same rule was
  * missing on the sell side, not a different rule.
  */
 export function interestedBuyers(
@@ -35,24 +35,24 @@ export function interestedBuyers(
  * The single value anchor (Sprint 20, auction rework II; body swapped
  * Sprint 21). Every other money number in this file (`demandCeilingYen`,
  * `computeBuyoutPriceYen`, `turnoutBand`) calls this ONE function, never
- * `marketValueYen` directly — that isolation is what let Sprint 21 re-anchor
+ * `marketValueYen` directly - that isolation is what let Sprint 21 re-anchor
  * every auction-money number at once by swapping one function's body.
  *
  * Sprint 21 decision 7: dealers buy at wholesale off the taste-free market
  * value (`marketValueYen`, the rolled lot car's condition/parts/heat, no
- * buyer stat-fit) — taste belongs to end customers, not the trade. The
+ * buyer stat-fit) - taste belongs to end customers, not the trade. The
  * `interestedBuyers` tier gate stays (reuse table: "still gates ... auction
  * participation") as a precondition, not a value input: it still answers
  * "does ANY dealer archetype care about this tier at all", returning 0 when
  * nobody does (the demand ceiling then sits below any reserve, so the lot
- * simply never opens on its own) — but no longer selects *which* buyer's
+ * simply never opens on its own) - but no longer selects *which* buyer's
  * valuation to use, since `marketValueYen` doesn't take a buyer.
  *
- * Sprint 22 decision 5: the anchor is discounted by `modelRiskDiscount` —
+ * Sprint 22 decision 5: the anchor is discounted by `modelRiskDiscount` -
  * what everyone in the trade knows about this MODEL's hidden-issue risk
  * ("these are known for rust"), never the actual rolled issues on this one
  * instance. `marketValueYen` itself stays issue-blind (decision 4's
- * separation, shared with `issueAdjustedValueYen` on the sell side) — the
+ * separation, shared with `issueAdjustedValueYen` on the sell side) - the
  * discount is applied here, once, at the lot-pricing layer only.
  */
 export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
@@ -68,34 +68,46 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
 
 /** Seller's floor under a deal (GDD 6.5): a fraction of book value. Bidding
  * opens here; a lot whose demand ceiling never clears it simply never opens
- * on its own (nobody came for it) — it can still be bought out, or bid on
+ * on its own (nobody came for it) - it can still be bought out, or bid on
  * directly by the player. */
 function reserveYen(lot: AuctionLot, economy: EconomyConfig): number {
   return Math.round(lot.bookValueYen * economy.AUCTION_RESERVE_PRICE_FRACTION)
 }
 
 /**
- * The demand ceiling (Sprint 20) — ONE hidden number per lot, derived from
- * the lot's own id alone (never stored, never re-rolled): what the
- * assembled dealers will pay, anchored at wholesale
- * (`AUCTION_WHOLESALE_FRACTION` of `anchorValueYen`) with a lot-seeded bell
+ * The demand ceiling (Sprint 20; re-seeded daily as a Sprint 25 task 4
+ * interim fix) - what the assembled dealers will pay today, anchored at
+ * wholesale (`AUCTION_WHOLESALE_FRACTION` of `anchorValueYen`) with a bell
  * spread (`AUCTION_DEMAND_SPREAD_SD`) and a flat chance of a thin-turnout
  * day (`AUCTION_THIN_TURNOUT_CHANCE`, multiplying the ceiling by
- * `AUCTION_THIN_TURNOUT_FACTOR`) — the weak-day tail where real steals live.
+ * `AUCTION_THIN_TURNOUT_FACTOR`) - the weak-day tail where real steals live.
  * Replaces the old per-rival ceiling array entirely: this is the load-
  * bearing economics fix (Sprint 19's rivals bid 0.95x *retail*, so a
  * contested lot cleared near book; wholesale-anchoring here is what makes
- * patient bidding actually beat buyout most of the time). Seeded on
- * `lot.id` alone, distinct from the per-day overnight-step seed, so the
- * ceiling itself never moves once a lot exists — only the standing bid
- * climbs toward it.
+ * patient bidding actually beat buyout most of the time).
+ *
+ * Sprint 20 originally seeded this on `lot.id` alone so it never moved once
+ * a lot existed. Verified defect (2026-07-11 playtest, note 14): a lot whose
+ * one-time ceiling happened to land below reserve then NEVER received a
+ * single rival bid for its entire life, no matter how many days passed -
+ * "sat bidless for 4 days" wasn't a rare edge case, it was permanent for
+ * that lot. Seeding on `` `${lot.id}:${day}` `` instead (same pattern as
+ * `advanceLotOvernight`'s own per-day seed) means a lot near reserve gets a
+ * fresh roll every day and can open organically on a later, luckier one.
+ * The full pacing redesign (real bidder-count simulation, not a single
+ * rolled number) is Sprint 30 scope - this is the interim fix.
  */
-export function demandCeilingYen(lot: AuctionLot, state: GameState, context: SimContext): number {
+export function demandCeilingYen(
+  lot: AuctionLot,
+  state: GameState,
+  context: SimContext,
+  day: number,
+): number {
   const anchor = anchorValueYen(lot, state, context)
   if (anchor <= 0) return 0
   const economy = context.economy
   const center = anchor * economy.AUCTION_WHOLESALE_FRACTION
-  const rng = createRng(hashStringToSeed(lot.id))
+  const rng = createRng(hashStringToSeed(`${lot.id}:${day}`))
   const spreadMultiplier = bellNormal(1, economy.AUCTION_DEMAND_SPREAD_SD, rng)
   const isThinTurnout = rng.next() < economy.AUCTION_THIN_TURNOUT_CHANCE
   const turnoutMultiplier = isThinTurnout
@@ -108,16 +120,30 @@ export type TurnoutBand = 'thin' | 'steady' | 'packed'
 
 /**
  * A subtle pre-bid flavor read (maintainer decision 3: flavor yes, no
- * numeric "room" gauge) — how many dealers came to look, as a coarse band
- * over the lot's own rolled spread multiplier (`demandCeilingYen /
+ * numeric "room" gauge) - how many dealers came to look today, as a coarse
+ * band over today's rolled spread multiplier (`demandCeilingYen /
  * (anchorValueYen * AUCTION_WHOLESALE_FRACTION)`), thresholded by
  * `AUCTION_TURNOUT_BANDS`. Price is king; this is one word of texture.
+ *
+ * Sprint 25 task 4 (badge honesty): a lot whose ceiling can't even clear
+ * reserve is always `thin`, regardless of what the ratio-based band would
+ * say - the pre-fix bug let a lot that could never open on its own display
+ * "PACKED TURNOUT" (the ratio is relative to that lot's own depressed
+ * center, so a favorable spread roll on an absolutely weak lot still scored
+ * high). The badge must never claim more interest than the lot can act on.
  */
-export function turnoutBand(lot: AuctionLot, state: GameState, context: SimContext): TurnoutBand {
+export function turnoutBand(
+  lot: AuctionLot,
+  state: GameState,
+  context: SimContext,
+  day: number,
+): TurnoutBand {
+  const ceiling = demandCeilingYen(lot, state, context, day)
+  if (ceiling < reserveYen(lot, context.economy)) return 'thin'
   const anchor = anchorValueYen(lot, state, context)
   const center = anchor * context.economy.AUCTION_WHOLESALE_FRACTION
   if (center <= 0) return 'thin'
-  const ratio = demandCeilingYen(lot, state, context) / center
+  const ratio = ceiling / center
   const [thinBelow, packedAbove] = context.economy.AUCTION_TURNOUT_BANDS
   if (ratio < thinBelow) return 'thin'
   if (ratio > packedAbove) return 'packed'
@@ -126,7 +152,7 @@ export function turnoutBand(lot: AuctionLot, state: GameState, context: SimConte
 
 /**
  * The bid ladder (Sprint 20): `max(Y10,000, 5% of book rounded to the
- * nearest Y10,000)` — one increment size for the player, the dealers, and
+ * nearest Y10,000)` - one increment size for the player, the dealers, and
  * every bidding bot alike. Fixed off the lot's own book value, not the
  * current bid, so the ladder doesn't compress as a lot's price climbs.
  */
@@ -151,11 +177,11 @@ export function nextRaiseYen(lot: AuctionLot, economy: EconomyConfig): number {
 
 /**
  * The real, chargeable instant-buyout price (Sprint 20): `max(anchorValueYen
- * * AUCTION_BUYOUT_PREMIUM, currentBidYen + one increment)` — the same
+ * * AUCTION_BUYOUT_PREMIUM, currentBidYen + one increment)` - the same
  * exported anchor the demand ceiling uses, floored above whatever's
  * currently on the board so a buyout always ends the auction outright,
  * never undercuts it (maintainer decision 2: buyout is available on every
- * lot, priced rather than forbidden — with wholesale clearing around
+ * lot, priced rather than forbidden - with wholesale clearing around
  * 0.6-0.8x value and buyout at ~1.25x value, it's always available and
  * almost never rational).
  */
@@ -176,16 +202,16 @@ export interface OvernightStepResult {
 }
 
 /**
- * One lot's overnight step (Sprint 20 — the core new daily mechanic),
+ * One lot's overnight step (Sprint 20 - the core new daily mechanic),
  * seeded on `lot.id:day` so each day's roll is independent but fully
  * reproducible:
  *
  * - Not yet open (`currentBidYen === 0`): if the demand ceiling clears
  *   reserve, the dealers open the bidding there (`leadingBidder: 'rival'`).
- *   Otherwise the lot stays bidless — still buyable, still biddable by the
+ *   Otherwise the lot stays bidless - still buyable, still biddable by the
  *   player at or above reserve, just nobody's shown up on their own yet.
  * - Open, below the ceiling: with probability `AUCTION_COUNTER_CHANCE` the
- *   dealers raise one increment (capped at the ceiling) and take the lead —
+ *   dealers raise one increment (capped at the ceiling) and take the lead -
  *   deliberately UNCONDITIONAL on who currently leads, since the dealers
  *   bid among themselves too; an untouched lot climbs toward its own
  *   ceiling like any other. The "you were outbid overnight" beat
@@ -196,7 +222,7 @@ export interface OvernightStepResult {
  *   board shows: a player raise to exactly the ceiling stops the dealers
  *   cold, since `currentBidYen >= ceiling` is already true.
  *
- * Silence always increments `quietDays`; any real raise resets it to 0 —
+ * Silence always increments `quietDays`; any real raise resets it to 0 -
  * `AUCTION_QUIET_DAYS_TO_HAMMER` consecutive silent steps is what "going
  * once, going twice" means mechanically.
  */
@@ -209,9 +235,9 @@ export function advanceLotOvernight(
   const economy = context.economy
 
   if (lot.currentBidYen === 0) {
-    const ceiling = demandCeilingYen(lot, state, context)
+    const ceiling = demandCeilingYen(lot, state, context, day)
     if (ceiling < reserveYen(lot, economy)) {
-      return { lot, log: [] } // nobody's come for it (yet) — stays bidless
+      return { lot, log: [] } // nobody's come for it (yet) - stays bidless
     }
     return {
       lot: {
@@ -224,7 +250,7 @@ export function advanceLotOvernight(
     }
   }
 
-  const ceiling = demandCeilingYen(lot, state, context)
+  const ceiling = demandCeilingYen(lot, state, context, day)
   if (lot.currentBidYen >= ceiling) {
     return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] }
   }
@@ -248,13 +274,13 @@ export interface AcquisitionResult {
 }
 
 /**
- * Places or raises a bid (Sprint 20 — open-raise semantics replace sealed
+ * Places or raises a bid (Sprint 20 - open-raise semantics replace sealed
  * proxy bidding): the amount passed is the literal number that lands on the
  * board, not a hidden max. Must clear `minRaiseYen` (reserve to open an
- * unopened lot, one increment above the current board price otherwise) —
+ * unopened lot, one increment above the current board price otherwise) -
  * anything less is a no-op, same as before. Sets `leadingBidder: 'player'`,
  * `playerHasBid: true` (never reset once true), and resets `quietDays` to 0
- * — a player raise is exactly as much a "real raise" as a dealer's for
+ * - a player raise is exactly as much a "real raise" as a dealer's for
  * activity-based closing purposes. Shared by the player's instant click and
  * advanceDay's bot batch loop.
  */
@@ -285,13 +311,13 @@ export function resolvePlaceBid(
 }
 
 /**
- * Resolves one lot for today (Sprint 20 — replaces `resolveDueAuctionLot`):
- * runs the overnight step, then hammers it — `quietDays >=
+ * Resolves one lot for today (Sprint 20 - replaces `resolveDueAuctionLot`):
+ * runs the overnight step, then hammers it - `quietDays >=
  * AUCTION_QUIET_DAYS_TO_HAMMER`, or `day >= expiresOnDay` (the duration-roll
- * backstop, preserving flash/standard/long velocity variation) — if either
+ * backstop, preserving flash/standard/long velocity variation) - if either
  * condition is now met, otherwise the lot simply stays active with its
  * updated board state. Called once per still-active lot from `advanceDay`'s
- * day-boundary step, every day, not just on some fixed "due day" — activity-
+ * day-boundary step, every day, not just on some fixed "due day" - activity-
  * based closing means there's no schedule to filter on anymore.
  *
  * At the hammer: no leader resolves silently (kept behavior, matching the
@@ -330,7 +356,7 @@ export function resolveLotForDay(
   }
 
   if (updatedLot.leadingBidder === null) {
-    return { state: removeLot(state), log } // nobody ever bid — silent no-sale
+    return { state: removeLot(state), log } // nobody ever bid - silent no-sale
   }
 
   if (updatedLot.leadingBidder === 'rival') {
@@ -344,7 +370,7 @@ export function resolveLotForDay(
     return { state: removeLot(state), log }
   }
 
-  // The player leads — wins at currentBidYen, the literal board number
+  // The player leads - wins at currentBidYen, the literal board number
   // (first-price). No escrow: cash and parking are only checked now.
   if (!hasParkingSpace(state)) {
     log.push(
@@ -379,7 +405,7 @@ export function resolveLotForDay(
 
 /**
  * The instant buyout resolver (Sprint 11; re-priced Sprint 20): a guaranteed
- * purchase at `computeBuyoutPriceYen`, no rival contest — a full garage just
+ * purchase at `computeBuyoutPriceYen`, no rival contest - a full garage just
  * means the purchase doesn't happen right now (no money spent), the lot
  * stays on the board for a retry once space frees up. Shared by the
  * player's instant click and advanceDay's bot batch loop.

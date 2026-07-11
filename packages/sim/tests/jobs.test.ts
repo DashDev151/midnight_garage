@@ -26,7 +26,7 @@ import { buildSimContext } from '../src/context'
 // an install spec needs both to resolve to something real.
 const CONTEXT = buildSimContext(CARS, PARTS, [], [], [], undefined, [], EQUIPMENT)
 
-/** Sprint 22: `fix-issue` fixture — severity 50 costs exactly `repairCostBaseYen`
+/** Sprint 22: `fix-issue` fixture - severity 50 costs exactly `repairCostBaseYen`
  * (economy.json's `costDivisor` default). */
 const ENGINE_ISSUE: HiddenIssue = {
   id: 'test-engine-knock',
@@ -38,7 +38,7 @@ const ENGINE_ISSUE: HiddenIssue = {
 }
 const CONTEXT_WITH_ISSUE = buildSimContext([], [], [], [ENGINE_ISSUE], [], undefined, [], EQUIPMENT)
 
-/** Equipment ids covering the components these tests repair — owned by default so job-creation
+/** Equipment ids covering the components these tests repair - owned by default so job-creation
  * tests aren't incidentally blocked by the Sprint 13 equipment gate, which has its own tests below. */
 const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
 const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!
@@ -156,7 +156,7 @@ describe('completeJob', () => {
     expect(result.blockedByOccupiedSlot).toBe(false)
     expect(result.state.ownedCars[0]?.components.suspension.installed?.id).toBe(sparePart.id)
     // Sprint 13 fix: Replace also sets condition -> 100, matching the design
-    // doc — the pre-Sprint-12 model had no way to couple install to condition.
+    // doc - the pre-Sprint-12 model had no way to couple install to condition.
     expect(result.state.ownedCars[0]?.components.suspension.condition).toBe(100)
     expect(result.state.partInventory).toHaveLength(0)
   })
@@ -181,7 +181,7 @@ describe('completeJob', () => {
     expect(result.blockedByOccupiedSlot).toBe(false)
     const fixedCar = result.state.ownedCars[0]!
     expect(fixedCar.hiddenIssues[0]?.repaired).toBe(true)
-    // Fixing the issue is NOT a repair-zone — raw condition is untouched.
+    // Fixing the issue is NOT a repair-zone - raw condition is untouched.
     expect(fixedCar.components.engine.condition).toBe(40)
   })
 
@@ -355,7 +355,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
           reason: 'part-does-not-fit',
         },
       ])
-      // Nothing moved — inventory and the car's own components are untouched.
+      // Nothing moved - inventory and the car's own components are untouched.
       expect(result.state.partInventory).toHaveLength(2)
       expect(result.state.ownedCars[0]?.components.suspension.installed).toBeNull()
     })
@@ -479,7 +479,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
   })
 })
 
-describe('resolveJobLabor (Sprint 11) — the instant player-facing resolver', () => {
+describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () => {
   it('composes find-or-create + apply-labor in one call', () => {
     const state = baseState({ serviceBayCarIds: [car.id] })
     const spec = {

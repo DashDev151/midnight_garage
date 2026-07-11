@@ -35,7 +35,7 @@ const COMPONENT_IDS: readonly ComponentId[] = [
 
 /**
  * GDD 4.5: Gaisha is sourced only via the (unbuilt) Import Broker, "no
- * auction luck" — it never appears in a regular auction catalog. Legend
+ * auction luck" - it never appears in a regular auction catalog. Legend
  * appears only at the rep-gated Collector Network (GDD 9.2: rare, mostly
  * story leads, occasionally an auction).
  */
@@ -106,16 +106,16 @@ function clampCondition(value: number): number {
 /**
  * Rolls a fresh, not-yet-owned car for an auction lot. Condition here is
  * the displayed/paperwork baseline; hidden issues are drawn (weighted by
- * the model's hiddenIssueWeights) but stay unresolved — revealed=false —
+ * the model's hiddenIssueWeights) but stay unresolved - revealed=false -
  * until inspection or the sliding-scale lemon rule at handover
  * (resolveHandoverCondition). Always stock: every component starts with
  * nothing installed, since an auction car hasn't been touched yet (GDD:
  * "buy rough, restore/build"). `currentYear` (Sprint 10, default Infinity =
- * unrestricted) clamps the rolled model year to the in-game calendar — see
- * calendar.ts — so an individual instance can't roll a still-impossible
+ * unrestricted) clamps the rolled model year to the in-game calendar - see
+ * calendar.ts - so an individual instance can't roll a still-impossible
  * year even when its model is otherwise eligible.
  *
- * Sprint 12: component conditions are no longer rolled independently — a
+ * Sprint 12: component conditions are no longer rolled independently - a
  * car that rolled a pristine engine and a wrecked transmission with no
  * relationship between them read as arbitrary rather than "this car has had
  * a hard life." One baseline is rolled per car, and each of the 8
@@ -139,11 +139,11 @@ export function generateAuctionCarInstance(
         issueId: picked.id,
         revealed: false,
         // Sprint 22: severity is rolled ONCE, here, and stays fixed for the
-        // instance's whole life — no handover re-roll, no discount-scaled
+        // instance's whole life - no handover re-roll, no discount-scaled
         // variance. Inserting this draw shifts every later roll in the
         // shared catalog rng (baseline condition, jitter, year, mileage,
         // color, provenance, authenticity, and any later lot in the same
-        // batch) — accepted; golden masters re-pin at sprint end.
+        // batch) - accepted; golden masters re-pin at sprint end.
         severityPercent: rng.int(picked.severityMin, picked.severityMax),
         repaired: false,
       },
@@ -180,10 +180,10 @@ export function generateAuctionCarInstance(
  * Weekly catalog for one tier: one lot per eligible model that's in stock
  * this week, up to `count`. `currentYear` (Sprint 10, default Infinity =
  * unrestricted) also excludes any model whose `yearFrom` postdates the
- * in-game calendar — see calendar.ts — so a still-unreleased model can't
+ * in-game calendar - see calendar.ts - so a still-unreleased model can't
  * appear at auction (GDD 2.2: "new model years appear at auction over time").
  * Each lot's own duration is rolled independently off its model's rarity
- * (Sprint 19 decision 1) — replacing the old flat `expiresInDays` shared by
+ * (Sprint 19 decision 1) - replacing the old flat `expiresInDays` shared by
  * every lot in the batch.
  */
 export function generateAuctionCatalog(
@@ -244,7 +244,7 @@ export interface InspectLotResult {
 
 /**
  * The instant inspect resolver (Sprint 11): reveals a lot's hidden issues
- * the moment it's clicked, for its cash travel fee only — no labor cost
+ * the moment it's clicked, for its cash travel fee only - no labor cost
  * (decision 4: labor is the tightest resource in the game, and gating a
  * look-before-you-buy action behind it wasn't buying any real tension).
  * Shared by the player's instant click and advanceDay's bot batch loop.
@@ -275,13 +275,13 @@ export interface HandoverResult {
 }
 
 /**
- * Sprint 22: replaces the old sliding-scale lemon rule outright — severity
+ * Sprint 22: replaces the old sliding-scale lemon rule outright - severity
  * is already fixed (rolled at generation, see `generateAuctionCarInstance`),
  * so handover never mutates `condition`; it only reveals what's already
  * true. An inspected lot showed the player these facts on the auction
  * screen already, so there's nothing left to report. An uninspected lot
  * that rolled at least one real issue gets a discovery beat on handover day
- * — the moment the player learns what they actually bought.
+ * - the moment the player learns what they actually bought.
  */
 export function revealIssuesAtHandover(lot: AuctionLot, wasInspected: boolean): HandoverResult {
   const car: CarInstance = {

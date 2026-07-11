@@ -21,7 +21,7 @@ import type { Rng } from '../rng'
 import { isServiceWorkDone } from '../serviceJobs'
 
 /**
- * One car at a time, deliberately — measurement showed that even 2 (every
+ * One car at a time, deliberately - measurement showed that even 2 (every
  * other bot's default) let this policy start a second restoration before
  * the first one finished, permanently splitting its equipment-buying cash
  * and labor across two needy cars, so NEITHER ever reached a full,
@@ -30,7 +30,7 @@ import { isServiceWorkDone } from '../serviceJobs'
  * finish, sell, then buy the next one.
  */
 const MAX_CONCURRENT_CARS = 1
-/** Never pays more than the car is genuinely worth (decision 4's own framing) — the
+/** Never pays more than the car is genuinely worth (decision 4's own framing) - the
  * walk-away target is the value anchor itself, no premium, no discount. */
 const FAIR_BID_MULTIPLIER = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.15
@@ -53,24 +53,24 @@ function highestAccessibleTier(state: GameState): AuctionTier {
 }
 
 /**
- * Sprint 23's measurement instrument — the "competent player" invariant 3
+ * Sprint 23's measurement instrument - the "competent player" invariant 3
  * (days-to-`local`) and the M1/M3 measurement tasks are read against. This
  * is deliberately NOT a bot archetype (sprint23.md's own framing:
- * "operationalized by the probe policies below, not by bot archetypes") —
+ * "operationalized by the probe policies below, not by bot archetypes") -
  * it lives in `bots/` and matches `BotStrategy`'s shape only because that's
  * the existing, reusable way to run a deterministic day-by-day policy
  * through `runCareer`/`exportCareers.ts`, not because it belongs in the
  * balance harness's roster of playstyle comparisons.
  *
  * The policy, in order: (1) continue open jobs; (2) always inspect before
- * ever bidding — this policy never bids on an uninspected lot, since
+ * ever bidding - this policy never bids on an uninspected lot, since
  * information is the entire point of Sprint 22; (3) join/continue a war at
  * the value anchor itself (never overpay), walking away from a real severe
  * issue via the shared `acquireLot` risk filter (Sprint 22); (4)/(4b) fully
  * restore every component AND fix every hidden issue, cheapest-to-unlock
  * first (Sprint 23 decision 6's fix); (5) sell restored, issue-free cars
  * for a clean/concours reputation gain (decision 1's faucet); (6) work a
- * service job on whatever labor restoration doesn't use that day — car
+ * service job on whatever labor restoration doesn't use that day - car
  * restoration is the priority, service work is the overflow, matching the
  * doc's own "work service jobs on idle labor" phrasing.
  */
@@ -97,12 +97,12 @@ export function competentPolicyStrategy(
     laborBudget -= slots
   }
 
-  // 2/3. Only shop for a car when there's actually room for one (patient —
+  // 2/3. Only shop for a car when there's actually room for one (patient -
   // see MAX_CONCURRENT_CARS's own doc comment): inspect one uninspected lot
   // of the current highest-accessible tier, then join or continue a war on
   // an already-inspected lot. `acquireLot` itself refuses a lot whose
   // inspected car carries a real severe issue (Sprint 22's shared risk
-  // filter) — this policy never has to duplicate that check.
+  // filter) - this policy never has to duplicate that check.
   const hasRoomToBuy = state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS
   if (hasRoomToBuy) {
     const uninspected = state.activeAuctionLots.filter(
@@ -135,7 +135,7 @@ export function competentPolicyStrategy(
   }
 
   // 4. Repair the cheapest-to-unlock needy component on each owned,
-  // job-free car — tries every needy component in ascending equipment-cost
+  // job-free car - tries every needy component in ascending equipment-cost
   // order before giving up on the car, exactly like the Sprint 23-fixed
   // `cautiousRestorerStrategy` (see that file's own doc comment for why the
   // naive "first needy component" version could deadlock permanently).
@@ -172,7 +172,7 @@ export function competentPolicyStrategy(
     carsGettingJobsToday.add(car.id)
   }
 
-  // 4b. Fix any unrepaired hidden issue on an owned, job-free car — "fully
+  // 4b. Fix any unrepaired hidden issue on an owned, job-free car - "fully
   // restored" (step 5) requires zero unrepaired issues, not just condition.
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
@@ -212,14 +212,14 @@ export function competentPolicyStrategy(
     carsGettingJobsToday.add(car.id)
   }
 
-  // 4c. Free the service bay from a car that's stalled — sitting in the bay
+  // 4c. Free the service bay from a car that's stalled - sitting in the bay
   // with no active job and nothing new queued for it today (steps 4/4b found
   // no obtainable component or issue to work, typically because the
   // remaining ones need equipment this career can't yet afford or reach).
   // Without this the ONE starting bay stays claimed by an unworkable car
   // forever (nothing else ever moves it out), permanently zeroing out
   // step 6's `bayBudget.free` and starving the service-job faucet even
-  // though real idle labor exists — a real deadlock found by measurement
+  // though real idle labor exists - a real deadlock found by measurement
   // (M3), not guessed at: a bootstrapped career froze solid at day 7 with
   // 0 labor spent on any of the next 50+ days once its first few obtainable
   // components ran out.
@@ -231,7 +231,7 @@ export function competentPolicyStrategy(
     }
   }
 
-  // 5. List fully-restored, issue-free, job-free cars publicly — the
+  // 5. List fully-restored, issue-free, job-free cars publicly - the
   // clean/concours-eligible "slow, market price" channel (decision 1's
   // reputation faucet actually being reachable is this sprint's whole point).
   for (const car of state.ownedCars) {
@@ -246,7 +246,7 @@ export function competentPolicyStrategy(
   }
 
   // 6. Work a service job on whatever labor car-restoration didn't use
-  // today — restoration is this policy's priority, service work is the
+  // today - restoration is this policy's priority, service work is the
   // overflow (the doc's own "work service jobs on idle labor" phrasing).
   // Mirrors `serviceGrinderStrategy`'s accept/work/release logic exactly.
   if (laborBudget > 0) {

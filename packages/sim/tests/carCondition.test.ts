@@ -86,7 +86,7 @@ describe('saleReputationDeltaFor (Sprint 23 decision 1: clean/concours/lemon pre
   it('is neutral when a single component sits just under the clean bar, even though the average clears it', () => {
     // Seven components at 90 (carWith's base), one at 80: average is 88.75
     // (would have passed the old average-based bar of 85) but the new rule
-    // requires EVERY component to clear cleanSaleMinConditionPercent (85) —
+    // requires EVERY component to clear cleanSaleMinConditionPercent (85) -
     // this is exactly the gap Sprint 23 decision 1 closes.
     const car = carWith({ conditions: { engine: 80 } })
     expect(averageConditionPercent(car, NO_ISSUES)).toBeGreaterThanOrEqual(85)
@@ -120,7 +120,7 @@ describe('saleReputationDeltaFor (Sprint 23 decision 1: clean/concours/lemon pre
 
   it('penalizes a lemon by a single severely damaged component, even with a fine average', () => {
     const car = carWith({ conditions: { engine: 5 } }) // 7 components at 90, one at 5
-    // Above LEMON_MAX_AVERAGE_CONDITION (40) on its own — the single-component
+    // Above LEMON_MAX_AVERAGE_CONDITION (40) on its own - the single-component
     // rule is the only thing that can catch this car.
     expect(averageConditionPercent(car, NO_ISSUES)).toBeGreaterThan(40)
     expect(saleReputationDeltaFor(car, NO_ISSUES, ECONOMY)).toBe(-LEMON_SALE_REPUTATION_PENALTY)
@@ -129,7 +129,7 @@ describe('saleReputationDeltaFor (Sprint 23 decision 1: clean/concours/lemon pre
   it('lemon takes precedence over concours when a severe unrepaired issue hides behind perfect conditions', () => {
     // Every component at 100, authenticity 90 (would be concours on its own),
     // but a severe unrepaired issue not present in the issue catalog at all
-    // (so effectiveComponentCondition can't discover it either) — proves the
+    // (so effectiveComponentCondition can't discover it either) - proves the
     // lemon-by-issue trigger reads the car's own hiddenIssues array directly,
     // and fires ahead of clean/concours regardless.
     const car = carWith({

@@ -166,7 +166,7 @@ describe('computeDerivedStats', () => {
    * condition-to-stat pathway before the zones+slots -> components
    * migration (only interior condition also fed nothing). Wiring their new
    * condition fields into stats now would be a disguised balance change
-   * smuggled into a refactor — this guards that they stay inert until
+   * smuggled into a refactor - this guards that they stay inert until
    * Sprint 13 gives repair-vs-replace on those components real stakes.
    */
   it('brakes/wheels/forcedInduction/interior condition changes produce zero stat delta', () => {

@@ -6,7 +6,7 @@ import type { BuyEquipmentAction } from './actions'
 /**
  * The pure ownership lookup (Sprint 16 decision 5): whether `ownedEquipmentIds`
  * covers `componentId`, given nothing but the loose pieces a caller might
- * have — no `GameState` required. Extracted because `generateServiceJobOffers`
+ * have - no `GameState` required. Extracted because `generateServiceJobOffers`
  * (offer generation) never has a full `GameState`, only a bot/harness caller's
  * loose content pieces, so it can't call `hasEquipmentFor` below without one.
  * One real check, two callers.
@@ -19,7 +19,7 @@ export function hasEquipmentForIds(
   return ownedEquipmentIds.some((id) => equipmentById[id]?.componentIds.includes(componentId))
 }
 
-/** Whether the shop currently owns equipment covering this component — what REPAIR is gated on. */
+/** Whether the shop currently owns equipment covering this component - what REPAIR is gated on. */
 export function hasEquipmentFor(
   state: GameState,
   componentId: ComponentId,
@@ -35,7 +35,7 @@ export interface EquipmentPurchaseResult {
 }
 
 /**
- * The pure "buy one piece of equipment" core — same instant-for-the-player /
+ * The pure "buy one piece of equipment" core - same instant-for-the-player /
  * DayAction-for-bots pattern as `applyBayPurchase` (Sprint 09). Equipment has
  * no ladder (unlike bays): it's owned or not, bought at most once. A no-op
  * (not an error) if already owned, reputation-gated, or unaffordable.
@@ -67,7 +67,7 @@ export function applyEquipmentPurchase(
   }
 }
 
-/** Applies a batch of equipment purchases in order (bots' only path — the player buys instantly). */
+/** Applies a batch of equipment purchases in order (bots' only path - the player buys instantly). */
 export function applyEquipmentPurchases(
   state: GameState,
   purchases: readonly BuyEquipmentAction[],

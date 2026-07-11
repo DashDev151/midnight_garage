@@ -28,7 +28,7 @@ function importCode(): void {
 }
 
 /**
- * Session log v0 (Sprint 24) — capture only, no replay this sprint. No
+ * Session log v0 (Sprint 24) - capture only, no replay this sprint. No
  * download pattern exists elsewhere to reuse (the save export above copies
  * to the clipboard); this is the small standard Blob + object-URL + anchor-
  * click helper, kept local here until a second consumer needs it.
@@ -50,7 +50,7 @@ async function exportSessionLog(): Promise<void> {
   <div class="save-menu">
     <button class="toggle" data-test="save-toggle" @click="open = !open">Save</button>
     <div v-if="open" class="panel">
-      <p class="nudge">Your save code is your backup — some browsers can forget the game.</p>
+      <p class="nudge">Your save code is your backup - some browsers can forget the game.</p>
       <button data-test="copy-save" @click="copyCode">Copy save code</button>
       <textarea
         v-model="importText"

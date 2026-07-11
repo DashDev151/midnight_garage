@@ -45,7 +45,7 @@ describe('session log v0 (Sprint 24)', () => {
     )
 
     appendSessionEvent.mockClear()
-    // Unknown car — refused, no state change, no event.
+    // Unknown car - refused, no state change, no event.
     expect(game.stageAction('not-a-real-car', { kind: 'repair', componentId: 'body' })).toBe(false)
     expect(appendSessionEvent).not.toHaveBeenCalled()
   })
@@ -55,9 +55,9 @@ describe('session log v0 (Sprint 24)', () => {
     game.newGame(1)
     for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
     const lot = game.gameState.activeAuctionLots[0]
-    if (!lot) return // no lot rolled in this seed's first 20 days — nothing to bid on
+    if (!lot) return // no lot rolled in this seed's first 20 days - nothing to bid on
     appendSessionEvent.mockClear()
-    // Well above any realistic ladder minimum — clears the raise check reliably.
+    // Well above any realistic ladder minimum - clears the raise check reliably.
     const bidYen = lot.bookValueYen * 3
 
     const placed = game.placeBid(lot.id, bidYen)
