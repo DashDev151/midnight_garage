@@ -79,6 +79,7 @@ import {
   resolveScrapPart,
   resolveSellViaWalkIn,
   resolveServiceJob,
+  scrapValueYen,
   swapCars as swapCarsCore,
   turnoutBand,
   valuateCarForBuyer,
@@ -93,6 +94,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { INSTALL_LABOR_SLOTS } from '../constants'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
+import { addressesOverlap } from '../utils/partAddress'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -130,6 +132,15 @@ export interface CarPartRowView {
   band: ConditionBand
   /** Display name of the installed PartInstance, or null if the slot is empty. */
   installedPartName: string | null
+  /**
+   * Sprint 28: true unless this is the one conditional slot (`forcedInduction`
+   * on an NA car) that hasn't been fitted yet. A fitted-false row still
+   * renders (unlike the group-band/valuation math, which excludes it via
+   * `presentPartIdsInGroup` on purpose) so the per-part drill-down has
+   * somewhere to offer "fit a forced-induction kit" - the row simply has no
+   * band worth showing and no Repair control, only Replace.
+   */
+  fitted: boolean
 }
 
 /** A car paired with its resolved model, display name, and derived stats. */
@@ -493,21 +504,29 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Every real part present in `componentId`'s group on `car` (Sprint 26
+   * Every real part addressed to `componentId`'s group on `car` (Sprint 26
    * decision 13) - operates on a `CarInstance` directly so both the
    * owned-car screen (`partsInGroup`, below, looked up by car id) and the
    * auction lot-detail screen (Sprint 27 decision 3, which has no owned car
    * to look up) share one row-building implementation rather than each
    * re-deriving it.
+   *
+   * Sprint 28: iterates every part the taxonomy assigns to the group
+   * (`partIdsByGroup`), not just the present ones (`presentPartIdsInGroup`)
+   * - the drill-down needs to show the one conditional slot
+   * (`forcedInduction` on an NA car) too, so there's a row to fit a
+   * forced-induction kit onto. Group-band/valuation math is unaffected: it
+   * still goes through `presentPartIdsInGroup` on its own, unchanged.
    */
   function carPartRowsInGroup(car: CarInstance, componentId: ComponentId): CarPartRowView[] {
-    return presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup).map((partId) => {
+    return context.value.partIdsByGroup[componentId].map((partId) => {
       const state = car.parts[partId]
       return {
         partId,
         displayName: carPartLabel(partId),
         band: state.band,
         installedPartName: state.installed ? partName(state.installed.partId) : null,
+        fitted: state.fitted,
       }
     })
   }
@@ -779,6 +798,32 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
+  /**
+   * Sprint 28: the per-part counterpart to `installablePartsFor` above - the
+   * CarDetailScreen drill-down's own per-part Replace drawer filters to
+   * exactly this set (decision 3: "shows only catalog parts addressed to
+   * that part that fit the car"). Checks the SPECIFIC slot's own
+   * `installed` state, not just "some slot in the group is empty" - closes
+   * the gap `installablePartsFor` has (see `installFitGate`'s Sprint 28 doc
+   * comment, sim/jobs.ts). Deliberately does NOT gate on `fitted`: the whole
+   * point of a per-part Replace on the one conditional slot
+   * (`forcedInduction` on an NA car) is fitting a kit that isn't there yet.
+   */
+  function installablePartsForPart(carId: string, carPartId: CarPartId): PartInstance[] {
+    const car = findWorkableCar(carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    const componentId = groupForCarPart(carPartId)
+    if (!car || !model || !componentId) return []
+    if (car.parts[carPartId].installed) return []
+    return gameState.value.partInventory.filter((pi) => {
+      if (pi.band === 'scrap') return false
+      const part = context.value.partsById[pi.partId]
+      return part
+        ? partFitsCar(part, model, componentId, context.value.partsTaxonomyById, carPartId)
+        : false
+    })
+  }
+
   // --- facilities (bays) -------------------------------------------------
 
   /** Resolve one car currently in the shop (owned or a customer's), for the bay layout. */
@@ -941,18 +986,21 @@ export const useGameStore = defineStore('game', () => {
   // --- instant actions (Sprint 11) ---------------------------------------
 
   /**
-   * Repair a group - instant, targeting `targetBand` (mint by default, the
-   * plain "Repair" button's behavior; staging lets the player choose a
-   * lower target, decision 5). Finds the car's already-open repair job for
-   * this group (if the player already started it on an earlier day) or
-   * starts a new one, sized for real by `planGroupRepair`, then immediately
-   * spends up to today's remaining labor on it. A repeat click just
-   * continues the same job; no separate "add labor" control needed.
+   * Repair a group (or, Sprint 28, one specific part within it when
+   * `carPartId` is given - the drill-down's own per-part Repair row) -
+   * instant, targeting `targetBand` (mint by default, the plain "Repair"
+   * button's behavior; staging lets the player choose a lower target,
+   * decision 5). Finds the car's already-open repair job for this exact
+   * address (if the player already started it on an earlier day) or starts
+   * a new one, sized for real by `planGroupRepair`, then immediately spends
+   * up to today's remaining labor on it. A repeat click just continues the
+   * same job; no separate "add labor" control needed.
    */
   function repair(
     carId: string,
     componentId: ComponentId,
     targetBand: ConditionBand = 'mint',
+    carPartId?: CarPartId,
   ): void {
     const car = findWorkableCar(carId)
     if (!car) return
@@ -964,6 +1012,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.partIdsByGroup,
       context.value.partsTaxonomyById,
       context.value.equipmentById,
+      carPartId,
     )
     if (plan.partIds.length === 0) return
     const spec: NewJobSpec = {
@@ -971,6 +1020,7 @@ export const useGameStore = defineStore('game', () => {
       kind: 'repair-zone',
       componentId,
       targetBand,
+      carPartId,
       laborSlotsRequired: plan.laborSlotsRequired,
     }
     const result = resolveJobLabor(
@@ -983,13 +1033,25 @@ export const useGameStore = defineStore('game', () => {
     dayLog.value.push(...result.log)
   }
 
-  /** Install an owned part into an empty component - instant, same continuation rule as `repair`. */
-  function install(carId: string, componentId: ComponentId, partInstanceId: string): void {
+  /**
+   * Install an owned part into an empty component - instant, same
+   * continuation rule as `repair`. Sprint 28: `carPartId`, when given,
+   * addresses one specific slot (the drill-down's own per-part Replace row)
+   * rather than "whichever slot in the group the part's own address
+   * resolves to."
+   */
+  function install(
+    carId: string,
+    componentId: ComponentId,
+    partInstanceId: string,
+    carPartId?: CarPartId,
+  ): void {
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'install-part',
       componentId,
       partInstanceId,
+      carPartId,
       laborSlotsRequired: INSTALL_LABOR_SLOTS,
     }
     const result = resolveJobLabor(
@@ -1049,22 +1111,28 @@ export const useGameStore = defineStore('game', () => {
   })
 
   /**
-   * Stage a repair or install on a car's component - free, instant, and
-   * fully reversible until Confirm. Refuses (returns false, no state change)
-   * for an unknown car, a component that already has an open `Job` (decision
-   * 4: staging never applies to work already in progress - that keeps its
-   * existing single-click "Continue repair" flow), or an install whose part
-   * is already staged elsewhere (decision 3). Staging over a component that
-   * already has a *different* staged action there replaces it (decision 8) -
+   * Stage a repair or install on a car's component - or, Sprint 28, on one
+   * specific part within it when `action.carPartId` is set (the drill-down's
+   * per-part Repair/Replace rows) - free, instant, and fully reversible
+   * until Confirm. Refuses (returns false, no state change) for an unknown
+   * car, an address that already has an open `Job` (decision 4: staging
+   * never applies to work already in progress - that keeps its existing
+   * single-click "Continue repair" flow, now generalized to per-part via
+   * `addressesOverlap` - a group-level job blocks staging anything on any of
+   * its parts, and vice versa), or an install whose part is already staged
+   * elsewhere (decision 3). Staging over an address that already has a
+   * *different, overlapping* staged action there replaces it (decision 8) -
    * the displaced entry (and its part, for a displaced install) simply stops
-   * being staged, freeing it up again.
+   * being staged, freeing it up again. A group-level stage displaces every
+   * per-part stage inside that group (and vice versa); two per-part stages
+   * on different parts of the same group coexist freely.
    */
   function stageAction(carId: string, action: StagedAction): boolean {
     const car = findWorkableCar(carId)
     if (!car) return false
     if (isCarInTransit(carId)) return false
     const busy = gameState.value.jobs.some(
-      (j) => j.carInstanceId === carId && j.componentId === action.componentId,
+      (j) => j.carInstanceId === carId && addressesOverlap(j, action),
     )
     if (busy) return false
     if (action.kind === 'install') {
@@ -1073,21 +1141,32 @@ export const useGameStore = defineStore('game', () => {
       // not just at Confirm's job-creation time - so a caller that bypasses
       // the UI's own filtered drawer (a bot, the dev console, a future
       // client) can't stage an install that would only fail silently later.
+      // Sprint 28: when `action.carPartId` is set, also refuses a part whose
+      // own catalog address doesn't match that exact slot, or whose exact
+      // slot is already occupied (mirrors `installFitGate`, sim/jobs.ts).
       const model = context.value.modelsById[car.modelId]
       const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
       const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
+      const slotEmpty = !action.carPartId || !car.parts[action.carPartId].installed
       if (
         !model ||
         !part ||
         !partInstance ||
         partInstance.band === 'scrap' ||
-        !partFitsCar(part, model, action.componentId, context.value.partsTaxonomyById)
+        !slotEmpty ||
+        !partFitsCar(
+          part,
+          model,
+          action.componentId,
+          context.value.partsTaxonomyById,
+          action.carPartId,
+        )
       ) {
         return false
       }
     }
 
-    const existing = stagedActionsFor(carId).filter((a) => a.componentId !== action.componentId)
+    const existing = stagedActionsFor(carId).filter((a) => !addressesOverlap(a, action))
     gameState.value = {
       ...gameState.value,
       stagedCarWork: { ...gameState.value.stagedCarWork, [carId]: [...existing, action] },
@@ -1096,9 +1175,19 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** Un-stage whatever's staged on this car's component, if anything - free, no-op if nothing was staged. */
-  function unstageAction(carId: string, componentId: ComponentId): void {
-    const remaining = stagedActionsFor(carId).filter((a) => a.componentId !== componentId)
+  /**
+   * Un-stage whatever's staged at this exact address, if anything - free,
+   * no-op if nothing was staged there. Sprint 28: `carPartId`, when given,
+   * un-stages only that specific part's own entry, leaving a sibling part's
+   * stage (or the group's own) in the same group untouched - an exact
+   * address match (`sameAddress` semantics inlined below), not the broader
+   * `addressesOverlap` `stageAction` uses to decide what a NEW stage
+   * displaces.
+   */
+  function unstageAction(carId: string, componentId: ComponentId, carPartId?: CarPartId): void {
+    const remaining = stagedActionsFor(carId).filter(
+      (a) => !(a.componentId === componentId && a.carPartId === carPartId),
+    )
     const stagedCarWork = { ...gameState.value.stagedCarWork }
     if (remaining.length === 0) delete stagedCarWork[carId]
     else stagedCarWork[carId] = remaining
@@ -1124,6 +1213,21 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = result.state
     dayLog.value.push(...result.log)
     logSessionEvent('confirmCarWork', { carId })
+  }
+
+  /**
+   * The yen a scrap `PartInstance` would fetch if sold right now (Sprint 28)
+   * - the "Scrap it" button's own price tag, mirroring `resolveScrapPart`'s
+   * (sim/parts.ts) internal lookup so the UI can show the real number before
+   * the player commits, not just after. Returns 0 for an unknown instance or
+   * one that isn't actually scrap (the button never shows in that case).
+   */
+  function scrapValueForPart(partInstanceId: string): number {
+    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
+    if (!instance || instance.band !== 'scrap') return 0
+    const part = context.value.partsById[instance.partId]
+    const taxonomyEntry = part ? context.value.partsTaxonomyById[part.carPartId] : undefined
+    return taxonomyEntry ? scrapValueYen(taxonomyEntry, context.value.economy) : 0
   }
 
   /**
@@ -1565,6 +1669,7 @@ export const useGameStore = defineStore('game', () => {
     walkInEstimate,
     listingEstimate,
     installablePartsFor,
+    installablePartsForPart,
     serviceBaysView,
     parkingView,
     parkingCapacity,
@@ -1594,6 +1699,7 @@ export const useGameStore = defineStore('game', () => {
     buyout,
     buyPart,
     scrapPart,
+    scrapValueForPart,
     cartItems,
     cartStandardTotalYen,
     cartExpressTotalYen,

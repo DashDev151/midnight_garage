@@ -1,12 +1,25 @@
 <script setup lang="ts">
-import type { CarPartId, Grade, Part } from '@midnight-garage/content'
+import type { CarPartId, ComponentId, Grade, Part } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
+import RotaryMarker from '../components/RotaryMarker.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+
+/** The 6 real component groups, in the same stable order the car-detail
+ * drill-down uses - the filter's own group-then-part structure (Sprint 28
+ * decision 3). */
+const COMPONENT_GROUPS: readonly ComponentId[] = [
+  'engine',
+  'drivetrain',
+  'suspension',
+  'wheels',
+  'body',
+  'interior',
+]
 
 /** The 29 real car parts (Sprint 26) - one filter option per catalog address,
  * not the coarser 6-group addressing staging/jobs use. */
@@ -41,6 +54,17 @@ const CAR_PART_OPTIONS: readonly CarPartId[] = [
   'seats',
   'dashGauges',
 ]
+
+/** `CAR_PART_OPTIONS` bucketed under its group, for the filter's `<optgroup>`
+ * structure - group first, then the specific part within it (decision 3). */
+const groupedCarPartOptions = computed(() =>
+  COMPONENT_GROUPS.map((groupId) => ({
+    groupId,
+    label: game.componentLabel(groupId),
+    parts: CAR_PART_OPTIONS.filter((id) => game.groupForCarPart(id) === groupId),
+  })),
+)
+
 const GRADE_OPTIONS: readonly Grade[] = ['stock', 'street', 'sport', 'race']
 const SORT_OPTIONS = [
   { value: 'price-asc', label: 'price: low to high' },
@@ -103,9 +127,9 @@ function onCheckout(): void {
     <div class="filters">
       <select v-model="componentFilter" data-test="filter-component">
         <option value="">all parts</option>
-        <option v-for="c in CAR_PART_OPTIONS" :key="c" :value="c">
-          {{ game.carPartLabel(c) }}
-        </option>
+        <optgroup v-for="group in groupedCarPartOptions" :key="group.groupId" :label="group.label">
+          <option v-for="c in group.parts" :key="c" :value="c">{{ game.carPartLabel(c) }}</option>
+        </optgroup>
       </select>
       <select v-model="gradeFilter" data-test="filter-grade">
         <option value="">all grades</option>
@@ -117,16 +141,28 @@ function onCheckout(): void {
     </div>
 
     <ul class="catalog">
-      <li v-for="part in visibleParts" :key="part.id" class="part">
+      <li
+        v-for="part in visibleParts"
+        :key="part.id"
+        class="part"
+        :class="{ 'no-fit': part.requiredTags.length > 0 && !fitsAnyOwnedCar(part) }"
+      >
         <div class="part-main">
-          <span class="part-name">{{ part.brand }} {{ part.name }}</span>
+          <span class="part-name"
+            >{{ part.brand }} {{ part.name
+            }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
+          /></span>
           <span class="part-meta"
             >{{ game.carPartLabel(part.carPartId) }} · {{ part.grade }} ·
             {{ statSummary(part) || 'no stat change' }}</span
           >
-          <span v-if="part.requiredTags.length" class="part-tags">
-            needs {{ part.requiredTags.join(', ') }}
-            <span v-if="fitsAnyOwnedCar(part)" class="fit">fits a car you own</span>
+          <span
+            v-if="part.requiredTags.length"
+            class="part-fit"
+            :class="{ fit: fitsAnyOwnedCar(part) }"
+            :title="'Requires: ' + part.requiredTags.join(', ')"
+          >
+            {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
           </span>
         </div>
         <div class="part-buy">
@@ -273,6 +309,13 @@ h3 {
   padding: var(--mg-space-2) var(--mg-space-3);
 }
 
+/* A part requiring a tag no owned car has, dimmed rather than hidden or
+   explained with raw tag jargon (Sprint 28 decision 2) - the full reason
+   lives in the row's own title tooltip. */
+.part.no-fit {
+  opacity: 0.55;
+}
+
 .part-main {
   display: flex;
   flex-direction: column;
@@ -284,7 +327,7 @@ h3 {
 }
 
 .part-meta,
-.part-tags {
+.part-fit {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }

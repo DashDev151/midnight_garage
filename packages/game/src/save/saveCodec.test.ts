@@ -922,6 +922,106 @@ describe('saveCodec', () => {
   })
 
   /**
+   * v16 -> v17 (Sprint 28, per-part addressing): `Job`/`StagedAction` each
+   * gained an optional `carPartId` - the normal additive case (like v2-v8),
+   * so it needs NO `MIGRATIONS[16]` entry, but it DOES bump `SAVE_VERSION`
+   * (Save law / engineering law 4: every save-schema change bumps the
+   * version, migration or not - the bump is the guard that makes an older
+   * client reject a newer save rather than silently strip the field). See
+   * the `SAVE_VERSION` doc comment for the full reasoning. These three tests
+   * are its regression coverage: a real pre-v17 (v16 envelope) save with
+   * only group-level jobs/staged work still decodes cleanly under v17
+   * (additive backward-compat), a group-only v17 state round-trips unchanged,
+   * and a per-part v17 state round-trips its `carPartId` exactly.
+   */
+  it('a real pre-v17 save (a v16 envelope with group-level jobs/stagedCarWork, no carPartId) decodes cleanly under v17', () => {
+    const preV17 = {
+      version: 16,
+      gameState: {
+        ...fullState,
+        jobs: [
+          {
+            id: 'job-group-repair',
+            carInstanceId: 'car-0001',
+            kind: 'repair-zone',
+            componentId: 'body',
+            targetBand: 'mint',
+            laborSlotsRequired: 2,
+            laborSlotsSpent: 1,
+          },
+        ],
+        stagedCarWork: {
+          'car-0001': [{ kind: 'repair', componentId: 'engine', targetBand: 'fine' }],
+        },
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV17))
+    const decoded = decodeSave(code)
+    // The additive case: a v16 group-level entry decodes unchanged under v17,
+    // with `carPartId` simply absent (which IS a group-level address now).
+    expect(decoded.jobs[0]?.componentId).toBe('body')
+    expect(decoded.jobs[0]).not.toHaveProperty('carPartId')
+    expect(decoded.stagedCarWork['car-0001']?.[0]).toEqual({
+      kind: 'repair',
+      componentId: 'engine',
+      targetBand: 'fine',
+    })
+    expect(decoded.stagedCarWork['car-0001']?.[0]).not.toHaveProperty('carPartId')
+  })
+
+  it('a v17 state with only group-level staged work/jobs (no carPartId anywhere) round-trips exactly', () => {
+    const groupOnly: GameState = GameStateSchema.parse({
+      ...fullState,
+      jobs: [
+        {
+          id: 'job-group-repair',
+          carInstanceId: 'car-0001',
+          kind: 'repair-zone',
+          componentId: 'body',
+          targetBand: 'mint',
+          laborSlotsRequired: 2,
+          laborSlotsSpent: 1,
+        },
+      ],
+      stagedCarWork: {
+        'car-0001': [{ kind: 'repair', componentId: 'engine', targetBand: 'fine' }],
+      },
+    })
+    const decoded = decodeSave(encodeSave(groupOnly))
+    expect(decoded).toEqual(groupOnly)
+    expect(decoded.jobs[0]).not.toHaveProperty('carPartId')
+    expect(decoded.stagedCarWork['car-0001']?.[0]).not.toHaveProperty('carPartId')
+  })
+
+  it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
+    expect(SAVE_VERSION).toBe(17)
+    const perPart: GameState = GameStateSchema.parse({
+      ...fullState,
+      jobs: [
+        {
+          id: 'job-part-repair',
+          carInstanceId: 'car-0001',
+          kind: 'repair-zone',
+          componentId: 'engine',
+          carPartId: 'intake',
+          targetBand: 'mint',
+          laborSlotsRequired: 1,
+          laborSlotsSpent: 0,
+        },
+      ],
+      stagedCarWork: {
+        'car-0001': [
+          { kind: 'repair', componentId: 'engine', carPartId: 'exhaust', targetBand: 'mint' },
+        ],
+      },
+    })
+    const decoded = decodeSave(encodeSave(perPart))
+    expect(decoded).toEqual(perPart)
+    expect(decoded.jobs[0]?.carPartId).toBe('intake')
+    expect(decoded.stagedCarWork['car-0001']?.[0]).toMatchObject({ carPartId: 'exhaust' })
+  })
+
+  /**
    * v15 -> v16 (Sprint 26, the banded parts model) - the single biggest
    * structural migration this file carries (see the SAVE_VERSION doc
    * comment). Exercises the full mapping from sprint26.md decision 11 on one

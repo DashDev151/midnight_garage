@@ -186,8 +186,29 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   `serviceJobOffers[].car`, `partInventory`, `jobs`, and `stagedCarWork` -
  *   every real population of `CarInstance`/`PartInstance`/`Job`/
  *   `StagedAction`/`ServiceJobWork` this GameState carries.
+ * - v17 (Sprint 28, per-part addressing): `JobSchema` and
+ *   `StagedActionSchema` (both `packages/content/src`, both persisted - in
+ *   `state.jobs` and `state.stagedCarWork` respectively) each gained one new
+ *   field, `carPartId`, `.optional()` with no `.default(...)` - the per-part
+ *   drill-down's address (a job/stage that climbs or replaces one specific
+ *   part rather than a whole 6-way group). This is the normal additive case,
+ *   exactly like v2-v8 above: it needs NO `MIGRATIONS[16]` entry, because a
+ *   v16 save's group-level jobs and staged work decode unchanged with
+ *   `carPartId` simply absent (`undefined`), which is precisely a
+ *   group-level address under the new schema. The version bump itself is
+ *   still required and separate from a migration (Save law / engineering law
+ *   4: *every* save-schema change bumps the version, migration or not): the
+ *   bump is what makes a pre-Sprint-28 client REJECT a Sprint-28 save
+ *   (`decodeSave`'s `envelope.version > SAVE_VERSION` throws "newer version")
+ *   rather than silently strip the unknown `carPartId` via `.parse` and
+ *   degrade per-part staged work back to group-level. `saveCodec.test.ts`'s
+ *   three Sprint 28 tests (immediately before the v15->v16 migration
+ *   `describe` block) cover this: a v16 group-level save still decodes
+ *   cleanly under v17 (additive backward-compat), a group-only v17 state
+ *   round-trips unchanged, and a per-part v17 state round-trips its
+ *   `carPartId` exactly.
  */
-export const SAVE_VERSION = 16
+export const SAVE_VERSION = 17
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

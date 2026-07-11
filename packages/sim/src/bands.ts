@@ -196,6 +196,13 @@ export interface GroupRepairPlan {
  * (pricing) and callers that size a `NewJobSpec.laborSlotsRequired` (staged
  * work, an instant repair click, a bot's own repair decision) all plan
  * through this one function rather than each re-deriving the per-part sum.
+ *
+ * Sprint 28: `onlyPartId`, when set, restricts the plan to that one part
+ * instead of every eligible part in the group - the per-part Repair row's
+ * own pricing, reusing the same per-part loop and `repairLevelForGroup`
+ * (equipment still covers a whole group, decision 7 - a per-part repair
+ * doesn't get its own equipment tier) rather than standing up a parallel
+ * single-part planner (directive 4: same concern, extend don't duplicate).
  */
 export function planGroupRepair(
   car: CarInstance,
@@ -205,12 +212,16 @@ export function planGroupRepair(
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   equipmentById: Readonly<Record<string, Equipment>>,
+  onlyPartId?: CarPartId,
 ): GroupRepairPlan {
   const repairLevel = repairLevelForGroup(ownedEquipmentIds, groupId, equipmentById)
   let laborSlotsRequired = 0
   let costYen = 0
   const partIds: CarPartId[] = []
-  for (const partId of presentPartIdsInGroup(car, groupId, partIdsByGroup)) {
+  const candidateIds = presentPartIdsInGroup(car, groupId, partIdsByGroup).filter(
+    (partId) => !onlyPartId || partId === onlyPartId,
+  )
+  for (const partId of candidateIds) {
     const partState = car.parts[partId]
     if (!canRepair(partState.band)) continue
     const grades = gradesBetween(partState.band, targetBand)

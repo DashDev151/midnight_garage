@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Part, PartInstance } from '@midnight-garage/content'
+import { computed } from 'vue'
 import { useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
+import { formatYen } from '../utils/formatYen'
+import RotaryMarker from './RotaryMarker.vue'
 
 const game = useGameStore()
 
@@ -37,9 +40,37 @@ const emit = defineEmits<{
 
 const draggable = useDraggable(() => props.instance.id)
 
+/**
+ * Sprint 26 decision 6, Sprint 28 task: a scrap instance can never be
+ * reinstalled anywhere (the fit-check rejects it universally), so it never
+ * offers the pick/drag-to-install affordance - only "Scrap it". Checked
+ * here, once, rather than in every screen that renders a `PartCard`.
+ */
+const isScrap = computed(() => props.instance.band === 'scrap')
+const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
+
 function onCardClick(): void {
-  if (!props.fits) return
+  if (isScrap.value || !props.fits) return
   emit('select', props.instance.id)
+}
+
+function onScrapClick(): void {
+  game.scrapPart(props.instance.id)
+}
+
+// A scrap card never drags (it can never be installed anywhere) - these
+// three wrap `draggable`'s own handlers rather than binding `draggable.onX`
+// directly in the template, since a ternary there (`isScrap ? undefined :
+// draggable.onPointerDown`) would only ever return the function reference
+// without calling it, silently breaking drag start for every non-scrap card.
+function onPointerDown(event: PointerEvent): void {
+  if (!isScrap.value) draggable.onPointerDown(event)
+}
+function onPointerMove(event: PointerEvent): void {
+  if (!isScrap.value) draggable.onPointerMove(event)
+}
+function onPointerUp(event: PointerEvent): void {
+  if (!isScrap.value) draggable.onPointerUp(event)
 }
 </script>
 
@@ -49,22 +80,36 @@ function onCardClick(): void {
     :class="{
       dragging: draggable.isDragging.value,
       picked: draggable.isPicked.value,
-      'no-fit': !fits,
+      'no-fit': !fits && !isScrap,
+      scrap: isScrap,
     }"
     draggable="false"
-    @pointerdown="draggable.onPointerDown"
-    @pointermove="draggable.onPointerMove"
-    @pointerup="draggable.onPointerUp"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
     @click="onCardClick"
   >
     <div class="part-info">
-      <span class="part-name">{{ part.brand }} {{ part.name }}</span>
+      <span class="part-name"
+        >{{ part.brand }} {{ part.name }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
+      /></span>
       <span class="part-meta">
         {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }}
       </span>
-      <span v-if="!fits" class="no-fit-hint">doesn't fit here</span>
+      <span v-if="isScrap" class="scrap-hint">scrap - can't be installed anywhere</span>
+      <span v-else-if="!fits" class="no-fit-hint">doesn't fit here</span>
     </div>
     <button
+      v-if="isScrap"
+      type="button"
+      class="scrap-handle"
+      :data-test="'scrap-part-' + instance.id"
+      @click.stop="onScrapClick"
+    >
+      Scrap it ({{ formatYen(scrapValueYen) }})
+    </button>
+    <button
+      v-else
       type="button"
       class="grab-handle"
       :aria-pressed="draggable.isPicked.value"
@@ -113,6 +158,10 @@ function onCardClick(): void {
   cursor: default;
 }
 
+.part-card.scrap {
+  cursor: default;
+}
+
 .part-info {
   display: flex;
   flex-direction: column;
@@ -130,12 +179,14 @@ function onCardClick(): void {
   text-transform: capitalize;
 }
 
-.no-fit-hint {
+.no-fit-hint,
+.scrap-hint {
   color: var(--mg-neon-pink);
   font-size: var(--mg-fs-sm);
 }
 
-.grab-handle {
+.grab-handle,
+.scrap-handle {
   flex: none;
   background: var(--mg-panel);
   color: var(--mg-text-dim);
@@ -144,5 +195,10 @@ function onCardClick(): void {
   padding: 2px 8px;
   font-family: inherit;
   font-size: var(--mg-fs-sm);
+}
+
+.scrap-handle {
+  color: var(--mg-yen);
+  border-color: var(--mg-neon-pink);
 }
 </style>

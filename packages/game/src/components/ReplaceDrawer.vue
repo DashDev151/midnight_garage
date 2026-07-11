@@ -1,38 +1,55 @@
 <script setup lang="ts">
-import type { ComponentId } from '@midnight-garage/content'
+import type { CarPartId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * The Replace flow (Sprint 18, round 2 - real playtest fix): clicking a
- * component's "Replace" button opens this as an in-page side panel, scoped to
- * that one component. It never lives on a separate route - the reported bug
- * was a player having no idea a part had to come from a *different tab* to
- * drag onto a component here; this renders directly alongside the components
- * list so the source and the drop target are visible at once.
+ * The Replace flow (Sprint 18, round 2 - real playtest fix; retargeted to a
+ * specific part in Sprint 28): clicking a part row's "Replace" button opens
+ * this as an in-page side panel, scoped to that one part slot. It never
+ * lives on a separate route - the reported bug was a player having no idea
+ * a part had to come from a *different tab* to drag onto a component here;
+ * this renders directly alongside the part rows so the source and the drop
+ * target are visible at once.
+ *
+ * Sprint 28 decision 3: the drawer now shows ONLY catalog parts addressed to
+ * this exact `carPartId` (not "shown either way" across the whole
+ * inventory like the pre-Sprint-28 group-scoped drawer) - a car has no use
+ * for seeing a suspension part while replacing an intake. Within that
+ * narrowed set, a part that doesn't fit this specific car (wrong platform
+ * tag) still renders, dimmed, per Sprint 18's original "show the whole
+ * relevant set, not a mysteriously filtered subset" call.
  */
 const props = defineProps<{
   carId: string
-  componentId: ComponentId
+  carPartId: CarPartId
 }>()
 
 const emit = defineEmits<{ close: [] }>()
 
 const game = useGameStore()
 
-/** Every stageable part, each flagged with whether it actually fits this
- * specific component (right slot + required tags) - shown either way so the
- * player sees their whole inventory, not a mysteriously filtered subset. */
+const componentId = computed(() => game.groupForCarPart(props.carPartId))
+
+/** Every stageable part addressed to this exact slot, each flagged with
+ * whether it actually fits this specific car (platform tags) and excluding
+ * scrap (never installable anywhere, Sprint 26 decision 6). */
 const entries = computed(() => {
-  const fitting = new Set(game.installablePartsFor(props.carId, props.componentId).map((p) => p.id))
-  return game.stageableParts.map((entry) => ({ ...entry, fits: fitting.has(entry.instance.id) }))
+  const fitting = new Set(
+    game.installablePartsForPart(props.carId, props.carPartId).map((p) => p.id),
+  )
+  return game.stageableParts
+    .filter((entry) => entry.part.carPartId === props.carPartId && entry.instance.band !== 'scrap')
+    .map((entry) => ({ ...entry, fits: fitting.has(entry.instance.id) }))
 })
 
 function onSelect(partInstanceId: string): void {
+  if (!componentId.value) return
   game.stageAction(props.carId, {
     kind: 'install',
-    componentId: props.componentId,
+    componentId: componentId.value,
+    carPartId: props.carPartId,
     partInstanceId,
   })
   emit('close')
@@ -42,14 +59,12 @@ function onSelect(partInstanceId: string): void {
 <template>
   <aside class="drawer" data-test="replace-drawer">
     <header class="drawer-head">
-      <h3>Replace {{ game.componentLabel(componentId) }}</h3>
+      <h3>Replace {{ game.carPartLabel(carPartId) }}</h3>
       <button type="button" class="close" data-test="close-drawer" @click="emit('close')">
         &times;
       </button>
     </header>
-    <p class="how">
-      Click a fitting part to install it here, or drag it onto the component instead.
-    </p>
+    <p class="how">Click a fitting part to install it here, or drag it onto the part instead.</p>
     <p v-if="entries.length === 0" class="empty">
       No parts on hand - visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>

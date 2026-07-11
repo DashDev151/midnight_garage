@@ -1,4 +1,9 @@
-import { BayKindSchema, ComponentIdSchema, ConditionBandSchema } from '@midnight-garage/content'
+import {
+  BayKindSchema,
+  CarPartIdSchema,
+  ComponentIdSchema,
+  ConditionBandSchema,
+} from '@midnight-garage/content'
 import { z } from 'zod'
 
 /**
@@ -9,6 +14,13 @@ import { z } from 'zod'
  * (decision 5) is set for `repair-zone` specs only - how far the player is
  * staging every eligible part in the group to climb; `jobs.ts`'s
  * `repairJobGate`/`applyJobToCar` are what actually resolve it per part.
+ *
+ * Sprint 28: `carPartId` narrows a spec from the whole `componentId` group
+ * to one specific part within it - mirrors `Job`/`StagedAction`'s own
+ * addition (content package). Absent means the pre-Sprint-28 group-level
+ * behavior; bots never set this (`bots/bandHelpers.ts`'s `queueGroupRepair`
+ * stays group-scoped by design), so every existing queued spec is
+ * unaffected.
  */
 const NewJobSpecSchema = z.object({
   carInstanceId: z.string().min(1),
@@ -16,6 +28,7 @@ const NewJobSpecSchema = z.object({
   componentId: ComponentIdSchema,
   partInstanceId: z.string().min(1).optional(),
   targetBand: ConditionBandSchema.optional(),
+  carPartId: CarPartIdSchema.optional(),
   laborSlotsRequired: z.number().int().positive(),
 })
 

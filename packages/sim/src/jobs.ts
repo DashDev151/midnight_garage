@@ -33,6 +33,7 @@ export function createJob(spec: NewJobSpec, id: string): Job {
     componentId: spec.componentId,
     partInstanceId: spec.partInstanceId,
     targetBand: spec.targetBand,
+    carPartId: spec.carPartId,
     laborSlotsRequired: spec.laborSlotsRequired,
     laborSlotsSpent: 0,
   }
@@ -96,7 +97,13 @@ function applyJobToCar(
       throw new Error(`repair-zone job ${job.id} missing targetBand`)
     }
     const parts = { ...car.parts }
-    for (const partId of presentPartIdsInGroup(car, job.componentId, context.partIdsByGroup)) {
+    // Sprint 28: a per-part job (job.carPartId set) climbs only that one
+    // part; a group-level job (unset) climbs every eligible part in the
+    // group, exactly as before.
+    const candidateIds = job.carPartId
+      ? [job.carPartId]
+      : presentPartIdsInGroup(car, job.componentId, context.partIdsByGroup)
+    for (const partId of candidateIds) {
       const partState = parts[partId]
       if (partState.band === 'scrap') continue
       if (bandIndex(partState.band) >= bandIndex(targetBand)) continue
@@ -177,9 +184,17 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
 }
 
-/** An open job's stable id - one job per car+component+kind at a time. */
+/**
+ * An open job's stable id - one job per car+component+kind at a time
+ * (group-level), or one per car+component+kind+part (Sprint 28 per-part
+ * addressing) - the `carPartId` suffix is what lets a per-part job on
+ * `intake` and one on `exhaust` (same `engine` group) stay open at once
+ * without colliding, and never collides with a group-level job on the same
+ * group either. Omitted, this is byte-identical to the pre-Sprint-28 id.
+ */
 function jobIdFor(spec: NewJobSpec): string {
-  return `job-${spec.carInstanceId}-${spec.kind}-${spec.componentId}`
+  const address = spec.carPartId ? `${spec.componentId}-${spec.carPartId}` : spec.componentId
+  return `job-${spec.carInstanceId}-${spec.kind}-${address}`
 }
 
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
@@ -229,6 +244,7 @@ export function repairJobGate(
     context.partIdsByGroup,
     context.partsTaxonomyById,
     context.equipmentById,
+    spec.carPartId,
   )
   if (plan.partIds.length === 0) {
     // Nothing repairable is below the target band right now (all mint
@@ -259,6 +275,17 @@ export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
  * replaced or scrap-sold (`resolveScrapPart`, parts.ts). Decision 13: fit is
  * now checked against the target GROUP (`spec.componentId`), resolved via
  * the catalog part's own taxonomy group, not a direct componentId match.
+ *
+ * Sprint 28: when `spec.carPartId` is set (the per-part Replace drawer),
+ * additionally requires the catalog part's own address to match that exact
+ * slot (`partFitsCar`'s new optional param) AND that the slot is actually
+ * empty right now - closing a real pre-existing gap where a group-level
+ * install only checked "the group has *some* empty slot", so a part could
+ * be offered as fitting even when its own specific slot was already
+ * occupied (it would then silently fail at completion,
+ * `blockedByOccupiedSlot`). A group-level spec (no `carPartId`) is
+ * unaffected - still only the group-level check, matching every bot's
+ * existing behavior exactly.
  */
 export function installFitGate(
   state: GameState,
@@ -274,13 +301,15 @@ export function installFitGate(
   const model = car ? context.modelsById[car.modelId] : undefined
   const partInstance = state.partInventory.find((p) => p.id === spec.partInstanceId)
   const part = partInstance ? context.partsById[partInstance.partId] : undefined
+  const slotEmpty = !spec.carPartId || !car?.parts[spec.carPartId]?.installed
   const fits =
     car &&
     model &&
     part &&
     partInstance &&
     partInstance.band !== 'scrap' &&
-    partFitsCar(part, model, spec.componentId, context.partsTaxonomyById)
+    slotEmpty &&
+    partFitsCar(part, model, spec.componentId, context.partsTaxonomyById, spec.carPartId)
   if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
   }

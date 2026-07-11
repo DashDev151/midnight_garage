@@ -31,17 +31,24 @@ export type DeliverySpeed = 'standard' | 'express'
  * universally uninstallable, decision 6) is checked separately by the
  * caller (`jobs.ts`'s `installFitGate`), since this function only ever sees
  * the catalog `Part`, never a specific owned instance.
+ *
+ * Sprint 28: an optional `carPartId` narrows the check from "fits somewhere
+ * in this group" to "addresses this exact part" - the per-part Replace
+ * drawer's own fit predicate. Omitted, this is exactly the pre-Sprint-28
+ * group-level check.
  */
 export function partFitsCar(
   part: Part,
   model: CarModel,
   componentId: ComponentId,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  carPartId?: CarPartId,
 ): boolean {
   const taxonomyEntry = partsTaxonomyById[part.carPartId]
   return (
     !!taxonomyEntry &&
     taxonomyEntry.group === componentId &&
+    (!carPartId || part.carPartId === carPartId) &&
     part.requiredTags.every((tag) => model.tags.includes(tag))
   )
 }

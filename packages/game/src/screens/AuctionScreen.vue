@@ -2,6 +2,7 @@
 import type { ComponentId, ConditionBand } from '@midnight-garage/content'
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
+import BandChip from '../components/BandChip.vue'
 import EndDayButton from '../components/EndDayButton.vue'
 import { useGameStore, type LotDetail, type MyActiveBidView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -162,10 +163,9 @@ function backstopLabel(expiresOnDay: number): string {
             <span
               v-for="[groupId, band] in groupBandEntries(d.groupBands)"
               :key="groupId"
-              class="band-chip"
-              :class="'band-' + band"
+              class="lot-band-entry"
             >
-              {{ game.componentLabel(groupId) }}: {{ band }}
+              {{ game.componentLabel(groupId) }}: <BandChip :band="band" />
             </span>
           </div>
 
@@ -186,15 +186,10 @@ function backstopLabel(expiresOnDay: number): string {
                 Restoration bill (every part to mint): {{ formatYen(d.restorationBillYen) }}
               </p>
               <ul class="part-rows">
-                <li
-                  v-for="row in d.partRows"
-                  :key="row.partId"
-                  class="part-row"
-                  :class="'band-' + row.band"
-                >
+                <li v-for="row in d.partRows" :key="row.partId" class="part-row">
                   <span class="part-group">{{ partGroupLabel(row.partId) }}</span>
                   <span class="part-name">{{ row.displayName }}</span>
-                  <span class="part-band">{{ row.band }}</span>
+                  <BandChip :band="row.fitted ? row.band : null" />
                 </li>
               </ul>
             </div>
@@ -320,27 +315,12 @@ h3 {
   gap: var(--mg-space-2);
 }
 
-.band-chip {
-  padding: 1px 8px;
-  border-radius: var(--mg-radius);
-  border: var(--mg-border);
-  text-transform: capitalize;
-}
-
-.band-chip.band-mint {
-  color: var(--mg-success);
-  border-color: var(--mg-success);
-}
-
-.band-chip.band-fine {
-  color: var(--mg-neon-cyan);
-  border-color: var(--mg-neon-cyan);
-}
-
-.band-chip.band-poor,
-.band-chip.band-scrap {
-  color: var(--mg-neon-pink);
-  border-color: var(--mg-neon-pink);
+/* The band value itself is a shared BandChip (Sprint 28) - this only lays
+   out the "<group>: " label beside it. */
+.lot-band-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .lot-condition-report {
@@ -381,6 +361,7 @@ h3 {
 
 .part-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--mg-space-2);
   font-size: var(--mg-fs-sm);
@@ -395,23 +376,6 @@ h3 {
 .part-row .part-name {
   flex: 1;
   color: var(--mg-text);
-}
-
-.part-row .part-band {
-  text-transform: capitalize;
-}
-
-.part-row.band-mint .part-band {
-  color: var(--mg-success);
-}
-
-.part-row.band-fine .part-band {
-  color: var(--mg-neon-cyan);
-}
-
-.part-row.band-poor .part-band,
-.part-row.band-scrap .part-band {
-  color: var(--mg-neon-pink);
 }
 
 .lot-turnout {

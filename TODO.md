@@ -48,6 +48,14 @@ pass."
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
+- [ ] **Component tests that `mount()` many times per file without `unmount()`ing between tests risk
+  a Pinia cross-test leak** (found and fixed in `CarDetailScreen.test.ts` during Sprint 28):
+  `getActivePinia()` prefers an injected pinia from the current Vue injection context over the
+  module-level "active" one `setActivePinia` sets, so a component left mounted from a prior test
+  can leak its store's state into the next test (confirmed via direct reference-identity checks,
+  not a guess). Sprint 28 fixed only the one file it broke (tracking every `mountAt`-produced
+  wrapper and unmounting it in `afterEach`); no repo-wide audit of other multi-mount test files was
+  done - worth a sweep if this class of flake ever surfaces elsewhere.
 
 ## Open balance/economy questions
 

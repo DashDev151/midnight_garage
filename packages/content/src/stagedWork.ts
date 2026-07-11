@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ComponentIdSchema, ConditionBandSchema } from './tags'
+import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
 
 /**
  * One piece of work the player intends to do on a car but hasn't committed to
@@ -13,17 +13,31 @@ import { ComponentIdSchema, ConditionBandSchema } from './tags'
  * stage gains `targetBand` (decision 5) - the player chooses how far to
  * climb, not always mint; Confirm climbs every non-mint, non-scrap part in
  * the group toward it, labor allowing (group-level "bridge", decision 13).
+ *
+ * Sprint 28: both kinds gain an optional `carPartId` - the per-part address
+ * added alongside the existing group-level addressing, not instead of it
+ * (the CarDetailScreen drill-down's own per-part Repair/Replace rows). When
+ * absent, behavior is exactly the pre-Sprint-28 group-level one (a `repair`
+ * climbs every eligible part in the group; an `install` targets whichever
+ * slot in the group the picked catalog part's own address resolves to).
+ * When present, a `repair` climbs only that one part, and an `install` is
+ * additionally checked against that exact slot (not just "some empty slot
+ * somewhere in the group") - see `installFitGate` (sim/jobs.ts). An optional
+ * field with no default, so this needed no save-schema version bump (see
+ * `saveCodec.ts`'s `SAVE_VERSION` doc comment).
  */
 export const StagedActionSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('repair'),
     componentId: ComponentIdSchema,
     targetBand: ConditionBandSchema,
+    carPartId: CarPartIdSchema.optional(),
   }),
   z.object({
     kind: z.literal('install'),
     componentId: ComponentIdSchema,
     partInstanceId: z.string().min(1),
+    carPartId: CarPartIdSchema.optional(),
   }),
 ])
 

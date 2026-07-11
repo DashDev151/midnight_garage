@@ -46,6 +46,14 @@ export interface StagedWorkResolution {
  * `targetBand`, at the group's own repair level. A group with nothing left
  * to repair (already there, or every part scrap) simply produces no spec -
  * the same "nothing to do" no-op `repairJobGate` itself falls back on.
+ *
+ * Sprint 28: `action.carPartId`, when set, passes straight through to the
+ * built `NewJobSpec` (and into `planGroupRepair`'s `onlyPartId`) - a
+ * per-part staged action resolves through this exact same loop, sized down
+ * to one part instead of the whole group. Nothing else about the loop
+ * changes; group-level and per-part staged actions on the same car are
+ * simply different entries in the same `staged` list, each producing its
+ * own spec and its own job.
  */
 export function confirmStagedWork(
   state: GameState,
@@ -72,6 +80,7 @@ export function confirmStagedWork(
         context.partIdsByGroup,
         context.partsTaxonomyById,
         context.equipmentById,
+        action.carPartId,
       )
       if (plan.partIds.length > 0) {
         spec = {
@@ -79,6 +88,7 @@ export function confirmStagedWork(
           kind: 'repair-zone',
           componentId: action.componentId,
           targetBand: action.targetBand,
+          carPartId: action.carPartId,
           laborSlotsRequired: plan.laborSlotsRequired,
         }
       }
@@ -88,6 +98,7 @@ export function confirmStagedWork(
         kind: 'install-part',
         componentId: action.componentId,
         partInstanceId: action.partInstanceId,
+        carPartId: action.carPartId,
         laborSlotsRequired: INSTALL_LABOR_SLOTS,
       }
     }
