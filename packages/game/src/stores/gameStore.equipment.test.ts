@@ -63,7 +63,7 @@ describe('equipment in the store (Sprint 13)', () => {
     // open job or a completed repair proves the gate let it through.
     const detail = game.carDetail(car.id)
     const jobOpened = detail?.jobs.some((j) => j.componentId === 'wheels') ?? false
-    const jobFinished = detail?.car.components.wheels.condition === 100
+    const jobFinished = detail?.groupBands.wheels === 'mint'
     expect(jobOpened || jobFinished).toBe(true)
   })
 

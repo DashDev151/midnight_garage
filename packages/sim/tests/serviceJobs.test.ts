@@ -3,14 +3,15 @@ import {
   CARS,
   EQUIPMENT,
   FACILITIES,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
   type CarInstance,
   type ComponentId,
   type GameState,
   type Job,
+  type Part,
   type PartInstance,
   type ServiceJob,
   type ServiceJobType,
@@ -33,12 +34,13 @@ import {
   resolveServiceJob,
   resolveServiceJobArrivals,
 } from '../src/serviceJobs'
+import { groupCarParts, mintCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(
   CARS,
   PARTS,
   BUYERS,
-  HIDDEN_ISSUES,
+  PARTS_TAXONOMY,
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
@@ -47,7 +49,7 @@ const CONTEXT = buildSimContext(
 
 const repairType = SERVICE_JOB_TYPES.find((t) => t.work.kind === 'repair')!
 const installType = SERVICE_JOB_TYPES.find(
-  (t) => t.work.kind === 'install' && t.work.componentId === 'brakes',
+  (t) => t.work.kind === 'install' && t.work.componentId === 'suspension',
 )!
 /** The equipment covering repairType's component - owned by default in accept tests below
  * so they exercise their own intended gate (parking, unknown offer) rather than the new
@@ -60,9 +62,9 @@ const REPAIR_EQUIPMENT = EQUIPMENT.find((e) =>
 function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}): ServiceJob {
   const car = generateAuctionCarInstance(
     CARS[0]!,
-    CONTEXT.hiddenIssuesByComponent,
     `svc-car-${type.id}`,
     createRng(42),
+    CONTEXT.economy,
   )
   return {
     id: `svc-${type.id}`,
@@ -79,29 +81,21 @@ function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}
   }
 }
 
-function emptyComponents(): CarInstance['components'] {
-  return {
-    engine: { condition: 100, installed: null },
-    forcedInduction: { condition: 100, installed: null },
-    drivetrain: { condition: 100, installed: null },
-    suspension: { condition: 100, installed: null },
-    brakes: { condition: 100, installed: null },
-    wheels: { condition: 100, installed: null },
-    body: { condition: 100, installed: null },
-    interior: { condition: 100, installed: null },
-  }
-}
-
-/** All components stock/full except the given one, at `value`. */
-function makeComponents(componentId: ComponentId, value: number): CarInstance['components'] {
-  return { ...emptyComponents(), [componentId]: { condition: value, installed: null } }
-}
-
 const repairComponent = repairType.work.componentId
 const installComponent = installType.work.componentId
 
 function partInstance(partId: string): PartInstance {
-  return { id: `pi-${partId}`, partId, conditionPercent: 100, genuinePeriod: false }
+  return { id: `pi-${partId}`, partId, band: 'mint', genuinePeriod: false }
+}
+
+/** A catalog part belonging to `groupId`, for tests that need a real,
+ * fitting part to install. */
+function partInGroup(groupId: ComponentId, predicate: (p: Part) => boolean = () => true): Part {
+  const part = PARTS.find(
+    (p) => CONTEXT.partsTaxonomyById[p.carPartId]?.group === groupId && predicate(p),
+  )
+  if (!part) throw new Error(`no catalog part fits group "${groupId}"`)
+  return part
 }
 
 function stateWith(job: ServiceJob, overrides: Partial<GameState> = {}): GameState {
@@ -110,35 +104,35 @@ function stateWith(job: ServiceJob, overrides: Partial<GameState> = {}): GameSta
 
 describe('generateServiceJobOffers', () => {
   it('offers the requested count with unique ids, a real car, no deadline yet', () => {
-    const offers = generateServiceJobOffers(
+    const result = generateServiceJobOffers(
       SERVICE_JOB_TYPES,
       SERVICE_JOB_CUSTOMER_NAMES,
       CARS,
-      CONTEXT.hiddenIssuesByComponent,
+      CONTEXT.economy,
       7,
       4,
       10,
       createRng(1),
     )
-    expect(offers).toHaveLength(4)
-    expect(new Set(offers.map((o) => o.id)).size).toBe(4)
-    expect(offers.every((o) => o.expiresOnDay === 17)).toBe(true)
-    expect(offers.every((o) => o.dueOnDay === null)).toBe(true) // deadline is stamped on accept
-    expect(offers.every((o) => o.car.id.length > 0)).toBe(true)
+    expect(result).toHaveLength(4)
+    expect(new Set(result.map((o) => o.id)).size).toBe(4)
+    expect(result.every((o) => o.expiresOnDay === 17)).toBe(true)
+    expect(result.every((o) => o.dueOnDay === null)).toBe(true) // deadline is stamped on accept
+    expect(result.every((o) => o.car.id.length > 0)).toBe(true)
   })
 
   it('every offer composes a real type + flavor line + customer name (Sprint 11 pool model)', () => {
-    const offers = generateServiceJobOffers(
+    const result = generateServiceJobOffers(
       SERVICE_JOB_TYPES,
       SERVICE_JOB_CUSTOMER_NAMES,
       CARS,
-      CONTEXT.hiddenIssuesByComponent,
+      CONTEXT.economy,
       7,
       20,
       10,
       createRng(2),
     )
-    for (const offer of offers) {
+    for (const offer of result) {
       const type = SERVICE_JOB_TYPES.find((t) => t.id === offer.typeId)
       expect(type).toBeDefined()
       expect(type!.flavorPool).toContain(offer.description)
@@ -154,7 +148,7 @@ describe('generateServiceJobOffers', () => {
         [],
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         7,
         4,
         10,
@@ -166,7 +160,7 @@ describe('generateServiceJobOffers', () => {
         SERVICE_JOB_TYPES,
         [],
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         7,
         4,
         10,
@@ -178,7 +172,7 @@ describe('generateServiceJobOffers', () => {
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         [],
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         7,
         4,
         10,
@@ -194,11 +188,11 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
     let repairOffers = 0
     let totalOffers = 0
     for (let week = 0; week < 100; week++) {
-      const offers = generateServiceJobOffers(
+      const result = generateServiceJobOffers(
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         week * 7,
         4,
         10,
@@ -207,8 +201,8 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
         [], // nothing owned - every repair-kind candidate is filtered/hinted
         CONTEXT.equipmentById,
       )
-      totalOffers += offers.length
-      repairOffers += offers.filter((o) => o.work.kind === 'repair').length
+      totalOffers += result.length
+      repairOffers += result.filter((o) => o.work.kind === 'repair').length
     }
     // Statistical, not exact - matching how every other probabilistic sim
     // mechanic in this codebase is tested. "Mostly filtered, rarely not":
@@ -224,11 +218,11 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
     const ownedIds = EQUIPMENT.map((e) => e.id) // everything owned
     let sawRepairOfEquippedComponent = false
     for (let week = 0; week < 40 && !sawRepairOfEquippedComponent; week++) {
-      const offers = generateServiceJobOffers(
+      const result = generateServiceJobOffers(
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         week * 7,
         4,
         10,
@@ -237,7 +231,7 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
         ownedIds,
         CONTEXT.equipmentById,
       )
-      if (offers.some((o) => o.work.kind === 'repair')) sawRepairOfEquippedComponent = true
+      if (result.some((o) => o.work.kind === 'repair')) sawRepairOfEquippedComponent = true
     }
     // With everything owned, no candidate is ever a "needs unowned equipment"
     // case, so repair types appear at their normal, unfiltered rate.
@@ -246,11 +240,11 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
 
   it('install-kind types are never filtered by the hinting policy, owned or not', () => {
     const rng = createRng(3)
-    const offers = generateServiceJobOffers(
+    const result = generateServiceJobOffers(
       SERVICE_JOB_TYPES,
       SERVICE_JOB_CUSTOMER_NAMES,
       CARS,
-      CONTEXT.hiddenIssuesByComponent,
+      CONTEXT.economy,
       7,
       200,
       10,
@@ -260,7 +254,7 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
       CONTEXT.equipmentById,
     )
     const installTypeCount = SERVICE_JOB_TYPES.filter((t) => t.work.kind === 'install').length
-    expect(offers.filter((o) => o.work.kind === 'install').length).toBeGreaterThan(
+    expect(result.filter((o) => o.work.kind === 'install').length).toBeGreaterThan(
       installTypeCount, // sanity: install offers show up plenty across 200 rolls
     )
   })
@@ -270,7 +264,7 @@ describe('job-board equipment hinting (Sprint 16 decision 4)', () => {
       SERVICE_JOB_TYPES,
       SERVICE_JOB_CUSTOMER_NAMES,
       CARS,
-      CONTEXT.hiddenIssuesByComponent,
+      CONTEXT.economy,
       7,
       4,
       10,
@@ -291,11 +285,11 @@ describe('install-offer reputation gate (Sprint 25 task 10)', () => {
     const rng = createRng(11)
     let totalOffers = 0
     for (let week = 0; week < 60; week++) {
-      const offers = generateServiceJobOffers(
+      const result = generateServiceJobOffers(
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         week * 7,
         4,
         10,
@@ -305,8 +299,8 @@ describe('install-offer reputation gate (Sprint 25 task 10)', () => {
         CONTEXT.equipmentById,
         'unknown',
       )
-      totalOffers += offers.length
-      expect(offers.every((o) => o.work.kind !== 'install')).toBe(true)
+      totalOffers += result.length
+      expect(result.every((o) => o.work.kind !== 'install')).toBe(true)
     }
     expect(totalOffers).toBeGreaterThan(0) // sanity: this ran real generation, not a no-op
   })
@@ -315,11 +309,11 @@ describe('install-offer reputation gate (Sprint 25 task 10)', () => {
     const rng = createRng(12)
     let sawInstall = false
     for (let week = 0; week < 60 && !sawInstall; week++) {
-      const offers = generateServiceJobOffers(
+      const result = generateServiceJobOffers(
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         week * 7,
         4,
         10,
@@ -329,7 +323,7 @@ describe('install-offer reputation gate (Sprint 25 task 10)', () => {
         CONTEXT.equipmentById,
         'local',
       )
-      if (offers.some((o) => o.work.kind === 'install')) sawInstall = true
+      if (result.some((o) => o.work.kind === 'install')) sawInstall = true
     }
     expect(sawInstall).toBe(true)
   })
@@ -338,17 +332,17 @@ describe('install-offer reputation gate (Sprint 25 task 10)', () => {
     const rng = createRng(13)
     let sawInstall = false
     for (let week = 0; week < 40 && !sawInstall; week++) {
-      const offers = generateServiceJobOffers(
+      const result = generateServiceJobOffers(
         SERVICE_JOB_TYPES,
         SERVICE_JOB_CUSTOMER_NAMES,
         CARS,
-        CONTEXT.hiddenIssuesByComponent,
+        CONTEXT.economy,
         week * 7,
         4,
         10,
         rng,
       )
-      if (offers.some((o) => o.work.kind === 'install')) sawInstall = true
+      if (result.some((o) => o.work.kind === 'install')) sawInstall = true
     }
     expect(sawInstall).toBe(true)
   })
@@ -369,12 +363,13 @@ describe('reputation helpers', () => {
 
 describe('resolveServiceJob (the single resolution path)', () => {
   it('pays out + grants reputation when the work is done, and the car leaves', () => {
-    const job = activeJob(repairType, { components: makeComponents(repairComponent, 100) })
+    const job = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'mint' }) })
     const leftover: Job = {
       id: 'job-x',
       carInstanceId: job.car.id,
       kind: 'repair-zone',
       componentId: repairComponent,
+      targetBand: 'mint',
       laborSlotsRequired: 1,
       laborSlotsSpent: 1,
     }
@@ -392,7 +387,7 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('fails (no pay, reputation penalty) when the work is not done', () => {
-    const job = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const job = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'worn' }) })
     const state = stateWith(job, { reputationPoints: 50 })
     const cashBefore = state.cashYen
 
@@ -405,7 +400,7 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('clamps the reputation penalty at zero', () => {
-    const job = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const job = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'worn' }) })
     const state = stateWith(job) // reputationPoints starts at 0
     const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
     expect(next.reputationPoints).toBe(0)
@@ -420,17 +415,21 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('drops the car’s staged work (Sprint 18) whether the job pays or fails', () => {
-    const paidJob = activeJob(repairType, { components: makeComponents(repairComponent, 100) })
+    const paidJob = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'mint' }) })
     const paidState = stateWith(paidJob, {
-      stagedCarWork: { [paidJob.car.id]: [{ kind: 'repair', componentId: 'wheels' }] },
+      stagedCarWork: {
+        [paidJob.car.id]: [{ kind: 'repair', componentId: 'wheels', targetBand: 'mint' }],
+      },
     })
     const paid = resolveServiceJob(paidState, paidJob.id, CONTEXT)
     expect(paid.outcome).toBe('paid')
     expect(paid.state.stagedCarWork[paidJob.car.id]).toBeUndefined()
 
-    const failedJob = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const failedJob = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'worn' }) })
     const failedState = stateWith(failedJob, {
-      stagedCarWork: { [failedJob.car.id]: [{ kind: 'repair', componentId: 'wheels' }] },
+      stagedCarWork: {
+        [failedJob.car.id]: [{ kind: 'repair', componentId: 'wheels', targetBand: 'mint' }],
+      },
     })
     const failed = resolveServiceJob(failedState, failedJob.id, CONTEXT)
     expect(failed.outcome).toBe('failed')
@@ -438,15 +437,12 @@ describe('resolveServiceJob (the single resolution path)', () => {
   })
 
   it('an install job pays; a pricier installed grade earns more reputation', () => {
-    const budget = PARTS.find((p) => p.componentId === installComponent && p.grade === 'stock')!
-    const pricey = PARTS.find((p) => p.componentId === installComponent && p.grade !== 'stock')!
+    const budget = partInGroup(installComponent, (p) => p.grade === 'stock')
+    const pricey = partInGroup(installComponent, (p) => p.grade !== 'stock')
 
-    function repWith(part: (typeof PARTS)[number]): number {
+    function repWith(part: Part): number {
       const job = activeJob(installType, {
-        components: {
-          ...emptyComponents(),
-          [installComponent]: { condition: 100, installed: partInstance(part.id) },
-        },
+        parts: mintCarParts({ [part.carPartId]: { installed: partInstance(part.id) } }),
       })
       return resolveServiceJob(stateWith(job), job.id, CONTEXT).state.reputationPoints
     }
@@ -458,33 +454,26 @@ describe('resolveServiceJob (the single resolution path)', () => {
    * Sprint 12: the old `install-wheels-interior` type (one mixed-theme
    * flavor pool covering both wheels and interior parts) was split into
    * separate `install-wheels`/`install-interior` types once wheels and
-   * interior became real, distinct components. The "install job pays" test
-   * above only exercises `brakes` (a pre-existing install type) - this
-   * covers every install type in the real catalog, including the two new
-   * ones, so a broken split (e.g. componentId pointing at the wrong
-   * component, or a missing content entry) fails here instead of silently
-   * passing type-checks and schema validation alone.
+   * interior became real, distinct components. This covers every install
+   * type in the real catalog, including those two, so a broken split fails
+   * here instead of silently passing type-checks and schema validation alone.
    */
-  it('every install job type in the real catalog resolves work-done correctly for its own component', () => {
+  it('every install job type in the real catalog resolves work-done correctly for its own group', () => {
     const installTypes = SERVICE_JOB_TYPES.filter((t) => t.work.kind === 'install')
     expect(installTypes.some((t) => t.work.componentId === 'wheels')).toBe(true)
     expect(installTypes.some((t) => t.work.componentId === 'interior')).toBe(true)
 
     for (const type of installTypes) {
-      const componentId = type.work.componentId
-      const part = PARTS.find((p) => p.componentId === componentId)
-      if (!part) throw new Error(`no catalog part fits component "${componentId}"`)
+      const groupId = type.work.componentId
+      const part = partInGroup(groupId)
 
       const unfinished = activeJob(type)
-      expect(isServiceWorkDone(unfinished)).toBe(false)
+      expect(isServiceWorkDone(unfinished, CONTEXT)).toBe(false)
 
       const finished = activeJob(type, {
-        components: {
-          ...emptyComponents(),
-          [componentId]: { condition: 100, installed: partInstance(part.id) },
-        },
+        parts: mintCarParts({ [part.carPartId]: { installed: partInstance(part.id) } }),
       })
-      expect(isServiceWorkDone(finished)).toBe(true)
+      expect(isServiceWorkDone(finished, CONTEXT)).toBe(true)
 
       const { outcome } = resolveServiceJob(stateWith(finished), finished.id, CONTEXT)
       expect(outcome).toBe('paid')
@@ -620,14 +609,14 @@ describe('service jobs in advanceDay', () => {
   })
 
   it('the deadline backstop pays a finished job and fails an unfinished one', () => {
-    const done = activeJob(repairType, { components: makeComponents(repairComponent, 100) })
+    const done = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'mint' }) })
     const paidState = { ...createInitialGameState(CONTEXT, 1), day: 8, activeServiceJobs: [done] }
     const paidBefore = paidState.cashYen
     const paid = advanceDay(paidState, DayActionsSchema.parse({}), 8, CONTEXT).state
     expect(paid.cashYen).toBe(paidBefore + done.payoutYen)
     expect(paid.activeServiceJobs).toHaveLength(0)
 
-    const undone = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const undone = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'worn' }) })
     const failState = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,
@@ -642,13 +631,15 @@ describe('service jobs in advanceDay', () => {
   })
 
   it('the deadline backstop drops staged work too (Sprint 18) - the same resolver, not a second path', () => {
-    const undone = activeJob(repairType, { components: makeComponents(repairComponent, 40) })
+    const undone = activeJob(repairType, { parts: groupCarParts({ [repairComponent]: 'worn' }) })
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,
       activeServiceJobs: [undone],
       stagedCarWork: {
-        [undone.car.id]: [{ kind: 'repair' as const, componentId: 'wheels' as const }],
+        [undone.car.id]: [
+          { kind: 'repair' as const, componentId: 'wheels' as const, targetBand: 'mint' as const },
+        ],
       },
     }
     const { state: next } = advanceDay(state, DayActionsSchema.parse({}), 8, CONTEXT)

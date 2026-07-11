@@ -1,4 +1,12 @@
-import { GameStateSchema, type GameState } from '@midnight-garage/content'
+import {
+  CARS,
+  ECONOMY,
+  PARTS,
+  GameStateSchema,
+  type ComponentId,
+  type GameState,
+} from '@midnight-garage/content'
+import { bandForMigratedCondition } from '@midnight-garage/sim'
 
 /**
  * Save schema version. The Save law (CLAUDE.md engineering law 4): every
@@ -129,8 +137,57 @@ import { GameStateSchema, type GameState } from '@midnight-garage/content'
  *   car was already fully in the shop, so decoding it as "already arrived"
  *   is exactly right, not a simplification. No explicit `MIGRATIONS[14]`
  *   step needed.
+ * - v16 (Sprint 26, the banded parts model): the single biggest structural
+ *   change this file has ever needed to carry. `CarInstance.components` (8
+ *   flat `condition: 0-100` zones) is replaced by `CarInstance.parts` (29
+ *   real parts, each holding a named `ConditionBand`); `PartInstance`'s own
+ *   `conditionPercent` becomes `band` the same way; `hiddenIssues` is
+ *   dropped entirely (the paused inspection system is removed, not just
+ *   paused); the 8-way component-group set collapses to 6
+ *   (`forcedInduction` folds into `engine`, `brakes` folds into
+ *   `suspension` - see `ComponentIdSchema`'s doc comment in
+ *   `packages/content/src/tags.ts`); `Job`/`StagedAction` drop the
+ *   `fix-issue`/`repair` kind's `issueId` field in favor of a `targetBand`
+ *   the player climbs the whole group toward. None of this is a plain
+ *   default-fill - a schema-default `parts` would silently strand every
+ *   real car's condition. `migrateV15ToV16` reconstructs it instead,
+ *   following sprint26.md decision 11's locked mapping: each old group's
+ *   `condition` percent buckets through `bandForMigratedCondition` (the same
+ *   percent-to-band thresholds `generateAuctionCarInstance` now generates
+ *   with - directive 16, one mapping, not two) and fans out to every new
+ *   part in that group uniformly (the flat old model never had
+ *   sub-component granularity to preserve); an old group's `installed`
+ *   `PartInstance`, if any, is relocated to its correct new part slot by
+ *   looking its catalog `Part.carPartId` up in `PARTS` (`ignitionEcu` for
+ *   the old ECU part, `internals` for an internals kit, `forcedInduction`
+ *   for a turbo kit, `brakePadsDiscs` for a brake part, etc. - whatever the
+ *   part's own current catalog address already resolves to); `aero` has no
+ *   old-model counterpart at all and always migrates to `mint` (decision
+ *   11's explicit carve-out); `forcedInduction.fitted` is `true` only on a
+ *   `Turbo`- or `Supercharged`-tagged model, `false` on every NA car (an
+ *   empty slot, matching how it's rolled fresh). This is also the first
+ *   migration in this file to need a content-catalog lookup (`CARS` for a
+ *   model's tags, `PARTS` for a catalog part's `carPartId`) - every earlier
+ *   migration deliberately stayed a pure structural transform (see v14's
+ *   entry above), but decision 11 explicitly calls for tag- and
+ *   catalog-address-aware remapping, and both `CARS`/`PARTS` are plain,
+ *   already-parsed static data (this file already imports `GameStateSchema`
+ *   from the same content package), not a live/async lookup - so importing
+ *   them here is a deliberate, narrow exception to that precedent, not a
+ *   dependency direction anyone should generalize from. Every `Job` and
+ *   `StagedAction` with the now-retired `fix-issue`/`fix-issue` kind is
+ *   dropped outright (kept, it would fail `JobKindSchema`/`StagedActionSchema`
+ *   validation outright, not just decode with a wrong default); a surviving
+ *   `repair-zone` `Job` or `repair` `StagedAction` gets `targetBand: 'mint'`
+ *   (the pre-Sprint-26 behavior every repair implicitly had); every
+ *   surviving `Job`/`StagedAction`/`ServiceJobWork`'s `componentId` is
+ *   remapped through the same 8-to-6 group fold. Applied uniformly across
+ *   `ownedCars`, `activeAuctionLots[].car`, `activeServiceJobs[].car`,
+ *   `serviceJobOffers[].car`, `partInventory`, `jobs`, and `stagedCarWork` -
+ *   every real population of `CarInstance`/`PartInstance`/`Job`/
+ *   `StagedAction`/`ServiceJobWork` this GameState carries.
  */
-export const SAVE_VERSION = 15
+export const SAVE_VERSION = 16
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -286,6 +343,208 @@ function migrateV13ToV14(gameState: unknown): unknown {
 }
 
 /**
+ * Sprint 26 decision 11's old-group -> new-parts fan-out. A historical fact
+ * about the pre-v16 8-way split, not derivable from current content (that
+ * split no longer exists anywhere but here).
+ */
+const OLD_GROUP_TO_NEW_PARTS: Record<string, readonly string[]> = {
+  engine: [
+    'block',
+    'internals',
+    'headValvetrain',
+    'camsTiming',
+    'intake',
+    'exhaust',
+    'fuelSystem',
+    'ignitionEcu',
+    'cooling',
+  ],
+  forcedInduction: ['forcedInduction'],
+  drivetrain: ['gearbox', 'clutch', 'differential', 'driveline', 'chassis'],
+  suspension: ['dampers', 'springs', 'antiRollBars', 'steering'],
+  brakes: ['brakePadsDiscs', 'brakeCalipersLines'],
+  wheels: ['rims', 'tyres'],
+  body: ['panels', 'paint', 'underbody'],
+  interior: ['seats', 'dashGauges'],
+}
+
+/** Old 8-way group id -> new 6-way `ComponentId` (`forcedInduction` folds
+ * into `engine`, `brakes` folds into `suspension`; the other 6 are unchanged). */
+function remapGroupId(oldGroupId: string): ComponentId {
+  if (oldGroupId === 'forcedInduction') return 'engine'
+  if (oldGroupId === 'brakes') return 'suspension'
+  return oldGroupId as ComponentId
+}
+
+const MODEL_TAGS_BY_ID: Record<string, readonly string[]> = Object.fromEntries(
+  CARS.map((model) => [model.id, model.tags]),
+)
+const CAR_PART_ID_BY_CATALOG_PART_ID: Record<string, string> = Object.fromEntries(
+  PARTS.map((part) => [part.id, part.carPartId]),
+)
+
+/** v15 -> v16 (Sprint 26): `PartInstance.conditionPercent` -> `band`. Leaves
+ * the dead `conditionPercent` key in place; `PartInstanceSchema.parse`
+ * strips it, same as every other migration in this file. */
+function migratePartInstance(instance: unknown): unknown {
+  if (typeof instance !== 'object' || instance === null) return instance
+  const i = instance as Record<string, unknown>
+  const conditionPercent = typeof i.conditionPercent === 'number' ? i.conditionPercent : 100
+  return { ...i, band: bandForMigratedCondition(conditionPercent, ECONOMY) }
+}
+
+/**
+ * v15 -> v16 (Sprint 26): reconstructs one `CarInstance`'s 29-part `parts`
+ * map from its pre-v16 8-key `components` map - see the SAVE_VERSION doc
+ * comment above for the full mapping. Defensive against a malformed or
+ * hand-edited save, same shape as the migrations above. The old
+ * `components`/`hiddenIssues` keys are left in place; `CarInstanceSchema`
+ * no longer declares either, so `.parse` strips them.
+ */
+function migrateCarInstanceToBands(car: unknown): unknown {
+  if (typeof car !== 'object' || car === null) return car
+  const c = car as Record<string, unknown>
+  // A car with no `components` object at all isn't a genuine pre-v16 shape
+  // (e.g. the still-older Sprint-12-pre-refactor `condition`/`buildSheet`
+  // shape, deliberately left unmigrated - see the v5 entry in the
+  // SAVE_VERSION doc comment). Leave it untouched rather than fabricating a
+  // `parts` map from nothing: the final `GameStateSchema.parse` below must
+  // still reject it, the same as it always has.
+  if (typeof c.components !== 'object' || c.components === null) return c
+  const oldComponents = c.components as Record<string, unknown>
+  const modelId = typeof c.modelId === 'string' ? c.modelId : undefined
+  const tags = modelId ? (MODEL_TAGS_BY_ID[modelId] ?? []) : []
+  const isForcedInductionFitted = tags.includes('Turbo') || tags.includes('Supercharged')
+
+  const parts: Record<string, { band: string; installed: unknown; fitted: boolean }> = {
+    aero: { band: 'mint', installed: null, fitted: true },
+  }
+
+  for (const [groupId, newPartIds] of Object.entries(OLD_GROUP_TO_NEW_PARTS)) {
+    const groupState = oldComponents[groupId] as
+      { condition?: unknown; installed?: unknown } | undefined
+    const conditionPercent = typeof groupState?.condition === 'number' ? groupState.condition : 100
+    const band = bandForMigratedCondition(conditionPercent, ECONOMY)
+    const installed = groupState?.installed
+    const installedRecord =
+      typeof installed === 'object' && installed !== null
+        ? (installed as Record<string, unknown>)
+        : null
+    const installedCarPartId =
+      installedRecord && typeof installedRecord.partId === 'string'
+        ? CAR_PART_ID_BY_CATALOG_PART_ID[installedRecord.partId]
+        : undefined
+
+    for (const partId of newPartIds) {
+      const fitted = partId === 'forcedInduction' ? isForcedInductionFitted : true
+      if (installedCarPartId === partId) {
+        parts[partId] = { band, installed: migratePartInstance(installedRecord), fitted: true }
+      } else {
+        parts[partId] = { band, installed: null, fitted }
+      }
+    }
+  }
+
+  return { ...c, parts }
+}
+
+/** v15 -> v16: drops a retired `fix-issue` job (the kind no longer validates
+ * at all), remaps a surviving job's group id, and backfills `targetBand:
+ * 'mint'` on a `repair-zone` job (every pre-v16 repair implicitly climbed to
+ * mint - `targetBand` didn't exist as a concept before this). */
+function migrateJob(job: unknown): unknown[] {
+  if (typeof job !== 'object' || job === null) return [job]
+  const j = job as Record<string, unknown>
+  if (j.kind === 'fix-issue') return []
+  const componentId =
+    typeof j.componentId === 'string' ? remapGroupId(j.componentId) : j.componentId
+  const targetBand = j.kind === 'repair-zone' ? 'mint' : j.targetBand
+  return [{ ...j, componentId, targetBand }]
+}
+
+/** v15 -> v16: the `StagedAction` counterpart to `migrateJob` above - a
+ * `repair` stage requires `targetBand` under the new schema (no default),
+ * so a pre-v16 stage (which never carried one) needs it backfilled, not
+ * left to a schema default that doesn't exist. */
+function migrateStagedAction(action: unknown): unknown[] {
+  if (typeof action !== 'object' || action === null) return [action]
+  const a = action as Record<string, unknown>
+  if (a.kind === 'fix-issue') return []
+  const componentId =
+    typeof a.componentId === 'string' ? remapGroupId(a.componentId) : a.componentId
+  if (a.kind === 'repair') return [{ ...a, componentId, targetBand: 'mint' }]
+  return [{ ...a, componentId }]
+}
+
+/** v15 -> v16: `ServiceJobWork.componentId` remap - no `targetBand`/`issueId`
+ * to touch, that schema never carried either. */
+function migrateServiceJobWork(work: unknown): unknown {
+  if (typeof work !== 'object' || work === null) return work
+  const w = work as Record<string, unknown>
+  const componentId =
+    typeof w.componentId === 'string' ? remapGroupId(w.componentId) : w.componentId
+  return { ...w, componentId }
+}
+
+function migrateServiceJob(serviceJob: unknown): unknown {
+  if (typeof serviceJob !== 'object' || serviceJob === null) return serviceJob
+  const sj = serviceJob as Record<string, unknown>
+  return { ...sj, work: migrateServiceJobWork(sj.work), car: migrateCarInstanceToBands(sj.car) }
+}
+
+function migrateV15ToV16(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+
+  const ownedCars = Array.isArray(state.ownedCars)
+    ? state.ownedCars.map(migrateCarInstanceToBands)
+    : state.ownedCars
+
+  const activeAuctionLots = Array.isArray(state.activeAuctionLots)
+    ? state.activeAuctionLots.map((lot) => {
+        if (typeof lot !== 'object' || lot === null) return lot
+        const l = lot as Record<string, unknown>
+        return { ...l, car: migrateCarInstanceToBands(l.car) }
+      })
+    : state.activeAuctionLots
+
+  const activeServiceJobs = Array.isArray(state.activeServiceJobs)
+    ? state.activeServiceJobs.map(migrateServiceJob)
+    : state.activeServiceJobs
+
+  const serviceJobOffers = Array.isArray(state.serviceJobOffers)
+    ? state.serviceJobOffers.map(migrateServiceJob)
+    : state.serviceJobOffers
+
+  const partInventory = Array.isArray(state.partInventory)
+    ? state.partInventory.map(migratePartInstance)
+    : state.partInventory
+
+  const jobs = Array.isArray(state.jobs) ? state.jobs.flatMap(migrateJob) : state.jobs
+
+  const stagedCarWork =
+    typeof state.stagedCarWork === 'object' && state.stagedCarWork !== null
+      ? Object.fromEntries(
+          Object.entries(state.stagedCarWork as Record<string, unknown>).map(([carId, actions]) => [
+            carId,
+            Array.isArray(actions) ? actions.flatMap(migrateStagedAction) : actions,
+          ]),
+        )
+      : state.stagedCarWork
+
+  return {
+    ...state,
+    ownedCars,
+    activeAuctionLots,
+    activeServiceJobs,
+    serviceJobOffers,
+    partInventory,
+    jobs,
+    stagedCarWork,
+  }
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -295,6 +554,7 @@ const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   8: migrateV8ToV9,
   11: migrateV11ToV12,
   13: migrateV13ToV14,
+  15: migrateV15ToV16,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

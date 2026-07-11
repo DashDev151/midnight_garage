@@ -4,15 +4,15 @@ import {
   ECONOMY,
   EQUIPMENT,
   FACILITIES,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
-import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
+import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
@@ -21,13 +21,12 @@ const CONTEXT = buildSimContext(
   CARS,
   PARTS,
   BUYERS,
-  HIDDEN_ISSUES,
+  PARTS_TAXONOMY,
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
   EQUIPMENT,
 )
-const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
 /** Covers 'body' (the repair component these labor/bay tests exercise) plus, for the
  * parking-gate test below, every other component too so whichever offer comes up first
  * never trips the Sprint 13 equipment gate - that test is about parking, not equipment. */
@@ -35,15 +34,7 @@ const ALL_EQUIPMENT_IDS = EQUIPMENT.map((e) => e.id)
 
 function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
-  const [lot] = generateAuctionCatalog(
-    [model],
-    'local-yard',
-    HIDDEN_ISSUES_BY_COMPONENT,
-    7,
-    1,
-    createRng(seed),
-    ECONOMY,
-  )
+  const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), ECONOMY)
   const base = createInitialGameState(CONTEXT, 1)
   return {
     state: {
@@ -81,6 +72,7 @@ describe('labor is gated by service-bay membership', () => {
           carInstanceId: car.id,
           kind: 'repair-zone' as const,
           componentId: 'body' as const,
+          targetBand: 'mint' as const,
           laborSlotsRequired: 1,
         },
       ],
@@ -111,6 +103,7 @@ describe('labor is gated by service-bay membership', () => {
           carInstanceId: car.id,
           kind: 'repair-zone' as const,
           componentId: 'body' as const,
+          targetBand: 'mint' as const,
           laborSlotsRequired: 1,
         },
       ],
@@ -118,7 +111,7 @@ describe('labor is gated by service-bay membership', () => {
     }
     const { state: next } = advanceDay(won, actions, 2, CONTEXT)
     expect(next.jobs).toHaveLength(0) // completed and removed same day
-    expect(next.ownedCars[0]?.components.body.condition).toBe(100)
+    expect(next.ownedCars[0]?.parts.panels.band).toBe('mint')
   })
 })
 

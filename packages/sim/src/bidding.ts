@@ -6,10 +6,8 @@ import type {
   EconomyConfig,
   GameState,
 } from '@midnight-garage/content'
-import { revealIssuesAtHandover } from './auctions'
 import type { SimContext } from './context'
 import { assignToParking, hasParkingSpace } from './facilities'
-import { modelRiskDiscount } from './issues'
 import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 
@@ -48,12 +46,9 @@ export function interestedBuyers(
  * simply never opens on its own) - but no longer selects *which* buyer's
  * valuation to use, since `marketValueYen` doesn't take a buyer.
  *
- * Sprint 22 decision 5: the anchor is discounted by `modelRiskDiscount` -
- * what everyone in the trade knows about this MODEL's hidden-issue risk
- * ("these are known for rust"), never the actual rolled issues on this one
- * instance. `marketValueYen` itself stays issue-blind (decision 4's
- * separation, shared with `issueAdjustedValueYen` on the sell side) - the
- * discount is applied here, once, at the lot-pricing layer only.
+ * Sprint 26 decision 4: drops the deleted `(1 - modelRiskDiscount)` term -
+ * the hidden-issue system it discounted for is paused and removed; the
+ * anchor is `marketValueYen` alone now, unadjusted.
  */
 export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
   const model = context.modelsById[lot.modelId]
@@ -61,9 +56,14 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
   const interested = interestedBuyers(model, context.buyers)
   if (interested.length === 0) return 0
   const heatPercent = state.marketHeat[lot.modelId] ?? 100
-  const baseValue = marketValueYen(model, lot.car, heatPercent, context.partsById, context.economy)
-  const riskDiscount = modelRiskDiscount(model, context.hiddenIssuesByComponent, context.economy)
-  return Math.round(baseValue * (1 - riskDiscount))
+  return marketValueYen(
+    model,
+    lot.car,
+    heatPercent,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
 }
 
 /** Seller's floor under a deal (GDD 6.5): a fraction of book value. Bidding
@@ -387,19 +387,15 @@ export function resolveLotForDay(
     return { state: removeLot(state), log }
   }
 
-  const handover = revealIssuesAtHandover(updatedLot, updatedLot.inspected)
   const withCar = assignToParking(
     {
       ...removeLot(state),
       cashYen: state.cashYen - updatedLot.currentBidYen,
-      ownedCars: [...state.ownedCars, handover.car],
+      ownedCars: [...state.ownedCars, updatedLot.car],
     },
-    handover.car.id,
+    updatedLot.car.id,
   )
-  log.push(
-    { type: 'auction-bid-won', lotId: lot.id, finalPriceYen: updatedLot.currentBidYen },
-    ...handover.log,
-  )
+  log.push({ type: 'auction-bid-won', lotId: lot.id, finalPriceYen: updatedLot.currentBidYen })
   return { state: withCar, log }
 }
 
@@ -426,18 +422,17 @@ export function resolveBuyoutInstant(
     }
   }
 
-  const handover = revealIssuesAtHandover(lot, lot.inspected)
   const withCar = assignToParking(
     {
       ...state,
       cashYen: state.cashYen - priceYen,
-      ownedCars: [...state.ownedCars, handover.car],
+      ownedCars: [...state.ownedCars, lot.car],
       activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
     },
-    handover.car.id,
+    lot.car.id,
   )
   return {
     state: withCar,
-    log: [{ type: 'lot-bought-out', lotId, priceYen }, ...handover.log],
+    log: [{ type: 'lot-bought-out', lotId, priceYen }],
   }
 }

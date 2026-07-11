@@ -1,12 +1,14 @@
 import { z } from 'zod'
-import { ComponentIdSchema } from './tags'
+import { ComponentIdSchema, ConditionBandSchema } from './tags'
 
 /**
- * `fix-issue` (Sprint 22) is a repair with a real per-issue cash cost, on top
- * of consumables - `repair-zone`/`install-part` never charge more than
- * consumables, so it's its own kind rather than a repair-zone variant.
+ * `fix-issue` (Sprint 22) is retired: the hidden-issue system it belonged to
+ * is paused and removed (Sprint 26, maintainer decision 2026-07-11). Every
+ * job is now either a group-level repair (climb every non-mint, non-scrap
+ * part in the group toward the target band) or an install (one catalog part
+ * onto one part slot within the group).
  */
-export const JobKindSchema = z.enum(['repair-zone', 'install-part', 'fix-issue'])
+export const JobKindSchema = z.enum(['repair-zone', 'install-part'])
 
 export const JobSchema = z
   .object({
@@ -15,17 +17,15 @@ export const JobSchema = z
     kind: JobKindSchema,
     componentId: ComponentIdSchema,
     partInstanceId: z.string().min(1).optional(),
-    issueId: z.string().min(1).optional(),
+    /** Set for `repair-zone` jobs only (Sprint 26 decision 5) - how far
+     * every eligible part in the group climbs on completion. */
+    targetBand: ConditionBandSchema.optional(),
     laborSlotsRequired: z.number().int().positive(),
     laborSlotsSpent: z.number().int().nonnegative().default(0),
   })
   .refine((job) => job.kind !== 'install-part' || job.partInstanceId !== undefined, {
     message: 'install-part jobs require partInstanceId',
     path: ['partInstanceId'],
-  })
-  .refine((job) => job.kind !== 'fix-issue' || job.issueId !== undefined, {
-    message: 'fix-issue jobs require issueId',
-    path: ['issueId'],
   })
   .refine((job) => job.laborSlotsSpent <= job.laborSlotsRequired, {
     message: 'laborSlotsSpent cannot exceed laborSlotsRequired',

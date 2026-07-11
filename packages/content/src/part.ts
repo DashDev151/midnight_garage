@@ -1,13 +1,18 @@
 import { z } from 'zod'
-import { ComponentIdSchema, GradeSchema, TagSchema } from './tags'
+import { CarPartIdSchema, ConditionBandSchema, GradeSchema, TagSchema } from './tags'
 import { StatModifierSchema } from './stats'
 
-/** Parts are parody-branded from day one (GDD 2.4) - no real/parody split. */
+/**
+ * Parts are parody-branded from day one (GDD 2.4) - no real/parody split.
+ * `carPartId` is a catalog part's address (Sprint 26 - replaces the old
+ * 8-way `componentId`; a part's group is derived by looking its
+ * `carPartId` up in `parts-taxonomy.json`, not stored redundantly here).
+ */
 export const PartSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
   brand: z.string().min(1),
   name: z.string().min(1),
-  componentId: ComponentIdSchema,
+  carPartId: CarPartIdSchema,
   grade: GradeSchema,
   requiredTags: z.array(TagSchema).default([]),
   statModifiers: StatModifierSchema,
@@ -17,14 +22,16 @@ export const PartSchema = z.object({
 export const PartsSchema = z.array(PartSchema).min(1)
 
 /**
- * An owned/installed part. Condition and genuine-period status are
- * per-instance (GDD 5.3: a used genuine part differs from a new
- * reproduction of the same catalog part), so they live here, not on Part.
+ * An owned/installed part. Band and genuine-period status are per-instance
+ * (GDD 5.3: a used genuine part differs from a new reproduction of the same
+ * catalog part), so they live here, not on Part. Sprint 26: `band` replaces
+ * the old `conditionPercent` - a purchased part always starts `mint`
+ * (matching the old `conditionPercent: 100` default).
  */
 export const PartInstanceSchema = z.object({
   id: z.string().min(1),
   partId: z.string().min(1),
-  conditionPercent: z.number().min(0).max(100).default(100),
+  band: ConditionBandSchema.default('mint'),
   genuinePeriod: z.boolean().default(false),
 })
 

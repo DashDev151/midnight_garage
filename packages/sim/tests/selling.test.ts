@@ -3,9 +3,11 @@ import {
   CARS,
   ECONOMY,
   PARTS,
-  HIDDEN_ISSUES,
+  PARTS_TAXONOMY,
   type CarInstance,
   type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -20,95 +22,142 @@ import {
 } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
 import { createRng } from '../src/rng'
+import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
+  PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
+) as Record<CarPartId, CarPartTaxonomyEntry>
 
 const model: CarModel | undefined = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
 if (!model) throw new Error('fixture car missing from seed content')
 
-const car: CarInstance = {
-  id: 'car-0001',
+const car: CarInstance = buildCarInstance({
   modelId: model.id,
   year: 1992,
   mileageKm: 90_000,
-  color: 'White',
-  provenanceNote: '',
-  hiddenIssues: [],
   authenticityPercent: 85,
-  components: {
-    engine: { condition: 80, installed: null },
-    forcedInduction: { condition: 80, installed: null },
-    drivetrain: { condition: 80, installed: null },
-    suspension: { condition: 80, installed: null },
-    brakes: { condition: 80, installed: null },
-    wheels: { condition: 80, installed: null },
-    body: { condition: 80, installed: null },
-    interior: { condition: 80, installed: null },
-  },
+  parts: mintCarParts({ block: { band: 'worn' } }),
+})
+
+function walkIn(
+  target: CarInstance,
+  targetModel: CarModel,
+  buyers = BUYERS,
+  heat = 100,
+  rng = createRng(1),
+) {
+  return sellViaWalkIn(
+    target,
+    targetModel,
+    buyers,
+    {},
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    heat,
+    ECONOMY,
+    rng,
+  )
+}
+
+function listingPrice(target: CarInstance, targetModel: CarModel, buyers = BUYERS, heat = 100) {
+  return listPubliclyAskingPrice(
+    target,
+    targetModel,
+    buyers,
+    {},
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    heat,
+    ECONOMY,
+  )
+}
+
+function bestFit(target: CarInstance, targetModel: CarModel, buyers = BUYERS, heat = 100) {
+  return bestFitBuyer(
+    target,
+    targetModel,
+    buyers,
+    {},
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    heat,
+    ECONOMY,
+  )
+}
+
+function valuate(
+  buyer: (typeof BUYERS)[number],
+  target: CarInstance,
+  targetModel: CarModel,
+  heat = 100,
+) {
+  return valuateCarForBuyer(
+    buyer,
+    targetModel,
+    target,
+    {},
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    heat,
+    ECONOMY,
+  )
 }
 
 describe('sellViaWalkIn', () => {
   it("offers at or below the chosen buyer's true valuation", () => {
-    const rng = createRng(1)
-    const offer = sellViaWalkIn(car, model, BUYERS, {}, 100, {}, ECONOMY, rng)
+    const offer = walkIn(car, model)
     const buyer = BUYERS.find((b) => b.id === offer.buyerId)
     if (!buyer) throw new Error('offer referenced an unknown buyer')
-    const trueValue = valuateCarForBuyer(buyer, model, car, {}, 100, {}, ECONOMY)
+    const trueValue = valuate(buyer, car, model)
     expect(offer.priceYen).toBeLessThanOrEqual(trueValue)
   })
 
   it('is deterministic for the same seed', () => {
-    const a = sellViaWalkIn(car, model, BUYERS, {}, 100, {}, ECONOMY, createRng(7))
-    const b = sellViaWalkIn(car, model, BUYERS, {}, 100, {}, ECONOMY, createRng(7))
+    const a = walkIn(car, model, BUYERS, 100, createRng(7))
+    const b = walkIn(car, model, BUYERS, 100, createRng(7))
     expect(a).toEqual(b)
   })
 })
 
 describe('listPubliclyAskingPrice', () => {
   it('scales up with market heat', () => {
-    const cool = listPubliclyAskingPrice(car, model, BUYERS, {}, 80, {}, ECONOMY)
-    const hot = listPubliclyAskingPrice(car, model, BUYERS, {}, 130, {}, ECONOMY)
+    const cool = listingPrice(car, model, BUYERS, 80)
+    const hot = listingPrice(car, model, BUYERS, 130)
     expect(hot).toBeGreaterThan(cool)
   })
 
   it('returns 0 with no buyers to value the car', () => {
-    expect(listPubliclyAskingPrice(car, model, [], {}, 100, {}, ECONOMY)).toBe(0)
+    expect(listingPrice(car, model, [])).toBe(0)
   })
 
   /**
    * Sprint 21 decision 6: heat applies exactly once, inside `marketValueYen`
    * (via `valuateCarForBuyer`) - `listPubliclyAskingPrice` no longer
    * multiplies by heat a second time on top of that (the old double-count).
-   * Proof: since neither `conditionFactor` nor `tasteMultiplier` depends on
-   * heat, and `LISTING_PATIENCE_PREMIUM` is a flat constant, a 1.2x change
-   * in heat should produce almost exactly a 1.2x change in the final price -
-   * a double-count would instead compound to ~1.44x.
    */
   it('applies market heat exactly once (no double-count with marketValueYen)', () => {
-    const heatBase = listPubliclyAskingPrice(car, model, BUYERS, {}, 100, {}, ECONOMY)
-    const heatHigh = listPubliclyAskingPrice(car, model, BUYERS, {}, 120, {}, ECONOMY)
+    const heatBase = listingPrice(car, model, BUYERS, 100)
+    const heatHigh = listingPrice(car, model, BUYERS, 120)
     expect(heatHigh / heatBase).toBeCloseTo(1.2, 1)
   })
 })
 
 describe('bestFitBuyer', () => {
   it('returns the highest-valuing buyer among those genuinely interested in this tier', () => {
-    // Sprint 11: bestFitBuyer only ever picks from the gated (tier-interested)
-    // pool, same as sellViaWalkIn/listPubliclyAskingPrice - an uninterested
-    // archetype's raw valuation is irrelevant, it was never a candidate.
-    const best = bestFitBuyer(car, model, BUYERS, {}, 100, {}, ECONOMY)
+    const best = bestFit(car, model)
     if (!best) throw new Error('expected a best-fit buyer')
-    const bestValue = valuateCarForBuyer(best, model, car, {}, 100, {}, ECONOMY)
+    const bestValue = valuate(best, car, model)
     const candidates = interestedBuyers(model, BUYERS).map((i) => i.buyer)
     expect(candidates.length).toBeGreaterThan(0)
     for (const buyer of candidates) {
-      const value = valuateCarForBuyer(buyer, model, car, {}, 100, {}, ECONOMY)
+      const value = valuate(buyer, car, model)
       expect(value).toBeLessThanOrEqual(bestValue)
     }
   })
 
   it('returns undefined with no buyers', () => {
-    expect(bestFitBuyer(car, model, [], {}, 100, {}, ECONOMY)).toBeUndefined()
+    expect(bestFit(car, model, [])).toBeUndefined()
   })
 })
 
@@ -121,16 +170,7 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
     // Per buyers.json, collector's tierPreferences list legend/gaisha/rare/
     // uncommon only - no shitbox entry at all.
     for (let seed = 0; seed < 50; seed++) {
-      const offer = sellViaWalkIn(
-        shitboxCar,
-        shitboxModel,
-        BUYERS,
-        {},
-        100,
-        {},
-        ECONOMY,
-        createRng(seed),
-      )
+      const offer = walkIn(shitboxCar, shitboxModel, BUYERS, 100, createRng(seed))
       expect(offer.buyerId).not.toBe('collector')
     }
   })
@@ -139,23 +179,11 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
     // Shitbox has exactly one interested archetype (first-timer) - the gated
     // price should equal that buyer's own valuation exactly, not be dragged
     // down by averaging in four buyers who were never real candidates.
-    const gatedPrice = listPubliclyAskingPrice(
-      shitboxCar,
-      shitboxModel,
-      BUYERS,
-      {},
-      100,
-      {},
-      ECONOMY,
-    )
-    const firstTimerValuation = valuateCarForBuyer(
+    const gatedPrice = listingPrice(shitboxCar, shitboxModel)
+    const firstTimerValuation = valuate(
       BUYERS.find((b) => b.id === 'first-timer')!,
-      shitboxModel,
       shitboxCar,
-      {},
-      100,
-      {},
-      ECONOMY,
+      shitboxModel,
     )
     const premium = ECONOMY.valuation.listingPatiencePremium
     const expectedPrice = Math.round(firstTimerValuation * premium)
@@ -212,7 +240,7 @@ describe('resolveSellViaWalkIn (Sprint 11 instant resolver)', () => {
 
   it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
     const state = stateWithCar(car, {
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine' }] },
+      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
     })
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.state.stagedCarWork[car.id]).toBeUndefined()
@@ -239,7 +267,7 @@ describe('resolveListForSale (Sprint 11 instant resolver)', () => {
 
   it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
     const state = stateWithCar(car, {
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine' }] },
+      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
     })
     const result = resolveListForSale(state, car.id, CONTEXT)
     expect(result.state.stagedCarWork[car.id]).toBeUndefined()
@@ -253,34 +281,17 @@ describe('resolveListForSale (Sprint 11 instant resolver)', () => {
   })
 })
 
-describe('reputation side effects (Sprint 15)', () => {
-  const qualityCar: CarInstance = {
-    ...car,
+describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26)', () => {
+  const qualityCar: CarInstance = buildCarInstance({
+    modelId: car.modelId,
     authenticityPercent: 90,
-    components: {
-      engine: { condition: 90, installed: null },
-      forcedInduction: { condition: 90, installed: null },
-      drivetrain: { condition: 90, installed: null },
-      suspension: { condition: 90, installed: null },
-      brakes: { condition: 90, installed: null },
-      wheels: { condition: 90, installed: null },
-      body: { condition: 90, installed: null },
-      interior: { condition: 90, installed: null },
-    },
-  }
-  const lemonCar: CarInstance = {
-    ...car,
-    components: {
-      engine: { condition: 5, installed: null },
-      forcedInduction: { condition: 80, installed: null },
-      drivetrain: { condition: 80, installed: null },
-      suspension: { condition: 80, installed: null },
-      brakes: { condition: 80, installed: null },
-      wheels: { condition: 80, installed: null },
-      body: { condition: 80, installed: null },
-      interior: { condition: 80, installed: null },
-    },
-  }
+    parts: uniformCarParts('mint'),
+  })
+  const lemonCar: CarInstance = buildCarInstance({
+    modelId: car.modelId,
+    authenticityPercent: 80,
+    parts: uniformCarParts('poor'),
+  })
 
   it('a walk-in sale of a quality car grants reputation immediately', () => {
     const state = stateWithCar(qualityCar)
@@ -307,7 +318,7 @@ describe('reputation side effects (Sprint 15)', () => {
   })
 
   it('a walk-in sale of an ordinary car carries no reputationDelta field', () => {
-    const state = stateWithCar(car) // fixture car: all components at 80, unremarkable
+    const state = stateWithCar(car) // fixture car: one worn part, otherwise mint - unremarkable
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
   })

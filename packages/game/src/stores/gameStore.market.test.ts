@@ -1,4 +1,4 @@
-import { CARS, ECONOMY, PARTS } from '@midnight-garage/content'
+import { CARS, ECONOMY, PARTS, type ComponentId } from '@midnight-garage/content'
 import { bidIncrementYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -95,16 +95,22 @@ describe('market: bidding', () => {
     expect(game.lotDetail(outbidLotId!)?.playerHasBid).toBe(true)
   })
 
-  it('inspectLot reveals the lot instantly, for cash only', () => {
+  it('lotDetail always carries the real group bands - lots are transparent now (Sprint 26 decision 10)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
-    const cashBefore = game.cashYen
-    const laborBefore = game.laborSlotsRemainingToday
-    game.inspectLot(lot.id)
-    expect(game.gameState.activeAuctionLots.find((l) => l.id === lot.id)?.inspected).toBe(true)
-    expect(game.cashYen).toBeLessThan(cashBefore)
-    expect(game.laborSlotsRemainingToday).toBe(laborBefore) // no labor cost (Sprint 11 decision 4)
+    const detail = game.lotDetail(lot.id)!
+    expect(Object.keys(detail.groupBands)).toEqual([
+      'engine',
+      'drivetrain',
+      'suspension',
+      'wheels',
+      'body',
+      'interior',
+    ])
+    for (const band of Object.values(detail.groupBands)) {
+      expect(['scrap', 'poor', 'worn', 'fine', 'mint']).toContain(band)
+    }
   })
 
   it('lotDetail carries a turnout read and a buyout price floored above the current bid by at least an increment (Sprint 20)', () => {
@@ -178,14 +184,13 @@ describe('market: buying parts', () => {
   it('buying a part lands in inventory instantly and is then installable', () => {
     const game = useGameStore()
     // A power part + a compatible car, so the bought part is actually installable.
-    let pair:
-      | { partId: string; componentId: (typeof PARTS)[number]['componentId']; modelId: string }
-      | undefined
+    let pair: { partId: string; componentId: ComponentId; modelId: string } | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
       const model = CARS.find((c) => part.requiredTags.every((t) => c.tags.includes(t)))
-      if (model) {
-        pair = { partId: part.id, componentId: part.componentId, modelId: model.id }
+      const componentId = game.groupForCarPart(part.carPartId)
+      if (model && componentId) {
+        pair = { partId: part.id, componentId, modelId: model.id }
         break
       }
     }

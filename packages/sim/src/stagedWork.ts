@@ -1,9 +1,9 @@
 import type { DayLogEntry, GameState } from '@midnight-garage/content'
-import { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from './constants'
+import type { NewJobSpec } from './actions'
+import { planGroupRepair } from './bands'
+import { INSTALL_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
 import { findWorkableCar, resolveJobLabor } from './jobs'
-import { issueLaborSlots } from './issues'
-import type { NewJobSpec } from './actions'
 
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
@@ -36,10 +36,16 @@ export interface StagedWorkResolution {
  * first dibs on today's labor); an action whose gate refuses (e.g. the
  * repair equipment gate) or that only partially labors today still leaves
  * behind a normal, continuable `Job` - nothing here changes what happens to
- * an already-open job afterward (decision 4: that's the existing
- * single-click "Continue repair" flow, not staging). The car's staged list
- * is cleared unconditionally at the end, whether or not every action could
- * be fully labored today.
+ * an already-open job afterward. The car's staged list is cleared
+ * unconditionally at the end, whether or not every action could be fully
+ * labored today.
+ *
+ * Sprint 26 decision 13 (the group-level "bridge"): a staged `repair` sizes
+ * its `NewJobSpec.laborSlotsRequired` via `planGroupRepair` (bands.ts) -
+ * every non-mint, non-scrap part in the group climbing toward the staged
+ * `targetBand`, at the group's own repair level. A group with nothing left
+ * to repair (already there, or every part scrap) simply produces no spec -
+ * the same "nothing to do" no-op `repairJobGate` itself falls back on.
  */
 export function confirmStagedWork(
   state: GameState,
@@ -58,13 +64,25 @@ export function confirmStagedWork(
 
     let spec: NewJobSpec | null = null
     if (action.kind === 'repair') {
-      spec = {
-        carInstanceId,
-        kind: 'repair-zone',
-        componentId: action.componentId,
-        laborSlotsRequired: repairLaborSlotsFor(car.components[action.componentId].condition),
+      const plan = planGroupRepair(
+        car,
+        action.componentId,
+        action.targetBand,
+        current.ownedEquipmentIds,
+        context.partIdsByGroup,
+        context.partsTaxonomyById,
+        context.equipmentById,
+      )
+      if (plan.partIds.length > 0) {
+        spec = {
+          carInstanceId,
+          kind: 'repair-zone',
+          componentId: action.componentId,
+          targetBand: action.targetBand,
+          laborSlotsRequired: plan.laborSlotsRequired,
+        }
       }
-    } else if (action.kind === 'install') {
+    } else {
       spec = {
         carInstanceId,
         kind: 'install-part',
@@ -72,21 +90,8 @@ export function confirmStagedWork(
         partInstanceId: action.partInstanceId,
         laborSlotsRequired: INSTALL_LABOR_SLOTS,
       }
-    } else {
-      // fix-issue (Sprint 22): severity lives on the car instance, not the
-      // staged action itself - resolve it here to size the labor band.
-      const revealedIssue = car.hiddenIssues.find((ri) => ri.issueId === action.issueId)
-      if (revealedIssue) {
-        spec = {
-          carInstanceId,
-          kind: 'fix-issue',
-          componentId: action.componentId,
-          issueId: action.issueId,
-          laborSlotsRequired: issueLaborSlots(revealedIssue.severityPercent, context.economy),
-        }
-      }
     }
-    if (!spec) continue // the staged issue no longer exists on this car - nothing to do
+    if (!spec) continue // nothing left to do for this staged action - skip it
 
     const result = resolveJobLabor(current, spec, remainingLabor, context)
     current = result.state

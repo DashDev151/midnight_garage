@@ -2,10 +2,11 @@ import type {
   Buyer,
   CarInstance,
   CarModel,
+  CarPartId,
+  CarPartTaxonomyEntry,
   DayLogEntry,
   EconomyConfig,
   GameState,
-  HiddenIssue,
   Part,
   PublicListing,
 } from '@midnight-garage/content'
@@ -43,25 +44,32 @@ function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
  * instant sale. Weighted by fit, not uniformly random: a buyer who
  * actually wants this car is more likely to be the one who walks in -
  * "someone happens by," not "a stranger is offered a car they don't
- * care about." Uniform selection made this channel punishing for any
- * car that didn't match the randomly-chosen archetype's taste, on top
- * of the discount below - a double penalty that made flipping
- * unviable regardless of how cheap the purchase was.
+ * care about."
  */
 export function sellViaWalkIn(
   car: CarInstance,
   model: CarModel,
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
-  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
   rng: Rng,
 ): SaleOffer {
   const candidates = saleCandidates(model, buyers)
   const valuations = candidates.map((buyer) => ({
     buyer,
-    value: valuateCarForBuyer(buyer, model, car, partsById, heatPercent, issuesById, economy),
+    value: valuateCarForBuyer(
+      buyer,
+      model,
+      car,
+      partsById,
+      partsTaxonomy,
+      partsTaxonomyById,
+      heatPercent,
+      economy,
+    ),
   }))
   const totalValue = valuations.reduce((sum, v) => sum + v.value, 0)
 
@@ -89,36 +97,42 @@ export function sellViaWalkIn(
 
 /**
  * GDD 6.3: "slow, market price" - the average valuation across every
- * genuinely-interested buyer archetype (Sprint 11: gated, same as walk-in -
- * averaging in buyers with no real interest was dragging the "market
- * price" below what a single well-matched buyer would pay, inverting this
- * channel's intended fast/cheap vs. slow/valuable relationship), locked in
- * at listing time (the asking price doesn't drift with market heat while
- * the listing waits).
+ * genuinely-interested buyer archetype (Sprint 11: gated, same as walk-in),
+ * locked in at listing time (the asking price doesn't drift with market
+ * heat while the listing waits).
  *
  * Sprint 21 decision 6: `marketHeatPercent` is still forwarded into each
  * `valuateCarForBuyer` call (heat still moves this price) but the function
- * itself no longer multiplies by heat a second time - that extra multiply
- * was the double-count (heat now applies exactly once, inside
- * `marketValueYen`). In its place, listing gains a flat patience premium
- * (`LISTING_PATIENCE_PREMIUM`, economy.json's `listingPatiencePremium`) so
- * "slow, market price" stays the better-but-slower channel against walk-in's
- * `[0.85, 1.1]` roll.
+ * itself no longer multiplies by heat a second time. In its place, listing
+ * gains a flat patience premium (`listingPatiencePremium`) so "slow, market
+ * price" stays the better-but-slower channel against walk-in's `[0.85, 1.1]`
+ * roll.
  */
 export function listPubliclyAskingPrice(
   car: CarInstance,
   model: CarModel,
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   marketHeatPercent: number,
-  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): number {
   const candidates = saleCandidates(model, buyers)
   if (candidates.length === 0) return 0
   const total = candidates.reduce((sum, buyer) => {
     return (
-      sum + valuateCarForBuyer(buyer, model, car, partsById, marketHeatPercent, issuesById, economy)
+      sum +
+      valuateCarForBuyer(
+        buyer,
+        model,
+        car,
+        partsById,
+        partsTaxonomy,
+        partsTaxonomyById,
+        marketHeatPercent,
+        economy,
+      )
     )
   }, 0)
   const average = total / candidates.length
@@ -135,13 +149,23 @@ export function bestFitBuyer(
   model: CarModel,
   buyers: readonly Buyer[],
   partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
-  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): Buyer | undefined {
   let best: { buyer: Buyer; value: number } | undefined
   for (const buyer of saleCandidates(model, buyers)) {
-    const value = valuateCarForBuyer(buyer, model, car, partsById, heatPercent, issuesById, economy)
+    const value = valuateCarForBuyer(
+      buyer,
+      model,
+      car,
+      partsById,
+      partsTaxonomy,
+      partsTaxonomyById,
+      heatPercent,
+      economy,
+    )
     if (!best || value > best.value) {
       best = { buyer, value }
     }
@@ -177,12 +201,13 @@ export function resolveSellViaWalkIn(
     model,
     context.buyers,
     context.partsById,
+    context.partsTaxonomy,
+    context.partsTaxonomyById,
     heatPercent,
-    context.hiddenIssuesById,
     context.economy,
     rng,
   )
-  const nominalDelta = saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy)
+  const nominalDelta = saleReputationDeltaFor(car, context.partsTaxonomyById, context.economy)
   const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   const released = applyReputationDelta(clearedState, nominalDelta)
   // Sprint 24 fix 3: log what actually happened, not the nominal delta -
@@ -241,8 +266,9 @@ export function resolveListForSale(
     model,
     context.buyers,
     context.partsById,
+    context.partsTaxonomy,
+    context.partsTaxonomyById,
     marketHeatPercent,
-    context.hiddenIssuesById,
     context.economy,
   )
   const waitDays = waitDaysOverride ?? PUBLIC_LISTING_WAIT_DAYS
@@ -254,9 +280,8 @@ export function resolveListForSale(
     resolvesOnDay: state.day + waitDays,
     // Captured now, not at resolution: the real CarInstance leaves state the
     // moment this listing is created, so its condition can't be re-read days
-    // later when the listing actually resolves (see selling.ts's own note
-    // above and sprint15.md decision 4).
-    reputationDeltaOnSale: saleReputationDeltaFor(car, context.hiddenIssuesById, context.economy),
+    // later when the listing actually resolves.
+    reputationDeltaOnSale: saleReputationDeltaFor(car, context.partsTaxonomyById, context.economy),
   }
   const released = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   return {

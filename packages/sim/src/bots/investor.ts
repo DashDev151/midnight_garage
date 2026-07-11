@@ -1,5 +1,7 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { worstGroup } from './bandHelpers'
+import { presentPartIdsInGroup } from '../bands'
 import {
   acquireLot,
   activeBidCount,
@@ -21,12 +23,12 @@ const FAIR_BID_MULTIPLIER = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.2
 const ACCEPTABLE_WALKIN_FRACTION = 0.85
 
+/** Sprint 26: the 6 real component groups (`forcedInduction` folded into
+ * `engine`, `brakes` folded into `suspension`). */
 const ALL_COMPONENTS: readonly ComponentId[] = [
   'engine',
-  'forcedInduction',
   'drivetrain',
   'suspension',
-  'brakes',
   'wheels',
   'body',
   'interior',
@@ -91,15 +93,19 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     const model = context.modelsById[car.modelId]
     if (!model) continue
 
-    const emptyComponents = ALL_COMPONENTS.filter((id) => !car.components[id].installed)
-    if (emptyComponents.length === 0) continue
-    const worstEmpty = emptyComponents.reduce((worst, id) =>
-      car.components[id].condition < car.components[worst].condition ? id : worst,
+    const emptyComponents = ALL_COMPONENTS.filter((id) =>
+      presentPartIdsInGroup(car, id, context.partIdsByGroup).some(
+        (partId) => !car.parts[partId].installed,
+      ),
     )
+    if (emptyComponents.length === 0) continue
+    const worstEmpty = worstGroup(car, emptyComponents, context.partIdsByGroup)
 
     const fitting = context.parts
       .filter(
-        (p) => p.componentId === worstEmpty && p.requiredTags.every((t) => model.tags.includes(t)),
+        (p) =>
+          context.partsTaxonomyById[p.carPartId]?.group === worstEmpty &&
+          p.requiredTags.every((t) => model.tags.includes(t)),
       )
       .sort((a, b) => a.priceYen - b.priceYen)
     const part = fitting[0]
@@ -138,7 +144,11 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
   // installed, not that every condition is high (it never repairs).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
-    const isBuilt = ALL_COMPONENTS.every((id) => car.components[id].installed !== null)
+    const isBuilt = ALL_COMPONENTS.every((id) =>
+      presentPartIdsInGroup(car, id, context.partIdsByGroup).every(
+        (partId) => car.parts[partId].installed !== null,
+      ),
+    )
     if (!isBuilt) continue
     const model = context.modelsById[car.modelId]
     const heatPercent = state.marketHeat[car.modelId] ?? 100
@@ -148,8 +158,9 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
           model,
           context.buyers,
           context.partsById,
+          context.partsTaxonomy,
+          context.partsTaxonomyById,
           heatPercent,
-          context.hiddenIssuesById,
           context.economy,
         )
       : undefined
@@ -160,8 +171,9 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
             model,
             car,
             context.partsById,
+            context.partsTaxonomy,
+            context.partsTaxonomyById,
             heatPercent,
-            context.hiddenIssuesById,
             context.economy,
           )
         : 0

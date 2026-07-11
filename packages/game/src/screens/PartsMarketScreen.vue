@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ComponentId, Grade, Part } from '@midnight-garage/content'
+import type { CarPartId, Grade, Part } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
@@ -8,15 +8,38 @@ import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 
-const COMPONENT_OPTIONS: readonly ComponentId[] = [
-  'engine',
+/** The 29 real car parts (Sprint 26) - one filter option per catalog address,
+ * not the coarser 6-group addressing staging/jobs use. */
+const CAR_PART_OPTIONS: readonly CarPartId[] = [
+  'block',
+  'internals',
+  'headValvetrain',
+  'camsTiming',
+  'intake',
+  'exhaust',
+  'fuelSystem',
+  'ignitionEcu',
+  'cooling',
   'forcedInduction',
-  'drivetrain',
-  'suspension',
-  'brakes',
-  'wheels',
-  'body',
-  'interior',
+  'gearbox',
+  'clutch',
+  'differential',
+  'driveline',
+  'chassis',
+  'dampers',
+  'springs',
+  'antiRollBars',
+  'steering',
+  'brakePadsDiscs',
+  'brakeCalipersLines',
+  'rims',
+  'tyres',
+  'panels',
+  'paint',
+  'underbody',
+  'aero',
+  'seats',
+  'dashGauges',
 ]
 const GRADE_OPTIONS: readonly Grade[] = ['stock', 'street', 'sport', 'race']
 const SORT_OPTIONS = [
@@ -24,7 +47,7 @@ const SORT_OPTIONS = [
   { value: 'price-desc', label: 'price: high to low' },
 ] as const
 
-const componentFilter = ref<ComponentId | ''>('')
+const componentFilter = ref<CarPartId | ''>('')
 const gradeFilter = ref<Grade | ''>('')
 const sortBy = ref<(typeof SORT_OPTIONS)[number]['value']>('price-asc')
 const deliverySpeed = ref<'standard' | 'express'>('standard')
@@ -51,7 +74,7 @@ function statSummary(part: Part): string {
 
 const visibleParts = computed(() => {
   let parts = game.partsCatalog.slice()
-  if (componentFilter.value) parts = parts.filter((p) => p.componentId === componentFilter.value)
+  if (componentFilter.value) parts = parts.filter((p) => p.carPartId === componentFilter.value)
   if (gradeFilter.value) parts = parts.filter((p) => p.grade === gradeFilter.value)
   return parts.sort((a, b) =>
     sortBy.value === 'price-asc' ? a.priceYen - b.priceYen : b.priceYen - a.priceYen,
@@ -79,9 +102,9 @@ function onCheckout(): void {
 
     <div class="filters">
       <select v-model="componentFilter" data-test="filter-component">
-        <option value="">all components</option>
-        <option v-for="c in COMPONENT_OPTIONS" :key="c" :value="c">
-          {{ game.componentLabel(c) }}
+        <option value="">all parts</option>
+        <option v-for="c in CAR_PART_OPTIONS" :key="c" :value="c">
+          {{ game.carPartLabel(c) }}
         </option>
       </select>
       <select v-model="gradeFilter" data-test="filter-grade">
@@ -98,7 +121,7 @@ function onCheckout(): void {
         <div class="part-main">
           <span class="part-name">{{ part.brand }} {{ part.name }}</span>
           <span class="part-meta"
-            >{{ game.componentLabel(part.componentId) }} · {{ part.grade }} ·
+            >{{ game.carPartLabel(part.carPartId) }} · {{ part.grade }} ·
             {{ statSummary(part) || 'no stat change' }}</span
           >
           <span v-if="part.requiredTags.length" class="part-tags">

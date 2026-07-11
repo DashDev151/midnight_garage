@@ -1,4 +1,4 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS } from '@midnight-garage/content'
+import { BUYERS, CARS, PARTS, PARTS_TAXONOMY } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
@@ -6,7 +6,7 @@ import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION } from '../src/constants'
 import { createInitialGameState } from '../src/newGame'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const cheapest = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
 const cheapestExpressPriceYen = Math.round(
   cheapest.priceYen * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION),
@@ -26,7 +26,7 @@ describe('buyParts resolution in advanceDay', () => {
     expect(next.cashYen).toBe(state.cashYen - cheapestExpressPriceYen)
     expect(next.partInventory).toHaveLength(1)
     expect(next.partInventory[0]!.partId).toBe(cheapest.id)
-    expect(next.partInventory[0]!.conditionPercent).toBe(100)
+    expect(next.partInventory[0]!.band).toBe('mint')
 
     const bought = log.find((e) => e.type === 'part-bought')
     expect(bought).toMatchObject({ partId: cheapest.id, priceYen: cheapestExpressPriceYen })

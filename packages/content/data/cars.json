@@ -14,11 +14,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 180000,
-    "hiddenIssueWeights": [
-      { "componentId": "body", "weight": 0.8 },
-      { "componentId": "engine", "weight": 0.3 }
-    ]
+    "bookValueYen": 180000
   },
   {
     "id": "suzuki-wagon-r-ct21s",
@@ -35,11 +31,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "Kei", "90s", "JDM"],
-    "bookValueYen": 220000,
-    "hiddenIssueWeights": [
-      { "componentId": "body", "weight": 0.6 },
-      { "componentId": "suspension", "weight": 0.4 }
-    ]
+    "bookValueYen": 220000
   },
   {
     "id": "honda-civic-sir2-eg6",
@@ -56,11 +48,7 @@
     },
     "tier": "common",
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
-    "bookValueYen": 650000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.4 },
-      { "componentId": "interior", "weight": 0.3 }
-    ]
+    "bookValueYen": 650000
   },
   {
     "id": "toyota-sprinter-trueno-ae86",
@@ -77,11 +65,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 1400000,
-    "hiddenIssueWeights": [
-      { "componentId": "drivetrain", "weight": 0.5 },
-      { "componentId": "suspension", "weight": 0.3 }
-    ]
+    "bookValueYen": 1400000
   },
   {
     "id": "nissan-180sx-rps13",
@@ -98,11 +82,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 1100000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.5 },
-      { "componentId": "body", "weight": 0.3 }
-    ]
+    "bookValueYen": 1100000
   },
   {
     "id": "toyota-chaser-tourer-v-jzx90",
@@ -119,11 +99,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 1600000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.3 },
-      { "componentId": "interior", "weight": 0.4 }
-    ]
+    "bookValueYen": 1600000
   },
   {
     "id": "nissan-silvia-ks-s14",
@@ -140,11 +116,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 1500000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.5 },
-      { "componentId": "suspension", "weight": 0.3 }
-    ]
+    "bookValueYen": 1500000
   },
   {
     "id": "mazda-savanna-rx7-fc3s",
@@ -161,11 +133,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Rotary", "80s", "JDM"],
-    "bookValueYen": 1800000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.7 },
-      { "componentId": "body", "weight": 0.3 }
-    ]
+    "bookValueYen": 1800000
   },
   {
     "id": "mazda-rx7-fd3s",
@@ -182,11 +150,7 @@
     },
     "tier": "rare",
     "tags": ["FR", "Turbo", "Rotary", "90s", "JDM"],
-    "bookValueYen": 3200000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.7 },
-      { "componentId": "drivetrain", "weight": 0.3 }
-    ]
+    "bookValueYen": 3200000
   },
   {
     "id": "toyota-supra-rz-jza80",
@@ -203,10 +167,6 @@
     },
     "tier": "rare",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 4200000,
-    "hiddenIssueWeights": [
-      { "componentId": "engine", "weight": 0.3 },
-      { "componentId": "drivetrain", "weight": 0.3 }
-    ]
+    "bookValueYen": 4200000
   }
 ]

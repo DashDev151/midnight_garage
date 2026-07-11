@@ -1,20 +1,24 @@
 import { PARTS, type PartInstance } from '@midnight-garage/content'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import PartCard from './PartCard.vue'
 
-const part = PARTS.find((p) => p.componentId === 'suspension')!
+const part = PARTS.find((p) => p.carPartId === 'dampers')!
 
 const instance: PartInstance = {
   id: 'pi-1',
   partId: part.id,
-  conditionPercent: 100,
+  band: 'mint',
   genuinePeriod: false,
 }
 
 describe('PartCard (Sprint 24 fix 5)', () => {
-  beforeEach(() => clearDragSession())
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    clearDragSession()
+  })
 
   it('fits=true emits select on a plain click', async () => {
     const wrapper = mount(PartCard, { props: { instance, part, fits: true } })

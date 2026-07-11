@@ -11,7 +11,7 @@ import {
   useDropZone,
   type DropZoneHandle,
 } from '../composables/useDragAndDrop'
-import { useGameStore, type CarIssueView } from '../stores/gameStore'
+import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -40,10 +40,8 @@ watch(
 
 const COMPONENTS: readonly ComponentId[] = [
   'engine',
-  'forcedInduction',
   'drivetrain',
   'suspension',
-  'brakes',
   'wheels',
   'body',
   'interior',
@@ -136,7 +134,7 @@ function toggleRepairStage(componentId: ComponentId): void {
   const d = detail.value
   if (!d) return
   if (isStagedRepair(componentId)) game.unstageAction(d.car.id, componentId)
-  else game.stageAction(d.car.id, { kind: 'repair', componentId })
+  else game.stageAction(d.car.id, { kind: 'repair', componentId, targetBand: 'mint' })
 }
 
 /** Which component's Replace drawer is open right now, if any - only one at a time. */
@@ -154,7 +152,6 @@ function acceptsInstall(componentId: ComponentId, partInstanceId: string): boole
   const d = detail.value
   if (!d) return false
   if (activeReplaceComponent.value !== componentId) return false
-  if (d.car.components[componentId].installed) return false
   if (componentBusy(componentId)) return false
   if (game.isPartStagedAnywhere(partInstanceId)) return false
   return game.installablePartsFor(d.car.id, componentId).some((p) => p.id === partInstanceId)
@@ -201,22 +198,6 @@ function onReplaceClick(componentId: ComponentId): void {
 function onConfirm(): void {
   const d = detail.value
   if (d) game.confirmCarWork(d.car.id)
-}
-
-/** Stage (or unstage) fixing one hidden issue (Sprint 22) - same
- * stage-then-Confirm flow as repair/install, through the shared store call. */
-function toggleIssueStage(issue: CarIssueView): void {
-  const d = detail.value
-  if (!d) return
-  if (issue.staged) {
-    game.unstageAction(d.car.id, issue.componentId)
-  } else {
-    game.stageAction(d.car.id, {
-      kind: 'fix-issue',
-      componentId: issue.componentId,
-      issueId: issue.issueId,
-    })
-  }
 }
 
 // The ghost preview that follows the pointer while dragging a part.
@@ -344,38 +325,29 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <span class="component-name" :title="game.componentLabel(componentId)">{{
                   game.componentLabel(componentId)
                 }}</span>
-                <span class="bar"
-                  ><span
-                    class="fill"
-                    :style="{
-                      width: game.effectiveConditionFor(detail.car.id, componentId) + '%',
-                    }"
-                /></span>
-                <span class="component-val">
-                  {{ game.effectiveConditionFor(detail.car.id, componentId) }}%
-                </span>
+                <span class="band-badge" :class="'band-' + detail.groupBands[componentId]">{{
+                  detail.groupBands[componentId]
+                }}</span>
               </div>
 
-              <div class="action-line">
-                <span
-                  v-if="
-                    game.effectiveConditionFor(detail.car.id, componentId) !==
-                    detail.car.components[componentId].condition
-                  "
-                  class="cosmetic-val"
-                  :title="'Cosmetic condition: ' + detail.car.components[componentId].condition"
+              <ul class="part-list">
+                <li
+                  v-for="row in game.partsInGroup(detail.car.id, componentId)"
+                  :key="row.partId"
+                  class="part-row"
                 >
-                  cosmetic {{ detail.car.components[componentId].condition }}
-                </span>
+                  <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
+                  <span class="part-band" :class="'band-' + row.band">{{ row.band }}</span>
+                  <span v-if="row.installedPartName" class="installed">{{
+                    row.installedPartName
+                  }}</span>
+                </li>
+              </ul>
 
+              <div class="action-line">
                 <template v-if="componentBusy(componentId)">
                   <button
-                    :disabled="
-                      game.laborSlotsRemainingToday <= 0 ||
-                      (jobFor(componentId)?.kind === 'repair-zone' &&
-                        (detail.car.components[componentId].condition >= 100 ||
-                          !game.hasEquipmentForComponent(componentId)))
-                    "
+                    :disabled="game.laborSlotsRemainingToday <= 0"
                     :data-test="'repair-' + componentId"
                     @click="continueJob(componentId)"
                   >
@@ -385,15 +357,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                         : 'Continue install'
                     }}
                   </button>
-                  <span v-if="detail.car.components[componentId].installed" class="installed">
-                    {{ game.partName(detail.car.components[componentId].installed?.partId ?? '') }}
-                  </span>
-                  <span v-else class="slot-empty">installing…</span>
+                  <span class="slot-empty">working…</span>
                 </template>
 
                 <template v-else>
                   <button
-                    v-if="detail.car.components[componentId].condition < 100"
+                    v-if="
+                      game
+                        .partsInGroup(detail.car.id, componentId)
+                        .some((row) => row.band !== 'mint' && row.band !== 'scrap')
+                    "
                     :disabled="!game.hasEquipmentForComponent(componentId)"
                     :class="{ 'needs-equipment': !game.hasEquipmentForComponent(componentId) }"
                     :title="
@@ -404,42 +377,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     :data-test="'stage-repair-' + componentId"
                     @click="toggleRepairStage(componentId)"
                   >
-                    {{ isStagedRepair(componentId) ? 'Unstage repair' : 'Repair' }}
+                    {{ isStagedRepair(componentId) ? 'Unstage repair' : 'Repair to mint' }}
                   </button>
 
-                  <template v-if="detail.car.components[componentId].installed">
-                    <span class="installed">
-                      {{
-                        game.partName(detail.car.components[componentId].installed?.partId ?? '')
-                      }}
-                    </span>
-                  </template>
-                  <template v-else>
-                    <template v-if="stagedInstallName(componentId)">
-                      <span class="staged-install"
-                        >staged: {{ stagedInstallName(componentId) }}</span
-                      >
-                      <button
-                        type="button"
-                        :data-test="'unstage-' + componentId"
-                        @click="game.unstageAction(detail.car.id, componentId)"
-                      >
-                        unstage
-                      </button>
-                    </template>
+                  <template v-if="stagedInstallName(componentId)">
+                    <span class="staged-install">staged: {{ stagedInstallName(componentId) }}</span>
                     <button
                       type="button"
-                      class="replace-btn"
-                      :class="{ 'active-target': dropZones[componentId].isActiveTarget.value }"
-                      :data-test="'replace-' + componentId"
-                      @pointerup="dropZones[componentId].onPointerUp"
-                      @pointerenter="dropZones[componentId].onPointerEnter"
-                      @pointerleave="dropZones[componentId].onPointerLeave"
-                      @click="onReplaceClick(componentId)"
+                      :data-test="'unstage-' + componentId"
+                      @click="game.unstageAction(detail.car.id, componentId)"
                     >
-                      {{ dropZones[componentId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                      unstage
                     </button>
                   </template>
+                  <button
+                    type="button"
+                    class="replace-btn"
+                    :class="{ 'active-target': dropZones[componentId].isActiveTarget.value }"
+                    :data-test="'replace-' + componentId"
+                    @pointerup="dropZones[componentId].onPointerUp"
+                    @pointerenter="dropZones[componentId].onPointerEnter"
+                    @pointerleave="dropZones[componentId].onPointerLeave"
+                    @click="onReplaceClick(componentId)"
+                  >
+                    {{ dropZones[componentId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                  </button>
                 </template>
               </div>
             </li>
@@ -466,13 +428,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <span>
                   {{
                     action.kind === 'repair'
-                      ? 'Repair ' + game.componentLabel(action.componentId)
-                      : action.kind === 'install'
-                        ? 'Install ' +
-                          partInstanceDisplayName(action.partInstanceId) +
-                          ' → ' +
-                          game.componentLabel(action.componentId)
-                        : 'Fix issue on ' + game.componentLabel(action.componentId)
+                      ? 'Repair ' +
+                        game.componentLabel(action.componentId) +
+                        ' to ' +
+                        action.targetBand
+                      : 'Install ' +
+                        partInstanceDisplayName(action.partInstanceId) +
+                        ' → ' +
+                        game.componentLabel(action.componentId)
                   }}
                 </span>
                 <button
@@ -495,36 +458,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </section>
         </div>
       </div>
-
-      <section class="issues">
-        <h3>Issues</h3>
-        <p v-if="detail.issues.length === 0" class="empty">No hidden issues found on this car.</p>
-        <ul v-else class="issue-list">
-          <li
-            v-for="issue in detail.issues"
-            :key="issue.issueId"
-            class="issue-row"
-            :class="{ fixed: issue.repaired }"
-          >
-            <span class="issue-text">
-              <strong>{{ game.componentLabel(issue.componentId) }}</strong> - {{ issue.hintText }}
-              <span class="issue-band">({{ issue.severityBand }})</span>
-            </span>
-            <span v-if="issue.repaired" class="issue-fixed-label">fixed</span>
-            <template v-else>
-              <span class="issue-cost">{{ formatYen(issue.costYen) }}</span>
-              <button
-                type="button"
-                :disabled="!game.hasEquipmentForComponent(issue.componentId)"
-                :data-test="'stage-fix-issue-' + issue.issueId"
-                @click="toggleIssueStage(issue)"
-              >
-                {{ issue.staged ? 'Unstage fix' : 'Fix' }}
-              </button>
-            </template>
-          </li>
-        </ul>
-      </section>
 
       <section v-if="!detail.serviceJob" class="sell">
         <h3>Sell</h3>
@@ -734,9 +667,7 @@ button.primary.danger {
   border-bottom: var(--mg-border);
 }
 
-/* Name, bar, and percent always stay on one crisp line - nothing here ever
-   wraps, so this line reads the same for every component regardless of how
-   much status text or how many buttons the row below it needs. */
+/* Name and the group's headline band badge stay on one crisp line. */
 .meter-line {
   display: flex;
   align-items: center;
@@ -746,8 +677,7 @@ button.primary.danger {
 /* Widened from the pre-Sprint-25 96px (sized for a short raw id like
    "brakes") to fit the longest real display name, "Forced Induction",
    without wrapping. Truncates with an ellipsis (title attribute carries the
-   full name) rather than wrapping, so the meter-line's "never wraps"
-   contract holds even if a future display name runs longer still. */
+   full name) rather than wrapping. */
 .component-name {
   width: 140px;
   flex-shrink: 0;
@@ -757,16 +687,62 @@ button.primary.danger {
   font-size: var(--mg-fs-sm);
 }
 
-.meter-line .bar {
-  flex: 1 1 auto;
-  min-width: 60px;
+/* Band badge (Sprint 26) - one of the 5 named condition bands, colored by
+   how good it is. Shared coloring convention with .part-band below. */
+.band-badge,
+.part-band {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--mg-radius);
+  font-size: var(--mg-fs-sm);
+  text-transform: capitalize;
+  border: var(--mg-border);
 }
 
-.component-val {
+.band-mint {
+  color: var(--mg-success);
+  border-color: var(--mg-success);
+}
+
+.band-fine {
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+}
+
+.band-worn {
+  color: var(--mg-text-dim);
+}
+
+.band-poor {
+  color: var(--mg-neon-pink);
+}
+
+.band-scrap {
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
+}
+
+/* Per-part breakdown within a group (Sprint 26 decision 13's "bridge") -
+   Repair/Replace still act on the whole group, but the player sees exactly
+   which real parts make it up. */
+.part-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--mg-space-1) 0 0 calc(140px + var(--mg-space-2));
+  display: grid;
+  gap: 2px;
+}
+
+.part-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
   font-size: var(--mg-fs-sm);
-  text-align: right;
-  width: 36px;
-  flex-shrink: 0;
+  color: var(--mg-text-dim);
+}
+
+.part-name {
+  min-width: 100px;
 }
 
 /* Buttons, hints, and installed/staged status - free to wrap onto as many
@@ -790,57 +766,6 @@ button.primary.danger {
 .staged-install {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
-}
-
-.cosmetic-val {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.issues {
-  margin: var(--mg-space-4) 0;
-}
-
-.issue-list {
-  list-style: none;
-  padding: 0;
-  margin: var(--mg-space-2) 0 0;
-  display: grid;
-  gap: var(--mg-space-2);
-}
-
-.issue-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mg-space-3);
-  flex-wrap: wrap;
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-2) var(--mg-space-3);
-  font-size: var(--mg-fs-sm);
-}
-
-.issue-row.fixed {
-  opacity: 0.6;
-}
-
-.issue-row.fixed .issue-text {
-  text-decoration: line-through;
-}
-
-.issue-band {
-  color: var(--mg-text-dim);
-  text-transform: capitalize;
-}
-
-.issue-cost {
-  color: var(--mg-yen);
-}
-
-.issue-fixed-label {
-  color: var(--mg-success);
 }
 
 .sell {
@@ -870,20 +795,6 @@ button.primary.danger {
 .sell-est {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
-}
-
-.bar {
-  height: 10px;
-  background: var(--mg-night-deep);
-  border: var(--mg-border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.fill {
-  display: block;
-  height: 100%;
-  background: var(--mg-neon-cyan);
 }
 
 .slot-empty {

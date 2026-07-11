@@ -15,7 +15,7 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('AuctionScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('renders lots already on day 1 (Sprint 10: no empty first week), with inspect and bid controls', () => {
+  it('renders lots already on day 1 (Sprint 10: no empty first week), with bid controls', () => {
     const game = useGameStore()
     const wrapper = mountScreen()
     expect(wrapper.text()).not.toContain('No lots listed')
@@ -74,15 +74,13 @@ describe('AuctionScreen', () => {
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
 
-  it('inspecting a lot resolves instantly with no labor cost', async () => {
+  it('every lot shows its real group bands, always - no inspection step (Sprint 26 decision 10)', () => {
     const game = useGameStore()
     warpToCatalog(game)
-    const lot = game.gameState.activeAuctionLots.find((l) => !l.inspected)
-    if (!lot) throw new Error('expected an uninspected lot')
+    const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    const laborBefore = game.laborSlotsRemainingToday
-    await wrapper.find(`[data-test="inspect-${lot.id}"]`).trigger('click')
-    expect(game.gameState.activeAuctionLots.find((l) => l.id === lot.id)?.inspected).toBe(true)
-    expect(game.laborSlotsRemainingToday).toBe(laborBefore)
+    for (const band of Object.values(game.lotDetail(lot.id)!.groupBands)) {
+      expect(wrapper.text()).toContain(band)
+    }
   })
 })

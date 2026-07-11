@@ -61,6 +61,49 @@ const GOLDEN_V6_CODE =
 const GOLDEN_V7_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjo3LCJnYW1lU3RhdGUiOnsiZGF5Ijo2MCwic2VlZCI6OSwiY2FzaFllbiI6NTAwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJrbm93biIsInJlcHV0YXRpb25Qb2ludHMiOjQwLCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdLCJzZXJ2aWNlQmF5Q291bnQiOjMsInBhcmtpbmdCYXlDb3VudCI6Nywic2VydmljZUJheUNhcklkcyI6W10sImxhYm9yU2xvdHNTcGVudFRvZGF5IjowLCJvd25lZEVxdWlwbWVudElkcyI6WyJ0aXJlLW1hY2hpbmUiXSwicGVuZGluZ1BhcnRPcmRlcnMiOltdLCJjYXJ0UGFydElkcyI6W10sImFjdGl2ZUxpc3RpbmdzIjpbeyJpZCI6Imxpc3RpbmctNTAtY2FyLTAwMDEiLCJjYXJJbnN0YW5jZUlkIjoiY2FyLTAwMDEiLCJtb2RlbElkIjoiaG9uZGEtY2l0eS1lLWFhIiwiYXNraW5nUHJpY2VZZW4iOjM1MDAwMCwicmVzb2x2ZXNPbkRheSI6NjV9XX19'
 
+type CarPartsFixture = GameState['ownedCars'][number]['parts']
+
+const ALL_CAR_PART_IDS_FOR_TEST = [
+  'block',
+  'internals',
+  'headValvetrain',
+  'camsTiming',
+  'intake',
+  'exhaust',
+  'fuelSystem',
+  'ignitionEcu',
+  'cooling',
+  'forcedInduction',
+  'gearbox',
+  'clutch',
+  'differential',
+  'driveline',
+  'chassis',
+  'dampers',
+  'springs',
+  'antiRollBars',
+  'steering',
+  'brakePadsDiscs',
+  'brakeCalipersLines',
+  'rims',
+  'tyres',
+  'panels',
+  'paint',
+  'underbody',
+  'aero',
+  'seats',
+  'dashGauges',
+] as const
+
+/** A full 29-key mint `parts` map (Sprint 26), for tests that need a
+ * current-schema `CarInstance` without hand-writing every key. */
+function mintParts(overrides: Partial<CarPartsFixture> = {}): CarPartsFixture {
+  const base = Object.fromEntries(
+    ALL_CAR_PART_IDS_FOR_TEST.map((id) => [id, { band: 'mint', installed: null, fitted: true }]),
+  ) as CarPartsFixture
+  return { ...base, ...overrides }
+}
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -311,7 +354,7 @@ describe('saveCodec', () => {
       ...fullState,
       stagedCarWork: {
         'car-0001': [
-          { kind: 'repair', componentId: 'engine' },
+          { kind: 'repair', componentId: 'engine', targetBand: 'mint' },
           { kind: 'install', componentId: 'suspension', partInstanceId: 'pi-0001' },
         ],
       },
@@ -490,18 +533,8 @@ describe('saveCodec', () => {
             mileageKm: 120_000,
             color: 'White',
             provenanceNote: '',
-            hiddenIssues: [],
             authenticityPercent: 85,
-            components: {
-              engine: { condition: 60, installed: null },
-              forcedInduction: { condition: 100, installed: null },
-              drivetrain: { condition: 60, installed: null },
-              suspension: { condition: 60, installed: null },
-              brakes: { condition: 100, installed: null },
-              wheels: { condition: 100, installed: null },
-              body: { condition: 60, installed: null },
-              interior: { condition: 60, installed: null },
-            },
+            parts: mintParts(),
           },
         },
       ],
@@ -563,13 +596,17 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v13 -> v14 (Sprint 22, hidden issues): every pre-v14 `hiddenIssues` entry
-   * - on an owned car, an active-lot car, AND an `activeServiceJobs[].car`
-   * (the third `CarInstance` population, per the SAVE_VERSION doc comment) -
-   * gets `severityPercent: 0, repaired: true`, regardless of which
-   * population it's in.
+   * v13 -> v14 (Sprint 22, hidden issues), now observed through the full
+   * chain up to v16: `hiddenIssues` no longer exists as a concept at all
+   * (Sprint 26 removes the paused inspection system entirely, not just the
+   * severity/repaired backfill this step used to add) - so the only thing
+   * left to verify here is that a real pre-v14 save carrying `hiddenIssues`
+   * on all three `CarInstance` populations (owned, active-lot, active
+   * service job) still decodes cleanly through the now-much-longer chain
+   * rather than crashing, and that each car's `hiddenIssues` data is gone
+   * (not merely defaulted) on the far side.
    */
-  it('decodes a pre-v14 save, marking every hiddenIssues entry severityPercent 0 / repaired true (Sprint 22 migration)', () => {
+  it('decodes a pre-v14 save carrying hiddenIssues on all three CarInstance populations, dropping them cleanly through the full chain to v16', () => {
     const carComponents = {
       engine: { condition: 60, installed: null },
       forcedInduction: { condition: 100, installed: null },
@@ -654,46 +691,18 @@ describe('saveCodec', () => {
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV14))
     const decoded = decodeSave(code)
 
-    const ownedIssue = decoded.ownedCars[0]?.hiddenIssues[0]
-    expect(ownedIssue).toMatchObject({ severityPercent: 0, repaired: true })
+    // hiddenIssues is gone, not defaulted - TypeScript already confirms the
+    // decoded CarInstance type has no such property; check at runtime too so
+    // a schema regression that let it leak back in would fail loudly.
+    expect(decoded.ownedCars[0]).not.toHaveProperty('hiddenIssues')
+    expect(decoded.activeAuctionLots[0]?.car).not.toHaveProperty('hiddenIssues')
+    expect(decoded.activeServiceJobs[0]?.car).not.toHaveProperty('hiddenIssues')
 
-    const lotIssue = decoded.activeAuctionLots[0]?.car.hiddenIssues[0]
-    expect(lotIssue).toMatchObject({ severityPercent: 0, repaired: true })
-
-    const serviceCarIssue = decoded.activeServiceJobs[0]?.car.hiddenIssues[0]
-    expect(serviceCarIssue).toMatchObject({ severityPercent: 0, repaired: true })
-  })
-
-  it('round-trips a v14 state with real severity/repaired hidden-issue state', () => {
-    const withIssue: GameState = GameStateSchema.parse({
-      ...fullState,
-      ownedCars: [
-        {
-          id: 'owned-with-issue',
-          modelId: 'honda-city-e-aa',
-          year: 1984,
-          mileageKm: 120_000,
-          color: 'White',
-          provenanceNote: '',
-          hiddenIssues: [
-            { issueId: 'rusted-rails', revealed: true, severityPercent: 42, repaired: false },
-          ],
-          authenticityPercent: 85,
-          components: {
-            engine: { condition: 60, installed: null },
-            forcedInduction: { condition: 100, installed: null },
-            drivetrain: { condition: 60, installed: null },
-            suspension: { condition: 60, installed: null },
-            brakes: { condition: 100, installed: null },
-            wheels: { condition: 100, installed: null },
-            body: { condition: 60, installed: null },
-            interior: { condition: 60, installed: null },
-          },
-        },
-      ],
-    })
-    const decoded = decodeSave(encodeSave(withIssue))
-    expect(decoded).toEqual(withIssue)
+    // Every car still comes out with a complete, valid 29-part band map -
+    // the v15 -> v16 step ran too, not just v13 -> v14.
+    expect(Object.keys(decoded.ownedCars[0]!.parts)).toHaveLength(29)
+    expect(Object.keys(decoded.activeAuctionLots[0]!.car.parts)).toHaveLength(29)
+    expect(Object.keys(decoded.activeServiceJobs[0]!.car.parts)).toHaveLength(29)
   })
 
   /**
@@ -774,18 +783,8 @@ describe('saveCodec', () => {
             mileageKm: 120_000,
             color: 'White',
             provenanceNote: '',
-            hiddenIssues: [],
             authenticityPercent: 85,
-            components: {
-              engine: { condition: 60, installed: null },
-              forcedInduction: { condition: 100, installed: null },
-              drivetrain: { condition: 60, installed: null },
-              suspension: { condition: 60, installed: null },
-              brakes: { condition: 100, installed: null },
-              wheels: { condition: 100, installed: null },
-              body: { condition: 60, installed: null },
-              interior: { condition: 60, installed: null },
-            },
+            parts: mintParts(),
           },
         },
       ],
@@ -902,7 +901,7 @@ describe('saveCodec', () => {
     expect(decoded).toEqual(withOrdersAndCart)
   })
 
-  it('round-trips a v5 state with a real car through the new components shape', () => {
+  it('round-trips a v16 state with a real car through the parts/band shape', () => {
     const withCar: GameState = GameStateSchema.parse({
       ...fullState,
       ownedCars: [
@@ -913,22 +912,191 @@ describe('saveCodec', () => {
           mileageKm: 100_000,
           color: 'White',
           provenanceNote: '',
-          hiddenIssues: [],
           authenticityPercent: 90,
-          components: {
-            engine: { condition: 50, installed: null },
-            forcedInduction: { condition: 100, installed: null },
-            drivetrain: { condition: 50, installed: null },
-            suspension: { condition: 50, installed: null },
-            brakes: { condition: 100, installed: null },
-            wheels: { condition: 100, installed: null },
-            body: { condition: 50, installed: null },
-            interior: { condition: 50, installed: null },
-          },
+          parts: mintParts({ dampers: { band: 'worn', installed: null, fitted: true } }),
         },
       ],
     })
     const decoded = decodeSave(encodeSave(withCar))
     expect(decoded).toEqual(withCar)
+  })
+
+  /**
+   * v15 -> v16 (Sprint 26, the banded parts model) - the single biggest
+   * structural migration this file carries (see the SAVE_VERSION doc
+   * comment). Exercises the full mapping from sprint26.md decision 11 on one
+   * real save: non-uniform group conditions bucket into distinct bands, an
+   * installed part relocates to its correct specific slot by catalog
+   * address, `aero` always comes back mint (no old-model counterpart),
+   * `forcedInduction.fitted` follows the model's Turbo/Supercharged tag, a
+   * retired `fix-issue` job/staged action is dropped outright, a surviving
+   * `repair-zone`/`repair` entry backfills `targetBand: 'mint'`, an old
+   * 8-way `componentId` remaps through the new 6-way group set, and
+   * `partInventory`'s `conditionPercent` becomes `band`.
+   */
+  describe('v15 -> v16 migration (Sprint 26, banded parts model)', () => {
+    // economy.json's bands.migrationThresholds: mint >= 90, fine >= 70,
+    // worn >= 40, poor >= 15, else scrap.
+    const turboCarComponents = {
+      engine: {
+        condition: 95,
+        installed: { id: 'pi-ecu-1', partId: 'khs-street-ecu', conditionPercent: 72 },
+      },
+      forcedInduction: { condition: 55, installed: null },
+      drivetrain: { condition: 40, installed: null },
+      suspension: { condition: 25, installed: null },
+      brakes: { condition: 95, installed: null },
+      wheels: { condition: 95, installed: null },
+      body: { condition: 95, installed: null },
+      interior: { condition: 95, installed: null },
+    }
+    const naCarComponents = {
+      engine: { condition: 95, installed: null },
+      forcedInduction: { condition: 95, installed: null },
+      drivetrain: { condition: 95, installed: null },
+      suspension: { condition: 95, installed: null },
+      brakes: { condition: 95, installed: null },
+      wheels: { condition: 95, installed: null },
+      body: { condition: 95, installed: null },
+      interior: { condition: 95, installed: null },
+    }
+    const preV16 = {
+      version: 15,
+      gameState: {
+        day: 120,
+        seed: 17,
+        cashYen: 4_000_000,
+        reputationTier: 'known',
+        reputationPoints: 70,
+        ownedCars: [
+          {
+            id: 'turbo-car',
+            modelId: 'nissan-180sx-rps13',
+            year: 1994,
+            mileageKm: 140_000,
+            color: 'Black',
+            provenanceNote: '',
+            hiddenIssues: [
+              { issueId: 'rusted-rails', revealed: true, severityPercent: 0, repaired: true },
+            ],
+            authenticityPercent: 80,
+            components: turboCarComponents,
+          },
+          {
+            id: 'na-car',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 100_000,
+            color: 'White',
+            provenanceNote: '',
+            hiddenIssues: [],
+            authenticityPercent: 90,
+            components: naCarComponents,
+          },
+        ],
+        partInventory: [{ id: 'pi-spare-1', partId: 'khs-street-ecu', conditionPercent: 50 }],
+        serviceJobOffers: [
+          {
+            id: 'offer-1',
+            typeId: 'repair-brakes',
+            customerName: 'Tanaka-san',
+            description: 'squeaky brakes',
+            work: { kind: 'repair', componentId: 'brakes' },
+            car: {
+              id: 'offer-car',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 100_000,
+              color: 'White',
+              provenanceNote: '',
+              hiddenIssues: [],
+              authenticityPercent: 90,
+              components: naCarComponents,
+            },
+            payoutYen: 12_000,
+            baseReputation: 1,
+            expiresOnDay: 130,
+          },
+        ],
+        jobs: [
+          {
+            id: 'job-repair',
+            carInstanceId: 'turbo-car',
+            kind: 'repair-zone',
+            componentId: 'brakes',
+            laborSlotsRequired: 2,
+            laborSlotsSpent: 0,
+          },
+          {
+            id: 'job-fix-issue',
+            carInstanceId: 'turbo-car',
+            kind: 'fix-issue',
+            componentId: 'body',
+            issueId: 'rusted-rails',
+            laborSlotsRequired: 1,
+            laborSlotsSpent: 0,
+          },
+        ],
+        stagedCarWork: {
+          'turbo-car': [
+            { kind: 'repair', componentId: 'forcedInduction' },
+            { kind: 'fix-issue', componentId: 'body', issueId: 'rusted-rails' },
+          ],
+        },
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV16))
+    const decoded = decodeSave(code)
+    const turboCar = decoded.ownedCars.find((c) => c.id === 'turbo-car')!
+    const naCar = decoded.ownedCars.find((c) => c.id === 'na-car')!
+
+    it('buckets each old group condition through the same band thresholds auction generation uses, fanning out to every part in the group', () => {
+      // engine: 95 -> mint, fanned out to all 9 non-FI engine parts.
+      expect(turboCar.parts.block.band).toBe('mint')
+      expect(turboCar.parts.cooling.band).toBe('mint')
+      // suspension: 25 -> poor, fanned out to the 4 non-brake parts.
+      expect(turboCar.parts.dampers.band).toBe('poor')
+      expect(turboCar.parts.steering.band).toBe('poor')
+    })
+
+    it('relocates an installed part to its correct specific slot by catalog carPartId', () => {
+      expect(turboCar.parts.ignitionEcu.installed?.partId).toBe('khs-street-ecu')
+      expect(turboCar.parts.ignitionEcu.installed?.band).toBe('fine')
+      // Every other engine part stays unoccupied.
+      expect(turboCar.parts.block.installed).toBeNull()
+    })
+
+    it('aero always migrates to mint - no old-model counterpart existed for it', () => {
+      expect(turboCar.parts.aero).toEqual({ band: 'mint', installed: null, fitted: true })
+      expect(naCar.parts.aero).toEqual({ band: 'mint', installed: null, fitted: true })
+    })
+
+    it('forcedInduction.fitted follows the Turbo/Supercharged tag, not a flat default', () => {
+      expect(turboCar.parts.forcedInduction.fitted).toBe(true)
+      expect(naCar.parts.forcedInduction.fitted).toBe(false)
+    })
+
+    it('drops a retired fix-issue job outright and backfills targetBand on the surviving repair-zone job', () => {
+      expect(decoded.jobs).toHaveLength(1)
+      expect(decoded.jobs[0]?.kind).toBe('repair-zone')
+      expect(decoded.jobs[0]?.targetBand).toBe('mint')
+      // brakes folds into suspension under the new 6-way group set.
+      expect(decoded.jobs[0]?.componentId).toBe('suspension')
+    })
+
+    it('drops a retired fix-issue staged action and backfills targetBand on the surviving repair stage, remapping its group', () => {
+      const staged = decoded.stagedCarWork['turbo-car']
+      expect(staged).toHaveLength(1)
+      expect(staged?.[0]).toEqual({ kind: 'repair', componentId: 'engine', targetBand: 'mint' })
+    })
+
+    it('migrates partInventory conditionPercent to band', () => {
+      expect(decoded.partInventory[0]?.band).toBe('worn')
+      expect(decoded.partInventory[0]).not.toHaveProperty('conditionPercent')
+    })
+
+    it('remaps a ServiceJobWork componentId through the same 8-to-6 group fold', () => {
+      expect(decoded.serviceJobOffers[0]?.work.componentId).toBe('suspension')
+    })
   })
 })

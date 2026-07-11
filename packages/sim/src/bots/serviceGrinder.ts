@@ -1,8 +1,8 @@
 import type { GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { planGroupRepair } from '../bands'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
-import { repairLaborSlotsFor } from '../constants'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import { isServiceWorkDone } from '../serviceJobs'
@@ -47,7 +47,7 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
 
     // Finished? Free the bay for the next car - the deadline backstop pays
     // out and sends this one home once its due day arrives.
-    if (isServiceWorkDone(serviceJob)) {
+    if (isServiceWorkDone(serviceJob, context)) {
       if (state.serviceBayCarIds.includes(carId)) {
         actions.moveCars.push({ carInstanceId: carId, to: 'parking' })
         bayBudget.free += 1
@@ -63,16 +63,24 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
     // Ensure a repair job exists on the customer's car, then feed it labor.
     if (!existing) {
       if (laborBudget <= 0) continue
-      const laborSlotsRequired = repairLaborSlotsFor(
-        serviceJob.car.components[componentId].condition,
+      const plan = planGroupRepair(
+        serviceJob.car,
+        componentId,
+        'mint',
+        state.ownedEquipmentIds,
+        context.partIdsByGroup,
+        context.partsTaxonomyById,
+        context.equipmentById,
       )
+      if (plan.partIds.length === 0) continue
       actions.createJobs.push({
         carInstanceId: carId,
         kind: 'repair-zone',
         componentId,
-        laborSlotsRequired,
+        targetBand: 'mint',
+        laborSlotsRequired: plan.laborSlotsRequired,
       })
-      const slots = Math.min(laborSlotsRequired, laborBudget)
+      const slots = Math.min(plan.laborSlotsRequired, laborBudget)
       // A job created this tick isn't in state.jobs yet; the sim assigns it
       // `job-${day}-${index}` in creation order, so mirror that id here.
       const jobId = `job-${state.day}-${actions.createJobs.length - 1}`

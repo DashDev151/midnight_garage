@@ -142,7 +142,7 @@ describe('service jobs in the store', () => {
     const carId = offer.car.id
     expect(game.carDetail(carId)?.serviceJob?.arrivesOnDay).not.toBeNull()
 
-    const staged = game.stageAction(carId, { kind: 'repair', componentId })
+    const staged = game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })
     expect(staged).toBe(false)
     expect(game.carDetail(carId)?.stagedActions).toEqual([])
 
@@ -152,6 +152,6 @@ describe('service jobs in the store', () => {
     // Once it actually arrives, staging works normally.
     game.endDay()
     expect(game.carDetail(carId)?.serviceJob?.arrivesOnDay).toBeNull()
-    expect(game.stageAction(carId, { kind: 'repair', componentId })).toBe(true)
+    expect(game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })).toBe(true)
   })
 })

@@ -22,41 +22,6 @@ const AscendingFractionPairSchema = z
   .tuple([z.number().positive(), z.number().positive()])
   .refine(([low, high]) => low <= high, { message: 'pair low must be <= high' })
 
-/** An ascending [low, high] pair of 0-100 severity-percent breakpoints. */
-const AscendingSeverityPairSchema = z
-  .tuple([z.number().int().min(0).max(100), z.number().int().min(0).max(100)])
-  .refine(([low, high]) => low <= high, { message: 'pair low must be <= high' })
-
-/** Labor slots for [minor, serious, severe] issue bands, each a positive int. */
-const LaborSlotsByBandSchema = z.tuple([
-  z.number().int().positive(),
-  z.number().int().positive(),
-  z.number().int().positive(),
-])
-
-/**
- * Sprint 21: per-component weight (0-1) toward `conditionFactor`'s weighted
- * condition - the 8 real components (same set as `ComponentIdSchema` in
- * tags.ts), explicit keys rather than a generic `z.record` so a missing
- * component fails validation instead of silently contributing 0. Refined to
- * sum to 1.0 (within floating-point tolerance) so the weighted average stays
- * a genuine 0-100 percentage.
- */
-const ComponentValueWeightsSchema = z
-  .object({
-    engine: z.number().min(0).max(1),
-    body: z.number().min(0).max(1),
-    drivetrain: z.number().min(0).max(1),
-    suspension: z.number().min(0).max(1),
-    interior: z.number().min(0).max(1),
-    brakes: z.number().min(0).max(1),
-    wheels: z.number().min(0).max(1),
-    forcedInduction: z.number().min(0).max(1),
-  })
-  .refine((weights) => Math.abs(Object.values(weights).reduce((sum, w) => sum + w, 0) - 1) < 1e-6, {
-    message: 'componentValueWeights must sum to 1.0',
-  })
-
 /**
  * Sprint 20 step 0 (maintainer ask, 2026-07-11): the content law says
  * designer-tunable numbers live in JSON, not in code - in practice the
@@ -146,14 +111,13 @@ export const EconomyConfigSchema = z.object({
    * second, steady between - flavor only, price is king. */
   AUCTION_TURNOUT_BANDS: AscendingFractionPairSchema,
   /**
-   * Sprint 21 (value model): per-component weight (0-1, sum 1.0) a car's 8
-   * real components contribute to `conditionFactor` - an engine matters far
-   * more to what a car is worth than its wheels. Explicit per-component keys
-   * (not a generic `z.record`), matching `ByAuctionTierSchema`'s existing
-   * preference for explicit shape over a bare map.
+   * Sprint 21 (per-component weights); Sprint 26 decision 4 replaces the old
+   * hand-authored `componentValueWeights` with a cost-weighted mean of band
+   * factors computed at valuation time (each part's weight is its own share
+   * of the car's total `costToMint`) - nothing here needs to author that
+   * weighting anymore, only the curve shape it feeds.
    */
   valuation: z.object({
-    componentValueWeights: ComponentValueWeightsSchema,
     /** `conditionFactor`'s floor at weighted condition 0 - a wreck still has
      * chassis/parts scrap value, never worth literally nothing. */
     conditionFloor: z.number().nonnegative(),
@@ -247,60 +211,64 @@ export const EconomyConfigSchema = z.object({
     powerNormalizationCeiling: z.number().positive(),
   }),
   /**
-   * Sprint 22: hidden issues become a real, priced defect instead of a
-   * one-time condition subtraction. `issueRepairCostYen` is computed inline
-   * in `issues.ts` (`repairCostBaseYen * severityPercent / costDivisor`,
-   * rounded to the nearest Y1,000) - everything else here tunes how that
-   * cost turns into a market-value penalty (owned cars) or a risk discount
-   * (auction lots), and how much labor fixing one costs.
+   * Sprint 26: the banded parts model's own tunables. Replaces Sprint 22's
+   * `issues` block entirely - the hidden-issue/inspection system is paused
+   * and removed (maintainer decision 2026-07-11; see TODO.md), and every
+   * number that used to live there (repair cost, severity, labor sizing) is
+   * now either a per-part content field (`parts-taxonomy.json`'s
+   * `stepCostYen`) or gone outright.
    */
-  issues: z.object({
-    /** Owned/sale-side penalty multiplier (decision 4): an unrepaired issue
-     * costs more in lost sale value than it costs to actually fix - the
-     * incentive that makes fixing-before-selling profitable by construction. */
-    penaltyMultiplier: z.number().positive(),
-    /** Weight applied to a model's average issue-repair-cost fraction when
-     * computing its auction lot risk discount (decision 5). */
-    riskDiscountWeight: z.number().min(0).max(1),
-    /** Hard cap on how far a model's known issue risk can discount its
-     * auction anchor, regardless of how bad its hiddenIssueWeights look. */
-    maxRiskDiscount: z.number().min(0).max(1),
-    /** [minor-vs-serious, serious-vs-severe] severity-percent breakpoints -
-     * also the labor band's own breakpoints (decision 3). */
-    severityBands: AscendingSeverityPairSchema,
-    /** Labor slots to fix an issue, by band: [minor, serious, severe]. */
-    laborSlotsByBand: LaborSlotsByBandSchema,
-    /** Divisor in `repairCostBaseYen * severityPercent / costDivisor` - a
-     * severity roll exactly equal to this value costs exactly the catalog's
-     * base repair cost. */
-    costDivisor: z.number().positive(),
-    /** Decision 6: an unrepaired issue at or above this severity triggers
-     * the lemon reputation penalty on sale, on top of the existing
-     * condition-based lemon check (Sprint 15) - a distinct number from
-     * `severityBands` (those size labor, not reputation). */
-    lemonSeverityThreshold: z.number().int().min(0).max(100),
+  bands: z.object({
+    /** Value factor per condition band (decision 1) - mint's baseline 1.0
+     * down to scrap's near-worthless floor. Feeds the cost-weighted value
+     * shim (decision 4) the same way the old weighted-condition-percent
+     * used to feed `conditionFactor` directly. */
+    bandFactors: z.object({
+      mint: z.number().positive(),
+      fine: z.number().positive(),
+      worn: z.number().positive(),
+      poor: z.number().positive(),
+      scrap: z.number().positive(),
+    }),
+    /** Save-migration thresholds (decision 11): a pre-Sprint-26 0-100
+     * condition maps to `mint` at or above the first breakpoint, `fine` at
+     * or above the second, `worn` at or above the third, `poor` at or above
+     * the fourth, and `scrap` below that. */
+    migrationThresholds: z
+      .object({
+        mint: z.number().int().min(0).max(100),
+        fine: z.number().int().min(0).max(100),
+        worn: z.number().int().min(0).max(100),
+        poor: z.number().int().min(0).max(100),
+      })
+      .refine((t) => t.mint >= t.fine && t.fine >= t.worn && t.worn >= t.poor, {
+        message: 'migrationThresholds must be non-increasing: mint >= fine >= worn >= poor',
+      }),
+    /** Fraction of `stockReplacementPriceYen` a scrap `PartInstance` sells
+     * for (decision 6) - "pennies on the yen." */
+    scrapValueFraction: z.number().min(0).max(1),
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar
    * (`QUALITY_SALE_MIN_CONDITION`/`_MIN_AUTHENTICITY`/`_REPUTATION_BONUS`,
    * retired from constants.ts) with two reachable tiers. Clean requires only
-   * player effort (every component's effective condition clears the bar, no
-   * unrepaired issues); concours additionally requires authenticityPercent
-   * to clear its own bar - a value the player can never raise, rolled 60-95
-   * at generation, so concours stays a genuine bonus for a well-matched car
-   * rather than the only way to earn anything at all. Lemon's penalty and
-   * thresholds (`LEMON_MAX_AVERAGE_CONDITION` etc.) are untouched by this
-   * block, unchanged since Sprint 15.
+   * player effort (no part below the band bar, Sprint 26 decision 9);
+   * concours additionally requires authenticityPercent to clear its own bar
+   * - a value the player can never raise, rolled 60-95 at generation, so
+   * concours stays a genuine bonus for a well-matched car rather than the
+   * only way to earn anything at all. Lemon's penalty and thresholds
+   * (`LEMON_MAX_AVERAGE_CONDITION` etc., Sprint 26 decision 9) live in
+   * `sim/constants.ts`, unchanged in kind since Sprint 15.
    */
   reputation: z.object({
-    /** Every one of the 8 components' effective condition must clear this to
-     * count as a clean sale - stricter than an average (Sprint 23's fix for
-     * "seven great components can't hide one neglected one"), but reachable
-     * by effort alone, unlike the authenticity roll below. */
-    cleanSaleMinConditionPercent: z.number().int().min(0).max(100),
+    /** Every part's band must be at or above this to count as a clean sale -
+     * a floor per part (Sprint 23's fix for "seven great parts can't hide
+     * one neglected one"), reachable by effort alone, unlike the
+     * authenticity roll below. */
+    cleanSaleMinBand: z.enum(['scrap', 'poor', 'worn', 'fine', 'mint']),
     cleanSaleBonus: z.number().int().nonnegative(),
     /** Concours also requires the car's (unmodifiable) authenticityPercent to
-     * clear this bar - on top of, not instead of, the clean condition bar. */
+     * clear this bar - on top of, not instead of, the clean band bar. */
     concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
     /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
     concoursSaleBonus: z.number().int().nonnegative(),

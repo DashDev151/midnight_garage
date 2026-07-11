@@ -1,60 +1,55 @@
-import type {
-  CarInstance,
-  CarModel,
-  ComponentId,
-  EconomyConfig,
-  HiddenIssue,
-  Part,
+import {
+  ALL_CAR_PART_IDS,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+  type EconomyConfig,
+  type Part,
 } from '@midnight-garage/content'
-import { issuePenaltyYen } from './issues'
-
-const COMPONENT_IDS: readonly ComponentId[] = [
-  'engine',
-  'forcedInduction',
-  'drivetrain',
-  'suspension',
-  'brakes',
-  'wheels',
-  'body',
-  'interior',
-]
+import { bandFactor, costWeightedBandFactor, isPartPresent } from './bands'
 
 /**
  * Sprint 21 - the taste-free "what is this car worth" answer, shared by
  * every price in the game (`marketValueYen` = `bookValueYen x
- * conditionFactor x heat + installedPartsValueYen`). This module is
- * deliberately issue-blind: hidden, unrepaired issues never discount this
- * value (Sprint 22 adds a separate `issueAdjustedValueYen` wrapper on top).
+ * conditionFactor x heat + installedPartsValueYen`).
  */
 
 /**
- * Weighted component condition run through a floor-to-ceiling curve
- * (decision 2): `floor + (ceiling - floor) x (weighted/100)^exponent`, where
- * `weighted = sum(componentValueWeights[c] x condition_c)`. Worked examples
- * (asserted exactly in marketValue.test.ts, economy.json's first-pass
- * values: floor 0.35, ceiling 1.10, exponent 1.3):
- *   weighted 0   -> 0.35 (a wreck still has scrap/chassis value)
- *   weighted 60  -> ~0.74
- *   weighted 100 -> 1.10 (a perfect restoration clears book value)
+ * Weighted condition run through a floor-to-ceiling curve (decision 2):
+ * `floor + (ceiling - floor) x weighted^exponent`. Worked examples (first-
+ * pass values: floor 0.35, ceiling 1.10, exponent 1.3):
+ *   weighted 0.15 (every part scrap) -> ~0.42
+ *   weighted 0.65 (every part worn)  -> ~0.78
+ *   weighted 1.0  (every part mint)  -> 1.10 (a perfect restoration clears book value)
+ *
+ * Sprint 26 decision 4: `weighted` is now `costWeightedBandFactor` (bands.ts)
+ * - a 0.15-1.0 mean of every present part's band factor, weighted by that
+ * part's own share of the car's total `costToMint`. A scrap turbo (an
+ * expensive part to bring back to mint) drags this further down than scrap
+ * brakes on an otherwise-identical car - the maintainer's own worked case.
+ * Replaces the old hand-authored `componentValueWeights` entirely. This is a
+ * shim for this sprint only; Sprint 27 replaces the whole formula with the
+ * full restoration-bill deduction model.
  */
-export function conditionFactor(car: CarInstance, economy: EconomyConfig): number {
-  const { componentValueWeights, conditionFloor, conditionCeiling, conditionExponent } =
-    economy.valuation
-  const weighted = COMPONENT_IDS.reduce(
-    (sum, componentId) =>
-      sum + componentValueWeights[componentId] * car.components[componentId].condition,
-    0,
-  )
+export function conditionFactor(
+  car: CarInstance,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+): number {
+  const { conditionFloor, conditionCeiling, conditionExponent } = economy.valuation
+  const weighted = costWeightedBandFactor(car, partsTaxonomyById, economy)
   const range = conditionCeiling - conditionFloor
-  return conditionFloor + range * Math.pow(weighted / 100, conditionExponent)
+  return conditionFloor + range * Math.pow(weighted, conditionExponent)
 }
 
 /**
  * Installed parts add real yen, additively rather than multiplicatively
  * (decision 3 - real markets: mods return cents on the yen, they don't
  * multiply the chassis price). Per installed part instance:
- * `part.priceYen x partsRetention x (conditionPercent/100) x
+ * `part.priceYen x partsRetention x bandFactor(installed.band) x
  * (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed and rounded.
+ * Sprint 26: `bandFactor` replaces the old `conditionPercent / 100`.
  */
 export function installedPartsValueYen(
   car: CarInstance,
@@ -63,14 +58,15 @@ export function installedPartsValueYen(
 ): number {
   const { partsRetention, genuinePeriodMultiplier } = economy.valuation
   let total = 0
-  for (const componentId of COMPONENT_IDS) {
-    const installed = car.components[componentId].installed
+  for (const partId of ALL_CAR_PART_IDS) {
+    if (!isPartPresent(car, partId)) continue
+    const installed = car.parts[partId].installed
     if (!installed) continue
     const part = partsById[installed.partId]
     if (!part) continue
     const genuineMultiplier = installed.genuinePeriod ? genuinePeriodMultiplier : 1.0
-    const conditionFraction = installed.conditionPercent / 100
-    total += part.priceYen * partsRetention * conditionFraction * genuineMultiplier
+    total +=
+      part.priceYen * partsRetention * bandFactor(installed.band, economy) * genuineMultiplier
   }
   return Math.round(total)
 }
@@ -88,34 +84,12 @@ export function marketValueYen(
   car: CarInstance,
   heatPercent: number,
   partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
   const heatFraction = heatPercent / 100
-  const baseValue = Math.round(model.bookValueYen * conditionFactor(car, economy) * heatFraction)
+  const baseValue = Math.round(
+    model.bookValueYen * conditionFactor(car, partsTaxonomyById, economy) * heatFraction,
+  )
   return baseValue + installedPartsValueYen(car, partsById, economy)
-}
-
-/**
- * Sprint 22 decision 4: the owned/sale-side truth - `marketValueYen` stays
- * issue-blind (that separation is what makes decision 5's lot-side risk
- * discount implementable: the board price basis never reacts to a specific
- * instance's actual rolled issues), but a sale channel needs to see reality.
- * A known unfixed defect scares buyers more than what it actually costs to
- * fix, so `issuePenaltyYen` outweighing its own repair cost (via
- * `penaltyMultiplier`) is what makes fixing-before-selling profitable by
- * construction. Floored at 10% of book - even a car riddled with unrepaired
- * issues still has real scrap/chassis value.
- */
-export function issueAdjustedValueYen(
-  model: CarModel,
-  car: CarInstance,
-  heatPercent: number,
-  partsById: Readonly<Record<string, Part>>,
-  issuesById: Readonly<Record<string, HiddenIssue>>,
-  economy: EconomyConfig,
-): number {
-  const baseValue = marketValueYen(model, car, heatPercent, partsById, economy)
-  const penalty = issuePenaltyYen(car, issuesById, economy)
-  const floor = Math.round(model.bookValueYen * 0.1)
-  return Math.max(floor, baseValue - penalty)
 }

@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
 import {
   acquireLot,
   activeBidCount,
@@ -22,8 +23,6 @@ const FAIR_BID_MULTIPLIER = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.2
 /** "A few of the most critical repairs," not a full restoration. */
 const CRITICAL_REPAIR_ZONE_COUNT = 2
-const REPAIR_LABOR_SLOTS = 2
-const REPAIR_THRESHOLD = 90
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -78,14 +77,12 @@ export function balancedPlayerStrategy(
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const repairedCount = REPAIRABLE_COMPONENTS.filter(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const repairedCount = REPAIRABLE_COMPONENTS.filter((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     ).length
     if (repairedCount >= CRITICAL_REPAIR_ZONE_COUNT) continue
 
-    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
-      car.components[id].condition < car.components[worst].condition ? id : worst,
-    )
+    const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     if (
       !ensureEquipmentFor(
@@ -98,15 +95,15 @@ export function balancedPlayerStrategy(
       )
     )
       continue
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'repair-zone',
-      componentId: worstComponent,
-      laborSlotsRequired: REPAIR_LABOR_SLOTS,
-    })
-    const slots = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
-    actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
+    const slots = queueGroupRepair(
+      state,
+      car.id,
+      worstComponent,
+      car,
+      actions,
+      context,
+      laborBudget,
+    )
     laborBudget -= slots
     jobbedCarIds.add(car.id)
   }
@@ -125,8 +122,9 @@ export function balancedPlayerStrategy(
           model,
           context.buyers,
           context.partsById,
+          context.partsTaxonomy,
+          context.partsTaxonomyById,
           heatPercent,
-          context.hiddenIssuesById,
           context.economy,
         )
       : undefined
@@ -137,8 +135,9 @@ export function balancedPlayerStrategy(
             model,
             car,
             context.partsById,
+            context.partsTaxonomy,
+            context.partsTaxonomyById,
             heatPercent,
-            context.hiddenIssuesById,
             context.economy,
           )
         : 0

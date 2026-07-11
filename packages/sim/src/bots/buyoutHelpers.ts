@@ -66,18 +66,6 @@ export function acquireLot(
   cashBufferMultiplier: number,
 ): boolean {
   if (lot.leadingBidder === 'player') return false // already leading - nothing to do
-  // Sprint 22: an inspected lot revealing a real severe issue is a known,
-  // priced risk - every bidding bot skips it here, in the one shared
-  // helper, rather than each bot needing its own inspection-aware filter.
-  const [, severeThreshold] = context.economy.issues.severityBands
-  if (
-    lot.inspected &&
-    lot.car.hiddenIssues.some(
-      (issue) => !issue.repaired && issue.severityPercent >= severeThreshold,
-    )
-  ) {
-    return false
-  }
   const raiseToYen = nextRaiseYen(lot, context.economy)
   if (raiseToYen > walkAwayTargetYen) return false // the next raise would exceed what it's worth
   if (state.cashYen < (budget.cashCommitted + raiseToYen) * cashBufferMultiplier) return false

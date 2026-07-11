@@ -58,19 +58,6 @@ pass."
 - [ ] Forced-loan interest rate and repayment cadence (GDD 6.6 says "painful," doesn't specify how
   painful) - open question for the spreadsheet pass. (The parts-pricing-curve question that used to
   sit here moved into Sprint 28's catalog work.)
-- [ ] **Days-to-`local` hard-gated invariant now fails (Sprint 25, 2026-07-11): p50 dropped from
-  30 to 12 days**, outside the calibrated `[15, 35]` band. Root cause traced, not guessed: Sprint
-  25 task 10's reputation gate (install-kind service-job offers excluded below `local` reputation)
-  necessarily increases repair-offer density on the board at low reputation, and
-  `competentPolicyStrategy` accepts the first repair-kind offer it can equip for, one per day, no
-  other filtering - denser repair offers directly mean faster reputation accrual. Sprint 23's
-  original 30-day measurement was already "right at the pacing table's own upper edge" per that
-  sprint's own decision 5, i.e. a thin margin against the 15-day floor before this gate existed at
-  all. This is an inherent consequence of the install-reputation gate the 2026-07-11 playtest asked
-  for, not a bug - needs a maintainer call: retune the `[15, 35]` band to account for the new
-  mechanic, or tune something in the mechanic itself (offer count per refresh, the equipment-hint
-  chance, or similar), or accept 12 days as correct. See `docs/sprints/sprint25.md`'s Exit section
-  for the full trace.
 
 ## Planned systems (designed, not yet scheduled)
 

@@ -36,17 +36,25 @@ describe('session log v0 (Sprint 24)', () => {
     const carId = game.gameState.ownedCars[0]!.id
     appendSessionEvent.mockClear()
 
-    expect(game.stageAction(carId, { kind: 'repair', componentId: 'body' })).toBe(true)
+    expect(
+      game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' }),
+    ).toBe(true)
     expect(appendSessionEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'stageAction',
-        payload: { carId, action: { kind: 'repair', componentId: 'body' } },
+        payload: { carId, action: { kind: 'repair', componentId: 'body', targetBand: 'mint' } },
       }),
     )
 
     appendSessionEvent.mockClear()
     // Unknown car - refused, no state change, no event.
-    expect(game.stageAction('not-a-real-car', { kind: 'repair', componentId: 'body' })).toBe(false)
+    expect(
+      game.stageAction('not-a-real-car', {
+        kind: 'repair',
+        componentId: 'body',
+        targetBand: 'mint',
+      }),
+    ).toBe(false)
     expect(appendSessionEvent).not.toHaveBeenCalled()
   })
 

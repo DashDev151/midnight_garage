@@ -4,14 +4,14 @@ import {
   ECONOMY,
   FACILITIES,
   GameStateSchema,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, [], FACILITIES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
 
 describe('createInitialGameState', () => {
   it('returns a day-1, schema-valid state with the Sprint 03 starting cash', () => {

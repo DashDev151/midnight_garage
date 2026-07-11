@@ -4,28 +4,32 @@
     "displayName": "Tyre Machine & Balancer",
     "componentIds": ["wheels"],
     "priceYen": 150000,
-    "consumablesCostYen": 8000
+    "consumablesCostYen": 8000,
+    "repairLevel": 2
   },
   {
     "id": "brake-lathe",
     "displayName": "Brake Service Kit & Disc Lathe",
-    "componentIds": ["brakes"],
+    "componentIds": ["suspension"],
     "priceYen": 250000,
-    "consumablesCostYen": 3000
+    "consumablesCostYen": 3000,
+    "repairLevel": 2
   },
   {
     "id": "suspension-press",
     "displayName": "Suspension Press & Spring Tools",
     "componentIds": ["suspension"],
     "priceYen": 400000,
-    "consumablesCostYen": 10000
+    "consumablesCostYen": 10000,
+    "repairLevel": 3
   },
   {
     "id": "upholstery-bench",
     "displayName": "Upholstery & Trim Bench",
     "componentIds": ["interior"],
     "priceYen": 350000,
-    "consumablesCostYen": 8000
+    "consumablesCostYen": 8000,
+    "repairLevel": 2
   },
   {
     "id": "welder",
@@ -33,6 +37,7 @@
     "componentIds": ["body"],
     "priceYen": 700000,
     "consumablesCostYen": 6000,
+    "repairLevel": 2,
     "minReputationTier": "local"
   },
   {
@@ -41,14 +46,16 @@
     "componentIds": ["drivetrain"],
     "priceYen": 900000,
     "consumablesCostYen": 9000,
+    "repairLevel": 2,
     "minReputationTier": "local"
   },
   {
     "id": "engine-crane",
     "displayName": "Engine Crane, Stand & Tooling",
-    "componentIds": ["engine", "forcedInduction"],
+    "componentIds": ["engine"],
     "priceYen": 1500000,
     "consumablesCostYen": 8000,
+    "repairLevel": 3,
     "minReputationTier": "known"
   }
 ]

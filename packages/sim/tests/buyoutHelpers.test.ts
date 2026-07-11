@@ -1,14 +1,14 @@
 import {
   BUYERS,
   CARS,
-  HIDDEN_ISSUES,
+  PARTS_TAXONOMY,
   type AuctionLot,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { emptyDayActions } from '../src/actions'
 import { anchorValueYen, nextRaiseYen } from '../src/bidding'
-import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
+import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import {
   acquireLot,
@@ -18,21 +18,12 @@ import {
 } from '../src/bots/buyoutHelpers'
 import { createRng } from '../src/rng'
 
-const CONTEXT = buildSimContext(CARS, [], BUYERS, HIDDEN_ISSUES)
-const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, [], BUYERS, PARTS_TAXONOMY)
 
 function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium', seed: number) {
   const model = CARS.find((c) => c.id === modelId)
   if (!model) throw new Error('fixture car missing')
-  const [lot] = generateAuctionCatalog(
-    [model],
-    tier,
-    HIDDEN_ISSUES_BY_COMPONENT,
-    7,
-    1,
-    createRng(seed),
-    CONTEXT.economy,
-  )
+  const [lot] = generateAuctionCatalog([model], tier, 7, 1, createRng(seed), CONTEXT.economy)
   if (!lot) throw new Error('expected a lot')
   return { lot: { ...lot, id: `${modelId}-${seed}` }, model }
 }

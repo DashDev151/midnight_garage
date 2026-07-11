@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { COMPONENT_DISPLAY_NAMES, componentDisplayName } from '@midnight-garage/content'
 import type { Part, PartInstance } from '@midnight-garage/content'
 import { useDraggable } from '../composables/useDragAndDrop'
+import { useGameStore } from '../stores/gameStore'
+
+const game = useGameStore()
 
 /**
  * One owned part instance, draggable onto a compatible component's drop zone
@@ -58,8 +60,7 @@ function onCardClick(): void {
     <div class="part-info">
       <span class="part-name">{{ part.brand }} {{ part.name }}</span>
       <span class="part-meta">
-        {{ componentDisplayName(part.componentId, COMPONENT_DISPLAY_NAMES) }} &middot;
-        {{ part.grade }}
+        {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }}
       </span>
       <span v-if="!fits" class="no-fit-hint">doesn't fit here</span>
     </div>

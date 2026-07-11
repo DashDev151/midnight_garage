@@ -29,16 +29,6 @@
   "AUCTION_BID_INCREMENT_FRACTION": 0.05,
   "AUCTION_TURNOUT_BANDS": [0.85, 1.12],
   "valuation": {
-    "componentValueWeights": {
-      "engine": 0.3,
-      "body": 0.2,
-      "drivetrain": 0.15,
-      "suspension": 0.1,
-      "interior": 0.1,
-      "brakes": 0.05,
-      "wheels": 0.05,
-      "forcedInduction": 0.05
-    },
     "conditionFloor": 0.35,
     "conditionCeiling": 1.1,
     "conditionExponent": 1.3,
@@ -67,17 +57,24 @@
     "reliabilityCap": 70,
     "powerNormalizationCeiling": 300
   },
-  "issues": {
-    "penaltyMultiplier": 1.3,
-    "riskDiscountWeight": 0.9,
-    "maxRiskDiscount": 0.25,
-    "severityBands": [30, 60],
-    "laborSlotsByBand": [1, 2, 3],
-    "costDivisor": 50,
-    "lemonSeverityThreshold": 40
+  "bands": {
+    "bandFactors": {
+      "mint": 1.0,
+      "fine": 0.85,
+      "worn": 0.65,
+      "poor": 0.4,
+      "scrap": 0.15
+    },
+    "migrationThresholds": {
+      "mint": 90,
+      "fine": 70,
+      "worn": 40,
+      "poor": 15
+    },
+    "scrapValueFraction": 0.05
   },
   "reputation": {
-    "cleanSaleMinConditionPercent": 85,
+    "cleanSaleMinBand": "fine",
     "cleanSaleBonus": 2,
     "concoursSaleMinAuthenticityPercent": 85,
     "concoursSaleBonus": 4

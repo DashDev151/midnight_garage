@@ -1,6 +1,13 @@
-import { ECONOMY, type CarInstance, type CarModel, type Part } from '@midnight-garage/content'
+import {
+  ECONOMY,
+  PARTS_TAXONOMY,
+  type CarInstance,
+  type CarModel,
+  type Part,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { computeDerivedStats } from '../src/derivedStats'
+import { buildCarInstance, mintCarParts } from './testFixtures'
 
 const model: CarModel = {
   id: 'honda-city-e-aa',
@@ -18,121 +25,100 @@ const model: CarModel = {
   tier: 'shitbox',
   tags: ['FF', 'NA', 'Piston', '80s', 'JDM'],
   bookValueYen: 180_000,
-  hiddenIssueWeights: [],
 }
 
-const baseInstance: CarInstance = {
-  id: 'car-0001',
-  modelId: model.id,
-  year: 1984,
-  mileageKm: 100_000,
-  color: 'White',
-  provenanceNote: '',
-  hiddenIssues: [],
-  authenticityPercent: 90,
-  components: {
-    engine: { condition: 100, installed: null },
-    forcedInduction: { condition: 100, installed: null },
-    drivetrain: { condition: 100, installed: null },
-    suspension: { condition: 100, installed: null },
-    brakes: { condition: 100, installed: null },
-    wheels: { condition: 100, installed: null },
-    body: { condition: 100, installed: null },
-    interior: { condition: 100, installed: null },
-  },
-}
+const baseInstance: CarInstance = buildCarInstance({ modelId: model.id, authenticityPercent: 90 })
 
 const coilovers: Part = {
   id: 'tanuki-street-coilovers',
   brand: 'Tanuki',
   name: 'Street Coilovers',
-  componentId: 'suspension',
+  carPartId: 'dampers',
   grade: 'street',
   requiredTags: [],
   statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
   priceYen: 70_000,
 }
 
+function stats(instance: CarInstance, partsById: Record<string, Part> = {}) {
+  return computeDerivedStats(model, instance, partsById, PARTS_TAXONOMY, ECONOMY)
+}
+
 describe('computeDerivedStats', () => {
-  it('a stock car at full condition returns the platform baseline', () => {
-    const stats = computeDerivedStats(model, baseInstance, {}, {}, ECONOMY)
-    expect(stats.power).toBe(model.spec.stockPowerPs)
-    expect(stats.authenticity).toBe(90)
+  it('a stock car with every part mint returns the platform baseline', () => {
+    const result = stats(baseInstance)
+    expect(result.power).toBe(model.spec.stockPowerPs)
+    expect(result.authenticity).toBe(90)
   })
 
   it('a genuine-period installed part fully applies its modifiers', () => {
     const instance: CarInstance = {
       ...baseInstance,
-      components: {
-        ...baseInstance.components,
-        suspension: {
-          condition: 100,
-          installed: {
-            id: 'pi-0001',
-            partId: coilovers.id,
-            conditionPercent: 100,
-            genuinePeriod: true,
-          },
+      parts: {
+        ...baseInstance.parts,
+        dampers: {
+          band: 'mint',
+          fitted: true,
+          installed: { id: 'pi-0001', partId: coilovers.id, band: 'mint', genuinePeriod: true },
         },
       },
     }
-    const withPart = computeDerivedStats(
-      model,
-      instance,
-      { [coilovers.id]: coilovers },
-      {},
-      ECONOMY,
-    )
-    const stock = computeDerivedStats(model, baseInstance, {}, {}, ECONOMY)
+    const withPart = stats(instance, { [coilovers.id]: coilovers })
+    const stock = stats(baseInstance)
     expect(withPart.handling).toBe(stock.handling + 8)
     expect(withPart.style).toBe(stock.style + 3)
   })
 
-  it('a worn part contributes proportionally less benefit', () => {
-    const instance: CarInstance = {
+  it('a worn installed part contributes proportionally less benefit than a mint one', () => {
+    const mintInstalled: CarInstance = {
       ...baseInstance,
-      components: {
-        ...baseInstance.components,
-        suspension: {
-          condition: 100,
-          installed: {
-            id: 'pi-0002',
-            partId: coilovers.id,
-            conditionPercent: 50,
-            genuinePeriod: true,
-          },
+      parts: {
+        ...baseInstance.parts,
+        dampers: {
+          band: 'mint',
+          fitted: true,
+          installed: { id: 'pi-0001', partId: coilovers.id, band: 'mint', genuinePeriod: true },
         },
       },
     }
-    const worn = computeDerivedStats(model, instance, { [coilovers.id]: coilovers }, {}, ECONOMY)
-    const stock = computeDerivedStats(model, baseInstance, {}, {}, ECONOMY)
-    expect(worn.handling).toBe(stock.handling + 4)
+    const wornInstalled: CarInstance = {
+      ...baseInstance,
+      parts: {
+        ...baseInstance.parts,
+        dampers: {
+          band: 'mint',
+          fitted: true,
+          installed: { id: 'pi-0002', partId: coilovers.id, band: 'worn', genuinePeriod: true },
+        },
+      },
+    }
+    const stock = stats(baseInstance)
+    const mint = stats(mintInstalled, { [coilovers.id]: coilovers })
+    const worn = stats(wornInstalled, { [coilovers.id]: coilovers })
+    expect(worn.handling).toBeGreaterThan(stock.handling)
+    expect(worn.handling).toBeLessThan(mint.handling)
   })
 
   it('power never goes negative even with a large negative part modifier', () => {
     const brokenPart: Part = {
       ...coilovers,
       id: 'broken-engine-part',
-      componentId: 'engine',
+      carPartId: 'block',
       statModifiers: { power: -500, handling: 0, style: 0, reliability: 0, authenticity: 0 },
     }
     const instance: CarInstance = {
       ...baseInstance,
-      components: {
-        ...baseInstance.components,
-        engine: {
-          condition: 100,
-          installed: {
-            id: 'pi-0004',
-            partId: brokenPart.id,
-            conditionPercent: 100,
-            genuinePeriod: true,
-          },
+      parts: {
+        ...baseInstance.parts,
+        block: {
+          band: 'mint',
+          fitted: true,
+          installed: { id: 'pi-0004', partId: brokenPart.id, band: 'mint', genuinePeriod: true },
         },
       },
     }
-    const stats = computeDerivedStats(model, instance, { [brokenPart.id]: brokenPart }, {}, ECONOMY)
-    expect(stats.power).toBe(0)
+    const result = stats(instance, { [brokenPart.id]: brokenPart })
+    expect(result.power).toBe(0)
   })
 
   it('a non-genuine part with a negative authenticity modifier still penalizes authenticity', () => {
@@ -143,44 +129,59 @@ describe('computeDerivedStats', () => {
     }
     const instance: CarInstance = {
       ...baseInstance,
-      components: {
-        ...baseInstance.components,
-        suspension: {
-          condition: 100,
-          installed: {
-            id: 'pi-0003',
-            partId: modifiedPart.id,
-            conditionPercent: 100,
-            genuinePeriod: false,
-          },
+      parts: {
+        ...baseInstance.parts,
+        dampers: {
+          band: 'mint',
+          fitted: true,
+          installed: { id: 'pi-0003', partId: modifiedPart.id, band: 'mint', genuinePeriod: false },
         },
       },
     }
-    const partsById = { [modifiedPart.id]: modifiedPart }
-    const stats = computeDerivedStats(model, instance, partsById, {}, ECONOMY)
-    expect(stats.authenticity).toBe(75)
+    const result = stats(instance, { [modifiedPart.id]: modifiedPart })
+    expect(result.authenticity).toBe(75)
   })
 
   /**
-   * Sprint 12 decision 4: brakes/wheels/forcedInduction never had a
-   * condition-to-stat pathway before the zones+slots -> components
-   * migration (only interior condition also fed nothing). Wiring their new
-   * condition fields into stats now would be a disguised balance change
-   * smuggled into a refactor - this guards that they stay inert until
-   * Sprint 13 gives repair-vs-replace on those components real stakes.
+   * Sprint 26 decision 8: every real part now feeds at least one stat -
+   * replaces the old Sprint 12 "brakes/wheels/forcedInduction/interior are
+   * inert" guard, which described a real gap that this sprint deliberately
+   * closes. Each of these previously-dead groups now measurably moves a
+   * stat when its own band changes.
    */
-  it('brakes/wheels/forcedInduction/interior condition changes produce zero stat delta', () => {
-    const baseline = computeDerivedStats(model, baseInstance, {}, {}, ECONOMY)
-    const damaged: CarInstance = {
-      ...baseInstance,
-      components: {
-        ...baseInstance.components,
-        brakes: { condition: 5, installed: null },
-        wheels: { condition: 5, installed: null },
-        forcedInduction: { condition: 5, installed: null },
-        interior: { condition: 5, installed: null },
-      },
-    }
-    expect(computeDerivedStats(model, damaged, {}, {}, ECONOMY)).toEqual(baseline)
+  it('every previously-inert group now measurably affects a stat via its own band', () => {
+    const baseline = stats(baseInstance)
+
+    const scrapBrakes = buildCarInstance({
+      modelId: model.id,
+      authenticityPercent: 90,
+      parts: mintCarParts({ brakePadsDiscs: { band: 'scrap' } }),
+    })
+    expect(stats(scrapBrakes).handling).toBeLessThan(baseline.handling)
+
+    const scrapRims = buildCarInstance({
+      modelId: model.id,
+      authenticityPercent: 90,
+      parts: mintCarParts({ rims: { band: 'scrap' } }),
+    })
+    expect(stats(scrapRims).style).toBeLessThan(baseline.style)
+
+    const scrapSeats = buildCarInstance({
+      modelId: model.id,
+      authenticityPercent: 90,
+      parts: mintCarParts({ seats: { band: 'scrap' } }),
+    })
+    expect(stats(scrapSeats).style).toBeLessThan(baseline.style)
+  })
+
+  it('an unfitted forced-induction slot drops out of the power weighting instead of dragging it down', () => {
+    const naCar = buildCarInstance({
+      modelId: model.id,
+      authenticityPercent: 90,
+      parts: mintCarParts({ forcedInduction: { fitted: false, band: 'scrap' } }),
+    })
+    // A scrap-but-unfitted FI slot must not count against power at all -
+    // this car should score identically to a fully-mint, FI-absent baseline.
+    expect(stats(naCar).power).toBe(model.spec.stockPowerPs)
   })
 })

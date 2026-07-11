@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ComponentId } from '@midnight-garage/content'
+import type { ComponentId, ConditionBand } from '@midnight-garage/content'
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
@@ -21,10 +21,13 @@ const detailedGroups = computed(() =>
 
 const hasLots = computed(() => detailedGroups.value.length > 0)
 
-/** Display-name join for a model's known risk components (Sprint 25 task 6). */
-function componentListLabel(ids: ComponentId[]): string {
-  return ids.map((id) => game.componentLabel(id)).join(', ')
+/** Group bands as `[ComponentId, ConditionBand][]`, for a stable v-for key. */
+function groupBandEntries(
+  bands: Record<ComponentId, ConditionBand>,
+): [ComponentId, ConditionBand][] {
+  return Object.entries(bands) as [ComponentId, ConditionBand][]
 }
+
 const daysUntilCatalog = computed(() => {
   const d = 7 - (game.day % 7)
   return d === 0 ? 7 : d
@@ -118,9 +121,6 @@ function backstopLabel(expiresOnDay: number): string {
               {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
               {{ d.lot.car.color }}
             </span>
-            <span v-if="d.modelRiskComponents.length > 0" class="risk-hint">
-              known for {{ componentListLabel(d.modelRiskComponents) }} issues
-            </span>
           </div>
           <div class="lot-nums">
             <span>reserve {{ formatYen(d.reserveYen) }}</span>
@@ -137,27 +137,15 @@ function backstopLabel(expiresOnDay: number): string {
             <span v-if="quietStateLabel(d)" class="quiet-state">{{ quietStateLabel(d) }}</span>
           </div>
 
-          <div class="lot-inspect">
-            <template v-if="d.lot.inspected">
-              <span class="inspected">Inspected:</span>
-              <span v-if="d.revealedIssues.length === 0" class="clean">no hidden issues</span>
-              <span v-else class="issues">
-                <span v-for="iss in d.revealedIssues" :key="iss.issueId" class="issue-entry">
-                  {{ game.componentLabel(iss.componentId) }}: {{ iss.hintText }} ({{
-                    iss.severityBand
-                  }}, ~{{ formatYen(iss.costYen) }} to fix)
-                </span>
-              </span>
-            </template>
-            <template v-else>
-              <button
-                :disabled="game.cashYen < d.inspectionFeeYen"
-                :data-test="'inspect-' + d.lot.id"
-                @click="game.inspectLot(d.lot.id)"
-              >
-                Inspect ({{ formatYen(d.inspectionFeeYen) }})
-              </button>
-            </template>
+          <div class="lot-bands">
+            <span
+              v-for="[groupId, band] in groupBandEntries(d.groupBands)"
+              :key="groupId"
+              class="band-chip"
+              :class="'band-' + band"
+            >
+              {{ game.componentLabel(groupId) }}: {{ band }}
+            </span>
           </div>
 
           <div class="lot-bid">
@@ -268,10 +256,39 @@ h3 {
 
 .lot-meta,
 .lot-nums,
-.lot-inspect,
+.lot-bands,
 .lot-turnout {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+.lot-bands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+}
+
+.band-chip {
+  padding: 1px 8px;
+  border-radius: var(--mg-radius);
+  border: var(--mg-border);
+  text-transform: capitalize;
+}
+
+.band-chip.band-mint {
+  color: var(--mg-success);
+  border-color: var(--mg-success);
+}
+
+.band-chip.band-fine {
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+}
+
+.band-chip.band-poor,
+.band-chip.band-scrap {
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
 }
 
 .lot-turnout {
@@ -322,29 +339,6 @@ h3 {
 
 .backstop {
   color: var(--mg-text-dim);
-}
-
-.issues {
-  display: flex;
-  flex-direction: column;
-  color: var(--mg-danger);
-}
-
-.issue-entry {
-  font-size: var(--mg-fs-sm);
-}
-
-.clean {
-  color: var(--mg-success);
-}
-
-/* Sprint 22 decision 5: public trade knowledge about the MODEL, not this
-   specific instance - always visible, independent of inspection. */
-.risk-hint {
-  display: block;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  font-style: italic;
 }
 
 .lot-bid {

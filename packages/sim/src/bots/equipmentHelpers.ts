@@ -5,28 +5,27 @@ import type { SimContext } from '../context'
 import { hasEquipmentFor } from '../equipment'
 
 /**
- * All 8 real components, ordered by ascending equipment price
- * (equipment.json: tire-machine Y150k/wheels, brake-lathe Y250k/brakes,
- * upholstery-bench Y350k/interior, suspension-press Y400k/suspension, welder
- * Y700k/body, transmission-bench Y900k/drivetrain, engine-crane
- * Y1.5M/engine+forcedInduction - the last two share one tool, so both sit at
- * the expensive end together). Shared by every bot that needs to try its OWN
- * cheapest-to-unlock component first, not whatever order components happen
- * to be declared in - a bot that only ever tries the first NEEDY component
- * in an arbitrary order can permanently deadlock on a car whose first-listed
- * need happens to require the single most expensive (or reputation-gated)
- * tool in the game, even when a cheaper, reachable component also needs
- * work (Sprint 19c/23 findings, `cautiousRestorer.ts`).
+ * All 6 real component groups (Sprint 26: `forcedInduction` folded into
+ * `engine`, `brakes` folded into `suspension`), ordered by ascending
+ * equipment price (equipment.json: tire-machine Y150k/wheels, brake-lathe
+ * Y250k/suspension, upholstery-bench Y350k/interior, welder Y700k/body,
+ * transmission-bench Y900k/drivetrain, engine-crane Y1.5M/engine - each
+ * group now has a single cheapest tool, no more shared-tool ties). Shared
+ * by every bot that needs to try its OWN cheapest-to-unlock group first,
+ * not whatever order groups happen to be declared in - a bot that only ever
+ * tries the first NEEDY group in an arbitrary order can permanently
+ * deadlock on a car whose first-listed need happens to require the single
+ * most expensive (or reputation-gated) tool in the game, even when a
+ * cheaper, reachable group also needs work (Sprint 19c/23 findings,
+ * `cautiousRestorer.ts`).
  */
 export const ASCENDING_EQUIPMENT_COST_COMPONENTS: readonly ComponentId[] = [
   'wheels',
-  'brakes',
-  'interior',
   'suspension',
+  'interior',
   'body',
   'drivetrain',
   'engine',
-  'forcedInduction',
 ]
 
 /**

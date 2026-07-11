@@ -4,18 +4,18 @@ import componentDisplayNamesJson from '../data/componentDisplayNames.json'
 import economyJson from '../data/economy.json'
 import equipmentJson from '../data/equipment.json'
 import facilitiesJson from '../data/facilities.json'
-import hiddenIssuesJson from '../data/hidden-issues.json'
 import partsJson from '../data/parts.json'
+import partsTaxonomyJson from '../data/parts-taxonomy.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobsJson from '../data/serviceJobs.json'
 import traitsJson from '../data/traits.json'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
+import { CarPartTaxonomySchema } from './carPart'
 import { ComponentDisplayNamesSchema } from './componentDisplayName'
 import { EconomyConfigSchema } from './economy'
 import { EquipmentsSchema } from './equipment'
 import { FacilitiesSchema } from './facilities'
-import { HiddenIssuesSchema } from './hiddenIssue'
 import { PartsSchema } from './part'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { TraitDefinitionsSchema } from './staff'
@@ -29,8 +29,8 @@ import { TraitDefinitionsSchema } from './staff'
  */
 export const CARS = CarModelsSchema.parse(carsJson)
 export const PARTS = PartsSchema.parse(partsJson)
+export const PARTS_TAXONOMY = CarPartTaxonomySchema.parse(partsTaxonomyJson)
 export const BUYERS = BuyersSchema.parse(buyersJson)
-export const HIDDEN_ISSUES = HiddenIssuesSchema.parse(hiddenIssuesJson)
 export const TRAITS = TraitDefinitionsSchema.parse(traitsJson)
 export const SERVICE_JOB_TYPES = ServiceJobTypesSchema.parse(serviceJobsJson)
 export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(

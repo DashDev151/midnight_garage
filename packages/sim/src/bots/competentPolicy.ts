@@ -1,5 +1,7 @@
 import type { AuctionTier, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
+import { planGroupRepair } from '../bands'
 import {
   acquireLot,
   activeBidCount,
@@ -8,7 +10,7 @@ import {
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import { reputationAtLeast } from '../calendar'
-import { AUCTION_TIER_MIN_REPUTATION, repairLaborSlotsFor } from '../constants'
+import { AUCTION_TIER_MIN_REPUTATION } from '../constants'
 import type { SimContext } from '../context'
 import {
   ASCENDING_EQUIPMENT_COST_COMPONENTS,
@@ -16,7 +18,6 @@ import {
   ensureEquipmentFor,
 } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
-import { issueLaborSlots } from '../issues'
 import type { Rng } from '../rng'
 import { isServiceWorkDone } from '../serviceJobs'
 
@@ -34,8 +35,6 @@ const MAX_CONCURRENT_CARS = 1
  * walk-away target is the value anchor itself, no premium, no discount. */
 const FAIR_BID_MULTIPLIER = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.15
-const REPAIR_THRESHOLD = 90
-const REPAIR_LABOR_SLOTS = 2
 
 const TIER_ORDER: readonly AuctionTier[] = [
   'collector-network',
@@ -62,15 +61,13 @@ function highestAccessibleTier(state: GameState): AuctionTier {
  * through `runCareer`/`exportCareers.ts`, not because it belongs in the
  * balance harness's roster of playstyle comparisons.
  *
- * The policy, in order: (1) continue open jobs; (2) always inspect before
- * ever bidding - this policy never bids on an uninspected lot, since
- * information is the entire point of Sprint 22; (3) join/continue a war at
- * the value anchor itself (never overpay), walking away from a real severe
- * issue via the shared `acquireLot` risk filter (Sprint 22); (4)/(4b) fully
- * restore every component AND fix every hidden issue, cheapest-to-unlock
- * first (Sprint 23 decision 6's fix); (5) sell restored, issue-free cars
- * for a clean/concours reputation gain (decision 1's faucet); (6) work a
- * service job on whatever labor restoration doesn't use that day - car
+ * The policy, in order: (1) continue open jobs; (2/3) join/continue a war at
+ * the value anchor itself (never overpay) on a lot of the current
+ * highest-accessible tier - lots are transparent (Sprint 26), so there is no
+ * separate inspect step anymore; (4) fully restore every group to mint,
+ * cheapest-to-unlock first (Sprint 23 decision 6's fix); (5) sell restored
+ * cars for a clean/concours reputation gain (decision 1's faucet); (6) work
+ * a service job on whatever labor restoration doesn't use that day - car
  * restoration is the priority, service work is the overflow, matching the
  * doc's own "work service jobs on idle labor" phrasing.
  */
@@ -86,7 +83,7 @@ export function competentPolicyStrategy(
   const equipBudget = equipmentBudget()
   const targetTier = highestAccessibleTier(state)
 
-  // 1. Continue any in-progress job (repair-zone, install-part, or fix-issue).
+  // 1. Continue any in-progress job (repair-zone or install-part).
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
     const need = job.laborSlotsRequired - job.laborSlotsSpent
@@ -98,29 +95,19 @@ export function competentPolicyStrategy(
   }
 
   // 2/3. Only shop for a car when there's actually room for one (patient -
-  // see MAX_CONCURRENT_CARS's own doc comment): inspect one uninspected lot
-  // of the current highest-accessible tier, then join or continue a war on
-  // an already-inspected lot. `acquireLot` itself refuses a lot whose
-  // inspected car carries a real severe issue (Sprint 22's shared risk
-  // filter) - this policy never has to duplicate that check.
+  // see MAX_CONCURRENT_CARS's own doc comment): join or continue a war on a
+  // lot of the current highest-accessible tier (Sprint 26: lots are
+  // transparent now, no separate inspect step).
   const hasRoomToBuy = state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS
   if (hasRoomToBuy) {
-    const uninspected = state.activeAuctionLots.filter(
-      (lot) => !lot.inspected && lot.tier === targetTier,
-    )
-    if (uninspected.length > 0 && laborBudget > 0) {
-      actions.inspectLots.push({ lotId: rng.pick(uninspected).id })
-      laborBudget -= 1
-    }
-
-    const inspected = state.activeAuctionLots.filter(
+    const candidates = state.activeAuctionLots.filter(
       (lot) =>
-        lot.inspected &&
+        lot.tier === targetTier &&
         lot.leadingBidder !== 'player' &&
         state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
-    if (inspected.length > 0) {
-      const chosen = rng.pick(inspected)
+    if (candidates.length > 0) {
+      const chosen = rng.pick(candidates)
       const targetYen = walkAwayTargetYen(chosen, state, context, FAIR_BID_MULTIPLIER)
       acquireLot(
         state,
@@ -145,77 +132,34 @@ export function competentPolicyStrategy(
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
 
-    let componentToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
+    let groupToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
     for (const id of ASCENDING_EQUIPMENT_COST_COMPONENTS) {
-      if (car.components[id].condition >= REPAIR_THRESHOLD) continue
+      if (isGroupAtLeast(car, id, 'mint', context.partIdsByGroup)) continue
       if (ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER)) {
-        componentToRepair = id
+        groupToRepair = id
         break
       }
     }
-    if (!componentToRepair) continue
+    if (!groupToRepair) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'repair-zone',
-      componentId: componentToRepair,
-      laborSlotsRequired: REPAIR_LABOR_SLOTS,
-    })
-    const slotsToApply = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
-    actions.laborAssignments.push({
-      jobId: `job-${state.day}-${jobIndex}`,
-      laborSlots: slotsToApply,
-    })
-    laborBudget -= slotsToApply
-    carsGettingJobsToday.add(car.id)
-  }
-
-  // 4b. Fix any unrepaired hidden issue on an owned, job-free car - "fully
-  // restored" (step 5) requires zero unrepaired issues, not just condition.
-  for (const car of state.ownedCars) {
-    if (laborBudget <= 0) break
-    if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const unrepaired = car.hiddenIssues.find((ri) => !ri.repaired)
-    if (!unrepaired) continue
-    const issue = context.hiddenIssuesById[unrepaired.issueId]
-    if (!issue) continue
-    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(
-        state,
-        issue.componentId,
-        actions,
-        context,
-        equipBudget,
-        CASH_BUFFER_MULTIPLIER,
-      )
+    const slotsToApply = queueGroupRepair(
+      state,
+      car.id,
+      groupToRepair,
+      car,
+      actions,
+      context,
+      laborBudget,
     )
-      continue
-
-    const laborSlotsRequired = issueLaborSlots(unrepaired.severityPercent, context.economy)
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'fix-issue',
-      componentId: issue.componentId,
-      issueId: unrepaired.issueId,
-      laborSlotsRequired,
-    })
-    const slotsToApply = Math.min(laborSlotsRequired, laborBudget)
-    actions.laborAssignments.push({
-      jobId: `job-${state.day}-${jobIndex}`,
-      laborSlots: slotsToApply,
-    })
     laborBudget -= slotsToApply
     carsGettingJobsToday.add(car.id)
   }
 
-  // 4c. Free the service bay from a car that's stalled - sitting in the bay
-  // with no active job and nothing new queued for it today (steps 4/4b found
-  // no obtainable component or issue to work, typically because the
-  // remaining ones need equipment this career can't yet afford or reach).
+  // 4b. Free the service bay from a car that's stalled - sitting in the bay
+  // with no active job and nothing new queued for it today (step 4 found no
+  // obtainable group to work, typically because the remaining ones need
+  // equipment this career can't yet afford or reach).
   // Without this the ONE starting bay stays claimed by an unworkable car
   // forever (nothing else ever moves it out), permanently zeroing out
   // step 6's `bayBudget.free` and starving the service-job faucet even
@@ -231,16 +175,15 @@ export function competentPolicyStrategy(
     }
   }
 
-  // 5. List fully-restored, issue-free, job-free cars publicly - the
-  // clean/concours-eligible "slow, market price" channel (decision 1's
-  // reputation faucet actually being reachable is this sprint's whole point).
+  // 5. List fully-restored, job-free cars publicly - the clean/concours-
+  // eligible "slow, market price" channel (decision 1's reputation faucet
+  // actually being reachable is this sprint's whole point).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
-    const hasUnrepairedIssue = car.hiddenIssues.some((ri) => !ri.repaired)
-    if (isRestored && !hasUnrepairedIssue) {
+    if (isRestored) {
       actions.listForSale.push({ carInstanceId: car.id })
     }
   }
@@ -256,7 +199,7 @@ export function competentPolicyStrategy(
       if (serviceJob.work.kind !== 'repair') continue
       const carId = serviceJob.car.id
 
-      if (isServiceWorkDone(serviceJob)) {
+      if (isServiceWorkDone(serviceJob, context)) {
         if (state.serviceBayCarIds.includes(carId)) {
           actions.moveCars.push({ carInstanceId: carId, to: 'parking' })
           bayBudget.free += 1
@@ -269,17 +212,25 @@ export function competentPolicyStrategy(
       const existing = jobByCar.get(carId)
 
       if (!existing) {
-        const laborSlotsRequired = repairLaborSlotsFor(
-          serviceJob.car.components[componentId].condition,
+        const plan = planGroupRepair(
+          serviceJob.car,
+          componentId,
+          'mint',
+          state.ownedEquipmentIds,
+          context.partIdsByGroup,
+          context.partsTaxonomyById,
+          context.equipmentById,
         )
+        if (plan.partIds.length === 0) continue
         actions.createJobs.push({
           carInstanceId: carId,
           kind: 'repair-zone',
           componentId,
-          laborSlotsRequired,
+          targetBand: 'mint',
+          laborSlotsRequired: plan.laborSlotsRequired,
         })
         const jobId = `job-${state.day}-${actions.createJobs.length - 1}`
-        const slots = Math.min(laborSlotsRequired, laborBudget)
+        const slots = Math.min(plan.laborSlotsRequired, laborBudget)
         actions.laborAssignments.push({ jobId, laborSlots: slots })
         laborBudget -= slots
         continue

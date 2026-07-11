@@ -15,7 +15,6 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'service-bay-income', amountYen: 20_000 },
   { type: 'market-heat-shift', modelId: 'honda-city-e-aa', deltaPercent: -3 },
   { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
-  { type: 'lot-inspected', lotId: 'lot-1' },
   { type: 'auction-bid-placed', lotId: 'lot-1', maxBidYen: 110_000 },
   { type: 'auction-outbid', lotId: 'lot-1', newBidYen: 140_000 },
   { type: 'auction-bid-won', lotId: 'lot-1', finalPriceYen: 120_000 },
@@ -30,6 +29,7 @@ const SAMPLES: DayLogEntry[] = [
   },
   { type: 'car-sold', carInstanceId: 'car-1', channel: 'walk-in-offer', priceYen: 180_000 },
   { type: 'part-bought', partId: 'khs-street-ecu', partInstanceId: 'part-7-0', priceYen: 60_000 },
+  { type: 'part-scrapped', partInstanceId: 'part-7-0', priceYen: 4_000 },
   { type: 'service-job-accepted', jobId: 'svc-1', carInstanceId: 'car-1' },
   { type: 'service-job-completed', jobId: 'svc-1', payoutYen: 42_000, reputationGained: 4 },
 ]

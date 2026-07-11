@@ -170,6 +170,24 @@ banded parts), §6.5 inspection/hidden issues (paused, removed for now), §6.3 s
     are dropped. Golden-save test updated in the same change.
 12. **Bots interim:** strip every `lot.inspected` gate (the flag no longer exists); bots bid
     from the same transparent value shim as the player. Proper bot re-basing is Sprint 27's.
+13. **Group-level addressing, locked at implementation (the "bridge" spelled out):** staging,
+    `Job`, and `ServiceJobWork` keep addressing work at the group level, not per-part - this
+    sprint does not touch what a job/stage targets, only what condition state backs it up. The
+    existing `ComponentIdSchema` (`packages/content/src/tags.ts`) is repurposed as the 6-group
+    enum (`engine`, `drivetrain`, `suspension`, `wheels`, `body`, `interior` - `forcedInduction`
+    folds into `engine`, `brakes` folds into `suspension`), keeping its name and every call
+    site that addresses a job/stage/equipment unchanged; only its membership shrinks from 8 to
+    6. A new, separate `CarPartIdSchema`/`CarPartId` (the 29-part taxonomy) is used exclusively
+    by `CarInstance.parts`'s keys, the catalog's `carPartId` field, and `parts-taxonomy.json` -
+    the two id spaces never collide because nothing outside the taxonomy layer ever reads a
+    `CarPartId` directly this sprint. A group-level Repair/Replace action resolves against
+    every part in that group at once (repair: climb every non-mint, non-scrap part in the
+    group toward the target band or better as labor allows; install: the picked catalog part's
+    `carPartId` must belong to the target group, and only that one part's slot changes).
+    Reuse-first (directive 16): this is the smallest change that satisfies "car.parts
+    everywhere, no car.components" without also forcing a full addressing-granularity rename
+    across gameStore.ts and every screen - that per-part addressing upgrade is Sprint 28's own
+    scoped task, not smuggled in here.
 
 ## Definition of Done
 
@@ -195,17 +213,18 @@ banded parts), §6.5 inspection/hidden issues (paused, removed for now), §6.3 s
 
 ## Tasks (Claude-implementable)
 
-- [ ] Content: `parts-taxonomy.json` + schema (`stepCostYen`, `stockReplacementPriceYen`,
+- [x] Content: `parts-taxonomy.json` + schema (`stepCostYen`, `stockReplacementPriceYen`,
   `bandFactors`); `scrapValueFraction`; equipment `repairLevel: 1 | 2 | 3`; part schema
   `carPartId` remap of the existing catalog; seed FI kit + underglow entries.
-- [ ] Sim: state shape, whole-grade band math, install/repair with the terminal-scrap rule,
+- [x] Sim: state shape, whole-grade band math, install/repair with the terminal-scrap rule,
   the repair-level slot formula, the universal scrap fit-check block, the scrap-sell action,
   stats, generation, value shim, sale classification, lot transparency; full deletion list.
-- [ ] Save: Dexie bump + migration + golden saves.
-- [ ] Game: group-band rendering, staged repair with target band (Repair hidden/disabled on
-  scrap rows), a "Scrap it" action on scrap `PartInstance` inventory cards, removal of
-  inspect/Fix/issue UI.
-- [ ] Bots compile fixes; balance re-run; tests; Exit.
+- [x] Save: Dexie bump + migration + golden saves.
+- [x] Game: group-band rendering, staged repair with target band (Repair hidden/disabled on
+  scrap rows), removal of inspect/Fix/issue UI. (The scrap-sell *sim action* and
+  `gameStore.scrapPart()` ship here; the "Scrap it" *inventory-card button* is deferred to
+  Sprint 28 decision 3, which owns the parts-inventory surface. Noted, not silently dropped.)
+- [x] Bots compile fixes; balance re-run; tests; Exit.
 
 ## User-only tasks
 
@@ -214,4 +233,72 @@ banded parts), §6.5 inspection/hidden issues (paused, removed for now), §6.3 s
 
 ## Exit
 
-*(Filled at implementation.)*
+**Status: implemented and verified green (2026-07-11). Awaiting the maintainer's economic
+read on the pre-Sprint-27 balance deltas below; none is a regression.**
+
+### What shipped
+
+- **The banded model.** `CarInstance.parts` is now 29 real parts across 6 groups, each
+  carrying one of five ordered bands (scrap < poor < worn < fine < mint) as its only condition
+  state. No `0-100` percent survives anywhere for car condition. Old `car.components`,
+  `hiddenIssues`, `inspected`, `issuePenaltyYen`, and the whole `issues.ts`/inspection module
+  are deleted (grep-clean; `fix-issue` survives only inside save-migration code, by design).
+- **`packages/sim/src/bands.ts`** is the single home for band math: ordering/climbing,
+  `costToMintYen` (grades x `stepCostYen`, or `stockReplacementPriceYen` for terminal scrap),
+  `scrapValueYen`, the 3-tier `repairLevelForGroup` + `slotsNeededToClimb` formula,
+  `planGroupRepair`, the cost-weighted value shim, and `bandForMigratedCondition`.
+- **Whole-grade repair to a player-chosen target band**, gated by the equipment repair level
+  (yen cost is level-independent; only labor speed changes). **Scrap is terminal**: never
+  repairable, never re-installable (universal fit-check block), only scrap-sellable via
+  `resolveScrapPart`. **Universal forced-induction slot** installable on any car.
+- **Group-level "bridge" (decision 13):** staging/Job/ServiceJobWork stay 6-group-addressed
+  (repurposed `ComponentIdSchema`); the new 29-way `CarPartIdSchema` addresses only
+  `CarInstance.parts`, the catalog `carPartId`, and `parts-taxonomy.json`. Per-part staging
+  is deferred to Sprint 28.
+- **Save law:** Dexie **v15 -> v16** with `migrateV15ToV16` (fans each old 8-group condition
+  through `bandForMigratedCondition` to its new parts, relocates installed parts by catalog
+  address, drops `hiddenIssues`, remaps retired job/staged/service-work kinds). Golden-save
+  suite extended.
+- **Catalog seed:** `parts.json` expanded 20 -> 119 entries (the Sprint 28 catalog, seeded
+  now; all prices are designer-tuning bait, flagged for the maintainer). Rotary coverage
+  added so the FC/FD RX-7 are no longer partless.
+
+### Two bugs found and fixed during implementation (both caught by the new tests)
+
+1. **Cost-weighted value shim was mis-weighted.** Weighting each part's band factor by its
+   *current-band* `costToMintYen` collapses to "the one non-mint part's own factor" on a car
+   with a single defect (a mint part's cost-to-mint is 0), so a scrap turbo and scrap brakes
+   scored identically, contradicting the maintainer's own worked case. Re-weighted on each
+   part's fixed `stockReplacementPriceYen` instead (deliberate, documented deviation from
+   decision 4's literal wording). Now scrap-turbo 0.9416 < scrap-brakes 0.9935, as required.
+2. **Lemon threshold sat exactly on a band factor.** `LEMON_MAX_AVERAGE_BAND_FACTOR` = 0.4
+   equalled `poor`'s own factor, so an all-poor car's floating-point-summed average landed
+   on the wrong side of a `<=`. Bumped to 0.45 (safely above poor 0.4, well below worn 0.65).
+
+### Verification (all green)
+
+- **Code gate:** `pnpm typecheck` + `pnpm lint` + `pnpm format` + `pnpm build` all clean.
+- **Tests:** 647 pass (sim 393 incl. the new 37-test `bands.test.ts`; game 224; content 30).
+  Coverage thresholds pass: statements 88.2% / branches 77.3% / functions 90.8% / lines 92.1%
+  (`bands.ts` 95% / 100% functions). Golden-master hashes re-pinned (`e71e96c9`, `849ec1ef`).
+- **Balance harness re-run** (9 strategies x 1000 x 100 days), `check` all invariants PASS:
+  - *Hard-gated:* days-to-`local` p50 = **16** (in [15,35]); buyout share **0.0%**; Passive
+    Grinder solvency day100 median **Y1,220,000**; Flipper participation Y1,827,286 vs passive
+    Y1,220,000; sanity floor intact.
+  - *Informational (disclosed, not gated):* several aggressive strategies now sit at or below
+    Passive Grinder, two negative (competent-policy **Y-81,453**, investor **Y-131,030**); the
+    auction "steal" tail is **48.1%** (target ~10%). **This is the expected seam, not a
+    regression:** bots are re-based for *bands* but not yet for *transparent value*, so they
+    misprice bids against the new model. **Sprint 27** re-bases every bot on `instanceValue`
+    (the deduction valuation), and **Sprint 30** rebuilds auction liveness; both are chartered
+    to close exactly these gaps. Numbers disclosed here so the maintainer can direct, per the
+    "changed numbers are expected, not regressions" rule.
+
+### Deferred (tracked, not dropped)
+
+- The "Scrap it" **inventory-card button** -> Sprint 28 (decision 3 owns that surface). The
+  sim action + `gameStore.scrapPart()` exist and are tested now.
+- **Per-part staging/job addressing** -> Sprint 28 (this sprint's bridge keeps them
+  group-addressed).
+- `parts-taxonomy.json` and the 119-entry catalog's **numbers** are the maintainer's to tune
+  (user-only task above); the structure and a sane first pass ship here.

@@ -1,17 +1,21 @@
-import { BayKindSchema, ComponentIdSchema } from '@midnight-garage/content'
+import { BayKindSchema, ComponentIdSchema, ConditionBandSchema } from '@midnight-garage/content'
 import { z } from 'zod'
 
 /**
  * Per-day input to advanceDay - ephemeral simulation input, not persisted
  * seed content, so it lives in sim rather than packages/content.
+ *
+ * Sprint 26: `fix-issue` retired with the hidden-issue system. `targetBand`
+ * (decision 5) is set for `repair-zone` specs only - how far the player is
+ * staging every eligible part in the group to climb; `jobs.ts`'s
+ * `repairJobGate`/`applyJobToCar` are what actually resolve it per part.
  */
 const NewJobSpecSchema = z.object({
   carInstanceId: z.string().min(1),
-  kind: z.enum(['repair-zone', 'install-part', 'fix-issue']),
+  kind: z.enum(['repair-zone', 'install-part']),
   componentId: ComponentIdSchema,
   partInstanceId: z.string().min(1).optional(),
-  /** Set for `fix-issue` jobs only - which rolled hidden issue this job fixes. */
-  issueId: z.string().min(1).optional(),
+  targetBand: ConditionBandSchema.optional(),
   laborSlotsRequired: z.number().int().positive(),
 })
 
@@ -24,8 +28,6 @@ const BidOnLotSchema = z.object({
   lotId: z.string().min(1),
   maxBidYen: z.number().int().positive(),
 })
-
-const InspectLotActionSchema = z.object({ lotId: z.string().min(1) })
 
 const SellViaWalkInActionSchema = z.object({ carInstanceId: z.string().min(1) })
 
@@ -44,6 +46,10 @@ const BuyPartActionSchema = z.object({
 
 const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
 
+/** Sprint 26 decision 6: sell a scrap `PartInstance` for scrap value - the
+ * only action available on it. */
+const ScrapPartActionSchema = z.object({ partInstanceId: z.string().min(1) })
+
 const AcceptServiceJobActionSchema = z.object({ offerId: z.string().min(1) })
 
 const MoveCarActionSchema = z.object({
@@ -60,10 +66,10 @@ export const DayActionsSchema = z.object({
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
   bidsOnLots: z.array(BidOnLotSchema).default([]),
   buyoutLots: z.array(BuyoutLotActionSchema).default([]),
-  inspectLots: z.array(InspectLotActionSchema).default([]),
   sellViaWalkIn: z.array(SellViaWalkInActionSchema).default([]),
   listForSale: z.array(ListForSaleActionSchema).default([]),
   buyParts: z.array(BuyPartActionSchema).default([]),
+  scrapParts: z.array(ScrapPartActionSchema).default([]),
   acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
   /** Bots' only path to moving cars between bays - the player moves instantly
    * via a direct store call (see sim/facilities.ts's applyMoves doc). */
@@ -81,10 +87,10 @@ export const DayActionsSchema = z.object({
 export type NewJobSpec = z.infer<typeof NewJobSpecSchema>
 export type LaborAssignment = z.infer<typeof LaborAssignmentSchema>
 export type BidOnLotAction = z.infer<typeof BidOnLotSchema>
-export type InspectLotAction = z.infer<typeof InspectLotActionSchema>
 export type SellViaWalkInAction = z.infer<typeof SellViaWalkInActionSchema>
 export type ListForSaleAction = z.infer<typeof ListForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
+export type ScrapPartAction = z.infer<typeof ScrapPartActionSchema>
 export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
 export type MoveCarAction = z.infer<typeof MoveCarActionSchema>

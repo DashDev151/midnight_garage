@@ -5,11 +5,11 @@ import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
 
 /** A part with no required tags always fits any car - avoids incidental tag mismatches. */
-function untaggedPartFor(componentId: string) {
-  return PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+function untaggedPartFor(carPartId: string) {
+  return PARTS.find((p) => p.carPartId === carPartId && p.requiredTags.length === 0)!
 }
 
-describe('staged repair/install work (Sprint 18)', () => {
+describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('staging and unstaging a repair cost nothing', () => {
@@ -19,8 +19,12 @@ describe('staged repair/install work (Sprint 18)', () => {
     const carId = game.gameState.ownedCars[0]!.id
     const cashBefore = game.cashYen
 
-    expect(game.stageAction(carId, { kind: 'repair', componentId: 'body' })).toBe(true)
-    expect(game.stagedActionsFor(carId)).toEqual([{ kind: 'repair', componentId: 'body' }])
+    expect(
+      game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' }),
+    ).toBe(true)
+    expect(game.stagedActionsFor(carId)).toEqual([
+      { kind: 'repair', componentId: 'body', targetBand: 'mint' },
+    ])
     expect(game.cashYen).toBe(cashBefore)
     expect(game.gameState.jobs).toHaveLength(0) // nothing real yet
 
@@ -34,7 +38,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     // Inject an open job directly rather than depending on this car's rolled
-    // condition and today's labor budget happening to leave one incomplete.
+    // bands and today's labor budget happening to leave one incomplete.
     game.gameState = {
       ...game.gameState,
       jobs: [
@@ -43,13 +47,16 @@ describe('staged repair/install work (Sprint 18)', () => {
           carInstanceId: carId,
           kind: 'repair-zone',
           componentId: 'body',
+          targetBand: 'mint',
           laborSlotsRequired: 3,
           laborSlotsSpent: 1,
         },
       ],
     }
 
-    expect(game.stageAction(carId, { kind: 'repair', componentId: 'body' })).toBe(false)
+    expect(
+      game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' }),
+    ).toBe(false)
   })
 
   it('re-staging over an already-staged component replaces it (decision 8)', () => {
@@ -57,7 +64,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     const componentId = 'suspension'
-    const partA = untaggedPartFor(componentId)
+    const partA = untaggedPartFor('dampers')
     game.devGrantPart(partA.id)
     const partAInstanceId = game.gameState.partInventory[0]!.id
 
@@ -66,8 +73,10 @@ describe('staged repair/install work (Sprint 18)', () => {
 
     // Staging a repair over the same component displaces the install stage -
     // the displaced part becomes stageable again.
-    game.stageAction(carId, { kind: 'repair', componentId })
-    expect(game.stagedActionsFor(carId)).toEqual([{ kind: 'repair', componentId }])
+    game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })
+    expect(game.stagedActionsFor(carId)).toEqual([
+      { kind: 'repair', componentId, targetBand: 'mint' },
+    ])
     expect(game.isPartStagedAnywhere(partAInstanceId)).toBe(false)
   })
 
@@ -77,7 +86,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.devGrantCar(CARS[1]?.id ?? CARS[0]!.id)
     const [carA, carB] = game.gameState.ownedCars
     const componentId = 'suspension'
-    const part = untaggedPartFor(componentId)
+    const part = untaggedPartFor('dampers')
     game.devGrantPart(part.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -98,7 +107,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.moveCar(carId, 'service')
 
     const componentId = 'suspension'
-    const part = untaggedPartFor(componentId)
+    const part = untaggedPartFor('dampers')
     game.devGrantPart(part.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
     game.stageAction(carId, { kind: 'install', componentId, partInstanceId })
@@ -106,7 +115,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.confirmCarWork(carId)
 
     expect(game.stagedActionsFor(carId)).toEqual([])
-    expect(game.gameState.ownedCars[0]!.components[componentId].installed?.id).toBe(partInstanceId)
+    expect(game.gameState.ownedCars[0]!.parts.dampers.installed?.id).toBe(partInstanceId)
     expect(game.gameState.partInventory).toHaveLength(0)
   })
 
@@ -115,7 +124,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     game.devGrantCar(CARS[0]!.id) // no equipment granted
     const carId = game.gameState.ownedCars[0]!.id
     game.moveCar(carId, 'service')
-    game.stageAction(carId, { kind: 'repair', componentId: 'body' })
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
 
     game.confirmCarWork(carId)
 
@@ -130,7 +139,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    game.stageAction(carId, { kind: 'repair', componentId: 'body' })
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
 
     game.sellWalkIn(carId)
 
@@ -141,8 +150,8 @@ describe('staged repair/install work (Sprint 18)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    // A brakes-only part staged onto suspension - a real mismatch.
-    const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+    // An engine-only part staged onto suspension - a real mismatch.
+    const wrongPart = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
     game.devGrantPart(wrongPart.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -156,7 +165,7 @@ describe('staged repair/install work (Sprint 18)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    game.stageAction(carId, { kind: 'repair', componentId: 'body' })
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
 
     const decoded = decodeSave(encodeSave(game.gameState))
     expect(decoded.stagedCarWork).toEqual(game.gameState.stagedCarWork)

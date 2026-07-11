@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
 import {
   acquireLot,
   activeBidCount,
@@ -21,8 +22,6 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'body',
   'interior',
 ]
-const REPAIR_THRESHOLD = 90
-const REPAIR_LABOR_SLOTS = 2
 const MAX_CONCURRENT_CARS = 3
 const CASH_BUFFER_MULTIPLIER = 1.2
 const ACCEPTABLE_WALKIN_FRACTION = 0.85
@@ -111,14 +110,12 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
     const profile = PROFILES[archetypeForCar(car.id)]
-    const repairedCount = REPAIRABLE_COMPONENTS.filter(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const repairedCount = REPAIRABLE_COMPONENTS.filter((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     ).length
     if (repairedCount >= profile.repairZonesBeforeSale) continue
 
-    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
-      car.components[id].condition < car.components[worst].condition ? id : worst,
-    )
+    const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     if (
       !ensureEquipmentFor(
@@ -131,15 +128,15 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
       )
     )
       continue
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'repair-zone',
-      componentId: worstComponent,
-      laborSlotsRequired: REPAIR_LABOR_SLOTS,
-    })
-    const slots = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
-    actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
+    const slots = queueGroupRepair(
+      state,
+      car.id,
+      worstComponent,
+      car,
+      actions,
+      context,
+      laborBudget,
+    )
     laborBudget -= slots
     jobbedCarIds.add(car.id)
   }
@@ -151,8 +148,8 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const profile = PROFILES[archetypeForCar(car.id)]
-    const repairedCount = REPAIRABLE_COMPONENTS.filter(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const repairedCount = REPAIRABLE_COMPONENTS.filter((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     ).length
     if (repairedCount < profile.repairZonesBeforeSale) continue
 
@@ -172,8 +169,9 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
           model,
           context.buyers,
           context.partsById,
+          context.partsTaxonomy,
+          context.partsTaxonomyById,
           heatPercent,
-          context.hiddenIssuesById,
           context.economy,
         )
       : undefined
@@ -184,8 +182,9 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
             model,
             car,
             context.partsById,
+            context.partsTaxonomy,
+            context.partsTaxonomyById,
             heatPercent,
-            context.hiddenIssuesById,
             context.economy,
           )
         : 0
@@ -196,14 +195,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     }
   }
 
-  // 4. Inspect one uninspected lot at random, if labor allows - every
-  // archetype benefits from information, so this isn't gated by playstyle.
-  const uninspected = state.activeAuctionLots.filter((lot) => !lot.inspected)
-  if (uninspected.length > 0 && laborBudget > 0) {
-    actions.inspectLots.push({ lotId: rng.pick(uninspected).id })
-  }
-
-  // 5. Join or continue a war on one affordable lot if there's room for
+  // 4. Join or continue a war on one affordable lot if there's room for
   // another car - the same target multiplier regardless of which archetype
   // the car will turn out to be played as (see BID_MULTIPLIER's comment: no
   // archetype has an informational edge at this stage, so none should pay a

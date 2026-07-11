@@ -2,9 +2,8 @@ import {
   BUYERS,
   CARS,
   FACILITIES,
-  HIDDEN_ISSUES,
   PARTS,
-  type CarInstance,
+  PARTS_TAXONOMY,
   type GameState,
   type ServiceJob,
 } from '@midnight-garage/content'
@@ -27,39 +26,22 @@ import {
 } from '../src/facilities'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
+import { buildCarInstance } from './testFixtures'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES, [], FACILITIES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
 
-function ownedCar(id: string): CarInstance {
-  return {
+function ownedCar(id: string) {
+  return buildCarInstance({
     id,
     modelId: 'honda-city-e-aa',
     year: 1984,
     mileageKm: 100_000,
-    color: 'White',
-    provenanceNote: '',
-    hiddenIssues: [],
     authenticityPercent: 90,
-    components: {
-      engine: { condition: 80, installed: null },
-      forcedInduction: { condition: 80, installed: null },
-      drivetrain: { condition: 80, installed: null },
-      suspension: { condition: 80, installed: null },
-      brakes: { condition: 80, installed: null },
-      wheels: { condition: 80, installed: null },
-      body: { condition: 80, installed: null },
-      interior: { condition: 80, installed: null },
-    },
-  }
+  })
 }
 
 function serviceCar(id: string): ServiceJob {
-  const car = generateAuctionCarInstance(
-    CARS[0]!,
-    CONTEXT.hiddenIssuesByComponent,
-    id,
-    createRng(1),
-  )
+  const car = generateAuctionCarInstance(CARS[0]!, id, createRng(1), CONTEXT.economy)
   return {
     id: `svc-${id}`,
     typeId: 'repair-engine',

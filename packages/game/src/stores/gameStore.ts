@@ -5,8 +5,8 @@ import {
   ECONOMY,
   EQUIPMENT,
   FACILITIES,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
 } from '@midnight-garage/content'
@@ -17,7 +17,9 @@ import type {
   Buyer,
   CarInstance,
   CarModel,
+  CarPartId,
   ComponentId,
+  ConditionBand,
   DayLogEntry,
   Equipment,
   GameState,
@@ -38,6 +40,7 @@ import {
   assignToParking,
   availableLaborSlots,
   advanceDay,
+  bandIndex,
   bestFitBuyer,
   buildSimContext,
   computeBuyoutPriceYen,
@@ -48,13 +51,10 @@ import {
   deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
-  effectiveComponentCondition,
   hasEquipmentFor,
   hasParkingSpace,
   isServiceJobInTransit,
   isServiceWorkDone,
-  issueRepairCostYen,
-  issueSeverityBand,
   listPubliclyAskingPrice,
   moveCarToSlot as moveCarToSlotCore,
   nextBayMinReputationTier,
@@ -62,6 +62,8 @@ import {
   nextRaiseYen,
   parkingOccupancy,
   partFitsCar,
+  planGroupRepair,
+  presentPartIdsInGroup,
   reputationAtLeast,
   REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
@@ -69,17 +71,16 @@ import {
   resolveAcceptServiceJob,
   resolveBuyoutInstant,
   resolveBuyPart,
-  resolveInspectLot,
   resolveJobLabor,
   resolveListForSale,
   resolvePlaceBid,
+  resolveScrapPart,
   resolveSellViaWalkIn,
   resolveServiceJob,
   swapCars as swapCarsCore,
   turnoutBand,
   valuateCarForBuyer,
   type DeliverySpeed,
-  type IssueSeverityBand,
   type NewJobSpec,
   type ServiceJobOutcome,
   type SimContext,
@@ -87,7 +88,7 @@ import {
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from '../constants'
+import { INSTALL_LABOR_SLOTS } from '../constants'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 
@@ -108,29 +109,21 @@ function randomSeed(): number {
   return Math.floor(Math.random() * 2_147_483_647)
 }
 
+/** One real part within a group, for the car-detail screen's per-part breakdown (Sprint 26). */
+export interface CarPartRowView {
+  partId: CarPartId
+  displayName: string
+  band: ConditionBand
+  /** Display name of the installed PartInstance, or null if the slot is empty. */
+  installedPartName: string | null
+}
+
 /** A car paired with its resolved model, display name, and derived stats. */
 export interface DetailedCar {
   car: CarInstance
   model: CarModel
   displayName: string
   stats: StatBlock
-}
-
-/**
- * One hidden issue on an owned car (Sprint 22) - a named, persistent,
- * individually priced defect until actually fixed. Issues are always
- * revealed post-purchase (decision 7), so this list needs no "revealed"
- * filter the way `LotDetail.revealedIssues` does.
- */
-export interface CarIssueView {
-  issueId: string
-  componentId: ComponentId
-  hintText: string
-  severityBand: IssueSeverityBand
-  costYen: number
-  repaired: boolean
-  /** True if a `fix-issue` staged action already exists for this issue on this car. */
-  staged: boolean
 }
 
 /** Everything the car-detail screen needs for one car. */
@@ -143,8 +136,12 @@ export interface CarDetail extends DetailedCar {
   inServiceBay: boolean
   /** Repair/install work staged on this car but not yet confirmed (Sprint 18). */
   stagedActions: StagedAction[]
-  /** Hidden issues on this car, unrepaired and repaired alike (Sprint 22). */
-  issues: CarIssueView[]
+  /**
+   * Each of the 6 real groups' worst present-part band (Sprint 26) - the
+   * group-level display this sprint ships; a real per-part breakdown is
+   * Sprint 28 scope (sprint26.md decision 10/13's own deferral).
+   */
+  groupBands: Record<ComponentId, ConditionBand>
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -273,7 +270,6 @@ export interface LotDetail {
    * and buyout are the only price anchors shown.
    */
   reserveYen: number
-  inspectionFeeYen: number
   /** Always visible, on every lot (maintainer decision 2). */
   buyoutPriceYen: number
   /** The literal price on the board - 0 before bidding opens. */
@@ -291,24 +287,12 @@ export interface LotDetail {
   /** Set true on the player's first raise on this lot, never reset. */
   playerHasBid: boolean
   /**
-   * Revealed hidden issues (only populated once the lot is inspected) - a
-   * severity band + fix-cost estimate now that severity is rolled at
-   * generation time (Sprint 22), not just which component is affected.
+   * Each of the 6 real groups' worst present-part band (Sprint 26 decision
+   * 10) - lots are transparent now, no reveal machinery: this is always
+   * populated, not gated behind an inspection step. A real per-part
+   * breakdown is Sprint 27 scope.
    */
-  revealedIssues: {
-    issueId: string
-    componentId: ComponentId
-    hintText: string
-    severityBand: IssueSeverityBand
-    costYen: number
-  }[]
-  /**
-   * Components this MODEL is known to carry issue risk on (public knowledge,
-   * from `hiddenIssueWeights` - "these are known for rust") - always
-   * visible, independent of whether THIS lot has been inspected (decision 5:
-   * the trade prices the average, inspection reveals the actual instance).
-   */
-  modelRiskComponents: ComponentId[]
+  groupBands: Record<ComponentId, ConditionBand>
   /** This lot's backstop close day (the Sprint 19 duration roll) - activity-
    * based closing (quiet-day hammer) usually resolves it sooner than this. */
   expiresOnDay: number
@@ -368,7 +352,7 @@ export const useGameStore = defineStore('game', () => {
       CARS,
       PARTS,
       BUYERS,
-      HIDDEN_ISSUES,
+      PARTS_TAXONOMY,
       SERVICE_JOB_TYPES,
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
@@ -453,10 +437,59 @@ export const useGameStore = defineStore('game', () => {
         model,
         car,
         context.value.partsById,
-        context.value.hiddenIssuesById,
+        context.value.partsTaxonomy,
         context.value.economy,
       ),
     }
+  }
+
+  /**
+   * Each of the 6 real groups' worst present-part band (Sprint 26 decision
+   * 10/13) - the group-level condition summary both the car-detail and the
+   * (now always-transparent) auction lot-detail screens show. A group with
+   * no present parts (never happens today - only `forcedInduction` can be
+   * unfitted, and every group has other members) reports `'mint'`.
+   */
+  function groupBandsForCar(car: CarInstance): Record<ComponentId, ConditionBand> {
+    const groups: ComponentId[] = [
+      'engine',
+      'drivetrain',
+      'suspension',
+      'wheels',
+      'body',
+      'interior',
+    ]
+    const result = {} as Record<ComponentId, ConditionBand>
+    for (const groupId of groups) {
+      const partIds = presentPartIdsInGroup(car, groupId, context.value.partIdsByGroup)
+      let worst: ConditionBand = 'mint'
+      for (const partId of partIds) {
+        if (bandIndex(car.parts[partId].band) < bandIndex(worst)) worst = car.parts[partId].band
+      }
+      result[groupId] = worst
+    }
+    return result
+  }
+
+  /**
+   * Every real part present in `componentId`'s group on this car (Sprint 26
+   * decision 13) - the per-part breakdown the car-detail screen shows below
+   * a group's headline band, since a group can hold several parts now. A
+   * lot-detail per-part breakdown is Sprint 27 scope; this is the owned-car
+   * screen's own natural evolution of what it already showed per component.
+   */
+  function partsInGroup(carId: string, componentId: ComponentId): CarPartRowView[] {
+    const car = findWorkableCar(carId)
+    if (!car) return []
+    return presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup).map((partId) => {
+      const state = car.parts[partId]
+      return {
+        partId,
+        displayName: carPartLabel(partId),
+        band: state.band,
+        installedPartName: state.installed ? partName(state.installed.partId) : null,
+      }
+    })
   }
 
   const carsDetailed = computed<DetailedCar[]>(() => gameState.value.ownedCars.map(detailFor))
@@ -484,6 +517,22 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * Display label for one of the 29 real car parts (Sprint 26) - reads the
+   * taxonomy's own authored `displayName`, never the raw camelCase
+   * `CarPartId`. Distinct from `componentLabel` above (that one's for the
+   * 6 groups; this one's for a specific part within a group).
+   */
+  function carPartLabel(id: CarPartId): string {
+    return context.value.partsTaxonomyById[id]?.displayName ?? id
+  }
+
+  /** Which of the 6 groups a real car part belongs to (Sprint 26) - the
+   * catalog/taxonomy lookup every group-level UI action needs. */
+  function groupForCarPart(id: CarPartId): ComponentId | undefined {
+    return context.value.partsTaxonomyById[id]?.group
+  }
+
+  /**
    * A car the player can work on - either an owned car or a customer's car
    * sitting in an active service job. Both are worked through the same job
    * system, so the car-detail screen resolves either.
@@ -507,46 +556,6 @@ export const useGameStore = defineStore('game', () => {
     return job !== undefined && isServiceJobInTransit(job, gameState.value.day)
   }
 
-  /**
-   * A component's effective condition (Sprint 22 decision 2) - cosmetically
-   * repaired (raw `condition` 100) but still hiding an unfixed issue reads
-   * lower here. Reuses the exact sim formula rather than re-deriving it in
-   * the template - `CarIssueView.severityBand` is a display word, not the
-   * numeric severity this needs.
-   */
-  function effectiveConditionFor(carId: string, componentId: ComponentId): number {
-    const car = findWorkableCar(carId)
-    if (!car) return 0
-    return effectiveComponentCondition(car, componentId, context.value.hiddenIssuesById)
-  }
-
-  /**
-   * A car's hidden issues (Sprint 22) - always revealed once owned (decision
-   * 7: no concealment mechanic post-purchase), so no "revealed" filter here.
-   */
-  function issuesFor(car: CarInstance, carId: string): CarIssueView[] {
-    const staged = stagedActionsFor(carId)
-    return car.hiddenIssues.flatMap((revealedIssue) => {
-      const catalogEntry = context.value.hiddenIssuesById[revealedIssue.issueId]
-      if (!catalogEntry) return []
-      return [
-        {
-          issueId: revealedIssue.issueId,
-          componentId: catalogEntry.componentId,
-          hintText: catalogEntry.hintText,
-          severityBand: issueSeverityBand(revealedIssue.severityPercent, context.value.economy),
-          costYen: issueRepairCostYen(
-            catalogEntry,
-            revealedIssue.severityPercent,
-            context.value.economy,
-          ),
-          repaired: revealedIssue.repaired,
-          staged: staged.some((a) => a.kind === 'fix-issue' && a.issueId === revealedIssue.issueId),
-        },
-      ]
-    })
-  }
-
   /** Full detail bundle for one workable car (owned or in-shop), or undefined. */
   function carDetail(carId: string): CarDetail | undefined {
     const car = findWorkableCar(carId)
@@ -558,7 +567,7 @@ export const useGameStore = defineStore('game', () => {
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
       stagedActions: gameState.value.stagedCarWork[carId] ?? [],
-      issues: issuesFor(car, carId),
+      groupBands: groupBandsForCar(car),
     }
   }
 
@@ -574,7 +583,7 @@ export const useGameStore = defineStore('game', () => {
       carName: model ? resolveCarDisplayName(model) : job.car.modelId,
       payoutYen: job.payoutYen,
       baseReputation: job.baseReputation,
-      workDone: isServiceWorkDone(job),
+      workDone: isServiceWorkDone(job, context.value),
       failureReputationPenalty: reputationForFailure(job.baseReputation),
       daysLeft: job.dueOnDay === null ? null : job.dueOnDay - gameState.value.day,
       arrivesOnDay: job.arrivesOnDay,
@@ -596,33 +605,13 @@ export const useGameStore = defineStore('game', () => {
     return [...byTier.entries()].map(([tier, lots]) => ({ tier, lots }))
   })
 
-  /** Derived numbers + (if inspected) revealed issues for one lot. */
+  /** Derived numbers + the 6 real group bands for one lot (Sprint 26 decision
+   * 10: lots are transparent now, no inspection gate). */
   function lotDetail(lotId: string): LotDetail | undefined {
     const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
     if (!lot) return undefined
     const model = context.value.modelsById[lot.modelId]
     if (!model) return undefined
-    const revealedIssues = lot.inspected
-      ? lot.car.hiddenIssues
-          .filter((i) => i.revealed)
-          .flatMap((i) => {
-            const issue = context.value.hiddenIssuesById[i.issueId]
-            return issue
-              ? [
-                  {
-                    issueId: i.issueId,
-                    componentId: issue.componentId,
-                    hintText: issue.hintText,
-                    severityBand: issueSeverityBand(i.severityPercent, context.value.economy),
-                    costYen: issueRepairCostYen(issue, i.severityPercent, context.value.economy),
-                  },
-                ]
-              : []
-          })
-      : []
-    const modelRiskComponents = model.hiddenIssueWeights
-      .filter((w) => w.weight > 0)
-      .map((w) => w.componentId)
     return {
       lot,
       model,
@@ -630,7 +619,6 @@ export const useGameStore = defineStore('game', () => {
       reserveYen: Math.round(
         lot.bookValueYen * context.value.economy.AUCTION_RESERVE_PRICE_FRACTION,
       ),
-      inspectionFeeYen: context.value.economy.AUCTION_TRAVEL_FEE_YEN[lot.tier],
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       currentBidYen: lot.currentBidYen,
       leadingBidder: lot.leadingBidder,
@@ -639,8 +627,7 @@ export const useGameStore = defineStore('game', () => {
       turnout: turnoutBand(lot, gameState.value, context.value, gameState.value.day),
       nextRaiseYen: nextRaiseYen(lot, context.value.economy),
       playerHasBid: lot.playerHasBid,
-      revealedIssues,
-      modelRiskComponents,
+      groupBands: groupBandsForCar(lot.car),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
     }
@@ -691,8 +678,9 @@ export const useGameStore = defineStore('game', () => {
       model,
       context.value.buyers,
       context.value.partsById,
+      context.value.partsTaxonomy,
+      context.value.partsTaxonomyById,
       heat,
-      context.value.hiddenIssuesById,
       context.value.economy,
     )
     const offerYen = buyer
@@ -701,8 +689,9 @@ export const useGameStore = defineStore('game', () => {
           model,
           car,
           context.value.partsById,
+          context.value.partsTaxonomy,
+          context.value.partsTaxonomyById,
           heat,
-          context.value.hiddenIssuesById,
           context.value.economy,
         )
       : 0
@@ -720,20 +709,32 @@ export const useGameStore = defineStore('game', () => {
       model,
       context.value.buyers,
       context.value.partsById,
+      context.value.partsTaxonomy,
+      context.value.partsTaxonomyById,
       heat,
-      context.value.hiddenIssuesById,
       context.value.economy,
     )
   }
 
-  /** Parts in inventory that fit an empty component on the given car (component + required tags). */
+  /**
+   * Parts in inventory that fit an EMPTY slot within the given group
+   * (Sprint 26 decision 13's "bridge": a group-level install still resolves
+   * to whichever specific `CarPartId` in that group is actually empty and
+   * the picked catalog part addresses). A scrap `PartInstance` never fits
+   * anywhere (decision 6).
+   */
   function installablePartsFor(carId: string, componentId: ComponentId): PartInstance[] {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
-    if (!car || !model || car.components[componentId].installed) return []
+    if (!car || !model) return []
+    const hasEmptySlot = presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup).some(
+      (partId) => !car.parts[partId].installed,
+    )
+    if (!hasEmptySlot) return []
     return gameState.value.partInventory.filter((pi) => {
+      if (pi.band === 'scrap') return false
       const part = context.value.partsById[pi.partId]
-      return part ? partFitsCar(part, model, componentId) : false
+      return part ? partFitsCar(part, model, componentId, context.value.partsTaxonomyById) : false
     })
   }
 
@@ -899,20 +900,37 @@ export const useGameStore = defineStore('game', () => {
   // --- instant actions (Sprint 11) ---------------------------------------
 
   /**
-   * Repair a component - instant. Finds the car's already-open repair job
-   * for this component (if the player already started it on an earlier day)
-   * or starts a new one, then immediately spends up to today's remaining
-   * labor on it. A repeat click just continues the same job; no separate
-   * "add labor" control needed.
+   * Repair a group - instant, targeting `targetBand` (mint by default, the
+   * plain "Repair" button's behavior; staging lets the player choose a
+   * lower target, decision 5). Finds the car's already-open repair job for
+   * this group (if the player already started it on an earlier day) or
+   * starts a new one, sized for real by `planGroupRepair`, then immediately
+   * spends up to today's remaining labor on it. A repeat click just
+   * continues the same job; no separate "add labor" control needed.
    */
-  function repair(carId: string, componentId: ComponentId): void {
+  function repair(
+    carId: string,
+    componentId: ComponentId,
+    targetBand: ConditionBand = 'mint',
+  ): void {
     const car = findWorkableCar(carId)
     if (!car) return
+    const plan = planGroupRepair(
+      car,
+      componentId,
+      targetBand,
+      gameState.value.ownedEquipmentIds,
+      context.value.partIdsByGroup,
+      context.value.partsTaxonomyById,
+      context.value.equipmentById,
+    )
+    if (plan.partIds.length === 0) return
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'repair-zone',
       componentId,
-      laborSlotsRequired: repairLaborSlotsFor(car.components[componentId].condition),
+      targetBand,
+      laborSlotsRequired: plan.laborSlotsRequired,
     }
     const result = resolveJobLabor(
       gameState.value,
@@ -1017,7 +1035,15 @@ export const useGameStore = defineStore('game', () => {
       const model = context.value.modelsById[car.modelId]
       const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
       const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
-      if (!model || !part || !partFitsCar(part, model, action.componentId)) return false
+      if (
+        !model ||
+        !part ||
+        !partInstance ||
+        partInstance.band === 'scrap' ||
+        !partFitsCar(part, model, action.componentId, context.value.partsTaxonomyById)
+      ) {
+        return false
+      }
     }
 
     const existing = stagedActionsFor(carId).filter((a) => a.componentId !== action.componentId)
@@ -1059,13 +1085,16 @@ export const useGameStore = defineStore('game', () => {
     logSessionEvent('confirmCarWork', { carId })
   }
 
-  /** Inspect an auction lot - instant, reveals hidden issues for the cash travel fee only. */
-  function inspectLot(lotId: string): boolean {
-    const result = resolveInspectLot(gameState.value, lotId, context.value.economy)
+  /**
+   * Sell a scrap `PartInstance` for scrap value (Sprint 26 decision 6) - the
+   * only action available on it, since it can never be reinstalled anywhere.
+   */
+  function scrapPart(partInstanceId: string): boolean {
+    const result = resolveScrapPart(gameState.value, partInstanceId, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
-    logSessionEvent('inspectLot', { lotId })
+    logSessionEvent('scrapPart', { partInstanceId })
     return true
   }
 
@@ -1380,9 +1409,9 @@ export const useGameStore = defineStore('game', () => {
     const id = `dev-car-${grantCounter.value}`
     const car = generateAuctionCarInstance(
       model,
-      context.value.hiddenIssuesByComponent,
       id,
       createRng(grantCounter.value),
+      context.value.economy,
     )
     // Sprint 17: parking is a real indexed array now - a granted car needs an
     // actual slot, not just membership in `ownedCars` (assignToParking grows
@@ -1402,7 +1431,7 @@ export const useGameStore = defineStore('game', () => {
     const instance: PartInstance = {
       id: `dev-part-${grantCounter.value}`,
       partId: part.id,
-      conditionPercent: 100,
+      band: 'mint',
       genuinePeriod: false,
     }
     gameState.value = {
@@ -1487,7 +1516,10 @@ export const useGameStore = defineStore('game', () => {
     partName,
     componentLabel,
     carDetail,
-    effectiveConditionFor,
+    groupBandsForCar,
+    partsInGroup,
+    carPartLabel,
+    groupForCarPart,
     lotDetail,
     walkInEstimate,
     listingEstimate,
@@ -1517,10 +1549,10 @@ export const useGameStore = defineStore('game', () => {
     stageAction,
     unstageAction,
     confirmCarWork,
-    inspectLot,
     placeBid,
     buyout,
     buyPart,
+    scrapPart,
     cartItems,
     cartStandardTotalYen,
     cartExpressTotalYen,

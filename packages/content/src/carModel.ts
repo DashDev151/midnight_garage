@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ComponentIdSchema, RarityTierSchema, TagSchema, type Tag } from './tags'
+import { RarityTierSchema, TagSchema, type Tag } from './tags'
 
 const LAYOUT_TAGS = ['FR', 'FF', 'AWD', 'MR', 'RR'] as const
 const INDUCTION_TAGS = ['NA', 'Turbo', 'Supercharged'] as const
@@ -8,11 +8,6 @@ const ENGINE_FAMILY_TAGS = ['Piston', 'Rotary'] as const
 function countMatching(tags: readonly Tag[], set: readonly string[]): number {
   return tags.filter((t) => (set as readonly string[]).includes(t)).length
 }
-
-const HiddenIssueWeightSchema = z.object({
-  componentId: ComponentIdSchema,
-  weight: z.number().min(0).max(1),
-})
 
 /**
  * Naming Layer (GDD 2.4, roadmap risk R5): `spec` holds real, immutable
@@ -42,7 +37,6 @@ export const CarModelSchema = z
     tier: RarityTierSchema,
     tags: z.array(TagSchema).min(1),
     bookValueYen: z.number().int().positive(),
-    hiddenIssueWeights: z.array(HiddenIssueWeightSchema).default([]),
   })
   .refine((m) => countMatching(m.tags, LAYOUT_TAGS) === 1, {
     message: 'tags must include exactly one layout tag (FR/FF/AWD/MR/RR)',

@@ -37,7 +37,7 @@ describe('PartsInventoryScreen', () => {
     const carId = game.gameState.ownedCars[0]!.id
     game.stageAction(carId, {
       kind: 'install',
-      componentId: PARTS[0]!.componentId,
+      componentId: game.groupForCarPart(PARTS[0]!.carPartId)!,
       partInstanceId,
     })
 

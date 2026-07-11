@@ -1,10 +1,10 @@
-import { BUYERS, CARS, HIDDEN_ISSUES, PARTS, type GameState } from '@midnight-garage/content'
+import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
 import { resolveBuyPart, resolvePartDeliveries } from '../src/parts'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const CHEAPEST = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
 const CHEAPEST_EXPRESS_PRICE_YEN = Math.round(
   CHEAPEST.priceYen * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION),
@@ -48,7 +48,7 @@ describe('resolveBuyPart - express (Sprint 11 instant resolver, surcharge added 
     expect(result.state.partInventory).toHaveLength(1)
     expect(result.state.partInventory[0]).toMatchObject({
       partId: CHEAPEST.id,
-      conditionPercent: 100,
+      band: 'mint',
     })
     expect(result.log).toEqual([
       {
@@ -169,7 +169,7 @@ describe('resolvePartDeliveries (Sprint 14, day arithmetic fixed Sprint 25 task 
     expect(result.state.partInventory).toHaveLength(1)
     expect(result.state.partInventory[0]).toMatchObject({
       partId: CHEAPEST.id,
-      conditionPercent: 100,
+      band: 'mint',
     })
     expect(result.log).toEqual([
       {

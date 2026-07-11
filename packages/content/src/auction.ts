@@ -9,10 +9,13 @@ import { CarInstanceSchema } from './carInstance'
 export const AuctionTierSchema = z.enum(['local-yard', 'regional', 'premium', 'collector-network'])
 
 /**
- * A generated, not-yet-owned car offered at auction. `car` carries the
- * true (possibly unrevealed) condition and hidden issues - inspecting a
- * lot flips its issues' `revealed` flags; the sliding-scale lemon rule
- * (GDD 6.5) resolves the rest at handover if the player skipped that.
+ * A generated, not-yet-owned car offered at auction. `car` carries its true
+ * part bands directly - the hidden-issue/inspection system (and the
+ * `inspected` flag this schema used to carry) is paused and removed (Sprint
+ * 26, maintainer decision 2026-07-11): there is no reveal machinery left,
+ * a lot's parts are just plain, always-visible state (sprint26.md decision
+ * 10). Sprint 27 is what actually surfaces that per-part detail in the UI;
+ * this sprint only removes the flag that no longer means anything.
  *
  * `expiresOnDay` is the backstop close (Sprint 19 decision 1's flash/
  * standard/long duration roll, kept per Sprint 20 maintainer decision 4):
@@ -32,7 +35,6 @@ export const AuctionLotSchema = z.object({
   modelId: z.string().min(1),
   car: CarInstanceSchema,
   bookValueYen: z.number().int().positive(),
-  inspected: z.boolean().default(false),
   expiresOnDay: z.number().int().positive(),
   /** The literal price on the board - 0 means bidding hasn't opened yet.
    * First-price: whoever leads pays exactly this at the hammer. */

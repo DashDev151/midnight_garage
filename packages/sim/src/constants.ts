@@ -3,17 +3,6 @@ import type { AuctionTier, Grade, ReputationTier } from '@midnight-garage/conten
 /** GDD 3.2: base labor slots per day before any staff bonus. */
 export const PLAYER_BASE_LABOR_SLOTS = 2
 
-/**
- * Labor-slots a zone repair costs, scaled by how damaged the zone is so a
- * badly hurt zone can span multiple days against the daily slot budget
- * (making the labor-scarcity tension visible). A stock 2-slot day clears a
- * lightly damaged zone same-day; a wrecked one takes two. Provisional PoC
- * heuristic - belongs in content JSON once the job taxonomy firms up.
- */
-export function repairLaborSlotsFor(conditionPercent: number): number {
-  return Math.max(1, Math.ceil((100 - conditionPercent) / 30))
-}
-
 /** A bolt-on install is a single-slot job for now. */
 export const INSTALL_LABOR_SLOTS = 1
 
@@ -90,16 +79,18 @@ export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
 export const WALK_IN_OFFER_RANGE: readonly [number, number] = [0.85, 1.1]
 
 /**
- * Correlated per-car condition roll (Sprint 12): a car's 8 components no
- * longer roll condition independently (which let a car land a pristine
- * engine and a wrecked transmission with no relationship between them) - one
- * baseline is rolled per car, in this range, and each component jitters
- * around it (see CAR_CONDITION_JITTER). Keeps today's 30-90 overall spread.
+ * Correlated per-car condition roll (Sprint 12): a car's real parts don't
+ * roll condition independently (which let a car land a pristine engine and
+ * a wrecked transmission with no relationship between them) - one 0-100
+ * baseline is rolled per car, in this range, and each part jitters around
+ * it (see CAR_CONDITION_JITTER) before bucketing into its condition band
+ * (Sprint 26: `bandForMigratedCondition`, bands.ts). Keeps today's 30-90
+ * overall spread.
  */
 export const CAR_CONDITION_BASE_MIN = 30
 export const CAR_CONDITION_BASE_MAX = 90
 
-/** Max +/- spread each component rolls away from its car's condition baseline. */
+/** Max +/- spread each part rolls away from its car's condition baseline. */
 export const CAR_CONDITION_JITTER = 15
 
 /**
@@ -145,16 +136,22 @@ export const REPUTATION_TIER_THRESHOLDS: Readonly<Record<ReputationTier, number>
 }
 
 /**
- * Selling a "lemon" costs reputation instead: average component condition at
- * or below `LEMON_MAX_AVERAGE_CONDITION`, **or** any single component at or
- * below `LEMON_MAX_SINGLE_COMPONENT_CONDITION` regardless of the average (the
- * maintainer's own framing - a car can average fine and still hide one dead
- * component). These two thresholds can overlap (seven components at 96+ and
- * one at <=10 still averages >=85) - `saleReputationDeltaFor` checks lemon
- * first, so a car with a dead component is never scored as a quality sale.
- * Deliberately does not apply to plain lowball/cheap-but-not-broken sales -
- * only genuinely bad condition, so normal flipping stays reputation-neutral.
+ * Selling a "lemon" costs reputation instead (Sprint 15; re-based on bands,
+ * Sprint 26 decision 9): the car's cost-weighted band factor
+ * (`costWeightedBandFactor`, bands.ts) at or below `LEMON_MAX_AVERAGE_BAND_FACTOR`,
+ * **or** any single present part at `scrap` regardless of the average (the
+ * maintainer's own framing - a car can look great overall and still hide one
+ * dead part; scrap being both unrepairable and an automatic lemon trigger is
+ * intentional, the game's honest "this needs real money" state). Set above
+ * `poor`'s own band factor (economy.json's `bands.bandFactors.poor`, 0.4) -
+ * not exactly at it - so "every part poor" reliably reads as a lemon
+ * without depending on which side of an exact floating-point tie the
+ * weighted average happens to land on; still comfortably below `worn`
+ * (0.65), so an otherwise-fine car with one worn part stays neutral, not a
+ * lemon. `saleReputationDeltaFor` (carCondition.ts) checks lemon first, so a
+ * car with a dead part is never scored as a quality sale. Deliberately does
+ * not apply to plain lowball/cheap-but-not-broken sales - only genuinely bad
+ * condition, so normal flipping stays reputation-neutral.
  */
-export const LEMON_MAX_AVERAGE_CONDITION = 40
-export const LEMON_MAX_SINGLE_COMPONENT_CONDITION = 10
+export const LEMON_MAX_AVERAGE_BAND_FACTOR = 0.45
 export const LEMON_SALE_REPUTATION_PENALTY = 5

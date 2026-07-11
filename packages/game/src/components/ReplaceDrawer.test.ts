@@ -12,10 +12,8 @@ describe('ReplaceDrawer (Sprint 24 fix 5)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find(
-      (p) => p.componentId === 'suspension' && p.requiredTags.length === 0,
-    )!
-    const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
+    const wrongPart = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
     game.devGrantPart(fitting.id)
     game.devGrantPart(wrongPart.id)
 
@@ -33,9 +31,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find(
-      (p) => p.componentId === 'suspension' && p.requiredTags.length === 0,
-    )!
+    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
     game.devGrantPart(fitting.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -55,7 +51,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+    const wrongPart = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
     game.devGrantPart(wrongPart.id)
 
     const wrapper = mount(ReplaceDrawer, {

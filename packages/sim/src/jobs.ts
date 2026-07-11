@@ -6,9 +6,9 @@ import type {
   PartInstance,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
+import { bandIndex, planGroupRepair, presentPartIdsInGroup } from './bands'
 import type { SimContext } from './context'
 import { hasEquipmentFor } from './equipment'
-import { issueRepairCostYen } from './issues'
 import { partFitsCar } from './parts'
 
 /**
@@ -32,7 +32,7 @@ export function createJob(spec: NewJobSpec, id: string): Job {
     kind: spec.kind,
     componentId: spec.componentId,
     partInstanceId: spec.partInstanceId,
-    issueId: spec.issueId,
+    targetBand: spec.targetBand,
     laborSlotsRequired: spec.laborSlotsRequired,
     laborSlotsSpent: 0,
   }
@@ -66,53 +66,44 @@ interface CarEffect {
 
 /**
  * The pure "apply a completed job to a car" core, shared by owned cars and
- * service-job cars. Repair -> condition 100, installed untouched; part
- * install (Replace) -> the part moves from inventory onto the component AND
- * condition -> 100 (skipped entirely if the component is already occupied).
+ * service-job cars (Sprint 26: rewritten for the group-level "bridge",
+ * decision 13 - a job addresses a 6-way group, but its effect lands on the
+ * real per-part state).
  *
- * Sprint 13 fix: the install branch used to leave `condition` untouched - a
- * gap inherited from the pre-Sprint-12 model, where `condition` and
- * `buildSheet` were separate maps with no coupling at all, so installing a
- * part never had a way to affect condition. `docs/design/
- * repair-replace-progression.md` is explicit that Replace "sets condition ->
- * 100 and swaps installed" - Sprint 13 is exactly the sprint that makes
- * Replace a real, complete alternative restoration path to Repair, so this
- * is the sprint that closes the gap, not a silent behavior change smuggled
- * in elsewhere.
+ * Repair-zone: climbs every non-mint, non-scrap part in the group that's
+ * still below `job.targetBand` up to it - exactly the set `planGroupRepair`
+ * priced and sized at job creation (decision 5). A part reached scrap or
+ * mint between creation and completion is simply skipped now (scrap stays
+ * unrepairable; mint has nothing left to climb) rather than erroring - the
+ * job was already fully paid for and labored, so there is nothing to refund.
+ *
+ * Install-part: resolves which CarPartId the picked catalog part actually
+ * addresses (`context.partsById[...].carPartId`, decision 13's "only that
+ * one part's slot changes") and sets it to a fresh `{ band: 'mint',
+ * installed: partInstance, fitted: true }` - the `fitted: true` is a no-op
+ * for every part but forcedInduction, where it's decision 3's "fitting a kit
+ * sets fitted: true, mint."
  */
 function applyJobToCar(
   car: CarInstance,
   job: Job,
   partInventory: readonly PartInstance[],
+  context: SimContext,
 ): CarEffect {
-  const component = car.components[job.componentId]
-
   if (job.kind === 'repair-zone') {
-    return {
-      car: {
-        ...car,
-        components: { ...car.components, [job.componentId]: { ...component, condition: 100 } },
-      },
-      partInventory: [...partInventory],
-      blockedByOccupiedSlot: false,
+    const targetBand = job.targetBand
+    if (!targetBand) {
+      throw new Error(`repair-zone job ${job.id} missing targetBand`)
     }
-  }
-
-  if (job.kind === 'fix-issue') {
-    if (!job.issueId) {
-      throw new Error(`fix-issue job ${job.id} missing issueId`)
+    const parts = { ...car.parts }
+    for (const partId of presentPartIdsInGroup(car, job.componentId, context.partIdsByGroup)) {
+      const partState = parts[partId]
+      if (partState.band === 'scrap') continue
+      if (bandIndex(partState.band) >= bandIndex(targetBand)) continue
+      parts[partId] = { ...partState, band: targetBand }
     }
-    const issueId = job.issueId
-    // Sprint 22: fixes the ISSUE, never the component's own `condition` -
-    // repainting a car does not fix its apex seals. `effectiveComponentCondition`
-    // (issues.ts) is what actually reflects this fix in every consumer.
     return {
-      car: {
-        ...car,
-        hiddenIssues: car.hiddenIssues.map((issue) =>
-          issue.issueId === issueId ? { ...issue, repaired: true } : issue,
-        ),
-      },
+      car: { ...car, parts },
       partInventory: [...partInventory],
       blockedByOccupiedSlot: false,
     }
@@ -121,20 +112,28 @@ function applyJobToCar(
   if (!job.partInstanceId) {
     throw new Error(`install-part job ${job.id} missing partInstanceId`)
   }
-  if (component.installed) {
-    return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
-  }
   const partIndex = partInventory.findIndex((p) => p.id === job.partInstanceId)
   const partInstance = partIndex === -1 ? undefined : partInventory[partIndex]
   if (!partInstance) {
     throw new Error(`install-part job ${job.id} references a part not in inventory`)
   }
+  const catalogPart = context.partsById[partInstance.partId]
+  if (!catalogPart) {
+    throw new Error(
+      `install-part job ${job.id} references unknown catalog part ${partInstance.partId}`,
+    )
+  }
+  const targetPartId = catalogPart.carPartId
+  const targetState = car.parts[targetPartId]
+  if (targetState.installed) {
+    return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
+  }
   return {
     car: {
       ...car,
-      components: {
-        ...car.components,
-        [job.componentId]: { condition: 100, installed: partInstance },
+      parts: {
+        ...car.parts,
+        [targetPartId]: { band: 'mint', installed: partInstance, fitted: true },
       },
     },
     partInventory: partInventory.filter((_, i) => i !== partIndex),
@@ -143,15 +142,16 @@ function applyJobToCar(
 }
 
 /**
- * Applies a completed job's effect (zone repair or part install) to GameState.
- * The target car may be an owned car OR a customer car sitting in a service
- * job (the player works both with the same job system). Does not remove the
- * job from state.jobs - the caller (advanceDay) owns list bookkeeping.
+ * Applies a completed job's effect (group repair or part install) to
+ * GameState. The target car may be an owned car OR a customer car sitting in
+ * a service job (the player works both with the same job system). Does not
+ * remove the job from state.jobs - the caller (advanceDay) owns list
+ * bookkeeping.
  */
-export function completeJob(state: GameState, job: Job): JobCompletionResult {
+export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
   if (ownedIndex !== -1) {
-    const effect = applyJobToCar(state.ownedCars[ownedIndex]!, job, state.partInventory)
+    const effect = applyJobToCar(state.ownedCars[ownedIndex]!, job, state.partInventory, context)
     if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
     const ownedCars = [...state.ownedCars]
     ownedCars[ownedIndex] = effect.car
@@ -164,7 +164,7 @@ export function completeJob(state: GameState, job: Job): JobCompletionResult {
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === job.carInstanceId)
   if (serviceIndex !== -1) {
     const serviceJob = state.activeServiceJobs[serviceIndex]!
-    const effect = applyJobToCar(serviceJob.car, job, state.partInventory)
+    const effect = applyJobToCar(serviceJob.car, job, state.partInventory, context)
     if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
     const activeServiceJobs = [...state.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: effect.car }
@@ -186,16 +186,19 @@ export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: D
 
 /**
  * Sprint 13: the equipment + consumables gate on *starting* a new repair-zone
- * (Sprint 22: or fix-issue) job - checked once, at creation, never again.
- * Equipment ownership is monotonic (nothing in the sim ever removes it), so
- * a job that passed this gate never needs re-checking once it exists; unlike
- * the service-bay gate (which toggles as cars move and is re-checked every
- * labor application), this one only ever needs to fire at the single moment
- * a job is born. `install-part` is a no-op here (it has never charged
- * anything beyond the part itself, bought separately). Shared by the
+ * job - checked once, at creation, never again. Equipment ownership is
+ * monotonic (nothing in the sim ever removes it), so a job that passed this
+ * gate never needs re-checking once it exists.
+ *
+ * Sprint 26 decisions 5+7: repair-zone now ALSO charges the real yen cost of
+ * the work - `planGroupRepair`'s `costYen` (grades climbed times each part's
+ * `stepCostYen`, summed across every eligible part in the group) on top of
+ * consumables. A group with nothing left to repair (every part already at
+ * or above the target, or every part scrap) refuses quietly - there is
+ * nothing to create a job for. `install-part` is a no-op here (it has never
+ * charged anything beyond the part itself, bought separately). Shared by the
  * player's instant `findOrCreateJob` path and advanceDay's bot batch
- * job-creation loop - one gate, two callers, matching every other Sprint 11
- * instant-resolver precedent.
+ * job-creation loop.
  */
 export function repairJobGate(
   state: GameState,
@@ -215,29 +218,28 @@ export function repairJobGate(
   const equipment = context.equipment.find((e) => e.componentIds.includes(spec.componentId))
   const consumablesCostYen = equipment?.consumablesCostYen ?? 0
 
-  if (spec.kind === 'repair-zone') {
-    if (state.cashYen < consumablesCostYen) {
-      // Equipment owned, just can't afford the consumables right now - a
-      // silent refusal, matching every other can't-afford-it gate in this
-      // codebase (resolveBuyPart, applyBayPurchase, resolveBuyoutInstant).
-      return { ok: false, log: [] }
-    }
-    return { ok: true, state: { ...state, cashYen: state.cashYen - consumablesCostYen } }
+  if (!spec.targetBand) return { ok: false, log: [] }
+  const car = findWorkableCar(state, spec.carInstanceId)
+  if (!car) return { ok: false, log: [] }
+  const plan = planGroupRepair(
+    car,
+    spec.componentId,
+    spec.targetBand,
+    state.ownedEquipmentIds,
+    context.partIdsByGroup,
+    context.partsTaxonomyById,
+    context.equipmentById,
+  )
+  if (plan.partIds.length === 0) {
+    // Nothing repairable is below the target band right now (all mint
+    // already, or every part in the group is scrap) - a silent no-op.
+    return { ok: false, log: [] }
   }
 
-  // fix-issue (Sprint 22 decision 3): consumables + the issue's own repair
-  // cost, resolved from the actual rolled severity on the target car (the
-  // spec itself only carries the issueId, not the severity).
-  if (!spec.issueId) return { ok: false, log: [] }
-  const issue = context.hiddenIssuesById[spec.issueId]
-  if (!issue) return { ok: false, log: [] }
-  const car = findWorkableCar(state, spec.carInstanceId)
-  const revealedIssue = car?.hiddenIssues.find((ri) => ri.issueId === spec.issueId)
-  if (!revealedIssue) return { ok: false, log: [] }
-
-  const totalCostYen =
-    consumablesCostYen + issueRepairCostYen(issue, revealedIssue.severityPercent, context.economy)
+  const totalCostYen = consumablesCostYen + plan.costYen
   if (state.cashYen < totalCostYen) {
+    // Equipment owned, just can't afford the work right now - a silent
+    // refusal, matching every other can't-afford-it gate in this codebase.
     return { ok: false, log: [] }
   }
   return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
@@ -247,18 +249,16 @@ export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
 
 /**
  * Sprint 24 fix 2: the sim never validated part-component fit on install -
- * only the UI's own inline copy (`gameStore.installablePartsFor`) did,
- * leaving a staged action or a bot's queued install job free to install any
- * part onto any component. A separate, small gate beside `repairJobGate`
- * (not folded into it - that function deliberately opens with `if (kind !==
- * 'repair-zone') return ok` and, post-Sprint-22, branches per kind; fit is
- * its own concern) - exported and called from both `findOrCreateJob` below
- * (the player's instant path) AND `advanceDay`'s bot batch job-creation
- * loop directly (that loop calls `repairJobGate` inline, never
- * `findOrCreateJob`, mirroring `repairJobGate`'s own "one gate, two
- * callers" precedent). Refuses the same way an unaffordable/ungated repair
- * does: a blocked-and-logged no-op, never a throw (a bot's queued spec or
- * the dev console must not crash the tick).
+ * only the UI's own inline copy did. A separate, small gate beside
+ * `repairJobGate` - exported and called from both `findOrCreateJob` below
+ * (the player's instant path) AND `advanceDay`'s bot batch job-creation loop
+ * directly.
+ *
+ * Sprint 26 decision 6: additionally, universally rejects any `PartInstance`
+ * whose own band is `scrap` - a scrap part cannot move between cars, only be
+ * replaced or scrap-sold (`resolveScrapPart`, parts.ts). Decision 13: fit is
+ * now checked against the target GROUP (`spec.componentId`), resolved via
+ * the catalog part's own taxonomy group, not a direct componentId match.
  */
 export function installFitGate(
   state: GameState,
@@ -274,7 +274,14 @@ export function installFitGate(
   const model = car ? context.modelsById[car.modelId] : undefined
   const partInstance = state.partInventory.find((p) => p.id === spec.partInstanceId)
   const part = partInstance ? context.partsById[partInstance.partId] : undefined
-  if (!car || !model || !part || !partFitsCar(part, model, spec.componentId)) {
+  const fits =
+    car &&
+    model &&
+    part &&
+    partInstance &&
+    partInstance.band !== 'scrap' &&
+    partFitsCar(part, model, spec.componentId, context.partsTaxonomyById)
+  if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
   }
   return { ok: true }
@@ -288,10 +295,10 @@ export function installFitGate(
  * deterministically from car+kind+componentId instead of a day/index
  * counter, so "the same job" is recognizable across days without extra
  * bookkeeping. Sprint 13: a *new* repair-zone job additionally passes
- * `repairJobGate` (equipment owned + consumables affordable) before it's
- * created - `job` comes back `null` when the gate refuses, since nothing was
- * created to return. Sprint 24: a *new* install-part job likewise passes
- * `installFitGate` (fix 2).
+ * `repairJobGate` (equipment owned + consumables + repair cost affordable)
+ * before it's created - `job` comes back `null` when the gate refuses, since
+ * nothing was created to return. Sprint 24: a *new* install-part job
+ * likewise passes `installFitGate` (fix 2).
  */
 export function findOrCreateJob(
   state: GameState,
@@ -309,7 +316,7 @@ export function findOrCreateJob(
   if (!gate.ok) return { state, job: null, log: gate.log }
 
   const job = createJob(spec, id)
-  const consumablesCostYen = state.cashYen - gate.state.cashYen || undefined
+  const totalCostYen = state.cashYen - gate.state.cashYen || undefined
   return {
     state: { ...gate.state, jobs: [...gate.state.jobs, job] },
     job,
@@ -319,7 +326,7 @@ export function findOrCreateJob(
         jobId: job.id,
         carInstanceId: job.carInstanceId,
         kind: job.kind,
-        ...(consumablesCostYen ? { consumablesCostYen } : {}),
+        ...(totalCostYen ? { costYen: totalCostYen } : {}),
       },
     ],
   }
@@ -343,6 +350,7 @@ export function applyAvailableLaborToJob(
   state: GameState,
   jobId: string,
   laborAvailable: number,
+  context: SimContext,
 ): LaborApplicationResult {
   const job = state.jobs.find((j) => j.id === jobId)
   if (!job || isJobComplete(job) || laborAvailable <= 0) {
@@ -369,7 +377,7 @@ export function applyAvailableLaborToJob(
   const log: DayLogEntry[] = [{ type: 'job-progress', jobId, laborSlotsSpent: slotsToApply }]
 
   if (isJobComplete(updatedJob)) {
-    const result = completeJob(next, updatedJob)
+    const result = completeJob(next, updatedJob, context)
     next = result.state
     if (result.blockedByOccupiedSlot) {
       log.push({ type: 'job-blocked', jobId, reason: 'slot-occupied' })
@@ -381,13 +389,6 @@ export function applyAvailableLaborToJob(
         carInstanceId: updatedJob.carInstanceId,
         kind: updatedJob.kind,
       })
-      if (updatedJob.kind === 'fix-issue' && updatedJob.issueId) {
-        log.push({
-          type: 'issue-fixed',
-          carInstanceId: updatedJob.carInstanceId,
-          issueId: updatedJob.issueId,
-        })
-      }
     }
   }
 
@@ -400,9 +401,9 @@ export function applyAvailableLaborToJob(
  * needs. Composes `findOrCreateJob` + `applyAvailableLaborToJob` - the same
  * two primitives advanceDay's bot batch loop uses, just for a single click
  * instead of a whole day's queue. Sprint 13: `findOrCreateJob` can now refuse
- * to create a repair-zone job at all (no equipment / can't afford
- * consumables) - `job` comes back `null` in that case, and there's nothing
- * left to apply labor to.
+ * to create a repair-zone job at all (no equipment / can't afford it) -
+ * `job` comes back `null` in that case, and there's nothing left to apply
+ * labor to.
  */
 export function resolveJobLabor(
   state: GameState,
@@ -412,6 +413,6 @@ export function resolveJobLabor(
 ): LaborApplicationResult {
   const created = findOrCreateJob(state, spec, context)
   if (!created.job) return { state: created.state, log: created.log, laborSlotsUsed: 0 }
-  const result = applyAvailableLaborToJob(created.state, created.job.id, laborAvailable)
+  const result = applyAvailableLaborToJob(created.state, created.job.id, laborAvailable, context)
   return { ...result, log: [...created.log, ...result.log] }
 }

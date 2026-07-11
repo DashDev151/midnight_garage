@@ -49,7 +49,6 @@ export function refreshCatalogs(
     const lots = generateAuctionCatalog(
       context.models,
       tier,
-      context.hiddenIssuesByComponent,
       day,
       context.economy.AUCTION_LOTS_PER_TIER[tier],
       rng,
@@ -65,7 +64,7 @@ export function refreshCatalogs(
     context.serviceJobTypes,
     context.serviceJobCustomerNames,
     context.models,
-    context.hiddenIssuesByComponent,
+    context.economy,
     day,
     SERVICE_JOB_OFFERS_PER_REFRESH,
     SERVICE_JOB_EXPIRY_DAYS,

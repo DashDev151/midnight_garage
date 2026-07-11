@@ -2,10 +2,9 @@ import {
   BUYERS,
   CARS,
   ECONOMY,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
   type AuctionLot,
-  type DayLogEntry,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -21,17 +20,15 @@ import {
   resolvePlaceBid,
   turnoutBand,
 } from '../src/bidding'
-import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
+import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 /** A context with no interested buyers at all - forces `anchorValueYen`
  * (and therefore the demand ceiling) to 0 for every lot, so a lot never
  * opens on its own no matter how many days pass. */
-const NO_BUYERS_CONTEXT = buildSimContext(CARS, PARTS, [], HIDDEN_ISSUES)
-
-const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
+const NO_BUYERS_CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
 function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): GameState {
   return {
@@ -69,15 +66,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
 function sampleLot(seed: number) {
   const model = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
   if (!model) throw new Error('fixture car missing from seed content')
-  const [lot] = generateAuctionCatalog(
-    [model],
-    'premium',
-    HIDDEN_ISSUES_BY_COMPONENT,
-    7,
-    1,
-    createRng(seed),
-    ECONOMY,
-  )
+  const [lot] = generateAuctionCatalog([model], 'premium', 7, 1, createRng(seed), ECONOMY)
   if (!lot) throw new Error('expected exactly one lot')
   return { lot, model }
 }
@@ -105,7 +94,6 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
     const [lot] = generateAuctionCatalog(
       [model],
       'premium',
-      HIDDEN_ISSUES_BY_COMPONENT,
       7,
       1,
       createRng(startSeed + i),
@@ -654,18 +642,9 @@ describe('resolveBuyoutInstant', () => {
     expect(result.state.ownedCars).toHaveLength(1)
     expect(result.state.cashYen).toBe(state.cashYen - priceYen)
     expect(result.state.activeAuctionLots).toHaveLength(0)
-    // Sprint 22: an uninspected buyout with real rolled issues also logs the
-    // discovery beat - derived from the lot itself so this holds regardless
-    // of whether this specific seed happens to roll one.
-    const expectedLog: DayLogEntry[] = [{ type: 'lot-bought-out', lotId: lot.id, priceYen }]
-    if (lot.car.hiddenIssues.length > 0) {
-      expectedLog.push({
-        type: 'issues-discovered',
-        carInstanceId: lot.car.id,
-        issueIds: lot.car.hiddenIssues.map((i) => i.issueId),
-      })
-    }
-    expect(result.log).toEqual(expectedLog)
+    // Sprint 26: lots are transparent now - no reveal machinery, so the
+    // handover log is exactly the buyout entry.
+    expect(result.log).toEqual([{ type: 'lot-bought-out', lotId: lot.id, priceYen }])
   })
 
   it('is a no-op when unaffordable, leaving the lot on the board', () => {

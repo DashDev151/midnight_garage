@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
+import partsTaxonomy from '../data/parts-taxonomy.json'
 import parts from '../data/parts.json'
 import serviceJobs from '../data/serviceJobs.json'
 import {
   BuyersSchema,
   CarModelsSchema,
+  CarPartTaxonomySchema,
   PartsSchema,
   ServiceJobTypesSchema,
   type RarityTier,
 } from '../src'
+
+const PARTS_TAXONOMY = CarPartTaxonomySchema.parse(partsTaxonomy)
+const GROUP_BY_PART_ID = new Map(PARTS_TAXONOMY.map((entry) => [entry.id, entry.group]))
 
 describe('referential integrity', () => {
   it('every buyer statWeights covers exactly the five derived stats', () => {
@@ -17,16 +22,6 @@ describe('referential integrity', () => {
     const expectedKeys = ['power', 'handling', 'style', 'reliability', 'authenticity'].sort()
     for (const buyer of parsedBuyers) {
       expect(Object.keys(buyer.statWeights).sort()).toEqual(expectedKeys)
-    }
-  })
-
-  it('no car repeats the same component twice in hiddenIssueWeights', () => {
-    const parsedCars = CarModelsSchema.parse(cars)
-    for (const car of parsedCars) {
-      const componentIds = car.hiddenIssueWeights.map((w) => w.componentId)
-      expect(new Set(componentIds).size, `${car.id} has duplicate component weights`).toBe(
-        componentIds.length,
-      )
     }
   })
 
@@ -54,16 +49,17 @@ describe('referential integrity', () => {
   /**
    * Sprint 12: the old `wheelsInterior` slot's 3 parts were hand-reclassified
    * by name onto the new `wheels`/`interior` components (no schema check can
-   * catch a swap here - `componentId` is a valid enum value either way, so
+   * catch a swap here - `carPartId` is a valid enum value either way, so
    * this is the only thing that would catch e.g. the bucket seat accidentally
-   * landing on `wheels`).
+   * landing on a wheels part). Sprint 26 remap: wheels parts now address the
+   * specific taxonomy part (`rims`), not the old flat `wheels` component.
    */
-  it('the former wheelsInterior parts landed on the correct real component', () => {
+  it('the former wheelsInterior parts landed on the correct real part', () => {
     const parsedParts = PartsSchema.parse(parts)
     const byId = Object.fromEntries(parsedParts.map((p) => [p.id, p]))
-    expect(byId['enkai-mesh-15']?.componentId).toBe('wheels')
-    expect(byId['vulk-ve37']?.componentId).toBe('wheels')
-    expect(byId['zashiki-bucket-seat']?.componentId).toBe('interior')
+    expect(byId['enkai-mesh-15']?.carPartId).toBe('rims')
+    expect(byId['vulk-ve37']?.carPartId).toBe('rims')
+    expect(byId['zashiki-bucket-seat']?.carPartId).toBe('seats')
   })
 
   /**
@@ -78,15 +74,9 @@ describe('referential integrity', () => {
    */
   it('no repair-zone flavor line names a different component', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
-    const COMPONENT_WORDS = [
-      'engine',
-      'drivetrain',
-      'suspension',
-      'body',
-      'interior',
-      'brakes',
-      'wheels',
-    ]
+    // Sprint 26: 6 real groups (forcedInduction folded into engine, brakes
+    // folded into suspension - see tags.ts's ComponentIdSchema).
+    const COMPONENT_WORDS = ['engine', 'drivetrain', 'suspension', 'body', 'interior', 'wheels']
     for (const type of parsedTypes) {
       if (type.work.kind !== 'repair') continue
       const componentId = type.work.componentId
@@ -111,7 +101,10 @@ describe('referential integrity', () => {
    * guaranteed loss no player choice could avoid. Interim guard (payouts are
    * still hand-authored) - Sprint 29 replaces authored payouts with derived
    * ones, but this invariant survives regardless of how payout gets
-   * computed.
+   * computed. Sprint 26: an install job's `componentId` now addresses a
+   * GROUP (the "bridge," sprint26.md decision 13), so "fitting parts" means
+   * every catalog part whose own `carPartId` resolves (via the taxonomy) to
+   * that same group - not a direct id match anymore.
    */
   it('every install-kind job pays enough at worst roll to clear the cheapest fitting part by 1.2x', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
@@ -120,11 +113,11 @@ describe('referential integrity', () => {
     expect(installTypes.length).toBeGreaterThan(0)
     for (const type of installTypes) {
       if (type.work.kind !== 'install') continue
-      const componentId = type.work.componentId
-      const fittingParts = parsedParts.filter((p) => p.componentId === componentId)
+      const groupId = type.work.componentId
+      const fittingParts = parsedParts.filter((p) => GROUP_BY_PART_ID.get(p.carPartId) === groupId)
       expect(
         fittingParts.length,
-        `no catalog part fits component "${componentId}" (job type "${type.id}")`,
+        `no catalog part fits group "${groupId}" (job type "${type.id}")`,
       ).toBeGreaterThan(0)
       const cheapest = Math.min(...fittingParts.map((p) => p.priceYen))
       const [minPayout] = type.payoutRangeYen

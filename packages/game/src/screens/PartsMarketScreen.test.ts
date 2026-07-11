@@ -68,10 +68,10 @@ describe('PartsMarketScreen', () => {
     expect(game.cashYen).toBe(cashBefore)
   })
 
-  it('filters the catalog by component', async () => {
+  it('filters the catalog by part', async () => {
     const wrapper = mountScreen()
-    const engineOnly = PARTS.filter((p) => p.componentId === 'engine')
-    await wrapper.find('[data-test="filter-component"]').setValue('engine')
-    expect(wrapper.findAll('.part').length).toBe(engineOnly.length)
+    const ignitionEcuOnly = PARTS.filter((p) => p.carPartId === 'ignitionEcu')
+    await wrapper.find('[data-test="filter-component"]').setValue('ignitionEcu')
+    expect(wrapper.findAll('.part').length).toBe(ignitionEcuOnly.length)
   })
 })

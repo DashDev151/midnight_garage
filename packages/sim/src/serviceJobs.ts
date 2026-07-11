@@ -1,16 +1,16 @@
 import type {
   CarModel,
-  ComponentId,
   DayLogEntry,
+  EconomyConfig,
   Equipment,
   GameState,
   Grade,
-  HiddenIssue,
   ReputationTier,
   ServiceJob,
   ServiceJobType,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
+import { presentPartIdsInGroup } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
@@ -100,7 +100,7 @@ export function generateServiceJobOffers(
   types: readonly ServiceJobType[],
   customerNames: readonly string[],
   models: readonly CarModel[],
-  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
+  economy: EconomyConfig,
   day: number,
   count: number,
   expiresInDays: number,
@@ -117,13 +117,7 @@ export function generateServiceJobOffers(
     const type = pickServiceJobType(types, ownedEquipmentIds, equipmentById, reputationTier, rng)
     const model = rng.pick(eligibleModels)
     const [minPayout, maxPayout] = type.payoutRangeYen
-    const car = generateAuctionCarInstance(
-      model,
-      hiddenIssuesByComponent,
-      `svc-car-${day}-${i}`,
-      rng,
-      currentYear,
-    )
+    const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, economy, currentYear)
     offers.push({
       id: `svc-${day}-${i}`,
       typeId: type.id,
@@ -241,10 +235,26 @@ export function resolveServiceJobArrivals(state: GameState): ServiceJobArrivalRe
   return { state: { ...state, activeServiceJobs }, log: [] }
 }
 
-/** Whether the customer's required work has actually been done on their car. */
-export function isServiceWorkDone(job: ServiceJob): boolean {
-  const component = job.car.components[job.work.componentId]
-  return job.work.kind === 'repair' ? component.condition >= 100 : component.installed !== null
+/**
+ * Whether the customer's required work has actually been done on their car.
+ *
+ * Sprint 26 decision 13 (the group-level "bridge"): `job.work.componentId`
+ * is a 6-way group, not a single part slot - a repair job is done when
+ * every present, repairable (non-scrap) part in the group has reached
+ * `mint` (scrap parts are out of repair's reach entirely, so they don't
+ * block completion); an install job is done once ANY present part in the
+ * group has something installed (the customer's car rolls every part
+ * empty, same as an auction car, so the first install in the group is
+ * necessarily the one the player just did).
+ */
+export function isServiceWorkDone(job: ServiceJob, context: SimContext): boolean {
+  const partIds = presentPartIdsInGroup(job.car, job.work.componentId, context.partIdsByGroup)
+  if (job.work.kind === 'repair') {
+    return partIds.every(
+      (id) => job.car.parts[id].band === 'mint' || job.car.parts[id].band === 'scrap',
+    )
+  }
+  return partIds.some((id) => job.car.parts[id].installed !== null)
 }
 
 /**
@@ -269,11 +279,13 @@ export interface ServiceJobResolution {
   outcome: ServiceJobOutcome
 }
 
-/** The catalog part installed for an install job's component (undefined for repair jobs). */
+/** The catalog part installed for an install job's group (undefined for repair jobs). */
 function installedPart(job: ServiceJob, context: SimContext) {
   if (job.work.kind !== 'install') return undefined
-  const part = job.car.components[job.work.componentId].installed
-  return part ? context.partsById[part.partId] : undefined
+  const partIds = presentPartIdsInGroup(job.car, job.work.componentId, context.partIdsByGroup)
+  const installedPartId = partIds.find((id) => job.car.parts[id].installed !== null)
+  const instance = installedPartId ? job.car.parts[installedPartId].installed : null
+  return instance ? context.partsById[instance.partId] : undefined
 }
 
 /**
@@ -297,7 +309,7 @@ export function resolveServiceJob(
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
   const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
 
-  if (isServiceWorkDone(job)) {
+  if (isServiceWorkDone(job, context)) {
     const part = installedPart(job, context)
     const reputationGained = reputationForCompletion(job.baseReputation, part?.grade ?? null)
     const partCostYen = part?.priceYen

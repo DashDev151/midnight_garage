@@ -2,12 +2,13 @@ import type {
   Buyer,
   CarInstance,
   CarModel,
+  CarPartId,
+  CarPartTaxonomyEntry,
   EconomyConfig,
-  HiddenIssue,
   Part,
 } from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
-import { issueAdjustedValueYen } from './marketValue'
+import { marketValueYen } from './marketValue'
 
 const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
 
@@ -17,18 +18,18 @@ const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenti
  * (economy.json's first-pass `tasteSpread` of 0.12 bounds it to [0.88, 1.12],
  * centered near 1.0 for an average car). Kept verbatim from the pre-Sprint-21
  * fit-score math - stats stop being the value pipeline (`marketValueYen` is
- * both issue-blind and stat-blind), but they still decide who pays a bit
- * more, never whether the car is worth anything.
+ * stat-blind), but they still decide who pays a bit more, never whether the
+ * car is worth anything.
  */
 function tasteMultiplier(
   buyer: Buyer,
   model: CarModel,
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
-  issuesById: Readonly<Record<string, HiddenIssue>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): number {
-  const stats = computeDerivedStats(model, instance, partsById, issuesById, economy)
+  const stats = computeDerivedStats(model, instance, partsById, partsTaxonomy, economy)
   const weights = buyer.statWeights
   const powerCeiling = economy.statFormulas.powerNormalizationCeiling
 
@@ -61,21 +62,22 @@ function tasteMultiplier(
  * math (see sprint21.md's "Deleted outright" section) - `buyer.priceSensitivity`
  * stays in the schema/content as a reserved, currently-unused field.
  *
- * Sprint 22 decision 4: re-based from `marketValueYen` onto
- * `issueAdjustedValueYen` - every sale-side buyer valuation now sees the
- * real, issue-adjusted truth (issues are always revealed post-purchase;
- * there is no concealment mechanic once a car is owned).
+ * Sprint 26: re-based straight onto `marketValueYen` - the paused hidden-
+ * issue system's `issueAdjustedValueYen` wrapper is gone; a part's `band` is
+ * the single truth `marketValueYen` already reads via `conditionFactor`,
+ * with no separate "issue-adjusted" layer on top anymore.
  */
 export function valuateCarForBuyer(
   buyer: Buyer,
   model: CarModel,
   instance: CarInstance,
   partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
-  issuesById: Readonly<Record<string, HiddenIssue>>,
   economy: EconomyConfig,
 ): number {
-  const value = issueAdjustedValueYen(model, instance, heatPercent, partsById, issuesById, economy)
-  const taste = tasteMultiplier(buyer, model, instance, partsById, issuesById, economy)
+  const value = marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
+  const taste = tasteMultiplier(buyer, model, instance, partsById, partsTaxonomy, economy)
   return Math.round(Math.max(0, value * taste))
 }

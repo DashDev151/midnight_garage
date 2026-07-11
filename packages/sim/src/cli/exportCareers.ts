@@ -23,8 +23,8 @@ import {
   ECONOMY,
   EQUIPMENT,
   FACILITIES,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
 } from '../../../content/src/data'
@@ -114,7 +114,7 @@ function main(): void {
     CARS,
     PARTS,
     BUYERS,
-    HIDDEN_ISSUES,
+    PARTS_TAXONOMY,
     SERVICE_JOB_TYPES,
     FACILITIES,
     SERVICE_JOB_CUSTOMER_NAMES,

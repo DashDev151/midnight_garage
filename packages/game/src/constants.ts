@@ -4,7 +4,7 @@
  * in @midnight-garage/sim and are re-exported here for the game layer's
  * existing import sites.
  */
-export { INSTALL_LABOR_SLOTS, repairLaborSlotsFor } from '@midnight-garage/sim'
+export { INSTALL_LABOR_SLOTS } from '@midnight-garage/sim'
 
 /**
  * Power is raw PS (unbounded); the radar maps it onto a 0-1 spoke against

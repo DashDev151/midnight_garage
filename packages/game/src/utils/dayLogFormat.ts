@@ -33,8 +33,6 @@ export function describeLogEntry(
       return `Market heat: ${resolveModelName(entry.modelId)} ${entry.deltaPercent >= 0 ? '+' : ''}${entry.deltaPercent}%`
     case 'auction-catalog-refreshed':
       return `New ${entry.tier} auction catalog: ${entry.lotCount} lots`
-    case 'lot-inspected':
-      return `Inspected lot ${entry.lotId}`
     case 'auction-bid-placed':
       return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
     case 'auction-outbid':
@@ -66,6 +64,8 @@ export function describeLogEntry(
       return `Ordered ${entry.partId} for ${formatYen(entry.priceYen)} (arrives day ${entry.arrivesOnDay})`
     case 'part-delivered':
       return `Delivery arrived: ${entry.partId}`
+    case 'part-scrapped':
+      return `Scrapped a part for ${formatYen(entry.priceYen)}`
     case 'service-job-accepted':
       // Sprint 25 task 2: acceptance no longer places the car instantly, so
       // this reads as the customer's own promise, not a status update.
@@ -90,9 +90,5 @@ export function describeLogEntry(
       }`
     case 'equipment-purchased':
       return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
-    case 'issues-discovered':
-      return `Discovered hidden issue${entry.issueIds.length > 1 ? 's' : ''} on ${entry.carInstanceId}: ${entry.issueIds.join(', ')}`
-    case 'issue-fixed':
-      return `Fixed issue ${entry.issueId} on ${entry.carInstanceId}`
   }
 }

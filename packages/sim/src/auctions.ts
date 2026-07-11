@@ -1,15 +1,13 @@
-import type {
-  AuctionLot,
-  AuctionTier,
-  CarInstance,
-  CarModel,
-  ComponentId,
-  DayLogEntry,
-  EconomyConfig,
-  GameState,
-  HiddenIssue,
-  RarityTier,
+import {
+  ALL_CAR_PART_IDS,
+  type AuctionLot,
+  type AuctionTier,
+  type CarInstance,
+  type CarModel,
+  type EconomyConfig,
+  type RarityTier,
 } from '@midnight-garage/content'
+import { bandForMigratedCondition } from './bands'
 import { CAR_CONDITION_BASE_MAX, CAR_CONDITION_BASE_MIN, CAR_CONDITION_JITTER } from './constants'
 import type { Rng } from './rng'
 
@@ -21,17 +19,6 @@ const PROVENANCE_POOL = [
   'estate sale, low mileage claimed',
   'daily driver, honest wear',
 ] as const
-
-const COMPONENT_IDS: readonly ComponentId[] = [
-  'engine',
-  'forcedInduction',
-  'drivetrain',
-  'suspension',
-  'brakes',
-  'wheels',
-  'body',
-  'interior',
-]
 
 /**
  * GDD 4.5: Gaisha is sourced only via the (unbuilt) Import Broker, "no
@@ -80,88 +67,54 @@ export function rollAuctionDurationDays(
   return rng.int(stdMin, stdMax)
 }
 
-export function groupHiddenIssuesByComponent(
-  issues: readonly HiddenIssue[],
-): Readonly<Record<ComponentId, readonly HiddenIssue[]>> {
-  const grouped: Record<ComponentId, HiddenIssue[]> = {
-    engine: [],
-    forcedInduction: [],
-    drivetrain: [],
-    suspension: [],
-    brakes: [],
-    wheels: [],
-    body: [],
-    interior: [],
-  }
-  for (const issue of issues) {
-    grouped[issue.componentId].push(issue)
-  }
-  return grouped
-}
-
 function clampCondition(value: number): number {
   return Math.max(0, Math.min(100, value))
 }
 
 /**
- * Rolls a fresh, not-yet-owned car for an auction lot. Condition here is
- * the displayed/paperwork baseline; hidden issues are drawn (weighted by
- * the model's hiddenIssueWeights) but stay unresolved - revealed=false -
- * until inspection or the sliding-scale lemon rule at handover
- * (resolveHandoverCondition). Always stock: every component starts with
- * nothing installed, since an auction car hasn't been touched yet (GDD:
- * "buy rough, restore/build"). `currentYear` (Sprint 10, default Infinity =
- * unrestricted) clamps the rolled model year to the in-game calendar - see
- * calendar.ts - so an individual instance can't roll a still-impossible
- * year even when its model is otherwise eligible.
+ * Rolls a fresh, not-yet-owned car for an auction lot. Every component
+ * starts with nothing installed, since an auction car hasn't been touched
+ * yet (GDD: "buy rough, restore/build"). `currentYear` (Sprint 10, default
+ * Infinity = unrestricted) clamps the rolled model year to the in-game
+ * calendar - see calendar.ts.
  *
- * Sprint 12: component conditions are no longer rolled independently - a
- * car that rolled a pristine engine and a wrecked transmission with no
+ * Sprint 12: part condition is not rolled independently per part - a car
+ * that rolled a pristine engine and a wrecked transmission with no
  * relationship between them read as arbitrary rather than "this car has had
- * a hard life." One baseline is rolled per car, and each of the 8
- * components jitters around it (CAR_CONDITION_JITTER), so a car still
- * varies component-to-component but stays recognizably one car's condition.
+ * a hard life." One 0-100 baseline is rolled per car, and each of the 29
+ * real parts (Sprint 26) jitters around it (CAR_CONDITION_JITTER), then
+ * buckets into its condition band via `bandForMigratedCondition` (bands.ts)
+ * - the same percent-to-band mapping the save migration uses, reused here
+ * rather than authoring a second one (directive 16).
+ *
+ * Sprint 26 decision 2: `forcedInduction` alone also rolls `fitted` - true
+ * (with a real band, generated like every other part) on a Turbo- or
+ * Supercharged-tagged model, false on an NA car (the band is generated
+ * regardless but ignored while unfitted, per `CarInstance.parts`'s own doc
+ * comment). Decision 10: a lot's rolled bands are plain, always-visible
+ * state now - there is no reveal machinery left to layer on top.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
-  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
   id: string,
   rng: Rng,
+  economy: EconomyConfig,
   currentYear: number = Infinity,
 ): CarInstance {
-  const hiddenIssues = model.hiddenIssueWeights.flatMap((weighted) => {
-    if (rng.next() >= weighted.weight) return []
-    const candidates = hiddenIssuesByComponent[weighted.componentId]
-    if (candidates.length === 0) return []
-    const picked = rng.pick(candidates)
-    return [
-      {
-        issueId: picked.id,
-        revealed: false,
-        // Sprint 22: severity is rolled ONCE, here, and stays fixed for the
-        // instance's whole life - no handover re-roll, no discount-scaled
-        // variance. Inserting this draw shifts every later roll in the
-        // shared catalog rng (baseline condition, jitter, year, mileage,
-        // color, provenance, authenticity, and any later lot in the same
-        // batch) - accepted; golden masters re-pin at sprint end.
-        severityPercent: rng.int(picked.severityMin, picked.severityMax),
-        repaired: false,
-      },
-    ]
-  })
-
   const conditionBaseline = rng.int(CAR_CONDITION_BASE_MIN, CAR_CONDITION_BASE_MAX)
-  const components = Object.fromEntries(
-    COMPONENT_IDS.map((componentId) => [
-      componentId,
-      {
-        condition: clampCondition(
-          conditionBaseline + rng.int(-CAR_CONDITION_JITTER, CAR_CONDITION_JITTER),
-        ),
-        installed: null,
-      },
-    ]),
-  ) as CarInstance['components']
+  const isForcedInductionFitted =
+    model.tags.includes('Turbo') || model.tags.includes('Supercharged')
+
+  const parts = Object.fromEntries(
+    ALL_CAR_PART_IDS.map((partId) => {
+      const percent = clampCondition(
+        conditionBaseline + rng.int(-CAR_CONDITION_JITTER, CAR_CONDITION_JITTER),
+      )
+      const band = bandForMigratedCondition(percent, economy)
+      const fitted = partId === 'forcedInduction' ? isForcedInductionFitted : true
+      return [partId, { band, installed: null, fitted }]
+    }),
+  ) as CarInstance['parts']
 
   return {
     id,
@@ -170,9 +123,8 @@ export function generateAuctionCarInstance(
     mileageKm: rng.int(30_000, 180_000),
     color: rng.pick(COLOR_POOL),
     provenanceNote: rng.pick(PROVENANCE_POOL),
-    hiddenIssues,
     authenticityPercent: rng.int(60, 95),
-    components,
+    parts,
   }
 }
 
@@ -183,13 +135,11 @@ export function generateAuctionCarInstance(
  * in-game calendar - see calendar.ts - so a still-unreleased model can't
  * appear at auction (GDD 2.2: "new model years appear at auction over time").
  * Each lot's own duration is rolled independently off its model's rarity
- * (Sprint 19 decision 1) - replacing the old flat `expiresInDays` shared by
- * every lot in the batch.
+ * (Sprint 19 decision 1).
  */
 export function generateAuctionCatalog(
   models: readonly CarModel[],
   tier: AuctionTier,
-  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>,
   day: number,
   count: number,
   rng: Rng,
@@ -205,20 +155,13 @@ export function generateAuctionCatalog(
   for (let i = 0; i < count; i++) {
     const model = rng.pick(eligible)
     const lotId = `lot-${day}-${tier}-${i}`
-    const car = generateAuctionCarInstance(
-      model,
-      hiddenIssuesByComponent,
-      `car-${lotId}`,
-      rng,
-      currentYear,
-    )
+    const car = generateAuctionCarInstance(model, `car-${lotId}`, rng, economy, currentYear)
     lots.push({
       id: lotId,
       tier,
       modelId: model.id,
       car,
       bookValueYen: model.bookValueYen,
-      inspected: false,
       expiresOnDay: day + rollAuctionDurationDays(model.tier, rng, economy),
       currentBidYen: 0,
       leadingBidder: null,
@@ -227,71 +170,4 @@ export function generateAuctionCatalog(
     })
   }
   return lots
-}
-
-export function inspectLot(lot: AuctionLot): AuctionLot {
-  return {
-    ...lot,
-    inspected: true,
-    car: { ...lot.car, hiddenIssues: lot.car.hiddenIssues.map((i) => ({ ...i, revealed: true })) },
-  }
-}
-
-export interface InspectLotResult {
-  state: GameState
-  log: DayLogEntry[]
-}
-
-/**
- * The instant inspect resolver (Sprint 11): reveals a lot's hidden issues
- * the moment it's clicked, for its cash travel fee only - no labor cost
- * (decision 4: labor is the tightest resource in the game, and gating a
- * look-before-you-buy action behind it wasn't buying any real tension).
- * Shared by the player's instant click and advanceDay's bot batch loop.
- */
-export function resolveInspectLot(
-  state: GameState,
-  lotId: string,
-  economy: EconomyConfig,
-): InspectLotResult {
-  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
-  if (!lot || lot.inspected) return { state, log: [] }
-  const fee = economy.AUCTION_TRAVEL_FEE_YEN[lot.tier]
-  if (state.cashYen < fee) return { state, log: [] }
-  const inspected = inspectLot(lot)
-  return {
-    state: {
-      ...state,
-      cashYen: state.cashYen - fee,
-      activeAuctionLots: state.activeAuctionLots.map((l) => (l.id === lotId ? inspected : l)),
-    },
-    log: [{ type: 'lot-inspected', lotId }],
-  }
-}
-
-export interface HandoverResult {
-  car: CarInstance
-  log: DayLogEntry[]
-}
-
-/**
- * Sprint 22: replaces the old sliding-scale lemon rule outright - severity
- * is already fixed (rolled at generation, see `generateAuctionCarInstance`),
- * so handover never mutates `condition`; it only reveals what's already
- * true. An inspected lot showed the player these facts on the auction
- * screen already, so there's nothing left to report. An uninspected lot
- * that rolled at least one real issue gets a discovery beat on handover day
- * - the moment the player learns what they actually bought.
- */
-export function revealIssuesAtHandover(lot: AuctionLot, wasInspected: boolean): HandoverResult {
-  const car: CarInstance = {
-    ...lot.car,
-    hiddenIssues: lot.car.hiddenIssues.map((issue) => ({ ...issue, revealed: true })),
-  }
-  const issueIds = car.hiddenIssues.map((issue) => issue.issueId)
-  const log: DayLogEntry[] =
-    !wasInspected && issueIds.length > 0
-      ? [{ type: 'issues-discovered', carInstanceId: car.id, issueIds }]
-      : []
-  return { car, log }
 }

@@ -1,7 +1,6 @@
 import type { DayLog, DayLogEntry, GameState, Job, PublicListing } from '@midnight-garage/content'
 import type { DayActions } from './actions'
 import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
-import { resolveInspectLot } from './auctions'
 import { applyReputationDelta } from './calendar'
 import { saleQualityFor } from './carCondition'
 import { refreshCatalogs } from './catalogs'
@@ -19,7 +18,7 @@ import {
 } from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from './marketHeat'
-import { resolveBuyPart, resolvePartDeliveries } from './parts'
+import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
 import {
@@ -139,12 +138,10 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 1d. Bots' queued lot inspections - the player inspects instantly via
-  // resolveInspectLot directly from the store. No longer costs labor
-  // (Sprint 11 decision 4) - just the cash travel fee resolveInspectLot
-  // already applies internally.
-  for (const { lotId } of queuedActions.inspectLots) {
-    const result = resolveInspectLot(next, lotId, context.economy)
+  // 1d. Bots' queued scrap-part sells (Sprint 26 decision 6) - the player
+  // sells instantly via resolveScrapPart directly from the store.
+  for (const { partInstanceId } of queuedActions.scrapParts) {
+    const result = resolveScrapPart(next, partInstanceId, context)
     next = result.state
     log.push(...result.log)
   }
@@ -167,7 +164,7 @@ export function advanceDay(
   for (const assignment of queuedActions.laborAssignments) {
     if (remainingLabor <= 0) break
     const offered = Math.min(assignment.laborSlots, remainingLabor)
-    const result = applyAvailableLaborToJob(next, assignment.jobId, offered)
+    const result = applyAvailableLaborToJob(next, assignment.jobId, offered, context)
     next = result.state
     log.push(...result.log)
     remainingLabor -= result.laborSlotsUsed
@@ -185,7 +182,7 @@ export function advanceDay(
       stillOpen.push(job)
       continue
     }
-    const result = completeJob(next, job)
+    const result = completeJob(next, job, context)
     next = result.state
     if (result.blockedByOccupiedSlot) {
       log.push({ type: 'job-blocked', jobId: job.id, reason: 'slot-occupied' })

@@ -1,40 +1,58 @@
 import { z } from 'zod'
 import { PartInstanceSchema } from './part'
+import { CarPartIdSchema, ConditionBandSchema } from './tags'
 
-/** One real car component: its wear (0-100) and whatever part is installed on it, if any. */
-const ComponentSchema = z.object({
-  condition: z.number().min(0).max(100),
+/**
+ * One real car part's condition state (Sprint 26 - replaces the Sprint 12
+ * flat `condition: 0-100` model). The band IS the condition; no percent
+ * survives alongside it. `fitted` only means anything for the
+ * `forcedInduction` part: `true` (with a real rolled `band`) on
+ * `Turbo`-tagged models, `false` on NA cars where the slot is simply empty
+ * until a kit part is installed (fitting one sets `fitted: true, band:
+ * 'mint'`). Every other part is always present, `fitted` ignored for it.
+ */
+const CarPartStateSchema = z.object({
+  band: ConditionBandSchema,
   installed: PartInstanceSchema.nullable().default(null),
+  fitted: z.boolean().default(true),
 })
 
 /**
- * The 8 real car components (Sprint 12 - replaces the old split
- * `condition`/`buildSheet` maps, which had different key sets and no shared
- * identity between them; see docs/design/repair-replace-progression.md).
+ * All 29 real car parts (Sprint 26), keyed by `CarPartId` - replaces the old
+ * 8-key `components` map. Explicit per-part keys (not a generic `z.record`),
+ * matching this codebase's established preference (`ByAuctionTierSchema`
+ * etc.) for a missing key to fail validation rather than silently vanish.
  */
-const ComponentsSchema = z.object({
-  engine: ComponentSchema,
-  forcedInduction: ComponentSchema,
-  drivetrain: ComponentSchema,
-  suspension: ComponentSchema,
-  brakes: ComponentSchema,
-  wheels: ComponentSchema,
-  body: ComponentSchema,
-  interior: ComponentSchema,
-})
-
-/**
- * Sprint 22: severity is rolled once, at car generation, and stays fixed for
- * the life of the instance - `revealed` only controls whether the PLAYER has
- * seen it yet (inspection, or a post-purchase discovery beat), never whether
- * it mechanically applies. `repaired` is the only thing a `fix-issue` job
- * ever flips; it never touches the component's own `condition`.
- */
-const RevealedIssueSchema = z.object({
-  issueId: z.string().min(1),
-  revealed: z.boolean().default(false),
-  severityPercent: z.number().int().min(0).max(100).default(0),
-  repaired: z.boolean().default(false),
+const CarPartsSchema = z.object({
+  block: CarPartStateSchema,
+  internals: CarPartStateSchema,
+  headValvetrain: CarPartStateSchema,
+  camsTiming: CarPartStateSchema,
+  intake: CarPartStateSchema,
+  exhaust: CarPartStateSchema,
+  fuelSystem: CarPartStateSchema,
+  ignitionEcu: CarPartStateSchema,
+  cooling: CarPartStateSchema,
+  forcedInduction: CarPartStateSchema,
+  gearbox: CarPartStateSchema,
+  clutch: CarPartStateSchema,
+  differential: CarPartStateSchema,
+  driveline: CarPartStateSchema,
+  chassis: CarPartStateSchema,
+  dampers: CarPartStateSchema,
+  springs: CarPartStateSchema,
+  antiRollBars: CarPartStateSchema,
+  steering: CarPartStateSchema,
+  brakePadsDiscs: CarPartStateSchema,
+  brakeCalipersLines: CarPartStateSchema,
+  rims: CarPartStateSchema,
+  tyres: CarPartStateSchema,
+  panels: CarPartStateSchema,
+  paint: CarPartStateSchema,
+  underbody: CarPartStateSchema,
+  aero: CarPartStateSchema,
+  seats: CarPartStateSchema,
+  dashGauges: CarPartStateSchema,
 })
 
 export const CarInstanceSchema = z.object({
@@ -44,10 +62,14 @@ export const CarInstanceSchema = z.object({
   mileageKm: z.number().int().nonnegative(),
   color: z.string().min(1),
   provenanceNote: z.string().default(''),
-  hiddenIssues: z.array(RevealedIssueSchema).default([]),
   authenticityPercent: z.number().min(0).max(100),
-  components: ComponentsSchema,
+  parts: CarPartsSchema,
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>
-export type CarComponent = z.infer<typeof ComponentSchema>
+export type CarPartState = z.infer<typeof CarPartStateSchema>
+
+/** Every real `CarPartId`, in the same order as `CarPartIdSchema` (Sprint
+ * 26) - the canonical iteration order for anything that needs to walk every
+ * part on a car (aggregation, generation, migration). */
+export const ALL_CAR_PART_IDS = CarPartIdSchema.options

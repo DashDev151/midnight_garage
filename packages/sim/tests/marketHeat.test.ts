@@ -1,8 +1,8 @@
 import {
   BUYERS,
   CARS,
-  HIDDEN_ISSUES,
   PARTS,
+  PARTS_TAXONOMY,
   type GameState,
   type MarketLedger,
 } from '@midnight-garage/content'
@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const { HEAT_MIN, HEAT_MAX } = CONTEXT.economy.marketPressure
 
 // Two real, distinct model ids - used as "the model under test" / "the

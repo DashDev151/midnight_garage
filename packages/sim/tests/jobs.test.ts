@@ -2,9 +2,9 @@ import {
   CARS,
   EQUIPMENT,
   PARTS,
+  PARTS_TAXONOMY,
   type CarInstance,
   type GameState,
-  type HiddenIssue,
   type Job,
   type PartInstance,
 } from '@midnight-garage/content'
@@ -19,59 +19,39 @@ import {
   repairJobGate,
   resolveJobLabor,
 } from '../src/jobs'
+import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
+import { buildCarInstance, groupCarParts } from './testFixtures'
 
 // Real CARS/PARTS (not empty arrays) since Sprint 24 fix 2: `findOrCreateJob`
 // now validates install-part fit against the actual model/part catalog, so
 // an install spec needs both to resolve to something real.
-const CONTEXT = buildSimContext(CARS, PARTS, [], [], [], undefined, [], EQUIPMENT)
-
-/** Sprint 22: `fix-issue` fixture - severity 50 costs exactly `repairCostBaseYen`
- * (economy.json's `costDivisor` default). */
-const ENGINE_ISSUE: HiddenIssue = {
-  id: 'test-engine-knock',
-  componentId: 'engine',
-  severityMin: 10,
-  severityMax: 90,
-  hintText: 'a worrying knock',
-  repairCostBaseYen: 100_000,
-}
-const CONTEXT_WITH_ISSUE = buildSimContext([], [], [], [ENGINE_ISSUE], [], undefined, [], EQUIPMENT)
+const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY, [], undefined, [], EQUIPMENT)
 
 /** Equipment ids covering the components these tests repair - owned by default so job-creation
  * tests aren't incidentally blocked by the Sprint 13 equipment gate, which has its own tests below. */
 const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
 const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!
 
-function emptyComponents() {
-  return {
-    engine: { condition: 40, installed: null },
-    forcedInduction: { condition: 100, installed: null },
-    drivetrain: { condition: 40, installed: null },
-    suspension: { condition: 40, installed: null },
-    brakes: { condition: 100, installed: null },
-    wheels: { condition: 100, installed: null },
-    body: { condition: 30, installed: null },
-    interior: { condition: 40, installed: null },
-  }
-}
-
-const car: CarInstance = {
+const car: CarInstance = buildCarInstance({
   id: 'car-0001',
   modelId: 'honda-city-e-aa',
   year: 1984,
   mileageKm: 100_000,
-  color: 'White',
-  provenanceNote: '',
-  hiddenIssues: [],
   authenticityPercent: 90,
-  components: emptyComponents(),
-}
+  parts: groupCarParts({
+    engine: 'worn',
+    drivetrain: 'worn',
+    suspension: 'worn',
+    body: 'poor',
+    interior: 'worn',
+  }),
+})
 
 const sparePart: PartInstance = {
   id: 'pi-0001',
   partId: 'tanuki-street-coilovers',
-  conditionPercent: 100,
+  band: 'mint',
   genuinePeriod: false,
 }
 
@@ -108,7 +88,13 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 describe('createJob / applyLaborToJob / isJobComplete', () => {
   it('creates a job with zero labor spent', () => {
     const job = createJob(
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
       'job-1',
     )
     expect(job.laborSlotsSpent).toBe(0)
@@ -117,7 +103,13 @@ describe('createJob / applyLaborToJob / isJobComplete', () => {
 
   it('applyLaborToJob clamps at laborSlotsRequired', () => {
     const job = createJob(
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
       'job-1',
     )
     const progressed = applyLaborToJob(job, 10)
@@ -127,22 +119,28 @@ describe('createJob / applyLaborToJob / isJobComplete', () => {
 })
 
 describe('completeJob', () => {
-  it('a completed repair-zone job restores the component to 100', () => {
+  it('a completed repair-zone job climbs every non-scrap part in the group to the target band', () => {
     const job: Job = {
       id: 'job-1',
       carInstanceId: car.id,
       kind: 'repair-zone',
       componentId: 'body',
+      targetBand: 'mint',
       laborSlotsRequired: 3,
       laborSlotsSpent: 3,
     }
-    const result = completeJob(baseState(), job)
+    const result = completeJob(baseState(), job, CONTEXT)
     expect(result.blockedByOccupiedSlot).toBe(false)
-    expect(result.state.ownedCars[0]?.components.body.condition).toBe(100)
-    expect(result.state.ownedCars[0]?.components.engine.condition).toBe(40)
+    const parts = result.state.ownedCars[0]!.parts
+    expect(parts.panels.band).toBe('mint')
+    expect(parts.paint.band).toBe('mint')
+    expect(parts.underbody.band).toBe('mint')
+    expect(parts.aero.band).toBe('mint')
+    // Untouched group.
+    expect(parts.block.band).toBe('worn')
   })
 
-  it('a completed install-part job moves the part from inventory onto the component, restoring condition too (Sprint 13)', () => {
+  it('a completed install-part job moves the part from inventory onto its slot, setting it mint (Sprint 13)', () => {
     const job: Job = {
       id: 'job-2',
       carInstanceId: car.id,
@@ -152,50 +150,26 @@ describe('completeJob', () => {
       laborSlotsRequired: 1,
       laborSlotsSpent: 1,
     }
-    const result = completeJob(baseState(), job)
+    const result = completeJob(baseState(), job, CONTEXT)
     expect(result.blockedByOccupiedSlot).toBe(false)
-    expect(result.state.ownedCars[0]?.components.suspension.installed?.id).toBe(sparePart.id)
-    // Sprint 13 fix: Replace also sets condition -> 100, matching the design
-    // doc - the pre-Sprint-12 model had no way to couple install to condition.
-    expect(result.state.ownedCars[0]?.components.suspension.condition).toBe(100)
+    // The catalog part's own carPartId (dampers) is the real target slot.
+    expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
+    expect(result.state.ownedCars[0]?.parts.dampers.band).toBe('mint')
     expect(result.state.partInventory).toHaveLength(0)
   })
 
-  it('a completed fix-issue job flips repaired without touching condition (Sprint 22)', () => {
-    const carWithIssue: CarInstance = {
-      ...car,
-      hiddenIssues: [
-        { issueId: ENGINE_ISSUE.id, revealed: true, severityPercent: 50, repaired: false },
-      ],
-    }
-    const job: Job = {
-      id: 'job-4',
-      carInstanceId: car.id,
-      kind: 'fix-issue',
-      componentId: 'engine',
-      issueId: ENGINE_ISSUE.id,
-      laborSlotsRequired: 2,
-      laborSlotsSpent: 2,
-    }
-    const result = completeJob(baseState({ ownedCars: [carWithIssue] }), job)
-    expect(result.blockedByOccupiedSlot).toBe(false)
-    const fixedCar = result.state.ownedCars[0]!
-    expect(fixedCar.hiddenIssues[0]?.repaired).toBe(true)
-    // Fixing the issue is NOT a repair-zone - raw condition is untouched.
-    expect(fixedCar.components.engine.condition).toBe(40)
-  })
-
-  it('an install-part job into an occupied component is blocked, not overwritten', () => {
+  it('an install-part job into an occupied slot is blocked, not overwritten', () => {
     const occupiedCar: CarInstance = {
       ...car,
-      components: {
-        ...emptyComponents(),
-        suspension: {
-          condition: 40,
+      parts: {
+        ...car.parts,
+        dampers: {
+          band: 'worn',
+          fitted: true,
           installed: {
             id: 'pi-existing',
             partId: 'tanuki-n1-coilovers',
-            conditionPercent: 80,
+            band: 'fine',
             genuinePeriod: true,
           },
         },
@@ -210,9 +184,9 @@ describe('completeJob', () => {
       laborSlotsRequired: 1,
       laborSlotsSpent: 1,
     }
-    const result = completeJob(baseState({ ownedCars: [occupiedCar] }), job)
+    const result = completeJob(baseState({ ownedCars: [occupiedCar] }), job, CONTEXT)
     expect(result.blockedByOccupiedSlot).toBe(true)
-    expect(result.state.ownedCars[0]?.components.suspension.installed?.id).toBe('pi-existing')
+    expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe('pi-existing')
     expect(result.state.partInventory).toHaveLength(1)
   })
 })
@@ -221,7 +195,13 @@ describe('findOrCreateJob (Sprint 11)', () => {
   it('creates a new job when none is open for this car+component', () => {
     const result = findOrCreateJob(
       baseState(),
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
       CONTEXT,
     )
     expect(result.job).not.toBeNull()
@@ -234,6 +214,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
+      targetBand: 'mint' as const,
       laborSlotsRequired: 3,
     }
     const first = findOrCreateJob(baseState(), spec, CONTEXT)
@@ -245,23 +226,36 @@ describe('findOrCreateJob (Sprint 11)', () => {
   it('a different component on the same car gets its own job', () => {
     const first = findOrCreateJob(
       baseState(),
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
       CONTEXT,
     )
     const second = findOrCreateJob(
       first.state,
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'engine', laborSlotsRequired: 2 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'engine',
+        targetBand: 'mint',
+        laborSlotsRequired: 2,
+      },
       CONTEXT,
     )
     expect(second.job!.id).not.toBe(first.job!.id)
     expect(second.state.jobs).toHaveLength(2)
   })
 
-  describe('the equipment + consumables gate (Sprint 13)', () => {
+  describe('the equipment + consumables + repair-cost gate (Sprint 13; cost added Sprint 26)', () => {
     const spec = {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
+      targetBand: 'mint' as const,
       laborSlotsRequired: 3,
     }
 
@@ -278,34 +272,61 @@ describe('findOrCreateJob (Sprint 11)', () => {
       ])
     })
 
-    it('charges consumables once, deducted from cash, on successful creation', () => {
+    it("charges consumables plus the group's real repair cost, deducted from cash", () => {
+      const plan = planGroupRepair(
+        car,
+        'body',
+        'mint',
+        [WELDER.id, ENGINE_CRANE.id],
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsTaxonomyById,
+        CONTEXT.equipmentById,
+      )
+      const totalCostYen = WELDER.consumablesCostYen + plan.costYen
       const cashBefore = baseState().cashYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.job).not.toBeNull()
-      expect(result.state.cashYen).toBe(cashBefore - WELDER.consumablesCostYen)
+      expect(result.state.cashYen).toBe(cashBefore - totalCostYen)
       expect(result.log).toEqual([
         {
           type: 'job-created',
           jobId: result.job!.id,
           carInstanceId: car.id,
           kind: 'repair-zone',
-          consumablesCostYen: WELDER.consumablesCostYen,
+          costYen: totalCostYen,
         },
       ])
     })
 
-    it('does not re-charge consumables when a repeat call continues the existing job', () => {
+    it('does not re-charge when a repeat call continues the existing job', () => {
       const first = findOrCreateJob(baseState(), spec, CONTEXT)
       const second = findOrCreateJob(first.state, spec, CONTEXT)
       expect(second.state.cashYen).toBe(first.state.cashYen)
       expect(second.log).toEqual([])
     })
 
-    it('refuses silently (no log) when equipment is owned but consumables are unaffordable', () => {
-      const broke = baseState({ cashYen: WELDER.consumablesCostYen - 1 })
+    it('refuses silently (no log) when equipment is owned but the total cost is unaffordable', () => {
+      const plan = planGroupRepair(
+        car,
+        'body',
+        'mint',
+        [WELDER.id, ENGINE_CRANE.id],
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsTaxonomyById,
+        CONTEXT.equipmentById,
+      )
+      const totalCostYen = WELDER.consumablesCostYen + plan.costYen
+      const broke = baseState({ cashYen: totalCostYen - 1 })
       const result = findOrCreateJob(broke, spec, CONTEXT)
       expect(result.job).toBeNull()
       expect(result.state).toBe(broke)
+      expect(result.log).toEqual([])
+    })
+
+    it('refuses silently when the group has nothing left to repair (already fully mint)', () => {
+      const mintCar = buildCarInstance({ id: car.id, modelId: car.modelId })
+      const result = findOrCreateJob(baseState({ ownedCars: [mintCar] }), spec, CONTEXT)
+      expect(result.job).toBeNull()
       expect(result.log).toEqual([])
     })
 
@@ -325,13 +346,13 @@ describe('findOrCreateJob (Sprint 11)', () => {
     })
   })
 
-  describe('the install-fit gate (Sprint 24 fix 2)', () => {
-    it('refuses a part that does not fit the target component, state unchanged', () => {
-      const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+  describe('the install-fit gate (Sprint 24 fix 2; scrap-block added Sprint 26)', () => {
+    it('refuses a part that does not fit the target group, state unchanged', () => {
+      const wrongPart = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
       const wrongInstance: PartInstance = {
         id: 'pi-wrong',
         partId: wrongPart.id,
-        conditionPercent: 100,
+        band: 'mint',
         genuinePeriod: false,
       }
       const state = baseState({ partInventory: [sparePart, wrongInstance] })
@@ -355,9 +376,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
           reason: 'part-does-not-fit',
         },
       ])
-      // Nothing moved - inventory and the car's own components are untouched.
+      // Nothing moved - inventory and the car's own parts are untouched.
       expect(result.state.partInventory).toHaveLength(2)
-      expect(result.state.ownedCars[0]?.components.suspension.installed).toBeNull()
+      expect(result.state.ownedCars[0]?.parts.dampers.installed).toBeNull()
     })
 
     it('refuses a partInstanceId that does not exist in inventory', () => {
@@ -374,10 +395,32 @@ describe('findOrCreateJob (Sprint 11)', () => {
       )
       expect(result.job).toBeNull()
     })
+
+    it('refuses a scrap PartInstance universally, even though it fits the group (decision 6)', () => {
+      const scrapInstance: PartInstance = {
+        id: 'pi-scrap',
+        partId: sparePart.partId,
+        band: 'scrap',
+        genuinePeriod: false,
+      }
+      const state = baseState({ partInventory: [scrapInstance] })
+      const result = findOrCreateJob(
+        state,
+        {
+          carInstanceId: car.id,
+          kind: 'install-part',
+          componentId: 'suspension',
+          partInstanceId: scrapInstance.id,
+          laborSlotsRequired: 1,
+        },
+        CONTEXT,
+      )
+      expect(result.job).toBeNull()
+    })
   })
 })
 
-describe('repairJobGate (Sprint 13)', () => {
+describe('repairJobGate (Sprint 13; real cost added Sprint 26)', () => {
   it('passes install-part specs through untouched, regardless of equipment', () => {
     const state = baseState({ ownedEquipmentIds: [] })
     const gate = repairJobGate(
@@ -394,43 +437,24 @@ describe('repairJobGate (Sprint 13)', () => {
     expect(gate).toEqual({ ok: true, state })
   })
 
-  describe('fix-issue (Sprint 22)', () => {
-    const carWithIssue: CarInstance = {
-      ...car,
-      hiddenIssues: [
-        { issueId: ENGINE_ISSUE.id, revealed: true, severityPercent: 50, repaired: false },
-      ],
-    }
-    const spec = {
-      carInstanceId: car.id,
-      kind: 'fix-issue' as const,
-      componentId: 'engine' as const,
-      issueId: ENGINE_ISSUE.id,
-      laborSlotsRequired: 2,
-    }
-
-    it('refuses without the component equipment', () => {
-      const state = baseState({ ownedCars: [carWithIssue], ownedEquipmentIds: [] })
-      const gate = repairJobGate(state, spec, CONTEXT_WITH_ISSUE)
-      expect(gate.ok).toBe(false)
+  it('refuses when every part in the target group is scrap - nothing repairable', () => {
+    const scrapCar = buildCarInstance({
+      id: car.id,
+      modelId: car.modelId,
+      parts: groupCarParts({ body: 'scrap' }),
     })
-
-    it('refuses silently when cash cannot cover consumables + the issue cost', () => {
-      const state = baseState({ ownedCars: [carWithIssue], cashYen: 0 })
-      const gate = repairJobGate(state, spec, CONTEXT_WITH_ISSUE)
-      expect(gate).toEqual({ ok: false, log: [] })
-    })
-
-    it('succeeds and charges consumables + the issue repair cost (severity 50 -> exactly repairCostBaseYen)', () => {
-      const state = baseState({ ownedCars: [carWithIssue], cashYen: 1_000_000 })
-      const gate = repairJobGate(state, spec, CONTEXT_WITH_ISSUE)
-      expect(gate.ok).toBe(true)
-      if (!gate.ok) throw new Error('expected gate to pass')
-      const craneConsumables = ENGINE_CRANE.consumablesCostYen
-      expect(state.cashYen - gate.state.cashYen).toBe(
-        craneConsumables + ENGINE_ISSUE.repairCostBaseYen,
-      )
-    })
+    const gate = repairJobGate(
+      baseState({ ownedCars: [scrapCar] }),
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 1,
+      },
+      CONTEXT,
+    )
+    expect(gate.ok).toBe(false)
   })
 })
 
@@ -438,10 +462,16 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
   it('applies up to the offered labor, clamped to what the job needs, and books the daily spend', () => {
     const created = findOrCreateJob(
       baseState({ serviceBayCarIds: [car.id] }),
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
       CONTEXT,
     )
-    const result = applyAvailableLaborToJob(created.state, created.job!.id, 2)
+    const result = applyAvailableLaborToJob(created.state, created.job!.id, 2, CONTEXT)
     expect(result.laborSlotsUsed).toBe(2)
     expect(result.state.laborSlotsSpentToday).toBe(2)
     expect(result.state.jobs[0]?.laborSlotsSpent).toBe(2)
@@ -450,23 +480,35 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
   it('completes and removes the job the instant it crosses its requirement', () => {
     const created = findOrCreateJob(
       baseState({ serviceBayCarIds: [car.id] }),
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 2 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 2,
+      },
       CONTEXT,
     )
-    const result = applyAvailableLaborToJob(created.state, created.job!.id, 5)
+    const result = applyAvailableLaborToJob(created.state, created.job!.id, 5, CONTEXT)
     expect(result.laborSlotsUsed).toBe(2) // clamped to what the job needed, not the offer
     expect(result.state.jobs).toHaveLength(0)
-    expect(result.state.ownedCars[0]?.components.body.condition).toBe(100)
+    expect(result.state.ownedCars[0]?.parts.panels.band).toBe('mint')
     expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
   })
 
   it('does nothing for a car not sitting in a service bay (labor never reaches it)', () => {
     const created = findOrCreateJob(
       baseState(),
-      { carInstanceId: car.id, kind: 'repair-zone', componentId: 'body', laborSlotsRequired: 3 },
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
       CONTEXT,
     )
-    const result = applyAvailableLaborToJob(created.state, created.job!.id, 2)
+    const result = applyAvailableLaborToJob(created.state, created.job!.id, 2, CONTEXT)
     expect(result.laborSlotsUsed).toBe(0)
     expect(result.state.jobs[0]?.laborSlotsSpent).toBe(0)
     expect(result.log.some((e) => e.type === 'job-blocked')).toBe(true)
@@ -474,7 +516,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
 
   it('is a no-op for an unknown job id', () => {
     const state = baseState()
-    const result = applyAvailableLaborToJob(state, 'no-such-job', 5)
+    const result = applyAvailableLaborToJob(state, 'no-such-job', 5, CONTEXT)
     expect(result).toEqual({ state, log: [], laborSlotsUsed: 0 })
   })
 })
@@ -486,6 +528,7 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
+      targetBand: 'mint' as const,
       laborSlotsRequired: 3,
     }
     const result = resolveJobLabor(state, spec, 2, CONTEXT)
@@ -499,12 +542,13 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
+      targetBand: 'mint' as const,
       laborSlotsRequired: 3,
     }
     const first = resolveJobLabor(state, spec, 1, CONTEXT)
     const second = resolveJobLabor(first.state, spec, 5, CONTEXT)
     expect(second.state.jobs).toHaveLength(0) // completed and removed
-    expect(second.state.ownedCars[0]?.components.body.condition).toBe(100)
+    expect(second.state.ownedCars[0]?.parts.panels.band).toBe('mint')
   })
 
   it('returns the gate-refusal log and does nothing when equipment is missing', () => {
@@ -513,6 +557,7 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
+      targetBand: 'mint' as const,
       laborSlotsRequired: 3,
     }
     const result = resolveJobLabor(state, spec, 2, CONTEXT)

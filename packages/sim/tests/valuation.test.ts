@@ -1,7 +1,20 @@
-import { ECONOMY, type Buyer, type CarInstance, type CarModel } from '@midnight-garage/content'
+import {
+  ECONOMY,
+  PARTS_TAXONOMY,
+  type Buyer,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { marketValueYen } from '../src/marketValue'
 import { valuateCarForBuyer } from '../src/valuation'
+import { buildCarInstance, uniformCarParts } from './testFixtures'
+
+const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
+  PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
+) as Record<CarPartId, CarPartTaxonomyEntry>
 
 const model: CarModel = {
   id: 'toyota-supra-rz-jza80',
@@ -19,29 +32,14 @@ const model: CarModel = {
   tier: 'rare',
   tags: ['FR', 'Turbo', 'Piston', '90s', 'JDM'],
   bookValueYen: 4_200_000,
-  hiddenIssueWeights: [],
 }
 
-const stockInstance: CarInstance = {
-  id: 'car-0001',
+const stockInstance: CarInstance = buildCarInstance({
   modelId: model.id,
   year: 1994,
-  mileageKm: 80_000,
-  color: 'White',
-  provenanceNote: '',
-  hiddenIssues: [],
   authenticityPercent: 95,
-  components: {
-    engine: { condition: 90, installed: null },
-    forcedInduction: { condition: 90, installed: null },
-    drivetrain: { condition: 90, installed: null },
-    suspension: { condition: 90, installed: null },
-    brakes: { condition: 90, installed: null },
-    wheels: { condition: 90, installed: null },
-    body: { condition: 90, installed: null },
-    interior: { condition: 90, installed: null },
-  },
-}
+  parts: uniformCarParts('fine'),
+})
 
 const collector: Buyer = {
   id: 'collector',
@@ -61,43 +59,39 @@ const firstTimer: Buyer = {
   priceSensitivity: 0.9,
 }
 
+function valuate(buyer: Buyer, instance: CarInstance, heatPercent = 100) {
+  return valuateCarForBuyer(
+    buyer,
+    model,
+    instance,
+    {},
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    heatPercent,
+    ECONOMY,
+  )
+}
+
 describe('valuateCarForBuyer', () => {
   it('is pure: identical inputs produce an identical value', () => {
-    const a = valuateCarForBuyer(collector, model, stockInstance, {}, 100, {}, ECONOMY)
-    const b = valuateCarForBuyer(collector, model, stockInstance, {}, 100, {}, ECONOMY)
+    const a = valuate(collector, stockInstance)
+    const b = valuate(collector, stockInstance)
     expect(a).toBe(b)
   })
 
   it('a high-authenticity car is worth more to a Collector than a First-timer', () => {
-    const collectorValue = valuateCarForBuyer(collector, model, stockInstance, {}, 100, {}, ECONOMY)
-    const firstTimerValue = valuateCarForBuyer(
-      firstTimer,
-      model,
-      stockInstance,
-      {},
-      100,
-      {},
-      ECONOMY,
-    )
+    const collectorValue = valuate(collector, stockInstance)
+    const firstTimerValue = valuate(firstTimer, stockInstance)
     expect(collectorValue).toBeGreaterThan(firstTimerValue)
   })
 
   it('never returns a negative value', () => {
-    const wornOut: CarInstance = {
-      ...stockInstance,
-      components: {
-        engine: { condition: 0, installed: null },
-        forcedInduction: { condition: 0, installed: null },
-        drivetrain: { condition: 0, installed: null },
-        suspension: { condition: 0, installed: null },
-        brakes: { condition: 0, installed: null },
-        wheels: { condition: 0, installed: null },
-        body: { condition: 0, installed: null },
-        interior: { condition: 0, installed: null },
-      },
+    const wornOut = buildCarInstance({
+      modelId: model.id,
+      parts: uniformCarParts('scrap'),
       authenticityPercent: 0,
-    }
-    const value = valuateCarForBuyer(firstTimer, model, wornOut, {}, 100, {}, ECONOMY)
+    })
+    const value = valuate(firstTimer, wornOut)
     expect(value).toBeGreaterThanOrEqual(0)
   })
 
@@ -111,16 +105,16 @@ describe('valuateCarForBuyer', () => {
     const spread = ECONOMY.valuation.tasteSpread
 
     it('stays within [1 - tasteSpread, 1 + tasteSpread] of marketValueYen for any buyer', () => {
-      const value = marketValueYen(model, stockInstance, 100, {}, ECONOMY)
+      const value = marketValueYen(model, stockInstance, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
       for (const buyer of [collector, firstTimer]) {
-        const valuation = valuateCarForBuyer(buyer, model, stockInstance, {}, 100, {}, ECONOMY)
+        const valuation = valuate(buyer, stockInstance)
         expect(valuation).toBeGreaterThanOrEqual(Math.round(value * (1 - spread)))
         expect(valuation).toBeLessThanOrEqual(Math.round(value * (1 + spread)))
       }
     })
 
     it('is monotonic in stat fit: a buyer weighting every stat outvalues one weighting none', () => {
-      const value = marketValueYen(model, stockInstance, 100, {}, ECONOMY)
+      const value = marketValueYen(model, stockInstance, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
       const enthusiast: Buyer = {
         ...collector,
         statWeights: { power: 1, handling: 1, style: 1, reliability: 1, authenticity: 1 },
@@ -129,24 +123,8 @@ describe('valuateCarForBuyer', () => {
         ...collector,
         statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 },
       }
-      const enthusiastValue = valuateCarForBuyer(
-        enthusiast,
-        model,
-        stockInstance,
-        {},
-        100,
-        {},
-        ECONOMY,
-      )
-      const indifferentValue = valuateCarForBuyer(
-        indifferent,
-        model,
-        stockInstance,
-        {},
-        100,
-        {},
-        ECONOMY,
-      )
+      const enthusiastValue = valuate(enthusiast, stockInstance)
+      const indifferentValue = valuate(indifferent, stockInstance)
       expect(enthusiastValue).toBeGreaterThan(indifferentValue)
       // indifferent (normalizedStatScore undefined -> 0 via the sum-of-weights
       // guard) lands at the taste floor.

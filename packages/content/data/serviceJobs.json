@@ -72,7 +72,7 @@
   },
   {
     "id": "install-forced-induction",
-    "work": { "kind": "install", "componentId": "forcedInduction" },
+    "work": { "kind": "install", "componentId": "engine" },
     "payoutRangeYen": [220000, 280000],
     "baseReputation": 32,
     "flavorPool": [
@@ -105,7 +105,7 @@
   },
   {
     "id": "install-brakes",
-    "work": { "kind": "install", "componentId": "brakes" },
+    "work": { "kind": "install", "componentId": "suspension" },
     "payoutRangeYen": [50000, 70000],
     "baseReputation": 16,
     "flavorPool": [

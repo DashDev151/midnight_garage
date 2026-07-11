@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
 import {
   acquireLot,
   activeBidCount,
@@ -20,8 +21,6 @@ const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.0
 /** Same headroom style as every other bot's cash buffer - equipment purchases use it too. */
 const CASH_BUFFER_MULTIPLIER = 1.2
-const REPAIR_THRESHOLD = 90
-const REPAIR_LABOR_SLOTS = 2
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -85,14 +84,12 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const isRestored = REPAIRABLE_COMPONENTS.every(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const isRestored = REPAIRABLE_COMPONENTS.every((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (isRestored) continue
 
-    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
-      car.components[id].condition < car.components[worst].condition ? id : worst,
-    )
+    const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     if (
       !ensureEquipmentFor(
@@ -106,15 +103,15 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     )
       continue
 
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'repair-zone',
-      componentId: worstComponent,
-      laborSlotsRequired: REPAIR_LABOR_SLOTS,
-    })
-    const slots = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
-    actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
+    const slots = queueGroupRepair(
+      state,
+      car.id,
+      worstComponent,
+      car,
+      actions,
+      context,
+      laborBudget,
+    )
     laborBudget -= slots
     jobbedCarIds.add(car.id)
   }
@@ -122,8 +119,8 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
   // 4. Sell any job-free car that's fully restored, at a fair floor.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
-    const isRestored = REPAIRABLE_COMPONENTS.every(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const isRestored = REPAIRABLE_COMPONENTS.every((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (!isRestored) continue
     const model = context.modelsById[car.modelId]
@@ -134,8 +131,9 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
           model,
           context.buyers,
           context.partsById,
+          context.partsTaxonomy,
+          context.partsTaxonomyById,
           heatPercent,
-          context.hiddenIssuesById,
           context.economy,
         )
       : undefined
@@ -146,8 +144,9 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
             model,
             car,
             context.partsById,
+            context.partsTaxonomy,
+            context.partsTaxonomyById,
             heatPercent,
-            context.hiddenIssuesById,
             context.economy,
           )
         : 0

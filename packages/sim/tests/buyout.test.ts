@@ -1,27 +1,18 @@
-import { BUYERS, CARS, ECONOMY, HIDDEN_ISSUES, PARTS } from '@midnight-garage/content'
+import { BUYERS, CARS, ECONOMY, PARTS, PARTS_TAXONOMY } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
 import { computeBuyoutPriceYen } from '../src/bidding'
-import { generateAuctionCatalog, groupHiddenIssuesByComponent } from '../src/auctions'
+import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, HIDDEN_ISSUES)
-const HIDDEN_ISSUES_BY_COMPONENT = groupHiddenIssuesByComponent(HIDDEN_ISSUES)
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
 function stateWithLot(seed: number) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
-  const [lot] = generateAuctionCatalog(
-    [model],
-    'local-yard',
-    HIDDEN_ISSUES_BY_COMPONENT,
-    7,
-    1,
-    createRng(seed),
-    ECONOMY,
-  )
+  const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), ECONOMY)
   const base = createInitialGameState(CONTEXT, 1)
   return { state: { ...base, activeAuctionLots: [lot!] }, lot: lot! }
 }

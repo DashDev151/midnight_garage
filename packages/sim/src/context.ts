@@ -1,16 +1,16 @@
 import type {
   Buyer,
   CarModel,
+  CarPartId,
+  CarPartTaxonomyEntry,
   ComponentId,
   EconomyConfig,
   Equipment,
   Facilities,
-  HiddenIssue,
   Part,
   ServiceJobType,
 } from '@midnight-garage/content'
 import { ECONOMY } from '@midnight-garage/content'
-import { groupHiddenIssuesByComponent } from './auctions'
 
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
@@ -38,8 +38,13 @@ export interface SimContext {
   parts: readonly Part[]
   partsById: Readonly<Record<string, Part>>
   buyers: readonly Buyer[]
-  hiddenIssuesById: Readonly<Record<string, HiddenIssue>>
-  hiddenIssuesByComponent: Readonly<Record<ComponentId, readonly HiddenIssue[]>>
+  /** The 29-part taxonomy (Sprint 26), indexed by CarPartId - replaces the
+   * Sprint 22 hidden-issue catalogs, which are paused and removed. */
+  partsTaxonomy: readonly CarPartTaxonomyEntry[]
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>
+  /** Every CarPartId belonging to each of the 6 groups, derived once from
+   * the taxonomy rather than re-filtered on every call. */
+  partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>
   serviceJobTypes: readonly ServiceJobType[]
   serviceJobCustomerNames: readonly string[]
   facilities: Facilities
@@ -56,6 +61,16 @@ function indexById<T extends { id: string }>(items: readonly T[]): Record<string
   return result
 }
 
+function groupPartIdsByGroup(
+  taxonomy: readonly CarPartTaxonomyEntry[],
+): Record<ComponentId, readonly CarPartId[]> {
+  const result: Record<string, CarPartId[]> = {}
+  for (const entry of taxonomy) {
+    ;(result[entry.group] ??= []).push(entry.id)
+  }
+  return result as Record<ComponentId, readonly CarPartId[]>
+}
+
 /**
  * `economy` (Sprint 20 step 0) is deliberately the LAST parameter, defaulted
  * to the real parsed `economy.json` (content's `ECONOMY`) - every other
@@ -64,12 +79,17 @@ function indexById<T extends { id: string }>(items: readonly T[]): Record<string
  * changes, since a trailing default doesn't shift any existing positional
  * argument. Callers that want a different economy (none do yet) pass it
  * explicitly.
+ *
+ * Sprint 26: the 4th positional parameter, previously the (now-paused)
+ * hidden-issues catalog, is the 29-part taxonomy instead - same position,
+ * same "required" cardinality, so every existing call site's shape stays
+ * predictable even though what it means changed.
  */
 export function buildSimContext(
   models: readonly CarModel[],
   parts: readonly Part[],
   buyers: readonly Buyer[],
-  hiddenIssues: readonly HiddenIssue[],
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
   serviceJobTypes: readonly ServiceJobType[] = [],
   facilities: Facilities = DEFAULT_FACILITIES,
   serviceJobCustomerNames: readonly string[] = [],
@@ -82,8 +102,9 @@ export function buildSimContext(
     parts,
     partsById: indexById(parts),
     buyers,
-    hiddenIssuesById: indexById(hiddenIssues),
-    hiddenIssuesByComponent: groupHiddenIssuesByComponent(hiddenIssues),
+    partsTaxonomy,
+    partsTaxonomyById: indexById(partsTaxonomy) as Record<CarPartId, CarPartTaxonomyEntry>,
+    partIdsByGroup: groupPartIdsByGroup(partsTaxonomy),
     serviceJobTypes,
     serviceJobCustomerNames,
     facilities,

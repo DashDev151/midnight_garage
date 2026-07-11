@@ -5,18 +5,18 @@ import componentDisplayNames from '../data/componentDisplayNames.json'
 import economy from '../data/economy.json'
 import equipment from '../data/equipment.json'
 import facilities from '../data/facilities.json'
-import hiddenIssues from '../data/hidden-issues.json'
 import parts from '../data/parts.json'
+import partsTaxonomy from '../data/parts-taxonomy.json'
 import traits from '../data/traits.json'
 import {
   BuyersSchema,
   CarModelsSchema,
+  CarPartTaxonomySchema,
   ComponentDisplayNamesSchema,
   ComponentIdSchema,
   EconomyConfigSchema,
   EquipmentsSchema,
   FacilitiesSchema,
-  HiddenIssuesSchema,
   PartsSchema,
   TraitDefinitionsSchema,
 } from '../src'
@@ -40,10 +40,12 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
-  it('hidden-issues.json', () => {
-    const result = HiddenIssuesSchema.safeParse(hiddenIssues)
+  /** Sprint 26: the 29-part taxonomy replaces hidden-issues.json (archived,
+   * not deleted - the paused feature's data, not this sprint's schema). */
+  it('parts-taxonomy.json', () => {
+    const result = CarPartTaxonomySchema.safeParse(partsTaxonomy)
     if (!result.success) throw new Error(result.error.message)
-    expect(result.data.length).toBeGreaterThan(0)
+    expect(result.data.length).toBe(29)
   })
 
   it('traits.json', () => {
@@ -119,21 +121,21 @@ describe('seed content validates against schemas', () => {
     expect(result.data.valuation.conditionExponent).toBe(1.3)
     expect(result.data.valuation.tasteSpread).toBe(0.12)
     expect(result.data.valuation.listingPatiencePremium).toBe(1.05)
-    const weightSum = Object.values(result.data.valuation.componentValueWeights).reduce(
-      (sum, w) => sum + w,
-      0,
-    )
-    expect(weightSum).toBeCloseTo(1, 6)
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)
     expect(result.data.statFormulas.powerNormalizationCeiling).toBe(300)
-    // Sprint 23 decision 1: the clean/concours sale-quality bars and bonuses,
-    // born in JSON from day one.
-    expect(result.data.reputation.cleanSaleMinConditionPercent).toBe(85)
+    // Sprint 23 decision 1: the clean/concours sale-quality bars and bonuses.
+    // Sprint 26: clean's bar is a band now, not a condition percent.
+    expect(result.data.reputation.cleanSaleMinBand).toBe('fine')
     expect(result.data.reputation.cleanSaleBonus).toBe(2)
     expect(result.data.reputation.concoursSaleMinAuthenticityPercent).toBe(85)
     expect(result.data.reputation.concoursSaleBonus).toBe(4)
+    // Sprint 26: the banded parts model's own tunables, born in JSON.
+    expect(result.data.bands.bandFactors.mint).toBe(1.0)
+    expect(result.data.bands.bandFactors.scrap).toBe(0.15)
+    expect(result.data.bands.migrationThresholds.poor).toBe(15)
+    expect(result.data.bands.scrapValueFraction).toBe(0.05)
   })
 })
 
@@ -153,9 +155,10 @@ describe('seed content ids are unique', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('hidden issue ids', () => {
-    const ids = HiddenIssuesSchema.parse(hiddenIssues).map((h) => h.id)
+  it('parts-taxonomy ids cover exactly the 29 real parts, no duplicates', () => {
+    const ids = CarPartTaxonomySchema.parse(partsTaxonomy).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)
+    expect(ids.length).toBe(29)
   })
 
   it('equipment ids', () => {

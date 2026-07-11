@@ -1,5 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
 import {
   acquireLot,
   activeBidCount,
@@ -31,15 +32,14 @@ const CASH_BUFFER_MULTIPLIER = 1.3
  * that does one cheap repair and flips fast. */
 const MAX_TARGET_BOOK_VALUE_YEN = 300_000
 /**
- * One cheap repair (the worst zone) before flipping - not a full
- * restoration, but enough real value-add to make a flip profitable.
- * Buying near the competitive auction price and reselling the same car
- * instantly, untouched, is structurally a break-even-or-losing trade -
- * no value was added, so there's nothing to sell for more than was
+ * One cheap repair (the worst zone, fully fixed) before flipping - not a
+ * full restoration of the whole car, but enough real value-add to make a
+ * flip profitable. Buying near the competitive auction price and reselling
+ * the same car instantly, untouched, is structurally a break-even-or-losing
+ * trade - no value was added, so there's nothing to sell for more than was
  * paid. GDD 9.0's own first-flip example includes an oil change, not a
  * same-day resale.
  */
-const QUICK_REPAIR_LABOR_SLOTS = 2
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -78,10 +78,8 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
-    const worstComponent = REPAIRABLE_COMPONENTS.reduce((worst, id) =>
-      car.components[id].condition < car.components[worst].condition ? id : worst,
-    )
-    if (car.components[worstComponent].condition >= 90) continue
+    const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
+    if (isGroupAtLeast(car, worstComponent, 'mint', context.partIdsByGroup)) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
     if (
       !ensureEquipmentFor(
@@ -95,15 +93,15 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     )
       continue
 
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'repair-zone',
-      componentId: worstComponent,
-      laborSlotsRequired: QUICK_REPAIR_LABOR_SLOTS,
-    })
-    const slots = Math.min(QUICK_REPAIR_LABOR_SLOTS, laborBudget)
-    actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
+    const slots = queueGroupRepair(
+      state,
+      car.id,
+      worstComponent,
+      car,
+      actions,
+      context,
+      laborBudget,
+    )
     laborBudget -= slots
     jobbedCarIds.add(car.id)
   }

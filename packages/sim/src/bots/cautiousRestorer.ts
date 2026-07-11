@@ -1,5 +1,6 @@
 import type { AuctionTier, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
+import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
 import {
   acquireLot,
   activeBidCount,
@@ -15,7 +16,6 @@ import {
   ensureEquipmentFor,
 } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
-import { issueLaborSlots } from '../issues'
 import type { Rng } from '../rng'
 
 const MAX_CONCURRENT_CARS = 2
@@ -38,13 +38,14 @@ const FAIR_BID_MULTIPLIER = 1.1
  * inert. 1.15 keeps a real safety margin without being unaffordable.
  */
 const CASH_BUFFER_MULTIPLIER = 1.15
-const REPAIR_THRESHOLD = 90
-const REPAIR_LABOR_SLOTS = 2
 
 /**
- * Always inspects before bidding, only buys at-or-above fair price, fully
- * restores every zone before selling via list-publicly for the best
- * price the market offers (Sprint 03 decision 2).
+ * Only buys at-or-above fair price, fully restores every zone before
+ * selling via list-publicly for the best price the market offers (Sprint 03
+ * decision 2). Sprint 26: the inspect-before-bidding step it used to run is
+ * gone with the paused hidden-issue/inspection system - every lot is
+ * transparent now, so this bot's real edge is patience and a fair-price
+ * floor, not information.
  *
  * Targets regional tier once it can - Premium tier's book values (rare,
  * Y2-6M) are out of reach for a Y1.5M-capital, 2-car bot even at fair price,
@@ -101,28 +102,21 @@ export function cautiousRestorerStrategy(
     laborBudget -= slots
   }
 
-  // 2. Inspect one uninspected lot of the current target tier per day.
-  const uninspected = state.activeAuctionLots.filter(
-    (lot) => !lot.inspected && lot.tier === targetTier,
-  )
-  if (uninspected.length > 0 && laborBudget > 0) {
-    actions.inspectLots.push({ lotId: rng.pick(uninspected).id })
-    laborBudget -= 1
-  }
-
-  // 3. Join or continue a war on an already-inspected lot, if there's room
-  // for another car (Sprint 20: open bidding - `leadingBidder !== 'player'`
-  // covers both a fresh lot and one this bot was outbid on but is still
-  // willing to chase under its walk-away target).
+  // 2/3. Join or continue a war on a lot of the current target tier, if
+  // there's room for another car (Sprint 26 decision 10/12: lots are
+  // transparent now - no separate inspect step, every lot is immediately
+  // biddable). Sprint 20: open bidding - `leadingBidder !== 'player'` covers
+  // both a fresh lot and one this bot was outbid on but is still willing to
+  // chase under its walk-away target.
   if (state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS) {
-    const inspected = state.activeAuctionLots.filter(
+    const candidates = state.activeAuctionLots.filter(
       (lot) =>
-        lot.inspected &&
+        lot.tier === targetTier &&
         lot.leadingBidder !== 'player' &&
         state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
-    if (inspected.length > 0) {
-      const chosen = rng.pick(inspected)
+    if (candidates.length > 0) {
+      const chosen = rng.pick(candidates)
       const targetYen = walkAwayTargetYen(chosen, state, context, FAIR_BID_MULTIPLIER)
       acquireLot(
         state,
@@ -158,87 +152,40 @@ export function cautiousRestorerStrategy(
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
 
-    let componentToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
+    let groupToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
     for (const id of ASCENDING_EQUIPMENT_COST_COMPONENTS) {
-      if (car.components[id].condition >= REPAIR_THRESHOLD) continue
+      if (isGroupAtLeast(car, id, 'mint', context.partIdsByGroup)) continue
       if (ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER)) {
-        componentToRepair = id
+        groupToRepair = id
         break
       }
     }
-    if (!componentToRepair) continue
+    if (!groupToRepair) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'repair-zone',
-      componentId: componentToRepair,
-      laborSlotsRequired: REPAIR_LABOR_SLOTS,
-    })
-    const slotsToApply = Math.min(REPAIR_LABOR_SLOTS, laborBudget)
-    // Matches advanceDay's job-id scheme exactly: `job-${day}-${index}`.
-    actions.laborAssignments.push({
-      jobId: `job-${state.day}-${jobIndex}`,
-      laborSlots: slotsToApply,
-    })
-    laborBudget -= slotsToApply
-    carsGettingJobsToday.add(car.id)
-  }
-
-  // 4b. Fix any unrepaired hidden issue on an owned, job-free car - "fully
-  // restores every zone" (Sprint 03 decision 2) now includes issues, not
-  // just condition (Sprint 22): repainting a car does not fix its apex
-  // seals, so step 5's listing gate below additionally requires zero
-  // unrepaired issues. One issue at a time, same shape as step 4's repair
-  // loop (equipment gate, shared bay/labor budget).
-  for (const car of state.ownedCars) {
-    if (laborBudget <= 0) break
-    if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const unrepaired = car.hiddenIssues.find((ri) => !ri.repaired)
-    if (!unrepaired) continue
-    const issue = context.hiddenIssuesById[unrepaired.issueId]
-    if (!issue) continue
-    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(
-        state,
-        issue.componentId,
-        actions,
-        context,
-        equipBudget,
-        CASH_BUFFER_MULTIPLIER,
-      )
+    const slotsToApply = queueGroupRepair(
+      state,
+      car.id,
+      groupToRepair,
+      car,
+      actions,
+      context,
+      laborBudget,
     )
-      continue
-
-    const laborSlotsRequired = issueLaborSlots(unrepaired.severityPercent, context.economy)
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'fix-issue',
-      componentId: issue.componentId,
-      issueId: unrepaired.issueId,
-      laborSlotsRequired,
-    })
-    const slotsToApply = Math.min(laborSlotsRequired, laborBudget)
-    actions.laborAssignments.push({
-      jobId: `job-${state.day}-${jobIndex}`,
-      laborSlots: slotsToApply,
-    })
     laborBudget -= slotsToApply
     carsGettingJobsToday.add(car.id)
   }
 
   // 5. List fully-restored, job-free cars publicly for the best price -
-  // "fully restored" also requires zero unrepaired hidden issues (Sprint 22).
+  // "fully restored" means every group's every present part has reached
+  // mint (Sprint 26: the old hidden-issue "and issue-free" clause is gone
+  // with the paused system).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every(
-      (id) => car.components[id].condition >= REPAIR_THRESHOLD,
+    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every((id) =>
+      isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
-    const hasUnrepairedIssue = car.hiddenIssues.some((ri) => !ri.repaired)
-    if (isRestored && !hasUnrepairedIssue) {
+    if (isRestored) {
       actions.listForSale.push({ carInstanceId: car.id })
     }
   }

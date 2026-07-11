@@ -62,22 +62,20 @@ describe('CarDetailScreen', () => {
     const { wrapper } = await mountAt(id)
     expect(wrapper.find('svg.radar').exists()).toBe(true)
     expect(wrapper.text()).toContain(game.carsDetailed[0]!.displayName)
-    // Every non-full, non-busy component renders a Repair button (Sprint 18).
+    // Every group with at least one non-mint, non-scrap part renders a Repair button (Sprint 18).
     const componentIds: ComponentId[] = [
       'engine',
-      'forcedInduction',
       'drivetrain',
       'suspension',
-      'brakes',
       'wheels',
       'body',
       'interior',
     ]
     for (const componentId of componentIds) {
-      const condition = game.gameState.ownedCars[0]!.components[componentId].condition
-      expect(wrapper.find(`[data-test="stage-repair-${componentId}"]`).exists()).toBe(
-        condition < 100,
-      )
+      const needsRepair = game
+        .partsInGroup(id, componentId)
+        .some((row) => row.band !== 'mint' && row.band !== 'scrap')
+      expect(wrapper.find(`[data-test="stage-repair-${componentId}"]`).exists()).toBe(needsRepair)
     }
   })
 
@@ -105,16 +103,28 @@ describe('CarDetailScreen', () => {
     // Confirm actually spent labor against a real job - either it finished in this
     // same confirm (today's budget covered it) or it's left open, continuable below.
     expect(
-      game.gameState.ownedCars[0]!.components.body.condition === 100 ||
+      game.carDetail(car.id)!.groupBands.body === 'mint' ||
         game.gameState.jobs.some((j) => j.componentId === 'body'),
     ).toBe(true)
 
-    // End enough days for the repair to finish (bounded loop).
-    for (let i = 0; i < 6 && game.gameState.ownedCars[0]!.components.body.condition < 100; i++) {
+    // End Day is a pure day-boundary tick (Sprint 11) - it never auto-feeds
+    // labor into an already-open job. A group repair spanning every part in
+    // the group (Sprint 26) can easily need more than one day's labor
+    // budget, so the player returns each day and clicks "Continue repair"
+    // (the componentBusy branch's instant `continueJob` control,
+    // data-test="repair-body") to feed that day's labor into the still-open
+    // job - a bounded loop over that real flow.
+    for (let i = 0; i < 6 && game.carDetail(car.id)!.groupBands.body !== 'mint'; i++) {
       await wrapper.find('[data-test="end-day"]').trigger('click')
       await flushPromises()
+      if (game.carDetail(car.id)!.groupBands.body === 'mint') break
+      const continueBtn = wrapper.find('[data-test="repair-body"]')
+      if (continueBtn.exists()) {
+        await continueBtn.trigger('click')
+        await flushPromises()
+      }
     }
-    expect(game.gameState.ownedCars[0]!.components.body.condition).toBe(100)
+    expect(game.carDetail(car.id)!.groupBands.body).toBe('mint')
   })
 
   it('unstaging a repair costs nothing and creates no job', async () => {
@@ -153,7 +163,7 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      const part = PARTS.find((p) => p.componentId === 'suspension' && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
 
       const { wrapper } = await mountAt(id)
@@ -176,7 +186,7 @@ describe('CarDetailScreen', () => {
       const car = game.gameState.ownedCars[0]!
       const componentId = 'suspension'
       // A part with no required tags always fits.
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
       const cashBefore = game.cashYen
 
@@ -186,7 +196,7 @@ describe('CarDetailScreen', () => {
 
       expect(wrapper.text()).toContain('staged:')
       expect(game.cashYen).toBe(cashBefore) // free until Confirm
-      expect(car.components[componentId].installed).toBeNull() // not real yet
+      expect(car.parts.dampers.installed).toBeNull() // not real yet
       // Selecting closes the drawer.
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
     })
@@ -196,7 +206,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const componentId = 'suspension'
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
 
       const { wrapper } = await mountAt(id)
@@ -213,7 +223,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       // A brakes-only part doesn't fit suspension.
-      const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+      const wrongPart = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
       game.devGrantPart(wrongPart.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -230,7 +240,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const componentId = 'suspension'
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -240,9 +250,7 @@ describe('CarDetailScreen', () => {
       await wrapper.vm.$nextTick()
 
       await wrapper.find('[data-test="confirm-work"]').trigger('click')
-      expect(game.gameState.ownedCars[0]!.components[componentId].installed?.id).toBe(
-        partInstanceId,
-      )
+      expect(game.gameState.ownedCars[0]!.parts.dampers.installed?.id).toBe(partInstanceId)
       expect(game.gameState.partInventory).toHaveLength(0)
     })
 
@@ -252,7 +260,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[1]?.id ?? CARS[0]!.id)
       const [carA, carB] = game.gameState.ownedCars
       const componentId = 'suspension'
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -274,7 +282,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const componentId = 'suspension'
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -295,7 +303,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       // Pick a brakes-only part from suspension's drawer (doesn't fit suspension).
-      const wrongPart = PARTS.find((p) => p.componentId === 'brakes')!
+      const wrongPart = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
       game.devGrantPart(wrongPart.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -308,7 +316,7 @@ describe('CarDetailScreen', () => {
       // silent no-op (early return); now it opens brakes' own drawer.
       await wrapper.find('[data-test="close-drawer"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
-      await wrapper.find('[data-test="replace-brakes"]').trigger('click')
+      await wrapper.find('[data-test="replace-engine"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
     })
 
@@ -317,7 +325,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const componentId = 'suspension'
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 
@@ -338,7 +346,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const componentId = 'suspension'
-      const part = PARTS.find((p) => p.componentId === componentId && p.requiredTags.length === 0)!
+      const part = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory[0]!.id
 

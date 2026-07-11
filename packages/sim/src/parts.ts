@@ -1,5 +1,7 @@
 import type {
   CarModel,
+  CarPartId,
+  CarPartTaxonomyEntry,
   ComponentId,
   DayLogEntry,
   GameState,
@@ -7,22 +9,40 @@ import type {
   PartInstance,
   PendingPartOrder,
 } from '@midnight-garage/content'
+import { scrapValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
 
 export type DeliverySpeed = 'standard' | 'express'
 
 /**
- * Sprint 24 fix 2: the one real fit rule (right component slot + every
- * required tag present on the model) - previously only enforced by the UI's
- * own inline copy (`gameStore.installablePartsFor`), so the sim itself (a
+ * Sprint 24 fix 2: the one real fit rule (right group slot + every required
+ * tag present on the model) - previously only enforced by the UI's own
+ * inline copy (`gameStore.installablePartsFor`), so the sim itself (a
  * staged action, or a bot's queued install job) never actually validated
  * fit and would install any part onto any component if asked. Sim-level
  * source of truth now; the UI predicate calls this instead of duplicating it.
+ *
+ * Sprint 26: a catalog part's group is derived from `carPartId` via the
+ * taxonomy (decision 13's "bridge" - a part addresses one specific
+ * `CarPartId`, but staging/jobs still address the 6-way group it belongs
+ * to), not stored redundantly on `Part` itself. Note: this only checks
+ * catalog-level fit (tags/group); a `PartInstance`'s own `band` (scrap is
+ * universally uninstallable, decision 6) is checked separately by the
+ * caller (`jobs.ts`'s `installFitGate`), since this function only ever sees
+ * the catalog `Part`, never a specific owned instance.
  */
-export function partFitsCar(part: Part, model: CarModel, componentId: ComponentId): boolean {
+export function partFitsCar(
+  part: Part,
+  model: CarModel,
+  componentId: ComponentId,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+): boolean {
+  const taxonomyEntry = partsTaxonomyById[part.carPartId]
   return (
-    part.componentId === componentId && part.requiredTags.every((tag) => model.tags.includes(tag))
+    !!taxonomyEntry &&
+    taxonomyEntry.group === componentId &&
+    part.requiredTags.every((tag) => model.tags.includes(tag))
   )
 }
 
@@ -82,7 +102,7 @@ export function resolveBuyPart(
   const partInstance: PartInstance = {
     id: `part-${state.day}-${state.partInventory.length}`,
     partId: part.id,
-    conditionPercent: 100,
+    band: 'mint',
     genuinePeriod: false,
   }
   return {
@@ -142,7 +162,7 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
     const partInstance: PartInstance = {
       id: `part-${state.day}-${partInventory.length}`,
       partId: order.partId,
-      conditionPercent: 100,
+      band: 'mint',
       genuinePeriod: false,
     }
     partInventory = [...partInventory, partInstance]
@@ -156,4 +176,40 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
 
   if (log.length === 0) return { state, log: [] }
   return { state: { ...state, partInventory, pendingPartOrders: stillPending }, log }
+}
+
+export interface ScrapPartResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Sprint 26 decision 6: the only action available on a scrap `PartInstance`
+ * sitting in inventory (put there by removing it from a car being
+ * replaced) - it can never be reinstalled anywhere (`installFitGate`
+ * rejects it universally), so selling it for `scrapValueYen` ("pennies on
+ * the yen" against its stock-equivalent replacement cost) is the only way
+ * to recover any value from it. A no-op if the instance doesn't exist or
+ * isn't actually scrap.
+ */
+export function resolveScrapPart(
+  state: GameState,
+  partInstanceId: string,
+  context: SimContext,
+): ScrapPartResult {
+  const instance = state.partInventory.find((p) => p.id === partInstanceId)
+  if (!instance || instance.band !== 'scrap') return { state, log: [] }
+  const part = context.partsById[instance.partId]
+  const taxonomyEntry = part ? context.partsTaxonomyById[part.carPartId] : undefined
+  if (!taxonomyEntry) return { state, log: [] }
+
+  const priceYen = scrapValueYen(taxonomyEntry, context.economy)
+  return {
+    state: {
+      ...state,
+      cashYen: state.cashYen + priceYen,
+      partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+    },
+    log: [{ type: 'part-scrapped', partInstanceId, priceYen }],
+  }
 }

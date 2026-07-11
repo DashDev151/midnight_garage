@@ -173,7 +173,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     tier: AuctionTierSchema,
     lotCount: z.number().int().nonnegative(),
   }),
-  z.object({ type: z.literal('lot-inspected'), lotId: z.string().min(1) }),
   z.object({
     type: z.literal('auction-bid-placed'),
     lotId: z.string().min(1),
@@ -203,28 +202,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('lot-bought-out'),
     lotId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
-  }),
-  /**
-   * Sprint 22: fires on handover ONLY when the car was bought uninspected
-   * and rolled at least one hidden issue - inspecting beforehand means the
-   * same facts were already on the auction screen, so there's no surprise
-   * left to report.
-   */
-  z.object({
-    type: z.literal('issues-discovered'),
-    carInstanceId: z.string().min(1),
-    issueIds: z.array(z.string().min(1)).min(1),
-  }),
-  /**
-   * Sprint 22: a `fix-issue` job's completion - distinct from `job-completed`
-   * (which still fires alongside it, per the existing job lifecycle) so the
-   * day report/modal can name the fixed issue without every job-completion
-   * consumer needing to know about issues at all.
-   */
-  z.object({
-    type: z.literal('issue-fixed'),
-    carInstanceId: z.string().min(1),
-    issueId: z.string().min(1),
   }),
   z.object({
     type: z.literal('service-job-accepted'),
@@ -286,6 +263,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     orderId: z.string().min(1),
     partId: z.string().min(1),
     partInstanceId: z.string().min(1),
+  }),
+  /** Sprint 26 decision 6: a scrap `PartInstance` sold for scrap value - the
+   * only action available on it, since it can never be reinstalled. */
+  z.object({
+    type: z.literal('part-scrapped'),
+    partInstanceId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal('car-moved'),
