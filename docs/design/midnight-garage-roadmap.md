@@ -1,6 +1,6 @@
 # MIDNIGHT GARAGE - Development Roadmap
 ## Concept → Shipped Game - v1.0
-*Companion to the Game Design Document v0.5. This document is written to be self-contained and executable: every sprint has a deliverable and a definition of done, every risk has a mitigation, every gate has a kill/pivot criterion.*
+*Companion to the Game Design Document v0.6. This document is written to be self-contained and executable: every sprint has a deliverable and a definition of done, every risk has a mitigation, every gate has a kill/pivot criterion.*
 
 ---
 
@@ -61,7 +61,7 @@ WebKit's Intelligent Tracking Prevention can evict script-writable storage - **i
 
 ### R3 - Solo-dev scope creep & burnout (HIGH)
 The GDD is already ambitious. Every JDM rabbit hole ("we NEED kanjo Civics… and dori parks… and an Osaka expansion") is a month.
-**Mitigation:** the GDD v0.4 feature set is **frozen** for v1.0. New ideas go to `IDEAS.md`, cost-estimated, and scheduled post-launch only. Sprint plan has explicit *slack sprints* (13, 23). One "small win" per sprint (something visible/shippable) to protect motivation. Public devlog cadence (§7) creates external accountability.
+**Mitigation:** the GDD v0.6 feature set is **frozen** for v1.0. New ideas go to `IDEAS.md`, cost-estimated, and scheduled post-launch only. Sprint plan has explicit *slack sprints* (13, 23). One "small win" per sprint (something visible/shippable) to protect motivation. Public devlog cadence (§7) creates external accountability.
 
 ### R4 - The economy might not be fun (HIGH)
 Management sims live or die on the money curve. Too easy = idle mush; too tight = spreadsheet misery. You cannot feel this from code review.
@@ -102,10 +102,29 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 > **phase backlog**, not a calendar. What remains true and outstanding from this plan: the P2 **Fun
 > Gate** (strangers playing voluntarily) has **not** been run - all playtesting so far is
 > maintainer-only - and the "no art/audio money before the Fun Gate" rule still governs; the P3 art
-> phases haven't started; staff, commissions, events, the Rival, and era/280PS (this plan's Sprints
-> 13–18) remain unscheduled v1.0 scope. Partial mappings so far: actual Sprints 15/16 deliver the rep
-> tiers / act gating / equipment-unlock half of this plan's Sprint 14; actual Sprint 19's multi-day
+> phases haven't started; staff, events, the Rival, and era/280PS (this plan's Sprints 13, 15-18)
+> remain unscheduled v1.0 scope. Partial mappings so far: actual Sprints 15/16 delivered the rep
+> tiers / act gating half of this plan's Sprint 14 (the "equipment-unlock" half of that original
+> mapping is now superseded - see the 2026-07-12 update below); actual Sprint 19's multi-day
 > decision-paced bidding is the surviving, reflex-free descendant of Sprint 6's "live bid escalation."
+>
+> **Update (2026-07-12).** Two more real-sprint arcs have shipped against this backlog since the note
+> above. The **Loop Rework arc (actual Sprints 25-31)** rebuilt the repair/replace and market loops
+> end to end (banded condition model, transparent cost-weighted value, service-jobs framework v2,
+> living auctions) and, in doing so, delivered this plan's Sprint 14 "Commissions" line in full -
+> service jobs exist now with fully **derived** payouts (never authored, never a "brief" the player
+> is scored against); see `docs/sprints/sprint29.md` onward. The **Progression Rework arc (actual
+> Sprints 36-39)** replaced this plan's Sprint 14 "equipment purchases as unlocks" framing entirely:
+> content is now gated by six always-owned, always-upgradeable tool tiers, never a single-purchase
+> unlock ladder - see `docs/design/progression-bible.md`, now the canonical progression source,
+> superseding this plan's framing wherever the two disagree. That arc also introduced Specialty and
+> Techniques, a horizontal, per-discipline identity axis with no equivalent line item anywhere in
+> this plan; treat it as beyond-plan enrichment of Sprint 9/14's territory, not a mapping. What
+> Sprint 13 promised - staff hire/stats/traits/assignment, and skill/XP-driven efficiency for staff
+> *and* player - remains **entirely unbuilt**: Specialty/Techniques cover the "player growth that
+> optimizes, never gates" spirit of that sprint's second half, but no staff system exists yet.
+> Events, the Rival, and era/280PS (this plan's Sprints 15-18) are likewise still unbuilt. The Fun
+> Gate still has not been run against strangers; the P3 art phases still have not started.
 
 ### PHASE 0 - Foundations
 
@@ -162,8 +181,8 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 
 ### PHASE 4 - Systems Complete
 
-- **Sprint 13 - SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc). **Includes the skill/XP progression system** - learn-by-doing growth for staff *and* the player character, where skill *optimizes* (efficiency/quality) but never *unlocks* tiers (tools + rep still do that). Player-character skill may debut earlier alongside the service-jobs feature. Full design: `docs/design/skill-progression.md`.
-- **Sprint 14 - Commissions & rep tiers** (briefs, scoring, act gating, equipment purchases as unlocks).
+- **Sprint 13 - SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc). **Includes the skill/XP progression system** - learn-by-doing growth for staff *and* the player character, where skill *optimizes* (efficiency/quality) but never *unlocks* tiers (tools + rep still do that). Still fully unbuilt as of actual Sprint 39; see the 2026-07-12 update in the Numbering reconciliation note above and `docs/design/skill-progression.md`.
+- **Sprint 14 - Commissions & rep tiers** (briefs, scoring, act gating, equipment purchases as unlocks). Superseded in practice - see the Numbering reconciliation note above: commissions shipped as derived-payout service jobs (Loop Rework arc), never a "briefs, scoring" system, and "equipment purchases as unlocks" was replaced entirely by the six-tool-tier model (Progression Rework arc).
 - **Sprint 15 - Events I:** night meet, show & shine (incl. Gentleman's Class), magazine features → market heat spikes.
 - **Sprint 16 - Events II:** touge nights (pace dial, sector-by-sector cutaway resolution, damage), part scouts.
 - **Sprint 17 - Rival shop AI** (auction bidding personality, event presence, offers) + private meetings + engine swaps & dyno tune screen.

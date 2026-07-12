@@ -1,5 +1,10 @@
 # MIDNIGHT GARAGE
-## Game Design Document - v0.5
+## Game Design Document - v0.6
+
+*v0.6 (2026-07-12): sections 3.2, 6.1, 9.0, and 9.1 amended to match the shipped Progression
+Rework arc (Sprints 36-39) - see `docs/design/progression-bible.md` (now the canonical
+progression source) and `docs/design/gdd-amendment-progression.md` (the reviewed amendment this
+revision applies).*
 
 **Genre:** Medium-weight management sim with light idle elements
 **Platform:** Browser (desktop-first, playable on mobile)
@@ -79,7 +84,7 @@ The day advances **only when the player ends it.** One day = one turn. A week is
 4. **END DAY.** Work progresses, deliveries arrive, passive income resolves, events fire, autosave.
 
 ### 3.2 Labor Slots (the core resource)
-Each character (player + staff) provides labor slots per day (base 2, more with skill/tools). Jobs are defined in labor-slot costs, e.g.:
+Each character (player + staff) provides labor slots per day (base 6, retuned from the original placeholder during balancing). Tool tier does not add MORE slots - it makes each slot cover MORE work: repairing a part costs `ceil(grades-to-climb / tool tier)` labor slots, so a tier-3 line clears the same repair in a third the slots a tier-1 line needs (§9.0). "More with skill" remains a planned but unbuilt staff/player-skill system (`docs/design/skill-progression.md`) that would compose on top of tool tier, never replace it. Jobs are defined in labor-slot costs, e.g.:
 
 - Inspect an auction car properly: 1 slot (else you bid on photos alone - risk!)
 - Swap coilovers: 1 slot
@@ -175,7 +180,7 @@ Individual gaskets, torque specs, fluid types, per-bolt disassembly. Labor slots
 
 ### 6.1 Money In
 1. **Flipping** - buy rough, restore/build, sell to the right buyer.
-2. **Commissions** - customers bring a car + a brief + a budget ("make my S14 analog a touge weapon, ¥900k"). Score vs. brief drives payout and rep.
+2. **Commissions (service jobs)** - customers bring a car and a task list (repair to a target condition, or install a graded part) drawn from an authored per-discipline ladder (bolt-on → involved → fabrication-grade), gated by tool tier and, at the top, by earned specialty/technique (§9.0-9.1). Payout is fully DERIVED from the real task cost plus a margin roll - never an authored flat sum, and never a "brief" the player is scored against - so a job is either completed (paid, plus reputation and specialty) or not (failed: no pay, reputation and specialty penalty).
 3. **Service Bay** - passive (see §3.4).
 4. **Event winnings** - touge/show purses (modest cash, big rep).
 
@@ -255,7 +260,7 @@ The game must *feel* like climbing from grease-stained nobody to Wangan royalty.
 | **3. Big Power** | Known → Respected | Engine swaps, 400–600hp builds, touge campaigns, Import Broker opens, the Rival notices you. Service bay fully passive. | First dyno pull past 500hp |
 | **4. Works Level** | Respected → Legend | **1000hp Wangan-spec JZA80 top-speed builds. Full time-attack works cars** (R32/R34 with aero you fabricate in-house). Legend restorations. | Your car on a magazine cover |
 
-**How the gate works - Tools, not levels.** Job tiers are unlocked by shop equipment purchases, each a visible pixel upgrade in the garage: **Basic tools → Two-post lift → Dyno cell → Engine crane & stand → TIG welder/fab corner → Aero/composites bench.** You can't build what you can't lift. Equipment + staff skill + rep gate the ceiling; money alone never skips the climb.
+**How the gate works - tools, tiered, never locked.** Six always-owned tool lines, one per component group (engine, drivetrain, suspension, wheels, body, interior), each three tiers - e.g. suspension: trolley jack & axle stands → two-post lift → drive-on alignment lift. Tier 1 of every line is owned from day one: nothing is ever fully locked out, only slow. Upgrading a line (cash-gated only, no reputation gate) buys labor speed on that line's own work AND raises the ceiling for that line's fabrication-grade ("built," not "bolt-on") jobs specifically - swapping a turbo on an already-boosted car is tier-1 bolt-on work; converting a naturally-aspirated engine to forced induction needs engine tier 3. Reputation gates breadth (which job tiers and auction tiers are even offered) separately from a tool line's own depth ceiling; money alone still never skips either climb. Full model: `docs/design/progression-bible.md`.
 
 **Power ceiling by act:** stock-ish (Act 1) → ~250hp street (Act 2) → ~600hp (Act 3) → 1000hp+ full race (Act 4). High-hp builds demand supporting mods (fuel, cooling, drivetrain grades) or Reliability collapses - a 1000hp build is a *project*, ~40 labor slots of earned mastery.
 
@@ -265,6 +270,8 @@ The game must *feel* like climbing from grease-stained nobody to Wangan royalty.
 
 ### 9.1 Reputation Tiers
 **Unknown → Local → Known → Respected → Legend** (5 tiers, mapping to the acts above). Rep gates: auction access, districts, staff quality, commission budgets, Legend leads. Rep comes from great builds delivered, events, features - not raw cash.
+
+**Specialty (added): the horizontal complement to reputation's vertical climb.** Per-discipline word of mouth, keyed to the same six groups as the tool lines (§9.0), earned from service-job work in that discipline. Reputation gates BREADTH (which tiers of work and auction access are offered at all); specialty gates DEPTH (which discipline's work walks in the door more often and at a premium, and - once specialty is high enough - named signature techniques and a derived shop title, e.g. "the engine house"). Revealed only through offer mix and copy, never a meter. Full model: `docs/design/progression-bible.md`.
 
 ### 9.2 The Hall of Legends (win condition)
 Ten Legend cars exist. Acquiring one is an event in itself - some appear once at Collector Network auctions, some come from story leads ("an old man in the Quarter has a hakosuka under a tarp"), one is the Rival's personal car.
