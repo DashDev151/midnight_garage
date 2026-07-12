@@ -70,7 +70,16 @@ from balance.data import load_acquisitions, load_auction_wins, load_careers, loa
 
 SANITY_FLOOR_YEN = -2_000_000
 SEPARATION_THRESHOLD_YEN = 20_000
-DAYS_TO_LOCAL_BAND = (15, 35)
+# Retuned Sprint 29 (2026-07-11), maintainer-approved, from (15, 35). The
+# service-jobs v2 rework (daily offer cadence, profitable tier-1 jobs from
+# day 1) plus a fixed competent-policy bot bug (its predicted install
+# partInstanceId was zeroing its own reputation) make the probe reach `local`
+# faster: p50 dropped 16 -> 11. The old floor was calibrated in Sprint 23
+# against a different (and partly broken) probe, so it is stale, not a
+# regression. Floor lowered to 10 (still catches a trivial <10-day unlock);
+# ceiling kept at 35 (still catches a grindy pace). Reaching the 2nd of 5
+# reputation tiers in ~11 days is intended early-game onboarding.
+DAYS_TO_LOCAL_BAND = (10, 35)
 AUCTION_TAIL_BAND = (0.05, 0.15)
 BUYOUT_SHARE_CEILING = 0.30
 COMPETENT_POLICY_STRATEGY = "competent-policy"

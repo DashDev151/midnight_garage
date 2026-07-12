@@ -81,31 +81,11 @@ describe('refreshCatalogs', () => {
     expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(true)
   })
 
-  it('generates a batch of service-job offers alongside the auction lots', () => {
-    const state = createInitialGameState(CONTEXT, 1)
-    const { freshOffers } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
-    expect(freshOffers.length).toBeGreaterThan(0)
-  })
-
-  /**
-   * Sprint 25 task 10: the exact playtest scenario this closes - a brand-new
-   * game's very first weekly batch could offer a turbo build (a job that
-   * needs equipment/reputation the player couldn't possibly have yet).
-   * `refreshCatalogs` is the real end-to-end path (day 1's seed and every
-   * weekly refresh both go through it), so this is the integration-level
-   * guard, not just the unit-level one in serviceJobs.test.ts.
-   */
-  it('day 1 of a brand-new game never offers an install-kind job (real end-to-end path)', () => {
-    const state = createInitialGameState(CONTEXT, 1)
-    expect(state.reputationTier).toBe('unknown')
-    let totalOffers = 0
-    for (let week = 0; week < 40; week++) {
-      const { freshOffers } = refreshCatalogs(state, CONTEXT, week * 7, createRng(week + 1))
-      totalOffers += freshOffers.length
-      expect(freshOffers.every((o) => o.work.kind !== 'install')).toBe(true)
-    }
-    expect(totalOffers).toBeGreaterThan(0)
-  })
+  // Sprint 29: service-job offers no longer refresh here (see
+  // `refreshCatalogs`'s own doc comment) - they moved to a daily cadence,
+  // `generateDailyServiceJobOffers` in serviceJobs.ts, with its own
+  // dedicated tests (distribution shape, tier gating, equipment filtering)
+  // in `serviceJobPayout.test.ts`/`serviceJobs.test.ts`.
 
   it('never generates a car older than the calendar allows for the current reputation tier', () => {
     // Every model's yearFrom already predates 1995 in the seed content, so at

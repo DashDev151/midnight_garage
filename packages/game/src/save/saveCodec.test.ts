@@ -761,7 +761,7 @@ describe('saveCodec', () => {
     expect(decoded.activeServiceJobs[0]?.arrivesOnDay).toBeNull()
   })
 
-  it('round-trips a v15 state with a real in-transit service job', () => {
+  it('round-trips a current-schema state with a real in-transit service job (Sprint 29: tasks, not work)', () => {
     const withInTransitJob: GameState = GameStateSchema.parse({
       ...fullState,
       activeServiceJobs: [
@@ -770,9 +770,10 @@ describe('saveCodec', () => {
           typeId: 'repair-engine',
           customerName: 'Tanaka-san',
           description: 'oil change',
-          work: { kind: 'repair', componentId: 'engine' },
+          tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint' }],
           payoutYen: 15_000,
           baseReputation: 1,
+          deadlineDays: 7,
           expiresOnDay: 60,
           arrivesOnDay: 43,
           dueOnDay: 50,
@@ -994,7 +995,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(17)
+    expect(SAVE_VERSION).toBe(18)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1195,8 +1196,182 @@ describe('saveCodec', () => {
       expect(decoded.partInventory[0]).not.toHaveProperty('conditionPercent')
     })
 
-    it('remaps a ServiceJobWork componentId through the same 8-to-6 group fold', () => {
-      expect(decoded.serviceJobOffers[0]?.work.componentId).toBe('suspension')
+    // Sprint 29 (v17 -> v18): serviceJobOffers are dropped, not mapped, by
+    // the later migration this same decodeSave call also runs (see that
+    // version's SAVE_VERSION doc comment) - so a pre-v16 offer's `work`
+    // (whatever the v15 -> v16 group remap left it as) is no longer
+    // observable through the public decodeSave path by the time decoding
+    // finishes. The v17 -> v18 describe block below covers the group remap's
+    // real successor: an ACTIVE (already-accepted) job's `work` surviving as
+    // a real, addressable `tasks` entry instead.
+    it('drops the pre-v16 offer entirely (Sprint 29: offers are dropped, not mapped, by v17 -> v18)', () => {
+      expect(decoded.serviceJobOffers).toEqual([])
+    })
+  })
+
+  /**
+   * v17 -> v18 (Sprint 29, service-jobs framework v2): `ServiceJob.work` is
+   * replaced by `tasks`, and a new `deadlineDays` is required - see the
+   * `SAVE_VERSION` doc comment for the full reasoning behind treating
+   * `activeServiceJobs` (kept, migrated) and `serviceJobOffers` (dropped)
+   * differently.
+   */
+  describe('v17 -> v18 migration (Sprint 29, service-jobs framework v2)', () => {
+    it("maps an in-flight active job's old single work to a one-task list, preserving payoutYen and dueOnDay untouched", () => {
+      const preV18 = {
+        version: 17,
+        gameState: {
+          ...fullState,
+          activeServiceJobs: [
+            {
+              id: 'service-job-1',
+              typeId: 'repair-engine',
+              customerName: 'Tanaka-san',
+              description: 'oil change',
+              work: { kind: 'repair', componentId: 'engine' },
+              payoutYen: 15_000,
+              baseReputation: 3,
+              expiresOnDay: 60,
+              arrivesOnDay: 40,
+              dueOnDay: 50,
+              car: {
+                id: 'service-car',
+                modelId: 'honda-city-e-aa',
+                year: 1984,
+                mileageKm: 120_000,
+                color: 'White',
+                provenanceNote: '',
+                authenticityPercent: 85,
+                parts: mintParts(),
+              },
+            },
+          ],
+        },
+      }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
+      const decoded = decodeSave(code)
+      const job = decoded.activeServiceJobs[0]
+      expect(job?.tasks).toEqual([{ action: 'repair', carPartId: 'block', targetBand: 'mint' }])
+      // Already-rolled economics untouched, per the sprint doc's own
+      // instruction: never re-derive a live job's payout or deadline.
+      expect(job?.payoutYen).toBe(15_000)
+      expect(job?.dueOnDay).toBe(50)
+      // Reconstructed from the real dueOnDay - arrivesOnDay gap (50 - 40),
+      // not the historical fallback (both were present on this fixture).
+      expect(job?.deadlineDays).toBe(10)
+    })
+
+    it('maps an in-flight install-kind active job to a one-task install with the permissive stock floor', () => {
+      const preV18 = {
+        version: 17,
+        gameState: {
+          ...fullState,
+          activeServiceJobs: [
+            {
+              id: 'service-job-2',
+              typeId: 'install-suspension',
+              customerName: 'Tanaka-san',
+              description: 'coilovers please',
+              work: { kind: 'install', componentId: 'suspension' },
+              payoutYen: 90_000,
+              baseReputation: 8,
+              expiresOnDay: 60,
+              arrivesOnDay: null,
+              dueOnDay: 55,
+              car: {
+                id: 'service-car-2',
+                modelId: 'honda-city-e-aa',
+                year: 1984,
+                mileageKm: 120_000,
+                color: 'White',
+                provenanceNote: '',
+                authenticityPercent: 85,
+                parts: mintParts(),
+              },
+            },
+          ],
+        },
+      }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
+      const decoded = decodeSave(code)
+      const job = decoded.activeServiceJobs[0]
+      expect(job?.tasks).toEqual([{ action: 'install', carPartId: 'dampers', minGrade: 'stock' }])
+      // arrivesOnDay was null on the fixture (already arrived), so there's
+      // no real gap to reconstruct - falls back to the historical constant.
+      expect(job?.deadlineDays).toBe(7)
+      expect(job?.payoutYen).toBe(90_000)
+    })
+
+    it('drops pre-v18 serviceJobOffers entirely rather than guessing a task list for them', () => {
+      const preV18 = {
+        version: 17,
+        gameState: {
+          ...fullState,
+          serviceJobOffers: [
+            {
+              id: 'offer-1',
+              typeId: 'repair-engine',
+              customerName: 'Tanaka-san',
+              description: 'oil change',
+              work: { kind: 'repair', componentId: 'engine' },
+              payoutYen: 15_000,
+              baseReputation: 3,
+              expiresOnDay: 60,
+              arrivesOnDay: null,
+              dueOnDay: null,
+              car: {
+                id: 'offer-car',
+                modelId: 'honda-city-e-aa',
+                year: 1984,
+                mileageKm: 120_000,
+                color: 'White',
+                provenanceNote: '',
+                authenticityPercent: 85,
+                parts: mintParts(),
+              },
+            },
+          ],
+        },
+      }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
+      const decoded = decodeSave(code)
+      expect(decoded.serviceJobOffers).toEqual([])
+    })
+
+    it('round-trips a current v18 state with a real multi-task service job', () => {
+      const withTasks: GameState = GameStateSchema.parse({
+        ...fullState,
+        activeServiceJobs: [
+          {
+            id: 'service-job-1',
+            typeId: 'suspension-refresh',
+            customerName: 'Tanaka-san',
+            description: 'wallowy ride',
+            tasks: [
+              { action: 'repair', carPartId: 'dampers', targetBand: 'mint' },
+              { action: 'install', carPartId: 'tyres', minGrade: 'street' },
+            ],
+            payoutYen: 60_000,
+            baseReputation: 12,
+            deadlineDays: 6,
+            expiresOnDay: 60,
+            arrivesOnDay: null,
+            dueOnDay: 50,
+            car: {
+              id: 'service-car',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 120_000,
+              color: 'White',
+              provenanceNote: '',
+              authenticityPercent: 85,
+              parts: mintParts(),
+            },
+          },
+        ],
+      })
+      const decoded = decodeSave(encodeSave(withTasks))
+      expect(decoded).toEqual(withTasks)
     })
   })
 })

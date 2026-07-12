@@ -1,4 +1,4 @@
-import type { AuctionTier, Grade, ReputationTier } from '@midnight-garage/content'
+import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnight-garage/content'
 
 /** GDD 3.2: base labor slots per day before any staff bonus. */
 export const PLAYER_BASE_LABOR_SLOTS = 2
@@ -6,8 +6,10 @@ export const PLAYER_BASE_LABOR_SLOTS = 2
 /** A bolt-on install is a single-slot job for now. */
 export const INSTALL_LABOR_SLOTS = 1
 
-/** Service-job offers refreshed onto the board each week, and how long they last. */
-export const SERVICE_JOB_OFFERS_PER_REFRESH = 4
+/** How long a service-job offer stays on the board before expiring unaccepted
+ * (Sprint 29 decision 4: "offers expire as today"). Daily offer COUNT is a
+ * content tunable now (economy.json's `serviceJobs.dailyOfferCountWeights`),
+ * replacing the old flat `SERVICE_JOB_OFFERS_PER_REFRESH` weekly dump. */
 export const SERVICE_JOB_EXPIRY_DAYS = 10
 
 /**
@@ -17,8 +19,19 @@ export const SERVICE_JOB_EXPIRY_DAYS = 10
  */
 export const SERVICE_JOB_ARRIVAL_DELAY_DAYS = 1
 
-/** Days the player has to finish + hand back a job after accepting it, counted from arrival. */
-export const SERVICE_JOB_DEADLINE_DAYS = 7
+/**
+ * Sprint 29 decision 2: which reputation tier unlocks each service-job
+ * template tier - a clean 1:1 mapping onto the first 4 of the 5 reputation
+ * tiers (`legend` reserved for something rarer, same framing as
+ * `AUCTION_TIER_MIN_REPUTATION`). A turbo/FI install (tier 4) can never be a
+ * first job: a brand-new game starts at `unknown`, tier 1 only.
+ */
+export const SERVICE_JOB_TIER_MIN_REPUTATION: Readonly<Record<ServiceJobTier, ReputationTier>> = {
+  1: 'unknown',
+  2: 'local',
+  3: 'known',
+  4: 'respected',
+}
 
 /**
  * Job-board equipment hinting (Sprint 16 decision 4): a repair-kind offer

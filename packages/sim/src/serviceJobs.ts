@@ -1,132 +1,277 @@
 import type {
+  CarInstance,
   CarModel,
+  ComponentId,
   DayLogEntry,
-  EconomyConfig,
-  Equipment,
   GameState,
   Grade,
+  Part,
   ReputationTier,
   ServiceJob,
+  ServiceJobTask,
   ServiceJobType,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
-import { presentPartIdsInGroup } from './bands'
+import { bandIndex, canRepair, gradesBetween, slotsNeededToClimb } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
+  INSTALL_LABOR_SLOTS,
   JOB_HINT_OFFER_CHANCE,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,
-  SERVICE_JOB_DEADLINE_DAYS,
   SERVICE_JOB_FAILURE_REP_MULTIPLIER,
+  SERVICE_JOB_TIER_MIN_REPUTATION,
 } from './constants'
 import type { SimContext } from './context'
 import { hasEquipmentFor, hasEquipmentForIds } from './equipment'
 import { assignToParking, hasParkingSpace, releaseCarFromShop } from './facilities'
+import { gradeAtLeast, partFitsCar } from './parts'
 import type { Rng } from './rng'
 import { clearStagedWork } from './stagedWork'
 
 /** Attempts a fresh pick can't exceed before falling back to whatever was last rolled
- * (an extremely rare edge case - every type gated and every hint roll missing). */
+ * (an extremely rare edge case - every template gated and every hint roll missing). */
 const MAX_TYPE_PICK_ATTEMPTS = 20
 
-/** Sprint 25 task 10: install-kind offers (parts the player buys and fits) only
- * start appearing once the shop has some standing - a brand-new game's very
- * first job must never be a turbo build. Repair jobs are ungated here; they
- * keep their existing equipment/hint policy below. */
-const INSTALL_OFFER_MIN_REPUTATION: ReputationTier = 'local'
-
 /**
- * Picks one service-job type for an offer (Sprint 16 decision 4): a
- * repair-kind type whose equipment isn't owned is normally rerolled, but a
- * flat `JOB_HINT_OFFER_CHANCE` per-candidate probability lets it through
- * anyway as a "here's what's next" hint. Install-kind types are otherwise
- * never filtered - replace is always available.
+ * Picks one service-job template for an offer (Sprint 29): a template that
+ * needs equipment the player doesn't own for at least one of its repair
+ * tasks is normally rerolled, but a flat `JOB_HINT_OFFER_CHANCE`
+ * per-candidate probability lets it through anyway as a "here's what's
+ * next" hint - the same policy Sprint 16 shipped for single-task types,
+ * extended to "any repair task in this template needs unowned equipment."
+ * Install-only tasks are never filtered here (replace is always available).
  *
- * Sprint 25 task 10: below-reputation install types are filtered out of the
- * candidate pool BEFORE any rolling happens, not rerolled inline like the
- * equipment hint above - a hard structural gate, not a soft probabilistic
- * one. This matters: `MAX_TYPE_PICK_ATTEMPTS`'s fallback returns whatever
- * was last rolled if every attempt gets rerolled, and a brand-new game
- * (reputation 'unknown', zero equipment owned) rerolls BOTH every install
- * pick (gated) and ~85% of repair picks (`JOB_HINT_OFFER_CHANCE` only lets
- * 15% through with no equipment) - exhausting all 20 attempts without a
- * valid pick happens often enough in that exact scenario that an inline
- * reroll's fallback would silently hand back a still-gated install type,
- * defeating the whole point. Filtering the pool first makes that
- * structurally impossible: the fallback can only ever return something
- * already eligible.
+ * The candidate pool passed in has already been tier-gated by the caller
+ * (Sprint 25 task 10's own reasoning, generalized to all 4 tiers): filtering
+ * BEFORE rolling, not rerolling inline, is what keeps this function's
+ * `MAX_TYPE_PICK_ATTEMPTS` fallback safe - it can only ever return something
+ * already reputation-eligible.
  */
-function pickServiceJobType(
-  types: readonly ServiceJobType[],
+function pickServiceJobTemplate(
+  templates: readonly ServiceJobType[],
   ownedEquipmentIds: readonly string[],
-  equipmentById: Readonly<Record<string, Equipment>>,
-  reputationTier: ReputationTier,
+  context: SimContext,
   rng: Rng,
 ): ServiceJobType {
-  const eligibleTypes = types.filter(
-    (t) =>
-      t.work.kind !== 'install' || reputationAtLeast(reputationTier, INSTALL_OFFER_MIN_REPUTATION),
-  )
-  const pool = eligibleTypes.length > 0 ? eligibleTypes : types // never leave zero candidates
-  let picked = pool[0]!
+  let picked = templates[0]!
   for (let attempt = 0; attempt < MAX_TYPE_PICK_ATTEMPTS; attempt++) {
-    picked = rng.pick(pool)
-    const needsUnownedEquipment =
-      picked.work.kind === 'repair' &&
-      !hasEquipmentForIds(ownedEquipmentIds, equipmentById, picked.work.componentId)
+    picked = rng.pick(templates)
+    const needsUnownedEquipment = picked.tasks.some((task) => {
+      if (task.action !== 'repair') return false
+      const group = context.partsTaxonomyById[task.carPartId]?.group
+      return !group || !hasEquipmentForIds(ownedEquipmentIds, context.equipmentById, group)
+    })
     if (!needsUnownedEquipment || rng.next() < JOB_HINT_OFFER_CHANCE) return picked
   }
   return picked
 }
 
+/** Sorted-median of a non-empty yen list, rounded to the nearest yen - the
+ * "market price for this grade of part" an install task's cost derives
+ * from (Sprint 29 decision 1), not the cheapest or most expensive option. */
+function medianYen(values: readonly number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 !== 0 ? sorted[mid]! : Math.round((sorted[mid - 1]! + sorted[mid]!) / 2)
+}
+
 /**
- * Offer a fresh batch of service jobs (Sprint 11: composed from a job-type +
- * flavor-pool catalog, not a fixed 1:1 template). Each carries a real
- * customer car (rolled like an auction car, so repair jobs land on an
- * already-worn zone and install jobs land on an empty slot) that enters the
- * shop on acceptance for the player to actually work on. A type, a customer
- * name, and a flavor line are picked independently - a flavor line can never
- * be paired with a `work` it wasn't written for, since it only ever lives in
- * its own type's pool. `currentYear` (Sprint 10, default Infinity =
- * unrestricted) excludes still-unreleased models and clamps the rolled car's
- * year, same as auction generation - a customer's car is bound by the same
- * in-game calendar a lot is. `ownedEquipmentIds`/`equipmentById` (Sprint 16,
- * both default to "nothing owned") drive the job-board equipment hinting
- * policy above - mostly filter out repair offers the player can't act on yet.
- * `reputationTier` (Sprint 25 task 10, default `'legend'` = unrestricted)
- * gates install-kind offers behind `INSTALL_OFFER_MIN_REPUTATION`.
+ * Every catalog part that fits `model` on this exact `carPartId` slot,
+ * preferring an exact grade match to `task.minGrade` and falling back first
+ * to "at least that grade," then to any fitting part at all. A subset's
+ * median is always >= the full fitting set's minimum (a subset's smallest
+ * member is never below the superset's smallest), so pricing off the
+ * narrowest non-empty tier here can only ever price a task AT OR ABOVE what
+ * the player could actually pay for the cheapest part that satisfies the
+ * task's real "at least minGrade" requirement - the structural reason the
+ * profitability invariant holds regardless of catalog grade-coverage gaps
+ * (see `deriveServiceJobPayoutYen`'s own doc comment).
  */
-export function generateServiceJobOffers(
-  types: readonly ServiceJobType[],
-  customerNames: readonly string[],
-  models: readonly CarModel[],
-  economy: EconomyConfig,
+function fittingPartsForInstallTask(
+  task: Extract<ServiceJobTask, { action: 'install' }>,
+  model: CarModel,
+  context: SimContext,
+): Part[] {
+  const group = context.partsTaxonomyById[task.carPartId]?.group
+  if (!group) return []
+  const allFitting = context.parts.filter((part) =>
+    partFitsCar(part, model, group, context.partsTaxonomyById, task.carPartId),
+  )
+  const exact = allFitting.filter((part) => part.grade === task.minGrade)
+  if (exact.length > 0) return exact
+  const atLeast = allFitting.filter((part) => gradeAtLeast(part.grade, task.minGrade))
+  return atLeast.length > 0 ? atLeast : allFitting
+}
+
+export interface ServiceJobCostBreakdown {
+  /** Sum of every task's material cost (Sprint 29 decision 1): an install
+   * task's median fitting-part price, a repair task's banded-steps cost. */
+  taskCostYen: number
+  /** Total labor slots the task list nominally takes, at base (level-1,
+   * "worst case tooling") repair speed - a market rate for the job's wrench
+   * time, independent of the shop's own current equipment tier (that only
+   * changes how many DAYS the work actually takes the player, never what
+   * the customer is nominally being charged for). */
+  laborSlots: number
+}
+
+/**
+ * The material-cost + labor-slot inputs `deriveServiceJobPayoutYen` prices
+ * (Sprint 29 decision 1) - split out so the profitability invariant test can
+ * inspect the same numbers a real offer derives from, not just the final
+ * rounded payout. A repair task on a part that's already at or above
+ * `targetBand`, or that's rolled `scrap` (unrepairable, Sprint 26 decision
+ * 5 - the job's own `isServiceTaskDone` already treats scrap as satisfied),
+ * contributes 0 to both totals: there is genuinely nothing left to charge
+ * or labor for.
+ */
+export function serviceJobCostBreakdown(
+  tasks: readonly ServiceJobTask[],
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+): ServiceJobCostBreakdown {
+  let taskCostYen = 0
+  let laborSlots = 0
+  for (const task of tasks) {
+    if (task.action === 'repair') {
+      const entry = context.partsTaxonomyById[task.carPartId]
+      const currentBand = car.parts[task.carPartId].band
+      if (!entry || !canRepair(currentBand)) continue
+      const grades = gradesBetween(currentBand, task.targetBand)
+      taskCostYen += grades * entry.stepCostYen
+      laborSlots += slotsNeededToClimb(grades, 1)
+    } else {
+      const candidates = fittingPartsForInstallTask(task, model, context)
+      taskCostYen += medianYen(candidates.map((part) => part.priceYen))
+      laborSlots += INSTALL_LABOR_SLOTS
+    }
+  }
+  return { taskCostYen, laborSlots }
+}
+
+/**
+ * The payout formula (Sprint 29 decision 1): `round((taskCostYen + laborSlots
+ * * laborRateYen) * margin + calloutFeeYen)`. Computed once, at generation
+ * time, against the specific customer car just rolled - never re-derived
+ * once an offer exists (an in-flight job keeps whatever it was quoted, same
+ * as every other locked-in-at-creation price in this codebase).
+ *
+ * **The profitability invariant** (tested as a property in
+ * `tests/serviceJobPayout.test.ts`): for every template x every roster
+ * model, the worst payout roll (`margin = marginMin`) covers the player's
+ * minimum achievable cost (the same `serviceJobCostBreakdown` taskCostYen,
+ * since a repair task's cost is deterministic - no player choice - and an
+ * install task's true cheapest option is never above this function's
+ * median-of-the-narrowest-fitting-tier basis, per `fittingPartsForInstallTask`'s
+ * own doc comment) by at least 1.15x. Because `taskCostYen` is identical on
+ * both sides of that comparison, the ratio collapses to `margin +
+ * (laborSlots * laborRateYen + calloutFeeYen) / taskCostYen >= marginMin`,
+ * which holds structurally as long as `marginMin >= 1.15` - true by a
+ * comfortable margin at the proposed 1.20 floor, and the labor/callout terms
+ * only add further headroom. This is what "derived, never authored"
+ * structurally retires: Sprint 25 task 10's guaranteed-loss bug (an authored
+ * flat payout blind to the parts market) cannot recur under this formula,
+ * for any current or future template.
+ */
+export function deriveServiceJobPayoutYen(
+  tasks: readonly ServiceJobTask[],
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  marginRoll: number,
+): number {
+  const { taskCostYen, laborSlots } = serviceJobCostBreakdown(tasks, car, model, context)
+  const { laborRateYen, calloutFeeYen } = context.economy.serviceJobs
+  return Math.round((taskCostYen + laborSlots * laborRateYen) * marginRoll + calloutFeeYen)
+}
+
+/** A uniform margin roll in `[marginMin, marginMax]` (Sprint 29 decision 1). */
+function rollMargin(context: SimContext, rng: Rng): number {
+  const { marginMin, marginMax } = context.economy.serviceJobs
+  return marginMin + rng.next() * (marginMax - marginMin)
+}
+
+/** How many fresh offers land on the board today: a discrete weighted draw
+ * over `economy.json`'s `serviceJobs.dailyOfferCountWeights` (Sprint 29
+ * decision 4 - index 0 is the weight for 0 offers, index 4 for 4). Board
+ * pressure is the point: more offers than a solo wrench can take. */
+function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
+  const roll = rng.next()
+  let cumulative = 0
+  for (let count = 0; count < weights.length; count++) {
+    cumulative += weights[count]!
+    if (roll < cumulative) return count
+  }
+  return weights.length - 1
+}
+
+/**
+ * Generates today's fresh batch of service-job offers (Sprint 29: replaces
+ * the Sprint 11 weekly fixed-count dump with a daily bell-curve draw).
+ * Each carries a real customer car (rolled like an auction car) and a
+ * payout derived from the template's own task list against that specific
+ * car (`deriveServiceJobPayoutYen`) - never an authored flat range.
+ * `reputationTier` (default `'legend'` = unrestricted) gates which template
+ * TIERS are even in the candidate pool (Sprint 29 decision 2); within that
+ * pool, `ownedEquipmentIds` (default "nothing owned") drives the same
+ * equipment-hinting policy Sprint 16 shipped, extended to multi-task
+ * templates by `pickServiceJobTemplate`. `currentYear` (default Infinity =
+ * unrestricted) excludes still-unreleased models and clamps the rolled
+ * car's year, same as auction generation.
+ */
+export function generateDailyServiceJobOffers(
+  context: SimContext,
   day: number,
-  count: number,
   expiresInDays: number,
   rng: Rng,
   currentYear: number = Infinity,
   ownedEquipmentIds: readonly string[] = [],
-  equipmentById: Readonly<Record<string, Equipment>> = {},
   reputationTier: ReputationTier = 'legend',
 ): ServiceJob[] {
-  const eligibleModels = models.filter((model) => model.spec.yearFrom <= currentYear)
-  if (types.length === 0 || customerNames.length === 0 || eligibleModels.length === 0) return []
+  const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
+  const eligibleTemplates = context.serviceJobTypes.filter((template) =>
+    reputationAtLeast(reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
+  )
+  if (
+    eligibleTemplates.length === 0 ||
+    context.serviceJobCustomerNames.length === 0 ||
+    eligibleModels.length === 0
+  ) {
+    return []
+  }
+
+  const count = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const type = pickServiceJobType(types, ownedEquipmentIds, equipmentById, reputationTier, rng)
+    const template = pickServiceJobTemplate(eligibleTemplates, ownedEquipmentIds, context, rng)
     const model = rng.pick(eligibleModels)
-    const [minPayout, maxPayout] = type.payoutRangeYen
-    const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, economy, currentYear)
+    const car = generateAuctionCarInstance(
+      model,
+      `svc-car-${day}-${i}`,
+      rng,
+      context.economy,
+      currentYear,
+    )
+    const payoutYen = deriveServiceJobPayoutYen(
+      template.tasks,
+      car,
+      model,
+      context,
+      rollMargin(context, rng),
+    )
     offers.push({
       id: `svc-${day}-${i}`,
-      typeId: type.id,
-      customerName: rng.pick(customerNames),
-      description: rng.pick(type.flavorPool),
-      work: type.work,
+      typeId: template.id,
+      customerName: rng.pick(context.serviceJobCustomerNames),
+      description: rng.pick(template.flavorPool),
+      tasks: template.tasks,
       car,
-      payoutYen: rng.int(minPayout, maxPayout),
-      baseReputation: type.baseReputation,
+      payoutYen,
+      baseReputation: template.baseReputation,
+      deadlineDays: template.deadlineDays,
       expiresOnDay: day + expiresInDays,
       arrivesOnDay: null,
       dueOnDay: null,
@@ -147,20 +292,25 @@ export interface AcceptServiceJobResult {
  * acceptance, exactly as before), but the customer's car itself doesn't
  * arrive until `SERVICE_JOB_ARRIVAL_DELAY_DAYS` later - "I'll drop it off
  * first thing in the morning," not an instant teleport into the shop. The
- * work deadline (`dueOnDay`) is counted from that arrival day, not from
- * acceptance, so the in-transit day never silently eats into it. Needs a
- * free parking space to take delivery; a full shop just leaves the offer on
- * the board rather than spending anything. Shared by the player's instant
- * click and advanceDay's bot batch loop (one queued accept per call,
- * matching every other Sprint 11 instant resolver's shape).
+ * work deadline (`dueOnDay`) is counted from that arrival day using the
+ * OFFER's own `deadlineDays` (Sprint 29: a per-template value, replacing the
+ * old flat `SERVICE_JOB_DEADLINE_DAYS` constant), so the in-transit day
+ * never silently eats into it. Needs a free parking space to take delivery;
+ * a full shop just leaves the offer on the board rather than spending
+ * anything. Shared by the player's instant click and advanceDay's bot batch
+ * loop (one queued accept per call, matching every other Sprint 11 instant
+ * resolver's shape).
  *
- * Sprint 13: a `repair`-kind offer additionally needs the matching component's
- * equipment owned - "can't even accept them without it," per the design doc.
- * `install`-kind offers are never gated (replace is always available). The
- * maintainer's own read is that an unreachable repair offer arguably
- * shouldn't be generated in the first place, not surfaced-then-blocked; that
- * refinement is deliberately deferred (tracked in TODO.md) - this sprint
- * ships the simpler accept-time block.
+ * Sprint 13: any `repair`-kind task additionally needs its group's matching
+ * equipment owned - "can't even accept them without it," per the design
+ * doc, extended in Sprint 29 to "every repair task in the whole job," since
+ * a multi-task offer can no longer be reduced to one single group. A
+ * template with no repair tasks at all (every task is `install`) is never
+ * gated (replace is always available). The maintainer's own read is that an
+ * unreachable repair offer arguably shouldn't be generated in the first
+ * place, not surfaced-then-blocked; that refinement is deliberately
+ * deferred (tracked in TODO.md) - this sprint ships the simpler accept-time
+ * block, same as before.
  */
 export function resolveAcceptServiceJob(
   state: GameState,
@@ -169,7 +319,13 @@ export function resolveAcceptServiceJob(
 ): AcceptServiceJobResult {
   const offer = state.serviceJobOffers.find((o) => o.id === offerId)
   if (!offer) return { state, log: [] }
-  if (offer.work.kind === 'repair' && !hasEquipmentFor(state, offer.work.componentId, context)) {
+
+  const missingEquipmentForTask = offer.tasks.find((task) => {
+    if (task.action !== 'repair') return false
+    const group = context.partsTaxonomyById[task.carPartId]?.group
+    return !group || !hasEquipmentFor(state, group, context)
+  })
+  if (missingEquipmentForTask) {
     return {
       state,
       log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-equipment' }],
@@ -185,7 +341,7 @@ export function resolveAcceptServiceJob(
   const activeJob: ServiceJob = {
     ...offer,
     arrivesOnDay,
-    dueOnDay: arrivesOnDay + SERVICE_JOB_DEADLINE_DAYS,
+    dueOnDay: arrivesOnDay + offer.deadlineDays,
   }
   const withCar = assignToParking(
     {
@@ -235,26 +391,37 @@ export function resolveServiceJobArrivals(state: GameState): ServiceJobArrivalRe
   return { state: { ...state, activeServiceJobs }, log: [] }
 }
 
+/** Whether one task has actually been satisfied on the customer's car - a
+ * repair task once its part reaches `targetBand` (or is `scrap`, unrepairable
+ * and therefore out of repair's reach entirely, Sprint 26 decision 5); an
+ * install task once its slot holds a catalog part graded at least
+ * `minGrade` (Sprint 29: "at least," a player who overdelivers still passes,
+ * same as the offer's own cost basis being priced off the narrowest
+ * satisfying tier - see `fittingPartsForInstallTask`). */
+export function isServiceTaskDone(
+  car: CarInstance,
+  task: ServiceJobTask,
+  partsById: Readonly<Record<string, Part>>,
+): boolean {
+  if (task.action === 'repair') {
+    const band = car.parts[task.carPartId].band
+    return band === 'scrap' || bandIndex(band) >= bandIndex(task.targetBand)
+  }
+  const installed = car.parts[task.carPartId].installed
+  if (!installed) return false
+  const part = partsById[installed.partId]
+  return !!part && gradeAtLeast(part.grade, task.minGrade)
+}
+
 /**
- * Whether the customer's required work has actually been done on their car.
- *
- * Sprint 26 decision 13 (the group-level "bridge"): `job.work.componentId`
- * is a 6-way group, not a single part slot - a repair job is done when
- * every present, repairable (non-scrap) part in the group has reached
- * `mint` (scrap parts are out of repair's reach entirely, so they don't
- * block completion); an install job is done once ANY present part in the
- * group has something installed (the customer's car rolls every part
- * empty, same as an auction car, so the first install in the group is
- * necessarily the one the player just did).
+ * Whether the customer's required work has actually been done on their car -
+ * every task in the job's list satisfied (Sprint 29: extends the Sprint 26
+ * group-level "bridge" to a real per-task, per-part list). Multi-task
+ * completion requires ALL tasks done; a partial hand-back is the existing
+ * failure path (`resolveServiceJob` below), unchanged.
  */
 export function isServiceWorkDone(job: ServiceJob, context: SimContext): boolean {
-  const partIds = presentPartIdsInGroup(job.car, job.work.componentId, context.partIdsByGroup)
-  if (job.work.kind === 'repair') {
-    return partIds.every(
-      (id) => job.car.parts[id].band === 'mint' || job.car.parts[id].band === 'scrap',
-    )
-  }
-  return partIds.some((id) => job.car.parts[id].installed !== null)
+  return job.tasks.every((task) => isServiceTaskDone(job.car, task, context.partsById))
 }
 
 /**
@@ -279,13 +446,30 @@ export interface ServiceJobResolution {
   outcome: ServiceJobOutcome
 }
 
-/** The catalog part installed for an install job's group (undefined for repair jobs). */
-function installedPart(job: ServiceJob, context: SimContext) {
-  if (job.work.kind !== 'install') return undefined
-  const partIds = presentPartIdsInGroup(job.car, job.work.componentId, context.partIdsByGroup)
-  const installedPartId = partIds.find((id) => job.car.parts[id].installed !== null)
-  const instance = installedPartId ? job.car.parts[installedPartId].installed : null
-  return instance ? context.partsById[instance.partId] : undefined
+/** Every catalog part actually installed by one of `job`'s install tasks
+ * (Sprint 29: a job can now have several, not at most one) - the basis for
+ * both the completion reputation grade and the part-cost/profit log fields. */
+function installedTaskParts(job: ServiceJob, context: SimContext): Part[] {
+  const result: Part[] = []
+  for (const task of job.tasks) {
+    if (task.action !== 'install') continue
+    const installed = job.car.parts[task.carPartId].installed
+    const part = installed ? context.partsById[installed.partId] : undefined
+    if (part) result.push(part)
+  }
+  return result
+}
+
+/** The priciest grade among a job's installed task parts (Sprint 29: a
+ * multi-install job's reputation scales off its best part, matching the old
+ * single-install "pricier grade earns more reputation" rule); `null` for a
+ * repair-only job (no install task at all), which earns the stock rate. */
+function highestInstalledGrade(parts: readonly Part[]): Grade | null {
+  let best: Grade | null = null
+  for (const part of parts) {
+    if (best === null || gradeAtLeast(part.grade, best)) best = part.grade
+  }
+  return best
 }
 
 /**
@@ -310,10 +494,16 @@ export function resolveServiceJob(
   const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
 
   if (isServiceWorkDone(job, context)) {
-    const part = installedPart(job, context)
-    const reputationGained = reputationForCompletion(job.baseReputation, part?.grade ?? null)
-    const partCostYen = part?.priceYen
-    const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - SERVICE_JOB_DEADLINE_DAYS
+    const installedParts = installedTaskParts(job, context)
+    const reputationGained = reputationForCompletion(
+      job.baseReputation,
+      highestInstalledGrade(installedParts),
+    )
+    const partCostYen =
+      installedParts.length > 0
+        ? installedParts.reduce((sum, part) => sum + part.priceYen, 0)
+        : undefined
+    const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - job.deadlineDays
     const withReputation = applyReputationDelta(releasedState, reputationGained)
     return {
       state: {
@@ -346,4 +536,11 @@ export function resolveServiceJob(
     log: [{ type: 'service-job-failed', jobId: job.id, reputationLost }],
     outcome: 'failed',
   }
+}
+
+/** Shared lookup for callers (bots, the game store) that need to know which
+ * of the 6 component groups a task's `carPartId` belongs to without reaching
+ * into `context.partsTaxonomyById` directly. */
+export function taskGroup(task: ServiceJobTask, context: SimContext): ComponentId | undefined {
+  return context.partsTaxonomyById[task.carPartId]?.group
 }

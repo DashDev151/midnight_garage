@@ -1,19 +1,35 @@
-import type {
-  CarModel,
-  CarPartId,
-  CarPartTaxonomyEntry,
-  ComponentId,
-  DayLogEntry,
-  GameState,
-  Part,
-  PartInstance,
-  PendingPartOrder,
+import {
+  GradeSchema,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+  type ComponentId,
+  type DayLogEntry,
+  type GameState,
+  type Grade,
+  type Part,
+  type PartInstance,
+  type PendingPartOrder,
 } from '@midnight-garage/content'
 import { scrapValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
 
 export type DeliverySpeed = 'standard' | 'express'
+
+/** A grade's position on the stock -> street -> sport -> race ladder, read
+ * straight from the schema so there is exactly one source of grade order in
+ * the codebase (mirrors `calendar.ts`'s `reputationTierIndex`). */
+function gradeIndex(grade: Grade): number {
+  return GradeSchema.options.indexOf(grade)
+}
+
+/** Whether `grade` meets or exceeds `min` on the stock/street/sport/race
+ * ladder - the install-task completion and payout-derivation check
+ * (Sprint 29: "at least this grade," never an exact-only match). */
+export function gradeAtLeast(grade: Grade, min: Grade): boolean {
+  return gradeIndex(grade) >= gradeIndex(min)
+}
 
 /**
  * Sprint 24 fix 2: the one real fit rule (right group slot + every required

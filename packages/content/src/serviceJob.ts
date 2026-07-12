@@ -1,36 +1,72 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
-import { ComponentIdSchema } from './tags'
+import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
 
 /**
- * What a customer job actually asks for. The player satisfies it with the
- * normal build/repair system on the customer's car:
- *  - `repair` a component's condition back to 100 (labor only), or
- *  - `install` a part onto a component (buy the part at the market, then fit it).
+ * One task within a service-job template (Sprint 29 schema v2) - what the
+ * player must do to ONE specific real car part (Sprint 26/28 addressing, the
+ * same `CarPartId` granularity the repair/replace drill-down already uses,
+ * not the old 6-way group) to satisfy this piece of the job:
+ *  - `repair`: climb the part's condition band to `targetBand` (labor only -
+ *    the existing banded repair system, Sprint 26).
+ *  - `install`: fit a catalog part graded at least `minGrade` onto the
+ *    part's slot (buy at the market, then fit - Sprint 26/28).
+ * A repair task's `targetBand` is never `scrap` (Sprint 26 decision 5: scrap
+ * is unrepairable) - a template whose premise implies a wrecked part uses an
+ * `install` task on it instead (Sprint 29 decision 3); a content test
+ * (`integrity.test.ts`) guards this rather than the schema, matching this
+ * codebase's existing convention for content-shape invariants.
  */
-export const ServiceJobWorkSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('repair'), componentId: ComponentIdSchema }),
-  z.object({ kind: z.literal('install'), componentId: ComponentIdSchema }),
+export const ServiceJobTaskSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('repair'),
+    carPartId: CarPartIdSchema,
+    targetBand: ConditionBandSchema,
+  }),
+  z.object({
+    action: z.literal('install'),
+    carPartId: CarPartIdSchema,
+    minGrade: GradeSchema,
+  }),
+])
+
+export const ServiceJobTasksSchema = z.array(ServiceJobTaskSchema).min(1)
+
+/** The four progression gates a template unlocks at (Sprint 29 decision 2):
+ * 1 at `unknown`, 2 at `local`, 3 at `known`, 4 at `respected` - see
+ * `sim/constants.ts`'s `SERVICE_JOB_TIER_MIN_REPUTATION` for the mapping. */
+export const ServiceJobTierSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
 ])
 
 /**
- * A service-job type (GDD Act 1 "job cards") - one entry per repair zone or
- * install slot (Sprint 11), not one entry per customer. A generated offer
- * composes a type + an independently-picked customer name + an independently
- * -picked flavor line, so a flavor line can never be paired with a `work` it
- * wasn't written for (Sprint 10's "brakes" flavor text on a suspension job
- * bug is structurally impossible under this model - see sprint11.md decision
- * 5). `flavorPool` needs at least 2 entries so generation has real variety.
+ * A themed, multi-task service-job template (Sprint 29 schema v2 - replaces
+ * the Sprint 11 single-`work` + authored `payoutRangeYen` shape). `tasks`
+ * names the vocabulary of work a generated offer needs done; payout is
+ * DERIVED from those tasks and the specific customer car at generation time
+ * (`serviceJobs.ts`'s `deriveServiceJobPayoutYen`), never authored here.
+ * `flavorPool` needs at least 2 entries so generation has real variety, and
+ * every line must describe only the parts this template's own `tasks`
+ * touch - never a component the job doesn't actually work on (Sprint 11
+ * decision 5's rule, extended to the multi-task shape).
  */
 export const ServiceJobTypeSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
-  work: ServiceJobWorkSchema,
-  payoutRangeYen: z
-    .tuple([z.number().int().positive(), z.number().int().positive()])
-    .refine(([min, max]) => min <= max, 'payoutRangeYen must be [min, max] with min <= max'),
-  /** Reputation for completing (multiplied by the installed part's grade for install jobs). */
+  tier: ServiceJobTierSchema,
+  tasks: ServiceJobTasksSchema,
+  flavorPool: z.array(z.string().min(1)).min(2, 'each template needs at least 2 flavor variants'),
+  /** Days the player has to finish + hand back a job of this template once
+   * accepted, counted from the customer car's arrival (Sprint 25 task 2) -
+   * replaces the old flat `SERVICE_JOB_DEADLINE_DAYS` constant, one value
+   * per template instead of one value for every job in the game. */
+  deadlineDays: z.number().int().positive(),
+  /** Reputation for completing (multiplied by the priciest installed part's
+   * grade, if this template has any install tasks - `reputationForCompletion`,
+   * serviceJobs.ts). */
   baseReputation: z.number().int().nonnegative(),
-  flavorPool: z.array(z.string().min(1)).min(2, 'each job type needs at least 2 flavor variants'),
 })
 
 export const ServiceJobTypesSchema = z.array(ServiceJobTypeSchema).min(1)
@@ -40,21 +76,25 @@ export const ServiceJobCustomerNamesSchema = z.array(z.string().min(1)).min(1)
 
 /**
  * A live offered/accepted service job - a snapshot of the generated
- * composition (type + rolled payout + picked name + picked flavor line) plus
- * the actual customer car (offered ones show it; accepted ones have it in
- * the shop). The work is tracked on the car via the normal job/labor system,
- * not here.
+ * composition (template + derived payout + picked name + picked flavor line)
+ * plus the actual customer car (offered ones show it; accepted ones have it
+ * in the shop). The work itself is tracked on the car via the normal
+ * job/labor system, not here - `tasks` only names what's required.
  */
 export const ServiceJobSchema = z.object({
   id: z.string().min(1),
   typeId: z.string().min(1),
   customerName: z.string().min(1),
   description: z.string().min(1),
-  work: ServiceJobWorkSchema,
+  tasks: ServiceJobTasksSchema,
   /** The customer's car - worked on in the shop, never owned. */
   car: CarInstanceSchema,
   payoutYen: z.number().int().positive(),
   baseReputation: z.number().int().nonnegative(),
+  /** Captured from the template at generation time (Sprint 29) - stamps
+   * `dueOnDay` at accept time; kept on the job afterward as a record, same
+   * as `baseReputation`. */
+  deadlineDays: z.number().int().positive(),
   /** Day the offer leaves the board if not accepted. */
   expiresOnDay: z.number().int().positive(),
   /**
@@ -76,6 +116,7 @@ export const ServiceJobSchema = z.object({
 
 export const ServiceJobsSchema = z.array(ServiceJobSchema)
 
-export type ServiceJobWork = z.infer<typeof ServiceJobWorkSchema>
+export type ServiceJobTask = z.infer<typeof ServiceJobTaskSchema>
+export type ServiceJobTier = z.infer<typeof ServiceJobTierSchema>
 export type ServiceJobType = z.infer<typeof ServiceJobTypeSchema>
 export type ServiceJob = z.infer<typeof ServiceJobSchema>

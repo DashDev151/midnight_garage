@@ -48,6 +48,28 @@ pass."
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
+- [ ] **A service-job offer that fails the equipment gate is generated, then surfaced-then-blocked at
+  accept, rather than never generated at all.** Present since Sprint 13, unaffected in kind by
+  Sprint 29's move to multi-task templates (`resolveAcceptServiceJob`, `serviceJobs.ts`, still
+  refuses accept if ANY repair task's group is unequipped, same shape as before, just checked across
+  a whole task list now instead of one `work`). The maintainer's own read (recorded since Sprint 13):
+  arguably a repair-touching offer shouldn't be generated at all when the player can't act on it,
+  rather than shown then blocked. Still the simpler, shipped behavior; not revisited this sprint.
+- [ ] **Bots' "predict a same-tick `partInstanceId` for a queued install job" pattern is structurally
+  broken** (found during Sprint 29, tracing why `competentPolicyStrategy`'s reputation faucet had
+  gone to zero after the multi-task service-job rewrite). `advanceDay` resolves `createJobs` (step 1)
+  BEFORE `buyParts` (step 1b), so a job queued the same tick as the part purchase it depends on
+  always fails `installFitGate` (the part genuinely isn't in `state.partInventory` yet when the gate
+  checks) - `investor.ts`'s own doc comment describes the id-prediction trick but never actually
+  verifies the same-tick job succeeds, and it doesn't; nothing caught this because no existing test
+  checked Investor's install jobs actually land. Sprint 29's own new
+  `bots/serviceJobHelpers.ts::queueServiceJobTasks` fixes this for service-job installs (buy this
+  tick, install a LATER tick once the purchase is genuinely in inventory) - `investor.ts` itself was
+  left untouched (out of Sprint 29's file scope) and still has the original bug, silently wasting
+  cash buying parts every tick that never get installed. Worth fixing in `investor.ts` directly
+  (same split-across-two-ticks approach) next time that file is touched; also worth re-running the
+  balance harness's Investor payback-curve numbers once fixed, since they were measured against the
+  broken behavior all along.
 - [ ] **Component tests that `mount()` many times per file without `unmount()`ing between tests risk
   a Pinia cross-test leak** (found and fixed in `CarDetailScreen.test.ts` during Sprint 28):
   `getActivePinia()` prefers an injected pinia from the current Vue injection context over the

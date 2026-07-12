@@ -294,6 +294,32 @@ export const EconomyConfigSchema = z.object({
     /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
     concoursSaleBonus: z.number().int().nonnegative(),
   }),
+  /**
+   * Sprint 29: the service-job framework v2's own tunables - derived-payout
+   * inputs and the daily offer-arrival cadence, replacing the old per-type
+   * authored `payoutRangeYen` and the weekly fixed-count dump.
+   */
+  serviceJobs: z
+    .object({
+      /** `payout`'s margin rolls uniform in `[marginMin, marginMax]` over the
+       * task+labor cost pool (`deriveServiceJobPayoutYen`, serviceJobs.ts). */
+      marginMin: z.number().positive(),
+      marginMax: z.number().positive(),
+      /** Yen per labor slot the payout formula credits toward the job's
+       * "wrench time" component - a market rate, not tied to the shop's own
+       * current equipment tier (see that function's own doc comment). */
+      laborRateYen: z.number().int().nonnegative(),
+      /** Flat callout/booking fee added on top of the margin-applied pool. */
+      calloutFeeYen: z.number().int().nonnegative(),
+      /** Bell-shaped weights over how many fresh offers land on the board
+       * each day - index 0 is the weight for 0 offers, index 4 for 4; must
+       * sum to 1 (`generateDailyServiceJobOffers`'s own sampling reads this
+       * as a discrete distribution). */
+      dailyOfferCountWeights: z.array(z.number().min(0)).length(5),
+    })
+    .refine((s) => s.marginMin <= s.marginMax, {
+      message: 'serviceJobs.marginMin must be <= marginMax',
+    }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

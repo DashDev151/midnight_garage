@@ -34,16 +34,21 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
     <section class="board">
       <h3>Job board</h3>
       <p v-if="!hasOffers" class="empty">
-        No jobs on the board. A fresh batch comes in each week - End Day (or warp).
+        No jobs on the board. Fresh ones land most days - End Day (or warp).
       </p>
       <ul v-else class="offers">
         <li v-for="offer in game.serviceJobOfferViews" :key="offer.id" class="offer">
           <div class="offer-main">
             <span class="customer">{{ offer.customerName }}</span>
             <span class="desc">{{ offer.description }}</span>
+            <ul class="tasks">
+              <li v-for="(task, i) in offer.tasks" :key="i">{{ task.label }}</li>
+            </ul>
             <span class="terms">
-              {{ offer.carName }} · {{ offer.workLabel }} · pays {{ formatYen(offer.payoutYen) }} ·
-              +{{ offer.baseReputation }} rep base
+              {{ offer.carName }} · pays {{ formatYen(offer.payoutYen) }} · +{{
+                offer.baseReputation
+              }}
+              rep base · offer expires day {{ offer.expiresOnDay }}
             </span>
           </div>
           <div class="offer-foot">
@@ -71,7 +76,12 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
         <li v-for="job in game.activeServiceJobViews" :key="job.id" class="active-row">
           <div class="active-main">
             <span class="customer">{{ job.customerName }}</span>
-            <span class="terms">{{ job.carName }} · {{ job.workLabel }}</span>
+            <span class="terms">{{ job.carName }}</span>
+            <ul class="tasks">
+              <li v-for="(task, i) in job.tasks" :key="i" :class="{ done: task.done }">
+                {{ task.label }}
+              </li>
+            </ul>
           </div>
           <span class="status" :class="{ done: job.workDone }">
             {{ job.workDone ? 'work done - hand back' : 'work outstanding' }}
@@ -163,6 +173,21 @@ h3 {
 
 .desc {
   display: block;
+}
+
+/* One line per service-job task (Sprint 29 - a job's work is a themed list
+   now, not a single work label). */
+.tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: var(--mg-fs-sm);
+}
+
+.tasks li.done {
+  color: var(--mg-success);
 }
 
 .terms {

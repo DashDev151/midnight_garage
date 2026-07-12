@@ -9,17 +9,17 @@ const result = computed(() => game.lastJobResult)
 
 /**
  * One flavor line, varying by outcome - no garage-name templating (no such
- * field exists yet). `workLabel` is already a clean, properly-spaced noun
- * phrase (Sprint 25 task 6: "Engine repair", "Forced Induction install") -
- * rendered as-is, never wholesale-lowercased, since a blind `.toLowerCase()`
- * on an assembled string is exactly what mangled a camelCase id into
- * "forcedinduction" before this fix.
+ * field exists yet). Sprint 29: a job can carry several tasks now, so the
+ * flavor line no longer names one specific piece of work (that would read
+ * oddly for a multi-task job) - the per-task breakdown renders separately,
+ * below, from `taskLabels` (already clean, properly-spaced phrases, Sprint
+ * 25 task 6: "Engine repair to fine", never a raw camelCase id).
  */
 const flavorLine = computed(() => {
   const r = result.value
   if (!r) return ''
   return r.outcome === 'paid'
-    ? `Thanks - ${r.workLabel} looks great!`
+    ? 'Thanks, looks great!'
     : `${r.customerName} isn't happy - that wasn't what they asked for.`
 })
 </script>
@@ -29,6 +29,10 @@ const flavorLine = computed(() => {
     <div class="modal" :class="result.outcome">
       <h3>{{ result.outcome === 'paid' ? 'Job complete' : 'Job failed' }}</h3>
       <p class="flavor">{{ flavorLine }}</p>
+
+      <ul class="task-list">
+        <li v-for="(label, i) in result.taskLabels" :key="i">{{ label }}</li>
+      </ul>
 
       <dl class="numbers">
         <div v-if="result.outcome === 'paid'">
@@ -101,6 +105,15 @@ h3 {
 .flavor {
   color: var(--mg-text-dim);
   margin: 0 0 var(--mg-space-3);
+}
+
+.task-list {
+  list-style: none;
+  margin: 0 0 var(--mg-space-3);
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: var(--mg-fs-sm);
 }
 
 .numbers {

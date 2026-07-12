@@ -348,10 +348,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <section v-if="detail.serviceJob" class="service-banner">
         <h3>Customer job - {{ detail.serviceJob.customerName }}</h3>
         <p class="svc-desc">"{{ detail.serviceJob.description }}"</p>
+        <ul class="svc-tasks">
+          <li v-for="(task, i) in detail.serviceJob.tasks" :key="i" :class="{ done: task.done }">
+            {{ task.label }}
+          </li>
+        </ul>
         <p class="svc-req">
-          Required: {{ detail.serviceJob.workLabel }} · pays
-          {{ formatYen(detail.serviceJob.payoutYen) }} · +{{ detail.serviceJob.baseReputation }} rep
-          base
+          Pays {{ formatYen(detail.serviceJob.payoutYen) }} · +{{
+            detail.serviceJob.baseReputation
+          }}
+          rep base
         </p>
         <p
           v-if="detail.serviceJob.daysLeft !== null"
@@ -727,6 +733,22 @@ h4 {
 
 .svc-desc {
   margin: var(--mg-space-1) 0;
+}
+
+/* One line per service-job task (Sprint 29 - a job's work is a themed list
+   now, not a single required-work label). */
+.svc-tasks {
+  list-style: none;
+  margin: var(--mg-space-1) 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+}
+
+.svc-tasks li.done {
+  color: var(--mg-success);
 }
 
 .svc-req {

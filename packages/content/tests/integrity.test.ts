@@ -3,7 +3,7 @@ import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
 import partsTaxonomy from '../data/parts-taxonomy.json'
 import parts from '../data/parts.json'
-import serviceJobs from '../data/serviceJobs.json'
+import serviceJobs from '../data/serviceJobTemplates.json'
 import {
   BuyersSchema,
   CarModelsSchema,
@@ -65,30 +65,28 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 11: the job-type + flavor-pool model (replacing Sprint 10's fixed
-   * 1:1 templates) exists specifically so a flavor line can never be paired
-   * with a `work` it wasn't written for - Sprint 10's own "Brakes are shot"
-   * line on a suspension-zone job is the exact bug this structurally
-   * prevents. This guards against a future editing mistake reintroducing it:
-   * no repair-zone type's flavor pool names a *different* component (Sprint
-   * 12: componentId now covers all 8 real components, brakes included as a
-   * real one rather than a special case).
+   * Sprint 11: the job-type + flavor-pool model exists specifically so a
+   * flavor line can never be paired with work it wasn't written for -
+   * Sprint 10's own "Brakes are shot" line on a suspension-zone job is the
+   * exact bug this structurally prevents. Sprint 29: a template's `tasks`
+   * can now touch several parts across several groups, so this guards the
+   * multi-task shape - no flavor line names a component group that none of
+   * the template's own tasks actually touch.
    */
-  it('no repair-zone flavor line names a different component', () => {
+  it('no template flavor line names a component group it does not actually touch', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
     // Sprint 26: 6 real groups (forcedInduction folded into engine, brakes
     // folded into suspension - see tags.ts's ComponentIdSchema).
     const COMPONENT_WORDS = ['engine', 'drivetrain', 'suspension', 'body', 'interior', 'wheels']
     for (const type of parsedTypes) {
-      if (type.work.kind !== 'repair') continue
-      const componentId = type.work.componentId
-      const foreignWords = COMPONENT_WORDS.filter((w) => w !== componentId)
+      const touchedGroups = new Set(type.tasks.map((task) => GROUP_BY_PART_ID.get(task.carPartId)))
+      const foreignWords = COMPONENT_WORDS.filter((word) => !touchedGroups.has(word as never))
       for (const line of type.flavorPool) {
         const text = line.toLowerCase()
         for (const word of foreignWords) {
           expect(
             text.includes(word),
-            `job type "${type.id}" (repair ${componentId}) flavor line "${line}" names "${word}"`,
+            `template "${type.id}" flavor line "${line}" names "${word}", which none of its tasks touch`,
           ).toBe(false)
         }
       }
@@ -96,40 +94,33 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 25 task 10: a job's worst-roll payout must clear the cheapest
-   * catalog part that could fulfill it by a real margin. This is the exact
-   * bug this test exists to keep out: install-forced-induction paid as
-   * little as 110,000 yen while the cheapest turbo cost 180,000 - a
-   * guaranteed loss no player choice could avoid. Interim guard (payouts are
-   * still hand-authored) - Sprint 29 replaces authored payouts with derived
-   * ones, but this invariant survives regardless of how payout gets
-   * computed. Sprint 26: an install job's `componentId` now addresses a
-   * GROUP (the "bridge," sprint26.md decision 13), so "fitting parts" means
-   * every catalog part whose own `carPartId` resolves (via the taxonomy) to
-   * that same group - not a direct id match anymore.
+   * Sprint 26 decision 5 (scrap is unrepairable) + Sprint 29 decision 3: a
+   * repair task's `targetBand` must never be `scrap` - a template whose
+   * premise implies a wrecked part uses an `install` task on it instead, so
+   * the customer pays for a real replacement rather than an impossible
+   * patch job. `deriveServiceJobPayoutYen` (sim) treats a repair task on an
+   * already-scrap part as free/auto-satisfied, which would make this a
+   * content bug (a "job" with nothing to actually do), not a schema error -
+   * this test is what actually catches it.
    */
-  it('every install-kind job pays enough at worst roll to clear the cheapest fitting part by 1.2x', () => {
+  it('no repair task ever targets scrap', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
-    const parsedParts = PartsSchema.parse(parts)
-    const installTypes = parsedTypes.filter((t) => t.work.kind === 'install')
-    expect(installTypes.length).toBeGreaterThan(0)
-    for (const type of installTypes) {
-      if (type.work.kind !== 'install') continue
-      const groupId = type.work.componentId
-      const fittingParts = parsedParts.filter((p) => GROUP_BY_PART_ID.get(p.carPartId) === groupId)
-      expect(
-        fittingParts.length,
-        `no catalog part fits group "${groupId}" (job type "${type.id}")`,
-      ).toBeGreaterThan(0)
-      const cheapest = Math.min(...fittingParts.map((p) => p.priceYen))
-      const [minPayout] = type.payoutRangeYen
-      const requiredFloor = Math.round(cheapest * 1.2)
-      expect(
-        minPayout,
-        `${type.id}'s worst payout (${minPayout}) doesn't clear 1.2x the cheapest fitting part (${cheapest}, needs >= ${requiredFloor})`,
-      ).toBeGreaterThanOrEqual(requiredFloor)
+    for (const type of parsedTypes) {
+      for (const task of type.tasks) {
+        if (task.action !== 'repair') continue
+        expect(task.targetBand, `template "${type.id}" repair task targets scrap`).not.toBe('scrap')
+      }
     }
   })
+
+  /**
+   * Sprint 29: payout is derived, not authored, so the guaranteed-loss bug
+   * (Sprint 25 task 10's "install-forced-induction paid as little as
+   * 110,000 against a 180,000 cheapest turbo") is structurally retired by
+   * the payout FORMULA itself - covered by the mandatory profitability
+   * invariant property test in `packages/sim/tests/serviceJobPayout.test.ts`
+   * (every template x every roster model), not a content-shape check here.
+   */
 
   /**
    * Sprint 28 DoD: catalog validation, not authoring - `parts.json` and

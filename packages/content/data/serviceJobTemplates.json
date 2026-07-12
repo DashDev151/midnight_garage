@@ -1,0 +1,216 @@
+[
+  {
+    "id": "tyres-and-pads-service",
+    "tier": 1,
+    "tasks": [
+      { "action": "repair", "carPartId": "tyres", "targetBand": "mint" },
+      { "action": "repair", "carPartId": "brakePadsDiscs", "targetBand": "mint" }
+    ],
+    "deadlineDays": 5,
+    "baseReputation": 6,
+    "flavorPool": [
+      "Tyres are bald and the pads are squealing on every stop. Sort both before my shaken.",
+      "Feels like I'm driving on ice, and the pedal grinds now too.",
+      "Due a proper tyre and pad refresh, it's overdue."
+    ]
+  },
+  {
+    "id": "coilover-install",
+    "tier": 1,
+    "tasks": [{ "action": "install", "carPartId": "dampers", "minGrade": "street" }],
+    "deadlineDays": 6,
+    "baseReputation": 8,
+    "flavorPool": [
+      "Fit some coilovers for me, I want it lower and sharper.",
+      "Stock ride's too soft for how I drive. Get me something adjustable.",
+      "Want it hunkered down for real. Sort the coilovers."
+    ]
+  },
+  {
+    "id": "cooling-system-service",
+    "tier": 1,
+    "tasks": [{ "action": "repair", "carPartId": "cooling", "targetBand": "mint" }],
+    "deadlineDays": 4,
+    "baseReputation": 4,
+    "flavorPool": [
+      "Running hot in traffic. Sort the cooling before it strands me.",
+      "Temp gauge creeps up on every hill. Needs a cooling once-over."
+    ]
+  },
+  {
+    "id": "electrics-once-over",
+    "tier": 1,
+    "tasks": [{ "action": "repair", "carPartId": "ignitionEcu", "targetBand": "fine" }],
+    "deadlineDays": 4,
+    "baseReputation": 4,
+    "flavorPool": [
+      "Hard to start some mornings, and it stutters on the highway. Check the electrics.",
+      "Something's off with the ignition, it hesitates on startup."
+    ]
+  },
+  {
+    "id": "clutch-swap",
+    "tier": 2,
+    "tasks": [{ "action": "install", "carPartId": "clutch", "minGrade": "street" }],
+    "deadlineDays": 6,
+    "baseReputation": 10,
+    "flavorPool": [
+      "Clutch is slipping under load. Fit me a proper one.",
+      "Pedal feels wrong and it's losing bite. Sort the clutch."
+    ]
+  },
+  {
+    "id": "suspension-refresh",
+    "tier": 2,
+    "tasks": [
+      { "action": "repair", "carPartId": "dampers", "targetBand": "mint" },
+      { "action": "repair", "carPartId": "springs", "targetBand": "mint" }
+    ],
+    "deadlineDays": 6,
+    "baseReputation": 9,
+    "flavorPool": [
+      "Ride's gone soft and wallowy, and it's sagging on one corner. Freshen up the suspension.",
+      "Bouncing over every bump these days. Dampers and springs both need attention."
+    ]
+  },
+  {
+    "id": "small-bodywork-touchup",
+    "tier": 2,
+    "tasks": [{ "action": "repair", "carPartId": "panels", "targetBand": "fine" }],
+    "deadlineDays": 5,
+    "baseReputation": 7,
+    "flavorPool": [
+      "Picked up a dent and some scrapes on the panel. Can you tidy it up?",
+      "Bodywork's looking rough. Sort the panel before it gets worse."
+    ]
+  },
+  {
+    "id": "put-her-in-a-ditch",
+    "tier": 2,
+    "tasks": [
+      { "action": "repair", "carPartId": "panels", "targetBand": "fine" },
+      { "action": "repair", "carPartId": "dampers", "targetBand": "fine" },
+      { "action": "install", "carPartId": "tyres", "minGrade": "street" }
+    ],
+    "deadlineDays": 7,
+    "baseReputation": 14,
+    "flavorPool": [
+      "Long story. Slid off into a ditch last week, panel's dented, suspension's knocked out of shape, and I shredded a tyre. Sort all of it.",
+      "Rough night out there. Bent the panel, the ride's all over the place now, and I need a fresh tyre fitted."
+    ]
+  },
+  {
+    "id": "shaken-prep",
+    "tier": 2,
+    "tasks": [
+      { "action": "repair", "carPartId": "underbody", "targetBand": "fine" },
+      { "action": "repair", "carPartId": "brakePadsDiscs", "targetBand": "mint" },
+      { "action": "repair", "carPartId": "exhaust", "targetBand": "fine" }
+    ],
+    "deadlineDays": 6,
+    "baseReputation": 12,
+    "flavorPool": [
+      "Shaken's coming up. Underbody, brakes, and the exhaust all need to pass inspection.",
+      "Need it road-legal for the shaken: rust underneath, worn pads, and a rattly exhaust."
+    ]
+  },
+  {
+    "id": "gearbox-rebuild",
+    "tier": 3,
+    "tasks": [{ "action": "install", "carPartId": "gearbox", "minGrade": "street" }],
+    "deadlineDays": 8,
+    "baseReputation": 16,
+    "flavorPool": [
+      "Stock gearbox can't take the abuse anymore. Build me a proper one.",
+      "Grinding through the gears. Time for a real gearbox upgrade."
+    ]
+  },
+  {
+    "id": "differential-upgrade",
+    "tier": 3,
+    "tasks": [{ "action": "install", "carPartId": "differential", "minGrade": "street" }],
+    "deadlineDays": 7,
+    "baseReputation": 14,
+    "flavorPool": [
+      "Power's just spinning one wheel. Fit me a limited-slip differential.",
+      "Need better traction out of corners. Sort the diff."
+    ]
+  },
+  {
+    "id": "full-respray",
+    "tier": 3,
+    "tasks": [{ "action": "repair", "carPartId": "paint", "targetBand": "mint" }],
+    "deadlineDays": 7,
+    "baseReputation": 12,
+    "flavorPool": [
+      "Paint's faded and chipped all over. Give it a proper respray.",
+      "Wants a fresh coat of paint, top to bottom."
+    ]
+  },
+  {
+    "id": "interior-retrim",
+    "tier": 3,
+    "tasks": [
+      { "action": "repair", "carPartId": "seats", "targetBand": "mint" },
+      { "action": "repair", "carPartId": "dashGauges", "targetBand": "mint" }
+    ],
+    "deadlineDays": 7,
+    "baseReputation": 12,
+    "flavorPool": [
+      "Seats are falling apart and the gauge cluster's looking tired. Retrim the interior.",
+      "Cabin's seen better days. Sort the seats and the dash."
+    ]
+  },
+  {
+    "id": "forced-induction-conversion",
+    "tier": 4,
+    "tasks": [{ "action": "install", "carPartId": "forcedInduction", "minGrade": "street" }],
+    "deadlineDays": 10,
+    "baseReputation": 26,
+    "flavorPool": [
+      "Naturally aspirated isn't cutting it anymore. Get me some boost.",
+      "Time to go forced induction. Build me some real power."
+    ]
+  },
+  {
+    "id": "race-turbo-upgrade",
+    "tier": 4,
+    "tasks": [{ "action": "install", "carPartId": "forcedInduction", "minGrade": "race" }],
+    "deadlineDays": 10,
+    "baseReputation": 32,
+    "flavorPool": [
+      "Street turbo's not enough. I want a serious race setup, no compromises.",
+      "Money's no object, get me the biggest turbo kit you can fit."
+    ]
+  },
+  {
+    "id": "engine-internals-rebuild",
+    "tier": 4,
+    "tasks": [
+      { "action": "install", "carPartId": "internals", "minGrade": "sport" },
+      { "action": "install", "carPartId": "headValvetrain", "minGrade": "sport" }
+    ],
+    "deadlineDays": 9,
+    "baseReputation": 28,
+    "flavorPool": [
+      "Want a proper built motor. Internals and head both need the upgrade treatment.",
+      "Stock bottom end and head won't hold the power I'm after. Build it up."
+    ]
+  },
+  {
+    "id": "full-restoration",
+    "tier": 4,
+    "tasks": [
+      { "action": "repair", "carPartId": "block", "targetBand": "fine" },
+      { "action": "repair", "carPartId": "paint", "targetBand": "mint" },
+      { "action": "repair", "carPartId": "seats", "targetBand": "mint" },
+      { "action": "install", "carPartId": "rims", "minGrade": "street" }
+    ],
+    "deadlineDays": 12,
+    "baseReputation": 30,
+    "flavorPool": [
+      "Want this thing brought back to life: engine, paint, interior, wheels, all of it.",
+      "Full restoration, spare no detail. The motor, the paint, the seats, and fresh wheels."
+    ]
+  }
+]

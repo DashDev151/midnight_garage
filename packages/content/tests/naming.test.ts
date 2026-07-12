@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
 import parts from '../data/parts.json'
-import serviceJobs from '../data/serviceJobs.json'
+import serviceJobs from '../data/serviceJobTemplates.json'
 import {
   CarModelsSchema,
   PartsSchema,

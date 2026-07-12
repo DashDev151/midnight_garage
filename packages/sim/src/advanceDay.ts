@@ -1,9 +1,10 @@
 import type { DayLog, DayLogEntry, GameState, Job, PublicListing } from '@midnight-garage/content'
 import type { DayActions } from './actions'
 import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
-import { applyReputationDelta } from './calendar'
+import { applyReputationDelta, currentGameYear } from './calendar'
 import { saleQualityFor } from './carCondition'
 import { refreshCatalogs } from './catalogs'
+import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { applyEquipmentPurchases } from './equipment'
 import { applyWeeklyRentAndWages } from './finances'
@@ -22,6 +23,7 @@ import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
 import {
+  generateDailyServiceJobOffers,
   resolveAcceptServiceJob,
   resolveServiceJob,
   resolveServiceJobArrivals,
@@ -306,7 +308,7 @@ export function advanceDay(
   // two lots hammering the same day see each other's cash/parking effects,
   // exactly like every other per-item loop in this function. Stale
   // service-job offers expire the same way they always have. Then refresh
-  // both weekly catalogs (day 7 boundary) via the same generator day-1
+  // the weekly auction catalog (day 7 boundary) via the same generator day-1
   // seeding uses (catalogs.ts's refreshCatalogs) - one generation path, not
   // two.
   const lotsToday = next.activeAuctionLots
@@ -324,13 +326,37 @@ export function advanceDay(
       log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
     }
     next = bumpLotSupply(
-      {
-        ...next,
-        activeAuctionLots: [...next.activeAuctionLots, ...refresh.freshLots],
-        serviceJobOffers: [...next.serviceJobOffers, ...refresh.freshOffers],
-      },
+      { ...next, activeAuctionLots: [...next.activeAuctionLots, ...refresh.freshLots] },
       refresh.freshLots.map((lot) => lot.modelId),
     )
+  }
+
+  // 8a. Sprint 29: daily service-job offer generation - a bell-curve draw
+  // (0-4, economy.json's `serviceJobs.dailyOfferCountWeights`) EVERY day,
+  // replacing the old weekly fixed-count dump `refreshCatalogs` used to also
+  // produce (see that function's own doc comment). Uses the same `rng`
+  // stream as everything else this day, drawn from sequentially like every
+  // other per-day concern in this function. `next.day + 1` (not `next.day`),
+  // same pre-increment-day convention as `resolvePartDeliveries`/
+  // `resolveServiceJobArrivals` elsewhere in this file: these offers are
+  // posted for the day about to begin, and generation's own `svc-${day}-${i}`
+  // id scheme would otherwise collide with `createInitialGameState`'s day-1
+  // seed batch (both would generate `svc-1-*` ids on the very first
+  // advanceDay call, silently duplicating offer ids with different content).
+  const freshServiceJobOffers = generateDailyServiceJobOffers(
+    context,
+    next.day + 1,
+    SERVICE_JOB_EXPIRY_DAYS,
+    rng,
+    currentGameYear(next.reputationTier),
+    next.ownedEquipmentIds,
+    next.reputationTier,
+  )
+  if (freshServiceJobOffers.length > 0) {
+    next = {
+      ...next,
+      serviceJobOffers: [...next.serviceJobOffers, ...freshServiceJobOffers],
+    }
   }
 
   // 8b. Deadline backstop: any accepted job now at/past its due day is handed

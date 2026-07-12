@@ -29,6 +29,7 @@ import type {
   PublicListing,
   ReputationTier,
   ServiceJob,
+  ServiceJobTask,
   StagedAction,
   StatBlock,
 } from '@midnight-garage/content'
@@ -55,6 +56,7 @@ import {
   hasEquipmentFor,
   hasParkingSpace,
   isServiceJobInTransit,
+  isServiceTaskDone,
   isServiceWorkDone,
   listPubliclyAskingPrice,
   moveCarToSlot as moveCarToSlotCore,
@@ -204,18 +206,10 @@ export interface StageablePartView {
   part: Part
 }
 
-/**
- * A short human label for a service job's required work. Always built from
- * the component's display name, never the raw camelCase id (Sprint 25 task
- * 6 - the id used to leak straight into this string, then get mangled
- * further by JobCompleteModal's wholesale `.toLowerCase()`). A noun phrase
- * ("Engine repair", not "Repair the Engine") so it slots cleanly into every
- * context that renders it - a label after a colon, a sentence, a list row -
- * without needing any runtime case transform in the caller.
- */
-function serviceWorkLabel(job: ServiceJob): string {
-  const name = componentDisplayName(job.work.componentId, COMPONENT_DISPLAY_NAMES)
-  return job.work.kind === 'repair' ? `${name} repair` : `${name} install`
+/** One task's condition, for the offer/active-job board (Sprint 29). */
+export interface ServiceJobTaskView {
+  label: string
+  done: boolean
 }
 
 /** A service-job offer on the board (accept to bring the car into the shop). */
@@ -223,18 +217,19 @@ export interface ServiceJobOfferView {
   id: string
   customerName: string
   description: string
-  workLabel: string
+  tasks: ServiceJobTaskView[]
   carName: string
   payoutYen: number
   baseReputation: number
   expiresOnDay: number
   /**
-   * False for a repair-kind offer whose equipment isn't owned yet (Sprint
-   * 13) - `resolveAcceptServiceJob` refuses it, so the UI shows why upfront
-   * rather than letting the click silently fail. Install-kind offers are
-   * always `true` (replace never needs equipment). The offer itself still
-   * stays on the board either way - filtering it out entirely at generation
-   * time is a deliberately deferred refinement (see TODO.md).
+   * False when at least one repair task's equipment isn't owned yet (Sprint
+   * 13, extended to the whole multi-task list by Sprint 29) -
+   * `resolveAcceptServiceJob` refuses it, so the UI shows why upfront rather
+   * than letting the click silently fail. A template with no repair tasks
+   * at all is always `true` (replace never needs equipment). The offer
+   * itself still stays on the board either way - filtering it out entirely
+   * at generation time is a deliberately deferred refinement (see TODO.md).
    */
   canAccept: boolean
   /** Set only when `canAccept` is false: the equipment that's missing. */
@@ -246,12 +241,12 @@ export interface ServiceJobView {
   id: string
   customerName: string
   description: string
-  workLabel: string
+  tasks: ServiceJobTaskView[]
   carId: string
   carName: string
   payoutYen: number
   baseReputation: number
-  /** True once the required work has actually been done on the car. */
+  /** True once every task has actually been done on the car. */
   workDone: boolean
   /** Reputation lost if this job is failed (handed back unfinished / overdue). */
   failureReputationPenalty: number
@@ -265,11 +260,14 @@ export interface ServiceJobView {
 export interface ServiceJobResultView {
   outcome: 'paid' | 'failed'
   customerName: string
-  workLabel: string
+  /** Sprint 29: a job can have several tasks now - one label per task,
+   * built from real part names, never the raw camelCase id. */
+  taskLabels: string[]
   payoutYen: number
   /** Positive for a paid job, negative (or zero) for a failed one. */
   reputationDelta: number
-  /** Set for a paid install job: the installed part's cost and the resulting profit. */
+  /** Set for a paid job with at least one install task: the sum of every
+   * installed part's cost and the resulting profit. */
   partCostYen?: number
   profitYen?: number
   /** Days between acceptance and this resolution. */
@@ -438,24 +436,23 @@ export const useGameStore = defineStore('game', () => {
   const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
     gameState.value.serviceJobOffers.map((offer) => {
       const model = context.value.modelsById[offer.car.modelId]
-      const canAccept =
-        offer.work.kind !== 'repair' ||
-        hasEquipmentFor(gameState.value, offer.work.componentId, context.value)
-      const missingEquipmentName = canAccept
-        ? undefined
-        : context.value.equipment.find(
-            (e) => offer.work.kind === 'repair' && e.componentIds.includes(offer.work.componentId),
-          )?.displayName
+      const missingTask = firstMissingEquipmentTask(offer)
+      const missingEquipmentName = missingTask
+        ? context.value.equipment.find((e) => {
+            const group = groupForCarPart(missingTask.carPartId)
+            return group ? e.componentIds.includes(group) : false
+          })?.displayName
+        : undefined
       return {
         id: offer.id,
         customerName: offer.customerName,
         description: offer.description,
-        workLabel: serviceWorkLabel(offer),
+        tasks: serviceJobTaskViews(offer),
         carName: model ? resolveCarDisplayName(model) : offer.car.modelId,
         payoutYen: offer.payoutYen,
         baseReputation: offer.baseReputation,
         expiresOnDay: offer.expiresOnDay,
-        canAccept,
+        canAccept: !missingTask,
         missingEquipmentName,
       }
     }),
@@ -593,6 +590,41 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * A short human label for one service-job task (Sprint 29). Always built
+   * from the real part's display name, never the raw camelCase `CarPartId`
+   * (Sprint 25 task 6's rule, extended to the multi-task job shape - a
+   * job's copy is built from `tasks` now, never a single `work` field).
+   * Band/grade words (`mint`, `street`, ...) are already plain English, not
+   * ids, so they render as-is - same convention `BandChip` uses.
+   */
+  function taskLabel(task: ServiceJobTask): string {
+    const partName = carPartLabel(task.carPartId)
+    return task.action === 'repair'
+      ? `${partName} repair to ${task.targetBand}`
+      : `${partName} install (${task.minGrade} or better)`
+  }
+
+  /** Every task on a service job, paired with whether it's actually done on
+   * the car right now - the offer/active-job board's per-task breakdown. */
+  function serviceJobTaskViews(job: ServiceJob): ServiceJobTaskView[] {
+    return job.tasks.map((task) => ({
+      label: taskLabel(task),
+      done: isServiceTaskDone(job.car, task, context.value.partsById),
+    }))
+  }
+
+  /** Whether `job`'s task list has at least one repair task whose group
+   * equipment isn't owned - the offer board's accept gate (Sprint 13,
+   * extended to the whole multi-task list by Sprint 29). */
+  function firstMissingEquipmentTask(job: ServiceJob): ServiceJobTask | undefined {
+    return job.tasks.find((task) => {
+      if (task.action !== 'repair') return false
+      const group = groupForCarPart(task.carPartId)
+      return !group || !hasEquipmentFor(gameState.value, group, context.value)
+    })
+  }
+
+  /**
    * A car the player can work on - either an owned car or a customer's car
    * sitting in an active service job. Both are worked through the same job
    * system, so the car-detail screen resolves either.
@@ -638,7 +670,7 @@ export const useGameStore = defineStore('game', () => {
       id: job.id,
       customerName: job.customerName,
       description: job.description,
-      workLabel: serviceWorkLabel(job),
+      tasks: serviceJobTaskViews(job),
       carId: job.car.id,
       carName: model ? resolveCarDisplayName(model) : job.car.modelId,
       payoutYen: job.payoutYen,
@@ -1402,7 +1434,7 @@ export const useGameStore = defineStore('game', () => {
       lastJobResult.value = {
         outcome: 'paid',
         customerName: job.customerName,
-        workLabel: serviceWorkLabel(job),
+        taskLabels: job.tasks.map(taskLabel),
         payoutYen: entry.payoutYen,
         reputationDelta: entry.reputationGained,
         partCostYen: entry.partCostYen,
@@ -1413,7 +1445,7 @@ export const useGameStore = defineStore('game', () => {
       lastJobResult.value = {
         outcome: 'failed',
         customerName: job.customerName,
-        workLabel: serviceWorkLabel(job),
+        taskLabels: job.tasks.map(taskLabel),
         payoutYen: 0,
         reputationDelta: -entry.reputationLost,
       }

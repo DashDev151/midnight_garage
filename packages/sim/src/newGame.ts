@@ -1,7 +1,10 @@
 import type { GameState } from '@midnight-garage/content'
+import { currentGameYear } from './calendar'
 import { refreshCatalogs } from './catalogs'
+import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { createRng } from './rng'
+import { generateDailyServiceJobOffers } from './serviceJobs'
 
 /**
  * The canonical day-1 GameState for a new career - used by both the
@@ -9,12 +12,15 @@ import { createRng } from './rng'
  * harness. Lives here rather than in the bots module because a fresh game
  * is not a "bot career"; bots just happened to be the first caller.
  *
- * Sprint 10: day 1 is seeded with a real auction catalog and service-job
- * board (via the same `refreshCatalogs` the weekly boundary uses) - a new
- * career used to be completely empty until day 7's first refresh, which
- * meant every playtest opened by "skip a week." The seed rng is derived
- * from the career `seed` alone (day 1 has no prior day to fold in), so a
- * given seed still produces a fully reproducible opening board.
+ * Sprint 10: day 1 is seeded with a real auction catalog (via the same
+ * `refreshCatalogs` the weekly boundary uses) - a new career used to be
+ * completely empty until day 7's first refresh, which meant every playtest
+ * opened by "skip a week." Sprint 29: service-job offers are seeded
+ * alongside it via the same daily-cadence generator `advanceDay`'s own daily
+ * step calls, so day 1 isn't an empty job board either even though the
+ * mechanic is now daily, not weekly. The seed rng is derived from the career
+ * `seed` alone (day 1 has no prior day to fold in), so a given seed still
+ * produces a fully reproducible opening board.
  */
 export function createInitialGameState(context: SimContext, seed: number): GameState {
   const base: GameState = {
@@ -44,10 +50,22 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     stagedCarWork: {},
   }
 
-  const refresh = refreshCatalogs(base, context, base.day, createRng(seed))
+  // One rng stream for both, in sequence - the same "one rng per day, drawn
+  // from for whichever concerns run" shape advanceDay itself uses.
+  const rng = createRng(seed)
+  const refresh = refreshCatalogs(base, context, base.day, rng)
+  const serviceJobOffers = generateDailyServiceJobOffers(
+    context,
+    base.day,
+    SERVICE_JOB_EXPIRY_DAYS,
+    rng,
+    currentGameYear(base.reputationTier),
+    base.ownedEquipmentIds,
+    base.reputationTier,
+  )
   return {
     ...base,
     activeAuctionLots: refresh.freshLots,
-    serviceJobOffers: refresh.freshOffers,
+    serviceJobOffers,
   }
 }

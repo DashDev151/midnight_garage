@@ -1,7 +1,6 @@
 import type { AuctionTier, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
-import { planGroupRepair } from '../bands'
 import {
   acquireLot,
   activeBidCount,
@@ -20,6 +19,12 @@ import {
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
 import { isServiceWorkDone } from '../serviceJobs'
+import {
+  canEquipForOffer,
+  expectedProfitPerLaborSlot,
+  MIN_PROFIT_PER_LABOR_SLOT_YEN,
+  queueServiceJobTasks,
+} from './serviceJobHelpers'
 
 /**
  * One car at a time, deliberately - measurement showed that even 2 (every
@@ -191,12 +196,15 @@ export function competentPolicyStrategy(
   // 6. Work a service job on whatever labor car-restoration didn't use
   // today - restoration is this policy's priority, service work is the
   // overflow (the doc's own "work service jobs on idle labor" phrasing).
-  // Mirrors `serviceGrinderStrategy`'s accept/work/release logic exactly.
+  // Sprint 29: a job's task list can mix repair and install now
+  // (`serviceJobHelpers.ts`'s `queueServiceJobTasks` executes both, unlike
+  // `serviceGrinderStrategy`'s deliberately repair-only restriction) - this
+  // is the "well-rounded operator" measurement probe, so it takes whatever
+  // clears the profit-per-labor-slot floor, not just repair-only offers.
   if (laborBudget > 0) {
-    const jobByCar = new Map(state.jobs.map((job) => [job.carInstanceId, job]))
+    let cashCommitted = 0
     for (const serviceJob of state.activeServiceJobs) {
       if (laborBudget <= 0) break
-      if (serviceJob.work.kind !== 'repair') continue
       const carId = serviceJob.car.id
 
       if (isServiceWorkDone(serviceJob, context)) {
@@ -208,53 +216,25 @@ export function competentPolicyStrategy(
       }
 
       if (!claimServiceBay(state, carId, actions, bayBudget)) continue
-      const componentId = serviceJob.work.componentId
-      const existing = jobByCar.get(carId)
 
-      if (!existing) {
-        const plan = planGroupRepair(
-          serviceJob.car,
-          componentId,
-          'mint',
-          state.ownedEquipmentIds,
-          context.partIdsByGroup,
-          context.partsTaxonomyById,
-          context.equipmentById,
-        )
-        if (plan.partIds.length === 0) continue
-        actions.createJobs.push({
-          carInstanceId: carId,
-          kind: 'repair-zone',
-          componentId,
-          targetBand: 'mint',
-          laborSlotsRequired: plan.laborSlotsRequired,
-        })
-        const jobId = `job-${state.day}-${actions.createJobs.length - 1}`
-        const slots = Math.min(plan.laborSlotsRequired, laborBudget)
-        actions.laborAssignments.push({ jobId, laborSlots: slots })
-        laborBudget -= slots
-        continue
-      }
-
-      const need = existing.laborSlotsRequired - existing.laborSlotsSpent
-      if (need <= 0) continue
-      const slots = Math.min(need, laborBudget)
-      actions.laborAssignments.push({ jobId: existing.id, laborSlots: slots })
-      laborBudget -= slots
+      const result = queueServiceJobTasks(
+        state,
+        serviceJob,
+        actions,
+        context,
+        laborBudget,
+        cashCommitted,
+        CASH_BUFFER_MULTIPLIER,
+      )
+      laborBudget -= result.laborSlotsUsed
+      cashCommitted = result.cashCommittedYen
     }
 
     if (laborBudget > 0 && bayBudget.free > 0) {
       const offer = state.serviceJobOffers.find(
         (o) =>
-          o.work.kind === 'repair' &&
-          ensureEquipmentFor(
-            state,
-            o.work.componentId,
-            actions,
-            context,
-            equipBudget,
-            CASH_BUFFER_MULTIPLIER,
-          ),
+          expectedProfitPerLaborSlot(o, context) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
+          canEquipForOffer(state, o, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER),
       )
       if (offer) actions.acceptServiceJobs.push({ offerId: offer.id })
     }

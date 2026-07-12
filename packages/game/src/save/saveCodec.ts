@@ -207,8 +207,47 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   cleanly under v17 (additive backward-compat), a group-only v17 state
  *   round-trips unchanged, and a per-part v17 state round-trips its
  *   `carPartId` exactly.
+ * - v18 (Sprint 29, service-jobs framework v2): `ServiceJobSchema`'s single
+ *   `work: {kind, componentId}` field is replaced by `tasks: ServiceJobTask[]`
+ *   (per-part addressed, not per-group), and it gains a new required
+ *   `deadlineDays` (captured from the template at generation time, replacing
+ *   the old flat `SERVICE_JOB_DEADLINE_DAYS` sim constant). Not a plain
+ *   default-fill: `tasks` has no sensible schema default, and a v17 offer's
+ *   `work` addressed a 6-way GROUP, not the specific `CarPartId` the new
+ *   schema requires. `migrateV17ToV18` handles the two populations
+ *   differently, per the sprint doc's own explicit call:
+ *   - `activeServiceJobs` (in-flight, already-accepted jobs): KEPT, not
+ *     dropped - a player mid-job shouldn't lose it to a version bump. Each
+ *     entry's old `work` maps to a ONE-task `tasks` list: `kind: 'repair'`
+ *     becomes `{ action: 'repair', carPartId: <representative part for that
+ *     group>, targetBand: 'mint' }` (every pre-Sprint-26 repair implicitly
+ *     targeted mint, same reasoning `migrateJob`/`migrateStagedAction` at
+ *     v15->v16 already use); `kind: 'install'` becomes `{ action: 'install',
+ *     carPartId: <representative part>, minGrade: 'stock' }` (the most
+ *     permissive floor, since the old model had no grade requirement at
+ *     all). `GROUP_TO_REPRESENTATIVE_PART` is a hardcoded historical table
+ *     (mirrors `OLD_GROUP_TO_NEW_PARTS` at v15->v16) picking one real part
+ *     per group - a deliberate, documented simplification: the old job
+ *     required work across the WHOLE group, the migrated one-task version
+ *     only requires that single representative part, which can only make an
+ *     in-flight job easier to finish, never harder. Already-rolled
+ *     `payoutYen` and `dueOnDay` are left untouched (the sprint doc's own
+ *     instruction: never re-derive a live job's economics) - `deadlineDays`
+ *     is backfilled from `dueOnDay - arrivesOnDay` when both are real
+ *     numbers (reconstructing the original deadline exactly), or a flat
+ *     7-day historical fallback (the pre-Sprint-29 constant's own value)
+ *     when `arrivesOnDay` isn't available to reconstruct it from.
+ *   - `serviceJobOffers` (not yet accepted): DROPPED, not mapped - the
+ *     sprint doc's own "your call" on this population. Offers refresh daily
+ *     under the new cadence (`generateDailyServiceJobOffers`, replacing the
+ *     old weekly dump) and represent no player commitment yet, so guessing a
+ *     representative task list for each one is pure risk (a wrong guess
+ *     could misrepresent what the board is offering) for zero benefit (the
+ *     board refills for real, correctly-generated offers within a day or
+ *     two either way). `saveCodec.test.ts`'s `v17 -> v18 migration` describe
+ *     block covers both populations.
  */
-export const SAVE_VERSION = 17
+export const SAVE_VERSION = 18
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -566,6 +605,72 @@ function migrateV15ToV16(gameState: unknown): unknown {
 }
 
 /**
+ * v17 -> v18 (Sprint 29): hardcoded historical table picking one
+ * representative real part per group - the migrated one-task shape for an
+ * in-flight job's old group-level `work` (see the SAVE_VERSION doc comment
+ * above). Mirrors `OLD_GROUP_TO_NEW_PARTS`'s own precedent (a fixed mapping
+ * describing a fact about a RETIRED shape, not derivable from current
+ * content).
+ */
+const GROUP_TO_REPRESENTATIVE_PART: Record<string, string> = {
+  engine: 'block',
+  drivetrain: 'gearbox',
+  suspension: 'dampers',
+  wheels: 'tyres',
+  body: 'panels',
+  interior: 'seats',
+}
+
+/** Historical fallback for a migrated job's `deadlineDays` when its
+ * `arrivesOnDay`/`dueOnDay` pair isn't available to reconstruct the real
+ * original deadline from - the pre-Sprint-29 flat `SERVICE_JOB_DEADLINE_DAYS`
+ * sim constant's own value. Cosmetic only: an in-flight job's real
+ * `dueOnDay` is preserved untouched either way (the sprint doc's own
+ * instruction), so this never actually changes when the job is due. */
+const LEGACY_DEADLINE_DAYS_FALLBACK = 7
+
+/** v17 -> v18: one ServiceJob's old single `work` -> a one-task `tasks`
+ * list, plus a backfilled `deadlineDays` - see the SAVE_VERSION doc comment
+ * above for the full reasoning. Defensive against a malformed or
+ * hand-edited save, same shape as every other migration in this file. */
+function migrateServiceJobToTasks(serviceJob: unknown): unknown {
+  if (typeof serviceJob !== 'object' || serviceJob === null) return serviceJob
+  const sj = serviceJob as Record<string, unknown>
+  const work = sj.work as { kind?: unknown; componentId?: unknown } | undefined
+  const kind = work?.kind === 'install' ? 'install' : 'repair'
+  const componentId = typeof work?.componentId === 'string' ? work.componentId : 'engine'
+  const carPartId = GROUP_TO_REPRESENTATIVE_PART[componentId] ?? 'block'
+  const task =
+    kind === 'install'
+      ? { action: 'install' as const, carPartId, minGrade: 'stock' as const }
+      : { action: 'repair' as const, carPartId, targetBand: 'mint' as const }
+
+  const arrivesOnDay = typeof sj.arrivesOnDay === 'number' ? sj.arrivesOnDay : null
+  const dueOnDay = typeof sj.dueOnDay === 'number' ? sj.dueOnDay : null
+  const deadlineDays =
+    arrivesOnDay !== null && dueOnDay !== null
+      ? Math.max(1, dueOnDay - arrivesOnDay)
+      : LEGACY_DEADLINE_DAYS_FALLBACK
+
+  return { ...sj, tasks: [task], deadlineDays }
+}
+
+/**
+ * v17 -> v18: `activeServiceJobs` entries are migrated in place (kept, task
+ * list reconstructed); `serviceJobOffers` are dropped outright (see the
+ * SAVE_VERSION doc comment above for why each population gets different
+ * treatment).
+ */
+function migrateV17ToV18(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+  const activeServiceJobs = Array.isArray(state.activeServiceJobs)
+    ? state.activeServiceJobs.map(migrateServiceJobToTasks)
+    : state.activeServiceJobs
+  return { ...state, activeServiceJobs, serviceJobOffers: [] }
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -576,6 +681,7 @@ const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   11: migrateV11ToV12,
   13: migrateV13ToV14,
   15: migrateV15ToV16,
+  17: migrateV17ToV18,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */
