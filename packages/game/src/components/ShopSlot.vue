@@ -142,7 +142,7 @@ function onCardPointerUp(event: PointerEvent): void {
 
 .shop-slot.active-target {
   border-color: var(--mg-neon-cyan);
-  background: rgba(34, 211, 238, 0.12); /* --mg-neon-cyan at low opacity, over --mg-panel */
+  background: rgba(47, 214, 191, 0.12); /* --mg-neon-cyan (teal) at low opacity, over --mg-panel */
 }
 
 .slot-empty {

@@ -59,7 +59,7 @@ function cancel(): void {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(11, 8, 32, 0.8);
+  background: rgba(16, 13, 10, 0.8); /* --mg-night-deep at 0.8 */
   display: flex;
   align-items: center;
   justify-content: center;

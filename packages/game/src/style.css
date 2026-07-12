@@ -1,7 +1,10 @@
 /*
- * Design tokens - provisional (decision 5, sprint04.md). The real
- * art-direction lock is Sprint 9; this is a coherent synthwave token set
- * so Sprints 5-7 don't hard-code colors.
+ * Design tokens. Palette recolored 2026-07-12 to a warm-grey scheme
+ * (charcoal greys + warm amber lighting, with magenta and teal as the only
+ * saturated accents). Token NAMES are retained from the earlier synthwave
+ * set so the whole app recolors from this one file; a couple of names are
+ * now legacy (--mg-neon-violet holds a warm amber, not a violet). A clean
+ * rename would touch every component, so it's left for a dedicated refactor.
  */
 
 /*
@@ -18,19 +21,19 @@
 }
 
 :root {
-  /* Palette */
-  --mg-night: #14102a;
-  --mg-night-deep: #0b0820;
-  --mg-panel: #1c1740;
-  --mg-panel-edge: #2f2a5c;
-  --mg-neon-pink: #ff4f9e;
-  --mg-neon-cyan: #22d3ee;
-  --mg-neon-violet: #a874ff;
-  --mg-yen: #ffcf5c;
-  --mg-success: #4ade80;
-  --mg-danger: #ff6b6b;
-  --mg-text: #e8e4ff;
-  --mg-text-dim: #9a93c9;
+  /* Palette - warm greys + amber lighting, magenta/teal accents only */
+  --mg-night: #1a1613; /* warm charcoal - primary surface */
+  --mg-night-deep: #100d0a; /* deepest warm near-black - page bg */
+  --mg-panel: #241f18; /* warm dark grey - panels */
+  --mg-panel-edge: #40382d; /* warm grey - borders */
+  --mg-neon-pink: #ff3d92; /* magenta - accent (one of only two) */
+  --mg-neon-cyan: #2fd6bf; /* teal - accent (one of only two) */
+  --mg-neon-violet: #d29a5a; /* warm amber - the "lighting"; primary/headers */
+  --mg-yen: #ffcf5c; /* gold - currency (kept; fits the warm scheme) */
+  --mg-success: #4ade80; /* green - semantic (kept) */
+  --mg-danger: #ff6b6b; /* red - semantic (kept) */
+  --mg-text: #ece4d6; /* warm off-white - body text */
+  --mg-text-dim: #a99f8c; /* warm grey - secondary text */
 
   /* Type scale */
   --mg-font-body: 'PixelFont', 'Courier New', monospace;
