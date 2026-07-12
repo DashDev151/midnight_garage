@@ -9,8 +9,10 @@ import type {
   ReputationTier,
   ServiceJob,
   ServiceJobTask,
+  ServiceJobType,
   ToolTiers,
 } from '@midnight-garage/content'
+import { ComponentIdSchema } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
 import { bandIndex, canRepair, gradesBetween, slotsNeededToClimb } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
@@ -105,6 +107,97 @@ export function upgradeHintFor(
   if (!group) return null
   const nextTier = context.toolLines[group].tiers[toolTiers[group]]
   return nextTier ? `needs ${nextTier.displayName}` : null
+}
+
+/** All six groups at zero (Sprint 38 - a fresh shop has no word of mouth
+ * yet, mirrors `freshToolTiers`). */
+export function freshSpecialty(): Record<ComponentId, number> {
+  return { engine: 0, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 }
+}
+
+/**
+ * The group the shop is most known for right now (Sprint 38): the highest
+ * `specialty` value, ties broken by `ComponentIdSchema`'s declared order
+ * (engine, drivetrain, suspension, wheels, body, interior) - the loop only
+ * ever overwrites on a STRICT improvement, so the first group at the max
+ * value wins ties for free. Always returns a real group, even at all-zero
+ * (defaults to `engine`); callers gate on `specialty[top]` meeting a
+ * threshold, not on this alone.
+ */
+export function topSpecialtyGroup(specialty: Record<ComponentId, number>): ComponentId {
+  let best = ComponentIdSchema.options[0]!
+  let bestPoints = specialty[best]
+  for (const group of ComponentIdSchema.options) {
+    const points = specialty[group]
+    if (points > bestPoints) {
+      best = group
+      bestPoints = points
+    }
+  }
+  return best
+}
+
+/** The one group every task in `tasks` belongs to, or null when they span
+ * more than one (Sprint 38: the in-lane premium and the specialty-copy
+ * flavor swap only ever apply to a template that stays wholly within a
+ * single discipline - a multi-group template is never "in lane" for any
+ * one specialty). */
+function singleTaskGroup(
+  tasks: readonly ServiceJobTask[],
+  context: SimContext,
+): ComponentId | null {
+  const groups = new Set(
+    tasks.map((task) => taskGroup(task, context)).filter((g): g is ComponentId => g !== undefined),
+  )
+  return groups.size === 1 ? [...groups][0]! : null
+}
+
+/**
+ * Sprint 38, the offer-bias atom: `1 + biasFactor * min(1, specialty[group]
+ * / softcapPoints)`, where `group` is the template's FIRST task's group
+ * (deterministic, no judgment needed for a multi-group template - the
+ * weight only needs to bias SELECTION, not decide "the" discipline the way
+ * the in-lane premium's stricter `singleTaskGroup` does). A template
+ * addressing an unknown/missing group weights at the neutral 1 (no bias
+ * either way, never a crash).
+ */
+function templateWeight(
+  template: ServiceJobType,
+  specialty: Record<ComponentId, number>,
+  context: SimContext,
+): number {
+  const firstTask = template.tasks[0]
+  const group = firstTask ? taskGroup(firstTask, context) : undefined
+  if (!group) return 1
+  const { biasFactor, softcapPoints } = context.economy.specialty
+  return 1 + biasFactor * Math.min(1, specialty[group] / softcapPoints)
+}
+
+/**
+ * Sprint 38: picks one template from `templates`, weighted by
+ * `templateWeight` - a high-specialty line's own templates are drawn more
+ * often, but bias never excludes anything (every weight is >= 1). Uses
+ * EXACTLY one `rng.next()` draw via cumulative weights, the same single-
+ * draw shape `rng.pick` itself uses - at all-zero specialty every weight is
+ * exactly 1, which makes this mathematically identical to `rng.pick`
+ * (`floor(next() * length)` either way), so a zero-specialty career's offer
+ * sequence for a fixed seed is byte-identical to pre-Sprint-38 behavior.
+ */
+export function pickServiceJobTemplate(
+  templates: readonly ServiceJobType[],
+  specialty: Record<ComponentId, number>,
+  context: SimContext,
+  rng: Rng,
+): ServiceJobType {
+  const weights = templates.map((template) => templateWeight(template, specialty, context))
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (let i = 0; i < templates.length; i++) {
+    cumulative += weights[i]!
+    if (roll < cumulative) return templates[i]!
+  }
+  return templates[templates.length - 1]!
 }
 
 /** Sorted-median of a non-empty yen list, rounded to the nearest yen - the
@@ -266,6 +359,17 @@ function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
  * at all. `currentYear` (default Infinity = unrestricted) excludes
  * still-unreleased models and clamps the rolled car's year, same as auction
  * generation.
+ *
+ * `specialty` (Sprint 38, default: a fresh shop's all-zero) biases WHICH
+ * template gets picked (`pickServiceJobTemplate`) and, for a template that
+ * stays wholly within the shop's top specialty line and clears
+ * `premiumThresholdPoints`, multiplies the margin roll by `inLanePremium`
+ * and swaps the offer's flavor line for `context.specialtyCopy`'s
+ * word-of-mouth pool - the one place specialty is ever surfaced (bible law
+ * 4: no meters). At all-zero specialty every template weighs equally and
+ * the premium condition can never hold (0 never clears the threshold), so
+ * this is a strict no-op extension: a zero-specialty career's offers are
+ * byte-identical to pre-Sprint-38 behavior for a fixed seed.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
@@ -275,6 +379,7 @@ export function generateDailyServiceJobOffers(
   currentYear: number = Infinity,
   toolTiers: ToolTiers = freshToolTiers(),
   reputationTier: ReputationTier = 'legend',
+  specialty: Record<ComponentId, number> = freshSpecialty(),
 ): ServiceJob[] {
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
   const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
@@ -291,24 +396,25 @@ export function generateDailyServiceJobOffers(
     return []
   }
 
+  const topGroup = topSpecialtyGroup(specialty)
   const count = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const template = rng.pick(eligibleTemplates)
+    const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng)
     const model = rng.pick(eligibleModels)
     const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, context, currentYear)
-    const payoutYen = deriveServiceJobPayoutYen(
-      template.tasks,
-      car,
-      model,
-      context,
-      rollMargin(context, rng),
-    )
+    const inLane =
+      singleTaskGroup(template.tasks, context) === topGroup &&
+      specialty[topGroup] >= context.economy.specialty.premiumThresholdPoints
+    const margin = rollMargin(context, rng) * (inLane ? context.economy.specialty.inLanePremium : 1)
+    const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, margin)
     offers.push({
       id: `svc-${day}-${i}`,
       typeId: template.id,
       customerName: rng.pick(context.serviceJobCustomerNames),
-      description: rng.pick(template.flavorPool),
+      description: inLane
+        ? rng.pick(context.specialtyCopy[topGroup])
+        : rng.pick(template.flavorPool),
       tasks: template.tasks,
       car,
       payoutYen,
@@ -507,6 +613,39 @@ function highestInstalledGrade(parts: readonly Part[]): Grade | null {
   return best
 }
 
+/** Every DISTINCT group among `tasks` (Sprint 38 - the specialty earn
+ * split's basis: a multi-group job's reputation-shaped delta is divided
+ * evenly across every discipline it actually touched). */
+function distinctTaskGroups(tasks: readonly ServiceJobTask[], context: SimContext): ComponentId[] {
+  const groups = new Set<ComponentId>()
+  for (const task of tasks) {
+    const group = taskGroup(task, context)
+    if (group) groups.add(group)
+  }
+  return [...groups]
+}
+
+/**
+ * Sprint 38: splits `totalDelta` evenly across `groups` and applies it to
+ * `state.specialty`, clamped at 0 per group - the specialty twin of
+ * `applyReputationDelta`'s own floor. A no-op when `groups` is empty (every
+ * task addressed an unknown part - never happens for real content, but this
+ * stays a pure, total function regardless).
+ */
+function applySpecialtyDelta(
+  state: GameState,
+  groups: readonly ComponentId[],
+  totalDelta: number,
+): GameState {
+  if (groups.length === 0) return state
+  const perGroup = Math.round(totalDelta / groups.length)
+  const specialty = { ...state.specialty }
+  for (const group of groups) {
+    specialty[group] = Math.max(0, specialty[group] + perGroup)
+  }
+  return { ...state, specialty }
+}
+
 /**
  * Resolve one active service job by handing the car back to its customer. The
  * single source of truth for job resolution, shared by the player's immediate
@@ -567,10 +706,15 @@ export function resolveServiceJob(
         : undefined
     const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - job.deadlineDays
     const withReputation = applyReputationDelta(releasedState, reputationGained)
+    const withSpecialty = applySpecialtyDelta(
+      withReputation,
+      distinctTaskGroups(job.tasks, context),
+      reputationGained,
+    )
     return {
       state: {
-        ...withReputation,
-        cashYen: withReputation.cashYen + job.payoutYen,
+        ...withSpecialty,
+        cashYen: withSpecialty.cashYen + job.payoutYen,
         activeServiceJobs,
         jobs,
         partInventory,
@@ -593,9 +737,14 @@ export function resolveServiceJob(
 
   const penalty = reputationForFailure(job.baseReputation)
   const withReputation = applyReputationDelta(releasedState, -penalty)
+  const withSpecialty = applySpecialtyDelta(
+    withReputation,
+    distinctTaskGroups(job.tasks, context),
+    -penalty,
+  )
   const reputationLost = releasedState.reputationPoints - withReputation.reputationPoints
   return {
-    state: { ...withReputation, activeServiceJobs, jobs, partInventory },
+    state: { ...withSpecialty, activeServiceJobs, jobs, partInventory },
     log: [{ type: 'service-job-failed', jobId: job.id, reputationLost }],
     outcome: 'failed',
   }

@@ -8,10 +8,11 @@ import type {
   Facilities,
   Part,
   ServiceJobType,
+  SpecialtyCopy,
   ToolLine,
   ToolLines,
 } from '@midnight-garage/content'
-import { ECONOMY, TOOL_LINES } from '@midnight-garage/content'
+import { ECONOMY, SPECIALTY_COPY, TOOL_LINES } from '@midnight-garage/content'
 
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
@@ -61,6 +62,10 @@ export interface SimContext {
   /** Convenience lookup for one line - `toolLines[componentId]`, named. */
   toolLineFor(componentId: ComponentId): ToolLine
   economy: EconomyConfig
+  /** Sprint 38: the word-of-mouth flavor pool a generated offer draws from
+   * instead of its template's own `flavorPool` when the in-lane specialty
+   * premium applies (`serviceJobs.ts`). */
+  specialtyCopy: SpecialtyCopy
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -109,6 +114,10 @@ function indexStockPartsByCarPartId(parts: readonly Part[]): Record<CarPartId, P
  * equipment catalog, is the tool-lines record instead - defaulted to the
  * real parsed `toolLines.json` (content's `TOOL_LINES`), since every shop
  * always owns all six lines; there is no "no tools" configuration anymore.
+ *
+ * Sprint 38: `specialtyCopy` is a new 10th (trailing) parameter, same
+ * "defaulted, so every existing positional call site keeps compiling"
+ * treatment as `economy` right before it.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -120,6 +129,7 @@ export function buildSimContext(
   serviceJobCustomerNames: readonly string[] = [],
   toolLines: ToolLines = TOOL_LINES,
   economy: EconomyConfig = ECONOMY,
+  specialtyCopy: SpecialtyCopy = SPECIALTY_COPY,
 ): SimContext {
   return {
     models,
@@ -137,5 +147,6 @@ export function buildSimContext(
     toolLines,
     toolLineFor: (componentId) => toolLines[componentId],
     economy,
+    specialtyCopy,
   }
 }

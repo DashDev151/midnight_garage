@@ -148,6 +148,17 @@ const FRESH_TOOL_TIERS = {
   interior: 1,
 }
 
+/** A fresh shop's specialty (Sprint 38) - what every pre-v24 save (which
+ * never earned any) migrates to, and what a new game starts at. */
+const FRESH_SPECIALTY = {
+  engine: 0,
+  drivetrain: 0,
+  suspension: 0,
+  wheels: 0,
+  body: 0,
+  interior: 0,
+}
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -1038,7 +1049,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(23)
+    expect(SAVE_VERSION).toBe(24)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1092,7 +1103,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(23)
+    expect(SAVE_VERSION).toBe(24)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1831,5 +1842,36 @@ describe('saveCodec', () => {
       expect(decoded.toolTiers.engine).toBe(2)
       expect(decoded.toolTiers.interior).toBe(3)
     })
+  })
+
+  /**
+   * v23 -> v24 (Sprint 38, specialty): `GameStateSchema` gained `specialty`,
+   * the progression bible's horizontal axis - the normal additive case (like
+   * v2/v22), so it needs NO `MIGRATIONS[23]` entry, but it DOES bump
+   * `SAVE_VERSION` (Save law). These two tests are its regression coverage:
+   * a real pre-v24 (v23 envelope) save with no `specialty` field at all
+   * still decodes cleanly under v24 (all-zero, exactly what "never earned
+   * any" means), and a v24 state carrying real specialty values round-trips
+   * them exactly.
+   */
+  it('a real pre-v24 save (a v23 envelope with no specialty field) decodes all-zero under v24', () => {
+    const stateWithoutSpecialty: Record<string, unknown> = { ...fullState }
+    delete stateWithoutSpecialty.specialty
+    const preV24 = { version: 23, gameState: stateWithoutSpecialty }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV24))
+    const decoded = decodeSave(code)
+    expect(decoded.specialty).toEqual(FRESH_SPECIALTY)
+  })
+
+  it('a v24 state with real specialty values round-trips them exactly', () => {
+    const withSpecialty: GameState = GameStateSchema.parse({
+      ...fullState,
+      specialty: { ...FRESH_SPECIALTY, engine: 120, body: 40 },
+    })
+    const decoded = decodeSave(encodeSave(withSpecialty))
+    expect(decoded).toEqual(withSpecialty)
+    expect(decoded.specialty.engine).toBe(120)
+    expect(decoded.specialty.body).toBe(40)
+    expect(decoded.specialty.drivetrain).toBe(0)
   })
 })

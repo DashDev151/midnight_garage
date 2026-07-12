@@ -7,7 +7,7 @@ import {
   reputationAtLeast,
 } from '../src/calendar'
 import { REPUTATION_TIER_THRESHOLDS } from '../src/constants'
-import { testToolTiers } from './testFixtures'
+import { testSpecialty, testToolTiers } from './testFixtures'
 
 describe('currentGameYear', () => {
   it('starts the campaign in 1995 at unknown reputation (GDD 2.2)', () => {
@@ -76,6 +76,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       cashYen: 0,
       reputationTier: deriveReputationTier(reputationPoints),
       reputationPoints,
+      specialty: testSpecialty(),
       ownedCars: [],
       partInventory: [],
       staff: [],

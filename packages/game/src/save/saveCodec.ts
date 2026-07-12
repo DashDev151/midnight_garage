@@ -338,8 +338,15 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   optional-with-default `minToolTier` (default 1), a normal additive change
  *   needing no migration of its own - every legacy task decodes at the
  *   no-ceiling floor, which is exactly this sprint's authored content too.
+ * - v24 (Sprint 38, specialty - the progression bible's horizontal axis):
+ *   `GameStateSchema` gained `specialty`, a per-`ComponentId` word-of-mouth
+ *   counter, defaulted all-zero. The normal additive case (like v2/v22): a
+ *   pre-v24 save never earned any specialty (the concept did not exist), so
+ *   all-zero is exactly the correct backfill, needing no `MIGRATIONS[23]`
+ *   entry of its own. The version bump alone is still required (Save law) so
+ *   an old client rejects a v24 save rather than silently dropping the field.
  */
-export const SAVE_VERSION = 23
+export const SAVE_VERSION = 24
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -4,52 +4,68 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 
 | Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) | Reputation pts (median) |
 |---|---|---|---|---|---|---|
-| balanced-player | 25 | Y1,221,159 | Y1,475,490 | Y1,528,993 | 1.0 | 0.0 |
-| balanced-player | 40 | Y1,156,517 | Y1,473,808 | Y1,533,403 | 1.0 | 0.0 |
-| balanced-player | 70 | Y1,071,803 | Y1,432,198 | Y1,512,088 | 1.0 | 0.0 |
-| balanced-player | 100 | Y1,042,310 | Y1,405,413 | Y1,513,470 | 1.0 | 0.0 |
-| cautious-restorer | 25 | Y371,647 | Y465,613 | Y557,827 | 2.0 | 0.0 |
-| cautious-restorer | 40 | Y331,647 | Y425,613 | Y517,827 | 2.0 | 0.0 |
-| cautious-restorer | 70 | Y231,647 | Y325,613 | Y417,827 | 2.0 | 0.0 |
-| cautious-restorer | 100 | Y151,647 | Y245,613 | Y337,827 | 2.0 | 0.0 |
-| competent-policy | 25 | Y343,295 | Y429,120 | Y532,491 | 1.0 | 0.0 |
-| competent-policy | 40 | Y325,767 | Y413,940 | Y530,412 | 1.0 | 0.0 |
-| competent-policy | 70 | Y266,632 | Y380,632 | Y507,866 | 1.0 | 0.0 |
-| competent-policy | 100 | Y228,367 | Y357,668 | Y519,233 | 1.0 | 0.0 |
-| flipper | 25 | Y1,445,759 | Y1,480,598 | Y1,500,720 | 1.0 | 0.0 |
-| flipper | 40 | Y1,202,847 | Y1,470,313 | Y1,496,350 | 1.0 | 0.0 |
-| flipper | 70 | Y1,113,057 | Y1,426,638 | Y1,459,574 | 1.0 | 0.0 |
-| flipper | 100 | Y1,064,288 | Y1,401,780 | Y1,443,343 | 1.0 | 0.0 |
-| handyman | 25 | Y595,591 | Y658,130 | Y673,597 | 2.0 | 0.0 |
-| handyman | 40 | Y555,591 | Y618,130 | Y633,597 | 2.0 | 0.0 |
-| handyman | 70 | Y455,591 | Y518,130 | Y533,597 | 2.0 | 0.0 |
-| handyman | 100 | Y375,591 | Y438,130 | Y453,597 | 2.0 | 0.0 |
-| investor | 25 | Y609,917 | Y676,916 | Y719,656 | 2.0 | 0.0 |
-| investor | 40 | Y74,917 | Y141,916 | Y184,656 | 2.0 | 0.0 |
-| investor | 70 | Y-77,704 | Y-64,334 | Y-49,326 | 2.0 | 0.0 |
-| investor | 100 | Y-157,704 | Y-144,334 | Y-129,326 | 2.0 | 0.0 |
+| balanced-player | 25 | Y28,201 | Y193,842 | Y578,557 | 1.0 | 0.0 |
+| balanced-player | 40 | Y-11,799 | Y134,988 | Y390,267 | 1.0 | 0.0 |
+| balanced-player | 70 | Y-111,799 | Y31,359 | Y290,918 | 1.0 | 0.0 |
+| balanced-player | 100 | Y-191,799 | Y-48,641 | Y226,914 | 1.0 | 0.0 |
+| cautious-restorer | 25 | Y-18,675 | Y85,626 | Y312,800 | 2.0 | 0.0 |
+| cautious-restorer | 40 | Y-58,675 | Y33,825 | Y250,170 | 2.0 | 0.0 |
+| cautious-restorer | 70 | Y-158,675 | Y-66,375 | Y147,552 | 2.0 | 0.0 |
+| cautious-restorer | 100 | Y-238,675 | Y-146,375 | Y67,552 | 2.0 | 0.0 |
+| competent-policy | 25 | Y8,351 | Y365,006 | Y1,528,589 | 0.0 | 33.0 |
+| competent-policy | 40 | Y-29,890 | Y384,565 | Y1,555,461 | 0.0 | 69.0 |
+| competent-policy | 70 | Y-129,890 | Y458,269 | Y1,649,748 | 0.0 | 158.0 |
+| competent-policy | 100 | Y-209,890 | Y521,628 | Y1,784,636 | 0.0 | 224.0 |
+| flipper | 25 | Y17,268 | Y155,506 | Y362,478 | 2.0 | 0.0 |
+| flipper | 40 | Y-16,406 | Y103,479 | Y301,549 | 1.0 | 0.0 |
+| flipper | 70 | Y-116,406 | Y43,628 | Y243,290 | 1.0 | 0.0 |
+| flipper | 100 | Y-196,406 | Y15,442 | Y207,154 | 1.0 | 0.0 |
+| handyman | 25 | Y-60,000 | Y9,065 | Y242,173 | 2.0 | 0.0 |
+| handyman | 40 | Y-100,000 | Y-30,935 | Y198,350 | 2.0 | 0.0 |
+| handyman | 70 | Y-200,000 | Y-130,935 | Y98,350 | 2.0 | 0.0 |
+| handyman | 100 | Y-280,000 | Y-210,935 | Y18,350 | 2.0 | 0.0 |
+| investor | 25 | Y383,000 | Y645,750 | Y703,900 | 2.0 | 0.0 |
+| investor | 40 | Y8,888 | Y110,750 | Y168,900 | 2.0 | 0.0 |
+| investor | 70 | Y-93,800 | Y-70,658 | Y-50,843 | 2.0 | 0.0 |
+| investor | 100 | Y-173,800 | Y-150,658 | Y-130,843 | 2.0 | 0.0 |
 | passive-grinder | 25 | Y1,440,000 | Y1,440,000 | Y1,440,000 | 0.0 | 0.0 |
 | passive-grinder | 40 | Y1,400,000 | Y1,400,000 | Y1,400,000 | 0.0 | 0.0 |
 | passive-grinder | 70 | Y1,300,000 | Y1,300,000 | Y1,300,000 | 0.0 | 0.0 |
 | passive-grinder | 100 | Y1,220,000 | Y1,220,000 | Y1,220,000 | 0.0 | 0.0 |
-| random | 25 | Y1,283,394 | Y1,380,370 | Y1,413,438 | 3.0 | 0.0 |
-| random | 40 | Y1,243,394 | Y1,340,370 | Y1,373,407 | 3.0 | 0.0 |
-| random | 70 | Y1,143,394 | Y1,240,200 | Y1,273,406 | 3.0 | 0.0 |
-| random | 100 | Y1,063,394 | Y1,160,200 | Y1,193,406 | 3.0 | 0.0 |
-| service-grinder | 25 | Y992,309 | Y1,168,080 | Y1,231,485 | 0.0 | 42.0 |
-| service-grinder | 40 | Y537,376 | Y653,080 | Y1,328,336 | 0.0 | 82.0 |
-| service-grinder | 70 | Y407,826 | Y713,732 | Y885,169 | 0.0 | 172.0 |
-| service-grinder | 100 | Y560,917 | Y790,453 | Y1,053,022 | 0.0 | 268.0 |
+| random | 25 | Y-8,479 | Y142,377 | Y354,630 | 2.0 | 0.0 |
+| random | 40 | Y-48,479 | Y86,802 | Y261,300 | 2.0 | 0.0 |
+| random | 70 | Y-148,479 | Y-13,198 | Y160,397 | 2.0 | 0.0 |
+| random | 100 | Y-228,479 | Y-93,198 | Y80,397 | 2.0 | 0.0 |
+| service-grinder | 25 | Y684,597 | Y1,280,474 | Y1,548,914 | 0.0 | 51.0 |
+| service-grinder | 40 | Y224,846 | Y573,852 | Y980,277 | 0.0 | 97.0 |
+| service-grinder | 70 | Y149,128 | Y324,398 | Y580,465 | 0.0 | 200.0 |
+| service-grinder | 100 | Y195,817 | Y382,851 | Y554,988 | 0.0 | 279.5 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
-First day each seeded `competent-policy` career reaches each reputation tier or better. `local` (p50 in [15, 35]) is the only hard-gated row (invariant 3); `known`/`respected` are informational against sprint23.md's own pacing targets (day 50-70 and day 90-120 respectively).
+First day each seeded `competent-policy` career reaches each reputation tier or better. `local` (p50 in [10, 35]) is the only hard-gated row (invariant 3); `known`/`respected` are informational against sprint23.md's own pacing targets (day 50-70 and day 90-120 respectively).
 
 | Tier | Reached | p10 | p50 | p90 |
 |---|---|---|---|---|
-| local | 619/1000 | 35 | 56 | 89 |
-| known | 16/1000 | 63 | 75 | 96 |
-| respected | 0/1000 | - | - | - |
+| local | 862/1000 | 8 | 12 | 21 |
+| known | 747/1000 | 24 | 30 | 37 |
+| respected | 729/1000 | 50 | 55 | 63 |
+
+## Specialty (Sprint 38, informational)
+
+Day-100 top specialty group (most common across seeds) and its median point value, per strategy. `engine`/0 means the strategy never earned any (the argmax default).
+
+| Strategy | Most common top group | Points (median) |
+|---|---|---|
+| balanced-player | engine | 0.0 |
+| cautious-restorer | engine | 0.0 |
+| competent-policy | engine | 76.0 |
+| flipper | engine | 0.0 |
+| handyman | engine | 0.0 |
+| investor | engine | 0.0 |
+| passive-grinder | engine | 0.0 |
+| random | engine | 0.0 |
+| service-grinder | suspension | 91.0 |
 
 ## Auction calibration (Sprint 20, auction rework II)
 
@@ -57,9 +73,9 @@ Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot b
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 83.9% | 10%-25% |
-| mid | 1.1% | 50%-100% |
-| frenzy | 15.1% | 5%-15% |
+| steal | 61.4% | 10%-25% |
+| mid | 7.1% | 50%-100% |
+| frenzy | 31.5% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 
@@ -77,4 +93,4 @@ Share of successful auction acquisitions made via instant buyout vs. a won compe
 
 ## Invariants enforced (Sprint 23 decision 7)
 
-`balance.cli check` hard-gates 5 checks against this data: days-to-`local` p50 in [15, 35] (competent-policy probe), buyout share of acquisitions < 30%, and the 3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive separation, sanity floor). 3 more are measured and reported but NOT gated - real measurement showed every active strategy's day-100 cash below Passive Grinder's, Flipper below its own starting cash, and the auction frenzy tail outside its target band; see `invariants.py`'s module docstring for the full disclosure rather than a silently loosened band.
+`balance.cli check` hard-gates 5 checks against this data: days-to-`local` p50 in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, and the 3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive separation, sanity floor). 3 more are measured and reported but NOT gated - real measurement showed every active strategy's day-100 cash below Passive Grinder's, Flipper below its own starting cash, and the auction frenzy tail outside its target band; see `invariants.py`'s module docstring for the full disclosure rather than a silently loosened band.

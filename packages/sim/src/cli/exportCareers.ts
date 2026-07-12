@@ -73,6 +73,8 @@ const COLUMNS = [
   { name: 'reputationTier', type: 'string' },
   { name: 'reputationPoints', type: 'int64' },
   { name: 'equipmentOwnedCount', type: 'int64' },
+  { name: 'specialtyTopGroup', type: 'string' },
+  { name: 'specialtyTopPoints', type: 'int64' },
 ] as const
 
 /** win price as a fraction of [reserve, buyout], bucketed - the Sprint 10
@@ -167,6 +169,8 @@ function main(): void {
             snapshot.reputationTier,
             snapshot.reputationPoints,
             snapshot.equipmentOwnedCount,
+            snapshot.specialtyTopGroup,
+            snapshot.specialtyTopPoints,
           ].join(','),
         )
       }

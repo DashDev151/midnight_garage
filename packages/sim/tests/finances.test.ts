@@ -1,7 +1,7 @@
 import { ECONOMY, type GameState, type StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { applyWeeklyRentAndWages } from '../src/finances'
-import { testToolTiers } from './testFixtures'
+import { testSpecialty, testToolTiers } from './testFixtures'
 
 const staffMember: StaffMember = {
   id: 'staff-0001',
@@ -18,6 +18,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: testSpecialty(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [],

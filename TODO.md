@@ -45,6 +45,15 @@ pass."
 
 ## Open engineering
 
+- [ ] **Specialty (Sprint 38, the progression bible's horizontal axis) earns from service-job work
+  only, never from sales.** A deliberate scope line, not an oversight: attributing a SALE'S
+  reputation-quality delta to "the disciplines the player actually improved on that car" would
+  need real per-car work provenance (which groups were genuinely repaired/installed by the player
+  vs. bought-in-good-condition or inherited from a prior owner) that the sim does not track today.
+  Wiring sales into specialty without that provenance would reward buying good cars over building
+  them, the opposite of what specialty is supposed to mean. Worth revisiting once (or if) the sim
+  tracks real per-car work provenance; until then, `resolveServiceJob` stays the only specialty
+  source (`serviceJobs.ts`).
 - [ ] **Generated cars (auction lots AND service-job customer cars) should sometimes arrive with
   AFTERMARKET parts already installed, not only stock + missing/worn (maintainer note, 2026-07-12,
   for the playtest pass).** e.g. a customer brings in a car that already has street brakes needing

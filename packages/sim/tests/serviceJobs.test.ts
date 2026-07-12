@@ -25,10 +25,12 @@ import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
   deriveServiceJobPayoutYen,
+  freshSpecialty,
   generateDailyServiceJobOffers,
   isServiceJobInTransit,
   isServiceTaskDone,
   isServiceWorkDone,
+  pickServiceJobTemplate,
   reputationForCompletion,
   reputationForFailure,
   resolveAcceptServiceJob,
@@ -36,10 +38,12 @@ import {
   resolveServiceJobArrivals,
   serviceJobCostBreakdown,
   isTemplateOfferable,
+  taskGroup,
   toolDeficitSummary,
+  topSpecialtyGroup,
   upgradeHintFor,
 } from '../src/serviceJobs'
-import { buildCarInstance, mintCarParts, testToolTiers } from './testFixtures'
+import { buildCarInstance, mintCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -724,6 +728,277 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     })
     // race beats sport - the completion reputation should match a pure-race grade.
     expect(next.reputationPoints).toBe(reputationForCompletion(job.baseReputation, 'race'))
+  })
+})
+
+describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
+  describe('earning, split evenly across every distinct task group', () => {
+    it("completion splits reputationGained across put-her-in-a-ditch's three groups (body/suspension/wheels)", () => {
+      const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'fine', dampers: 'fine' }) })
+      const { state: next, outcome } = resolveServiceJob(stateWith(job), job.id, CONTEXT)
+      expect(outcome).toBe('paid')
+      const perGroup = Math.round(next.reputationPoints / 3)
+      expect(next.specialty.body).toBe(perGroup)
+      expect(next.specialty.suspension).toBe(perGroup)
+      expect(next.specialty.wheels).toBe(perGroup)
+      // Untouched groups are never affected.
+      expect(next.specialty.engine).toBe(0)
+      expect(next.specialty.drivetrain).toBe(0)
+      expect(next.specialty.interior).toBe(0)
+    })
+
+    it('failure splits the penalty across the same three groups, subtracting from whatever specialty was already there', () => {
+      const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'poor' }) }) // undone -> failed
+      const starting = testSpecialty({ body: 50, suspension: 50, wheels: 50 })
+      const { state: next, outcome } = resolveServiceJob(
+        stateWith(job, { specialty: starting }),
+        job.id,
+        CONTEXT,
+      )
+      expect(outcome).toBe('failed')
+      const penalty = reputationForFailure(job.baseReputation)
+      const perGroup = Math.round(penalty / 3)
+      expect(next.specialty.body).toBe(50 - perGroup)
+      expect(next.specialty.suspension).toBe(50 - perGroup)
+      expect(next.specialty.wheels).toBe(50 - perGroup)
+      expect(next.specialty.engine).toBe(0) // untouched group, unaffected either way
+    })
+
+    it("the per-group floor clamps at 0, mirroring applyReputationDelta's own clamp", () => {
+      const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'poor' }) })
+      const { state: next } = resolveServiceJob(stateWith(job), job.id, CONTEXT) // starts all-zero
+      expect(next.specialty.body).toBe(0)
+      expect(next.specialty.suspension).toBe(0)
+      expect(next.specialty.wheels).toBe(0)
+    })
+  })
+
+  describe('topSpecialtyGroup', () => {
+    it('defaults to engine (first in declared order) at all-zero', () => {
+      expect(topSpecialtyGroup(freshSpecialty())).toBe('engine')
+    })
+
+    it('picks the strict max, breaking ties by declared order (engine, drivetrain, suspension, wheels, body, interior)', () => {
+      expect(topSpecialtyGroup(testSpecialty({ wheels: 30, body: 50 }))).toBe('body')
+      // A tie between suspension and wheels: suspension declared first, wins.
+      expect(topSpecialtyGroup(testSpecialty({ suspension: 40, wheels: 40 }))).toBe('suspension')
+    })
+  })
+
+  describe('pickServiceJobTemplate, the offer bias', () => {
+    it('at all-zero specialty is mathematically identical to a plain rng.pick (same single draw, same mapping)', () => {
+      const candidates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
+      for (let seed = 1; seed <= 50; seed++) {
+        const picked = pickServiceJobTemplate(
+          candidates,
+          freshSpecialty(),
+          CONTEXT,
+          createRng(seed),
+        )
+        const expected = createRng(seed).pick(candidates)
+        expect(picked.id).toBe(expected.id)
+      }
+    })
+
+    it('measurably favors the top specialty line: engine-primary templates draw more often at high engine specialty (> 1.2x, a conservative bound)', () => {
+      const candidates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
+      const isEnginePrimary = (t: ServiceJobType) => taskGroup(t.tasks[0]!, CONTEXT) === 'engine'
+      const N = 2000
+      let zeroCount = 0
+      let highCount = 0
+      for (let seed = 1; seed <= N; seed++) {
+        if (
+          isEnginePrimary(
+            pickServiceJobTemplate(candidates, freshSpecialty(), CONTEXT, createRng(seed)),
+          )
+        ) {
+          zeroCount++
+        }
+        if (
+          isEnginePrimary(
+            pickServiceJobTemplate(
+              candidates,
+              testSpecialty({ engine: 100 }),
+              CONTEXT,
+              createRng(seed),
+            ),
+          )
+        ) {
+          highCount++
+        }
+      }
+      expect(zeroCount).toBeGreaterThan(0) // sanity: engine templates are actually in the tier-1 pool
+      expect(highCount / zeroCount).toBeGreaterThan(1.2)
+    })
+
+    it('never excludes anything: every template still weighs >= 1 regardless of specialty', () => {
+      const candidates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
+      const isEnginePrimary = (t: ServiceJobType) => taskGroup(t.tasks[0]!, CONTEXT) === 'engine'
+      const picked = new Set<ServiceJobType>()
+      for (let seed = 1; seed <= 500; seed++) {
+        picked.add(
+          pickServiceJobTemplate(
+            candidates,
+            testSpecialty({ engine: 100 }),
+            CONTEXT,
+            createRng(seed),
+          ),
+        )
+      }
+      // A non-engine tier-1 template must still appear sometimes - bias
+      // reweights, it never zeroes anything out.
+      expect([...picked].some((t) => !isEnginePrimary(t))).toBe(true)
+    })
+  })
+
+  describe('the in-lane payout premium and specialty-copy flavor swap', () => {
+    /** A context whose only candidate template is `templateId` - eliminates
+     * template-choice randomness entirely (a 1-candidate pool always picks
+     * that candidate, see the pickServiceJobTemplate unit test above), so
+     * every other rng draw (model, car generation) stays byte-identical
+     * across two runs and only the margin/description can differ. */
+    function singleTemplateContext(templateId: string) {
+      const only = SERVICE_JOB_TYPES.filter((t) => t.id === templateId)
+      return buildSimContext(
+        CARS,
+        PARTS,
+        BUYERS,
+        PARTS_TAXONOMY,
+        only,
+        FACILITIES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+      )
+    }
+
+    it('multiplies payout and swaps the flavor line when the offer stays wholly in the top line, above threshold (single-group template)', () => {
+      // cooling-system-service: engine-only (repair cooling), tier 1.
+      const context = singleTemplateContext('cooling-system-service')
+      let sawHigherPayout = false
+      for (let day = 1; day <= 30; day++) {
+        const zero = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          testToolTiers(),
+          'legend',
+          freshSpecialty(),
+        )
+        const high = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          testToolTiers(),
+          'legend',
+          testSpecialty({ engine: 100 }),
+        )
+        expect(high.length).toBe(zero.length) // the count roll is unaffected by specialty
+        for (let i = 0; i < zero.length; i++) {
+          expect(context.specialtyCopy.engine).toContain(high[i]!.description)
+          // Some rolled cars already have a fine+ cooling part (nothing to
+          // charge, payout floors at the flat calloutFeeYen either way) -
+          // the premium has nothing to multiply on those days, so only
+          // assert strictly-higher where there was real cost to begin with.
+          if (zero[i]!.payoutYen > context.economy.serviceJobs.calloutFeeYen) {
+            expect(high[i]!.payoutYen).toBeGreaterThan(zero[i]!.payoutYen)
+            sawHigherPayout = true
+          }
+        }
+      }
+      expect(sawHigherPayout).toBe(true) // sanity: this seed range actually rolled real cost
+    })
+
+    it('does not apply below premiumThresholdPoints', () => {
+      const context = singleTemplateContext('cooling-system-service')
+      const belowThreshold = context.economy.specialty.premiumThresholdPoints - 1
+      let compared = false
+      for (let day = 1; day <= 30; day++) {
+        const zero = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          testToolTiers(),
+          'legend',
+          freshSpecialty(),
+        )
+        const justUnder = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          testToolTiers(),
+          'legend',
+          testSpecialty({ engine: belowThreshold }),
+        )
+        for (let i = 0; i < zero.length; i++) {
+          expect(justUnder[i]!.payoutYen).toBe(zero[i]!.payoutYen)
+          compared = true
+        }
+      }
+      expect(compared).toBe(true)
+    })
+
+    it('does not apply to a template spanning more than one group, even with that specialty maxed', () => {
+      // put-her-in-a-ditch: body + suspension + wheels - never "in lane" for
+      // any single specialty, however high. Its repair tasks are minToolTier
+      // 2 in both touched groups (Sprint 37 content), so the tool-tier
+      // ceiling must actually be met or the offer rule excludes it entirely.
+      const context = singleTemplateContext('put-her-in-a-ditch')
+      const readyTiers = testToolTiers({ body: 2, suspension: 2 })
+      let compared = false
+      for (let day = 1; day <= 30; day++) {
+        const zero = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          readyTiers,
+          'legend',
+          freshSpecialty(),
+        )
+        const high = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          readyTiers,
+          'legend',
+          testSpecialty({ body: 100 }),
+        )
+        for (let i = 0; i < zero.length; i++) {
+          expect(high[i]!.payoutYen).toBe(zero[i]!.payoutYen)
+          compared = true
+        }
+      }
+      expect(compared).toBe(true)
+    })
+  })
+
+  describe('zero-specialty regression: byte-identical to pre-Sprint-38 behavior', () => {
+    it('generateDailyServiceJobOffers with all-zero specialty produces the identical sequence as omitting the parameter (its default)', () => {
+      for (let seed = 1; seed <= 20; seed++) {
+        const withDefault = generateDailyServiceJobOffers(CONTEXT, seed, 10, createRng(seed))
+        const explicitZero = generateDailyServiceJobOffers(
+          CONTEXT,
+          seed,
+          10,
+          createRng(seed),
+          Infinity,
+          testToolTiers(),
+          'legend',
+          freshSpecialty(),
+        )
+        expect(explicitZero).toEqual(withDefault)
+      }
+    })
   })
 })
 

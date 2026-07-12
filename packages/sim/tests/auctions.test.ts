@@ -16,7 +16,7 @@ import {
 } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
-import { testToolTiers } from './testFixtures'
+import { testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -30,6 +30,7 @@ function stateWithLots(
     cashYen,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: testSpecialty(),
     ownedCars: [],
     partInventory: [],
     staff: [],

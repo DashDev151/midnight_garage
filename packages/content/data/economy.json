@@ -202,5 +202,11 @@
   },
   "toolCeilings": {
     "naToTurboConversionEngineTier": 3
+  },
+  "specialty": {
+    "biasFactor": 0.5,
+    "softcapPoints": 100,
+    "premiumThresholdPoints": 40,
+    "inLanePremium": 1.15
   }
 }

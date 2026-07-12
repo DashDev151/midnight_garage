@@ -6,7 +6,7 @@ import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
 import { createInitialGameState } from '../src/newGame'
-import { groupCarParts, testToolTiers } from './testFixtures'
+import { groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -30,6 +30,7 @@ function initialState(): GameState {
     cashYen: 1_200_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: testSpecialty(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [
@@ -155,15 +156,15 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 36 re-pins this hash (was 10108ea2): the hashed state's shape
-    // itself changed (the equipment-ownership list removed, the six-line
-    // `toolTiers` map added), and service-job offer generation dropped the Sprint 33
-    // hint-reroll RNG draw when the equipment filter died, reordering the
-    // daily draw sequence. A pure state-shape + draw-order change - no
-    // value-model math changed here.
+    // Sprint 38 re-pins this hash (was 7eb02198): the hashed state's SHAPE
+    // changed (the new `specialty` record added to GameState) - the offer
+    // SEQUENCE itself is unaffected at all-zero specialty (proven directly
+    // in serviceJobs.test.ts's "byte-identical to pre-Sprint-38 behavior"
+    // tests), so this is a pure state-shape change, not a draw-order or
+    // value-model change.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('7eb02198')
+    expect(hashState(finalState)).toBe('7a495efd')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -285,12 +286,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned for Sprint 36 (was 2261bd6a): same causes as the 30-day
-    // career above - the hashed state carries `toolTiers` instead of the
-    // equipment-ownership list, and the deleted offer-generation hint reroll
-    // shifts the shared daily RNG draw order for the whole career. No
-    // value-model math changed; the sale price math is untouched.
-    expect(hashState(acquisitionCareer().sold)).toBe('ce6e0f11')
+    // Re-pinned for Sprint 38 (was ce6e0f11): same cause as the 30-day
+    // career above - the hashed state's SHAPE gained `specialty`; no draw-
+    // order or value-model change (sale price math is untouched).
+    expect(hashState(acquisitionCareer().sold)).toBe('8c2d16c4')
   })
 })
 

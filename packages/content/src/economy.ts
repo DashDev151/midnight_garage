@@ -589,6 +589,21 @@ export const EconomyConfigSchema = z.object({
   toolCeilings: z.object({
     naToTurboConversionEngineTier: ToolTierSchema,
   }),
+  /**
+   * Sprint 38: the specialty axis's four tunables (progression bible's
+   * horizontal axis - per-discipline word of mouth). `biasFactor`/
+   * `softcapPoints` shape the offer-selection weight
+   * (`1 + biasFactor * min(1, specialty[group] / softcapPoints)`,
+   * `pickServiceJobTemplate`, serviceJobs.ts); `premiumThresholdPoints`/
+   * `inLanePremium` gate and size the in-lane payout premium
+   * (`deriveServiceJobPayoutYen`'s margin roll, same file).
+   */
+  specialty: z.object({
+    biasFactor: z.number().nonnegative(),
+    softcapPoints: z.number().positive(),
+    premiumThresholdPoints: z.number().nonnegative(),
+    inLanePremium: z.number().positive(),
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

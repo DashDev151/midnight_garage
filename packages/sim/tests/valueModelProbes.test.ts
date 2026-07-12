@@ -21,7 +21,7 @@ import { marketValueYen } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { bestFitBuyer } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
-import { testToolTiers } from './testFixtures'
+import { testSpecialty, testToolTiers } from './testFixtures'
 
 /**
  * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
@@ -47,6 +47,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     cashYen: 10_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: testSpecialty(),
     ownedCars: [],
     partInventory: [],
     staff: [],

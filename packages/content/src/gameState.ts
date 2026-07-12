@@ -41,6 +41,22 @@ export const GameStateSchema = z.object({
   /** Accrued reputation points (Sprint 08 scaffold; Sprint 15 derives
    * reputationTier from this via applyReputationDelta). */
   reputationPoints: z.number().int().nonnegative().default(0),
+  /**
+   * Specialty (Sprint 38, progression bible's horizontal axis): per-
+   * discipline word of mouth, earned from completed service-job work in
+   * that group (`resolveServiceJob`, serviceJobs.ts). Reputation gates
+   * BREADTH; specialty gates DEPTH (offer bias, in-lane payout premium) -
+   * never the same reward twice (bible law 3). Purely additive: a pre-v24
+   * save simply never earned any, so it defaults all-zero, no migration.
+   */
+  specialty: z.record(ComponentIdSchema, z.number().int().nonnegative()).default({
+    engine: 0,
+    drivetrain: 0,
+    suspension: 0,
+    wheels: 0,
+    body: 0,
+    interior: 0,
+  }),
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
   staff: z.array(StaffMemberSchema).default([]),

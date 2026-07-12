@@ -29,6 +29,25 @@ export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
 }
 
 /**
+ * Sprint 38 shared fixture: a full six-line `specialty` map, every line at
+ * 0 (a fresh shop's floor) unless overridden - same shape as
+ * `testToolTiers` above.
+ */
+export function testSpecialty(
+  overrides: Partial<Record<ComponentId, number>> = {},
+): Record<ComponentId, number> {
+  return {
+    engine: 0,
+    drivetrain: 0,
+    suspension: 0,
+    wheels: 0,
+    body: 0,
+    interior: 0,
+    ...overrides,
+  }
+}
+
+/**
  * One `grade: 'stock'` catalog part id per `CarPartId` (Sprint 32 decision 1
  * guarantees exactly one) - what a fixture car's slot defaults to, same as
  * real generation (`generateAuctionCarInstance`, sim/auctions.ts).

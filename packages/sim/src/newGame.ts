@@ -4,7 +4,7 @@ import { refreshCatalogs } from './catalogs'
 import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { createRng } from './rng'
-import { generateDailyServiceJobOffers } from './serviceJobs'
+import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
 import { freshToolTiers } from './toolLines'
 
 /**
@@ -30,6 +30,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     cashYen: context.economy.STARTING_CASH_YEN,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: freshSpecialty(),
     ownedCars: [],
     partInventory: [],
     staff: [],
@@ -64,6 +65,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     currentGameYear(base.reputationTier),
     base.toolTiers,
     base.reputationTier,
+    base.specialty,
   )
   return {
     ...base,

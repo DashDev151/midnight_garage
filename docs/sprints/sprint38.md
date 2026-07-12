@@ -122,4 +122,78 @@ run the balance harness.
 
 ## Exit
 
-*(filled on completion)*
+Implemented directly (no subagent, per maintainer directive 2026-07-12), exactly per the locked
+specification.
+
+**State + content.** `GameStateSchema` gained `specialty` (six-key record, additive `.default()`
+all-zero - no migration needed, same case as v2/v22); `economy.json` gained the `specialty` block
+(biasFactor 0.5, softcapPoints 100, premiumThresholdPoints 40, inLanePremium 1.15); new
+`specialtyCopy.json` (six word-of-mouth flavor pools, >= 2 lines each, 1995 register) with its own
+Zod schema and `SPECIALTY_COPY` export, threaded onto `SimContext` as a new trailing (10th)
+`buildSimContext` parameter (same "defaulted, existing call sites keep compiling" treatment as
+`economy`).
+
+**Earning** (`resolveServiceJob`, both branches, `serviceJobs.ts`): `distinctTaskGroups` +
+`applySpecialtyDelta` split `reputationGained`/`-penalty` evenly across every group a job's tasks
+touch, clamped at 0 per group, exactly mirroring `applyReputationDelta`'s own floor. Reputation
+itself is untouched code (same computed value, just now ALSO split into specialty).
+
+**Bias + premium + copy swap** (`generateDailyServiceJobOffers`): `pickServiceJobTemplate` replaces
+the bare `rng.pick` with a weighted cumulative pick (`templateWeight` = `1 + biasFactor *
+min(1, specialty[firstTaskGroup] / softcapPoints)`), still exactly ONE `next()` draw - proven
+mathematically and by direct test to be identical to `rng.pick` at all-zero specialty (same
+`floor(next() * length)` mapping). `topSpecialtyGroup` (ties broken by `ComponentIdSchema`'s
+declared order via a strict-improvement-only loop) and `singleTaskGroup` (null for any
+multi-group template) gate the in-lane premium: a single-group offer whose group is the shop's top
+line, at or above `premiumThresholdPoints`, multiplies the margin roll by `inLanePremium` and
+swaps its flavor line for `context.specialtyCopy[group]` instead of the template's own
+`flavorPool` - the ONLY surfacing, exactly one `rng.pick` either way so draw count never changes.
+
+**Harness + report.** `CareerSnapshot`/CSV gained `specialtyTopGroup`/`specialtyTopPoints`
+(informational, no invariant reads them); `report.py` renders a new informational section and the
+two stale "[15, 35]" days-to-local copy instances are fixed to the real "[10, 35]" band. Dev
+console gained a read-only six-line specialty readout (the one sanctioned debug exception to
+"no meters" - progression bible law 4).
+
+**Save:** `SAVE_VERSION` 23 -> 24, additive, no `MIGRATIONS[23]` entry; two golden tests (a real
+pre-v24 envelope with no `specialty` field decodes all-zero; a v24 state with real values
+round-trips exactly), following the v22 precedent exactly. Two stray `SAVE_VERSION` canaries
+elsewhere in the test file bumped 23 -> 24.
+
+**Tests.** Earn-split (completion and failure, using put-her-in-a-ditch's real 3-group span,
+clamp-at-zero); `topSpecialtyGroup` tie-break; `pickServiceJobTemplate` mathematical identity to
+`rng.pick` at zero specialty (50 seeds) and measured bias (2000 seeds: engine-primary share rose
+> 1.2x at engine=100 specialty, comfortably over the spec's conservative bound) and non-exclusion;
+the in-lane premium tested via a single-candidate `SimContext` (eliminates template-choice
+randomness so only the margin/description can differ between two same-seed runs) - multiplies
+payout and swaps flavor when in-lane and above threshold, does neither below threshold or for a
+multi-group template; a full zero-specialty-vs-omitted-parameter equivalence test; a game-level
+end-to-end test proving the store's `endDay` -> `advanceDay` -> `generateDailyServiceJobOffers`
+pipeline actually produces specialty-copy offers with nothing but the existing `GameState`
+plumbing (no dedicated wiring code needed, confirming the design's "thread the whole state object"
+choice). Two real content bugs surfaced and fixed along the way (both were Sprint-37-content
+issues, not Sprint 38's): the `isServiceWorkDone` test needed a genuinely MISSING tyres slot
+(Sprint 37's put-her-in-a-ditch install task is `stock`+, trivially satisfied by any installed
+tyre); the obsolete Sprint-36-era "every minToolTier is 1" placeholder accept test was replaced
+with two real-content assertions.
+
+**Gate (all shown, all green):** typecheck (content/sim/game); lint; format; `pnpm test` 789/789
+(up from 774 pre-sprint); `pnpm test:coverage` 789/789 (statements 90.4%, branches 78.93%,
+functions 90.52%, lines 94.25%, all above 80/65/78/82); `pnpm build`. Golden hashes re-pinned
+(`7eb02198` -> `7a495efd`, `ce6e0f11` -> `8c2d16c4`): pure state-SHAPE change (the new `specialty`
+field), not a sequence change, confirmed directly by the zero-specialty-identical-sequence test
+passing before either hash was touched. A `packages/content/tests/gameState.test.ts` fixture also
+needed the new field added (the same class of fixture-completeness fix Sprint 36's `toolTiers`
+addition required across 13 sim test files).
+
+**Balance harness:** all hard invariants PASS. Days-to-`local` p50 = 12.0, unchanged from Sprint
+37 (expected: no bot's OWN decision-making reads specialty yet, only offer generation does, so
+bias/premium have zero effect on any strategy's behavior this sprint). The report's new specialty
+section confirms the mechanism end-to-end against real harness data: `competent-policy` (the
+strategy that actually performs service-job work) shows real earned specialty (day-100 median 76
+points, top group engine); every strategy that never touches service jobs correctly reads
+inert/zero - exactly the "byte-identical at zero specialty" guarantee, now also demonstrated
+through the real bot population, not just unit tests. `TODO.md` gained the specialty-from-sales
+deferral note (parked deliberately: no per-car work-provenance tracking exists yet to attribute a
+sale's quality delta to the disciplines the player actually improved, so wiring sales in now would
+reward buying good cars over building them).

@@ -1144,6 +1144,23 @@ export const useGameStore = defineStore('game', () => {
     }),
   )
 
+  // --- specialty (Sprint 38) -----------------------------------------------
+
+  /**
+   * The six per-discipline specialty counters, dev-console-only (progression
+   * bible law 4: no player-facing meter - this is the ONE debug exception).
+   * Real players never see this; the actual surface is offer mix and copy.
+   */
+  const specialtyView = computed<
+    { componentId: ComponentId; componentLabel: string; points: number }[]
+  >(() =>
+    REAL_COMPONENT_GROUPS.map((componentId) => ({
+      componentId,
+      componentLabel: componentLabel(componentId),
+      points: gameState.value.specialty[componentId],
+    })),
+  )
+
   /**
    * Upgrade one tool line to its next tier - instant, effective the same day
    * (repair work sizes off the new tier immediately). Cash-gated only, no
@@ -1918,6 +1935,7 @@ export const useGameStore = defineStore('game', () => {
     buyBay,
     toolLineViews,
     upgradeToolLine,
+    specialtyView,
     repair,
     install,
     isPartStagedAnywhere,

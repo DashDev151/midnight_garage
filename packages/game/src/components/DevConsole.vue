@@ -44,6 +44,16 @@ function warp(): void {
       {{ game.reputationTier }}
     </div>
 
+    <!-- Sprint 38: specialty is a dev-only readout (progression bible law 4 -
+         no player-facing meter; real players only ever see the offer mix
+         and copy this drives). -->
+    <div class="readout" data-test="specialty-readout">
+      specialty:
+      <span v-for="line in game.specialtyView" :key="line.componentId">
+        {{ line.componentLabel }} {{ line.points }}
+      </span>
+    </div>
+
     <div class="row">
       <label>give <input v-model.number="giveAmount" type="number" step="50000" /></label>
       <button @click="game.devGiveCash(giveAmount)">add cash</button>

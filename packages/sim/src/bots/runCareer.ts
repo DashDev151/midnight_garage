@@ -1,6 +1,7 @@
 import type {
   AuctionLot,
   AuctionTier,
+  ComponentId,
   GameState,
   RarityTier,
   ReputationTier,
@@ -11,6 +12,7 @@ import { anchorValueYen, bidIncrementYen } from '../bidding'
 import type { SimContext } from '../context'
 import { createInitialGameState } from '../newGame'
 import { createRng, type Rng } from '../rng'
+import { topSpecialtyGroup } from '../serviceJobs'
 import { valuateCarForBuyer } from '../valuation'
 
 export type BotStrategy = (state: GameState, context: SimContext, rng: Rng) => DayActions
@@ -30,6 +32,11 @@ export interface CareerSnapshot {
    * name but counts tool-tier upgrades now - the sum of all six lines'
    * tiers minus 6 (0 for a fresh, never-upgraded shop). */
   equipmentOwnedCount: number
+  /** Sprint 38, informational (no invariant reads this yet): the group the
+   * bot is most known for right now and its point value - `engine`/0 for a
+   * bot that has never earned any (the argmax default). */
+  specialtyTopGroup: ComponentId
+  specialtyTopPoints: number
 }
 
 /**
@@ -291,6 +298,7 @@ export function runCareer(
       return sum + (model?.bookValueYen ?? 0)
     }, 0)
 
+    const specialtyTop = topSpecialtyGroup(state.specialty)
     snapshots.push({
       day,
       cashYen: state.cashYen,
@@ -299,6 +307,8 @@ export function runCareer(
       reputationTier: state.reputationTier,
       reputationPoints: state.reputationPoints,
       equipmentOwnedCount: Object.values(state.toolTiers).reduce((sum, tier) => sum + tier, 0) - 6,
+      specialtyTopGroup: specialtyTop,
+      specialtyTopPoints: state.specialty[specialtyTop],
     })
   }
 

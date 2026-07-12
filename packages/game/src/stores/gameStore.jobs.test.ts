@@ -1,4 +1,4 @@
-import { PARTS, type ServiceJob } from '@midnight-garage/content'
+import { PARTS, SPECIALTY_COPY, type ServiceJob } from '@midnight-garage/content'
 import {
   gradeAtLeast,
   isServiceTaskDone,
@@ -205,5 +205,29 @@ describe('service jobs in the store', () => {
     game.endDay()
     expect(game.carDetail(carId)?.serviceJob?.arrivesOnDay).toBeNull()
     expect(game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })).toBe(true)
+  })
+
+  /**
+   * Sprint 38: the store threads `gameState.specialty` through to
+   * `advanceDay` (and so to fresh offer generation) purely by passing the
+   * whole `GameState` object - no dedicated wiring code, so this is an
+   * end-to-end proof the pipeline actually works through the real store,
+   * not just the sim function tested directly in `serviceJobs.test.ts`.
+   */
+  it('a fresh offer generated while a specialty dominates and clears the threshold draws its flavor from the word-of-mouth copy pool', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.gameState = {
+      ...game.gameState,
+      specialty: { engine: 100, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },
+    }
+    let sawSpecialtyCopy = false
+    for (let i = 0; i < 100 && !sawSpecialtyCopy; i++) {
+      game.endDay()
+      sawSpecialtyCopy = game.serviceJobOffers.some((o) =>
+        SPECIALTY_COPY.engine.includes(o.description),
+      )
+    }
+    expect(sawSpecialtyCopy).toBe(true)
   })
 })

@@ -26,7 +26,13 @@ import {
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { buildCarInstance, groupCarParts, mintCarParts, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  groupCarParts,
+  mintCarParts,
+  testSpecialty,
+  testToolTiers,
+} from './testFixtures'
 
 // Real CARS/PARTS (not empty arrays) since Sprint 24 fix 2: `findOrCreateJob`
 // now validates install-part fit against the actual model/part catalog, so
@@ -75,6 +81,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: testSpecialty(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [car],

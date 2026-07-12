@@ -2,7 +2,7 @@ import type { GameState, StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { PLAYER_BASE_LABOR_SLOTS } from '../src/constants'
 import { availableLaborSlots } from '../src/laborSlots'
-import { testToolTiers } from './testFixtures'
+import { testSpecialty, testToolTiers } from './testFixtures'
 
 function baseState(staff: StaffMember[]): GameState {
   return {
@@ -11,6 +11,7 @@ function baseState(staff: StaffMember[]): GameState {
     cashYen: 0,
     reputationTier: 'unknown',
     reputationPoints: 0,
+    specialty: testSpecialty(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [],

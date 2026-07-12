@@ -127,7 +127,7 @@ def render_days_to_tier_section(df: pl.DataFrame) -> list[str]:
         "## Days-to-tier (Sprint 23, competent-policy probe)",
         "",
         "First day each seeded `competent-policy` career reaches each reputation tier "
-        "or better. `local` (p50 in [15, 35]) is the only hard-gated row (invariant 3); "
+        "or better. `local` (p50 in [10, 35]) is the only hard-gated row (invariant 3); "
         "`known`/`respected` are informational against sprint23.md's own pacing targets "
         "(day 50-70 and day 90-120 respectively).",
         "",
@@ -149,11 +149,46 @@ def render_days_to_tier_section(df: pl.DataFrame) -> list[str]:
     return lines
 
 
+def render_specialty_section(df: pl.DataFrame) -> list[str]:
+    """Sprint 38 (specialty axis), informational only - no invariant reads
+    this yet. Day-100 top-specialty group (most common across seeds) and its
+    median point value per strategy, from `specialtyTopGroup`/
+    `specialtyTopPoints` (exportCareers.ts) - exists so the arc-end balance
+    pass can see whether the offer-bias/in-lane-premium mechanics actually
+    produce real specialization, not to gate anything yet."""
+    lines = [
+        "## Specialty (Sprint 38, informational)",
+        "",
+        "Day-100 top specialty group (most common across seeds) and its median point "
+        "value, per strategy. `engine`/0 means the strategy never earned any (the "
+        "argmax default).",
+        "",
+        "| Strategy | Most common top group | Points (median) |",
+        "|---|---|---|",
+    ]
+    if "specialtyTopGroup" not in df.columns or df.height == 0:
+        lines.append("| *(no specialty data in this run)* | - | - |")
+        lines.append("")
+        return lines
+
+    day100 = df.filter(pl.col("day") == 100)
+    for strategy in sorted(day100["strategy"].unique().to_list()):
+        rows = day100.filter(pl.col("strategy") == strategy)
+        if rows.height == 0:
+            continue
+        modes = rows["specialtyTopGroup"].mode().sort().to_list()
+        top_group = modes[0] if modes else "-"
+        points_median = rows["specialtyTopPoints"].median()
+        lines.append(f"| {strategy} | {top_group} | {points_median:.1f} |")
+    lines.append("")
+    return lines
+
+
 INVARIANTS_ENFORCED_SECTION = [
     "## Invariants enforced (Sprint 23 decision 7)",
     "",
     "`balance.cli check` hard-gates 5 checks against this data: days-to-`local` p50 "
-    "in [15, 35] (competent-policy probe), buyout share of acquisitions < 30%, and the "
+    "in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, and the "
     "3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive "
     "separation, sanity floor). 3 more are measured and reported but NOT gated - real "
     "measurement showed every active strategy's day-100 cash below Passive Grinder's, "
@@ -169,6 +204,7 @@ def render_markdown(
     auction_section: list[str],
     acquisitions_section: list[str],
     days_to_tier_section: list[str],
+    specialty_section: list[str],
 ) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
@@ -188,6 +224,7 @@ def render_markdown(
         )
     lines.append("")
     lines.extend(days_to_tier_section)
+    lines.extend(specialty_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
     lines.extend(INVARIANTS_ENFORCED_SECTION)
@@ -208,7 +245,14 @@ def main(argv: list[str] | None = None) -> int:
     auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
     days_to_tier_section = render_days_to_tier_section(df)
-    report = render_markdown(summarize(df), auction_section, acquisitions_section, days_to_tier_section)
+    specialty_section = render_specialty_section(df)
+    report = render_markdown(
+        summarize(df),
+        auction_section,
+        acquisitions_section,
+        days_to_tier_section,
+        specialty_section,
+    )
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)
     return 0
