@@ -36,8 +36,15 @@ const props = withDefaults(
      * not the place to also kick off bench work.
      */
     showRecondition?: boolean
+    /**
+     * Sprint 37: overrides the generic "doesn't fit here" hint when `fits`
+     * is false for a specific, actionable reason (e.g. the one own-car
+     * capability ceiling - NA-to-turbo conversion needs a higher engine tool
+     * tier). Ignored when `fits` is true.
+     */
+    noFitReason?: string | null
   }>(),
-  { fits: true, showRecondition: true },
+  { fits: true, showRecondition: true, noFitReason: null },
 )
 
 const emit = defineEmits<{
@@ -136,7 +143,7 @@ function onPointerUp(event: PointerEvent): void {
         >
       </span>
       <span v-if="isScrap" class="scrap-hint">scrap - can't be installed anywhere</span>
-      <span v-else-if="!fits" class="no-fit-hint">doesn't fit here</span>
+      <span v-else-if="!fits" class="no-fit-hint">{{ noFitReason ?? "doesn't fit here" }}</span>
     </div>
     <div class="part-actions">
       <button

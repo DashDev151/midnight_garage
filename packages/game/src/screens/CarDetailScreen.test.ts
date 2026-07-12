@@ -314,9 +314,14 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="remove-part-dampers"]').exists()).toBe(true)
     })
 
-    it('an empty forced-induction slot on an NA car shows "no turbo (NA)" and offers Replace, fitting a turbo kit installs it', async () => {
+    it('an empty forced-induction slot on an NA car shows "no turbo (NA)" and, once engine tooling is upgraded, fitting a turbo kit installs it', async () => {
       // honda-city-e-aa is NA: forcedInduction generates genuinely empty, band irrelevant.
+      // Sprint 37: converting a factory-NA car to forced induction is gated
+      // behind engine tier 3 (the bolt-on vs built line) - grant it here to
+      // exercise the ALLOWED path; the default-tier-1 BLOCKED path is its
+      // own test below.
       const game = useGameStore()
+      game.devSetToolTier('engine', 3)
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const turboKit = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
@@ -335,6 +340,26 @@ describe('CarDetailScreen', () => {
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
       await wrapper.find('[data-test="confirm-work"]').trigger('click')
       expect(game.gameState.ownedCars[0]!.parts.forcedInduction.installed?.id).toBe(partInstanceId)
+    })
+
+    it('a fresh (engine tier 1) shop cannot convert an NA car to forced induction: the turbo kit is dimmed with "Needs Machine-shop tooling" and cannot be selected', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const turboKit = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
+      game.devGrantPart(turboKit.id)
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="expand-engine"]').trigger('click')
+      await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
+
+      expect(wrapper.text()).toContain('Needs Machine-shop tooling')
+      await wrapper.find('.part-card').trigger('click')
+      expect(wrapper.text()).not.toContain('staged:')
+      expect(game.gameState.ownedCars[0]!.parts.forcedInduction.installed?.id).not.toBe(
+        partInstanceId,
+      )
     })
 
     it('removing an installed part opens the slot back up for Replace, dropping it to inventory', async () => {

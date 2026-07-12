@@ -33,6 +33,15 @@ const game = useGameStore()
 
 const componentId = computed(() => game.groupForCarPart(props.carPartId))
 
+/**
+ * Sprint 37: the one own-car capability ceiling (NA-to-turbo conversion) -
+ * when set, every candidate in this drawer is dimmed with this specific
+ * reason instead of the generic "doesn't fit here" hint, since the block
+ * isn't about any one part's fit, it's the slot itself not being buildable
+ * yet.
+ */
+const blockedReason = computed(() => game.installBlockedReason(props.carId, props.carPartId))
+
 /** Every stageable part addressed to this exact slot, each flagged with
  * whether it actually fits this specific car (platform tags) and excluding
  * scrap (never installable anywhere, Sprint 26 decision 6). */
@@ -42,7 +51,11 @@ const entries = computed(() => {
   )
   return game.stageableParts
     .filter((entry) => entry.part.carPartId === props.carPartId && entry.instance.band !== 'scrap')
-    .map((entry) => ({ ...entry, fits: fitting.has(entry.instance.id) }))
+    .map((entry) => ({
+      ...entry,
+      fits: fitting.has(entry.instance.id) && !blockedReason.value,
+      noFitReason: blockedReason.value,
+    }))
 })
 
 function onSelect(partInstanceId: string): void {
@@ -87,6 +100,7 @@ function onSelect(partInstanceId: string): void {
         :instance="entry.instance"
         :part="entry.part"
         :fits="entry.fits"
+        :no-fit-reason="entry.noFitReason"
         :show-recondition="false"
         @select="onSelect"
       />

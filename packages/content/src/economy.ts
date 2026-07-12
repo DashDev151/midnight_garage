@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ToolTierSchema } from './toolLines'
 
 /**
  * One non-negative weight per `CarPartId` (Sprint 32) - explicit per-part
@@ -575,6 +576,19 @@ export const EconomyConfigSchema = z.object({
     .refine((s) => s.heatBandColdBelowPercent <= s.heatBandHotAtOrAbovePercent, {
       message: 'selling.heatBandColdBelowPercent must be <= heatBandHotAtOrAbovePercent',
     }),
+  /**
+   * Sprint 37: the one own-car capability ceiling (progression bible's
+   * bolt-on vs built line). Converting a factory-NA car to forced induction
+   * (fitting the FIRST turbo/supercharger into a legitimately-empty slot,
+   * `hasForcedInduction(model) === false`) is fabrication work, gated
+   * behind this engine tool tier - a car that already carries a forced-
+   * induction part (factory-turbo, or a previous conversion) swaps freely
+   * at any tier; only the first conversion is gated
+   * (`jobs.ts`'s `naToTurboConversionBlocked`).
+   */
+  toolCeilings: z.object({
+    naToTurboConversionEngineTier: ToolTierSchema,
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

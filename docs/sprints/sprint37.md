@@ -153,4 +153,65 @@ the `installFitGate` ceiling + its schema field). Do NOT run the balance harness
 
 ## Exit
 
-*(filled on completion)*
+Implemented directly (no subagent, per maintainer directive 2026-07-12). All 32 templates authored
+exactly per the locked spec table (17 kept ids unchanged, 15 new); every task carries an explicit
+`minToolTier`. `race-turbo-upgrade` stays @1 (bolt-on swap on an already-boosted car);
+`forced-induction-conversion` is @3 (the conversion itself). Flavor lines for kept templates were
+reused verbatim (no re-tier changed which parts/groups a template touches, so the integrity
+flavor-group guard needed no rewriting); 15 new templates got fresh flavor lines in the T1
+everyday / T3-T4 enthusiast-brief register, checked by hand against `integrity.test.ts`'s
+foreign-word guard (including the `"underbody"` contains `"body"` substring trap - safe since body
+is always the touched group when `underbody` is mentioned).
+
+**NA-to-turbo ceiling.** One new pure sim helper, `naToTurboConversionBlocked` (`jobs.ts`), the
+single source of truth wired into both `installFitGate` (the sim gate, reason `'tool-tier'`) and
+the game store's `stageAction` (mirrors the sim gate pre-emptively, same pattern the existing
+Sprint 24 fix 2 fit-check already used) and a new `installBlockedReason` (drives the UI). Only the
+FIRST conversion is gated - a car that already carries a forced-induction part (factory-turbo or
+previously converted) swaps freely at any tier, verified directly against the pure predicate.
+`toolCeilings.naToTurboConversionEngineTier: 3` lives in `economy.json` (content law); the
+`job-blocked` reason enum gained `'tool-tier'` alongside the existing `part-does-not-fit`.
+
+**UI.** `PartCard.vue` gained a `noFitReason` prop (overrides the generic "doesn't fit here" hint);
+`ReplaceDrawer.vue` computes the block once per drawer and passes it through, dimming every
+candidate with "Needs Machine-shop tooling" when the conversion isn't unlocked yet - reusing the
+existing `fits`-gates-interactivity mechanism rather than a new locked-reason branch.
+
+**Tests.** Three Sprint-36-era tests broke on contact with real content (all expected, all fixed):
+a `isServiceWorkDone` fixture that needed a genuinely MISSING tyres slot instead of a stock one
+(put-her-in-a-ditch's install task is now `stock`+ per spec, trivially satisfied by any installed
+tyre); the Sprint-36 placeholder "every minToolTier is 1" accept test, replaced by two real-content
+tests (a tier-1 template accepts outright, `put-her-in-a-ditch` at tier 2 is refused on a fresh
+game); and the day-one-board test's hard `maxDeficit === 0` assertion, replaced by three real
+Sprint 37 DoD checks (max deficit <=1 always; the union of day-one offers touches all six groups
+across 300 seeds - all 11 tier-1 templates are zero-deficit by construction and between them cover
+every line; no single template exceeds 40% share). Added: an NA-to-turbo sim test (`jobs.test.ts`,
+refuses at engine tier 1-2, allows at 3, plus a direct proof the predicate never blocks an
+already-turbo car) and a CarDetailScreen game test split in two (the original "installs
+successfully" case now grants engine tier 3 first; a new case proves the default tier-1 board
+blocks the same install with the visible reason and nothing gets staged).
+
+**Ladder verified (ad-hoc, per spec "verified not asserted" - not a committed test).** For all six
+lines, the highest-minToolTier template's median derived payout (over the full roster, marginMin)
+exceeds its lowest-tier sibling's: engine 20,900 -> 436,950; drivetrain 32,825 -> 622,450;
+suspension 18,250 -> 38,125; wheels 22,225 -> 219,650; body 28,850 -> 60,650; interior 20,900 ->
+39,450. Involved work pays better everywhere, purely as a consequence of the existing derived-payout
+formula (no authored numbers).
+
+**Golden hashes: unaffected, no re-pin needed.** The full test suite (774 tests, up from 768) went
+green on the first run against the new content with zero golden-hash failures - the fixed-seed
+scripted career in `advanceDay.test.ts` never happens to hit a service-job branch whose output
+diverges under the new template pool.
+
+**Gate (all shown, all green):** typecheck (content/sim/game); lint; format; `pnpm test` 774/774;
+`pnpm test:coverage` 774/774 (statements 90.36%, branches 78.91%, functions 90.49%, lines 94.2%,
+all above the 80/65/78/82 thresholds); `pnpm build`.
+
+**Balance harness:** run directly (maintainer directive: sanity-check only this sprint, no deep
+tuning analysis - full balance work follows arc close per Sprint 36's Exit). All hard invariants
+PASS. Days-to-`local` p50 = 12.0 (in [10,35], down from Sprint 36's 19.0). No strategy below the
+sanity floor; nothing catastrophic (no crashes, no runaway numbers). Day-100 medians moved with
+the richer, honest tier-1 job content (service-grinder 1.93M -> 355k; competent-policy 176k ->
+504k; flipper/restorer/handyman/balanced still negative or near-zero, same shape as Sprint 36's
+disclosed movement) - not analyzed further here per the maintainer's explicit instruction; real
+tuning is deferred to the arc-end balance pass (Sprint 36's Exit + `TODO.md`).

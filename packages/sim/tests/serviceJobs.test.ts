@@ -282,8 +282,8 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   })
 })
 
-describe('the Sprint 36 offer rule: never more than one tool-tier upgrade away', () => {
-  it('across 300 fresh seeds every offer has max deficit <= 1 and at most one deficient group (default content: all zero-deficit)', () => {
+describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content', () => {
+  it('across 300 fresh seeds every offer has max deficit <= 1 and at most one deficient group', () => {
     let sawAnyOffer = false
     for (let seed = 1; seed <= 300; seed++) {
       const state = createInitialGameState(CONTEXT, seed)
@@ -292,14 +292,56 @@ describe('the Sprint 36 offer rule: never more than one tool-tier upgrade away',
         const summary = toolDeficitSummary(offer.tasks, state.toolTiers, CONTEXT)
         expect(summary.maxDeficit).toBeLessThanOrEqual(1)
         expect(summary.deficientGroups.length).toBeLessThanOrEqual(1)
-        // Sprint 36 ships all-default-1 content, so today the board is not
-        // just honest but fully actionable: zero deficits everywhere.
-        // Sprint 37's authored ceilings are what make the <= 1 bound above
-        // do real work.
-        expect(summary.maxDeficit).toBe(0)
       }
     }
     expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
+  })
+
+  /**
+   * Sprint 37 DoD: the day-one board is diverse, not just honest. All 11
+   * tier-1 templates (Sprint 37's authored ladder) have every task at
+   * minToolTier 1, so a fresh (all-tier-1) shop has zero deficits on every
+   * one of them - between them they touch all six lines, so the board
+   * should draw from every discipline, not just one.
+   */
+  it('the day-one board is diverse: the union of offered templates touches all six groups across 300 seeds', () => {
+    const touchedGroups = new Set<string>()
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createInitialGameState(CONTEXT, seed)
+      for (const offer of state.serviceJobOffers) {
+        for (const task of offer.tasks) {
+          const group = CONTEXT.partsTaxonomyById[task.carPartId]?.group
+          if (group) touchedGroups.add(group)
+        }
+      }
+    }
+    expect([...touchedGroups].sort()).toEqual([
+      'body',
+      'drivetrain',
+      'engine',
+      'interior',
+      'suspension',
+      'wheels',
+    ])
+  })
+
+  it('no single template dominates the day-one board: no id exceeds 40% of all offers pooled across 300 seeds', () => {
+    const counts = new Map<string, number>()
+    let total = 0
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createInitialGameState(CONTEXT, seed)
+      for (const offer of state.serviceJobOffers) {
+        total += 1
+        counts.set(offer.typeId, (counts.get(offer.typeId) ?? 0) + 1)
+      }
+    }
+    expect(total).toBeGreaterThan(0)
+    for (const [typeId, count] of counts) {
+      expect(
+        count / total,
+        `"${typeId}" is ${((count / total) * 100).toFixed(1)}% of day-one offers`,
+      ).toBeLessThanOrEqual(0.4)
+    }
   })
 
   it('one tier out in one group is offerable (an upgrade-hint offer); two tiers out, or two deficient groups, is not', () => {
@@ -464,8 +506,12 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     })
     expect(isServiceWorkDone(done, CONTEXT)).toBe(true)
 
+    // Sprint 37: put-her-in-a-ditch's install task only requires a `stock`+
+    // tyre (any installed tyre satisfies it - "sort all of it" doesn't imply
+    // an upgrade), so a MISSING tyres slot (not merely a stock one) is what
+    // actually exercises "the install task isn't done yet".
     const missingInstall = activeJob(mixedType, {
-      parts: mintCarParts({ panels: 'fine', dampers: 'fine' }),
+      parts: mintCarParts({ panels: 'fine', dampers: 'fine', tyres: null }),
     })
     expect(isServiceWorkDone(missingInstall, CONTEXT)).toBe(false)
   })
@@ -755,14 +801,34 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     expect(accepted.state.activeServiceJobs).toHaveLength(1)
   })
 
-  it('accepts any default-content offer outright - every minToolTier is 1 this sprint', () => {
-    const offer = { ...activeJob(mixedType), dueOnDay: null }
+  it('accepts a fresh-game (all-tier-1) offer outright when every task is minToolTier 1', () => {
+    // installType (coilover-install) is a real Sprint 37 tier-1 template:
+    // every task's minToolTier is 1, so a brand-new shop (all lines at 1)
+    // has zero deficits and accept succeeds immediately.
+    const offer = { ...activeJob(installType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
     }
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.activeServiceJobs).toHaveLength(1)
+  })
+
+  it("refuses a fresh-game offer whose real content minToolTier exceeds tier 1 (reason 'tool-tier')", () => {
+    // mixedType (put-her-in-a-ditch) is a real Sprint 37 tier-2 template:
+    // its repair tasks are minToolTier 2, so a brand-new shop can't accept
+    // it yet - proof the offer rule is enforced against REAL content, not
+    // just the synthetic raiseMinToolTier fixtures above.
+    const offer = { ...activeJob(mixedType), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(result.state.activeServiceJobs).toHaveLength(0)
+    expect(result.log).toEqual([
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
+    ])
   })
 })
 

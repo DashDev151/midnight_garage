@@ -175,6 +175,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
       /** Sprint 24 fix 2: the sim's own install-fit check refused a
        * part/component/model mismatch, independent of the UI's filter. */
       'part-does-not-fit',
+      /** Sprint 37: the one own-car capability ceiling - converting a
+       * factory-NA car to forced induction needs `economy.json`'s
+       * `toolCeilings.naToTurboConversionEngineTier` (same vocabulary as the
+       * Sprint 36 service-job accept refusal below). */
+      'tool-tier',
     ]),
   }),
   z.object({

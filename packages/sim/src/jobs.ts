@@ -1,5 +1,6 @@
 import type {
   CarInstance,
+  CarModel,
   CarPartId,
   ComponentId,
   ConditionBand,
@@ -12,6 +13,7 @@ import type { NewJobSpec } from './actions'
 import {
   bandIndex,
   canRepair,
+  hasForcedInduction,
   planGroupRepair,
   planPartRepair,
   presentPartIdsInGroup,
@@ -424,6 +426,29 @@ export function repairJobGate(
 export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
 
 /**
+ * Sprint 37: the one own-car capability ceiling (progression bible's
+ * bolt-on vs built line). Converting a factory-NA car to forced induction -
+ * fitting the FIRST turbo/supercharger into a legitimately-empty slot
+ * (`hasForcedInduction(model) === false`, same Sprint 26 distinction
+ * `isPartMissing` uses) - is fabrication work, gated behind
+ * `economy.toolCeilings.naToTurboConversionEngineTier`. A car that already
+ * carries a forced-induction part, factory-turbo or from a previous
+ * conversion, swaps freely at any tier: only the first conversion is gated,
+ * never a same-slot replacement. Exported so the UI (`gameStore.ts`'s
+ * `stageAction`/`installBlockedReason`) can pre-empt the same refusal
+ * `installFitGate` below enforces, one source of truth for both.
+ */
+export function naToTurboConversionBlocked(
+  carPartId: CarPartId,
+  model: CarModel,
+  state: GameState,
+  context: SimContext,
+): boolean {
+  if (carPartId !== 'forcedInduction' || hasForcedInduction(model)) return false
+  return state.toolTiers.engine < context.economy.toolCeilings.naToTurboConversionEngineTier
+}
+
+/**
  * Sprint 24 fix 2: the sim never validated part-component fit on install -
  * only the UI's own inline copy did. A separate, small gate beside
  * `repairJobGate` - exported and called from both `findOrCreateJob` below
@@ -481,6 +506,11 @@ export function installFitGate(
     partFitsCar(part, model, spec.componentId, context.partsTaxonomyById, spec.carPartId)
   if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
+  }
+  // model and part are both guaranteed defined here (part of the `fits`
+  // conjunction above) - TS doesn't narrow through the boolean variable.
+  if (naToTurboConversionBlocked(part!.carPartId, model!, state, context)) {
+    return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'tool-tier' }] }
   }
   return { ok: true }
 }

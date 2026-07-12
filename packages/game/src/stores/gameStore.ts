@@ -60,6 +60,7 @@ import {
   isServiceTaskDone,
   isServiceWorkDone,
   moveCarToSlot as moveCarToSlotCore,
+  naToTurboConversionBlocked,
   nextBayMinReputationTier,
   nextBayPriceYen,
   nextRaiseYen,
@@ -972,6 +973,24 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
+  /**
+   * Sprint 37: the human-readable reason `installablePartsForPart`'s results
+   * are all blocked for this slot right now - just the one own-car
+   * capability ceiling (NA-to-turbo conversion), the same check
+   * `installFitGate` enforces sim-side. Null when nothing is blocked, so the
+   * Replace drawer can dim every candidate with a specific "Needs <tier>"
+   * reason instead of the generic "doesn't fit here" hint.
+   */
+  function installBlockedReason(carId: string, carPartId: CarPartId): string | null {
+    const car = findWorkableCar(carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!model) return null
+    if (!naToTurboConversionBlocked(carPartId, model, gameState.value, context.value)) return null
+    const requiredTier = context.value.economy.toolCeilings.naToTurboConversionEngineTier
+    const tierName = context.value.toolLines.engine.tiers[requiredTier - 1]!.displayName
+    return `Needs ${tierName}`
+  }
+
   // --- facilities (bays) -------------------------------------------------
 
   /** Resolve one car currently in the shop (owned or a customer's), for the bay layout. */
@@ -1311,7 +1330,11 @@ export const useGameStore = defineStore('game', () => {
           action.componentId,
           context.value.partsTaxonomyById,
           action.carPartId,
-        )
+        ) ||
+        // Sprint 37: the one own-car capability ceiling (NA-to-turbo
+        // conversion) - mirrors `installFitGate`'s own check, same reason a
+        // stage-then-silently-fail-at-Confirm bug can't happen here either.
+        naToTurboConversionBlocked(part.carPartId, model, gameState.value, context.value)
       ) {
         return false
       }
@@ -1878,6 +1901,7 @@ export const useGameStore = defineStore('game', () => {
     estimatedSaleValue,
     installablePartsFor,
     installablePartsForPart,
+    installBlockedReason,
     serviceBaysView,
     parkingView,
     parkingCapacity,
