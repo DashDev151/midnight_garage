@@ -196,6 +196,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * `toolCeilings.naToTurboConversionEngineTier` (same vocabulary as the
        * Sprint 36 service-job accept refusal below). */
       'tool-tier',
+      /** A customer-owned tagged part (Sprint 35 decision 2) can only be
+       * reinstalled onto the same customer's car it was pulled from - never
+       * a different car, including the player's own (closes the close-out
+       * escape gap flagged in TODO.md, fixed 2026-07-12). */
+      'not-your-part',
     ]),
   }),
   z.object({

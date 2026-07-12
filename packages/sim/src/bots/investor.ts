@@ -11,6 +11,7 @@ import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { INSTALL_LABOR_SLOTS } from '../constants'
 import { availableLaborSlots } from '../laborSlots'
+import { partFitsCar } from '../parts'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
 
@@ -48,21 +49,21 @@ const ALL_COMPONENTS: readonly ComponentId[] = [
  * (sprint13.md decision 11) are what turn that "should" into a measured
  * fact.
  *
- * The one piece of real complexity: an install-part job needs a real
- * `partInstanceId` that only exists once `resolveBuyPart`'s queued purchase
- * resolves - but bots decide their whole day from one immutable state
- * snapshot, and `buyParts` resolves *after* `createJobs` in advanceDay's
- * step order. So the id is predicted the same way bots already predict
- * `job-${day}-${i}` ids: `resolveBuyPart` assigns `part-${day}-${index}`,
- * `index` starting at `state.partInventory.length` and counting up once per
- * part this bot queues this same tick.
+ * Buying a part and installing it are split across two ticks, never queued
+ * the same day: `advanceDay` resolves `createJobs` before `buyParts`, so an
+ * install job referencing a same-tick purchase would fail `installFitGate`
+ * every time (the part genuinely isn't in `state.partInventory` yet). Fixed
+ * (2026-07-12) by checking inventory first for an already-owned, still-
+ * uninstalled fitting part before ever creating an install job - if nothing
+ * fits yet, this tick only buys; the install job queues once a later tick's
+ * snapshot shows the purchase actually landed. Mirrors the identical fix in
+ * `bots/serviceJobHelpers.ts::queueServiceJobTasks`.
  */
 export function investorStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
-  let nextPartIndex = state.partInventory.length
   // Tracks cash already committed to a part queued earlier *this same tick*
   // - without it, two cars each independently checking the same undiminished
   // `state.cashYen` could both queue a purchase the shop can't actually
@@ -107,42 +108,56 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     if (emptyComponents.length === 0) continue
     const worstEmpty = worstGroup(car, emptyComponents, context.partIdsByGroup)
 
-    const fitting = context.parts
-      .filter(
-        (p) =>
-          context.partsTaxonomyById[p.carPartId]?.group === worstEmpty &&
-          p.requiredTags.every((t) => model.tags.includes(t)),
-      )
-      .sort((a, b) => a.priceYen - b.priceYen)
-    const part = fitting[0]
-    if (!part || state.cashYen < (cashCommitted + part.priceYen) * CASH_BUFFER_MULTIPLIER) continue
+    // The specific empty slot within the group, not just any part addressed
+    // to the group as a whole - a multi-part group can have some slots
+    // occupied and only one open, and a catalog part is only installable
+    // into the exact `carPartId` it was cataloged for (`installFitGate`).
+    const emptyCarPartId = context.partIdsByGroup[worstEmpty].find(
+      (partId) => !car.parts[partId].installed,
+    )
+    if (!emptyCarPartId) continue
 
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
-    // Sprint 14: pinned to express, not a policy choice. The predicted
-    // partInstanceId below is referenced by this same tick's install job -
-    // only an express (same-day) purchase actually creates that PartInstance
-    // in time; a standard order wouldn't land until a later day's delivery
-    // step, and the install job would crash looking for a part that doesn't
-    // exist yet. Thematically apt anyway: Investor pays full retail for
-    // speed just as readily as it skips investing in equipment.
+    // A part bought on a PRIOR tick is genuinely sitting in this snapshot's
+    // inventory - install it now (real id, passes installFitGate cleanly).
+    const ownedFitting = state.partInventory.find((instance) => {
+      if (instance.band === 'scrap') return false
+      const catalogPart = context.partsById[instance.partId]
+      return (
+        !!catalogPart &&
+        partFitsCar(catalogPart, model, worstEmpty, context.partsTaxonomyById, emptyCarPartId)
+      )
+    })
+    if (ownedFitting) {
+      const jobIndex = actions.createJobs.length
+      actions.createJobs.push({
+        carInstanceId: car.id,
+        kind: 'install-part',
+        componentId: worstEmpty,
+        partInstanceId: ownedFitting.id,
+        carPartId: emptyCarPartId,
+        laborSlotsRequired: INSTALL_LABOR_SLOTS,
+      })
+      const slots = Math.min(INSTALL_LABOR_SLOTS, laborBudget)
+      actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
+      laborBudget -= slots
+      jobbedCarIds.add(car.id)
+      continue
+    }
+
+    // Sprint 14: pinned to express, not a policy choice - Investor pays full
+    // retail for speed just as readily as it skips investing in equipment.
+    // Nothing owned yet that fits this exact slot; buy the cheapest option
+    // and stop here for this car this tick - the install job queues on a
+    // later tick, once the purchase genuinely lands in inventory.
+    const fitting = context.parts
+      .filter((p) => partFitsCar(p, model, worstEmpty, context.partsTaxonomyById, emptyCarPartId))
+      .sort((a, b) => a.priceYen - b.priceYen)
+    const part = fitting[0]
+    if (!part || state.cashYen < (cashCommitted + part.priceYen) * CASH_BUFFER_MULTIPLIER) continue
     actions.buyParts.push({ partId: part.id, deliverySpeed: 'express' })
     cashCommitted += part.priceYen
-    const partInstanceId = `part-${state.day}-${nextPartIndex}`
-    nextPartIndex += 1
-
-    const jobIndex = actions.createJobs.length
-    actions.createJobs.push({
-      carInstanceId: car.id,
-      kind: 'install-part',
-      componentId: worstEmpty,
-      partInstanceId,
-      laborSlotsRequired: INSTALL_LABOR_SLOTS,
-    })
-    const slots = Math.min(INSTALL_LABOR_SLOTS, laborBudget)
-    actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
-    laborBudget -= slots
-    jobbedCarIds.add(car.id)
   }
 
   // 3. Sell any job-free car with nothing left worth replacing cheaply -

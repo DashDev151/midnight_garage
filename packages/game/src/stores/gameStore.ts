@@ -934,6 +934,21 @@ export const useGameStore = defineStore('game', () => {
    * always be empty (every slot it returns already has something
    * installed).
    */
+  /**
+   * Whether a loose inventory part is legally installable onto `carId` -
+   * always true for an untagged (player-owned) part, but a customer-owned
+   * tagged part (Sprint 35 decision 2) may only go back onto the SAME
+   * customer's car it was pulled from, never a different one, including the
+   * player's own (mirrors the sim-side gate, `installFitGate` in jobs.ts).
+   */
+  function isPartAvailableFor(part: PartInstance, carId: string): boolean {
+    if (!part.customerJobId) return true
+    return (
+      gameState.value.activeServiceJobs.find((job) => job.id === part.customerJobId)?.car.id ===
+      carId
+    )
+  }
+
   function installablePartsFor(carId: string, componentId: ComponentId): PartInstance[] {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
@@ -944,6 +959,7 @@ export const useGameStore = defineStore('game', () => {
     if (!hasEmptySlot) return []
     return gameState.value.partInventory.filter((pi) => {
       if (pi.band === 'scrap') return false
+      if (!isPartAvailableFor(pi, carId)) return false
       const part = context.value.partsById[pi.partId]
       return part ? partFitsCar(part, model, componentId, context.value.partsTaxonomyById) : false
     })
@@ -968,6 +984,7 @@ export const useGameStore = defineStore('game', () => {
     if (car.parts[carPartId].installed) return []
     return gameState.value.partInventory.filter((pi) => {
       if (pi.band === 'scrap') return false
+      if (!isPartAvailableFor(pi, carId)) return false
       const part = context.value.partsById[pi.partId]
       return part
         ? partFitsCar(part, model, componentId, context.value.partsTaxonomyById, carPartId)

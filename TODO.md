@@ -77,40 +77,9 @@ pass."
   price/grade rather than being a flat per-slot stock number? A content/calibration decision for the
   balance pass, not a bug. Only bites once the player mods a car or pre-installed aftermarket parts
   (above) land; generated cars are all stock today so it is dormant.
-- [ ] **A customer-owned part (Sprint 35) can escape close-out reconciliation by being installed on
-  the player's OWN car.** Sell and scrap are gated on `customerJobId`, but install is not, so a
-  player could pull a customer's part, install it on their own car (it leaves `partInventory`), and
-  keep it past the service job's close-out (which only filters `partInventory`). Edge case, requires
-  deliberate action; flagged during Sprint 35 and left ungated to avoid scope creep. Fix by gating
-  install of a `customerJobId`-tagged part to only the owning customer's car (or blocking it
-  outright), if the ethic matters enough to close.
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
-- [ ] **Bots' "predict a same-tick `partInstanceId` for a queued install job" pattern is structurally
-  broken** (found during Sprint 29, tracing why `competentPolicyStrategy`'s reputation faucet had
-  gone to zero after the multi-task service-job rewrite). `advanceDay` resolves `createJobs` (step 1)
-  BEFORE `buyParts` (step 1b), so a job queued the same tick as the part purchase it depends on
-  always fails `installFitGate` (the part genuinely isn't in `state.partInventory` yet when the gate
-  checks) - `investor.ts`'s own doc comment describes the id-prediction trick but never actually
-  verifies the same-tick job succeeds, and it doesn't; nothing caught this because no existing test
-  checked Investor's install jobs actually land. Sprint 29's own new
-  `bots/serviceJobHelpers.ts::queueServiceJobTasks` fixes this for service-job installs (buy this
-  tick, install a LATER tick once the purchase is genuinely in inventory) - `investor.ts` itself was
-  left untouched (out of Sprint 29's file scope) and still has the original bug, silently wasting
-  cash buying parts every tick that never get installed. Worth fixing in `investor.ts` directly
-  (same split-across-two-ticks approach) next time that file is touched; also worth re-running the
-  balance harness's Investor payback-curve numbers once fixed, since they were measured against the
-  broken behavior all along.
-- [ ] **`investor.ts`'s part-selection is not slot-precise (found during Sprint 32).** It picks the
-  cheapest catalog part addressed to a needy GROUP, not the specific empty `CarPartId` within it -
-  on a multi-part group with only one open slot, this can pick a part whose own slot is already
-  occupied. `installFitGate` correctly refuses this now (Sprint 32 fixed a real gap where it used
-  to create a job that silently got stuck instead), so it's a clean no-op rather than a stuck
-  career, but Investor still wastes ticks failing to install productively on such a car. Worth
-  fixing by resolving the actual empty `CarPartId` within the chosen group first (mirroring
-  `worstGroup`'s own per-part-aware pattern), not just the cheapest catalog part addressed to the
-  group as a whole.
 - [ ] **No bot proactively fills a MISSING car-part slot, or weighs one as worse than merely worn
   (Sprint 32, the stock-baseline/missing-slot model).** `isGroupAtLeast` (every bot's "is this
   group good enough" check, `bots/bandHelpers.ts`) silently excludes a missing part from

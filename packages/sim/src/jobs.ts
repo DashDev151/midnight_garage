@@ -507,6 +507,19 @@ export function installFitGate(
   if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
   }
+  // A customer-owned tagged part (Sprint 35 decision 2) is only ever ours to
+  // recondition and reinstall onto the SAME customer's car it was pulled
+  // from - never sold, scrapped, or (the gap this closes) installed onto a
+  // different car, including the player's own. `partInstance` is guaranteed
+  // defined here (part of the `fits` conjunction above).
+  if (partInstance!.customerJobId) {
+    const owningCarId = state.activeServiceJobs.find(
+      (job) => job.id === partInstance!.customerJobId,
+    )?.car.id
+    if (owningCarId !== spec.carInstanceId) {
+      return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'not-your-part' }] }
+    }
+  }
   // model and part are both guaranteed defined here (part of the `fits`
   // conjunction above) - TS doesn't narrow through the boolean variable.
   if (naToTurboConversionBlocked(part!.carPartId, model!, state, context)) {

@@ -1,4 +1,11 @@
-import { CARS, PARTS, type CarPartId, type ComponentId } from '@midnight-garage/content'
+import {
+  CARS,
+  PARTS,
+  type CarPartId,
+  type ComponentId,
+  type PartInstance,
+  type ServiceJob,
+} from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -164,5 +171,46 @@ describe('garage: instant part install', () => {
     // Filled again - `dashGauges` is still occupied too, so the group is
     // fully occupied once more.
     expect(game.installablePartsFor(car.id, 'interior')).toEqual([])
+  })
+
+  it("installablePartsFor excludes a customer-owned tagged part on any car but the owning job's own (the close-out escape TODO.md flagged)", () => {
+    const game = useGameStore()
+    const part = PARTS.find((p) => p.carPartId === 'seats' && p.grade !== 'stock')!
+    game.devGrantCar(CARS[0]!.id)
+    const ownCar = game.gameState.ownedCars[0]!
+    game.devGrantCar(CARS[0]!.id)
+    const customerCar = game.gameState.ownedCars[1]!
+    game.removePart(ownCar.id, 'seats')
+    game.removePart(customerCar.id, 'seats')
+    game.devGrantPart(part.id)
+    const granted = game.gameState.partInventory.at(-1)!
+    const tagged: PartInstance = { ...granted, customerJobId: 'svc-fake' }
+
+    const fakeJob: ServiceJob = {
+      id: 'svc-fake',
+      typeId: 'small-bodywork-touchup',
+      customerName: 'Test Customer',
+      description: 'test fixture',
+      tasks: [],
+      car: customerCar,
+      payoutYen: 1,
+      baseReputation: 1,
+      deadlineDays: 1,
+      expiresOnDay: 999,
+      arrivesOnDay: null,
+      dueOnDay: 1,
+    }
+    game.gameState = {
+      ...game.gameState,
+      partInventory: [tagged],
+      activeServiceJobs: [fakeJob],
+    }
+
+    expect(game.installablePartsFor(ownCar.id, 'interior').some((pi) => pi.id === tagged.id)).toBe(
+      false,
+    )
+    expect(
+      game.installablePartsFor(customerCar.id, 'interior').some((pi) => pi.id === tagged.id),
+    ).toBe(true)
   })
 })

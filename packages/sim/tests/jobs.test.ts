@@ -557,6 +557,82 @@ describe('findOrCreateJob (Sprint 11)', () => {
       )
       expect(result.job).toBeNull()
     })
+
+    it("refuses installing a customer-owned tagged part onto a DIFFERENT car, reason 'not-your-part' (the close-out escape TODO.md flagged), but allows it back onto the owning customer's own car", () => {
+      const customerCar: CarInstance = buildCarInstance({
+        id: 'car-customer-01',
+        modelId: 'honda-city-e-aa',
+        year: 1984,
+        mileageKm: 100_000,
+        authenticityPercent: 90,
+        parts: {
+          ...groupCarParts({
+            engine: 'worn',
+            drivetrain: 'worn',
+            suspension: 'worn',
+            body: 'poor',
+            interior: 'worn',
+          }),
+          dampers: { installed: null },
+        },
+      })
+      const owningJob: ServiceJob = {
+        id: 'svc-other',
+        typeId: 'small-bodywork-touchup',
+        customerName: 'Test Customer',
+        description: 'Suspension work.',
+        tasks: [{ action: 'repair', carPartId: 'dampers', targetBand: 'fine', minToolTier: 1 }],
+        car: customerCar,
+        payoutYen: 10_000,
+        baseReputation: 5,
+        deadlineDays: 5,
+        expiresOnDay: 30,
+        arrivesOnDay: null,
+        dueOnDay: 8,
+      }
+      const taggedInstance: PartInstance = {
+        ...sparePart,
+        id: 'pi-customer',
+        customerJobId: owningJob.id,
+      }
+
+      const ontoOwnCar = findOrCreateJob(
+        baseState({ activeServiceJobs: [owningJob], partInventory: [taggedInstance] }),
+        {
+          carInstanceId: car.id,
+          kind: 'install-part',
+          componentId: 'suspension',
+          partInstanceId: taggedInstance.id,
+          laborSlotsRequired: 1,
+        },
+        CONTEXT,
+      )
+      expect(ontoOwnCar.job).toBeNull()
+      expect(ontoOwnCar.log).toEqual([
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-install-part-suspension',
+          reason: 'not-your-part',
+        },
+      ])
+
+      const ontoOwningCar = findOrCreateJob(
+        baseState({
+          ownedCars: [],
+          activeServiceJobs: [owningJob],
+          partInventory: [taggedInstance],
+        }),
+        {
+          carInstanceId: customerCar.id,
+          kind: 'install-part',
+          componentId: 'suspension',
+          partInstanceId: taggedInstance.id,
+          laborSlotsRequired: 1,
+        },
+        CONTEXT,
+      )
+      expect(ontoOwningCar.job).not.toBeNull()
+    })
   })
 })
 
