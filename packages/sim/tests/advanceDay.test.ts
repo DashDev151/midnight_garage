@@ -303,7 +303,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // rival bids, the walk-in offer) shifts, moving the final state hash.
     // `car.year` itself is unchanged - still stored and displayed, just no
     // longer a value input.
-    expect(hashState(acquisitionCareer().sold)).toBe('b8ce53cf')
+    expect(hashState(acquisitionCareer().sold)).toBe('085ca712')
   })
 })
 

@@ -4,7 +4,7 @@ import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import EndDayButton from '../components/EndDayButton.vue'
-import { useGameStore, type LotDetail, type MyActiveBidView } from '../stores/gameStore'
+import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -67,20 +67,6 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
     ? `you lead at ${formatYen(currentBidYen)}`
     : `dealer leads at ${formatYen(currentBidYen)}`
 }
-
-/** "going once, going twice" read (Sprint 20): silence while bidding is open
- * reads as a countdown to the hammer; unopened or actively-raised lots have
- * nothing to report here. */
-function quietStateLabel(d: LotDetail | MyActiveBidView): string {
-  if (d.currentBidYen <= 0) return ''
-  if (d.quietDays <= 0) return 'bidding active'
-  const since = d.quietDays === 1 ? 'yesterday' : `in ${d.quietDays} days`
-  return `no new bids ${since} - hammer at ${d.hammerThreshold}`
-}
-
-function backstopLabel(expiresOnDay: number): string {
-  return `backstop: no later than day ${expiresOnDay}`
-}
 </script>
 
 <template>
@@ -114,8 +100,7 @@ function backstopLabel(expiresOnDay: number): string {
           <span class="winning-state" :class="b.isWinning ? 'winning' : 'outbid'">
             {{ b.isWinning ? 'winning' : 'outbid' }}
           </span>
-          <span class="quiet-state">{{ quietStateLabel(b) }}</span>
-          <span class="days-left">{{ backstopLabel(b.expiresOnDay) }}</span>
+          <span class="days-left">{{ b.closeLabel }}</span>
           <!-- Outbid is the call to action: raise straight from this panel. -->
           <button
             v-if="!b.isWinning"
@@ -149,14 +134,13 @@ function backstopLabel(expiresOnDay: number): string {
             <span class="current-bid" :class="{ 'current-bid-mine': d.leadingBidder === 'player' }">
               {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
             </span>
-            <span class="backstop">{{ backstopLabel(d.expiresOnDay) }}</span>
+            <span class="backstop">{{ d.closeLabel }}</span>
           </div>
 
           <div class="lot-turnout">
             <span class="turnout-badge" :class="'turnout-' + d.turnout">
               {{ TURNOUT_LABEL[d.turnout] }}
             </span>
-            <span v-if="quietStateLabel(d)" class="quiet-state">{{ quietStateLabel(d) }}</span>
           </div>
 
           <div class="lot-bands">

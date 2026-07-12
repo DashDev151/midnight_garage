@@ -106,16 +106,18 @@ describe('seed content validates against schemas', () => {
     expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
     expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
     // New Sprint 20 auction-rework knobs, born in JSON from day one.
-    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.75)
-    expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(2)
+    // Auction-close + rival-contest knobs, retuned by the 2026-07-12
+    // auction fix (anti-snipe + longer visible window + more contest).
+    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.85)
+    expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(3)
     expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
     // Sprint 30 (living auctions): daily arrivals + the bidder-interest
     // process knobs replacing the Sprint 20/25 demand-ceiling family above.
     expect(result.data.AUCTION_DAILY_SPAWN_RATE['local-yard']).toBe(0.6)
-    expect(result.data.auctionInterest.perCohortBidChance['local-yard']).toBe(0.35)
+    expect(result.data.auctionInterest.perCohortBidChance['local-yard']).toBe(0.55)
     expect(result.data.auctionInterest.turnoutBidderCounts.packed).toEqual([5, 7])
-    expect(result.data.auctionInterest.turnoutBandWeights).toEqual([0.3, 0.45, 0.25])
-    expect(result.data.auctionInterest.maxIncrementsPerNight).toBe(2)
+    expect(result.data.auctionInterest.turnoutBandWeights).toEqual([0.2, 0.45, 0.35])
+    expect(result.data.auctionInterest.maxIncrementsPerNight).toBe(3)
     expect(result.data.auctionInterest.cohortValuationSpreadByTurnout.thin).toBeGreaterThan(
       result.data.auctionInterest.cohortValuationSpreadByTurnout.packed,
     )

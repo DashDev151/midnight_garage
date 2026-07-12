@@ -499,6 +499,7 @@ describe('advanceLotOvernight', () => {
 describe('resolveLotForDay - hammer and backstop', () => {
   it('hammers after AUCTION_QUIET_DAYS_TO_HAMMER consecutive quiet overnight steps, awarding the leader', () => {
     const { lot } = sampleLot(30)
+    const threshold = CONTEXT.economy.AUCTION_QUIET_DAYS_TO_HAMMER
     // currentBidYen far above any realistic ceiling forces deterministic
     // silence every day, so quietDays climbs 1-2-3... with no RNG branch.
     const dominant: AuctionLot = {
@@ -509,17 +510,76 @@ describe('resolveLotForDay - hammer and backstop', () => {
       playerHasBid: true,
       expiresOnDay: 1000, // far beyond the backstop, so only quietDays matters here
     }
-    const state = stateWithLots([dominant], { cashYen: lot.bookValueYen * 10 })
+    const initial = stateWithLots([dominant], { cashYen: lot.bookValueYen * 10 })
 
-    const day1 = resolveLotForDay(state, dominant, CONTEXT, 1)
-    expect(day1.state.activeAuctionLots).toHaveLength(1) // 1 quiet day: not hammered yet
-    expect(day1.state.activeAuctionLots[0]?.quietDays).toBe(1)
+    // The first (threshold - 1) quiet steps do NOT hammer; quietDays climbs.
+    let state = initial
+    let current = dominant
+    for (let n = 1; n < threshold; n++) {
+      const step = resolveLotForDay(state, current, CONTEXT, n)
+      expect(step.state.activeAuctionLots).toHaveLength(1)
+      expect(step.state.activeAuctionLots[0]?.quietDays).toBe(n)
+      state = step.state
+      current = step.state.activeAuctionLots[0]!
+    }
 
-    const day2 = resolveLotForDay(day1.state, day1.state.activeAuctionLots[0]!, CONTEXT, 2)
-    expect(day2.state.activeAuctionLots).toHaveLength(0) // 2 quiet days: hammered
-    expect(day2.state.ownedCars).toHaveLength(1)
-    expect(day2.state.cashYen).toBe(state.cashYen - dominant.currentBidYen)
-    expect(day2.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
+    // The threshold-th quiet step hammers to the leader (the player here).
+    const final = resolveLotForDay(state, current, CONTEXT, threshold)
+    expect(final.state.activeAuctionLots).toHaveLength(0)
+    expect(final.state.ownedCars).toHaveLength(1)
+    expect(final.state.cashYen).toBe(initial.cashYen - dominant.currentBidYen)
+    expect(final.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
+  })
+
+  it('ANTI-SNIPE: a rival raise on the backstop day never closes the lot that step - a leading player is not robbed and gets another day to respond', () => {
+    const state = stateWithLots([sampleLot(24).lot])
+    // Find a lot/day where the overnight step genuinely raises (a seeded coin
+    // flip), the same search the outbid test above uses. Each candidate opens
+    // at its own per-instance reserve.
+    let raised: { opened: AuctionLot; day: number } | undefined
+    for (const candidate of statLots(60, 'anti-snipe-search')) {
+      const opened: AuctionLot = {
+        ...candidate,
+        currentBidYen: reserveYen(candidate, state, CONTEXT),
+        leadingBidder: 'player',
+        playerHasBid: true,
+      }
+      for (let day = 1; day <= 5 && !raised; day++) {
+        if (
+          advanceLotOvernight(opened, state, CONTEXT, day).lot.currentBidYen > opened.currentBidYen
+        ) {
+          raised = { opened, day }
+        }
+      }
+      if (raised) break
+    }
+    if (!raised) throw new Error('expected at least one overnight raise across the sample')
+
+    // Put the lot AT its backstop with quietDays already maxed - both close
+    // conditions are "met" - and the player leading. A rival raises this very
+    // step, and the anti-snipe rule must still refuse to hammer: the lot
+    // stays on the board so the player can respond, not lose while leading.
+    const atBackstop: AuctionLot = {
+      ...raised.opened,
+      leadingBidder: 'player',
+      playerHasBid: true,
+      quietDays: CONTEXT.economy.AUCTION_QUIET_DAYS_TO_HAMMER + 5,
+      expiresOnDay: raised.day,
+    }
+    // Resolve against a state that actually HOLDS this lot (so the board
+    // update lands), at the same default heat the search priced it at.
+    const resolveState = stateWithLots([atBackstop], { cashYen: atBackstop.bookValueYen * 10 })
+    const cashBefore = resolveState.cashYen
+    const result = resolveLotForDay(resolveState, atBackstop, CONTEXT, raised.day)
+
+    expect(result.state.activeAuctionLots).toHaveLength(1) // still on the board, extended
+    expect(result.state.ownedCars).toHaveLength(0)
+    expect(result.state.cashYen).toBe(cashBefore) // player not charged
+    expect(result.log.some((e) => e.type === 'auction-bid-lost')).toBe(false) // NOT robbed
+    expect(result.log.some((e) => e.type === 'auction-bid-won')).toBe(false)
+    // It IS a genuine displacement (a real snipe attempt), just harmless now.
+    expect(result.state.activeAuctionLots[0]?.leadingBidder).toBe('rival')
+    expect(result.log.some((e) => e.type === 'auction-outbid')).toBe(true)
   })
 
   it('the backstop (expiresOnDay) hammers a lot even before quietDays reaches the threshold', () => {
@@ -534,7 +594,7 @@ describe('resolveLotForDay - hammer and backstop', () => {
     }
     const state = stateWithLots([dominant], { cashYen: lot.bookValueYen * 10 })
     // Day 5 == expiresOnDay: the overnight step this same day only brings
-    // quietDays to 1 (below the threshold of 2), but the backstop forces
+    // quietDays to 1 (below the threshold), but the backstop (on a quiet step) forces
     // the hammer anyway.
     const result = resolveLotForDay(state, dominant, CONTEXT, 5)
     expect(result.state.activeAuctionLots).toHaveLength(0)

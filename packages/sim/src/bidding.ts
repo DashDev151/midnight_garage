@@ -214,6 +214,14 @@ export function computeBuyoutPriceYen(
 export interface OvernightStepResult {
   lot: AuctionLot
   log: DayLogEntry[]
+  /**
+   * Did a rival actually raise the board this step? The anti-snipe rule
+   * (`resolveLotForDay`) forbids a lot from hammering on any step where a
+   * rival just raised - a raise always buys the player at least one more day
+   * to respond, even past the backstop, so "leading, then outbid, then
+   * instantly lost in the same overnight" can never happen.
+   */
+  raised: boolean
 }
 
 /**
@@ -311,7 +319,7 @@ export function advanceLotOvernight(
   const economy = context.economy
   const guideValueYen = anchorValueYen(lot, state, context)
   if (guideValueYen <= 0) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] } // nobody's interested in this tier at all
+    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [], raised: false } // nobody's interested in this tier at all
   }
 
   const rng = createRng(hashStringToSeed(`${lot.id}:${day}`))
@@ -341,13 +349,14 @@ export function advanceLotOvernight(
   }
 
   if (incrementsApplied === 0) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] }
+    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [], raised: false }
   }
   return {
     lot: workingLot,
     log: displacedPlayer
       ? [{ type: 'auction-outbid', lotId: lot.id, newBidYen: workingLot.currentBidYen }]
       : [],
+    raised: true,
   }
 }
 
@@ -419,9 +428,20 @@ export function resolveLotForDay(
   const updatedLot = step.lot
   const log: DayLogEntry[] = [...step.log]
 
+  // Anti-snipe (the "leading, then outbid, then instantly lost" fix): a lot
+  // NEVER hammers on a step where a rival just raised it. A raise always
+  // extends the lot one more day so the player gets to respond to being
+  // outbid, even past the `expiresOnDay` backstop (a soft backstop now). A
+  // lot therefore only ever closes on a QUIET step - either the quiet-days
+  // rule ("going once, going twice, sold", `AUCTION_QUIET_DAYS_TO_HAMMER`
+  // consecutive silent nights) or the backstop reached on a silent night.
+  // Consequence: whoever leads at the hammer is whoever led at the START of
+  // this quiet step, which the player has always already seen and had a
+  // full day to answer.
   const shouldHammer =
-    updatedLot.quietDays >= context.economy.AUCTION_QUIET_DAYS_TO_HAMMER ||
-    day >= updatedLot.expiresOnDay
+    !step.raised &&
+    (updatedLot.quietDays >= context.economy.AUCTION_QUIET_DAYS_TO_HAMMER ||
+      day >= updatedLot.expiresOnDay)
 
   const removeLot = (s: GameState): GameState => ({
     ...s,

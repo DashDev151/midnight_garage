@@ -361,6 +361,14 @@ export interface LotDetail {
   expiresOnDay: number
   /** Days remaining until the backstop, for the countdown label. */
   daysLeft: number
+  /**
+   * A plain-language close prediction (the anti-black-box fix): exactly how
+   * soon this lot hammers if no one bids further, and the reassurance that a
+   * bid resets it. The auction never closes silently or by surprise; a rival
+   * raise always extends the lot a day so the player gets to respond (the
+   * anti-snipe rule, `bidding.ts`'s `resolveLotForDay`).
+   */
+  closeLabel: string
 }
 
 /**
@@ -382,6 +390,7 @@ export interface MyActiveBidView {
   turnout: TurnoutBand
   expiresOnDay: number
   daysLeft: number
+  closeLabel: string
 }
 
 /**
@@ -798,6 +807,24 @@ export const useGameStore = defineStore('game', () => {
 
   /** Derived numbers + the 6 real group bands for one lot (Sprint 26 decision
    * 10: lots are transparent now, no inspection gate). */
+  /**
+   * The plain-language close prediction shown on lots and active bids (the
+   * anti-black-box fix). A lot hammers after `AUCTION_QUIET_DAYS_TO_HAMMER`
+   * consecutive silent nights or at its backstop day, whichever comes first
+   * on a QUIET night - any bid resets the quiet count and (per the anti-snipe
+   * rule) extends the lot a day, so this is genuinely "soonest it can close
+   * if nobody bids again," never a surprise.
+   */
+  function auctionCloseLabel(lot: AuctionLot): string {
+    if (lot.currentBidYen === 0) return 'no bids yet - open to bid'
+    const threshold = context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER
+    const quietNightsLeft = Math.max(1, threshold - lot.quietDays)
+    const backstopNightsLeft = Math.max(1, lot.expiresOnDay - gameState.value.day)
+    const nightsLeft = Math.min(quietNightsLeft, backstopNightsLeft)
+    if (nightsLeft <= 1) return 'final call: closes at End Day unless a new bid comes in'
+    return `closes in ${nightsLeft} days unless bid on (any bid resets the clock)`
+  }
+
   function lotDetail(lotId: string): LotDetail | undefined {
     const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
     if (!lot) return undefined
@@ -822,6 +849,7 @@ export const useGameStore = defineStore('game', () => {
       restorationBillYen: carCostToMintYen(lot.car, model, context.value.partsTaxonomyById),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
+      closeLabel: auctionCloseLabel(lot),
     }
   }
 
@@ -854,6 +882,7 @@ export const useGameStore = defineStore('game', () => {
           turnout: lot.turnout,
           expiresOnDay: lot.expiresOnDay,
           daysLeft: lot.expiresOnDay - gameState.value.day,
+          closeLabel: auctionCloseLabel(lot),
         },
       ]
     }),

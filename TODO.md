@@ -21,6 +21,40 @@ the old checklist:
   the first artifact for the recorded-play idea below. Not confirmed done during the 2026-07-11
   session.
 
+## Playtest findings 2026-07-12 (second playtest, to action after the auction fix)
+
+- [ ] **UI declutter pass across all screens.** Persistent tutorial/explainer text is pinned
+  front-and-center on main gameplay screens forever (e.g. the drag-to-move hint, the "Owning a
+  component's equipment is what unlocks Repair..." explainer). These should be one-off or
+  dismissible tips, not permanent chrome. Audit every page and remove the clutter.
+- [ ] **Service-job offers must be gated by what the player can actually do.** Only show jobs the
+  player can complete NOW, or that need exactly ONE equipment purchase (as a buy-this hint). First
+  job seen on a brand-new game was a Cooling repair needing late-game equipment (impossible). Also
+  the equipment shop lets you buy 4+ tools immediately, no tiering. Wanted: tutorial = buy nothing;
+  then only Tyre Machine & Balancer; equipment unlocks in tiers; early-game jobs are predominantly
+  Replace-only (no equipment) with a few single-equipment-hint jobs. Interacts with Sprint 29's
+  tier gating + the equipment-hint mechanic.
+- [ ] **Parts catalog needs a click-through hierarchy** (group -> sub-part), not one giant flat
+  list. Keep it lightweight, just a cleaner drill-down.
+- [ ] **Auction full-condition report (the 29-part grid) is unreadable, restructure for
+  legibility.** (See the Sprint 32 screenshot: the grid wraps into an unparseable mess.)
+- [ ] **Replace-drawer inventory popup:** (a) it's ugly, needs polish; (b) it MUST show each part's
+  CONDITION (band), and the general parts-inventory screen should show condition too; (c) FUTURE
+  addition: a mechanism to recondition/repair a damaged part held in inventory so it's reusable in
+  another build.
+- [ ] **Customer-parts ethics (design question).** A Replace job removes the old part and keeps it
+  in our inventory. Fine for cars we own, but on a CUSTOMER's car (service job) that's stealing the
+  customer's part. Decide handling: removed parts from customer cars are not kept, or a core-charge,
+  or the customer keeps them. Needs a maintainer call.
+- [ ] **Generation condition calibration.** A ~2-year-old car (S14) arrives with nearly every part
+  "poor", unrealistic. Young cars should generate in much better condition. Make generated
+  condition age-aware (or tier-aware). Note: this is CONDITION generation, unrelated to the value
+  model (age was correctly removed from VALUE; a young car being in good shape is a generation
+  concern, not a value one).
+- [ ] **Labor calibration vs the 29-part repair system.** Base 2 labor slots against per-component
+  repair means ~20 full days to restore a whole car, far too slow to be fun. Recalibrate labor
+  throughput: base slots, the repair-level speed multiplier, and/or how many parts one slot covers.
+
 ## Standing concerns
 
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
