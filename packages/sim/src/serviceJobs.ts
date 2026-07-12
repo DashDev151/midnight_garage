@@ -44,11 +44,11 @@ const MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER = 1
  * `ownedEquipmentIds` doesn't already cover - install tasks never count
  * (replace never needs equipment). Two tasks needing the SAME ungowned group
  * count once, since one purchase fixes both. */
-function missingEquipmentGroupCount(
+function missingEquipmentGroups(
   template: ServiceJobType,
   ownedEquipmentIds: readonly string[],
   context: SimContext,
-): number {
+): Set<ComponentId> {
   const missingGroups = new Set<ComponentId>()
   for (const task of template.tasks) {
     if (task.action !== 'repair') continue
@@ -58,32 +58,61 @@ function missingEquipmentGroupCount(
       missingGroups.add(group)
     }
   }
-  return missingGroups.size
+  return missingGroups
+}
+
+/** Whether the player could BUY, at `reputationTier` right now, a machine that
+ * covers `group`. Equipment with no `minReputationTier` is purchasable from the
+ * start (the tyre machine). This is what makes "one purchase away" mean a
+ * purchase the player can actually make today, not "one purchase, someday": a
+ * group whose only machine is locked behind a higher tier is unreachable now,
+ * so a job needing it must not be offered until that tier is reached. */
+function groupHasPurchasableEquipment(
+  group: ComponentId,
+  reputationTier: ReputationTier,
+  context: SimContext,
+): boolean {
+  for (const equipment of Object.values(context.equipmentById)) {
+    if (!equipment.componentIds.includes(group)) continue
+    if (reputationAtLeast(reputationTier, equipment.minReputationTier ?? 'unknown')) {
+      return true
+    }
+  }
+  return false
 }
 
 /**
- * Sprint 33 decision 2: a service-job offer is generated ONLY if the player
- * can complete it now, or needs exactly ONE equipment purchase (surfaced as
- * a buy-this hint by the existing `pickServiceJobTemplate` hint-chance roll
- * below) - never a template that would need two or more purchases before
- * it's actionable. This is a hard pre-filter (always excludes 2+-missing
- * templates), not a probability, so the DoD's "job board never offers an
- * un-doable job" holds regardless of RNG luck; `pickServiceJobTemplate`'s
- * existing per-candidate hint roll still decides how OFTEN a 1-missing
- * template surfaces among what's left, unchanged. Extends Sprint 29's tier
- * gating + the Sprint 16 equipment-hint mechanic rather than forking a
- * second gate (directive 16).
+ * Sprint 33 decision 2 (completed here): a service-job offer is generated ONLY
+ * if the player can complete it now, or needs exactly ONE equipment purchase
+ * THEY CAN MAKE RIGHT NOW at their current reputation. The original Sprint 33
+ * filter counted missing groups (<= 1) but never checked the missing machine
+ * was actually buyable, so a day-one `unknown`-reputation player could be
+ * offered a cooling repair needing the Engine Crane - a `known`-tier, Y1.5M
+ * machine two tiers out of reach. "One purchase away" now means a purchase
+ * unlocked at the current tier: a single missing group whose only machine is
+ * reputation-locked excludes the template outright (it is not shown as a
+ * buy-this hint, it is simply not offered until that tier is reached). This is
+ * still a hard pre-filter, not a probability, so the DoD's "job board never
+ * offers an un-doable job" holds regardless of RNG luck; `pickServiceJobTemplate`'s
+ * existing per-candidate hint roll still decides how OFTEN a surviving 1-missing
+ * template surfaces. Extends Sprint 29's tier gating + the Sprint 16
+ * equipment-hint mechanic rather than forking a second gate (directive 16).
  */
 function actionableOrOnePurchaseAwayTemplates(
   templates: readonly ServiceJobType[],
   ownedEquipmentIds: readonly string[],
+  reputationTier: ReputationTier,
   context: SimContext,
 ): ServiceJobType[] {
-  return templates.filter(
-    (template) =>
-      missingEquipmentGroupCount(template, ownedEquipmentIds, context) <=
-      MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER,
-  )
+  return templates.filter((template) => {
+    const missing = missingEquipmentGroups(template, ownedEquipmentIds, context)
+    if (missing.size > MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER) return false
+    // Every missing group (0 or 1) must be coverable by a machine buyable now.
+    for (const group of missing) {
+      if (!groupHasPurchasableEquipment(group, reputationTier, context)) return false
+    }
+    return true
+  })
 }
 
 /**
@@ -296,6 +325,7 @@ export function generateDailyServiceJobOffers(
   const eligibleTemplates = actionableOrOnePurchaseAwayTemplates(
     tierEligibleTemplates,
     ownedEquipmentIds,
+    reputationTier,
     context,
   )
   if (

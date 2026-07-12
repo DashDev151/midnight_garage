@@ -404,6 +404,36 @@ describe('Sprint 33 decision 2: job board is actionable-or-one-purchase-away', (
     }
     expect(sawWithOneOwned).toBe(true)
   })
+
+  it('a day-one player (unknown reputation, no equipment) is never offered a repair needing a machine they cannot buy yet', () => {
+    // The Sprint 33 gap: the old filter allowed any job needing <= 1 more
+    // machine WITHOUT checking that machine was purchasable now, so a fresh
+    // `unknown`-reputation game could be offered a cooling repair needing the
+    // Engine Crane (a `known`-tier, Y1.5M machine). On day one the only machine
+    // on sale is the tyre machine (wheels); every other machine needs `local`+,
+    // so a repair in any non-wheels group must never appear.
+    const buyableAtUnknown = (group: ComponentId): boolean =>
+      EQUIPMENT.some(
+        (e) =>
+          e.componentIds.includes(group) &&
+          (e.minReputationTier === undefined || e.minReputationTier === 'unknown'),
+      )
+    let sawAnyOffer = false
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createInitialGameState(CONTEXT, seed)
+      for (const offer of state.serviceJobOffers) {
+        sawAnyOffer = true
+        for (const task of offer.tasks) {
+          if (task.action !== 'repair') continue
+          const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group
+          // Nothing is owned on day one, so every offered repair task's group
+          // must be one whose machine the player can actually buy right now.
+          expect(buyableAtUnknown(group)).toBe(true)
+        }
+      }
+    }
+    expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
+  })
 })
 
 describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decision 1)', () => {
