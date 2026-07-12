@@ -107,17 +107,31 @@ describe('seed content validates against schemas', () => {
     expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
     // New Sprint 20 auction-rework knobs, born in JSON from day one.
     expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.75)
-    expect(result.data.AUCTION_DEMAND_SPREAD_SD).toBe(0.12)
-    expect(result.data.AUCTION_THIN_TURNOUT_CHANCE).toBe(0.15)
-    expect(result.data.AUCTION_THIN_TURNOUT_FACTOR).toBe(0.6)
-    expect(result.data.AUCTION_COUNTER_CHANCE).toBe(0.7)
     expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(2)
     expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
-    expect(result.data.AUCTION_TURNOUT_BANDS).toEqual([0.85, 1.12])
+    // Sprint 30 (living auctions): daily arrivals + the bidder-interest
+    // process knobs replacing the Sprint 20/25 demand-ceiling family above.
+    expect(result.data.AUCTION_DAILY_SPAWN_RATE['local-yard']).toBe(0.6)
+    expect(result.data.auctionInterest.perCohortBidChance['local-yard']).toBe(0.35)
+    expect(result.data.auctionInterest.turnoutBidderCounts.packed).toEqual([5, 7])
+    expect(result.data.auctionInterest.turnoutBandWeights).toEqual([0.3, 0.45, 0.25])
+    expect(result.data.auctionInterest.maxIncrementsPerNight).toBe(2)
+    expect(result.data.auctionInterest.cohortValuationSpreadByTurnout.thin).toBeGreaterThan(
+      result.data.auctionInterest.cohortValuationSpreadByTurnout.packed,
+    )
     // Sprint 21 (value model): new valuation/marketPressure/statFormulas
     // blocks, born in JSON from day one.
     expect(result.data.valuation.tasteSpread).toBe(0.12)
     expect(result.data.valuation.listingPatiencePremium).toBe(1.05)
+    // Sprint 30 decision 1: age/mileage curves inside clean value.
+    expect(result.data.valuation.ageFactorCurve).toEqual([
+      [0, 1.0],
+      [5, 0.85],
+      [10, 0.72],
+      [20, 0.65],
+      [30, 0.6],
+    ])
+    expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
     // Sprint 27 (restoration-bill deduction): replaces the retired
     // conditionFloor/Ceiling/Exponent curve tunables above.
     expect(result.data.valuation.hassleFactor).toBe(1.2)

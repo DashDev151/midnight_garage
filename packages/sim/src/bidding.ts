@@ -5,11 +5,15 @@ import type {
   DayLogEntry,
   EconomyConfig,
   GameState,
+  TurnoutBand,
 } from '@midnight-garage/content'
+import { currentGameYear } from './calendar'
 import type { SimContext } from './context'
 import { assignToParking, hasParkingSpace } from './facilities'
 import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
+
+export type { TurnoutBand }
 
 /**
  * Buyer archetypes with a genuinely stated interest in a model's tier - the
@@ -31,8 +35,8 @@ export function interestedBuyers(
 
 /**
  * The single value anchor (Sprint 20, auction rework II; body swapped
- * Sprint 21). Every other money number in this file (`demandCeilingYen`,
- * `computeBuyoutPriceYen`, `turnoutBand`) calls this ONE function, never
+ * Sprint 21). Every other money number in this file (`privateValuationYen`,
+ * `computeBuyoutPriceYen`, `reserveYen`) calls this ONE function, never
  * `marketValueYen` directly - that isolation is what let Sprint 21 re-anchor
  * every auction-money number at once by swapping one function's body.
  *
@@ -60,6 +64,7 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
     model,
     lot.car,
     heatPercent,
+    currentGameYear(state.reputationTier),
     context.partsById,
     context.partsTaxonomyById,
     context.economy,
@@ -68,7 +73,7 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
 
 /**
  * Seller's floor under a deal (GDD 6.5): a fraction of the lot's GUIDE VALUE.
- * Bidding opens here; a lot whose demand ceiling never clears it simply never
+ * Bidding opens here; a lot no rival cohort ever clears this on simply never
  * opens on its own (nobody came for it) - it can still be bought out, or bid
  * on directly by the player.
  *
@@ -83,7 +88,7 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
  * offers, bot bid caps) fixes that by construction: the reserve now moves with
  * this specific worn car, not with a static per-model constant. `state`/
  * `context` are threaded through purely to reach `anchorValueYen`, exactly
- * like `computeBuyoutPriceYen`/`demandCeilingYen` already do.
+ * like `computeBuyoutPriceYen`/`privateValuationYen` already do.
  */
 export function reserveYen(lot: AuctionLot, state: GameState, context: SimContext): number {
   return Math.round(
@@ -92,79 +97,69 @@ export function reserveYen(lot: AuctionLot, state: GameState, context: SimContex
 }
 
 /**
- * The demand ceiling (Sprint 20; re-seeded daily as a Sprint 25 task 4
- * interim fix) - what the assembled dealers will pay today, anchored at
- * wholesale (`AUCTION_WHOLESALE_FRACTION` of `anchorValueYen`) with a bell
- * spread (`AUCTION_DEMAND_SPREAD_SD`) and a flat chance of a thin-turnout
- * day (`AUCTION_THIN_TURNOUT_CHANCE`, multiplying the ceiling by
- * `AUCTION_THIN_TURNOUT_FACTOR`) - the weak-day tail where real steals live.
- * Replaces the old per-rival ceiling array entirely: this is the load-
- * bearing economics fix (Sprint 19's rivals bid 0.95x *retail*, so a
- * contested lot cleared near book; wholesale-anchoring here is what makes
- * patient bidding actually beat buyout most of the time).
- *
- * Sprint 20 originally seeded this on `lot.id` alone so it never moved once
- * a lot existed. Verified defect (2026-07-11 playtest, note 14): a lot whose
- * one-time ceiling happened to land below reserve then NEVER received a
- * single rival bid for its entire life, no matter how many days passed -
- * "sat bidless for 4 days" wasn't a rare edge case, it was permanent for
- * that lot. Seeding on `` `${lot.id}:${day}` `` instead (same pattern as
- * `advanceLotOvernight`'s own per-day seed) means a lot near reserve gets a
- * fresh roll every day and can open organically on a later, luckier one.
- * The full pacing redesign (real bidder-count simulation, not a single
- * rolled number) is Sprint 30 scope - this is the interim fix.
+ * A private rival valuation of this lot (Sprint 27 decision 4, generalized
+ * Sprint 30 decision 3): bell-shaped around `anchorValueYen * multiplier`,
+ * seeded so it's a fixed, reproducible read for a given `(lot, cohortId)`
+ * pair, not a per-day reroll - every bidder reads the same transparent
+ * bands, but no two private valuations of the same car land exactly on the
+ * shared anchor. `cohortId` distinguishes independent bidders pricing the
+ * SAME lot: a bot's own single walk-away decision
+ * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) defaults to the empty
+ * string, preserving its pre-Sprint-30 seed exactly; the overnight
+ * bidder-interest process below seeds one distinct value per rival cohort,
+ * with its own (turnout-dependent) `spreadSD` override - see
+ * `economy.auctionInterest.cohortValuationSpreadByTurnout`'s own doc comment
+ * for why a rival dealer cohort's spread is turnout-dependent and (mostly)
+ * wider than a bot's own tight `walkAwaySpread`.
  */
-export function demandCeilingYen(
+export function privateValuationYen(
   lot: AuctionLot,
   state: GameState,
   context: SimContext,
-  day: number,
+  multiplier: number,
+  cohortId = '',
+  spreadSD = context.economy.valuation.walkAwaySpread,
 ): number {
   const anchor = anchorValueYen(lot, state, context)
-  if (anchor <= 0) return 0
-  const economy = context.economy
-  const center = anchor * economy.AUCTION_WHOLESALE_FRACTION
-  const rng = createRng(hashStringToSeed(`${lot.id}:${day}`))
-  const spreadMultiplier = bellNormal(1, economy.AUCTION_DEMAND_SPREAD_SD, rng)
-  const isThinTurnout = rng.next() < economy.AUCTION_THIN_TURNOUT_CHANCE
-  const turnoutMultiplier = isThinTurnout
-    ? spreadMultiplier * economy.AUCTION_THIN_TURNOUT_FACTOR
-    : spreadMultiplier
-  return Math.max(0, Math.round(center * turnoutMultiplier))
+  const rng = createRng(hashStringToSeed(`walk-away:${lot.id}${cohortId}`))
+  const spreadMultiplier = bellNormal(1, spreadSD, rng)
+  return Math.round(anchor * multiplier * spreadMultiplier)
 }
 
-export type TurnoutBand = 'thin' | 'steady' | 'packed'
+/**
+ * How many rival cohorts a lot's rolled `TurnoutBand` (`auctions.ts`'s
+ * `generateAuctionCatalog`, persisted on the lot) represents (Sprint 30
+ * decision 3) - an integer rolled once from
+ * `economy.auctionInterest.turnoutBidderCounts[lot.turnout]`, seeded on the
+ * lot id alone so it's stable for the lot's whole life, matching
+ * `privateValuationYen`'s own "fixed per lot, not a daily reroll" contract.
+ */
+export function turnoutBidderCount(lot: AuctionLot, economy: EconomyConfig): number {
+  const [min, max] = economy.auctionInterest.turnoutBidderCounts[lot.turnout]
+  const rng = createRng(hashStringToSeed(`turnout-count:${lot.id}`))
+  return rng.int(min, max)
+}
 
 /**
- * A subtle pre-bid flavor read (maintainer decision 3: flavor yes, no
- * numeric "room" gauge) - how many dealers came to look today, as a coarse
- * band over today's rolled spread multiplier (`demandCeilingYen /
- * (anchorValueYen * AUCTION_WHOLESALE_FRACTION)`), thresholded by
- * `AUCTION_TURNOUT_BANDS`. Price is king; this is one word of texture.
- *
- * Sprint 25 task 4 (badge honesty): a lot whose ceiling can't even clear
- * reserve is always `thin`, regardless of what the ratio-based band would
- * say - the pre-fix bug let a lot that could never open on its own display
- * "PACKED TURNOUT" (the ratio is relative to that lot's own depressed
- * center, so a favorable spread roll on an absolutely weak lot still scored
- * high). The badge must never claim more interest than the lot can act on.
+ * How much a lot's current price (relative to its guide value) sharpens or
+ * dulls a rival cohort's nightly eagerness to bid (Sprint 30 decision 3):
+ * `1 + valueGapEagerBonus * (1 - currentBid/guideValue)`, clamped to
+ * `[valueGapFloor, valueGapCeiling]`. An unopened or cheap lot (price well
+ * under guide value) multiplies UP toward the ceiling; a lot already at or
+ * above guide value multiplies DOWN toward the floor, but never to zero -
+ * a cohort still eligible (its own private walk-away hasn't been cleared)
+ * can always still show up, just less often.
  */
-export function turnoutBand(
-  lot: AuctionLot,
-  state: GameState,
-  context: SimContext,
-  day: number,
-): TurnoutBand {
-  const ceiling = demandCeilingYen(lot, state, context, day)
-  if (ceiling < reserveYen(lot, state, context)) return 'thin'
-  const anchor = anchorValueYen(lot, state, context)
-  const center = anchor * context.economy.AUCTION_WHOLESALE_FRACTION
-  if (center <= 0) return 'thin'
-  const ratio = ceiling / center
-  const [thinBelow, packedAbove] = context.economy.AUCTION_TURNOUT_BANDS
-  if (ratio < thinBelow) return 'thin'
-  if (ratio > packedAbove) return 'packed'
-  return 'steady'
+function valueGapFactor(
+  currentBidYen: number,
+  guideValueYen: number,
+  economy: EconomyConfig,
+): number {
+  if (guideValueYen <= 0) return 0
+  const { valueGapEagerBonus, valueGapFloor, valueGapCeiling } = economy.auctionInterest
+  const priceRatio = currentBidYen / guideValueYen
+  const raw = 1 + valueGapEagerBonus * (1 - priceRatio)
+  return Math.max(valueGapFloor, Math.min(valueGapCeiling, raw))
 }
 
 /**
@@ -200,12 +195,12 @@ export function nextRaiseYen(lot: AuctionLot, state: GameState, context: SimCont
 /**
  * The real, chargeable instant-buyout price (Sprint 20): `max(anchorValueYen
  * * AUCTION_BUYOUT_PREMIUM, currentBidYen + one increment)` - the same
- * exported anchor the demand ceiling uses, floored above whatever's
- * currently on the board so a buyout always ends the auction outright,
- * never undercuts it (maintainer decision 2: buyout is available on every
- * lot, priced rather than forbidden - with wholesale clearing around
- * 0.6-0.8x value and buyout at ~1.25x value, it's always available and
- * almost never rational).
+ * exported anchor every rival cohort's private valuation centers on, floored
+ * above whatever's currently on the board so a buyout always ends the
+ * auction outright, never undercuts it (maintainer decision 2: buyout is
+ * available on every lot, priced rather than forbidden - with wholesale
+ * clearing around 0.6-0.8x value and buyout at ~1.25x value, it's always
+ * available and almost never rational).
  */
 export function computeBuyoutPriceYen(
   lot: AuctionLot,
@@ -224,27 +219,88 @@ export interface OvernightStepResult {
 }
 
 /**
- * One lot's overnight step (Sprint 20 - the core new daily mechanic),
- * seeded on `lot.id:day` so each day's roll is independent but fully
- * reproducible:
+ * How many of a lot's rolled rival cohorts (`bidderCount`, from
+ * `turnoutBidderCount`) still have room to place `atOrAboveYen` - i.e. their
+ * own private valuation (`privateValuationYen`, seeded
+ * `${lot.id}:cohort:${i}`, wholesale-centered per `AUCTION_WHOLESALE_FRACTION`)
+ * is at least that much. A cohort whose private ceiling has already been
+ * cleared by the current price has walked away for good - `privateValuationYen`
+ * is seeded on the lot alone, so this is a stable, monotonically-shrinking
+ * pool as the price climbs, never a daily reroll.
+ */
+function eligibleCohortCount(
+  lot: AuctionLot,
+  state: GameState,
+  context: SimContext,
+  atOrAboveYen: number,
+  bidderCount: number,
+): number {
+  const spreadSD = context.economy.auctionInterest.cohortValuationSpreadByTurnout[lot.turnout]
+  let eligible = 0
+  for (let i = 0; i < bidderCount; i++) {
+    const cohortWalkAwayYen = privateValuationYen(
+      lot,
+      state,
+      context,
+      context.economy.AUCTION_WHOLESALE_FRACTION,
+      `:cohort:${i}`,
+      spreadSD,
+    )
+    if (cohortWalkAwayYen >= atOrAboveYen) eligible++
+  }
+  return eligible
+}
+
+/**
+ * The competing pressure behind tonight's bid roll (behavioral proof (c)):
+ * `eligible^2 / bidderCount`, not the raw `eligible` count. A THIN lot's
+ * sole cohort (`bidderCount` 1-2) IS its whole field - `eligible` stays
+ * equal to `bidderCount` right up until that lone cohort's own true ceiling,
+ * so it keeps trying reliably all the way there, occasionally a genuinely
+ * high private valuation. A PACKED lot's last straggler (`eligible` 1 out of
+ * a `bidderCount` of 5-7) is a shrunken remnant of a crowd that mostly
+ * already dropped out - the crowd's own exit is the signal the price has
+ * left "what most dealers think this is worth," so that lone survivor's
+ * pressure is damped toward zero rather than treated as a full cohort. The
+ * net effect: a packed field's winning price clusters near its own
+ * wholesale-centered crowd, rarely reaching a single outlier's tail value;
+ * a thin field's winning price IS that outlier's value, tail and all.
+ */
+function competitivePressure(eligible: number, bidderCount: number): number {
+  return bidderCount > 0 ? (eligible * eligible) / bidderCount : 0
+}
+
+/**
+ * One lot's overnight step (Sprint 20 - the core new daily mechanic; Sprint
+ * 30 decision 3 replaces the one-shot demand ceiling with this daily
+ * bidder-interest process). Seeded on `lot.id:day` so each day's roll is
+ * independent but fully reproducible. Applies up to
+ * `auctionInterest.maxIncrementsPerNight` (2) raises in a loop, each one
+ * gated the same way:
  *
- * - Not yet open (`currentBidYen === 0`): if the demand ceiling clears
- *   reserve, the dealers open the bidding there (`leadingBidder: 'rival'`).
- *   Otherwise the lot stays bidless - still buyable, still biddable by the
- *   player at or above reserve, just nobody's shown up on their own yet.
- * - Open, below the ceiling: with probability `AUCTION_COUNTER_CHANCE` the
- *   dealers raise one increment (capped at the ceiling) and take the lead -
- *   deliberately UNCONDITIONAL on who currently leads, since the dealers
- *   bid among themselves too; an untouched lot climbs toward its own
- *   ceiling like any other. The "you were outbid overnight" beat
- *   (`auction-outbid`) fires only when this raise displaces the player.
- *   Otherwise: silence.
- * - Open, at or above the ceiling: silence (the dealers have nothing left
- *   to offer). Visible-price ties go to the player, matching what the
- *   board shows: a player raise to exactly the ceiling stops the dealers
- *   cold, since `currentBidYen >= ceiling` is already true.
+ * - `nextRaiseYen` (reserve to open, one increment above the board
+ *   otherwise) is the price a raise tonight would land at.
+ * - `eligibleCohortCount` counts how many of the lot's rolled rival cohorts
+ *   would still pay at least that much - zero means nobody's left who wants
+ *   it at this price, so the loop (and the night) stops here.
+ * - Otherwise, `1 - (1 - p)^competitivePressure` is the odds AT LEAST ONE
+ *   of those cohorts actually bids tonight, where `p` is `auctionInterest
+ *   .perCohortBidChance[tier]` scaled by `valueGapFactor` (cheap-relative-
+ *   to-guide-value lots are more eagerly contested) and `competitivePressure`
+ *   (below) weights the raw eligible count by how much of the lot's ORIGINAL
+ *   field is still in play. A packed lot (many eligible cohorts, most of its
+ *   field still active) makes this near-certain while the lot is genuinely
+ *   underpriced; a thin lot (as few as one cohort, but that IS its whole
+ *   field) can go quiet for real stretches even when technically still "in
+ *   play," but persists reliably once it's the only game in town.
+ * - A successful roll applies exactly that one raise and loops again (a
+ *   second increment needs its own independent roll, capped by
+ *   `maxIncrementsPerNight`); a failed roll stops the night, silent, at
+ *   whatever's been raised so far (0 or more).
  *
- * Silence always increments `quietDays`; any real raise resets it to 0 -
+ * The "you were outbid overnight" beat (`auction-outbid`) fires once if any
+ * raise this step displaced the player as leader. Silence (zero increments
+ * applied) increments `quietDays`; any real raise resets it to 0 -
  * `AUCTION_QUIET_DAYS_TO_HAMMER` consecutive silent steps is what "going
  * once, going twice" means mechanically.
  */
@@ -255,44 +311,45 @@ export function advanceLotOvernight(
   day: number,
 ): OvernightStepResult {
   const economy = context.economy
-
-  if (lot.currentBidYen === 0) {
-    const ceiling = demandCeilingYen(lot, state, context, day)
-    const reserve = reserveYen(lot, state, context)
-    // Sprint 27: reserve is guide-value-based now, so a lot with no interested
-    // buyer archetype (anchor 0) has reserve 0 too - and its ceiling is
-    // likewise 0. The old book-value reserve was always positive, which
-    // implicitly kept such a lot bidless; explicitly require a positive
-    // reserve so a no-demand lot never opens at a Y0 rival bid.
-    if (reserve <= 0 || ceiling < reserve) {
-      return { lot, log: [] } // nobody's come for it (yet) - stays bidless
-    }
-    return {
-      lot: {
-        ...lot,
-        currentBidYen: reserve,
-        leadingBidder: 'rival',
-        quietDays: 0,
-      },
-      log: [],
-    }
-  }
-
-  const ceiling = demandCeilingYen(lot, state, context, day)
-  if (lot.currentBidYen >= ceiling) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] }
+  const guideValueYen = anchorValueYen(lot, state, context)
+  if (guideValueYen <= 0) {
+    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] } // nobody's interested in this tier at all
   }
 
   const rng = createRng(hashStringToSeed(`${lot.id}:${day}`))
-  if (rng.next() >= economy.AUCTION_COUNTER_CHANCE) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] }
+  const bidderCount = turnoutBidderCount(lot, economy)
+  let workingLot = lot
+  let displacedPlayer = false
+  let incrementsApplied = 0
+
+  while (incrementsApplied < economy.auctionInterest.maxIncrementsPerNight) {
+    const raiseToYen = nextRaiseYen(workingLot, state, context)
+    if (raiseToYen <= 0) break // no seller floor (shouldn't happen once guideValueYen > 0, kept defensive)
+
+    const eligible = eligibleCohortCount(workingLot, state, context, raiseToYen, bidderCount)
+    if (eligible === 0) break // nobody left who'd still pay this much tonight
+
+    const perCohortChance =
+      economy.auctionInterest.perCohortBidChance[lot.tier] *
+      valueGapFactor(workingLot.currentBidYen, guideValueYen, economy)
+    const clampedChance = Math.max(0, Math.min(1, perCohortChance))
+    const probabilityOfAnyBid =
+      1 - Math.pow(1 - clampedChance, competitivePressure(eligible, bidderCount))
+    if (rng.next() >= probabilityOfAnyBid) break // nobody actually stepped up tonight
+
+    if (workingLot.leadingBidder === 'player') displacedPlayer = true
+    workingLot = { ...workingLot, currentBidYen: raiseToYen, leadingBidder: 'rival', quietDays: 0 }
+    incrementsApplied++
   }
 
-  const newBidYen = Math.min(ceiling, lot.currentBidYen + bidIncrementYen(lot, economy))
-  const displacedPlayer = lot.leadingBidder === 'player'
+  if (incrementsApplied === 0) {
+    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [] }
+  }
   return {
-    lot: { ...lot, currentBidYen: newBidYen, leadingBidder: 'rival', quietDays: 0 },
-    log: displacedPlayer ? [{ type: 'auction-outbid', lotId: lot.id, newBidYen }] : [],
+    lot: workingLot,
+    log: displacedPlayer
+      ? [{ type: 'auction-outbid', lotId: lot.id, newBidYen: workingLot.currentBidYen }]
+      : [],
   }
 }
 

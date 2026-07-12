@@ -35,6 +35,7 @@ import type {
 } from '@midnight-garage/content'
 import { componentDisplayName, resolveCarDisplayName } from '@midnight-garage/content'
 import {
+  anchorValueYen,
   applyBayPurchase,
   applyEquipmentPurchase,
   applyMoves,
@@ -50,6 +51,7 @@ import {
   confirmStagedWork,
   createInitialGameState,
   createRng,
+  currentGameYear,
   deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
@@ -83,7 +85,6 @@ import {
   resolveServiceJob,
   scrapValueYen,
   swapCars as swapCarsCore,
-  turnoutBand,
   valuateCarForBuyer,
   type DeliverySpeed,
   type NewJobSpec,
@@ -285,14 +286,20 @@ export interface LotDetail {
   model: CarModel
   displayName: string
   /**
+   * The card's headline number (Sprint 30 decision 2's UI half): the same
+   * transparent `instanceValue` every price in the game reads from
+   * (`bidding.ts`'s `anchorValueYen`, now age/mileage-aware per decision 1).
    * No `bookValueYen` field on purpose (Sprint 25 task 5, maintainer
    * decision): it's a static per-model constant unrelated to this specific
    * rolled car's actual condition, so showing it next to a condition-derived
-   * reserve/buyout only invited "why doesn't this match" confusion. Sprint 27
-   * (Sprint 30 decision 2 pulled forward) rebased `reserveYen` itself onto the
-   * per-instance guide value (`marketValueYen` = `instanceValue`), so reserve
-   * and buyout now both derive from this specific car's real worth - they move
-   * together with condition, no static book anchor left to reconcile against.
+   * guide value only invited "why doesn't this match" confusion.
+   */
+  guideValueYen: number
+  /**
+   * Sprint 27 (Sprint 30 decision 2 pulled forward) rebased `reserveYen`
+   * itself onto the per-instance guide value above, so reserve and buyout
+   * both derive from this specific car's real worth - they move together
+   * with condition, no static book anchor left to reconcile against.
    */
   reserveYen: number
   /** Always visible, on every lot (maintainer decision 2). */
@@ -305,7 +312,13 @@ export interface LotDetail {
   quietDays: number
   /** `AUCTION_QUIET_DAYS_TO_HAMMER` - lets the UI say "hammer at 2". */
   hammerThreshold: number
-  /** Subtle pre-bid turnout flavor (thin/steady/packed) - price is king, no numeric gauge. */
+  /**
+   * The lot's rolled bidder-count band (Sprint 30 decision 3: thin/steady/
+   * packed now means a real number of rival cohorts, `bidding.ts`'s
+   * `turnoutBidderCount`), read straight off `lot.turnout` - fixed for the
+   * lot's whole life, not recomputed daily. Still shown as a word only, no
+   * numeric gauge (maintainer decision 3: price is king).
+   */
   turnout: TurnoutBand
   /** The smallest valid raise right now - pre-fills the raise input. */
   nextRaiseYen: number
@@ -708,13 +721,14 @@ export const useGameStore = defineStore('game', () => {
       lot,
       model,
       displayName: resolveCarDisplayName(model),
+      guideValueYen: anchorValueYen(lot, gameState.value, context.value),
       reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       currentBidYen: lot.currentBidYen,
       leadingBidder: lot.leadingBidder,
       quietDays: lot.quietDays,
       hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
-      turnout: turnoutBand(lot, gameState.value, context.value, gameState.value.day),
+      turnout: lot.turnout,
       nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
       playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(lot.car),
@@ -751,7 +765,7 @@ export const useGameStore = defineStore('game', () => {
           nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
           quietDays: lot.quietDays,
           hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
-          turnout: turnoutBand(lot, gameState.value, context.value, gameState.value.day),
+          turnout: lot.turnout,
           expiresOnDay: lot.expiresOnDay,
           daysLeft: lot.expiresOnDay - gameState.value.day,
         },
@@ -765,6 +779,7 @@ export const useGameStore = defineStore('game', () => {
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model) return { buyerId: undefined, offerYen: 0 }
     const heat = gameState.value.marketHeat[car.modelId] ?? 100
+    const currentYear = currentGameYear(gameState.value.reputationTier)
     const buyer: Buyer | undefined = bestFitBuyer(
       car,
       model,
@@ -773,6 +788,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsTaxonomy,
       context.value.partsTaxonomyById,
       heat,
+      currentYear,
       context.value.economy,
     )
     const offerYen = buyer
@@ -784,6 +800,7 @@ export const useGameStore = defineStore('game', () => {
           context.value.partsTaxonomy,
           context.value.partsTaxonomyById,
           heat,
+          currentYear,
           context.value.economy,
         )
       : 0
@@ -804,6 +821,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsTaxonomy,
       context.value.partsTaxonomyById,
       heat,
+      currentGameYear(gameState.value.reputationTier),
       context.value.economy,
     )
   }

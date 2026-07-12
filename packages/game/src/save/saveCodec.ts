@@ -246,8 +246,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *     board refills for real, correctly-generated offers within a day or
  *     two either way). `saveCodec.test.ts`'s `v17 -> v18 migration` describe
  *     block covers both populations.
+ * - v19 (Sprint 30, living auctions): `AuctionLot` gained `turnout` - the
+ *   Sprint 30 decision 3 rival-turnout band, rolled once at lot creation and
+ *   persisted (replacing the old always-recomputed `turnoutBand` function,
+ *   deleted this sprint). Purely additive with a schema default of
+ *   `'steady'`, so a pre-v19 save's already-listed lots decode with a
+ *   neutral turnout assumption - correct in kind (every prior migration
+ *   facing an unrecoverable historical fact defaults rather than fabricates
+ *   one; see e.g. v15's `arrivesOnDay: null`), and harmless in practice: an
+ *   in-flight lot's ORIGINAL turnout roll never existed under the old model
+ *   to recover, and 'steady' is the middle of the three bands, not a thumb
+ *   on the scale either way. No explicit `MIGRATIONS[18]` step needed.
  */
-export const SAVE_VERSION = 18
+export const SAVE_VERSION = 19
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

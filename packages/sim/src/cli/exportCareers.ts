@@ -76,7 +76,10 @@ const COLUMNS = [
 ] as const
 
 /** win price as a fraction of [reserve, buyout], bucketed - the Sprint 10
- * decision 4f calibration target, checked against real bot play. */
+ * decision 4f calibration target, checked against real bot play.
+ * `bidEvents`/`daysOpen` (Sprint 30 decision 3) are the daily
+ * bidder-interest process's own telemetry: how contested a lot was and how
+ * long it stayed on the board before resolving. */
 const AUCTION_WINS_COLUMNS = [
   { name: 'strategy', type: 'string' },
   { name: 'seed', type: 'int64' },
@@ -84,6 +87,8 @@ const AUCTION_WINS_COLUMNS = [
   { name: 'tier', type: 'string' },
   { name: 'fraction', type: 'float64' },
   { name: 'bucket', type: 'string' },
+  { name: 'bidEvents', type: 'int64' },
+  { name: 'daysOpen', type: 'int64' },
 ] as const
 
 /** One successful auction acquisition, by channel - external review 2026-07
@@ -150,7 +155,16 @@ function main(): void {
       }
       for (const win of auctionWins) {
         auctionWinRows.push(
-          [name, seed, win.day, win.tier, win.fraction.toFixed(4), win.bucket].join(','),
+          [
+            name,
+            seed,
+            win.day,
+            win.tier,
+            win.fraction.toFixed(4),
+            win.bucket,
+            win.bidEvents,
+            win.daysOpen,
+          ].join(','),
         )
       }
       for (const acquisition of acquisitions) {

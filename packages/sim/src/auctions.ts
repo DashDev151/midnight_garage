@@ -6,6 +6,7 @@ import {
   type CarModel,
   type EconomyConfig,
   type RarityTier,
+  type TurnoutBand,
 } from '@midnight-garage/content'
 import { bandForMigratedCondition } from './bands'
 import { CAR_CONDITION_BASE_MAX, CAR_CONDITION_BASE_MIN, CAR_CONDITION_JITTER } from './constants'
@@ -69,6 +70,27 @@ export function rollAuctionDurationDays(
 
 function clampCondition(value: number): number {
   return Math.max(0, Math.min(100, value))
+}
+
+const TURNOUT_BANDS: readonly TurnoutBand[] = ['thin', 'steady', 'packed']
+
+/**
+ * Rolls a lot's rival-turnout band (Sprint 30 decision 3), weighted by
+ * `economy.auctionInterest.turnoutBandWeights` - fixed for the lot's whole
+ * life (see `TurnoutBandSchema`'s own doc comment, content/auction.ts).
+ * `bidding.ts`'s `turnoutBidderCount` turns this into an actual rival-cohort
+ * count.
+ */
+function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
+  const weights = economy.auctionInterest.turnoutBandWeights
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  if (total <= 0) return 'steady'
+  let roll = rng.next() * total
+  for (let i = 0; i < TURNOUT_BANDS.length; i++) {
+    roll -= weights[i]!
+    if (roll <= 0) return TURNOUT_BANDS[i]!
+  }
+  return TURNOUT_BANDS[TURNOUT_BANDS.length - 1]!
 }
 
 /**
@@ -167,6 +189,7 @@ export function generateAuctionCatalog(
       leadingBidder: null,
       quietDays: 0,
       playerHasBid: false,
+      turnout: rollTurnoutBand(rng, economy),
     })
   }
   return lots

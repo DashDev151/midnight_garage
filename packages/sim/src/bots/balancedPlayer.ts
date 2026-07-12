@@ -8,6 +8,7 @@ import {
   walkAwayTargetYen,
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
+import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
@@ -116,6 +117,7 @@ export function balancedPlayerStrategy(
     if (jobbedCarIds.has(car.id)) continue
     const model = context.modelsById[car.modelId]
     const heatPercent = state.marketHeat[car.modelId] ?? 100
+    const currentYear = currentGameYear(state.reputationTier)
     const buyer = model
       ? bestFitBuyer(
           car,
@@ -125,6 +127,7 @@ export function balancedPlayerStrategy(
           context.partsTaxonomy,
           context.partsTaxonomyById,
           heatPercent,
+          currentYear,
           context.economy,
         )
       : undefined
@@ -138,6 +141,7 @@ export function balancedPlayerStrategy(
             context.partsTaxonomy,
             context.partsTaxonomyById,
             heatPercent,
+            currentYear,
             context.economy,
           )
         : 0

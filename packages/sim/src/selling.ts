@@ -11,7 +11,7 @@ import type {
   PublicListing,
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
-import { applyReputationDelta } from './calendar'
+import { applyReputationDelta, currentGameYear } from './calendar'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import { PUBLIC_LISTING_WAIT_DAYS, WALK_IN_OFFER_RANGE } from './constants'
 import type { SimContext } from './context'
@@ -54,6 +54,7 @@ export function sellViaWalkIn(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
+  currentYear: number,
   economy: EconomyConfig,
   rng: Rng,
 ): SaleOffer {
@@ -68,6 +69,7 @@ export function sellViaWalkIn(
       partsTaxonomy,
       partsTaxonomyById,
       heatPercent,
+      currentYear,
       economy,
     ),
   }))
@@ -116,6 +118,7 @@ export function listPubliclyAskingPrice(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   marketHeatPercent: number,
+  currentYear: number,
   economy: EconomyConfig,
 ): number {
   const candidates = saleCandidates(model, buyers)
@@ -131,6 +134,7 @@ export function listPubliclyAskingPrice(
         partsTaxonomy,
         partsTaxonomyById,
         marketHeatPercent,
+        currentYear,
         economy,
       )
     )
@@ -152,6 +156,7 @@ export function bestFitBuyer(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
+  currentYear: number,
   economy: EconomyConfig,
 ): Buyer | undefined {
   let best: { buyer: Buyer; value: number } | undefined
@@ -164,6 +169,7 @@ export function bestFitBuyer(
       partsTaxonomy,
       partsTaxonomyById,
       heatPercent,
+      currentYear,
       economy,
     )
     if (!best || value > best.value) {
@@ -204,6 +210,7 @@ export function resolveSellViaWalkIn(
     context.partsTaxonomy,
     context.partsTaxonomyById,
     heatPercent,
+    currentGameYear(state.reputationTier),
     context.economy,
     rng,
   )
@@ -269,6 +276,7 @@ export function resolveListForSale(
     context.partsTaxonomy,
     context.partsTaxonomyById,
     marketHeatPercent,
+    currentGameYear(state.reputationTier),
     context.economy,
   )
   const waitDays = waitDaysOverride ?? PUBLIC_LISTING_WAIT_DAYS

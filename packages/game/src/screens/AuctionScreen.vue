@@ -50,13 +50,9 @@ function groupBandEntries(
   return Object.entries(bands) as [ComponentId, ConditionBand][]
 }
 
-const daysUntilCatalog = computed(() => {
-  const d = 7 - (game.day % 7)
-  return d === 0 ? 7 : d
-})
-
-/** Subtle pre-bid turnout flavor (Sprint 20 maintainer decision 3) - one
- * word of texture, never a numeric gauge. Price is king. */
+/** Turnout badge text (Sprint 30 decision 3: a real bidder-count band now,
+ * rolled once per lot at creation) - still one word of texture, never a
+ * numeric gauge. Price is king. */
 const TURNOUT_LABEL: Record<string, string> = {
   thin: 'Thin turnout',
   steady: 'Steady turnout',
@@ -100,8 +96,8 @@ function backstopLabel(expiresOnDay: number): string {
     </header>
 
     <p v-if="!hasLots" class="empty">
-      No lots listed. The next weekly catalog arrives in ~{{ daysUntilCatalog }} day(s) - End Day
-      (or use the dev console to warp).
+      No lots listed right now. New lots can arrive any day - End Day (or use the dev console to
+      warp) and check back.
     </p>
 
     <p v-if="game.parkingFull" class="parking-warning">
@@ -144,6 +140,10 @@ function backstopLabel(expiresOnDay: number): string {
               {{ d.lot.car.color }}
             </span>
           </div>
+          <!-- The card is honest (Sprint 30 decision 2): guide value is the
+               headline, the same transparent instanceValue everyone prices
+               from - book value is never shown. -->
+          <p class="guide-value">Guide value {{ formatYen(d.guideValueYen) }}</p>
           <div class="lot-nums">
             <span>reserve {{ formatYen(d.reserveYen) }}</span>
             <span class="current-bid" :class="{ 'current-bid-mine': d.leadingBidder === 'player' }">
@@ -307,6 +307,15 @@ h3 {
 .lot-turnout {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+/* The card's headline number (Sprint 30 decision 2) - reserve/buyout below
+   read as fractions of this, not competing top-line figures. */
+.guide-value {
+  margin: 0;
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-md);
+  font-weight: bold;
 }
 
 .lot-bands {

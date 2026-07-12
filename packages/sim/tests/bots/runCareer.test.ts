@@ -355,6 +355,11 @@ describe('auction win-price samples (Sprint 20 harness metric - hammer/anchor ba
       expect(win.fraction).toBeGreaterThanOrEqual(0)
       const expectedBucket = win.fraction < 0.65 ? 'steal' : win.fraction > 0.9 ? 'frenzy' : 'mid'
       expect(win.bucket).toBe(expectedBucket)
+      // Sprint 30 decision 3 telemetry: a resolved lot was on the board at
+      // least the one day it resolved, and carried at least one real bid
+      // (the reserve-opening raise) to ever reach a win/loss outcome at all.
+      expect(win.daysOpen).toBeGreaterThanOrEqual(1)
+      expect(win.bidEvents).toBeGreaterThanOrEqual(1)
     }
   })
 })

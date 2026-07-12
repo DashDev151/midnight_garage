@@ -67,6 +67,10 @@ function tasteMultiplier(
  * the single truth `marketValueYen` reads directly (Sprint 27: via the
  * restoration-bill deduction, `marketValue.ts`'s own doc comment), with no
  * separate "issue-adjusted" layer on top anymore.
+ *
+ * `currentYear` (Sprint 30) is forwarded straight through to `marketValueYen`
+ * for its age factor - every caller already has a `GameState` to derive it
+ * from (`calendar.ts`'s `currentGameYear(state.reputationTier)`).
  */
 export function valuateCarForBuyer(
   buyer: Buyer,
@@ -76,9 +80,18 @@ export function valuateCarForBuyer(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
+  currentYear: number,
   economy: EconomyConfig,
 ): number {
-  const value = marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
+  const value = marketValueYen(
+    model,
+    instance,
+    heatPercent,
+    currentYear,
+    partsById,
+    partsTaxonomyById,
+    economy,
+  )
   const taste = tasteMultiplier(buyer, model, instance, partsById, partsTaxonomy, economy)
   return Math.round(Math.max(0, value * taste))
 }

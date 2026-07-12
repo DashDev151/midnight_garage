@@ -3,7 +3,7 @@ import type { DayActions } from './actions'
 import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
 import { applyReputationDelta, currentGameYear } from './calendar'
 import { saleQualityFor } from './carCondition'
-import { refreshCatalogs } from './catalogs'
+import { generateDailyAuctionArrivals } from './catalogs'
 import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { applyEquipmentPurchases } from './equipment'
@@ -307,10 +307,11 @@ export function advanceDay(
   // tomorrow. Processes lots sequentially against the accumulating state so
   // two lots hammering the same day see each other's cash/parking effects,
   // exactly like every other per-item loop in this function. Stale
-  // service-job offers expire the same way they always have. Then refresh
-  // the weekly auction catalog (day 7 boundary) via the same generator day-1
-  // seeding uses (catalogs.ts's refreshCatalogs) - one generation path, not
-  // two.
+  // service-job offers expire the same way they always have. Then roll
+  // today's staggered arrivals (Sprint 30 decision 4: `catalogs.ts`'s
+  // `generateDailyAuctionArrivals`, EVERY day, not just a day-7 boundary -
+  // day 1's own full opening board still comes from `createInitialGameState`
+  // via `refreshCatalogs`, a separate, fixed-batch generation path).
   const lotsToday = next.activeAuctionLots
   for (const lot of lotsToday) {
     const resolution = resolveLotForDay(next, lot, context, next.day)
@@ -320,16 +321,14 @@ export function advanceDay(
   const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
   next = { ...next, serviceJobOffers: unexpiredOffers }
 
-  if (next.day % 7 === 0) {
-    const refresh = refreshCatalogs(next, context, next.day, rng)
-    for (const { tier, lotCount } of refresh.lotsByTier) {
-      log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
-    }
-    next = bumpLotSupply(
-      { ...next, activeAuctionLots: [...next.activeAuctionLots, ...refresh.freshLots] },
-      refresh.freshLots.map((lot) => lot.modelId),
-    )
+  const arrivalsToday = generateDailyAuctionArrivals(next, context, next.day, rng)
+  for (const { tier, lotCount } of arrivalsToday.lotsByTier) {
+    log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
   }
+  next = bumpLotSupply(
+    { ...next, activeAuctionLots: [...next.activeAuctionLots, ...arrivalsToday.freshLots] },
+    arrivalsToday.freshLots.map((lot) => lot.modelId),
+  )
 
   // 8a. Sprint 29: daily service-job offer generation - a bell-curve draw
   // (0-4, economy.json's `serviceJobs.dailyOfferCountWeights`) EVERY day,

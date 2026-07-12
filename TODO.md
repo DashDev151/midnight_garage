@@ -81,6 +81,19 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **Sprint 30 living-auction tuning: the board is a fire sale at first-pass numbers
+  (maintainer chose commit-as-is, tune in playtest, 2026-07-12).** Mechanics shipped and all hard
+  invariants pass, but the balance harness shows 94% of auction wins are cheap "steals" (target
+  ~10%, was 20% in Sprint 29) and Flipper is now a NET LOSS vs the do-nothing baseline
+  (-Y115,178 below passive, was +Y34k above). Three compounding, all-JSON-tunable causes:
+  staggered arrivals flood the board (92,990 acquisitions vs 21k, oversupply drags heat/sale
+  prices), the new bidder interest is too weak to contest lots, and age/mileage depresses this
+  old roster's values. Levers: `AUCTION_DAILY_SPAWN_RATE` (down), `auctionInterest.perCohortBidChance`
+  / `turnoutBandWeights` (up), `ageFactorCurve`/`mileageFactorCurve` shapes. Also revisit the
+  invented `cohortValuationSpreadByTurnout` + `eligible^2/bidderCount` damping (see `sprint30.md`
+  Exit). Telemetry columns (`bidEvents`, `daysOpen`) now in `auctionWins.csv`; the Python report
+  section to render them is a small unwired follow-up. This is the sprint's own user-only
+  "playtest an auction week, tune curves in JSON" task, now with the measured starting point.
 - [ ] **Model-independent part restoration costs make cheap cars not restore-worthy (Sprint 27,
   flag-and-tune-later per maintainer).** `restorationBill` (`carCostToMintYen`, all 29 real parts)
   is priced from `parts-taxonomy.json`'s flat, model-independent step costs, so a realistically-

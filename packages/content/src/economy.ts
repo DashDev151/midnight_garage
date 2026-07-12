@@ -17,10 +17,41 @@ const DayRangeSchema = z
   .tuple([z.number().int().positive(), z.number().int().positive()])
   .refine(([min, max]) => min <= max, { message: 'range min must be <= max' })
 
-/** An ascending [low, high] pair of fractional thresholds, low <= high. */
-const AscendingFractionPairSchema = z
-  .tuple([z.number().positive(), z.number().positive()])
-  .refine(([low, high]) => low <= high, { message: 'pair low must be <= high' })
+/** Per-tier fraction in [0, 1] - the probability-shaped sibling of
+ * `ByAuctionTierSchema` (which is int counts/yen), reused for Sprint 30's
+ * per-tier nightly bid-cohort chance. */
+const ByAuctionTierFractionSchema = z.object({
+  'local-yard': z.number().min(0).max(1),
+  regional: z.number().min(0).max(1),
+  premium: z.number().min(0).max(1),
+  'collector-network': z.number().min(0).max(1),
+})
+
+/** Per-tier non-negative rate (Sprint 30 decision 4: expected new lots/day,
+ * not necessarily a whole number - `rollDailySpawnCount` in catalogs.ts turns
+ * it into an actual integer count each day). */
+const ByAuctionTierRateSchema = z.object({
+  'local-yard': z.number().nonnegative(),
+  regional: z.number().nonnegative(),
+  premium: z.number().nonnegative(),
+  'collector-network': z.number().nonnegative(),
+})
+
+/**
+ * A piecewise-linear curve (Sprint 30 decision 1): ascending `[x, y]`
+ * breakpoints a designer can draw directly in JSON. Reads as "y is this at
+ * x=breakpoint[i][0]"; interpolated linearly between neighboring breakpoints,
+ * clamped to the first/last y outside the breakpoint range. Used for both the
+ * age and mileage factors in `marketValue.ts`'s clean-value formula - same
+ * shape, different x axis, so one schema serves both rather than two
+ * near-identical ones.
+ */
+const CurveSchema = z
+  .array(z.tuple([z.number().nonnegative(), z.number().positive()]))
+  .min(2)
+  .refine((points) => points.every((p, i) => i === 0 || p[0] > points[i - 1]![0]), {
+    message: 'curve breakpoints must have strictly ascending x values',
+  })
 
 /**
  * Sprint 20 step 0 (maintainer ask, 2026-07-11): the content law says
@@ -70,7 +101,11 @@ export const EconomyConfigSchema = z.object({
    * proposed value on the new basis (GDD 6.5).
    */
   AUCTION_RESERVE_PRICE_FRACTION: z.number().positive().max(1),
-  /** New lots per tier on each weekly catalog refresh. */
+  /** New lots per tier on DAY 1 ONLY (`newGame.ts`'s `createInitialGameState`,
+   * via `catalogs.ts`'s `refreshCatalogs`) - a full opening board so a fresh
+   * career isn't empty (Sprint 10). Every day after that, arrivals are the
+   * Sprint 30 decision 4 daily trickle (`AUCTION_DAILY_SPAWN_RATE` below,
+   * `catalogs.ts`'s `generateDailyAuctionArrivals`), not this fixed batch. */
   AUCTION_LOTS_PER_TIER: ByAuctionTierSchema,
   /** Standard-tier lot duration band, inclusive, in days (Sprint 19 decision 1). */
   AUCTION_DURATION_STANDARD_RANGE_DAYS: DayRangeSchema,
@@ -96,30 +131,102 @@ export const EconomyConfigSchema = z.object({
   AUCTION_BUYOUT_PREMIUM: z.number().positive(),
   /**
    * Sprint 20 (auction rework II): dealers pay resale minus recon minus
-   * margin - the demand ceiling's wholesale anchor, applied to
-   * `anchorValueYen` before the lot-seeded spread.
+   * margin. Sprint 30 decision 3 reuses this as the CENTER each individual
+   * rival cohort's private valuation (`bidding.ts`'s `privateValuationYen`)
+   * spreads around, replacing the old single lot-wide demand ceiling this
+   * fraction used to anchor.
    */
   AUCTION_WHOLESALE_FRACTION: z.number().positive().max(1),
-  /** Lot-to-lot turnout spread (bell-curve standard deviation, as a fraction
-   * of the wholesale-anchored center) the demand ceiling rolls around. */
-  AUCTION_DEMAND_SPREAD_SD: z.number().positive(),
-  /** Chance a lot rolls a weak-turnout day, multiplying its demand ceiling by
-   * `AUCTION_THIN_TURNOUT_FACTOR` - the weak-day tail where steals live. */
-  AUCTION_THIN_TURNOUT_CHANCE: z.number().min(0).max(1),
-  AUCTION_THIN_TURNOUT_FACTOR: z.number().positive().max(1),
-  /** Overnight odds the standing dealers answer with one increment toward
-   * the demand ceiling - unconditional on who currently leads. */
-  AUCTION_COUNTER_CHANCE: z.number().min(0).max(1),
   /** Consecutive quiet overnight steps (no raise) before a lot hammers to
    * whoever currently leads (maintainer decision 1). */
   AUCTION_QUIET_DAYS_TO_HAMMER: z.number().int().positive(),
   /** Bid increment as a fraction of book value, floored/rounded to Y10,000 -
    * one ladder for the player, dealers, and bots alike. */
   AUCTION_BID_INCREMENT_FRACTION: z.number().positive(),
-  /** Turnout-word thresholds over `demandCeiling / (anchorValueYen *
-   * AUCTION_WHOLESALE_FRACTION)`: thin below the first, packed above the
-   * second, steady between - flavor only, price is king. */
-  AUCTION_TURNOUT_BANDS: AscendingFractionPairSchema,
+  /**
+   * Sprint 30 decision 4: expected new lots per day per tier, replacing the
+   * old `day % 7` weekly dump for every day AFTER day 1 (day 1 itself still
+   * seeds the full `AUCTION_LOTS_PER_TIER` batch - see that field's own doc
+   * comment). Tuned ABOVE naive weekly-volume parity (`AUCTION_LOTS_PER_TIER
+   * / 7`) per the maintainer's explicit ask for more lots than a player can
+   * realistically chase, not merely to preserve the old pace.
+   * `catalogs.ts`'s `rollDailySpawnCount` turns this real-valued rate into an
+   * actual integer count each day.
+   */
+  AUCTION_DAILY_SPAWN_RATE: ByAuctionTierRateSchema,
+  /**
+   * Sprint 30 decision 3: the daily bidder-interest process replacing the
+   * old one-shot demand ceiling (Sprint 20) and its Sprint 25 interim patches
+   * (both deleted, decision 5). Turnout is rolled once per lot at creation
+   * (`auctions.ts`'s `generateAuctionCatalog`) as a `TurnoutBand`; everything
+   * below turns that band, plus tonight's price-vs-guide-value gap, into how
+   * many bid increments (0-2) land overnight (`bidding.ts`'s
+   * `advanceLotOvernight`).
+   */
+  auctionInterest: z
+    .object({
+      /** Base nightly odds a single active rival cohort places a bid, before
+       * the value-gap adjustment below - first-pass, openly tunable. */
+      perCohortBidChance: ByAuctionTierFractionSchema,
+      /**
+       * Each rival cohort's private-valuation spread (`bidding.ts`'s
+       * `privateValuationYen`, passed as its `spreadSD` override), BY the
+       * lot's own rolled `TurnoutBand` - deliberately wider than a bot's own
+       * tight `valuation.walkAwaySpread` (0.05, models one bidder's own
+       * confident read of a car's value) and deliberately narrower for a
+       * packed field than a thin one (behavioral proof (c): a packed
+       * field's cohorts read as more of a consensus crowd - individually
+       * more tightly clustered around the wholesale center - so its winning
+       * price rarely reaches a single outlier's tail value; a thin field's
+       * one or two active bidders are comparatively idiosyncratic, wide
+       * enough that their true valuation occasionally clears guide value
+       * outright). A flat spread measured as too tight (nobody, at any
+       * turnout, could ever cross guide value) or, flattened wide, produced
+       * the OPPOSITE of proof (c) (more cohorts meant MORE above-guide wins,
+       * pure order-statistics on the tail) - hence turnout-dependent, not a
+       * single number.
+       */
+      cohortValuationSpreadByTurnout: z.object({
+        thin: z.number().nonnegative(),
+        steady: z.number().nonnegative(),
+        packed: z.number().nonnegative(),
+      }),
+      /** How much a cheap-relative-to-guide-value lot boosts eagerness: the
+       * value-gap multiplier is `1 + valueGapEagerBonus * (1 -
+       * currentBid/guideValue)`, clamped to
+       * `[valueGapFloor, valueGapCeiling]`. */
+      valueGapEagerBonus: z.number().nonnegative(),
+      /** Floor on the value-gap multiplier - competition never fully dies
+       * while cohorts remain eligible, even once price clears guide value. */
+      valueGapFloor: z.number().min(0),
+      /** Ceiling on the value-gap multiplier - an unopened (0-bid) lot
+       * doesn't become a guaranteed bid just from being cheap. */
+      valueGapCeiling: z.number().positive(),
+      /** How many rival cohorts a lot's rolled `TurnoutBand` represents -
+       * `bidding.ts`'s `turnoutBidderCount` rolls an integer in this
+       * (inclusive) range per lot, stable for the lot's whole life. Reuses
+       * `DayRangeSchema`'s ascending-positive-int-pair shape (not really
+       * about days here, just the same tuple contract). */
+      turnoutBidderCounts: z.object({
+        thin: DayRangeSchema,
+        steady: DayRangeSchema,
+        packed: DayRangeSchema,
+      }),
+      /** Weights (need not be pre-normalized to exactly 1, but should sum to
+       * ~1 - same convention as `serviceJobs.dailyOfferCountWeights` below)
+       * over which `TurnoutBand` a fresh lot rolls: [thin, steady, packed]. */
+      turnoutBandWeights: z.tuple([
+        z.number().nonnegative(),
+        z.number().nonnegative(),
+        z.number().nonnegative(),
+      ]),
+      /** Hard cap on how many bid increments one overnight step can apply
+       * (decision 3: "0-2 increments applied per overnight"). */
+      maxIncrementsPerNight: z.number().int().positive(),
+    })
+    .refine((a) => a.valueGapFloor <= a.valueGapCeiling, {
+      message: 'auctionInterest.valueGapFloor must be <= valueGapCeiling',
+    }),
   /**
    * Sprint 21 (per-component weights); Sprint 26 decision 4 replaced the old
    * hand-authored `componentValueWeights` with a cost-weighted mean of band
@@ -128,6 +235,20 @@ export const EconomyConfigSchema = z.object({
    * the formula) - `hassleFactor`/`floorFraction` are its two tunables.
    */
   valuation: z.object({
+    /**
+     * Sprint 30 decision 1: `cleanValue = bookValueYen * ageFactor(regYear) *
+     * mileageFactor(km) * heat` - age/mileage join heat as clean-value
+     * multipliers, ahead of Sprint 27's restoration-bill deduction (which is
+     * unchanged: it still deducts from whatever `cleanValue` comes out to).
+     * `[ageYears, factor]` breakpoints - gentle decline to a decade, then
+     * flatter (JDM future-classics don't keep shedding value the way a
+     * modern used car does).
+     */
+    ageFactorCurve: CurveSchema,
+    /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - roughly flat
+     * (even a small low-mileage bonus) below `auctions.ts`'s 30k-180k roll
+     * floor, falling off toward the roll ceiling. */
+    mileageFactorCurve: CurveSchema,
     /**
      * Sprint 27 decision 1: `restorationBill`'s weight in `instanceValue =
      * max(floor, cleanValue - hassleFactor * restorationBill) +

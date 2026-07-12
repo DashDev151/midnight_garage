@@ -32,9 +32,12 @@ const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
 const model: CarModel | undefined = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
 if (!model) throw new Error('fixture car missing from seed content')
 
+/** Matches `car.year` below, so `ageFactor` stays 1.0 (age 0) - Sprint 30. */
+const CURRENT_YEAR = 1992
+
 const car: CarInstance = buildCarInstance({
   modelId: model.id,
-  year: 1992,
+  year: CURRENT_YEAR,
   mileageKm: 90_000,
   authenticityPercent: 85,
   parts: mintCarParts({ block: { band: 'worn' } }),
@@ -55,6 +58,7 @@ function walkIn(
     PARTS_TAXONOMY,
     PARTS_TAXONOMY_BY_ID,
     heat,
+    CURRENT_YEAR,
     ECONOMY,
     rng,
   )
@@ -69,6 +73,7 @@ function listingPrice(target: CarInstance, targetModel: CarModel, buyers = BUYER
     PARTS_TAXONOMY,
     PARTS_TAXONOMY_BY_ID,
     heat,
+    CURRENT_YEAR,
     ECONOMY,
   )
 }
@@ -82,6 +87,7 @@ function bestFit(target: CarInstance, targetModel: CarModel, buyers = BUYERS, he
     PARTS_TAXONOMY,
     PARTS_TAXONOMY_BY_ID,
     heat,
+    CURRENT_YEAR,
     ECONOMY,
   )
 }
@@ -100,6 +106,7 @@ function valuate(
     PARTS_TAXONOMY,
     PARTS_TAXONOMY_BY_ID,
     heat,
+    CURRENT_YEAR,
     ECONOMY,
   )
 }

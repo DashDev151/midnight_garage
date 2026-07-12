@@ -21,14 +21,51 @@
   },
   "AUCTION_BUYOUT_PREMIUM": 1.25,
   "AUCTION_WHOLESALE_FRACTION": 0.75,
-  "AUCTION_DEMAND_SPREAD_SD": 0.12,
-  "AUCTION_THIN_TURNOUT_CHANCE": 0.15,
-  "AUCTION_THIN_TURNOUT_FACTOR": 0.6,
-  "AUCTION_COUNTER_CHANCE": 0.7,
   "AUCTION_QUIET_DAYS_TO_HAMMER": 2,
   "AUCTION_BID_INCREMENT_FRACTION": 0.05,
-  "AUCTION_TURNOUT_BANDS": [0.85, 1.12],
+  "AUCTION_DAILY_SPAWN_RATE": {
+    "local-yard": 0.6,
+    "regional": 0.55,
+    "premium": 0.4,
+    "collector-network": 0.2
+  },
+  "auctionInterest": {
+    "perCohortBidChance": {
+      "local-yard": 0.35,
+      "regional": 0.32,
+      "premium": 0.3,
+      "collector-network": 0.28
+    },
+    "cohortValuationSpreadByTurnout": {
+      "thin": 0.3,
+      "steady": 0.16,
+      "packed": 0.08
+    },
+    "valueGapEagerBonus": 0.6,
+    "valueGapFloor": 0.3,
+    "valueGapCeiling": 1.6,
+    "turnoutBidderCounts": {
+      "thin": [1, 2],
+      "steady": [3, 4],
+      "packed": [5, 7]
+    },
+    "turnoutBandWeights": [0.3, 0.45, 0.25],
+    "maxIncrementsPerNight": 2
+  },
   "valuation": {
+    "ageFactorCurve": [
+      [0, 1.0],
+      [5, 0.85],
+      [10, 0.72],
+      [20, 0.65],
+      [30, 0.6]
+    ],
+    "mileageFactorCurve": [
+      [30000, 1.05],
+      [60000, 1.0],
+      [120000, 0.85],
+      [180000, 0.75]
+    ],
     "hassleFactor": 1.2,
     "floorFraction": 0.1,
     "partsRetention": 0.55,

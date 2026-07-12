@@ -27,8 +27,12 @@ function decayedEntry(
  * Bumps `lotSupply[modelId]` by 1 for each fresh lot generated this catalog
  * refresh (Sprint 21) - one entry per lot, so a tier that generates 3 lots
  * of the same model bumps that model 3 times. Called from `advanceDay.ts`'s
- * weekly refresh block, right beside the `freshLots` append (`catalogs.ts`'s
- * `refreshCatalogs` itself stays pure - it never touches state).
+ * daily-arrivals step (Sprint 30 decision 4: every day now, not just a
+ * weekly boundary), right beside the `freshLots` append (`catalogs.ts`'s
+ * generators stay pure - they never touch state themselves). The weekly
+ * market-pressure update below still only READS the accumulated ledger on
+ * its own 7-day cadence, so smaller, more frequent bumps land the same
+ * total supply signal, just smoother.
  */
 export function bumpLotSupply(state: GameState, modelIds: readonly string[]): GameState {
   if (modelIds.length === 0) return state

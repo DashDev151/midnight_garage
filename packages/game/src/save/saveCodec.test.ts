@@ -995,7 +995,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(18)
+    expect(SAVE_VERSION).toBe(19)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1372,6 +1372,82 @@ describe('saveCodec', () => {
       })
       const decoded = decodeSave(encodeSave(withTasks))
       expect(decoded).toEqual(withTasks)
+    })
+  })
+
+  /**
+   * v18 -> v19 (Sprint 30, living auctions): `AuctionLot` gained `turnout` -
+   * see the `SAVE_VERSION` doc comment for why this is a plain default-fill
+   * (no `MIGRATIONS[18]` entry) rather than a reconstruction.
+   */
+  describe('v18 -> v19 migration (Sprint 30, living auctions)', () => {
+    it('a real pre-v19 save (a v18 envelope with a lot carrying no turnout) decodes cleanly, defaulting to steady', () => {
+      const preV19 = {
+        version: 18,
+        gameState: {
+          ...fullState,
+          activeAuctionLots: [
+            {
+              id: 'lot-42-honda-city-e-aa',
+              tier: 'local-yard',
+              modelId: 'honda-city-e-aa',
+              bookValueYen: 200_000,
+              expiresOnDay: 46,
+              currentBidYen: 0,
+              leadingBidder: null,
+              quietDays: 0,
+              playerHasBid: false,
+              car: {
+                id: 'lot-car-1',
+                modelId: 'honda-city-e-aa',
+                year: 1984,
+                mileageKm: 120_000,
+                color: 'White',
+                provenanceNote: '',
+                authenticityPercent: 85,
+                parts: mintParts(),
+              },
+            },
+          ],
+        },
+      }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV19))
+      const decoded = decodeSave(code)
+      expect(decoded.activeAuctionLots).toHaveLength(1)
+      expect(decoded.activeAuctionLots[0]?.turnout).toBe('steady')
+    })
+
+    it('round-trips a current v19 state with a real (non-default) turnout band', () => {
+      const withPackedLot: GameState = GameStateSchema.parse({
+        ...fullState,
+        activeAuctionLots: [
+          {
+            id: 'lot-42-honda-city-e-aa',
+            tier: 'local-yard',
+            modelId: 'honda-city-e-aa',
+            bookValueYen: 200_000,
+            expiresOnDay: 46,
+            currentBidYen: 0,
+            leadingBidder: null,
+            quietDays: 0,
+            playerHasBid: false,
+            turnout: 'packed',
+            car: {
+              id: 'lot-car-1',
+              modelId: 'honda-city-e-aa',
+              year: 1984,
+              mileageKm: 120_000,
+              color: 'White',
+              provenanceNote: '',
+              authenticityPercent: 85,
+              parts: mintParts(),
+            },
+          },
+        ],
+      })
+      const decoded = decodeSave(encodeSave(withPackedLot))
+      expect(decoded).toEqual(withPackedLot)
+      expect(decoded.activeAuctionLots[0]?.turnout).toBe('packed')
     })
   })
 })

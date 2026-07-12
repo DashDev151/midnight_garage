@@ -9,6 +9,17 @@ import { CarInstanceSchema } from './carInstance'
 export const AuctionTierSchema = z.enum(['local-yard', 'regional', 'premium', 'collector-network'])
 
 /**
+ * Sprint 30 decision 3: a real bidder-count band, rolled once per lot at
+ * creation (`auctions.ts`'s `generateAuctionCatalog`) and persisted -
+ * replaces the old per-day-recomputed ratio read (`bidding.ts`'s deleted
+ * `turnoutBand` function, and its Sprint 25 badge-honesty clamp, superseded
+ * by this model). `bidding.ts`'s `turnoutBidderCount` turns the band into an
+ * actual rival-cohort count via `economy.auctionInterest.turnoutBidderCounts`.
+ */
+export const TurnoutBandSchema = z.enum(['thin', 'steady', 'packed'])
+export type TurnoutBand = z.infer<typeof TurnoutBandSchema>
+
+/**
  * A generated, not-yet-owned car offered at auction. `car` carries its true
  * part bands directly - the hidden-issue/inspection system (and the
  * `inspected` flag this schema used to carry) is paused and removed (Sprint
@@ -51,6 +62,15 @@ export const AuctionLotSchema = z.object({
    * LOSING), the `auction-outbid` log entry, and the only-log-a-loss-if-the-
    * player-had-skin rule at the hammer. */
   playerHasBid: z.boolean().default(false),
+  /**
+   * Sprint 30 decision 3: this lot's rolled bidder-count band, fixed for its
+   * whole life (see `TurnoutBandSchema`'s own doc comment). Defaults to
+   * `'steady'` for a pre-v19 save's already-listed lots (SAVE_VERSION doc
+   * comment, saveCodec.ts) - a neutral assumption for a lot that predates the
+   * mechanic, no migration needed since a mid-life lot losing its original
+   * (never-persisted) turnout roll can't be recovered anyway.
+   */
+  turnout: TurnoutBandSchema.default('steady'),
 })
 
 export const AuctionLotsSchema = z.array(AuctionLotSchema)

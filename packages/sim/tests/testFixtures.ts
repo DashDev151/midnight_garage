@@ -87,11 +87,19 @@ export function groupCarParts(
   return parts
 }
 
+/**
+ * `mileageKm: 60_000` is deliberate (Sprint 30): it's the neutral point of
+ * `economy.json`'s `valuation.mileageFactorCurve` (factor exactly 1.0), so a
+ * test built from this fixture without overriding mileage - and passing its
+ * own `year` as `marketValueYen`'s `currentYear` for an age factor of 1.0 -
+ * gets the pre-Sprint-30 "clean value == book value at heat 100" behavior
+ * unchanged, unless the test is specifically exercising age/mileage.
+ */
 const BASE_CAR_INSTANCE: Omit<CarInstance, 'parts'> = {
   id: 'car-test-0001',
   modelId: 'test-model',
   year: 1990,
-  mileageKm: 80_000,
+  mileageKm: 60_000,
   color: 'White',
   provenanceNote: '',
   authenticityPercent: 80,

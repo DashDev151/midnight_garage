@@ -8,6 +8,7 @@ import {
   walkAwayTargetYen,
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
+import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
@@ -125,6 +126,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     if (!isRestored) continue
     const model = context.modelsById[car.modelId]
     const heatPercent = state.marketHeat[car.modelId] ?? 100
+    const currentYear = currentGameYear(state.reputationTier)
     const buyer = model
       ? bestFitBuyer(
           car,
@@ -134,6 +136,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
           context.partsTaxonomy,
           context.partsTaxonomyById,
           heatPercent,
+          currentYear,
           context.economy,
         )
       : undefined
@@ -147,6 +150,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
             context.partsTaxonomy,
             context.partsTaxonomyById,
             heatPercent,
+            currentYear,
             context.economy,
           )
         : 0

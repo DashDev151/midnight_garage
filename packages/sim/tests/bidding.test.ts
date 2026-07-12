@@ -13,13 +13,13 @@ import {
   anchorValueYen,
   bidIncrementYen,
   computeBuyoutPriceYen,
-  demandCeilingYen,
   nextRaiseYen,
+  privateValuationYen,
   reserveYen,
   resolveBuyoutInstant,
   resolveLotForDay,
   resolvePlaceBid,
-  turnoutBand,
+  turnoutBidderCount,
 } from '../src/bidding'
 import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
@@ -27,8 +27,8 @@ import { createRng } from '../src/rng'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 /** A context with no interested buyers at all - forces `anchorValueYen`
- * (and therefore the demand ceiling) to 0 for every lot, so a lot never
- * opens on its own no matter how many days pass. */
+ * (and therefore every rival cohort's private valuation) to 0 for every lot,
+ * so a lot never opens on its own no matter how many days pass. */
 const NO_BUYERS_CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
 function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): GameState {
@@ -122,139 +122,95 @@ describe('anchorValueYen', () => {
   })
 })
 
-describe('demandCeilingYen (Sprint 25 task 4: re-seeded daily)', () => {
-  it('is deterministic for a given lot/day, but a different day can roll differently', () => {
+describe('privateValuationYen (Sprint 30 decision 3: per-cohort private valuations replace the one-shot ceiling)', () => {
+  it('is deterministic for a given lot/cohort, but distinct cohorts land differently', () => {
     const { lot } = sampleLot(3)
     const state = stateWithLots([lot])
-    const a = demandCeilingYen(lot, state, CONTEXT, 5)
-    const b = demandCeilingYen(lot, state, CONTEXT, 5)
+    const a = privateValuationYen(
+      lot,
+      state,
+      CONTEXT,
+      ECONOMY.AUCTION_WHOLESALE_FRACTION,
+      ':cohort:0',
+    )
+    const b = privateValuationYen(
+      lot,
+      state,
+      CONTEXT,
+      ECONOMY.AUCTION_WHOLESALE_FRACTION,
+      ':cohort:0',
+    )
     expect(a).toBe(b)
-    // Not a guarantee for any single lot (a coincidental tie is possible),
-    // but across a real population, day-to-day values genuinely differ -
-    // that's the entire point of the fix (a lot stuck below reserve now
-    // gets a fresh roll every day instead of the same one forever).
-    const sample = statLots(100, 'ceiling-day-variance')
-    const day1 = sample.map((l) => demandCeilingYen(l, state, CONTEXT, 1))
-    const day2 = sample.map((l) => demandCeilingYen(l, state, CONTEXT, 2))
-    expect(day1).not.toEqual(day2)
+    const acrossCohorts = new Set(
+      Array.from({ length: 20 }, (_, i) =>
+        privateValuationYen(
+          lot,
+          state,
+          CONTEXT,
+          ECONOMY.AUCTION_WHOLESALE_FRACTION,
+          `:cohort:${i}`,
+        ),
+      ),
+    )
+    expect(acrossCohorts.size).toBeGreaterThan(1)
   })
 
   it('is 0 whenever the anchor itself is 0', () => {
     const { lot } = sampleLot(4)
     const state = stateWithLots([lot])
-    expect(demandCeilingYen(lot, state, NO_BUYERS_CONTEXT, 1)).toBe(0)
+    expect(
+      privateValuationYen(
+        lot,
+        state,
+        NO_BUYERS_CONTEXT,
+        ECONOMY.AUCTION_WHOLESALE_FRACTION,
+        ':cohort:0',
+      ),
+    ).toBe(0)
   })
 
-  it('centers around AUCTION_WHOLESALE_FRACTION of the anchor across many lots', () => {
+  it('centers around AUCTION_WHOLESALE_FRACTION of the anchor across many cohorts', () => {
     const state = stateWithLots([])
-    const { model } = sampleLot(1)
-    const anchor = anchorValueYen(sampleLot(1).lot, state, CONTEXT)
-    const ratios = statLots(300).map((lot) => demandCeilingYen(lot, state, CONTEXT, 1) / anchor)
+    const { lot, model } = sampleLot(1)
+    const anchor = anchorValueYen(lot, state, CONTEXT)
+    const ratios = Array.from(
+      { length: 300 },
+      (_, i) =>
+        privateValuationYen(
+          lot,
+          state,
+          CONTEXT,
+          ECONOMY.AUCTION_WHOLESALE_FRACTION,
+          `:cohort:${i}`,
+        ) / anchor,
+    )
     const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length
-    // Center is AUCTION_WHOLESALE_FRACTION (0.75); the thin-turnout tail
-    // pulls the mean down a little, so a loose band around it is the honest
-    // claim, not an exact match.
-    expect(mean).toBeGreaterThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 0.75)
-    expect(mean).toBeLessThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 1.15)
+    expect(mean).toBeGreaterThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 0.9)
+    expect(mean).toBeLessThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 1.1)
     expect(model.tier).toBe('rare') // sanity: this fixture is still JZA80
-  })
-
-  /**
-   * The sprint doc's own required test: a lot whose day-1 ceiling can't
-   * clear reserve is no longer permanently dead - some later day's re-roll
-   * does, so it can open organically. Searches a real population rather
-   * than asserting on one seed, since which specific lot starts below
-   * reserve (and which later day clears it) is itself random.
-   */
-  it('a lot with ceiling below reserve on day 1 can still open on a later day', () => {
-    const state = stateWithLots([])
-    const candidates = statLots(300, 'reopen-check')
-    let found = false
-    for (const lot of candidates) {
-      const reserve = reserveYen(lot, state, CONTEXT)
-      if (demandCeilingYen(lot, state, CONTEXT, 1) >= reserve) continue // already opens day 1
-      for (let day = 2; day <= 30 && !found; day++) {
-        if (demandCeilingYen(lot, state, CONTEXT, day) >= reserve) found = true
-      }
-      if (found) break
-    }
-    expect(found).toBe(true)
   })
 })
 
-describe('turnoutBand (replaces computeLotInterest - a coarse pre-bid flavor read)', () => {
-  it('is deterministic and pure for a given day', () => {
-    const { lot } = sampleLot(50)
-    const state = stateWithLots([lot])
-    const a = turnoutBand(lot, state, CONTEXT, 1)
-    const b = turnoutBand(lot, state, CONTEXT, 1)
+describe('turnoutBidderCount (Sprint 30 decision 3: turnout is a real bidder-count band now)', () => {
+  it('is deterministic per lot id and stays within its band range', () => {
+    const { lot } = sampleLot(5)
+    const a = turnoutBidderCount(lot, ECONOMY)
+    const b = turnoutBidderCount(lot, ECONOMY)
     expect(a).toBe(b)
-    expect(['thin', 'steady', 'packed']).toContain(a)
+    const [min, max] = ECONOMY.auctionInterest.turnoutBidderCounts[lot.turnout]
+    expect(a).toBeGreaterThanOrEqual(min)
+    expect(a).toBeLessThanOrEqual(max)
   })
 
-  it('reads thin when nobody is interested in this tier at all', () => {
-    const { lot } = sampleLot(51)
-    const state = stateWithLots([lot])
-    expect(turnoutBand(lot, state, NO_BUYERS_CONTEXT, 1)).toBe('thin')
-  })
-
-  it('matches the ratio thresholds in AUCTION_TURNOUT_BANDS across a population, honesty override aside', () => {
-    const state = stateWithLots([])
-    const anchor = anchorValueYen(sampleLot(1).lot, state, CONTEXT)
-    const center = anchor * ECONOMY.AUCTION_WHOLESALE_FRACTION
-    const [thinBelow, packedAbove] = ECONOMY.AUCTION_TURNOUT_BANDS
-    let checked = 0
-    for (const lot of statLots(150, 'turnout-band-check')) {
-      const reserve = reserveYen(lot, state, CONTEXT)
-      const ceiling = demandCeilingYen(lot, state, CONTEXT, 1)
-      const ratio = ceiling / center
-      // Sprint 25 task 4: below-reserve always reads thin, regardless of ratio.
-      const expected =
-        ceiling < reserve
-          ? 'thin'
-          : ratio < thinBelow
-            ? 'thin'
-            : ratio > packedAbove
-              ? 'packed'
-              : 'steady'
-      expect(turnoutBand(lot, state, CONTEXT, 1)).toBe(expected)
-      checked++
+  it('a packed lot rolls a higher bidder count, on average, than a thin one', () => {
+    const { lot } = sampleLot(6)
+    const meanCountFor = (turnout: AuctionLot['turnout']) => {
+      const counts = Array.from({ length: 60 }, (_, i) =>
+        turnoutBidderCount({ ...lot, id: `count-${turnout}-${i}`, turnout }, ECONOMY),
+      )
+      return counts.reduce((a, b) => a + b, 0) / counts.length
     }
-    expect(checked).toBe(150)
-  })
-
-  it('every band is genuinely reachable across a large population', () => {
-    const state = stateWithLots([])
-    const bands = statLots(400, 'turnout-band-coverage').map((lot) =>
-      turnoutBand(lot, state, CONTEXT, 1),
-    )
-    expect(bands).toContain('thin')
-    expect(bands).toContain('steady')
-    expect(bands).toContain('packed')
-  })
-
-  /**
-   * The sprint doc's own required test: the badge must never overclaim
-   * interest on a lot that structurally can't open. Sprint 25 task 4 fixed
-   * the exact bug where a favorable spread roll on an absolutely weak lot
-   * (ceiling still below reserve) could read "packed" - checked across many
-   * lots and several days each, since both the lot population and the daily
-   * re-roll are random.
-   */
-  it('never reads packed while the ceiling is below reserve', () => {
-    const state = stateWithLots([])
-    let checked = 0
-    for (const lot of statLots(200, 'packed-honesty-check')) {
-      const reserve = reserveYen(lot, state, CONTEXT)
-      for (let day = 1; day <= 5; day++) {
-        const ceiling = demandCeilingYen(lot, state, CONTEXT, day)
-        if (ceiling < reserve) {
-          expect(turnoutBand(lot, state, CONTEXT, day)).not.toBe('packed')
-        }
-        checked++
-      }
-    }
-    expect(checked).toBe(1000)
+    expect(meanCountFor('packed')).toBeGreaterThan(meanCountFor('thin'))
   })
 })
 
@@ -395,7 +351,7 @@ describe('advanceLotOvernight', () => {
     expect(current.leadingBidder).toBeNull()
   })
 
-  it('opens most lots of a broadly-desired car at the reserve price once the demand ceiling clears it', () => {
+  it('opens most lots of a broadly-desired car at (or above) the reserve price once a rival cohort clears it', () => {
     const { lot } = sampleLot(22)
     const state = stateWithLots([lot])
     // `statLots` below all copy sampleLot(1)'s car, and each opens at ITS OWN
@@ -405,35 +361,39 @@ describe('advanceLotOvernight', () => {
     // sampleLot(22), whose independently-rolled condition gives a different
     // guide value hence a different reserve.
     const reserve = reserveYen(sampleLot(1).lot, state, CONTEXT)
-    // JZA80 at premium tier is broadly desired, so its ceiling clears reserve
-    // most of the time - but a thin-turnout roll combined with a low spread
-    // draw can occasionally leave a lot bidless on day 1, so this is a
-    // statistical majority claim, not "every single lot", to avoid a flaky
-    // assertion on the tail.
+    // JZA80 at premium tier is broadly desired, so a rival cohort's private
+    // wholesale-centered valuation clears reserve most of the time - but a
+    // thin-turnout roll combined with a low spread draw can occasionally
+    // leave a lot bidless on day 1, so this is a statistical majority claim,
+    // not "every single lot", to avoid a flaky assertion on the tail.
     //
-    // Re-measured, not re-derived, after Sprint 27's TWO value-model changes
-    // (the restoration-bill `instanceValue` rewrite AND rebasing reserve off
-    // guide value at fraction 0.5): the ceiling now centers at
-    // AUCTION_WHOLESALE_FRACTION (0.75) of the guide value while reserve sits
-    // at 0.5 of the SAME guide value, so the ceiling clears reserve reliably
-    // on the new basis. Real measured value on day 1 is 171/200 = 0.855; the
-    // bar stays a plain "clear majority" (> 0.5) with generous headroom rather
-    // than pinning the exact rate, per this test's own established pattern.
+    // `>= reserve`, not `=== reserve`: Sprint 30's process applies up to
+    // `maxIncrementsPerNight` (2) raises in one overnight step when several
+    // cohorts are eager, so a lot that opens on a well-desired car's first
+    // night often immediately climbs one further increment past the bare
+    // reserve too - still genuinely "opened," just already contested.
+    //
+    // Re-measured (not re-derived) against Sprint 30's daily bidder-interest
+    // process (per-cohort private valuations centered at
+    // AUCTION_WHOLESALE_FRACTION = 0.75 of guide value, reserve at 0.5 of
+    // the same guide value): the bar stays a plain "clear majority" (> 0.5)
+    // with generous headroom rather than pinning the exact rate, per this
+    // test's own established pattern.
     const opened = statLots(200, 'open-check').map(
       (l) => advanceLotOvernight(l, state, CONTEXT, 1).lot,
     )
     const openedCount = opened.filter(
-      (l) => l.currentBidYen === reserve && l.leadingBidder === 'rival',
+      (l) => l.leadingBidder === 'rival' && l.currentBidYen >= reserve,
     ).length
     expect(openedCount / opened.length).toBeGreaterThan(0.5)
   })
 
-  it('at or above the ceiling: silence - quietDays increments, the board never moves', () => {
+  it('no eligible cohort left: silence - quietDays increments, the board never moves', () => {
     const { lot } = sampleLot(23)
     const state = stateWithLots([lot])
-    // A currentBidYen far above any realistic ceiling forces the
-    // deterministic "at/above ceiling" branch every time, regardless of the
-    // per-day RNG roll.
+    // A currentBidYen far above any realistic cohort valuation forces the
+    // deterministic "nobody left who'd pay this much" branch every time,
+    // regardless of the per-day RNG roll.
     const dominant: AuctionLot = {
       ...lot,
       currentBidYen: lot.bookValueYen * 100,
@@ -446,6 +406,45 @@ describe('advanceLotOvernight', () => {
     expect(step.lot.leadingBidder).toBe('player')
     expect(step.lot.quietDays).toBe(1)
     expect(step.log).toEqual([])
+  })
+
+  /**
+   * The Sprint 30 analog of the old "ceiling-tie goes to the player" test
+   * (below, `resolveLotForDay` describe block): a player bid at (or above)
+   * every eligible rival cohort's own private valuation is never overtaken,
+   * because the next raise (`nextRaiseYen`, one increment higher) exceeds
+   * every cohort's ceiling too - `eligibleCohortCount` is 0 every night.
+   */
+  it("a player bid at the maximum rival cohort's private valuation is never overtaken", () => {
+    const { lot } = sampleLot(60)
+    const state = stateWithLots([lot])
+    const bidderCount = turnoutBidderCount(lot, ECONOMY)
+    const maxCohortValuationYen = Math.max(
+      0,
+      ...Array.from({ length: bidderCount }, (_, i) =>
+        privateValuationYen(
+          lot,
+          state,
+          CONTEXT,
+          ECONOMY.AUCTION_WHOLESALE_FRACTION,
+          `:cohort:${i}`,
+        ),
+      ),
+    )
+    const atMax: AuctionLot = {
+      ...lot,
+      currentBidYen: maxCohortValuationYen,
+      leadingBidder: 'player',
+      quietDays: 0,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    for (let day = 1; day <= 10; day++) {
+      const step = advanceLotOvernight(atMax, state, CONTEXT, day)
+      expect(step.lot.leadingBidder).toBe('player')
+      expect(step.lot.currentBidYen).toBe(maxCohortValuationYen)
+      expect(step.log).toEqual([])
+    }
   })
 
   it('a dealer raise that displaces the player logs auction-outbid; dealer-vs-dealer raises log nothing', () => {
@@ -582,37 +581,6 @@ describe('resolveLotForDay - hammer and backstop', () => {
     ).toBe(true)
   })
 
-  /**
-   * Sprint 25 task 4 changed the ceiling from a fixed-forever number to a
-   * daily re-roll, so "at the ceiling" is now a per-day fact, not something
-   * that holds for 10 days running against one snapshot value. Re-derives
-   * that day's own ceiling before each step instead of assuming yesterday's
-   * still applies - the tie invariant itself (a bid exactly at TODAY's
-   * ceiling is never overtaken today) is unchanged.
-   */
-  it("ceiling-tie goes to the player: a player bid exactly at a day's demand ceiling is never overtaken that day", () => {
-    const { lot } = sampleLot(34)
-    const state = stateWithLots([lot])
-    let sawARealCeiling = false
-    for (let day = 1; day <= 10; day++) {
-      const ceiling = demandCeilingYen(lot, state, CONTEXT, day)
-      if (ceiling <= 0) continue // no interested buyer for this seed - nothing to tie against
-      sawARealCeiling = true
-      const atCeiling: AuctionLot = {
-        ...lot,
-        currentBidYen: ceiling,
-        leadingBidder: 'player',
-        quietDays: 0,
-        playerHasBid: true,
-        expiresOnDay: 1000,
-      }
-      const step = advanceLotOvernight(atCeiling, state, CONTEXT, day)
-      expect(step.lot.leadingBidder).toBe('player') // never displaced
-      expect(step.lot.currentBidYen).toBe(ceiling) // never raised past the tie
-    }
-    expect(sawARealCeiling).toBe(true)
-  })
-
   it('a won lot forfeits (no-parking) without spending cash, still logging the loss', () => {
     const { lot } = sampleLot(35)
     const dominant: AuctionLot = {
@@ -712,18 +680,13 @@ describe('distribution probes', () => {
     // shared one) for real flash/standard/long variety.
     //
     // Empirically measured against this exact population (deterministic,
-    // fixed seed range - not a flaky sample), AFTER Sprint 21 re-anchored
-    // `anchorValueYen` onto taste-free `marketValueYen` (decision 7): p10
-    // ~0.51, median ~0.71. Sprint 20's own original measurement (median
-    // ~0.54) was against the pre-Sprint-21 anchor, which included buyer
-    // taste (`valuateCarForBuyer`, bounded [0.88, 1.12]) on top of market
-    // value - removing that taste multiplier from the anchor's denominator
-    // is exactly why the ratio rose; the underlying hammer mechanics
-    // (AUCTION_COUNTER_CHANCE 0.7, AUCTION_QUIET_DAYS_TO_HAMMER 2) are
-    // unchanged. First-pass values, openly adjustable in economy.json; this
-    // test pins today's real behavior rather than a guessed number, per the
-    // codebase's own precedent (report, don't force a number nobody's
-    // confirmed).
+    // fixed seed range - not a flaky sample). Sprint 30 replaced the old
+    // one-shot demand ceiling with the daily per-cohort bidder-interest
+    // process (decision 3); the underlying quiet-day/backstop hammer rule
+    // (`AUCTION_QUIET_DAYS_TO_HAMMER` 2) is unchanged. First-pass values,
+    // openly adjustable in economy.json; this test pins today's real
+    // behavior rather than a guessed number, per the codebase's own
+    // precedent (report, don't force a number nobody's confirmed).
     const finalRatios: number[] = []
     for (const initial of independentLots(250, 5000)) {
       const state = stateWithLots([initial])
@@ -811,5 +774,165 @@ describe('distribution probes', () => {
 
     expect(pursued).toBeGreaterThan(50)
     expect(acquiredCheap / pursued).toBeGreaterThanOrEqual(0.7)
+  })
+})
+
+/**
+ * Sprint 30 decision 3's own three required behavioral proofs, seeded-
+ * deterministic populations, each forcing `turnout` directly (rather than
+ * relying on a lot's own roll) so "thin" and "packed" are compared like for
+ * like against the identical underlying car/model.
+ */
+describe('Sprint 30 decision 3 behavioral proofs', () => {
+  /**
+   * (a) A packed lot cannot sit bidless while priced under its walk-away
+   * band: with many rival cohorts (5-7) each independently rolling nightly
+   * interest, the odds that NONE of them bid while the lot is still cheap
+   * relative to guide value collapses fast - a thin lot (as few as 1 cohort)
+   * has no such safety net and can genuinely stay silent for real stretches.
+   */
+  it('(a) a packed, underpriced lot goes bidless far less often than a thin one over several nights', () => {
+    const { lot } = sampleLot(1)
+    const state = stateWithLots([])
+    const SAMPLE = 150
+    const NIGHTS = 4
+
+    function stillBidlessCount(turnout: AuctionLot['turnout']): number {
+      const lots = Array.from({ length: SAMPLE }, (_, i) => ({
+        ...lot,
+        id: `bidless-${turnout}-${i}`,
+        turnout,
+      }))
+      return lots.filter((initial) => {
+        let current = initial
+        for (let day = 1; day <= NIGHTS; day++) {
+          current = advanceLotOvernight(current, state, CONTEXT, day).lot
+        }
+        return current.currentBidYen === 0
+      }).length
+    }
+
+    const thinBidless = stillBidlessCount('thin')
+    const packedBidless = stillBidlessCount('packed')
+    expect(packedBidless).toBeLessThan(thinBidless)
+    expect(packedBidless / SAMPLE).toBeLessThan(0.1)
+  })
+
+  /**
+   * (b) A reserve snipe on the backstop day only succeeds when turnout was
+   * genuinely thin: the player opens a lot at the bare reserve and never
+   * raises again, hoping silence carries it all the way to the hammer. With
+   * a packed field, some cohort almost always answers overnight and
+   * displaces the sniper long before the backstop; with a thin field, real
+   * silent runs are common enough that the snipe frequently survives.
+   */
+  it('(b) a bare-reserve snipe survives to the hammer far more often under thin turnout than packed', () => {
+    const { lot } = sampleLot(1)
+    const SAMPLE = 150
+
+    function snipeWinRate(turnout: AuctionLot['turnout']): number {
+      let attempts = 0
+      let wins = 0
+      for (let i = 0; i < SAMPLE; i++) {
+        const candidate: AuctionLot = {
+          ...lot,
+          id: `snipe-${turnout}-${i}`,
+          expiresOnDay: 25,
+          turnout,
+        }
+        let state = stateWithLots([candidate])
+        const reserve = reserveYen(candidate, state, CONTEXT)
+        if (reserve <= 0) continue
+        attempts++
+        const opened = resolvePlaceBid(state, candidate.id, reserve, CONTEXT).state
+        let current = opened.activeAuctionLots[0]!
+        state = opened
+        for (let day = 1; day <= 25; day++) {
+          const result = resolveLotForDay(state, current, CONTEXT, day)
+          state = result.state
+          const stillActive = state.activeAuctionLots.find((l) => l.id === candidate.id)
+          if (stillActive) {
+            current = stillActive
+            continue
+          }
+          if (result.log.some((e) => e.type === 'auction-bid-won')) wins++
+          break
+        }
+      }
+      return attempts > 0 ? wins / attempts : 0
+    }
+
+    const thinRate = snipeWinRate('thin')
+    const packedRate = snipeWinRate('packed')
+    expect(thinRate).toBeGreaterThan(packedRate)
+    expect(packedRate).toBeLessThan(0.25)
+  })
+
+  /**
+   * (c) Player wins above guide value get rarer as turnout rises: an
+   * aggressive player who chases every raise up to a real premium (1.3x
+   * guide value) occasionally ends up paying MORE than the car is genuinely
+   * worth when only a lone, unusually-high-valuing rival contests it (thin
+   * turnout - little regression to the mean). With many cohorts in play
+   * (packed), the competing pool is large enough that the price that
+   * actually clears tracks the wholesale center far more reliably, so a
+   * final price above guide value is comparatively rare.
+   */
+  it('(c) wins above guide value are rarer under packed turnout than thin, for an aggressive chaser', () => {
+    const { lot } = sampleLot(1)
+    const SAMPLE = 150
+    const CEILING_MULTIPLIER = 1.3
+
+    function aboveGuideWinShare(turnout: AuctionLot['turnout']): number {
+      let totalWins = 0
+      let aboveGuideWins = 0
+      for (let i = 0; i < SAMPLE; i++) {
+        const candidate: AuctionLot = {
+          ...lot,
+          id: `overpay-${turnout}-${i}`,
+          expiresOnDay: 30,
+          turnout,
+        }
+        let state = stateWithLots([candidate])
+        const guideValueYen = anchorValueYen(candidate, state, CONTEXT)
+        if (guideValueYen <= 0) continue
+        const chaseCeilingYen = Math.round(guideValueYen * CEILING_MULTIPLIER)
+
+        let current = candidate
+        let finalPriceYen: number | null = null
+        for (let day = 1; day <= 30 && finalPriceYen === null; day++) {
+          if (current.leadingBidder !== 'player') {
+            const raiseToYen = nextRaiseYen(current, state, CONTEXT)
+            if (raiseToYen <= chaseCeilingYen) {
+              const bidResult = resolvePlaceBid(state, current.id, raiseToYen, CONTEXT)
+              state = bidResult.state
+              const updated = state.activeAuctionLots.find((l) => l.id === candidate.id)
+              if (updated) current = updated
+            }
+          }
+          const dayResult = resolveLotForDay(state, current, CONTEXT, day)
+          state = dayResult.state
+          const stillActive = state.activeAuctionLots.find((l) => l.id === candidate.id)
+          if (stillActive) {
+            current = stillActive
+            continue
+          }
+          const wonEntry = dayResult.log.find((e) => e.type === 'auction-bid-won')
+          if (wonEntry && wonEntry.type === 'auction-bid-won')
+            finalPriceYen = wonEntry.finalPriceYen
+          break
+        }
+
+        if (finalPriceYen !== null) {
+          totalWins++
+          if (finalPriceYen > guideValueYen) aboveGuideWins++
+        }
+      }
+      return totalWins > 0 ? aboveGuideWins / totalWins : 0
+    }
+
+    const thinShare = aboveGuideWinShare('thin')
+    const packedShare = aboveGuideWinShare('packed')
+    expect(thinShare).toBeGreaterThan(packedShare)
   })
 })

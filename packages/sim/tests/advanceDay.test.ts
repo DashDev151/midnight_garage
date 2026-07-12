@@ -155,17 +155,17 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 27 (restoration-bill deduction + reserve rebased onto guide
-    // value) re-pins this hash outright: `marketValueYen` replaces the Sprint
-    // 26 cost-weighted band-factor shim with clean-value-minus-hassle-weighted-
-    // restoration-bill, floored, AND `reserveYen` now derives from that guide
-    // value instead of book value (Sprint 30 decision 2 pulled forward) - both
-    // deliberate value-formula changes (not bugs), so every prior sprint's own
-    // re-pin note above this one is now historical (the shape they were
-    // re-pinning against no longer exists).
+    // Sprint 30 (living auctions) re-pins this hash outright: age/mileage
+    // factors join clean value (decision 1, `marketValueYen` gains a
+    // `currentYear` parameter), the daily bidder-interest process replaces
+    // the demand ceiling (decision 3), and auction arrivals are now a daily
+    // trickle instead of a `day % 7` dump (decision 4, changing the RNG draw
+    // sequence every day, not just weekly) - all deliberate mechanic
+    // changes, so every prior sprint's own re-pin note above this one is now
+    // historical (the shape they were re-pinning against no longer exists).
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('95a90748')
+    expect(hashState(finalState)).toBe('3d7df487')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -271,11 +271,9 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Sprint 27 re-pins this hash outright, same reasoning as the golden
-    // master above: the restoration-bill value rewrite plus the guide-value
-    // reserve rebase change every acquisition-price and sale-price number in
-    // this scripted path.
-    expect(hashState(acquisitionCareer().sold)).toBe('d6eefd67')
+    // Sprint 30 re-pins this hash outright, same reasoning as the golden
+    // master above.
+    expect(hashState(acquisitionCareer().sold)).toBe('814c2416')
   })
 })
 
