@@ -80,8 +80,8 @@ export interface BuyPartResult {
  * installable immediately, exactly like every purchase before this sprint.
  * Standard pays sticker price and creates a `PendingPartOrder` instead; the
  * real `PartInstance` only appears once `advanceDay`'s delivery step reaches
- * `arrivesOnDay` (see `resolvePartDeliveries` below), mirroring how
- * `resolveListForSale` locks in a price now and resolves the sale later.
+ * `arrivesOnDay` (see `resolvePartDeliveries` below) - the same "commit now,
+ * resolve later" shape a standard-delivery order has always had.
  */
 export function resolveBuyPart(
   state: GameState,
@@ -151,10 +151,11 @@ export interface PartDeliveryResult {
 }
 
 /**
- * Day-boundary resolution for standard-delivery orders (Sprint 14) - modeled
- * directly on `advanceDay`'s existing `activeListings` resolve-loop: orders
- * due today become real `PartInstance`s in `partInventory`; everything else
- * stays pending. No player action required, called once per `advanceDay`.
+ * Day-boundary resolution for standard-delivery orders (Sprint 14) - the
+ * same "due today resolves, the rest stays pending" shape every other
+ * day-boundary resolve-loop in `advanceDay` uses: orders due today become
+ * real `PartInstance`s in `partInventory`; everything else stays pending. No
+ * player action required, called once per `advanceDay`.
  *
  * Sprint 25 task 3 (off-by-one fix): `advanceDay` increments `state.day`
  * only at the very end of its own body (see `advanceDay.ts`'s final line),

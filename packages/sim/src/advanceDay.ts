@@ -1,8 +1,7 @@
-import type { DayLog, DayLogEntry, GameState, Job, PublicListing } from '@midnight-garage/content'
+import type { DayLog, DayLogEntry, GameState, Job } from '@midnight-garage/content'
 import type { DayActions } from './actions'
 import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
-import { applyReputationDelta, currentGameYear } from './calendar'
-import { saleQualityFor } from './carCondition'
+import { currentGameYear } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
@@ -18,7 +17,7 @@ import {
   repairJobGate,
 } from './jobs'
 import { availableLaborSlots } from './laborSlots'
-import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from './marketHeat'
+import { bumpLotSupply, updateMarketHeat } from './marketHeat'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
@@ -28,7 +27,7 @@ import {
   resolveServiceJob,
   resolveServiceJobArrivals,
 } from './serviceJobs'
-import { resolveListForSale, resolveSellViaWalkIn } from './selling'
+import { drawDailyOffers, resolveSellViaWalkIn, resolveSetForSale } from './selling'
 
 export interface AdvanceDayResult {
   state: GameState
@@ -211,7 +210,7 @@ export function advanceDay(
   // are the exact same functions, called in a loop. Sprint 19: a bid no
   // longer resolves anything by itself - it just places/raises the bot's
   // own committed max, same as the player's click. Real resolution happens
-  // in step 8 below, on whichever day each lot's duration elapses.
+  // in step 7 below, on whichever day each lot's duration elapses.
   for (const { lotId } of queuedActions.buyoutLots) {
     const result = resolveBuyoutInstant(next, lotId, context)
     next = result.state
@@ -224,81 +223,47 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 5. Bots' queued walk-in sells - the player sells instantly via
-  // resolveSellViaWalkIn directly from the store.
-  for (const { carInstanceId } of queuedActions.sellViaWalkIn) {
+  // 5. Bots' queued for-sale toggles - the player toggles instantly via
+  // resolveSetForSale directly from the store. Sprint 31: replaces the old
+  // instant walk-in-sell/list-publicly channels outright - a car simply
+  // becomes eligible (or ineligible) for the daily offer draw below the
+  // moment this fires. Runs before offer acceptance so a bot that both
+  // drops one car and accepts an offer on another the same day sees a
+  // consistent `carsForSale` either way (the two never target the same car
+  // in practice, but there's no ordering hazard if they did).
+  for (const { carInstanceId, forSale } of queuedActions.setForSale) {
+    const result = resolveSetForSale(next, carInstanceId, forSale)
+    next = result.state
+    log.push(...result.log)
+  }
+
+  // 5b. Bots' queued offer accepts - the player accepts instantly via
+  // resolveSellViaWalkIn directly from the store. Resolves TODAY's live
+  // offer (rolled at the end of the PREVIOUS day's advanceDay tick, step 8a2
+  // below) through the walk-in resolution path - reputation/heat/event-log
+  // plumbing unchanged since Sprint 11, only the price source moved (see
+  // that function's own doc comment, selling.ts).
+  for (const { carInstanceId } of queuedActions.acceptOffers) {
     const result = resolveSellViaWalkIn(next, carInstanceId, context)
     next = result.state
     log.push(...result.log)
   }
 
-  // 6. Bots' queued public listings - the player creates a listing instantly
-  // via resolveListForSale directly from the store. The listing's own
-  // resolvesOnDay wait is the intentional multi-day mechanic; only its
-  // *creation* is instant now.
-  for (const action of queuedActions.listForSale) {
-    const result = resolveListForSale(next, action.carInstanceId, context, action.waitDays)
-    next = result.state
-    log.push(...result.log)
-  }
-
-  // 7. Resolve public listings due today - a guaranteed sale at the locked asking price.
-  // Same pre-increment next.day-vs-resolvesOnDay pattern as resolvePartDeliveries
-  // (parts.ts) - deliberately left as `> next.day`, not `> next.day + 1`, here:
-  // listings are removed outright in Sprint 31, so it's not worth touching, and
-  // the multi-day wait already reads as intended for a "resolves after N days"
-  // mechanic (no reported off-by-one complaint for listings, unlike parts).
-  const stillListed: PublicListing[] = []
-  for (const listing of next.activeListings) {
-    if (listing.resolvesOnDay > next.day) {
-      stillListed.push(listing)
-      continue
-    }
-    // Sprint 24 fix 3: log the applied delta, not the nominal one captured
-    // at listing-creation time (selling.ts) - `applyReputationDelta` floors
-    // `reputationPoints` at 0, using whatever the real point total is HERE,
-    // at resolution (which may be days later, and a different total than
-    // when the listing was created), not back when the nominal number was
-    // captured. The label (`saleQuality`) still comes from the nominal
-    // value - the sale was still mechanically whatever it was.
-    const pointsBefore = next.reputationPoints
-    next = applyReputationDelta(next, listing.reputationDeltaOnSale)
-    const appliedDelta = next.reputationPoints - pointsBefore
-    next = bumpPlayerSales(
-      { ...next, cashYen: next.cashYen + listing.askingPriceYen },
-      listing.modelId,
-    )
-    log.push({
-      type: 'car-sold',
-      carInstanceId: listing.carInstanceId,
-      channel: 'list-publicly',
-      priceYen: listing.askingPriceYen,
-      ...(appliedDelta !== 0
-        ? {
-            reputationDelta: appliedDelta,
-            saleQuality:
-              saleQualityFor(listing.reputationDeltaOnSale, context.economy) ?? undefined,
-          }
-        : {}),
-    })
-  }
-  next = { ...next, activeListings: stillListed }
-
-  // 7b. Resolve standard-delivery part orders due today (Sprint 14) - the
-  // purchase counterpart to step 7 above, same "due today resolves, the
-  // rest stays pending" shape.
+  // 6. Resolve standard-delivery part orders due today (Sprint 14) - the
+  // same "due today resolves, the rest stays pending" shape every
+  // day-boundary resolution loop in this function uses.
   const deliveries = resolvePartDeliveries(next)
   next = deliveries.state
   log.push(...deliveries.log)
 
-  // 7c. Clear arrivesOnDay on any accepted service job whose customer car
+  // 6b. Clear arrivesOnDay on any accepted service job whose customer car
   // reaches the shop today (Sprint 25 task 2) - same "due today resolves"
-  // shape as 7b, immediately above.
+  // shape as 6, immediately above.
   const arrivals = resolveServiceJobArrivals(next)
   next = arrivals.state
   log.push(...arrivals.log)
 
-  // 8. Resolve every active auction lot for today (Sprint 20: activity-based
+  // 7. Resolve every active auction lot for today (Sprint 20: activity-based
   // closing replaces the old fixed-due-day filter + separate escalation
   // pass) - one call per lot runs its overnight step (dealers may raise,
   // stay silent, or open a not-yet-bid lot) and then hammers it if either
@@ -330,7 +295,7 @@ export function advanceDay(
     arrivalsToday.freshLots.map((lot) => lot.modelId),
   )
 
-  // 8a. Sprint 29: daily service-job offer generation - a bell-curve draw
+  // 7a. Sprint 29: daily service-job offer generation - a bell-curve draw
   // (0-4, economy.json's `serviceJobs.dailyOfferCountWeights`) EVERY day,
   // replacing the old weekly fixed-count dump `refreshCatalogs` used to also
   // produce (see that function's own doc comment). Uses the same `rng`
@@ -358,7 +323,21 @@ export function advanceDay(
     }
   }
 
-  // 8b. Deadline backstop: any accepted job now at/past its due day is handed
+  // 7a2. Sprint 31: the daily for-sale offer draw for the day about to
+  // begin - same day-boundary-generation position as 7a immediately above,
+  // and the same reason: today's report shows "a tuner is offering..." for
+  // the day that's about to start, exactly like an auction catalog refresh
+  // reads as "news for tomorrow" logged tonight. `drawDailyOffers` REPLACES
+  // `pendingOffers` wholesale rather than accumulating - the no-reflex rule
+  // (CLAUDE.md hard design rule: nothing resolves on a timer or mid-screen)
+  // means an offer is valid the day it's drawn for only, so whatever was
+  // live today and went unaccepted (step 5b above already had its chance)
+  // is simply gone, not carried into tomorrow.
+  const offerDraw = drawDailyOffers(next, context, rng)
+  next = offerDraw.state
+  log.push(...offerDraw.log)
+
+  // 7b. Deadline backstop: any accepted job now at/past its due day is handed
   // back automatically via the same resolver the player's click uses - paid if
   // the work got done in time, failed (reputation penalty, no pay) if not.
   // Same pre-increment next.day pattern as resolvePartDeliveries (parts.ts) -
@@ -375,14 +354,14 @@ export function advanceDay(
     log.push(...resolution.log)
   }
 
-  // 9. Daily service-bay income.
+  // 8. Daily service-bay income.
   const serviceIncome = computeServiceBayIncomeYen(next.staff, next.reputationTier)
   if (serviceIncome > 0) {
     next = { ...next, cashYen: next.cashYen + serviceIncome }
     log.push({ type: 'service-bay-income', amountYen: serviceIncome })
   }
 
-  // 10. Weekly rent/wages + market-heat update (both fire on 7-day boundaries).
+  // 9. Weekly rent/wages + market-heat update (both fire on 7-day boundaries).
   const finances = applyWeeklyRentAndWages(next, context.economy)
   next = finances.state
   log.push(...finances.log)
@@ -391,7 +370,7 @@ export function advanceDay(
   next = heat.state
   log.push(...heat.log)
 
-  // 11. The day itself passes, and today's labor budget replenishes for the next one.
+  // 10. The day itself passes, and today's labor budget replenishes for the next one.
   next = { ...next, day: next.day + 1, laborSlotsSpentToday: 0 }
 
   return { state: next, log }

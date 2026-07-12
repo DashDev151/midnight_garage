@@ -8,13 +8,11 @@ import {
   walkAwayTargetYen,
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
-import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import { createRng, hashStringToSeed, type Rng } from '../rng'
-import { bestFitBuyer } from '../selling'
-import { valuateCarForBuyer } from '../valuation'
+import { decideSale } from './sellingHelpers'
 
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'engine',
@@ -25,7 +23,6 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
 ]
 const MAX_CONCURRENT_CARS = 3
 const CASH_BUFFER_MULTIPLIER = 1.2
-const ACCEPTABLE_WALKIN_FRACTION = 0.85
 
 type Archetype = 'flip' | 'restore' | 'mid'
 const ARCHETYPES: readonly Archetype[] = ['flip', 'restore', 'mid']
@@ -48,14 +45,22 @@ const BID_MULTIPLIER = 1.0
 interface ArchetypeProfile {
   /** How many zones get repaired before the car is considered sellable. */
   repairZonesBeforeSale: number
-  sellChannel: 'walk-in' | 'list' | 'threshold'
+  /** Sprint 31 decision 4: this archetype's own accept-threshold - mirrors
+   * Flipper's/Balanced Player's/Cautious Restorer's own constants (see each
+   * bot's own `sellingHelpers.ts` call site). */
+  acceptFraction: number
+  maxHoldingDays: number
 }
 
-/** Mirrors Flipper / Cautious Restorer / Balanced Player's own repair depth and sell channel. */
+/** Mirrors Flipper / Balanced Player / Cautious Restorer's own repair depth and accept-threshold. */
 const PROFILES: Record<Archetype, ArchetypeProfile> = {
-  flip: { repairZonesBeforeSale: 1, sellChannel: 'walk-in' },
-  mid: { repairZonesBeforeSale: 2, sellChannel: 'threshold' },
-  restore: { repairZonesBeforeSale: REPAIRABLE_COMPONENTS.length, sellChannel: 'list' },
+  flip: { repairZonesBeforeSale: 1, acceptFraction: 0, maxHoldingDays: 0 },
+  mid: { repairZonesBeforeSale: 2, acceptFraction: 0.85, maxHoldingDays: 12 },
+  restore: {
+    repairZonesBeforeSale: REPAIRABLE_COMPONENTS.length,
+    acceptFraction: 0.95,
+    maxHoldingDays: 20,
+  },
 }
 
 /**
@@ -143,9 +148,9 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   }
 
   // 3. Sell each job-free, sufficiently-repaired car through its own
-  // archetype's channel: flip takes the walk-in as soon as it's ready,
-  // restore waits for a public listing, mid takes the first walk-in offer
-  // that clears a reasonable floor and otherwise lists it.
+  // archetype's accept-threshold (Sprint 31 decision 4): flip takes the
+  // first offer regardless of price, restore holds out near full value,
+  // mid takes the first offer that clears a reasonable floor.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const profile = PROFILES[archetypeForCar(car.id)]
@@ -154,49 +159,10 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     ).length
     if (repairedCount < profile.repairZonesBeforeSale) continue
 
-    if (profile.sellChannel === 'list') {
-      actions.listForSale.push({ carInstanceId: car.id })
-      continue
-    }
-    if (profile.sellChannel === 'walk-in') {
-      actions.sellViaWalkIn.push({ carInstanceId: car.id })
-      continue
-    }
-    const model = context.modelsById[car.modelId]
-    const heatPercent = state.marketHeat[car.modelId] ?? 100
-    const currentYear = currentGameYear(state.reputationTier)
-    const buyer = model
-      ? bestFitBuyer(
-          car,
-          model,
-          context.buyers,
-          context.partsById,
-          context.partsTaxonomy,
-          context.partsTaxonomyById,
-          heatPercent,
-          currentYear,
-          context.economy,
-        )
-      : undefined
-    const estimatedOfferYen =
-      model && buyer
-        ? valuateCarForBuyer(
-            buyer,
-            model,
-            car,
-            context.partsById,
-            context.partsTaxonomy,
-            context.partsTaxonomyById,
-            heatPercent,
-            currentYear,
-            context.economy,
-          )
-        : 0
-    if (model && estimatedOfferYen >= model.bookValueYen * ACCEPTABLE_WALKIN_FRACTION) {
-      actions.sellViaWalkIn.push({ carInstanceId: car.id })
-    } else {
-      actions.listForSale.push({ carInstanceId: car.id })
-    }
+    decideSale(state, car, context, actions, {
+      acceptFraction: profile.acceptFraction,
+      maxHoldingDays: profile.maxHoldingDays,
+    })
   }
 
   // 4. Join or continue a war on one affordable lot if there's room for

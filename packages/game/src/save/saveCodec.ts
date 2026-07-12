@@ -257,8 +257,25 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   in-flight lot's ORIGINAL turnout roll never existed under the old model
  *   to recover, and 'steady' is the middle of the three bands, not a thumb
  *   on the scale either way. No explicit `MIGRATIONS[18]` step needed.
+ * - v20 (Sprint 31, the walk-in offer stream): `PublicListing`/
+ *   `activeListings` is gone outright - the "list publicly, wait N days,
+ *   guaranteed sale" channel is replaced by the daily offer-stream mechanic
+ *   (decision 2: a for-sale car draws a live, same-day-only offer instead).
+ *   New `carsForSale`/`pendingOffers` fields are purely additive (both
+ *   default to `[]`), but the removal is NOT: a genuinely pending pre-v20
+ *   listing represents a car the player already parted with
+ *   (`resolveListForSale` removed it from `ownedCars` the instant it was
+ *   created) and real money still owed for it - dropping `activeListings`
+ *   via a plain default-fill would silently delete that cash outright.
+ *   `migrateV19ToV20` instead resolves every pending listing instantly at
+ *   its already-locked `askingPriceYen` (least player harm: the sale the
+ *   player was always going to get, just paid out now instead of on its
+ *   original `resolvesOnDay`) before the `activeListings` key disappears.
+ *   `carsForSale`/`pendingOffers` themselves need no reconstruction - a
+ *   pre-v20 save's owned cars were never mid-offer under a mechanic that
+ *   didn't exist yet, so both default-fill to empty correctly.
  */
-export const SAVE_VERSION = 19
+export const SAVE_VERSION = 20
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -682,6 +699,31 @@ function migrateV17ToV18(gameState: unknown): unknown {
 }
 
 /**
+ * v19 -> v20 (Sprint 31, listings removed): resolves every genuinely pending
+ * `activeListings` entry instantly at its own locked `askingPriceYen`,
+ * crediting the cash - see the SAVE_VERSION doc comment above for why this
+ * can't be a plain default-fill (a real listing represents real money still
+ * owed, not nothing). The listed car itself needs no handling here: under
+ * the pre-v20 model it already left `ownedCars` the instant it was listed,
+ * so there's no car object to reinsert anywhere, only the sale proceeds to
+ * land. Defensive against a malformed or hand-edited save, same shape as
+ * every other migration in this file.
+ */
+function migrateV19ToV20(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+  if (!Array.isArray(state.activeListings) || state.activeListings.length === 0) return state
+
+  let cashYen = typeof state.cashYen === 'number' ? state.cashYen : 0
+  for (const listing of state.activeListings) {
+    if (typeof listing !== 'object' || listing === null) continue
+    const askingPriceYen = (listing as Record<string, unknown>).askingPriceYen
+    if (typeof askingPriceYen === 'number') cashYen += askingPriceYen
+  }
+  return { ...state, cashYen }
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -693,6 +735,7 @@ const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   13: migrateV13ToV14,
   15: migrateV15ToV16,
   17: migrateV17ToV18,
+  19: migrateV19ToV20,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

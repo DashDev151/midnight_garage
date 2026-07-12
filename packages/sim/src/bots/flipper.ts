@@ -11,6 +11,7 @@ import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import type { Rng } from '../rng'
+import { decideSale } from './sellingHelpers'
 
 const MAX_CONCURRENT_CARS = 3
 const MAX_BIDS_PER_DAY = 2
@@ -47,6 +48,10 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'body',
   'interior',
 ]
+/** Sprint 31 decision 4: flip fast means take the FIRST live offer,
+ * whatever it is - no price floor, no patience. */
+const ACCEPT_FRACTION = 0
+const MAX_HOLDING_DAYS = 0
 
 /**
  * Buy rough at a discount, do one quick repair, flip fast (GDD 9.0's
@@ -109,7 +114,10 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
   // 3. Sell any car whose repair is done and has no open job.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
-    actions.sellViaWalkIn.push({ carInstanceId: car.id })
+    decideSale(state, car, context, actions, {
+      acceptFraction: ACCEPT_FRACTION,
+      maxHoldingDays: MAX_HOLDING_DAYS,
+    })
   }
 
   // 4. Join or continue a war on fresh, cheap local-yard lots if there's

@@ -80,7 +80,6 @@ describe('persistence: export / import save code', () => {
         jobs: [],
         marketHeat: {},
         activeAuctionLots: [],
-        activeListings: [],
         serviceJobOffers: [],
         activeServiceJobs: [],
         serviceBayCount: 1,

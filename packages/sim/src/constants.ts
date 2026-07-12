@@ -83,15 +83,6 @@ export const REPUTATION_INCOME_MULTIPLIER: Readonly<Record<ReputationTier, numbe
 export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
 
 /**
- * Walk-in offers vary around true valuation for the convenience of an
- * instant sale (GDD 6.3: "fast, variable") - centered closer to 1.0 than
- * strictly capped below it, since the buyer is already weighted toward
- * whoever wants this car most (sellViaWalkIn), not a uniformly random
- * stranger; an eager walk-in can occasionally beat true value.
- */
-export const WALK_IN_OFFER_RANGE: readonly [number, number] = [0.85, 1.1]
-
-/**
  * Correlated per-car condition roll (Sprint 12): a car's real parts don't
  * roll condition independently (which let a car land a pristine engine and
  * a wrecked transmission with no relationship between them) - one 0-100
@@ -119,9 +110,6 @@ export const AUCTION_TIER_MIN_REPUTATION: Readonly<Record<AuctionTier, Reputatio
   premium: 'known',
   'collector-network': 'respected',
 }
-
-/** Default wait for a list-publicly sale to resolve (GDD 6.3: "slow, market price"). */
-export const PUBLIC_LISTING_WAIT_DAYS = 5
 
 /**
  * Parts-market delivery timing (Sprint 14): express pays this surcharge for

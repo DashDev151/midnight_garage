@@ -15,7 +15,7 @@ const recentLog = computed(() =>
     .reverse()
     .map((entry, i) => ({
       id: game.dayLog.length - i,
-      text: describeLogEntry(entry, game.resolveModelName),
+      text: describeLogEntry(entry, game.resolveModelName, game.buyerName),
     })),
 )
 
@@ -147,12 +147,14 @@ const draggedCarName = computed(() => {
       </ul>
     </section>
 
-    <section v-if="game.activeListings.length" class="listings">
-      <h3>Listings ({{ game.activeListings.length }})</h3>
+    <section v-if="game.pendingOffersView.length" class="offers">
+      <h3>Offers ({{ game.pendingOffersView.length }})</h3>
       <ul>
-        <li v-for="listing in game.activeListings" :key="listing.id">
-          {{ game.resolveModelName(listing.modelId) }} - asking
-          {{ formatYen(listing.askingPriceYen) }}, resolves day {{ listing.resolvesOnDay }}
+        <li v-for="offer in game.pendingOffersView" :key="offer.carInstanceId">
+          <span>{{ offer.copy }}</span>
+          <button data-test="accept-offer-garage" @click="game.acceptOffer(offer.carInstanceId)">
+            Accept
+          </button>
         </li>
       </ul>
     </section>
@@ -271,13 +273,17 @@ button:disabled {
   gap: var(--mg-space-3);
 }
 
-.listings ul {
+.offers ul {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--mg-space-4);
 }
 
-.listings li {
+.offers li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   padding: var(--mg-space-1) 0;

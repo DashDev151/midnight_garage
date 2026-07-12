@@ -1,38 +1,41 @@
 import { z } from 'zod'
 
-export const SaleChannelSchema = z.enum(['list-publicly', 'walk-in-offer'])
+/**
+ * Sprint 31: the public-listing channel is gone (GDD 6.3 delta) - every sale
+ * now resolves through the same walk-in-style path, so there is exactly one
+ * channel left. Kept as an enum, not a bare literal field, so the deferred
+ * known-buyer-contact channel (Sprint 03 decision 6) has somewhere to slot in
+ * later without another schema shape change.
+ */
+export const SaleChannelSchema = z.enum(['walk-in-offer'])
 
 /**
- * Only the list-publicly channel needs persisted state - walk-in offers
- * resolve the same day they're taken (GDD 6.3: "fast, variable"), while
- * a public listing takes days to sell ("slow, market price"). The known-
- * buyer-contact channel is deferred (Sprint 03 decision 6): it needs the
- * events system to create contacts in the first place.
+ * A car the player has toggled "taking offers" on (Sprint 31 decision 2) -
+ * replaces both the old instant walk-in sell and the public-listing channel.
+ * The car stays in `ownedCars`/the shop the whole time; `sinceDay` is when
+ * the toggle was switched on, read by bots' accept-threshold policies as the
+ * holding-cost-pressure clock (and available to a future UI "up for sale N
+ * days" hint).
  */
-export const PublicListingSchema = z.object({
-  id: z.string().min(1),
+export const ForSaleEntrySchema = z.object({
   carInstanceId: z.string().min(1),
-  /** The listed car's model, kept here because the car leaves ownedCars the
-   * moment it's listed - the UI needs it to name the listing. */
-  modelId: z.string().min(1),
-  /** Snapshot of the market valuation at listing time - market heat can
-   * drift while the listing is pending, but the asking price doesn't. */
-  askingPriceYen: z.number().int().positive(),
-  resolvesOnDay: z.number().int().positive(),
-  /**
-   * Reputation delta for this sale (Sprint 15's quality/lemon rule),
-   * computed and locked in at listing-creation time - the real CarInstance
-   * leaves state the instant a listing is created, days before it resolves,
-   * so there's nothing left to re-check condition against at resolution
-   * time. Applied alongside the cash payout when the listing resolves.
-   * Defaults to 0 so a pre-v8 save's already-pending listings resolve
-   * reputation-neutral (correct: the rule didn't exist when they were
-   * created).
-   */
-  reputationDeltaOnSale: z.number().int().default(0),
+  sinceDay: z.number().int().positive(),
 })
 
-export const PublicListingsSchema = z.array(PublicListingSchema)
+/**
+ * Today's live offer on a for-sale car (Sprint 31 decision 2) - at most one
+ * per car, rolled fresh by the daily offer-draw step and valid the day it's
+ * drawn for only (the no-reflex rule: it expires at End Day, never mid-
+ * screen). `buyerId` is the archetype who made it, reused for both the
+ * accept-time reputation/heat plumbing and the "A tuner is offering..."
+ * copy (decision 5).
+ */
+export const PendingSaleOfferSchema = z.object({
+  carInstanceId: z.string().min(1),
+  buyerId: z.string().min(1),
+  priceYen: z.number().int().positive(),
+})
 
 export type SaleChannel = z.infer<typeof SaleChannelSchema>
-export type PublicListing = z.infer<typeof PublicListingSchema>
+export type ForSaleEntry = z.infer<typeof ForSaleEntrySchema>
+export type PendingSaleOffer = z.infer<typeof PendingSaleOfferSchema>

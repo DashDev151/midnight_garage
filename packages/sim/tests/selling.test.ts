@@ -13,11 +13,13 @@ import {
 import { describe, expect, it } from 'vitest'
 import { interestedBuyers } from '../src/bidding'
 import { buildSimContext } from '../src/context'
+import { bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
 import {
   bestFitBuyer,
-  listPubliclyAskingPrice,
-  resolveListForSale,
+  drawDailyOffers,
+  offerChanceFor,
   resolveSellViaWalkIn,
+  resolveSetForSale,
   sellViaWalkIn,
 } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
@@ -64,20 +66,6 @@ function walkIn(
   )
 }
 
-function listingPrice(target: CarInstance, targetModel: CarModel, buyers = BUYERS, heat = 100) {
-  return listPubliclyAskingPrice(
-    target,
-    targetModel,
-    buyers,
-    {},
-    PARTS_TAXONOMY,
-    PARTS_TAXONOMY_BY_ID,
-    heat,
-    CURRENT_YEAR,
-    ECONOMY,
-  )
-}
-
 function bestFit(target: CarInstance, targetModel: CarModel, buyers = BUYERS, heat = 100) {
   return bestFitBuyer(
     target,
@@ -112,56 +100,20 @@ function valuate(
 }
 
 describe('sellViaWalkIn', () => {
-  it("offers at or below the chosen buyer's true valuation", () => {
+  it("offers within the configured spread of the chosen buyer's true valuation", () => {
     const offer = walkIn(car, model)
     const buyer = BUYERS.find((b) => b.id === offer.buyerId)
     if (!buyer) throw new Error('offer referenced an unknown buyer')
     const trueValue = valuate(buyer, car, model)
-    expect(offer.priceYen).toBeLessThanOrEqual(trueValue)
+    const [min, max] = ECONOMY.selling.offerSpread
+    expect(offer.priceYen).toBeGreaterThanOrEqual(Math.round(trueValue * min))
+    expect(offer.priceYen).toBeLessThanOrEqual(Math.round(trueValue * max))
   })
 
   it('is deterministic for the same seed', () => {
     const a = walkIn(car, model, BUYERS, 100, createRng(7))
     const b = walkIn(car, model, BUYERS, 100, createRng(7))
     expect(a).toEqual(b)
-  })
-})
-
-describe('listPubliclyAskingPrice', () => {
-  it('scales up with market heat', () => {
-    const cool = listingPrice(car, model, BUYERS, 80)
-    const hot = listingPrice(car, model, BUYERS, 130)
-    expect(hot).toBeGreaterThan(cool)
-  })
-
-  it('returns 0 with no buyers to value the car', () => {
-    expect(listingPrice(car, model, [])).toBe(0)
-  })
-
-  /**
-   * Sprint 21 decision 6: heat applies exactly once, inside `marketValueYen`
-   * (via `valuateCarForBuyer`) - `listPubliclyAskingPrice` no longer
-   * multiplies by heat a second time on top of that (the old double-count).
-   *
-   * Sprint 27: value is now clean-value-minus-restoration-bill, so the whole
-   * price no longer scales purely proportionally with heat once a car
-   * carries any restoration bill - only cleanValue's own share does (see
-   * marketValue.test.ts's dedicated "heat applies exactly once" tests for
-   * the formula-level proof; the old flat `heatHigh/heatBase ~= 1.2` ratio
-   * check no longer holds in general). What this test checks instead: the
-   * real listing price, reconstructed from the same interested-buyer pool
-   * `listPubliclyAskingPrice` itself averages over - proves there's no
-   * second, hidden heat multiplication layered on top, without assuming a
-   * ratio shape the new formula doesn't produce.
-   */
-  it('applies market heat exactly once (no double-count with marketValueYen)', () => {
-    const candidates = interestedBuyers(model, BUYERS).map((i) => i.buyer)
-    const expectedAt = (heat: number): number => {
-      const total = candidates.reduce((sum, buyer) => sum + valuate(buyer, car, model, heat), 0)
-      return Math.round((total / candidates.length) * ECONOMY.valuation.listingPatiencePremium)
-    }
-    expect(listingPrice(car, model, BUYERS, 100)).toBe(expectedAt(100))
-    expect(listingPrice(car, model, BUYERS, 120)).toBe(expectedAt(120))
   })
 })
 
@@ -196,21 +148,6 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
       expect(offer.buyerId).not.toBe('collector')
     }
   })
-
-  it('listPubliclyAskingPrice only averages genuinely-interested buyers, not the full roster', () => {
-    // Shitbox has exactly one interested archetype (first-timer) - the gated
-    // price should equal that buyer's own valuation exactly, not be dragged
-    // down by averaging in four buyers who were never real candidates.
-    const gatedPrice = listingPrice(shitboxCar, shitboxModel)
-    const firstTimerValuation = valuate(
-      BUYERS.find((b) => b.id === 'first-timer')!,
-      shitboxCar,
-      shitboxModel,
-    )
-    const premium = ECONOMY.valuation.listingPatiencePremium
-    const expectedPrice = Math.round(firstTimerValuation * premium)
-    expect(gatedPrice).toBe(expectedPrice)
-  })
 })
 
 function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): GameState {
@@ -226,7 +163,8 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     jobs: [],
     marketHeat: {},
     activeAuctionLots: [],
-    activeListings: [],
+    carsForSale: [],
+    pendingOffers: [],
     serviceJobOffers: [],
     activeServiceJobs: [],
     serviceBayCount: 1,
@@ -243,25 +181,144 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
   }
 }
 
-describe('resolveSellViaWalkIn (Sprint 11 instant resolver)', () => {
-  it('sells the car instantly, adds cash, and releases its service bay slot', () => {
+/** `stateWithCar` plus a real live offer today on that car (Sprint 31) - the
+ * fixture every `resolveSellViaWalkIn` test below needs, now that accepting
+ * consumes a pre-rolled `pendingOffers` entry instead of rolling one itself. */
+function stateWithOffer(
+  car: CarInstance,
+  priceYen: number,
+  buyerId: string,
+  overrides: Partial<GameState> = {},
+): GameState {
+  return stateWithCar(car, {
+    carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+    pendingOffers: [{ carInstanceId: car.id, buyerId, priceYen }],
+    ...overrides,
+  })
+}
+
+describe('resolveSetForSale (Sprint 31)', () => {
+  it('toggles a car for sale on and off', () => {
     const state = stateWithCar(car)
-    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
-    expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.state.serviceBayCarIds).toEqual([null]) // slot cleared, not removed
-    expect(result.state.cashYen).toBeGreaterThan(0)
-    expect(result.log[0]).toMatchObject({ type: 'car-sold', channel: 'walk-in-offer' })
+    const on = resolveSetForSale(state, car.id, true)
+    expect(on.state.carsForSale).toEqual([{ carInstanceId: car.id, sinceDay: state.day }])
+
+    const off = resolveSetForSale(on.state, car.id, false)
+    expect(off.state.carsForSale).toEqual([])
   })
 
   it('is a no-op for a car not owned', () => {
     const state = stateWithCar(car)
+    const result = resolveSetForSale(state, 'ghost-car', true)
+    expect(result.state).toBe(state)
+  })
+
+  it('is a no-op when toggling to the state it is already in', () => {
+    const state = resolveSetForSale(stateWithCar(car), car.id, true).state
+    const result = resolveSetForSale(state, car.id, true)
+    expect(result.state).toBe(state)
+  })
+
+  it('turning off drops any live pending offer on that car too', () => {
+    const state = stateWithOffer(car, 900_000, 'tuner')
+    const result = resolveSetForSale(state, car.id, false)
+    expect(result.state.pendingOffers).toEqual([])
+    expect(result.state.carsForSale).toEqual([])
+  })
+})
+
+describe('offerChanceFor (Sprint 31 decision 2)', () => {
+  it('is higher in a hot market than a cold one for the same model', () => {
+    const cold = offerChanceFor(model, 70, ECONOMY)
+    const hot = offerChanceFor(model, 130, ECONOMY)
+    expect(hot).toBeGreaterThan(cold)
+  })
+
+  it('never leaves the [0, 1] probability range', () => {
+    expect(offerChanceFor(model, 500, ECONOMY)).toBeLessThanOrEqual(1)
+    expect(offerChanceFor(model, 0, ECONOMY)).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('drawDailyOffers (Sprint 31 decision 2)', () => {
+  it('is deterministic for the same seed', () => {
+    const state = {
+      ...stateWithCar(car),
+      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+    }
+    const a = drawDailyOffers(state, CONTEXT, createRng(9))
+    const b = drawDailyOffers(state, CONTEXT, createRng(9))
+    expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
+    expect(a.log).toEqual(b.log)
+  })
+
+  it('never draws an offer for a car not marked for sale', () => {
+    const state = stateWithCar(car) // carsForSale empty
+    const result = drawDailyOffers(state, CONTEXT, createRng(1))
+    expect(result.state.pendingOffers).toEqual([])
+  })
+
+  it('prunes a stale for-sale entry once the car is no longer owned', () => {
+    const state = {
+      ...stateWithCar(car),
+      ownedCars: [],
+      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+    }
+    const result = drawDailyOffers(state, CONTEXT, createRng(1))
+    expect(result.state.carsForSale).toEqual([])
+  })
+
+  it('draws a real, logged offer within a reasonable number of seeded attempts', () => {
+    const state = {
+      ...stateWithCar(car),
+      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+    }
+    let found = false
+    for (let seed = 0; seed < 40 && !found; seed++) {
+      const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+      if (result.state.pendingOffers.length > 0) {
+        found = true
+        expect(result.log).toContainEqual(
+          expect.objectContaining({ type: 'offer-received', carInstanceId: car.id }),
+        )
+      }
+    }
+    expect(found).toBe(true)
+  })
+})
+
+describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)', () => {
+  it('sells the car, adds cash, and releases its service bay slot', () => {
+    const state = stateWithOffer(car, 900_000, 'tuner')
+    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+    expect(result.state.ownedCars).toHaveLength(0)
+    expect(result.state.serviceBayCarIds).toEqual([null]) // slot cleared, not removed
+    expect(result.state.cashYen).toBe(900_000)
+    expect(result.state.carsForSale).toEqual([])
+    expect(result.state.pendingOffers).toEqual([])
+    expect(result.log[0]).toMatchObject({
+      type: 'car-sold',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+    })
+  })
+
+  it('is a no-op for a car not owned', () => {
+    const state = stateWithOffer(car, 900_000, 'tuner')
     const result = resolveSellViaWalkIn(state, 'ghost-car', CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
 
+  it('is a no-op when there is no live offer today (Sprint 31: nothing to accept)', () => {
+    const state = stateWithCar(car)
+    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
   it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
-    const state = stateWithCar(car, {
+    const state = stateWithOffer(car, 900_000, 'tuner', {
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
     })
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
@@ -269,41 +326,7 @@ describe('resolveSellViaWalkIn (Sprint 11 instant resolver)', () => {
   })
 })
 
-describe('resolveListForSale (Sprint 11 instant resolver)', () => {
-  it('creates the listing instantly at a locked asking price, and releases its service bay slot', () => {
-    const state = stateWithCar(car)
-    const result = resolveListForSale(state, car.id, CONTEXT)
-    expect(result.state.ownedCars).toHaveLength(0)
-    expect(result.state.serviceBayCarIds).toEqual([null]) // slot cleared, not removed
-    expect(result.state.activeListings).toHaveLength(1)
-    expect(result.state.activeListings[0]?.askingPriceYen).toBeGreaterThan(0)
-    expect(result.state.cashYen).toBe(0) // the sale itself still waits for resolvesOnDay
-    expect(result.log[0]).toMatchObject({ type: 'listing-created' })
-  })
-
-  it('honors a custom wait, defaulting otherwise', () => {
-    const state = stateWithCar(car)
-    const result = resolveListForSale(state, car.id, CONTEXT, 3)
-    expect(result.state.activeListings[0]?.resolvesOnDay).toBe(state.day + 3)
-  })
-
-  it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
-    const state = stateWithCar(car, {
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
-    })
-    const result = resolveListForSale(state, car.id, CONTEXT)
-    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
-  })
-
-  it('is a no-op for a car not owned', () => {
-    const state = stateWithCar(car)
-    const result = resolveListForSale(state, 'ghost-car', CONTEXT)
-    expect(result.state).toBe(state)
-    expect(result.log).toEqual([])
-  })
-})
-
-describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26)', () => {
+describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26; Sprint 31: via an accepted offer)', () => {
   const qualityCar: CarInstance = buildCarInstance({
     modelId: car.modelId,
     authenticityPercent: 90,
@@ -315,40 +338,64 @@ describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26)', ()
     parts: uniformCarParts('poor'),
   })
 
-  it('a walk-in sale of a quality car grants reputation immediately', () => {
-    const state = stateWithCar(qualityCar)
+  it('accepting an offer on a quality car grants reputation immediately', () => {
+    const state = stateWithOffer(qualityCar, 1_000_000, 'collector')
     const result = resolveSellViaWalkIn(state, qualityCar.id, CONTEXT)
     expect(result.state.reputationPoints).toBeGreaterThan(0)
     expect(result.log[0]).toMatchObject({ reputationDelta: result.state.reputationPoints })
   })
 
-  it('a walk-in sale of a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
+  it('accepting an offer on a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
     // A player at 2 points selling a lemon (nominal -5) only has 2 to lose -
     // `applyReputationDelta` floors at 0. Before this fix, the log entry
     // carried the nominal -5 regardless of what actually applied.
-    const state = stateWithCar(lemonCar, { reputationPoints: 2 })
+    const state = stateWithOffer(lemonCar, 300_000, 'first-timer', { reputationPoints: 2 })
     const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
     expect(result.state.reputationPoints).toBe(0)
     expect(result.log[0]).toMatchObject({ reputationDelta: -2, saleQuality: 'lemon' })
   })
 
-  it('a walk-in sale of a lemon already at zero reputation has nothing left to lose, so logs no reputationDelta', () => {
-    const state = stateWithCar(lemonCar) // reputationPoints: 0
+  it('accepting an offer on a lemon already at zero reputation has nothing left to lose, so logs no reputationDelta', () => {
+    const state = stateWithOffer(lemonCar, 300_000, 'first-timer') // reputationPoints: 0
     const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
     expect(result.state.reputationPoints).toBe(0)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
   })
 
-  it('a walk-in sale of an ordinary car carries no reputationDelta field', () => {
-    const state = stateWithCar(car) // fixture car: one worn part, otherwise mint - unremarkable
+  it('accepting an offer on an ordinary car carries no reputationDelta field', () => {
+    const state = stateWithOffer(car, 900_000, 'tuner') // fixture car: one worn part, otherwise mint - unremarkable
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
   })
+})
 
-  it('a public listing captures the reputation delta at creation time, applying nothing yet', () => {
-    const state = stateWithCar(qualityCar)
-    const result = resolveListForSale(state, qualityCar.id, CONTEXT)
-    expect(result.state.reputationPoints).toBe(0) // not applied yet
-    expect(result.state.activeListings[0]?.reputationDeltaOnSale).toBeGreaterThan(0)
+describe('flooding interaction (Sprint 31): dumping copies of one model degrades its own offer odds via existing heat', () => {
+  const controlModel = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!controlModel) throw new Error('fixture car missing from seed content')
+
+  /**
+   * Same flood-probe shape marketHeat.test.ts's own "flood probe" uses (20
+   * bumps, two weekly updates, compared against an untouched control model)
+   * - the sprint doc's own task framing is "dumping 3 same-model cars," but
+   * a flood of only 3 isn't reliably bigger than a model's own +/-12 weekly
+   * demand-wave noise (`marketPressure.WAVE_AMPLITUDE`), so this uses the
+   * same well-beyond-the-wave magnitude the existing precedent established
+   * to keep the proof real rather than occasionally flaky.
+   */
+  it('flooding one model with resolved sales lowers its offerChanceFor below an untouched control (existing heat mechanism, reused verbatim)', () => {
+    let state = stateWithCar(car)
+    for (let i = 0; i < 20; i++) state = bumpPlayerSales(state, model.id)
+    state = { ...state, day: 7 }
+
+    const week1 = updateMarketHeat(state, CONTEXT).state
+    const week2 = updateMarketHeat({ ...week1, day: 14 }, CONTEXT).state
+
+    const floodedHeat = week2.marketHeat[model.id] ?? 100
+    const controlHeat = week2.marketHeat[controlModel.id] ?? 100
+    expect(floodedHeat).toBeLessThan(controlHeat)
+
+    const floodedChance = offerChanceFor(model, floodedHeat, ECONOMY)
+    const controlChance = offerChanceFor(controlModel, controlHeat, ECONOMY)
+    expect(floodedChance).toBeLessThan(controlChance)
   })
 })

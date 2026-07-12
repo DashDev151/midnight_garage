@@ -26,7 +26,6 @@ import type {
   Job,
   Part,
   PartInstance,
-  PublicListing,
   ReputationTier,
   ServiceJob,
   ServiceJobTask,
@@ -60,7 +59,6 @@ import {
   isServiceJobInTransit,
   isServiceTaskDone,
   isServiceWorkDone,
-  listPubliclyAskingPrice,
   moveCarToSlot as moveCarToSlotCore,
   nextBayMinReputationTier,
   nextBayPriceYen,
@@ -78,11 +76,11 @@ import {
   resolveBuyPart,
   reserveYen,
   resolveJobLabor,
-  resolveListForSale,
   resolvePlaceBid,
   resolveScrapPart,
   resolveSellViaWalkIn,
   resolveServiceJob,
+  resolveSetForSale,
   scrapValueYen,
   swapCars as swapCarsCore,
   valuateCarForBuyer,
@@ -97,6 +95,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { INSTALL_LABOR_SLOTS } from '../constants'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
+import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap } from '../utils/partAddress'
 
 /**
@@ -372,10 +371,30 @@ export interface MyActiveBidView {
   daysLeft: number
 }
 
-/** The estimated same-day walk-in offer for an owned car. */
-export interface WalkInEstimate {
+/**
+ * A ballpark market-value preview for an owned car (Sprint 31) - the
+ * for-sale toggle's "roughly what to expect" number. Not a real offer: real
+ * offers only exist once the daily draw actually rolls one (see
+ * `pendingOffersView`/`offerFor` below); this is the best-fit buyer's own
+ * valuation, un-spread, purely informational.
+ */
+export interface SaleValueEstimate {
   buyerId: string | undefined
   offerYen: number
+}
+
+/** A live, same-day-only offer on an owned car (Sprint 31 decision 2), ready
+ * for the car-detail/garage offer panels. */
+export interface PendingOfferView {
+  carInstanceId: string
+  carName: string
+  buyerId: string
+  buyerName: string
+  priceYen: number
+  /** "A tuner is offering ¥1,240,000 for the FC. Today only." (decision 5) -
+   * the one canonical copy string, also reused by the day-report line
+   * (`dayLogFormat.ts`'s `offer-received` case) via `utils/offerCopy.ts`. */
+  copy: string
 }
 
 /** Summary of the day that just ended, for the end-of-day report modal. */
@@ -697,7 +716,49 @@ export const useGameStore = defineStore('game', () => {
 
   // --- auction & market selectors --------------------------------------
 
-  const activeListings = computed<PublicListing[]>(() => gameState.value.activeListings)
+  /** Display name for a buyer archetype (Sprint 31) - "Tuner", "Collector",
+   * ... - the other half of the offer copy alongside the car's own name. */
+  function buyerName(buyerId: string): string {
+    return context.value.buyers.find((b) => b.id === buyerId)?.displayName ?? buyerId
+  }
+
+  /** True while `carId` is toggled "taking offers" (Sprint 31 decision 2). */
+  function isForSale(carId: string): boolean {
+    return gameState.value.carsForSale.some((f) => f.carInstanceId === carId)
+  }
+
+  function pendingOfferViewFor(carInstanceId: string): PendingOfferView | undefined {
+    const offer = gameState.value.pendingOffers.find((o) => o.carInstanceId === carInstanceId)
+    if (!offer) return undefined
+    const car = gameState.value.ownedCars.find((c) => c.id === carInstanceId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!car || !model) return undefined
+    const carName = resolveCarDisplayName(model)
+    const buyer = buyerName(offer.buyerId)
+    return {
+      carInstanceId,
+      carName,
+      buyerId: offer.buyerId,
+      buyerName: buyer,
+      priceYen: offer.priceYen,
+      copy: offerCopy(buyer, carName, offer.priceYen),
+    }
+  }
+
+  /** Today's live offer on one car, if any (Sprint 31) - the car-detail
+   * screen's offer card. */
+  function offerFor(carId: string): PendingOfferView | undefined {
+    return pendingOfferViewFor(carId)
+  }
+
+  /** Every live offer across every owned car (Sprint 31) - the garage-wide
+   * offers panel. */
+  const pendingOffersView = computed<PendingOfferView[]>(() =>
+    gameState.value.pendingOffers.flatMap((o) => {
+      const view = pendingOfferViewFor(o.carInstanceId)
+      return view ? [view] : []
+    }),
+  )
 
   /** Current auction catalog grouped by tier (only tiers with lots present). */
   const auctionLotsByTier = computed<{ tier: AuctionTier; lots: AuctionLot[] }[]>(() => {
@@ -773,8 +834,14 @@ export const useGameStore = defineStore('game', () => {
     }),
   )
 
-  /** Estimated same-day walk-in offer for an owned car (best-fit buyer's valuation). */
-  function walkInEstimate(carId: string): WalkInEstimate {
+  /**
+   * Ballpark market-value preview for an owned car (Sprint 31) - the
+   * for-sale toggle's own estimate, NOT a live offer (real offers only exist
+   * once the daily draw actually rolls one - `offerFor`/`pendingOffersView`
+   * above). The best-fit buyer's own un-spread valuation, so it reads as
+   * "roughly this," not a number the player can expect to see exactly.
+   */
+  function estimatedSaleValue(carId: string): SaleValueEstimate {
     const car = gameState.value.ownedCars.find((c) => c.id === carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model) return { buyerId: undefined, offerYen: 0 }
@@ -805,25 +872,6 @@ export const useGameStore = defineStore('game', () => {
         )
       : 0
     return { buyerId: buyer?.id, offerYen: Math.round(offerYen) }
-  }
-
-  /** Estimated public-listing asking price for an owned car (market-heat scaled). */
-  function listingEstimate(carId: string): number {
-    const car = gameState.value.ownedCars.find((c) => c.id === carId)
-    const model = car ? context.value.modelsById[car.modelId] : undefined
-    if (!car || !model) return 0
-    const heat = gameState.value.marketHeat[car.modelId] ?? 100
-    return listPubliclyAskingPrice(
-      car,
-      model,
-      context.value.buyers,
-      context.value.partsById,
-      context.value.partsTaxonomy,
-      context.value.partsTaxonomyById,
-      heat,
-      currentGameYear(gameState.value.reputationTier),
-      context.value.economy,
-    )
   }
 
   /**
@@ -1476,27 +1524,34 @@ export const useGameStore = defineStore('game', () => {
     lastJobResult.value = null
   }
 
-  /** Sell an owned car via a same-day walk-in offer - instant. */
-  function sellWalkIn(carId: string): boolean {
+  /**
+   * Accept today's live offer on an owned car - instant (Sprint 31). Resolves
+   * through the same reputation/heat/event-log plumbing the old instant
+   * walk-in sell always used; a no-op (returns false) if there's no live
+   * offer on this car right now.
+   */
+  function acceptOffer(carId: string): boolean {
     const result = resolveSellViaWalkIn(gameState.value, carId, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
-    logSessionEvent('sellWalkIn', { carId })
+    logSessionEvent('acceptOffer', { carId })
     return true
   }
 
   /**
-   * List an owned car publicly - instant creation, at the asking price
-   * locked in right now; the sale itself still resolves after the wait
-   * (GDD 6.3's intentional "slow, market price" mechanic).
+   * Toggle "taking offers" on an owned car - free, instant, reversible any
+   * time before it sells (Sprint 31 decision 2). Replaces both the old
+   * instant walk-in sell and list-publicly buttons: the car itself does
+   * nothing until a real offer arrives (the daily draw, End Day) and the
+   * player accepts it via `acceptOffer` above.
    */
-  function listForSale(carId: string, waitDays?: number): boolean {
-    const result = resolveListForSale(gameState.value, carId, context.value, waitDays)
-    if (result.log.length === 0) return false
+  function setForSale(carId: string, forSale: boolean): boolean {
+    const before = gameState.value
+    const result = resolveSetForSale(before, carId, forSale)
+    if (result.state === before) return false
     gameState.value = result.state
-    dayLog.value.push(...result.log)
-    logSessionEvent('listForSale', { carId, waitDays })
+    logSessionEvent('setForSale', { carId, forSale })
     return true
   }
 
@@ -1704,20 +1759,22 @@ export const useGameStore = defineStore('game', () => {
     ownedCarNames,
     partsCatalog,
     modelsCatalog,
-    activeListings,
     auctionLotsByTier,
     myActiveBids,
     resolveModelName,
     partName,
     componentLabel,
+    buyerName,
     carDetail,
     groupBandsForCar,
     partsInGroup,
     carPartLabel,
     groupForCarPart,
     lotDetail,
-    walkInEstimate,
-    listingEstimate,
+    isForSale,
+    offerFor,
+    pendingOffersView,
+    estimatedSaleValue,
     installablePartsFor,
     installablePartsForPart,
     serviceBaysView,
@@ -1757,8 +1814,8 @@ export const useGameStore = defineStore('game', () => {
     removeFromCart,
     checkoutCart,
     pendingPartOrders,
-    sellWalkIn,
-    listForSale,
+    acceptOffer,
+    setForSale,
     acceptServiceJob,
     completeServiceJob,
     lastJobResult,

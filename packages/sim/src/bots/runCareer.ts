@@ -1,10 +1,18 @@
-import type { AuctionLot, AuctionTier, GameState, ReputationTier } from '@midnight-garage/content'
+import type {
+  AuctionLot,
+  AuctionTier,
+  GameState,
+  RarityTier,
+  ReputationTier,
+} from '@midnight-garage/content'
 import type { DayActions } from '../actions'
 import { advanceDay } from '../advanceDay'
 import { anchorValueYen, bidIncrementYen } from '../bidding'
+import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { createInitialGameState } from '../newGame'
 import { createRng, type Rng } from '../rng'
+import { valuateCarForBuyer } from '../valuation'
 
 export type BotStrategy = (state: GameState, context: SimContext, rng: Rng) => DayActions
 
@@ -73,6 +81,27 @@ export interface AcquisitionSample {
 }
 
 /**
+ * One offer a for-sale car drew, by the time its outcome is known (Sprint 31
+ * decision 3's designer-facing math: the offers.csv the balance report reads
+ * "distribution of best-offer-in-n-days vs first offer" from). `carEpisodeId`
+ * is a synthetic per-career counter, not the real game car id (never needed
+ * outside this one process) - it's what lets the Python side reconstruct one
+ * car's full day-by-day offer history without a real identifier leaking
+ * anywhere. `day` is the day the offer was actually live (matches the day
+ * the resulting `car-sold`, if any, would land on). `accepted` is true only
+ * when this exact offer was the one taken - a later, different offer on the
+ * same car is its own separate row.
+ */
+export interface OfferSample {
+  carEpisodeId: number
+  day: number
+  tier: RarityTier
+  offerYen: number
+  valueYen: number
+  accepted: boolean
+}
+
+/**
  * Plays one bot strategy for `days`. Returns one cash/car snapshot per day,
  * every auction the bot actually bid on and lost, or won (the Sprint 10
  * win-price bucket metric, now also carrying Sprint 30's `bidEvents`/
@@ -122,12 +151,36 @@ export function runCareer(
   snapshots: CareerSnapshot[]
   auctionWins: AuctionWinSample[]
   acquisitions: AcquisitionSample[]
+  offers: OfferSample[]
 } {
   let state = createInitialGameState(context, seed)
   const snapshots: CareerSnapshot[] = []
   const auctionWins: AuctionWinSample[] = []
   const acquisitions: AcquisitionSample[] = []
+  const offers: OfferSample[] = []
   const lotMeta = new Map<string, LotTelemetryMeta>()
+
+  // Sprint 31 offers.csv telemetry: a synthetic per-career counter (never
+  // the real game car id) so the Python side can group one car's day-by-day
+  // offer history together, and a one-row-per-car buffer for whichever offer
+  // is currently live and not yet known to be accepted or not.
+  const episodeIdByCar = new Map<string, number>()
+  let nextEpisodeId = 1
+  function episodeIdFor(carInstanceId: string): number {
+    let id = episodeIdByCar.get(carInstanceId)
+    if (id === undefined) {
+      id = nextEpisodeId++
+      episodeIdByCar.set(carInstanceId, id)
+    }
+    return id
+  }
+  const pendingOfferByCar = new Map<string, Omit<OfferSample, 'accepted'>>()
+  function finalizePendingOffer(carInstanceId: string, accepted: boolean): void {
+    const pending = pendingOfferByCar.get(carInstanceId)
+    if (!pending) return
+    offers.push({ ...pending, accepted })
+    pendingOfferByCar.delete(carInstanceId)
+  }
 
   for (let day = 1; day <= days; day++) {
     const stateBeforeToday = state
@@ -157,6 +210,45 @@ export function runCareer(
             day,
             tier: lot.tier,
             channel: entry.type === 'auction-bid-won' ? 'bid' : 'buyout',
+          })
+        }
+      }
+
+      // Sprint 31 offers.csv telemetry: a sold car's accepted offer finalizes
+      // whatever was pending on it; a fresh offer means yesterday's (if any)
+      // went unaccepted - finalize that one as declined before buffering the
+      // new one. `state` here is `result.state` (today's post-advance state),
+      // so the car (if still owned) and today's real market heat are both
+      // the live ones the offer was actually drawn against.
+      if (entry.type === 'car-sold') {
+        finalizePendingOffer(entry.carInstanceId, true)
+      }
+      if (entry.type === 'offer-received') {
+        finalizePendingOffer(entry.carInstanceId, false)
+        const car = state.ownedCars.find((c) => c.id === entry.carInstanceId)
+        const model = context.modelsById[entry.modelId]
+        const buyer = context.buyers.find((b) => b.id === entry.buyerId)
+        if (car && model && buyer) {
+          const heatPercent = state.marketHeat[entry.modelId] ?? 100
+          const valueYen = Math.round(
+            valuateCarForBuyer(
+              buyer,
+              model,
+              car,
+              context.partsById,
+              context.partsTaxonomy,
+              context.partsTaxonomyById,
+              heatPercent,
+              currentGameYear(state.reputationTier),
+              context.economy,
+            ),
+          )
+          pendingOfferByCar.set(entry.carInstanceId, {
+            carEpisodeId: episodeIdFor(entry.carInstanceId),
+            day: day + 1,
+            tier: model.tier,
+            offerYen: entry.priceYen,
+            valueYen,
           })
         }
       }
@@ -210,5 +302,12 @@ export function runCareer(
     })
   }
 
-  return { snapshots, auctionWins, acquisitions }
+  // Any offer still pending when the career ends never got a chance to be
+  // accepted or not within the measurement window - counts as declined,
+  // same as any other unaccepted offer.
+  for (const carInstanceId of pendingOfferByCar.keys()) {
+    finalizePendingOffer(carInstanceId, false)
+  }
+
+  return { snapshots, auctionWins, acquisitions, offers }
 }

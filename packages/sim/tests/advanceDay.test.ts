@@ -72,7 +72,8 @@ function initialState(): GameState {
     jobs: [],
     marketHeat: Object.fromEntries(POC_10_MODEL_IDS.map((id) => [id, 100])),
     activeAuctionLots: [],
-    activeListings: [],
+    carsForSale: [],
+    pendingOffers: [],
     serviceBayCount: 1,
     parkingBayCount: 3,
     serviceBayCarIds: [],
@@ -155,17 +156,15 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 30 (living auctions) re-pins this hash outright: age/mileage
-    // factors join clean value (decision 1, `marketValueYen` gains a
-    // `currentYear` parameter), the daily bidder-interest process replaces
-    // the demand ceiling (decision 3), and auction arrivals are now a daily
-    // trickle instead of a `day % 7` dump (decision 4, changing the RNG draw
-    // sequence every day, not just weekly) - all deliberate mechanic
-    // changes, so every prior sprint's own re-pin note above this one is now
-    // historical (the shape they were re-pinning against no longer exists).
+    // Sprint 31 re-pins this hash outright: `GameState` drops `activeListings`
+    // and gains `carsForSale`/`pendingOffers` (decision 1) - a pure shape
+    // change for this particular career (it never toggles a car for sale),
+    // but `hashState` hashes the whole state, so the hash moves regardless.
+    // Every prior sprint's own re-pin note above this one is now historical
+    // (the shape they were re-pinning against no longer exists).
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('3d7df487')
+    expect(hashState(finalState)).toBe('7a45a1e3')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -254,10 +253,26 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     const won = state
     const car = won.ownedCars[0]
     if (!car) throw new Error('expected to win the lot')
-    const sold = advanceDay(
+
+    // Sprint 31: selling is no longer instant - mark the car for sale, wait
+    // for the daily offer draw to produce a live offer, then accept it.
+    state = advanceDay(
       won,
-      { ...noActions, sellViaWalkIn: [{ carInstanceId: car.id }] },
+      { ...noActions, setForSale: [{ carInstanceId: car.id, forSale: true }] },
       won.seed + won.day,
+      CONTEXT,
+    ).state
+    guard = 0
+    while (!state.pendingOffers.some((o) => o.carInstanceId === car.id) && guard++ < 60) {
+      state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
+    }
+    if (!state.pendingOffers.some((o) => o.carInstanceId === car.id)) {
+      throw new Error('expected an offer to arrive within 60 days')
+    }
+    const sold = advanceDay(
+      state,
+      { ...noActions, acceptOffers: [{ carInstanceId: car.id }] },
+      state.seed + state.day,
       CONTEXT,
     ).state
     return { won, sold }
@@ -271,92 +286,67 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Sprint 30 re-pins this hash outright, same reasoning as the golden
-    // master above.
-    expect(hashState(acquisitionCareer().sold)).toBe('814c2416')
+    // Sprint 31 re-pins this hash outright: beyond the shape change (see the
+    // golden master above), `acquisitionCareer` itself now plays out the
+    // real Sprint 31 flow (setForSale -> wait for an offer -> acceptOffers)
+    // instead of an instant `sellViaWalkIn` action, so this is a genuinely
+    // different, longer playthrough, not just a relabeled field.
+    expect(hashState(acquisitionCareer().sold)).toBe('7f80a371')
   })
 })
 
-describe('advanceDay resolves a public listing with its captured reputation delta (Sprint 15)', () => {
-  it('applies the pending reputationDeltaOnSale alongside the cash payout, once, on resolvesOnDay', () => {
+describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
+  it('a for-sale car eventually draws a live offer, logged as offer-received', () => {
+    let state: GameState = {
+      ...initialState(),
+      day: 10,
+      carsForSale: [{ carInstanceId: 'car-0001', sinceDay: 10 }],
+    }
+    let sawOffer = false
+    for (let i = 0; i < 60 && !sawOffer; i++) {
+      const result = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+      state = result.state
+      if (state.pendingOffers.some((o) => o.carInstanceId === 'car-0001')) {
+        sawOffer = true
+        expect(result.log).toContainEqual(
+          expect.objectContaining({ type: 'offer-received', carInstanceId: 'car-0001' }),
+        )
+      }
+    }
+    expect(sawOffer).toBe(true)
+  })
+
+  it("accepting today's offer sells the car through the walk-in resolution path", () => {
     const state: GameState = {
       ...initialState(),
       day: 10,
-      ownedCars: [],
-      reputationPoints: 0,
-      activeListings: [
-        {
-          id: 'listing-5-car-x',
-          carInstanceId: 'car-x',
-          modelId: 'honda-city-e-aa',
-          askingPriceYen: 400_000,
-          resolvesOnDay: 10,
-          reputationDeltaOnSale: 3,
-        },
-      ],
+      carsForSale: [{ carInstanceId: 'car-0001', sinceDay: 10 }],
+      pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'first-timer', priceYen: 400_000 }],
     }
     const cashBefore = state.cashYen
-    const { state: next, log } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+    const { state: next, log } = advanceDay(
+      state,
+      { ...noActions, acceptOffers: [{ carInstanceId: 'car-0001' }] },
+      state.seed + state.day,
+      CONTEXT,
+    )
+    expect(next.ownedCars).toHaveLength(0)
     expect(next.cashYen).toBe(cashBefore + 400_000)
-    expect(next.reputationPoints).toBe(3)
-    expect(next.activeListings).toHaveLength(0)
     expect(log).toContainEqual(
-      expect.objectContaining({
-        type: 'car-sold',
-        channel: 'list-publicly',
-        priceYen: 400_000,
-        reputationDelta: 3,
-      }),
+      expect.objectContaining({ type: 'car-sold', channel: 'walk-in-offer', priceYen: 400_000 }),
     )
   })
 
-  it('logs the applied loss, not the nominal penalty, when resolution would floor reputationPoints at zero (Sprint 24 fix 3)', () => {
+  it('an unaccepted offer expires at End Day - it never survives into the next advanceDay call (no-reflex rule)', () => {
     const state: GameState = {
       ...initialState(),
       day: 10,
-      ownedCars: [],
-      reputationPoints: 2,
-      activeListings: [
-        {
-          id: 'listing-5-car-x',
-          carInstanceId: 'car-x',
-          modelId: 'honda-city-e-aa',
-          askingPriceYen: 400_000,
-          resolvesOnDay: 10,
-          reputationDeltaOnSale: -5,
-        },
-      ],
-    }
-    const { state: next, log } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
-    expect(next.reputationPoints).toBe(0)
-    expect(log).toContainEqual(
-      expect.objectContaining({
-        type: 'car-sold',
-        channel: 'list-publicly',
-        reputationDelta: -2,
-        saleQuality: 'lemon',
-      }),
-    )
-  })
-
-  it('a not-yet-due listing stays pending and applies nothing', () => {
-    const state: GameState = {
-      ...initialState(),
-      day: 10,
-      ownedCars: [],
-      activeListings: [
-        {
-          id: 'listing-5-car-x',
-          carInstanceId: 'car-x',
-          modelId: 'honda-city-e-aa',
-          askingPriceYen: 400_000,
-          resolvesOnDay: 20,
-          reputationDeltaOnSale: -5,
-        },
-      ],
+      carsForSale: [], // not (re-)marked for sale, so nothing replaces the stale offer below
+      pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'first-timer', priceYen: 400_000 }],
     }
     const { state: next } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
-    expect(next.activeListings).toHaveLength(1)
-    expect(next.reputationPoints).toBe(0)
+    expect(next.pendingOffers.some((o) => o.carInstanceId === 'car-0001')).toBe(false)
+    // The car itself is untouched (never sold) - the offer just lapsed.
+    expect(next.ownedCars).toHaveLength(1)
   })
 })

@@ -71,7 +71,6 @@
     "partsRetention": 0.55,
     "genuinePeriodMultiplier": 1.25,
     "tasteSpread": 0.12,
-    "listingPatiencePremium": 1.05,
     "walkAwaySpread": 0.05
   },
   "marketPressure": {
@@ -122,5 +121,24 @@
     "laborRateYen": 6000,
     "calloutFeeYen": 5000,
     "dailyOfferCountWeights": [0.05, 0.22, 0.42, 0.23, 0.08]
+  },
+  "selling": {
+    "offerChanceBase": 0.65,
+    "offerChanceByTier": {
+      "shitbox": 1.1,
+      "common": 1.05,
+      "uncommon": 0.9,
+      "rare": 0.75,
+      "gaisha": 0.6,
+      "legend": 0.45
+    },
+    "heatBandColdBelowPercent": 90,
+    "heatBandHotAtOrAbovePercent": 110,
+    "offerChanceByHeatBand": {
+      "cold": 0.75,
+      "normal": 1.0,
+      "hot": 1.3
+    },
+    "offerSpread": [0.82, 1.12]
   }
 }

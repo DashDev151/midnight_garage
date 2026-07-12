@@ -18,6 +18,7 @@ import {
 } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
+import { decideSale } from './sellingHelpers'
 
 const MAX_CONCURRENT_CARS = 2
 /**
@@ -58,6 +59,12 @@ const CASH_BUFFER_MULTIPLIER = 1.15
  * gamble a fair-price bid on the labor still owed.
  */
 const MAX_RESTORATION_TO_CLEAN_VALUE_RATIO = 0.6
+
+/** Sprint 31 decision 4: this bot's whole identity is patience and a
+ * fair-price floor (no lowball gamble) - it holds out near full value and
+ * tolerates a long wait before holding-cost pressure forces a sale. */
+const ACCEPT_FRACTION = 0.95
+const MAX_HOLDING_DAYS = 20
 
 /**
  * Only buys at-or-above fair price, fully restores every zone before
@@ -207,17 +214,20 @@ export function cautiousRestorerStrategy(
     carsGettingJobsToday.add(car.id)
   }
 
-  // 5. List fully-restored, job-free cars publicly for the best price -
-  // "fully restored" means every group's every present part has reached
-  // mint (Sprint 26: the old hidden-issue "and issue-free" clause is gone
-  // with the paused system).
+  // 5. Take offers on fully-restored, job-free cars, holding out near full
+  // value (Sprint 31 decision 4) - "fully restored" means every group's
+  // every present part has reached mint (Sprint 26: the old hidden-issue
+  // "and issue-free" clause is gone with the paused system).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
     const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every((id) =>
       isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (isRestored) {
-      actions.listForSale.push({ carInstanceId: car.id })
+      decideSale(state, car, context, actions, {
+        acceptFraction: ACCEPT_FRACTION,
+        maxHoldingDays: MAX_HOLDING_DAYS,
+      })
     }
   }
 

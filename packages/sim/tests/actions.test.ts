@@ -6,8 +6,8 @@ const EMPTY_ACTIONS = {
   laborAssignments: [],
   bidsOnLots: [],
   buyoutLots: [],
-  sellViaWalkIn: [],
-  listForSale: [],
+  acceptOffers: [],
+  setForSale: [],
   buyParts: [],
   scrapParts: [],
   acceptServiceJobs: [],
@@ -37,8 +37,8 @@ describe('DayActionsSchema', () => {
       laborAssignments: [{ jobId: 'job-1', laborSlots: 2 }],
       bidsOnLots: [{ lotId: 'lot-1', maxBidYen: 500_000 }],
       scrapParts: [{ partInstanceId: 'pi-0004' }],
-      sellViaWalkIn: [{ carInstanceId: 'car-0002' }],
-      listForSale: [{ carInstanceId: 'car-0003', waitDays: 5 }],
+      acceptOffers: [{ carInstanceId: 'car-0002' }],
+      setForSale: [{ carInstanceId: 'car-0003', forSale: true }],
     }
     expect(DayActionsSchema.parse(input)).toEqual(input)
   })

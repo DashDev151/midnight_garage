@@ -19,7 +19,8 @@ import { currentGameYear } from '../src/calendar'
 import { buildSimContext } from '../src/context'
 import { marketValueYen } from '../src/marketValue'
 import { createRng } from '../src/rng'
-import { listPubliclyAskingPrice } from '../src/selling'
+import { bestFitBuyer } from '../src/selling'
+import { valuateCarForBuyer } from '../src/valuation'
 
 /**
  * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
@@ -56,7 +57,8 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     marketHeat: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     activeAuctionLots: lots,
-    activeListings: [],
+    carsForSale: [],
+    pendingOffers: [],
     serviceJobOffers: [],
     activeServiceJobs: [],
     serviceBayCount: 1,
@@ -172,9 +174,11 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
   it('acquire (scripted patient bidder) -> full restoration -> best-channel sale nets a positive margin most of the time', () => {
     // Rent is 0 (Sprint 20 decision, restored in Sprint 23) - this measures
     // the acquisition-restoration-sale loop itself, not the cost treadmill.
-    // "Best-channel" sale price is `listPubliclyAskingPrice` (GDD 6.3's
-    // "slow, market price" channel) - deterministic, unlike walk-in's rolled
-    // discount, so the probe measures the value model, not channel RNG.
+    // "Best-channel" sale price is the best-fit buyer's own un-spread
+    // valuation (Sprint 31 removed the separate list-publicly channel that
+    // used to serve this role) - still deterministic, unlike an actual
+    // offer's rolled spread, so the probe measures the value model, not
+    // channel RNG.
     const marginFractions: number[] = []
 
     for (const initial of independentLots(200, 3000)) {
@@ -215,10 +219,22 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
       if (!boughtCar) continue
 
       const restoredCar = fullyRestored(boughtCar)
-      const salePriceYen = listPubliclyAskingPrice(
+      const buyer = bestFitBuyer(
         restoredCar,
         PROBE_MODEL,
         CONTEXT.buyers,
+        CONTEXT.partsById,
+        CONTEXT.partsTaxonomy,
+        CONTEXT.partsTaxonomyById,
+        100,
+        CURRENT_YEAR,
+        CONTEXT.economy,
+      )
+      if (!buyer) continue
+      const salePriceYen = valuateCarForBuyer(
+        buyer,
+        PROBE_MODEL,
+        restoredCar,
         CONTEXT.partsById,
         CONTEXT.partsTaxonomy,
         CONTEXT.partsTaxonomyById,

@@ -115,7 +115,6 @@ const fullState: GameState = GameStateSchema.parse({
   jobs: [],
   marketHeat: { 'honda-city-e-aa': 108 },
   activeAuctionLots: [],
-  activeListings: [],
 })
 
 describe('saveCodec', () => {
@@ -132,7 +131,8 @@ describe('saveCodec', () => {
     expect(decoded.reputationTier).toBe('unknown')
     // Schema defaults fill the arrays a minimal v1 save omitted.
     expect(decoded.ownedCars).toEqual([])
-    expect(decoded.activeListings).toEqual([])
+    expect(decoded.carsForSale).toEqual([])
+    expect(decoded.pendingOffers).toEqual([])
     // v1 -> v2 migration is pure default-fill: the Sprint-08 fields a v1 save
     // never had come back at their defaults, proving old saves still load.
     expect(decoded.reputationPoints).toBe(0)
@@ -242,17 +242,21 @@ describe('saveCodec', () => {
   it('decodes the pinned golden v7 save under the current version (Save law)', () => {
     const decoded = decodeSave(GOLDEN_V7_CODE)
     expect(decoded.day).toBe(60)
-    expect(decoded.cashYen).toBe(5_000_000)
+    // Sprint 31: the pinned v7 code carries a real pending listing (350,000
+    // asking price, see GOLDEN_V7_CODE's own doc comment) that
+    // migrateV19ToV20 now resolves instantly at load, crediting the cash on
+    // top of the code's own 5,000,000 - the "least player harm" rule, not a
+    // dropped sale.
+    expect(decoded.cashYen).toBe(5_000_000 + 350_000)
     expect(decoded.reputationTier).toBe('known')
     expect(decoded.reputationPoints).toBe(40)
     // v7 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.ownedEquipmentIds).toEqual(['tire-machine'])
-    // v7 -> v8 migration (Sprint 15): a real pending listing created before
-    // the quality/lemon rule existed comes back reputation-neutral, not
-    // rejected - the field it never had default-fills to 0.
-    expect(decoded.activeListings).toHaveLength(1)
-    expect(decoded.activeListings[0]?.askingPriceYen).toBe(350_000)
-    expect(decoded.activeListings[0]?.reputationDeltaOnSale).toBe(0)
+    // v19 -> v20 migration (Sprint 31): the resolved listing leaves nothing
+    // behind - no stray for-sale toggle or offer under a mechanic that
+    // didn't exist when this code was produced.
+    expect(decoded.carsForSale).toEqual([])
+    expect(decoded.pendingOffers).toEqual([])
   })
 
   /**
@@ -853,7 +857,6 @@ describe('saveCodec', () => {
         jobs: [],
         marketHeat: {},
         activeAuctionLots: [],
-        activeListings: [],
         serviceJobOffers: [],
         activeServiceJobs: [],
         serviceBayCount: 1,
@@ -866,22 +869,14 @@ describe('saveCodec', () => {
     expect(() => decodeSave(code)).toThrow()
   })
 
-  it('round-trips a v8 state with a real pending listing carrying a reputation delta', () => {
-    const withListing: GameState = GameStateSchema.parse({
+  it('round-trips a current state with a real for-sale car and a live pending offer (Sprint 31)', () => {
+    const withOffer: GameState = GameStateSchema.parse({
       ...fullState,
-      activeListings: [
-        {
-          id: 'listing-40-car-0002',
-          carInstanceId: 'car-0002',
-          modelId: 'honda-city-e-aa',
-          askingPriceYen: 500_000,
-          resolvesOnDay: 45,
-          reputationDeltaOnSale: 3,
-        },
-      ],
+      carsForSale: [{ carInstanceId: 'car-0002', sinceDay: 40 }],
+      pendingOffers: [{ carInstanceId: 'car-0002', buyerId: 'tuner', priceYen: 500_000 }],
     })
-    const decoded = decodeSave(encodeSave(withListing))
-    expect(decoded).toEqual(withListing)
+    const decoded = decodeSave(encodeSave(withOffer))
+    expect(decoded).toEqual(withOffer)
   })
 
   it('round-trips a v7 state with real pending orders and cart contents', () => {
@@ -995,7 +990,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(19)
+    expect(SAVE_VERSION).toBe(20)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1448,6 +1443,79 @@ describe('saveCodec', () => {
       const decoded = decodeSave(encodeSave(withPackedLot))
       expect(decoded).toEqual(withPackedLot)
       expect(decoded.activeAuctionLots[0]?.turnout).toBe('packed')
+    })
+  })
+
+  /**
+   * v19 -> v20 (Sprint 31, listings removed): a genuinely pending pre-v20
+   * listing represents real money the player was owed - `migrateV19ToV20`
+   * must resolve it instantly at its locked asking price rather than
+   * silently dropping it. See the SAVE_VERSION doc comment above.
+   */
+  describe('v19 -> v20 migration (Sprint 31, listings removed)', () => {
+    it('a real pre-v20 save with a pending listing credits its locked asking price to cash and drops the listing', () => {
+      const preV20 = {
+        version: 19,
+        gameState: {
+          ...fullState,
+          cashYen: 1_000_000,
+          activeListings: [
+            {
+              id: 'listing-40-car-0002',
+              carInstanceId: 'car-0002',
+              modelId: 'honda-city-e-aa',
+              askingPriceYen: 500_000,
+              resolvesOnDay: 45,
+              reputationDeltaOnSale: 0,
+            },
+          ],
+        },
+      }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV20))
+      const decoded = decodeSave(code)
+      expect(decoded.cashYen).toBe(1_500_000)
+      expect(decoded.carsForSale).toEqual([])
+      expect(decoded.pendingOffers).toEqual([])
+    })
+
+    it('a pre-v20 save with no pending listings decodes cleanly with empty for-sale/offer state', () => {
+      const preV20 = { version: 19, gameState: { ...fullState, activeListings: [] } }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV20))
+      const decoded = decodeSave(code)
+      expect(decoded.cashYen).toBe(fullState.cashYen)
+      expect(decoded.carsForSale).toEqual([])
+      expect(decoded.pendingOffers).toEqual([])
+    })
+
+    it('resolves more than one pending listing, crediting each locked price', () => {
+      const preV20 = {
+        version: 19,
+        gameState: {
+          ...fullState,
+          cashYen: 0,
+          activeListings: [
+            {
+              id: 'l1',
+              carInstanceId: 'car-a',
+              modelId: 'honda-city-e-aa',
+              askingPriceYen: 300_000,
+              resolvesOnDay: 10,
+              reputationDeltaOnSale: 0,
+            },
+            {
+              id: 'l2',
+              carInstanceId: 'car-b',
+              modelId: 'honda-city-e-aa',
+              askingPriceYen: 450_000,
+              resolvesOnDay: 12,
+              reputationDeltaOnSale: 2,
+            },
+          ],
+        },
+      }
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV20))
+      const decoded = decodeSave(code)
+      expect(decoded.cashYen).toBe(750_000)
     })
   })
 })

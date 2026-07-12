@@ -10,7 +10,7 @@ const report = computed(() => game.lastDayReport)
 const lines = computed(() =>
   (report.value?.entries ?? []).map((entry, i) => ({
     id: i,
-    text: describeLogEntry(entry, game.resolveModelName),
+    text: describeLogEntry(entry, game.resolveModelName, game.buyerName),
   })),
 )
 </script>

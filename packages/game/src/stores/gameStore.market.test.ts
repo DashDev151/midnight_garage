@@ -165,37 +165,59 @@ describe('market: bidding', () => {
 describe('market: selling', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('a walk-in sell removes the car and adds cash instantly', () => {
+  it('taking offers on a car eventually draws a live offer (Sprint 31)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
-    const cashBefore = game.cashYen
-    const est = game.walkInEstimate(game.gameState.ownedCars[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    const est = game.estimatedSaleValue(carId)
     expect(est.offerYen).toBeGreaterThan(0)
 
-    game.sellWalkIn(game.gameState.ownedCars[0]!.id)
+    expect(game.isForSale(carId)).toBe(false)
+    expect(game.setForSale(carId, true)).toBe(true)
+    expect(game.isForSale(carId)).toBe(true)
 
-    expect(game.ownedCarCount).toBe(0)
-    expect(game.cashYen).toBeGreaterThan(cashBefore)
+    let guard = 0
+    while (!game.offerFor(carId) && guard++ < 60) game.endDay()
+    const offer = game.offerFor(carId)
+    expect(offer).toBeDefined()
+    expect(offer!.priceYen).toBeGreaterThan(0)
+    expect(offer!.copy).toContain('Today only')
   })
 
-  it('listing publicly removes the car instantly and creates a listing that resolves later', () => {
+  it('accepting a pending offer removes the car and adds cash through the walk-in resolution path', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
-    const id = game.gameState.ownedCars[0]!.id
-    expect(game.listingEstimate(id)).toBeGreaterThan(0)
+    const carId = game.gameState.ownedCars[0]!.id
+    const cashBefore = game.cashYen
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+    }
 
-    game.listForSale(id)
+    expect(game.acceptOffer(carId)).toBe(true)
 
     expect(game.ownedCarCount).toBe(0)
-    expect(game.activeListings).toHaveLength(1)
-    // The listing carries the model so the garage panel can name it.
-    expect(game.activeListings[0]!.modelId).toBe(CARS[0]!.id)
-    const cashBefore = game.cashYen
-    // End days until the listing resolves (bounded) - the wait itself is
-    // still the intentional multi-day "slow, market price" mechanic.
-    for (let i = 0; i < 10 && game.activeListings.length > 0; i++) game.endDay()
-    expect(game.activeListings).toHaveLength(0)
-    expect(game.cashYen).toBeGreaterThan(cashBefore) // sale proceeds landed
+    expect(game.isForSale(carId)).toBe(false)
+    expect(game.cashYen).toBe(cashBefore + 500_000)
+  })
+
+  it('an offer not accepted by End Day is gone the next day (no-reflex rule: it never carries over)', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+    }
+    expect(game.offerFor(carId)?.priceYen).toBe(500_000)
+
+    game.endDay() // never accepted
+
+    // The stale offer never survives past End Day - a fresh day may or may
+    // not roll a new one, but never this exact injected one.
+    expect(game.offerFor(carId)?.priceYen).not.toBe(500_000)
   })
 })
 

@@ -122,7 +122,6 @@ describe('seed content validates against schemas', () => {
     // Sprint 21 (value model): new valuation/marketPressure/statFormulas
     // blocks, born in JSON from day one.
     expect(result.data.valuation.tasteSpread).toBe(0.12)
-    expect(result.data.valuation.listingPatiencePremium).toBe(1.05)
     // Sprint 30 decision 1: age/mileage curves inside clean value.
     expect(result.data.valuation.ageFactorCurve).toEqual([
       [0, 1.0],
@@ -152,6 +151,16 @@ describe('seed content validates against schemas', () => {
     expect(result.data.bands.bandFactors.scrap).toBe(0.15)
     expect(result.data.bands.migrationThresholds.poor).toBe(15)
     expect(result.data.bands.scrapValueFraction).toBe(0.05)
+    // Sprint 31 (the walk-in offer stream): the daily offer-draw tunables,
+    // born in JSON from day one.
+    expect(result.data.selling.offerChanceBase).toBe(0.65)
+    expect(result.data.selling.offerChanceByTier.shitbox).toBeGreaterThan(
+      result.data.selling.offerChanceByTier.legend,
+    )
+    expect(result.data.selling.offerChanceByHeatBand.hot).toBeGreaterThan(
+      result.data.selling.offerChanceByHeatBand.cold,
+    )
+    expect(result.data.selling.offerSpread).toEqual([0.82, 1.12])
   })
 })
 

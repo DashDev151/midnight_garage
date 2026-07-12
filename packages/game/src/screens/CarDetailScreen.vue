@@ -136,8 +136,18 @@ function toggleBay(): void {
   game.moveCar(d.car.id, d.inServiceBay ? 'parking' : 'service')
 }
 
-const walkIn = computed(() => game.walkInEstimate(carId.value))
-const listPrice = computed(() => game.listingEstimate(carId.value))
+// --- Sprint 31: the for-sale toggle + live offer card, replacing the old
+// walk-in/list-publicly buttons -----------------------------------------
+
+const estimate = computed(() => game.estimatedSaleValue(carId.value))
+const forSale = computed(() => game.isForSale(carId.value))
+const offer = computed(() => game.offerFor(carId.value))
+
+function toggleForSale(): void {
+  const d = detail.value
+  if (!d) return
+  game.setForSale(d.car.id, !forSale.value)
+}
 
 // --- Sprint 18 (round 2 - real playtest fix); retargeted to per-part rows
 // in Sprint 28 --------------------------------------------------------
@@ -592,22 +602,29 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section v-if="!detail.serviceJob" class="sell">
         <h3>Sell</h3>
-        <div class="sell-options">
-          <div class="sell-option">
-            <span class="sell-label">Walk-in (today)</span>
-            <span class="sell-est">
-              ~{{ formatYen(walkIn.offerYen)
-              }}<span v-if="walkIn.buyerId"> · {{ walkIn.buyerId }}</span>
-            </span>
-            <button data-test="sell-walkin" @click="game.sellWalkIn(detail.car.id)">
-              Sell now
+        <p class="sell-est">Ballpark value: ~{{ formatYen(estimate.offerYen) }}</p>
+
+        <div v-if="offer" class="offer-card" data-test="pending-offer">
+          <p class="offer-copy">{{ offer.copy }}</p>
+          <div class="offer-actions">
+            <button
+              class="primary"
+              data-test="accept-offer"
+              @click="game.acceptOffer(detail.car.id)"
+            >
+              Accept
             </button>
+            <span class="offer-expiry">Today only</span>
           </div>
-          <div class="sell-option">
-            <span class="sell-label">List publicly</span>
-            <span class="sell-est">asking {{ formatYen(listPrice) }}</span>
-            <button data-test="sell-list" @click="game.listForSale(detail.car.id)">List</button>
-          </div>
+        </div>
+
+        <div class="for-sale-toggle">
+          <button data-test="toggle-for-sale" @click="toggleForSale">
+            {{ forSale ? 'Stop taking offers' : 'Take offers' }}
+          </button>
+          <span v-if="forSale && !offer" class="for-sale-hint">
+            Taking offers - a buyer may show up tomorrow.
+          </span>
         </div>
       </section>
 
@@ -908,28 +925,49 @@ button.primary.danger {
   margin: var(--mg-space-4) 0;
 }
 
-.sell-options {
-  display: flex;
-  gap: var(--mg-space-3);
-  flex-wrap: wrap;
-}
-
-.sell-option {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-2) var(--mg-space-3);
-}
-
-.sell-label {
+.sell-est {
+  color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
 }
 
-.sell-est {
-  color: var(--mg-yen);
+.offer-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-neon-cyan);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  margin-top: var(--mg-space-2);
+}
+
+.offer-copy {
+  margin: 0;
+  font-size: var(--mg-fs-sm);
+}
+
+.offer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+.offer-expiry {
+  color: var(--mg-neon-pink);
+  font-size: var(--mg-fs-sm);
+}
+
+.for-sale-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  margin-top: var(--mg-space-2);
+}
+
+.for-sale-hint {
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 

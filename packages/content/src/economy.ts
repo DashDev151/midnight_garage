@@ -37,6 +37,17 @@ const ByAuctionTierRateSchema = z.object({
   'collector-network': z.number().nonnegative(),
 })
 
+/** One non-negative multiplier per `RarityTier` (Sprint 31) - the offer-chance
+ * desirability weight per car tier (`selling.offerChanceByTier`). */
+const ByRarityTierMultiplierSchema = z.object({
+  shitbox: z.number().nonnegative(),
+  common: z.number().nonnegative(),
+  uncommon: z.number().nonnegative(),
+  rare: z.number().nonnegative(),
+  gaisha: z.number().nonnegative(),
+  legend: z.number().nonnegative(),
+})
+
 /**
  * A piecewise-linear curve (Sprint 30 decision 1): ascending `[x, y]`
  * breakpoints a designer can draw directly in JSON. Reads as "y is this at
@@ -274,11 +285,6 @@ export const EconomyConfigSchema = z.object({
      * - how well a buyer archetype's stat weights fit this car, never whether
      * the car is worth anything (that's `marketValueYen` alone). */
     tasteSpread: z.number().min(0).max(1),
-    /** `listPubliclyAskingPrice`'s "slow, market price" premium over the
-     * plain average interested-buyer valuation - the reward for patience that
-     * used to come from double-applying market heat (removed, decision 6:
-     * heat now applies exactly once, inside `marketValueYen`). */
-    listingPatiencePremium: z.number().positive(),
     /**
      * Sprint 27 decision 4: a bot's walk-away target
      * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) is `instanceValue x
@@ -440,6 +446,51 @@ export const EconomyConfigSchema = z.object({
     })
     .refine((s) => s.marginMin <= s.marginMax, {
       message: 'serviceJobs.marginMin must be <= marginMax',
+    }),
+  /**
+   * Sprint 31 (the walk-in offer stream): a for-sale car's daily offer draw.
+   * Replaces `valuation.listingPatiencePremium` and the sim-constant
+   * `WALK_IN_OFFER_RANGE` (content law: designer-tunable numbers live in
+   * JSON, not in code) - `offerChanceFor`/`sellViaWalkIn` (selling.ts) are
+   * the two consumers.
+   */
+  selling: z
+    .object({
+      /** Base daily chance a for-sale car draws an offer at all, before the
+       * tier/heat-band multipliers below (decision 2: "propose base 0.65"). */
+      offerChanceBase: z.number().min(0).max(1),
+      /** Per-`RarityTier` desirability multiplier on `offerChanceBase` - how
+       * much natural foot traffic a car's own rarity draws, independent of
+       * whether any buyer archetype is even a plausible fit for it at all
+       * (that's the separate `saleCandidates` gate `sellViaWalkIn` already
+       * applies). A common shitbox gets looked at far more often than a
+       * gaisha or a legend. */
+      offerChanceByTier: ByRarityTierMultiplierSchema,
+      /** Below this market-heat percent, today counts as a "cold" heat band;
+       * at or above `heatBandHotAtOrAbovePercent`, "hot"; otherwise "normal" -
+       * three flat bands (mirrors the auction turnout-band style), not a
+       * continuous curve, so a maintainer can eyeball-tune each one directly. */
+      heatBandColdBelowPercent: z.number().positive(),
+      heatBandHotAtOrAbovePercent: z.number().positive(),
+      /** Multiplier on `offerChanceBase` per today's heat band. */
+      offerChanceByHeatBand: z.object({
+        cold: z.number().nonnegative(),
+        normal: z.number().nonnegative(),
+        hot: z.number().nonnegative(),
+      }),
+      /**
+       * `offerYen = valuateCarForBuyer * uniform(min, max)` (decision 2's
+       * locked `[0.82, 1.12]`) - the "fast, variable" walk-in-style roll,
+       * unchanged in kind since Sprint 11's `WALK_IN_OFFER_RANGE`, just
+       * re-homed to content and widened slightly so an offer can occasionally
+       * clear true value by more than the old range allowed.
+       */
+      offerSpread: z
+        .tuple([z.number().positive(), z.number().positive()])
+        .refine(([min, max]) => min <= max, { message: 'offerSpread min must be <= max' }),
+    })
+    .refine((s) => s.heatBandColdBelowPercent <= s.heatBandHotAtOrAbovePercent, {
+      message: 'selling.heatBandColdBelowPercent must be <= heatBandHotAtOrAbovePercent',
     }),
 })
 

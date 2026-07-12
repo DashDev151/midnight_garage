@@ -1,16 +1,18 @@
 import type { DayLogEntry } from '@midnight-garage/content'
 import { formatYen } from './formatYen'
+import { offerCopy } from './offerCopy'
 
 /**
  * Renders one DayLogEntry as a human-readable line for the event log.
- * `resolveModelName` (optional) turns a modelId into its Naming-Layer
- * display name; when absent, the raw id is shown. Deliberately exhaustive
- * over the discriminated union so a new DayLogEntry type is a compile
- * error here, not a silently-blank line.
+ * `resolveModelName`/`resolveBuyerName` (both optional) turn a modelId/
+ * buyerId into its display name; when absent, the raw id is shown.
+ * Deliberately exhaustive over the discriminated union so a new DayLogEntry
+ * type is a compile error here, not a silently-blank line.
  */
 export function describeLogEntry(
   entry: DayLogEntry,
   resolveModelName: (modelId: string) => string = (id) => id,
+  resolveBuyerName: (buyerId: string) => string = (id) => id,
 ): string {
   switch (entry.type) {
     case 'rent-paid':
@@ -43,8 +45,12 @@ export function describeLogEntry(
       return `Lost lot ${entry.lotId} (went for ${formatYen(entry.winningPriceYen)})`
     case 'lot-bought-out':
       return `Bought out lot ${entry.lotId} for ${formatYen(entry.priceYen)}`
-    case 'listing-created':
-      return `Listed ${entry.carInstanceId} at ${formatYen(entry.askingPriceYen)} (resolves day ${entry.resolvesOnDay})`
+    case 'offer-received':
+      return offerCopy(
+        resolveBuyerName(entry.buyerId),
+        resolveModelName(entry.modelId),
+        entry.priceYen,
+      )
     case 'car-sold': {
       const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
       switch (entry.saleQuality) {

@@ -101,6 +101,22 @@ const ACQUISITIONS_COLUMNS = [
   { name: 'channel', type: 'string' },
 ] as const
 
+/** One offer a for-sale car drew (Sprint 31 decision 3) - `carEpisodeId` is a
+ * synthetic per-career counter (see `runCareer.ts`'s `OfferSample` doc
+ * comment), not the real game car id: the report section groups by it to
+ * reconstruct one car's day-by-day offer history (median days-to-sell,
+ * "beat the first offer by 10% within 5 days"). */
+const OFFERS_COLUMNS = [
+  { name: 'strategy', type: 'string' },
+  { name: 'seed', type: 'int64' },
+  { name: 'carEpisodeId', type: 'int64' },
+  { name: 'day', type: 'int64' },
+  { name: 'tier', type: 'string' },
+  { name: 'offerYen', type: 'int64' },
+  { name: 'valueYen', type: 'int64' },
+  { name: 'accepted', type: 'bool' },
+] as const
+
 function writeCsv(
   filename: string,
   columns: ReadonlyArray<{ name: string; type: string }>,
@@ -129,10 +145,11 @@ function main(): void {
   const rows: string[] = []
   const auctionWinRows: string[] = []
   const acquisitionRows: string[] = []
+  const offerRows: string[] = []
 
   for (const { name, strategy } of STRATEGIES) {
     for (let seed = 1; seed <= CAREERS_PER_STRATEGY; seed++) {
-      const { snapshots, auctionWins, acquisitions } = runCareer(
+      const { snapshots, auctionWins, acquisitions, offers } = runCareer(
         strategy,
         seed,
         DAYS_PER_CAREER,
@@ -172,6 +189,20 @@ function main(): void {
           [name, seed, acquisition.day, acquisition.tier, acquisition.channel].join(','),
         )
       }
+      for (const offer of offers) {
+        offerRows.push(
+          [
+            name,
+            seed,
+            offer.carEpisodeId,
+            offer.day,
+            offer.tier,
+            offer.offerYen,
+            offer.valueYen,
+            offer.accepted,
+          ].join(','),
+        )
+      }
     }
   }
 
@@ -205,12 +236,19 @@ function main(): void {
     columns: ACQUISITIONS_COLUMNS,
   })
 
+  writeCsv('offers.csv', OFFERS_COLUMNS, offerRows)
+  writeManifest('offers.manifest.json', {
+    simVersion: SIM_VERSION,
+    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
+    columns: OFFERS_COLUMNS,
+  })
+
   const strategyList = STRATEGIES.map((s) => s.name).join(', ')
   console.log(
     `Wrote ${rows.length} rows (${STRATEGIES.length} strategies [${strategyList}] x ${CAREERS_PER_STRATEGY} careers x ${DAYS_PER_CAREER} days) to ${OUTPUT_DIR}`,
   )
   console.log(
-    `Wrote ${auctionWinRows.length} auction-win rows and ${acquisitionRows.length} acquisition rows to ${OUTPUT_DIR}`,
+    `Wrote ${auctionWinRows.length} auction-win rows, ${acquisitionRows.length} acquisition rows, and ${offerRows.length} offer rows to ${OUTPUT_DIR}`,
   )
 }
 

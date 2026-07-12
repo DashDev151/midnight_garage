@@ -5,7 +5,7 @@ import { PartInstanceSchema, PendingPartOrderSchema } from './part'
 import { StaffMemberSchema } from './staff'
 import { JobKindSchema, JobSchema } from './job'
 import { AuctionLotSchema, AuctionTierSchema } from './auction'
-import { PublicListingSchema, SaleChannelSchema } from './sale'
+import { ForSaleEntrySchema, PendingSaleOfferSchema, SaleChannelSchema } from './sale'
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema } from './facilities'
 import { StagedActionSchema } from './stagedWork'
@@ -14,7 +14,7 @@ import { StagedActionSchema } from './stagedWork'
  * Sprint 21: the two exponentially-decayed counters `marketHeat.ts`'s
  * weekly supply/demand update reads - `lotSupply` (fresh auction lots of
  * this model, bumped on catalog refresh) and `playerSales` (the player's own
- * resolved sales of this model, bumped on walk-in/listing resolution). Plain
+ * resolved sales of this model, bumped on offer acceptance). Plain
  * `Record<modelId, number>` maps, default `{}` for both - a model with no
  * entry simply hasn't had a lot or a sale counted yet.
  */
@@ -47,7 +47,19 @@ export const GameStateSchema = z.object({
    * both counters empty - correct, since the concept didn't exist yet. */
   marketLedger: MarketLedgerSchema.default({ lotSupply: {}, playerSales: {} }),
   activeAuctionLots: z.array(AuctionLotSchema).default([]),
-  activeListings: z.array(PublicListingSchema).default([]),
+  /**
+   * Cars the player has toggled "taking offers" on (Sprint 31) - replaces
+   * `activeListings`. Purely additive for the save law's sake, but the
+   * migration is not: see `saveCodec.ts`'s v19 -> v20 entry for how an old
+   * save's pending listings are resolved rather than silently dropped.
+   */
+  carsForSale: z.array(ForSaleEntrySchema).default([]),
+  /**
+   * Today's drawn offers (Sprint 31) - at most one per for-sale car,
+   * completely replaced (not accumulated) by advanceDay's daily offer-draw
+   * step every day, so an unaccepted offer never survives past End Day.
+   */
+  pendingOffers: z.array(PendingSaleOfferSchema).default([]),
   /** Service jobs offered for the player to accept (GDD Act 1). */
   serviceJobOffers: z.array(ServiceJobSchema).default([]),
   /** Service jobs the player has accepted and is working. */
@@ -93,8 +105,9 @@ export const GameStateSchema = z.object({
   ownedEquipmentIds: z.array(z.string().min(1)).default([]),
   /**
    * Standard-delivery part purchases in transit (Sprint 14) - resolved by
-   * advanceDay's day-boundary tick once `arrivesOnDay` is reached, exactly
-   * like `activeListings`. Purely additive.
+   * advanceDay's day-boundary tick once `arrivesOnDay` is reached, the same
+   * "due today resolves" shape `resolveServiceJobArrivals` uses. Purely
+   * additive.
    */
   pendingPartOrders: z.array(PendingPartOrderSchema).default([]),
   /**
@@ -110,8 +123,8 @@ export const GameStateSchema = z.object({
    * keyed by `carInstanceId`. Freely add/remove at zero cost - nothing here
    * touches cash, labor, or a real `Job` until `confirmStagedWork` resolves
    * it, mirroring the parts-market cart's own stage-then-confirm shape
-   * (Sprint 14). Every car-exit path (walk-in sale, listing, service-job
-   * resolution) drops its entry so staged work never outlives the car.
+   * (Sprint 14). Every car-exit path (a sold car, service-job resolution)
+   * drops its entry so staged work never outlives the car.
    */
   stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({}),
 })
@@ -225,12 +238,19 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     jobId: z.string().min(1),
     reputationLost: z.number().int().nonnegative(),
   }),
+  /**
+   * Sprint 31: a for-sale car drew a live offer, valid today only - the
+   * day-report/offers-panel line ("A tuner is offering ... Today only").
+   * `modelId` is a snapshot (mirrors the old `PublicListing.modelId`'s own
+   * reasoning) purely so the UI can name the car without a second lookup;
+   * unlike the old listing, the car itself never leaves `ownedCars`.
+   */
   z.object({
-    type: z.literal('listing-created'),
-    listingId: z.string().min(1),
+    type: z.literal('offer-received'),
     carInstanceId: z.string().min(1),
-    askingPriceYen: z.number().int().positive(),
-    resolvesOnDay: z.number().int().positive(),
+    modelId: z.string().min(1),
+    buyerId: z.string().min(1),
+    priceYen: z.number().int().positive(),
   }),
   z.object({
     type: z.literal('car-sold'),

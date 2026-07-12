@@ -18,6 +18,7 @@ import {
 } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
+import { decideSale } from './sellingHelpers'
 import { isServiceWorkDone } from '../serviceJobs'
 import {
   canEquipForOffer,
@@ -40,6 +41,15 @@ const MAX_CONCURRENT_CARS = 1
  * walk-away target is the value anchor itself, no premium, no discount. */
 const FAIR_BID_MULTIPLIER = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.15
+/**
+ * Sprint 31 decision 4: this policy's own sell accept-threshold - the
+ * measurement probe the orchestrator's wait-vs-gain balance-report section
+ * (sprint31.md decision 3) reads against. Deliberately its own constants,
+ * not a re-use of `cautiousRestorerStrategy`'s (sellingHelpers.ts's own
+ * doc comment): a future retune of one must never silently drag the other.
+ */
+const ACCEPT_FRACTION = 0.9
+const MAX_HOLDING_DAYS = 15
 
 const TIER_ORDER: readonly AuctionTier[] = [
   'collector-network',
@@ -180,16 +190,20 @@ export function competentPolicyStrategy(
     }
   }
 
-  // 5. List fully-restored, job-free cars publicly - the clean/concours-
-  // eligible "slow, market price" channel (decision 1's reputation faucet
-  // actually being reachable is this sprint's whole point).
+  // 5. Take offers on fully-restored, job-free cars - the clean/concours-
+  // eligible sale (decision 1's reputation faucet actually being reachable
+  // is this sprint's whole point). Sprint 31: the accept-threshold below is
+  // this policy's own measurement probe (see ACCEPT_FRACTION's doc comment).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
     const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every((id) =>
       isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (isRestored) {
-      actions.listForSale.push({ carInstanceId: car.id })
+      decideSale(state, car, context, actions, {
+        acceptFraction: ACCEPT_FRACTION,
+        maxHoldingDays: MAX_HOLDING_DAYS,
+      })
     }
   }
 

@@ -141,7 +141,15 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     const carId = game.gameState.ownedCars[0]!.id
     game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
 
-    game.sellWalkIn(carId)
+    // Sprint 31: selling now goes through a live pending offer rather than
+    // an instant roll - inject one directly (same pattern the "open job"
+    // test above uses) rather than depending on the probabilistic daily draw.
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 300_000 }],
+    }
+    game.acceptOffer(carId)
 
     expect(game.gameState.stagedCarWork[carId]).toBeUndefined()
   })

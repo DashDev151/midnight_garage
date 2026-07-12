@@ -8,16 +8,15 @@ import type {
   EconomyConfig,
   GameState,
   Part,
-  PublicListing,
+  PendingSaleOffer,
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
 import { applyReputationDelta, currentGameYear } from './calendar'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
-import { PUBLIC_LISTING_WAIT_DAYS, WALK_IN_OFFER_RANGE } from './constants'
 import type { SimContext } from './context'
 import { releaseCarFromShop } from './facilities'
 import { bumpPlayerSales } from './marketHeat'
-import { createRng, hashStringToSeed, type Rng } from './rng'
+import type { Rng } from './rng'
 import { clearStagedWork } from './stagedWork'
 import { valuateCarForBuyer } from './valuation'
 
@@ -40,11 +39,19 @@ function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
 
 /**
  * GDD 6.3: "fast, variable" - a buyer archetype rolls up the same day,
- * offering somewhat under their true valuation for the convenience of an
- * instant sale. Weighted by fit, not uniformly random: a buyer who
- * actually wants this car is more likely to be the one who walks in -
- * "someone happens by," not "a stranger is offered a car they don't
- * care about."
+ * offering somewhat under (or, occasionally, a little over) their true
+ * valuation for the convenience of an instant sale. Weighted by fit, not
+ * uniformly random: a buyer who actually wants this car is more likely to
+ * be the one who walks in - "someone happens by," not "a stranger is
+ * offered a car they don't care about."
+ *
+ * Sprint 31: this is now the core roll BOTH the daily offer-draw step
+ * (`drawDailyOffers`, called from advanceDay once per for-sale car per day)
+ * and the harness/tests use directly - the spread itself moved from the old
+ * sim-constant `WALK_IN_OFFER_RANGE` to `economy.selling.offerSpread` (the
+ * content law: designer-tunable numbers live in JSON), but the shape of the
+ * roll (weighted buyer pick, then a uniform spread around that buyer's own
+ * valuation) is unchanged since Sprint 11.
  */
 export function sellViaWalkIn(
   car: CarInstance,
@@ -92,61 +99,14 @@ export function sellViaWalkIn(
     throw new RangeError(`sellViaWalkIn: no buyer archetype is interested in tier "${model.tier}"`)
   }
 
-  const [min, max] = WALK_IN_OFFER_RANGE
+  const [min, max] = economy.selling.offerSpread
   const priceYen = Math.round(picked.value * (min + rng.next() * (max - min)))
   return { buyerId: picked.buyer.id, priceYen }
 }
 
 /**
- * GDD 6.3: "slow, market price" - the average valuation across every
- * genuinely-interested buyer archetype (Sprint 11: gated, same as walk-in),
- * locked in at listing time (the asking price doesn't drift with market
- * heat while the listing waits).
- *
- * Sprint 21 decision 6: `marketHeatPercent` is still forwarded into each
- * `valuateCarForBuyer` call (heat still moves this price) but the function
- * itself no longer multiplies by heat a second time. In its place, listing
- * gains a flat patience premium (`listingPatiencePremium`) so "slow, market
- * price" stays the better-but-slower channel against walk-in's `[0.85, 1.1]`
- * roll.
- */
-export function listPubliclyAskingPrice(
-  car: CarInstance,
-  model: CarModel,
-  buyers: readonly Buyer[],
-  partsById: Readonly<Record<string, Part>>,
-  partsTaxonomy: readonly CarPartTaxonomyEntry[],
-  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
-  marketHeatPercent: number,
-  currentYear: number,
-  economy: EconomyConfig,
-): number {
-  const candidates = saleCandidates(model, buyers)
-  if (candidates.length === 0) return 0
-  const total = candidates.reduce((sum, buyer) => {
-    return (
-      sum +
-      valuateCarForBuyer(
-        buyer,
-        model,
-        car,
-        partsById,
-        partsTaxonomy,
-        partsTaxonomyById,
-        marketHeatPercent,
-        currentYear,
-        economy,
-      )
-    )
-  }, 0)
-  const average = total / candidates.length
-  return Math.round(average * economy.valuation.listingPatiencePremium)
-}
-
-/**
- * The best-fit buyer for a resolved public listing - flavor/log purposes
- * only. The actual sale price is the locked askingPriceYen from listing
- * time, not recomputed against this buyer.
+ * The best-fit buyer for a car - flavor/estimate purposes (the for-sale
+ * toggle's ballpark preview, a bot's accept-threshold reference value).
  */
 export function bestFitBuyer(
   car: CarInstance,
@@ -179,16 +139,161 @@ export function bestFitBuyer(
   return best?.buyer
 }
 
+/**
+ * Cold/normal/hot bucketing of today's market heat (Sprint 31 decision 2) -
+ * feeds `offerChanceFor`'s heat multiplier below. Three flat bands, not a
+ * continuous curve, mirroring the auction turnout-band style: simple enough
+ * for a maintainer to eyeball-tune directly in economy.json.
+ */
+function heatBandFor(heatPercent: number, economy: EconomyConfig): 'cold' | 'normal' | 'hot' {
+  const { heatBandColdBelowPercent, heatBandHotAtOrAbovePercent } = economy.selling
+  if (heatPercent < heatBandColdBelowPercent) return 'cold'
+  if (heatPercent >= heatBandHotAtOrAbovePercent) return 'hot'
+  return 'normal'
+}
+
+/**
+ * Today's chance a for-sale car draws an offer at all (Sprint 31 decision
+ * 2): base x this model's rarity-tier desirability x today's heat-band
+ * multiplier, clamped to [0, 1]. Independent of `saleCandidates` (whether
+ * ANY buyer archetype is even a plausible fit for this tier) - that gate
+ * still runs inside `sellViaWalkIn` itself, so a tier nobody wants never
+ * produces a live offer even when this chance rolls true.
+ */
+export function offerChanceFor(
+  model: CarModel,
+  heatPercent: number,
+  economy: EconomyConfig,
+): number {
+  const { offerChanceBase, offerChanceByTier, offerChanceByHeatBand } = economy.selling
+  const band = heatBandFor(heatPercent, economy)
+  const chance = offerChanceBase * offerChanceByTier[model.tier] * offerChanceByHeatBand[band]
+  return Math.max(0, Math.min(1, chance))
+}
+
+export interface SetForSaleResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Toggle a car's "taking offers" flag (Sprint 31 decision 2) - free,
+ * instant, reversible any time before it sells. This REPLACES both the old
+ * instant walk-in sell and the list-publicly buttons: marking a car for sale
+ * no longer sells it or resolves anything by itself, it just makes the car
+ * eligible for the daily offer draw (`drawDailyOffers`) below. Turning it
+ * off drops the toggle and any live offer on the car - there's nothing else
+ * to reconcile, since an offer only ever lives one day anyway. A no-op for a
+ * car not owned, or a toggle to the state it's already in.
+ */
+export function resolveSetForSale(
+  state: GameState,
+  carInstanceId: string,
+  forSale: boolean,
+): SetForSaleResult {
+  const owned = state.ownedCars.some((c) => c.id === carInstanceId)
+  if (!owned) return { state, log: [] }
+  const already = state.carsForSale.some((f) => f.carInstanceId === carInstanceId)
+  if (forSale === already) return { state, log: [] }
+
+  if (forSale) {
+    return {
+      state: {
+        ...state,
+        carsForSale: [...state.carsForSale, { carInstanceId, sinceDay: state.day }],
+      },
+      log: [],
+    }
+  }
+  return {
+    state: {
+      ...state,
+      carsForSale: state.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+      pendingOffers: state.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+    },
+    log: [],
+  }
+}
+
+export interface DailyOfferDrawResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * The daily offer-draw step (Sprint 31 decision 2), called once per
+ * advanceDay tick for the day about to begin: every for-sale, still-owned
+ * car independently rolls `offerChanceFor`; a hit rolls a fresh
+ * `sellViaWalkIn`-style offer and it becomes today's live offer on that car.
+ * `pendingOffers` is REPLACED wholesale, not accumulated (the no-reflex
+ * rule: an offer is valid the day it's drawn for only - see advanceDay.ts's
+ * own call-site comment for the full day-cycle reasoning). `carsForSale` is
+ * pruned to still-owned cars in the same pass, so a sold (or otherwise
+ * departed) car's toggle never lingers.
+ */
+export function drawDailyOffers(
+  state: GameState,
+  context: SimContext,
+  rng: Rng,
+): DailyOfferDrawResult {
+  const ownedIds = new Set(state.ownedCars.map((c) => c.id))
+  const carsForSale = state.carsForSale.filter((f) => ownedIds.has(f.carInstanceId))
+  const pendingOffers: PendingSaleOffer[] = []
+  const log: DayLogEntry[] = []
+  const currentYear = currentGameYear(state.reputationTier)
+
+  for (const entry of carsForSale) {
+    const car = state.ownedCars.find((c) => c.id === entry.carInstanceId)
+    const model = car ? context.modelsById[car.modelId] : undefined
+    if (!car || !model) continue
+    if (saleCandidates(model, context.buyers).length === 0) continue
+
+    const heatPercent = state.marketHeat[car.modelId] ?? 100
+    const chance = offerChanceFor(model, heatPercent, context.economy)
+    if (rng.next() >= chance) continue
+
+    const offer = sellViaWalkIn(
+      car,
+      model,
+      context.buyers,
+      context.partsById,
+      context.partsTaxonomy,
+      context.partsTaxonomyById,
+      heatPercent,
+      currentYear,
+      context.economy,
+      rng,
+    )
+    pendingOffers.push({ carInstanceId: car.id, buyerId: offer.buyerId, priceYen: offer.priceYen })
+    log.push({
+      type: 'offer-received',
+      carInstanceId: car.id,
+      modelId: car.modelId,
+      buyerId: offer.buyerId,
+      priceYen: offer.priceYen,
+    })
+  }
+
+  return { state: { ...state, carsForSale, pendingOffers }, log }
+}
+
 export interface SaleResult {
   state: GameState
   log: DayLogEntry[]
 }
 
 /**
- * The instant walk-in-sell resolver (Sprint 11): resolves the moment it's
- * clicked. Seeded on the car id + day (not a shared day-tick rng) so a
- * single click is fully reproducible, and re-attempting a pulled-back car on
- * a later day rolls a fresh offer rather than repeating the same one forever.
+ * Resolve today's live offer on `carInstanceId`, if one exists - the sale
+ * mechanics (reputation, market-heat ledger, staged-work cleanup, event log)
+ * are the exact plumbing this resolver has carried since Sprint 11; only the
+ * PRICE source changed (Sprint 31 decision 2): instead of rolling a fresh
+ * walk-in offer the instant it's clicked, it consumes today's pre-rolled
+ * `state.pendingOffers` entry (drawn by `drawDailyOffers` at the end of the
+ * PREVIOUS day). A no-op (no offer live today, or the car isn't owned)
+ * leaves state untouched, same contract as every other instant resolver in
+ * this file. Seeded/random only via the offer already stored in state -
+ * this function itself makes no further rolls, so a repeat call is inert
+ * once the offer's gone.
  */
 export function resolveSellViaWalkIn(
   state: GameState,
@@ -197,23 +302,9 @@ export function resolveSellViaWalkIn(
 ): SaleResult {
   const car = state.ownedCars.find((c) => c.id === carInstanceId)
   if (!car) return { state, log: [] }
-  const model = context.modelsById[car.modelId]
-  if (!model || context.buyers.length === 0) return { state, log: [] }
+  const offer = state.pendingOffers.find((o) => o.carInstanceId === carInstanceId)
+  if (!offer) return { state, log: [] }
 
-  const heatPercent = state.marketHeat[car.modelId] ?? 100
-  const rng = createRng(hashStringToSeed(`${carInstanceId}:walkin:${state.day}`))
-  const offer = sellViaWalkIn(
-    car,
-    model,
-    context.buyers,
-    context.partsById,
-    context.partsTaxonomy,
-    context.partsTaxonomyById,
-    heatPercent,
-    currentGameYear(state.reputationTier),
-    context.economy,
-    rng,
-  )
   const nominalDelta = saleReputationDeltaFor(car, context.partsTaxonomyById, context.economy)
   const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   const released = applyReputationDelta(clearedState, nominalDelta)
@@ -230,6 +321,8 @@ export function resolveSellViaWalkIn(
         ...released,
         cashYen: released.cashYen + offer.priceYen,
         ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
+        carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+        pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
       },
       car.modelId,
     ),
@@ -245,66 +338,6 @@ export function resolveSellViaWalkIn(
               saleQuality: saleQualityFor(nominalDelta, context.economy) ?? undefined,
             }
           : {}),
-      },
-    ],
-  }
-}
-
-/**
- * The instant list-creation resolver (Sprint 11): the listing itself (and
- * its locked asking price) appears the moment it's clicked; the sale still
- * resolves after `waitDays` - that multi-day wait is the intentional "slow,
- * market price" mechanic, not a queue artifact.
- */
-export function resolveListForSale(
-  state: GameState,
-  carInstanceId: string,
-  context: SimContext,
-  waitDaysOverride?: number,
-): SaleResult {
-  const car = state.ownedCars.find((c) => c.id === carInstanceId)
-  if (!car) return { state, log: [] }
-  const model = context.modelsById[car.modelId]
-  if (!model || context.buyers.length === 0) return { state, log: [] }
-
-  const marketHeatPercent = state.marketHeat[car.modelId] ?? 100
-  const askingPriceYen = listPubliclyAskingPrice(
-    car,
-    model,
-    context.buyers,
-    context.partsById,
-    context.partsTaxonomy,
-    context.partsTaxonomyById,
-    marketHeatPercent,
-    currentGameYear(state.reputationTier),
-    context.economy,
-  )
-  const waitDays = waitDaysOverride ?? PUBLIC_LISTING_WAIT_DAYS
-  const listing: PublicListing = {
-    id: `listing-${state.day}-${carInstanceId}`,
-    carInstanceId,
-    modelId: car.modelId,
-    askingPriceYen,
-    resolvesOnDay: state.day + waitDays,
-    // Captured now, not at resolution: the real CarInstance leaves state the
-    // moment this listing is created, so its condition can't be re-read days
-    // later when the listing actually resolves.
-    reputationDeltaOnSale: saleReputationDeltaFor(car, context.partsTaxonomyById, context.economy),
-  }
-  const released = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
-  return {
-    state: {
-      ...released,
-      ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
-      activeListings: [...released.activeListings, listing],
-    },
-    log: [
-      {
-        type: 'listing-created',
-        listingId: listing.id,
-        carInstanceId,
-        askingPriceYen,
-        resolvesOnDay: listing.resolvesOnDay,
       },
     ],
   }

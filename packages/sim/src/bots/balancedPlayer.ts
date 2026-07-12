@@ -8,13 +8,11 @@ import {
   walkAwayTargetYen,
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
-import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
-import { bestFitBuyer } from '../selling'
-import { valuateCarForBuyer } from '../valuation'
+import { decideSale } from './sellingHelpers'
 
 const MAX_CONCURRENT_CARS = 2
 /** Mid-range only - not the cheapest shitboxes, not the priciest rares. */
@@ -33,12 +31,12 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
 ]
 /**
  * "First okay offer," not "first offer, period." A mid player still has a
- * floor: below this fraction of book value (estimated from the best-fit
- * buyer's valuation, the closest proxy available without previewing the
- * actual walk-in roll), a walk-in offer reads as a lowball and the car
- * goes to a public listing instead of being dumped cheap.
+ * floor: below this fraction of the car's best-fit valuation, a live offer
+ * reads as a lowball and gets left on the table (Sprint 31 decision 4) -
+ * unless holding-cost pressure (`MAX_HOLDING_DAYS`) forces a sale anyway.
  */
-const ACCEPTABLE_WALKIN_FRACTION = 0.85
+const ACCEPT_FRACTION = 0.85
+const MAX_HOLDING_DAYS = 12
 
 /**
  * A completely average decision-maker (user-requested, sitting between
@@ -110,46 +108,14 @@ export function balancedPlayerStrategy(
   }
 
   // 3. Sell any car whose critical repairs are done and has no open job:
-  // accept the walk-in channel only if the estimated offer clears the
-  // "okay" floor, otherwise send it to a public listing instead of
-  // dumping it cheap.
+  // accept a live offer once it clears the "okay" floor (or holding-cost
+  // pressure forces the issue), otherwise leave it on the table and wait.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
-    const model = context.modelsById[car.modelId]
-    const heatPercent = state.marketHeat[car.modelId] ?? 100
-    const currentYear = currentGameYear(state.reputationTier)
-    const buyer = model
-      ? bestFitBuyer(
-          car,
-          model,
-          context.buyers,
-          context.partsById,
-          context.partsTaxonomy,
-          context.partsTaxonomyById,
-          heatPercent,
-          currentYear,
-          context.economy,
-        )
-      : undefined
-    const estimatedOfferYen =
-      model && buyer
-        ? valuateCarForBuyer(
-            buyer,
-            model,
-            car,
-            context.partsById,
-            context.partsTaxonomy,
-            context.partsTaxonomyById,
-            heatPercent,
-            currentYear,
-            context.economy,
-          )
-        : 0
-    if (model && estimatedOfferYen >= model.bookValueYen * ACCEPTABLE_WALKIN_FRACTION) {
-      actions.sellViaWalkIn.push({ carInstanceId: car.id })
-    } else {
-      actions.listForSale.push({ carInstanceId: car.id })
-    }
+    decideSale(state, car, context, actions, {
+      acceptFraction: ACCEPT_FRACTION,
+      maxHoldingDays: MAX_HOLDING_DAYS,
+    })
   }
 
   // 4. Join or continue a bidding war on a mid-priced lot if there's room

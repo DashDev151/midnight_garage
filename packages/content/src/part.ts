@@ -41,10 +41,9 @@ export type PartInstance = z.infer<typeof PartInstanceSchema>
 /**
  * A standard-delivery part purchase in transit (Sprint 14): cash is deducted
  * and the price locked in the moment it's ordered, but the part doesn't land
- * in `partInventory` as a real `PartInstance` until `arrivesOnDay`. Mirrors
- * `PublicListingSchema`'s `resolvesOnDay` shape - the same "commit now,
- * resolves automatically on a future day" pattern, just for a purchase
- * instead of a sale.
+ * in `partInventory` as a real `PartInstance` until `arrivesOnDay` - the same
+ * "commit now, resolves automatically on a future day" shape every other
+ * day-boundary resolution in this codebase uses.
  */
 export const PendingPartOrderSchema = z.object({
   id: z.string().min(1),

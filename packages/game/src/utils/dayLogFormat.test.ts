@@ -21,11 +21,11 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'auction-bid-lost', lotId: 'lot-1', winningPriceYen: 130_000 },
   { type: 'lot-bought-out', lotId: 'lot-1', priceYen: 240_000 },
   {
-    type: 'listing-created',
-    listingId: 'listing-1',
+    type: 'offer-received',
     carInstanceId: 'car-1',
-    askingPriceYen: 200_000,
-    resolvesOnDay: 12,
+    modelId: 'honda-city-e-aa',
+    buyerId: 'tuner',
+    priceYen: 200_000,
   },
   { type: 'car-sold', carInstanceId: 'car-1', channel: 'walk-in-offer', priceYen: 180_000 },
   { type: 'part-bought', partId: 'khs-street-ecu', partInstanceId: 'part-7-0', priceYen: 60_000 },
@@ -68,5 +68,20 @@ describe('describeLogEntry', () => {
     })
     expect(line).toBe("Thanks - I'll drop it off first thing in the morning.")
     expect(line).not.toContain('car-1')
+  })
+
+  it('Sprint 31 decision 5: an offer reads as a person naming the car, resolving both buyer and model', () => {
+    const line = describeLogEntry(
+      {
+        type: 'offer-received',
+        carInstanceId: 'car-1',
+        modelId: 'm1',
+        buyerId: 'tuner',
+        priceYen: 1_240_000,
+      },
+      (id) => (id === 'm1' ? 'FC' : id),
+      (id) => (id === 'tuner' ? 'Tuner' : id),
+    )
+    expect(line).toBe('A tuner is offering ¥1,240,000 for the FC. Today only.')
   })
 })

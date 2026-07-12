@@ -42,11 +42,15 @@ const BidOnLotSchema = z.object({
   maxBidYen: z.number().int().positive(),
 })
 
-const SellViaWalkInActionSchema = z.object({ carInstanceId: z.string().min(1) })
+/** Sprint 31: accept today's live pending offer on this car, resolving
+ * through `resolveSellViaWalkIn`'s reputation/heat/event-log plumbing. */
+const AcceptOfferActionSchema = z.object({ carInstanceId: z.string().min(1) })
 
-const ListForSaleActionSchema = z.object({
+/** Sprint 31: toggle "taking offers" on a car - replaces both the old
+ * instant walk-in sell and list-publicly actions. */
+const SetForSaleActionSchema = z.object({
   carInstanceId: z.string().min(1),
-  waitDays: z.number().int().positive().optional(),
+  forSale: z.boolean(),
 })
 
 const BuyPartActionSchema = z.object({
@@ -79,8 +83,8 @@ export const DayActionsSchema = z.object({
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
   bidsOnLots: z.array(BidOnLotSchema).default([]),
   buyoutLots: z.array(BuyoutLotActionSchema).default([]),
-  sellViaWalkIn: z.array(SellViaWalkInActionSchema).default([]),
-  listForSale: z.array(ListForSaleActionSchema).default([]),
+  acceptOffers: z.array(AcceptOfferActionSchema).default([]),
+  setForSale: z.array(SetForSaleActionSchema).default([]),
   buyParts: z.array(BuyPartActionSchema).default([]),
   scrapParts: z.array(ScrapPartActionSchema).default([]),
   acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
@@ -100,8 +104,8 @@ export const DayActionsSchema = z.object({
 export type NewJobSpec = z.infer<typeof NewJobSpecSchema>
 export type LaborAssignment = z.infer<typeof LaborAssignmentSchema>
 export type BidOnLotAction = z.infer<typeof BidOnLotSchema>
-export type SellViaWalkInAction = z.infer<typeof SellViaWalkInActionSchema>
-export type ListForSaleAction = z.infer<typeof ListForSaleActionSchema>
+export type AcceptOfferAction = z.infer<typeof AcceptOfferActionSchema>
+export type SetForSaleAction = z.infer<typeof SetForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
 export type ScrapPartAction = z.infer<typeof ScrapPartActionSchema>
 export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>

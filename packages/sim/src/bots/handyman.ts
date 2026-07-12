@@ -8,13 +8,11 @@ import {
   walkAwayTargetYen,
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
-import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
 import { availableLaborSlots } from '../laborSlots'
-import { bestFitBuyer } from '../selling'
-import { valuateCarForBuyer } from '../valuation'
 import type { Rng } from '../rng'
+import { decideSale } from './sellingHelpers'
 
 const MAX_CONCURRENT_CARS = 2
 const MIN_TARGET_BOOK_VALUE_YEN = 150_000
@@ -29,7 +27,10 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'body',
   'interior',
 ]
-const ACCEPTABLE_WALKIN_FRACTION = 0.85
+/** Sprint 31 decision 4: accept an offer once it clears this fraction of the
+ * car's best-fit valuation, or once it's been for-sale this many days. */
+const ACCEPT_FRACTION = 0.85
+const MAX_HOLDING_DAYS = 12
 
 /**
  * Sprint 13: the payback-curve archetype the design doc's equipment ladder
@@ -124,41 +125,10 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
       isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (!isRestored) continue
-    const model = context.modelsById[car.modelId]
-    const heatPercent = state.marketHeat[car.modelId] ?? 100
-    const currentYear = currentGameYear(state.reputationTier)
-    const buyer = model
-      ? bestFitBuyer(
-          car,
-          model,
-          context.buyers,
-          context.partsById,
-          context.partsTaxonomy,
-          context.partsTaxonomyById,
-          heatPercent,
-          currentYear,
-          context.economy,
-        )
-      : undefined
-    const estimatedOfferYen =
-      model && buyer
-        ? valuateCarForBuyer(
-            buyer,
-            model,
-            car,
-            context.partsById,
-            context.partsTaxonomy,
-            context.partsTaxonomyById,
-            heatPercent,
-            currentYear,
-            context.economy,
-          )
-        : 0
-    if (model && estimatedOfferYen >= model.bookValueYen * ACCEPTABLE_WALKIN_FRACTION) {
-      actions.sellViaWalkIn.push({ carInstanceId: car.id })
-    } else {
-      actions.listForSale.push({ carInstanceId: car.id })
-    }
+    decideSale(state, car, context, actions, {
+      acceptFraction: ACCEPT_FRACTION,
+      maxHoldingDays: MAX_HOLDING_DAYS,
+    })
   }
 
   // 5. Join or continue a war on a mid-priced lot if there's room for
