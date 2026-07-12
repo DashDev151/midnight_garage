@@ -4,12 +4,15 @@ import {
   type AuctionTier,
   type CarInstance,
   type CarModel,
+  type CarPartId,
   type EconomyConfig,
+  type PartInstance,
   type RarityTier,
   type TurnoutBand,
 } from '@midnight-garage/content'
-import { bandForMigratedCondition } from './bands'
+import { bandForMigratedCondition, hasForcedInduction } from './bands'
 import { CAR_CONDITION_BASE_MAX, CAR_CONDITION_BASE_MIN, CAR_CONDITION_JITTER } from './constants'
+import type { SimContext } from './context'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
@@ -94,11 +97,31 @@ function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
 }
 
 /**
- * Rolls a fresh, not-yet-owned car for an auction lot. Every component
- * starts with nothing installed, since an auction car hasn't been touched
- * yet (GDD: "buy rough, restore/build"). `currentYear` (Sprint 10, default
- * Infinity = unrestricted) clamps the rolled model year to the in-game
- * calendar - see calendar.ts.
+ * Rolls one fresh, mint-catalog stock `PartInstance` at `band` for `partId`
+ * (Sprint 32 decision 6's default fill) - `undefined` only if the catalog
+ * genuinely has no stock entry for this `CarPartId`, which decision 1
+ * guarantees never happens for a real 29-part taxonomy id; kept as a
+ * defensive fallback (an empty slot) rather than a throw, matching this
+ * file's existing tolerance for a not-yet-fully-seeded catalog in tests.
+ */
+function stockInstanceFor(
+  partId: CarPartId,
+  band: ReturnType<typeof bandForMigratedCondition>,
+  idPrefix: string,
+  stockPartByCarPartId: SimContext['stockPartByCarPartId'],
+): PartInstance | null {
+  const catalogPart = stockPartByCarPartId[partId]
+  if (!catalogPart) return null
+  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false }
+}
+
+/**
+ * Rolls a fresh, not-yet-owned car for an auction lot. Every slot fills with
+ * a fresh stock `PartInstance` at the rolled condition band by default
+ * (Sprint 32 decision 6) - an auction car hasn't been touched yet (GDD: "buy
+ * rough, restore/build"), so it starts on its factory baseline, not
+ * aftermarket. `currentYear` (Sprint 10, default Infinity = unrestricted)
+ * clamps the rolled model year to the in-game calendar - see calendar.ts.
  *
  * Sprint 12: part condition is not rolled independently per part - a car
  * that rolled a pristine engine and a wrecked transmission with no
@@ -107,25 +130,32 @@ function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
  * real parts (Sprint 26) jitters around it (CAR_CONDITION_JITTER), then
  * buckets into its condition band via `bandForMigratedCondition` (bands.ts)
  * - the same percent-to-band mapping the save migration uses, reused here
- * rather than authoring a second one (directive 16).
+ * rather than authoring a second one (directive 16). The band is rolled for
+ * EVERY part unconditionally, including one that ends up empty, so the RNG
+ * draw sequence stays uniform regardless of what a slot ends up holding.
  *
- * Sprint 26 decision 2: `forcedInduction` alone also rolls `fitted` - true
- * (with a real band, generated like every other part) on a Turbo- or
- * Supercharged-tagged model, false on an NA car (the band is generated
- * regardless but ignored while unfitted, per `CarInstance.parts`'s own doc
- * comment). Decision 10: a lot's rolled bands are plain, always-visible
- * state now - there is no reveal machinery left to layer on top.
+ * Sprint 26 decision 2 / Sprint 32 decision 6(a): `forcedInduction` alone
+ * follows the model's tag, never the missing-slot roll below - a stock
+ * turbo (at the rolled band) on a Turbo/Supercharged model, `null` on NA.
+ * Sprint 32 decision 6(b): every OTHER slot additionally rolls a small,
+ * content-tunable (`economy.partsGeneration`) chance of coming up MISSING
+ * (`null`) instead of its default stock fill - the stripped-car case,
+ * weighted toward the cosmetically/physically pluckable slots and never
+ * `block`/`chassis` (their catalog weight is 0). Decision 10: a lot's
+ * rolled bands are plain, always-visible state now - there is no reveal
+ * machinery left to layer on top.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
   id: string,
   rng: Rng,
-  economy: EconomyConfig,
+  context: SimContext,
   currentYear: number = Infinity,
 ): CarInstance {
+  const { economy, stockPartByCarPartId } = context
   const conditionBaseline = rng.int(CAR_CONDITION_BASE_MIN, CAR_CONDITION_BASE_MAX)
-  const isForcedInductionFitted =
-    model.tags.includes('Turbo') || model.tags.includes('Supercharged')
+  const carHasForcedInduction = hasForcedInduction(model)
+  const { missingSlotBaseChance, missingSlotWeightByPart } = economy.partsGeneration
 
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
@@ -133,8 +163,20 @@ export function generateAuctionCarInstance(
         conditionBaseline + rng.int(-CAR_CONDITION_JITTER, CAR_CONDITION_JITTER),
       )
       const band = bandForMigratedCondition(percent, economy)
-      const fitted = partId === 'forcedInduction' ? isForcedInductionFitted : true
-      return [partId, { band, installed: null, fitted }]
+
+      if (partId === 'forcedInduction') {
+        const installed = carHasForcedInduction
+          ? stockInstanceFor(partId, band, `${id}-part`, stockPartByCarPartId)
+          : null
+        return [partId, { installed }]
+      }
+
+      const missingChance = missingSlotBaseChance * missingSlotWeightByPart[partId]
+      const rolledMissing = rng.next() < missingChance
+      const installed = rolledMissing
+        ? null
+        : stockInstanceFor(partId, band, `${id}-part`, stockPartByCarPartId)
+      return [partId, { installed }]
     }),
   ) as CarInstance['parts']
 
@@ -165,9 +207,10 @@ export function generateAuctionCatalog(
   day: number,
   count: number,
   rng: Rng,
-  economy: EconomyConfig,
+  context: SimContext,
   currentYear: number = Infinity,
 ): AuctionLot[] {
+  const { economy } = context
   const eligible = models.filter(
     (model) => auctionTierForRarity(model.tier) === tier && model.spec.yearFrom <= currentYear,
   )
@@ -177,7 +220,7 @@ export function generateAuctionCatalog(
   for (let i = 0; i < count; i++) {
     const model = rng.pick(eligible)
     const lotId = `lot-${day}-${tier}-${i}`
-    const car = generateAuctionCarInstance(model, `car-${lotId}`, rng, economy, currentYear)
+    const car = generateAuctionCarInstance(model, `car-${lotId}`, rng, context, currentYear)
     lots.push({
       id: lotId,
       tier,

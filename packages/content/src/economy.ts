@@ -1,5 +1,46 @@
 import { z } from 'zod'
 
+/**
+ * One non-negative weight per `CarPartId` (Sprint 32) - explicit per-part
+ * keys (not a generic `z.record`), matching this codebase's established
+ * preference (`ByAuctionTierSchema` etc.) for a missing key to fail
+ * validation rather than silently default to 0. Used by
+ * `partsGeneration.missingSlotWeightByPart` (decision 6): a part's weight
+ * times `missingSlotBaseChance` is its actual per-slot chance of generating
+ * MISSING instead of a fresh stock part.
+ */
+const ByCarPartIdWeightSchema = z.object({
+  block: z.number().nonnegative(),
+  internals: z.number().nonnegative(),
+  headValvetrain: z.number().nonnegative(),
+  camsTiming: z.number().nonnegative(),
+  intake: z.number().nonnegative(),
+  exhaust: z.number().nonnegative(),
+  fuelSystem: z.number().nonnegative(),
+  ignitionEcu: z.number().nonnegative(),
+  cooling: z.number().nonnegative(),
+  forcedInduction: z.number().nonnegative(),
+  gearbox: z.number().nonnegative(),
+  clutch: z.number().nonnegative(),
+  differential: z.number().nonnegative(),
+  driveline: z.number().nonnegative(),
+  chassis: z.number().nonnegative(),
+  dampers: z.number().nonnegative(),
+  springs: z.number().nonnegative(),
+  antiRollBars: z.number().nonnegative(),
+  steering: z.number().nonnegative(),
+  brakePadsDiscs: z.number().nonnegative(),
+  brakeCalipersLines: z.number().nonnegative(),
+  rims: z.number().nonnegative(),
+  tyres: z.number().nonnegative(),
+  panels: z.number().nonnegative(),
+  paint: z.number().nonnegative(),
+  underbody: z.number().nonnegative(),
+  aero: z.number().nonnegative(),
+  seats: z.number().nonnegative(),
+  dashGauges: z.number().nonnegative(),
+})
+
 /** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
  * and `AUCTION_TRAVEL_FEE_YEN` used as `Readonly<Record<AuctionTier, number>>`
  * in sim/constants.ts before this file existed. Explicit per-tier keys (not a
@@ -395,6 +436,30 @@ export const EconomyConfigSchema = z.object({
     /** Fraction of `stockReplacementPriceYen` a scrap `PartInstance` sells
      * for (decision 6) - "pennies on the yen." */
     scrapValueFraction: z.number().min(0).max(1),
+  }),
+  /**
+   * Sprint 32: the stock-baseline/missing-slot model's own generation
+   * tunable (decisions 2, 3, 6) - every other Sprint 32 number (the
+   * catalog's stock/street/sport/race prices, the restoration-bill/
+   * installed-parts-value treatment) is either plain catalog data or reuses
+   * existing `bands`/`valuation` machinery outright, so this is the one
+   * genuinely new economy knob the sprint adds.
+   */
+  partsGeneration: z.object({
+    /** Base per-slot chance (decision 6) a generated auction/service-job
+     * car's slot rolls MISSING instead of a fresh stock part at the rolled
+     * band - multiplied by `missingSlotWeightByPart`'s per-part weight
+     * below, so the real per-slot chance is `missingSlotBaseChance *
+     * weight`. Deliberately low ("propose a low base rate"); never applies
+     * to `forcedInduction`, which is entirely tag-driven (decision 6(a)) -
+     * see `generateAuctionCarInstance`, auctions.ts. */
+    missingSlotBaseChance: z.number().min(0).max(1),
+    /** Per-part multiplier on `missingSlotBaseChance` (decision 6): 0 for
+     * `block`/`chassis` (never missing - the maintainer's explicit
+     * carve-out), higher for the cosmetically/physically pluckable slots
+     * (wheels, exhaust, aero, seats) than the flat baseline everything else
+     * gets. */
+    missingSlotWeightByPart: ByCarPartIdWeightSchema,
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar

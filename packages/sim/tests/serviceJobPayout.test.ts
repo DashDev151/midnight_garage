@@ -10,11 +10,11 @@ import {
   type CarInstance,
   type CarModel,
   type CarPartId,
-  type CarPartState,
+  type ConditionBand,
   type ServiceJobTask,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { gradesBetween } from '../src/bands'
+import { canRepair, gradesBetween } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { gradeAtLeast, partFitsCar } from '../src/parts'
 import { deriveServiceJobPayoutYen } from '../src/serviceJobs'
@@ -60,9 +60,12 @@ function playerMinCostYen(
   for (const task of tasks) {
     if (task.action === 'repair') {
       const entry = CONTEXT.partsTaxonomyById[task.carPartId]!
-      const band = car.parts[task.carPartId].band
-      if (band === 'scrap') continue // unrepairable - nothing to charge, already "done"
-      total += gradesBetween(band, task.targetBand) * entry.stepCostYen
+      const installed = car.parts[task.carPartId].installed
+      // Sprint 32: an empty slot has nothing to repair - same "nothing to
+      // charge, already done" treatment as scrap (canRepair covers both:
+      // false for scrap, and there's simply no band to read on a null slot).
+      if (!installed || !canRepair(installed.band)) continue
+      total += gradesBetween(installed.band, task.targetBand) * entry.stepCostYen
     } else {
       const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group
       const fitting = CONTEXT.parts.filter(
@@ -83,11 +86,11 @@ function playerMinCostYen(
  * untouched (their cost basis never depends on the car's own condition). */
 function worstCaseParts(
   tasks: readonly ServiceJobTask[],
-  band: CarPartState['band'],
-): Partial<Record<CarPartId, Partial<CarPartState>>> {
-  const overrides: Partial<Record<CarPartId, Partial<CarPartState>>> = {}
+  band: ConditionBand,
+): Partial<Record<CarPartId, ConditionBand>> {
+  const overrides: Partial<Record<CarPartId, ConditionBand>> = {}
   for (const task of tasks) {
-    if (task.action === 'repair') overrides[task.carPartId] = { band }
+    if (task.action === 'repair') overrides[task.carPartId] = band
   }
   return overrides
 }
@@ -97,7 +100,7 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
 
   it('the worst payout roll covers the player minimum achievable cost by at least 1.15x, for every template x every roster model, at every realistic starting band', () => {
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
-    const startingBands: CarPartState['band'][] = ['poor', 'worn', 'fine', 'scrap']
+    const startingBands: ConditionBand[] = ['poor', 'worn', 'fine', 'scrap']
     const failures: string[] = []
 
     for (const template of SERVICE_JOB_TYPES) {

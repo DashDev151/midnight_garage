@@ -304,8 +304,15 @@ export function resolveSellViaWalkIn(
   if (!car) return { state, log: [] }
   const offer = state.pendingOffers.find((o) => o.carInstanceId === carInstanceId)
   if (!offer) return { state, log: [] }
+  const model = context.modelsById[car.modelId]
+  if (!model) return { state, log: [] }
 
-  const nominalDelta = saleReputationDeltaFor(car, context.partsTaxonomyById, context.economy)
+  const nominalDelta = saleReputationDeltaFor(
+    car,
+    model,
+    context.partsTaxonomyById,
+    context.economy,
+  )
   const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
   const released = applyReputationDelta(clearedState, nominalDelta)
   // Sprint 24 fix 3: log what actually happened, not the nominal delta -

@@ -7,7 +7,7 @@ import {
   type Part,
   type StatBlock,
 } from '@midnight-garage/content'
-import { bandFactor, isPartPresent } from './bands'
+import { bandFactor, isPartMissing, isPartPresent } from './bands'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -22,14 +22,21 @@ type StatKey = 'power' | 'handling' | 'style' | 'reliability'
  * part's own weight. Self-derives from `parts-taxonomy.json`'s `statWeights`
  * rather than a second, hand-maintained list of "which parts feed power" -
  * one source of truth (content law), so a part's stat contribution can never
- * drift out of sync between the taxonomy and this formula. An unfitted
- * forced-induction slot (`isPartPresent`) simply drops out of `power`'s
+ * drift out of sync between the taxonomy and this formula. A legitimately-
+ * empty forced-induction slot (NA car) simply drops out of `power`'s
  * weighted mean, same as decision 8's "FI when fitted." Returns 1 (as if
  * every contributing part were mint) when nothing on the car contributes to
  * `stat` at all, so a degenerate taxonomy entry never divides by zero.
+ *
+ * Sprint 32: a MISSING part (`isPartMissing` - a real defect, not the
+ * legitimate NA-forced-induction case) counts at a 0 band factor rather
+ * than dropping out of the mean - a stripped exhaust really does hurt
+ * `power`, not quietly vanish from the formula the way a car that never had
+ * a turbo correctly does.
  */
 function weightedBandFactorForStat(
   car: CarInstance,
+  model: CarModel,
   stat: StatKey,
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
@@ -38,8 +45,10 @@ function weightedBandFactorForStat(
   let totalWeight = 0
   for (const entry of partsTaxonomy) {
     const weight = entry.statWeights[stat]
-    if (!weight || !isPartPresent(car, entry.id)) continue
-    weightedSum += weight * bandFactor(car.parts[entry.id].band, economy)
+    if (!weight) continue
+    const installed = car.parts[entry.id].installed
+    if (!isPartPresent(car, entry.id) && !isPartMissing(car, model, entry.id)) continue
+    weightedSum += weight * (installed ? bandFactor(installed.band, economy) : 0)
     totalWeight += weight
   }
   return totalWeight > 0 ? weightedSum / totalWeight : 1
@@ -76,18 +85,25 @@ export function computeDerivedStats(
   const { powerConditionFloor, handlingBase, handlingWeightDivisor, styleCap, reliabilityCap } =
     economy.statFormulas
 
-  const powerFraction = weightedBandFactorForStat(instance, 'power', partsTaxonomy, economy)
+  const powerFraction = weightedBandFactorForStat(instance, model, 'power', partsTaxonomy, economy)
   const powerConditionScale = powerConditionFloor + (1 - powerConditionFloor) * powerFraction
   let power = model.spec.stockPowerPs * powerConditionScale
 
-  const handlingFraction = weightedBandFactorForStat(instance, 'handling', partsTaxonomy, economy)
+  const handlingFraction = weightedBandFactorForStat(
+    instance,
+    model,
+    'handling',
+    partsTaxonomy,
+    economy,
+  )
   let handling = handlingBase * handlingFraction - model.spec.curbWeightKg / handlingWeightDivisor
 
-  const styleFraction = weightedBandFactorForStat(instance, 'style', partsTaxonomy, economy)
+  const styleFraction = weightedBandFactorForStat(instance, model, 'style', partsTaxonomy, economy)
   let style = styleFraction * styleCap
 
   const reliabilityFraction = weightedBandFactorForStat(
     instance,
+    model,
     'reliability',
     partsTaxonomy,
     economy,

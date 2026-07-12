@@ -2,6 +2,7 @@ import {
   ECONOMY,
   EQUIPMENT,
   PARTS_TAXONOMY,
+  type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
 } from '@midnight-garage/content'
@@ -16,6 +17,7 @@ import {
   costWeightedBandFactor,
   gradesBetween,
   groupCostToMintYen,
+  isPartMissing,
   isPartPresent,
   planGroupRepair,
   presentPartIdsInGroup,
@@ -34,6 +36,38 @@ import { buildCarInstance, groupCarParts, mintCarParts, uniformCarParts } from '
  */
 const CONTEXT = buildSimContext([], [], [], PARTS_TAXONOMY, [], undefined, [], EQUIPMENT)
 const TAXONOMY_BY_ID = CONTEXT.partsTaxonomyById
+
+/**
+ * Sprint 32: `carCostToMintYen`/`groupCostToMintYen`/`costWeightedBandFactor`
+ * gained a `model` parameter to decide whether an empty `forcedInduction`
+ * slot is a real defect or legitimate absence. `TEST_MODEL` is Turbo-tagged
+ * (so a filled-or-missing forcedInduction slot behaves like every other
+ * part); `NA_MODEL` drops the tag for the tests that specifically exercise
+ * legitimate absence.
+ */
+const TEST_MODEL: CarModel = {
+  id: 'test-model',
+  displayName: 'Test Model',
+  brand: 'Test',
+  parodyName: 'Test Model',
+  parodyBrand: 'Test',
+  spec: {
+    chassisCode: 'TM',
+    engineCode: 'TM',
+    yearFrom: 1990,
+    curbWeightKg: 1200,
+    stockPowerPs: 150,
+  },
+  tier: 'common',
+  tags: ['FR', 'Turbo', 'Piston', '90s', 'JDM'],
+  bookValueYen: 1_000_000,
+}
+
+const NA_MODEL: CarModel = {
+  ...TEST_MODEL,
+  id: 'test-model-na',
+  tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
+}
 
 describe('bandIndex - ordering (worst to best: scrap, poor, worn, fine, mint)', () => {
   it('orders every band strictly worst to best', () => {
@@ -176,10 +210,10 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13)', () => {
   // antiRollBars/brakeCalipersLines stay mint (nothing to do).
   const suspensionCar = buildCarInstance({
     parts: mintCarParts({
-      dampers: { band: 'worn' },
-      springs: { band: 'poor' },
-      steering: { band: 'scrap' },
-      brakePadsDiscs: { band: 'fine' },
+      dampers: 'worn',
+      springs: 'poor',
+      steering: 'scrap',
+      brakePadsDiscs: 'fine',
     }),
   })
 
@@ -262,14 +296,14 @@ describe('costWeightedBandFactor (Sprint 26 decision 4 shim)', () => {
 
   it("scores an otherwise-mint car with a scrap forcedInduction lower than one with a scrap brakePadsDiscs - the maintainer's worked case (turbo is the bigger part, so it drags the average further)", () => {
     const scrapTurboCar = buildCarInstance({
-      parts: mintCarParts({ forcedInduction: { band: 'scrap' } }),
+      parts: mintCarParts({ forcedInduction: 'scrap' }),
     })
     const scrapBrakesCar = buildCarInstance({
-      parts: mintCarParts({ brakePadsDiscs: { band: 'scrap' } }),
+      parts: mintCarParts({ brakePadsDiscs: 'scrap' }),
     })
 
-    const turboFactor = costWeightedBandFactor(scrapTurboCar, TAXONOMY_BY_ID, ECONOMY)
-    const brakesFactor = costWeightedBandFactor(scrapBrakesCar, TAXONOMY_BY_ID, ECONOMY)
+    const turboFactor = costWeightedBandFactor(scrapTurboCar, TEST_MODEL, TAXONOMY_BY_ID, ECONOMY)
+    const brakesFactor = costWeightedBandFactor(scrapBrakesCar, TEST_MODEL, TAXONOMY_BY_ID, ECONOMY)
 
     expect(turboFactor).not.toBe(brakesFactor)
     expect(turboFactor).toBeLessThan(brakesFactor)
@@ -279,7 +313,7 @@ describe('costWeightedBandFactor (Sprint 26 decision 4 shim)', () => {
 
   it('scores an all-poor car exactly at the poor band factor', () => {
     const car = buildCarInstance({ parts: uniformCarParts('poor') })
-    expect(costWeightedBandFactor(car, TAXONOMY_BY_ID, ECONOMY)).toBeCloseTo(
+    expect(costWeightedBandFactor(car, TEST_MODEL, TAXONOMY_BY_ID, ECONOMY)).toBeCloseTo(
       ECONOMY.bands.bandFactors.poor,
       9,
     )
@@ -287,16 +321,18 @@ describe('costWeightedBandFactor (Sprint 26 decision 4 shim)', () => {
 
   it('scores an all-mint car at 1.0', () => {
     const car = buildCarInstance()
-    expect(costWeightedBandFactor(car, TAXONOMY_BY_ID, ECONOMY)).toBe(1)
+    expect(costWeightedBandFactor(car, TEST_MODEL, TAXONOMY_BY_ID, ECONOMY)).toBe(1)
   })
 
-  it('returns 1, not NaN, when no part is present at all (the zero-weight guard)', () => {
-    const parts = mintCarParts()
-    for (const partId of Object.keys(parts) as CarPartId[]) {
-      parts[partId] = { ...parts[partId], fitted: false }
-    }
-    const car = buildCarInstance({ parts })
-    expect(costWeightedBandFactor(car, TAXONOMY_BY_ID, ECONOMY)).toBe(1)
+  it('returns 1, not NaN, when the taxonomy has no matching entries so nothing contributes any weight (the zero-weight guard)', () => {
+    // Sprint 32: every part now defaults to a present stock part, and the
+    // only legitimately-absent slot (forcedInduction on an NA car) is just
+    // one of 29 parts, so "nothing is present" can no longer be forced via
+    // car-side overrides alone. An empty taxonomy makes every `entry` lookup
+    // miss instead, which is the same "totalWeight never leaves 0" path.
+    const car = buildCarInstance()
+    const emptyTaxonomyById = {} as Readonly<Record<CarPartId, CarPartTaxonomyEntry>>
+    expect(costWeightedBandFactor(car, TEST_MODEL, emptyTaxonomyById, ECONOMY)).toBe(1)
   })
 })
 
@@ -320,10 +356,10 @@ describe('bandForMigratedCondition (Sprint 26 decision 11: save-migration thresh
   })
 })
 
-describe('isPartPresent and presentPartIdsInGroup (the unfitted forcedInduction slot)', () => {
-  const naCar = buildCarInstance({ parts: mintCarParts({ forcedInduction: { fitted: false } }) })
+describe('isPartPresent and presentPartIdsInGroup (an empty forcedInduction slot)', () => {
+  const naCar = buildCarInstance({ parts: mintCarParts({ forcedInduction: null }) })
 
-  it('is false for an unfitted forcedInduction slot', () => {
+  it('is false for an empty forcedInduction slot', () => {
     expect(isPartPresent(naCar, 'forcedInduction')).toBe(false)
   })
 
@@ -334,10 +370,34 @@ describe('isPartPresent and presentPartIdsInGroup (the unfitted forcedInduction 
     }
   })
 
-  it('excludes the unfitted forcedInduction slot from its group, keeping every other engine part', () => {
+  it('excludes the empty forcedInduction slot from its group, keeping every other engine part', () => {
     const present = presentPartIdsInGroup(naCar, 'engine', CONTEXT.partIdsByGroup)
     expect(present).not.toContain('forcedInduction')
     expect(present).toEqual(CONTEXT.partIdsByGroup.engine.filter((id) => id !== 'forcedInduction'))
+  })
+})
+
+describe('isPartMissing (Sprint 32: a real defect vs. legitimate absence)', () => {
+  it('is false for a filled slot, on either a Turbo or an NA model', () => {
+    const car = buildCarInstance()
+    expect(isPartMissing(car, TEST_MODEL, 'forcedInduction')).toBe(false)
+    expect(isPartMissing(car, NA_MODEL, 'forcedInduction')).toBe(false)
+  })
+
+  it('is true for an empty forcedInduction slot on a Turbo-tagged model - a real defect', () => {
+    const car = buildCarInstance({ parts: mintCarParts({ forcedInduction: null }) })
+    expect(isPartMissing(car, TEST_MODEL, 'forcedInduction')).toBe(true)
+  })
+
+  it('is false for an empty forcedInduction slot on an NA-tagged model - legitimate absence', () => {
+    const car = buildCarInstance({ parts: mintCarParts({ forcedInduction: null }) })
+    expect(isPartMissing(car, NA_MODEL, 'forcedInduction')).toBe(false)
+  })
+
+  it('is true for an empty non-forcedInduction slot regardless of model', () => {
+    const car = buildCarInstance({ parts: mintCarParts({ brakePadsDiscs: null }) })
+    expect(isPartMissing(car, TEST_MODEL, 'brakePadsDiscs')).toBe(true)
+    expect(isPartMissing(car, NA_MODEL, 'brakePadsDiscs')).toBe(true)
   })
 })
 
@@ -356,11 +416,11 @@ describe('carCostToMintYen and groupCostToMintYen (sum across present parts)', (
 
   function buildWornEngineNaCar() {
     const parts = groupCarParts({ engine: 'worn' })
-    parts.forcedInduction = { ...parts.forcedInduction, fitted: false }
+    parts.forcedInduction = { installed: null }
     return buildCarInstance({ parts })
   }
 
-  it('sums costToMintYen across every present part in a group, excluding an unfitted forcedInduction slot even though it is also worn', () => {
+  it('sums costToMintYen across every present part in a group, excluding a legitimately-empty forcedInduction slot on an NA car even though it is also worn', () => {
     const car = buildWornEngineNaCar()
     const expectedCostExcludingFI = ENGINE_PARTS_EXCLUDING_FI.reduce(
       (sum, id) => sum + 2 * TAXONOMY_BY_ID[id].stepCostYen,
@@ -369,28 +429,55 @@ describe('carCostToMintYen and groupCostToMintYen (sum across present parts)', (
 
     const groupCost = groupCostToMintYen(
       car,
+      NA_MODEL,
       'engine',
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
     )
     expect(groupCost).toBe(expectedCostExcludingFI)
-    // If the unfitted forcedInduction slot were wrongly counted, this would
-    // be higher by its own worn-to-mint cost.
+    // If the empty forcedInduction slot were wrongly counted, this would be
+    // higher by its own worn-to-mint cost.
     expect(groupCost).not.toBe(
       expectedCostExcludingFI + 2 * TAXONOMY_BY_ID.forcedInduction.stepCostYen,
     )
   })
 
+  it('a MISSING (non-FI) slot prices at the full stock replacement price, not a worn-to-mint step cost', () => {
+    const parts = groupCarParts({ engine: 'worn' })
+    parts.exhaust = { installed: null }
+    const car = buildCarInstance({ parts })
+
+    const groupCost = groupCostToMintYen(
+      car,
+      TEST_MODEL,
+      'engine',
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsTaxonomyById,
+    )
+    const otherEngineParts = ENGINE_PARTS_EXCLUDING_FI.filter((id) => id !== 'exhaust')
+    const expectedCost =
+      otherEngineParts.reduce((sum, id) => sum + 2 * TAXONOMY_BY_ID[id].stepCostYen, 0) +
+      2 * TAXONOMY_BY_ID.forcedInduction.stepCostYen +
+      TAXONOMY_BY_ID.exhaust.stockReplacementPriceYen
+    expect(groupCost).toBe(expectedCost)
+  })
+
   it('carCostToMintYen equals groupCostToMintYen("engine") here, since every other group stays mint', () => {
     const car = buildWornEngineNaCar()
-    expect(carCostToMintYen(car, CONTEXT.partsTaxonomyById)).toBe(
-      groupCostToMintYen(car, 'engine', CONTEXT.partIdsByGroup, CONTEXT.partsTaxonomyById),
+    expect(carCostToMintYen(car, NA_MODEL, CONTEXT.partsTaxonomyById)).toBe(
+      groupCostToMintYen(
+        car,
+        NA_MODEL,
+        'engine',
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsTaxonomyById,
+      ),
     )
   })
 
   it('carCostToMintYen sums correctly across a uniformly-fine whole car', () => {
     const car = buildCarInstance({ parts: uniformCarParts('fine') })
     const expectedTotal = PARTS_TAXONOMY.reduce((sum, entry) => sum + entry.stepCostYen, 0)
-    expect(carCostToMintYen(car, CONTEXT.partsTaxonomyById)).toBe(expectedTotal)
+    expect(carCostToMintYen(car, TEST_MODEL, CONTEXT.partsTaxonomyById)).toBe(expectedTotal)
   })
 })

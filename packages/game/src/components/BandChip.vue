@@ -10,17 +10,21 @@ import type { ConditionBand } from '@midnight-garage/content'
  * 'poor' chip" has exactly one answer instead of two screens each
  * authoring their own.
  *
- * `band: null` renders the one non-band state a real part slot can be in -
- * the conditional forced-induction slot before it's fitted (Sprint 28) - as
- * "not fitted" rather than making every caller branch between this
- * component and its own ad hoc markup.
+ * `band: null` renders the one state a real part slot can be in with no
+ * condition to show (Sprint 28; Sprint 32: an empty slot, whether a
+ * genuine defect or the one legitimately-empty forced-induction-on-NA
+ * case) as "empty" rather than making every caller branch between this
+ * component and its own ad hoc markup. Callers that need to distinguish a
+ * defect from legitimate absence layer their own tag alongside this one
+ * (`CarPartRowView`'s `missing`/`legitimatelyAbsent`) rather than this
+ * component guessing at which.
  */
 defineProps<{ band: ConditionBand | null }>()
 </script>
 
 <template>
   <span v-if="band" class="band-chip" :class="'band-' + band">{{ band }}</span>
-  <span v-else class="band-chip band-unfitted">not fitted</span>
+  <span v-else class="band-chip band-unfitted">empty</span>
 </template>
 
 <style scoped>

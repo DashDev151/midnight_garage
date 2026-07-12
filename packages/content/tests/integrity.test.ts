@@ -59,7 +59,7 @@ describe('referential integrity', () => {
   it('the former wheelsInterior parts landed on the correct real part', () => {
     const parsedParts = PartsSchema.parse(parts)
     const byId = Object.fromEntries(parsedParts.map((p) => [p.id, p]))
-    expect(byId['enkai-mesh-15']?.carPartId).toBe('rims')
+    expect(byId['ronin-street-alloys']?.carPartId).toBe('rims')
     expect(byId['vulk-ve37']?.carPartId).toBe('rims')
     expect(byId['zashiki-bucket-seat']?.carPartId).toBe('seats')
   })
@@ -123,14 +123,14 @@ describe('referential integrity', () => {
    */
 
   /**
-   * Sprint 28 DoD: catalog validation, not authoring - `parts.json` and
-   * `parts-taxonomy.json` are frozen for this sprint (a prior content pass
-   * already expanded the catalog from 20 to 119 entries). This asserts that
-   * expansion actually covers every real part's Replace button: every one
-   * of the 29 `CarPartId`s has at least one catalog part addressed to it,
-   * and that part fits at least one roster car (not just parses - a part
-   * whose `requiredTags` no car on the roster satisfies would render a
-   * Replace button that can never actually offer anything).
+   * Sprint 28 DoD (catalog validation, not authoring); Sprint 32 decision 1
+   * normalized the catalog to exactly 4 tiers per component (stock/street/
+   * sport/race, 116 entries total) and dropped every `requiredTags` entry
+   * (aftermarket parts fit any car for now). This asserts every one of the
+   * 29 `CarPartId`s still has at least one catalog part addressed to it,
+   * and that part fits at least one roster car (not just parses) - a
+   * vacuous pass now that `requiredTags` is always `[]`, but still real
+   * coverage against a `CarPartId` with zero catalog entries at all.
    */
   it('every real car part has a catalog part addressed to it that fits at least one roster car (Sprint 28)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
@@ -179,15 +179,18 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 28 decision 4: forced-induction kits in BOTH flavors (turbo and
-   * supercharger) installable on NA cars via the universal FI slot, plus at
-   * least one underglow kit (the underbody style slot). Checked against a
-   * real NA, Piston roster car (no Turbo/Supercharged tag of its own) -
-   * proves these aren't just catalog entries that happen to parse, but
-   * actually address a slot AND satisfy their own `requiredTags` against a
-   * real car that needs the "add forced induction" flow this sprint adds.
+   * Sprint 28 decision 4: a forced-induction kit is installable on an NA car
+   * via the universal FI slot, plus at least one underglow kit (the
+   * underbody style slot). Checked against a real NA, Piston roster car (no
+   * Turbo/Supercharged tag of its own). Sprint 32 decision 1 normalized the
+   * forced-induction catalog to one entry per tier (dropping the old
+   * separate turbo/supercharger flavor split - `requiredTags` is `[]`
+   * everywhere now, so "fits" is no longer the discriminating fact this
+   * test was originally written to prove; the real remaining fact worth
+   * guarding is that a forced-induction and an underglow kit both still
+   * exist in the catalog at all).
    */
-  it('at least one turbo kit, one supercharger kit, and one underglow kit fit an NA Piston roster car', () => {
+  it('at least one forced-induction kit and one underglow kit fit an NA Piston roster car', () => {
     const parsedCars = CarModelsSchema.parse(cars)
     const parsedParts = PartsSchema.parse(parts)
     const naPistonCar = parsedCars.find(
@@ -201,20 +204,16 @@ describe('referential integrity', () => {
     const fitsNaCar = (part: Part) =>
       part.requiredTags.every((tag) => naPistonCar!.tags.includes(tag))
 
-    const turboKits = parsedParts.filter(
-      (p) => p.carPartId === 'forcedInduction' && /turbo/i.test(p.name) && fitsNaCar(p),
-    )
-    const superchargerKits = parsedParts.filter(
-      (p) => p.carPartId === 'forcedInduction' && /supercharge/i.test(p.name) && fitsNaCar(p),
+    const forcedInductionKits = parsedParts.filter(
+      (p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock' && fitsNaCar(p),
     )
     const underglowKits = parsedParts.filter(
       (p) => p.carPartId === 'underbody' && /underglow/i.test(p.name) && fitsNaCar(p),
     )
 
-    expect(turboKits.length, 'no turbo kit fits an NA Piston roster car').toBeGreaterThan(0)
     expect(
-      superchargerKits.length,
-      'no supercharger kit fits an NA Piston roster car',
+      forcedInductionKits.length,
+      'no aftermarket forced-induction kit fits an NA Piston roster car',
     ).toBeGreaterThan(0)
     expect(underglowKits.length, 'no underglow kit fits an NA Piston roster car').toBeGreaterThan(0)
   })

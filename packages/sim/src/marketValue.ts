@@ -7,7 +7,7 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { bandFactor, carCostToMintYen, isPartPresent } from './bands'
+import { bandFactor, carCostToMintYen } from './bands'
 
 /**
  * Sprint 27 - the taste-free "what is this car worth" answer, shared by
@@ -98,7 +98,7 @@ function instanceBaseValueYen(
     ageFactor(car.year, currentYear, economy) *
     mileageFactor(car.mileageKm, economy) *
     (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, partsTaxonomyById)
+  const restorationBill = carCostToMintYen(car, model, partsTaxonomyById)
   const floor = floorFraction * cleanValue
   return Math.max(floor, cleanValue - hassleFactor * restorationBill)
 }
@@ -110,6 +110,14 @@ function instanceBaseValueYen(
  * `part.priceYen x partsRetention x bandFactor(installed.band) x
  * (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed and rounded.
  * Sprint 26: `bandFactor` replaces the old `conditionPercent / 100`.
+ *
+ * Sprint 32 decision 4: a `grade === 'stock'` installed part contributes
+ * NOTHING here - stock is the baseline every slot starts from, not an
+ * upgrade, so an all-stock-mint car's value is exactly clean value (never
+ * above it) and only genuine street/sport/race aftermarket pushes above
+ * book. This is also why the old `isPartPresent` gate is gone: `installed`
+ * being non-null already IS "present" now (Sprint 26's `fitted` flag no
+ * longer exists), so checking it directly is enough.
  */
 export function installedPartsValueYen(
   car: CarInstance,
@@ -119,11 +127,10 @@ export function installedPartsValueYen(
   const { partsRetention, genuinePeriodMultiplier } = economy.valuation
   let total = 0
   for (const partId of ALL_CAR_PART_IDS) {
-    if (!isPartPresent(car, partId)) continue
     const installed = car.parts[partId].installed
     if (!installed) continue
     const part = partsById[installed.partId]
-    if (!part) continue
+    if (!part || part.grade === 'stock') continue
     const genuineMultiplier = installed.genuinePeriod ? genuinePeriodMultiplier : 1.0
     total +=
       part.priceYen * partsRetention * bandFactor(installed.band, economy) * genuineMultiplier

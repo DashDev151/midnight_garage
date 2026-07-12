@@ -42,7 +42,7 @@ const car: CarInstance = buildCarInstance({
   year: CURRENT_YEAR,
   mileageKm: 90_000,
   authenticityPercent: 85,
-  parts: mintCarParts({ block: { band: 'worn' } }),
+  parts: mintCarParts({ block: 'worn' }),
 })
 
 function walkIn(

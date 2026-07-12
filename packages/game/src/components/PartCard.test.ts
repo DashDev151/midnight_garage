@@ -1,4 +1,4 @@
-import { PARTS, type PartInstance } from '@midnight-garage/content'
+import { PARTS, type Part, type PartInstance } from '@midnight-garage/content'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -84,7 +84,12 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
   describe('the rotary marker (Sprint 28)', () => {
     it('shows on a Rotary-only part', () => {
-      const rotaryPart = PARTS.find((p) => p.requiredTags.includes('Rotary'))!
+      // Sprint 32 decision 1 drops `requiredTags` from every real catalog
+      // part (rotary authenticity is explicitly deferred) - the marker
+      // component itself still keys off `requiredTags.includes('Rotary')`
+      // (PartCard.vue), so a synthetic fixture proves the mechanism works
+      // even though no live catalog part currently exercises it.
+      const rotaryPart: Part = { ...part, requiredTags: ['Rotary'] }
       const rotaryInstance: PartInstance = {
         id: 'pi-rotary',
         partId: rotaryPart.id,

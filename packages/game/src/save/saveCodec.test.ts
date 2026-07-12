@@ -62,6 +62,15 @@ const GOLDEN_V7_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjo3LCJnYW1lU3RhdGUiOnsiZGF5Ijo2MCwic2VlZCI6OSwiY2FzaFllbiI6NTAwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJrbm93biIsInJlcHV0YXRpb25Qb2ludHMiOjQwLCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdLCJzZXJ2aWNlQmF5Q291bnQiOjMsInBhcmtpbmdCYXlDb3VudCI6Nywic2VydmljZUJheUNhcklkcyI6W10sImxhYm9yU2xvdHNTcGVudFRvZGF5IjowLCJvd25lZEVxdWlwbWVudElkcyI6WyJ0aXJlLW1hY2hpbmUiXSwicGVuZGluZ1BhcnRPcmRlcnMiOltdLCJjYXJ0UGFydElkcyI6W10sImFjdGl2ZUxpc3RpbmdzIjpbeyJpZCI6Imxpc3RpbmctNTAtY2FyLTAwMDEiLCJjYXJJbnN0YW5jZUlkIjoiY2FyLTAwMDEiLCJtb2RlbElkIjoiaG9uZGEtY2l0eS1lLWFhIiwiYXNraW5nUHJpY2VZZW4iOjM1MDAwMCwicmVzb2x2ZXNPbkRheSI6NjV9XX19'
 
 type CarPartsFixture = GameState['ownedCars'][number]['parts']
+type CarPartStateFixture = CarPartsFixture[keyof CarPartsFixture]
+type PartInstanceFixture = NonNullable<CarPartStateFixture['installed']>
+type ConditionBandFixture = PartInstanceFixture['band']
+
+/** One slot override, mirroring `packages/sim/tests/testFixtures.ts`'s own
+ * `CarPartOverride` convenience: a bare band keeps the slot filled with a
+ * mint-catalog-shaped stock instance at that band, a full `PartInstance`
+ * installs it as-is, `null` leaves the slot genuinely empty. */
+type CarPartOverrideFixture = ConditionBandFixture | PartInstanceFixture | null
 
 const ALL_CAR_PART_IDS_FOR_TEST = [
   'block',
@@ -95,13 +104,37 @@ const ALL_CAR_PART_IDS_FOR_TEST = [
   'dashGauges',
 ] as const
 
-/** A full 29-key mint `parts` map (Sprint 26), for tests that need a
- * current-schema `CarInstance` without hand-writing every key. */
-function mintParts(overrides: Partial<CarPartsFixture> = {}): CarPartsFixture {
+function stockPartFixture(carPartId: string, band: ConditionBandFixture): PartInstanceFixture {
+  return {
+    id: `fixture-stock-${carPartId}`,
+    partId: `fixture-stock-part-${carPartId}`,
+    band,
+    genuinePeriod: false,
+  }
+}
+
+/** A full 29-key mint `parts` map (Sprint 26; reshaped Sprint 32 for the
+ * stock-baseline/missing-slot model - every slot defaults to a mint stock
+ * `PartInstance`, matching real generation), for tests that need a
+ * current-schema `CarInstance` without hand-writing every key. `overrides`
+ * is keyed by `CarPartId`, one `CarPartOverrideFixture` per slot to change. */
+function mintParts(
+  overrides: Partial<Record<string, CarPartOverrideFixture>> = {},
+): CarPartsFixture {
   const base = Object.fromEntries(
-    ALL_CAR_PART_IDS_FOR_TEST.map((id) => [id, { band: 'mint', installed: null, fitted: true }]),
+    ALL_CAR_PART_IDS_FOR_TEST.map((id) => [id, { installed: stockPartFixture(id, 'mint') }]),
   ) as CarPartsFixture
-  return { ...base, ...overrides }
+  for (const [id, override] of Object.entries(overrides)) {
+    if (override === undefined) continue
+    const state: CarPartStateFixture =
+      override === null
+        ? { installed: null }
+        : typeof override === 'string'
+          ? { installed: stockPartFixture(id, override) }
+          : { installed: override }
+    ;(base as Record<string, CarPartStateFixture>)[id] = state
+  }
+  return base
 }
 
 const fullState: GameState = GameStateSchema.parse({
@@ -909,7 +942,7 @@ describe('saveCodec', () => {
           color: 'White',
           provenanceNote: '',
           authenticityPercent: 90,
-          parts: mintParts({ dampers: { band: 'worn', installed: null, fitted: true } }),
+          parts: mintParts({ dampers: 'worn' }),
         },
       ],
     })
@@ -990,7 +1023,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(20)
+    expect(SAVE_VERSION).toBe(21)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1146,30 +1179,42 @@ describe('saveCodec', () => {
     const turboCar = decoded.ownedCars.find((c) => c.id === 'turbo-car')!
     const naCar = decoded.ownedCars.find((c) => c.id === 'na-car')!
 
+    // decodeSave runs the FULL migration chain, v15 all the way to the
+    // current v21 - so every assertion below reads the final Sprint 32
+    // `{ installed }` shape (`migrateV20ToV21`'s own synthesized-stock-part
+    // mapping), not the intermediate v16 `{ band, installed, fitted }` one
+    // this describe block's own migration (v15 -> v16) originally produced.
     it('buckets each old group condition through the same band thresholds auction generation uses, fanning out to every part in the group', () => {
-      // engine: 95 -> mint, fanned out to all 9 non-FI engine parts.
-      expect(turboCar.parts.block.band).toBe('mint')
-      expect(turboCar.parts.cooling.band).toBe('mint')
+      // engine: 95 -> mint, fanned out to all 9 non-FI engine parts - no
+      // instance was ever explicitly installed on these slots, so v20 -> v21
+      // synthesizes a fresh stock PartInstance at the bucketed band.
+      expect(turboCar.parts.block.installed?.band).toBe('mint')
+      expect(turboCar.parts.cooling.installed?.band).toBe('mint')
       // suspension: 25 -> poor, fanned out to the 4 non-brake parts.
-      expect(turboCar.parts.dampers.band).toBe('poor')
-      expect(turboCar.parts.steering.band).toBe('poor')
+      expect(turboCar.parts.dampers.installed?.band).toBe('poor')
+      expect(turboCar.parts.steering.installed?.band).toBe('poor')
     })
 
     it('relocates an installed part to its correct specific slot by catalog carPartId', () => {
       expect(turboCar.parts.ignitionEcu.installed?.partId).toBe('khs-street-ecu')
       expect(turboCar.parts.ignitionEcu.installed?.band).toBe('fine')
-      // Every other engine part stays unoccupied.
-      expect(turboCar.parts.block.installed).toBeNull()
+      // Every other engine part instead gets v20 -> v21's synthesized generic
+      // stock part (it was never explicitly installed) - not left unoccupied
+      // the way it was under the pre-Sprint-32 shape.
+      expect(turboCar.parts.block.installed?.partId).toBe('stock-block')
     })
 
-    it('aero always migrates to mint - no old-model counterpart existed for it', () => {
-      expect(turboCar.parts.aero).toEqual({ band: 'mint', installed: null, fitted: true })
-      expect(naCar.parts.aero).toEqual({ band: 'mint', installed: null, fitted: true })
+    it('aero always migrates to mint - no old-model counterpart existed for it - and v20 -> v21 fills it with a mint stock part', () => {
+      expect(turboCar.parts.aero.installed?.partId).toBe('stock-aero')
+      expect(turboCar.parts.aero.installed?.band).toBe('mint')
+      expect(naCar.parts.aero.installed?.partId).toBe('stock-aero')
+      expect(naCar.parts.aero.installed?.band).toBe('mint')
     })
 
-    it('forcedInduction.fitted follows the Turbo/Supercharged tag, not a flat default', () => {
-      expect(turboCar.parts.forcedInduction.fitted).toBe(true)
-      expect(naCar.parts.forcedInduction.fitted).toBe(false)
+    it('forced induction follows the Turbo/Supercharged tag: a factory turbo gets a synthesized stock turbo at its rolled band, an NA slot stays genuinely empty', () => {
+      expect(turboCar.parts.forcedInduction.installed?.partId).toBe('stock-forced-induction')
+      expect(turboCar.parts.forcedInduction.installed?.band).toBe('worn')
+      expect(naCar.parts.forcedInduction.installed).toBeNull()
     })
 
     it('drops a retired fix-issue job outright and backfills targetBand on the surviving repair-zone job', () => {
@@ -1516,6 +1561,161 @@ describe('saveCodec', () => {
       const code = 'MGSAVE1.' + btoa(JSON.stringify(preV20))
       const decoded = decodeSave(code)
       expect(decoded.cashYen).toBe(750_000)
+    })
+  })
+
+  /**
+   * v20 -> v21 (Sprint 32, stock-baseline/missing-slot model): the
+   * `{ band, installed, fitted }` -> `{ installed }` reshape - see the
+   * SAVE_VERSION doc comment above for the full mapping. Exercises every
+   * branch on one real pre-v21 save: an already-aftermarket-installed slot
+   * (kept as-is), an ordinary slot with nothing installed (synthesized to a
+   * fresh stock part at its old band), a factory turbo (synthesized to a
+   * fresh stock TURBO at its old band), and an NA car's unfitted forced
+   * induction (migrates to a genuinely empty `null`, not a synthesized
+   * part).
+   */
+  describe('v20 -> v21 migration (Sprint 32, stock-baseline/missing-slot model)', () => {
+    /** A pre-v21 29-key `parts` map in the old `{ band, installed, fitted }`
+     * shape, mint/unoccupied/fitted by default - the old-model counterpart
+     * to this file's own current-shape `mintParts` above. */
+    function oldShapeParts(
+      overrides: Partial<
+        Record<string, { band: string; installed: unknown; fitted: boolean }>
+      > = {},
+    ): Record<string, { band: string; installed: unknown; fitted: boolean }> {
+      const base: Record<string, { band: string; installed: unknown; fitted: boolean }> =
+        Object.fromEntries(
+          ALL_CAR_PART_IDS_FOR_TEST.map((id) => [
+            id,
+            { band: 'mint', installed: null, fitted: true },
+          ]),
+        )
+      for (const [id, override] of Object.entries(overrides)) {
+        if (override !== undefined) base[id] = override
+      }
+      return base
+    }
+
+    const preV21 = {
+      version: 20,
+      gameState: {
+        ...fullState,
+        ownedCars: [
+          {
+            id: 'turbo-car',
+            // nissan-180sx-rps13 is Turbo-tagged (used as the turbo fixture
+            // model throughout this file's v15 -> v16 block above).
+            modelId: 'nissan-180sx-rps13',
+            year: 1994,
+            mileageKm: 90_000,
+            color: 'Black',
+            provenanceNote: '',
+            authenticityPercent: 80,
+            parts: oldShapeParts({
+              // Already aftermarket-installed - kept exactly as-is, it
+              // already carries its own band.
+              dampers: {
+                band: 'mint',
+                installed: {
+                  id: 'pi-coilovers',
+                  partId: 'tanuki-street-coilovers',
+                  band: 'fine',
+                  genuinePeriod: false,
+                },
+                fitted: true,
+              },
+              // Ordinary part, nothing explicitly installed - synthesizes a
+              // fresh generic stock part at the old slot band.
+              tyres: { band: 'worn', installed: null, fitted: true },
+              // A factory turbo (fitted: true, nothing explicitly
+              // installed) - synthesizes a fresh stock TURBO at the old band.
+              forcedInduction: { band: 'worn', installed: null, fitted: true },
+            }),
+          },
+          {
+            id: 'na-car',
+            // honda-city-e-aa is NA-tagged (used as the NA fixture model
+            // throughout this file's v15 -> v16 block above).
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 100_000,
+            color: 'White',
+            provenanceNote: '',
+            authenticityPercent: 90,
+            parts: oldShapeParts({
+              forcedInduction: { band: 'mint', installed: null, fitted: false },
+            }),
+          },
+        ],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV21))
+    const decoded = decodeSave(code)
+    const turboCar = decoded.ownedCars.find((c) => c.id === 'turbo-car')!
+    const naCar = decoded.ownedCars.find((c) => c.id === 'na-car')!
+
+    it('keeps an already-installed aftermarket part exactly as-is - it already carries its own band', () => {
+      expect(turboCar.parts.dampers.installed).toEqual({
+        id: 'pi-coilovers',
+        partId: 'tanuki-street-coilovers',
+        band: 'fine',
+        genuinePeriod: false,
+      })
+    })
+
+    it('synthesizes a fresh generic stock part for an ordinary slot with nothing explicitly installed, at the old slot band', () => {
+      expect(turboCar.parts.tyres.installed?.partId).toBe('stock-tyres')
+      expect(turboCar.parts.tyres.installed?.band).toBe('worn')
+      expect(turboCar.parts.tyres.installed?.genuinePeriod).toBe(false)
+    })
+
+    it('synthesizes a fresh stock turbo for a factory-turbo car, at the old slot band', () => {
+      expect(turboCar.parts.forcedInduction.installed?.partId).toBe('stock-forced-induction')
+      expect(turboCar.parts.forcedInduction.installed?.band).toBe('worn')
+    })
+
+    it('migrates an NA car’s unfitted forced induction to a genuinely empty slot, not a synthesized part', () => {
+      expect(naCar.parts.forcedInduction.installed).toBeNull()
+    })
+
+    it('every ordinary mint/unoccupied slot synthesizes a mint generic stock part', () => {
+      expect(turboCar.parts.block.installed?.partId).toBe('stock-block')
+      expect(turboCar.parts.block.installed?.band).toBe('mint')
+    })
+
+    it('round-trips a current v21 state with a real missing slot and a real aftermarket part', () => {
+      const withGaps: GameState = GameStateSchema.parse({
+        ...fullState,
+        ownedCars: [
+          {
+            id: 'car-0001',
+            modelId: 'honda-city-e-aa',
+            year: 1984,
+            mileageKm: 100_000,
+            color: 'White',
+            provenanceNote: '',
+            authenticityPercent: 90,
+            parts: mintParts({
+              // A genuinely missing slot (Sprint 32 decision 3).
+              rims: null,
+              // A real aftermarket part, distinct from the mint-stock default.
+              dampers: {
+                id: 'pi-0001',
+                partId: 'tanuki-street-coilovers',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            }),
+          },
+        ],
+      })
+      const roundTripped = decodeSave(encodeSave(withGaps))
+      expect(roundTripped).toEqual(withGaps)
+      expect(roundTripped.ownedCars[0]?.parts.rims.installed).toBeNull()
+      expect(roundTripped.ownedCars[0]?.parts.dampers.installed?.partId).toBe(
+        'tanuki-street-coilovers',
+      )
     })
   })
 })

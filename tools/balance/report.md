@@ -4,42 +4,42 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 
 | Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) | Reputation pts (median) |
 |---|---|---|---|---|---|---|
-| balanced-player | 25 | Y1,240,957 | Y1,505,123 | Y1,574,282 | 1.0 | 0.0 |
-| balanced-player | 40 | Y1,193,163 | Y1,519,627 | Y1,596,707 | 1.0 | 2.0 |
-| balanced-player | 70 | Y1,143,964 | Y1,506,571 | Y1,605,200 | 1.0 | 2.0 |
-| balanced-player | 100 | Y1,128,727 | Y1,507,207 | Y1,631,871 | 1.0 | 4.0 |
-| cautious-restorer | 25 | Y392,873 | Y473,138 | Y562,748 | 2.0 | 0.0 |
-| cautious-restorer | 40 | Y352,873 | Y433,138 | Y522,748 | 2.0 | 0.0 |
-| cautious-restorer | 70 | Y252,873 | Y333,138 | Y422,748 | 2.0 | 0.0 |
-| cautious-restorer | 100 | Y172,873 | Y253,138 | Y342,748 | 2.0 | 0.0 |
-| competent-policy | 25 | Y396,483 | Y501,902 | Y617,544 | 1.0 | 20.0 |
-| competent-policy | 40 | Y438,884 | Y582,308 | Y695,903 | 1.0 | 52.0 |
-| competent-policy | 70 | Y20,169 | Y254,564 | Y725,799 | 1.0 | 126.0 |
-| competent-policy | 100 | Y-38,607 | Y79,192 | Y259,027 | 1.0 | 134.0 |
-| flipper | 25 | Y1,154,826 | Y1,485,010 | Y1,504,530 | 1.0 | 0.0 |
-| flipper | 40 | Y1,124,895 | Y1,473,942 | Y1,497,671 | 1.0 | 2.0 |
-| flipper | 70 | Y1,056,850 | Y1,424,658 | Y1,458,034 | 1.0 | 2.0 |
-| flipper | 100 | Y1,015,586 | Y1,378,342 | Y1,430,462 | 1.0 | 4.0 |
-| handyman | 25 | Y601,675 | Y657,713 | Y676,119 | 2.0 | 0.0 |
-| handyman | 40 | Y561,675 | Y617,713 | Y636,119 | 2.0 | 0.0 |
-| handyman | 70 | Y461,675 | Y517,713 | Y536,119 | 2.0 | 0.0 |
-| handyman | 100 | Y381,675 | Y437,713 | Y456,119 | 2.0 | 0.0 |
-| investor | 25 | Y769,278 | Y874,235 | Y894,994 | 2.0 | 0.0 |
-| investor | 40 | Y381,160 | Y487,823 | Y508,541 | 2.0 | 0.0 |
-| investor | 70 | Y-42,404 | Y-30,424 | Y-19,145 | 2.0 | 0.0 |
-| investor | 100 | Y-122,404 | Y-110,424 | Y-99,145 | 2.0 | 0.0 |
+| balanced-player | 25 | Y1,191,929 | Y1,499,405 | Y1,565,297 | 1.0 | 0.0 |
+| balanced-player | 40 | Y1,159,930 | Y1,507,428 | Y1,586,800 | 1.0 | 0.0 |
+| balanced-player | 70 | Y1,113,060 | Y1,481,134 | Y1,590,430 | 1.0 | 0.0 |
+| balanced-player | 100 | Y1,095,352 | Y1,439,028 | Y1,599,552 | 1.0 | 0.0 |
+| cautious-restorer | 25 | Y398,283 | Y477,668 | Y568,447 | 2.0 | 0.0 |
+| cautious-restorer | 40 | Y358,283 | Y437,668 | Y528,447 | 2.0 | 0.0 |
+| cautious-restorer | 70 | Y258,283 | Y337,668 | Y428,447 | 2.0 | 0.0 |
+| cautious-restorer | 100 | Y178,283 | Y257,668 | Y348,447 | 2.0 | 0.0 |
+| competent-policy | 25 | Y352,475 | Y432,570 | Y534,644 | 1.0 | 0.0 |
+| competent-policy | 40 | Y334,756 | Y420,444 | Y534,869 | 1.0 | 0.0 |
+| competent-policy | 70 | Y283,915 | Y386,846 | Y512,072 | 1.0 | 0.0 |
+| competent-policy | 100 | Y241,420 | Y367,164 | Y522,242 | 1.0 | 0.0 |
+| flipper | 25 | Y1,446,833 | Y1,484,571 | Y1,505,209 | 1.0 | 0.0 |
+| flipper | 40 | Y1,189,904 | Y1,473,241 | Y1,499,017 | 1.0 | 0.0 |
+| flipper | 70 | Y1,098,744 | Y1,425,491 | Y1,459,611 | 1.0 | 0.0 |
+| flipper | 100 | Y1,062,958 | Y1,396,342 | Y1,434,714 | 1.0 | 0.0 |
+| handyman | 25 | Y598,979 | Y656,950 | Y676,113 | 2.0 | 0.0 |
+| handyman | 40 | Y558,979 | Y616,950 | Y636,113 | 2.0 | 0.0 |
+| handyman | 70 | Y458,979 | Y516,950 | Y536,113 | 2.0 | 0.0 |
+| handyman | 100 | Y378,979 | Y436,950 | Y456,113 | 2.0 | 0.0 |
+| investor | 25 | Y592,748 | Y646,346 | Y666,874 | 2.0 | 0.0 |
+| investor | 40 | Y57,748 | Y111,346 | Y131,874 | 2.0 | 0.0 |
+| investor | 70 | Y-86,842 | Y-67,447 | Y-50,865 | 2.0 | 0.0 |
+| investor | 100 | Y-166,842 | Y-147,447 | Y-130,865 | 2.0 | 0.0 |
 | passive-grinder | 25 | Y1,440,000 | Y1,440,000 | Y1,440,000 | 0.0 | 0.0 |
 | passive-grinder | 40 | Y1,400,000 | Y1,400,000 | Y1,400,000 | 0.0 | 0.0 |
 | passive-grinder | 70 | Y1,300,000 | Y1,300,000 | Y1,300,000 | 0.0 | 0.0 |
 | passive-grinder | 100 | Y1,220,000 | Y1,220,000 | Y1,220,000 | 0.0 | 0.0 |
-| random | 25 | Y1,310,553 | Y1,391,874 | Y1,417,809 | 3.0 | 0.0 |
-| random | 40 | Y1,270,553 | Y1,351,874 | Y1,377,809 | 3.0 | 0.0 |
-| random | 70 | Y1,170,553 | Y1,251,874 | Y1,277,809 | 3.0 | 0.0 |
-| random | 100 | Y1,090,553 | Y1,171,874 | Y1,197,809 | 3.0 | 0.0 |
-| service-grinder | 25 | Y1,011,191 | Y1,163,644 | Y1,240,684 | 0.0 | 42.0 |
-| service-grinder | 40 | Y534,442 | Y670,314 | Y1,331,353 | 0.0 | 81.0 |
-| service-grinder | 70 | Y414,357 | Y728,128 | Y908,349 | 0.0 | 171.0 |
-| service-grinder | 100 | Y534,115 | Y731,108 | Y1,051,896 | 0.0 | 267.0 |
+| random | 25 | Y1,303,525 | Y1,390,994 | Y1,417,490 | 3.0 | 0.0 |
+| random | 40 | Y1,263,525 | Y1,350,994 | Y1,377,490 | 3.0 | 0.0 |
+| random | 70 | Y1,163,525 | Y1,250,994 | Y1,277,490 | 3.0 | 0.0 |
+| random | 100 | Y1,083,525 | Y1,170,994 | Y1,197,490 | 3.0 | 0.0 |
+| service-grinder | 25 | Y992,309 | Y1,168,080 | Y1,231,485 | 0.0 | 42.0 |
+| service-grinder | 40 | Y537,376 | Y653,080 | Y1,328,336 | 0.0 | 82.0 |
+| service-grinder | 70 | Y407,826 | Y713,732 | Y885,169 | 0.0 | 172.0 |
+| service-grinder | 100 | Y560,917 | Y790,453 | Y1,053,022 | 0.0 | 268.0 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
@@ -47,9 +47,9 @@ First day each seeded `competent-policy` career reaches each reputation tier or 
 
 | Tier | Reached | p10 | p50 | p90 |
 |---|---|---|---|---|
-| local | 999/1000 | 11 | 23 | 27 |
-| known | 997/1000 | 29 | 40 | 45 |
-| respected | 915/1000 | 57 | 67 | 75 |
+| local | 627/1000 | 35 | 55 | 89 |
+| known | 25/1000 | 60 | 73 | 92 |
+| respected | 0/1000 | - | - | - |
 
 ## Auction calibration (Sprint 20, auction rework II)
 
@@ -57,9 +57,9 @@ Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot b
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 93.1% | 10%-25% |
+| steal | 92.9% | 10%-25% |
 | mid | 1.1% | 50%-100% |
-| frenzy | 5.8% | 5%-15% |
+| frenzy | 6.0% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 

@@ -57,8 +57,6 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          band: 'mint',
-          fitted: true,
           installed: { id: 'pi-0001', partId: coilovers.id, band: 'mint', genuinePeriod: true },
         },
       },
@@ -75,8 +73,6 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          band: 'mint',
-          fitted: true,
           installed: { id: 'pi-0001', partId: coilovers.id, band: 'mint', genuinePeriod: true },
         },
       },
@@ -86,8 +82,6 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          band: 'mint',
-          fitted: true,
           installed: { id: 'pi-0002', partId: coilovers.id, band: 'worn', genuinePeriod: true },
         },
       },
@@ -111,8 +105,6 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         block: {
-          band: 'mint',
-          fitted: true,
           installed: { id: 'pi-0004', partId: brokenPart.id, band: 'mint', genuinePeriod: true },
         },
       },
@@ -132,8 +124,6 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          band: 'mint',
-          fitted: true,
           installed: { id: 'pi-0003', partId: modifiedPart.id, band: 'mint', genuinePeriod: false },
         },
       },
@@ -155,33 +145,62 @@ describe('computeDerivedStats', () => {
     const scrapBrakes = buildCarInstance({
       modelId: model.id,
       authenticityPercent: 90,
-      parts: mintCarParts({ brakePadsDiscs: { band: 'scrap' } }),
+      parts: mintCarParts({ brakePadsDiscs: 'scrap' }),
     })
     expect(stats(scrapBrakes).handling).toBeLessThan(baseline.handling)
 
     const scrapRims = buildCarInstance({
       modelId: model.id,
       authenticityPercent: 90,
-      parts: mintCarParts({ rims: { band: 'scrap' } }),
+      parts: mintCarParts({ rims: 'scrap' }),
     })
     expect(stats(scrapRims).style).toBeLessThan(baseline.style)
 
     const scrapSeats = buildCarInstance({
       modelId: model.id,
       authenticityPercent: 90,
-      parts: mintCarParts({ seats: { band: 'scrap' } }),
+      parts: mintCarParts({ seats: 'scrap' }),
     })
     expect(stats(scrapSeats).style).toBeLessThan(baseline.style)
   })
 
-  it('an unfitted forced-induction slot drops out of the power weighting instead of dragging it down', () => {
+  it('a legitimately-empty forced-induction slot on this NA model drops out of the power weighting instead of dragging it down', () => {
+    // `model` (Honda City, tags include 'NA') makes an empty forcedInduction
+    // slot legitimate absence, not a defect (Sprint 32 decisions 2-3).
     const naCar = buildCarInstance({
       modelId: model.id,
       authenticityPercent: 90,
-      parts: mintCarParts({ forcedInduction: { fitted: false, band: 'scrap' } }),
+      parts: mintCarParts({ forcedInduction: null }),
     })
-    // A scrap-but-unfitted FI slot must not count against power at all -
-    // this car should score identically to a fully-mint, FI-absent baseline.
     expect(stats(naCar).power).toBe(model.spec.stockPowerPs)
+  })
+
+  it('a MISSING (non-FI) part contributes a 0 band factor to the stat it feeds, worse than scrap', () => {
+    // Isolated via a single-entry taxonomy (real content spreads `style`
+    // across 7 parts, so a one-part swing between scrap (0.15) and missing
+    // (0) can round away against the other six staying mint) - the point
+    // under test is the per-part contribution derivedStats.ts documents,
+    // not the whole-car aggregate.
+    const rimsOnlyTaxonomy = PARTS_TAXONOMY.filter((entry) => entry.id === 'rims')
+    const scrapRims = buildCarInstance({
+      modelId: model.id,
+      authenticityPercent: 90,
+      parts: mintCarParts({ rims: 'scrap' }),
+    })
+    const missingRims = buildCarInstance({
+      modelId: model.id,
+      authenticityPercent: 90,
+      parts: mintCarParts({ rims: null }),
+    })
+    const scrapStyle = computeDerivedStats(model, scrapRims, {}, rimsOnlyTaxonomy, ECONOMY).style
+    const missingStyle = computeDerivedStats(
+      model,
+      missingRims,
+      {},
+      rimsOnlyTaxonomy,
+      ECONOMY,
+    ).style
+    expect(missingStyle).toBeLessThan(scrapStyle)
+    expect(missingStyle).toBe(0)
   })
 })

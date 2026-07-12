@@ -120,8 +120,11 @@ describe('garage: instant part install', () => {
     game.devGrantCar(pair.modelId)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
+    // Sprint 32: every slot starts filled with a stock part by default -
+    // empty this one first so the group-level install has somewhere to land.
+    game.removePart(car.id, pair.carPartId)
     game.devGrantPart(pair.partId)
-    const partInstance = game.gameState.partInventory[0]!
+    const partInstance = game.gameState.partInventory.at(-1)!
 
     const powerBefore = game.carDetail(car.id)!.stats.power
     // The compatibility filter offers exactly this part for its group.
@@ -132,21 +135,33 @@ describe('garage: instant part install', () => {
 
     const after = game.gameState.ownedCars[0]!
     expect(after.parts[pair.carPartId].installed?.partId).toBe(pair.partId)
-    expect(game.gameState.partInventory).toHaveLength(0) // consumed from inventory
+    // Consumed from inventory - only the displaced stock part (dropped by
+    // removePart above) is left.
+    expect(game.gameState.partInventory.some((pi) => pi.id === partInstance.id)).toBe(false)
     expect(game.carDetail(car.id)!.stats.power).toBeGreaterThan(powerBefore)
   })
 
-  it('installablePartsFor excludes a group once every one of its slots is occupied', () => {
+  it('installablePartsFor is empty while every slot in the group is occupied, and offers a fitting part once one opens up', () => {
     const game = useGameStore()
-    const part = PARTS.find((p) => p.requiredTags.length === 0 && p.carPartId === 'seats')!
+    const part = PARTS.find((p) => p.carPartId === 'seats' && p.grade !== 'stock')!
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
+    // Sprint 32: generation fills every slot by default - the whole
+    // `interior` group (seats, dashGauges) starts fully occupied.
+    expect(game.installablePartsFor(car.id, 'interior')).toEqual([])
+
+    game.removePart(car.id, 'seats')
     game.devGrantPart(part.id)
-    const partInstance = game.gameState.partInventory[0]!
+    const partInstance = game.gameState.partInventory.at(-1)!
+    // `seats` is open again - the group as a whole now accepts a fitting install.
+    expect(
+      game.installablePartsFor(car.id, 'interior').some((pi) => pi.id === partInstance.id),
+    ).toBe(true)
+
     game.install(car.id, 'interior', partInstance.id)
-    // The `seats` slot is now filled - `dashGauges` is still open in the same
-    // group, so the group as a whole still accepts a fitting install.
-    expect(game.installablePartsFor(car.id, 'interior')).toBeDefined()
+    // Filled again - `dashGauges` is still occupied too, so the group is
+    // fully occupied once more.
+    expect(game.installablePartsFor(car.id, 'interior')).toEqual([])
   })
 })

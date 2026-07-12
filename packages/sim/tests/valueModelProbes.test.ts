@@ -15,6 +15,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { anchorValueYen, nextRaiseYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
 import { generateAuctionCatalog } from '../src/auctions'
+import { hasForcedInduction } from '../src/bands'
 import { currentGameYear } from '../src/calendar'
 import { buildSimContext } from '../src/context'
 import { marketValueYen } from '../src/marketValue'
@@ -85,20 +86,43 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
       7,
       1,
       createRng(startSeed + i),
-      ECONOMY,
+      CONTEXT,
     )
     if (!lot) throw new Error('expected exactly one lot')
     return { ...lot, id: `value-probe-lot-${startSeed}-${i}` }
   })
 }
 
-/** Every real part set to mint - a full restoration. Installed parts (never
- * present on a fresh auction car, per `generateAuctionCarInstance`) are left
- * untouched either way. */
-function fullyRestored(car: CarInstance): CarInstance {
+/**
+ * Every real part driven to mint - a full restoration (Sprint 32 shape): an
+ * already-filled slot keeps its own installed part, just bumped to mint
+ * band; a genuinely missing slot (the stripped-car roll) is filled with a
+ * fresh mint stock part, since "restored" means every real defect -
+ * including a missing component - is gone. The one legitimate exception is
+ * `forcedInduction` on an NA model, which restoration never adds
+ * (`hasForcedInduction`, bands.ts) - it stays permanently, legitimately
+ * absent either way.
+ */
+function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
   const parts = { ...car.parts }
   for (const partId of ALL_CAR_PART_IDS) {
-    parts[partId] = { ...parts[partId], band: 'mint' }
+    const installed = parts[partId].installed
+    if (installed) {
+      parts[partId] = { installed: { ...installed, band: 'mint' } }
+      continue
+    }
+    if (partId === 'forcedInduction' && !hasForcedInduction(model)) continue // legitimately absent
+    const stockPart = CONTEXT.stockPartByCarPartId[partId]
+    parts[partId] = {
+      installed: stockPart
+        ? {
+            id: `${car.id}-restored-${partId}`,
+            partId: stockPart.id,
+            band: 'mint',
+            genuinePeriod: false,
+          }
+        : null,
+    }
   }
   return { ...car, parts }
 }
@@ -126,7 +150,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
       )
       const restoredValue = marketValueYen(
         PROBE_MODEL,
-        fullyRestored(lot.car),
+        fullyRestored(lot.car, PROBE_MODEL),
         100,
         CURRENT_YEAR,
         {},
@@ -158,7 +182,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
       )
       const restoredValue = marketValueYen(
         PROBE_MODEL,
-        fullyRestored(lot.car),
+        fullyRestored(lot.car, PROBE_MODEL),
         100,
         CURRENT_YEAR,
         {},
@@ -218,7 +242,7 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
       const boughtCar = state.ownedCars.find((c) => c.id === initial.car.id)
       if (!boughtCar) continue
 
-      const restoredCar = fullyRestored(boughtCar)
+      const restoredCar = fullyRestored(boughtCar, PROBE_MODEL)
       const buyer = bestFitBuyer(
         restoredCar,
         PROBE_MODEL,

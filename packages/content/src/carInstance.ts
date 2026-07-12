@@ -1,20 +1,23 @@
 import { z } from 'zod'
 import { PartInstanceSchema } from './part'
-import { CarPartIdSchema, ConditionBandSchema } from './tags'
+import { CarPartIdSchema } from './tags'
 
 /**
- * One real car part's condition state (Sprint 26 - replaces the Sprint 12
- * flat `condition: 0-100` model). The band IS the condition; no percent
- * survives alongside it. `fitted` only means anything for the
- * `forcedInduction` part: `true` (with a real rolled `band`) on
- * `Turbo`-tagged models, `false` on NA cars where the slot is simply empty
- * until a kit part is installed (fitting one sets `fitted: true, band:
- * 'mint'`). Every other part is always present, `fitted` ignored for it.
+ * One real car part's condition state (Sprint 32 - replaces the Sprint 26
+ * `{ band, installed, fitted }` triple). The part occupying the slot -
+ * stock or aftermarket - carries its own condition `band` (`PartInstance`
+ * has always had one, Sprint 26); there is no separate slot-level band
+ * anymore. `installed: null` means the slot is genuinely EMPTY: for every
+ * part except `forcedInduction` this is always a defect (a stolen wheel, a
+ * gutted cat) that tanks value until filled; for `forcedInduction` it is a
+ * defect only on a Turbo/Supercharged-tagged model - on an NA model an
+ * empty forced-induction slot is legitimate and permanent unless a kit is
+ * installed. Which of those two `forcedInduction` cases applies is derived
+ * from the car's model tags (`bands.ts`'s `hasForcedInduction`), never
+ * stored redundantly here - see sprint32.md decisions 2-3.
  */
 const CarPartStateSchema = z.object({
-  band: ConditionBandSchema,
   installed: PartInstanceSchema.nullable().default(null),
-  fitted: z.boolean().default(true),
 })
 
 /**

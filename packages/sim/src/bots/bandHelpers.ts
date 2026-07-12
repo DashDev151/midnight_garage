@@ -18,7 +18,8 @@ function minBandIndexInGroup(
 ): number {
   const parts = presentPartIdsInGroup(car, groupId, partIdsByGroup)
   if (parts.length === 0) return bandIndex('mint')
-  return Math.min(...parts.map((id) => bandIndex(car.parts[id].band)))
+  // presentPartIdsInGroup already filters to installed !== null.
+  return Math.min(...parts.map((id) => bandIndex(car.parts[id].installed!.band)))
 }
 
 /** Whether every present part in `groupId` is at or above `minBand` - the
@@ -33,7 +34,7 @@ export function isGroupAtLeast(
 ): boolean {
   const minIndex = bandIndex(minBand)
   return presentPartIdsInGroup(car, groupId, partIdsByGroup).every(
-    (id) => bandIndex(car.parts[id].band) >= minIndex,
+    (id) => bandIndex(car.parts[id].installed!.band) >= minIndex,
   )
 }
 

@@ -35,6 +35,16 @@ describe('PartsInventoryScreen', () => {
     const partInstanceId = game.gameState.partInventory[0]!.id
     game.devGrantCar()
     const carId = game.gameState.ownedCars[0]!.id
+    // Sprint 32: every slot starts filled with a stock part by default -
+    // empty this one directly (not via removePart, which would drop a
+    // second, still-unstaged part into inventory) so the staged install
+    // actually has somewhere to land.
+    const car = game.gameState.ownedCars[0]!
+    const carPartId = PARTS[0]!.carPartId
+    game.gameState = {
+      ...game.gameState,
+      ownedCars: [{ ...car, parts: { ...car.parts, [carPartId]: { installed: null } } }],
+    }
     game.stageAction(carId, {
       kind: 'install',
       componentId: game.groupForCarPart(PARTS[0]!.carPartId)!,

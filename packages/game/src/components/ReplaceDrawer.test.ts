@@ -8,31 +8,28 @@ import ReplaceDrawer from './ReplaceDrawer.vue'
 describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprint 28)', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('shows only parts addressed to this exact carPartId, fitting and non-fitting alike, each flagged correctly', () => {
+  it('shows only parts addressed to this exact carPartId; an already-occupied slot flags every entry as not-fitting', () => {
     const game = useGameStore()
-    // honda-city-e-aa: Piston, not Rotary - so a Rotary-only forcedInduction
-    // kit doesn't fit it, while a Piston-tagged one does (both share the
-    // forcedInduction address, so both belong in this one drawer).
+    // Sprint 32: every slot starts filled with a stock part by default -
+    // forcedInduction stays genuinely empty on honda-city-e-aa (NA) though,
+    // so leave that one alone and exercise the occupied case on a normally-
+    // filled slot (dampers) instead.
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find(
-      (p) => p.carPartId === 'forcedInduction' && p.requiredTags.includes('Piston'),
-    )!
-    const nonFitting = PARTS.find(
-      (p) => p.carPartId === 'forcedInduction' && p.requiredTags.includes('Rotary'),
-    )!
+    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
     // A totally different address - must never appear in this drawer at all.
     const wrongAddress = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
     game.devGrantPart(fitting.id)
-    game.devGrantPart(nonFitting.id)
     game.devGrantPart(wrongAddress.id)
 
     const wrapper = mount(ReplaceDrawer, {
-      props: { carId, carPartId: 'forcedInduction' },
+      props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
 
-    expect(wrapper.findAll('.part-card')).toHaveLength(2)
+    // dampers is already stock-filled - the address-matching entry still
+    // renders (the player sees their whole inventory), but dimmed and inert.
+    expect(wrapper.findAll('.part-card')).toHaveLength(1)
     expect(wrapper.findAll('.part-card.no-fit')).toHaveLength(1)
     expect(wrapper.text()).not.toContain(wrongAddress.name)
   })
@@ -41,9 +38,16 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
+    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
     game.devGrantPart(fitting.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
+    // Empty the slot directly (bypassing removePart's own inventory side
+    // effect) so this test's inventory holds exactly the one granted part.
+    const car = game.gameState.ownedCars[0]!
+    game.gameState = {
+      ...game.gameState,
+      ownedCars: [{ ...car, parts: { ...car.parts, dampers: { installed: null } } }],
+    }
 
     const wrapper = mount(ReplaceDrawer, {
       props: { carId, carPartId: 'dampers' },
@@ -57,17 +61,17 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
-  it('clicking a non-fitting part stages nothing and emits no close', async () => {
+  it('clicking a non-fitting part (its slot is already occupied) stages nothing and emits no close', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const nonFitting = PARTS.find(
-      (p) => p.carPartId === 'forcedInduction' && p.requiredTags.includes('Rotary'),
-    )!
+    // dampers is already stock-filled by default - nothing addressed to it
+    // can actually land there without removing the incumbent first.
+    const nonFitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
     game.devGrantPart(nonFitting.id)
 
     const wrapper = mount(ReplaceDrawer, {
-      props: { carId, carPartId: 'forcedInduction' },
+      props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
     await wrapper.find('.part-card').trigger('click')
@@ -80,9 +84,10 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.requiredTags.length === 0)!
+    game.removePart(carId, 'dampers')
+    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
     game.devGrantPart(fitting.id)
-    const instance = game.gameState.partInventory[0]!
+    const instance = game.gameState.partInventory.at(-1)!
     game.gameState = {
       ...game.gameState,
       partInventory: [{ ...instance, band: 'scrap' }],

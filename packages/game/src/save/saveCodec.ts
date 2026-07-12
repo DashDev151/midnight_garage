@@ -1,4 +1,5 @@
 import {
+  ALL_CAR_PART_IDS,
   CARS,
   ECONOMY,
   PARTS,
@@ -274,8 +275,38 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   `carsForSale`/`pendingOffers` themselves need no reconstruction - a
  *   pre-v20 save's owned cars were never mid-offer under a mechanic that
  *   didn't exist yet, so both default-fill to empty correctly.
+ * - v21 (Sprint 32, stock-baseline/missing-slot model): `CarPartState`
+ *   drops its own `band`/`fitted` fields - the part occupying the slot
+ *   (`installed`) now carries the only condition band there is, and
+ *   `installed: null` alone means the slot is empty. Not a plain
+ *   default-fill: a schema-default `{ installed: null }` would silently
+ *   strand every real car's condition (its old slot-level `band`) and
+ *   erase every already-fitted factory turbo (`fitted: true`, `installed:
+ *   null` on a pre-v21 save, since aftermarket vs. factory forced induction
+ *   was distinguished by `fitted` alone, never by `installed`).
+ *   `migrateV20ToV21` reconstructs it per the sprint doc's own locked
+ *   mapping, per part, per `CarInstance`: `fitted: false` (the old NA
+ *   forced-induction carve-out, the only way `fitted` was ever false) ->
+ *   `{ installed: null }`, the new model's own legitimate-absence case,
+ *   unchanged in kind; otherwise, if the old slot's `installed` was already
+ *   a real `PartInstance` (an aftermarket part, or - on a factory-turbo car
+ *   - a still-null-`installed`-but-`fitted:true` case falls through to the
+ *   next branch instead), it's kept exactly as-is, since a `PartInstance`
+ *   has carried its own `band` since Sprint 26 and needs no reconstruction;
+ *   otherwise (every ordinary part, and a factory turbo that was never
+ *   explicitly replaced) a fresh generic stock `PartInstance` is synthesized
+ *   at the OLD SLOT's own `band` - the position's only recorded condition
+ *   when nothing was explicitly installed - referencing whichever catalog
+ *   part is `grade: 'stock'` for that `CarPartId` (Sprint 32 decision 1
+ *   guarantees exactly one). No pre-v21 save has a "missing" slot (the
+ *   concept did not exist), so nothing migrates to `null` except the
+ *   pre-existing NA-forced-induction case. Applied to every real
+ *   `CarInstance` population: `ownedCars`, `activeAuctionLots[].car`,
+ *   `activeServiceJobs[].car`, `serviceJobOffers[].car` - `partInventory`
+ *   needs no migration here, since a bare `PartInstance` (not wrapped in a
+ *   `CarPartState`) never had a `band`/`fitted` split to begin with.
  */
-export const SAVE_VERSION = 20
+export const SAVE_VERSION = 21
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -724,6 +755,112 @@ function migrateV19ToV20(gameState: unknown): unknown {
 }
 
 /**
+ * v20 -> v21 (Sprint 32): one `grade: 'stock'` catalog part id per
+ * `CarPartId`, the fallback a slot with nothing explicitly `installed`
+ * migrates to (see `migratePartSlotToStock` below). A historical mapping
+ * needed only for this migration - the live game reads `SimContext`'s own
+ * `stockPartByCarPartId` instead (sim/context.ts).
+ */
+const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
+  PARTS.filter((part) => part.grade === 'stock').map((part) => [part.carPartId, part.id]),
+)
+
+/** Monotonic id suffix for a synthesized stock `PartInstance` - migrations
+ * fabricate real new objects here (unlike most migrations in this file,
+ * which only reshape existing ones), so each needs its own fresh id. */
+let migratedStockInstanceCounter = 0
+
+/**
+ * v20 -> v21: one `CarPartState` slot's old `{ band, installed, fitted }`
+ * -> the new `{ installed }` - see the SAVE_VERSION doc comment above for
+ * the full mapping this implements. Defensive against a malformed or
+ * hand-edited save, same shape as every other migration in this file.
+ */
+function migratePartSlotToStock(oldSlot: unknown, carPartId: string): { installed: unknown } {
+  if (typeof oldSlot !== 'object' || oldSlot === null) return { installed: null }
+  const slot = oldSlot as { band?: unknown; installed?: unknown; fitted?: unknown }
+
+  const fitted = slot.fitted !== false // schema default was true; only `false` ever meant NA-forced-induction
+  if (!fitted) return { installed: null }
+
+  if (typeof slot.installed === 'object' && slot.installed !== null) {
+    return { installed: slot.installed }
+  }
+
+  const stockPartId = STOCK_PART_ID_BY_CAR_PART_ID[carPartId]
+  if (!stockPartId) return { installed: null }
+  const band = typeof slot.band === 'string' ? slot.band : 'mint'
+  migratedStockInstanceCounter += 1
+  return {
+    installed: {
+      id: `part-migrated-${migratedStockInstanceCounter}`,
+      partId: stockPartId,
+      band,
+      genuinePeriod: false,
+    },
+  }
+}
+
+/** v20 -> v21: reconstructs one `CarInstance`'s 29-part `parts` map from its
+ * pre-v21 `{ band, installed, fitted }` shape. Defensive against a
+ * malformed or hand-edited save, same shape as every other migration in
+ * this file. */
+function migrateCarInstanceToStockBaseline(car: unknown): unknown {
+  if (typeof car !== 'object' || car === null) return car
+  const c = car as Record<string, unknown>
+  if (typeof c.parts !== 'object' || c.parts === null) return c
+  const oldParts = c.parts as Record<string, unknown>
+
+  const parts: Record<string, { installed: unknown }> = {}
+  for (const carPartId of ALL_CAR_PART_IDS) {
+    parts[carPartId] = migratePartSlotToStock(oldParts[carPartId], carPartId)
+  }
+  return { ...c, parts }
+}
+
+/**
+ * v20 -> v21: applies `migrateCarInstanceToStockBaseline` across every real
+ * `CarInstance` population - `ownedCars`, `activeAuctionLots[].car`,
+ * `activeServiceJobs[].car`, `serviceJobOffers[].car`. `partInventory` needs
+ * no migration: a bare `PartInstance` never had a `band`/`fitted` split on
+ * it to begin with (see the SAVE_VERSION doc comment above).
+ */
+function migrateV20ToV21(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+
+  const ownedCars = Array.isArray(state.ownedCars)
+    ? state.ownedCars.map(migrateCarInstanceToStockBaseline)
+    : state.ownedCars
+
+  const activeAuctionLots = Array.isArray(state.activeAuctionLots)
+    ? state.activeAuctionLots.map((lot) => {
+        if (typeof lot !== 'object' || lot === null) return lot
+        const l = lot as Record<string, unknown>
+        return { ...l, car: migrateCarInstanceToStockBaseline(l.car) }
+      })
+    : state.activeAuctionLots
+
+  const activeServiceJobs = Array.isArray(state.activeServiceJobs)
+    ? state.activeServiceJobs.map((sj) => {
+        if (typeof sj !== 'object' || sj === null) return sj
+        const s = sj as Record<string, unknown>
+        return { ...s, car: migrateCarInstanceToStockBaseline(s.car) }
+      })
+    : state.activeServiceJobs
+
+  const serviceJobOffers = Array.isArray(state.serviceJobOffers)
+    ? state.serviceJobOffers.map((sj) => {
+        if (typeof sj !== 'object' || sj === null) return sj
+        const s = sj as Record<string, unknown>
+        return { ...s, car: migrateCarInstanceToStockBaseline(s.car) }
+      })
+    : state.serviceJobOffers
+
+  return { ...state, ownedCars, activeAuctionLots, activeServiceJobs, serviceJobOffers }
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -736,6 +873,7 @@ const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   15: migrateV15ToV16,
   17: migrateV17ToV18,
   19: migrateV19ToV20,
+  20: migrateV20ToV21,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

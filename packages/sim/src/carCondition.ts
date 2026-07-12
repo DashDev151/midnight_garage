@@ -1,11 +1,12 @@
 import {
   ALL_CAR_PART_IDS,
   type CarInstance,
+  type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
   type EconomyConfig,
 } from '@midnight-garage/content'
-import { bandIndex, costWeightedBandFactor, isPartPresent } from './bands'
+import { bandIndex, costWeightedBandFactor, isPartMissing } from './bands'
 import { LEMON_MAX_AVERAGE_BAND_FACTOR, LEMON_SALE_REPUTATION_PENALTY } from './constants'
 
 /**
@@ -29,29 +30,41 @@ import { LEMON_MAX_AVERAGE_BAND_FACTOR, LEMON_SALE_REPUTATION_PENALTY } from './
  *   `authenticityPercent` clears its own bar - a genuine bonus for a
  *   well-matched find (that value is never player-modifiable), not the only
  *   door into the faucet.
+ *
+ * Sprint 32: a MISSING part (`isPartMissing` - a real defect, distinct from
+ * the one legitimately-empty `forcedInduction`-on-NA case) now fails clean/
+ * concours exactly like a scrap part does, and triggers lemon exactly like
+ * one too - a stripped car can't quietly pass as a well-kept one just
+ * because a slot happens to be empty instead of merely worn.
  */
 export function saleReputationDeltaFor(
   car: CarInstance,
+  model: CarModel,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
-  const hasScrapPart = ALL_CAR_PART_IDS.some(
-    (id) => isPartPresent(car, id) && car.parts[id].band === 'scrap',
-  )
-  const weightedFactor = costWeightedBandFactor(car, partsTaxonomyById, economy)
-  if (hasScrapPart || weightedFactor <= LEMON_MAX_AVERAGE_BAND_FACTOR) {
+  const hasScrapOrMissingPart = ALL_CAR_PART_IDS.some((id) => {
+    const installed = car.parts[id].installed
+    return installed ? installed.band === 'scrap' : isPartMissing(car, model, id)
+  })
+  const weightedFactor = costWeightedBandFactor(car, model, partsTaxonomyById, economy)
+  if (hasScrapOrMissingPart || weightedFactor <= LEMON_MAX_AVERAGE_BAND_FACTOR) {
     return -LEMON_SALE_REPUTATION_PENALTY
   }
 
   const minCleanIndex = bandIndex(economy.reputation.cleanSaleMinBand)
-  const isClean = ALL_CAR_PART_IDS.every(
-    (id) => !isPartPresent(car, id) || bandIndex(car.parts[id].band) >= minCleanIndex,
-  )
+  const isClean = ALL_CAR_PART_IDS.every((id) => {
+    const installed = car.parts[id].installed
+    return installed ? bandIndex(installed.band) >= minCleanIndex : !isPartMissing(car, model, id)
+  })
   if (!isClean) return 0
 
   const isConcours =
     car.authenticityPercent >= economy.reputation.concoursSaleMinAuthenticityPercent &&
-    ALL_CAR_PART_IDS.every((id) => !isPartPresent(car, id) || car.parts[id].band === 'mint')
+    ALL_CAR_PART_IDS.every((id) => {
+      const installed = car.parts[id].installed
+      return installed ? installed.band === 'mint' : !isPartMissing(car, model, id)
+    })
   return isConcours ? economy.reputation.concoursSaleBonus : economy.reputation.cleanSaleBonus
 }
 

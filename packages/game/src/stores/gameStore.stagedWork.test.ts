@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
 
-/** A part with no required tags always fits any car - avoids incidental tag mismatches. */
+/** An aftermarket (non-stock) catalog part for this slot - every part fits
+ * any car now (Sprint 32 decision 1 drops requiredTags), so this just needs
+ * to avoid the stock grade (already occupying every slot by default). */
 function untaggedPartFor(carPartId: string) {
-  return PARTS.find((p) => p.carPartId === carPartId && p.requiredTags.length === 0)!
+  return PARTS.find((p) => p.carPartId === carPartId && p.grade !== 'stock')!
 }
 
 describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)', () => {
@@ -64,9 +66,10 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     const componentId = 'suspension'
+    game.removePart(carId, 'dampers')
     const partA = untaggedPartFor('dampers')
     game.devGrantPart(partA.id)
-    const partAInstanceId = game.gameState.partInventory[0]!.id
+    const partAInstanceId = game.gameState.partInventory.at(-1)!.id
 
     game.stageAction(carId, { kind: 'install', componentId, partInstanceId: partAInstanceId })
     expect(game.isPartStagedAnywhere(partAInstanceId)).toBe(true)
@@ -86,9 +89,11 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     game.devGrantCar(CARS[1]?.id ?? CARS[0]!.id)
     const [carA, carB] = game.gameState.ownedCars
     const componentId = 'suspension'
+    game.removePart(carA!.id, 'dampers')
+    game.removePart(carB!.id, 'dampers')
     const part = untaggedPartFor('dampers')
     game.devGrantPart(part.id)
-    const partInstanceId = game.gameState.partInventory[0]!.id
+    const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
     expect(game.stageAction(carA!.id, { kind: 'install', componentId, partInstanceId })).toBe(true)
     expect(game.stageableParts.some((p) => p.instance.id === partInstanceId)).toBe(false)
@@ -107,16 +112,19 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     game.moveCar(carId, 'service')
 
     const componentId = 'suspension'
+    game.removePart(carId, 'dampers')
     const part = untaggedPartFor('dampers')
     game.devGrantPart(part.id)
-    const partInstanceId = game.gameState.partInventory[0]!.id
+    const partInstanceId = game.gameState.partInventory.at(-1)!.id
     game.stageAction(carId, { kind: 'install', componentId, partInstanceId })
 
     game.confirmCarWork(carId)
 
     expect(game.stagedActionsFor(carId)).toEqual([])
     expect(game.gameState.ownedCars[0]!.parts.dampers.installed?.id).toBe(partInstanceId)
-    expect(game.gameState.partInventory).toHaveLength(0)
+    // Only the displaced stock dampers instance (dropped by removePart
+    // above) is left - the confirmed install consumed the granted part.
+    expect(game.gameState.partInventory.some((pi) => pi.id === partInstanceId)).toBe(false)
   })
 
   it('confirmCarWork still refuses a staged repair without the equipment (Sprint 13 gate)', () => {

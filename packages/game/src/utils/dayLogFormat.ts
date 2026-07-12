@@ -72,6 +72,8 @@ export function describeLogEntry(
       return `Delivery arrived: ${entry.partId}`
     case 'part-scrapped':
       return `Scrapped a part for ${formatYen(entry.priceYen)}`
+    case 'part-removed':
+      return `Removed ${entry.carPartId} from ${entry.carInstanceId}`
     case 'service-job-accepted':
       // Sprint 25 task 2: acceptance no longer places the car instantly, so
       // this reads as the customer's own promise, not a status update.

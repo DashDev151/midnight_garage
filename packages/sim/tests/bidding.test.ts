@@ -68,7 +68,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
 function sampleLot(seed: number) {
   const model = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
   if (!model) throw new Error('fixture car missing from seed content')
-  const [lot] = generateAuctionCatalog([model], 'premium', 7, 1, createRng(seed), ECONOMY)
+  const [lot] = generateAuctionCatalog([model], 'premium', 7, 1, createRng(seed), CONTEXT)
   if (!lot) throw new Error('expected exactly one lot')
   return { lot, model }
 }
@@ -99,7 +99,7 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
       7,
       1,
       createRng(startSeed + i),
-      ECONOMY,
+      CONTEXT,
     )
     if (!lot) throw new Error('expected exactly one lot')
     return { ...lot, id: `independent-lot-${startSeed}-${i}` }

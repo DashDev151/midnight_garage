@@ -41,7 +41,7 @@ function ownedCar(id: string) {
 }
 
 function serviceCar(id: string): ServiceJob {
-  const car = generateAuctionCarInstance(CARS[0]!, id, createRng(1), CONTEXT.economy)
+  const car = generateAuctionCarInstance(CARS[0]!, id, createRng(1), CONTEXT)
   return {
     id: `svc-${id}`,
     typeId: 'repair-engine',

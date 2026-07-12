@@ -1,5 +1,6 @@
 import type {
   CarInstance,
+  CarModel,
   CarPartId,
   CarPartTaxonomyEntry,
   ComponentId,
@@ -63,14 +64,52 @@ export function scrapValueYen(taxonomyEntry: CarPartTaxonomyEntry, economy: Econ
   return Math.round(taxonomyEntry.stockReplacementPriceYen * economy.bands.scrapValueFraction)
 }
 
-/** True unless this is the unfitted forced-induction slot on an NA car - the
- * one part whose presence on a given car is conditional (decision 2). */
+/**
+ * True when `model` has forced induction from the factory (Sprint 32) - the
+ * one platform fact that decides whether an empty `forcedInduction` slot is
+ * a real defect (decision 3) or legitimate, permanent absence. Generation
+ * (`generateAuctionCarInstance`, auctions.ts) reads this to decide whether
+ * to fill the slot with a stock turbo or leave it `null`; the value/
+ * condition/stat helpers below read it to decide whether an empty slot
+ * costs anything.
+ */
+export function hasForcedInduction(model: CarModel): boolean {
+  return model.tags.includes('Turbo') || model.tags.includes('Supercharged')
+}
+
+/**
+ * True when `partId`'s slot is physically occupied - some `PartInstance`
+ * (stock or aftermarket) is installed (Sprint 32: the slot's only condition
+ * state now lives on that instance). False for both a genuinely missing
+ * slot and the one legitimately-empty case (forced induction on an NA car);
+ * repair eligibility (`presentPartIdsInGroup`/`planGroupRepair`) only ever
+ * needs this structural fact - there is nothing to climb toward mint
+ * either way an empty slot got that way.
+ */
 export function isPartPresent(car: CarInstance, partId: CarPartId): boolean {
-  return car.parts[partId].fitted
+  return car.parts[partId].installed !== null
+}
+
+/**
+ * True when `partId`'s empty slot is a real defect (decision 3) rather than
+ * legitimate absence - a stolen wheel, a gutted cat, a missing turbo on a
+ * factory-turbo car. Always false for an occupied slot. The value
+ * (`carCostToMintYen`/`groupCostToMintYen`), condition
+ * (`costWeightedBandFactor`, `carCondition.ts`'s clean/concours checks),
+ * and stat (`derivedStats.ts`) helpers all price/weight a missing slot as
+ * the worst possible state (a full stock replacement, or a 0 band factor);
+ * a legitimately-empty `forcedInduction` slot on an NA car instead
+ * contributes nothing, unchanged from Sprint 26.
+ */
+export function isPartMissing(car: CarInstance, model: CarModel, partId: CarPartId): boolean {
+  if (car.parts[partId].installed !== null) return false
+  if (partId === 'forcedInduction' && !hasForcedInduction(model)) return false
+  return true
 }
 
 /** Every part actually present on `car` within `groupId` - normally every
- * part the taxonomy assigns to that group, minus an unfitted FI slot. */
+ * part the taxonomy assigns to that group, minus any empty slot (missing or
+ * legitimately-absent alike - see `isPartPresent`'s own doc comment). */
 export function presentPartIdsInGroup(
   car: CarInstance,
   groupId: ComponentId,
@@ -79,37 +118,56 @@ export function presentPartIdsInGroup(
   return partIdsByGroup[groupId].filter((partId) => isPartPresent(car, partId))
 }
 
-/** Sum of `costToMintYen` across every part actually present on `car` -
- * the denominator (and, per-part, the numerator) of the cost-weighted value
- * shim below, and the basis for a group-level repair job's total price. */
+/**
+ * Sum of `costToMintYen` across every part on `car` - the restoration bill
+ * `marketValueYen` deducts from clean value, and the basis for a
+ * group-level repair job's total price. Sprint 32 decision 5: a filled slot
+ * prices at its installed instance's own `costToMintYen`, same as before; a
+ * MISSING slot (`isPartMissing`) prices at a full `stockReplacementPriceYen`
+ * (buying a replacement, not climbing a band); a legitimately-absent
+ * `forcedInduction` slot on an NA car contributes zero, unchanged from
+ * Sprint 26.
+ */
 export function carCostToMintYen(
   car: CarInstance,
+  model: CarModel,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
 ): number {
   let total = 0
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
-    if (!isPartPresent(car, partId)) continue
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
-    total += costToMintYen(car.parts[partId].band, entry)
+    const installed = car.parts[partId].installed
+    if (installed) {
+      total += costToMintYen(installed.band, entry)
+    } else if (isPartMissing(car, model, partId)) {
+      total += entry.stockReplacementPriceYen
+    }
   }
   return total
 }
 
-/** Sum of `costToMintYen` across every present part in one group only -
- * what a group-level repair job (Sprint 26 decision 13's "bridge") actually
- * costs to fully mint. */
+/** Sum of `costToMintYen` across one group only - what a group-level repair
+ * job (Sprint 26 decision 13's "bridge") actually costs to fully mint, on
+ * the same present/missing/absent basis as `carCostToMintYen` above,
+ * scoped to `groupId`. */
 export function groupCostToMintYen(
   car: CarInstance,
+  model: CarModel,
   groupId: ComponentId,
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
 ): number {
   let total = 0
-  for (const partId of presentPartIdsInGroup(car, groupId, partIdsByGroup)) {
+  for (const partId of partIdsByGroup[groupId]) {
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
-    total += costToMintYen(car.parts[partId].band, entry)
+    const installed = car.parts[partId].installed
+    if (installed) {
+      total += costToMintYen(installed.band, entry)
+    } else if (isPartMissing(car, model, partId)) {
+      total += entry.stockReplacementPriceYen
+    }
   }
   return total
 }
@@ -131,20 +189,29 @@ export function groupCostToMintYen(
  * worked example calls out. Weighting by the part's fixed worth instead
  * keeps an expensive part's condition mattering more to the average no
  * matter what band it's currently in.
+ *
+ * Sprint 32: a MISSING slot (`isPartMissing`) counts at a 0 band factor -
+ * worse than scrap, the worst state the average can reflect - so a
+ * stripped car reads as a real lemon candidate (`carCondition.ts`), not as
+ * quietly excluded the way a legitimately-absent `forcedInduction` slot on
+ * an NA car still is.
  */
 export function costWeightedBandFactor(
   car: CarInstance,
+  model: CarModel,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
   let weightedSum = 0
   let totalWeight = 0
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
-    if (!isPartPresent(car, partId)) continue
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
+    const installed = car.parts[partId].installed
+    if (!installed && !isPartMissing(car, model, partId)) continue // legitimately absent
     const weight = entry.stockReplacementPriceYen
-    weightedSum += weight * bandFactor(car.parts[partId].band, economy)
+    const factor = installed ? bandFactor(installed.band, economy) : 0
+    weightedSum += weight * factor
     totalWeight += weight
   }
   return totalWeight > 0 ? weightedSum / totalWeight : 1
@@ -222,9 +289,11 @@ export function planGroupRepair(
     (partId) => !onlyPartId || partId === onlyPartId,
   )
   for (const partId of candidateIds) {
-    const partState = car.parts[partId]
-    if (!canRepair(partState.band)) continue
-    const grades = gradesBetween(partState.band, targetBand)
+    // candidateIds is already filtered to present slots (presentPartIdsInGroup
+    // above), so `installed` is never null here.
+    const band = car.parts[partId].installed!.band
+    if (!canRepair(band)) continue
+    const grades = gradesBetween(band, targetBand)
     if (grades <= 0) continue
     const entry = partsTaxonomyById[partId]
     if (!entry) continue

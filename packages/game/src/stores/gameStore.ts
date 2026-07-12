@@ -23,6 +23,7 @@ import type {
   DayLogEntry,
   Equipment,
   GameState,
+  Grade,
   Job,
   Part,
   PartInstance,
@@ -56,6 +57,7 @@ import {
   generateAuctionCarInstance,
   hasEquipmentFor,
   hasParkingSpace,
+  isPartMissing,
   isServiceJobInTransit,
   isServiceTaskDone,
   isServiceWorkDone,
@@ -77,6 +79,7 @@ import {
   reserveYen,
   resolveJobLabor,
   resolvePlaceBid,
+  resolveRemovePart,
   resolveScrapPart,
   resolveSellViaWalkIn,
   resolveServiceJob,
@@ -127,22 +130,33 @@ const REAL_COMPONENT_GROUPS: readonly ComponentId[] = [
   'interior',
 ]
 
-/** One real part within a group, for the car-detail screen's per-part breakdown (Sprint 26). */
+/** One real part within a group, for the car-detail screen's per-part breakdown
+ * (Sprint 26; reshaped Sprint 32 for the stock-baseline/missing-slot model). */
 export interface CarPartRowView {
   partId: CarPartId
   displayName: string
-  band: ConditionBand
+  /** The installed part's own condition band, or null when the slot is
+   * empty (missing or legitimately absent - see `missing` below). */
+  band: ConditionBand | null
   /** Display name of the installed PartInstance, or null if the slot is empty. */
   installedPartName: string | null
+  /** The installed part's catalog grade ('stock' for the baseline every
+   * slot starts filled with, 'street'/'sport'/'race' for an upgrade), or
+   * null when the slot is empty. */
+  grade: Grade | null
   /**
-   * Sprint 28: true unless this is the one conditional slot (`forcedInduction`
-   * on an NA car) that hasn't been fitted yet. A fitted-false row still
-   * renders (unlike the group-band/valuation math, which excludes it via
-   * `presentPartIdsInGroup` on purpose) so the per-part drill-down has
-   * somewhere to offer "fit a forced-induction kit" - the row simply has no
-   * band worth showing and no Repair control, only Replace.
+   * True when the slot is empty AND that's a real defect (Sprint 32
+   * decision 3) - a stolen wheel, a gutted cat, a missing turbo on a
+   * factory-turbo car - needing a fill prompt. False when the slot is
+   * filled, or (the one legitimately-empty case) `forcedInduction` on an NA
+   * car, which renders as permanently absent instead - see
+   * `legitimatelyAbsent`.
    */
-  fitted: boolean
+  missing: boolean
+  /** True only for an empty `forcedInduction` slot on an NA car - no
+   * defect, nothing to fill, distinct copy from `missing`. Always false for
+   * every other part. */
+  legitimatelyAbsent: boolean
 }
 
 /** A car paired with its resolved model, display name, and derived stats. */
@@ -525,7 +539,9 @@ export const useGameStore = defineStore('game', () => {
       const partIds = presentPartIdsInGroup(car, groupId, context.value.partIdsByGroup)
       let worst: ConditionBand = 'mint'
       for (const partId of partIds) {
-        if (bandIndex(car.parts[partId].band) < bandIndex(worst)) worst = car.parts[partId].band
+        // presentPartIdsInGroup already filters to installed !== null.
+        const band = car.parts[partId].installed!.band
+        if (bandIndex(band) < bandIndex(worst)) worst = band
       }
       result[groupId] = worst
     }
@@ -538,24 +554,33 @@ export const useGameStore = defineStore('game', () => {
    * owned-car screen (`partsInGroup`, below, looked up by car id) and the
    * auction lot-detail screen (Sprint 27 decision 3, which has no owned car
    * to look up) share one row-building implementation rather than each
-   * re-deriving it.
+   * re-deriving it. `model` (Sprint 32) is needed to tell a genuinely
+   * MISSING slot apart from the one legitimately-empty case
+   * (`forcedInduction` on an NA car) - see `isPartMissing`, sim/bands.ts.
    *
    * Sprint 28: iterates every part the taxonomy assigns to the group
    * (`partIdsByGroup`), not just the present ones (`presentPartIdsInGroup`)
-   * - the drill-down needs to show the one conditional slot
-   * (`forcedInduction` on an NA car) too, so there's a row to fit a
-   * forced-induction kit onto. Group-band/valuation math is unaffected: it
-   * still goes through `presentPartIdsInGroup` on its own, unchanged.
+   * - the drill-down needs to show an empty slot too, so there's a row to
+   * fill it from. Group-band/valuation math is unaffected: it still goes
+   * through `presentPartIdsInGroup` on its own, unchanged.
    */
-  function carPartRowsInGroup(car: CarInstance, componentId: ComponentId): CarPartRowView[] {
+  function carPartRowsInGroup(
+    car: CarInstance,
+    model: CarModel,
+    componentId: ComponentId,
+  ): CarPartRowView[] {
     return context.value.partIdsByGroup[componentId].map((partId) => {
-      const state = car.parts[partId]
+      const installed = car.parts[partId].installed
+      const part = installed ? context.value.partsById[installed.partId] : undefined
+      const missing = isPartMissing(car, model, partId)
       return {
         partId,
         displayName: carPartLabel(partId),
-        band: state.band,
-        installedPartName: state.installed ? partName(state.installed.partId) : null,
-        fitted: state.fitted,
+        band: installed ? installed.band : null,
+        installedPartName: installed ? partName(installed.partId) : null,
+        grade: part?.grade ?? null,
+        missing,
+        legitimatelyAbsent: !installed && !missing,
       }
     })
   }
@@ -567,8 +592,9 @@ export const useGameStore = defineStore('game', () => {
    */
   function partsInGroup(carId: string, componentId: ComponentId): CarPartRowView[] {
     const car = findWorkableCar(carId)
-    if (!car) return []
-    return carPartRowsInGroup(car, componentId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!car || !model) return []
+    return carPartRowsInGroup(car, model, componentId)
   }
 
   /**
@@ -577,8 +603,8 @@ export const useGameStore = defineStore('game', () => {
    * view: every real part, always visible, never gated behind an inspection
    * step. Player and bots see identical information.
    */
-  function allCarPartRows(car: CarInstance): CarPartRowView[] {
-    return REAL_COMPONENT_GROUPS.flatMap((groupId) => carPartRowsInGroup(car, groupId))
+  function allCarPartRows(car: CarInstance, model: CarModel): CarPartRowView[] {
+    return REAL_COMPONENT_GROUPS.flatMap((groupId) => carPartRowsInGroup(car, model, groupId))
   }
 
   const carsDetailed = computed<DetailedCar[]>(() => gameState.value.ownedCars.map(detailFor))
@@ -793,8 +819,8 @@ export const useGameStore = defineStore('game', () => {
       nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
       playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(lot.car),
-      partRows: allCarPartRows(lot.car),
-      restorationBillYen: carCostToMintYen(lot.car, context.value.partsTaxonomyById),
+      partRows: allCarPartRows(lot.car, model),
+      restorationBillYen: carCostToMintYen(lot.car, model, context.value.partsTaxonomyById),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
     }
@@ -880,12 +906,18 @@ export const useGameStore = defineStore('game', () => {
    * to whichever specific `CarPartId` in that group is actually empty and
    * the picked catalog part addresses). A scrap `PartInstance` never fits
    * anywhere (decision 6).
+   *
+   * Sprint 32: scans every part the taxonomy assigns to the group directly
+   * (`partIdsByGroup`), not `presentPartIdsInGroup` - that helper now means
+   * "physically occupied," so filtering it again for "not installed" would
+   * always be empty (every slot it returns already has something
+   * installed).
    */
   function installablePartsFor(carId: string, componentId: ComponentId): PartInstance[] {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model) return []
-    const hasEmptySlot = presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup).some(
+    const hasEmptySlot = context.value.partIdsByGroup[componentId].some(
       (partId) => !car.parts[partId].installed,
     )
     if (!hasEmptySlot) return []
@@ -1242,10 +1274,15 @@ export const useGameStore = defineStore('game', () => {
       // Sprint 28: when `action.carPartId` is set, also refuses a part whose
       // own catalog address doesn't match that exact slot, or whose exact
       // slot is already occupied (mirrors `installFitGate`, sim/jobs.ts).
+      // Sprint 32: `slotEmpty` always resolves from the picked part's own
+      // catalog address (`part.carPartId`), same fix as `installFitGate` -
+      // most slots start filled with a stock part now, so a group-level
+      // stage needs the same real occupied-slot check a per-part one always
+      // had, not just when `action.carPartId` happens to be set.
       const model = context.value.modelsById[car.modelId]
       const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
       const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
-      const slotEmpty = !action.carPartId || !car.parts[action.carPartId].installed
+      const slotEmpty = !!part && !car.parts[part.carPartId].installed
       if (
         !model ||
         !part ||
@@ -1311,6 +1348,24 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = result.state
     dayLog.value.push(...result.log)
     logSessionEvent('confirmCarWork', { carId })
+  }
+
+  /**
+   * Pull whatever occupies `carPartId`'s slot into inventory (Sprint 32
+   * decision 7) - free and instant, no staging step (there is no repair/
+   * install work to schedule; the part just comes out). Removing an
+   * aftermarket part reverts the slot to a fresh stock part (still filled);
+   * removing a stock part leaves the slot genuinely empty (missing). A
+   * no-op (returns false) if the slot is already empty or a job is
+   * currently open on this address.
+   */
+  function removePart(carId: string, carPartId: CarPartId): boolean {
+    const result = resolveRemovePart(gameState.value, carId, carPartId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('removePart', { carId, carPartId })
+    return true
   }
 
   /**
@@ -1657,12 +1712,7 @@ export const useGameStore = defineStore('game', () => {
     if (!model) return
     grantCounter.value += 1
     const id = `dev-car-${grantCounter.value}`
-    const car = generateAuctionCarInstance(
-      model,
-      id,
-      createRng(grantCounter.value),
-      context.value.economy,
-    )
+    const car = generateAuctionCarInstance(model, id, createRng(grantCounter.value), context.value)
     // Sprint 17: parking is a real indexed array now - a granted car needs an
     // actual slot, not just membership in `ownedCars` (assignToParking grows
     // the array if parking happens to be nominally full, since this bypasses
@@ -1802,6 +1852,7 @@ export const useGameStore = defineStore('game', () => {
     stageAction,
     unstageAction,
     confirmCarWork,
+    removePart,
     placeBid,
     buyout,
     buyPart,

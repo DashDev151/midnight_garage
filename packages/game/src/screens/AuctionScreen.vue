@@ -189,7 +189,9 @@ function backstopLabel(expiresOnDay: number): string {
                 <li v-for="row in d.partRows" :key="row.partId" class="part-row">
                   <span class="part-group">{{ partGroupLabel(row.partId) }}</span>
                   <span class="part-name">{{ row.displayName }}</span>
-                  <BandChip :band="row.fitted ? row.band : null" />
+                  <BandChip :band="row.band" />
+                  <span v-if="row.missing" class="missing-tag">MISSING</span>
+                  <span v-else-if="row.legitimatelyAbsent" class="absent-tag">no turbo (NA)</span>
                 </li>
               </ul>
             </div>
@@ -385,6 +387,18 @@ h3 {
 .part-row .part-name {
   flex: 1;
   color: var(--mg-text);
+}
+
+/* A genuinely missing slot (Sprint 32 decision 3) vs. the one
+   legitimately-empty case (forced induction on an NA car) - same
+   alarm/dim color split as the car-detail screen's own tags. */
+.missing-tag {
+  color: var(--mg-neon-pink);
+  font-weight: bold;
+}
+
+.absent-tag {
+  color: var(--mg-text-dim);
 }
 
 .lot-turnout {

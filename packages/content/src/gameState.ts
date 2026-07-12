@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ReputationTierSchema } from './tags'
+import { CarPartIdSchema, ReputationTierSchema } from './tags'
 import { CarInstanceSchema } from './carInstance'
 import { PartInstanceSchema, PendingPartOrderSchema } from './part'
 import { StaffMemberSchema } from './staff'
@@ -290,6 +290,18 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('part-scrapped'),
     partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
+  }),
+  /**
+   * Sprint 32 decision 7: pulled `carPartId`'s installed part into
+   * inventory. Removing an aftermarket part reverts the slot to a fresh
+   * stock part (still filled); removing a stock part leaves the slot
+   * genuinely empty (missing).
+   */
+  z.object({
+    type: z.literal('part-removed'),
+    carInstanceId: z.string().min(1),
+    carPartId: CarPartIdSchema,
+    partInstanceId: z.string().min(1),
   }),
   z.object({
     type: z.literal('car-moved'),

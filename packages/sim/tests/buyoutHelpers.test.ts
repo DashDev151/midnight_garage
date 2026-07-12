@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  PARTS,
   PARTS_TAXONOMY,
   type AuctionLot,
   type GameState,
@@ -18,12 +19,16 @@ import {
 } from '../src/bots/buyoutHelpers'
 import { bellNormal, createRng, hashStringToSeed } from '../src/rng'
 
-const CONTEXT = buildSimContext(CARS, [], BUYERS, PARTS_TAXONOMY)
+// Real PARTS (not []): generation now fills every slot with a real stock
+// PartInstance by default (Sprint 32) - an empty catalog would make every
+// part read as MISSING, crushing every generated car's value to the floor
+// and making this file's value-anchor assertions meaningless.
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
 function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium', seed: number) {
   const model = CARS.find((c) => c.id === modelId)
   if (!model) throw new Error('fixture car missing')
-  const [lot] = generateAuctionCatalog([model], tier, 7, 1, createRng(seed), CONTEXT.economy)
+  const [lot] = generateAuctionCatalog([model], tier, 7, 1, createRng(seed), CONTEXT)
   if (!lot) throw new Error('expected a lot')
   return { lot: { ...lot, id: `${modelId}-${seed}` }, model }
 }
@@ -166,7 +171,12 @@ describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
     const probeState = baseState()
     const raise1 = nextRaiseYen(lot1, probeState, CONTEXT)
     const raise2 = nextRaiseYen(lot2, probeState, CONTEXT)
-    const state = baseState({ cashYen: Math.round((raise1 + raise2) * 1.2) })
+    // Math.ceil, not Math.round: acquireLot's own gate is `cashYen >=
+    // (committed + raise) * cashBufferMultiplier` - a plain round can land
+    // fractionally under that exact product and fail the boundary by a
+    // rounding artifact unrelated to what this test actually exercises
+    // (that both raises fit together under one shared budget).
+    const state = baseState({ cashYen: Math.ceil((raise1 + raise2) * 1.2) })
     const actions = emptyDayActions()
     const budget = auctionAcquisitionBudget(state)
     const first = acquireLot(state, lot1, raise1, actions, CONTEXT, budget, 1.2)

@@ -80,12 +80,7 @@ function equipmentIdsFor(type: ServiceJobType): string[] {
 
 /** An active (accepted) service job carrying a real car, ready to resolve. */
 function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}): ServiceJob {
-  const car = generateAuctionCarInstance(
-    CARS[0]!,
-    `svc-car-${type.id}`,
-    createRng(42),
-    CONTEXT.economy,
-  )
+  const car = generateAuctionCarInstance(CARS[0]!, `svc-car-${type.id}`, createRng(42), CONTEXT)
   return {
     id: `svc-${type.id}`,
     typeId: type.id,
@@ -352,7 +347,7 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   })
 
   it('a repair task charges banded-steps cost proportional to how far the part is from target', () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: { band: 'poor' } }) })
+    const car = buildCarInstance({ parts: mintCarParts({ panels: 'poor' }) })
     const model = CARS[0]!
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     const entry = CONTEXT.partsTaxonomyById.panels!
@@ -362,7 +357,15 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   })
 
   it('a repair task on a scrap part contributes nothing (unrepairable, already "done")', () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: { band: 'scrap' } }) })
+    const car = buildCarInstance({ parts: mintCarParts({ panels: 'scrap' }) })
+    const model = CARS[0]!
+    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
+    expect(breakdown.taskCostYen).toBe(0)
+    expect(breakdown.laborSlots).toBe(0)
+  })
+
+  it('a repair task on a missing (empty) slot contributes nothing - same treatment as scrap (Sprint 32)', () => {
+    const car = buildCarInstance({ parts: mintCarParts({ panels: null }) })
     const model = CARS[0]!
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBe(0)
@@ -378,7 +381,7 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   })
 
   it('a higher margin roll yields a strictly higher payout for the same tasks/car', () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: { band: 'poor' } }) })
+    const car = buildCarInstance({ parts: mintCarParts({ panels: 'poor' }) })
     const model = CARS[0]!
     const low = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.2)
     const high = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.45)
@@ -391,57 +394,66 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     const task = singleRepairType.tasks[0]!
     if (task.action !== 'repair') throw new Error('fixture task should be a repair task')
     const notThere = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: { band: 'poor' } }),
+      parts: mintCarParts({ [task.carPartId]: 'poor' }),
     })
     expect(isServiceTaskDone(notThere, task, CONTEXT.partsById)).toBe(false)
     const there = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: { band: task.targetBand } }),
+      parts: mintCarParts({ [task.carPartId]: task.targetBand }),
     })
     expect(isServiceTaskDone(there, task, CONTEXT.partsById)).toBe(true)
     const scrapped = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: { band: 'scrap' } }),
+      parts: mintCarParts({ [task.carPartId]: 'scrap' }),
     })
     expect(isServiceTaskDone(scrapped, task, CONTEXT.partsById)).toBe(true)
+  })
+
+  it('a repair task on a missing (empty) slot counts as done too - nothing left to repair (Sprint 32)', () => {
+    const task = singleRepairType.tasks[0]!
+    if (task.action !== 'repair') throw new Error('fixture task should be a repair task')
+    const missing = buildCarInstance({
+      parts: mintCarParts({ [task.carPartId]: null }),
+    })
+    expect(isServiceTaskDone(missing, task, CONTEXT.partsById)).toBe(true)
   })
 
   it('an install task is done once its slot holds a part graded at least minGrade - overdelivering still passes', () => {
     const task = installType.tasks[0]!
     if (task.action !== 'install') throw new Error('fixture task should be an install task')
-    const empty = buildCarInstance({ parts: mintCarParts() })
+    const empty = buildCarInstance({ parts: mintCarParts({ [task.carPartId]: null }) })
     expect(isServiceTaskDone(empty, task, CONTEXT.partsById)).toBe(false)
 
     const stockPart = catalogPartFor(task.carPartId, (p) => p.grade === 'stock')
     const withStock = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: { installed: partInstance(stockPart.id) } }),
+      parts: mintCarParts({ [task.carPartId]: partInstance(stockPart.id) }),
     })
     expect(isServiceTaskDone(withStock, task, CONTEXT.partsById)).toBe(false) // stock < street
 
     const streetPart = catalogPartFor(task.carPartId, (p) => p.grade === task.minGrade)
     const withStreet = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: { installed: partInstance(streetPart.id) } }),
+      parts: mintCarParts({ [task.carPartId]: partInstance(streetPart.id) }),
     })
     expect(isServiceTaskDone(withStreet, task, CONTEXT.partsById)).toBe(true)
 
     const racePart = catalogPartFor(task.carPartId, (p) => p.grade === 'race')
     const withRace = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: { installed: partInstance(racePart.id) } }),
+      parts: mintCarParts({ [task.carPartId]: partInstance(racePart.id) }),
     })
     expect(isServiceTaskDone(withRace, task, CONTEXT.partsById)).toBe(true)
   })
 
   it('isServiceWorkDone requires every task in a multi-task job done, not just one', () => {
     const job = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'worn' }, brakePadsDiscs: { band: 'worn' } }),
+      parts: mintCarParts({ tyres: 'worn', brakePadsDiscs: 'worn' }),
     })
     expect(isServiceWorkDone(job, CONTEXT)).toBe(false)
 
     const oneDone = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'mint' }, brakePadsDiscs: { band: 'worn' } }),
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'worn' }),
     })
     expect(isServiceWorkDone(oneDone, CONTEXT)).toBe(false)
 
     const bothDone = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'mint' }, brakePadsDiscs: { band: 'mint' } }),
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
     })
     expect(isServiceWorkDone(bothDone, CONTEXT)).toBe(true)
   })
@@ -450,15 +462,15 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     const streetTyres = catalogPartFor('tyres', (p) => p.grade === 'street')
     const done = activeJob(mixedType, {
       parts: mintCarParts({
-        panels: { band: 'fine' },
-        dampers: { band: 'fine' },
-        tyres: { installed: partInstance(streetTyres.id) },
+        panels: 'fine',
+        dampers: 'fine',
+        tyres: partInstance(streetTyres.id),
       }),
     })
     expect(isServiceWorkDone(done, CONTEXT)).toBe(true)
 
     const missingInstall = activeJob(mixedType, {
-      parts: mintCarParts({ panels: { band: 'fine' }, dampers: { band: 'fine' } }),
+      parts: mintCarParts({ panels: 'fine', dampers: 'fine' }),
     })
     expect(isServiceWorkDone(missingInstall, CONTEXT)).toBe(false)
   })
@@ -480,7 +492,7 @@ describe('reputation helpers', () => {
 describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)', () => {
   it('pays out + grants reputation (stock rate) when a repair-only job is fully done, and the car leaves', () => {
     const job = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'mint' }, brakePadsDiscs: { band: 'mint' } }),
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
     })
     const leftover: Job = {
       id: 'job-x',
@@ -507,7 +519,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
   it('fails (no pay, reputation penalty) when at least one task is not done', () => {
     const job = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'mint' }, brakePadsDiscs: { band: 'worn' } }),
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'worn' }),
     })
     const state = stateWith(job, { reputationPoints: 50 })
     const cashBefore = state.cashYen
@@ -521,7 +533,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
   })
 
   it('clamps the reputation penalty at zero', () => {
-    const job = activeJob(twoRepairType, { parts: mintCarParts({ tyres: { band: 'worn' } }) })
+    const job = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
     const state = stateWith(job) // reputationPoints starts at 0
     const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
     expect(next.reputationPoints).toBe(0)
@@ -537,7 +549,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
   it('drops the car’s staged work whether the job pays or fails', () => {
     const paidJob = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'mint' }, brakePadsDiscs: { band: 'mint' } }),
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
     })
     const paidState = stateWith(paidJob, {
       stagedCarWork: {
@@ -548,7 +560,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(paid.outcome).toBe('paid')
     expect(paid.state.stagedCarWork[paidJob.car.id]).toBeUndefined()
 
-    const failedJob = activeJob(twoRepairType, { parts: mintCarParts({ tyres: { band: 'worn' } }) })
+    const failedJob = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
     const failedState = stateWith(failedJob, {
       stagedCarWork: {
         [failedJob.car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
@@ -570,7 +582,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
     function resolveWith(part: Part) {
       const job = activeJob(installType, {
-        parts: mintCarParts({ [carPartId]: { installed: partInstance(part.id) } }),
+        parts: mintCarParts({ [carPartId]: partInstance(part.id) }),
       })
       const resolution = resolveServiceJob(stateWith(job), job.id, CONTEXT)
       return { resolution, payoutYen: job.payoutYen }
@@ -598,8 +610,8 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     const headPart = catalogPartFor(headTask!.carPartId, (p) => p.grade === 'race')
     const job = activeJob(twoInstallType, {
       parts: mintCarParts({
-        [internalsTask!.carPartId]: { installed: partInstance(internalsPart.id) },
-        [headTask!.carPartId]: { installed: partInstance(headPart.id) },
+        [internalsTask!.carPartId]: partInstance(internalsPart.id),
+        [headTask!.carPartId]: partInstance(headPart.id),
       }),
     })
     const { state: next, log } = resolveServiceJob(stateWith(job), job.id, CONTEXT)
@@ -747,7 +759,7 @@ describe('service jobs in advanceDay', () => {
 
   it('the deadline backstop pays a finished job and fails an unfinished one', () => {
     const done = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: { band: 'mint' }, brakePadsDiscs: { band: 'mint' } }),
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
     })
     const paidState = { ...createInitialGameState(CONTEXT, 1), day: 8, activeServiceJobs: [done] }
     const paidBefore = paidState.cashYen
@@ -755,7 +767,7 @@ describe('service jobs in advanceDay', () => {
     expect(paid.cashYen).toBe(paidBefore + done.payoutYen)
     expect(paid.activeServiceJobs).toHaveLength(0)
 
-    const undone = activeJob(twoRepairType, { parts: mintCarParts({ tyres: { band: 'worn' } }) })
+    const undone = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
     const failState = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,
@@ -770,7 +782,7 @@ describe('service jobs in advanceDay', () => {
   })
 
   it('the deadline backstop drops staged work too - the same resolver, not a second path', () => {
-    const undone = activeJob(twoRepairType, { parts: mintCarParts({ tyres: { band: 'worn' } }) })
+    const undone = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,

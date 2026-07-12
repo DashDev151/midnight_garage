@@ -1,7 +1,6 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { worstGroup } from './bandHelpers'
-import { presentPartIdsInGroup } from '../bands'
 import {
   acquireLot,
   activeBidCount,
@@ -95,10 +94,14 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     const model = context.modelsById[car.modelId]
     if (!model) continue
 
+    // Sprint 32: `presentPartIdsInGroup` now means "physically occupied",
+    // so an empty slot (missing or the legitimately-absent forcedInduction-
+    // on-NA case) is never IN that list - filtering it again for "not
+    // installed" would always be empty. Scan every part the taxonomy
+    // assigns to the group instead, the same set `installablePartsFor`
+    // (gameStore.ts) filters against for the player's own Replace flow.
     const emptyComponents = ALL_COMPONENTS.filter((id) =>
-      presentPartIdsInGroup(car, id, context.partIdsByGroup).some(
-        (partId) => !car.parts[partId].installed,
-      ),
+      context.partIdsByGroup[id].some((partId) => !car.parts[partId].installed),
     )
     if (emptyComponents.length === 0) continue
     const worstEmpty = worstGroup(car, emptyComponents, context.partIdsByGroup)
@@ -143,13 +146,13 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
 
   // 3. Sell any job-free car with nothing left worth replacing cheaply -
   // "good enough" for Investor means every component has *something*
-  // installed, not that every condition is high (it never repairs).
+  // installed, not that every condition is high (it never repairs). Same
+  // Sprint 32 fix as `emptyComponents` above: scan every part the taxonomy
+  // assigns to each group, not just the already-"present" ones.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const isBuilt = ALL_COMPONENTS.every((id) =>
-      presentPartIdsInGroup(car, id, context.partIdsByGroup).every(
-        (partId) => car.parts[partId].installed !== null,
-      ),
+      context.partIdsByGroup[id].every((partId) => car.parts[partId].installed !== null),
     )
     if (!isBuilt) continue
     decideSale(state, car, context, actions, {

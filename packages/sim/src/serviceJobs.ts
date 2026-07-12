@@ -138,9 +138,12 @@ export function serviceJobCostBreakdown(
   for (const task of tasks) {
     if (task.action === 'repair') {
       const entry = context.partsTaxonomyById[task.carPartId]
-      const currentBand = car.parts[task.carPartId].band
-      if (!entry || !canRepair(currentBand)) continue
-      const grades = gradesBetween(currentBand, task.targetBand)
+      const installed = car.parts[task.carPartId].installed
+      // Sprint 32: a missing slot has no band to climb - out of repair's
+      // reach exactly like scrap is (0 cost/labor), rather than crashing on
+      // a null read.
+      if (!entry || !installed || !canRepair(installed.band)) continue
+      const grades = gradesBetween(installed.band, task.targetBand)
       taskCostYen += grades * entry.stepCostYen
       laborSlots += slotsNeededToClimb(grades, 1)
     } else {
@@ -248,13 +251,7 @@ export function generateDailyServiceJobOffers(
   for (let i = 0; i < count; i++) {
     const template = pickServiceJobTemplate(eligibleTemplates, ownedEquipmentIds, context, rng)
     const model = rng.pick(eligibleModels)
-    const car = generateAuctionCarInstance(
-      model,
-      `svc-car-${day}-${i}`,
-      rng,
-      context.economy,
-      currentYear,
-    )
+    const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, context, currentYear)
     const payoutYen = deriveServiceJobPayoutYen(
       template.tasks,
       car,
@@ -392,20 +389,22 @@ export function resolveServiceJobArrivals(state: GameState): ServiceJobArrivalRe
 }
 
 /** Whether one task has actually been satisfied on the customer's car - a
- * repair task once its part reaches `targetBand` (or is `scrap`, unrepairable
- * and therefore out of repair's reach entirely, Sprint 26 decision 5); an
- * install task once its slot holds a catalog part graded at least
- * `minGrade` (Sprint 29: "at least," a player who overdelivers still passes,
- * same as the offer's own cost basis being priced off the narrowest
- * satisfying tier - see `fittingPartsForInstallTask`). */
+ * repair task once its part reaches `targetBand` (or is `scrap`, or the
+ * slot is empty - both unrepairable and therefore out of repair's reach
+ * entirely, Sprint 26 decision 5 / Sprint 32); an install task once its
+ * slot holds a catalog part graded at least `minGrade` (Sprint 29: "at
+ * least," a player who overdelivers still passes, same as the offer's own
+ * cost basis being priced off the narrowest satisfying tier - see
+ * `fittingPartsForInstallTask`). */
 export function isServiceTaskDone(
   car: CarInstance,
   task: ServiceJobTask,
   partsById: Readonly<Record<string, Part>>,
 ): boolean {
   if (task.action === 'repair') {
-    const band = car.parts[task.carPartId].band
-    return band === 'scrap' || bandIndex(band) >= bandIndex(task.targetBand)
+    const installed = car.parts[task.carPartId].installed
+    if (!installed) return true
+    return installed.band === 'scrap' || bandIndex(installed.band) >= bandIndex(task.targetBand)
   }
   const installed = car.parts[task.carPartId].installed
   if (!installed) return false

@@ -1,4 +1,4 @@
-import { BUYERS, CARS, ECONOMY, PARTS, PARTS_TAXONOMY } from '@midnight-garage/content'
+import { BUYERS, CARS, PARTS, PARTS_TAXONOMY } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
@@ -12,7 +12,7 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
 function stateWithLot(seed: number) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
-  const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), ECONOMY)
+  const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), CONTEXT)
   const base = createInitialGameState(CONTEXT, 1)
   return { state: { ...base, activeAuctionLots: [lot!] }, lot: lot! }
 }

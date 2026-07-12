@@ -265,6 +265,18 @@ function onReplaceClick(carPartId: CarPartId): void {
   activeReplacePart.value = activeReplacePart.value === carPartId ? null : carPartId
 }
 
+/**
+ * Pull whatever's occupying this slot into inventory (Sprint 32 decision
+ * 7) - free and instant, no staging step. Removing an aftermarket part
+ * reverts the slot to a fresh stock part; removing a stock part leaves the
+ * slot genuinely empty (missing).
+ */
+function onRemoveClick(carPartId: CarPartId): void {
+  const d = detail.value
+  if (!d) return
+  game.removePart(d.car.id, carPartId)
+}
+
 /** Confirm - locks in every staged action on this car at once (Sprint 18). */
 function onConfirm(): void {
   const d = detail.value
@@ -482,7 +494,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <li v-for="row in rowsFor(componentId)" :key="row.partId" class="sub-part-row">
                   <div class="meter-line sub">
                     <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
-                    <BandChip :band="row.fitted ? row.band : null" />
+                    <BandChip :band="row.band" />
+                    <span
+                      v-if="row.missing"
+                      class="missing-tag"
+                      :data-test="'missing-' + row.partId"
+                      >MISSING</span
+                    >
+                    <span v-else-if="row.legitimatelyAbsent" class="absent-tag">no turbo (NA)</span>
                     <span v-if="row.installedPartName" class="installed">{{
                       row.installedPartName
                     }}</span>
@@ -509,7 +528,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
                     <template v-else>
                       <button
-                        v-if="row.fitted && row.band !== 'mint' && row.band !== 'scrap'"
+                        v-if="row.band && row.band !== 'mint' && row.band !== 'scrap'"
                         :disabled="!game.hasEquipmentForComponent(componentId)"
                         :class="{ 'needs-equipment': !game.hasEquipmentForComponent(componentId) }"
                         :title="
@@ -552,6 +571,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                         @click="onReplaceClick(row.partId)"
                       >
                         {{ dropZones[row.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                      </button>
+
+                      <button
+                        v-if="row.installedPartName"
+                        type="button"
+                        class="remove-btn"
+                        :data-test="'remove-part-' + row.partId"
+                        @click="onRemoveClick(row.partId)"
+                      >
+                        Remove
                       </button>
                     </template>
                   </div>
@@ -987,6 +1016,26 @@ button.needs-equipment {
 .installed {
   color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-sm);
+}
+
+/* A genuinely missing slot (Sprint 32 decision 3) - a real defect, styled
+   with the same urgency color as the pink "blocked" states elsewhere on
+   this screen. */
+.missing-tag {
+  color: var(--mg-neon-pink);
+  font-size: var(--mg-fs-sm);
+  font-weight: bold;
+}
+
+/* The one legitimately-empty slot (forced induction on an NA car) - dim,
+   informational, deliberately NOT the missing-tag's alarm color. */
+.absent-tag {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.remove-btn {
+  color: var(--mg-neon-pink);
 }
 
 .staged-panel {

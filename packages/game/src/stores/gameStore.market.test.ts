@@ -1,4 +1,4 @@
-import { CARS, ECONOMY, PARTS, type ComponentId } from '@midnight-garage/content'
+import { CARS, ECONOMY, PARTS, type CarPartId, type ComponentId } from '@midnight-garage/content'
 import { bidIncrementYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -227,13 +227,15 @@ describe('market: buying parts', () => {
   it('buying a part lands in inventory instantly and is then installable', () => {
     const game = useGameStore()
     // A power part + a compatible car, so the bought part is actually installable.
-    let pair: { partId: string; componentId: ComponentId; modelId: string } | undefined
+    let pair:
+      | { partId: string; componentId: ComponentId; carPartId: CarPartId; modelId: string }
+      | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
       const model = CARS.find((c) => part.requiredTags.every((t) => c.tags.includes(t)))
       const componentId = game.groupForCarPart(part.carPartId)
       if (model && componentId) {
-        pair = { partId: part.id, componentId, modelId: model.id }
+        pair = { partId: part.id, componentId, carPartId: part.carPartId, modelId: model.id }
         break
       }
     }
@@ -241,13 +243,16 @@ describe('market: buying parts', () => {
 
     game.devGrantCar(pair.modelId)
     const car = game.gameState.ownedCars[0]!
+    // Sprint 32: every slot starts filled with a stock part - empty this
+    // one so the bought part actually has somewhere to install.
+    game.removePart(car.id, pair.carPartId)
     const cashBefore = game.cashYen
 
     game.buyPart(pair.partId)
 
-    expect(game.gameState.partInventory).toHaveLength(1)
+    const bought = game.gameState.partInventory.find((pi) => pi.partId === pair!.partId)!
+    expect(bought).toBeDefined()
     expect(game.cashYen).toBeLessThan(cashBefore)
-    const bought = game.gameState.partInventory[0]!
     expect(
       game.installablePartsFor(car.id, pair.componentId).some((pi) => pi.id === bought.id),
     ).toBe(true)

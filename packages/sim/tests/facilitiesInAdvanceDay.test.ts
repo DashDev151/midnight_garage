@@ -1,7 +1,6 @@
 import {
   BUYERS,
   CARS,
-  ECONOMY,
   EQUIPMENT,
   FACILITIES,
   PARTS,
@@ -34,7 +33,7 @@ const ALL_EQUIPMENT_IDS = EQUIPMENT.map((e) => e.id)
 
 function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
-  const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), ECONOMY)
+  const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), CONTEXT)
   const base = createInitialGameState(CONTEXT, 1)
   return {
     state: {
@@ -111,7 +110,7 @@ describe('labor is gated by service-bay membership', () => {
     }
     const { state: next } = advanceDay(won, actions, 2, CONTEXT)
     expect(next.jobs).toHaveLength(0) // completed and removed same day
-    expect(next.ownedCars[0]?.parts.panels.band).toBe('mint')
+    expect(next.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
   })
 })
 

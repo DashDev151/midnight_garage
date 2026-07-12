@@ -9,9 +9,9 @@ describe('BandChip', () => {
     expect(wrapper.find('.band-chip').classes()).toContain('band-' + band)
   })
 
-  it('renders "not fitted" when band is null', () => {
+  it('renders "empty" when band is null', () => {
     const wrapper = mount(BandChip, { props: { band: null } })
-    expect(wrapper.text()).toBe('not fitted')
+    expect(wrapper.text()).toBe('empty')
     expect(wrapper.find('.band-chip').classes()).toContain('band-unfitted')
   })
 })

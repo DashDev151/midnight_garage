@@ -51,13 +51,22 @@ function initialState(): GameState {
         color: 'Sodium Amber',
         provenanceNote: 'one-owner, garage kept, Gunma plates',
         authenticityPercent: 88,
-        parts: groupCarParts({
-          engine: 'worn',
-          drivetrain: 'worn',
-          suspension: 'worn',
-          body: 'worn',
-          interior: 'worn',
-        }),
+        parts: {
+          ...groupCarParts({
+            engine: 'worn',
+            drivetrain: 'worn',
+            suspension: 'worn',
+            body: 'worn',
+            interior: 'worn',
+          }),
+          // Sprint 32: every slot defaults to a filled stock part now, so
+          // day 3's scripted install-part job (below) needs a genuinely
+          // empty target slot - a group-level install into an
+          // already-occupied slot is refused by the tightened
+          // installFitGate. dampers is the suspension-group part the script
+          // installs the spare coilovers onto.
+          dampers: { installed: null },
+        },
       },
     ],
     partInventory: [
@@ -156,15 +165,17 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 31 re-pins this hash outright: `GameState` drops `activeListings`
-    // and gains `carsForSale`/`pendingOffers` (decision 1) - a pure shape
-    // change for this particular career (it never toggles a car for sale),
-    // but `hashState` hashes the whole state, so the hash moves regardless.
-    // Every prior sprint's own re-pin note above this one is now historical
-    // (the shape they were re-pinning against no longer exists).
+    // Sprint 32 re-pins this hash outright: `CarPartState` drops the
+    // slot-level `band`/`fitted` fields (the installed `PartInstance` now
+    // carries the only condition band) and every slot defaults to a filled
+    // stock part instead of `null` - a pure shape/content change for this
+    // fixture's car, but `hashState` hashes the whole state, so the hash
+    // moves regardless. Every prior sprint's own re-pin note above this one
+    // is now historical (the shape they were re-pinning against no longer
+    // exists).
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('7a45a1e3')
+    expect(hashState(finalState)).toBe('8c5a4388')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -176,8 +187,8 @@ describe('advanceDay golden master', () => {
   it('the repair-zone job completes and restores the body group to mint', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
-    expect(car?.parts.panels.band).toBe('mint')
-    expect(car?.parts.aero.band).toBe('mint')
+    expect(car?.parts.panels.installed?.band).toBe('mint')
+    expect(car?.parts.aero.installed?.band).toBe('mint')
   })
 
   it('the install-part job moves the spare coilovers onto the dampers slot', () => {
@@ -286,12 +297,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Sprint 31 re-pins this hash outright: beyond the shape change (see the
-    // golden master above), `acquisitionCareer` itself now plays out the
-    // real Sprint 31 flow (setForSale -> wait for an offer -> acceptOffers)
-    // instead of an instant `sellViaWalkIn` action, so this is a genuinely
-    // different, longer playthrough, not just a relabeled field.
-    expect(hashState(acquisitionCareer().sold)).toBe('7f80a371')
+    // Sprint 32 re-pins this hash outright too (see the golden master
+    // above for the shape/content change): this career's car comes from
+    // real auction generation, which now seeds one extra rng draw per
+    // non-forced-induction part (the "roll missing" check) and fills every
+    // slot with a real stock `PartInstance` instead of `null`, so both the
+    // rng stream and the state content shift.
+    expect(hashState(acquisitionCareer().sold)).toBe('ce8f36f0')
   })
 })
 

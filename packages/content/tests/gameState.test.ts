@@ -19,44 +19,221 @@ describe('GameState / DayLog round-trip', () => {
           provenanceNote: 'one-owner, garage kept, Gunma plates',
           authenticityPercent: 88,
           parts: {
-            block: { band: 'fine', installed: null, fitted: true },
-            internals: { band: 'fine', installed: null, fitted: true },
-            headValvetrain: { band: 'worn', installed: null, fitted: true },
-            camsTiming: { band: 'fine', installed: null, fitted: true },
-            intake: { band: 'fine', installed: null, fitted: true },
-            exhaust: { band: 'worn', installed: null, fitted: true },
-            fuelSystem: { band: 'fine', installed: null, fitted: true },
+            block: {
+              installed: {
+                id: 'p-block',
+                partId: 'stock-block',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            internals: {
+              installed: {
+                id: 'p-internals',
+                partId: 'stock-internals',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            headValvetrain: {
+              installed: {
+                id: 'p-headValvetrain',
+                partId: 'stock-head-valvetrain',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            camsTiming: {
+              installed: {
+                id: 'p-camsTiming',
+                partId: 'stock-cams-timing',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            intake: {
+              installed: {
+                id: 'p-intake',
+                partId: 'stock-intake',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            exhaust: {
+              installed: {
+                id: 'p-exhaust',
+                partId: 'stock-exhaust',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            fuelSystem: {
+              installed: {
+                id: 'p-fuelSystem',
+                partId: 'stock-fuel-system',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
             ignitionEcu: {
-              band: 'mint',
               installed: {
                 id: 'pi-0001',
                 partId: 'khs-street-ecu',
                 band: 'fine',
                 genuinePeriod: false,
               },
-              fitted: true,
             },
-            cooling: { band: 'worn', installed: null, fitted: true },
-            forcedInduction: { band: 'mint', installed: null, fitted: false },
-            gearbox: { band: 'worn', installed: null, fitted: true },
-            clutch: { band: 'worn', installed: null, fitted: true },
-            differential: { band: 'fine', installed: null, fitted: true },
-            driveline: { band: 'fine', installed: null, fitted: true },
-            chassis: { band: 'fine', installed: null, fitted: true },
-            dampers: { band: 'poor', installed: null, fitted: true },
-            springs: { band: 'poor', installed: null, fitted: true },
-            antiRollBars: { band: 'worn', installed: null, fitted: true },
-            steering: { band: 'worn', installed: null, fitted: true },
-            brakePadsDiscs: { band: 'mint', installed: null, fitted: true },
-            brakeCalipersLines: { band: 'mint', installed: null, fitted: true },
-            rims: { band: 'mint', installed: null, fitted: true },
-            tyres: { band: 'mint', installed: null, fitted: true },
-            panels: { band: 'poor', installed: null, fitted: true },
-            paint: { band: 'poor', installed: null, fitted: true },
-            underbody: { band: 'worn', installed: null, fitted: true },
-            aero: { band: 'mint', installed: null, fitted: true },
-            seats: { band: 'worn', installed: null, fitted: true },
-            dashGauges: { band: 'worn', installed: null, fitted: true },
+            cooling: {
+              installed: {
+                id: 'p-cooling',
+                partId: 'stock-cooling',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            forcedInduction: { installed: null },
+            gearbox: {
+              installed: {
+                id: 'p-gearbox',
+                partId: 'stock-gearbox',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            clutch: {
+              installed: {
+                id: 'p-clutch',
+                partId: 'stock-clutch',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            differential: {
+              installed: {
+                id: 'p-differential',
+                partId: 'stock-differential',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            driveline: {
+              installed: {
+                id: 'p-driveline',
+                partId: 'stock-driveline',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            chassis: {
+              installed: {
+                id: 'p-chassis',
+                partId: 'stock-chassis',
+                band: 'fine',
+                genuinePeriod: false,
+              },
+            },
+            dampers: {
+              installed: {
+                id: 'p-dampers',
+                partId: 'stock-dampers',
+                band: 'poor',
+                genuinePeriod: false,
+              },
+            },
+            springs: {
+              installed: {
+                id: 'p-springs',
+                partId: 'stock-springs',
+                band: 'poor',
+                genuinePeriod: false,
+              },
+            },
+            antiRollBars: {
+              installed: {
+                id: 'p-antiRollBars',
+                partId: 'stock-anti-roll-bars',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            steering: {
+              installed: {
+                id: 'p-steering',
+                partId: 'stock-steering',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            brakePadsDiscs: {
+              installed: {
+                id: 'p-brakePadsDiscs',
+                partId: 'stock-brake-pads-discs',
+                band: 'mint',
+                genuinePeriod: false,
+              },
+            },
+            brakeCalipersLines: {
+              installed: {
+                id: 'p-brakeCalipersLines',
+                partId: 'stock-brake-calipers-lines',
+                band: 'mint',
+                genuinePeriod: false,
+              },
+            },
+            rims: {
+              installed: { id: 'p-rims', partId: 'stock-rims', band: 'mint', genuinePeriod: false },
+            },
+            tyres: {
+              installed: {
+                id: 'p-tyres',
+                partId: 'stock-tyres',
+                band: 'mint',
+                genuinePeriod: false,
+              },
+            },
+            panels: {
+              installed: {
+                id: 'p-panels',
+                partId: 'stock-panels',
+                band: 'poor',
+                genuinePeriod: false,
+              },
+            },
+            paint: {
+              installed: {
+                id: 'p-paint',
+                partId: 'stock-paint',
+                band: 'poor',
+                genuinePeriod: false,
+              },
+            },
+            underbody: {
+              installed: {
+                id: 'p-underbody',
+                partId: 'stock-underbody',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            aero: {
+              installed: { id: 'p-aero', partId: 'stock-aero', band: 'mint', genuinePeriod: false },
+            },
+            seats: {
+              installed: {
+                id: 'p-seats',
+                partId: 'stock-seats',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
+            dashGauges: {
+              installed: {
+                id: 'p-dashGauges',
+                partId: 'stock-dash-gauges',
+                band: 'worn',
+                genuinePeriod: false,
+              },
+            },
           },
         },
       ],
@@ -147,6 +324,12 @@ describe('GameState / DayLog round-trip', () => {
         partInstanceId: 'part-8-0',
       },
       { type: 'part-scrapped', partInstanceId: 'part-8-0', priceYen: 4_000 },
+      {
+        type: 'part-removed',
+        carInstanceId: 'car-0001',
+        carPartId: 'dampers',
+        partInstanceId: 'part-8-1',
+      },
       { type: 'car-moved', carInstanceId: 'car-0001', to: 'service' },
       { type: 'cars-swapped', serviceCarId: 'car-0001', parkingCarId: 'car-0002' },
       { type: 'bay-purchased', kind: 'service', priceYen: 300_000 },

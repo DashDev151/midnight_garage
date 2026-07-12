@@ -29,7 +29,15 @@ const car: CarInstance = buildCarInstance({
   year: 1984,
   mileageKm: 100_000,
   authenticityPercent: 90,
-  parts: groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn' }),
+  parts: {
+    ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn' }),
+    // Sprint 32: every slot defaults to a filled stock part now, so the
+    // staged-install test below needs a genuinely empty target slot (a
+    // group-level install into an already-occupied slot is refused by the
+    // tightened installFitGate) - dampers is the suspension-group part it
+    // installs onto.
+    dampers: { installed: null },
+  },
 })
 
 /** Real labor-slot plans for this fixture car, computed the same way
@@ -114,8 +122,8 @@ describe('confirmStagedWork', () => {
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
     })
     const result = confirmStagedWork(state, car.id, plan.laborSlotsRequired, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.panels.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.aero.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.aero.installed?.band).toBe('mint')
     expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
   })
 
@@ -145,8 +153,8 @@ describe('confirmStagedWork', () => {
       },
     })
     const result = confirmStagedWork(state, car.id, offeredLabor, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.panels.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.block.band).toBe('worn') // not yet repaired
+    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.block.installed?.band).toBe('worn') // not yet repaired
     const engineJob = result.state.jobs.find((j) => j.componentId === 'engine')
     expect(engineJob).toBeDefined()
     expect(engineJob?.laborSlotsSpent).toBe(1)
@@ -159,7 +167,7 @@ describe('confirmStagedWork', () => {
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
     })
     const result = confirmStagedWork(state, car.id, 3, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.panels.band).toBe('poor') // unchanged
+    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('poor') // unchanged
     expect(result.state.jobs).toHaveLength(0)
     expect(
       result.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),

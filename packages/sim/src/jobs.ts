@@ -1,5 +1,6 @@
 import type {
   CarInstance,
+  CarPartId,
   DayLogEntry,
   GameState,
   Job,
@@ -77,13 +78,20 @@ interface CarEffect {
  * mint between creation and completion is simply skipped now (scrap stays
  * unrepairable; mint has nothing left to climb) rather than erroring - the
  * job was already fully paid for and labored, so there is nothing to refund.
+ * A slot that's become empty since creation (e.g. removed mid-job) is also
+ * skipped - there is nothing left to climb.
  *
  * Install-part: resolves which CarPartId the picked catalog part actually
  * addresses (`context.partsById[...].carPartId`, decision 13's "only that
- * one part's slot changes") and sets it to a fresh `{ band: 'mint',
- * installed: partInstance, fitted: true }` - the `fitted: true` is a no-op
- * for every part but forcedInduction, where it's decision 3's "fitting a kit
- * sets fitted: true, mint."
+ * one part's slot changes") and installs the `PartInstance` as-is, at
+ * whatever band it already carries. Sprint 32: this no longer forces the
+ * slot to `mint` on install (the old model's slot-level `band` did, as a
+ * side effect of every install) - the instance's own band is the single
+ * truth now, and a freshly-bought part is already `mint` by construction
+ * (`resolveBuyPart`); a previously-removed, still-worn part (decision 7)
+ * reinstalling at its real band is the correct, necessary consequence of
+ * that, not a bug - forcing mint here would let remove+reinstall repair a
+ * part for free.
  */
 function applyJobToCar(
   car: CarInstance,
@@ -104,10 +112,10 @@ function applyJobToCar(
       ? [job.carPartId]
       : presentPartIdsInGroup(car, job.componentId, context.partIdsByGroup)
     for (const partId of candidateIds) {
-      const partState = parts[partId]
-      if (partState.band === 'scrap') continue
-      if (bandIndex(partState.band) >= bandIndex(targetBand)) continue
-      parts[partId] = { ...partState, band: targetBand }
+      const installed = parts[partId].installed
+      if (!installed || installed.band === 'scrap') continue
+      if (bandIndex(installed.band) >= bandIndex(targetBand)) continue
+      parts[partId] = { installed: { ...installed, band: targetBand } }
     }
     return {
       car: { ...car, parts },
@@ -140,7 +148,7 @@ function applyJobToCar(
       ...car,
       parts: {
         ...car.parts,
-        [targetPartId]: { band: 'mint', installed: partInstance, fitted: true },
+        [targetPartId]: { installed: partInstance },
       },
     },
     partInventory: partInventory.filter((_, i) => i !== partIndex),
@@ -182,6 +190,84 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
   }
 
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
+}
+
+export interface RemovePartResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Sprint 32 decision 7: pulls whatever occupies `carPartId`'s slot into
+ * inventory - free and instant (no labor cost is specified for pulling a
+ * part, only for repairing or installing one, so this mirrors
+ * `resolveScrapPart`'s own free-instant shape, parts.ts). Removing an
+ * aftermarket part (any non-`'stock'` grade) reverts the slot to a fresh
+ * mint generic stock `PartInstance` - the factory part underneath, assumed
+ * present until it's pulled too - and drops the removed instance to
+ * inventory at whatever band it actually carried. Removing a stock part
+ * drops that same instance to inventory and leaves the slot genuinely
+ * empty (a defect, priced as a full replacement in the restoration bill -
+ * `bands.ts`'s `carCostToMintYen`). A no-op when the slot is already empty,
+ * the car/part/its taxonomy group can't be resolved, or a Job is currently
+ * open on this exact address (component- or part-level) - a part can't be
+ * yanked out from under work already in progress.
+ */
+export function resolveRemovePart(
+  state: GameState,
+  carInstanceId: string,
+  carPartId: CarPartId,
+  context: SimContext,
+): RemovePartResult {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car) return { state, log: [] }
+  const installed = car.parts[carPartId].installed
+  if (!installed) return { state, log: [] }
+  const componentId = context.partsTaxonomyById[carPartId]?.group
+  if (!componentId) return { state, log: [] }
+  const busy = state.jobs.some(
+    (j) =>
+      j.carInstanceId === carInstanceId &&
+      (j.carPartId ? j.carPartId === carPartId : j.componentId === componentId),
+  )
+  if (busy) return { state, log: [] }
+
+  const removedCatalogPart = context.partsById[installed.partId]
+  const isStock = removedCatalogPart?.grade === 'stock'
+  const stockCatalogPart = context.stockPartByCarPartId[carPartId]
+  const freshStockInstance: PartInstance | null = stockCatalogPart
+    ? {
+        id: `part-removed-${state.day}-${state.partInventory.length}`,
+        partId: stockCatalogPart.id,
+        band: 'mint',
+        genuinePeriod: false,
+      }
+    : null
+
+  const updatedCar: CarInstance = {
+    ...car,
+    parts: { ...car.parts, [carPartId]: { installed: isStock ? null : freshStockInstance } },
+  }
+  const partInventory = [...state.partInventory, installed]
+  const log: DayLogEntry[] = [
+    { type: 'part-removed', carInstanceId, carPartId, partInstanceId: installed.id },
+  ]
+
+  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
+  if (ownedIndex !== -1) {
+    const ownedCars = [...state.ownedCars]
+    ownedCars[ownedIndex] = updatedCar
+    return { state: { ...state, ownedCars, partInventory }, log }
+  }
+
+  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
+  if (serviceIndex !== -1) {
+    const activeServiceJobs = [...state.activeServiceJobs]
+    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: updatedCar }
+    return { state: { ...state, activeServiceJobs, partInventory }, log }
+  }
+
+  return { state, log: [] }
 }
 
 /**
@@ -278,14 +364,23 @@ export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
  *
  * Sprint 28: when `spec.carPartId` is set (the per-part Replace drawer),
  * additionally requires the catalog part's own address to match that exact
- * slot (`partFitsCar`'s new optional param) AND that the slot is actually
- * empty right now - closing a real pre-existing gap where a group-level
- * install only checked "the group has *some* empty slot", so a part could
- * be offered as fitting even when its own specific slot was already
- * occupied (it would then silently fail at completion,
- * `blockedByOccupiedSlot`). A group-level spec (no `carPartId`) is
- * unaffected - still only the group-level check, matching every bot's
- * existing behavior exactly.
+ * slot (`partFitsCar`'s new optional param).
+ *
+ * Sprint 32: `slotEmpty` now always resolves from the picked part's OWN
+ * catalog address (`part.carPartId`), not just when `spec.carPartId` is
+ * explicitly set - closing a real gap the Sprint 28 comment above used to
+ * describe as "pre-existing": a group-level spec's `slotEmpty` used to be
+ * unconditionally `true` (no per-part check at all), which barely mattered
+ * when almost every slot started genuinely empty pre-Sprint-32, but now
+ * that every slot starts filled with a stock part by default, a group-level
+ * install into an already-occupied specific slot would otherwise pass this
+ * gate, create a real job, and only fail silently at completion
+ * (`blockedByOccupiedSlot`) - stranding that job open forever (nothing ever
+ * removes a blocked job from `state.jobs`). Checking the resolved slot here
+ * is behaviorally identical to the old per-part check when `spec.carPartId`
+ * is set (already guaranteed equal to `part.carPartId` by the `partFitsCar`
+ * call below whenever `fits` can be true) and closes the group-level gap
+ * for free.
  */
 export function installFitGate(
   state: GameState,
@@ -301,7 +396,7 @@ export function installFitGate(
   const model = car ? context.modelsById[car.modelId] : undefined
   const partInstance = state.partInventory.find((p) => p.id === spec.partInstanceId)
   const part = partInstance ? context.partsById[partInstance.partId] : undefined
-  const slotEmpty = !spec.carPartId || !car?.parts[spec.carPartId]?.installed
+  const slotEmpty = !!part && !car?.parts[part.carPartId]?.installed
   const fits =
     car &&
     model &&

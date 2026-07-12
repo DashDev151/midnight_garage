@@ -63,9 +63,11 @@ async function dropOn(
   await wrapper.get(zoneSelector).trigger('pointerup', { pointerId: 1 })
 }
 
-/** A part with no required tags always fits any car - avoids incidental tag mismatches. */
+/** An aftermarket (non-stock) catalog part for this slot - every part fits
+ * any car now (Sprint 32 decision 1 drops requiredTags), so this just needs
+ * to avoid the stock grade (already occupying every slot by default). */
 function untaggedPartFor(carPartId: string) {
-  return PARTS.find((p) => p.carPartId === carPartId && p.requiredTags.length === 0)!
+  return PARTS.find((p) => p.carPartId === carPartId && p.grade !== 'stock')!
 }
 
 /** Whether `componentId`'s group has anything the group's own "Repair all to
@@ -232,7 +234,7 @@ describe('CarDetailScreen', () => {
       const id = grantCarNeedingRepair(game, 'suspension')
       const rows = game
         .partsInGroup(id, 'suspension')
-        .filter((r) => r.band !== 'mint' && r.band !== 'scrap')
+        .filter((r) => r.band !== null && r.band !== 'mint' && r.band !== 'scrap')
       if (rows.length < 2) return // this particular roll only had one part to work with
 
       const { wrapper } = await mountAt(id)
@@ -284,12 +286,23 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const car = game.gameState.ownedCars[0]!
+      const scrapPart = untaggedPartFor('dampers')
       game.gameState = {
         ...game.gameState,
         ownedCars: [
           {
             ...car,
-            parts: { ...car.parts, dampers: { band: 'scrap', installed: null, fitted: true } },
+            parts: {
+              ...car.parts,
+              dampers: {
+                installed: {
+                  id: 'test-scrap-dampers',
+                  partId: scrapPart.id,
+                  band: 'scrap',
+                  genuinePeriod: false,
+                },
+              },
+            },
           },
         ],
       }
@@ -297,24 +310,24 @@ describe('CarDetailScreen', () => {
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-suspension"]').trigger('click')
       expect(wrapper.find('[data-test="stage-repair-part-dampers"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(true)
+      // Occupied (even by scrap) - Replace is unavailable until it's removed.
+      expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="remove-part-dampers"]').exists()).toBe(true)
     })
 
-    it('an unfitted forced-induction slot shows "not fitted" and offers Replace, fitting a turbo kit installs it', async () => {
-      // honda-city-e-aa is NA: forcedInduction rolls unfitted, band irrelevant.
+    it('an empty forced-induction slot on an NA car shows "no turbo (NA)" and offers Replace, fitting a turbo kit installs it', async () => {
+      // honda-city-e-aa is NA: forcedInduction generates genuinely empty, band irrelevant.
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      const turboKit = PARTS.find(
-        (p) => p.carPartId === 'forcedInduction' && p.requiredTags.includes('Piston'),
-      )!
+      const turboKit = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
       game.devGrantPart(turboKit.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-engine"]').trigger('click')
       expect(wrapper.find('[data-test="stage-repair-part-forcedInduction"]').exists()).toBe(false)
-      expect(wrapper.text()).toContain('not fitted')
+      expect(wrapper.text()).toContain('no turbo (NA)')
 
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
       await wrapper.find('.part-card').trigger('click')
@@ -323,7 +336,27 @@ describe('CarDetailScreen', () => {
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
       await wrapper.find('[data-test="confirm-work"]').trigger('click')
       expect(game.gameState.ownedCars[0]!.parts.forcedInduction.installed?.id).toBe(partInstanceId)
-      expect(game.gameState.ownedCars[0]!.parts.forcedInduction.fitted).toBe(true)
+    })
+
+    it('removing an installed part opens the slot back up for Replace, dropping it to inventory', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars[0]!
+      const originalStockPartId = car.parts.dampers.installed?.partId
+      expect(originalStockPartId).toBeDefined() // every slot starts stock-filled
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="remove-part-dampers"]').exists()).toBe(true)
+
+      await wrapper.find('[data-test="remove-part-dampers"]').trigger('click')
+      expect(game.gameState.ownedCars[0]!.parts.dampers.installed).toBeNull()
+      expect(game.gameState.partInventory.some((pi) => pi.partId === originalStockPartId)).toBe(
+        true,
+      )
+      expect(wrapper.find('[data-test="missing-dampers"]').exists()).toBe(true)
     })
   })
 
@@ -334,6 +367,9 @@ describe('CarDetailScreen', () => {
       const id = game.gameState.ownedCars[0]!.id
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
+      // Every slot starts stock-filled now (Sprint 32) - empty it first so
+      // Replace is actually available to click.
+      game.removePart(id, 'dampers')
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-suspension"]').trigger('click')
@@ -353,9 +389,10 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      const car = game.gameState.ownedCars[0]!
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
+      game.removePart(id, 'dampers')
+      const car = game.gameState.ownedCars[0]!
       const cashBefore = game.cashYen
 
       const { wrapper } = await mountAt(id)
@@ -376,6 +413,7 @@ describe('CarDetailScreen', () => {
       const id = game.gameState.ownedCars[0]!.id
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
+      game.removePart(id, 'dampers')
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-suspension"]').trigger('click')
@@ -387,33 +425,38 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false) // closed on drop
     })
 
-    it('a non-fitting part is shown but dimmed and inert to click-to-select', async () => {
+    it('a scrap part instance in inventory never appears in the drawer (Sprint 26 decision 6)', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      // A Rotary-only forced-induction kit doesn't fit this Piston NA car.
-      const wrongPart = PARTS.find(
-        (p) => p.carPartId === 'forcedInduction' && p.requiredTags.includes('Rotary'),
-      )!
-      game.devGrantPart(wrongPart.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      game.removePart(id, 'dampers')
+      const goodPart = untaggedPartFor('dampers')
+      game.devGrantPart(goodPart.id)
+      const goodInstanceId = game.gameState.partInventory.at(-1)!.id
+      // Force a second, scrap-band instance of the same part into inventory directly.
+      game.gameState = {
+        ...game.gameState,
+        partInventory: [
+          ...game.gameState.partInventory,
+          { id: 'scrap-instance', partId: goodPart.id, band: 'scrap', genuinePeriod: false },
+        ],
+      }
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-engine"]').trigger('click')
-      await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
-      expect(wrapper.find('.part-card.no-fit').exists()).toBe(true)
-
-      await wrapper.find('.part-card').trigger('click')
-      expect(game.isPartStagedAnywhere(partInstanceId)).toBe(false) // click was a no-op
+      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
+      expect(wrapper.find(`[data-test="pick-part-${goodInstanceId}"]`).exists()).toBe(true)
+      expect(wrapper.find('[data-test="pick-part-scrap-instance"]').exists()).toBe(false)
     })
 
     it('Confirm actually installs the staged part onto its exact slot and removes it from inventory', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
@@ -427,7 +470,9 @@ describe('CarDetailScreen', () => {
 
       await wrapper.find('[data-test="confirm-work"]').trigger('click')
       expect(game.gameState.ownedCars[0]!.parts.dampers.installed?.id).toBe(partInstanceId)
-      expect(game.gameState.partInventory).toHaveLength(0)
+      // Only the displaced stock dampers instance (dropped by removePart
+      // above) is left - the confirmed install consumed the granted part.
+      expect(game.gameState.partInventory.some((pi) => pi.id === partInstanceId)).toBe(false)
     })
 
     it('a part staged on one car is unavailable to stage on another (decision 3)', async () => {
@@ -435,9 +480,11 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       game.devGrantCar(CARS[1]?.id ?? CARS[0]!.id)
       const [carA, carB] = game.gameState.ownedCars
+      game.removePart(carA!.id, 'dampers')
+      game.removePart(carB!.id, 'dampers')
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       expect(
         game.stageAction(carA!.id, {
@@ -467,9 +514,10 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-suspension"]').trigger('click')
@@ -488,12 +536,16 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      // Pick a Rotary-only forced-induction kit from the FI drawer (doesn't fit dampers).
-      const wrongPart = PARTS.find(
-        (p) => p.carPartId === 'forcedInduction' && p.requiredTags.includes('Rotary'),
-      )!
+      game.removePart(id, 'dampers')
+      // Pick a forced-induction kit from the FI drawer (wrong address - forced
+      // induction never fits the dampers slot, regardless of tags).
+      const wrongPart = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
       game.devGrantPart(wrongPart.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      // removePart above also dropped the displaced stock dampers instance
+      // into inventory - find the granted forced-induction part specifically.
+      const partInstanceId = game.gameState.partInventory.find(
+        (pi) => pi.partId === wrongPart.id,
+      )!.id
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-engine"]').trigger('click')
@@ -515,9 +567,10 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="expand-suspension"]').trigger('click')
@@ -536,9 +589,10 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
-      const partInstanceId = game.gameState.partInventory[0]!.id
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       game.stageAction(id, {
         kind: 'install',

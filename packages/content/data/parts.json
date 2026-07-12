@@ -1,13 +1,99 @@
 [
   {
-    "id": "khs-street-ecu",
-    "brand": "KHS",
-    "name": "Street ECU",
-    "carPartId": "ignitionEcu",
+    "id": "stock-block",
+    "brand": "OEM",
+    "name": "Stock Block",
+    "carPartId": "block",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 350000
+  },
+  {
+    "id": "hagane-stroker-kit",
+    "brand": "Hagane",
+    "name": "Stroker Kit",
+    "carPartId": "block",
     "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 5, "reliability": -2 },
-    "priceYen": 45000
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "priceYen": 490000
+  },
+  {
+    "id": "hagane-sport-block",
+    "brand": "Hagane",
+    "name": "Sport Block Kit",
+    "carPartId": "block",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "priceYen": 700000
+  },
+  {
+    "id": "hagane-race-block",
+    "brand": "Hagane",
+    "name": "Forged Race Block",
+    "carPartId": "block",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 32,
+      "handling": 0,
+      "style": 0,
+      "reliability": -14,
+      "authenticity": 0
+    },
+    "priceYen": 990000
+  },
+  {
+    "id": "stock-internals",
+    "brand": "OEM",
+    "name": "Stock Internals",
+    "carPartId": "internals",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 220000
+  },
+  {
+    "id": "oni-forged-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Forged Piston Kit",
+    "carPartId": "internals",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "priceYen": 310000
   },
   {
     "id": "khs-sport-internals",
@@ -15,19 +101,495 @@
     "name": "Sport Internals",
     "carPartId": "internals",
     "grade": "sport",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 15, "reliability": -5 },
-    "priceYen": 220000
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 18,
+      "handling": 0,
+      "style": 0,
+      "reliability": -7,
+      "authenticity": 0
+    },
+    "priceYen": 420000
   },
   {
-    "id": "khs-n1-block",
-    "brand": "KHS",
-    "name": "N1 Block Kit",
-    "carPartId": "block",
+    "id": "oni-race-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Race Piston Kit",
+    "carPartId": "internals",
     "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 35, "reliability": -15 },
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 26,
+      "handling": 0,
+      "style": 0,
+      "reliability": -12,
+      "authenticity": 0
+    },
     "priceYen": 650000
+  },
+  {
+    "id": "stock-head-valvetrain",
+    "brand": "OEM",
+    "name": "Stock Head & Valvetrain",
+    "carPartId": "headValvetrain",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 150000
+  },
+  {
+    "id": "genbu-ported-head-kit",
+    "brand": "Genbu",
+    "name": "Ported Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "priceYen": 195000
+  },
+  {
+    "id": "genbu-sport-head-kit",
+    "brand": "Genbu",
+    "name": "Sport Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "priceYen": 300000
+  },
+  {
+    "id": "genbu-race-head-kit",
+    "brand": "Genbu",
+    "name": "Race Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -10,
+      "authenticity": 0
+    },
+    "priceYen": 420000
+  },
+  {
+    "id": "stock-cams-timing",
+    "brand": "OEM",
+    "name": "Stock Cams & Timing",
+    "carPartId": "camsTiming",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 80000
+  },
+  {
+    "id": "raiden-street-cams",
+    "brand": "Raiden",
+    "name": "Street Cams",
+    "carPartId": "camsTiming",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 112000
+  },
+  {
+    "id": "raiden-sport-cams",
+    "brand": "Raiden",
+    "name": "Sport Cams",
+    "carPartId": "camsTiming",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "priceYen": 170000
+  },
+  {
+    "id": "raiden-race-cams",
+    "brand": "Raiden",
+    "name": "Race Cams",
+    "carPartId": "camsTiming",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "priceYen": 230000
+  },
+  {
+    "id": "stock-intake",
+    "brand": "OEM",
+    "name": "Stock Intake",
+    "carPartId": "intake",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 35000
+  },
+  {
+    "id": "fubuki-cold-air-kit",
+    "brand": "Fubuki",
+    "name": "Cold Air Intake Kit",
+    "carPartId": "intake",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 48000
+  },
+  {
+    "id": "fubuki-sport-intake-kit",
+    "brand": "Fubuki",
+    "name": "Sport Intake Kit",
+    "carPartId": "intake",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 72000
+  },
+  {
+    "id": "fubuki-velocity-stack-kit",
+    "brand": "Fubuki",
+    "name": "Velocity Stack Kit",
+    "carPartId": "intake",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 12,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "priceYen": 98000
+  },
+  {
+    "id": "stock-exhaust",
+    "brand": "OEM",
+    "name": "Stock Exhaust",
+    "carPartId": "exhaust",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 45000
+  },
+  {
+    "id": "suzaku-street-catback",
+    "brand": "Suzaku",
+    "name": "Street Catback",
+    "carPartId": "exhaust",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 60000
+  },
+  {
+    "id": "suzaku-sport-catback",
+    "brand": "Suzaku",
+    "name": "Sport Catback",
+    "carPartId": "exhaust",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 92000
+  },
+  {
+    "id": "suzaku-race-header-kit",
+    "brand": "Suzaku",
+    "name": "Race Header Kit",
+    "carPartId": "exhaust",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 13,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "priceYen": 130000
+  },
+  {
+    "id": "stock-fuel-system",
+    "brand": "OEM",
+    "name": "Stock Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 40000
+  },
+  {
+    "id": "koi-street-injector-kit",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Street Injector Kit",
+    "carPartId": "fuelSystem",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 4,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 56000
+  },
+  {
+    "id": "koi-sport-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Sport Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 7,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "priceYen": 85000
+  },
+  {
+    "id": "koi-race-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Race Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 11,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "priceYen": 118000
+  },
+  {
+    "id": "stock-ignition-ecu",
+    "brand": "OEM",
+    "name": "Stock Ignition & ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 45000
+  },
+  {
+    "id": "khs-street-ecu",
+    "brand": "KHS",
+    "name": "Street ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 52000
+  },
+  {
+    "id": "khs-sport-ecu",
+    "brand": "KHS",
+    "name": "Sport ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "priceYen": 85000
+  },
+  {
+    "id": "khs-race-ecu",
+    "brand": "KHS",
+    "name": "Race ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "priceYen": 135000
+  },
+  {
+    "id": "stock-cooling",
+    "brand": "OEM",
+    "name": "Stock Cooling",
+    "carPartId": "cooling",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 30000
+  },
+  {
+    "id": "suiko-street-radiator",
+    "brand": "Suiko",
+    "name": "Sport Radiator",
+    "carPartId": "cooling",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 8,
+      "authenticity": 0
+    },
+    "priceYen": 42000
+  },
+  {
+    "id": "suiko-track-radiator-kit",
+    "brand": "Suiko",
+    "name": "Track Radiator Kit",
+    "carPartId": "cooling",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "priceYen": 65000
+  },
+  {
+    "id": "suiko-race-cooling-kit",
+    "brand": "Suiko",
+    "name": "Race Cooling Kit",
+    "carPartId": "cooling",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 16,
+      "authenticity": 0
+    },
+    "priceYen": 95000
+  },
+  {
+    "id": "stock-forced-induction",
+    "brand": "OEM",
+    "name": "Stock Forced Induction",
+    "carPartId": "forcedInduction",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 180000
   },
   {
     "id": "kaze-bolton-turbo",
@@ -35,9 +597,15 @@
     "name": "Bolt-On Turbo",
     "carPartId": "forcedInduction",
     "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 20, "reliability": -5 },
-    "priceYen": 180000
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "priceYen": 205000
   },
   {
     "id": "khs-tr-350",
@@ -45,8 +613,14 @@
     "name": "TR-350 Turbo Kit",
     "carPartId": "forcedInduction",
     "grade": "sport",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 30, "reliability": -8 },
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 30,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
     "priceYen": 320000
   },
   {
@@ -55,9 +629,95 @@
     "name": "TR-500 Turbo Kit",
     "carPartId": "forcedInduction",
     "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 45, "reliability": -15 },
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 45,
+      "handling": 0,
+      "style": 0,
+      "reliability": -15,
+      "authenticity": 0
+    },
     "priceYen": 520000
+  },
+  {
+    "id": "stock-gearbox",
+    "brand": "OEM",
+    "name": "Stock Gearbox",
+    "carPartId": "gearbox",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 250000
+  },
+  {
+    "id": "ittou-close-ratio-kit",
+    "brand": "Ittou",
+    "name": "Close-Ratio Kit",
+    "carPartId": "gearbox",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 340000
+  },
+  {
+    "id": "ittou-sport-gearset",
+    "brand": "Ittou",
+    "name": "Sport Gearset",
+    "carPartId": "gearbox",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "priceYen": 460000
+  },
+  {
+    "id": "ittou-sequential-dogbox",
+    "brand": "Ittou",
+    "name": "Sequential Dogbox",
+    "carPartId": "gearbox",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 14,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "priceYen": 620000
+  },
+  {
+    "id": "stock-clutch",
+    "brand": "OEM",
+    "name": "Stock Clutch",
+    "carPartId": "clutch",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 60000
   },
   {
     "id": "katana-street-clutch",
@@ -66,8 +726,78 @@
     "carPartId": "clutch",
     "grade": "street",
     "requiredTags": [],
-    "statModifiers": { "reliability": 5 },
-    "priceYen": 60000
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 5,
+      "authenticity": 0
+    },
+    "priceYen": 68000
+  },
+  {
+    "id": "katana-sport-clutch",
+    "brand": "Katana",
+    "name": "Sport Clutch",
+    "carPartId": "clutch",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 2,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 120000
+  },
+  {
+    "id": "katana-race-clutch",
+    "brand": "Katana",
+    "name": "Race Clutch",
+    "carPartId": "clutch",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 3,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "priceYen": 175000
+  },
+  {
+    "id": "stock-differential",
+    "brand": "OEM",
+    "name": "Stock Differential",
+    "carPartId": "differential",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 120000
+  },
+  {
+    "id": "tsuru-street-lsd",
+    "brand": "Tsuru",
+    "name": "Street LSD",
+    "carPartId": "differential",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 155000
   },
   {
     "id": "tsuru-2way-lsd",
@@ -76,18 +806,174 @@
     "carPartId": "differential",
     "grade": "sport",
     "requiredTags": [],
-    "statModifiers": { "handling": 10 },
-    "priceYen": 150000
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "priceYen": 230000
   },
   {
-    "id": "khs-race-dogbox",
-    "brand": "KHS",
-    "name": "Race Dogbox",
-    "carPartId": "gearbox",
+    "id": "tsuru-race-diff",
+    "brand": "Tsuru",
+    "name": "Race Differential",
+    "carPartId": "differential",
     "grade": "race",
     "requiredTags": [],
-    "statModifiers": { "handling": 15, "reliability": -10 },
-    "priceYen": 480000
+    "statModifiers": {
+      "power": 0,
+      "handling": 16,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "priceYen": 340000
+  },
+  {
+    "id": "stock-driveline",
+    "brand": "OEM",
+    "name": "Stock Driveline",
+    "carPartId": "driveline",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 70000
+  },
+  {
+    "id": "namazu-reinforced-driveshaft",
+    "brand": "Namazu",
+    "name": "Reinforced Driveshaft",
+    "carPartId": "driveline",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 7,
+      "authenticity": 0
+    },
+    "priceYen": 91000
+  },
+  {
+    "id": "namazu-sport-driveshaft",
+    "brand": "Namazu",
+    "name": "Sport Driveshaft",
+    "carPartId": "driveline",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 10,
+      "authenticity": 0
+    },
+    "priceYen": 145000
+  },
+  {
+    "id": "namazu-race-driveshaft",
+    "brand": "Namazu",
+    "name": "Race Driveshaft",
+    "carPartId": "driveline",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 14,
+      "authenticity": 0
+    },
+    "priceYen": 205000
+  },
+  {
+    "id": "stock-chassis",
+    "brand": "OEM",
+    "name": "Stock Chassis",
+    "carPartId": "chassis",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 300000
+  },
+  {
+    "id": "namazu-seam-weld-kit",
+    "brand": "Namazu",
+    "name": "Seam-Weld Stiffening Kit",
+    "carPartId": "chassis",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "priceYen": 400000
+  },
+  {
+    "id": "namazu-sport-chassis-kit",
+    "brand": "Namazu",
+    "name": "Sport Chassis Kit",
+    "carPartId": "chassis",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 17,
+      "authenticity": 0
+    },
+    "priceYen": 620000
+  },
+  {
+    "id": "namazu-tube-chassis-kit",
+    "brand": "Namazu",
+    "name": "Tube Chassis Reinforcement Kit",
+    "carPartId": "chassis",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": 22,
+      "authenticity": 0
+    },
+    "priceYen": 880000
+  },
+  {
+    "id": "stock-dampers",
+    "brand": "OEM",
+    "name": "Stock Dampers",
+    "carPartId": "dampers",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 50000
   },
   {
     "id": "tanuki-street-coilovers",
@@ -96,7 +982,13 @@
     "carPartId": "dampers",
     "grade": "street",
     "requiredTags": [],
-    "statModifiers": { "handling": 8, "style": 3 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 3,
+      "reliability": 0,
+      "authenticity": 0
+    },
     "priceYen": 70000
   },
   {
@@ -106,7 +998,13 @@
     "carPartId": "dampers",
     "grade": "sport",
     "requiredTags": [],
-    "statModifiers": { "handling": 18, "reliability": -3 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
     "priceYen": 180000
   },
   {
@@ -116,18 +1014,302 @@
     "carPartId": "dampers",
     "grade": "race",
     "requiredTags": [],
-    "statModifiers": { "handling": 28, "reliability": -6 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 28,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
     "priceYen": 380000
   },
   {
-    "id": "katana-stock-pads",
-    "brand": "Katana",
-    "name": "Stock Pads (Repro)",
+    "id": "stock-springs",
+    "brand": "OEM",
+    "name": "Stock Springs",
+    "carPartId": "springs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 25000
+  },
+  {
+    "id": "enzan-lowering-springs",
+    "brand": "Enzan",
+    "name": "Lowering Springs",
+    "carPartId": "springs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 33000
+  },
+  {
+    "id": "enzan-sport-springs",
+    "brand": "Enzan",
+    "name": "Sport Springs",
+    "carPartId": "springs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 52000
+  },
+  {
+    "id": "enzan-race-springs",
+    "brand": "Enzan",
+    "name": "Race Springs",
+    "carPartId": "springs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "priceYen": 72000
+  },
+  {
+    "id": "stock-anti-roll-bars",
+    "brand": "OEM",
+    "name": "Stock Anti-Roll Bars",
+    "carPartId": "antiRollBars",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 20000
+  },
+  {
+    "id": "kumo-adjustable-swaybars",
+    "brand": "Kumo",
+    "name": "Adjustable Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 27000
+  },
+  {
+    "id": "kumo-sport-swaybars",
+    "brand": "Kumo",
+    "name": "Sport Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 42000
+  },
+  {
+    "id": "kumo-race-swaybars",
+    "brand": "Kumo",
+    "name": "Race Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 17,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 58000
+  },
+  {
+    "id": "stock-steering",
+    "brand": "OEM",
+    "name": "Stock Steering",
+    "carPartId": "steering",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 45000
+  },
+  {
+    "id": "kitsune-quick-rack",
+    "brand": "Kitsune",
+    "name": "Quick-Ratio Rack",
+    "carPartId": "steering",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 58000
+  },
+  {
+    "id": "kitsune-sport-rack",
+    "brand": "Kitsune",
+    "name": "Sport Rack",
+    "carPartId": "steering",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 13,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 92000
+  },
+  {
+    "id": "kitsune-race-rack",
+    "brand": "Kitsune",
+    "name": "Race Steering Rack",
+    "carPartId": "steering",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 19,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "priceYen": 128000
+  },
+  {
+    "id": "stock-brake-pads-discs",
+    "brand": "OEM",
+    "name": "Stock Brake Pads & Discs",
     "carPartId": "brakePadsDiscs",
     "grade": "stock",
     "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
     "priceYen": 20000
+  },
+  {
+    "id": "shuriken-street-pads",
+    "brand": "Shuriken",
+    "name": "Street Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 26000
+  },
+  {
+    "id": "shuriken-sport-pads",
+    "brand": "Shuriken",
+    "name": "Sport Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 40000
+  },
+  {
+    "id": "shuriken-race-pads",
+    "brand": "Shuriken",
+    "name": "Race Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 56000
+  },
+  {
+    "id": "stock-brake-calipers-lines",
+    "brand": "OEM",
+    "name": "Stock Brake Calipers & Lines",
+    "carPartId": "brakeCalipersLines",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 40000
+  },
+  {
+    "id": "shuriken-street-calipers",
+    "brand": "Shuriken",
+    "name": "Street Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 52000
   },
   {
     "id": "katana-4pot-kit",
@@ -136,8 +1318,366 @@
     "carPartId": "brakeCalipersLines",
     "grade": "sport",
     "requiredTags": [],
-    "statModifiers": { "handling": 12 },
-    "priceYen": 140000
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 85000
+  },
+  {
+    "id": "shuriken-race-calipers",
+    "brand": "Shuriken",
+    "name": "Race Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "priceYen": 115000
+  },
+  {
+    "id": "stock-rims",
+    "brand": "OEM",
+    "name": "Stock Rims",
+    "carPartId": "rims",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 55000
+  },
+  {
+    "id": "ronin-street-alloys",
+    "brand": "Ronin",
+    "name": "Street Alloys",
+    "carPartId": "rims",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 72000
+  },
+  {
+    "id": "vulk-ve37",
+    "brand": "Vulk Racing",
+    "name": "VE37",
+    "carPartId": "rims",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 15,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 130000
+  },
+  {
+    "id": "ronin-race-forged",
+    "brand": "Ronin",
+    "name": "Race Forged Wheels",
+    "carPartId": "rims",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 165000
+  },
+  {
+    "id": "stock-tyres",
+    "brand": "OEM",
+    "name": "Stock Tyres",
+    "carPartId": "tyres",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 35000
+  },
+  {
+    "id": "tsume-street-tyres",
+    "brand": "Tsume",
+    "name": "Street Tyres",
+    "carPartId": "tyres",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 46000
+  },
+  {
+    "id": "tsume-sport-tyres",
+    "brand": "Tsume",
+    "name": "Sport Tyres",
+    "carPartId": "tyres",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "priceYen": 70000
+  },
+  {
+    "id": "tsume-race-slicks",
+    "brand": "Tsume",
+    "name": "Race Slicks",
+    "carPartId": "tyres",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 26,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "priceYen": 98000
+  },
+  {
+    "id": "stock-panels",
+    "brand": "OEM",
+    "name": "Stock Panels",
+    "carPartId": "panels",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 60000
+  },
+  {
+    "id": "frp-lightweight-panels",
+    "brand": "FRP",
+    "name": "Lightweight Panel Kit",
+    "carPartId": "panels",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 2,
+      "style": 7,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 82000
+  },
+  {
+    "id": "frp-sport-panel-kit",
+    "brand": "FRP",
+    "name": "Sport Panel Kit",
+    "carPartId": "panels",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 11,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 125000
+  },
+  {
+    "id": "frp-carbon-panel-kit",
+    "brand": "FRP",
+    "name": "Carbon Panel Kit",
+    "carPartId": "panels",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 16,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "priceYen": 175000
+  },
+  {
+    "id": "stock-paint",
+    "brand": "OEM",
+    "name": "Stock Paint",
+    "carPartId": "paint",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 80000
+  },
+  {
+    "id": "akai-custom-twotone",
+    "brand": "Studio Akai",
+    "name": "Custom Two-Tone",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 105000
+  },
+  {
+    "id": "akai-sport-livery",
+    "brand": "Studio Akai",
+    "name": "Sport Livery",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 14,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 165000
+  },
+  {
+    "id": "akai-full-livery-wrap",
+    "brand": "Studio Akai",
+    "name": "Full Livery Wrap",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 235000
+  },
+  {
+    "id": "stock-underbody",
+    "brand": "OEM",
+    "name": "Stock Underbody",
+    "carPartId": "underbody",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 50000
+  },
+  {
+    "id": "neon-doraku-underglow-kit",
+    "brand": "Neon Doraku",
+    "name": "Underglow Kit",
+    "carPartId": "underbody",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 68000
+  },
+  {
+    "id": "namazu-sport-underbody-kit",
+    "brand": "Namazu",
+    "name": "Sport Underbody Kit",
+    "carPartId": "underbody",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 105000
+  },
+  {
+    "id": "namazu-flatfloor-kit",
+    "brand": "Namazu",
+    "name": "Flat Floor Kit",
+    "carPartId": "underbody",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 9,
+      "style": 8,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 148000
+  },
+  {
+    "id": "stock-aero",
+    "brand": "OEM",
+    "name": "Stock Aero",
+    "carPartId": "aero",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 40000
   },
   {
     "id": "mikoshi-lip-kit",
@@ -146,8 +1686,14 @@
     "carPartId": "aero",
     "grade": "street",
     "requiredTags": [],
-    "statModifiers": { "style": 10 },
-    "priceYen": 40000
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 46000
   },
   {
     "id": "mikoshi-gt-wing",
@@ -156,7 +1702,13 @@
     "carPartId": "aero",
     "grade": "sport",
     "requiredTags": [],
-    "statModifiers": { "style": 18, "handling": 5 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
     "priceYen": 120000
   },
   {
@@ -166,978 +1718,30 @@
     "carPartId": "aero",
     "grade": "race",
     "requiredTags": [],
-    "statModifiers": { "style": 30, "handling": 15, "reliability": -5 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 15,
+      "style": 30,
+      "reliability": -5,
+      "authenticity": 0
+    },
     "priceYen": 450000
   },
   {
-    "id": "enkai-mesh-15",
-    "brand": "Enkai",
-    "name": "Mesh 15s",
-    "carPartId": "rims",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "style": 8 },
-    "priceYen": 55000
-  },
-  {
-    "id": "vulk-ve37",
-    "brand": "Vulk Racing",
-    "name": "VE37",
-    "carPartId": "rims",
-    "grade": "sport",
-    "requiredTags": [],
-    "statModifiers": { "style": 20, "handling": 5 },
-    "priceYen": 220000
-  },
-  {
-    "id": "zashiki-bucket-seat",
-    "brand": "Zashiki",
-    "name": "Bucket Seat",
-    "carPartId": "seats",
-    "grade": "sport",
-    "requiredTags": [],
-    "statModifiers": { "style": 10 },
-    "priceYen": 95000
-  },
-  {
-    "id": "hagane-oem-shortblock",
-    "brand": "Hagane",
-    "name": "OEM Short Block",
-    "carPartId": "block",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 5 },
-    "priceYen": 260000
-  },
-  {
-    "id": "hagane-stroker-kit",
-    "brand": "Hagane",
-    "name": "Stroker Kit",
-    "carPartId": "block",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 14, "reliability": -4 },
-    "priceYen": 490000
-  },
-  {
-    "id": "hagane-race-block",
-    "brand": "Hagane",
-    "name": "Forged Race Block",
-    "carPartId": "block",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 32, "reliability": -14 },
-    "priceYen": 990000
-  },
-  {
-    "id": "ryujin-housing-rebuild",
-    "brand": "Ryujin Rotary Works",
-    "name": "Housing Rebuild Kit",
-    "carPartId": "block",
-    "grade": "stock",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "reliability": 6 },
-    "priceYen": 270000
-  },
-  {
-    "id": "ryujin-race-housing-set",
-    "brand": "Ryujin Rotary Works",
-    "name": "Race Housing Set",
-    "carPartId": "block",
-    "grade": "race",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 28, "reliability": -16 },
-    "priceYen": 950000
-  },
-  {
-    "id": "oni-oem-piston-set",
-    "brand": "Oni Motorsports",
-    "name": "OEM Piston Set",
-    "carPartId": "internals",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 4 },
-    "priceYen": 165000
-  },
-  {
-    "id": "oni-forged-piston-kit",
-    "brand": "Oni Motorsports",
-    "name": "Forged Piston Kit",
-    "carPartId": "internals",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 10, "reliability": -4 },
-    "priceYen": 310000
-  },
-  {
-    "id": "oni-race-piston-kit",
-    "brand": "Oni Motorsports",
-    "name": "Race Piston Kit",
-    "carPartId": "internals",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 26, "reliability": -12 },
-    "priceYen": 650000
-  },
-  {
-    "id": "ryujin-race-rotor-seal-kit",
-    "brand": "Ryujin Rotary Works",
-    "name": "Race Rotor & Seal Kit",
-    "carPartId": "internals",
-    "grade": "race",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 24, "reliability": -14 },
-    "priceYen": 620000
-  },
-  {
-    "id": "genbu-oem-head-kit",
-    "brand": "Genbu",
-    "name": "OEM Head Kit",
-    "carPartId": "headValvetrain",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 5 },
-    "priceYen": 110000
-  },
-  {
-    "id": "genbu-ported-head-kit",
-    "brand": "Genbu",
-    "name": "Ported Head Kit",
-    "carPartId": "headValvetrain",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 8, "reliability": -3 },
-    "priceYen": 195000
-  },
-  {
-    "id": "genbu-race-head-kit",
-    "brand": "Genbu",
-    "name": "Race Head Kit",
-    "carPartId": "headValvetrain",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 20, "reliability": -10 },
-    "priceYen": 420000
-  },
-  {
-    "id": "ryujin-bridge-port-kit",
-    "brand": "Ryujin Rotary Works",
-    "name": "Bridge Port Conversion",
-    "carPartId": "headValvetrain",
-    "grade": "street",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 12, "reliability": -6 },
-    "priceYen": 210000
-  },
-  {
-    "id": "raiden-oem-cam-kit",
-    "brand": "Raiden",
-    "name": "OEM Cam Kit",
-    "carPartId": "camsTiming",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 58000
-  },
-  {
-    "id": "raiden-street-cams",
-    "brand": "Raiden",
-    "name": "Street Cams",
-    "carPartId": "camsTiming",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 9, "reliability": -2 },
-    "priceYen": 112000
-  },
-  {
-    "id": "raiden-race-cams",
-    "brand": "Raiden",
-    "name": "Race Cams",
-    "carPartId": "camsTiming",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 22, "reliability": -8 },
-    "priceYen": 230000
-  },
-  {
-    "id": "ryujin-eccentric-shaft-kit",
-    "brand": "Ryujin Rotary Works",
-    "name": "Eccentric Shaft & Port Timing Kit",
-    "carPartId": "camsTiming",
-    "grade": "race",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 20, "reliability": -9 },
-    "priceYen": 240000
-  },
-  {
-    "id": "fubuki-oem-intake",
-    "brand": "Fubuki",
-    "name": "OEM Intake",
-    "carPartId": "intake",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 24000
-  },
-  {
-    "id": "fubuki-cold-air-kit",
-    "brand": "Fubuki",
-    "name": "Cold Air Intake Kit",
-    "carPartId": "intake",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 5, "reliability": -1 },
-    "priceYen": 48000
-  },
-  {
-    "id": "fubuki-velocity-stack-kit",
-    "brand": "Fubuki",
-    "name": "Velocity Stack Kit",
-    "carPartId": "intake",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 12, "reliability": -4 },
-    "priceYen": 98000
-  },
-  {
-    "id": "ryujin-4port-intake",
-    "brand": "Ryujin Rotary Works",
-    "name": "4-Port Intake Manifold",
-    "carPartId": "intake",
-    "grade": "stock",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 27000
-  },
-  {
-    "id": "suzaku-oem-exhaust",
-    "brand": "Suzaku",
-    "name": "OEM Exhaust",
-    "carPartId": "exhaust",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 30000
-  },
-  {
-    "id": "suzaku-street-catback",
-    "brand": "Suzaku",
-    "name": "Street Catback",
-    "carPartId": "exhaust",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 5, "reliability": -1 },
-    "priceYen": 60000
-  },
-  {
-    "id": "suzaku-race-header-kit",
-    "brand": "Suzaku",
-    "name": "Race Header Kit",
-    "carPartId": "exhaust",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 13, "reliability": -4 },
-    "priceYen": 130000
-  },
-  {
-    "id": "ryujin-tuned-manifold",
-    "brand": "Ryujin Rotary Works",
-    "name": "Tuned Exhaust Manifold",
-    "carPartId": "exhaust",
-    "grade": "street",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 7, "reliability": -2 },
-    "priceYen": 65000
-  },
-  {
-    "id": "koi-oem-fuel-kit",
-    "brand": "Koi Fuel Dynamics",
-    "name": "OEM Fuel Kit",
-    "carPartId": "fuelSystem",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 28000
-  },
-  {
-    "id": "koi-street-injector-kit",
-    "brand": "Koi Fuel Dynamics",
-    "name": "Street Injector Kit",
-    "carPartId": "fuelSystem",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 4, "reliability": -1 },
-    "priceYen": 56000
-  },
-  {
-    "id": "koi-race-fuel-system",
-    "brand": "Koi Fuel Dynamics",
-    "name": "Race Fuel System",
-    "carPartId": "fuelSystem",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 11, "reliability": -5 },
-    "priceYen": 118000
-  },
-  {
-    "id": "ryujin-race-fuel-system",
-    "brand": "Ryujin Rotary Works",
-    "name": "Race Fuel System",
-    "carPartId": "fuelSystem",
-    "grade": "race",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 12, "reliability": -6 },
-    "priceYen": 125000
-  },
-  {
-    "id": "khs-stock-ecu",
-    "brand": "KHS",
-    "name": "Stock ECU",
-    "carPartId": "ignitionEcu",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 32000
-  },
-  {
-    "id": "inazuma-street-ecu",
-    "brand": "Inazuma",
-    "name": "Street ECU",
-    "carPartId": "ignitionEcu",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 7, "reliability": -3 },
-    "priceYen": 62000
-  },
-  {
-    "id": "khs-race-ecu",
-    "brand": "KHS",
-    "name": "Race ECU",
-    "carPartId": "ignitionEcu",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 16, "reliability": -6 },
-    "priceYen": 135000
-  },
-  {
-    "id": "ryujin-twin-plug-ignition",
-    "brand": "Ryujin Rotary Works",
-    "name": "Twin-Plug Ignition Kit",
-    "carPartId": "ignitionEcu",
-    "grade": "street",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 7, "reliability": -2 },
-    "priceYen": 70000
-  },
-  {
-    "id": "suiko-oem-radiator",
-    "brand": "Suiko",
-    "name": "OEM Radiator",
-    "carPartId": "cooling",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 4 },
-    "priceYen": 21000
-  },
-  {
-    "id": "suiko-street-radiator",
-    "brand": "Suiko",
-    "name": "Sport Radiator",
-    "carPartId": "cooling",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 8 },
-    "priceYen": 42000
-  },
-  {
-    "id": "suiko-race-cooling-kit",
-    "brand": "Suiko",
-    "name": "Race Cooling Kit",
-    "carPartId": "cooling",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 16 },
-    "priceYen": 95000
-  },
-  {
-    "id": "ryujin-oil-cooler-kit",
-    "brand": "Ryujin Rotary Works",
-    "name": "Oil Cooler Kit",
-    "carPartId": "cooling",
-    "grade": "stock",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "reliability": 6 },
-    "priceYen": 25000
-  },
-  {
-    "id": "ikazuchi-stock-turbo",
-    "brand": "Ikazuchi",
-    "name": "Stock-Spec Turbo",
-    "carPartId": "forcedInduction",
-    "grade": "stock",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "reliability": 4 },
-    "priceYen": 130000
-  },
-  {
-    "id": "ikazuchi-supercharger-kit",
-    "brand": "Ikazuchi",
-    "name": "Supercharger Kit",
-    "carPartId": "forcedInduction",
-    "grade": "street",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 18, "reliability": -4 },
-    "priceYen": 245000
-  },
-  {
-    "id": "ikazuchi-race-twinturbo",
-    "brand": "Ikazuchi",
-    "name": "Race Twin-Turbo Kit",
-    "carPartId": "forcedInduction",
-    "grade": "race",
-    "requiredTags": ["Piston"],
-    "statModifiers": { "power": 42, "reliability": -16 },
-    "priceYen": 560000
-  },
-  {
-    "id": "ryujin-street-turbo-kit",
-    "brand": "Ryujin Rotary Works",
-    "name": "Street Turbo Kit",
-    "carPartId": "forcedInduction",
-    "grade": "street",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 20, "reliability": -6 },
-    "priceYen": 260000
-  },
-  {
-    "id": "ryujin-race-turbo-kit",
-    "brand": "Ryujin Rotary Works",
-    "name": "Race Turbo Kit",
-    "carPartId": "forcedInduction",
-    "grade": "race",
-    "requiredTags": ["Rotary"],
-    "statModifiers": { "power": 44, "reliability": -17 },
-    "priceYen": 580000
-  },
-  {
-    "id": "ittou-oem-gearset",
-    "brand": "Ittou",
-    "name": "OEM Gearset",
-    "carPartId": "gearbox",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 5 },
-    "priceYen": 175000
-  },
-  {
-    "id": "ittou-close-ratio-kit",
-    "brand": "Ittou",
-    "name": "Close-Ratio Kit",
-    "carPartId": "gearbox",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 6, "reliability": -2 },
-    "priceYen": 340000
-  },
-  {
-    "id": "ittou-sequential-dogbox",
-    "brand": "Ittou",
-    "name": "Sequential Dogbox",
-    "carPartId": "gearbox",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 14, "reliability": -9 },
-    "priceYen": 620000
-  },
-  {
-    "id": "katana-stock-clutch",
-    "brand": "Katana",
-    "name": "Stock Clutch",
-    "carPartId": "clutch",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 42000
-  },
-  {
-    "id": "ittou-street-clutch",
-    "brand": "Ittou",
-    "name": "Street Clutch",
-    "carPartId": "clutch",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 6 },
-    "priceYen": 85000
-  },
-  {
-    "id": "katana-race-clutch",
-    "brand": "Katana",
-    "name": "Race Clutch",
-    "carPartId": "clutch",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "power": 3, "reliability": -5 },
-    "priceYen": 175000
-  },
-  {
-    "id": "tsuru-oem-diff",
-    "brand": "Tsuru",
-    "name": "OEM Differential",
-    "carPartId": "differential",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 4 },
-    "priceYen": 85000
-  },
-  {
-    "id": "tsuru-street-lsd",
-    "brand": "Tsuru",
-    "name": "Street LSD",
-    "carPartId": "differential",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 6, "reliability": -2 },
-    "priceYen": 155000
-  },
-  {
-    "id": "tsuru-race-diff",
-    "brand": "Tsuru",
-    "name": "Race Differential",
-    "carPartId": "differential",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 16, "reliability": -8 },
-    "priceYen": 340000
-  },
-  {
-    "id": "namazu-oem-driveshaft",
-    "brand": "Namazu",
-    "name": "OEM Driveshaft",
-    "carPartId": "driveline",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 4 },
-    "priceYen": 49000
-  },
-  {
-    "id": "namazu-reinforced-driveshaft",
-    "brand": "Namazu",
-    "name": "Reinforced Driveshaft",
-    "carPartId": "driveline",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 7 },
-    "priceYen": 91000
-  },
-  {
-    "id": "namazu-race-driveshaft",
-    "brand": "Namazu",
-    "name": "Race Driveshaft",
-    "carPartId": "driveline",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 14 },
-    "priceYen": 205000
-  },
-  {
-    "id": "namazu-subframe-refresh",
-    "brand": "Namazu",
-    "name": "Subframe Refresh Kit",
-    "carPartId": "chassis",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 6 },
-    "priceYen": 210000
-  },
-  {
-    "id": "namazu-seam-weld-kit",
-    "brand": "Namazu",
-    "name": "Seam-Weld Stiffening Kit",
-    "carPartId": "chassis",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 12, "handling": 3 },
-    "priceYen": 400000
-  },
-  {
-    "id": "namazu-tube-chassis-kit",
-    "brand": "Namazu",
-    "name": "Tube Chassis Reinforcement Kit",
-    "carPartId": "chassis",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 22, "handling": 8 },
-    "priceYen": 880000
-  },
-  {
-    "id": "kitsune-oem-struts",
-    "brand": "Kitsune",
-    "name": "OEM Struts",
-    "carPartId": "dampers",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 36000
-  },
-  {
-    "id": "kitsune-adjustable-coilovers",
-    "brand": "Kitsune",
-    "name": "Adjustable Coilovers",
-    "carPartId": "dampers",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 9, "reliability": -2 },
-    "priceYen": 68000
-  },
-  {
-    "id": "kitsune-race-coilovers",
-    "brand": "Kitsune",
-    "name": "Race Coilovers",
-    "carPartId": "dampers",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 24, "reliability": -6 },
-    "priceYen": 145000
-  },
-  {
-    "id": "enzan-oem-springs",
-    "brand": "Enzan",
-    "name": "OEM Springs",
-    "carPartId": "springs",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 18000
-  },
-  {
-    "id": "enzan-lowering-springs",
-    "brand": "Enzan",
-    "name": "Lowering Springs",
-    "carPartId": "springs",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 7, "reliability": -1 },
-    "priceYen": 33000
-  },
-  {
-    "id": "enzan-race-springs",
-    "brand": "Enzan",
-    "name": "Race Springs",
-    "carPartId": "springs",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 18, "reliability": -3 },
-    "priceYen": 72000
-  },
-  {
-    "id": "kumo-oem-swaybars",
-    "brand": "Kumo",
-    "name": "OEM Sway Bars",
-    "carPartId": "antiRollBars",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 14000
-  },
-  {
-    "id": "kumo-adjustable-swaybars",
-    "brand": "Kumo",
-    "name": "Adjustable Sway Bars",
-    "carPartId": "antiRollBars",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 7 },
-    "priceYen": 27000
-  },
-  {
-    "id": "kumo-race-swaybars",
-    "brand": "Kumo",
-    "name": "Race Sway Bars",
-    "carPartId": "antiRollBars",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 17, "reliability": -2 },
-    "priceYen": 58000
-  },
-  {
-    "id": "kitsune-oem-rack",
-    "brand": "Kitsune",
-    "name": "OEM Steering Rack",
-    "carPartId": "steering",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 32000
-  },
-  {
-    "id": "kitsune-quick-rack",
-    "brand": "Kitsune",
-    "name": "Quick-Ratio Rack",
-    "carPartId": "steering",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 8, "reliability": -1 },
-    "priceYen": 58000
-  },
-  {
-    "id": "kitsune-race-rack",
-    "brand": "Kitsune",
-    "name": "Race Steering Rack",
-    "carPartId": "steering",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 19, "reliability": -4 },
-    "priceYen": 128000
-  },
-  {
-    "id": "shuriken-oem-pads",
-    "brand": "Shuriken",
-    "name": "OEM Pads & Discs",
-    "carPartId": "brakePadsDiscs",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 14000
-  },
-  {
-    "id": "shuriken-street-pads",
-    "brand": "Shuriken",
-    "name": "Street Pads & Discs",
-    "carPartId": "brakePadsDiscs",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 4 },
-    "priceYen": 26000
-  },
-  {
-    "id": "shuriken-race-pads",
-    "brand": "Shuriken",
-    "name": "Race Pads & Discs",
-    "carPartId": "brakePadsDiscs",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 10, "reliability": -2 },
-    "priceYen": 56000
-  },
-  {
-    "id": "shuriken-oem-calipers",
-    "brand": "Shuriken",
-    "name": "OEM Calipers & Lines",
-    "carPartId": "brakeCalipersLines",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 28000
-  },
-  {
-    "id": "shuriken-street-calipers",
-    "brand": "Shuriken",
-    "name": "Street Caliper Kit",
-    "carPartId": "brakeCalipersLines",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 5 },
-    "priceYen": 52000
-  },
-  {
-    "id": "shuriken-race-calipers",
-    "brand": "Shuriken",
-    "name": "Race Caliper Kit",
-    "carPartId": "brakeCalipersLines",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 12, "reliability": -3 },
-    "priceYen": 115000
-  },
-  {
-    "id": "ronin-oem-steelies",
-    "brand": "Ronin",
-    "name": "OEM Steelies",
-    "carPartId": "rims",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 38000
-  },
-  {
-    "id": "ronin-street-alloys",
-    "brand": "Ronin",
-    "name": "Street Alloys",
-    "carPartId": "rims",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "style": 9 },
-    "priceYen": 72000
-  },
-  {
-    "id": "ronin-race-forged",
-    "brand": "Ronin",
-    "name": "Race Forged Wheels",
-    "carPartId": "rims",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "style": 20, "handling": 4 },
-    "priceYen": 165000
-  },
-  {
-    "id": "tsume-oem-tyres",
-    "brand": "Tsume",
-    "name": "OEM Tyres",
-    "carPartId": "tyres",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 25000
-  },
-  {
-    "id": "tsume-street-tyres",
-    "brand": "Tsume",
-    "name": "Street Tyres",
-    "carPartId": "tyres",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "handling": 10 },
-    "priceYen": 46000
-  },
-  {
-    "id": "tsume-race-slicks",
-    "brand": "Tsume",
-    "name": "Race Slicks",
-    "carPartId": "tyres",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "handling": 26, "reliability": -5 },
-    "priceYen": 98000
-  },
-  {
-    "id": "frp-oem-panel-set",
-    "brand": "FRP",
-    "name": "OEM Panel Set",
-    "carPartId": "panels",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 3 },
-    "priceYen": 42000
-  },
-  {
-    "id": "frp-lightweight-panels",
-    "brand": "FRP",
-    "name": "Lightweight Panel Kit",
-    "carPartId": "panels",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "style": 7, "handling": 2 },
-    "priceYen": 82000
-  },
-  {
-    "id": "frp-carbon-panel-kit",
-    "brand": "FRP",
-    "name": "Carbon Panel Kit",
-    "carPartId": "panels",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "style": 16, "handling": 5, "reliability": -3 },
-    "priceYen": 175000
-  },
-  {
-    "id": "akai-oem-respray",
-    "brand": "Studio Akai",
-    "name": "OEM Respray",
-    "carPartId": "paint",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 56000
-  },
-  {
-    "id": "akai-custom-twotone",
-    "brand": "Studio Akai",
-    "name": "Custom Two-Tone",
-    "carPartId": "paint",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "style": 9 },
-    "priceYen": 105000
-  },
-  {
-    "id": "akai-full-livery-wrap",
-    "brand": "Studio Akai",
-    "name": "Full Livery Wrap",
-    "carPartId": "paint",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "style": 20 },
-    "priceYen": 235000
-  },
-  {
-    "id": "namazu-undercoat-kit",
-    "brand": "Namazu",
-    "name": "Undercoat Refresh Kit",
-    "carPartId": "underbody",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 4 },
-    "priceYen": 34000
-  },
-  {
-    "id": "neon-doraku-underglow-kit",
-    "brand": "Neon Doraku",
-    "name": "Underglow Kit",
-    "carPartId": "underbody",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "style": 11 },
-    "priceYen": 68000
-  },
-  {
-    "id": "namazu-flatfloor-kit",
-    "brand": "Namazu",
-    "name": "Flat Floor Kit",
-    "carPartId": "underbody",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "style": 8, "handling": 9 },
-    "priceYen": 148000
-  },
-  {
-    "id": "tengu-oem-spoiler",
-    "brand": "Tengu Aero",
-    "name": "OEM Spoiler",
-    "carPartId": "aero",
-    "grade": "stock",
-    "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 28000
-  },
-  {
-    "id": "tengu-street-splitter",
-    "brand": "Tengu Aero",
-    "name": "Street Splitter",
-    "carPartId": "aero",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": { "style": 8, "handling": 3 },
-    "priceYen": 54000
-  },
-  {
-    "id": "tengu-race-wing-kit",
-    "brand": "Tengu Aero",
-    "name": "Race Wing Kit",
-    "carPartId": "aero",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": { "style": 18, "handling": 12, "reliability": -3 },
-    "priceYen": 118000
-  },
-  {
-    "id": "zashiki-oem-seats",
-    "brand": "Zashiki",
-    "name": "OEM Seats",
+    "id": "stock-seats",
+    "brand": "OEM",
+    "name": "Stock Seats",
     "carPartId": "seats",
     "grade": "stock",
     "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 66000
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 95000
   },
   {
     "id": "zashiki-street-seats",
@@ -1146,8 +1750,30 @@
     "carPartId": "seats",
     "grade": "street",
     "requiredTags": [],
-    "statModifiers": { "style": 9, "reliability": -1 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": -1,
+      "authenticity": 0
+    },
     "priceYen": 128000
+  },
+  {
+    "id": "zashiki-bucket-seat",
+    "brand": "Zashiki",
+    "name": "Bucket Seat",
+    "carPartId": "seats",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 13,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 175000
   },
   {
     "id": "zashiki-race-buckets",
@@ -1156,18 +1782,30 @@
     "carPartId": "seats",
     "grade": "race",
     "requiredTags": [],
-    "statModifiers": { "style": 18, "handling": 4 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
     "priceYen": 280000
   },
   {
-    "id": "sokudo-oem-cluster",
-    "brand": "Sokudo",
-    "name": "OEM Gauge Cluster",
+    "id": "stock-dash-gauges",
+    "brand": "OEM",
+    "name": "Stock Dash & Gauges",
     "carPartId": "dashGauges",
     "grade": "stock",
     "requiredTags": [],
-    "statModifiers": { "reliability": 2 },
-    "priceYen": 21000
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "priceYen": 30000
   },
   {
     "id": "sokudo-boost-gauge-pod",
@@ -1176,8 +1814,30 @@
     "carPartId": "dashGauges",
     "grade": "street",
     "requiredTags": [],
-    "statModifiers": { "style": 5 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 5,
+      "reliability": 0,
+      "authenticity": 0
+    },
     "priceYen": 39000
+  },
+  {
+    "id": "sokudo-sport-gauge-cluster",
+    "brand": "Sokudo",
+    "name": "Sport Gauge Cluster",
+    "carPartId": "dashGauges",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 8,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "priceYen": 62000
   },
   {
     "id": "sokudo-digital-race-dash",
@@ -1186,7 +1846,13 @@
     "carPartId": "dashGauges",
     "grade": "race",
     "requiredTags": [],
-    "statModifiers": { "style": 11, "reliability": -2 },
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": -2,
+      "authenticity": 0
+    },
     "priceYen": 88000
   }
 ]

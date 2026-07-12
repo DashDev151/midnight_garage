@@ -44,6 +44,15 @@ const model: CarModel = {
  * restoration bill doesn't out-discount it (see the floor test below). */
 const cheapModel: CarModel = { ...model, id: 'test-shitbox', bookValueYen: 300_000 }
 
+/** An NA-tagged variant of `model` (Sprint 32) - for the tests that
+ * specifically exercise a legitimately-empty `forcedInduction` slot rather
+ * than a real defect. */
+const naModel: CarModel = {
+  ...model,
+  id: 'test-supra-na',
+  tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
+}
+
 /**
  * Sprint 30: every fixture in this file rolls `year: 1994` and (via
  * `testFixtures.ts`'s `buildCarInstance` default) `mileageKm: 60_000` - the
@@ -90,7 +99,7 @@ function expectedBaseValueYen(
     ageFactor(car.year, currentYear, ECONOMY) *
     mileageFactor(car.mileageKm, ECONOMY) *
     (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, PARTS_TAXONOMY_BY_ID)
+  const restorationBill = carCostToMintYen(car, forModel, PARTS_TAXONOMY_BY_ID)
   const floor = floorFraction * cleanValue
   return Math.round(Math.max(floor, cleanValue - hassleFactor * restorationBill))
 }
@@ -103,11 +112,43 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     expect(a).toBe(b)
   })
 
-  it('an all-mint car (zero restoration bill) is worth exactly clean value at heat 100', () => {
-    const mintCar = neutralCar({ parts: mintCarParts() })
+  it('an all-stock-mint car (zero restoration bill, stock contributes no installed-parts value) is worth exactly book value at heat 100', () => {
+    const stockCar = neutralCar({ parts: mintCarParts() })
+    // Sprint 32 decision 4: stock is the baseline, not an upgrade - it must
+    // contribute nothing to installed-parts value, or this car would price
+    // above book despite carrying no real aftermarket parts.
+    expect(installedPartsValueYen(stockCar, {}, ECONOMY)).toBe(0)
     expect(
-      marketValueYen(model, mintCar, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
+      marketValueYen(model, stockCar, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
     ).toBe(model.bookValueYen)
+  })
+
+  it('a missing (non-FI) part lowers value by exactly hassleFactor x its stock replacement price', () => {
+    const stockCar = neutralCar({ parts: mintCarParts() })
+    const missingBrakesCar = neutralCar({ parts: mintCarParts({ brakePadsDiscs: null }) })
+    const stockValue = marketValueYen(
+      model,
+      stockCar,
+      100,
+      CURRENT_YEAR,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const missingValue = marketValueYen(
+      model,
+      missingBrakesCar,
+      100,
+      CURRENT_YEAR,
+      {},
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const expectedDiffYen = Math.round(
+      ECONOMY.valuation.hassleFactor * PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen,
+    )
+    expect(stockValue - missingValue).toBe(expectedDiffYen)
+    expect(missingValue).toBeLessThan(stockValue)
   })
 
   it('matches the closed-form clean-value-minus-hassle-weighted-bill formula across every band', () => {
@@ -150,10 +191,10 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
    */
   it("differs by hassleFactor x the stock-price gap between a scrap-turbo car and a scrap-brakes car (the maintainer's worked case)", () => {
     const scrapTurboCar = neutralCar({
-      parts: mintCarParts({ forcedInduction: { band: 'scrap' } }),
+      parts: mintCarParts({ forcedInduction: 'scrap' }),
     })
     const scrapBrakesCar = neutralCar({
-      parts: mintCarParts({ brakePadsDiscs: { band: 'scrap' } }),
+      parts: mintCarParts({ brakePadsDiscs: 'scrap' }),
     })
 
     const fiPriceYen = PARTS_TAXONOMY_BY_ID.forcedInduction.stockReplacementPriceYen
@@ -185,21 +226,29 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     expect(turboValue).toBeLessThan(brakesValue)
   })
 
-  it('an unfitted forcedInduction slot contributes zero to the bill regardless of its rolled band', () => {
-    const naCarWithScrapFi = neutralCar({
-      parts: mintCarParts({ forcedInduction: { band: 'scrap', fitted: false } }),
+  it('a legitimately-empty forcedInduction slot on an NA model contributes zero to the bill', () => {
+    const naCarWithEmptyFi = neutralCar({
+      parts: mintCarParts({ forcedInduction: null }),
     })
-    const fullyMintCar = neutralCar({ parts: mintCarParts() })
+    const fullyStockCar = neutralCar({ parts: mintCarParts() })
     expect(
-      marketValueYen(model, naCarWithScrapFi, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
+      marketValueYen(
+        naModel,
+        naCarWithEmptyFi,
+        100,
+        CURRENT_YEAR,
+        {},
+        PARTS_TAXONOMY_BY_ID,
+        ECONOMY,
+      ),
     ).toBe(
-      marketValueYen(model, fullyMintCar, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
+      marketValueYen(naModel, fullyStockCar, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
     )
   })
 
   it('clamps at floorFraction x cleanValue when the restoration bill would drive it below zero', () => {
     const wreck = neutralCar({ modelId: cheapModel.id, parts: uniformCarParts('scrap') })
-    const restorationBill = carCostToMintYen(wreck, PARTS_TAXONOMY_BY_ID)
+    const restorationBill = carCostToMintYen(wreck, cheapModel, PARTS_TAXONOMY_BY_ID)
     const cleanValue = cheapModel.bookValueYen
     // Sanity: this fixture must actually exceed clean value once weighted by
     // hassleFactor, otherwise the floor never engages and the test proves
@@ -256,17 +305,20 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     }
     const partsById = { [suspensionKit.id]: suspensionKit }
     const car = carAtUniformBand('fine')
+    // Sprint 32: band now lives only on the installed PartInstance (there is
+    // no separate slot-level band to hold it steady), so the swapped-in part
+    // is given the SAME band ('fine') as the rest of the uniformly-fine car -
+    // isolating the installed-parts-value addition from any restoration-bill
+    // change, which is the one thing this test is meant to prove.
     const withPart: CarInstance = {
       ...car,
       parts: {
         ...car.parts,
         dampers: {
-          band: 'fine',
-          fitted: true,
           installed: {
             id: 'pi-0001',
             partId: suspensionKit.id,
-            band: 'mint',
+            band: 'fine',
             genuinePeriod: false,
           },
         },
@@ -355,8 +407,6 @@ describe('installedPartsValueYen', () => {
       parts: {
         ...car.parts,
         dampers: {
-          band: 'mint',
-          fitted: true,
           installed: { id: 'pi-0001', partId: suspensionKit.id, band, genuinePeriod },
         },
       },
@@ -393,8 +443,6 @@ describe('installedPartsValueYen', () => {
       parts: {
         ...car.parts,
         rims: {
-          band: 'mint',
-          fitted: true,
           installed: {
             id: 'pi-0002',
             partId: suspensionKit.id,

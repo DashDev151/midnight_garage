@@ -18,6 +18,7 @@ import {
   isJobComplete,
   repairJobGate,
   resolveJobLabor,
+  resolveRemovePart,
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
@@ -39,13 +40,21 @@ const car: CarInstance = buildCarInstance({
   year: 1984,
   mileageKm: 100_000,
   authenticityPercent: 90,
-  parts: groupCarParts({
-    engine: 'worn',
-    drivetrain: 'worn',
-    suspension: 'worn',
-    body: 'poor',
-    interior: 'worn',
-  }),
+  parts: {
+    ...groupCarParts({
+      engine: 'worn',
+      drivetrain: 'worn',
+      suspension: 'worn',
+      body: 'poor',
+      interior: 'worn',
+    }),
+    // Sprint 32: every slot defaults to a filled stock part now, but the
+    // install-part tests below need a genuinely empty target slot (a
+    // group-level install into an already-occupied slot is refused by the
+    // tightened installFitGate) - dampers is the suspension-group part these
+    // tests install onto.
+    dampers: { installed: null },
+  },
 })
 
 const sparePart: PartInstance = {
@@ -133,15 +142,15 @@ describe('completeJob', () => {
     const result = completeJob(baseState(), job, CONTEXT)
     expect(result.blockedByOccupiedSlot).toBe(false)
     const parts = result.state.ownedCars[0]!.parts
-    expect(parts.panels.band).toBe('mint')
-    expect(parts.paint.band).toBe('mint')
-    expect(parts.underbody.band).toBe('mint')
-    expect(parts.aero.band).toBe('mint')
+    expect(parts.panels.installed?.band).toBe('mint')
+    expect(parts.paint.installed?.band).toBe('mint')
+    expect(parts.underbody.installed?.band).toBe('mint')
+    expect(parts.aero.installed?.band).toBe('mint')
     // Untouched group.
-    expect(parts.block.band).toBe('worn')
+    expect(parts.block.installed?.band).toBe('worn')
   })
 
-  it('a completed install-part job moves the part from inventory onto its slot, setting it mint (Sprint 13)', () => {
+  it('a completed install-part job moves the part from inventory onto its slot, at the part instance’s own band (Sprint 32: install no longer forces mint)', () => {
     const job: Job = {
       id: 'job-2',
       carInstanceId: car.id,
@@ -155,7 +164,9 @@ describe('completeJob', () => {
     expect(result.blockedByOccupiedSlot).toBe(false)
     // The catalog part's own carPartId (dampers) is the real target slot.
     expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
-    expect(result.state.ownedCars[0]?.parts.dampers.band).toBe('mint')
+    // sparePart is mint by construction, so this happens to also be mint -
+    // but it's the instance's own band, not a forced mint.
+    expect(result.state.ownedCars[0]?.parts.dampers.installed?.band).toBe(sparePart.band)
     expect(result.state.partInventory).toHaveLength(0)
   })
 
@@ -165,8 +176,6 @@ describe('completeJob', () => {
       parts: {
         ...car.parts,
         dampers: {
-          band: 'worn',
-          fitted: true,
           installed: {
             id: 'pi-existing',
             partId: 'tanuki-n1-coilovers',
@@ -493,7 +502,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
     const result = applyAvailableLaborToJob(created.state, created.job!.id, 5, CONTEXT)
     expect(result.laborSlotsUsed).toBe(2) // clamped to what the job needed, not the offer
     expect(result.state.jobs).toHaveLength(0)
-    expect(result.state.ownedCars[0]?.parts.panels.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
     expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
   })
 
@@ -549,7 +558,7 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
     const first = resolveJobLabor(state, spec, 1, CONTEXT)
     const second = resolveJobLabor(first.state, spec, 5, CONTEXT)
     expect(second.state.jobs).toHaveLength(0) // completed and removed
-    expect(second.state.ownedCars[0]?.parts.panels.band).toBe('mint')
+    expect(second.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
   })
 
   it('returns the gate-refusal log and does nothing when equipment is missing', () => {
@@ -567,5 +576,101 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
     expect(
       result.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
     ).toBe(true)
+  })
+})
+
+describe('resolveRemovePart (Sprint 32 decision 7)', () => {
+  it('removing an aftermarket part drops it to inventory and reverts the slot to a fresh mint stock instance', () => {
+    const aftermarketInstance: PartInstance = {
+      id: 'pi-aftermarket-dampers',
+      partId: 'tanuki-street-coilovers', // grade 'street' - aftermarket
+      band: 'worn',
+      genuinePeriod: false,
+    }
+    const carWithAftermarket: CarInstance = {
+      ...car,
+      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+    }
+    const state = baseState({ ownedCars: [carWithAftermarket], partInventory: [] })
+    const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
+
+    const revertedSlot = result.state.ownedCars[0]?.parts.dampers.installed
+    expect(revertedSlot).not.toBeNull()
+    expect(revertedSlot?.id).not.toBe(aftermarketInstance.id)
+    expect(revertedSlot?.partId).toBe('stock-dampers')
+    expect(revertedSlot?.band).toBe('mint')
+
+    expect(result.state.partInventory).toEqual([aftermarketInstance])
+    expect(result.log).toEqual([
+      {
+        type: 'part-removed',
+        carInstanceId: car.id,
+        carPartId: 'dampers',
+        partInstanceId: aftermarketInstance.id,
+      },
+    ])
+  })
+
+  it('removing a stock part drops it to inventory and leaves the slot genuinely empty', () => {
+    // car.parts.panels is a mint-of-condition 'poor' stock part per the
+    // module-level fixture's body-group override - a real stock instance,
+    // not aftermarket.
+    const originalInstance = car.parts.panels.installed!
+    const state = baseState({ partInventory: [] })
+    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+
+    expect(result.state.ownedCars[0]?.parts.panels.installed).toBeNull()
+    expect(result.state.partInventory).toEqual([originalInstance])
+    expect(result.log).toEqual([
+      {
+        type: 'part-removed',
+        carInstanceId: car.id,
+        carPartId: 'panels',
+        partInstanceId: originalInstance.id,
+      },
+    ])
+  })
+
+  it('is a no-op when a group-level job is open on the same group (component-level busy)', () => {
+    const openJob: Job = {
+      id: 'job-open-body',
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      componentId: 'body',
+      targetBand: 'mint',
+      laborSlotsRequired: 3,
+      laborSlotsSpent: 0,
+    }
+    const state = baseState({ jobs: [openJob], partInventory: [] })
+    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('is a no-op when a per-part job is open on that exact part (part-level busy)', () => {
+    const openJob: Job = {
+      id: 'job-open-panels-only',
+      carInstanceId: car.id,
+      kind: 'repair-zone',
+      componentId: 'body',
+      carPartId: 'panels',
+      targetBand: 'mint',
+      laborSlotsRequired: 1,
+      laborSlotsSpent: 0,
+    }
+    const state = baseState({ jobs: [openJob], partInventory: [] })
+    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('is a no-op when the slot is already empty', () => {
+    // dampers is null on the module-level fixture car - see the fixture's
+    // own comment above.
+    expect(car.parts.dampers.installed).toBeNull()
+    const state = baseState({ partInventory: [] })
+    const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
   })
 })
