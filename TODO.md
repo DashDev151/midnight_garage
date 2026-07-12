@@ -175,6 +175,26 @@ pass."
   Exit). Telemetry columns (`bidEvents`, `daysOpen`) now in `auctionWins.csv`; the Python report
   section to render them is a small unwired follow-up. This is the sprint's own user-only
   "playtest an auction week, tune curves in JSON" task, now with the measured starting point.
+  **Update (2026-07-12 auction fix, commit after Sprint 32):** the two real BUGS this playtest
+  also exposed are now fixed (the anti-snipe "leading then instantly outbid and closed" bug, and
+  the invisible/black-box close), and a first-pass contest re-tune moved the fire sale the right
+  way (auction steal tail 94% -> 84%, frenzy 6% -> 15%; `AUCTION_WHOLESALE_FRACTION` 0.75 -> 0.85,
+  `perCohortBidChance` up, `turnoutBandWeights` toward packed, `maxIncrementsPerNight` 2 -> 3,
+  `AUCTION_QUIET_DAYS_TO_HAMMER` 2 -> 3). Steals are STILL too high (84%), so the JSON contest
+  calibration above remains open; the mechanic bugs are done.
+- [ ] **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
+  The maintainer took the targeted Option B fix (above) for now but is not sold on the current
+  async, overnight-resolved auction model even debugged: bidding is inherently slow (one
+  bid-exchange per in-game day, dragged over days). The proposed alternative is a live, on-screen
+  bidding round entered on demand per lot: price opens at reserve, the player and the rolled
+  dealer cohorts alternate raising with every bid VISIBLE, the player chooses Raise (increment or
+  jump) or Pass after each dealer counter, and it resolves win/lose in ONE sitting - transparent,
+  fast, no black box, no snipe (the round only ends on the player's Pass or the room going quiet),
+  still turn-based/no-reflex. To test whether it feels right BEFORE committing to the full rework
+  (which would rip out the overnight bidder process, change the lot shape + a save migration,
+  resolve skipped lots offscreen, retune, etc.), build a STRIPPED throwaway demo first: one live
+  bidding-round screen on a sample lot, coexisting with the current system, no saves/board/tuning
+  touched. Decide from the demo. See the 2026-07-12 chat design write-up.
 - [ ] **Model-independent part restoration costs make cheap cars not restore-worthy (Sprint 27,
   flag-and-tune-later per maintainer).** `restorationBill` (`carCostToMintYen`, all 29 real parts)
   is priced from `parts-taxonomy.json`'s flat, model-independent step costs, so a realistically-
