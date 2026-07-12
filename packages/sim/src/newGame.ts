@@ -5,6 +5,7 @@ import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { createRng } from './rng'
 import { generateDailyServiceJobOffers } from './serviceJobs'
+import { freshToolTiers } from './toolLines'
 
 /**
  * The canonical day-1 GameState for a new career - used by both the
@@ -45,7 +46,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     serviceBayCarIds: new Array<null>(context.facilities.service.startCount).fill(null),
     parkingCarIds: new Array<null>(context.facilities.parking.startCount).fill(null),
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: freshToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
@@ -61,7 +62,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     SERVICE_JOB_EXPIRY_DAYS,
     rng,
     currentGameYear(base.reputationTier),
-    base.ownedEquipmentIds,
+    base.toolTiers,
     base.reputationTier,
   )
   return {

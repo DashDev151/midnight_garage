@@ -7,6 +7,7 @@ import {
   reputationAtLeast,
 } from '../src/calendar'
 import { REPUTATION_TIER_THRESHOLDS } from '../src/constants'
+import { testToolTiers } from './testFixtures'
 
 describe('currentGameYear', () => {
   it('starts the campaign in 1995 at unknown reputation (GDD 2.2)', () => {
@@ -90,7 +91,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       serviceBayCarIds: [],
       parkingCarIds: [],
       laborSlotsSpentToday: 0,
-      ownedEquipmentIds: [],
+      toolTiers: testToolTiers(),
       pendingPartOrders: [],
       cartPartIds: [],
       stagedCarWork: {},

@@ -1,6 +1,5 @@
 import {
   ECONOMY,
-  EQUIPMENT,
   PARTS_TAXONOMY,
   type CarModel,
   type CarPartId,
@@ -26,15 +25,21 @@ import {
   slotsNeededToClimb,
 } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { buildCarInstance, groupCarParts, mintCarParts, uniformCarParts } from './testFixtures'
+import {
+  buildCarInstance,
+  groupCarParts,
+  mintCarParts,
+  testToolTiers,
+  uniformCarParts,
+} from './testFixtures'
 
 /**
  * Sprint 26: unit tests for the band-math primitives every other condition-
  * aware sim module (jobs, staged work, market value, save migration) builds
  * on. No models/parts/buyers are needed for this module's own functions, so
- * those catalogs are empty; the taxonomy/equipment context is real content.
+ * those catalogs are empty; the taxonomy context is real content.
  */
-const CONTEXT = buildSimContext([], [], [], PARTS_TAXONOMY, [], undefined, [], EQUIPMENT)
+const CONTEXT = buildSimContext([], [], [], PARTS_TAXONOMY)
 const TAXONOMY_BY_ID = CONTEXT.partsTaxonomyById
 
 /**
@@ -160,24 +165,18 @@ describe('scrapValueYen (Sprint 26 decision 6: pennies on the yen)', () => {
   })
 })
 
-describe('repairLevelForGroup (Sprint 26 decision 7)', () => {
-  it('defaults to level 1 (base hand tools) when nothing is owned', () => {
-    expect(repairLevelForGroup([], 'engine', CONTEXT.equipmentById)).toBe(1)
+describe('repairLevelForGroup (Sprint 26 decision 7; tier-sourced since Sprint 36)', () => {
+  it('is 1 for a fresh (all tier-1) shop - the base hand-tools floor', () => {
+    expect(repairLevelForGroup(testToolTiers(), 'engine')).toBe(1)
   })
 
-  it('sets the level from the best owned equipment covering the group', () => {
-    expect(repairLevelForGroup(['engine-crane'], 'engine', CONTEXT.equipmentById)).toBe(3)
-    expect(repairLevelForGroup(['tire-machine'], 'wheels', CONTEXT.equipmentById)).toBe(2)
+  it('is exactly the tool line tier: 2 at tier 2, 3 at tier 3', () => {
+    expect(repairLevelForGroup(testToolTiers({ engine: 3 }), 'engine')).toBe(3)
+    expect(repairLevelForGroup(testToolTiers({ wheels: 2 }), 'wheels')).toBe(2)
   })
 
-  it('takes the higher level when two owned tools both cover the same group', () => {
-    expect(
-      repairLevelForGroup(['brake-lathe', 'suspension-press'], 'suspension', CONTEXT.equipmentById),
-    ).toBe(3)
-  })
-
-  it('ignores equipment that covers a different group entirely', () => {
-    expect(repairLevelForGroup(['engine-crane'], 'wheels', CONTEXT.equipmentById)).toBe(1)
+  it('reads only the requested group - an upgraded engine line never speeds up wheels', () => {
+    expect(repairLevelForGroup(testToolTiers({ engine: 3 }), 'wheels')).toBe(1)
   })
 })
 
@@ -222,10 +221,9 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13)', () => {
       suspensionCar,
       'suspension',
       'mint',
-      [],
+      testToolTiers(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
     )
     const dampers = TAXONOMY_BY_ID.dampers
     const springs = TAXONOMY_BY_ID.springs
@@ -235,28 +233,26 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13)', () => {
     expect(plan.costYen).toBe(
       2 * dampers.stepCostYen + 3 * springs.stepCostYen + 1 * brakePadsDiscs.stepCostYen,
     )
-    // No equipment owned -> repair level 1: exactly 1 grade climbed per slot.
+    // Tool line at tier 1 -> repair level 1: exactly 1 grade climbed per slot.
     expect(plan.laborSlotsRequired).toBe(2 + 3 + 1)
   })
 
-  it('costs the same yen regardless of repair level - only laborSlotsRequired changes with equipment', () => {
+  it('costs the same yen regardless of repair level - only laborSlotsRequired changes with the tool tier', () => {
     const level1Plan = planGroupRepair(
       suspensionCar,
       'suspension',
       'mint',
-      [],
+      testToolTiers(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
     )
     const level3Plan = planGroupRepair(
       suspensionCar,
       'suspension',
       'mint',
-      ['suspension-press'],
+      testToolTiers({ suspension: 3 }),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
     )
 
     expect(level3Plan.costYen).toBe(level1Plan.costYen)
@@ -271,10 +267,9 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13)', () => {
       mintCar,
       'suspension',
       'mint',
-      [],
+      testToolTiers(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
     )
     expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
   })

@@ -38,6 +38,9 @@ const SAMPLES: DayLogEntry[] = [
   },
   { type: 'service-job-accepted', jobId: 'svc-1', carInstanceId: 'car-1' },
   { type: 'service-job-completed', jobId: 'svc-1', payoutYen: 42_000, reputationGained: 4 },
+  // Kept for old-log decode compatibility (Sprint 36 retired the action).
+  { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
+  { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
 ]
 
 describe('describeLogEntry', () => {
@@ -89,5 +92,16 @@ describe('describeLogEntry', () => {
       (id) => (id === 'tuner' ? 'Tuner' : id),
     )
     expect(line).toBe('A tuner is offering ¥1,240,000 for the FC. Today only.')
+  })
+
+  it('Sprint 36: a tool upgrade reads as the line label and the named tier, never a raw id', () => {
+    const line = describeLogEntry({
+      type: 'tool-upgraded',
+      componentId: 'wheels',
+      toTier: 2,
+      priceYen: 150_000,
+    })
+    expect(line).toBe('Upgraded Wheels to Tyre machine & balancer for ¥150,000')
+    expect(line).not.toContain('wheels')
   })
 })

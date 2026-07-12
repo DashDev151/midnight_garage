@@ -5,12 +5,13 @@ import type {
   CarPartTaxonomyEntry,
   ComponentId,
   EconomyConfig,
-  Equipment,
   Facilities,
   Part,
   ServiceJobType,
+  ToolLine,
+  ToolLines,
 } from '@midnight-garage/content'
-import { ECONOMY } from '@midnight-garage/content'
+import { ECONOMY, TOOL_LINES } from '@midnight-garage/content'
 
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
@@ -54,8 +55,11 @@ export interface SimContext {
   serviceJobTypes: readonly ServiceJobType[]
   serviceJobCustomerNames: readonly string[]
   facilities: Facilities
-  equipment: readonly Equipment[]
-  equipmentById: Readonly<Record<string, Equipment>>
+  /** The six always-owned tool ladders (Sprint 36 - replaces the equipment
+   * catalog), keyed by ComponentId. */
+  toolLines: ToolLines
+  /** Convenience lookup for one line - `toolLines[componentId]`, named. */
+  toolLineFor(componentId: ComponentId): ToolLine
   economy: EconomyConfig
 }
 
@@ -100,6 +104,11 @@ function indexStockPartsByCarPartId(parts: readonly Part[]): Record<CarPartId, P
  * hidden-issues catalog, is the 29-part taxonomy instead - same position,
  * same "required" cardinality, so every existing call site's shape stays
  * predictable even though what it means changed.
+ *
+ * Sprint 36: the 8th positional parameter, previously the (now-retired)
+ * equipment catalog, is the tool-lines record instead - defaulted to the
+ * real parsed `toolLines.json` (content's `TOOL_LINES`), since every shop
+ * always owns all six lines; there is no "no tools" configuration anymore.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -109,7 +118,7 @@ export function buildSimContext(
   serviceJobTypes: readonly ServiceJobType[] = [],
   facilities: Facilities = DEFAULT_FACILITIES,
   serviceJobCustomerNames: readonly string[] = [],
-  equipment: readonly Equipment[] = [],
+  toolLines: ToolLines = TOOL_LINES,
   economy: EconomyConfig = ECONOMY,
 ): SimContext {
   return {
@@ -125,8 +134,8 @@ export function buildSimContext(
     serviceJobTypes,
     serviceJobCustomerNames,
     facilities,
-    equipment,
-    equipmentById: indexById(equipment),
+    toolLines,
+    toolLineFor: (componentId) => toolLines[componentId],
     economy,
   }
 }

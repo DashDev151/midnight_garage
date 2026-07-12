@@ -1,5 +1,11 @@
 import { z } from 'zod'
-import { CarPartIdSchema, ConditionBandSchema, ReputationTierSchema } from './tags'
+import {
+  CarPartIdSchema,
+  ComponentIdSchema,
+  ConditionBandSchema,
+  ReputationTierSchema,
+} from './tags'
+import { ToolTierSchema, ToolTiersSchema } from './toolLines'
 import { CarInstanceSchema } from './carInstance'
 import { PartInstanceSchema, PendingPartOrderSchema } from './part'
 import { StaffMemberSchema } from './staff'
@@ -98,11 +104,13 @@ export const GameStateSchema = z.object({
    */
   laborSlotsSpentToday: z.number().int().nonnegative().default(0),
   /**
-   * Ids of owned Equipment items (Sprint 13) - what REPAIR is gated on. Purely
-   * additive: a pre-Sprint-13 save decodes with this defaulted to `[]`, which
-   * is correct (no save ever owned equipment before this existed).
+   * The shop's current tier per tool line (Sprint 36 - replaces the
+   * Sprint 13 binary equipment-ownership model). Tier IS the
+   * repair level (`bands.ts`'s `repairLevelForGroup`); all six lines start
+   * at 1. Not defaulted: the v22 -> v23 save migration reconstructs it from
+   * a legacy save's owned machines (see `saveCodec.ts`).
    */
-  ownedEquipmentIds: z.array(z.string().min(1)).default([]),
+  toolTiers: ToolTiersSchema,
   /**
    * Standard-delivery part purchases in transit (Sprint 14) - resolved by
    * advanceDay's day-boundary tick once `arrivesOnDay` is reached, the same
@@ -164,7 +172,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     reason: z.enum([
       'slot-occupied',
       'not-in-service-bay',
-      'equipment-missing',
       /** Sprint 24 fix 2: the sim's own install-fit check refused a
        * part/component/model mismatch, independent of the UI's filter. */
       'part-does-not-fit',
@@ -335,12 +342,23 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * day - cash was reserved at bid time under the old instant-resolve model, but multi-day
      * bidding has no escrow, so affordability is only checked again when the lot actually
      * resolves. Mirrors `no-parking`'s existing forfeit shape exactly: no money spent, the win
-     * is forfeited rather than the purchase failing loudly. */
-    reason: z.enum(['no-parking', 'no-equipment', 'no-cash']),
+     * is forfeited rather than the purchase failing loudly.
+     * `tool-tier` (Sprint 36): a service-job accept refused because at least one task's
+     * `minToolTier` exceeds the line's current tier - replaces the old `no-equipment` refusal. */
+    reason: z.enum(['no-parking', 'no-cash', 'tool-tier']),
   }),
+  /** Kept for old-log decode compatibility (Sprint 36 retired the buy-equipment
+   * action itself; `tool-upgraded` below is its replacement). */
   z.object({
     type: z.literal('equipment-purchased'),
     equipmentId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 36: a tool line climbed one tier (the `upgradeToolLine` action). */
+  z.object({
+    type: z.literal('tool-upgraded'),
+    componentId: ComponentIdSchema,
+    toTier: ToolTierSchema,
     priceYen: z.number().int().nonnegative(),
   }),
 ])

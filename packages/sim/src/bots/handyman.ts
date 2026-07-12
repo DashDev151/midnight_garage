@@ -1,4 +1,4 @@
-import type { ComponentId, GameState } from '@midnight-garage/content'
+import { ComponentIdSchema, type ComponentId, type GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
 import {
@@ -9,7 +9,7 @@ import {
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
-import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
+import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
@@ -18,8 +18,12 @@ const MAX_CONCURRENT_CARS = 2
 const MIN_TARGET_BOOK_VALUE_YEN = 150_000
 const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.0
-/** Same headroom style as every other bot's cash buffer - equipment purchases use it too. */
+/** Same headroom style as every other bot's cash buffer (auction spends). */
 const CASH_BUFFER_MULTIPLIER = 1.2
+/** Sprint 36: this archetype upgrades at a bare 1.0 buffer - invest fast is
+ * its whole identity; the harness's payback-curve columns measure whether
+ * that pays off against Investor's never-upgrade control. */
+const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 1.0
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -33,23 +37,22 @@ const ACCEPT_FRACTION = 0.85
 const MAX_HOLDING_DAYS = 12
 
 /**
- * Sprint 13: the payback-curve archetype the design doc's equipment ladder
- * is meant to reward - "invest fast, harvest the labor-only margin." Buys
- * the cheapest equipment it doesn't yet own, every day it can afford one
- * with headroom to spare, *before* deciding what to do with its cars -
- * equipment is the priority spend, not an afterthought. Once equipped,
- * behaves like a disciplined restorer: fixes the worst component per car
- * (repair, now genuinely free of part cost thanks to the tool already
- * owned) and sells at a fair floor. The harness's payback-curve columns
- * (sprint13.md decision 11) compare this bot's cash/net-worth trajectory
- * against Investor's to check the investment actually pays off.
+ * The tier-payback archetype (Sprint 13; re-based on tool lines in Sprint
+ * 36) - "invest fast, harvest the labor-efficiency margin." Each day it
+ * queues the CHEAPEST next-tier tool upgrade across all six lines it can
+ * buffer, *before* deciding what to do with its cars - capability is the
+ * priority spend, not an afterthought. Otherwise a disciplined restorer:
+ * fixes the worst component per car (always possible now, just faster at
+ * higher tiers) and sells at a fair floor. The harness's payback-curve
+ * columns (sprint13.md decision 11) compare this bot's cash/net-worth
+ * trajectory against Investor's to check the investment actually pays off.
  */
 export function handymanStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
   const actions: DayActions = emptyDayActions()
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
-  const equipBudget = equipmentBudget()
+  const upgradeBudget = toolUpgradeBudget()
 
   // 1. Continue any in-progress repair job from a prior day.
   for (const job of state.jobs) {
@@ -62,16 +65,25 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     laborBudget -= slots
   }
 
-  // 2. Buy the cheapest unowned, affordable, reputation-eligible equipment -
-  // the investment priority. One purchase per day: buying everything at once
+  // 2. Upgrade the cheapest affordable next tier across all lines - the
+  // investment priority. One upgrade per day: buying everything at once
   // would strand the bot broke on tools with nothing left to run the shop.
-  const unowned = context.equipment
-    .filter((e) => !state.ownedEquipmentIds.includes(e.id))
-    .sort((a, b) => a.priceYen - b.priceYen)
-  for (const equipment of unowned) {
+  const linesByNextTierPrice = ComponentIdSchema.options
+    .filter((id) => state.toolTiers[id] < 3)
+    .sort(
+      (a, b) =>
+        context.toolLines[a].tiers[state.toolTiers[a]]!.upgradePriceYen -
+        context.toolLines[b].tiers[state.toolTiers[b]]!.upgradePriceYen,
+    )
+  for (const componentId of linesByNextTierPrice) {
     if (
-      equipment.componentIds.some((id) =>
-        ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER),
+      considerToolUpgrade(
+        state,
+        componentId,
+        actions,
+        context,
+        upgradeBudget,
+        TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER,
       )
     ) {
       break
@@ -80,9 +92,8 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
 
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
 
-  // 3. Repair the worst repairable component per job-free owned car -
-  // ensureEquipmentFor buys the tool here too if step 2 skipped it (e.g. no
-  // unowned equipment covered a component this car actually needs).
+  // 3. Repair the worst repairable component per job-free owned car - work
+  // is always possible at the current tier (Sprint 36), so no gate here.
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
@@ -93,17 +104,6 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
 
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(
-        state,
-        worstComponent,
-        actions,
-        context,
-        equipBudget,
-        CASH_BUFFER_MULTIPLIER,
-      )
-    )
-      continue
 
     const slots = queueGroupRepair(
       state,

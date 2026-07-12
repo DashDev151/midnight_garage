@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from '../src/parts'
+import { testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const CHEAPEST = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
@@ -39,7 +40,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

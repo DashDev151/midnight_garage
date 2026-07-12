@@ -324,8 +324,22 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   Sprint 35 tests cover it: a real v21 save with an untagged inventory part
  *   still decodes (backward-compat, part reads player-owned), and a v22 state
  *   with a `customerJobId`-tagged part round-trips the tag exactly.
+ * - v23 (Sprint 36, tool lines): `ownedEquipmentIds` (binary equipment
+ *   ownership, Sprint 13) is replaced by `toolTiers` - six always-owned tool
+ *   lines keyed by `ComponentId`, each at tier 1-3, all 1 at new game. Not a
+ *   plain default-fill: a legacy save's owned machines represent real repair
+ *   capability (and real money spent) that must map onto the new ladder
+ *   rather than silently reset to all-1. `migrateV22ToV23` builds `toolTiers`
+ *   from the save's `ownedEquipmentIds` using a frozen legacy map (hardcoded
+ *   inline, the `GROUP_TO_REPRESENTATIVE_PART` pattern - `equipment.json` no
+ *   longer exists to derive it from): per group, tier = the max level among
+ *   owned ids covering it, else 1; unknown ids are ignored; then
+ *   `ownedEquipmentIds` is deleted. `ServiceJobTaskSchema` also gained an
+ *   optional-with-default `minToolTier` (default 1), a normal additive change
+ *   needing no migration of its own - every legacy task decodes at the
+ *   no-ceiling floor, which is exactly this sprint's authored content too.
  */
-export const SAVE_VERSION = 22
+export const SAVE_VERSION = 23
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -880,6 +894,55 @@ function migrateV20ToV21(gameState: unknown): unknown {
 }
 
 /**
+ * v22 -> v23 (Sprint 36): the frozen legacy map from a retired equipment id
+ * to the tool line it covered and the tier its `repairLevel` granted. A
+ * historical fact about the pre-v23 equipment catalog, hardcoded inline
+ * (the `GROUP_TO_REPRESENTATIVE_PART` pattern) since `equipment.json` no
+ * longer exists to derive it from.
+ */
+const LEGACY_EQUIPMENT_TO_TOOL_TIER: Record<string, { group: string; level: number }> = {
+  'tire-machine': { group: 'wheels', level: 2 },
+  'brake-lathe': { group: 'suspension', level: 2 },
+  'suspension-press': { group: 'suspension', level: 3 },
+  'upholstery-bench': { group: 'interior', level: 2 },
+  welder: { group: 'body', level: 2 },
+  'transmission-bench': { group: 'drivetrain', level: 2 },
+  'engine-crane': { group: 'engine', level: 3 },
+}
+
+/**
+ * v22 -> v23 (Sprint 36): builds `toolTiers` from the save's
+ * `ownedEquipmentIds` via the frozen map above - per group, tier = the max
+ * level among owned ids covering it, else 1; unknown ids are ignored - then
+ * deletes `ownedEquipmentIds`. Defensive against a malformed or hand-edited
+ * save, same shape as every other migration in this file.
+ */
+function migrateV22ToV23(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+
+  const toolTiers: Record<string, number> = {
+    engine: 1,
+    drivetrain: 1,
+    suspension: 1,
+    wheels: 1,
+    body: 1,
+    interior: 1,
+  }
+  const ownedEquipmentIds = Array.isArray(state.ownedEquipmentIds) ? state.ownedEquipmentIds : []
+  for (const id of ownedEquipmentIds) {
+    if (typeof id !== 'string') continue
+    const mapped = LEGACY_EQUIPMENT_TO_TOOL_TIER[id]
+    if (!mapped) continue // unknown legacy id - ignored
+    toolTiers[mapped.group] = Math.max(toolTiers[mapped.group] ?? 1, mapped.level)
+  }
+
+  const migrated: Record<string, unknown> = { ...state, toolTiers }
+  delete migrated.ownedEquipmentIds
+  return migrated
+}
+
+/**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
  * step here (a pure default-fill, like every version before v9, needs no
@@ -893,6 +956,7 @@ const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   17: migrateV17ToV18,
   19: migrateV19ToV20,
   20: migrateV20ToV21,
+  22: migrateV22ToV23,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

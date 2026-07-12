@@ -5,7 +5,7 @@ import { currentGameYear } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
-import { applyEquipmentPurchases } from './equipment'
+import { applyToolUpgrades } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves } from './facilities'
 import {
@@ -66,14 +66,15 @@ export function advanceDay(
   const rng = createRng(seed)
   let next: GameState = state
 
-  // 0. Bots' equipment and bay purchases, then moves (the player does all
-  // three instantly via a direct store call - the same pure cores either
-  // way). Equipment/bays bought today gate/enable the job creation and
-  // labor below, same day. Equipment first since job creation (step 1) reads
-  // ownership.
-  const equipmentPurchases = applyEquipmentPurchases(next, queuedActions.buyEquipment, context)
-  next = equipmentPurchases.state
-  log.push(...equipmentPurchases.log)
+  // 0. Bots' tool-line upgrades and bay purchases, then moves (the player
+  // does all three instantly via a direct store call - the same pure cores
+  // either way). Upgrades/bays bought today speed up/enable the job creation
+  // and labor below, same day. Upgrades first since job creation (step 1)
+  // sizes repair work off the current tier, and the service-job accepts
+  // (step 1c) re-check tool-tier deficits against it.
+  const toolUpgrades = applyToolUpgrades(next, queuedActions.upgradeToolLines, context)
+  next = toolUpgrades.state
+  log.push(...toolUpgrades.log)
 
   const bayPurchases = applyBayPurchases(next, queuedActions.buyBays, context.facilities)
   next = bayPurchases.state
@@ -101,11 +102,11 @@ export function advanceDay(
   // car+componentId-derived id scheme. Bots predict `job-${day}-${i}` ids in
   // the same tick to reference in laborAssignments below, so this id scheme
   // stays exactly as it was - the two schemes never need to agree, because a
-  // given GameState is only ever a bot's or only ever a player's. Sprint 13:
-  // a repair-zone spec passes through the same `repairJobGate` the player's
-  // instant path uses (equipment owned + consumables affordable) before
-  // it's created - a gate refusal just skips that one queued spec, logging
-  // why, rather than creating a job that could never receive labor. Sprint
+  // given GameState is only ever a bot's or only ever a player's. A
+  // repair-zone spec passes through the same `repairJobGate` the player's
+  // instant path uses (consumables + repair cost affordable) before it's
+  // created - a gate refusal just skips that one queued spec rather than
+  // creating a job that could never receive labor. Sprint
   // 24 fix 2: an install-part spec likewise passes `installFitGate` - this
   // loop calls `findOrCreateJob`'s two gates directly rather than
   // `findOrCreateJob` itself (see that function's own doc comment on the
@@ -326,7 +327,7 @@ export function advanceDay(
     SERVICE_JOB_EXPIRY_DAYS,
     rng,
     currentGameYear(next.reputationTier),
-    next.ownedEquipmentIds,
+    next.toolTiers,
     next.reputationTier,
   )
   if (freshServiceJobOffers.length > 0) {

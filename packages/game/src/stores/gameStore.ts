@@ -3,12 +3,12 @@ import {
   CARS,
   COMPONENT_DISPLAY_NAMES,
   ECONOMY,
-  EQUIPMENT,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
+  TOOL_LINES,
 } from '@midnight-garage/content'
 import type {
   AuctionLot,
@@ -21,7 +21,6 @@ import type {
   ComponentId,
   ConditionBand,
   DayLogEntry,
-  Equipment,
   GameState,
   Grade,
   Job,
@@ -32,13 +31,14 @@ import type {
   ServiceJobTask,
   StagedAction,
   StatBlock,
+  ToolTier,
 } from '@midnight-garage/content'
 import { componentDisplayName, resolveCarDisplayName } from '@midnight-garage/content'
 import {
   anchorValueYen,
   applyBayPurchase,
-  applyEquipmentPurchase,
   applyMoves,
+  applyToolUpgrade,
   assignToParking,
   availableLaborSlots,
   advanceDay,
@@ -54,7 +54,6 @@ import {
   deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
-  hasEquipmentFor,
   hasParkingSpace,
   isPartMissing,
   isServiceJobInTransit,
@@ -69,7 +68,6 @@ import {
   planGroupRepair,
   presentPartIdsInGroup,
   reconditionQuote,
-  reputationAtLeast,
   REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
@@ -87,6 +85,8 @@ import {
   resolveSetForSale,
   scrapValueYen,
   swapCars as swapCarsCore,
+  toolDeficitSummary,
+  upgradeHintFor,
   valuateCarForBuyer,
   type DeliverySpeed,
   type NewJobSpec,
@@ -200,11 +200,18 @@ export interface ShopCarView {
   arrivingTomorrow: boolean
 }
 
-/** One catalog equipment item plus whether it's owned, for the purchase UI (Sprint 13).
- * `reputationOk` (Sprint 16) is true when the item has no reputation gate or it's already met. */
-export interface EquipmentView extends Equipment {
-  owned: boolean
-  reputationOk: boolean
+/** One tool line's ladder state, for the Upgrades screen (Sprint 36). */
+export interface ToolLineView {
+  componentId: ComponentId
+  /** The line's group in display words ("Engine", never a raw id). */
+  componentLabel: string
+  currentTier: ToolTier
+  /** The current tier's named, real-world kit ("Trolley jack & axle stands"). */
+  currentTierName: string
+  /** The next tier's name and price - null once the line is maxed. */
+  nextTierName: string | null
+  nextTierPriceYen: number | null
+  maxed: boolean
 }
 
 /** One line of the parts-market cart, aggregated by part (repeats in
@@ -238,17 +245,15 @@ export interface ServiceJobOfferView {
   baseReputation: number
   expiresOnDay: number
   /**
-   * False when at least one repair task's equipment isn't owned yet (Sprint
-   * 13, extended to the whole multi-task list by Sprint 29) -
-   * `resolveAcceptServiceJob` refuses it, so the UI shows why upfront rather
-   * than letting the click silently fail. A template with no repair tasks
-   * at all is always `true` (replace never needs equipment). The offer
-   * itself still stays on the board either way - filtering it out entirely
-   * at generation time is a deliberately deferred refinement (see TODO.md).
+   * False while any task's `minToolTier` exceeds its line's current tier
+   * (Sprint 36) - `resolveAcceptServiceJob` refuses it, so the UI shows why
+   * upfront rather than letting the click silently fail. Derived live, so
+   * it flips true the moment the upgrade lands.
    */
   canAccept: boolean
-  /** Set only when `canAccept` is false: the equipment that's missing. */
-  missingEquipmentName?: string
+  /** Set only when `canAccept` is false: the offer rule's upgrade-hint
+   * string, "needs <the deficient line's next tier displayName>". */
+  upgradeHint?: string
 }
 
 /** A service job in the shop, tracked against its car's real work state. */
@@ -450,7 +455,7 @@ export const useGameStore = defineStore('game', () => {
       SERVICE_JOB_TYPES,
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
-      EQUIPMENT,
+      TOOL_LINES,
       ECONOMY,
     ),
   )
@@ -492,13 +497,8 @@ export const useGameStore = defineStore('game', () => {
   const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
     gameState.value.serviceJobOffers.map((offer) => {
       const model = context.value.modelsById[offer.car.modelId]
-      const missingTask = firstMissingEquipmentTask(offer)
-      const missingEquipmentName = missingTask
-        ? context.value.equipment.find((e) => {
-            const group = groupForCarPart(missingTask.carPartId)
-            return group ? e.componentIds.includes(group) : false
-          })?.displayName
-        : undefined
+      const canAccept =
+        toolDeficitSummary(offer.tasks, gameState.value.toolTiers, context.value).maxDeficit === 0
       return {
         id: offer.id,
         customerName: offer.customerName,
@@ -508,8 +508,10 @@ export const useGameStore = defineStore('game', () => {
         payoutYen: offer.payoutYen,
         baseReputation: offer.baseReputation,
         expiresOnDay: offer.expiresOnDay,
-        canAccept: !missingTask,
-        missingEquipmentName,
+        canAccept,
+        upgradeHint: canAccept
+          ? undefined
+          : (upgradeHintFor(offer.tasks, gameState.value.toolTiers, context.value) ?? undefined),
       }
     }),
   )
@@ -679,17 +681,6 @@ export const useGameStore = defineStore('game', () => {
       label: taskLabel(task),
       done: isServiceTaskDone(job.car, task, context.value.partsById),
     }))
-  }
-
-  /** Whether `job`'s task list has at least one repair task whose group
-   * equipment isn't owned - the offer board's accept gate (Sprint 13,
-   * extended to the whole multi-task list by Sprint 29). */
-  function firstMissingEquipmentTask(job: ServiceJob): ServiceJobTask | undefined {
-    return job.tasks.find((task) => {
-      if (task.action !== 'repair') return false
-      const group = groupForCarPart(task.carPartId)
-      return !group || !hasEquipmentFor(gameState.value, group, context.value)
-    })
   }
 
   /**
@@ -1113,30 +1104,38 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  // --- equipment (Sprint 13) ----------------------------------------------
+  // --- tool lines (Sprint 36) ---------------------------------------------
 
-  /** The full equipment catalog with owned-status, for the purchase UI. */
-  const equipmentCatalog = computed<EquipmentView[]>(() =>
-    context.value.equipment.map((e) => ({
-      ...e,
-      owned: gameState.value.ownedEquipmentIds.includes(e.id),
-      reputationOk:
-        !e.minReputationTier ||
-        reputationAtLeast(gameState.value.reputationTier, e.minReputationTier),
-    })),
+  /** The six tool-line ladders with their current/next tier, for the
+   * Upgrades screen (Sprint 36 - replaces the equipment catalog). */
+  const toolLineViews = computed<ToolLineView[]>(() =>
+    REAL_COMPONENT_GROUPS.map((componentId) => {
+      const line = context.value.toolLines[componentId]
+      const currentTier = gameState.value.toolTiers[componentId]
+      const nextTier = currentTier < 3 ? line.tiers[currentTier] : undefined
+      return {
+        componentId,
+        componentLabel: componentLabel(componentId),
+        currentTier,
+        currentTierName: line.tiers[currentTier - 1]!.displayName,
+        nextTierName: nextTier?.displayName ?? null,
+        nextTierPriceYen: nextTier?.upgradePriceYen ?? null,
+        maxed: currentTier >= 3,
+      }
+    }),
   )
 
   /**
-   * Buy a piece of equipment - instant, usable the same day (unlocks REPAIR
-   * on its component(s) immediately). Returns false if already owned,
-   * reputation-gated, or unaffordable.
+   * Upgrade one tool line to its next tier - instant, effective the same day
+   * (repair work sizes off the new tier immediately). Cash-gated only, no
+   * reputation gate (Sprint 36). Returns false if maxed or unaffordable.
    */
-  function buyEquipment(equipmentId: string): boolean {
-    const result = applyEquipmentPurchase(gameState.value, equipmentId, context.value)
+  function upgradeToolLine(componentId: ComponentId): boolean {
+    const result = applyToolUpgrade(gameState.value, componentId, context.value)
     if (!result.applied) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
-    logSessionEvent('buyEquipment', { equipmentId })
+    logSessionEvent('upgradeToolLine', { componentId })
     return true
   }
 
@@ -1165,10 +1164,9 @@ export const useGameStore = defineStore('game', () => {
       car,
       componentId,
       targetBand,
-      gameState.value.ownedEquipmentIds,
+      gameState.value.toolTiers,
       context.value.partIdsByGroup,
       context.value.partsTaxonomyById,
-      context.value.equipmentById,
       carPartId,
     )
     if (plan.partIds.length === 0) return
@@ -1219,15 +1217,6 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     dayLog.value.push(...result.log)
-  }
-
-  /**
-   * Whether the shop currently owns equipment covering `componentId` - what
-   * REPAIR is gated on (Sprint 13). Replace never needs this; it's always
-   * available.
-   */
-  function hasEquipmentForComponent(componentId: ComponentId): boolean {
-    return hasEquipmentFor(gameState.value, componentId, context.value)
   }
 
   // --- staged repair/install work (Sprint 18) -----------------------------
@@ -1803,12 +1792,11 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** Grant equipment for free, bypassing price/reputation - dev/test only. */
-  function devGrantEquipment(equipmentId: string): void {
-    if (gameState.value.ownedEquipmentIds.includes(equipmentId)) return
+  /** Set a tool line's tier directly, bypassing price - dev/test only. */
+  function devSetToolTier(componentId: ComponentId, tier: ToolTier): void {
     gameState.value = {
       ...gameState.value,
-      ownedEquipmentIds: [...gameState.value.ownedEquipmentIds, equipmentId],
+      toolTiers: { ...gameState.value.toolTiers, [componentId]: tier },
     }
   }
 
@@ -1904,9 +1892,8 @@ export const useGameStore = defineStore('game', () => {
     swapCars,
     moveCarToSlot,
     buyBay,
-    equipmentCatalog,
-    hasEquipmentForComponent,
-    buyEquipment,
+    toolLineViews,
+    upgradeToolLine,
     repair,
     install,
     isPartStagedAnywhere,
@@ -1947,7 +1934,7 @@ export const useGameStore = defineStore('game', () => {
     devGiveCash,
     devGrantCar,
     devGrantPart,
-    devGrantEquipment,
+    devSetToolTier,
     devGrantBay,
     devSetReputationTier,
   }

@@ -5,7 +5,7 @@ import type { SimContext } from '../context'
 
 /**
  * Cash already committed to auction acquisitions this tick - mirrors
- * `EquipmentBudget`/`ServiceBayBudget`'s mutable-counter-threaded-through-a-
+ * `ToolUpgradeBudget`/`ServiceBayBudget`'s mutable-counter-threaded-through-a-
  * tick shape. Sprint 20 (open bidding): only a lot the bot is CURRENTLY
  * leading is a real cash exposure (a lot it's been outbid on costs nothing
  * unless it re-raises, which `acquireLot` below adds to this same counter

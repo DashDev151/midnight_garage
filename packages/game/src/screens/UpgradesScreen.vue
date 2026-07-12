@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
@@ -12,11 +11,6 @@ const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
 const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
 const nextServiceBayRepGate = computed(() => game.nextBayReputationGate('service'))
 const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking'))
-
-/** Display-name join for an equipment item's covered components (Sprint 25 task 6). */
-function componentListLabel(ids: ComponentId[]): string {
-  return ids.map((id) => game.componentLabel(id)).join(', ')
-}
 </script>
 
 <template>
@@ -26,8 +20,8 @@ function componentListLabel(ids: ComponentId[]): string {
       <h2>
         Upgrades
         <HelpHint label="Upgrades">
-          Bays and equipment both take cash - and, past a certain rung, reputation. Money alone
-          never skips the climb.
+          Tool upgrades take cash only - better tools finish the same work faster. Bays take cash
+          and, past a certain rung, reputation.
         </HelpHint>
       </h2>
       <p class="rep">{{ game.reputationTier }} · {{ formatYen(game.cashYen) }}</p>
@@ -69,31 +63,30 @@ function componentListLabel(ids: ComponentId[]): string {
       </div>
     </section>
 
-    <section class="equipment">
+    <section class="tools">
       <h3>
-        Equipment
-        <HelpHint label="Equipment">
-          Owning a component's equipment is what unlocks Repair for it - Replace (buy a part,
-          install it) never needs equipment.
+        Tools
+        <HelpHint label="Tools">
+          You own every line of tools from day one - upgrades make the same work faster. Nothing
+          here is ever locked behind reputation.
         </HelpHint>
       </h3>
-      <ul class="equipment-list">
-        <li v-for="item in game.equipmentCatalog" :key="item.id" class="equipment-row">
-          <span class="equip-name">{{ item.displayName }}</span>
-          <span class="equip-components">{{ componentListLabel(item.componentIds) }}</span>
-          <span v-if="item.owned" class="maxed">owned</span>
-          <template v-else>
+      <ul class="tool-list">
+        <li v-for="line in game.toolLineViews" :key="line.componentId" class="tool-row">
+          <span class="tool-line-name">{{ line.componentLabel }}</span>
+          <span class="tool-tier-name"
+            >{{ line.currentTierName }} (tier {{ line.currentTier }})</span
+          >
+          <template v-if="!line.maxed">
             <button
-              :disabled="game.cashYen < item.priceYen || !item.reputationOk"
-              :data-test="'buy-equipment-' + item.id"
-              @click="game.buyEquipment(item.id)"
+              :disabled="game.cashYen < (line.nextTierPriceYen ?? 0)"
+              :data-test="'upgrade-tool-' + line.componentId"
+              @click="game.upgradeToolLine(line.componentId)"
             >
-              Buy ({{ formatYen(item.priceYen) }})
+              Upgrade: {{ line.nextTierName }} ({{ formatYen(line.nextTierPriceYen ?? 0) }})
             </button>
-            <span v-if="!item.reputationOk" class="rep-hint">
-              needs {{ item.minReputationTier }} reputation
-            </span>
           </template>
+          <span v-else class="maxed">Fully equipped</span>
         </li>
       </ul>
     </section>
@@ -168,7 +161,7 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.equipment-list {
+.tool-list {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--mg-space-4);
@@ -176,7 +169,7 @@ h3 {
   gap: var(--mg-space-2);
 }
 
-.equipment-row {
+.tool-row {
   display: flex;
   align-items: center;
   gap: var(--mg-space-3);
@@ -187,15 +180,17 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.equip-name {
-  flex: 1 1 auto;
+.tool-line-name {
+  width: 110px;
+  flex-shrink: 0;
 }
 
-.equip-components {
+.tool-tier-name {
+  flex: 1 1 auto;
   color: var(--mg-text-dim);
 }
 
-.equipment-row button {
+.tool-row button {
   padding: 2px 10px;
   font-size: var(--mg-fs-sm);
 }

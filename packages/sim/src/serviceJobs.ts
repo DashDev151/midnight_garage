@@ -9,7 +9,7 @@ import type {
   ReputationTier,
   ServiceJob,
   ServiceJobTask,
-  ServiceJobType,
+  ToolTiers,
 } from '@midnight-garage/content'
 import { generateAuctionCarInstance } from './auctions'
 import { bandIndex, canRepair, gradesBetween, slotsNeededToClimb } from './bands'
@@ -17,136 +17,94 @@ import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
   INSTALL_LABOR_SLOTS,
-  JOB_HINT_OFFER_CHANCE,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,
   SERVICE_JOB_FAILURE_REP_MULTIPLIER,
   SERVICE_JOB_TIER_MIN_REPUTATION,
 } from './constants'
 import type { SimContext } from './context'
-import { hasEquipmentFor, hasEquipmentForIds } from './equipment'
 import { assignToParking, hasParkingSpace, releaseCarFromShop } from './facilities'
 import { gradeAtLeast, partFitsCar } from './parts'
 import type { Rng } from './rng'
 import { clearStagedWork } from './stagedWork'
+import { freshToolTiers } from './toolLines'
 
-/** Attempts a fresh pick can't exceed before falling back to whatever was last rolled
- * (an extremely rare edge case - every template gated and every hint roll missing). */
-const MAX_TYPE_PICK_ATTEMPTS = 20
-
-/** Sprint 33 decision 2: the hard cap on how many distinct equipment groups
- * a template may still be missing and still be offer-eligible at all - "one
- * purchase away," never two or more. Templates needing more are excluded
- * from the candidate pool entirely (`actionableOrOnePurchaseAwayTemplates`
- * below), not merely de-weighted by the existing hint-chance reroll. */
-const MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER = 1
-
-/** Every distinct component group `template` needs repair equipment for that
- * `ownedEquipmentIds` doesn't already cover - install tasks never count
- * (replace never needs equipment). Two tasks needing the SAME ungowned group
- * count once, since one purchase fixes both. */
-function missingEquipmentGroups(
-  template: ServiceJobType,
-  ownedEquipmentIds: readonly string[],
+/**
+ * Sprint 36, the offer rule's atom: how many tiers short the shop's tool
+ * line is of `task.minToolTier` - `max(0, minToolTier - toolTiers[group])`.
+ * 0 means the task's capability ceiling is met.
+ */
+export function taskToolDeficit(
+  task: ServiceJobTask,
+  toolTiers: ToolTiers,
   context: SimContext,
-): Set<ComponentId> {
-  const missingGroups = new Set<ComponentId>()
-  for (const task of template.tasks) {
-    if (task.action !== 'repair') continue
-    const group = context.partsTaxonomyById[task.carPartId]?.group
-    if (!group) continue
-    if (!hasEquipmentForIds(ownedEquipmentIds, context.equipmentById, group)) {
-      missingGroups.add(group)
-    }
-  }
-  return missingGroups
+): number {
+  const group = context.partsTaxonomyById[task.carPartId]?.group
+  if (!group) return 0
+  return Math.max(0, task.minToolTier - toolTiers[group])
 }
 
-/** Whether the player could BUY, at `reputationTier` right now, a machine that
- * covers `group`. Equipment with no `minReputationTier` is purchasable from the
- * start (the tyre machine). This is what makes "one purchase away" mean a
- * purchase the player can actually make today, not "one purchase, someday": a
- * group whose only machine is locked behind a higher tier is unreachable now,
- * so a job needing it must not be offered until that tier is reached. */
-function groupHasPurchasableEquipment(
-  group: ComponentId,
-  reputationTier: ReputationTier,
+export interface ToolDeficitSummary {
+  /** The largest per-task deficit across the whole task list. */
+  maxDeficit: number
+  /** Every DISTINCT group with a deficit above 0. */
+  deficientGroups: ComponentId[]
+}
+
+/** The whole task list's tool-tier deficits, summarized once for the offer
+ * rule, the accept gate, the store's `canAccept`/`upgradeHint`, and the
+ * bots' own accept decisions - one computation, four callers. */
+export function toolDeficitSummary(
+  tasks: readonly ServiceJobTask[],
+  toolTiers: ToolTiers,
+  context: SimContext,
+): ToolDeficitSummary {
+  let maxDeficit = 0
+  const deficientGroups: ComponentId[] = []
+  for (const task of tasks) {
+    const deficit = taskToolDeficit(task, toolTiers, context)
+    if (deficit === 0) continue
+    if (deficit > maxDeficit) maxDeficit = deficit
+    const group = context.partsTaxonomyById[task.carPartId]?.group
+    if (group && !deficientGroups.includes(group)) deficientGroups.push(group)
+  }
+  return { maxDeficit, deficientGroups }
+}
+
+/**
+ * Sprint 36, the offer rule (replaces every equipment filter, including
+ * interim fix dc306d9): a template is OFFERABLE iff its max tool-tier
+ * deficit is <= 1 AND at most ONE distinct group is deficient - "one
+ * upgrade away," never two tiers or two lines out. Affordability is NOT
+ * checked: cash is the player's lever and fluctuates daily. With this
+ * sprint's all-default-1 content every template passes with zero deficits;
+ * Sprint 37 authors real ceilings.
+ */
+export function isTemplateOfferable(
+  tasks: readonly ServiceJobTask[],
+  toolTiers: ToolTiers,
   context: SimContext,
 ): boolean {
-  for (const equipment of Object.values(context.equipmentById)) {
-    if (!equipment.componentIds.includes(group)) continue
-    if (reputationAtLeast(reputationTier, equipment.minReputationTier ?? 'unknown')) {
-      return true
-    }
-  }
-  return false
+  const { maxDeficit, deficientGroups } = toolDeficitSummary(tasks, toolTiers, context)
+  return maxDeficit <= 1 && deficientGroups.length <= 1
 }
 
 /**
- * Sprint 33 decision 2 (completed here): a service-job offer is generated ONLY
- * if the player can complete it now, or needs exactly ONE equipment purchase
- * THEY CAN MAKE RIGHT NOW at their current reputation. The original Sprint 33
- * filter counted missing groups (<= 1) but never checked the missing machine
- * was actually buyable, so a day-one `unknown`-reputation player could be
- * offered a cooling repair needing the Engine Crane - a `known`-tier, Y1.5M
- * machine two tiers out of reach. "One purchase away" now means a purchase
- * unlocked at the current tier: a single missing group whose only machine is
- * reputation-locked excludes the template outright (it is not shown as a
- * buy-this hint, it is simply not offered until that tier is reached). This is
- * still a hard pre-filter, not a probability, so the DoD's "job board never
- * offers an un-doable job" holds regardless of RNG luck; `pickServiceJobTemplate`'s
- * existing per-candidate hint roll still decides how OFTEN a surviving 1-missing
- * template surfaces. Extends Sprint 29's tier gating + the Sprint 16
- * equipment-hint mechanic rather than forking a second gate (directive 16).
+ * The UPGRADE-HINT string an offer with a deficit carries (Sprint 36):
+ * "needs <that group's next tier displayName>". Null when there is no
+ * deficit (nothing to hint at). Derived live against the CURRENT tiers, so
+ * it clears itself the moment the upgrade lands, rather than being stamped
+ * stale onto the offer at generation time.
  */
-function actionableOrOnePurchaseAwayTemplates(
-  templates: readonly ServiceJobType[],
-  ownedEquipmentIds: readonly string[],
-  reputationTier: ReputationTier,
+export function upgradeHintFor(
+  tasks: readonly ServiceJobTask[],
+  toolTiers: ToolTiers,
   context: SimContext,
-): ServiceJobType[] {
-  return templates.filter((template) => {
-    const missing = missingEquipmentGroups(template, ownedEquipmentIds, context)
-    if (missing.size > MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER) return false
-    // Every missing group (0 or 1) must be coverable by a machine buyable now.
-    for (const group of missing) {
-      if (!groupHasPurchasableEquipment(group, reputationTier, context)) return false
-    }
-    return true
-  })
-}
-
-/**
- * Picks one service-job template for an offer (Sprint 29): a template that
- * needs equipment the player doesn't own for at least one of its repair
- * tasks is normally rerolled, but a flat `JOB_HINT_OFFER_CHANCE`
- * per-candidate probability lets it through anyway as a "here's what's
- * next" hint - the same policy Sprint 16 shipped for single-task types,
- * extended to "any repair task in this template needs unowned equipment."
- * Install-only tasks are never filtered here (replace is always available).
- *
- * The candidate pool passed in has already been tier-gated by the caller
- * (Sprint 25 task 10's own reasoning, generalized to all 4 tiers): filtering
- * BEFORE rolling, not rerolling inline, is what keeps this function's
- * `MAX_TYPE_PICK_ATTEMPTS` fallback safe - it can only ever return something
- * already reputation-eligible.
- */
-function pickServiceJobTemplate(
-  templates: readonly ServiceJobType[],
-  ownedEquipmentIds: readonly string[],
-  context: SimContext,
-  rng: Rng,
-): ServiceJobType {
-  let picked = templates[0]!
-  for (let attempt = 0; attempt < MAX_TYPE_PICK_ATTEMPTS; attempt++) {
-    picked = rng.pick(templates)
-    const needsUnownedEquipment = picked.tasks.some((task) => {
-      if (task.action !== 'repair') return false
-      const group = context.partsTaxonomyById[task.carPartId]?.group
-      return !group || !hasEquipmentForIds(ownedEquipmentIds, context.equipmentById, group)
-    })
-    if (!needsUnownedEquipment || rng.next() < JOB_HINT_OFFER_CHANCE) return picked
-  }
-  return picked
+): string | null {
+  const { deficientGroups } = toolDeficitSummary(tasks, toolTiers, context)
+  const group = deficientGroups[0]
+  if (!group) return null
+  const nextTier = context.toolLines[group].tiers[toolTiers[group]]
+  return nextTier ? `needs ${nextTier.displayName}` : null
 }
 
 /** Sorted-median of a non-empty yen list, rounded to the nearest yen - the
@@ -301,13 +259,13 @@ function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
  * car (`deriveServiceJobPayoutYen`) - never an authored flat range.
  * `reputationTier` (default `'legend'` = unrestricted) gates which template
  * TIERS are even in the candidate pool (Sprint 29 decision 2); within that
- * pool, `ownedEquipmentIds` (default "nothing owned") first hard-excludes
- * any template needing 2+ equipment purchases
- * (`actionableOrOnePurchaseAwayTemplates`, Sprint 33 decision 2), then drives
- * the same equipment-hinting policy Sprint 16 shipped for what's left,
- * extended to multi-task templates by `pickServiceJobTemplate`. `currentYear`
- * (default Infinity = unrestricted) excludes still-unreleased models and
- * clamps the rolled car's year, same as auction generation.
+ * pool, `toolTiers` (default: a fresh shop's all-1) drives the Sprint 36
+ * offer rule (`isTemplateOfferable`): a template at most one tool-tier
+ * upgrade away in at most one line is offerable - shown as an upgrade-hint
+ * offer when a deficit exists - and anything further out is not generated
+ * at all. `currentYear` (default Infinity = unrestricted) excludes
+ * still-unreleased models and clamps the rolled car's year, same as auction
+ * generation.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
@@ -315,18 +273,15 @@ export function generateDailyServiceJobOffers(
   expiresInDays: number,
   rng: Rng,
   currentYear: number = Infinity,
-  ownedEquipmentIds: readonly string[] = [],
+  toolTiers: ToolTiers = freshToolTiers(),
   reputationTier: ReputationTier = 'legend',
 ): ServiceJob[] {
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
   const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
     reputationAtLeast(reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
   )
-  const eligibleTemplates = actionableOrOnePurchaseAwayTemplates(
-    tierEligibleTemplates,
-    ownedEquipmentIds,
-    reputationTier,
-    context,
+  const eligibleTemplates = tierEligibleTemplates.filter((template) =>
+    isTemplateOfferable(template.tasks, toolTiers, context),
   )
   if (
     eligibleTemplates.length === 0 ||
@@ -339,7 +294,7 @@ export function generateDailyServiceJobOffers(
   const count = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const template = pickServiceJobTemplate(eligibleTemplates, ownedEquipmentIds, context, rng)
+    const template = rng.pick(eligibleTemplates)
     const model = rng.pick(eligibleModels)
     const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, context, currentYear)
     const payoutYen = deriveServiceJobPayoutYen(
@@ -388,16 +343,12 @@ export interface AcceptServiceJobResult {
  * loop (one queued accept per call, matching every other Sprint 11 instant
  * resolver's shape).
  *
- * Sprint 13: any `repair`-kind task additionally needs its group's matching
- * equipment owned - "can't even accept them without it," per the design
- * doc, extended in Sprint 29 to "every repair task in the whole job," since
- * a multi-task offer can no longer be reduced to one single group. A
- * template with no repair tasks at all (every task is `install`) is never
- * gated (replace is always available). The maintainer's own read is that an
- * unreachable repair offer arguably shouldn't be generated in the first
- * place, not surfaced-then-blocked; that refinement is deliberately
- * deferred (tracked in TODO.md) - this sprint ships the simpler accept-time
- * block, same as before.
+ * Sprint 36: an offer with any tool-tier deficit (a task whose
+ * `minToolTier` exceeds the line's current tier) is refused - it was
+ * generated as an upgrade-hint offer and becomes acceptable the moment the
+ * upgrade lands, since the deficit is re-checked live here rather than
+ * stamped at generation time. This replaces the retired accept-time
+ * equipment refusal.
  */
 export function resolveAcceptServiceJob(
   state: GameState,
@@ -407,15 +358,10 @@ export function resolveAcceptServiceJob(
   const offer = state.serviceJobOffers.find((o) => o.id === offerId)
   if (!offer) return { state, log: [] }
 
-  const missingEquipmentForTask = offer.tasks.find((task) => {
-    if (task.action !== 'repair') return false
-    const group = context.partsTaxonomyById[task.carPartId]?.group
-    return !group || !hasEquipmentFor(state, group, context)
-  })
-  if (missingEquipmentForTask) {
+  if (toolDeficitSummary(offer.tasks, state.toolTiers, context).maxDeficit > 0) {
     return {
       state,
-      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-equipment' }],
+      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' }],
     }
   }
   if (!hasParkingSpace(state)) {

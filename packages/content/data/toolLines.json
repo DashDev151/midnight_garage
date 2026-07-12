@@ -1,0 +1,104 @@
+{
+  "engine": {
+    "tiers": [
+      {
+        "displayName": "Hand tools & timing kit",
+        "upgradePriceYen": 0,
+        "consumablesCostYen": 2000
+      },
+      {
+        "displayName": "Engine crane & stand",
+        "upgradePriceYen": 600000,
+        "consumablesCostYen": 5000
+      },
+      {
+        "displayName": "Machine-shop tooling",
+        "upgradePriceYen": 1500000,
+        "consumablesCostYen": 8000
+      }
+    ]
+  },
+  "drivetrain": {
+    "tiers": [
+      { "displayName": "Driveline hand tools", "upgradePriceYen": 0, "consumablesCostYen": 2000 },
+      {
+        "displayName": "Transmission bench",
+        "upgradePriceYen": 900000,
+        "consumablesCostYen": 9000
+      },
+      {
+        "displayName": "Driveline rebuild bench & press",
+        "upgradePriceYen": 1800000,
+        "consumablesCostYen": 11000
+      }
+    ]
+  },
+  "suspension": {
+    "tiers": [
+      {
+        "displayName": "Trolley jack & axle stands",
+        "upgradePriceYen": 0,
+        "consumablesCostYen": 2000
+      },
+      { "displayName": "Two-post lift", "upgradePriceYen": 250000, "consumablesCostYen": 3000 },
+      {
+        "displayName": "Drive-on alignment lift",
+        "upgradePriceYen": 400000,
+        "consumablesCostYen": 10000
+      }
+    ]
+  },
+  "wheels": {
+    "tiers": [
+      {
+        "displayName": "Tyre levers & bubble balancer",
+        "upgradePriceYen": 0,
+        "consumablesCostYen": 2000
+      },
+      {
+        "displayName": "Tyre machine & balancer",
+        "upgradePriceYen": 150000,
+        "consumablesCostYen": 8000
+      },
+      {
+        "displayName": "Alignment & road-force rig",
+        "upgradePriceYen": 350000,
+        "consumablesCostYen": 9000
+      }
+    ]
+  },
+  "body": {
+    "tiers": [
+      {
+        "displayName": "Filler, sandpaper & rattle cans",
+        "upgradePriceYen": 0,
+        "consumablesCostYen": 2000
+      },
+      {
+        "displayName": "MIG welder & panel tools",
+        "upgradePriceYen": 700000,
+        "consumablesCostYen": 6000
+      },
+      {
+        "displayName": "Spray booth & chassis jig",
+        "upgradePriceYen": 1400000,
+        "consumablesCostYen": 8000
+      }
+    ]
+  },
+  "interior": {
+    "tiers": [
+      {
+        "displayName": "Hand stitching & trim tools",
+        "upgradePriceYen": 0,
+        "consumablesCostYen": 2000
+      },
+      {
+        "displayName": "Upholstery & trim bench",
+        "upgradePriceYen": 350000,
+        "consumablesCostYen": 8000
+      },
+      { "displayName": "Full trim shop", "upgradePriceYen": 700000, "consumablesCostYen": 9000 }
+    ]
+  }
+}

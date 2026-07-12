@@ -1,10 +1,4 @@
-import {
-  EQUIPMENT,
-  PARTS,
-  type ConditionBand,
-  type Part,
-  type PartInstance,
-} from '@midnight-garage/content'
+import { PARTS, type ConditionBand, type Part, type PartInstance } from '@midnight-garage/content'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -119,9 +113,6 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
   })
 
   describe('customer-owned parts + in-inventory recondition (Sprint 35)', () => {
-    // `part` is a dampers part -> the suspension group covers its recondition.
-    const SUSPENSION_EQUIP = EQUIPMENT.find((e) => e.componentIds.includes('suspension'))!
-
     /** Put one below-mint inventory part into the store so the recondition
      * quote (which reads gameState.partInventory) resolves, and return it. */
     function grantInventoryPart(band: ConditionBand) {
@@ -149,13 +140,21 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       expect(wrapper.find(`[data-test="scrap-part-${customerScrap.id}"]`).exists()).toBe(false)
     })
 
-    it('offers a recondition control on a below-mint part, disabled with a reason when the tools are missing', () => {
-      const { instance: worn } = grantInventoryPart('worn') // no equipment owned
+    it('offers an enabled recondition control on a below-mint part at tier 1 - no tooling gate exists (Sprint 36)', () => {
+      const { instance: worn } = grantInventoryPart('worn') // nothing upgraded
       const wrapper = mount(PartCard, { props: { instance: worn, part } })
       const button = wrapper.find(`[data-test="recondition-part-${worn.id}"]`)
       expect(button.exists()).toBe(true)
-      expect(button.attributes('disabled')).toBeDefined()
-      expect(wrapper.find(`[data-test="recondition-blocked-${worn.id}"]`).exists()).toBe(true)
+      expect(button.attributes('disabled')).toBeUndefined()
+    })
+
+    it("disables the recondition control once today's labor is spent (the labor gate stays)", () => {
+      const { game, instance: worn } = grantInventoryPart('worn')
+      game.gameState = { ...game.gameState, laborSlotsSpentToday: 99 }
+      const wrapper = mount(PartCard, { props: { instance: worn, part } })
+      expect(
+        wrapper.find(`[data-test="recondition-part-${worn.id}"]`).attributes('disabled'),
+      ).toBeDefined()
     })
 
     it('omits the recondition control on a mint part (nothing to climb)', () => {
@@ -172,9 +171,8 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       expect(wrapper.find(`[data-test="recondition-part-${worn.id}"]`).exists()).toBe(false)
     })
 
-    it('clicking Recondition (tools owned) climbs the loose part toward mint through the store', async () => {
+    it('clicking Recondition climbs the loose part toward mint through the store', async () => {
       const { game, instance: worn } = grantInventoryPart('worn')
-      game.devGrantEquipment(SUSPENSION_EQUIP.id)
       const wrapper = mount(PartCard, { props: { instance: worn, part } })
 
       await wrapper.find(`[data-test="recondition-part-${worn.id}"]`).trigger('click')

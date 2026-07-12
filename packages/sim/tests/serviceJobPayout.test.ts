@@ -1,7 +1,6 @@
 import {
   BUYERS,
   CARS,
-  EQUIPMENT,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -28,7 +27,6 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
-  EQUIPMENT,
 )
 
 /**

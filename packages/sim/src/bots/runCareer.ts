@@ -26,7 +26,9 @@ export interface CareerSnapshot {
    * Sprint 16's gating ladder be tuned against real trajectories instead of
    * guesses about how fast a bot climbs. */
   reputationPoints: number
-  /** Sprint 13: how many equipment items are owned - the harness's payback-curve signal. */
+  /** The harness's payback-curve signal. Sprint 36: KEEPS its CSV column
+   * name but counts tool-tier upgrades now - the sum of all six lines'
+   * tiers minus 6 (0 for a fresh, never-upgraded shop). */
   equipmentOwnedCount: number
 }
 
@@ -296,7 +298,7 @@ export function runCareer(
       netWorthEstimateYen: state.cashYen + carsBookValue,
       reputationTier: state.reputationTier,
       reputationPoints: state.reputationPoints,
-      equipmentOwnedCount: state.ownedEquipmentIds.length,
+      equipmentOwnedCount: Object.values(state.toolTiers).reduce((sum, tier) => sum + tier, 0) - 6,
     })
   }
 

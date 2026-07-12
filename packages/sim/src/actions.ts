@@ -92,7 +92,9 @@ const MoveCarActionSchema = z.object({
 
 const BuyBayActionSchema = z.object({ kind: BayKindSchema })
 
-const BuyEquipmentActionSchema = z.object({ equipmentId: z.string().min(1) })
+/** Sprint 36: climb one tool line one tier (sequential, cash-gated only -
+ * no reputation gate). Replaces the retired buy-equipment action. */
+const UpgradeToolLineActionSchema = z.object({ componentId: ComponentIdSchema })
 
 export const DayActionsSchema = z.object({
   createJobs: z.array(NewJobSpecSchema).default([]),
@@ -110,8 +112,8 @@ export const DayActionsSchema = z.object({
   moveCars: z.array(MoveCarActionSchema).default([]),
   /** Bots' only path to buying a bay - the player buys instantly likewise. */
   buyBays: z.array(BuyBayActionSchema).default([]),
-  /** Bots' only path to buying equipment - the player buys instantly likewise. */
-  buyEquipment: z.array(BuyEquipmentActionSchema).default([]),
+  /** Bots' only path to upgrading a tool line - the player upgrades instantly likewise. */
+  upgradeToolLines: z.array(UpgradeToolLineActionSchema).default([]),
 })
 // Note: completing a service job is NOT a DayAction. The player resolves it
 // immediately (a store call to resolveServiceJob) the moment they click
@@ -130,7 +132,7 @@ export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
 export type MoveCarAction = z.infer<typeof MoveCarActionSchema>
 export type BuyBayAction = z.infer<typeof BuyBayActionSchema>
-export type BuyEquipmentAction = z.infer<typeof BuyEquipmentActionSchema>
+export type UpgradeToolLineAction = z.infer<typeof UpgradeToolLineActionSchema>
 export type DayActions = z.infer<typeof DayActionsSchema>
 
 /**

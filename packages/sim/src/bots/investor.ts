@@ -36,16 +36,17 @@ const ALL_COMPONENTS: readonly ComponentId[] = [
 ]
 
 /**
- * Sprint 13: the control for the payback-curve question - never buys
- * equipment, ever, and restores cars entirely through Replace (buy a
- * catalog part, install it) instead of Repair. Every component is fair game
- * (not just the 5 that feed stat formulas), since Replace was always
- * available everywhere and Investor's whole premise is "skip the
- * investment, pay per-job instead." Should end up *worse* than Handyman
- * post-investment (paying full part price every time beats no restoration
- * at all, but loses to labor-only repair once the tool's paid for) - the
- * harness's payback-curve columns (sprint13.md decision 11) are what turn
- * that "should" into a measured fact.
+ * Sprint 13: the control for the payback-curve question - never upgrades a
+ * tool line, ever (Sprint 36: every line stays at tier 1 all career), and
+ * restores cars entirely through Replace (buy a catalog part, install it)
+ * instead of Repair. Every component is fair game (not just the 5 that
+ * feed stat formulas), since Replace was always available everywhere and
+ * Investor's whole premise is "skip the investment, pay per-job instead."
+ * Should end up *worse* than Handyman post-investment (paying full part
+ * price every time beats no restoration at all, but loses to labor-only
+ * repair once the upgrade's paid for) - the harness's payback-curve columns
+ * (sprint13.md decision 11) are what turn that "should" into a measured
+ * fact.
  *
  * The one piece of real complexity: an install-part job needs a real
  * `partInstanceId` that only exists once `resolveBuyPart`'s queued purchase

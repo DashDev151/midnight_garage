@@ -1,4 +1,9 @@
-import type { AuctionTier, GameState } from '@midnight-garage/content'
+import {
+  ComponentIdSchema,
+  type AuctionTier,
+  type ComponentId,
+  type GameState,
+} from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { carCostToMintYen } from '../bands'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
@@ -11,14 +16,16 @@ import {
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import { reputationAtLeast } from '../calendar'
 import type { SimContext } from '../context'
-import {
-  ASCENDING_EQUIPMENT_COST_COMPONENTS,
-  equipmentBudget,
-  ensureEquipmentFor,
-} from './equipmentHelpers'
+import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
+
+/** The six real component groups this bot restores and checks, in the
+ * canonical ComponentId order (Sprint 36: replaces the retired
+ * ascending-equipment-cost ordering - there is no per-group unlock price to
+ * sort by anymore, only per-line upgrade prices that never gate work). */
+const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
 
 const MAX_CONCURRENT_CARS = 2
 /**
@@ -66,6 +73,10 @@ const MAX_RESTORATION_TO_CLEAN_VALUE_RATIO = 0.6
 const ACCEPT_FRACTION = 0.95
 const MAX_HOLDING_DAYS = 20
 
+/** Sprint 36: a cautious double-cover buffer on tool upgrades - this bot
+ * only invests in speed when its bankroll comfortably covers it. */
+const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
+
 /**
  * Only buys at-or-above fair price, fully restores every zone before
  * selling via list-publicly for the best price the market offers (Sprint 03
@@ -105,7 +116,7 @@ export function cautiousRestorerStrategy(
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
-  const equipBudget = equipmentBudget()
+  const upgradeBudget = toolUpgradeBudget()
   const targetTier: AuctionTier = reputationAtLeast(state.reputationTier, 'local')
     ? 'regional'
     : 'local-yard'
@@ -168,37 +179,31 @@ export function cautiousRestorerStrategy(
     }
   }
 
-  // 4. Repair the cheapest-to-unlock NEEDY component on each owned, job-free
-  // car, one zone at a time - tries every needy component in ascending
-  // equipment-cost order instead of stopping at the first needy one and
-  // giving up on the whole car if THAT component's equipment isn't
-  // reachable yet (Sprint 23 fix, real bug found by real measurement, not
-  // guessed at). Sprint 19c's original fix reordered the list cheapest-first
-  // but still only ever tried the SINGLE first-needy entry via `.find()` -
-  // with Sprint 16's reputation-gated equipment ladder (suspension-press
-  // needs `local`, welder/transmission-bench need `known`+, per this
-  // sprint's own decision 3), a car whose first needy component in the list
-  // happened to be reputation-gated deadlocked permanently even when a
-  // cheaper, already-reachable component on the SAME car also needed work -
-  // and it claimed the shop's only starting service bay while doing it,
-  // starving every other owned car too. Now: check obtainability for every
-  // needy component (cheapest-first) BEFORE claiming a bay, and only claim
-  // one once a real, reachable job is actually found.
+  // 4. Repair the first NEEDY component on each owned, job-free car, one
+  // zone at a time. Sprint 36: work is always possible at the current tool
+  // tier (no ownership gate, no reachability deadlock - the Sprint 19c/23
+  // failure class is structurally gone), so this just picks the first
+  // below-mint group, considers upgrading its line for speed (proceeding
+  // with the repair either way), and claims a bay only once a real job
+  // exists to work.
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
   const carsGettingJobsToday = new Set<string>()
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
 
-    let groupToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
-    for (const id of ASCENDING_EQUIPMENT_COST_COMPONENTS) {
-      if (isGroupAtLeast(car, id, 'mint', context.partIdsByGroup)) continue
-      if (ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER)) {
-        groupToRepair = id
-        break
-      }
-    }
+    const groupToRepair = ALL_GROUPS.find(
+      (id) => !isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
+    )
     if (!groupToRepair) continue
+    considerToolUpgrade(
+      state,
+      groupToRepair,
+      actions,
+      context,
+      upgradeBudget,
+      TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER,
+    )
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     const slotsToApply = queueGroupRepair(
@@ -220,7 +225,7 @@ export function cautiousRestorerStrategy(
   // "and issue-free" clause is gone with the paused system).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every((id) =>
+    const isRestored = ALL_GROUPS.every((id) =>
       isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (isRestored) {

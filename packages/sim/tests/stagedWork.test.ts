@@ -1,6 +1,5 @@
 import {
   CARS,
-  EQUIPMENT,
   PARTS,
   PARTS_TAXONOMY,
   type CarInstance,
@@ -11,17 +10,15 @@ import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { clearStagedWork, confirmStagedWork } from '../src/stagedWork'
-import { buildCarInstance, groupCarParts } from './testFixtures'
+import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
 
 // Real CARS/PARTS (Sprint 24 fix 2: findOrCreateJob validates install-part
 // fit against the real catalog, so an install spec needs both to resolve).
-const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY, [], undefined, [], EQUIPMENT)
+const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
-/** Equipment covering the components these tests repair - owned by default so confirm tests
- * aren't incidentally blocked by the equipment gate, which has its own dedicated test below. */
-const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
-const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!
-const OWNED_EQUIPMENT_IDS = [WELDER.id, ENGINE_CRANE.id]
+/** Sprint 36: a mixed-tier shop (body at 2, engine at 3) so the plans these
+ * tests derive exercise real tier-sized labor, not just the tier-1 floor. */
+const TOOL_TIERS = testToolTiers({ body: 2, engine: 3 })
 
 const car: CarInstance = buildCarInstance({
   id: 'car-0001',
@@ -42,17 +39,16 @@ const car: CarInstance = buildCarInstance({
 
 /** Real labor-slot plans for this fixture car, computed the same way
  * `confirmStagedWork` itself does - tests assert against these rather than
- * a hand-guessed number, so a `parts-taxonomy.json`/equipment retune can't
+ * a hand-guessed number, so a `parts-taxonomy.json`/tool-line retune can't
  * silently desync the fixture from the assertions. */
 function planFor(groupId: 'body' | 'engine' | 'suspension') {
   return planGroupRepair(
     car,
     groupId,
     'mint',
-    OWNED_EQUIPMENT_IDS,
+    TOOL_TIERS,
     CONTEXT.partIdsByGroup,
     CONTEXT.partsTaxonomyById,
-    CONTEXT.equipmentById,
   )
 }
 
@@ -85,7 +81,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [car.id],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: OWNED_EQUIPMENT_IDS,
+    toolTiers: TOOL_TIERS,
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
@@ -161,17 +157,14 @@ describe('confirmStagedWork', () => {
     expect(engineJob?.laborSlotsRequired).toBe(enginePlan.laborSlotsRequired)
   })
 
-  it('the equipment gate still refuses a staged repair at confirm time', () => {
+  it('the affordability gate still refuses a staged repair at confirm time (Sprint 36: the only gate left)', () => {
     const state = baseState({
-      ownedEquipmentIds: [], // neither WELDER nor ENGINE_CRANE owned
+      cashYen: 0, // can't cover consumables + the repair's real cost
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
     })
     const result = confirmStagedWork(state, car.id, 3, CONTEXT)
     expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('poor') // unchanged
     expect(result.state.jobs).toHaveLength(0)
-    expect(
-      result.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
-    ).toBe(true)
   })
 
   it('clears the staged list unconditionally, even when an action only partially labors', () => {

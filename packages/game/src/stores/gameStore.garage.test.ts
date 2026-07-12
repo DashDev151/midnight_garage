@@ -39,8 +39,11 @@ describe('garage: instant repair and labor', () => {
 
   it('repairing completes and lifts the group to mint, possibly over several days', () => {
     const game = useGameStore()
-    // Sprint 13: repair now requires owning the group's equipment.
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
+    // Sprint 36: no ownership gate exists anymore - max every line's tier so
+    // this test keeps its old all-equipment pacing (the fastest repair
+    // level), staying a test of completion mechanics rather than of tier-1
+    // throughput against the 20-day loop cap below.
+    for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
     // Correlated band rolls (Sprint 12/26) can occasionally land a group
     // fully mint even on a "rough" car - retry grants until the engine
     // group specifically needs work, since that's what this test exercises.
@@ -72,7 +75,6 @@ describe('garage: instant repair and labor', () => {
 
   it('a repeat click continues the same job for a group, not a duplicate', () => {
     const game = useGameStore()
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.repair(car.id, 'body')
@@ -82,7 +84,6 @@ describe('garage: instant repair and labor', () => {
 
   it('never spends more than the daily labor slots across repairs in one day', () => {
     const game = useGameStore()
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')

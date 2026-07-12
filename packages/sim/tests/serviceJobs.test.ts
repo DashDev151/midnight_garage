@@ -1,7 +1,6 @@
 import {
   BUYERS,
   CARS,
-  EQUIPMENT,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -9,7 +8,6 @@ import {
   SERVICE_JOB_TYPES,
   type CarInstance,
   type CarPartId,
-  type ComponentId,
   type GameState,
   type Job,
   type Part,
@@ -23,7 +21,6 @@ import { advanceDay } from '../src/advanceDay'
 import { generateAuctionCarInstance } from '../src/auctions'
 import { SERVICE_JOB_ARRIVAL_DELAY_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
-import { hasEquipmentForIds } from '../src/equipment'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
@@ -38,8 +35,11 @@ import {
   resolveServiceJob,
   resolveServiceJobArrivals,
   serviceJobCostBreakdown,
+  isTemplateOfferable,
+  toolDeficitSummary,
+  upgradeHintFor,
 } from '../src/serviceJobs'
-import { buildCarInstance, mintCarParts } from './testFixtures'
+import { buildCarInstance, mintCarParts, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -49,7 +49,6 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
-  EQUIPMENT,
 )
 
 /** Real templates from the content set, referenced by id so a future content
@@ -65,19 +64,6 @@ function findType(id: string): ServiceJobType {
   const type = SERVICE_JOB_TYPES.find((t) => t.id === id)
   if (!type) throw new Error(`fixture template "${id}" missing from content - update the test`)
   return type
-}
-
-/** Equipment ids covering every repair task's group in `type` - owned by
- * default in accept/resolve tests so they exercise their own intended gate
- * (parking, unknown offer) rather than the equipment gate, which has its
- * own dedicated tests. */
-function equipmentIdsFor(type: ServiceJobType): string[] {
-  const groups = new Set(
-    type.tasks
-      .filter((t) => t.action === 'repair')
-      .map((t) => CONTEXT.partsTaxonomyById[t.carPartId]!.group),
-  )
-  return EQUIPMENT.filter((e) => e.componentIds.some((c) => groups.has(c))).map((e) => e.id)
 }
 
 /** An active (accepted) service job carrying a real car, ready to resolve. */
@@ -101,6 +87,13 @@ function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}
 
 function partInstance(partId: string): PartInstance {
   return { id: `pi-${partId}`, partId, band: 'mint', genuinePeriod: false }
+}
+
+/** A template's tasks with every `minToolTier` raised to `tier` - the
+ * Sprint 36 test knob for exercising the tool-tier accept gate before
+ * Sprint 37 authors real ceilings in content. */
+function raiseMinToolTier(type: ServiceJobType, tier: 2 | 3): ServiceJobType['tasks'] {
+  return type.tasks.map((task) => ({ ...task, minToolTier: tier }))
 }
 
 /** A catalog part addressed to `carPartId`, optionally filtered further -
@@ -153,7 +146,6 @@ describe('generateDailyServiceJobOffers', () => {
       [],
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
-      EQUIPMENT,
     )
     expect(generateDailyServiceJobOffers(noTemplates, 7, 10, createRng(1))).toEqual([])
 
@@ -165,7 +157,6 @@ describe('generateDailyServiceJobOffers', () => {
       SERVICE_JOB_TYPES,
       FACILITIES,
       [],
-      EQUIPMENT,
     )
     expect(generateDailyServiceJobOffers(noNames, 7, 10, createRng(1))).toEqual([])
 
@@ -177,7 +168,6 @@ describe('generateDailyServiceJobOffers', () => {
       SERVICE_JOB_TYPES,
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
-      EQUIPMENT,
     )
     expect(generateDailyServiceJobOffers(noModels, 7, 10, createRng(1))).toEqual([])
   })
@@ -212,7 +202,7 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
         10,
         createRng(day),
         Infinity,
-        [],
+        testToolTiers(),
         'unknown',
       )
       total += result.length
@@ -233,7 +223,7 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
         10,
         createRng(day),
         Infinity,
-        [],
+        testToolTiers(),
         'local',
       )
       for (const offer of result) {
@@ -253,7 +243,7 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
         10,
         createRng(day),
         Infinity,
-        [],
+        testToolTiers(),
         'known',
       )
       for (const offer of result) {
@@ -272,7 +262,7 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
         10,
         createRng(day),
         Infinity,
-        [],
+        testToolTiers(),
         'respected',
       )
       if (result.some((o) => SERVICE_JOB_TYPES.find((t) => t.id === o.typeId)!.tier === 4))
@@ -292,147 +282,53 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   })
 })
 
-describe('job-board equipment hinting (Sprint 16 decision 4, extended to multi-task templates)', () => {
-  it('mostly filters a repair-touching template whose equipment is not owned, but not to zero', () => {
-    let repairTemplateOffers = 0
-    let totalOffers = 0
-    for (let day = 1; day <= 700; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day), Infinity, [])
-      totalOffers += result.length
-      repairTemplateOffers += result.filter((o) =>
-        o.tasks.some((t) => t.action === 'repair'),
-      ).length
-    }
-    const repairShare = repairTemplateOffers / totalOffers
-    expect(repairShare).toBeGreaterThan(0)
-    expect(repairShare).toBeLessThan(0.2)
-  })
-
-  it('never filters a repair-touching template whose equipment is already owned', () => {
-    const ownedIds = EQUIPMENT.map((e) => e.id) // everything owned
-    let sawRepairTemplate = false
-    for (let day = 1; day <= 300 && !sawRepairTemplate; day++) {
-      const result = generateDailyServiceJobOffers(
-        CONTEXT,
-        day,
-        10,
-        createRng(day),
-        Infinity,
-        ownedIds,
-      )
-      if (result.some((o) => o.tasks.some((t) => t.action === 'repair'))) sawRepairTemplate = true
-    }
-    expect(sawRepairTemplate).toBe(true)
-  })
-
-  it('install-only templates are never filtered by the hinting policy, owned or not', () => {
-    const seen: ServiceJob[] = []
-    for (let day = 1; day <= 300; day++) {
-      seen.push(...generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day), Infinity, []))
-    }
-    const installOnlyTemplateCount = SERVICE_JOB_TYPES.filter((t) =>
-      t.tasks.every((task) => task.action === 'install'),
-    ).length
-    expect(seen.filter((o) => o.tasks.every((t) => t.action === 'install')).length).toBeGreaterThan(
-      installOnlyTemplateCount,
-    ) // sanity: install offers show up plenty across many rolls
-  })
-})
-
-describe('Sprint 33 decision 2: job board is actionable-or-one-purchase-away', () => {
-  /** Every distinct component group `offer` still needs repair equipment
-   * for, given `ownedEquipmentIds` - the same public-data computation the
-   * sim's own hard filter is built on, kept independent here so this test
-   * verifies the observable OUTCOME rather than reaching into a private
-   * implementation helper. */
-  function missingEquipmentGroups(offer: ServiceJob, ownedEquipmentIds: readonly string[]): number {
-    const groups = new Set<ComponentId>()
-    for (const task of offer.tasks) {
-      if (task.action !== 'repair') continue
-      const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group
-      if (!hasEquipmentForIds(ownedEquipmentIds, CONTEXT.equipmentById, group)) groups.add(group)
-    }
-    return groups.size
-  }
-
-  it('a fresh (brand-new-game) job board never offers a job needing 2+ equipment purchases', () => {
+describe('the Sprint 36 offer rule: never more than one tool-tier upgrade away', () => {
+  it('across 300 fresh seeds every offer has max deficit <= 1 and at most one deficient group (default content: all zero-deficit)', () => {
     let sawAnyOffer = false
     for (let seed = 1; seed <= 300; seed++) {
       const state = createInitialGameState(CONTEXT, seed)
       for (const offer of state.serviceJobOffers) {
         sawAnyOffer = true
-        expect(missingEquipmentGroups(offer, state.ownedEquipmentIds)).toBeLessThanOrEqual(1)
+        const summary = toolDeficitSummary(offer.tasks, state.toolTiers, CONTEXT)
+        expect(summary.maxDeficit).toBeLessThanOrEqual(1)
+        expect(summary.deficientGroups.length).toBeLessThanOrEqual(1)
+        // Sprint 36 ships all-default-1 content, so today the board is not
+        // just honest but fully actionable: zero deficits everywhere.
+        // Sprint 37's authored ceilings are what make the <= 1 bound above
+        // do real work.
+        expect(summary.maxDeficit).toBe(0)
       }
     }
     expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
   })
 
-  it('a fresh game’s offers skew heavily toward Replace-only (install) work', () => {
-    let installOnly = 0
-    let total = 0
-    for (let seed = 1; seed <= 300; seed++) {
-      const state = createInitialGameState(CONTEXT, seed)
-      for (const offer of state.serviceJobOffers) {
-        total += 1
-        if (offer.tasks.every((task) => task.action === 'install')) installOnly += 1
-      }
-    }
-    expect(total).toBeGreaterThan(0)
-    expect(installOnly / total).toBeGreaterThan(0.5)
-  })
+  it('one tier out in one group is offerable (an upgrade-hint offer); two tiers out, or two deficient groups, is not', () => {
+    // twoRepairType spans two distinct groups (wheels + suspension);
+    // singleRepairType stays within one (body).
+    const oneGroupOneTier = singleRepairType.tasks.map((task) => ({
+      ...task,
+      minToolTier: 2 as const,
+    }))
+    expect(isTemplateOfferable(oneGroupOneTier, testToolTiers(), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(oneGroupOneTier, testToolTiers(), CONTEXT)).toBe(
+      `needs ${CONTEXT.toolLines.body.tiers[1]!.displayName}`,
+    )
 
-  it('a template needing two distinct unowned equipment groups is excluded from generation entirely, even unrestricted by tier', () => {
-    // tyres-and-pads-service needs wheels (tyres) AND suspension
-    // (brakePadsDiscs) - two distinct groups when nothing is owned.
-    const template = SERVICE_JOB_TYPES.find((t) => t.id === 'tyres-and-pads-service')!
-    let sawTemplate = false
-    for (let day = 1; day <= 500; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day), Infinity, [])
-      if (result.some((o) => o.typeId === template.id)) sawTemplate = true
-    }
-    expect(sawTemplate).toBe(false)
+    const oneGroupTwoTiers = singleRepairType.tasks.map((task) => ({
+      ...task,
+      minToolTier: 3 as const,
+    }))
+    expect(isTemplateOfferable(oneGroupTwoTiers, testToolTiers(), CONTEXT)).toBe(false)
 
-    // The same template is reachable once ONE of its two groups is owned
-    // (down to exactly one missing purchase, decision 2's hint case).
-    const tireMachine = EQUIPMENT.find((e) => e.componentIds.includes('wheels'))!
-    let sawWithOneOwned = false
-    for (let day = 1; day <= 500 && !sawWithOneOwned; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day), Infinity, [
-        tireMachine.id,
-      ])
-      if (result.some((o) => o.typeId === template.id)) sawWithOneOwned = true
-    }
-    expect(sawWithOneOwned).toBe(true)
-  })
+    const twoGroupsOneTier = twoRepairType.tasks.map((task) => ({
+      ...task,
+      minToolTier: 2 as const,
+    }))
+    expect(isTemplateOfferable(twoGroupsOneTier, testToolTiers(), CONTEXT)).toBe(false)
 
-  it('a day-one player (unknown reputation, no equipment) is never offered a repair needing a machine they cannot buy yet', () => {
-    // The Sprint 33 gap: the old filter allowed any job needing <= 1 more
-    // machine WITHOUT checking that machine was purchasable now, so a fresh
-    // `unknown`-reputation game could be offered a cooling repair needing the
-    // Engine Crane (a `known`-tier, Y1.5M machine). On day one the only machine
-    // on sale is the tyre machine (wheels); every other machine needs `local`+,
-    // so a repair in any non-wheels group must never appear.
-    const buyableAtUnknown = (group: ComponentId): boolean =>
-      EQUIPMENT.some(
-        (e) =>
-          e.componentIds.includes(group) &&
-          (e.minReputationTier === undefined || e.minReputationTier === 'unknown'),
-      )
-    let sawAnyOffer = false
-    for (let seed = 1; seed <= 300; seed++) {
-      const state = createInitialGameState(CONTEXT, seed)
-      for (const offer of state.serviceJobOffers) {
-        sawAnyOffer = true
-        for (const task of offer.tasks) {
-          if (task.action !== 'repair') continue
-          const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group
-          // Nothing is owned on day one, so every offered repair task's group
-          // must be one whose machine the player can actually buy right now.
-          expect(buyableAtUnknown(group)).toBe(true)
-        }
-      }
-    }
-    expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
+    // The deficit clears (and the hint disappears) once the line is upgraded.
+    expect(isTemplateOfferable(oneGroupTwoTiers, testToolTiers({ body: 3 }), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(oneGroupOneTier, testToolTiers({ body: 2 }), CONTEXT)).toBeNull()
   })
 })
 
@@ -797,7 +693,6 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
-      ownedEquipmentIds: equipmentIdsFor(twoRepairType),
     }
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(0)
@@ -824,7 +719,6 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
       parkingBayCount: 0,
-      ownedEquipmentIds: equipmentIdsFor(twoRepairType),
     }
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(1)
@@ -835,42 +729,37 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
   })
 
   /**
-   * Sprint 13 decision 2, extended by Sprint 29: a job with ANY repair task
-   * "can't even be accepted" without that task's group equipment -
-   * install-only tasks are never gated (replace is always available).
+   * Sprint 36: acceptance is gated by tool-tier deficits (the offer rule's
+   * accept half) - an upgrade-hint offer is refused until the line is
+   * upgraded, then accepted, with the deficit re-checked live.
    */
-  it('refuses when ANY repair task in the job needs equipment the shop does not own, leaving it on the board', () => {
-    const offer = { ...activeJob(mixedType), dueOnDay: null } // repair panels + repair dampers + install tyres
+  it("refuses (reason 'tool-tier') while a task's minToolTier exceeds the line's tier, and accepts once upgraded", () => {
+    const template = { ...twoRepairType, tasks: raiseMinToolTier(twoRepairType, 2) }
+    const offer = { ...activeJob(template), tasks: template.tasks, dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
-      ownedEquipmentIds: [], // owns nothing
     }
-    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
-    expect(result.state.serviceJobOffers).toHaveLength(1)
-    expect(result.state.activeServiceJobs).toHaveLength(0)
-    expect(result.log).toEqual([
-      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-equipment' },
+    const refused = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(refused.state.serviceJobOffers).toHaveLength(1)
+    expect(refused.state.activeServiceJobs).toHaveLength(0)
+    expect(refused.log).toEqual([
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
     ])
+
+    const upgraded = {
+      ...state,
+      toolTiers: testToolTiers({ wheels: 2, suspension: 2 }),
+    }
+    const accepted = resolveAcceptServiceJob(upgraded, offer.id, CONTEXT)
+    expect(accepted.state.activeServiceJobs).toHaveLength(1)
   })
 
-  it('accepts once every repair task’s group is equipped, even with several tasks', () => {
+  it('accepts any default-content offer outright - every minToolTier is 1 this sprint', () => {
     const offer = { ...activeJob(mixedType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
-      ownedEquipmentIds: equipmentIdsFor(mixedType),
-    }
-    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
-    expect(result.state.activeServiceJobs).toHaveLength(1)
-  })
-
-  it('never gates a pure-install offer by equipment', () => {
-    const offer = { ...activeJob(installType), dueOnDay: null }
-    const state = {
-      ...createInitialGameState(CONTEXT, 1),
-      serviceJobOffers: [offer],
-      ownedEquipmentIds: [],
     }
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.activeServiceJobs).toHaveLength(1)
@@ -883,7 +772,6 @@ describe('service jobs in advanceDay', () => {
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
-      ownedEquipmentIds: equipmentIdsFor(twoRepairType),
     }
     const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
     const { state: next } = advanceDay(state, actions, 1, CONTEXT)
@@ -908,7 +796,6 @@ describe('service jobs in advanceDay', () => {
       ...createInitialGameState(CONTEXT, 1),
       day: dayN,
       serviceJobOffers: [offer],
-      ownedEquipmentIds: equipmentIdsFor(twoRepairType),
     }
     const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
     const { state: next } = advanceDay(state, actions, dayN, CONTEXT)

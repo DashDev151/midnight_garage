@@ -1,24 +1,14 @@
 import { emptyDayActions, type DayActions } from '../src/actions'
-import {
-  BUYERS,
-  CARS,
-  EQUIPMENT,
-  PARTS,
-  PARTS_TAXONOMY,
-  type GameState,
-} from '@midnight-garage/content'
+import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
 import { createInitialGameState } from '../src/newGame'
-import { groupCarParts } from './testFixtures'
+import { groupCarParts, testToolTiers } from './testFixtures'
 
-const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], undefined, [], EQUIPMENT)
-
-/** The equipment the scripted career's day-1 body repair needs (Sprint 13). */
-const WELDER_ID = EQUIPMENT.find((e) => e.componentIds.includes('body'))!.id
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
 const POC_10_MODEL_IDS = [
   'honda-city-e-aa',
@@ -91,11 +81,11 @@ function initialState(): GameState {
     // move-to-service action needs a real source slot to move it out of.
     parkingCarIds: ['car-0001', null, null],
     laborSlotsSpentToday: 0,
-    // Pre-granted, not purchased through the script - the scripted day-1
-    // body repair (below) needs it, and this fixture predates equipment
-    // as a concept; hand-placing it here matches how the spare coilovers
-    // above are also hand-placed rather than bought through the sim.
-    ownedEquipmentIds: [WELDER_ID],
+    // Sprint 36: every tool line is owned at tier 1 from day one - the
+    // scripted day-1 body repair just runs at the tier-1 repair level; the
+    // job's caller-sized 3 labor slots below are the fixture's own script,
+    // not a plan-derived figure.
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
@@ -165,17 +155,15 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 34 re-pins this hash: `generateAuctionCarInstance` now rolls
-    // mileage FROM the car's age (age -> mileage range) and the condition
-    // baseline FROM that mileage (mileage -> condition range), replacing the
-    // old flat `rng.int(30_000, 180_000)` mileage draw and Sprint 33's direct
-    // age->condition curve. That reorders the RNG draw sequence and shifts
-    // every generated car's mileage and condition in this career, so the
-    // whole-state hash moves. A pure generation change - no value-model math
-    // changed here.
+    // Sprint 36 re-pins this hash (was 10108ea2): the hashed state's shape
+    // itself changed (the equipment-ownership list removed, the six-line
+    // `toolTiers` map added), and service-job offer generation dropped the Sprint 33
+    // hint-reroll RNG draw when the equipment filter died, reordering the
+    // daily draw sequence. A pure state-shape + draw-order change - no
+    // value-model math changed here.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('10108ea2')
+    expect(hashState(finalState)).toBe('7eb02198')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -207,19 +195,19 @@ describe('advanceDay golden master', () => {
 
   it('rent is charged again, every 7 days (Sprint 23 decision 4: restored from 0)', () => {
     const finalState = runCareer(30)
-    // Sprint 13: the day-1 body repair also charges its equipment's flat
-    // consumables cost once, plus (Sprint 26) the group's real per-grade
+    // The day-1 body repair also charges the body tool line's tier-1
+    // per-job consumables cost once (Sprint 36: tier-sourced, replacing the
+    // old equipment flat fee), plus (Sprint 26) the group's real per-grade
     // repair cost, on top of rent. Rent charges on days 7/14/21/28 within a
     // 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
-    const consumablesCostYen = EQUIPMENT.find((e) => e.id === WELDER_ID)!.consumablesCostYen
+    const consumablesCostYen = CONTEXT.toolLineFor('body').tiers[0]!.consumablesCostYen
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
       'mint',
-      [WELDER_ID],
+      testToolTiers(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
     )
     const rentChargeCount = 4
     expect(finalState.cashYen).toBe(
@@ -297,14 +285,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned for Sprint 34's mileage-driven generation: the car bought and
-    // sold here is generated via the new `age -> mileage -> condition` chain,
-    // which shifts its rolled mileage and condition (and therefore its
-    // marketValue-derived sale price) and reorders the RNG draw sequence for
-    // every lot in the career, moving the final state hash. `car.year` is
-    // still not a value input (mileage reaches value only via `mileageFactor`);
-    // only generation changed.
-    expect(hashState(acquisitionCareer().sold)).toBe('2261bd6a')
+    // Re-pinned for Sprint 36 (was 2261bd6a): same causes as the 30-day
+    // career above - the hashed state carries `toolTiers` instead of the
+    // equipment-ownership list, and the deleted offer-generation hint reroll
+    // shifts the shared daily RNG draw order for the whole career. No
+    // value-model math changed; the sale price math is untouched.
+    expect(hashState(acquisitionCareer().sold)).toBe('ce6e0f11')
   })
 })
 

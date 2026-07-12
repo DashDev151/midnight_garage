@@ -9,7 +9,7 @@ import {
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
-import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
+import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
@@ -20,6 +20,8 @@ const MIN_TARGET_BOOK_VALUE_YEN = 150_000
 const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.2
+/** Sprint 36: an average player's double-cover buffer on tool upgrades. */
+const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 /** "A few of the most critical repairs," not a full restoration. */
 const CRITICAL_REPAIR_ZONE_COUNT = 2
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
@@ -55,7 +57,7 @@ export function balancedPlayerStrategy(
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
-  const equipBudget = equipmentBudget()
+  const upgradeBudget = toolUpgradeBudget()
 
   // 1. Continue any in-progress repair job from a prior day - only if its
   // car is in the service bay (moved in first, if there's room today).
@@ -83,17 +85,16 @@ export function balancedPlayerStrategy(
 
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(
-        state,
-        worstComponent,
-        actions,
-        context,
-        equipBudget,
-        CASH_BUFFER_MULTIPLIER,
-      )
+    // Sprint 36: consider upgrading the line for speed, but repair proceeds
+    // either way - work is always possible at the current tier.
+    considerToolUpgrade(
+      state,
+      worstComponent,
+      actions,
+      context,
+      upgradeBudget,
+      TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER,
     )
-      continue
     const slots = queueGroupRepair(
       state,
       car.id,

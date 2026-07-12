@@ -19,7 +19,6 @@ import {
   type PartRepairPlan,
 } from './bands'
 import type { SimContext } from './context'
-import { hasEquipmentFor } from './equipment'
 import { partFitsCar } from './parts'
 
 /**
@@ -343,11 +342,16 @@ function jobIdFor(spec: NewJobSpec): string {
 
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
 
-/** The consumables charge for repair work in `componentId` - the covering
- * equipment's per-job `consumablesCostYen` (0 if none). */
-function repairConsumablesCostYen(componentId: ComponentId, context: SimContext): number {
-  const equipment = context.equipment.find((e) => e.componentIds.includes(componentId))
-  return equipment?.consumablesCostYen ?? 0
+/** The consumables charge for repair work in `componentId` - the tool
+ * line's CURRENT-tier per-job `consumablesCostYen` (Sprint 36: tier-sourced,
+ * never an ownership scan). */
+function repairConsumablesCostYen(
+  componentId: ComponentId,
+  state: GameState,
+  context: SimContext,
+): number {
+  const tier = state.toolTiers[componentId]
+  return context.toolLines[componentId].tiers[tier - 1]!.consumablesCostYen
 }
 
 /**
@@ -356,9 +360,7 @@ function repairConsumablesCostYen(componentId: ComponentId, context: SimContext)
  * consumables + the already-priced repair work against cash, or refuses
  * silently when unaffordable (matching every can't-afford gate in this
  * codebase). ONE repair economy: both paths deduct the same consumables + the
- * same banded-repair `costYen`. The caller confirms equipment ownership first
- * (the equipment gate stays at each call site so its `job-blocked` log fires
- * in the exact order it always has).
+ * same banded-repair `costYen`.
  */
 function chargeRepairWork(
   state: GameState,
@@ -366,19 +368,19 @@ function chargeRepairWork(
   repairCostYen: number,
   context: SimContext,
 ): { ok: true; state: GameState } | { ok: false } {
-  const totalCostYen = repairConsumablesCostYen(componentId, context) + repairCostYen
+  const totalCostYen = repairConsumablesCostYen(componentId, state, context) + repairCostYen
   if (state.cashYen < totalCostYen) return { ok: false }
   return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
 }
 
 /**
- * Sprint 13: the equipment + consumables gate on *starting* a new repair-zone
- * job - checked once, at creation, never again. Equipment ownership is
- * monotonic (nothing in the sim ever removes it), so a job that passed this
- * gate never needs re-checking once it exists.
+ * The consumables + repair-cost gate on *starting* a new repair-zone job -
+ * checked once, at creation, never again. Sprint 36: there is NO ownership
+ * gate anymore (tool lines are always owned - progression bible law 1); the
+ * shop's current tool tier only sets the repair level the work climbs at.
  *
- * Sprint 26 decisions 5+7: repair-zone now ALSO charges the real yen cost of
- * the work - `planGroupRepair`'s `costYen` (grades climbed times each part's
+ * Sprint 26 decisions 5+7: repair-zone charges the real yen cost of the
+ * work - `planGroupRepair`'s `costYen` (grades climbed times each part's
  * `stepCostYen`, summed across every eligible part in the group) on top of
  * consumables. A group with nothing left to repair (every part already at
  * or above the target, or every part scrap) refuses quietly - there is
@@ -394,14 +396,6 @@ export function repairJobGate(
 ): RepairJobGate {
   if (spec.kind === 'install-part') return { ok: true, state }
 
-  const id = jobIdFor(spec)
-  if (!hasEquipmentFor(state, spec.componentId, context)) {
-    return {
-      ok: false,
-      log: [{ type: 'job-blocked', jobId: id, reason: 'equipment-missing' }],
-    }
-  }
-
   if (!spec.targetBand) return { ok: false, log: [] }
   const car = findWorkableCar(state, spec.carInstanceId)
   if (!car) return { ok: false, log: [] }
@@ -409,10 +403,9 @@ export function repairJobGate(
     car,
     spec.componentId,
     spec.targetBand,
-    state.ownedEquipmentIds,
+    state.toolTiers,
     context.partIdsByGroup,
     context.partsTaxonomyById,
-    context.equipmentById,
     spec.carPartId,
   )
   if (plan.partIds.length === 0) {
@@ -422,8 +415,8 @@ export function repairJobGate(
   }
 
   const charged = chargeRepairWork(state, spec.componentId, plan.costYen, context)
-  // Equipment owned, just can't afford the work right now - a silent refusal,
-  // matching every other can't-afford-it gate in this codebase.
+  // Can't afford the work right now - a silent refusal, matching every
+  // other can't-afford-it gate in this codebase.
   if (!charged.ok) return { ok: false, log: [] }
   return { ok: true, state: charged.state }
 }
@@ -656,7 +649,7 @@ interface ReconditionPlan {
  * Everything the recondition gate/labor needs for a loose inventory part, or
  * null when it can't be reconditioned (not in inventory, no catalog/taxonomy
  * entry, scrap, or already at/above the target). Reuses the on-car repair
- * atoms EXACTLY - `repairLevelForGroup` for the equipment-tier repair level
+ * atoms EXACTLY - `repairLevelForGroup` for the tool-tier repair level
  * and `planPartRepair` (bands.ts) for the cost + labor - so a loose part and
  * the same part installed on a car price and size identically. This is the
  * reuse the sprint exists to enforce: there is no separate bench formula.
@@ -673,7 +666,7 @@ function planReconditionPart(
   const taxonomyEntry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
   const group = taxonomyEntry?.group
   if (!catalogPart || !taxonomyEntry || !group) return null
-  const repairLevel = repairLevelForGroup(state.ownedEquipmentIds, group, context.equipmentById)
+  const repairLevel = repairLevelForGroup(state.toolTiers, group)
   const plan = planPartRepair(instance.band, targetBand, repairLevel, taxonomyEntry)
   if (plan.laborSlotsRequired === 0) return null // scrap, or nothing to climb
   return { group, plan }
@@ -685,22 +678,17 @@ export interface ReconditionQuote {
   costYen: number
   /** Labor slots the recondition takes at the shop's current repair level. */
   laborSlotsRequired: number
-  /** The component group whose equipment gates (and sets the repair level
-   * for) this part - what the UI names when the tooling is missing. */
-  group: ComponentId
-  /** Whether the shop owns equipment covering `group` - the same gate on-car
-   * repair uses (`repairJobGate`), surfaced so the UI can disable with a
-   * reason instead of a silent sim refusal. */
-  hasEquipment: boolean
 }
 
 /**
  * A read-only quote for reconditioning one loose inventory part to
  * `targetBand`, or null when there is nothing to do (not repairable, or
  * already at/above the target). Powers the inventory UI's recondition control
- * (cost/labor preview + equipment gate) without mutating anything - it routes
- * through the exact same `planReconditionPart` the resolver does, so the
- * previewed cost/labor is precisely what the player will be charged.
+ * (cost/labor preview) without mutating anything - it routes through the
+ * exact same `planReconditionPart` the resolver does, so the previewed
+ * cost/labor is precisely what the player will be charged. Sprint 36: no
+ * tooling gate anymore - the current tool tier only sets speed and the
+ * consumables charge.
  */
 export function reconditionQuote(
   state: GameState,
@@ -711,10 +699,8 @@ export function reconditionQuote(
   const planned = planReconditionPart(state, partInstanceId, targetBand, context)
   if (!planned) return null
   return {
-    costYen: repairConsumablesCostYen(planned.group, context) + planned.plan.costYen,
+    costYen: repairConsumablesCostYen(planned.group, state, context) + planned.plan.costYen,
     laborSlotsRequired: planned.plan.laborSlotsRequired,
-    group: planned.group,
-    hasEquipment: hasEquipmentFor(state, planned.group, context),
   }
 }
 
@@ -722,14 +708,15 @@ export function reconditionQuote(
  * The instant player-facing recondition resolver (Sprint 35) - the loose-part
  * analogue of `resolveJobLabor`. Finds the part's already-open recondition
  * job (a repeat click continues it) or creates one through the SAME repair
- * economy as an on-car repair: the same equipment gate (`hasEquipmentFor`),
- * the same consumables + banded-repair charge (`chargeRepairWork`), the same
- * repair-level-sized labor (`planPartRepair`). Then it spends today's
- * remaining labor via the SAME `applyAvailableLaborToJob` the on-car click
- * uses (which books the spend into `laborSlotsSpentToday` identically and
- * completes by climbing the part's band). There is no second bench cost, no
- * second labor pool - one repair economy, targeting a loose part instead of a
- * car slot. Works on ANY inventory part, not only customer-owned ones.
+ * economy as an on-car repair: the same consumables + banded-repair charge
+ * (`chargeRepairWork`), the same tool-tier-sized labor (`planPartRepair`).
+ * Then it spends today's remaining labor via the SAME
+ * `applyAvailableLaborToJob` the on-car click uses (which books the spend
+ * into `laborSlotsSpentToday` identically and completes by climbing the
+ * part's band). There is no second bench cost, no second labor pool - one
+ * repair economy, targeting a loose part instead of a car slot. Works on ANY
+ * inventory part, not only customer-owned ones. Sprint 36: no tooling gate -
+ * bench work is always possible, just slower at tier 1.
  */
 export function resolveReconditionLabor(
   state: GameState,
@@ -747,14 +734,6 @@ export function resolveReconditionLabor(
 
   const planned = planReconditionPart(state, partInstanceId, targetBand, context)
   if (!planned) return { state, log: [], laborSlotsUsed: 0 }
-
-  if (!hasEquipmentFor(state, planned.group, context)) {
-    return {
-      state,
-      log: [{ type: 'job-blocked', jobId, reason: 'equipment-missing' }],
-      laborSlotsUsed: 0,
-    }
-  }
 
   const charged = chargeRepairWork(state, planned.group, planned.plan.costYen, context)
   if (!charged.ok) return { state, log: [], laborSlotsUsed: 0 }

@@ -1,4 +1,9 @@
-import type { AuctionTier, GameState } from '@midnight-garage/content'
+import {
+  ComponentIdSchema,
+  type AuctionTier,
+  type ComponentId,
+  type GameState,
+} from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
 import {
@@ -11,21 +16,20 @@ import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import { reputationAtLeast } from '../calendar'
 import { AUCTION_TIER_MIN_REPUTATION } from '../constants'
 import type { SimContext } from '../context'
-import {
-  ASCENDING_EQUIPMENT_COST_COMPONENTS,
-  equipmentBudget,
-  ensureEquipmentFor,
-} from './equipmentHelpers'
+import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
-import { isServiceWorkDone } from '../serviceJobs'
+import { isServiceWorkDone, toolDeficitSummary } from '../serviceJobs'
 import {
-  canEquipForOffer,
   expectedProfitPerLaborSlot,
   MIN_PROFIT_PER_LABOR_SLOT_YEN,
   queueServiceJobTasks,
 } from './serviceJobHelpers'
+
+/** The six real component groups, canonical order (Sprint 36: replaces the
+ * retired ascending-equipment-cost ordering). */
+const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
 
 /**
  * One car at a time, deliberately - measurement showed that even 2 (every
@@ -50,6 +54,10 @@ const CASH_BUFFER_MULTIPLIER = 1.15
  */
 const ACCEPT_FRACTION = 0.9
 const MAX_HOLDING_DAYS = 15
+
+/** Sprint 36: a competent player's double-cover buffer on tool upgrades -
+ * speed is bought when the bankroll comfortably covers it, never before. */
+const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 
 const TIER_ORDER: readonly AuctionTier[] = [
   'collector-network',
@@ -95,7 +103,7 @@ export function competentPolicyStrategy(
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
-  const equipBudget = equipmentBudget()
+  const upgradeBudget = toolUpgradeBudget()
   const targetTier = highestAccessibleTier(state)
 
   // 1. Continue any in-progress job (repair-zone or install-part).
@@ -136,26 +144,29 @@ export function competentPolicyStrategy(
     }
   }
 
-  // 4. Repair the cheapest-to-unlock needy component on each owned,
-  // job-free car - tries every needy component in ascending equipment-cost
-  // order before giving up on the car, exactly like the Sprint 23-fixed
-  // `cautiousRestorerStrategy` (see that file's own doc comment for why the
-  // naive "first needy component" version could deadlock permanently).
+  // 4. Repair the first needy component on each owned, job-free car.
+  // Sprint 36: work is always possible at the current tool tier (the
+  // Sprint 19c/23 reachability-deadlock class is structurally gone), so
+  // this picks the first below-mint group, considers upgrading its line for
+  // speed, and proceeds with the repair regardless.
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
   const carsGettingJobsToday = new Set<string>()
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue
 
-    let groupToRepair: (typeof ASCENDING_EQUIPMENT_COST_COMPONENTS)[number] | undefined
-    for (const id of ASCENDING_EQUIPMENT_COST_COMPONENTS) {
-      if (isGroupAtLeast(car, id, 'mint', context.partIdsByGroup)) continue
-      if (ensureEquipmentFor(state, id, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER)) {
-        groupToRepair = id
-        break
-      }
-    }
+    const groupToRepair = ALL_GROUPS.find(
+      (id) => !isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
+    )
     if (!groupToRepair) continue
+    considerToolUpgrade(
+      state,
+      groupToRepair,
+      actions,
+      context,
+      upgradeBudget,
+      TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER,
+    )
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     const slotsToApply = queueGroupRepair(
@@ -196,7 +207,7 @@ export function competentPolicyStrategy(
   // this policy's own measurement probe (see ACCEPT_FRACTION's doc comment).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
-    const isRestored = ASCENDING_EQUIPMENT_COST_COMPONENTS.every((id) =>
+    const isRestored = ALL_GROUPS.every((id) =>
       isGroupAtLeast(car, id, 'mint', context.partIdsByGroup),
     )
     if (isRestored) {
@@ -245,10 +256,14 @@ export function competentPolicyStrategy(
     }
 
     if (laborBudget > 0 && bayBudget.free > 0) {
+      // Sprint 36: acceptance is gated by tool-tier deficits, not ownership -
+      // this probe only takes offers it can accept outright (zero deficits);
+      // chasing an upgrade-hint offer is serviceGrinder's archetype, not the
+      // competent baseline's.
       const offer = state.serviceJobOffers.find(
         (o) =>
           expectedProfitPerLaborSlot(o, context) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
-          canEquipForOffer(state, o, actions, context, equipBudget, CASH_BUFFER_MULTIPLIER),
+          toolDeficitSummary(o.tasks, state.toolTiers, context).maxDeficit === 0,
       )
       if (offer) actions.acceptServiceJobs.push({ offerId: offer.id })
     }

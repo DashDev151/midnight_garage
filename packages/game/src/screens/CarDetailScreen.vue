@@ -116,11 +116,6 @@ function continueJob(componentId: ComponentId, carPartId?: CarPartId): void {
   else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId, carPartId)
 }
 
-/** The equipment item covering this component, if the catalog has one (Sprint 13). */
-function equipmentFor(componentId: ComponentId) {
-  return game.equipmentCatalog.find((e) => e.componentIds.includes(componentId))
-}
-
 /**
  * Resolve a customer job immediately (paid if the work's done, forfeited with a
  * reputation hit if not). The car then leaves the shop, so the detail computed
@@ -467,13 +462,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <template v-else>
                   <button
                     v-if="groupNeedsRepair(componentId)"
-                    :disabled="!game.hasEquipmentForComponent(componentId)"
-                    :class="{ 'needs-equipment': !game.hasEquipmentForComponent(componentId) }"
-                    :title="
-                      !game.hasEquipmentForComponent(componentId)
-                        ? 'Needs ' + (equipmentFor(componentId)?.displayName ?? 'equipment')
-                        : undefined
-                    "
                     :data-test="'stage-repair-' + componentId"
                     @click="toggleGroupRepairStage(componentId)"
                   >
@@ -532,13 +520,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     <template v-else>
                       <button
                         v-if="row.band && row.band !== 'mint' && row.band !== 'scrap'"
-                        :disabled="!game.hasEquipmentForComponent(componentId)"
-                        :class="{ 'needs-equipment': !game.hasEquipmentForComponent(componentId) }"
-                        :title="
-                          !game.hasEquipmentForComponent(componentId)
-                            ? 'Needs ' + (equipmentFor(componentId)?.displayName ?? 'equipment')
-                            : undefined
-                        "
                         :data-test="'stage-repair-part-' + row.partId"
                         @click="togglePartRepairStage(componentId, row.partId)"
                       >
@@ -1002,14 +983,6 @@ button.primary.danger {
 .slot-empty {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-}
-
-/* Compact disabled state for a missing-equipment lock (Sprint 25 task 9):
-   a colored border reads as "blocked, not just busy" at a glance, and the
-   full reason lives in the title tooltip instead of a separate text line. */
-button.needs-equipment {
-  border-color: var(--mg-neon-pink);
-  opacity: 0.6;
 }
 
 .installed {

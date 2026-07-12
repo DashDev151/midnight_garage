@@ -8,7 +8,25 @@ import {
   type ComponentId,
   type ConditionBand,
   type PartInstance,
+  type ToolTiers,
 } from '@midnight-garage/content'
+
+/**
+ * Sprint 36 shared fixture: a full six-line `toolTiers` map, every line at
+ * 1 (the new-game floor) unless overridden - so no test file hand-writes
+ * all six keys to move one line.
+ */
+export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
+  return {
+    engine: 1,
+    drivetrain: 1,
+    suspension: 1,
+    wheels: 1,
+    body: 1,
+    interior: 1,
+    ...overrides,
+  }
+}
 
 /**
  * One `grade: 'stock'` catalog part id per `CarPartId` (Sprint 32 decision 1

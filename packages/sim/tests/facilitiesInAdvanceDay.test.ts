@@ -1,7 +1,6 @@
 import {
   BUYERS,
   CARS,
-  EQUIPMENT,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -24,12 +23,7 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
-  EQUIPMENT,
 )
-/** Covers 'body' (the repair component these labor/bay tests exercise) plus, for the
- * parking-gate test below, every other component too so whichever offer comes up first
- * never trips the Sprint 13 equipment gate - that test is about parking, not equipment. */
-const ALL_EQUIPMENT_IDS = EQUIPMENT.map((e) => e.id)
 
 function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
@@ -39,7 +33,6 @@ function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
     state: {
       ...base,
       activeAuctionLots: [lot!],
-      ownedEquipmentIds: ALL_EQUIPMENT_IDS,
       ...overrides,
     },
     lot: lot!,
@@ -176,7 +169,10 @@ describe('acquisitions require a free parking space at delivery, never at biddin
 
   it('accepting a service job is skipped (offer stays) when parking is full', () => {
     const base = createInitialGameState(CONTEXT, 1)
-    const full = { ...base, parkingBayCount: 0, ownedEquipmentIds: ALL_EQUIPMENT_IDS }
+    // Sprint 36: no equipment/tool gate can interfere here - every line is
+    // owned at tier 1 and all shipped templates default to minToolTier 1,
+    // so this test is purely about parking.
+    const full = { ...base, parkingBayCount: 0 }
     // Force a weekly offer refresh to get a real offer on the board.
     const withOffers = advanceDay({ ...full, day: 7 }, noActions, 1, CONTEXT).state
     expect(withOffers.serviceJobOffers.length).toBeGreaterThan(0)

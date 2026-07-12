@@ -17,7 +17,6 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
   it('staging and unstaging a repair cost nothing', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     const carId = game.gameState.ownedCars[0]!.id
     const cashBefore = game.cashYen
 
@@ -107,7 +106,6 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
   it('confirmCarWork resolves every staged action through the real job/labor system, then clears the list', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.moveCar(carId, 'service')
 
@@ -127,20 +125,27 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(game.gameState.partInventory.some((pi) => pi.id === partInstanceId)).toBe(false)
   })
 
-  it('confirmCarWork still refuses a staged repair without the equipment (Sprint 13 gate)', () => {
+  it('confirmCarWork starts a staged repair at tier 1 with nothing upgraded (the Sprint 13 equipment gate is retired)', () => {
     const game = useGameStore()
-    game.devGrantCar(CARS[0]!.id) // no equipment granted
-    const carId = game.gameState.ownedCars[0]!.id
-    game.moveCar(carId, 'service')
-    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
+    // Correlated band rolls can land a group fully mint even on a rough car -
+    // retry grants until the body group actually needs work.
+    let car = game.gameState.ownedCars.at(-1)
+    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
+      game.devGrantCar(CARS[0]!.id)
+      car = game.gameState.ownedCars.at(-1)!
+    }
+    if (!car) throw new Error('expected a granted car')
+    game.moveCar(car.id, 'service')
+    const cashBefore = game.cashYen
+    game.stageAction(car.id, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
 
-    game.confirmCarWork(carId)
+    game.confirmCarWork(car.id)
 
-    expect(game.stagedActionsFor(carId)).toEqual([])
-    expect(game.gameState.jobs).toHaveLength(0)
-    expect(
-      game.dayLog.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
-    ).toBe(true)
+    expect(game.stagedActionsFor(car.id)).toEqual([])
+    // The repair really started: consumables + the group's repair bill were
+    // charged. No refusal path exists anymore - nothing gets job-blocked.
+    expect(game.cashYen).toBeLessThan(cashBefore)
+    expect(game.dayLog.some((e) => e.type === 'job-blocked')).toBe(false)
   })
 
   it('selling the car drops its staged work (decision 7)', () => {

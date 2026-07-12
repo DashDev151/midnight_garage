@@ -34,9 +34,9 @@ export interface StagedWorkResolution {
  * flow always used - Confirm is a loop over that machinery, not a new
  * resolution path. Staged actions are processed in list order (first staged,
  * first dibs on today's labor); an action whose gate refuses (e.g. the
- * repair equipment gate) or that only partially labors today still leaves
- * behind a normal, continuable `Job` - nothing here changes what happens to
- * an already-open job afterward. The car's staged list is cleared
+ * repair-cost affordability gate) or that only partially labors today still
+ * leaves behind a normal, continuable `Job` - nothing here changes what
+ * happens to an already-open job afterward. The car's staged list is cleared
  * unconditionally at the end, whether or not every action could be fully
  * labored today.
  *
@@ -76,10 +76,9 @@ export function confirmStagedWork(
         car,
         action.componentId,
         action.targetBand,
-        current.ownedEquipmentIds,
+        current.toolTiers,
         context.partIdsByGroup,
         context.partsTaxonomyById,
-        context.equipmentById,
         action.carPartId,
       )
       if (plan.partIds.length > 0) {

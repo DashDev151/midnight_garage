@@ -65,9 +65,10 @@ const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
 const isCustomerOwned = computed(() => props.instance.customerJobId !== undefined)
 
 /**
- * Sprint 35: the recondition-to-mint quote (cost + labor + equipment gate),
- * or null when there is nothing to do (already mint, or scrap). Reconditioning
- * routes through the exact same repair economy as an on-car repair.
+ * Sprint 35: the recondition-to-mint quote (cost + labor), or null when
+ * there is nothing to do (already mint, or scrap). Reconditioning routes
+ * through the exact same repair economy as an on-car repair. Sprint 36: no
+ * tooling gate anymore - only today's labor gates the control.
  */
 const reconditionMint = computed(() =>
   props.showRecondition && !isScrap.value
@@ -75,10 +76,7 @@ const reconditionMint = computed(() =>
     : null,
 )
 const reconditionDisabled = computed(
-  () =>
-    !reconditionMint.value ||
-    !reconditionMint.value.hasEquipment ||
-    game.laborSlotsRemainingToday <= 0,
+  () => !reconditionMint.value || game.laborSlotsRemainingToday <= 0,
 )
 
 function onCardClick(): void {
@@ -139,12 +137,6 @@ function onPointerUp(event: PointerEvent): void {
       </span>
       <span v-if="isScrap" class="scrap-hint">scrap - can't be installed anywhere</span>
       <span v-else-if="!fits" class="no-fit-hint">doesn't fit here</span>
-      <span
-        v-if="reconditionMint && !reconditionMint.hasEquipment"
-        class="no-fit-hint"
-        :data-test="'recondition-blocked-' + instance.id"
-        >needs {{ reconditionMint.group }} tools to recondition</span
-      >
     </div>
     <div class="part-actions">
       <button

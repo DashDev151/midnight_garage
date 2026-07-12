@@ -202,4 +202,64 @@ harness (orchestrator does).
 
 ## Exit
 
-*(filled on completion)*
+Implemented in full, 2026-07-12. Every locked-specification section landed as written; nothing
+was improvised.
+
+- **Content:** `data/equipment.json` + `src/equipment.ts` deleted; `data/toolLines.json` ships
+  the exact table above, validated by `src/toolLines.ts` (6 ComponentId keys exhaustive, 3 tiers,
+  tier-1 price 0, strictly ascending prices; `schemas.test.ts` asserts all four).
+- **State/action:** `GameStateSchema.toolTiers` (all six keys required, not defaulted);
+  `tool-upgraded` DayLog entry added, `equipment-purchased` kept for old-log decode;
+  `upgradeToolLines` DayAction replaces `buyEquipment`; `newGame` seeds all six lines at 1;
+  `SimContext.toolLines`/`toolLineFor` replace the equipment catalog (8th `buildSimContext`
+  positional, defaulted to `TOOL_LINES`).
+- **Offer rule:** `minToolTier` (default 1) on both task variants; offerable iff max deficit <= 1
+  AND at most one distinct deficient group; hint string "needs <next tier displayName>";
+  accept-time refusal logs reason `'tool-tier'`. The Sprint 33 filter/hint pipeline
+  (`missingEquipmentGroups`, `groupHasPurchasableEquipment`,
+  `actionableOrOnePurchaseAwayTemplates`, `MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER`,
+  `JOB_HINT_OFFER_CHANCE`) is deleted, retiring interim fix dc306d9 by design.
+- **Repair paths:** `repairLevelForGroup(toolTiers, groupId)` reads the map;
+  `planGroupRepair`/recondition take `toolTiers`; consumables are the line's CURRENT-tier
+  `consumablesCostYen`; zero ownership refusals remain in sim or UI (grep-verified: no
+  `ownedEquipmentIds`/`hasEquipmentFor*`/`ensureEquipmentFor` references outside `saveCodec.ts`'s
+  v22->v23 migration and its tests).
+- **Save migration:** `SAVE_VERSION = 23`; `MIGRATIONS[22]` maps the frozen 7-id legacy table
+  (per group max level, unknown ids ignored, list deleted). Golden tests: engine-crane +
+  tire-machine -> engine 3 / wheels 2 / rest 1; same-group max (brake-lathe + suspension-press ->
+  suspension 3); unknown-id ignored; empty list -> all-1; fresh v23 round-trip. The pinned v6/v7
+  golden codes now decode through the new map (body/wheels 2 and wheels 2 respectively).
+- **Bots:** `toolUpgradeHelpers.considerToolUpgrade` with the specified per-strategy multipliers;
+  serviceGrinder's Sprint 33 single-discipline special-casing deleted; investor unchanged control;
+  `equipmentOwnedCount` keeps its CSV name, now sum(tiers) - 6.
+- **Golden hash re-pins (from real failure output):** 30-day career `10108ea2` -> `7eb02198`;
+  acquisition->sale `2261bd6a` -> `ce6e0f11`. Cause: the hashed state shape changed
+  (equipment list -> `toolTiers`) and the deleted offer-generation hint reroll reordered the
+  daily RNG draw sequence. No value-model math changed.
+- **Test rework:** `equipment.test.ts` -> `toolLines.test.ts`;
+  `gameStore.equipment.test.ts` -> `gameStore.toolLines.test.ts`; the 300-seed offer-rule sweep;
+  restoration pacing re-anchored all-T1 vs all-T3; Service Grinder's equipment-bootstrap
+  describes replaced by the paid-service-work claim (50 seeds); UpgradesScreen ladder tests;
+  ServiceJobsScreen deficit-disabled + hint-tooltip test; dayLogFormat "Upgraded Wheels to
+  Tyre machine & balancer for ¥150,000".
+- **Gate:** typecheck / lint / format / `test:coverage` (70 files, 768 tests, coverage
+  90.22 / 78.92 / 90.46 / 93.99 vs 80/65/78/82 thresholds) / build all green.
+- **Balance harness (orchestrator run, 2026-07-12): all hard invariants PASS; the economy moved
+  hard and is disclosed, not hidden.** Days-to-`local` p50 12.0 -> 19.0 (in [10,35], no re-base
+  needed), but seeds reaching `local` fell 960 -> 798/1000. Day-100 median cash collapsed for the
+  car-flipping strategies (flipper Y1.42M -> Y15k; balanced Y1.47M -> -Y49k; restorer -> -Y146k;
+  handyman -> -Y211k; random -> -Y93k) while service-grinder DOUBLED (Y1.11M -> Y1.93M, now the
+  only strategy beating passive) and competent-policy improved (Y87k -> Y176k). Acquisitions
+  halved (68k -> 34.6k). Mechanism, not mystery: every bot now spends scarce labor on slow tier-1
+  repairs it previously was FORBIDDEN from attempting (repair-to-mint policies tuned for owned
+  2-3x machines now take 2-3x the days), plus capital on tier upgrades, while service jobs
+  (priced at worst-case tooling, unchanged) became universally accessible from day one - the
+  design working as intended: service work IS the honest early money, capital work is slow until
+  you invest. The sanity-floor invariant (the catastrophic-bug catcher) passes; per the house
+  rule these are changed numbers under a changed world, not regressions - the strategies' POLICIES
+  are simply not re-tuned for it, the expected mid-arc seam (same shape as the Sprint 26->27
+  seam). Sprint 37's real ceilings + richer tier-1 job mix move this again; a bot/pacing re-tune
+  belongs after Sprint 39, not mid-arc. One genuine tuning signal for the maintainer: handyman
+  (the tier-payback archetype) at -Y211k median says tool upgrades do not pay for themselves
+  within 100 days at current prices; revisit tier prices or payback horizon in the arc-end
+  balance pass.

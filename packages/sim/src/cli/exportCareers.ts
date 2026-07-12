@@ -21,12 +21,12 @@ import {
   BUYERS,
   CARS,
   ECONOMY,
-  EQUIPMENT,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
+  TOOL_LINES,
 } from '../../../content/src/data'
 import { balancedPlayerStrategy } from '../bots/balancedPlayer'
 import { cautiousRestorerStrategy } from '../bots/cautiousRestorer'
@@ -139,7 +139,7 @@ function main(): void {
     SERVICE_JOB_TYPES,
     FACILITIES,
     SERVICE_JOB_CUSTOMER_NAMES,
-    EQUIPMENT,
+    TOOL_LINES,
     ECONOMY,
   )
   const rows: string[] = []

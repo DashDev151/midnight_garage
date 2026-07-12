@@ -2,6 +2,7 @@ import type { GameState, StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { PLAYER_BASE_LABOR_SLOTS } from '../src/constants'
 import { availableLaborSlots } from '../src/laborSlots'
+import { testToolTiers } from './testFixtures'
 
 function baseState(staff: StaffMember[]): GameState {
   return {
@@ -25,7 +26,7 @@ function baseState(staff: StaffMember[]): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

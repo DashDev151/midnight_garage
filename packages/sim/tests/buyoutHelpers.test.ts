@@ -18,6 +18,7 @@ import {
   walkAwayTargetYen,
 } from '../src/bots/buyoutHelpers'
 import { bellNormal, createRng, hashStringToSeed } from '../src/rng'
+import { testToolTiers } from './testFixtures'
 
 // Real PARTS (not []): generation now fills every slot with a real stock
 // PartInstance by default (Sprint 32) - an empty catalog would make every
@@ -55,7 +56,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

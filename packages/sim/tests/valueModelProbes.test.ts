@@ -21,6 +21,7 @@ import { marketValueYen } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { bestFitBuyer } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
+import { testToolTiers } from './testFixtures'
 
 /**
  * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
@@ -62,7 +63,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

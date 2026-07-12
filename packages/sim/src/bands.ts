@@ -6,7 +6,7 @@ import type {
   ComponentId,
   ConditionBand,
   EconomyConfig,
-  Equipment,
+  ToolTiers,
 } from '@midnight-garage/content'
 
 /**
@@ -218,22 +218,13 @@ export function costWeightedBandFactor(
 }
 
 /**
- * Sprint 26 decision 7: grades climbed per labor slot for a group - the
- * best owned equipment covering it sets the level; base hand tools (nothing
- * owned) default to level 1. Exactly 1, 2, or 3, never an open multiplier.
+ * Sprint 26 decision 7: grades climbed per labor slot for a group. Sprint
+ * 36 re-sources it: the group's tool-line TIER is the repair level (the
+ * same 1|2|3 ladder, read from the persisted `toolTiers` map instead of an
+ * ownership scan). Exactly 1, 2, or 3, never an open multiplier.
  */
-export function repairLevelForGroup(
-  ownedEquipmentIds: readonly string[],
-  groupId: ComponentId,
-  equipmentById: Readonly<Record<string, Equipment>>,
-): 1 | 2 | 3 {
-  let best: 1 | 2 | 3 = 1
-  for (const id of ownedEquipmentIds) {
-    const equipment = equipmentById[id]
-    if (!equipment || !equipment.componentIds.includes(groupId)) continue
-    if (equipment.repairLevel > best) best = equipment.repairLevel
-  }
-  return best
+export function repairLevelForGroup(toolTiers: ToolTiers, groupId: ComponentId): 1 | 2 | 3 {
+  return toolTiers[groupId]
 }
 
 /** `ceil(gradesToClimb / repairLevel)` - the worked examples from
@@ -301,21 +292,20 @@ export interface GroupRepairPlan {
  * Sprint 28: `onlyPartId`, when set, restricts the plan to that one part
  * instead of every eligible part in the group - the per-part Repair row's
  * own pricing, reusing the same per-part loop and `repairLevelForGroup`
- * (equipment still covers a whole group, decision 7 - a per-part repair
- * doesn't get its own equipment tier) rather than standing up a parallel
+ * (a tool line still covers a whole group, decision 7 - a per-part repair
+ * doesn't get its own tier) rather than standing up a parallel
  * single-part planner (directive 4: same concern, extend don't duplicate).
  */
 export function planGroupRepair(
   car: CarInstance,
   groupId: ComponentId,
   targetBand: ConditionBand,
-  ownedEquipmentIds: readonly string[],
+  toolTiers: ToolTiers,
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
-  equipmentById: Readonly<Record<string, Equipment>>,
   onlyPartId?: CarPartId,
 ): GroupRepairPlan {
-  const repairLevel = repairLevelForGroup(ownedEquipmentIds, groupId, equipmentById)
+  const repairLevel = repairLevelForGroup(toolTiers, groupId)
   let laborSlotsRequired = 0
   let costYen = 0
   const partIds: CarPartId[] = []

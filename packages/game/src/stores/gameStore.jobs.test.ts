@@ -61,8 +61,8 @@ describe('service jobs in the store', () => {
   it('accepting brings the customer car into the shop instantly, owning nothing', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 13: accepting an offer with a repair task now requires owning its equipment.
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
+    // Sprint 36: nothing gates acceptance at tier 1 - every shipped template
+    // defaults to minToolTier 1, so no tool setup is needed here.
     warpToUnfinishedOffer(game)
     const offer = findUnfinishedOffer(game)
     if (!offer) throw new Error('expected an unfinished offer on the board')
@@ -77,7 +77,10 @@ describe('service jobs in the store', () => {
   it('doing the repair work then clicking Complete pays out immediately and gains reputation', () => {
     const game = useGameStore()
     game.newGame(1)
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
+    // Sprint 36: max every tool line so the work loop below keeps its old
+    // all-equipment pacing (fastest repair level) inside the 20-day cap -
+    // this test is about completion + payout, not tier-1 throughput.
+    for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
@@ -140,7 +143,6 @@ describe('service jobs in the store', () => {
   it('clicking Complete before the work is done fails the job immediately, no pay', () => {
     const game = useGameStore()
     game.newGame(1)
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
@@ -156,7 +158,6 @@ describe('service jobs in the store', () => {
   it('an untouched job auto-fails at its deadline (no pay)', () => {
     const game = useGameStore()
     game.newGame(1)
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
@@ -183,7 +184,6 @@ describe('service jobs in the store', () => {
   it('staging work against an in-transit car is rejected', () => {
     const game = useGameStore()
     game.newGame(1)
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')

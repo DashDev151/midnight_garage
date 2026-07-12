@@ -56,12 +56,8 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
           <div class="offer-foot">
             <button
               :disabled="!offer.canAccept"
-              :class="{ 'needs-equipment': !offer.canAccept }"
-              :title="
-                !offer.canAccept
-                  ? 'Needs ' + (offer.missingEquipmentName ?? 'equipment')
-                  : undefined
-              "
+              :class="{ 'needs-upgrade': !offer.canAccept }"
+              :title="!offer.canAccept ? (offer.upgradeHint ?? 'needs a tool upgrade') : undefined"
               :data-test="'accept-' + offer.id"
               @click="game.acceptServiceJob(offer.id)"
             >
@@ -203,10 +199,10 @@ h3 {
   gap: var(--mg-space-3);
 }
 
-/* Compact disabled state for a missing-equipment lock (Sprint 25 task 9):
-   a colored border reads as "blocked, not just busy" at a glance, and the
-   full reason lives in the title tooltip instead of a separate text line. */
-button.needs-equipment {
+/* Compact disabled state for a tool-tier lock (Sprint 36): a colored border
+   reads as "blocked, not just busy" at a glance, and the upgrade hint lives
+   in the title tooltip instead of a separate text line. */
+button.needs-upgrade {
   border-color: var(--mg-neon-pink);
   opacity: 0.6;
 }

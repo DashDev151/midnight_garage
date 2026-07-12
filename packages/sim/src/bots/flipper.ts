@@ -9,7 +9,7 @@ import {
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
-import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
+import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
 
@@ -28,6 +28,8 @@ const PLAYER_LABOR_SLOTS = 2 // flipper never hires staff
  */
 const BID_FRACTION_OF_BOOK = 1.0
 const CASH_BUFFER_MULTIPLIER = 1.3
+/** Sprint 36: even a fast flipper only invests in tools at double cover. */
+const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 /** Shitbox-range only - local-yard also carries Common-tier lots (e.g. an
  * EG6 at 650k book) whose much larger absolute swings don't fit a bot
  * that does one cheap repair and flips fast. */
@@ -62,7 +64,7 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
 
   let laborBudget = PLAYER_LABOR_SLOTS
   const bayBudget = serviceBayBudget(state)
-  const equipBudget = equipmentBudget()
+  const upgradeBudget = toolUpgradeBudget()
 
   // 1. Continue any in-progress repair job from a prior day - only if its
   // car is in the service bay (moved in first, if there's room today).
@@ -86,17 +88,16 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (isGroupAtLeast(car, worstComponent, 'mint', context.partIdsByGroup)) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(
-        state,
-        worstComponent,
-        actions,
-        context,
-        equipBudget,
-        CASH_BUFFER_MULTIPLIER,
-      )
+    // Sprint 36: consider upgrading the line for speed, but repair proceeds
+    // either way - work is always possible at the current tier.
+    considerToolUpgrade(
+      state,
+      worstComponent,
+      actions,
+      context,
+      upgradeBudget,
+      TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER,
     )
-      continue
 
     const slots = queueGroupRepair(
       state,

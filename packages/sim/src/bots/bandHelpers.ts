@@ -75,10 +75,9 @@ export function queueGroupRepair(
     car,
     groupId,
     'mint',
-    state.ownedEquipmentIds,
+    state.toolTiers,
     context.partIdsByGroup,
     context.partsTaxonomyById,
-    context.equipmentById,
   )
   if (plan.partIds.length === 0) return 0
   const jobIndex = actions.createJobs.length

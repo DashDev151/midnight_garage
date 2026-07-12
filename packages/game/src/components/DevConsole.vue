@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { ReputationTierSchema, type BayKind, type ReputationTier } from '@midnight-garage/content'
+import {
+  ReputationTierSchema,
+  type BayKind,
+  type ComponentId,
+  type ReputationTier,
+  type ToolTier,
+} from '@midnight-garage/content'
 import { ref } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
@@ -12,7 +18,9 @@ const giveAmount = ref(100_000)
 const warpDays = ref(7)
 const grantModelId = ref('')
 const grantPartId = ref('')
-const grantEquipmentId = ref('')
+const setToolComponentId = ref<ComponentId>('engine')
+const setToolTier = ref<ToolTier>(1)
+const toolTierOptions: readonly ToolTier[] = [1, 2, 3]
 const grantBayKind = ref<BayKind>('service')
 const setReputationTier = ref<ReputationTier>('unknown')
 const reputationTiers = ReputationTierSchema.options
@@ -67,15 +75,19 @@ function warp(): void {
     </div>
 
     <div class="row">
-      <select v-model="grantEquipmentId">
-        <option value="">pick equipment</option>
-        <option v-for="e in game.equipmentCatalog" :key="e.id" :value="e.id" :disabled="e.owned">
-          {{ e.displayName }}{{ e.owned ? ' (owned)' : '' }}
+      <select v-model="setToolComponentId">
+        <option
+          v-for="line in game.toolLineViews"
+          :key="line.componentId"
+          :value="line.componentId"
+        >
+          {{ line.componentLabel }} (tier {{ line.currentTier }})
         </option>
       </select>
-      <button :disabled="!grantEquipmentId" @click="game.devGrantEquipment(grantEquipmentId)">
-        grant equipment
-      </button>
+      <select v-model.number="setToolTier">
+        <option v-for="t in toolTierOptions" :key="t" :value="t">tier {{ t }}</option>
+      </select>
+      <button @click="game.devSetToolTier(setToolComponentId, setToolTier)">set tool tier</button>
     </div>
 
     <div class="row">

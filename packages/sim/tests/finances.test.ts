@@ -1,6 +1,7 @@
 import { ECONOMY, type GameState, type StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { applyWeeklyRentAndWages } from '../src/finances'
+import { testToolTiers } from './testFixtures'
 
 const staffMember: StaffMember = {
   id: 'staff-0001',
@@ -32,7 +33,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

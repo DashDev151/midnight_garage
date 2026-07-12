@@ -47,7 +47,7 @@ function serviceCar(id: string): ServiceJob {
     typeId: 'repair-engine',
     customerName: 'Test Customer',
     description: 'test',
-    tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint' }],
+    tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint', minToolTier: 1 }],
     car: { ...car, id },
     payoutYen: 20_000,
     baseReputation: 1,

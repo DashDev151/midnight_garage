@@ -1,17 +1,10 @@
-import type {
-  ComponentId,
-  GameState,
-  Job,
-  ServiceJob,
-  ServiceJobTask,
-} from '@midnight-garage/content'
+import type { GameState, Job, ServiceJob, ServiceJobTask } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
 import { planGroupRepair } from '../bands'
 import { INSTALL_LABOR_SLOTS } from '../constants'
 import type { SimContext } from '../context'
 import { gradeAtLeast, partFitsCar } from '../parts'
 import { isServiceTaskDone, serviceJobCostBreakdown } from '../serviceJobs'
-import { ensureEquipmentFor, type EquipmentBudget } from './equipmentHelpers'
 
 /**
  * Sprint 29: shared bot-side helpers for the multi-task service-job
@@ -47,40 +40,6 @@ export function expectedProfitPerLaborSlot(offer: ServiceJob, context: SimContex
     context,
   )
   return (offer.payoutYen - taskCostYen) / Math.max(1, laborSlots)
-}
-
-/** Every repair task's group, deduplicated - the equipment a bot would need
- * to own (or queue buying this same tick) before it could actually accept
- * this offer (`resolveAcceptServiceJob`'s own gate, mirrored here for the
- * bot's own decision of whether to bother trying). */
-function repairGroupsNeeded(tasks: readonly ServiceJobTask[], context: SimContext): ComponentId[] {
-  const groups = new Set<ComponentId>()
-  for (const task of tasks) {
-    if (task.action !== 'repair') continue
-    const group = context.partsTaxonomyById[task.carPartId]?.group
-    if (group) groups.add(group)
-  }
-  return [...groups]
-}
-
-/**
- * Whether a bot can accept `offer` right now - every repair task's group is
- * either already equipped or gets queued this same tick (Sprint 13's
- * equipment-buy-then-accept pattern, extended across a multi-task offer's
- * whole task list instead of one single group). An install-only offer
- * always passes trivially (replace never needs equipment).
- */
-export function canEquipForOffer(
-  state: GameState,
-  offer: ServiceJob,
-  actions: DayActions,
-  context: SimContext,
-  equipBudget: EquipmentBudget,
-  cashBufferMultiplier: number,
-): boolean {
-  return repairGroupsNeeded(offer.tasks, context).every((group) =>
-    ensureEquipmentFor(state, group, actions, context, equipBudget, cashBufferMultiplier),
-  )
 }
 
 export interface ServiceJobWorkResult {
@@ -160,10 +119,9 @@ export function queueServiceJobTasks(
         car,
         group,
         task.targetBand,
-        state.ownedEquipmentIds,
+        state.toolTiers,
         context.partIdsByGroup,
         context.partsTaxonomyById,
-        context.equipmentById,
         task.carPartId,
       )
       if (plan.partIds.length === 0) continue

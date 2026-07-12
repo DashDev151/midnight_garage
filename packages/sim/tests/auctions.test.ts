@@ -16,6 +16,7 @@ import {
 } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
+import { testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -44,7 +45,7 @@ function stateWithLots(
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

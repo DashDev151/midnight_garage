@@ -157,8 +157,9 @@ describe('CarDetailScreen', () => {
 
   it('staging the group "Repair all to fine" convenience, then Confirm, actually creates and labors the job - settling at fine, not mint', async () => {
     const game = useGameStore()
-    // Sprint 13: repair is gated on owning the matching equipment.
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
+    // Sprint 36: no ownership gate exists - max the tiers so the bounded
+    // continue-repair loop below keeps its old all-equipment pacing.
+    for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
     const id = grantCarNeedingRepair(game, 'body')
     const { wrapper } = await mountAt(id)
 
@@ -200,7 +201,6 @@ describe('CarDetailScreen', () => {
 
   it('unstaging a group repair costs nothing and creates no job', async () => {
     const game = useGameStore()
-    for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
     const id = grantCarNeedingRepair(game, 'body')
     const { wrapper } = await mountAt(id)
 
@@ -211,15 +211,16 @@ describe('CarDetailScreen', () => {
     expect(game.gameState.jobs).toHaveLength(0)
   })
 
-  it('disables the group Repair button (with a reason in its tooltip) when the equipment is not owned (Sprint 13, tooltip since Sprint 25)', async () => {
+  it('the group Repair button is enabled at tier 1 with nothing upgraded (Sprint 36: the equipment gate is retired)', async () => {
     const game = useGameStore()
     const id = grantCarNeedingRepair(game, 'body')
     const { wrapper } = await mountAt(id)
 
     const button = wrapper.find('[data-test="stage-repair-body"]')
-    expect(button.attributes('disabled')).toBeDefined()
-    expect(button.attributes('title')).toContain('Needs')
-    expect(wrapper.text()).not.toContain('needs')
+    expect(button.exists()).toBe(true)
+    expect(button.attributes('disabled')).toBeUndefined()
+    // The old needs-equipment tooltip is gone with the gate itself.
+    expect(button.attributes('title')).toBeUndefined()
   })
 
   it('redirects to the garage when the car id is not owned', async () => {
@@ -230,7 +231,6 @@ describe('CarDetailScreen', () => {
   describe('per-part drill-down (Sprint 28)', () => {
     it('a group with two non-mint parts lets both be repaired independently, without one displacing the other', async () => {
       const game = useGameStore()
-      for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
       const id = grantCarNeedingRepair(game, 'suspension')
       const rows = game
         .partsInGroup(id, 'suspension')
@@ -263,7 +263,6 @@ describe('CarDetailScreen', () => {
 
     it('staging the group convenience displaces an existing per-part stage in the same group', async () => {
       const game = useGameStore()
-      for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
       const id = grantCarNeedingRepair(game, 'suspension')
       const row = game
         .partsInGroup(id, 'suspension')

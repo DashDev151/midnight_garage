@@ -258,7 +258,14 @@ describe('GameState / DayLog round-trip', () => {
       serviceBayCarIds: ['car-0001'],
       parkingCarIds: [null, null, null],
       laborSlotsSpentToday: 0,
-      ownedEquipmentIds: [],
+      toolTiers: {
+        engine: 1,
+        drivetrain: 1,
+        suspension: 1,
+        wheels: 1,
+        body: 1,
+        interior: 1,
+      },
       pendingPartOrders: [],
       cartPartIds: [],
       stagedCarWork: {},
@@ -334,6 +341,9 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'cars-swapped', serviceCarId: 'car-0001', parkingCarId: 'car-0002' },
       { type: 'bay-purchased', kind: 'service', priceYen: 300_000 },
       { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' },
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
+      { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 150_000 },
+      { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
     ]
 
     const parsed = DayLogSchema.parse(fixture)

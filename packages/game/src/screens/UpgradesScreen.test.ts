@@ -1,14 +1,11 @@
-import { EQUIPMENT, FACILITIES } from '@midnight-garage/content'
+import { FACILITIES, TOOL_LINES } from '@midnight-garage/content'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import UpgradesScreen from './UpgradesScreen.vue'
 
-/** Ungated per the Sprint 16 ladder - day-1 accessible without reputation. */
-const TIRE_MACHINE = EQUIPMENT.find((e) => e.componentIds.includes('wheels'))!
-/** Reputation-gated per the Sprint 16 ladder (requires 'known'). */
-const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
+const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
 
 function mountScreen() {
   return mount(UpgradesScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
@@ -17,42 +14,48 @@ function mountScreen() {
 describe('UpgradesScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('renders the facilities and equipment sections', () => {
+  it('renders the facilities section and all six tool-line ladders', () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
     expect(wrapper.text()).toContain('Facilities')
-    expect(wrapper.text()).toContain('Equipment')
-    expect(wrapper.findAll('.equipment-row')).toHaveLength(EQUIPMENT.length)
+    expect(wrapper.text()).toContain('Tools')
+    expect(wrapper.findAll('.tool-row')).toHaveLength(6)
+    // A fresh game shows every line at its named tier-1 kit with the next
+    // tier offered by name and price - never a raw component id.
+    expect(wrapper.text()).toContain(TOOL_LINES.wheels.tiers[0]!.displayName)
+    expect(wrapper.text()).toContain(WHEELS_T2.displayName)
   })
 
-  it('buys an ungated equipment item and reflects it as owned', async () => {
+  it('clicking a ladder upgrade buys the next tier and re-renders it as current', async () => {
     const game = useGameStore()
     game.newGame(1)
-    game.devGiveCash(TIRE_MACHINE.priceYen)
+    game.devGiveCash(WHEELS_T2.upgradePriceYen)
     const wrapper = mountScreen()
-    await wrapper.get(`[data-test="buy-equipment-${TIRE_MACHINE.id}"]`).trigger('click')
-    expect(game.hasEquipmentForComponent('wheels')).toBe(true)
+    await wrapper.get('[data-test="upgrade-tool-wheels"]').trigger('click')
+    expect(game.gameState.toolTiers.wheels).toBe(2)
+    expect(wrapper.text()).toContain(`${WHEELS_T2.displayName} (tier 2)`)
   })
 
-  it('shows a reputation hint and a disabled buy button for a gated item not yet reachable', () => {
+  it('the upgrade button is disabled on cash alone - no reputation hint exists for tools', () => {
     const game = useGameStore()
     game.newGame(1)
-    game.devGiveCash(WELDER.priceYen)
+    game.devGiveCash(-game.cashYen) // drain to zero
     const wrapper = mountScreen()
-    const button = wrapper.get(`[data-test="buy-equipment-${WELDER.id}"]`)
+    const button = wrapper.get('[data-test="upgrade-tool-wheels"]')
     expect((button.element as HTMLButtonElement).disabled).toBe(true)
-    expect(wrapper.text()).toContain('needs known reputation')
+    // Tools are never reputation-gated (Sprint 36) - the only hint style on
+    // this screen belongs to bays.
+    expect(wrapper.find('.tools .rep-hint').exists()).toBe(false)
   })
 
-  it('the gated item becomes buyable once reputation clears the bar', async () => {
+  it('a maxed line shows Fully equipped instead of an upgrade button', () => {
     const game = useGameStore()
     game.newGame(1)
-    game.devGiveCash(WELDER.priceYen)
-    game.gameState = { ...game.gameState, reputationTier: 'known' }
+    game.devSetToolTier('wheels', 3)
     const wrapper = mountScreen()
-    await wrapper.get(`[data-test="buy-equipment-${WELDER.id}"]`).trigger('click')
-    expect(game.hasEquipmentForComponent('body')).toBe(true)
+    expect(wrapper.find('[data-test="upgrade-tool-wheels"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Fully equipped')
   })
 
   it('the service bay purchase button is disabled and hinted at a fresh, unranked game', () => {

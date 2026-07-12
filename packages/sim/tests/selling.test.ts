@@ -24,7 +24,7 @@ import {
 } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
 import { createRng } from '../src/rng'
-import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
+import { buildCarInstance, mintCarParts, testToolTiers, uniformCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
@@ -166,7 +166,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     serviceBayCarIds: [car.id],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},

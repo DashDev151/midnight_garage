@@ -1,8 +1,8 @@
 import {
   CARS,
-  EQUIPMENT,
   PARTS,
   PARTS_TAXONOMY,
+  TOOL_LINES,
   type CarInstance,
   type GameState,
   type Job,
@@ -25,17 +25,17 @@ import {
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { buildCarInstance, groupCarParts, mintCarParts } from './testFixtures'
+import { buildCarInstance, groupCarParts, mintCarParts, testToolTiers } from './testFixtures'
 
 // Real CARS/PARTS (not empty arrays) since Sprint 24 fix 2: `findOrCreateJob`
 // now validates install-part fit against the actual model/part catalog, so
 // an install spec needs both to resolve to something real.
-const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY, [], undefined, [], EQUIPMENT)
+const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
-/** Equipment ids covering the components these tests repair - owned by default so job-creation
- * tests aren't incidentally blocked by the Sprint 13 equipment gate, which has its own tests below. */
-const WELDER = EQUIPMENT.find((e) => e.componentIds.includes('body'))!
-const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!
+/** The body line's per-job consumables at each tier (Sprint 36: the charge
+ * follows the line's CURRENT tier, not an owned machine). */
+const BODY_CONSUMABLES_T1 = TOOL_LINES.body.tiers[0]!.consumablesCostYen
+const BODY_CONSUMABLES_T2 = TOOL_LINES.body.tiers[1]!.consumablesCostYen
 
 const car: CarInstance = buildCarInstance({
   id: 'car-0001',
@@ -89,7 +89,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     laborSlotsSpentToday: 0,
-    ownedEquipmentIds: [WELDER.id, ENGINE_CRANE.id],
+    toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
@@ -263,7 +263,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
     expect(second.state.jobs).toHaveLength(2)
   })
 
-  describe('the equipment + consumables + repair-cost gate (Sprint 13; cost added Sprint 26)', () => {
+  describe('the consumables + repair-cost gate (Sprint 26 cost; Sprint 36: no ownership gate)', () => {
     const spec = {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
@@ -272,30 +272,23 @@ describe('findOrCreateJob (Sprint 11)', () => {
       laborSlotsRequired: 3,
     }
 
-    it('refuses to create the job (and logs why) when the equipment is not owned', () => {
-      const result = findOrCreateJob(baseState({ ownedEquipmentIds: [] }), spec, CONTEXT)
-      expect(result.job).toBeNull()
-      expect(result.state.jobs).toHaveLength(0)
-      expect(result.log).toEqual([
-        {
-          type: 'job-blocked',
-          jobId: `job-${car.id}-repair-zone-body`,
-          reason: 'equipment-missing',
-        },
-      ])
+    it('repair proceeds at tier 1 with nothing upgraded - there is no ownership refusal anymore', () => {
+      const result = findOrCreateJob(baseState({ toolTiers: testToolTiers() }), spec, CONTEXT)
+      expect(result.job).not.toBeNull()
+      expect(result.state.jobs).toHaveLength(1)
+      expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
     })
 
-    it("charges consumables plus the group's real repair cost, deducted from cash", () => {
+    it("charges the CURRENT tier's consumables plus the group's real repair cost, deducted from cash", () => {
       const plan = planGroupRepair(
         car,
         'body',
         'mint',
-        [WELDER.id, ENGINE_CRANE.id],
+        testToolTiers(),
         CONTEXT.partIdsByGroup,
         CONTEXT.partsTaxonomyById,
-        CONTEXT.equipmentById,
       )
-      const totalCostYen = WELDER.consumablesCostYen + plan.costYen
+      const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
       const cashBefore = baseState().cashYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.job).not.toBeNull()
@@ -311,6 +304,37 @@ describe('findOrCreateJob (Sprint 11)', () => {
       ])
     })
 
+    it("a tier-2 line charges tier 2's consumables (and takes fewer labor slots), same repair cost", () => {
+      const t2State = baseState({ toolTiers: testToolTiers({ body: 2 }) })
+      const t2Plan = planGroupRepair(
+        car,
+        'body',
+        'mint',
+        t2State.toolTiers,
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsTaxonomyById,
+      )
+      const t1Plan = planGroupRepair(
+        car,
+        'body',
+        'mint',
+        testToolTiers(),
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsTaxonomyById,
+      )
+      expect(t2Plan.costYen).toBe(t1Plan.costYen)
+      expect(t2Plan.laborSlotsRequired).toBeLessThan(t1Plan.laborSlotsRequired)
+
+      const cashBefore = t2State.cashYen
+      const result = findOrCreateJob(
+        t2State,
+        { ...spec, laborSlotsRequired: t2Plan.laborSlotsRequired },
+        CONTEXT,
+      )
+      expect(result.job).not.toBeNull()
+      expect(result.state.cashYen).toBe(cashBefore - BODY_CONSUMABLES_T2 - t2Plan.costYen)
+    })
+
     it('does not re-charge when a repeat call continues the existing job', () => {
       const first = findOrCreateJob(baseState(), spec, CONTEXT)
       const second = findOrCreateJob(first.state, spec, CONTEXT)
@@ -318,17 +342,16 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(second.log).toEqual([])
     })
 
-    it('refuses silently (no log) when equipment is owned but the total cost is unaffordable', () => {
+    it('refuses silently (no log) when the total cost is unaffordable', () => {
       const plan = planGroupRepair(
         car,
         'body',
         'mint',
-        [WELDER.id, ENGINE_CRANE.id],
+        testToolTiers(),
         CONTEXT.partIdsByGroup,
         CONTEXT.partsTaxonomyById,
-        CONTEXT.equipmentById,
       )
-      const totalCostYen = WELDER.consumablesCostYen + plan.costYen
+      const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
       const broke = baseState({ cashYen: totalCostYen - 1 })
       const result = findOrCreateJob(broke, spec, CONTEXT)
       expect(result.job).toBeNull()
@@ -343,9 +366,10 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.log).toEqual([])
     })
 
-    it('install-part job creation is never gated by equipment', () => {
+    it('install-part job creation charges nothing here (the part itself is bought separately)', () => {
+      const state = baseState()
       const result = findOrCreateJob(
-        baseState({ ownedEquipmentIds: [] }),
+        state,
         {
           carInstanceId: car.id,
           kind: 'install-part',
@@ -356,6 +380,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT,
       )
       expect(result.job).not.toBeNull()
+      expect(result.state.cashYen).toBe(state.cashYen)
     })
   })
 
@@ -433,9 +458,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
   })
 })
 
-describe('repairJobGate (Sprint 13; real cost added Sprint 26)', () => {
-  it('passes install-part specs through untouched, regardless of equipment', () => {
-    const state = baseState({ ownedEquipmentIds: [] })
+describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', () => {
+  it('passes install-part specs through untouched', () => {
+    const state = baseState()
     const gate = repairJobGate(
       state,
       {
@@ -564,8 +589,8 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
     expect(second.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
   })
 
-  it('returns the gate-refusal log and does nothing when equipment is missing', () => {
-    const state = baseState({ serviceBayCarIds: [car.id], ownedEquipmentIds: [] })
+  it('repair proceeds at tier 1 with nothing upgraded - no refusal path exists (Sprint 36)', () => {
+    const state = baseState({ serviceBayCarIds: [car.id], toolTiers: testToolTiers() })
     const spec = {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
@@ -574,11 +599,9 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       laborSlotsRequired: 3,
     }
     const result = resolveJobLabor(state, spec, 2, CONTEXT)
-    expect(result.laborSlotsUsed).toBe(0)
-    expect(result.state.jobs).toHaveLength(0)
-    expect(
-      result.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
-    ).toBe(true)
+    expect(result.laborSlotsUsed).toBe(2)
+    expect(result.state.jobs[0]?.laborSlotsSpent).toBe(2)
+    expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
   })
 })
 
@@ -685,7 +708,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     typeId: 'small-bodywork-touchup',
     customerName: 'Test Customer',
     description: 'Bodywork needs sorting.',
-    tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine' }],
+    tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
     car,
     payoutYen: 10_000,
     baseReputation: 5,
@@ -754,7 +777,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     })
   }
 
-  it('the recondition quote matches the on-car per-part repair plan (cost + labor + gate), exactly', () => {
+  it('the recondition quote matches the on-car per-part repair plan (cost + labor), exactly', () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
     const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
     expect(quote).not.toBeNull()
@@ -764,18 +787,14 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       carWithPoorPanels(),
       'body',
       'mint',
-      invState.ownedEquipmentIds,
+      invState.toolTiers,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
       'panels',
     )
-    const bodyConsumables =
-      CONTEXT.equipment.find((e) => e.componentIds.includes('body'))?.consumablesCostYen ?? 0
 
     expect(quote.laborSlotsRequired).toBe(plan.laborSlotsRequired)
-    expect(quote.costYen).toBe(plan.costYen + bodyConsumables)
-    expect(quote.hasEquipment).toBe(true)
+    expect(quote.costYen).toBe(plan.costYen + BODY_CONSUMABLES_T1)
   })
 
   it('reconditioning charges the same cash and consumes the same labor as repairing that part on a car', () => {
@@ -792,10 +811,9 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       carState.ownedCars[0]!,
       'body',
       'mint',
-      carState.ownedEquipmentIds,
+      carState.toolTiers,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
-      CONTEXT.equipmentById,
       'panels',
     )
     const carResult = resolveJobLabor(
@@ -831,41 +849,41 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     expect(invResult.state.jobs).toHaveLength(0)
   })
 
-  it('is gated by the same equipment/repair-level requirement as on-car repair (no cheaper bench path)', () => {
-    // No equipment owned: BOTH refuse with equipment-missing, no cash moved.
-    const carState = baseState({
-      ownedCars: [carWithPoorPanels()],
-      partInventory: [],
-      serviceBayCarIds: ['car-ref'],
-      ownedEquipmentIds: [],
-    })
-    const carResult = resolveJobLabor(
-      carState,
-      {
-        carInstanceId: 'car-ref',
-        kind: 'repair-zone',
-        componentId: 'body',
-        targetBand: 'mint',
-        carPartId: 'panels',
-        laborSlotsRequired: 1,
-      },
-      6,
+  it('is sized by the same tool tier as on-car repair (no cheaper or slower bench path) - Sprint 36', () => {
+    // poor -> mint is 3 grades: 3 slots at tier 1, 1 slot at tier 3, both paths.
+    const t1Quote = reconditionQuote(
+      baseState({ ownedCars: [], partInventory: [loosePart] }),
+      loosePart.id,
+      'mint',
       CONTEXT,
+    )!
+    const t3Quote = reconditionQuote(
+      baseState({
+        ownedCars: [],
+        partInventory: [loosePart],
+        toolTiers: testToolTiers({ body: 3 }),
+      }),
+      loosePart.id,
+      'mint',
+      CONTEXT,
+    )!
+    expect(t1Quote.laborSlotsRequired).toBe(3)
+    expect(t3Quote.laborSlotsRequired).toBe(1)
+
+    const t3Plan = planGroupRepair(
+      carWithPoorPanels(),
+      'body',
+      'mint',
+      testToolTiers({ body: 3 }),
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsTaxonomyById,
+      'panels',
     )
-    expect(carResult.state.cashYen).toBe(carState.cashYen)
-    expect(
-      carResult.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
-    ).toBe(true)
-
-    const invState = baseState({ ownedCars: [], partInventory: [loosePart], ownedEquipmentIds: [] })
-    const invResult = resolveReconditionLabor(invState, loosePart.id, 'mint', 6, CONTEXT)
-    expect(invResult.state.cashYen).toBe(invState.cashYen)
-    expect(invResult.state.partInventory[0]?.band).toBe('poor') // unchanged
-    expect(
-      invResult.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
-    ).toBe(true)
-
-    // And the quote reports the gate for the UI (hasEquipment false).
-    expect(reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)?.hasEquipment).toBe(false)
+    expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)
+    // The yen cost of the work itself is tier-independent (decision 7);
+    // only the tier's own consumables differ between the two quotes.
+    expect(t3Quote.costYen - TOOL_LINES.body.tiers[2]!.consumablesCostYen).toBe(
+      t1Quote.costYen - BODY_CONSUMABLES_T1,
+    )
   })
 })

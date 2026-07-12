@@ -137,6 +137,17 @@ function mintParts(
   return base
 }
 
+/** A fresh shop's tool tiers (Sprint 36) - what every pre-v23 save with no
+ * owned equipment migrates to, and what a new game starts at. */
+const FRESH_TOOL_TIERS = {
+  engine: 1,
+  drivetrain: 1,
+  suspension: 1,
+  wheels: 1,
+  body: 1,
+  interior: 1,
+}
+
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -148,6 +159,7 @@ const fullState: GameState = GameStateSchema.parse({
   jobs: [],
   marketHeat: { 'honda-city-e-aa': 108 },
   activeAuctionLots: [],
+  toolTiers: FRESH_TOOL_TIERS,
 })
 
 describe('saveCodec', () => {
@@ -180,9 +192,9 @@ describe('saveCodec', () => {
     // v3 -> v4 migration is pure default-fill too: a v1 save never had the
     // Sprint-11 daily labor counter either.
     expect(decoded.laborSlotsSpentToday).toBe(0)
-    // v5 -> v6 migration is pure default-fill too: a v1 save never had the
-    // Sprint-13 equipment list either.
-    expect(decoded.ownedEquipmentIds).toEqual([])
+    // v22 -> v23 (Sprint 36): a v1 save never owned any equipment, so every
+    // tool line comes back at the tier-1 floor.
+    expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill too: a v1 save never had the
     // Sprint-14 order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
@@ -204,9 +216,8 @@ describe('saveCodec', () => {
     // v3 -> v4 migration is pure default-fill: a v2 save never had the
     // Sprint-11 daily labor counter either.
     expect(decoded.laborSlotsSpentToday).toBe(0)
-    // v5 -> v6 migration is pure default-fill: a v2 save never had the
-    // Sprint-13 equipment list either.
-    expect(decoded.ownedEquipmentIds).toEqual([])
+    // v22 -> v23 (Sprint 36): no equipment owned -> every line at tier 1.
+    expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v2 save never had the
     // Sprint-14 order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
@@ -225,9 +236,8 @@ describe('saveCodec', () => {
     // v3 -> v4 migration is pure default-fill: a v3 save never had the
     // Sprint-11 daily labor counter.
     expect(decoded.laborSlotsSpentToday).toBe(0)
-    // v5 -> v6 migration is pure default-fill: a v3 save never had the
-    // Sprint-13 equipment list either.
-    expect(decoded.ownedEquipmentIds).toEqual([])
+    // v22 -> v23 (Sprint 36): no equipment owned -> every line at tier 1.
+    expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v3 save never had the
     // Sprint-14 order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
@@ -244,10 +254,10 @@ describe('saveCodec', () => {
     expect(decoded.serviceBayCount).toBe(2)
     expect(decoded.parkingBayCount).toBe(5)
     expect(decoded.laborSlotsSpentToday).toBe(3)
-    // v5 -> v6 migration (Sprint 13): a v5 save never had the equipment list
-    // at all - correct, since equipment didn't exist as a concept yet, and
-    // this is the normal additive case, unlike Sprint 12's deliberate nuke.
-    expect(decoded.ownedEquipmentIds).toEqual([])
+    // v5 -> v6 (Sprint 13) used to default-fill the equipment list a v5 save
+    // never had; v22 -> v23 (Sprint 36) now lands that same "never owned
+    // anything" state at the tool-tier floor instead.
+    expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v5 save never had the
     // Sprint-14 order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
@@ -264,7 +274,11 @@ describe('saveCodec', () => {
     expect(decoded.serviceBayCount).toBe(3)
     expect(decoded.parkingBayCount).toBe(6)
     expect(decoded.laborSlotsSpentToday).toBe(1)
-    expect(decoded.ownedEquipmentIds).toEqual(['welder', 'tire-machine'])
+    // v22 -> v23 (Sprint 36): the code's real owned machines (welder +
+    // tire-machine) map through the frozen legacy table - body and wheels
+    // land at tier 2, everything else at the tier-1 floor - rather than
+    // silently resetting the player's spent money to all-1.
+    expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, body: 2, wheels: 2 })
     // v6 -> v7 migration (Sprint 14): a v6 save never had the order/cart
     // fields at all - correct, since neither concept existed yet, and this
     // is the normal additive case, unlike Sprint 12's deliberate nuke.
@@ -283,8 +297,9 @@ describe('saveCodec', () => {
     expect(decoded.cashYen).toBe(5_000_000 + 350_000)
     expect(decoded.reputationTier).toBe('known')
     expect(decoded.reputationPoints).toBe(40)
-    // v7 fields are preserved unchanged, not reset to their defaults.
-    expect(decoded.ownedEquipmentIds).toEqual(['tire-machine'])
+    // v22 -> v23 (Sprint 36): the code's owned tire-machine maps to wheels
+    // tier 2 via the frozen legacy table; every other line floors at 1.
+    expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, wheels: 2 })
     // v19 -> v20 migration (Sprint 31): the resolved listing leaves nothing
     // behind - no stray for-sale toggle or offer under a mechanic that
     // didn't exist when this code was produced.
@@ -1023,7 +1038,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(22)
+    expect(SAVE_VERSION).toBe(23)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1077,7 +1092,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(22)
+    expect(SAVE_VERSION).toBe(23)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1332,7 +1347,11 @@ describe('saveCodec', () => {
       const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
       const decoded = decodeSave(code)
       const job = decoded.activeServiceJobs[0]
-      expect(job?.tasks).toEqual([{ action: 'repair', carPartId: 'block', targetBand: 'mint' }])
+      // `minToolTier: 1` is the Sprint 36 schema default - a legacy task
+      // decodes at the no-ceiling floor.
+      expect(job?.tasks).toEqual([
+        { action: 'repair', carPartId: 'block', targetBand: 'mint', minToolTier: 1 },
+      ])
       // Already-rolled economics untouched, per the sprint doc's own
       // instruction: never re-derive a live job's payout or deadline.
       expect(job?.payoutYen).toBe(15_000)
@@ -1376,7 +1395,9 @@ describe('saveCodec', () => {
       const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
       const decoded = decodeSave(code)
       const job = decoded.activeServiceJobs[0]
-      expect(job?.tasks).toEqual([{ action: 'install', carPartId: 'dampers', minGrade: 'stock' }])
+      expect(job?.tasks).toEqual([
+        { action: 'install', carPartId: 'dampers', minGrade: 'stock', minToolTier: 1 },
+      ])
       // arrivesOnDay was null on the fixture (already arrived), so there's
       // no real gap to reconstruct - falls back to the historical constant.
       expect(job?.deadlineDays).toBe(7)
@@ -1757,6 +1778,58 @@ describe('saveCodec', () => {
       expect(roundTripped.ownedCars[0]?.parts.dampers.installed?.partId).toBe(
         'tanuki-street-coilovers',
       )
+    })
+  })
+
+  /**
+   * v22 -> v23 (Sprint 36, tool lines): `ownedEquipmentIds` is replaced by
+   * the six-line `toolTiers` map. NOT a plain default-fill: a legacy save's
+   * owned machines are real repair capability (and real money spent), so
+   * `migrateV22ToV23` maps them through its frozen inline legacy table
+   * (per group, tier = max level among owned ids covering it, else 1;
+   * unknown ids ignored), then deletes `ownedEquipmentIds`. See the
+   * SAVE_VERSION doc comment above.
+   */
+  describe('v22 -> v23 migration (Sprint 36, tool lines)', () => {
+    function v22SaveOwning(ownedEquipmentIds: string[]): string {
+      // A genuine pre-v23 shape: the legacy list present, `toolTiers` absent.
+      const stateWithoutToolTiers: Record<string, unknown> = { ...fullState, ownedEquipmentIds }
+      delete stateWithoutToolTiers.toolTiers
+      const preV23 = { version: 22, gameState: stateWithoutToolTiers }
+      return 'MGSAVE1.' + btoa(JSON.stringify(preV23))
+    }
+
+    it('a v22 save owning engine-crane + tire-machine decodes to engine 3, wheels 2, rest 1', () => {
+      const decoded = decodeSave(v22SaveOwning(['engine-crane', 'tire-machine']))
+      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, engine: 3, wheels: 2 })
+      // The legacy field is gone, not defaulted - the schema has no such key.
+      expect(decoded).not.toHaveProperty('ownedEquipmentIds')
+    })
+
+    it('two machines covering the same group take the max level (brake-lathe 2 + suspension-press 3 -> suspension 3)', () => {
+      const decoded = decodeSave(v22SaveOwning(['brake-lathe', 'suspension-press']))
+      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, suspension: 3 })
+    })
+
+    it('an unknown legacy equipment id is ignored, not an error', () => {
+      const decoded = decodeSave(v22SaveOwning(['some-modded-in-machine', 'welder']))
+      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, body: 2 })
+    })
+
+    it('a v22 save owning nothing decodes to the all-tier-1 floor', () => {
+      const decoded = decodeSave(v22SaveOwning([]))
+      expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
+    })
+
+    it('a fresh v23 state round-trips its toolTiers exactly (non-default tiers included)', () => {
+      const withUpgrades: GameState = GameStateSchema.parse({
+        ...fullState,
+        toolTiers: { ...FRESH_TOOL_TIERS, engine: 2, interior: 3 },
+      })
+      const decoded = decodeSave(encodeSave(withUpgrades))
+      expect(decoded).toEqual(withUpgrades)
+      expect(decoded.toolTiers.engine).toBe(2)
+      expect(decoded.toolTiers.interior).toBe(3)
     })
   })
 })

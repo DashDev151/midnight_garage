@@ -1,7 +1,6 @@
 import {
   BUYERS,
   CARS,
-  EQUIPMENT,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -29,7 +28,6 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_TYPES,
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
-  EQUIPMENT,
 )
 
 const STRATEGIES: Record<string, BotStrategy> = {
@@ -73,85 +71,42 @@ describe('Passive Grinder', () => {
 
 describe('Service Grinder (the Act 1 floor)', () => {
   /**
-   * Sprint 16 finding, investigated and fixed (not just disclosed) rather
-   * than papered over: gating equipment by reputation (decision 1) initially
-   * created a genuine catch-22 for this archetype. Fixed then by leaving
-   * `upholstery-bench` (interior) ungated - a content carve-out, not a bot
-   * fix. Sprint 33 decision 9 (equipment tiering: only the tire machine is
-   * ownable at `unknown` reputation) closes that carve-out, reintroducing
-   * the SAME catch-22 for this bot's original repair-only identity - fixed
-   * this time in the bot itself (`serviceGrinder.ts`'s `isSingleDisciplineJob`
-   * now also accepts install-only jobs, mirroring decision 9's own stated
-   * intended bootstrap path: "Replace-only work" needs no equipment at all).
-   * Fixing this also surfaced a real, separate structural bug this sample
-   * exposed for the first time (Sprint 32's stock-baseline model fills every
-   * slot by default, so an install task's target is normally OCCUPIED, and
-   * nothing in the bot-facing `DayActions` pipeline could ever remove a part
-   * to make room) - fixed by adding a real `removeParts` DayAction
-   * (`actions.ts`/`advanceDay.ts`) that `serviceJobHelpers.ts`'s
-   * `queueServiceJobTasks` now queues first, mirroring the player's own
-   * required Remove-then-Replace two-step exactly.
-   *
-   * What's left, and genuinely probabilistic, is *when* within a career the
-   * bootstrap happens: a candidate offer still needs to survive the
-   * job-board hint/actionable-filter roll before Service Grinder can see one
-   * to accept. Re-sampled across seeds (Sprint 13's own precedent -
-   * "Cautious Restorer's day100 result is honestly negative" - is to report
-   * a real distribution, not force one seed to look healthy), a clear
-   * majority break into the economy within 100 days; a single fixed seed is
-   * the wrong bar for a mechanic that's deliberately probabilistic.
-   *
-   * Re-measured for Sprint 33 (the install-only bootstrap path replaces the
-   * old repair-only one, so the whole distribution is a new measurement, not
-   * a re-derivation of Sprint 22's numbers): n=30 -> 27/30 (90%), n=60 ->
-   * 57/60 (95%), n=100 -> 96/100 (96%), n=150 -> 127/150 (84.7%), n=200 ->
-   * 172/200 (86%), n=300 -> 257/300 (85.7%). Materially higher and more
-   * stable than the old repair-only path's 40-61% across the same sample
-   * sizes - Replace-only work needing zero equipment is a much shorter path
-   * to a first paid job than waiting on a repair-interior hint to survive
-   * the equipment-hint roll. 200 stays the sample size (Sprint 22's own
-   * precedent: a contiguous low-seed range isn't automatically
-   * representative, per Sprint 19c's `findQuietSeed`), even though smaller
-   * samples would already clear the bar here.
+   * Sprint 36 re-base: the equipment-ownership bootstrap this describe used
+   * to measure (Sprints 16/22/33 - a catch-22 between reputation-gated
+   * equipment and the job board's hint/actionable filter, re-fixed twice and
+   * re-measured each time) is structurally gone. Every tool line is owned at
+   * tier 1 from day one, the offer filter and hint reroll are deleted, and
+   * with Sprint 36's all-default-1 `minToolTier` content every offer on the
+   * board is acceptable outright. What remains is the archetype's real
+   * claim - the Act 1 floor: service work alone, on cars the bot never owns,
+   * produces paid income within a career. Still sampled across seeds (offer
+   * arrival and profitability stay seed-dependent), but no longer against a
+   * deliberately-probabilistic filter, so a smaller sample carries the claim.
    */
-  const SEED_SAMPLE_SIZE = 200
+  const SEED_SAMPLE_SIZE = 50
 
-  // 200 seeds x 100 days is genuinely heavier than vitest's 5s default test
-  // timeout under `pnpm test:coverage`'s v8 instrumentation overhead (plain
-  // `pnpm test` comfortably clears the default) - the explicit 20s below is
-  // a real wall-clock budget, not a looser assertion.
-  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 20_000
+  // 50 seeds x 100 days outruns vitest's 5s default test timeout under
+  // `pnpm test:coverage`'s v8 instrumentation overhead (plain `pnpm test`
+  // comfortably clears the default) - the explicit 20s below is a real
+  // wall-clock budget, not a looser assertion.
+  const PAID_WORK_SAMPLE_TIMEOUT_MS = 20_000
 
   it(
-    'a clear majority of 100-day careers bootstrap into equipment ownership via the ungated component',
+    'a clear majority of 100-day careers get real paid service work, never owning a car',
     () => {
-      let successes = 0
+      let paid = 0
       for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
         const grinder = runCareer(serviceGrinderStrategy, seed, 100, CONTEXT).snapshots
-        if (grinder.some((s) => s.equipmentOwnedCount > 0)) successes++
+        // Service work is on customers' cars - this archetype never owns one.
+        expect(grinder.every((s) => s.carsOwned === 0)).toBe(true)
+        // A day-over-day cash rise is a real payout landing (this bot has no
+        // other income: no sales, no scrap - only service-job payouts).
+        if (grinder.some((s, i) => i > 0 && s.cashYen > grinder[i - 1]!.cashYen)) paid++
       }
-      expect(successes).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
+      expect(paid).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
     },
-    BOOTSTRAP_SAMPLE_TIMEOUT_MS,
+    PAID_WORK_SAMPLE_TIMEOUT_MS,
   )
-
-  it('a successful career actually gets a job worked and paid, not just equipment bought', () => {
-    // Find a seed that bootstraps (the majority do, per the test above) and
-    // confirm the payoff is real: cash moves up at least once (a completed,
-    // paid job), and it never owns a car (service work is on cars it doesn't own).
-    let grinder: ReturnType<typeof runCareer>['snapshots'] | undefined
-    for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
-      const candidate = runCareer(serviceGrinderStrategy, seed, 100, CONTEXT).snapshots
-      if (candidate.some((s) => s.equipmentOwnedCount > 0)) {
-        grinder = candidate
-        break
-      }
-    }
-    if (!grinder) throw new Error('no seed in range bootstrapped - see the majority test above')
-    const cashDeltas = grinder.slice(1).map((s, i) => s.cashYen - grinder[i]!.cashYen)
-    expect(cashDeltas.some((delta) => delta > 0)).toBe(true)
-    expect(grinder.every((s) => s.carsOwned === 0)).toBe(true)
-  })
 })
 
 describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
@@ -201,6 +156,14 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
    * (Sprint 23) is the bot that actually escapes this cycle, via a
    * service-job overflow step this one deliberately doesn't have - see its
    * own days-to-tier measurement (M3) for the sprint's real pacing claim.
+   *
+   * Sprint 36 note: the equipment-ownership world the paragraphs above
+   * describe (reputation-gated tools, Y4.25M of purchases needed for full
+   * coverage) is retired - every tool line is owned at tier 1 from day one
+   * and only upgrade PRICE gates progress. The history stays because it is
+   * what the bootstrap-rate thresholds below were measured against; the
+   * `equipmentOwnedCount` snapshot field now counts tool-tier upgrades
+   * (sum of tiers minus 6) under its legacy CSV name.
    */
   const SEED_SAMPLE_SIZE = 200
 
@@ -235,21 +198,24 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
     expect(successes).toBeGreaterThan(SEED_SAMPLE_SIZE * 0.2)
   })
 
-  it('a majority of those that bootstrap also make real repair progress - equipment bought, a job completed', () => {
-    // Before this fix: 0/1000 real seeds ever bought equipment at all (the
-    // engine-crane-first deadlock). This is the verifiable claim this fix
-    // actually earns - real mechanical progress, not the separate, harder
-    // claim (full restoration + reputation) documented above as still open.
+  it('a majority of those that bootstrap also invest in the shop - at least one tool-line upgrade', () => {
+    // Before the Sprint 19c fix: 0/1000 real seeds ever bought equipment at
+    // all (the engine-crane-first deadlock). Sprint 36 keeps the same shape
+    // of claim under the tool-line model: a bootstrapped restorer with a car
+    // to work should upgrade at least one line past the tier-1 floor
+    // (`considerToolUpgrade` before each group repair) in a majority of
+    // careers - real shop investment, not the separate, harder claim (full
+    // restoration + reputation) documented above as still open.
     let bootstrapped = 0
-    let equipped = 0
+    let upgraded = 0
     for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
       const restorer = runCareer(cautiousRestorerStrategy, seed, 100, CONTEXT).snapshots
       if (!restorer.some((s) => s.carsOwned > 0)) continue
       bootstrapped++
-      if (restorer.some((s) => s.equipmentOwnedCount > 0)) equipped++
+      if (restorer.some((s) => s.equipmentOwnedCount > 0)) upgraded++
     }
     expect(bootstrapped).toBeGreaterThan(0)
-    expect(equipped).toBeGreaterThan(bootstrapped / 2)
+    expect(upgraded).toBeGreaterThan(bootstrapped / 2)
   })
 
   /**
@@ -321,14 +287,20 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
     expect(snapshots.some((s) => s.reputationPoints > 0)).toBe(true)
     // Bay-release fix (Sprint 23 M3): the policy must free its service bay
     // from a stalled restoration so the service-job overflow can ever run -
-    // equipment ownership growing past the first couple of ungated tools is
-    // the visible signature that this isn't happening via cars alone.
+    // tool tiers climbing past the tier-1 floor (Sprint 36: the snapshot
+    // field counts upgrades now) is the visible signature that this isn't
+    // happening via cars alone.
     expect(finalSnapshot?.equipmentOwnedCount).toBeGreaterThan(0)
   })
 })
 
 describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
-  it('Handyman actually buys equipment over a career; Investor never does', () => {
+  it('Handyman actually upgrades tool lines over a career; Investor never does', () => {
+    // Sprint 36: `equipmentOwnedCount` counts tool-tier upgrades (sum of
+    // tiers minus 6) under its legacy CSV name - Handyman is the tier-payback
+    // archetype (upgrades whenever it can buffer the cheapest next tier),
+    // Investor the never-upgrades control, so the pair still brackets the
+    // payback curve exactly as it did under equipment ownership.
     const handyman = runCareer(handymanStrategy, 1, 100, CONTEXT).snapshots
     const investor = runCareer(investorStrategy, 1, 100, CONTEXT).snapshots
     expect(handyman.some((s) => s.equipmentOwnedCount > 0)).toBe(true)

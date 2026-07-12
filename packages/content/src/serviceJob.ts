@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
 import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
+import { ToolTierSchema } from './toolLines'
 
 /**
  * One task within a service-job template (Sprint 29 schema v2) - what the
@@ -16,17 +17,24 @@ import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
  * `install` task on it instead (Sprint 29 decision 3); a content test
  * (`integrity.test.ts`) guards this rather than the schema, matching this
  * codebase's existing convention for content-shape invariants.
+ *
+ * `minToolTier` (Sprint 36): the tool tier this task's group needs before
+ * the work can be offered without a hint or accepted at all - the
+ * capability ceiling along the bolt-on vs built line (progression bible).
+ * Defaults to 1 (no ceiling); Sprint 37 authors the real values.
  */
 export const ServiceJobTaskSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('repair'),
     carPartId: CarPartIdSchema,
     targetBand: ConditionBandSchema,
+    minToolTier: ToolTierSchema.default(1),
   }),
   z.object({
     action: z.literal('install'),
     carPartId: CarPartIdSchema,
     minGrade: GradeSchema,
+    minToolTier: ToolTierSchema.default(1),
   }),
 ])
 

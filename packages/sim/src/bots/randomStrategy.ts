@@ -9,7 +9,7 @@ import {
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
-import { equipmentBudget, ensureEquipmentFor } from './equipmentHelpers'
+import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { availableLaborSlots } from '../laborSlots'
 import { createRng, hashStringToSeed, type Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
@@ -23,6 +23,8 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
 ]
 const MAX_CONCURRENT_CARS = 3
 const CASH_BUFFER_MULTIPLIER = 1.2
+/** Sprint 36: tool upgrades only at double cover, same as the other generalists. */
+const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 
 type Archetype = 'flip' | 'restore' | 'mid'
 const ARCHETYPES: readonly Archetype[] = ['flip', 'restore', 'mid']
@@ -94,7 +96,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
 
   let laborBudget = availableLaborSlots(state)
   const bayBudget = serviceBayBudget(state)
-  const equipBudget = equipmentBudget()
+  const upgradeBudget = toolUpgradeBudget()
 
   // 1. Continue any in-progress repair job from a prior day - only if its
   // car is in the service bay (moved in first, if there's room today).
@@ -123,17 +125,16 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
 
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    if (
-      !ensureEquipmentFor(
-        state,
-        worstComponent,
-        actions,
-        context,
-        equipBudget,
-        CASH_BUFFER_MULTIPLIER,
-      )
+    // Sprint 36: consider upgrading the line for speed, but repair proceeds
+    // either way - work is always possible at the current tier.
+    considerToolUpgrade(
+      state,
+      worstComponent,
+      actions,
+      context,
+      upgradeBudget,
+      TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER,
     )
-      continue
     const slots = queueGroupRepair(
       state,
       car.id,

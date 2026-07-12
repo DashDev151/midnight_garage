@@ -1,4 +1,5 @@
 import type { DayLogEntry } from '@midnight-garage/content'
+import { COMPONENT_DISPLAY_NAMES, TOOL_LINES, componentDisplayName } from '@midnight-garage/content'
 import { formatYen } from './formatYen'
 import { offerCopy } from './offerCopy'
 
@@ -96,9 +97,13 @@ export function describeLogEntry(
           ? 'no parking space'
           : entry.reason === 'no-cash'
             ? 'not enough cash'
-            : 'equipment not owned'
+            : 'needs a tool upgrade'
       }`
     case 'equipment-purchased':
       return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
+    case 'tool-upgraded':
+      return `Upgraded ${componentDisplayName(entry.componentId, COMPONENT_DISPLAY_NAMES)} to ${
+        TOOL_LINES[entry.componentId].tiers[entry.toTier - 1]!.displayName
+      } for ${formatYen(entry.priceYen)}`
   }
 }

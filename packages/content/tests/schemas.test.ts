@@ -3,10 +3,10 @@ import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
 import componentDisplayNames from '../data/componentDisplayNames.json'
 import economy from '../data/economy.json'
-import equipment from '../data/equipment.json'
 import facilities from '../data/facilities.json'
 import parts from '../data/parts.json'
 import partsTaxonomy from '../data/parts-taxonomy.json'
+import toolLines from '../data/toolLines.json'
 import traits from '../data/traits.json'
 import {
   BuyersSchema,
@@ -15,9 +15,9 @@ import {
   ComponentDisplayNamesSchema,
   ComponentIdSchema,
   EconomyConfigSchema,
-  EquipmentsSchema,
   FacilitiesSchema,
   PartsSchema,
+  ToolLinesSchema,
   TraitDefinitionsSchema,
 } from '../src'
 
@@ -54,10 +54,22 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
-  it('equipment.json', () => {
-    const result = EquipmentsSchema.safeParse(equipment)
+  /** Sprint 36: the six always-owned tool lines replace equipment.json. */
+  it('toolLines.json', () => {
+    const result = ToolLinesSchema.safeParse(toolLines)
     if (!result.success) throw new Error(result.error.message)
-    expect(result.data.length).toBeGreaterThan(0)
+    // Exactly the 6 ComponentIds as keys.
+    expect(Object.keys(result.data).sort()).toEqual([...ComponentIdSchema.options].sort())
+    for (const id of ComponentIdSchema.options) {
+      const line = result.data[id]
+      // Exactly 3 tiers per line.
+      expect(line.tiers).toHaveLength(3)
+      // Tier 1 is owned from the start - price 0.
+      expect(line.tiers[0]!.upgradePriceYen).toBe(0)
+      // Upgrade prices strictly ascend within the line.
+      expect(line.tiers[1]!.upgradePriceYen).toBeGreaterThan(line.tiers[0]!.upgradePriceYen)
+      expect(line.tiers[2]!.upgradePriceYen).toBeGreaterThan(line.tiers[1]!.upgradePriceYen)
+    }
   })
 
   /**
@@ -181,10 +193,5 @@ describe('seed content ids are unique', () => {
     const ids = CarPartTaxonomySchema.parse(partsTaxonomy).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.length).toBe(29)
-  })
-
-  it('equipment ids', () => {
-    const ids = EquipmentsSchema.parse(equipment).map((e) => e.id)
-    expect(new Set(ids).size).toBe(ids.length)
   })
 })

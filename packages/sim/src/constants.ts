@@ -5,12 +5,12 @@ import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnig
  * decision 7 (labor recalibration): raised 2 -> 6 (3x). Playtest finding:
  * against the real 29-part-per-group repair granularity (Sprint 26), base 2
  * slots made a full restoration take ~20 days even on a moderately worn
- * car - a war of attrition, not a fun restoration arc. Left the equipment
- * repair-LEVEL ladder (`bands.ts`'s `repairLevelForGroup`, still defaulting
- * to level 1/"1 grade per slot" with nothing owned) untouched rather than
- * also raising the base level, so owning equipment still means something -
- * doubling or tripling the BASE throughput instead would flatten most
- * equipment's relative value to zero. First-pass number, openly retunable
+ * car - a war of attrition, not a fun restoration arc. Left the repair-LEVEL
+ * ladder (`bands.ts`'s `repairLevelForGroup` - since Sprint 36, the tool
+ * line's tier itself, starting at 1/"1 grade per slot") untouched rather
+ * than also raising the base level, so upgrading a tool line still means
+ * something - doubling or tripling the BASE throughput instead would flatten
+ * most upgrades' relative value to zero. First-pass number, openly retunable
  * (`restorationPacing.test.ts` documents the resulting "days to fully
  * restore a typical car" anchor); further calibrated against the balance
  * harness + playtest, same as every other content-tunable number here.
@@ -48,17 +48,6 @@ export const SERVICE_JOB_TIER_MIN_REPUTATION: Readonly<Record<ServiceJobTier, Re
 }
 
 /**
- * Job-board equipment hinting (Sprint 16 decision 4): a repair-kind offer
- * candidate whose equipment isn't owned is normally rerolled during
- * generation; this flat per-candidate probability lets it through anyway as
- * a "here's what's next" hint instead of a hard filter to zero. A flat
- * per-candidate roll (not a cap count) naturally produces "usually 0,
- * occasionally 1" across a typical weekly batch. Install-kind offers are
- * never filtered (unaffected, as already true since Sprint 13).
- */
-export const JOB_HINT_OFFER_CHANCE = 0.15
-
-/**
  * Reputation penalty for a failed job (handed back unfinished, or the deadline
  * passed with the work undone), as a multiple of the job's base reputation -
  * failing stings more than completing rewards at the stock rate.
@@ -79,7 +68,7 @@ export const GRADE_REPUTATION_MULTIPLIER: Readonly<Record<Grade, number>> = {
 
 /**
  * v1 rule (GDD 3.2 "base 2, more with skill"): a staff member with Hustle
- * at or above this threshold grants +1 labor slot/day. Equipment-driven
+ * at or above this threshold grants +1 labor slot/day. Facility-driven
  * bonuses (lift, dyno, ...) are the Sprint 14 equipment-tier system.
  */
 export const STAFF_HUSTLE_BONUS_THRESHOLD = 4
