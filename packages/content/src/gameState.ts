@@ -365,8 +365,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * resolves. Mirrors `no-parking`'s existing forfeit shape exactly: no money spent, the win
      * is forfeited rather than the purchase failing loudly.
      * `tool-tier` (Sprint 36): a service-job accept refused because at least one task's
-     * `minToolTier` exceeds the line's current tier - replaces the old `no-equipment` refusal. */
-    reason: z.enum(['no-parking', 'no-cash', 'tool-tier']),
+     * `minToolTier` exceeds the line's current tier - replaces the old `no-equipment` refusal.
+     * `technique` (Sprint 39): a signature template's `requiresTechnique` is no longer unlocked
+     * at accept time (specialty dropped, or the offer is stale) - the technique-gated twin of
+     * `tool-tier`. */
+    reason: z.enum(['no-parking', 'no-cash', 'tool-tier', 'technique']),
   }),
   /** Kept for old-log decode compatibility (Sprint 36 retired the buy-equipment
    * action itself; `tool-upgraded` below is its replacement). */

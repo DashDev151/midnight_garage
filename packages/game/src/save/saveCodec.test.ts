@@ -1874,4 +1874,24 @@ describe('saveCodec', () => {
     expect(decoded.specialty.body).toBe(40)
     expect(decoded.specialty.drivetrain).toBe(0)
   })
+
+  /**
+   * Sprint 39 (techniques + the derived shop title): NO save bump. Both are
+   * pure functions of `state.specialty` (already persisted since v24) plus
+   * the technique catalog (content, not save data) - nothing new is ever
+   * stored, so a v24 save carrying high specialty decodes identically
+   * whether or not a technique/title derives from it.
+   */
+  it('Sprint 39 (techniques + shop title) needed no save bump: SAVE_VERSION is still 24', () => {
+    expect(SAVE_VERSION).toBe(24)
+  })
+
+  it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
+    const withHighSpecialty: GameState = GameStateSchema.parse({
+      ...fullState,
+      specialty: { ...FRESH_SPECIALTY, engine: 150 },
+    })
+    const decoded = decodeSave(encodeSave(withHighSpecialty))
+    expect(decoded).toEqual(withHighSpecialty)
+  })
 })

@@ -8,6 +8,7 @@ import partsTaxonomyJson from '../data/parts-taxonomy.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
 import specialtyCopyJson from '../data/specialtyCopy.json'
+import techniquesJson from '../data/techniques.json'
 import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
 import { BuyersSchema } from './buyer'
@@ -20,6 +21,7 @@ import { PartsSchema } from './part'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
 import { TraitDefinitionsSchema } from './staff'
+import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
 
 /**
@@ -43,3 +45,4 @@ export const TOOL_LINES = ToolLinesSchema.parse(toolLinesJson)
 export const ECONOMY = EconomyConfigSchema.parse(economyJson)
 export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)
 export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
+export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)

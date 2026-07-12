@@ -225,7 +225,7 @@ describe('service jobs in the store', () => {
     for (let i = 0; i < 100 && !sawSpecialtyCopy; i++) {
       game.endDay()
       sawSpecialtyCopy = game.serviceJobOffers.some((o) =>
-        SPECIALTY_COPY.engine.includes(o.description),
+        SPECIALTY_COPY.engine.lines.includes(o.description),
       )
     }
     expect(sawSpecialtyCopy).toBe(true)

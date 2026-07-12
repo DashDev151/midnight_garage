@@ -596,13 +596,21 @@ export const EconomyConfigSchema = z.object({
    * (`1 + biasFactor * min(1, specialty[group] / softcapPoints)`,
    * `pickServiceJobTemplate`, serviceJobs.ts); `premiumThresholdPoints`/
    * `inLanePremium` gate and size the in-lane payout premium
-   * (`deriveServiceJobPayoutYen`'s margin roll, same file).
+   * (`deriveServiceJobPayoutYen`'s margin roll, same file). Sprint 39 adds
+   * `titleThresholdPoints`/`titleBiasMultiplier`: the derived shop title
+   * (`shopTitle`) requires the top specialty group to clear
+   * `titleThresholdPoints`; once it does, that group's offer-selection
+   * weight (already computed via `biasFactor`/`softcapPoints` above) is
+   * ADDITIONALLY multiplied by `titleBiasMultiplier` - a title is both a
+   * name and a real pull on what walks in the door.
    */
   specialty: z.object({
     biasFactor: z.number().nonnegative(),
     softcapPoints: z.number().positive(),
     premiumThresholdPoints: z.number().nonnegative(),
     inLanePremium: z.number().positive(),
+    titleThresholdPoints: z.number().nonnegative(),
+    titleBiasMultiplier: z.number().positive(),
   }),
 })
 

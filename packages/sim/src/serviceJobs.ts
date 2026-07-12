@@ -10,6 +10,7 @@ import type {
   ServiceJob,
   ServiceJobTask,
   ServiceJobType,
+  Technique,
   ToolTiers,
 } from '@midnight-garage/content'
 import { ComponentIdSchema } from '@midnight-garage/content'
@@ -137,6 +138,48 @@ export function topSpecialtyGroup(specialty: Record<ComponentId, number>): Compo
   return best
 }
 
+/**
+ * Sprint 39: the shop's derived title - the top specialty group, once it
+ * clears `titleThresholdPoints`; `null` below it. Pure function of
+ * `specialty` (no state of its own), reusing `topSpecialtyGroup`'s own
+ * tie-break. The private `specialty`-shaped twin (`titleGroupFor`) is what
+ * offer generation actually uses, since it only ever has the loose
+ * `specialty` record, not a full `GameState`.
+ */
+function titleGroupFor(
+  specialty: Record<ComponentId, number>,
+  context: SimContext,
+): ComponentId | null {
+  const top = topSpecialtyGroup(specialty)
+  return specialty[top] >= context.economy.specialty.titleThresholdPoints ? top : null
+}
+
+/** Sprint 39: the shop's current title line, derived entirely from
+ * `state.specialty` - `null` below `titleThresholdPoints`. No stored state;
+ * can shift the moment another line overtakes (progression bible: no
+ * ceremony, no lock-in). */
+export function shopTitle(state: GameState, context: SimContext): ComponentId | null {
+  return titleGroupFor(state.specialty, context)
+}
+
+/** Every technique whose threshold `specialty` has cleared (Sprint 39) -
+ * the private engine both `unlockedTechniques` (state-shaped, for callers
+ * with a full GameState) and offer generation (which only ever has the
+ * loose `specialty` record) share. */
+function unlockedTechniquesFor(
+  specialty: Record<ComponentId, number>,
+  context: SimContext,
+): Technique[] {
+  return context.techniques.filter((t) => specialty[t.componentId] >= t.thresholdPoints)
+}
+
+/** Sprint 39: every technique the shop has unlocked right now - pure,
+ * derives entirely from `state.specialty` + the technique catalog; nothing
+ * is stored. */
+export function unlockedTechniques(state: GameState, context: SimContext): Technique[] {
+  return unlockedTechniquesFor(state.specialty, context)
+}
+
 /** The one group every task in `tasks` belongs to, or null when they span
  * more than one (Sprint 38: the in-lane premium and the specialty-copy
  * flavor swap only ever apply to a template that stays wholly within a
@@ -160,17 +203,26 @@ function singleTaskGroup(
  * the in-lane premium's stricter `singleTaskGroup` does). A template
  * addressing an unknown/missing group weights at the neutral 1 (no bias
  * either way, never a crash).
+ *
+ * Sprint 39: when `titleGroup` is non-null and matches, the whole weight is
+ * ADDITIONALLY multiplied by `titleBiasMultiplier` - a shop title is a real
+ * pull on what walks in the door, stacked on top of the Sprint 38 bias, not
+ * instead of it. `titleGroup` defaults to `null` (no title effect), which
+ * is also exactly what a zero-specialty shop derives, so this never
+ * disturbs the Sprint 38 zero-specialty-identical guarantee.
  */
 function templateWeight(
   template: ServiceJobType,
   specialty: Record<ComponentId, number>,
   context: SimContext,
+  titleGroup: ComponentId | null = null,
 ): number {
   const firstTask = template.tasks[0]
   const group = firstTask ? taskGroup(firstTask, context) : undefined
   if (!group) return 1
-  const { biasFactor, softcapPoints } = context.economy.specialty
-  return 1 + biasFactor * Math.min(1, specialty[group] / softcapPoints)
+  const { biasFactor, softcapPoints, titleBiasMultiplier } = context.economy.specialty
+  const base = 1 + biasFactor * Math.min(1, specialty[group] / softcapPoints)
+  return group === titleGroup ? base * titleBiasMultiplier : base
 }
 
 /**
@@ -188,8 +240,11 @@ export function pickServiceJobTemplate(
   specialty: Record<ComponentId, number>,
   context: SimContext,
   rng: Rng,
+  titleGroup: ComponentId | null = null,
 ): ServiceJobType {
-  const weights = templates.map((template) => templateWeight(template, specialty, context))
+  const weights = templates.map((template) =>
+    templateWeight(template, specialty, context, titleGroup),
+  )
   const total = weights.reduce((sum, w) => sum + w, 0)
   const roll = rng.next() * total
   let cumulative = 0
@@ -370,6 +425,18 @@ function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
  * the premium condition can never hold (0 never clears the threshold), so
  * this is a strict no-op extension: a zero-specialty career's offers are
  * byte-identical to pre-Sprint-38 behavior for a fixed seed.
+ *
+ * Sprint 39: a `requiresTechnique` template (a signature template) is
+ * excluded from the pool entirely unless its technique is unlocked
+ * (`specialty[technique.componentId] >= technique.thresholdPoints`) - an
+ * unknown/unresolvable technique id fails CLOSED (never offered), a content
+ * bug should never accidentally expose a locked signature job. The shop's
+ * derived title line (`titleGroupFor`), once earned, gets its own offer-
+ * selection weight further multiplied by `titleBiasMultiplier`. A picked
+ * signature template's flavor draws from its own `flavorPool` PLUS the
+ * technique's `unlockLogLine` folded in as one more candidate line (never a
+ * separate stateful announcement) - unless the in-lane premium's
+ * `specialtyCopy` swap applies instead, same as any other template.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
@@ -385,8 +452,13 @@ export function generateDailyServiceJobOffers(
   const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
     reputationAtLeast(reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
   )
-  const eligibleTemplates = tierEligibleTemplates.filter((template) =>
+  const toolReadyTemplates = tierEligibleTemplates.filter((template) =>
     isTemplateOfferable(template.tasks, toolTiers, context),
+  )
+  const unlockedTechniqueIds = new Set(unlockedTechniquesFor(specialty, context).map((t) => t.id))
+  const eligibleTemplates = toolReadyTemplates.filter(
+    (template) =>
+      !template.requiresTechnique || unlockedTechniqueIds.has(template.requiresTechnique),
   )
   if (
     eligibleTemplates.length === 0 ||
@@ -397,10 +469,11 @@ export function generateDailyServiceJobOffers(
   }
 
   const topGroup = topSpecialtyGroup(specialty)
+  const titleGroup = titleGroupFor(specialty, context)
   const count = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng)
+    const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng, titleGroup)
     const model = rng.pick(eligibleModels)
     const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, context, currentYear)
     const inLane =
@@ -408,13 +481,17 @@ export function generateDailyServiceJobOffers(
       specialty[topGroup] >= context.economy.specialty.premiumThresholdPoints
     const margin = rollMargin(context, rng) * (inLane ? context.economy.specialty.inLanePremium : 1)
     const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, margin)
+    const technique = template.requiresTechnique
+      ? context.techniques.find((t) => t.id === template.requiresTechnique)
+      : undefined
+    const flavorPool = technique
+      ? [...template.flavorPool, technique.unlockLogLine]
+      : template.flavorPool
     offers.push({
       id: `svc-${day}-${i}`,
       typeId: template.id,
       customerName: rng.pick(context.serviceJobCustomerNames),
-      description: inLane
-        ? rng.pick(context.specialtyCopy[topGroup])
-        : rng.pick(template.flavorPool),
+      description: inLane ? rng.pick(context.specialtyCopy[topGroup].lines) : rng.pick(flavorPool),
       tasks: template.tasks,
       car,
       payoutYen,
@@ -455,6 +532,11 @@ export interface AcceptServiceJobResult {
  * upgrade lands, since the deficit is re-checked live here rather than
  * stamped at generation time. This replaces the retired accept-time
  * equipment refusal.
+ *
+ * Sprint 39: a signature template's `requiresTechnique` is re-checked live
+ * here too (reason `'technique'`) - defensive, since generation already
+ * excludes an unmet-technique template, but specialty could in principle
+ * have dropped between generation and accept (or the offer is stale).
  */
 export function resolveAcceptServiceJob(
   state: GameState,
@@ -468,6 +550,20 @@ export function resolveAcceptServiceJob(
     return {
       state,
       log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' }],
+    }
+  }
+  const offerTemplate = context.serviceJobTypes.find((t) => t.id === offer.typeId)
+  const requiredTechnique = offerTemplate?.requiresTechnique
+    ? context.techniques.find((t) => t.id === offerTemplate.requiresTechnique)
+    : undefined
+  if (
+    offerTemplate?.requiresTechnique &&
+    (!requiredTechnique ||
+      state.specialty[requiredTechnique.componentId] < requiredTechnique.thresholdPoints)
+  ) {
+    return {
+      state,
+      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'technique' }],
     }
   }
   if (!hasParkingSpace(state)) {

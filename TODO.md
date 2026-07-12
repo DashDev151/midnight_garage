@@ -87,13 +87,6 @@ pass."
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
-- [ ] **A service-job offer that fails the equipment gate is generated, then surfaced-then-blocked at
-  accept, rather than never generated at all.** Present since Sprint 13, unaffected in kind by
-  Sprint 29's move to multi-task templates (`resolveAcceptServiceJob`, `serviceJobs.ts`, still
-  refuses accept if ANY repair task's group is unequipped, same shape as before, just checked across
-  a whole task list now instead of one `work`). The maintainer's own read (recorded since Sprint 13):
-  arguably a repair-touching offer shouldn't be generated at all when the player can't act on it,
-  rather than shown then blocked. Still the simpler, shipped behavior; not revisited this sprint.
 - [ ] **Bots' "predict a same-tick `partInstanceId` for a queued install job" pattern is structurally
   broken** (found during Sprint 29, tracing why `competentPolicyStrategy`'s reputation faucet had
   gone to zero after the multi-task service-job rewrite). `advanceDay` resolves `createJobs` (step 1)
@@ -139,37 +132,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **Sprint 32 stock-baseline regression: competent-policy's reputation climb badly stalled;
-  days-to-`local` hard invariant FAILS (maintainer chose document-and-defer to a later balancing
-  pass, 2026-07-12).** After the stock-baseline/missing-slot model landed, the harness shows
-  days-to-`local` p50 jumped ~23 -> 55 (band is [10,35]) and only 627/1000 careers reach `local`
-  at all (was ~1000/1000) - roughly a third never reach the 2nd reputation tier in 100 days.
-  Competent-policy's day100 CASH is fine/up (Y367k), so it makes money but stops earning
-  reputation. Not yet root-caused; leading candidates: (a) the missing-slot mechanic on generated
-  service-job/auction cars combined with NO bot handling missing slots (see the two Open-engineering
-  items below: `isGroupAtLeast` excludes missing slots, no bot fills them) - the probe accepts/works
-  cars it cannot complete, fails jobs, and reputation floors; (b) the catalog reprice (Sprint 32
-  decision 1) shifting Sprint 29's DERIVED service-job payout/cost math so the accept-threshold
-  rejects more jobs. This is a real progression problem (37% never reaching tier 2), NOT a pacing
-  nudge, so it needs a bot-behavior/economy fix, not a band widen; the invariant is deliberately
-  left FAILING (not silently retuned or downgraded to informational) so the next balance pass can't
-  miss it. Also: `runCareer.test.ts`'s competent-policy day-100 assertion was LOOSENED
-  (`finalSnapshot > 0` -> `some snapshot > 0`) to keep the suite green through this - that loosening
-  is a symptom of this regression and must be RESTORED once it is fixed.
-  **Update (Sprint 33):** a real, separate structural bug in this same neighborhood was found and
-  fixed - the bot-facing `DayActions` pipeline had no way to remove a part before installing a
-  replacement (Sprint 32's stock-baseline model fills every slot by default, so an install task's
-  target is normally occupied), silently zeroing out every bot's install-based reputation faucet;
-  fixed with a new `removeParts` DayAction (`actions.ts`/`advanceDay.ts`) that
-  `serviceJobHelpers.ts`'s `queueServiceJobTasks` now queues first, mirroring the player's own
-  required Remove-then-Replace two-step. `serviceGrinderStrategy` also now accepts install-only
-  jobs, not just repair-only (Sprint 33 decision 9 leaves only the tire machine ownable at
-  `unknown` reputation, closing the repair-only bootstrap path decision 9's own text names
-  Replace-only work as the intended replacement for). Neither fix touches the days-to-`local`
-  PACING question above - that's still open, and Sprint 33 ALSO changed the generation-condition
-  curve and labor throughput, both of which move the same numbers - a fresh harness run against
-  the full Sprint 33 diff is needed before this invariant can be re-assessed, not a re-derivation
-  of the numbers above.
 - [ ] **Sprint 30 living-auction tuning: the board is a fire sale at first-pass numbers
   (maintainer chose commit-as-is, tune in playtest, 2026-07-12).** Mechanics shipped and all hard
   invariants pass, but the balance harness shows 94% of auction wins are cheap "steals" (target
@@ -229,10 +191,12 @@ pass."
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
   with the staff system, still unscheduled; player-character skill is new v1.0 scope, slotted
   against the service-jobs feature. Full design: `docs/design/skill-progression.md`.
-- [ ] **In-inventory part-recondition mechanic** (Sprint 33 note 5c, maintainer-flagged future
-  addition, explicitly deferred out of Sprint 33). A way to recondition/repair a damaged
-  `PartInstance` sitting in inventory so it's reusable in a later build, instead of a worn part
-  only ever being reinstallable at whatever band it already carries. Not designed yet.
+  **Update (Sprint 39, Progression Rework arc close-out, 2026-07-12):** the "tools + rep do that"
+  half this item already deferred to is now BUILT (tool tiers, Sprint 36; reputation unchanged) -
+  `skill-progression.md` has been reconciled against `docs/design/progression-bible.md` (the
+  canonical progression rules now); its still-open "staff/player skill optimizes efficiency and
+  quality" scope is genuinely distinct from specialty (Sprint 38, identity/access, earned not
+  optimized) and remains unbuilt/unscheduled, this item stays open for exactly that scope.
 
 ## Design decisions awaiting maintainer direction
 

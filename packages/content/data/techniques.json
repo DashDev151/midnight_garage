@@ -1,0 +1,50 @@
+[
+  {
+    "id": "blueprint-building",
+    "componentId": "engine",
+    "displayName": "Blueprint engine building",
+    "thresholdPoints": 120,
+    "unlocksTemplateIds": ["full-blueprint-build"],
+    "unlockLogLine": "Word is you can build a proper blueprinted motor now."
+  },
+  {
+    "id": "dog-box-conversion",
+    "componentId": "drivetrain",
+    "displayName": "Dog-box conversion",
+    "thresholdPoints": 120,
+    "unlocksTemplateIds": ["dog-box-conversion-job"],
+    "unlockLogLine": "Heard you can build a proper dog-box now."
+  },
+  {
+    "id": "corner-weighting",
+    "componentId": "suspension",
+    "displayName": "Corner weighting",
+    "thresholdPoints": 120,
+    "unlocksTemplateIds": ["corner-weighted-setup"],
+    "unlockLogLine": "Someone said you can corner-weight a car properly now."
+  },
+  {
+    "id": "show-fitment",
+    "componentId": "wheels",
+    "displayName": "Show fitment",
+    "thresholdPoints": 120,
+    "unlocksTemplateIds": ["show-fitment-program"],
+    "unlockLogLine": "Word is you can do a proper show fitment now."
+  },
+  {
+    "id": "one-off-fabrication",
+    "componentId": "body",
+    "displayName": "One-off panel fabrication",
+    "thresholdPoints": 120,
+    "unlocksTemplateIds": ["one-off-widebody"],
+    "unlockLogLine": "Heard you can fabricate one-off panels now, not just repair them."
+  },
+  {
+    "id": "bespoke-trim",
+    "componentId": "interior",
+    "displayName": "Bespoke trim work",
+    "thresholdPoints": 120,
+    "unlocksTemplateIds": ["bespoke-cabin-build"],
+    "unlockLogLine": "Someone said you can do a proper bespoke interior now."
+  }
+]

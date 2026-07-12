@@ -97,7 +97,12 @@ const draggedCarName = computed(() => {
       </div>
       <div>
         <dt>Reputation</dt>
-        <dd>{{ game.reputationTier }}</dd>
+        <dd data-test="reputation-value">
+          {{ game.reputationTier
+          }}<span v-if="game.shopTitleName" data-test="shop-title">
+            , known as "{{ game.shopTitleName }}"</span
+          >
+        </dd>
       </div>
       <div>
         <dt>Cars owned</dt>

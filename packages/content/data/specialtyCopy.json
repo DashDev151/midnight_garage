@@ -1,32 +1,50 @@
 {
-  "engine": [
-    "Heard you're the one for engine work around here.",
-    "Someone told me your shop really knows its way around an engine.",
-    "Word is you're the engine specialists in town."
-  ],
-  "drivetrain": [
-    "Word is you're the one to see about a gearbox.",
-    "Heard your shop's the place for driveline work.",
-    "Someone said you really know your way around a gearbox."
-  ],
-  "suspension": [
-    "Heard you're the one who really knows suspension setups.",
-    "Someone said your shop's the place for a proper suspension job.",
-    "Word is you're the ones to see for handling work."
-  ],
-  "wheels": [
-    "Word is you're the one for wheels and tyres around here.",
-    "Heard your shop does the best wheel fitments in town.",
-    "Someone said you're the specialists for a proper fitment."
-  ],
-  "body": [
-    "Heard you're the one for bodywork, real craftsmanship.",
-    "Word is your shop does proper panel and paint work.",
-    "Someone told me you're the ones for bodywork done right."
-  ],
-  "interior": [
-    "Heard you're the one who does a proper interior job.",
-    "Someone said your shop's the place for trim work.",
-    "Word is you're the specialists for cabin work."
-  ]
+  "engine": {
+    "lines": [
+      "Heard you're the one for engine work around here.",
+      "Someone told me your shop really knows its way around an engine.",
+      "Word is you're the engine specialists in town."
+    ],
+    "titleName": "the engine house"
+  },
+  "drivetrain": {
+    "lines": [
+      "Word is you're the one to see about a gearbox.",
+      "Heard your shop's the place for driveline work.",
+      "Someone said you really know your way around a gearbox."
+    ],
+    "titleName": "the driveline shop"
+  },
+  "suspension": {
+    "lines": [
+      "Heard you're the one who really knows suspension setups.",
+      "Someone said your shop's the place for a proper suspension job.",
+      "Word is you're the ones to see for handling work."
+    ],
+    "titleName": "the chassis works"
+  },
+  "wheels": {
+    "lines": [
+      "Word is you're the one for wheels and tyres around here.",
+      "Heard your shop does the best wheel fitments in town.",
+      "Someone said you're the specialists for a proper fitment."
+    ],
+    "titleName": "the wheel specialists"
+  },
+  "body": {
+    "lines": [
+      "Heard you're the one for bodywork, real craftsmanship.",
+      "Word is your shop does proper panel and paint work.",
+      "Someone told me you're the ones for bodywork done right."
+    ],
+    "titleName": "the body shop"
+  },
+  "interior": {
+    "lines": [
+      "Heard you're the one who does a proper interior job.",
+      "Someone said your shop's the place for trim work.",
+      "Word is you're the specialists for cabin work."
+    ],
+    "titleName": "the trim house"
+  }
 }

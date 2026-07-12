@@ -64,6 +64,21 @@ describe('GarageScreen', () => {
     expect(wrapper.text()).toContain('¥1,500,000')
   })
 
+  it('shows no shop title on a fresh game, and shows it in plain copy once specialty clears the threshold (Sprint 39)', async () => {
+    const game = useGameStore()
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="shop-title"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="reputation-value"]').text()).toBe('unknown')
+
+    game.gameState = {
+      ...game.gameState,
+      specialty: { engine: 100, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },
+    }
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-test="shop-title"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="reputation-value"]').text()).toContain('the engine house')
+  })
+
   it('End Day advances the rendered day counter (the DoD)', async () => {
     const wrapper = mountScreen()
     await wrapper.get('[data-test="end-day"]').trigger('click')

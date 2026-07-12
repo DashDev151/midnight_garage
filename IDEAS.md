@@ -176,3 +176,30 @@ combined design pass would likely make both feel more coherent than designing th
 
 **Status:** both ideas only, no reuse-analysis, no task breakdown, no sprint attached - parked here
 per the standing rule (frozen v1.0 GDD scope), not a near-term commitment.
+
+---
+
+## Build logbook / wall of finished cars
+
+*Added 2026-07-12, during the Progression Rework arc (Sprints 36-39). Status: idea only, parked at
+arc close-out - not designed, not scheduled.*
+
+**The idea:** a physical-feeling record of every car the player has fully restored/built and sold or
+kept - a "wall of the cars you've finished" the player can flip through, rather than a stats panel.
+Surfaced while designing Sprint 39's specialty/technique reveal: the progression bible's law 4 (no
+meters, everything revealed diegetically) wants milestones to feel like real memories, not counters -
+"your 12th engine build" as a story beat you can look back at, not a number that went up.
+
+**Why it fits the pillars:** it's the natural physical anchor for the identity axis (specialty/
+techniques/shop title, Sprint 38-39) - a shop's reputation is who walks in the door, and a logbook is
+what the SHOP OWNER would actually keep. No reflex input, no real-time pressure, purely a browsable
+record.
+
+**Why it's parked, not built:** genuinely new UI surface (a browsable gallery/log screen) and a new
+persisted record (which builds counted, when, what tier) - not a small addition, and the core
+progression mechanics (Sprints 36-39) don't need it to function; the dev-console specialty/technique
+readouts already cover debugging. Worth a real design pass (what counts as "finished," does it
+include cars sold vs. kept, does it show stats or just the story) before any implementation.
+
+**Status:** idea only, no reuse-analysis, no task breakdown, no sprint attached - parked here per the
+standing rule (frozen v1.0 GDD scope), not a near-term commitment.

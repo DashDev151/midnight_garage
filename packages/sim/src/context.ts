@@ -9,10 +9,11 @@ import type {
   Part,
   ServiceJobType,
   SpecialtyCopy,
+  Technique,
   ToolLine,
   ToolLines,
 } from '@midnight-garage/content'
-import { ECONOMY, SPECIALTY_COPY, TOOL_LINES } from '@midnight-garage/content'
+import { ECONOMY, SPECIALTY_COPY, TECHNIQUES, TOOL_LINES } from '@midnight-garage/content'
 
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
@@ -66,6 +67,9 @@ export interface SimContext {
    * instead of its template's own `flavorPool` when the in-lane specialty
    * premium applies (`serviceJobs.ts`). */
   specialtyCopy: SpecialtyCopy
+  /** Sprint 39: the named-craft catalog gating signature templates
+   * (`unlockedTechniques`/`requiresUnmetTechnique`, serviceJobs.ts). */
+  techniques: readonly Technique[]
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -118,6 +122,8 @@ function indexStockPartsByCarPartId(parts: readonly Part[]): Record<CarPartId, P
  * Sprint 38: `specialtyCopy` is a new 10th (trailing) parameter, same
  * "defaulted, so every existing positional call site keeps compiling"
  * treatment as `economy` right before it.
+ *
+ * Sprint 39: `techniques` is an 11th (trailing) parameter, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -130,6 +136,7 @@ export function buildSimContext(
   toolLines: ToolLines = TOOL_LINES,
   economy: EconomyConfig = ECONOMY,
   specialtyCopy: SpecialtyCopy = SPECIALTY_COPY,
+  techniques: readonly Technique[] = TECHNIQUES,
 ): SimContext {
   return {
     models,
@@ -148,5 +155,6 @@ export function buildSimContext(
     toolLineFor: (componentId) => toolLines[componentId],
     economy,
     specialtyCopy,
+    techniques,
   }
 }

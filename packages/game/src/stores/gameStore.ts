@@ -85,8 +85,10 @@ import {
   resolveServiceJob,
   resolveSetForSale,
   scrapValueYen,
+  shopTitle,
   swapCars as swapCarsCore,
   toolDeficitSummary,
+  unlockedTechniques,
   upgradeHintFor,
   valuateCarForBuyer,
   type DeliverySpeed,
@@ -1162,6 +1164,26 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
+   * Sprint 39: the shop's derived title copy ("the engine house"), or null
+   * below `titleThresholdPoints` - plain text alongside reputation
+   * (`GarageScreen.vue`), never a meter. Pure function of `specialty`; can
+   * shift the moment another line overtakes, no ceremony, no lock-in.
+   */
+  const shopTitleName = computed<string | null>(() => {
+    const group = shopTitle(gameState.value, context.value)
+    return group ? context.value.specialtyCopy[group].titleName : null
+  })
+
+  /** The techniques the shop has unlocked right now (Sprint 39) - dev-
+   * console-only, same "one sanctioned debug exception" as `specialtyView`. */
+  const unlockedTechniqueViews = computed<{ id: string; displayName: string }[]>(() =>
+    unlockedTechniques(gameState.value, context.value).map((t) => ({
+      id: t.id,
+      displayName: t.displayName,
+    })),
+  )
+
+  /**
    * Upgrade one tool line to its next tier - instant, effective the same day
    * (repair work sizes off the new tier immediately). Cash-gated only, no
    * reputation gate (Sprint 36). Returns false if maxed or unaffordable.
@@ -1936,6 +1958,8 @@ export const useGameStore = defineStore('game', () => {
     toolLineViews,
     upgradeToolLine,
     specialtyView,
+    shopTitleName,
+    unlockedTechniqueViews,
     repair,
     install,
     isPartStagedAnywhere,

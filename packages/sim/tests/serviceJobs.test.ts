@@ -6,6 +6,7 @@ import {
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
+  TECHNIQUES,
   type CarInstance,
   type CarPartId,
   type GameState,
@@ -38,9 +39,11 @@ import {
   resolveServiceJobArrivals,
   serviceJobCostBreakdown,
   isTemplateOfferable,
+  shopTitle,
   taskGroup,
   toolDeficitSummary,
   topSpecialtyGroup,
+  unlockedTechniques,
   upgradeHintFor,
 } from '../src/serviceJobs'
 import { buildCarInstance, mintCarParts, testSpecialty, testToolTiers } from './testFixtures'
@@ -897,7 +900,7 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         )
         expect(high.length).toBe(zero.length) // the count roll is unaffected by specialty
         for (let i = 0; i < zero.length; i++) {
-          expect(context.specialtyCopy.engine).toContain(high[i]!.description)
+          expect(context.specialtyCopy.engine.lines).toContain(high[i]!.description)
           // Some rolled cars already have a fine+ cooling part (nothing to
           // charge, payout floors at the flat calloutFeeYen either way) -
           // the premium has nothing to multiply on those days, so only
@@ -998,6 +1001,177 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         )
         expect(explicitZero).toEqual(withDefault)
       }
+    })
+  })
+})
+
+describe('techniques and the derived shop title (Sprint 39)', () => {
+  /** A context whose only candidate template is the one real signature
+   * template under test - eliminates template-choice randomness (a
+   * 1-candidate offerable pool always picks it), matching the Sprint 38
+   * single-template-context test pattern. */
+  function singleSignatureContext(templateId: string) {
+    const only = SERVICE_JOB_TYPES.filter((t) => t.id === templateId)
+    return buildSimContext(
+      CARS,
+      PARTS,
+      BUYERS,
+      PARTS_TAXONOMY,
+      only,
+      FACILITIES,
+      SERVICE_JOB_CUSTOMER_NAMES,
+    )
+  }
+
+  describe('requiresTechnique gates offer generation and accept', () => {
+    // full-blueprint-build: engine-only, requiresTechnique blueprint-building
+    // (threshold 120), every task minToolTier 3.
+    const READY_TIERS = testToolTiers({ engine: 3 })
+
+    it('is never offered below the technique threshold, and is offered once it clears', () => {
+      const context = singleSignatureContext('full-blueprint-build')
+      let sawOfferAbove = false
+      for (let day = 1; day <= 100; day++) {
+        const below = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          READY_TIERS,
+          'legend',
+          testSpecialty({ engine: 119 }),
+        )
+        expect(below).toEqual([])
+        const above = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          READY_TIERS,
+          'legend',
+          testSpecialty({ engine: 120 }),
+        )
+        if (above.length > 0) sawOfferAbove = true
+      }
+      expect(sawOfferAbove).toBe(true)
+    })
+
+    it('a template whose requiresTechnique points to an unknown id is never offered (fails closed)', () => {
+      const brokenTemplate: ServiceJobType = {
+        ...SERVICE_JOB_TYPES.find((t) => t.id === 'full-blueprint-build')!,
+        id: 'broken-signature',
+        requiresTechnique: 'does-not-exist',
+      }
+      const context = buildSimContext(
+        CARS,
+        PARTS,
+        BUYERS,
+        PARTS_TAXONOMY,
+        [brokenTemplate],
+        FACILITIES,
+        SERVICE_JOB_CUSTOMER_NAMES,
+      )
+      for (let day = 1; day <= 30; day++) {
+        const offers = generateDailyServiceJobOffers(
+          context,
+          day,
+          10,
+          createRng(day),
+          Infinity,
+          READY_TIERS,
+          'legend',
+          testSpecialty({ engine: 999 }),
+        )
+        expect(offers).toEqual([])
+      }
+    })
+
+    it("accept refuses (reason 'technique') below the threshold, even for an already-generated offer", () => {
+      const context = singleSignatureContext('full-blueprint-build')
+      const template = SERVICE_JOB_TYPES.find((t) => t.id === 'full-blueprint-build')!
+      const offer = { ...activeJob(template), dueOnDay: null }
+      const state = {
+        ...createInitialGameState(context, 1),
+        toolTiers: READY_TIERS,
+        specialty: testSpecialty({ engine: 50 }),
+        serviceJobOffers: [offer],
+      }
+      const result = resolveAcceptServiceJob(state, offer.id, context)
+      expect(result.state.activeServiceJobs).toHaveLength(0)
+      expect(result.log).toEqual([
+        { type: 'acquisition-blocked', kind: 'service-accept', reason: 'technique' },
+      ])
+    })
+
+    it('accepts once specialty clears the threshold', () => {
+      const context = singleSignatureContext('full-blueprint-build')
+      const template = SERVICE_JOB_TYPES.find((t) => t.id === 'full-blueprint-build')!
+      const offer = { ...activeJob(template), dueOnDay: null }
+      const state = {
+        ...createInitialGameState(context, 1),
+        toolTiers: READY_TIERS,
+        specialty: testSpecialty({ engine: 120 }),
+        serviceJobOffers: [offer],
+      }
+      const result = resolveAcceptServiceJob(state, offer.id, context)
+      expect(result.state.activeServiceJobs).toHaveLength(1)
+    })
+  })
+
+  describe('shopTitle', () => {
+    it('is null below titleThresholdPoints', () => {
+      const state = {
+        ...createInitialGameState(CONTEXT, 1),
+        specialty: testSpecialty({ engine: 79 }),
+      }
+      expect(shopTitle(state, CONTEXT)).toBeNull()
+    })
+
+    it('is the top group once it clears the threshold', () => {
+      const state = {
+        ...createInitialGameState(CONTEXT, 1),
+        specialty: testSpecialty({ engine: 80 }),
+      }
+      expect(shopTitle(state, CONTEXT)).toBe('engine')
+    })
+
+    it('ties break by declared group order, same as topSpecialtyGroup', () => {
+      const state = {
+        ...createInitialGameState(CONTEXT, 1),
+        specialty: testSpecialty({ suspension: 90, wheels: 90 }),
+      }
+      expect(shopTitle(state, CONTEXT)).toBe('suspension')
+    })
+
+    it('overtaking another line flips the title to the new top group', () => {
+      const before = {
+        ...createInitialGameState(CONTEXT, 1),
+        specialty: testSpecialty({ engine: 90 }),
+      }
+      expect(shopTitle(before, CONTEXT)).toBe('engine')
+      const after = { ...before, specialty: testSpecialty({ engine: 90, body: 100 }) }
+      expect(shopTitle(after, CONTEXT)).toBe('body')
+    })
+  })
+
+  describe('unlockedTechniques', () => {
+    it('is empty at all-zero specialty', () => {
+      const state = { ...createInitialGameState(CONTEXT, 1), specialty: freshSpecialty() }
+      expect(unlockedTechniques(state, CONTEXT)).toEqual([])
+    })
+
+    it('includes exactly the techniques whose threshold is cleared, nothing more', () => {
+      const state = {
+        ...createInitialGameState(CONTEXT, 1),
+        specialty: testSpecialty({ engine: 120, drivetrain: 50 }),
+      }
+      expect(unlockedTechniques(state, CONTEXT).map((t) => t.id)).toEqual(['blueprint-building'])
+    })
+
+    it('reflects the real technique catalog', () => {
+      expect(TECHNIQUES.length).toBe(6)
     })
   })
 })

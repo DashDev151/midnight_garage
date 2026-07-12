@@ -75,6 +75,11 @@ export const ServiceJobTypeSchema = z.object({
    * grade, if this template has any install tasks - `reputationForCompletion`,
    * serviceJobs.ts). */
   baseReputation: z.number().int().nonnegative(),
+  /** Sprint 39: a signature template's gate - the id of the `Technique`
+   * (techniques.json) that must be unlocked (the shop's specialty in that
+   * technique's group clears its `thresholdPoints`) before this template can
+   * ever be offered or accepted. Absent for every ordinary template. */
+  requiresTechnique: z.string().min(1).optional(),
 })
 
 export const ServiceJobTypesSchema = z.array(ServiceJobTypeSchema).min(1)

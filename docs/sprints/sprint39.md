@@ -123,4 +123,126 @@ run the balance harness.
 
 ## Exit
 
-*(filled on completion)*
+Implemented directly (no subagent, per maintainer directive 2026-07-12), exactly per the locked
+specification. This closes the Progression Rework arc (Sprints 36-39).
+
+**Techniques + signature templates.** New `techniques.json` (6 entries, one per line, all
+threshold 120) + `techniques.ts` schema. Six new tier-4, single-group signature templates added to
+`serviceJobTemplates.json`, each carrying `requiresTechnique` (new optional field on
+`ServiceJobTypeSchema`). Every carPartId/group/grade verified against the real taxonomy before
+writing; flavor lines hand-checked against the integrity guard's foreign-word trap (including the
+"nobody" -> "body" substring case caught and reworded in `bespoke-cabin-build`, where body is NOT
+a touched group).
+
+**Derived helpers, zero new state.** `unlockedTechniques(state, context)` and
+`shopTitle(state, context)` are both pure functions of `state.specialty` (`shopTitle` reuses
+`topSpecialtyGroup`'s own tie-break, gated by a new `titleThresholdPoints` economy tunable).
+Private `specialty`-shaped twins (`unlockedTechniquesFor`/`titleGroupFor`) serve offer generation,
+which only ever carries the loose `specialty` record, not a full `GameState`.
+
+**Offer generation.** A `requiresTechnique` template is excluded from the eligible pool unless its
+technique's threshold is cleared; an unresolvable technique id fails CLOSED (verified by a direct
+test) rather than accidentally exposing a broken signature job. The shop's derived title line gets
+its Sprint 38 bias weight further multiplied by a new `titleBiasMultiplier` (1.25) - composes
+multiplicatively, verified to be a no-op at zero/no-title specialty by construction (title is
+`null` whenever `specialty[top] < titleThresholdPoints`, which zero always is). A picked signature
+template's flavor draws from `[...flavorPool, technique.unlockLogLine]` (folded in as one more
+candidate line, never a stateful announcement) unless the Sprint 38 in-lane premium's
+`specialtyCopy` swap applies instead - same single `rng.pick`, draw count never changes.
+`resolveAcceptServiceJob` re-checks the technique gate live (reason `'technique'`, new enum value
+alongside `'tool-tier'`), defensive against specialty dropping between generation and accept.
+
+**`specialtyCopy.json` restructured** (Sprint 38's shape widened, not a save-schema change - pure
+content): each group's entry gained a `titleName` field (`ToolLineTier`-adjacent shape,
+`{ lines, titleName }`) alongside the existing word-of-mouth pool. All six call sites updated
+(`serviceJobs.ts`, `gameStore.ts` not needed since it never read it directly, two test files).
+
+**UI (copy only).** `GarageScreen.vue`'s reputation line appends `, known as "the engine house"`
+when `shopTitleName` is non-null. Dev console gained a read-only techniques/title readout, the
+same one sanctioned debug exception as Sprint 38's specialty dump. No other UI; no meters, no
+toasts.
+
+**Save: confirmed no bump, exactly as designed.** `SAVE_VERSION` stays 24; two new tests assert
+this directly and prove a v24 save with specialty high enough to unlock a technique/title decodes
+byte-identical to one without - nothing new is ever persisted, both derive live.
+
+**Tests.** Technique gating (never offered below threshold, offered above, fails closed on an
+unknown id, accept re-check); `shopTitle` (null below threshold, correct argmax, tie-break,
+overtake flips it); `unlockedTechniques` (empty at zero, exact set at real thresholds); the
+existing profitability-floor test automatically covers all 6 new signature templates (already
+iterates every `SERVICE_JOB_TYPES` entry); a `GarageScreen` UI test for the title's appear/disappear
+condition. **Focused-vs-spread pacing, verified ad-hoc (not a committed test, per spec):** a
+focused single-line player reaches a technique's 120-point threshold in 12 completed jobs; an
+even round-robin across all six lines takes 67 completed jobs to get any ONE line there first -
+5.6x more completed work for the spread player to unlock their first technique. Confirms the
+design intent directly: specialization is meaningfully faster than spreading thin, entirely as a
+side effect of the earn-split math, no extra mechanic needed.
+
+**Arc close-out.**
+- `IDEAS.md`: added the build-logbook / wall-of-finished-cars idea (parked, post-launch).
+- `TODO.md`: removed two now-resolved stale items (the pre-Sprint-36 "equipment gate
+  surfaced-then-blocked" complaint, structurally retired by Sprint 36's `isTemplateOfferable`; the
+  Sprint 32 days-to-`local` regression note, which has read PASS in every balance run since Sprint
+  33 and was stale/actively misleading); removed the Sprint 33 in-inventory-recondition item
+  (shipped in Sprint 35, the note predated it); kept the specialty-from-sales deferral (added
+  Sprint 38) and extended the "Skill / XP progression" planned-system item with a reconciliation
+  note against the now-built tool-tier mechanism.
+- `docs/design/skill-progression.md` reconciled: the original 2026-07-08 note is preserved
+  verbatim at `docs/design/archive/skill-progression-2026-07-08.md` (clean-codebase rule: archive,
+  don't delete); the live doc now cites `progression-bible.md` as canonical, updates the "Tools,
+  not levels" framing from binary-ownership language to the real tool-tier mechanism, and adds an
+  explicit relationship table distinguishing Skill (unbuilt, per-worker efficiency/quality) from
+  Specialty (built, shop-level identity/access) so a future reader can't confuse the two.
+- `docs/design/gdd-amendment-progression.md` drafted (GDD itself NOT touched, confirmed by empty
+  diff): proposed text for S3.2 (labor base 2 -> 6, tool tier speeds not adds), S9.0 (six always-
+  owned tiered lines replacing the binary-purchase ladder), S9.1 (Specialty appended as the
+  horizontal complement), and S6.1 commissions - the last one flagged explicitly for a maintainer
+  call, since its "score vs. brief" framing was never actually built that way even before this
+  arc, a pre-existing gap this amendment surfaces rather than causes.
+
+**Gate (all shown, all green):** typecheck (content/sim/game); lint; format; `pnpm test` 803/803
+(up from 789); `pnpm test:coverage` 803/803 (statements 90.43%, branches 79.14%, functions 90.43%,
+lines 94.27%, all above 80/65/78/82); `pnpm build`. No golden-hash re-pin needed (technique gating
+is purely additive at zero specialty; the fixed-seed scripted-career fixture never reaches the
+tier-4/threshold-120 territory a signature template needs).
+
+**Balance harness, Sprint 39 run: all hard invariants PASS.** Numbers unchanged from Sprint 38
+(days-to-`local` p50=12.0; steal tail 61.4%; no strategy below the sanity floor) - exactly as
+expected: every signature template needs both reputation tier 4 AND 120 specialty points in one
+line, and no current bot strategy is tuned to chase specialty at all, so signature offers are
+essentially never generated in the harness and move nothing. This will change once (or if) a bot
+strategy is built or retuned to pursue specialty deliberately - a real candidate for the arc-end
+balance pass below, not evidence the mechanism is inert (the sim-level and game-level tests above
+prove it fires correctly; the harness's bot population just doesn't exercise it yet).
+
+**Progression Rework arc-wide final state (Sprints 36-39):**
+
+| Metric | Pre-arc (Sprint 35) | Sprint 36 (tool lines) | Sprint 37 (job ladder) | Sprint 38-39 (specialty/techniques) |
+|---|---|---|---|---|
+| Days-to-`local` p50 | 12.0 | 19.0 | 12.0 | 12.0 |
+| Auction steal tail | ~79.6% | ~61-65% | 61.4% | 61.4% |
+| Sanity floor | pass | pass | pass | pass |
+
+Days-to-`local` dipped to 19 during Sprint 36's mechanical transition (bots spending labor on
+slow tier-1 repairs they were previously forbidden from attempting) and recovered to baseline once
+Sprint 37's real job content gave them honest, diverse work to do. The auction steal tail improved
+as a side effect of the arc (not a goal of it) and remains an open, separately-tracked tuning item
+(`TODO.md`'s Sprint 30 living-auction entry). No new hard-invariant failure was introduced or left
+open by this arc.
+
+**What the arc actually shipped, one paragraph:** binary equipment ownership (own it or the job is
+impossible) is gone, replaced by six always-owned, three-tier tool lines that buy labor speed and
+gate fabrication-grade ceilings (Sprint 36); the job content was rebuilt as a real bolt-on ->
+involved -> fabrication ladder across all six lines so day one is honest and diverse instead of a
+single-template dead zone (Sprint 37); a horizontal Specialty axis rewards doing real work in a
+discipline with more and better-paying work in that discipline, surfaced only through offer mix
+and word-of-mouth copy (Sprint 38); and named techniques plus a derived shop title give
+specialization its payoff and its story, with zero new save state and zero new meters (Sprint 39).
+The day-one job-board failure that triggered this whole arc is now structurally unrepresentable.
+
+**Deferred to the arc-end balance/tuning pass (not this sprint, tracked in `TODO.md`):** tool-tier
+upgrade prices (the handyman tier-payback signal flagged in Sprint 36's Exit, still unresolved);
+`stepCostYen` not scaling with part value (surfaced Sprint 34, more relevant now that specialty
+makes repeated work in one line more likely); the auction steal tail (still above its informational
+target); a bot strategy that actually pursues specialty/techniques, so the harness can measure
+what this arc built instead of reporting it as inert.

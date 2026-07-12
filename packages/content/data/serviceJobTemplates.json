@@ -426,5 +426,98 @@
       "Want this thing brought back to life: engine, paint, interior, wheels, all of it.",
       "Full restoration, spare no detail. The motor, the paint, the seats, and fresh wheels."
     ]
+  },
+  {
+    "id": "full-blueprint-build",
+    "tier": 4,
+    "requiresTechnique": "blueprint-building",
+    "tasks": [
+      { "action": "repair", "carPartId": "block", "targetBand": "mint", "minToolTier": 3 },
+      { "action": "install", "carPartId": "internals", "minGrade": "race", "minToolTier": 3 },
+      { "action": "repair", "carPartId": "headValvetrain", "targetBand": "mint", "minToolTier": 3 }
+    ],
+    "deadlineDays": 10,
+    "baseReputation": 34,
+    "flavorPool": [
+      "Build me a motor that revs to nine, fully blueprinted, no shortcuts.",
+      "Want a proper blueprinted engine, built to hold together at the redline."
+    ]
+  },
+  {
+    "id": "dog-box-conversion-job",
+    "tier": 4,
+    "requiresTechnique": "dog-box-conversion",
+    "tasks": [
+      { "action": "install", "carPartId": "gearbox", "minGrade": "race", "minToolTier": 3 },
+      { "action": "install", "carPartId": "clutch", "minGrade": "race", "minToolTier": 2 }
+    ],
+    "deadlineDays": 8,
+    "baseReputation": 30,
+    "flavorPool": [
+      "Want a proper dog-box in it, quick shifts, no babying the clutch.",
+      "Build me a dog-box gearbox setup, ready for the strip."
+    ]
+  },
+  {
+    "id": "corner-weighted-setup",
+    "tier": 4,
+    "requiresTechnique": "corner-weighting",
+    "tasks": [
+      { "action": "repair", "carPartId": "steering", "targetBand": "mint", "minToolTier": 3 },
+      { "action": "repair", "carPartId": "antiRollBars", "targetBand": "mint", "minToolTier": 3 },
+      { "action": "install", "carPartId": "springs", "minGrade": "sport", "minToolTier": 2 }
+    ],
+    "deadlineDays": 8,
+    "baseReputation": 28,
+    "flavorPool": [
+      "Want it corner-weighted properly for the touge, balanced front to back.",
+      "Set it up corner-weighted, sharp turn-in, no surprises mid-corner."
+    ]
+  },
+  {
+    "id": "show-fitment-program",
+    "tier": 4,
+    "requiresTechnique": "show-fitment",
+    "tasks": [
+      { "action": "install", "carPartId": "rims", "minGrade": "race", "minToolTier": 2 },
+      { "action": "repair", "carPartId": "tyres", "targetBand": "mint", "minToolTier": 2 }
+    ],
+    "deadlineDays": 7,
+    "baseReputation": 26,
+    "flavorPool": [
+      "Want a proper show fitment, flush, no rub, tyres stretched just right.",
+      "Looking for a serious fitment job, the kind that turns heads at a meet."
+    ]
+  },
+  {
+    "id": "one-off-widebody",
+    "tier": 4,
+    "requiresTechnique": "one-off-fabrication",
+    "tasks": [
+      { "action": "repair", "carPartId": "panels", "targetBand": "mint", "minToolTier": 3 },
+      { "action": "install", "carPartId": "aero", "minGrade": "race", "minToolTier": 3 },
+      { "action": "repair", "carPartId": "paint", "targetBand": "mint", "minToolTier": 3 }
+    ],
+    "deadlineDays": 10,
+    "baseReputation": 34,
+    "flavorPool": [
+      "Want a proper one-off widebody, fabricated, not a bolt-on kit.",
+      "Build me something nobody else has, one-off panels, done right."
+    ]
+  },
+  {
+    "id": "bespoke-cabin-build",
+    "tier": 4,
+    "requiresTechnique": "bespoke-trim",
+    "tasks": [
+      { "action": "install", "carPartId": "seats", "minGrade": "race", "minToolTier": 2 },
+      { "action": "repair", "carPartId": "dashGauges", "targetBand": "mint", "minToolTier": 2 }
+    ],
+    "deadlineDays": 8,
+    "baseReputation": 28,
+    "flavorPool": [
+      "Want a proper bespoke interior, race seats, gauges done right.",
+      "Build me a cabin like no other, one-off trim, top to bottom."
+    ]
   }
 ]

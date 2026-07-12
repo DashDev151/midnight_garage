@@ -54,6 +54,13 @@ function warp(): void {
       </span>
     </div>
 
+    <!-- Sprint 39: techniques + the derived title, same dev-only exception. -->
+    <div class="readout" data-test="techniques-readout">
+      title: {{ game.shopTitleName ?? 'none' }} · techniques:
+      <span v-if="game.unlockedTechniqueViews.length === 0">none</span>
+      <span v-for="t in game.unlockedTechniqueViews" :key="t.id">{{ t.displayName }}</span>
+    </div>
+
     <div class="row">
       <label>give <input v-model.number="giveAmount" type="number" step="50000" /></label>
       <button @click="game.devGiveCash(giveAmount)">add cash</button>
