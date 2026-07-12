@@ -135,17 +135,37 @@
       "seats": 3,
       "dashGauges": 1
     },
-    "conditionBaselineMinByAgeYears": [
-      [0, 55],
-      [4, 45],
-      [10, 35],
-      [20, 30]
+    "mileageRangeMinByAgeYears": [
+      [0, 0],
+      [1, 1000],
+      [2, 5000],
+      [4, 12000],
+      [8, 35000],
+      [12, 55000],
+      [20, 90000]
     ],
-    "conditionBaselineMaxByAgeYears": [
+    "mileageRangeMaxByAgeYears": [
+      [0, 3000],
+      [1, 12000],
+      [2, 30000],
+      [4, 55000],
+      [8, 105000],
+      [12, 150000],
+      [20, 230000]
+    ],
+    "conditionBaselineMinByMileageKm": [
+      [0, 70],
+      [20000, 58],
+      [60000, 45],
+      [120000, 33],
+      [200000, 22]
+    ],
+    "conditionBaselineMaxByMileageKm": [
       [0, 98],
-      [4, 92],
-      [10, 90],
-      [20, 90]
+      [20000, 95],
+      [60000, 88],
+      [120000, 78],
+      [200000, 68]
     ]
   },
   "reputation": {

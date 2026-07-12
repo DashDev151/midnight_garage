@@ -325,23 +325,59 @@ describe('installedPartsValueYen', () => {
     }
   }
 
-  it('applies partsRetention x bandFactor(installed.band) to a non-genuine part', () => {
+  it('applies partsRetention (no band discount, Sprint 34 double-count fix) to a non-genuine part', () => {
     const car = carWithInstalledPart('fine', false)
-    const expected = Math.round(
-      suspensionKit.priceYen * ECONOMY.valuation.partsRetention * ECONOMY.bands.bandFactors.fine,
-    )
+    const expected = Math.round(suspensionKit.priceYen * ECONOMY.valuation.partsRetention)
     expect(installedPartsValueYen(car, partsById, ECONOMY)).toBe(expected)
   })
 
-  it('applies genuinePeriodMultiplier on top for a genuine-period part', () => {
+  it('applies genuinePeriodMultiplier on top for a genuine-period part (still no band discount)', () => {
     const car = carWithInstalledPart('fine', true)
     const expected = Math.round(
       suspensionKit.priceYen *
         ECONOMY.valuation.partsRetention *
-        ECONOMY.bands.bandFactors.fine *
         ECONOMY.valuation.genuinePeriodMultiplier,
     )
     expect(installedPartsValueYen(car, partsById, ECONOMY)).toBe(expected)
+  })
+
+  it('does not band-discount an aftermarket part: a worn part contributes the same installed-parts value as a mint one (Sprint 34 - condition is priced only by the restoration bill now)', () => {
+    const expected = Math.round(suspensionKit.priceYen * ECONOMY.valuation.partsRetention)
+    expect(installedPartsValueYen(carWithInstalledPart('worn', false), partsById, ECONOMY)).toBe(
+      expected,
+    )
+    expect(installedPartsValueYen(carWithInstalledPart('mint', false), partsById, ECONOMY)).toBe(
+      expected,
+    )
+  })
+
+  it('a scrap aftermarket part contributes zero (Sprint 34: it cannot be restored, and the bill already replaces it at stock price)', () => {
+    expect(installedPartsValueYen(carWithInstalledPart('scrap', false), partsById, ECONOMY)).toBe(0)
+  })
+
+  it('counts condition exactly once: restoring a worn aftermarket part raises car value only through the shrinking restoration bill, not through installed-parts value (Sprint 34 de-dup)', () => {
+    const wornCar = carWithInstalledPart('worn', false)
+    const restoredCar = carWithInstalledPart('mint', false)
+    // Installed-parts value is band-independent now, so restoring the part
+    // changes nothing on that channel...
+    expect(installedPartsValueYen(restoredCar, partsById, ECONOMY)).toBe(
+      installedPartsValueYen(wornCar, partsById, ECONOMY),
+    )
+    const wornValue = marketValueYen(model, wornCar, 100, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const restoredValue = marketValueYen(
+      model,
+      restoredCar,
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    // ...yet the car is still worth more restored, and the entire gain equals
+    // the shrinking restoration bill (the single condition channel).
+    expect(restoredValue).toBeGreaterThan(wornValue)
+    const billGainYen =
+      expectedBaseValueYen(restoredCar, model) - expectedBaseValueYen(wornCar, model)
+    expect(restoredValue - wornValue).toBe(billGainYen)
   })
 
   it('is 0 with no installed parts', () => {

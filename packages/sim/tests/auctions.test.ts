@@ -222,7 +222,7 @@ describe('currentYear clamp - the rolling chronology (Sprint 10 item 6)', () => 
   })
 })
 
-describe('generation condition is age-aware (Sprint 33 decision 6)', () => {
+describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)', () => {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!model) throw new Error('fixture car missing from seed content')
 
@@ -241,48 +241,70 @@ describe('generation condition is age-aware (Sprint 33 decision 6)', () => {
     return total > 0 ? poorOrWorse / total : 0
   }
 
-  it('a brand-new (age-0) car does not roll nearly every part poor', () => {
-    const instances = Array.from({ length: 100 }, (_, seed) =>
+  function meanMileageKm(instances: readonly CarInstance[]): number {
+    return instances.reduce((sum, c) => sum + c.mileageKm, 0) / instances.length
+  }
+
+  const generateAtAge = (ageYears: number, count: number, label: string): CarInstance[] =>
+    Array.from({ length: count }, (_, seed) =>
       generateAuctionCarInstance(
         model,
-        `car-young-${seed}`,
+        `car-${label}-${seed}`,
         createRng(seed),
         CONTEXT,
-        model.spec.yearFrom,
+        model.spec.yearFrom + ageYears,
       ),
     )
-    // The maintainer's own framing: a ~2-year-old (here, age-0, an even
-    // stronger case) car must not look like it rolled "nearly every part
-    // poor" - a small tail is fine, a majority is the bug this fixes.
-    expect(poorOrWorseFraction(instances)).toBeLessThan(0.2)
+
+  it('mileage rises with age: old cars are drawn from a materially higher-mileage range than young ones', () => {
+    const young = generateAtAge(0, 200, 'young')
+    const old = generateAtAge(25, 200, 'old')
+    // The whole point of the chain: age no longer decouples from mileage.
+    expect(meanMileageKm(old)).toBeGreaterThan(meanMileageKm(young))
+    // ...and concretely, a near-new car is genuinely low-mileage while an old
+    // one is high-mileage (not merely "a bit more on average").
+    expect(meanMileageKm(young)).toBeLessThan(20_000)
+    expect(meanMileageKm(old)).toBeGreaterThan(100_000)
+  })
+
+  it('condition falls as mileage rises: within a mixed-age sample, the lower-mileage half is in better condition than the higher-mileage half', () => {
+    const instances: CarInstance[] = []
+    for (let age = 0; age <= 25; age++) {
+      for (let seed = 0; seed < 20; seed++) {
+        instances.push(
+          generateAuctionCarInstance(
+            model,
+            `car-mix-${age}-${seed}`,
+            createRng(age * 1000 + seed),
+            CONTEXT,
+            model.spec.yearFrom + age,
+          ),
+        )
+      }
+    }
+    const sorted = [...instances].sort((a, b) => a.mileageKm - b.mileageKm)
+    const half = Math.floor(sorted.length / 2)
+    const lowMileage = sorted.slice(0, half)
+    const highMileage = sorted.slice(half)
+    expect(poorOrWorseFraction(lowMileage)).toBeLessThan(poorOrWorseFraction(highMileage))
+  })
+
+  it('a brand-new (age-0) car does not roll nearly every part poor', () => {
+    // A near-new car is low-mileage, so its condition baseline sits high - a
+    // small poor tail is fine, a majority is the incoherence this chain fixes.
+    expect(poorOrWorseFraction(generateAtAge(0, 100, 'young'))).toBeLessThan(0.2)
   })
 
   it('an old (age ~25) car rolls meaningfully worse on average than an age-0 car, same seeds', () => {
-    const young = Array.from({ length: 150 }, (_, seed) =>
-      generateAuctionCarInstance(
-        model,
-        `car-young-${seed}`,
-        createRng(seed),
-        CONTEXT,
-        model.spec.yearFrom,
-      ),
+    expect(poorOrWorseFraction(generateAtAge(25, 150, 'old'))).toBeGreaterThan(
+      poorOrWorseFraction(generateAtAge(0, 150, 'young')),
     )
-    const old = Array.from({ length: 150 }, (_, seed) =>
-      generateAuctionCarInstance(
-        model,
-        `car-old-${seed}`,
-        createRng(seed),
-        CONTEXT,
-        model.spec.yearFrom + 25,
-      ),
-    )
-    expect(poorOrWorseFraction(old)).toBeGreaterThan(poorOrWorseFraction(young))
   })
 
   it('with no calendar context (currentYear omitted), condition still rolls a real, bounded spread', () => {
-    // Sprint 33: age falls back to a fixed default (constants.ts) rather
-    // than an infinite/undefined age when currentYear is unbounded - still
-    // produces every real band, same as before this sprint.
+    // Age falls back to a fixed default (constants.ts) rather than an
+    // infinite/undefined age when currentYear is unbounded - the mileage
+    // range for that default age still produces every real band.
     const instance = generateAuctionCarInstance(model, 'car-test', createRng(1), CONTEXT)
     for (const partId of ALL_CAR_PART_IDS) {
       const installed = instance.parts[partId].installed

@@ -122,17 +122,39 @@ function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x
 }
 
 /**
- * Sprint 33 decision 6: the condition-baseline roll's [min, max] range for a
- * car of this age, sampled from `economy.json`'s
- * `partsGeneration.conditionBaselineMinByAgeYears`/`MaxByAgeYears` curves -
- * replaces the old flat `CAR_CONDITION_BASE_MIN`/`MAX` constants (30-90
- * regardless of age). Rounded to whole yen-free percentage points since
- * `rng.int` requires integer bounds.
+ * Sprint 34: the [min, max] mileage range (km) for a car of this age, sampled
+ * from `economy.json`'s `partsGeneration.mileageRangeMinByAgeYears`/
+ * `MaxByAgeYears` curves. Age reaches nothing downstream except this range
+ * (design decision 1) - from here, mileage is the single coherent wear driver
+ * (it is also the sole value-side wear signal, via `marketValue.ts`'s
+ * `mileageFactor`). Rounded to whole km since `rng.int` requires integer
+ * bounds; the two curves never cross, so `min <= max` holds at every age.
  */
-function conditionBaselineRangeForAge(ageYears: number, economy: EconomyConfig): [number, number] {
-  const { conditionBaselineMinByAgeYears, conditionBaselineMaxByAgeYears } = economy.partsGeneration
-  const min = Math.round(interpolateCurve(conditionBaselineMinByAgeYears, ageYears))
-  const max = Math.round(interpolateCurve(conditionBaselineMaxByAgeYears, ageYears))
+function mileageRangeForAge(ageYears: number, economy: EconomyConfig): [number, number] {
+  const { mileageRangeMinByAgeYears, mileageRangeMaxByAgeYears } = economy.partsGeneration
+  const min = Math.round(interpolateCurve(mileageRangeMinByAgeYears, ageYears))
+  const max = Math.round(interpolateCurve(mileageRangeMaxByAgeYears, ageYears))
+  return [min, max]
+}
+
+/**
+ * Sprint 34: the condition-baseline roll's [min, max] range for a car at this
+ * mileage, sampled from `economy.json`'s
+ * `partsGeneration.conditionBaselineMinByMileageKm`/`MaxByMileageKm` curves -
+ * replaces Sprint 33's age-keyed `conditionBaselineRangeForAge` (single-system,
+ * directive 16). Mileage is now the sole input to generated condition; age
+ * influences it only indirectly, through `mileageRangeForAge` above. Rounded
+ * to whole percentage points since `rng.int` requires integer bounds; the two
+ * curves never cross, so `min <= max` holds at every mileage.
+ */
+function conditionBaselineRangeForMileage(
+  mileageKm: number,
+  economy: EconomyConfig,
+): [number, number] {
+  const { conditionBaselineMinByMileageKm, conditionBaselineMaxByMileageKm } =
+    economy.partsGeneration
+  const min = Math.round(interpolateCurve(conditionBaselineMinByMileageKm, mileageKm))
+  const max = Math.round(interpolateCurve(conditionBaselineMaxByMileageKm, mileageKm))
   return [min, max]
 }
 
@@ -185,18 +207,21 @@ function stockInstanceFor(
  * rolled bands are plain, always-visible state now - there is no reveal
  * machinery left to layer on top.
  *
- * Sprint 33 decision 6: `year` now rolls FIRST (used to roll last, alongside
- * mileage/color/provenance/authenticity) so the condition baseline can be
- * age-aware - `conditionBaselineRangeForAge` samples the car's age
- * (`currentYear - year`, clamped >= 0) against `economy.json`'s two age
- * curves instead of drawing from the old flat 30-90 range, so a young car
- * skews toward a materially better baseline than an old one. `currentYear`
- * not being finite (most callers with no real calendar context - see that
- * param's own doc note below) falls back to a fixed
+ * Sprint 34: generation is a single causal chain, `year -> ageYears ->
+ * mileage range -> roll mileage -> condition range -> roll condition baseline
+ * -> per-part jitter`. `year` rolls first, its age picks a mileage range
+ * (`mileageRangeForAge`) from which `mileageKm` is rolled, and that mileage
+ * picks the condition-baseline range (`conditionBaselineRangeForMileage`) -
+ * replacing Sprint 33's direct age->condition curve and the old flat
+ * `rng.int(30_000, 180_000)` mileage draw, which were independent (a 1-year-old
+ * could roll 180,000 km, a 30-year-old 30,000 km, equal odds). Age now reaches
+ * condition only through mileage, so mileage is the one coherent wear driver.
+ * `currentYear` not being finite (most callers with no real calendar context -
+ * see that param's own doc note below) falls back to a fixed
  * `DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED` (constants.ts) rather than an
- * infinite/undefined age. This is generation condition only, not value -
- * `marketValue.ts` never re-gained an age factor (a maintainer decision
- * after Sprint 30 removed it there specifically).
+ * infinite/undefined age. This is generation only, not value - `marketValue.ts`
+ * never re-gained an age factor (a maintainer decision after Sprint 30 removed
+ * it there specifically); mileage reaches value solely via `mileageFactor`.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -210,7 +235,9 @@ export function generateAuctionCarInstance(
   const ageYears = Number.isFinite(currentYear)
     ? Math.max(0, currentYear - year)
     : DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED
-  const [baselineMin, baselineMax] = conditionBaselineRangeForAge(ageYears, economy)
+  const [mileageMin, mileageMax] = mileageRangeForAge(ageYears, economy)
+  const mileageKm = rng.int(mileageMin, mileageMax)
+  const [baselineMin, baselineMax] = conditionBaselineRangeForMileage(mileageKm, economy)
   const conditionBaseline = rng.int(baselineMin, baselineMax)
   const carHasForcedInduction = hasForcedInduction(model)
   const { missingSlotBaseChance, missingSlotWeightByPart } = economy.partsGeneration
@@ -242,7 +269,7 @@ export function generateAuctionCarInstance(
     id,
     modelId: model.id,
     year,
-    mileageKm: rng.int(30_000, 180_000),
+    mileageKm,
     color: rng.pick(COLOR_POOL),
     provenanceNote: rng.pick(PROVENANCE_POOL),
     authenticityPercent: rng.int(60, 95),

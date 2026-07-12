@@ -165,16 +165,17 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 33 re-pins this hash outright: `generateAuctionCarInstance` now
-    // rolls `year` BEFORE the condition baseline (decision 6's age-aware
-    // curve needs the car's age first), reordering the RNG draw sequence for
-    // every generated car in this career - a pure generation-order change,
-    // but `hashState` hashes the whole state, so the hash moves regardless.
-    // Every prior sprint's own re-pin note above this one is now historical
-    // (the shape/sequence they were re-pinning against no longer exists).
+    // Sprint 34 re-pins this hash: `generateAuctionCarInstance` now rolls
+    // mileage FROM the car's age (age -> mileage range) and the condition
+    // baseline FROM that mileage (mileage -> condition range), replacing the
+    // old flat `rng.int(30_000, 180_000)` mileage draw and Sprint 33's direct
+    // age->condition curve. That reorders the RNG draw sequence and shifts
+    // every generated car's mileage and condition in this career, so the
+    // whole-state hash moves. A pure generation change - no value-model math
+    // changed here.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('9dfc95d8')
+    expect(hashState(finalState)).toBe('10108ea2')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -296,14 +297,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned again for Sprint 33 decision 6 (age-aware generation
-    // condition): `generateAuctionCarInstance` reorders its RNG draws (year
-    // rolls first now, to feed the age-aware baseline curve), which shifts
-    // every generated car's condition - and therefore every downstream
-    // price - in this career, moving the final state hash. `car.year` is
-    // still not a value input (that stays true post-Sprint-30); only
-    // condition GENERATION changed.
-    expect(hashState(acquisitionCareer().sold)).toBe('6dfec42b')
+    // Re-pinned for Sprint 34's mileage-driven generation: the car bought and
+    // sold here is generated via the new `age -> mileage -> condition` chain,
+    // which shifts its rolled mileage and condition (and therefore its
+    // marketValue-derived sale price) and reorders the RNG draw sequence for
+    // every lot in the career, moving the final state hash. `car.year` is
+    // still not a value input (mileage reaches value only via `mileageFactor`);
+    // only generation changed.
+    expect(hashState(acquisitionCareer().sold)).toBe('2261bd6a')
   })
 })
 

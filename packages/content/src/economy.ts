@@ -94,10 +94,13 @@ const ByRarityTierMultiplierSchema = z.object({
  * breakpoints a designer can draw directly in JSON. Reads as "y is this at
  * x=breakpoint[i][0]"; interpolated linearly between neighboring breakpoints,
  * clamped to the first/last y outside the breakpoint range. Used for the
- * mileage factor in `marketValue.ts`'s clean-value formula.
+ * mileage factor in `marketValue.ts`'s clean-value formula and (Sprint 34) the
+ * generation mileage-by-age / condition-by-mileage curves. Both x and y are
+ * non-negative: a curve's y can legitimately be 0 (a brand-new car's minimum
+ * mileage floor is 0 km, `mileageRangeMinByAgeYears`'s first breakpoint).
  */
 export const CurveSchema = z
-  .array(z.tuple([z.number().nonnegative(), z.number().positive()]))
+  .array(z.tuple([z.number().nonnegative(), z.number().nonnegative()]))
   .min(2)
   .refine((points) => points.every((p, i) => i === 0 || p[0] > points[i - 1]![0]), {
     message: 'curve breakpoints must have strictly ascending x values',
@@ -285,9 +288,9 @@ export const EconomyConfigSchema = z.object({
    * the formula) - `hassleFactor`/`floorFraction` are its two tunables.
    */
   valuation: z.object({
-    /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - roughly flat
-     * (even a small low-mileage bonus) below `auctions.ts`'s 30k-180k roll
-     * floor, falling off toward the roll ceiling. */
+    /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - a small
+     * low-mileage bonus flattening to 1.0, then falling off with mileage,
+     * clamped to the first/last factor outside the breakpoint range. */
     mileageFactorCurve: CurveSchema,
     /**
      * Sprint 27 decision 1: `restorationBill`'s weight in `instanceValue =
@@ -449,21 +452,32 @@ export const EconomyConfigSchema = z.object({
      * gets. */
     missingSlotWeightByPart: ByCarPartIdWeightSchema,
     /**
-     * Sprint 33 decision 6: the generated-condition baseline roll's [min,
-     * max] range as a function of the rolled car's age in years (`currentYear
-     * - car.year`, clamped to >= 0) - replaces the old flat
-     * `CAR_CONDITION_BASE_MIN`/`MAX` sim constants (30-90 regardless of age),
-     * which let a brand-new car roll nearly every part `poor` just as easily
-     * as a 30-year-old classic. Younger cars skew toward the high end of
-     * each curve; both curves converge back to roughly the old 30-90 spread
-     * by the time a car is old enough that "well-kept" stops being a
-     * reasonable default assumption. `auctions.ts`'s `generateAuctionCarInstance`
-     * samples both curves at the same age and rolls `rng.int(min, max)`
-     * exactly once, same as the old flat constants - only WHERE the range
-     * comes from changed, not the shape of the roll itself.
+     * Sprint 34: generation is a single causal chain, `age -> mileage ->
+     * condition`. Age sets a mileage range (these two curves, km by age in
+     * years), a mileage is rolled uniformly in that range, and the mileage
+     * then sets the condition-baseline range below. Replaces Sprint 33's
+     * direct age->condition curves (single-system, directive 16): age no
+     * longer reaches condition except through mileage, so mileage is the one
+     * coherent wear driver (it is also the sole value-side wear signal, via
+     * `marketValue.ts`'s `mileageFactor`). `auctions.ts`'s
+     * `mileageRangeForAge` samples both curves at the car's age and rolls
+     * `rng.int(min, max)` once. 1990s Japan centres ~9-10k km/yr, low by world
+     * standards (the shaken inspection regime), with wide variance and a
+     * high-use tail - hence the spread rather than a single mean.
      */
-    conditionBaselineMinByAgeYears: CurveSchema,
-    conditionBaselineMaxByAgeYears: CurveSchema,
+    mileageRangeMinByAgeYears: CurveSchema,
+    mileageRangeMaxByAgeYears: CurveSchema,
+    /**
+     * Sprint 34: the condition-baseline roll's [min, max] range (percent,
+     * pre-jitter) as a function of the rolled mileage - replaces Sprint 33's
+     * age-keyed condition curves. `auctions.ts`'s
+     * `conditionBaselineRangeForMileage` samples both at the rolled mileage
+     * and rolls `rng.int(min, max)` once; each of the 29 parts then jitters
+     * +/- `CAR_CONDITION_JITTER` around that baseline (unchanged). Higher
+     * mileage skews condition worse; low-mileage cars stay mostly good.
+     */
+    conditionBaselineMinByMileageKm: CurveSchema,
+    conditionBaselineMaxByMileageKm: CurveSchema,
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar

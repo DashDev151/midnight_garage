@@ -56,6 +56,18 @@ pass."
   stock ones. Composes cleanly with the existing value math (`installedPartsValueYen` already
   prices aftermarket) and the missing-slot roll (a slot is then one of: stock / aftermarket / worn
   / missing).
+- [ ] **`stepCostYen` (the per-grade repair cost in the parts taxonomy) is stock-calibrated and does
+  not scale with a part's value (surfaced during the Sprint 34 double-count fix).** The restoration
+  bill (`bands.ts` `costToMintYen` -> `carCostToMintYen`) charges `gradesBetween(band,'mint') *
+  stepCostYen` to repair ANY part in a slot, whether it is a Y5k stock part or a Y300k race turbo.
+  Since Sprint 34 made the bill the single place condition is priced (aftermarket parts no longer
+  band-discounted in `installedPartsValueYen`), this means wear on an EXPENSIVE aftermarket part is
+  cheap to fix relative to the value it restores, so restoring high-value mods is disproportionately
+  profitable. Structurally the de-dup is correct (condition counted once); the magnitude is the open
+  question: should `stepCostYen` (or the restoration cost generally) scale with the installed part's
+  price/grade rather than being a flat per-slot stock number? A content/calibration decision for the
+  balance pass, not a bug. Only bites once the player mods a car or pre-installed aftermarket parts
+  (above) land; generated cars are all stock today so it is dormant.
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.

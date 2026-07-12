@@ -7,7 +7,7 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { bandFactor, carCostToMintYen } from './bands'
+import { carCostToMintYen } from './bands'
 
 /**
  * Sprint 27 - the taste-free "what is this car worth" answer, shared by
@@ -46,8 +46,9 @@ function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x
 
 /**
  * Decision 1: mileage discounts clean value along `economy.json`'s
- * `valuation.mileageFactorCurve` - roughly flat (even a small bonus) below
- * `auctions.ts`'s 30k roll floor, falling off toward its 180k roll ceiling.
+ * `valuation.mileageFactorCurve` - a small low-mileage bonus that flattens to
+ * 1.0, then falls off with mileage, clamped to the first/last factor outside
+ * the breakpoint range.
  */
 export function mileageFactor(mileageKm: number, economy: EconomyConfig): number {
   return interpolateCurve(economy.valuation.mileageFactorCurve, mileageKm)
@@ -90,9 +91,19 @@ function instanceBaseValueYen(
  * Installed parts add real yen, additively rather than multiplicatively
  * (decision 3 - real markets: mods return cents on the yen, they don't
  * multiply the chassis price). Per installed part instance:
- * `part.priceYen x partsRetention x bandFactor(installed.band) x
- * (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed and rounded.
- * Sprint 26: `bandFactor` replaces the old `conditionPercent / 100`.
+ * `part.priceYen x partsRetention x (genuinePeriod ? genuinePeriodMultiplier
+ * : 1.0)`, summed and rounded.
+ *
+ * Sprint 34 (double-count fix, option A): NO `bandFactor(installed.band)`
+ * discount here - a part's condition is priced exactly once, through the
+ * restoration bill (`carCostToMintYen` inside `instanceBaseValueYen`), which
+ * already counts every installed part's band. Applying it here too penalized
+ * a worn aftermarket part on both sides, a swing exceeding the part's own
+ * value. An aftermarket part therefore contributes its full retained mint
+ * worth here, with one exception: a `scrap` part contributes ZERO - it cannot
+ * be restored (`bands.ts` `canRepair`), and the bill already replaces it at
+ * its stock price, so counting any retained value on top would double-count
+ * it back in.
  *
  * Sprint 32 decision 4: a `grade === 'stock'` installed part contributes
  * NOTHING here - stock is the baseline every slot starts from, not an
@@ -112,11 +123,11 @@ export function installedPartsValueYen(
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
     if (!installed) continue
+    if (installed.band === 'scrap') continue
     const part = partsById[installed.partId]
     if (!part || part.grade === 'stock') continue
     const genuineMultiplier = installed.genuinePeriod ? genuinePeriodMultiplier : 1.0
-    total +=
-      part.priceYen * partsRetention * bandFactor(installed.band, economy) * genuineMultiplier
+    total += part.priceYen * partsRetention * genuineMultiplier
   }
   return Math.round(total)
 }

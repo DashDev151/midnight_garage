@@ -102,27 +102,24 @@ export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
  * a wrecked transmission with no relationship between them) - one 0-100
  * baseline is rolled per car, and each part jitters around it (see
  * CAR_CONDITION_JITTER) before bucketing into its condition band (Sprint 26:
- * `bandForMigratedCondition`, bands.ts). Sprint 33 decision 6: the
- * baseline's own [min, max] range used to be the flat
- * `CAR_CONDITION_BASE_MIN`/`MAX` constants that lived here (30-90
- * regardless of age) - it's now age-aware content
- * (`economy.json`'s `partsGeneration.conditionBaselineMinByAgeYears`/
- * `MaxByAgeYears`, sampled in `auctions.ts`), since a flat range let a
- * brand-new car roll just as rough as a 30-year-old classic.
+ * `bandForMigratedCondition`, bands.ts). Sprint 34: the baseline's own [min,
+ * max] range is now derived from the car's rolled mileage (`economy.json`'s
+ * `partsGeneration.conditionBaselineMinByMileageKm`/`MaxByMileageKm`, sampled
+ * in `auctions.ts`), which is itself rolled from the car's age - so mileage is
+ * the single coherent wear driver and a low-mileage car stays mostly good.
  */
 export const CAR_CONDITION_JITTER = 15
 
 /**
- * Sprint 33 decision 6: the condition-baseline age curves need a concrete
- * calendar age (`currentYear - car.year`); `generateAuctionCarInstance`'s
- * `currentYear` defaults to `Infinity` for callers with no real calendar
- * context (most unit tests, and the value-model probes), where "age" is
- * meaningless. This fallback stands in for age in exactly that case - real
- * gameplay always threads a concrete `currentGameYear(...)`, never this
- * default (see `newGame.ts`/`advanceDay.ts`). Picked to land mid-curve, near
- * the age where both baseline curves have already converged toward their
- * long-run (pre-Sprint-33) range - a reasonable "typical used car, no
- * calendar info" stand-in rather than an accidental best- or worst-case.
+ * Sprint 34: generation's `age -> mileage -> condition` chain needs a concrete
+ * calendar age (`currentYear - car.year`) to pick the mileage range;
+ * `generateAuctionCarInstance`'s `currentYear` defaults to `Infinity` for
+ * callers with no real calendar context (most unit tests, and the value-model
+ * probes), where "age" is meaningless. This fallback stands in for age in
+ * exactly that case - real gameplay always threads a concrete
+ * `currentGameYear(...)`, never this default (see `newGame.ts`/`advanceDay.ts`).
+ * Picked to land mid-range - a reasonable "typical used car, no calendar info"
+ * stand-in rather than an accidental best- or worst-case.
  */
 export const DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED = 10
 
