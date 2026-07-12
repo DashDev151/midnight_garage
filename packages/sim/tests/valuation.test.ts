@@ -34,13 +34,9 @@ const model: CarModel = {
   bookValueYen: 4_200_000,
 }
 
-/** Matches `stockInstance.year` below, so `ageFactor` stays 1.0 (age 0) for
- * every test in this file that doesn't specifically vary it (Sprint 30). */
-const CURRENT_YEAR = 1994
-
 const stockInstance: CarInstance = buildCarInstance({
   modelId: model.id,
-  year: CURRENT_YEAR,
+  year: 1994,
   authenticityPercent: 95,
   parts: uniformCarParts('fine'),
 })
@@ -72,7 +68,6 @@ function valuate(buyer: Buyer, instance: CarInstance, heatPercent = 100) {
     PARTS_TAXONOMY,
     PARTS_TAXONOMY_BY_ID,
     heatPercent,
-    CURRENT_YEAR,
     ECONOMY,
   )
 }
@@ -110,15 +105,7 @@ describe('valuateCarForBuyer', () => {
     const spread = ECONOMY.valuation.tasteSpread
 
     it('stays within [1 - tasteSpread, 1 + tasteSpread] of marketValueYen for any buyer', () => {
-      const value = marketValueYen(
-        model,
-        stockInstance,
-        100,
-        CURRENT_YEAR,
-        {},
-        PARTS_TAXONOMY_BY_ID,
-        ECONOMY,
-      )
+      const value = marketValueYen(model, stockInstance, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
       for (const buyer of [collector, firstTimer]) {
         const valuation = valuate(buyer, stockInstance)
         expect(valuation).toBeGreaterThanOrEqual(Math.round(value * (1 - spread)))
@@ -127,15 +114,7 @@ describe('valuateCarForBuyer', () => {
     })
 
     it('is monotonic in stat fit: a buyer weighting every stat outvalues one weighting none', () => {
-      const value = marketValueYen(
-        model,
-        stockInstance,
-        100,
-        CURRENT_YEAR,
-        {},
-        PARTS_TAXONOMY_BY_ID,
-        ECONOMY,
-      )
+      const value = marketValueYen(model, stockInstance, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
       const enthusiast: Buyer = {
         ...collector,
         statWeights: { power: 1, handling: 1, style: 1, reliability: 1, authenticity: 1 },

@@ -16,7 +16,6 @@ import { describe, expect, it } from 'vitest'
 import { anchorValueYen, nextRaiseYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
 import { generateAuctionCatalog } from '../src/auctions'
 import { hasForcedInduction } from '../src/bands'
-import { currentGameYear } from '../src/calendar'
 import { buildSimContext } from '../src/context'
 import { marketValueYen } from '../src/marketValue'
 import { createRng } from '../src/rng'
@@ -39,10 +38,6 @@ const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
 const PROBE_MODEL = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
 if (!PROBE_MODEL) throw new Error('fixture car missing from seed content')
 const PROBE_MODELS: readonly CarModel[] = [PROBE_MODEL]
-
-/** Every probe below runs at an 'unknown'-tier calendar year (Sprint 30) -
- * the same fixture `reputationTier` `stateWithLots` defaults to. */
-const CURRENT_YEAR = currentGameYear('unknown')
 
 function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): GameState {
   return {
@@ -143,7 +138,6 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         lot.car,
         100,
-        CURRENT_YEAR,
         {},
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
@@ -152,7 +146,6 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         fullyRestored(lot.car, PROBE_MODEL),
         100,
-        CURRENT_YEAR,
         {},
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
@@ -175,7 +168,6 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         lot.car,
         100,
-        CURRENT_YEAR,
         {},
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
@@ -184,7 +176,6 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         fullyRestored(lot.car, PROBE_MODEL),
         100,
-        CURRENT_YEAR,
         {},
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
@@ -251,7 +242,6 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
         CONTEXT.partsTaxonomy,
         CONTEXT.partsTaxonomyById,
         100,
-        CURRENT_YEAR,
         CONTEXT.economy,
       )
       if (!buyer) continue
@@ -263,7 +253,6 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
         CONTEXT.partsTaxonomy,
         CONTEXT.partsTaxonomyById,
         100,
-        CURRENT_YEAR,
         CONTEXT.economy,
       )
       marginFractions.push((salePriceYen - wonPriceYen) / PROBE_MODEL.bookValueYen)

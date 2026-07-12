@@ -11,7 +11,7 @@ import type {
   PendingSaleOffer,
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
-import { applyReputationDelta, currentGameYear } from './calendar'
+import { applyReputationDelta } from './calendar'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
 import { releaseCarFromShop } from './facilities'
@@ -61,7 +61,6 @@ export function sellViaWalkIn(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
-  currentYear: number,
   economy: EconomyConfig,
   rng: Rng,
 ): SaleOffer {
@@ -76,7 +75,6 @@ export function sellViaWalkIn(
       partsTaxonomy,
       partsTaxonomyById,
       heatPercent,
-      currentYear,
       economy,
     ),
   }))
@@ -116,7 +114,6 @@ export function bestFitBuyer(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   heatPercent: number,
-  currentYear: number,
   economy: EconomyConfig,
 ): Buyer | undefined {
   let best: { buyer: Buyer; value: number } | undefined
@@ -129,7 +126,6 @@ export function bestFitBuyer(
       partsTaxonomy,
       partsTaxonomyById,
       heatPercent,
-      currentYear,
       economy,
     )
     if (!best || value > best.value) {
@@ -240,7 +236,6 @@ export function drawDailyOffers(
   const carsForSale = state.carsForSale.filter((f) => ownedIds.has(f.carInstanceId))
   const pendingOffers: PendingSaleOffer[] = []
   const log: DayLogEntry[] = []
-  const currentYear = currentGameYear(state.reputationTier)
 
   for (const entry of carsForSale) {
     const car = state.ownedCars.find((c) => c.id === entry.carInstanceId)
@@ -260,7 +255,6 @@ export function drawDailyOffers(
       context.partsTaxonomy,
       context.partsTaxonomyById,
       heatPercent,
-      currentYear,
       context.economy,
       rng,
     )

@@ -7,7 +7,6 @@ import type {
   GameState,
   TurnoutBand,
 } from '@midnight-garage/content'
-import { currentGameYear } from './calendar'
 import type { SimContext } from './context'
 import { assignToParking, hasParkingSpace } from './facilities'
 import { marketValueYen } from './marketValue'
@@ -64,7 +63,6 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
     model,
     lot.car,
     heatPercent,
-    currentGameYear(state.reputationTier),
     context.partsById,
     context.partsTaxonomyById,
     context.economy,

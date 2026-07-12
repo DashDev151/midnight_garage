@@ -45,6 +45,17 @@ pass."
 
 ## Open engineering
 
+- [ ] **Generated cars (auction lots AND service-job customer cars) should sometimes arrive with
+  AFTERMARKET parts already installed, not only stock + missing/worn (maintainer note, 2026-07-12,
+  for the playtest pass).** e.g. a customer brings in a car that already has street brakes needing
+  repair, or an EG6 shows up at auction with race rims (a Volk TE37 equivalent) already fitted.
+  Today's generation (Sprint 32) only fills slots with generic STOCK parts at a rolled band, plus a
+  small missing-slot chance; it never rolls a pre-installed street/sport/race part. Add a small,
+  content-tunable per-slot chance at generation for an aftermarket grade to be pre-fitted (at a
+  rolled condition band), so the world has genuinely-modified cars to buy and repair, not just
+  stock ones. Composes cleanly with the existing value math (`installedPartsValueYen` already
+  prices aftermarket) and the missing-slot roll (a slot is then one of: stock / aftermarket / worn
+  / missing).
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.

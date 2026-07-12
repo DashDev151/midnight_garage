@@ -8,7 +8,6 @@ import type {
 import type { DayActions } from '../actions'
 import { advanceDay } from '../advanceDay'
 import { anchorValueYen, bidIncrementYen } from '../bidding'
-import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { createInitialGameState } from '../newGame'
 import { createRng, type Rng } from '../rng'
@@ -239,7 +238,6 @@ export function runCareer(
               context.partsTaxonomy,
               context.partsTaxonomyById,
               heatPercent,
-              currentGameYear(state.reputationTier),
               context.economy,
             ),
           )

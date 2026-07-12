@@ -93,10 +93,8 @@ const ByRarityTierMultiplierSchema = z.object({
  * A piecewise-linear curve (Sprint 30 decision 1): ascending `[x, y]`
  * breakpoints a designer can draw directly in JSON. Reads as "y is this at
  * x=breakpoint[i][0]"; interpolated linearly between neighboring breakpoints,
- * clamped to the first/last y outside the breakpoint range. Used for both the
- * age and mileage factors in `marketValue.ts`'s clean-value formula - same
- * shape, different x axis, so one schema serves both rather than two
- * near-identical ones.
+ * clamped to the first/last y outside the breakpoint range. Used for the
+ * mileage factor in `marketValue.ts`'s clean-value formula.
  */
 const CurveSchema = z
   .array(z.tuple([z.number().nonnegative(), z.number().positive()]))
@@ -287,16 +285,6 @@ export const EconomyConfigSchema = z.object({
    * the formula) - `hassleFactor`/`floorFraction` are its two tunables.
    */
   valuation: z.object({
-    /**
-     * Sprint 30 decision 1: `cleanValue = bookValueYen * ageFactor(regYear) *
-     * mileageFactor(km) * heat` - age/mileage join heat as clean-value
-     * multipliers, ahead of Sprint 27's restoration-bill deduction (which is
-     * unchanged: it still deducts from whatever `cleanValue` comes out to).
-     * `[ageYears, factor]` breakpoints - gentle decline to a decade, then
-     * flatter (JDM future-classics don't keep shedding value the way a
-     * modern used car does).
-     */
-    ageFactorCurve: CurveSchema,
     /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - roughly flat
      * (even a small low-mileage bonus) below `auctions.ts`'s 30k-180k roll
      * floor, falling off toward the roll ceiling. */

@@ -51,7 +51,6 @@ import {
   confirmStagedWork,
   createInitialGameState,
   createRng,
-  currentGameYear,
   deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
@@ -872,7 +871,6 @@ export const useGameStore = defineStore('game', () => {
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!car || !model) return { buyerId: undefined, offerYen: 0 }
     const heat = gameState.value.marketHeat[car.modelId] ?? 100
-    const currentYear = currentGameYear(gameState.value.reputationTier)
     const buyer: Buyer | undefined = bestFitBuyer(
       car,
       model,
@@ -881,7 +879,6 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsTaxonomy,
       context.value.partsTaxonomyById,
       heat,
-      currentYear,
       context.value.economy,
     )
     const offerYen = buyer
@@ -893,7 +890,6 @@ export const useGameStore = defineStore('game', () => {
           context.value.partsTaxonomy,
           context.value.partsTaxonomyById,
           heat,
-          currentYear,
           context.value.economy,
         )
       : 0

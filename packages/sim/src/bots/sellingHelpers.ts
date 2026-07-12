@@ -1,6 +1,5 @@
 import type { CarInstance, GameState } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
-import { currentGameYear } from '../calendar'
 import type { SimContext } from '../context'
 import { bestFitBuyer } from '../selling'
 import { valuateCarForBuyer } from '../valuation'
@@ -48,7 +47,6 @@ export function decideSale(
   const model = context.modelsById[car.modelId]
   if (!model) return
   const heatPercent = state.marketHeat[car.modelId] ?? 100
-  const currentYear = currentGameYear(state.reputationTier)
   const buyer = bestFitBuyer(
     car,
     model,
@@ -57,7 +55,6 @@ export function decideSale(
     context.partsTaxonomy,
     context.partsTaxonomyById,
     heatPercent,
-    currentYear,
     context.economy,
   )
   const trueValueYen = buyer
@@ -69,7 +66,6 @@ export function decideSale(
         context.partsTaxonomy,
         context.partsTaxonomyById,
         heatPercent,
-        currentYear,
         context.economy,
       )
     : 0

@@ -122,14 +122,9 @@ describe('seed content validates against schemas', () => {
     // Sprint 21 (value model): new valuation/marketPressure/statFormulas
     // blocks, born in JSON from day one.
     expect(result.data.valuation.tasteSpread).toBe(0.12)
-    // Sprint 30 decision 1: age/mileage curves inside clean value.
-    expect(result.data.valuation.ageFactorCurve).toEqual([
-      [0, 1.0],
-      [5, 0.85],
-      [10, 0.72],
-      [20, 0.65],
-      [30, 0.6],
-    ])
+    // Sprint 30 decision 1: mileage curve inside clean value (the matching
+    // age curve was dropped by a post-Sprint-30 maintainer decision - car
+    // age no longer factors into value at all).
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
     // Sprint 27 (restoration-bill deduction): replaces the retired
     // conditionFloor/Ceiling/Exponent curve tunables above.

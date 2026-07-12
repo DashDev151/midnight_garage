@@ -297,13 +297,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Sprint 32 re-pins this hash outright too (see the golden master
-    // above for the shape/content change): this career's car comes from
-    // real auction generation, which now seeds one extra rng draw per
-    // non-forced-induction part (the "roll missing" check) and fills every
-    // slot with a real stock `PartInstance` instead of `null`, so both the
-    // rng stream and the state content shift.
-    expect(hashState(acquisitionCareer().sold)).toBe('ce8f36f0')
+    // Re-pinned again after a maintainer decision dropped car age from the
+    // value model entirely: `marketValueYen` no longer applies an age
+    // discount, so every auction/sale price this career touches (reserve,
+    // rival bids, the walk-in offer) shifts, moving the final state hash.
+    // `car.year` itself is unchanged - still stored and displayed, just no
+    // longer a value input.
+    expect(hashState(acquisitionCareer().sold)).toBe('b8ce53cf')
   })
 })
 

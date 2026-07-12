@@ -13,17 +13,20 @@ import { bandFactor, carCostToMintYen } from './bands'
  * Sprint 27 - the taste-free "what is this car worth" answer, shared by
  * every price in the game: `marketValueYen` = `instanceValue +
  * installedPartsValueYen`, where `instanceValue` is clean value (book value
- * scaled by age, mileage, and market heat - Sprint 30 decision 1 adds the
- * first two) minus a hassle-weighted restoration bill, floored. Replaces the
- * Sprint 26 cost-weighted band-factor shim entirely.
+ * scaled by mileage and market heat - Sprint 30 decision 1 added mileage;
+ * a maintainer decision after Sprint 30 dropped car age from the value model
+ * entirely, so a car's registration year is flavor text only now) minus a
+ * hassle-weighted restoration bill, floored. Replaces the Sprint 26
+ * cost-weighted band-factor shim entirely.
  */
 
 /**
  * Piecewise-linear interpolation over ascending `[x, y]` breakpoints (Sprint
  * 30 decision 1): clamps to the first/last y outside the breakpoint range,
  * linearly interpolates between the two straddling `x` otherwise. Shared by
- * `ageFactor` and `mileageFactor` below - the same "designer draws a curve in
- * JSON" shape for both, so this lives once rather than twice.
+ * every curve-shaped factor in this module - `mileageFactor` below is the
+ * only current user, but the shape ("designer draws a curve in JSON") is
+ * generic.
  */
 function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x: number): number {
   const first = breakpoints[0]!
@@ -42,23 +45,6 @@ function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x
 }
 
 /**
- * Decision 1: a car's age (`currentYear - car.year`, floored at 0 - a car
- * "from the future" relative to the in-game calendar can't happen in normal
- * play, but a hand-edited save or a fixture might) discounts clean value
- * along `economy.json`'s `valuation.ageFactorCurve` - gentle decline for the
- * first decade, then flatter (a 25-year-old JDM icon isn't worth less than a
- * 10-year-old one the way a modern used car would be; it's a future
- * classic). `currentYear` is the in-game calendar year
- * (`calendar.ts`'s `currentGameYear(state.reputationTier)`), threaded in by
- * every caller rather than read from state here - this module stays a pure
- * function of its arguments, same as every other value primitive in it.
- */
-export function ageFactor(carYear: number, currentYear: number, economy: EconomyConfig): number {
-  const ageYears = Math.max(0, currentYear - carYear)
-  return interpolateCurve(economy.valuation.ageFactorCurve, ageYears)
-}
-
-/**
  * Decision 1: mileage discounts clean value along `economy.json`'s
  * `valuation.mileageFactorCurve` - roughly flat (even a small bonus) below
  * `auctions.ts`'s 30k roll floor, falling off toward its 180k roll ceiling.
@@ -70,34 +56,31 @@ export function mileageFactor(mileageKm: number, economy: EconomyConfig): number
 /**
  * The restoration-bill deduction (decision 1):
  * `max(floor, cleanValue - hassleFactor * restorationBill)`, where
- * `cleanValue = bookValueYen * ageFactor * mileageFactor * (heatPercent /
- * 100)` (heat applies exactly once - the Sprint 21 heat-once law - nowhere
- * else in the game multiplies by market heat a second time; age/mileage join
- * it Sprint 30) and `restorationBill` is `carCostToMintYen` (bands.ts): the
- * sum of every present part's real cost to bring to mint - an unfitted
- * forced-induction slot contributes zero (an NA car isn't "missing" a
- * turbo), and a scrap part prices at its `stockReplacementPriceYen`
- * (bands.ts decision 5), since scrap has no repair path to draw a step cost
- * from. `hassleFactor` (above 1.0) means a buyer discounts MORE than the raw
- * bill - real buyers price in the hassle of getting work done, not just the
- * parts-and-labor total. `floor = floorFraction * cleanValue` - a wreck
- * whose bill would drive it below zero still has scrap-level worth, never
- * literally nothing.
+ * `cleanValue = bookValueYen * mileageFactor * (heatPercent / 100)` (heat
+ * applies exactly once - the Sprint 21 heat-once law - nowhere else in the
+ * game multiplies by market heat a second time; mileage joined it Sprint 30 -
+ * a maintainer decision after Sprint 30 dropped the matching age factor, so
+ * a car's registration year no longer scales value at all) and
+ * `restorationBill` is `carCostToMintYen` (bands.ts): the sum of every
+ * present part's real cost to bring to mint - an unfitted forced-induction
+ * slot contributes zero (an NA car isn't "missing" a turbo), and a scrap
+ * part prices at its `stockReplacementPriceYen` (bands.ts decision 5), since
+ * scrap has no repair path to draw a step cost from. `hassleFactor` (above
+ * 1.0) means a buyer discounts MORE than the raw bill - real buyers price in
+ * the hassle of getting work done, not just the parts-and-labor total.
+ * `floor = floorFraction * cleanValue` - a wreck whose bill would drive it
+ * below zero still has scrap-level worth, never literally nothing.
  */
 function instanceBaseValueYen(
   model: CarModel,
   car: CarInstance,
   heatPercent: number,
-  currentYear: number,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
   const { hassleFactor, floorFraction } = economy.valuation
   const cleanValue =
-    model.bookValueYen *
-    ageFactor(car.year, currentYear, economy) *
-    mileageFactor(car.mileageKm, economy) *
-    (heatPercent / 100)
+    model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
   const restorationBill = carCostToMintYen(car, model, partsTaxonomyById)
   const floor = floorFraction * cleanValue
   return Math.max(floor, cleanValue - hassleFactor * restorationBill)
@@ -141,27 +124,25 @@ export function installedPartsValueYen(
 /**
  * The single shared value answer (Sprint 27 decision 1): `round(instanceValue)
  * + installedPartsValueYen`, where `instanceValue` is `instanceBaseValueYen`
- * above - clean value (now age/mileage/heat scaled, Sprint 30 decision 1)
- * minus the hassle-weighted restoration bill, floored. Heat applies exactly
- * once, inside clean value (decision 6, unchanged from Sprint 21) - no other
- * price in the game multiplies by market heat a second time. Every other
- * price (the auction anchor, walk-in offers, listing asking price, buyer
- * taste, bot walk-away targets) is this value times a bounded multiplier,
- * never a competing formula. `currentYear` is the in-game calendar year
- * (`calendar.ts`'s `currentGameYear`), needed only for `ageFactor` - every
- * caller already has a `GameState` to derive it from.
+ * above - clean value (mileage/heat scaled, Sprint 30 decision 1; a
+ * maintainer decision after Sprint 30 dropped car age from the value model
+ * entirely) minus the hassle-weighted restoration bill, floored. Heat
+ * applies exactly once, inside clean value (decision 6, unchanged from
+ * Sprint 21) - no other price in the game multiplies by market heat a
+ * second time. Every other price (the auction anchor, walk-in offers,
+ * listing asking price, buyer taste, bot walk-away targets) is this value
+ * times a bounded multiplier, never a competing formula.
  */
 export function marketValueYen(
   model: CarModel,
   car: CarInstance,
   heatPercent: number,
-  currentYear: number,
   partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
   const baseValue = Math.round(
-    instanceBaseValueYen(model, car, heatPercent, currentYear, partsTaxonomyById, economy),
+    instanceBaseValueYen(model, car, heatPercent, partsTaxonomyById, economy),
   )
   return baseValue + installedPartsValueYen(car, partsById, economy)
 }

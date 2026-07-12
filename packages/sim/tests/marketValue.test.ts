@@ -9,12 +9,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { carCostToMintYen } from '../src/bands'
-import {
-  ageFactor,
-  installedPartsValueYen,
-  marketValueYen,
-  mileageFactor,
-} from '../src/marketValue'
+import { installedPartsValueYen, marketValueYen, mileageFactor } from '../src/marketValue'
 import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
@@ -54,28 +49,30 @@ const naModel: CarModel = {
 }
 
 /**
- * Sprint 30: every fixture in this file rolls `year: 1994` and (via
- * `testFixtures.ts`'s `buildCarInstance` default) `mileageKm: 60_000` - the
- * exact neutral point of `economy.json`'s `mileageFactorCurve` (factor 1.0).
- * Passing this same year as `currentYear` keeps `ageFactor` at 1.0 too, so
- * every test below still isolates the restoration-bill formula the same way
- * it did pre-Sprint-30, unless it's explicitly testing age/mileage.
+ * Sprint 30: every fixture in this file rolls (via `testFixtures.ts`'s
+ * `buildCarInstance` default) `mileageKm: 60_000` - the exact neutral point
+ * of `economy.json`'s `mileageFactorCurve` (factor 1.0), so every test below
+ * still isolates the restoration-bill formula the same way it did
+ * pre-Sprint-30, unless it's explicitly testing mileage. Car age no longer
+ * factors into value at all (post-Sprint-30 maintainer decision) - `year` is
+ * stored/displayed flavor text only, so this fixture's `year` value is
+ * arbitrary.
  */
-const CURRENT_YEAR = 1994
+const CAR_YEAR = 1994
 
 function carAtUniformBand(band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint'): CarInstance {
   return buildCarInstance({
     modelId: model.id,
-    year: CURRENT_YEAR,
+    year: CAR_YEAR,
     authenticityPercent: 90,
     parts: uniformCarParts(band),
   })
 }
 
-/** A plain buildCarInstance car at `CURRENT_YEAR`/the neutral mileage point,
- * for fixtures that don't need `carAtUniformBand`'s uniform-band shape. */
+/** A plain buildCarInstance car at `CAR_YEAR`/the neutral mileage point, for
+ * fixtures that don't need `carAtUniformBand`'s uniform-band shape. */
 function neutralCar(overrides: Partial<CarInstance> = {}): CarInstance {
-  return buildCarInstance({ modelId: model.id, year: CURRENT_YEAR, ...overrides })
+  return buildCarInstance({ modelId: model.id, year: CAR_YEAR, ...overrides })
 }
 
 /**
@@ -83,22 +80,13 @@ function neutralCar(overrides: Partial<CarInstance> = {}): CarInstance {
  * than hardcoded, so a retune of `hassleFactor`/`floorFraction` doesn't make
  * this test lie about what `marketValueYen` actually does. Mirrors the
  * pre-Sprint-27 `expectedFactor` helper's own reasoning. Sprint 30: also
- * folds in `ageFactor`/`mileageFactor` via the real exported functions
- * (rather than assuming them away), even though every fixture in this file
- * keeps both at 1.0.
+ * folds in `mileageFactor` via the real exported function (rather than
+ * assuming it away), even though every fixture in this file keeps it at 1.0.
  */
-function expectedBaseValueYen(
-  car: CarInstance,
-  forModel: CarModel,
-  heatPercent = 100,
-  currentYear = CURRENT_YEAR,
-): number {
+function expectedBaseValueYen(car: CarInstance, forModel: CarModel, heatPercent = 100): number {
   const { hassleFactor, floorFraction } = ECONOMY.valuation
   const cleanValue =
-    forModel.bookValueYen *
-    ageFactor(car.year, currentYear, ECONOMY) *
-    mileageFactor(car.mileageKm, ECONOMY) *
-    (heatPercent / 100)
+    forModel.bookValueYen * mileageFactor(car.mileageKm, ECONOMY) * (heatPercent / 100)
   const restorationBill = carCostToMintYen(car, forModel, PARTS_TAXONOMY_BY_ID)
   const floor = floorFraction * cleanValue
   return Math.round(Math.max(floor, cleanValue - hassleFactor * restorationBill))
@@ -107,8 +95,8 @@ function expectedBaseValueYen(
 describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
   it('is pure: identical inputs produce an identical value', () => {
     const car = carAtUniformBand('worn')
-    const a = marketValueYen(model, car, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const b = marketValueYen(model, car, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const a = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const b = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     expect(a).toBe(b)
   })
 
@@ -118,28 +106,19 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     // contribute nothing to installed-parts value, or this car would price
     // above book despite carrying no real aftermarket parts.
     expect(installedPartsValueYen(stockCar, {}, ECONOMY)).toBe(0)
-    expect(
-      marketValueYen(model, stockCar, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
-    ).toBe(model.bookValueYen)
+    expect(marketValueYen(model, stockCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      model.bookValueYen,
+    )
   })
 
   it('a missing (non-FI) part lowers value by exactly hassleFactor x its stock replacement price', () => {
     const stockCar = neutralCar({ parts: mintCarParts() })
     const missingBrakesCar = neutralCar({ parts: mintCarParts({ brakePadsDiscs: null }) })
-    const stockValue = marketValueYen(
-      model,
-      stockCar,
-      100,
-      CURRENT_YEAR,
-      {},
-      PARTS_TAXONOMY_BY_ID,
-      ECONOMY,
-    )
+    const stockValue = marketValueYen(model, stockCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     const missingValue = marketValueYen(
       model,
       missingBrakesCar,
       100,
-      CURRENT_YEAR,
       {},
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
@@ -154,7 +133,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
   it('matches the closed-form clean-value-minus-hassle-weighted-bill formula across every band', () => {
     for (const band of ['scrap', 'poor', 'worn', 'fine', 'mint'] as const) {
       const car = carAtUniformBand(band)
-      expect(marketValueYen(model, car, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      expect(marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
         expectedBaseValueYen(car, model),
       )
     }
@@ -162,15 +141,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
 
   it('is monotonically non-increasing in restoration bill: a worse band is never worth more', () => {
     const valueFor = (band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint') =>
-      marketValueYen(
-        model,
-        carAtUniformBand(band),
-        100,
-        CURRENT_YEAR,
-        {},
-        PARTS_TAXONOMY_BY_ID,
-        ECONOMY,
-      )
+      marketValueYen(model, carAtUniformBand(band), 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     const scrap = valueFor('scrap')
     const poor = valueFor('poor')
     const worn = valueFor('worn')
@@ -201,20 +172,11 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     const brakesPriceYen = PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen
     expect(fiPriceYen).toBeGreaterThan(brakesPriceYen)
 
-    const turboValue = marketValueYen(
-      model,
-      scrapTurboCar,
-      100,
-      CURRENT_YEAR,
-      {},
-      PARTS_TAXONOMY_BY_ID,
-      ECONOMY,
-    )
+    const turboValue = marketValueYen(model, scrapTurboCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     const brakesValue = marketValueYen(
       model,
       scrapBrakesCar,
       100,
-      CURRENT_YEAR,
       {},
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
@@ -231,18 +193,8 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       parts: mintCarParts({ forcedInduction: null }),
     })
     const fullyStockCar = neutralCar({ parts: mintCarParts() })
-    expect(
-      marketValueYen(
-        naModel,
-        naCarWithEmptyFi,
-        100,
-        CURRENT_YEAR,
-        {},
-        PARTS_TAXONOMY_BY_ID,
-        ECONOMY,
-      ),
-    ).toBe(
-      marketValueYen(naModel, fullyStockCar, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
+    expect(marketValueYen(naModel, naCarWithEmptyFi, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      marketValueYen(naModel, fullyStockCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
     )
   })
 
@@ -255,40 +207,24 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     // nothing.
     expect(ECONOMY.valuation.hassleFactor * restorationBill).toBeGreaterThan(cleanValue)
     const expectedFloor = Math.round(ECONOMY.valuation.floorFraction * cleanValue)
-    expect(
-      marketValueYen(cheapModel, wreck, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
-    ).toBe(expectedFloor)
+    expect(marketValueYen(cheapModel, wreck, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+      expectedFloor,
+    )
   })
 
   it('heat applies exactly once: an all-mint car scales linearly with heat', () => {
     const mintCar = neutralCar({ parts: mintCarParts() })
-    const at100 = marketValueYen(
-      model,
-      mintCar,
-      100,
-      CURRENT_YEAR,
-      {},
-      PARTS_TAXONOMY_BY_ID,
-      ECONOMY,
-    )
-    const at120 = marketValueYen(
-      model,
-      mintCar,
-      120,
-      CURRENT_YEAR,
-      {},
-      PARTS_TAXONOMY_BY_ID,
-      ECONOMY,
-    )
+    const at100 = marketValueYen(model, mintCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const at120 = marketValueYen(model, mintCar, 120, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     expect(at120).toBe(Math.round(at100 * 1.2))
   })
 
   it('heat applies exactly once for a part-worn car too, matching the closed-form formula at each heat', () => {
     const car = carAtUniformBand('worn')
     for (const heatPercent of [80, 100, 120]) {
-      expect(
-        marketValueYen(model, car, heatPercent, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY),
-      ).toBe(expectedBaseValueYen(car, model, heatPercent))
+      expect(marketValueYen(model, car, heatPercent, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
+        expectedBaseValueYen(car, model, heatPercent),
+      )
     }
   })
 
@@ -324,12 +260,11 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
         },
       },
     }
-    const bare = marketValueYen(model, car, 100, CURRENT_YEAR, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const bare = marketValueYen(model, car, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     const withInstalled = marketValueYen(
       model,
       withPart,
       100,
-      CURRENT_YEAR,
       partsById,
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
@@ -339,26 +274,8 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
   })
 })
 
-describe('ageFactor / mileageFactor (Sprint 30 decision 1)', () => {
-  it('ageFactor is 1.0 at age 0 and non-increasing as the car ages', () => {
-    expect(ageFactor(1994, 1994, ECONOMY)).toBe(1.0)
-    const at5 = ageFactor(1989, 1994, ECONOMY)
-    const at10 = ageFactor(1984, 1994, ECONOMY)
-    const at30 = ageFactor(1964, 1994, ECONOMY)
-    expect(at5).toBeLessThanOrEqual(1.0)
-    expect(at10).toBeLessThanOrEqual(at5)
-    expect(at30).toBeLessThanOrEqual(at10)
-  })
-
-  it('ageFactor clamps at the curve endpoints - never negative age, never past the oldest breakpoint', () => {
-    // A car "from the future" relative to currentYear (shouldn't happen in
-    // normal play) clamps to age 0, not a negative age.
-    expect(ageFactor(2000, 1994, ECONOMY)).toBe(ageFactor(1994, 1994, ECONOMY))
-    // Older than the curve's last breakpoint holds at that breakpoint's factor.
-    expect(ageFactor(1900, 1994, ECONOMY)).toBe(ageFactor(1964, 1994, ECONOMY))
-  })
-
-  it('mileageFactor is 1.0 at 60k, falls off toward the 180k roll ceiling, and clamps beyond it', () => {
+describe('mileageFactor (Sprint 30 decision 1)', () => {
+  it('is 1.0 at 60k, falls off toward the 180k roll ceiling, and clamps beyond it', () => {
     expect(mileageFactor(60_000, ECONOMY)).toBe(1.0)
     const at120k = mileageFactor(120_000, ECONOMY)
     const at180k = mileageFactor(180_000, ECONOMY)
@@ -367,19 +284,14 @@ describe('ageFactor / mileageFactor (Sprint 30 decision 1)', () => {
     expect(mileageFactor(250_000, ECONOMY)).toBe(at180k)
   })
 
-  it('a higher-mileage, older car is worth strictly less than an otherwise-identical low-mileage, newer one', () => {
-    const freshCar = neutralCar({ parts: mintCarParts(), year: 1994, mileageKm: 30_000 })
-    const wornMileageCar = neutralCar({ parts: mintCarParts(), year: 1980, mileageKm: 180_000 })
-    const freshValue = marketValueYen(model, freshCar, 100, 1994, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
-    const wornValue = marketValueYen(
-      model,
-      wornMileageCar,
-      100,
-      1994,
-      {},
-      PARTS_TAXONOMY_BY_ID,
-      ECONOMY,
-    )
+  it('a higher-mileage car is worth strictly less than an otherwise-identical low-mileage one', () => {
+    // Car age no longer affects value (post-Sprint-30 maintainer decision) -
+    // both fixtures share the same `year`, so mileage is the only variable
+    // this test isolates.
+    const freshCar = neutralCar({ parts: mintCarParts(), mileageKm: 30_000 })
+    const wornMileageCar = neutralCar({ parts: mintCarParts(), mileageKm: 180_000 })
+    const freshValue = marketValueYen(model, freshCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
+    const wornValue = marketValueYen(model, wornMileageCar, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
     expect(wornValue).toBeLessThan(freshValue)
   })
 })
