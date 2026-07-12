@@ -21,19 +21,19 @@
 }
 
 :root {
-  /* Palette - warm greys + amber lighting, magenta/teal accents only */
-  --mg-night: #1a1613; /* warm charcoal - primary surface */
-  --mg-night-deep: #100d0a; /* deepest warm near-black - page bg */
-  --mg-panel: #241f18; /* warm dark grey - panels */
-  --mg-panel-edge: #40382d; /* warm grey - borders */
+  /* Palette - dark concrete greys + amber lighting, magenta/teal accents only */
+  --mg-night: #1c1d20; /* dark concrete - primary surface */
+  --mg-night-deep: #101113; /* deepest concrete near-black - page bg */
+  --mg-panel: #26272b; /* concrete panel */
+  --mg-panel-edge: #3d3f45; /* concrete edge - borders */
   --mg-neon-pink: #ff3d92; /* magenta - accent (one of only two) */
   --mg-neon-cyan: #2fd6bf; /* teal - accent (one of only two) */
   --mg-neon-violet: #d29a5a; /* warm amber - the "lighting"; primary/headers */
   --mg-yen: #ffcf5c; /* gold - currency (kept; fits the warm scheme) */
   --mg-success: #4ade80; /* green - semantic (kept) */
   --mg-danger: #ff6b6b; /* red - semantic (kept) */
-  --mg-text: #ece4d6; /* warm off-white - body text */
-  --mg-text-dim: #a99f8c; /* warm grey - secondary text */
+  --mg-text: #e7e8ea; /* neutral off-white - body text */
+  --mg-text-dim: #9b9da3; /* neutral concrete grey - secondary text */
 
   /* Type scale */
   --mg-font-body: 'PixelFont', 'Courier New', monospace;
