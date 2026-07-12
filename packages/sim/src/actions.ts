@@ -67,6 +67,22 @@ const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
  * only action available on it. */
 const ScrapPartActionSchema = z.object({ partInstanceId: z.string().min(1) })
 
+/**
+ * Sprint 33: bots' only path to pulling a part off a slot before installing
+ * a replacement - the player does this instantly via a direct store call
+ * (`resolveRemovePart`, jobs.ts) using the same Remove button that gates
+ * Replace behind an empty slot. Needed because Sprint 32's stock-baseline
+ * model fills every real slot by default (including a service-job
+ * customer's car), so a bot's queued install task can no longer assume the
+ * target slot starts empty - `bots/serviceJobHelpers.ts`'s
+ * `queueServiceJobTasks` queues this first, on its own tick, exactly
+ * mirroring the player's required remove-then-replace two-step.
+ */
+const RemovePartActionSchema = z.object({
+  carInstanceId: z.string().min(1),
+  carPartId: CarPartIdSchema,
+})
+
 const AcceptServiceJobActionSchema = z.object({ offerId: z.string().min(1) })
 
 const MoveCarActionSchema = z.object({
@@ -87,6 +103,7 @@ export const DayActionsSchema = z.object({
   setForSale: z.array(SetForSaleActionSchema).default([]),
   buyParts: z.array(BuyPartActionSchema).default([]),
   scrapParts: z.array(ScrapPartActionSchema).default([]),
+  removeParts: z.array(RemovePartActionSchema).default([]),
   acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
   /** Bots' only path to moving cars between bays - the player moves instantly
    * via a direct store call (see sim/facilities.ts's applyMoves doc). */
@@ -108,6 +125,7 @@ export type AcceptOfferAction = z.infer<typeof AcceptOfferActionSchema>
 export type SetForSaleAction = z.infer<typeof SetForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
 export type ScrapPartAction = z.infer<typeof ScrapPartActionSchema>
+export type RemovePartAction = z.infer<typeof RemovePartActionSchema>
 export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
 export type MoveCarAction = z.infer<typeof MoveCarActionSchema>

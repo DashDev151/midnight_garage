@@ -4,6 +4,7 @@ import {
   CARS,
   PARTS,
   PARTS_TAXONOMY,
+  type CarInstance,
   type CarModel,
   type GameState,
 } from '@midnight-garage/content'
@@ -218,6 +219,75 @@ describe('currentYear clamp - the rolling chronology (Sprint 10 item 6)', () => 
   it('defaults to unrestricted (Infinity) when currentYear is omitted', () => {
     const lots = generateAuctionCatalog([FUTURE_MODEL], 'local-yard', 7, 5, createRng(1), CONTEXT)
     expect(lots.length).toBeGreaterThan(0)
+  })
+})
+
+describe('generation condition is age-aware (Sprint 33 decision 6)', () => {
+  const model = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!model) throw new Error('fixture car missing from seed content')
+
+  /** `poor`/`scrap` share across every filled slot on `instance`. */
+  function poorOrWorseFraction(instances: readonly CarInstance[]): number {
+    let poorOrWorse = 0
+    let total = 0
+    for (const instance of instances) {
+      for (const partId of ALL_CAR_PART_IDS) {
+        const installed = instance.parts[partId].installed
+        if (!installed) continue
+        total += 1
+        if (installed.band === 'poor' || installed.band === 'scrap') poorOrWorse += 1
+      }
+    }
+    return total > 0 ? poorOrWorse / total : 0
+  }
+
+  it('a brand-new (age-0) car does not roll nearly every part poor', () => {
+    const instances = Array.from({ length: 100 }, (_, seed) =>
+      generateAuctionCarInstance(
+        model,
+        `car-young-${seed}`,
+        createRng(seed),
+        CONTEXT,
+        model.spec.yearFrom,
+      ),
+    )
+    // The maintainer's own framing: a ~2-year-old (here, age-0, an even
+    // stronger case) car must not look like it rolled "nearly every part
+    // poor" - a small tail is fine, a majority is the bug this fixes.
+    expect(poorOrWorseFraction(instances)).toBeLessThan(0.2)
+  })
+
+  it('an old (age ~25) car rolls meaningfully worse on average than an age-0 car, same seeds', () => {
+    const young = Array.from({ length: 150 }, (_, seed) =>
+      generateAuctionCarInstance(
+        model,
+        `car-young-${seed}`,
+        createRng(seed),
+        CONTEXT,
+        model.spec.yearFrom,
+      ),
+    )
+    const old = Array.from({ length: 150 }, (_, seed) =>
+      generateAuctionCarInstance(
+        model,
+        `car-old-${seed}`,
+        createRng(seed),
+        CONTEXT,
+        model.spec.yearFrom + 25,
+      ),
+    )
+    expect(poorOrWorseFraction(old)).toBeGreaterThan(poorOrWorseFraction(young))
+  })
+
+  it('with no calendar context (currentYear omitted), condition still rolls a real, bounded spread', () => {
+    // Sprint 33: age falls back to a fixed default (constants.ts) rather
+    // than an infinite/undefined age when currentYear is unbounded - still
+    // produces every real band, same as before this sprint.
+    const instance = generateAuctionCarInstance(model, 'car-test', createRng(1), CONTEXT)
+    for (const partId of ALL_CAR_PART_IDS) {
+      const installed = instance.parts[partId].installed
+      if (installed) expect(['scrap', 'poor', 'worn', 'fine', 'mint']).toContain(installed.band)
+    }
   })
 })
 

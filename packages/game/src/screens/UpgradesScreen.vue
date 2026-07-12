@@ -2,6 +2,7 @@
 import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import HelpHint from '../components/HelpHint.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -22,14 +23,15 @@ function componentListLabel(ids: ComponentId[]): string {
   <section class="upgrades">
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
     <header class="head">
-      <h2>Upgrades</h2>
+      <h2>
+        Upgrades
+        <HelpHint label="Upgrades">
+          Bays and equipment both take cash - and, past a certain rung, reputation. Money alone
+          never skips the climb.
+        </HelpHint>
+      </h2>
       <p class="rep">{{ game.reputationTier }} · {{ formatYen(game.cashYen) }}</p>
     </header>
-
-    <p class="how">
-      Bays and equipment both take cash - and, past a certain rung, reputation. Money alone never
-      skips the climb.
-    </p>
 
     <section class="facilities">
       <h3>Facilities</h3>
@@ -68,11 +70,13 @@ function componentListLabel(ids: ComponentId[]): string {
     </section>
 
     <section class="equipment">
-      <h3>Equipment</h3>
-      <p class="how">
-        Owning a component's equipment is what unlocks Repair for it - Replace (buy a part, install
-        it) never needs equipment.
-      </p>
+      <h3>
+        Equipment
+        <HelpHint label="Equipment">
+          Owning a component's equipment is what unlocks Repair for it - Replace (buy a part,
+          install it) never needs equipment.
+        </HelpHint>
+      </h3>
       <ul class="equipment-list">
         <li v-for="item in game.equipmentCatalog" :key="item.id" class="equipment-row">
           <span class="equip-name">{{ item.displayName }}</span>
@@ -110,6 +114,12 @@ function componentListLabel(ids: ComponentId[]): string {
   margin: var(--mg-space-3) 0 var(--mg-space-2);
 }
 
+h2,
+h3 {
+  display: flex;
+  align-items: center;
+}
+
 h2 {
   color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-lg);
@@ -125,12 +135,6 @@ h3 {
 .rep {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-}
-
-.how {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-3);
 }
 
 .facilities {

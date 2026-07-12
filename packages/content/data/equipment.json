@@ -13,7 +13,8 @@
     "componentIds": ["suspension"],
     "priceYen": 250000,
     "consumablesCostYen": 3000,
-    "repairLevel": 2
+    "repairLevel": 2,
+    "minReputationTier": "local"
   },
   {
     "id": "suspension-press",
@@ -21,7 +22,8 @@
     "componentIds": ["suspension"],
     "priceYen": 400000,
     "consumablesCostYen": 10000,
-    "repairLevel": 3
+    "repairLevel": 3,
+    "minReputationTier": "local"
   },
   {
     "id": "upholstery-bench",
@@ -29,7 +31,8 @@
     "componentIds": ["interior"],
     "priceYen": 350000,
     "consumablesCostYen": 8000,
-    "repairLevel": 2
+    "repairLevel": 2,
+    "minReputationTier": "local"
   },
   {
     "id": "welder",

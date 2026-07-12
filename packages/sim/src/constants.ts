@@ -1,7 +1,21 @@
 import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnight-garage/content'
 
-/** GDD 3.2: base labor slots per day before any staff bonus. */
-export const PLAYER_BASE_LABOR_SLOTS = 2
+/**
+ * GDD 3.2: base labor slots per day before any staff bonus. Sprint 33
+ * decision 7 (labor recalibration): raised 2 -> 6 (3x). Playtest finding:
+ * against the real 29-part-per-group repair granularity (Sprint 26), base 2
+ * slots made a full restoration take ~20 days even on a moderately worn
+ * car - a war of attrition, not a fun restoration arc. Left the equipment
+ * repair-LEVEL ladder (`bands.ts`'s `repairLevelForGroup`, still defaulting
+ * to level 1/"1 grade per slot" with nothing owned) untouched rather than
+ * also raising the base level, so owning equipment still means something -
+ * doubling or tripling the BASE throughput instead would flatten most
+ * equipment's relative value to zero. First-pass number, openly retunable
+ * (`restorationPacing.test.ts` documents the resulting "days to fully
+ * restore a typical car" anchor); further calibrated against the balance
+ * harness + playtest, same as every other content-tunable number here.
+ */
+export const PLAYER_BASE_LABOR_SLOTS = 6
 
 /** A bolt-on install is a single-slot job for now. */
 export const INSTALL_LABOR_SLOTS = 1
@@ -86,16 +100,31 @@ export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
  * Correlated per-car condition roll (Sprint 12): a car's real parts don't
  * roll condition independently (which let a car land a pristine engine and
  * a wrecked transmission with no relationship between them) - one 0-100
- * baseline is rolled per car, in this range, and each part jitters around
- * it (see CAR_CONDITION_JITTER) before bucketing into its condition band
- * (Sprint 26: `bandForMigratedCondition`, bands.ts). Keeps today's 30-90
- * overall spread.
+ * baseline is rolled per car, and each part jitters around it (see
+ * CAR_CONDITION_JITTER) before bucketing into its condition band (Sprint 26:
+ * `bandForMigratedCondition`, bands.ts). Sprint 33 decision 6: the
+ * baseline's own [min, max] range used to be the flat
+ * `CAR_CONDITION_BASE_MIN`/`MAX` constants that lived here (30-90
+ * regardless of age) - it's now age-aware content
+ * (`economy.json`'s `partsGeneration.conditionBaselineMinByAgeYears`/
+ * `MaxByAgeYears`, sampled in `auctions.ts`), since a flat range let a
+ * brand-new car roll just as rough as a 30-year-old classic.
  */
-export const CAR_CONDITION_BASE_MIN = 30
-export const CAR_CONDITION_BASE_MAX = 90
-
-/** Max +/- spread each part rolls away from its car's condition baseline. */
 export const CAR_CONDITION_JITTER = 15
+
+/**
+ * Sprint 33 decision 6: the condition-baseline age curves need a concrete
+ * calendar age (`currentYear - car.year`); `generateAuctionCarInstance`'s
+ * `currentYear` defaults to `Infinity` for callers with no real calendar
+ * context (most unit tests, and the value-model probes), where "age" is
+ * meaningless. This fallback stands in for age in exactly that case - real
+ * gameplay always threads a concrete `currentGameYear(...)`, never this
+ * default (see `newGame.ts`/`advanceDay.ts`). Picked to land mid-curve, near
+ * the age where both baseline curves have already converged toward their
+ * long-run (pre-Sprint-33) range - a reasonable "typical used car, no
+ * calendar info" stand-in rather than an accidental best- or worst-case.
+ */
+export const DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED = 10
 
 /**
  * Auction tier reputation ladder (Sprint 16 decision 3): extends the

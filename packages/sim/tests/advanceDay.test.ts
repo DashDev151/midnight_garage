@@ -165,17 +165,16 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
-    // Sprint 32 re-pins this hash outright: `CarPartState` drops the
-    // slot-level `band`/`fitted` fields (the installed `PartInstance` now
-    // carries the only condition band) and every slot defaults to a filled
-    // stock part instead of `null` - a pure shape/content change for this
-    // fixture's car, but `hashState` hashes the whole state, so the hash
-    // moves regardless. Every prior sprint's own re-pin note above this one
-    // is now historical (the shape they were re-pinning against no longer
-    // exists).
+    // Sprint 33 re-pins this hash outright: `generateAuctionCarInstance` now
+    // rolls `year` BEFORE the condition baseline (decision 6's age-aware
+    // curve needs the car's age first), reordering the RNG draw sequence for
+    // every generated car in this career - a pure generation-order change,
+    // but `hashState` hashes the whole state, so the hash moves regardless.
+    // Every prior sprint's own re-pin note above this one is now historical
+    // (the shape/sequence they were re-pinning against no longer exists).
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('8c5a4388')
+    expect(hashState(finalState)).toBe('9dfc95d8')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -297,13 +296,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned again after a maintainer decision dropped car age from the
-    // value model entirely: `marketValueYen` no longer applies an age
-    // discount, so every auction/sale price this career touches (reserve,
-    // rival bids, the walk-in offer) shifts, moving the final state hash.
-    // `car.year` itself is unchanged - still stored and displayed, just no
-    // longer a value input.
-    expect(hashState(acquisitionCareer().sold)).toBe('085ca712')
+    // Re-pinned again for Sprint 33 decision 6 (age-aware generation
+    // condition): `generateAuctionCarInstance` reorders its RNG draws (year
+    // rolls first now, to feed the age-aware baseline curve), which shifts
+    // every generated car's condition - and therefore every downstream
+    // price - in this career, moving the final state hash. `car.year` is
+    // still not a value input (that stays true post-Sprint-30); only
+    // condition GENERATION changed.
+    expect(hashState(acquisitionCareer().sold)).toBe('6dfec42b')
   })
 })
 

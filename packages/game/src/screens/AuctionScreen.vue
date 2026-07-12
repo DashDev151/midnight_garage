@@ -25,12 +25,35 @@ function toggleLotDetail(lotId: string): void {
   else expandedLotIds.add(lotId)
 }
 
-/** Group label for a real part's row - empty string is unreachable in
- * practice (every taxonomy entry has a group), kept only to satisfy the
- * lookup's `undefined` return type. */
-function partGroupLabel(partId: Parameters<typeof game.groupForCarPart>[0]): string {
-  const groupId = game.groupForCarPart(partId)
-  return groupId ? game.componentLabel(groupId) : ''
+/**
+ * Sprint 33 decision 4: the flat 29-row condition report was unreadable (a
+ * single wrapping grid with no structure). `CONDITION_GROUPS` is the same
+ * 6-group stable order every other drill-down in this app uses
+ * (`CarDetailScreen.vue`'s `COMPONENTS`, `PartsMarketScreen.vue`'s
+ * `COMPONENT_GROUPS`) - each screen keeps its own local copy rather than a
+ * shared cross-file constant, matching that existing pattern.
+ */
+const CONDITION_GROUPS: readonly ComponentId[] = [
+  'engine',
+  'drivetrain',
+  'suspension',
+  'wheels',
+  'body',
+  'interior',
+]
+
+/** Buckets one lot's flat part-row list by component group, in stable order
+ * - the same "group -> real parts" shape `CarDetailScreen.vue`'s owned-car
+ * drill-down already renders, reused here instead of a second ad hoc report
+ * layout (directive 16). Groups with nothing in this lot's row list (should
+ * not happen for a real 29-part taxonomy, but keeps this robust) are simply
+ * omitted rather than rendered empty. */
+function groupedPartRows(partRows: LotDetail['partRows']) {
+  return CONDITION_GROUPS.map((groupId) => ({
+    groupId,
+    label: game.componentLabel(groupId),
+    rows: partRows.filter((row) => game.groupForCarPart(row.partId) === groupId),
+  })).filter((group) => group.rows.length > 0)
 }
 
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
@@ -169,15 +192,28 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               <p class="restoration-bill">
                 Restoration bill (every part to mint): {{ formatYen(d.restorationBillYen) }}
               </p>
-              <ul class="part-rows">
-                <li v-for="row in d.partRows" :key="row.partId" class="part-row">
-                  <span class="part-group">{{ partGroupLabel(row.partId) }}</span>
-                  <span class="part-name">{{ row.displayName }}</span>
-                  <BandChip :band="row.band" />
-                  <span v-if="row.missing" class="missing-tag">MISSING</span>
-                  <span v-else-if="row.legitimatelyAbsent" class="absent-tag">no turbo (NA)</span>
-                </li>
-              </ul>
+              <div class="condition-groups">
+                <div
+                  v-for="conditionGroup in groupedPartRows(d.partRows)"
+                  :key="conditionGroup.groupId"
+                  class="condition-group"
+                >
+                  <h4 class="condition-group-name">
+                    {{ conditionGroup.label }}
+                    <BandChip :band="d.groupBands[conditionGroup.groupId]" />
+                  </h4>
+                  <ul class="part-rows">
+                    <li v-for="row in conditionGroup.rows" :key="row.partId" class="part-row">
+                      <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
+                      <BandChip :band="row.band" />
+                      <span v-if="row.missing" class="missing-tag">MISSING</span>
+                      <span v-else-if="row.legitimatelyAbsent" class="absent-tag"
+                        >no turbo (NA)</span
+                      >
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -333,8 +369,8 @@ h3 {
 .lot-parts {
   display: flex;
   flex-direction: column;
-  gap: var(--mg-space-2);
-  padding: var(--mg-space-2);
+  gap: var(--mg-space-3);
+  padding: var(--mg-space-3);
   background: var(--mg-night-deep);
   border-radius: var(--mg-radius);
 }
@@ -345,32 +381,56 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
+/* Sprint 33 decision 4: the report reads as one card per component group
+   (the same grouping the owned-car drill-down uses), not one 29-row grid -
+   each group's own rows align in their own tight column set. */
+.condition-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--mg-space-2);
+}
+
+.condition-group {
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+}
+
+.condition-group-name {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  margin: 0 0 var(--mg-space-2);
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
+  text-transform: capitalize;
+}
+
+/* Every row's name/band/tag lands in the same 3 columns (`.part-row` is
+   `display: contents` so its children join this grid directly), so a
+   group's bands line up in a scannable column instead of wrapping loosely. */
 .part-rows {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--mg-space-1);
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  column-gap: var(--mg-space-2);
+  row-gap: 4px;
+  font-size: var(--mg-fs-sm);
 }
 
 .part-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mg-space-2);
-  font-size: var(--mg-fs-sm);
-  color: var(--mg-text-dim);
-}
-
-.part-row .part-group {
-  color: var(--mg-text-dim);
-  opacity: 0.7;
+  display: contents;
 }
 
 .part-row .part-name {
-  flex: 1;
   color: var(--mg-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* A genuinely missing slot (Sprint 32 decision 3) vs. the one

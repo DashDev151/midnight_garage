@@ -55,8 +55,10 @@ const CAR_PART_OPTIONS: readonly CarPartId[] = [
   'dashGauges',
 ]
 
-/** `CAR_PART_OPTIONS` bucketed under its group, for the filter's `<optgroup>`
- * structure - group first, then the specific part within it (decision 3). */
+/** `CAR_PART_OPTIONS` bucketed under its group, for the catalog's click-
+ * through drill-down (Sprint 33 decision 3: group -> sub-part, replacing the
+ * old one-flat-list-plus-dropdown shape) - group first, then the specific
+ * part within it. */
 const groupedCarPartOptions = computed(() =>
   COMPONENT_GROUPS.map((groupId) => ({
     groupId,
@@ -71,10 +73,47 @@ const SORT_OPTIONS = [
   { value: 'price-desc', label: 'price: high to low' },
 ] as const
 
+/**
+ * Sprint 33 decision 3: the catalog's own click-through state - `null`
+ * shows the flat, unfiltered catalog (unchanged default, every existing
+ * test/behavior); picking a group narrows to it; picking a sub-part within
+ * that group narrows further to the exact `CarPartId`. Reuses the same
+ * `componentFilter` the catalog's price/grade filtering already keyed off,
+ * so drilling into a specific part is identical in effect to the old
+ * dropdown selection - only the way a player REACHES that filter state is
+ * new (click a group, then a part, instead of one long flat `<select>`).
+ */
+const selectedGroup = ref<ComponentId | null>(null)
 const componentFilter = ref<CarPartId | ''>('')
 const gradeFilter = ref<Grade | ''>('')
 const sortBy = ref<(typeof SORT_OPTIONS)[number]['value']>('price-asc')
 const deliverySpeed = ref<'standard' | 'express'>('standard')
+
+/** Clicking an already-selected group collapses back to "all parts" - the
+ * same toggle-to-reset gesture `PartCard`'s pick handle and `ShopSlot`'s
+ * move toggle already use elsewhere in this codebase. */
+function selectGroup(groupId: ComponentId): void {
+  selectedGroup.value = selectedGroup.value === groupId ? null : groupId
+  componentFilter.value = ''
+}
+
+function selectPart(partId: CarPartId): void {
+  componentFilter.value = componentFilter.value === partId ? '' : partId
+}
+
+function resetDrillDown(): void {
+  selectedGroup.value = null
+  componentFilter.value = ''
+}
+
+/** The drilled-into group's own sub-parts, or empty when no group is
+ * selected - avoids pairing `v-for`/`v-show` on the same element in the
+ * template (this codebase's ESLint config flags `v-for` alongside a
+ * conditional directive). */
+const selectedGroupParts = computed(() => {
+  const group = groupedCarPartOptions.value.find((g) => g.groupId === selectedGroup.value)
+  return group?.parts ?? []
+})
 
 // The set of platform tags across owned cars, to hint part compatibility.
 const ownedTags = computed(() => {
@@ -98,7 +137,11 @@ function statSummary(part: Part): string {
 
 const visibleParts = computed(() => {
   let parts = game.partsCatalog.slice()
-  if (componentFilter.value) parts = parts.filter((p) => p.carPartId === componentFilter.value)
+  if (componentFilter.value) {
+    parts = parts.filter((p) => p.carPartId === componentFilter.value)
+  } else if (selectedGroup.value) {
+    parts = parts.filter((p) => game.groupForCarPart(p.carPartId) === selectedGroup.value)
+  }
   if (gradeFilter.value) parts = parts.filter((p) => p.grade === gradeFilter.value)
   return parts.sort((a, b) =>
     sortBy.value === 'price-asc' ? a.priceYen - b.priceYen : b.priceYen - a.priceYen,
@@ -124,13 +167,49 @@ function onCheckout(): void {
       <p class="cash">{{ formatYen(game.cashYen) }}</p>
     </header>
 
+    <nav class="drill-down" aria-label="Browse by component">
+      <ul class="group-tiles">
+        <li>
+          <button
+            type="button"
+            class="tile"
+            :class="{ active: !selectedGroup }"
+            data-test="catalog-group-all"
+            @click="resetDrillDown"
+          >
+            All parts
+          </button>
+        </li>
+        <li v-for="group in groupedCarPartOptions" :key="group.groupId">
+          <button
+            type="button"
+            class="tile"
+            :class="{ active: selectedGroup === group.groupId }"
+            :data-test="'catalog-group-' + group.groupId"
+            :aria-expanded="selectedGroup === group.groupId"
+            @click="selectGroup(group.groupId)"
+          >
+            {{ group.label }}
+            <span class="tile-count">{{ group.parts.length }}</span>
+          </button>
+        </li>
+      </ul>
+      <ul v-if="selectedGroup" class="part-chips">
+        <li v-for="partId in selectedGroupParts" :key="partId">
+          <button
+            type="button"
+            class="chip"
+            :class="{ active: componentFilter === partId }"
+            :data-test="'catalog-part-' + partId"
+            @click="selectPart(partId)"
+          >
+            {{ game.carPartLabel(partId) }}
+          </button>
+        </li>
+      </ul>
+    </nav>
+
     <div class="filters">
-      <select v-model="componentFilter" data-test="filter-component">
-        <option value="">all parts</option>
-        <optgroup v-for="group in groupedCarPartOptions" :key="group.groupId" :label="group.label">
-          <option v-for="c in group.parts" :key="c" :value="c">{{ game.carPartLabel(c) }}</option>
-        </optgroup>
-      </select>
       <select v-model="gradeFilter" data-test="filter-grade">
         <option value="">all grades</option>
         <option v-for="g in GRADE_OPTIONS" :key="g" :value="g">{{ g }}</option>
@@ -271,6 +350,55 @@ h3 {
 .cash {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
+}
+
+.drill-down {
+  margin: var(--mg-space-2) 0 var(--mg-space-3);
+}
+
+.group-tiles,
+.part-chips {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+}
+
+.part-chips {
+  margin: var(--mg-space-2) 0 0;
+}
+
+.tile,
+.chip {
+  background: var(--mg-panel);
+  color: var(--mg-text-dim);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-1) var(--mg-space-3);
+  font-family: inherit;
+  font-size: var(--mg-fs-sm);
+  cursor: pointer;
+}
+
+.tile.active,
+.chip.active {
+  color: var(--mg-night-deep);
+  background: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+}
+
+.tile-count {
+  color: inherit;
+  opacity: 0.6;
+  font-size: 0.85em;
+  margin-left: var(--mg-space-1);
+}
+
+.chip {
+  font-size: var(--mg-fs-sm);
+  padding: 2px 10px;
 }
 
 .filters {

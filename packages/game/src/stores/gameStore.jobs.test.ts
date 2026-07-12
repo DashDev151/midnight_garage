@@ -10,17 +10,26 @@ import { useGameStore } from './gameStore'
 
 const PARTS_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 
-/** End days until service-job offers appear on the board, bounded. */
-function warpToOffers(game: ReturnType<typeof useGameStore>) {
-  for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
+/**
+ * A still-genuinely-unfinished offer (Sprint 29: a job's task list can mix
+ * repair and install now, so "any offer at all" is no longer enough - some
+ * templates are install-only; and a randomly-rolled customer car can
+ * occasionally already satisfy an easy repair task by chance - more often
+ * still since Sprint 33's age-aware condition curve skews generated cars
+ * toward better condition - which "has a repair task" alone doesn't rule
+ * out). `isServiceWorkDone` context needs a real `SimContext`, not just the
+ * bare `PARTS_BY_ID` map `isServiceTaskDone` takes, so this checks each
+ * task directly rather than reaching for that helper here.
+ */
+function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
+  return game.serviceJobOffers.find((o) =>
+    o.tasks.some((t) => !isServiceTaskDone(o.car, t, PARTS_BY_ID)),
+  )
 }
 
 /**
- * A still-genuinely-unfinished repair-touching offer (Sprint 29: a job's
- * task list can mix repair and install now, so "any offer at all" is no
- * longer enough - some templates are install-only; and a randomly-rolled
- * customer car can occasionally already satisfy an easy repair task by
- * chance, which "has a repair task" alone doesn't rule out).
+ * A still-genuinely-unfinished repair-touching offer (same caveat as
+ * `findUnfinishedOffer`, narrowed to a repair task specifically).
  */
 function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find(
@@ -28,6 +37,11 @@ function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): Servi
       o.tasks.some((t) => t.action === 'repair') &&
       o.tasks.some((t) => !isServiceTaskDone(o.car, t, PARTS_BY_ID)),
   )
+}
+
+/** End days until `findUnfinishedOffer` finds something, bounded. */
+function warpToUnfinishedOffer(game: ReturnType<typeof useGameStore>) {
+  for (let i = 0; i < 20 && !findUnfinishedOffer(game); i++) game.endDay()
 }
 
 /** End days until `findUnfinishedRepairOffer` finds something, bounded. */
@@ -49,8 +63,9 @@ describe('service jobs in the store', () => {
     game.newGame(1)
     // Sprint 13: accepting an offer with a repair task now requires owning its equipment.
     for (const item of game.equipmentCatalog) game.devGrantEquipment(item.id)
-    warpToOffers(game)
-    const offer = game.serviceJobOffers[0]!
+    warpToUnfinishedOffer(game)
+    const offer = findUnfinishedOffer(game)
+    if (!offer) throw new Error('expected an unfinished offer on the board')
     game.acceptServiceJob(offer.id)
 
     expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(true)

@@ -75,56 +75,65 @@ describe('Service Grinder (the Act 1 floor)', () => {
   /**
    * Sprint 16 finding, investigated and fixed (not just disclosed) rather
    * than papered over: gating equipment by reputation (decision 1) initially
-   * created a genuine catch-22 for this archetype, not just a harder economy.
-   * Service Grinder only ever works repair-kind service jobs, and content
-   * only defines repair-kind types for 5 of 8 components (engine/drivetrain/
-   * suspension/body/interior - confirmed by grep, `serviceJobs.json`); its
-   * only reputation source is completing one of those. Gating all 5 of their
-   * equipment items meant it could never complete a first job to earn the
-   * reputation needed to unlock the equipment to complete a first job -
-   * verified empirically (0/30 seeds ever bought equipment, cash flat at
-   * the exact rent-only floor every time - not rare, permanent). Fixed by
-   * leaving `upholstery-bench` (interior) ungated, mirroring exactly how
-   * Sprint 13 first discovered and resolved this same class of problem
-   * (see TODO.md) - this is that fix's real-content counterpart. A real
-   * player who only ever works customer jobs and never buys/sells a car
-   * would hit the identical dead end without it.
+   * created a genuine catch-22 for this archetype. Fixed then by leaving
+   * `upholstery-bench` (interior) ungated - a content carve-out, not a bot
+   * fix. Sprint 33 decision 9 (equipment tiering: only the tire machine is
+   * ownable at `unknown` reputation) closes that carve-out, reintroducing
+   * the SAME catch-22 for this bot's original repair-only identity - fixed
+   * this time in the bot itself (`serviceGrinder.ts`'s `isSingleDisciplineJob`
+   * now also accepts install-only jobs, mirroring decision 9's own stated
+   * intended bootstrap path: "Replace-only work" needs no equipment at all).
+   * Fixing this also surfaced a real, separate structural bug this sample
+   * exposed for the first time (Sprint 32's stock-baseline model fills every
+   * slot by default, so an install task's target is normally OCCUPIED, and
+   * nothing in the bot-facing `DayActions` pipeline could ever remove a part
+   * to make room) - fixed by adding a real `removeParts` DayAction
+   * (`actions.ts`/`advanceDay.ts`) that `serviceJobHelpers.ts`'s
+   * `queueServiceJobTasks` now queues first, mirroring the player's own
+   * required Remove-then-Replace two-step exactly.
    *
    * What's left, and genuinely probabilistic, is *when* within a career the
-   * bootstrap happens: a repair-interior offer still needs to survive the
-   * job-board hint roll (`JOB_HINT_OFFER_CHANCE`) before Service Grinder can
-   * see one to accept. Re-sampled across seeds (Sprint 13's own precedent -
+   * bootstrap happens: a candidate offer still needs to survive the
+   * job-board hint/actionable-filter roll before Service Grinder can see one
+   * to accept. Re-sampled across seeds (Sprint 13's own precedent -
    * "Cautious Restorer's day100 result is honestly negative" - is to report
    * a real distribution, not force one seed to look healthy), a clear
-   * majority break into the repair economy within 100 days; a single fixed
-   * seed is the wrong bar for a mechanic that's deliberately probabilistic.
+   * majority break into the economy within 100 days; a single fixed seed is
+   * the wrong bar for a mechanic that's deliberately probabilistic.
    *
-   * Sample bumped 30 -> 200 (Sprint 22): inserting a new per-issue severity
-   * roll into `generateAuctionCarInstance` shifts every later draw in the
-   * shared catalog/service-offer rng streams, reshuffling exactly WHICH
-   * seeds bootstrap early (not whether the mechanism works) - but the
-   * reshuffle also exposed a real, structural pattern in the low end of the
-   * contiguous seed range, not just small-sample noise: measured directly,
-   * n=30 -> 12/30 (40%), n=60 -> 24/60 (40%), n=100 -> 45/100 (45%),
-   * n=150 -> 81/150 (54%), n=200 -> 116/200 (58%), n=300 -> 183/300 (61%).
-   * Low-numbered seeds genuinely underperform this specific mechanic more
-   * than the asymptotic rate for reasons not investigated further here (the
-   * seed-mixing itself, not a Service Grinder bug - `mulberry32`/
-   * `hashStringToSeed` are shared, thoroughly-tested infrastructure). 200
-   * is the smallest of the measured sizes that clears 50% with real margin;
-   * matches Sprint 19c's own precedent (`findQuietSeed`) that a contiguous
-   * low-seed range isn't automatically representative.
+   * Re-measured for Sprint 33 (the install-only bootstrap path replaces the
+   * old repair-only one, so the whole distribution is a new measurement, not
+   * a re-derivation of Sprint 22's numbers): n=30 -> 27/30 (90%), n=60 ->
+   * 57/60 (95%), n=100 -> 96/100 (96%), n=150 -> 127/150 (84.7%), n=200 ->
+   * 172/200 (86%), n=300 -> 257/300 (85.7%). Materially higher and more
+   * stable than the old repair-only path's 40-61% across the same sample
+   * sizes - Replace-only work needing zero equipment is a much shorter path
+   * to a first paid job than waiting on a repair-interior hint to survive
+   * the equipment-hint roll. 200 stays the sample size (Sprint 22's own
+   * precedent: a contiguous low-seed range isn't automatically
+   * representative, per Sprint 19c's `findQuietSeed`), even though smaller
+   * samples would already clear the bar here.
    */
   const SEED_SAMPLE_SIZE = 200
 
-  it('a clear majority of 100-day careers bootstrap into equipment ownership via the ungated component', () => {
-    let successes = 0
-    for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
-      const grinder = runCareer(serviceGrinderStrategy, seed, 100, CONTEXT).snapshots
-      if (grinder.some((s) => s.equipmentOwnedCount > 0)) successes++
-    }
-    expect(successes).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
-  })
+  // 200 seeds x 100 days is genuinely heavier than vitest's 5s default test
+  // timeout under `pnpm test:coverage`'s v8 instrumentation overhead (plain
+  // `pnpm test` comfortably clears the default) - the explicit 20s below is
+  // a real wall-clock budget, not a looser assertion.
+  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 20_000
+
+  it(
+    'a clear majority of 100-day careers bootstrap into equipment ownership via the ungated component',
+    () => {
+      let successes = 0
+      for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
+        const grinder = runCareer(serviceGrinderStrategy, seed, 100, CONTEXT).snapshots
+        if (grinder.some((s) => s.equipmentOwnedCount > 0)) successes++
+      }
+      expect(successes).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
+    },
+    BOOTSTRAP_SAMPLE_TIMEOUT_MS,
+  )
 
   it('a successful career actually gets a job worked and paid, not just equipment bought', () => {
     // Find a seed that bootstraps (the majority do, per the test above) and

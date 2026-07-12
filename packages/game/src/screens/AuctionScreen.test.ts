@@ -83,4 +83,42 @@ describe('AuctionScreen', () => {
       expect(wrapper.text()).toContain(band)
     }
   })
+
+  describe('the full condition report (Sprint 33 decision 4: grouped, not one flat 29-row grid)', () => {
+    it('is hidden until toggled, then shows every real part row grouped under its component', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const detail = game.lotDetail(lot.id)!
+      const wrapper = mountScreen()
+
+      expect(wrapper.find('.condition-groups').exists()).toBe(false)
+      await wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).trigger('click')
+
+      const groups = wrapper.findAll('.condition-group')
+      // One card per component group that actually has rows on this car - at
+      // most 6 (engine/drivetrain/suspension/wheels/body/interior).
+      expect(groups.length).toBeGreaterThan(0)
+      expect(groups.length).toBeLessThanOrEqual(6)
+
+      // Every one of the lot's real part rows renders somewhere in the report.
+      for (const row of detail.partRows) {
+        expect(wrapper.text()).toContain(row.displayName)
+      }
+      // Rows total matches the full 29-part taxonomy, split across the groups.
+      const totalRows = wrapper.findAll('.part-row').length
+      expect(totalRows).toBe(detail.partRows.length)
+    })
+
+    it('toggles closed again on a second click', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const wrapper = mountScreen()
+      await wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).trigger('click')
+      expect(wrapper.find('.condition-groups').exists()).toBe(true)
+      await wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).trigger('click')
+      expect(wrapper.find('.condition-groups').exists()).toBe(false)
+    })
+  })
 })

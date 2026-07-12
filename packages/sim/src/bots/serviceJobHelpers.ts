@@ -184,6 +184,19 @@ export function queueServiceJobTasks(
 
     if (!model) continue
 
+    // Sprint 32's stock-baseline model fills every real slot by default, so
+    // an install task's target is usually occupied (by the stock part, or
+    // anything else that didn't already satisfy `isServiceTaskDone` above) -
+    // `installFitGate` refuses to install over an occupied slot (by design,
+    // never a silent overwrite), so this queues the same remove-first step
+    // the player's own UI requires (Remove, then Replace) and stops there
+    // for today; the buy/install steps below only ever run once the slot is
+    // genuinely empty.
+    if (car.parts[task.carPartId].installed !== null) {
+      actions.removeParts.push({ carInstanceId: car.id, carPartId: task.carPartId })
+      continue
+    }
+
     // A part bought on a PRIOR tick is genuinely sitting in this snapshot's
     // inventory - install it now (real id, passes installFitGate cleanly).
     const ownedFitting = state.partInventory.find((instance) => {

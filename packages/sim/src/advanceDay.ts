@@ -15,6 +15,7 @@ import {
   installFitGate,
   isJobComplete,
   repairJobGate,
+  resolveRemovePart,
 } from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { bumpLotSupply, updateMarketHeat } from './marketHeat'
@@ -81,6 +82,18 @@ export function advanceDay(
   const moves = applyMoves(next, queuedActions.moveCars)
   next = moves.state
   log.push(...moves.log)
+
+  // 0b. Bots' queued part removals - the player removes instantly via
+  // resolveRemovePart directly from the store (the Remove button that gates
+  // Replace behind an empty slot). Runs before job creation so a slot
+  // freed today can be targeted by a createJobs spec the very same tick,
+  // same "resolve the precondition before what depends on it" ordering
+  // step 0's equipment-before-jobs comment already establishes.
+  for (const { carInstanceId, carPartId } of queuedActions.removeParts) {
+    const result = resolveRemovePart(next, carInstanceId, carPartId, context)
+    next = result.state
+    log.push(...result.log)
+  }
 
   // 1. Bots' queued job creation. The player never populates this - an
   // instant repair/install click finds-or-creates its own job

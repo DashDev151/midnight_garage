@@ -96,7 +96,7 @@ const ByRarityTierMultiplierSchema = z.object({
  * clamped to the first/last y outside the breakpoint range. Used for the
  * mileage factor in `marketValue.ts`'s clean-value formula.
  */
-const CurveSchema = z
+export const CurveSchema = z
   .array(z.tuple([z.number().nonnegative(), z.number().positive()]))
   .min(2)
   .refine((points) => points.every((p, i) => i === 0 || p[0] > points[i - 1]![0]), {
@@ -448,6 +448,22 @@ export const EconomyConfigSchema = z.object({
      * (wheels, exhaust, aero, seats) than the flat baseline everything else
      * gets. */
     missingSlotWeightByPart: ByCarPartIdWeightSchema,
+    /**
+     * Sprint 33 decision 6: the generated-condition baseline roll's [min,
+     * max] range as a function of the rolled car's age in years (`currentYear
+     * - car.year`, clamped to >= 0) - replaces the old flat
+     * `CAR_CONDITION_BASE_MIN`/`MAX` sim constants (30-90 regardless of age),
+     * which let a brand-new car roll nearly every part `poor` just as easily
+     * as a 30-year-old classic. Younger cars skew toward the high end of
+     * each curve; both curves converge back to roughly the old 30-90 spread
+     * by the time a car is old enough that "well-kept" stops being a
+     * reasonable default assumption. `auctions.ts`'s `generateAuctionCarInstance`
+     * samples both curves at the same age and rolls `rng.int(min, max)`
+     * exactly once, same as the old flat constants - only WHERE the range
+     * comes from changed, not the shape of the roll itself.
+     */
+    conditionBaselineMinByAgeYears: CurveSchema,
+    conditionBaselineMaxByAgeYears: CurveSchema,
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar

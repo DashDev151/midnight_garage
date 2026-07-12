@@ -73,15 +73,18 @@ sensible first pass here, calibrated further in playtest).
    repair-level speed multiplier, and/or parts-per-slot) so restoration is paced to be fun, not a
    war of attrition. First pass here, tuned against the balance harness + playtest.
 
-**NEEDS A MAINTAINER DECISION before its task starts:**
+**Maintainer decisions (locked 2026-07-12):**
 
-- **Customer-parts ethics (playtest note).** A Replace job keeps the removed old part in our
-  inventory. Correct for cars we own; on a customer's car (service job) it is stealing the
-  customer's part. Options: removed parts from customer cars are simply discarded (not kept); or a
-  core-charge/credit; or the customer keeps them (the part just vanishes from our side). Pick one.
-- **How hard is the tutorial gate (note 2)?** Confirm the exact early-game equipment ladder
-  (tutorial: nothing; then Tyre Machine only; then reputation-gated as today) and how many
-  jobs/day of each kind a brand-new game should show.
+8. **Customer-parts ethics: the customer keeps their part.** When a Replace/Remove pulls the old
+   part off a CUSTOMER's car (a service job), that part is NOT added to our inventory, it leaves
+   with the customer. On an OWNED car we keep it, as today. (`resolveRemovePart`, and any replace
+   path that drops a removed part to inventory, gates that drop on the car being owned.)
+9. **Tutorial gate: deferred; early game handled by equipment gating for now.** No formal
+   tutorial-phase system this sprint. Instead, only ONE machine (the Tyre Machine & Balancer) is
+   purchasable from the start (`unknown` reputation); every other machine requires `local`+
+   reputation, so a fresh game (roughly its first week) has just that one tool. The job board's
+   actionable-or-one-purchase-away rule (decision 2) then follows naturally from what the player
+   can actually do with that single machine plus Replace-only work.
 
 ## Definition of Done
 
@@ -102,19 +105,168 @@ sensible first pass here, calibrated further in playtest).
 
 ## Tasks (Claude-implementable)
 
-- [ ] Game/UI: declutter pass (remove persistent hints, all screens); catalog drill-down; auction
+- [x] Game/UI: declutter pass (remove persistent hints, all screens); catalog drill-down; auction
   condition-report restructure; inventory + drawer part-condition display + drawer polish.
-- [ ] Sim/content: job-availability gate (actionable-or-one-tier-up) + equipment tutorial tiering;
+- [x] Sim/content: job-availability gate (actionable-or-one-tier-up) + equipment tutorial tiering;
   age/tier-aware generation condition; labor recalibration (constants).
-- [ ] Sim: customer-car removed-part handling per the maintainer's decision.
-- [ ] Tests per DoD (fresh-game offers all actionable; young-car condition; labor-days anchor;
-  customer-parts behavior); balance re-run; Exit.
+- [x] Sim: customer-car removed-part handling per the maintainer's decision.
+- [x] Tests per DoD (fresh-game offers all actionable; young-car condition; labor-days anchor;
+  customer-parts behavior); Exit. Balance re-run left for the orchestrator (see Exit).
 
 ## User-only tasks
 
-- [ ] Make the two flagged design calls (customer-parts handling; the exact tutorial gate).
+- [x] Make the two flagged design calls (customer-parts handling; the exact tutorial gate) - locked
+  2026-07-12 as decisions 8/9 above, implemented this sprint.
 - [ ] Playtest again and give final numbers for condition skew, labor throughput, and job cadence.
 
 ## Exit
 
-*(Filled at implementation.)*
+**Step 0 fit-check:** the design fit the existing code with no contradictions, but implementing
+decision 9 (equipment tiering) faithfully exposed two real, pre-existing structural bugs rather
+than just moving numbers - both investigated and fixed, not papered over:
+
+1. **The bot-facing `DayActions` pipeline had no way to remove a part.** The player's own Replace
+   flow already required Remove-then-Replace on an occupied slot (`CarDetailScreen.vue` only shows
+   Replace once a slot reads empty), but `bots/serviceJobHelpers.ts`'s `queueServiceJobTasks` never
+   removed anything - it went straight to buy-then-install, which worked fine pre-Sprint-32 (every
+   slot started empty) but has silently failed every bot's install-task completion since Sprint 32
+   (every slot starts stock-filled). Invisible while repair-only bootstrap paths existed; decision
+   9 makes install-only (Replace) work the PRIMARY early-game path for both real players and bots,
+   which surfaced it immediately (`competentPolicyStrategy` went from a measured 627/1000
+   days-to-`local` baseline to 0/100 in a fresh trace). Fixed with a new `removeParts` DayAction
+   (`actions.ts`/`advanceDay.ts` step 0b) that `queueServiceJobTasks` now queues first when an
+   install task's target slot is occupied, mirroring the player's own two-step exactly - not a new
+   mechanic, just wiring the bot-facing action system up to a resolver (`resolveRemovePart`) that
+   already existed for the player.
+2. **`serviceGrinderStrategy`'s repair-only identity was the exact Sprint 16 catch-22, reintroduced.**
+   Sprint 16 first hit this (gating all its equipment meant it could never earn the reputation
+   needed to unlock any of it) and fixed it by leaving `upholstery-bench` ungated. Decision 9 closes
+   that carve-out (every machine but the tire machine now needs `local`+), which reopens the same
+   trap for a bot that only ever accepts repair-kind jobs. Fixed in the bot itself, not with another
+   content carve-out: `isSingleDisciplineJob` now also accepts install-only job lists, matching
+   decision 9's own stated intent ("the job board's actionable-or-one-purchase-away rule then
+   follows naturally from what the player can actually do with that single machine plus
+   Replace-only work").
+
+Both fixes are traced, verified by measurement (below), and necessary for decision 9's own
+intended bootstrap path to actually work for automated play - not scope creep.
+
+**Files changed** (34 modified + 2 new; forbidden files - `parts.json`, `parts-taxonomy.json`,
+`marketValue.ts`, `valuation.ts`, `tools/balance/**`, `CLAUDE.md` - untouched; no `GameState`
+shape change, no save-schema bump):
+
+- Content: `data/equipment.json` (+`minReputationTier: "local"` on brake-lathe/suspension-press/
+  upholstery-bench - tire-machine stays ungated), `data/economy.json` (+`partsGeneration`'s two
+  age-curve fields), `src/economy.ts` (`CurveSchema` exported, +`conditionBaselineMinByAgeYears`/
+  `MaxByAgeYears`).
+- Sim: `src/auctions.ts` (`generateAuctionCarInstance` rolls `year` before the condition baseline;
+  new `conditionBaselineRangeForAge`/local `interpolateCurve`), `src/constants.ts`
+  (`PLAYER_BASE_LABOR_SLOTS` 2 -> 6; `CAR_CONDITION_BASE_MIN`/`MAX` removed in favor of the content
+  curves; +`DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED`), `src/serviceJobs.ts`
+  (`missingEquipmentGroupCount`/`actionableOrOnePurchaseAwayTemplates` hard-filter ahead of the
+  existing hint mechanic), `src/jobs.ts` (`resolveRemovePart` gates the inventory drop on the car
+  being owned), `src/actions.ts` (+`removeParts` DayAction), `src/advanceDay.ts` (+step 0b resolving
+  it), `src/bots/serviceJobHelpers.ts` (`queueServiceJobTasks` queues a remove when an install
+  task's slot is occupied), `src/bots/serviceGrinder.ts` (`isSingleDisciplineJob`: repair-only OR
+  install-only, not just repair-only).
+- Game: `src/components/HelpHint.vue` (new - the shared collapsed-by-default help affordance),
+  `src/components/PartCard.vue` (+`BandChip`), `src/components/ReplaceDrawer.vue` (`HelpHint` +
+  header/close-button/empty-state polish), `src/screens/GarageScreen.vue`/`UpgradesScreen.vue`/
+  `PartsInventoryScreen.vue`/`ServiceJobsScreen.vue`/`CarDetailScreen.vue` (permanent `<p class="how">`
+  paragraphs -> `HelpHint`), `src/screens/PartsMarketScreen.vue` (group -> sub-part click-through
+  drill-down, replacing the flat `<select>` component filter), `src/screens/AuctionScreen.vue`
+  (condition-report ONLY: grouped `.condition-group` cards with aligned per-part rows via
+  `display: contents`, reusing `BandChip` - bidding/`closeLabel`/anti-snipe logic untouched).
+- Tests: `restorationPacing.test.ts` (new - the labor-days anchor), plus updated/added coverage in
+  `equipment.test.ts`, `serviceJobs.test.ts` (actionable-filter + fresh-game-offers), `auctions.test.ts`
+  (age-aware condition), `jobs.test.ts` (owned-vs-customer removed-part), `actions.test.ts`
+  (`removeParts`), `laborSlots.test.ts`, `advanceDay.test.ts` (re-pinned hashes),
+  `bots/runCareer.test.ts` (Service Grinder doc/timeout - see below), `gameStore.jobs.test.ts` (a
+  pre-existing test's "take offer[0]" assumption no longer holds now that generated cars skew
+  toward better condition - fixed by reusing this file's own established
+  "find a still-unfinished offer" pattern, not by weakening the assertion), plus `PartCard.test.ts`/
+  `AuctionScreen.test.ts`/`PartsMarketScreen.test.ts` component coverage for the UI changes.
+
+**Equipment gating (decision 9):** tire-machine (`wheels`) stays ungated (`unknown` reputation);
+brake-lathe, suspension-press, and upholstery-bench (previously ungated or `unknown`-reachable) now
+require `local`; welder/transmission-bench (`local`) and engine-crane (`known`) were already gated
+at or above `local` and are unchanged. A fresh game therefore has exactly one purchasable tool.
+
+**Job-board actionable filter (decision 2):** `missingEquipmentGroupCount` counts the DISTINCT
+component groups a template's repair tasks still need equipment for, given what's owned (install
+tasks never count - replace never needs equipment). `actionableOrOnePurchaseAwayTemplates` hard-
+excludes anything needing 2+ groups from the generation candidate pool entirely (not merely
+de-weighted) - the existing Sprint 16 `JOB_HINT_OFFER_CHANCE` reroll then decides how OFTEN a
+1-missing template surfaces among what's left, unchanged in shape. Verified: a fresh game's offers
+across 300 seeds never exceed 1 missing group, and skew >50% install-only (measured, not asserted
+on faith - see `serviceJobs.test.ts`).
+
+**Generation-condition curve (decision 6):** `economy.json`'s `partsGeneration.conditionBaselineMinByAgeYears`/
+`MaxByAgeYears` replace the flat `CAR_CONDITION_BASE_MIN`/`MAX` (30-90 regardless of age) with two
+age-keyed piecewise-linear curves: age 0 rolls baseline range [55, 98], converging back to
+[30, 90] (the old flat range) by age 20+ - a genuinely old classic still rolls the original spread,
+only young/recently-built cars skew better. `generateAuctionCarInstance` now rolls `year` FIRST (it
+used to roll last) so `currentYear - year` is known before the baseline draw; a caller with no
+calendar context (`currentYear` omitted, `Infinity`) falls back to a fixed
+`DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED = 10` rather than an undefined age - real gameplay
+always threads a concrete `currentGameYear(...)`, so this only matters for test/harness callers.
+This is generation condition only; `marketValueYen` was not touched and still has no age term.
+
+**Labor recalibration (decision 7):** `PLAYER_BASE_LABOR_SLOTS` 2 -> 6 (3x), the repair-level
+ladder (equipment still doubles/triples effective throughput on top of this) left untouched so
+equipment purchases keep their relative value. `restorationPacing.test.ts` anchors this against
+real content (not RNG): a typical worn used car, base hand tools only, restores in 3-15 days
+(was ~20+); a mostly-poor rough car stays under 20 days; owning the full equipment roster measurably
+speeds up the same restoration. First-pass numbers, openly re-tunable.
+
+**Customer-parts handling (decision 8):** `resolveRemovePart` now branches on whether
+`carInstanceId` resolves to an owned car (part kept, unchanged from Sprint 32) or a service-job
+customer's car (part discarded, never added to `partInventory`) - the only other code path that
+ever dropped a removed part into inventory (grep-verified: `parts.ts`'s two `partInventory` writes
+are both buy-flows, unrelated).
+
+**Golden hashes re-pinned** (`advanceDay.test.ts`, by running and reading real output - decision 6's
+generation reorder shifts every generated car's condition, and therefore every downstream RNG draw
+and price, for the rest of each career):
+
+- scripted 30-day career: `8c5a4388` -> `9dfc95d8`
+- acquisition-and-sale path: `085ca712` -> `6dfec42b`
+
+**Service Grinder bootstrap, re-measured** (`bots/runCareer.test.ts`'s own doc comment carries the
+full numbers): the install-only bootstrap path this sprint adds is measurably BETTER than the old
+repair-only one it replaces - n=200 -> 172/200 (86%) vs. Sprint 22's 116/200 (58%) on the same
+metric. That test's 200-seed loop needed an explicit 20s timeout (`pnpm test` runs it in ~1.4s;
+`pnpm test:coverage`'s v8 instrumentation overhead alone pushes it past vitest's 5s default) - a
+real wall-clock budget for a legitimately heavier test, not a loosened assertion.
+
+**Final gate (all shown, all green):**
+
+- `pnpm typecheck` - `content`/`sim`/`game` (`vue-tsc`) all `Done`, zero errors.
+- `pnpm lint` - zero errors (one `vue/no-template-shadow` warning fixed along the way - a
+  `v-for` loop variable name collision in `AuctionScreen.vue`'s new condition-report markup).
+- `pnpm format` - clean after `format:fix` (whitespace/wrapping only).
+- `pnpm test` - **70 files, 755 tests, all passing.**
+- `pnpm test:coverage` - all 755 tests passing; thresholds (80/65/78/82) cleared at
+  88.44%/77.5%/89.84%/92.51% statements/branches/functions/lines.
+
+**Left for the orchestrator:**
+
+- **Balance re-run required, not performed here per the sprint's own scope boundary.** Every lever
+  Sprint 33 touches moves harness numbers by design: the condition-generation curve (decision 6),
+  labor throughput (decision 7), equipment tiering (decision 9), and the job-board filter (decision
+  2) all shift when/how bots earn reputation and cash. The days-to-`local` hard invariant
+  (already FAILING pre-Sprint-33 per `TODO.md`, deliberately left failing rather than silently
+  retuned) needs a fresh harness run against this full diff before it can be re-assessed - not a
+  re-derivation of the pre-Sprint-33 numbers, since the mechanism underneath it changed materially
+  in more than one place at once.
+- **Design question, not a bug:** decision 6 was implemented as purely age-aware (the "or
+  tier-aware" alternative the reuse analysis allowed was not built) - a young car of any rarity
+  tier gets the same condition-baseline boost. If tier should ALSO skew condition (a rare/legend
+  car being better-kept independent of age), that is a follow-up, not implied by what shipped here.
+- **`SaveMenu.vue`'s save-code-backup nudge was deliberately left alone**, not converted to a
+  `HelpHint`: it only ever renders behind an explicit player click (the Save panel toggle), so it
+  was already the "help affordance, not permanent chrome" decision 1 asks for, just via a different
+  existing mechanism - nesting it behind a SECOND click inside an already-opened panel would reduce
+  usability for genuinely important backup-safety copy, not improve it.
+- User-only: playtest again and hand back final numbers for condition skew, labor throughput, and
+  job cadence (per this sprint's own DoD/user-only task).

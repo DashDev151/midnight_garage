@@ -10,6 +10,7 @@ const EMPTY_ACTIONS = {
   setForSale: [],
   buyParts: [],
   scrapParts: [],
+  removeParts: [],
   acceptServiceJobs: [],
   moveCars: [],
   buyBays: [],
@@ -37,6 +38,7 @@ describe('DayActionsSchema', () => {
       laborAssignments: [{ jobId: 'job-1', laborSlots: 2 }],
       bidsOnLots: [{ lotId: 'lot-1', maxBidYen: 500_000 }],
       scrapParts: [{ partInstanceId: 'pi-0004' }],
+      removeParts: [{ carInstanceId: 'car-0001', carPartId: 'dampers' }],
       acceptOffers: [{ carInstanceId: 'car-0002' }],
       setForSale: [{ carInstanceId: 'car-0003', forSale: true }],
     }

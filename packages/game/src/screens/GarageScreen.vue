@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import EndDayButton from '../components/EndDayButton.vue'
+import HelpHint from '../components/HelpHint.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
@@ -77,7 +78,13 @@ const draggedCarName = computed(() => {
 
 <template>
   <section class="garage">
-    <h2>Garage</h2>
+    <h2>
+      Garage
+      <HelpHint label="Moving cars">
+        Drag a car onto another slot to move or swap it - or tap "move…" then "Place here" if
+        dragging isn't an option.
+      </HelpHint>
+    </h2>
 
     <dl class="stats">
       <div>
@@ -103,16 +110,13 @@ const draggedCarName = computed(() => {
       <button data-test="new-game" @click="game.newGame()">New Game</button>
     </div>
 
-    <p class="how drag-hint">
-      Drag a car onto another slot to move or swap it - or tap "move…" then "Place here" if dragging
-      isn't an option.
-    </p>
-
     <section class="bays">
-      <h3>Service bays ({{ game.serviceBayFreeCount }}/{{ game.serviceBayCount }} free)</h3>
-      <p class="how">
-        Labor only reaches a car sitting in a service bay. Moves are free and instant.
-      </p>
+      <h3>
+        Service bays ({{ game.serviceBayFreeCount }}/{{ game.serviceBayCount }} free)
+        <HelpHint label="Service bays">
+          Labor only reaches a car sitting in a service bay. Moves are free and instant.
+        </HelpHint>
+      </h3>
       <ul class="bay-slots">
         <ShopSlot
           v-for="(slot, i) in game.serviceBaysView"
@@ -180,6 +184,12 @@ const draggedCarName = computed(() => {
 </template>
 
 <style scoped>
+h2,
+h3 {
+  display: flex;
+  align-items: center;
+}
+
 h2 {
   color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-lg);
@@ -251,16 +261,6 @@ button:disabled {
 
 .empty {
   color: var(--mg-text-dim);
-}
-
-.how {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-3);
-}
-
-.drag-hint {
-  margin-top: calc(-1 * var(--mg-space-2));
 }
 
 .bay-slots,

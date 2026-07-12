@@ -68,10 +68,28 @@ describe('PartsMarketScreen', () => {
     expect(game.cashYen).toBe(cashBefore)
   })
 
-  it('filters the catalog by part', async () => {
+  it('drills down group -> sub-part to filter the catalog (Sprint 33 decision 3)', async () => {
     const wrapper = mountScreen()
     const ignitionEcuOnly = PARTS.filter((p) => p.carPartId === 'ignitionEcu')
-    await wrapper.find('[data-test="filter-component"]').setValue('ignitionEcu')
+
+    // Clicking a group narrows to every part in it (sub-part chips appear).
+    await wrapper.find('[data-test="catalog-group-engine"]').trigger('click')
+    expect(wrapper.find('[data-test="catalog-part-ignitionEcu"]').exists()).toBe(true)
+
+    // Clicking a sub-part chip narrows to that exact CarPartId.
+    await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
     expect(wrapper.findAll('.part').length).toBe(ignitionEcuOnly.length)
+
+    // Clicking "All parts" resets back to the full flat catalog.
+    await wrapper.find('[data-test="catalog-group-all"]').trigger('click')
+    expect(wrapper.findAll('.part').length).toBe(PARTS.length)
+  })
+
+  it('clicking a group alone (no sub-part) narrows to every part in that group', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="catalog-group-engine"]').trigger('click')
+    // Sanity: a part from a different group is no longer shown.
+    const suspensionPart = PARTS.find((p) => p.carPartId === 'dampers')!
+    expect(wrapper.text()).not.toContain(`${suspensionPart.brand} ${suspensionPart.name}`)
   })
 })

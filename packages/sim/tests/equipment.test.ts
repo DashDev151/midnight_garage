@@ -6,8 +6,15 @@ import { createInitialGameState } from '../src/newGame'
 
 const CONTEXT = buildSimContext([], [], [], [], [], undefined, [], EQUIPMENT)
 
-/** Ungated per the Sprint 16 ladder (day-1 accessible) - the plain purchase
- * flow's fixture, kept separate from the reputation-gate tests below. */
+/**
+ * Ungated per Sprint 33 decision 9 - the ONE machine purchasable from
+ * `unknown` reputation (a fresh game's first week has just this tool). The
+ * plain purchase flow's fixture, kept separate from the reputation-gate
+ * tests below.
+ */
+const TIRE_MACHINE = EQUIPMENT.find((e) => e.componentIds.includes('wheels'))!
+/** Gated behind `local` per Sprint 33 decision 9 - every machine except the
+ * tire machine now requires at least `local` reputation. */
 const UPHOLSTERY_BENCH = EQUIPMENT.find((e) => e.componentIds.includes('interior'))!
 /**
  * Reputation-gated per the Sprint 16 ladder (requires 'known'). Sprint 13
@@ -24,32 +31,32 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 
 describe('hasEquipmentFor', () => {
   it('is false when nothing is owned', () => {
-    expect(hasEquipmentFor(baseState(), 'interior', CONTEXT)).toBe(false)
+    expect(hasEquipmentFor(baseState(), 'wheels', CONTEXT)).toBe(false)
   })
 
   it('is true once the covering equipment is owned', () => {
-    const state = baseState({ ownedEquipmentIds: [UPHOLSTERY_BENCH.id] })
-    expect(hasEquipmentFor(state, 'interior', CONTEXT)).toBe(true)
+    const state = baseState({ ownedEquipmentIds: [TIRE_MACHINE.id] })
+    expect(hasEquipmentFor(state, 'wheels', CONTEXT)).toBe(true)
   })
 
   it('does not cover an unrelated component', () => {
-    const state = baseState({ ownedEquipmentIds: [UPHOLSTERY_BENCH.id] })
+    const state = baseState({ ownedEquipmentIds: [TIRE_MACHINE.id] })
     expect(hasEquipmentFor(state, 'engine', CONTEXT)).toBe(false)
   })
 })
 
 describe('applyEquipmentPurchase', () => {
   it('buys the item, deducts cash, and logs it', () => {
-    const state = baseState({ cashYen: UPHOLSTERY_BENCH.priceYen })
-    const result = applyEquipmentPurchase(state, UPHOLSTERY_BENCH.id, CONTEXT)
+    const state = baseState({ cashYen: TIRE_MACHINE.priceYen })
+    const result = applyEquipmentPurchase(state, TIRE_MACHINE.id, CONTEXT)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
-    expect(result.state.ownedEquipmentIds).toEqual([UPHOLSTERY_BENCH.id])
+    expect(result.state.ownedEquipmentIds).toEqual([TIRE_MACHINE.id])
     expect(result.log).toEqual([
       {
         type: 'equipment-purchased',
-        equipmentId: UPHOLSTERY_BENCH.id,
-        priceYen: UPHOLSTERY_BENCH.priceYen,
+        equipmentId: TIRE_MACHINE.id,
+        priceYen: TIRE_MACHINE.priceYen,
       },
     ])
   })
@@ -63,15 +70,15 @@ describe('applyEquipmentPurchase', () => {
   })
 
   it('refuses when already owned, with no state change', () => {
-    const state = baseState({ cashYen: 999_999_999, ownedEquipmentIds: [UPHOLSTERY_BENCH.id] })
-    const result = applyEquipmentPurchase(state, UPHOLSTERY_BENCH.id, CONTEXT)
+    const state = baseState({ cashYen: 999_999_999, ownedEquipmentIds: [TIRE_MACHINE.id] })
+    const result = applyEquipmentPurchase(state, TIRE_MACHINE.id, CONTEXT)
     expect(result.applied).toBe(false)
     expect(result.state).toBe(state)
   })
 
   it('refuses when unaffordable, with no state change', () => {
-    const state = baseState({ cashYen: UPHOLSTERY_BENCH.priceYen - 1 })
-    const result = applyEquipmentPurchase(state, UPHOLSTERY_BENCH.id, CONTEXT)
+    const state = baseState({ cashYen: TIRE_MACHINE.priceYen - 1 })
+    const result = applyEquipmentPurchase(state, TIRE_MACHINE.id, CONTEXT)
     expect(result.applied).toBe(false)
     expect(result.state).toBe(state)
   })
@@ -91,16 +98,30 @@ describe('applyEquipmentPurchase', () => {
   })
 })
 
-describe('Sprint 23 decision 3: equipment gate ladder', () => {
+describe('Sprint 33 decision 9: equipment gate ladder (tutorial-phase tiering)', () => {
   const SUSPENSION_PRESS = EQUIPMENT.find((e) => e.componentIds.includes('suspension'))!
   const TRANSMISSION_BENCH = EQUIPMENT.find((e) => e.componentIds.includes('drivetrain'))!
   const ENGINE_CRANE = EQUIPMENT.find((e) => e.componentIds.includes('engine'))!
 
-  it('suspension-press is fully ungated, buyable at unknown reputation', () => {
-    expect(SUSPENSION_PRESS.minReputationTier).toBeUndefined()
+  it('the tire machine is the only equipment ungated at unknown reputation', () => {
+    expect(TIRE_MACHINE.minReputationTier).toBeUndefined()
     const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
-    const result = applyEquipmentPurchase(state, SUSPENSION_PRESS.id, CONTEXT)
+    const result = applyEquipmentPurchase(state, TIRE_MACHINE.id, CONTEXT)
     expect(result.applied).toBe(true)
+  })
+
+  it('every other machine (suspension-press included) now requires local, not unknown', () => {
+    expect(SUSPENSION_PRESS.minReputationTier).toBe('local')
+    expect(UPHOLSTERY_BENCH.minReputationTier).toBe('local')
+    const unknownState = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
+    expect(applyEquipmentPurchase(unknownState, SUSPENSION_PRESS.id, CONTEXT).applied).toBe(false)
+    expect(applyEquipmentPurchase(unknownState, UPHOLSTERY_BENCH.id, CONTEXT).applied).toBe(false)
+  })
+
+  it('a local player can buy suspension-press and upholstery-bench', () => {
+    const localState = baseState({ cashYen: 999_999_999, reputationTier: 'local' })
+    expect(applyEquipmentPurchase(localState, SUSPENSION_PRESS.id, CONTEXT).applied).toBe(true)
+    expect(applyEquipmentPurchase(localState, UPHOLSTERY_BENCH.id, CONTEXT).applied).toBe(true)
   })
 
   it('welder and transmission-bench require local, not known - an unknown player cannot buy either', () => {
@@ -128,13 +149,13 @@ describe('Sprint 23 decision 3: equipment gate ladder', () => {
 
 describe('applyEquipmentPurchases (bots’ batch path)', () => {
   it('buys every affordable item in order, skipping ones that fail', () => {
-    const state = baseState({ cashYen: UPHOLSTERY_BENCH.priceYen })
+    const state = baseState({ cashYen: TIRE_MACHINE.priceYen })
     const result = applyEquipmentPurchases(
       state,
-      [{ equipmentId: UPHOLSTERY_BENCH.id }, { equipmentId: 'not-a-real-id' }],
+      [{ equipmentId: TIRE_MACHINE.id }, { equipmentId: 'not-a-real-id' }],
       CONTEXT,
     )
-    expect(result.state.ownedEquipmentIds).toEqual([UPHOLSTERY_BENCH.id])
+    expect(result.state.ownedEquipmentIds).toEqual([TIRE_MACHINE.id])
     expect(result.log).toHaveLength(1)
   })
 

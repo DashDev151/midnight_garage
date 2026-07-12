@@ -5,6 +5,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import EndDayButton from '../components/EndDayButton.vue'
+import HelpHint from '../components/HelpHint.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import StatRadar from '../components/StatRadar.vue'
 import {
@@ -419,11 +420,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
 
         <div class="components-col">
-          <h3>Components</h3>
-          <p class="how">
-            Expand a group to repair or replace its real parts one at a time, or use a group's own
-            "Repair all to fine" convenience. Nothing happens until you Confirm.
-          </p>
+          <h3>
+            Components
+            <HelpHint label="Components">
+              Expand a group to repair or replace its real parts one at a time, or use a group's own
+              "Repair all to fine" convenience. Nothing happens until you Confirm.
+            </HelpHint>
+          </h3>
           <ul class="components">
             <li v-for="componentId in COMPONENTS" :key="componentId" class="component-row">
               <div class="meter-line">
@@ -717,6 +720,8 @@ h2 {
 }
 
 h3 {
+  display: flex;
+  align-items: center;
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
   margin: 0 0 var(--mg-space-2);
@@ -840,12 +845,6 @@ button.primary.danger {
   grid-template-columns: minmax(220px, 1fr) 2fr;
   gap: var(--mg-space-4);
   margin: var(--mg-space-4) 0;
-}
-
-.how {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-2);
 }
 
 .components {

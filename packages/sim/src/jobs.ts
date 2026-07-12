@@ -212,6 +212,14 @@ export interface RemovePartResult {
  * the car/part/its taxonomy group can't be resolved, or a Job is currently
  * open on this exact address (component- or part-level) - a part can't be
  * yanked out from under work already in progress.
+ *
+ * Sprint 33 decision 8 (maintainer, customer-parts ethics): the removed part
+ * only ever lands in OUR `partInventory` when `carInstanceId` is a car we
+ * actually own. On a service-job CUSTOMER's car, the old part leaves with
+ * the customer - it was never ours to keep - so it's simply discarded, not
+ * added to inventory. The slot's own replacement (a fresh stock instance, or
+ * genuinely empty for a removed stock part) is identical either way; only
+ * the inventory side-effect is gated on ownership.
  */
 export function resolveRemovePart(
   state: GameState,
@@ -248,23 +256,25 @@ export function resolveRemovePart(
     ...car,
     parts: { ...car.parts, [carPartId]: { installed: isStock ? null : freshStockInstance } },
   }
-  const partInventory = [...state.partInventory, installed]
   const log: DayLogEntry[] = [
     { type: 'part-removed', carInstanceId, carPartId, partInstanceId: installed.id },
   ]
 
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
   if (ownedIndex !== -1) {
+    // An owned car: the removed part is ours, keep it (unchanged from Sprint 32).
     const ownedCars = [...state.ownedCars]
     ownedCars[ownedIndex] = updatedCar
+    const partInventory = [...state.partInventory, installed]
     return { state: { ...state, ownedCars, partInventory }, log }
   }
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {
+    // A customer's car: the old part leaves with the customer, not into our inventory.
     const activeServiceJobs = [...state.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: updatedCar }
-    return { state: { ...state, activeServiceJobs, partInventory }, log }
+    return { state: { ...state, activeServiceJobs }, log }
   }
 
   return { state, log: [] }

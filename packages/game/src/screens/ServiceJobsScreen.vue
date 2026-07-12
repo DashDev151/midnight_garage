@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
+import HelpHint from '../components/HelpHint.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -14,17 +15,18 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
   <section class="jobs">
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
     <header class="head">
-      <h2>Service jobs</h2>
+      <h2>
+        Service jobs
+        <HelpHint label="Service jobs">
+          Accept a job and the customer's car comes into your shop. Do the work it needs - buy
+          parts, assign labour - then hand it back from the car's page to get paid.
+        </HelpHint>
+      </h2>
       <p class="rep">
         {{ game.reputationPoints }} rep · {{ formatYen(game.cashYen) }} · labour
         {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }}
       </p>
     </header>
-
-    <p class="how">
-      Accept a job and the customer's car comes into your shop. Do the work it needs - buy parts,
-      assign labour - then hand it back from the car's page to get paid.
-    </p>
 
     <p v-if="game.parkingFull" class="parking-warning">
       Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) - accepting a
@@ -115,6 +117,12 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
   margin: var(--mg-space-2) 0 var(--mg-space-3);
 }
 
+h2,
+h3 {
+  display: flex;
+  align-items: center;
+}
+
 h2 {
   color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-lg);
@@ -130,12 +138,6 @@ h3 {
 .rep {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
-}
-
-.how {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-3);
 }
 
 .empty {

@@ -1,5 +1,6 @@
 import type { GameState, StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { PLAYER_BASE_LABOR_SLOTS } from '../src/constants'
 import { availableLaborSlots } from '../src/laborSlots'
 
 function baseState(staff: StaffMember[]): GameState {
@@ -41,16 +42,18 @@ const staffMember = (hustle: number): StaffMember => ({
 })
 
 describe('availableLaborSlots', () => {
-  it('is 2 with no staff (player base only)', () => {
-    expect(availableLaborSlots(baseState([]))).toBe(2)
+  it('is the player base with no staff', () => {
+    expect(availableLaborSlots(baseState([]))).toBe(PLAYER_BASE_LABOR_SLOTS)
   })
 
   it('grants +1 slot per staff member at or above the Hustle threshold', () => {
-    expect(availableLaborSlots(baseState([staffMember(4)]))).toBe(3)
-    expect(availableLaborSlots(baseState([staffMember(4), staffMember(5)]))).toBe(4)
+    expect(availableLaborSlots(baseState([staffMember(4)]))).toBe(PLAYER_BASE_LABOR_SLOTS + 1)
+    expect(availableLaborSlots(baseState([staffMember(4), staffMember(5)]))).toBe(
+      PLAYER_BASE_LABOR_SLOTS + 2,
+    )
   })
 
   it('grants no bonus for staff below the Hustle threshold', () => {
-    expect(availableLaborSlots(baseState([staffMember(3)]))).toBe(2)
+    expect(availableLaborSlots(baseState([staffMember(3)]))).toBe(PLAYER_BASE_LABOR_SLOTS)
   })
 })

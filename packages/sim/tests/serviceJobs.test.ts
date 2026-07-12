@@ -9,6 +9,7 @@ import {
   SERVICE_JOB_TYPES,
   type CarInstance,
   type CarPartId,
+  type ComponentId,
   type GameState,
   type Job,
   type Part,
@@ -22,6 +23,7 @@ import { advanceDay } from '../src/advanceDay'
 import { generateAuctionCarInstance } from '../src/auctions'
 import { SERVICE_JOB_ARRIVAL_DELAY_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
+import { hasEquipmentForIds } from '../src/equipment'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
@@ -334,6 +336,73 @@ describe('job-board equipment hinting (Sprint 16 decision 4, extended to multi-t
     expect(seen.filter((o) => o.tasks.every((t) => t.action === 'install')).length).toBeGreaterThan(
       installOnlyTemplateCount,
     ) // sanity: install offers show up plenty across many rolls
+  })
+})
+
+describe('Sprint 33 decision 2: job board is actionable-or-one-purchase-away', () => {
+  /** Every distinct component group `offer` still needs repair equipment
+   * for, given `ownedEquipmentIds` - the same public-data computation the
+   * sim's own hard filter is built on, kept independent here so this test
+   * verifies the observable OUTCOME rather than reaching into a private
+   * implementation helper. */
+  function missingEquipmentGroups(offer: ServiceJob, ownedEquipmentIds: readonly string[]): number {
+    const groups = new Set<ComponentId>()
+    for (const task of offer.tasks) {
+      if (task.action !== 'repair') continue
+      const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group
+      if (!hasEquipmentForIds(ownedEquipmentIds, CONTEXT.equipmentById, group)) groups.add(group)
+    }
+    return groups.size
+  }
+
+  it('a fresh (brand-new-game) job board never offers a job needing 2+ equipment purchases', () => {
+    let sawAnyOffer = false
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createInitialGameState(CONTEXT, seed)
+      for (const offer of state.serviceJobOffers) {
+        sawAnyOffer = true
+        expect(missingEquipmentGroups(offer, state.ownedEquipmentIds)).toBeLessThanOrEqual(1)
+      }
+    }
+    expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
+  })
+
+  it('a fresh game’s offers skew heavily toward Replace-only (install) work', () => {
+    let installOnly = 0
+    let total = 0
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createInitialGameState(CONTEXT, seed)
+      for (const offer of state.serviceJobOffers) {
+        total += 1
+        if (offer.tasks.every((task) => task.action === 'install')) installOnly += 1
+      }
+    }
+    expect(total).toBeGreaterThan(0)
+    expect(installOnly / total).toBeGreaterThan(0.5)
+  })
+
+  it('a template needing two distinct unowned equipment groups is excluded from generation entirely, even unrestricted by tier', () => {
+    // tyres-and-pads-service needs wheels (tyres) AND suspension
+    // (brakePadsDiscs) - two distinct groups when nothing is owned.
+    const template = SERVICE_JOB_TYPES.find((t) => t.id === 'tyres-and-pads-service')!
+    let sawTemplate = false
+    for (let day = 1; day <= 500; day++) {
+      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day), Infinity, [])
+      if (result.some((o) => o.typeId === template.id)) sawTemplate = true
+    }
+    expect(sawTemplate).toBe(false)
+
+    // The same template is reachable once ONE of its two groups is owned
+    // (down to exactly one missing purchase, decision 2's hint case).
+    const tireMachine = EQUIPMENT.find((e) => e.componentIds.includes('wheels'))!
+    let sawWithOneOwned = false
+    for (let day = 1; day <= 500 && !sawWithOneOwned; day++) {
+      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day), Infinity, [
+        tireMachine.id,
+      ])
+      if (result.some((o) => o.typeId === template.id)) sawWithOneOwned = true
+    }
+    expect(sawWithOneOwned).toBe(true)
   })
 })
 

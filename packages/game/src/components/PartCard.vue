@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import BandChip from './BandChip.vue'
 import RotaryMarker from './RotaryMarker.vue'
 
 const game = useGameStore()
@@ -95,6 +96,7 @@ function onPointerUp(event: PointerEvent): void {
       /></span>
       <span class="part-meta">
         {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }}
+        <BandChip :band="instance.band" />
       </span>
       <span v-if="isScrap" class="scrap-hint">scrap - can't be installed anywhere</span>
       <span v-else-if="!fits" class="no-fit-hint">doesn't fit here</span>
@@ -174,6 +176,9 @@ function onPointerUp(event: PointerEvent): void {
 }
 
 .part-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   text-transform: capitalize;

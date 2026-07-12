@@ -21,40 +21,6 @@ the old checklist:
   the first artifact for the recorded-play idea below. Not confirmed done during the 2026-07-11
   session.
 
-## Playtest findings 2026-07-12 (second playtest, to action after the auction fix)
-
-- [ ] **UI declutter pass across all screens.** Persistent tutorial/explainer text is pinned
-  front-and-center on main gameplay screens forever (e.g. the drag-to-move hint, the "Owning a
-  component's equipment is what unlocks Repair..." explainer). These should be one-off or
-  dismissible tips, not permanent chrome. Audit every page and remove the clutter.
-- [ ] **Service-job offers must be gated by what the player can actually do.** Only show jobs the
-  player can complete NOW, or that need exactly ONE equipment purchase (as a buy-this hint). First
-  job seen on a brand-new game was a Cooling repair needing late-game equipment (impossible). Also
-  the equipment shop lets you buy 4+ tools immediately, no tiering. Wanted: tutorial = buy nothing;
-  then only Tyre Machine & Balancer; equipment unlocks in tiers; early-game jobs are predominantly
-  Replace-only (no equipment) with a few single-equipment-hint jobs. Interacts with Sprint 29's
-  tier gating + the equipment-hint mechanic.
-- [ ] **Parts catalog needs a click-through hierarchy** (group -> sub-part), not one giant flat
-  list. Keep it lightweight, just a cleaner drill-down.
-- [ ] **Auction full-condition report (the 29-part grid) is unreadable, restructure for
-  legibility.** (See the Sprint 32 screenshot: the grid wraps into an unparseable mess.)
-- [ ] **Replace-drawer inventory popup:** (a) it's ugly, needs polish; (b) it MUST show each part's
-  CONDITION (band), and the general parts-inventory screen should show condition too; (c) FUTURE
-  addition: a mechanism to recondition/repair a damaged part held in inventory so it's reusable in
-  another build.
-- [ ] **Customer-parts ethics (design question).** A Replace job removes the old part and keeps it
-  in our inventory. Fine for cars we own, but on a CUSTOMER's car (service job) that's stealing the
-  customer's part. Decide handling: removed parts from customer cars are not kept, or a core-charge,
-  or the customer keeps them. Needs a maintainer call.
-- [ ] **Generation condition calibration.** A ~2-year-old car (S14) arrives with nearly every part
-  "poor", unrealistic. Young cars should generate in much better condition. Make generated
-  condition age-aware (or tier-aware). Note: this is CONDITION generation, unrelated to the value
-  model (age was correctly removed from VALUE; a young car being in good shape is a generation
-  concern, not a value one).
-- [ ] **Labor calibration vs the 29-part repair system.** Base 2 labor slots against per-component
-  repair means ~20 full days to restore a whole car, far too slow to be fun. Recalibrate labor
-  throughput: base slots, the repair-level speed multiplier, and/or how many parts one slot covers.
-
 ## Standing concerns
 
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
@@ -162,6 +128,20 @@ pass."
   miss it. Also: `runCareer.test.ts`'s competent-policy day-100 assertion was LOOSENED
   (`finalSnapshot > 0` -> `some snapshot > 0`) to keep the suite green through this - that loosening
   is a symptom of this regression and must be RESTORED once it is fixed.
+  **Update (Sprint 33):** a real, separate structural bug in this same neighborhood was found and
+  fixed - the bot-facing `DayActions` pipeline had no way to remove a part before installing a
+  replacement (Sprint 32's stock-baseline model fills every slot by default, so an install task's
+  target is normally occupied), silently zeroing out every bot's install-based reputation faucet;
+  fixed with a new `removeParts` DayAction (`actions.ts`/`advanceDay.ts`) that
+  `serviceJobHelpers.ts`'s `queueServiceJobTasks` now queues first, mirroring the player's own
+  required Remove-then-Replace two-step. `serviceGrinderStrategy` also now accepts install-only
+  jobs, not just repair-only (Sprint 33 decision 9 leaves only the tire machine ownable at
+  `unknown` reputation, closing the repair-only bootstrap path decision 9's own text names
+  Replace-only work as the intended replacement for). Neither fix touches the days-to-`local`
+  PACING question above - that's still open, and Sprint 33 ALSO changed the generation-condition
+  curve and labor throughput, both of which move the same numbers - a fresh harness run against
+  the full Sprint 33 diff is needed before this invariant can be re-assessed, not a re-derivation
+  of the numbers above.
 - [ ] **Sprint 30 living-auction tuning: the board is a fire sale at first-pass numbers
   (maintainer chose commit-as-is, tune in playtest, 2026-07-12).** Mechanics shipped and all hard
   invariants pass, but the balance harness shows 94% of auction wins are cheap "steals" (target
@@ -221,6 +201,10 @@ pass."
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
   with the staff system, still unscheduled; player-character skill is new v1.0 scope, slotted
   against the service-jobs feature. Full design: `docs/design/skill-progression.md`.
+- [ ] **In-inventory part-recondition mechanic** (Sprint 33 note 5c, maintainer-flagged future
+  addition, explicitly deferred out of Sprint 33). A way to recondition/repair a damaged
+  `PartInstance` sitting in inventory so it's reusable in a later build, instead of a worn part
+  only ever being reinstallable at whatever band it already carries. Not designed yet.
 
 ## Design decisions awaiting maintainer direction
 

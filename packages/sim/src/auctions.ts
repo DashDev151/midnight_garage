@@ -11,7 +11,7 @@ import {
   type TurnoutBand,
 } from '@midnight-garage/content'
 import { bandForMigratedCondition, hasForcedInduction } from './bands'
-import { CAR_CONDITION_BASE_MAX, CAR_CONDITION_BASE_MIN, CAR_CONDITION_JITTER } from './constants'
+import { CAR_CONDITION_JITTER, DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
 import type { Rng } from './rng'
 
@@ -97,6 +97,46 @@ function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
 }
 
 /**
+ * Piecewise-linear interpolation over ascending `[x, y]` breakpoints -
+ * clamps to the first/last y outside the breakpoint range, linearly
+ * interpolates between the two straddling `x` otherwise. Deliberately
+ * duplicates `marketValue.ts`'s private helper of the same shape rather than
+ * importing it: `marketValue.ts` is the frozen value model this sprint is
+ * explicitly forbidden from touching (sprint33.md), even for a
+ * behavior-preserving refactor, so this stays a small local copy instead.
+ */
+function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x: number): number {
+  const first = breakpoints[0]!
+  if (x <= first[0]) return first[1]
+  const last = breakpoints[breakpoints.length - 1]!
+  if (x >= last[0]) return last[1]
+  for (let i = 1; i < breakpoints.length; i++) {
+    const [x1, y1] = breakpoints[i - 1]!
+    const [x2, y2] = breakpoints[i]!
+    if (x <= x2) {
+      const t = (x - x1) / (x2 - x1)
+      return y1 + t * (y2 - y1)
+    }
+  }
+  return last[1]
+}
+
+/**
+ * Sprint 33 decision 6: the condition-baseline roll's [min, max] range for a
+ * car of this age, sampled from `economy.json`'s
+ * `partsGeneration.conditionBaselineMinByAgeYears`/`MaxByAgeYears` curves -
+ * replaces the old flat `CAR_CONDITION_BASE_MIN`/`MAX` constants (30-90
+ * regardless of age). Rounded to whole yen-free percentage points since
+ * `rng.int` requires integer bounds.
+ */
+function conditionBaselineRangeForAge(ageYears: number, economy: EconomyConfig): [number, number] {
+  const { conditionBaselineMinByAgeYears, conditionBaselineMaxByAgeYears } = economy.partsGeneration
+  const min = Math.round(interpolateCurve(conditionBaselineMinByAgeYears, ageYears))
+  const max = Math.round(interpolateCurve(conditionBaselineMaxByAgeYears, ageYears))
+  return [min, max]
+}
+
+/**
  * Rolls one fresh, mint-catalog stock `PartInstance` at `band` for `partId`
  * (Sprint 32 decision 6's default fill) - `undefined` only if the catalog
  * genuinely has no stock entry for this `CarPartId`, which decision 1
@@ -144,6 +184,19 @@ function stockInstanceFor(
  * `block`/`chassis` (their catalog weight is 0). Decision 10: a lot's
  * rolled bands are plain, always-visible state now - there is no reveal
  * machinery left to layer on top.
+ *
+ * Sprint 33 decision 6: `year` now rolls FIRST (used to roll last, alongside
+ * mileage/color/provenance/authenticity) so the condition baseline can be
+ * age-aware - `conditionBaselineRangeForAge` samples the car's age
+ * (`currentYear - year`, clamped >= 0) against `economy.json`'s two age
+ * curves instead of drawing from the old flat 30-90 range, so a young car
+ * skews toward a materially better baseline than an old one. `currentYear`
+ * not being finite (most callers with no real calendar context - see that
+ * param's own doc note below) falls back to a fixed
+ * `DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED` (constants.ts) rather than an
+ * infinite/undefined age. This is generation condition only, not value -
+ * `marketValue.ts` never re-gained an age factor (a maintainer decision
+ * after Sprint 30 removed it there specifically).
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -153,7 +206,12 @@ export function generateAuctionCarInstance(
   currentYear: number = Infinity,
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
-  const conditionBaseline = rng.int(CAR_CONDITION_BASE_MIN, CAR_CONDITION_BASE_MAX)
+  const year = Math.min(model.spec.yearFrom + rng.int(0, 8), currentYear)
+  const ageYears = Number.isFinite(currentYear)
+    ? Math.max(0, currentYear - year)
+    : DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED
+  const [baselineMin, baselineMax] = conditionBaselineRangeForAge(ageYears, economy)
+  const conditionBaseline = rng.int(baselineMin, baselineMax)
   const carHasForcedInduction = hasForcedInduction(model)
   const { missingSlotBaseChance, missingSlotWeightByPart } = economy.partsGeneration
 
@@ -183,7 +241,7 @@ export function generateAuctionCarInstance(
   return {
     id,
     modelId: model.id,
-    year: Math.min(model.spec.yearFrom + rng.int(0, 8), currentYear),
+    year,
     mileageKm: rng.int(30_000, 180_000),
     color: rng.pick(COLOR_POOL),
     provenanceNote: rng.pick(PROVENANCE_POOL),

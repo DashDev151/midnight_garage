@@ -7,6 +7,7 @@ import {
   type GameState,
   type Job,
   type PartInstance,
+  type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
@@ -672,5 +673,54 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
+  })
+
+  /** A minimal, schema-shaped active service job wrapping the module-level
+   * fixture `car` as the CUSTOMER's car - Sprint 33 decision 8's contrast
+   * case against the owned-car tests above. */
+  const customerServiceJob: ServiceJob = {
+    id: 'svc-test',
+    typeId: 'small-bodywork-touchup',
+    customerName: 'Test Customer',
+    description: 'Bodywork needs sorting.',
+    tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine' }],
+    car,
+    payoutYen: 10_000,
+    baseReputation: 5,
+    deadlineDays: 5,
+    expiresOnDay: 30,
+    arrivesOnDay: null,
+    dueOnDay: 8,
+  }
+
+  it('Sprint 33 decision 8: removing a part from a CUSTOMER car discards it, not kept in our inventory', () => {
+    const originalInstance = car.parts.panels.installed!
+    const state = baseState({
+      ownedCars: [],
+      activeServiceJobs: [customerServiceJob],
+      partInventory: [],
+    })
+    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+
+    // The slot still updates exactly like the owned-car case (panels is
+    // stock, so the slot goes genuinely empty)...
+    expect(result.state.activeServiceJobs[0]?.car.parts.panels.installed).toBeNull()
+    // ...but the removed part left with the customer - never added to ours.
+    expect(result.state.partInventory).toEqual([])
+    expect(result.log).toEqual([
+      {
+        type: 'part-removed',
+        carInstanceId: car.id,
+        carPartId: 'panels',
+        partInstanceId: originalInstance.id,
+      },
+    ])
+  })
+
+  it('Sprint 33 decision 8: removing the same part from an OWNED car still keeps it (unchanged from Sprint 32)', () => {
+    const originalInstance = car.parts.panels.installed!
+    const state = baseState({ partInventory: [] }) // ownedCars: [car] by default
+    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    expect(result.state.partInventory).toEqual([originalInstance])
   })
 })

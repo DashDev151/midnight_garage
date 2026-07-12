@@ -33,6 +33,59 @@ import { clearStagedWork } from './stagedWork'
  * (an extremely rare edge case - every template gated and every hint roll missing). */
 const MAX_TYPE_PICK_ATTEMPTS = 20
 
+/** Sprint 33 decision 2: the hard cap on how many distinct equipment groups
+ * a template may still be missing and still be offer-eligible at all - "one
+ * purchase away," never two or more. Templates needing more are excluded
+ * from the candidate pool entirely (`actionableOrOnePurchaseAwayTemplates`
+ * below), not merely de-weighted by the existing hint-chance reroll. */
+const MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER = 1
+
+/** Every distinct component group `template` needs repair equipment for that
+ * `ownedEquipmentIds` doesn't already cover - install tasks never count
+ * (replace never needs equipment). Two tasks needing the SAME ungowned group
+ * count once, since one purchase fixes both. */
+function missingEquipmentGroupCount(
+  template: ServiceJobType,
+  ownedEquipmentIds: readonly string[],
+  context: SimContext,
+): number {
+  const missingGroups = new Set<ComponentId>()
+  for (const task of template.tasks) {
+    if (task.action !== 'repair') continue
+    const group = context.partsTaxonomyById[task.carPartId]?.group
+    if (!group) continue
+    if (!hasEquipmentForIds(ownedEquipmentIds, context.equipmentById, group)) {
+      missingGroups.add(group)
+    }
+  }
+  return missingGroups.size
+}
+
+/**
+ * Sprint 33 decision 2: a service-job offer is generated ONLY if the player
+ * can complete it now, or needs exactly ONE equipment purchase (surfaced as
+ * a buy-this hint by the existing `pickServiceJobTemplate` hint-chance roll
+ * below) - never a template that would need two or more purchases before
+ * it's actionable. This is a hard pre-filter (always excludes 2+-missing
+ * templates), not a probability, so the DoD's "job board never offers an
+ * un-doable job" holds regardless of RNG luck; `pickServiceJobTemplate`'s
+ * existing per-candidate hint roll still decides how OFTEN a 1-missing
+ * template surfaces among what's left, unchanged. Extends Sprint 29's tier
+ * gating + the Sprint 16 equipment-hint mechanic rather than forking a
+ * second gate (directive 16).
+ */
+function actionableOrOnePurchaseAwayTemplates(
+  templates: readonly ServiceJobType[],
+  ownedEquipmentIds: readonly string[],
+  context: SimContext,
+): ServiceJobType[] {
+  return templates.filter(
+    (template) =>
+      missingEquipmentGroupCount(template, ownedEquipmentIds, context) <=
+      MAX_MISSING_EQUIPMENT_GROUPS_FOR_OFFER,
+  )
+}
+
 /**
  * Picks one service-job template for an offer (Sprint 29): a template that
  * needs equipment the player doesn't own for at least one of its repair
@@ -219,11 +272,13 @@ function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
  * car (`deriveServiceJobPayoutYen`) - never an authored flat range.
  * `reputationTier` (default `'legend'` = unrestricted) gates which template
  * TIERS are even in the candidate pool (Sprint 29 decision 2); within that
- * pool, `ownedEquipmentIds` (default "nothing owned") drives the same
- * equipment-hinting policy Sprint 16 shipped, extended to multi-task
- * templates by `pickServiceJobTemplate`. `currentYear` (default Infinity =
- * unrestricted) excludes still-unreleased models and clamps the rolled
- * car's year, same as auction generation.
+ * pool, `ownedEquipmentIds` (default "nothing owned") first hard-excludes
+ * any template needing 2+ equipment purchases
+ * (`actionableOrOnePurchaseAwayTemplates`, Sprint 33 decision 2), then drives
+ * the same equipment-hinting policy Sprint 16 shipped for what's left,
+ * extended to multi-task templates by `pickServiceJobTemplate`. `currentYear`
+ * (default Infinity = unrestricted) excludes still-unreleased models and
+ * clamps the rolled car's year, same as auction generation.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
@@ -235,8 +290,13 @@ export function generateDailyServiceJobOffers(
   reputationTier: ReputationTier = 'legend',
 ): ServiceJob[] {
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
-  const eligibleTemplates = context.serviceJobTypes.filter((template) =>
+  const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
     reputationAtLeast(reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
+  )
+  const eligibleTemplates = actionableOrOnePurchaseAwayTemplates(
+    tierEligibleTemplates,
+    ownedEquipmentIds,
+    context,
   )
   if (
     eligibleTemplates.length === 0 ||

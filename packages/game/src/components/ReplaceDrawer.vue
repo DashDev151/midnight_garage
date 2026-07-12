@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CarPartId } from '@midnight-garage/content'
 import { computed } from 'vue'
+import HelpHint from './HelpHint.vue'
 import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
@@ -59,12 +60,23 @@ function onSelect(partInstanceId: string): void {
 <template>
   <aside class="drawer" data-test="replace-drawer">
     <header class="drawer-head">
-      <h3>Replace {{ game.carPartLabel(carPartId) }}</h3>
-      <button type="button" class="close" data-test="close-drawer" @click="emit('close')">
+      <h3>
+        Replace {{ game.carPartLabel(carPartId) }}
+        <HelpHint label="Replace">
+          Click a fitting part to install it here, or drag it onto the part instead.
+        </HelpHint>
+      </h3>
+      <button
+        type="button"
+        class="close"
+        aria-label="Close"
+        data-test="close-drawer"
+        @click="emit('close')"
+      >
         &times;
       </button>
     </header>
-    <p class="how">Click a fitting part to install it here, or drag it onto the part instead.</p>
+    <p class="count">{{ entries.length }} part{{ entries.length === 1 ? '' : 's' }} on hand</p>
     <p v-if="entries.length === 0" class="empty">
       No parts on hand - visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>
@@ -87,12 +99,12 @@ function onSelect(partInstanceId: string): void {
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(360px, 90vw);
+  width: min(380px, 90vw);
   display: flex;
   flex-direction: column;
   background: var(--mg-panel);
-  border-left: 1px solid var(--mg-neon-violet);
-  padding: var(--mg-space-3);
+  border-left: 2px solid var(--mg-neon-violet);
+  padding: var(--mg-space-4);
   overflow-y: auto;
   z-index: 900;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
@@ -102,10 +114,15 @@ function onSelect(partInstanceId: string): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--mg-space-2);
+  gap: var(--mg-space-3);
+  padding-bottom: var(--mg-space-3);
+  margin-bottom: var(--mg-space-3);
+  border-bottom: var(--mg-border);
 }
 
 .drawer-head h3 {
+  display: flex;
+  align-items: center;
   margin: 0;
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
@@ -113,19 +130,38 @@ function onSelect(partInstanceId: string): void {
 }
 
 .close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8em;
+  height: 1.8em;
   background: none;
-  border: none;
+  border: var(--mg-border);
+  border-radius: 999px;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-lg);
   line-height: 1;
-  padding: 0 var(--mg-space-1);
+  cursor: pointer;
 }
 
-.how,
+.close:hover {
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
+}
+
+.count {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--mg-space-3);
+}
+
 .empty {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-3);
+  margin: 0;
 }
 
 .parts-list {

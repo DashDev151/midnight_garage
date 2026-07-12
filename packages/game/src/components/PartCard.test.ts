@@ -45,6 +45,12 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     expect(wrapper.find('.part-card').classes()).not.toContain('no-fit')
   })
 
+  it('shows the instance’s own condition band (Sprint 33 decision 5)', () => {
+    const wornInstance: PartInstance = { ...instance, id: 'pi-worn', band: 'worn' }
+    const wrapper = mount(PartCard, { props: { instance: wornInstance, part } })
+    expect(wrapper.find('.band-chip.band-worn').exists()).toBe(true)
+  })
+
   describe('a scrap-band instance (Sprint 26 decision 6, Sprint 28 UI)', () => {
     function grantScrapInstance() {
       const game = useGameStore()

@@ -134,7 +134,19 @@
       "aero": 3,
       "seats": 3,
       "dashGauges": 1
-    }
+    },
+    "conditionBaselineMinByAgeYears": [
+      [0, 55],
+      [4, 45],
+      [10, 35],
+      [20, 30]
+    ],
+    "conditionBaselineMaxByAgeYears": [
+      [0, 98],
+      [4, 92],
+      [10, 90],
+      [20, 90]
+    ]
   },
   "reputation": {
     "cleanSaleMinBand": "fine",
