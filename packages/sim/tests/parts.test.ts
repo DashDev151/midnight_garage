@@ -1,8 +1,15 @@
-import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
+import {
+  BUYERS,
+  CARS,
+  PARTS,
+  PARTS_TAXONOMY,
+  type GameState,
+  type PartInstance,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
-import { resolveBuyPart, resolvePartDeliveries } from '../src/parts'
+import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from '../src/parts'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const CHEAPEST = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
@@ -190,5 +197,30 @@ describe('resolvePartDeliveries (Sprint 14, day arithmetic fixed Sprint 25 task 
     const result = resolvePartDeliveries(state)
     expect(result.state.partInventory).toHaveLength(1)
     expect(result.state.pendingPartOrders).toEqual([laterOrder])
+  })
+})
+
+describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)', () => {
+  const scrapInstance: PartInstance = {
+    id: 'pi-scrap',
+    partId: CHEAPEST.id,
+    band: 'scrap',
+    genuinePeriod: false,
+  }
+
+  it('scraps a player-owned scrap part for cash and removes it from inventory', () => {
+    const state = baseState({ partInventory: [scrapInstance] })
+    const result = resolveScrapPart(state, scrapInstance.id, CONTEXT)
+    expect(result.state.partInventory).toHaveLength(0)
+    expect(result.state.cashYen).toBeGreaterThan(state.cashYen)
+    expect(result.log[0]).toMatchObject({ type: 'part-scrapped', partInstanceId: scrapInstance.id })
+  })
+
+  it('refuses to scrap a customer-owned part (customerJobId set) - a no-op', () => {
+    const customerScrap: PartInstance = { ...scrapInstance, customerJobId: 'svc-1-0' }
+    const state = baseState({ partInventory: [customerScrap] })
+    const result = resolveScrapPart(state, customerScrap.id, CONTEXT)
+    expect(result.state).toBe(state) // untouched: still in inventory, no cash
+    expect(result.log).toEqual([])
   })
 })

@@ -1,13 +1,23 @@
 import type {
   CarInstance,
   CarPartId,
+  ComponentId,
+  ConditionBand,
   DayLogEntry,
   GameState,
   Job,
   PartInstance,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
-import { bandIndex, planGroupRepair, presentPartIdsInGroup } from './bands'
+import {
+  bandIndex,
+  canRepair,
+  planGroupRepair,
+  planPartRepair,
+  presentPartIdsInGroup,
+  repairLevelForGroup,
+  type PartRepairPlan,
+} from './bands'
 import type { SimContext } from './context'
 import { hasEquipmentFor } from './equipment'
 import { partFitsCar } from './parts'
@@ -157,13 +167,44 @@ function applyJobToCar(
 }
 
 /**
- * Applies a completed job's effect (group repair or part install) to
- * GameState. The target car may be an owned car OR a customer car sitting in
- * a service job (the player works both with the same job system). Does not
- * remove the job from state.jobs - the caller (advanceDay) owns list
- * bookkeeping.
+ * Sprint 35: a completed `recondition-part` job's effect - climb the loose
+ * `PartInstance` in `partInventory` to the job's `targetBand`, exactly the
+ * way `applyJobToCar`'s repair-zone branch climbs an installed part (skip
+ * scrap, skip anything already at/above the target). No car, no slot; the
+ * part's own band is the only state that moves. A part that vanished from
+ * inventory since the job was created (sold, installed, reconciled at
+ * close-out) is simply a no-op - the job was already paid and labored, so
+ * there is nothing to refund, same as `applyJobToCar`'s own mid-job-departure
+ * handling.
+ */
+function completeReconditionJob(state: GameState, job: Job): GameState {
+  const targetBand = job.targetBand
+  if (!job.partInstanceId || !targetBand) return state
+  let changed = false
+  const partInventory = state.partInventory.map((instance) => {
+    if (instance.id !== job.partInstanceId) return instance
+    if (!canRepair(instance.band) || bandIndex(instance.band) >= bandIndex(targetBand)) {
+      return instance
+    }
+    changed = true
+    return { ...instance, band: targetBand }
+  })
+  return changed ? { ...state, partInventory } : state
+}
+
+/**
+ * Applies a completed job's effect (group repair, part install, or - Sprint
+ * 35 - an in-inventory recondition) to GameState. For a car job the target
+ * may be an owned car OR a customer car sitting in a service job (the player
+ * works both with the same job system); a `recondition-part` job targets a
+ * loose inventory part instead. Does not remove the job from state.jobs - the
+ * caller owns list bookkeeping.
  */
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
+  if (job.kind === 'recondition-part') {
+    return { state: completeReconditionJob(state, job), blockedByOccupiedSlot: false }
+  }
+
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
   if (ownedIndex !== -1) {
     const effect = applyJobToCar(state.ownedCars[ownedIndex]!, job, state.partInventory, context)
@@ -213,13 +254,15 @@ export interface RemovePartResult {
  * open on this exact address (component- or part-level) - a part can't be
  * yanked out from under work already in progress.
  *
- * Sprint 33 decision 8 (maintainer, customer-parts ethics): the removed part
- * only ever lands in OUR `partInventory` when `carInstanceId` is a car we
- * actually own. On a service-job CUSTOMER's car, the old part leaves with
- * the customer - it was never ours to keep - so it's simply discarded, not
- * added to inventory. The slot's own replacement (a fresh stock instance, or
- * genuinely empty for a removed stock part) is identical either way; only
- * the inventory side-effect is gated on ownership.
+ * Sprint 35 decision 2 (supersedes Sprint 33 decision 8): a part pulled off a
+ * service-job CUSTOMER's car is no longer discarded - it lands in OUR
+ * `partInventory` tagged `customerJobId` with that job's id, so it can be
+ * tracked and reconditioned (the PC-Building-Sim model) while staying locked
+ * from sale/scrap and reconciled out at close-out (`resolveServiceJob`). A
+ * part pulled off a car we actually own is kept untagged (player-owned),
+ * unchanged from Sprint 32. The slot's own replacement (a fresh stock
+ * instance, or genuinely empty for a removed stock part) is identical either
+ * way; only the inventory side-effect's tag differs by ownership.
  */
 export function resolveRemovePart(
   state: GameState,
@@ -271,10 +314,15 @@ export function resolveRemovePart(
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {
-    // A customer's car: the old part leaves with the customer, not into our inventory.
+    // A customer's car (Sprint 35 decision 2): keep the pulled part in our
+    // inventory tagged with the owning job, not ours to sell/scrap but ours
+    // to recondition until the job closes out.
+    const serviceJob = state.activeServiceJobs[serviceIndex]!
     const activeServiceJobs = [...state.activeServiceJobs]
-    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: updatedCar }
-    return { state: { ...state, activeServiceJobs }, log }
+    activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
+    const taggedPart: PartInstance = { ...installed, customerJobId: serviceJob.id }
+    const partInventory = [...state.partInventory, taggedPart]
+    return { state: { ...state, activeServiceJobs, partInventory }, log }
   }
 
   return { state, log: [] }
@@ -294,6 +342,34 @@ function jobIdFor(spec: NewJobSpec): string {
 }
 
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
+
+/** The consumables charge for repair work in `componentId` - the covering
+ * equipment's per-job `consumablesCostYen` (0 if none). */
+function repairConsumablesCostYen(componentId: ComponentId, context: SimContext): number {
+  const equipment = context.equipment.find((e) => e.componentIds.includes(componentId))
+  return equipment?.consumablesCostYen ?? 0
+}
+
+/**
+ * Sprint 35: the single money step shared by on-car repair (`repairJobGate`
+ * below) and in-inventory recondition (`resolveReconditionLabor`) - charges
+ * consumables + the already-priced repair work against cash, or refuses
+ * silently when unaffordable (matching every can't-afford gate in this
+ * codebase). ONE repair economy: both paths deduct the same consumables + the
+ * same banded-repair `costYen`. The caller confirms equipment ownership first
+ * (the equipment gate stays at each call site so its `job-blocked` log fires
+ * in the exact order it always has).
+ */
+function chargeRepairWork(
+  state: GameState,
+  componentId: ComponentId,
+  repairCostYen: number,
+  context: SimContext,
+): { ok: true; state: GameState } | { ok: false } {
+  const totalCostYen = repairConsumablesCostYen(componentId, context) + repairCostYen
+  if (state.cashYen < totalCostYen) return { ok: false }
+  return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
+}
 
 /**
  * Sprint 13: the equipment + consumables gate on *starting* a new repair-zone
@@ -326,9 +402,6 @@ export function repairJobGate(
     }
   }
 
-  const equipment = context.equipment.find((e) => e.componentIds.includes(spec.componentId))
-  const consumablesCostYen = equipment?.consumablesCostYen ?? 0
-
   if (!spec.targetBand) return { ok: false, log: [] }
   const car = findWorkableCar(state, spec.carInstanceId)
   if (!car) return { ok: false, log: [] }
@@ -348,13 +421,11 @@ export function repairJobGate(
     return { ok: false, log: [] }
   }
 
-  const totalCostYen = consumablesCostYen + plan.costYen
-  if (state.cashYen < totalCostYen) {
-    // Equipment owned, just can't afford the work right now - a silent
-    // refusal, matching every other can't-afford-it gate in this codebase.
-    return { ok: false, log: [] }
-  }
-  return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
+  const charged = chargeRepairWork(state, spec.componentId, plan.costYen, context)
+  // Equipment owned, just can't afford the work right now - a silent refusal,
+  // matching every other can't-afford-it gate in this codebase.
+  if (!charged.ok) return { ok: false, log: [] }
+  return { ok: true, state: charged.state }
 }
 
 export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
@@ -490,7 +561,12 @@ export function applyAvailableLaborToJob(
   if (!job || isJobComplete(job) || laborAvailable <= 0) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
-  if (!state.serviceBayCarIds.includes(job.carInstanceId)) {
+  // Sprint 35: a `recondition-part` job works a loose inventory part on the
+  // bench, not a car - the in-service-bay requirement is a car-only
+  // constraint, so it's skipped for reconditions (which have no car). Every
+  // other step below - the daily labor budget, the completion path - is
+  // identical, the ONE repair economy.
+  if (job.kind !== 'recondition-part' && !state.serviceBayCarIds.includes(job.carInstanceId)) {
     return {
       state,
       log: [{ type: 'job-blocked', jobId: job.id, reason: 'not-in-service-bay' }],
@@ -517,12 +593,23 @@ export function applyAvailableLaborToJob(
       log.push({ type: 'job-blocked', jobId, reason: 'slot-occupied' })
     } else {
       next = { ...next, jobs: next.jobs.filter((j) => j.id !== jobId) }
-      log.push({
-        type: 'job-completed',
-        jobId,
-        carInstanceId: updatedJob.carInstanceId,
-        kind: updatedJob.kind,
-      })
+      if (updatedJob.kind === 'recondition-part') {
+        // Sprint 35: a loose-part recondition has no car to report against, so
+        // it logs the bench-repair completion (`part-reconditioned`) rather
+        // than the car-oriented `job-completed`.
+        log.push({
+          type: 'part-reconditioned',
+          partInstanceId: updatedJob.partInstanceId!,
+          band: updatedJob.targetBand!,
+        })
+      } else {
+        log.push({
+          type: 'job-completed',
+          jobId,
+          carInstanceId: updatedJob.carInstanceId,
+          kind: updatedJob.kind,
+        })
+      }
     }
   }
 
@@ -549,4 +636,143 @@ export function resolveJobLabor(
   if (!created.job) return { state: created.state, log: created.log, laborSlotsUsed: 0 }
   const result = applyAvailableLaborToJob(created.state, created.job.id, laborAvailable, context)
   return { ...result, log: [...created.log, ...result.log] }
+}
+
+// --- in-inventory reconditioning (Sprint 35) ----------------------------
+
+/** A recondition job's stable id - one open recondition per loose part at a
+ * time (a repeat click continues the same job rather than duplicating it),
+ * mirroring `jobIdFor`'s deterministic-id contract for car jobs. */
+function reconditionJobIdFor(partInstanceId: string): string {
+  return `recondition-${partInstanceId}`
+}
+
+interface ReconditionPlan {
+  group: ComponentId
+  plan: PartRepairPlan
+}
+
+/**
+ * Everything the recondition gate/labor needs for a loose inventory part, or
+ * null when it can't be reconditioned (not in inventory, no catalog/taxonomy
+ * entry, scrap, or already at/above the target). Reuses the on-car repair
+ * atoms EXACTLY - `repairLevelForGroup` for the equipment-tier repair level
+ * and `planPartRepair` (bands.ts) for the cost + labor - so a loose part and
+ * the same part installed on a car price and size identically. This is the
+ * reuse the sprint exists to enforce: there is no separate bench formula.
+ */
+function planReconditionPart(
+  state: GameState,
+  partInstanceId: string,
+  targetBand: ConditionBand,
+  context: SimContext,
+): ReconditionPlan | null {
+  const instance = state.partInventory.find((p) => p.id === partInstanceId)
+  if (!instance) return null
+  const catalogPart = context.partsById[instance.partId]
+  const taxonomyEntry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
+  const group = taxonomyEntry?.group
+  if (!catalogPart || !taxonomyEntry || !group) return null
+  const repairLevel = repairLevelForGroup(state.ownedEquipmentIds, group, context.equipmentById)
+  const plan = planPartRepair(instance.band, targetBand, repairLevel, taxonomyEntry)
+  if (plan.laborSlotsRequired === 0) return null // scrap, or nothing to climb
+  return { group, plan }
+}
+
+export interface ReconditionQuote {
+  /** Yen the work costs (consumables + banded-repair `costYen`) - the same
+   * figure `chargeRepairWork` deducts, so the UI previews the real charge. */
+  costYen: number
+  /** Labor slots the recondition takes at the shop's current repair level. */
+  laborSlotsRequired: number
+  /** The component group whose equipment gates (and sets the repair level
+   * for) this part - what the UI names when the tooling is missing. */
+  group: ComponentId
+  /** Whether the shop owns equipment covering `group` - the same gate on-car
+   * repair uses (`repairJobGate`), surfaced so the UI can disable with a
+   * reason instead of a silent sim refusal. */
+  hasEquipment: boolean
+}
+
+/**
+ * A read-only quote for reconditioning one loose inventory part to
+ * `targetBand`, or null when there is nothing to do (not repairable, or
+ * already at/above the target). Powers the inventory UI's recondition control
+ * (cost/labor preview + equipment gate) without mutating anything - it routes
+ * through the exact same `planReconditionPart` the resolver does, so the
+ * previewed cost/labor is precisely what the player will be charged.
+ */
+export function reconditionQuote(
+  state: GameState,
+  partInstanceId: string,
+  targetBand: ConditionBand,
+  context: SimContext,
+): ReconditionQuote | null {
+  const planned = planReconditionPart(state, partInstanceId, targetBand, context)
+  if (!planned) return null
+  return {
+    costYen: repairConsumablesCostYen(planned.group, context) + planned.plan.costYen,
+    laborSlotsRequired: planned.plan.laborSlotsRequired,
+    group: planned.group,
+    hasEquipment: hasEquipmentFor(state, planned.group, context),
+  }
+}
+
+/**
+ * The instant player-facing recondition resolver (Sprint 35) - the loose-part
+ * analogue of `resolveJobLabor`. Finds the part's already-open recondition
+ * job (a repeat click continues it) or creates one through the SAME repair
+ * economy as an on-car repair: the same equipment gate (`hasEquipmentFor`),
+ * the same consumables + banded-repair charge (`chargeRepairWork`), the same
+ * repair-level-sized labor (`planPartRepair`). Then it spends today's
+ * remaining labor via the SAME `applyAvailableLaborToJob` the on-car click
+ * uses (which books the spend into `laborSlotsSpentToday` identically and
+ * completes by climbing the part's band). There is no second bench cost, no
+ * second labor pool - one repair economy, targeting a loose part instead of a
+ * car slot. Works on ANY inventory part, not only customer-owned ones.
+ */
+export function resolveReconditionLabor(
+  state: GameState,
+  partInstanceId: string,
+  targetBand: ConditionBand,
+  laborAvailable: number,
+  context: SimContext,
+): LaborApplicationResult {
+  const jobId = reconditionJobIdFor(partInstanceId)
+  const existing = state.jobs.find((j) => j.id === jobId)
+
+  if (existing) {
+    return applyAvailableLaborToJob(state, jobId, laborAvailable, context)
+  }
+
+  const planned = planReconditionPart(state, partInstanceId, targetBand, context)
+  if (!planned) return { state, log: [], laborSlotsUsed: 0 }
+
+  if (!hasEquipmentFor(state, planned.group, context)) {
+    return {
+      state,
+      log: [{ type: 'job-blocked', jobId, reason: 'equipment-missing' }],
+      laborSlotsUsed: 0,
+    }
+  }
+
+  const charged = chargeRepairWork(state, planned.group, planned.plan.costYen, context)
+  if (!charged.ok) return { state, log: [], laborSlotsUsed: 0 }
+
+  const job: Job = {
+    id: jobId,
+    // No car - a loose part on the bench. `carInstanceId` (required by the
+    // schema) holds the part's own id purely so the field is a stable
+    // non-empty identity; the `recondition-part` kind is what every resolver
+    // branches on, never this value (it never resolves against a car or bay).
+    carInstanceId: partInstanceId,
+    kind: 'recondition-part',
+    componentId: planned.group,
+    partInstanceId,
+    targetBand,
+    laborSlotsRequired: planned.plan.laborSlotsRequired,
+    laborSlotsSpent: 0,
+  }
+  const withJob: GameState = { ...charged.state, jobs: [...charged.state.jobs, job] }
+  return applyAvailableLaborToJob(withJob, jobId, laborAvailable, context)
 }

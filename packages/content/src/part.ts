@@ -27,12 +27,21 @@ export const PartsSchema = z.array(PartSchema).min(1)
  * catalog part), so they live here, not on Part. Sprint 26: `band` replaces
  * the old `conditionPercent` - a purchased part always starts `mint`
  * (matching the old `conditionPercent: 100` default).
+ *
+ * Sprint 35 decision 1: `customerJobId`, when present, marks this instance as
+ * belonging to that active service job's customer - a part pulled off their
+ * car (`resolveRemovePart`), tracked in our inventory but never ours to sell
+ * or scrap, and reconciled out at close-out (`resolveServiceJob`). Absent
+ * (the default and the state of every existing part) means player-owned.
+ * Chosen over a bare boolean so close-out can reconcile the specific job's
+ * parts.
  */
 export const PartInstanceSchema = z.object({
   id: z.string().min(1),
   partId: z.string().min(1),
   band: ConditionBandSchema.default('mint'),
   genuinePeriod: z.boolean().default(false),
+  customerJobId: z.string().min(1).optional(),
 })
 
 export type Part = z.infer<typeof PartSchema>

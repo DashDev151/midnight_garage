@@ -245,6 +245,40 @@ export function slotsNeededToClimb(grades: number, repairLevel: 1 | 2 | 3): numb
   return Math.ceil(grades / repairLevel)
 }
 
+export interface PartRepairPlan {
+  /** Labor slots to climb this one part from `band` to `targetBand` at the
+   * given repair level - `ceil(grades / repairLevel)`, or 0 when there is
+   * nothing to climb (scrap, or already at/above the target). */
+  laborSlotsRequired: number
+  /** Yen: `gradesClimbed * stepCostYen` - independent of repair level
+   * (decision 7), only of the work itself; 0 when nothing climbs. */
+  costYen: number
+}
+
+/**
+ * Sprint 35: the per-part repair atom - the single source of the repair
+ * cost/labor formula (Sprint 26 decisions 5+7). Climbing one part from `band`
+ * to `targetBand` at `repairLevel` costs `grades * stepCostYen` and takes
+ * `ceil(grades / repairLevel)` labor slots; scrap (unrepairable) or a part
+ * already at/above the target yields a zero plan. Shared, so on-car group
+ * repair (`planGroupRepair` below, per group part) and in-inventory
+ * reconditioning (`jobs.ts`'s recondition resolver, one loose part) price and
+ * size work through the exact same formula - ONE repair economy, never two.
+ */
+export function planPartRepair(
+  band: ConditionBand,
+  targetBand: ConditionBand,
+  repairLevel: 1 | 2 | 3,
+  taxonomyEntry: CarPartTaxonomyEntry,
+): PartRepairPlan {
+  if (!canRepair(band)) return { laborSlotsRequired: 0, costYen: 0 }
+  const grades = gradesBetween(band, targetBand)
+  return {
+    laborSlotsRequired: slotsNeededToClimb(grades, repairLevel),
+    costYen: grades * taxonomyEntry.stepCostYen,
+  }
+}
+
 export interface GroupRepairPlan {
   /** Total labor slots to climb every eligible part to `targetBand`. */
   laborSlotsRequired: number
@@ -292,13 +326,15 @@ export function planGroupRepair(
     // candidateIds is already filtered to present slots (presentPartIdsInGroup
     // above), so `installed` is never null here.
     const band = car.parts[partId].installed!.band
-    if (!canRepair(band)) continue
-    const grades = gradesBetween(band, targetBand)
-    if (grades <= 0) continue
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
-    laborSlotsRequired += slotsNeededToClimb(grades, repairLevel)
-    costYen += grades * entry.stepCostYen
+    const plan = planPartRepair(band, targetBand, repairLevel, entry)
+    // `laborSlotsRequired > 0` is exactly "repairable and below the target"
+    // (scrap and nothing-to-climb both size to 0 slots) - the same inclusion
+    // set the pre-Sprint-35 explicit `canRepair`/`grades <= 0` guards produced.
+    if (plan.laborSlotsRequired === 0) continue
+    laborSlotsRequired += plan.laborSlotsRequired
+    costYen += plan.costYen
     partIds.push(partId)
   }
   return { laborSlotsRequired, costYen, partIds }

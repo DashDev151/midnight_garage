@@ -68,6 +68,13 @@ pass."
   price/grade rather than being a flat per-slot stock number? A content/calibration decision for the
   balance pass, not a bug. Only bites once the player mods a car or pre-installed aftermarket parts
   (above) land; generated cars are all stock today so it is dormant.
+- [ ] **A customer-owned part (Sprint 35) can escape close-out reconciliation by being installed on
+  the player's OWN car.** Sell and scrap are gated on `customerJobId`, but install is not, so a
+  player could pull a customer's part, install it on their own car (it leaves `partInventory`), and
+  keep it past the service job's close-out (which only filters `partInventory`). Edge case, requires
+  deliberate action; flagged during Sprint 35 and left ungated to avoid scope creep. Fix by gating
+  install of a `customerJobId`-tagged part to only the owning customer's car (or blocking it
+  outright), if the ethic matters enough to close.
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.

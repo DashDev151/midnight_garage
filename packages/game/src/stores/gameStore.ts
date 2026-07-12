@@ -68,6 +68,7 @@ import {
   partFitsCar,
   planGroupRepair,
   presentPartIdsInGroup,
+  reconditionQuote,
   reputationAtLeast,
   REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
@@ -78,6 +79,7 @@ import {
   reserveYen,
   resolveJobLabor,
   resolvePlaceBid,
+  resolveReconditionLabor,
   resolveRemovePart,
   resolveScrapPart,
   resolveSellViaWalkIn,
@@ -1411,6 +1413,9 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Sell a scrap `PartInstance` for scrap value (Sprint 26 decision 6) - the
    * only action available on it, since it can never be reinstalled anywhere.
+   * Sprint 35: a customer-owned part (`customerJobId` set) is refused by the
+   * resolver, so this returns false; the UI disables the control with a reason
+   * rather than relying on the silent refusal alone.
    */
   function scrapPart(partInstanceId: string): boolean {
     const result = resolveScrapPart(gameState.value, partInstanceId, context.value)
@@ -1419,6 +1424,39 @@ export const useGameStore = defineStore('game', () => {
     dayLog.value.push(...result.log)
     logSessionEvent('scrapPart', { partInstanceId })
     return true
+  }
+
+  /**
+   * A read-only recondition quote for a loose inventory part to `targetBand`
+   * (Sprint 35) - the yen cost, labor slots, and whether the covering
+   * equipment is owned, for the inventory card's recondition control. Routes
+   * through the sim's `reconditionQuote`, which prices/sizes off the exact
+   * same repair economy as an on-car repair. Null when there is nothing to do
+   * (already at/above the target, or scrap - never reconditionable).
+   */
+  function reconditionQuoteFor(partInstanceId: string, targetBand: ConditionBand = 'mint') {
+    return reconditionQuote(gameState.value, partInstanceId, targetBand, context.value)
+  }
+
+  /**
+   * Recondition a loose inventory part to `targetBand` (Sprint 35, mint by
+   * default - the same instant "climb to mint" an on-car Repair click does) -
+   * instant, spending up to today's remaining labor, through the SAME repair
+   * economy as an on-car repair (`resolveReconditionLabor`: same yen cost,
+   * same labor-slot consumption, same equipment/repair-level gate). Works on
+   * ANY inventory part, customer-owned or not.
+   */
+  function reconditionPart(partInstanceId: string, targetBand: ConditionBand = 'mint'): void {
+    const result = resolveReconditionLabor(
+      gameState.value,
+      partInstanceId,
+      targetBand,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('reconditionPart', { partInstanceId, targetBand })
   }
 
   /**
@@ -1883,6 +1921,8 @@ export const useGameStore = defineStore('game', () => {
     buyPart,
     scrapPart,
     scrapValueForPart,
+    reconditionQuoteFor,
+    reconditionPart,
     cartItems,
     cartStandardTotalYen,
     cartExpressTotalYen,

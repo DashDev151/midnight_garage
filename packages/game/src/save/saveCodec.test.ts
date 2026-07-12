@@ -1023,7 +1023,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(21)
+    expect(SAVE_VERSION).toBe(22)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1048,6 +1048,47 @@ describe('saveCodec', () => {
     expect(decoded).toEqual(perPart)
     expect(decoded.jobs[0]?.carPartId).toBe('intake')
     expect(decoded.stagedCarWork['car-0001']?.[0]).toMatchObject({ carPartId: 'exhaust' })
+  })
+
+  /**
+   * v21 -> v22 (Sprint 35, customer-owned parts): `PartInstance` gained an
+   * optional `customerJobId` - the normal additive case (like v2-v8/v17), so
+   * it needs NO `MIGRATIONS[21]` entry, but it DOES bump `SAVE_VERSION` (Save
+   * law / engineering law 4). These two tests are its regression coverage: a
+   * real pre-v22 (v21 envelope) save with an untagged inventory part still
+   * decodes cleanly under v22 (the part reads player-owned, `customerJobId`
+   * absent), and a v22 state carrying a `customerJobId`-tagged part round-trips
+   * the tag exactly.
+   */
+  it('a real pre-v22 save (a v21 envelope with an untagged inventory part) decodes as player-owned under v22', () => {
+    const preV22 = {
+      version: 21,
+      gameState: {
+        ...fullState,
+        partInventory: [{ id: 'pi-spare-1', partId: 'khs-street-ecu', band: 'worn' }],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV22))
+    const decoded = decodeSave(code)
+    // The additive case: a v21 part decodes unchanged under v22, with
+    // `customerJobId` simply absent (which IS "player-owned" now).
+    expect(decoded.partInventory[0]?.band).toBe('worn')
+    expect(decoded.partInventory[0]).not.toHaveProperty('customerJobId')
+  })
+
+  it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
+    expect(SAVE_VERSION).toBe(22)
+    const withTaggedPart: GameState = GameStateSchema.parse({
+      ...fullState,
+      partInventory: [
+        { id: 'pi-owned', partId: 'khs-street-ecu', band: 'mint' },
+        { id: 'pi-customer', partId: 'khs-street-ecu', band: 'poor', customerJobId: 'svc-5-0' },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withTaggedPart))
+    expect(decoded).toEqual(withTaggedPart)
+    expect(decoded.partInventory[0]).not.toHaveProperty('customerJobId')
+    expect(decoded.partInventory[1]?.customerJobId).toBe('svc-5-0')
   })
 
   /**

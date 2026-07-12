@@ -16,14 +16,16 @@ import {
   completeJob,
   createJob,
   findOrCreateJob,
-  isJobComplete,
+  reconditionQuote,
   repairJobGate,
+  isJobComplete,
   resolveJobLabor,
+  resolveReconditionLabor,
   resolveRemovePart,
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { buildCarInstance, groupCarParts } from './testFixtures'
+import { buildCarInstance, groupCarParts, mintCarParts } from './testFixtures'
 
 // Real CARS/PARTS (not empty arrays) since Sprint 24 fix 2: `findOrCreateJob`
 // now validates install-part fit against the actual model/part catalog, so
@@ -693,7 +695,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     dueOnDay: 8,
   }
 
-  it('Sprint 33 decision 8: removing a part from a CUSTOMER car discards it, not kept in our inventory', () => {
+  it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it, tagged with the job id', () => {
     const originalInstance = car.parts.panels.installed!
     const state = baseState({
       ownedCars: [],
@@ -705,8 +707,11 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     // The slot still updates exactly like the owned-car case (panels is
     // stock, so the slot goes genuinely empty)...
     expect(result.state.activeServiceJobs[0]?.car.parts.panels.installed).toBeNull()
-    // ...but the removed part left with the customer - never added to ours.
-    expect(result.state.partInventory).toEqual([])
+    // ...and the removed part is now in OUR inventory, tagged customer-owned
+    // (Sprint 35 supersedes Sprint 33's discard).
+    expect(result.state.partInventory).toEqual([
+      { ...originalInstance, customerJobId: customerServiceJob.id },
+    ])
     expect(result.log).toEqual([
       {
         type: 'part-removed',
@@ -717,10 +722,150 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     ])
   })
 
-  it('Sprint 33 decision 8: removing the same part from an OWNED car still keeps it (unchanged from Sprint 32)', () => {
+  it('Sprint 35: removing the same part from an OWNED car keeps it UNtagged (player-owned)', () => {
     const originalInstance = car.parts.panels.installed!
     const state = baseState({ partInventory: [] }) // ownedCars: [car] by default
     const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
     expect(result.state.partInventory).toEqual([originalInstance])
+    expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
+  })
+})
+
+describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 decision 4)', () => {
+  // A body part (WELDER covers 'body') at 'poor', once loose in inventory and
+  // once installed on a car - the SAME PartInstance content either way, so any
+  // cost/labor difference would be a forked bench economy, exactly what the
+  // sprint forbids.
+  const stockPanelsId = PARTS.find((p) => p.carPartId === 'panels' && p.grade === 'stock')!.id
+  const loosePart: PartInstance = {
+    id: 'pi-recon',
+    partId: stockPanelsId,
+    band: 'poor',
+    genuinePeriod: false,
+  }
+
+  /** A car whose only non-mint part is `panels`, holding the same content as
+   * `loosePart`, sitting in the service bay so on-car labor can be applied. */
+  function carWithPoorPanels(): CarInstance {
+    return buildCarInstance({
+      id: 'car-ref',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ panels: { ...loosePart, id: 'pi-on-car' } }),
+    })
+  }
+
+  it('the recondition quote matches the on-car per-part repair plan (cost + labor + gate), exactly', () => {
+    const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
+    const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
+    expect(quote).not.toBeNull()
+
+    // The on-car per-part plan for the identical part.
+    const plan = planGroupRepair(
+      carWithPoorPanels(),
+      'body',
+      'mint',
+      invState.ownedEquipmentIds,
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.equipmentById,
+      'panels',
+    )
+    const bodyConsumables =
+      CONTEXT.equipment.find((e) => e.componentIds.includes('body'))?.consumablesCostYen ?? 0
+
+    expect(quote.laborSlotsRequired).toBe(plan.laborSlotsRequired)
+    expect(quote.costYen).toBe(plan.costYen + bodyConsumables)
+    expect(quote.hasEquipment).toBe(true)
+  })
+
+  it('reconditioning charges the same cash and consumes the same labor as repairing that part on a car', () => {
+    // On-car reference: repair the panels slot to mint, car in the service bay.
+    // Size the spec off `planGroupRepair` exactly the way the store's `repair`
+    // action does (gameStore.ts) - the job's labor comes from the spec, so the
+    // spec must carry the real plan for the on-car labor to be the true cost.
+    const carState = baseState({
+      ownedCars: [carWithPoorPanels()],
+      partInventory: [],
+      serviceBayCarIds: ['car-ref'],
+    })
+    const onCarPlan = planGroupRepair(
+      carState.ownedCars[0]!,
+      'body',
+      'mint',
+      carState.ownedEquipmentIds,
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.equipmentById,
+      'panels',
+    )
+    const carResult = resolveJobLabor(
+      carState,
+      {
+        carInstanceId: 'car-ref',
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        carPartId: 'panels',
+        laborSlotsRequired: onCarPlan.laborSlotsRequired,
+      },
+      6,
+      CONTEXT,
+    )
+    const carCashSpent = carState.cashYen - carResult.state.cashYen
+    const carLaborSpent = carResult.state.laborSlotsSpentToday
+    expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(carCashSpent).toBeGreaterThan(0)
+    expect(carLaborSpent).toBeGreaterThan(0)
+
+    // In-inventory: recondition the identical loose part to mint.
+    const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
+    const invResult = resolveReconditionLabor(invState, loosePart.id, 'mint', 6, CONTEXT)
+    const invCashSpent = invState.cashYen - invResult.state.cashYen
+    const invLaborSpent = invResult.state.laborSlotsSpentToday
+
+    // Same cash, same labor - one repair economy, not two.
+    expect(invCashSpent).toBe(carCashSpent)
+    expect(invLaborSpent).toBe(carLaborSpent)
+    // The loose part climbed to mint (and is no longer an open job).
+    expect(invResult.state.partInventory[0]?.band).toBe('mint')
+    expect(invResult.state.jobs).toHaveLength(0)
+  })
+
+  it('is gated by the same equipment/repair-level requirement as on-car repair (no cheaper bench path)', () => {
+    // No equipment owned: BOTH refuse with equipment-missing, no cash moved.
+    const carState = baseState({
+      ownedCars: [carWithPoorPanels()],
+      partInventory: [],
+      serviceBayCarIds: ['car-ref'],
+      ownedEquipmentIds: [],
+    })
+    const carResult = resolveJobLabor(
+      carState,
+      {
+        carInstanceId: 'car-ref',
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        carPartId: 'panels',
+        laborSlotsRequired: 1,
+      },
+      6,
+      CONTEXT,
+    )
+    expect(carResult.state.cashYen).toBe(carState.cashYen)
+    expect(
+      carResult.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
+    ).toBe(true)
+
+    const invState = baseState({ ownedCars: [], partInventory: [loosePart], ownedEquipmentIds: [] })
+    const invResult = resolveReconditionLabor(invState, loosePart.id, 'mint', 6, CONTEXT)
+    expect(invResult.state.cashYen).toBe(invState.cashYen)
+    expect(invResult.state.partInventory[0]?.band).toBe('poor') // unchanged
+    expect(
+      invResult.log.some((e) => e.type === 'job-blocked' && e.reason === 'equipment-missing'),
+    ).toBe(true)
+
+    // And the quote reports the gate for the UI (hasEquipment false).
+    expect(reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)?.hasEquipment).toBe(false)
   })
 })

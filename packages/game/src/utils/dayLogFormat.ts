@@ -72,6 +72,8 @@ export function describeLogEntry(
       return `Delivery arrived: ${entry.partId}`
     case 'part-scrapped':
       return `Scrapped a part for ${formatYen(entry.priceYen)}`
+    case 'part-reconditioned':
+      return `Reconditioned a part to ${entry.band}`
     case 'part-removed':
       return `Removed ${entry.carPartId} from ${entry.carInstanceId}`
     case 'service-job-accepted':

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CarPartIdSchema, ReputationTierSchema } from './tags'
+import { CarPartIdSchema, ConditionBandSchema, ReputationTierSchema } from './tags'
 import { CarInstanceSchema } from './carInstance'
 import { PartInstanceSchema, PendingPartOrderSchema } from './part'
 import { StaffMemberSchema } from './staff'
@@ -290,6 +290,16 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('part-scrapped'),
     partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 35 decision 4: a loose inventory `PartInstance` finished
+   * reconditioning - climbed to `band` through the same banded-repair economy
+   * as an on-car repair. The completion counterpart to a car job's
+   * `job-completed` (which carries a `carInstanceId` a loose part has no
+   * equivalent of). */
+  z.object({
+    type: z.literal('part-reconditioned'),
+    partInstanceId: z.string().min(1),
+    band: ConditionBandSchema,
   }),
   /**
    * Sprint 32 decision 7: pulled `carPartId`'s installed part into

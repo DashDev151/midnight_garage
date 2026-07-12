@@ -215,6 +215,13 @@ export interface ScrapPartResult {
  * the yen" against its stock-equivalent replacement cost) is the only way
  * to recover any value from it. A no-op if the instance doesn't exist or
  * isn't actually scrap.
+ *
+ * Sprint 35 decision 3: a customer-owned part (`customerJobId` set - pulled
+ * off a customer's car and awaiting close-out) is locked from scrap too. It
+ * was never ours to sell; scrapping it is refused (a silent no-op here, gated
+ * with a visible reason in the UI). This is the sell/scrap half of the tag's
+ * two locks - the other being that it can only leave via close-out
+ * reconciliation (`resolveServiceJob`), never our hands.
  */
 export function resolveScrapPart(
   state: GameState,
@@ -222,7 +229,7 @@ export function resolveScrapPart(
   context: SimContext,
 ): ScrapPartResult {
   const instance = state.partInventory.find((p) => p.id === partInstanceId)
-  if (!instance || instance.band !== 'scrap') return { state, log: [] }
+  if (!instance || instance.band !== 'scrap' || instance.customerJobId) return { state, log: [] }
   const part = context.partsById[instance.partId]
   const taxonomyEntry = part ? context.partsTaxonomyById[part.carPartId] : undefined
   if (!taxonomyEntry) return { state, log: [] }

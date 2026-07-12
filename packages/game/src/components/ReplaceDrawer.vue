@@ -87,6 +87,7 @@ function onSelect(partInstanceId: string): void {
         :instance="entry.instance"
         :part="entry.part"
         :fits="entry.fits"
+        :show-recondition="false"
         @select="onSelect"
       />
     </ul>

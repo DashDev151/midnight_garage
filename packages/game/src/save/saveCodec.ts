@@ -305,8 +305,27 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   `activeServiceJobs[].car`, `serviceJobOffers[].car` - `partInventory`
  *   needs no migration here, since a bare `PartInstance` (not wrapped in a
  *   `CarPartState`) never had a `band`/`fitted` split to begin with.
+ * - v22 (Sprint 35, customer-owned parts + in-inventory reconditioning): two
+ *   additive schema changes, the normal case (like v2-v8 and v17), so NEITHER
+ *   needs a `MIGRATIONS[21]` entry - a v21 save decodes cleanly under v22 with
+ *   both new fields simply absent, which is exactly their default meaning.
+ *   (1) `PartInstanceSchema` gained an optional `customerJobId` (a part pulled
+ *   off a customer's car, tracked in inventory but locked from sale/scrap);
+ *   absent = player-owned, the state of every pre-v22 part, so every existing
+ *   inventory and installed part reads as player-owned unchanged. (2)
+ *   `JobKindSchema` gained `'recondition-part'` (a repair job targeting a
+ *   loose inventory part instead of a car slot); no pre-v22 save has one, so
+ *   there is nothing to map. The version bump itself is still required (Save
+ *   law / engineering law 4: every save-schema change bumps the version,
+ *   migration or not) - it's the guard that makes a pre-Sprint-35 client
+ *   REJECT a Sprint-35 save (`decodeSave`'s `envelope.version > SAVE_VERSION`
+ *   throws "newer version") rather than silently strip `customerJobId` and
+ *   quietly unlock a customer's part for sale. `saveCodec.test.ts`'s two
+ *   Sprint 35 tests cover it: a real v21 save with an untagged inventory part
+ *   still decodes (backward-compat, part reads player-owned), and a v22 state
+ *   with a `customerJobId`-tagged part round-trips the tag exactly.
  */
-export const SAVE_VERSION = 21
+export const SAVE_VERSION = 22
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

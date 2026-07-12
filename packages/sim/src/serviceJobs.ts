@@ -539,6 +539,17 @@ function highestInstalledGrade(parts: readonly Part[]): Grade | null {
  *  - work undone -> no pay + reputation penalty.
  * Either way the customer's car leaves and any leftover jobs on it are dropped.
  * advanceDay is never what *decides* a player's job is done - this is.
+ *
+ * Sprint 35 decision 5 (close-out reconciliation): every path a job ends by
+ * (paid here on a "Complete" click, failed here on a partial hand-back, or
+ * either of those via advanceDay's deadline backstop - which calls this exact
+ * function) removes every `partInventory` entry tagged with this job's
+ * `customerJobId`. A customer part the player pulled and replaced leaves with
+ * the customer via this step; a customer part the player repaired and refitted
+ * is already back on the car and leaves with it. Player-owned parts are never
+ * touched. This is the single close-out hook because this is the single place
+ * an ACTIVE job (one that could have parts pulled) ever ends - an unaccepted
+ * OFFER expiring pulls no parts, so it needs no reconciliation.
  */
 export function resolveServiceJob(
   state: GameState,
@@ -550,7 +561,23 @@ export function resolveServiceJob(
 
   const releasedState = clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id)
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
-  const jobs = releasedState.jobs.filter((j) => j.carInstanceId !== job.car.id)
+  // Sprint 35 decision 5: the customer's pulled parts (tagged with this job)
+  // leave with them at close-out; any in-flight recondition job on one of
+  // those parts goes with it (nothing left to bench-repair), alongside the
+  // usual dropping of car jobs on the departing car.
+  const reconciledPartIds = new Set(
+    releasedState.partInventory.filter((p) => p.customerJobId === job.id).map((p) => p.id),
+  )
+  const jobs = releasedState.jobs.filter(
+    (j) =>
+      j.carInstanceId !== job.car.id &&
+      !(
+        j.kind === 'recondition-part' &&
+        j.partInstanceId !== undefined &&
+        reconciledPartIds.has(j.partInstanceId)
+      ),
+  )
+  const partInventory = releasedState.partInventory.filter((p) => p.customerJobId !== job.id)
 
   if (isServiceWorkDone(job, context)) {
     const installedParts = installedTaskParts(job, context)
@@ -570,6 +597,7 @@ export function resolveServiceJob(
         cashYen: withReputation.cashYen + job.payoutYen,
         activeServiceJobs,
         jobs,
+        partInventory,
       },
       log: [
         {
@@ -591,7 +619,7 @@ export function resolveServiceJob(
   const withReputation = applyReputationDelta(releasedState, -penalty)
   const reputationLost = releasedState.reputationPoints - withReputation.reputationPoints
   return {
-    state: { ...withReputation, activeServiceJobs, jobs },
+    state: { ...withReputation, activeServiceJobs, jobs, partInventory },
     log: [{ type: 'service-job-failed', jobId: job.id, reputationLost }],
     outcome: 'failed',
   }

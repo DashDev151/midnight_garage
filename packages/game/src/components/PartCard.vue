@@ -29,8 +29,15 @@ const props = withDefaults(
      * what" context, so every card is always eligible there.
      */
     fits?: boolean
+    /**
+     * Whether to offer the in-inventory recondition control (Sprint 35).
+     * Defaults to true - the browse inventory is the place to recondition a
+     * part. The `ReplaceDrawer` passes false: it's a focused install picker,
+     * not the place to also kick off bench work.
+     */
+    showRecondition?: boolean
   }>(),
-  { fits: true },
+  { fits: true, showRecondition: true },
 )
 
 const emit = defineEmits<{
@@ -50,13 +57,42 @@ const draggable = useDraggable(() => props.instance.id)
 const isScrap = computed(() => props.instance.band === 'scrap')
 const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
 
+/**
+ * Sprint 35: a part pulled off a customer's car is tracked here but locked
+ * from sale/scrap (only reconditioning and refitting are allowed) until the
+ * job closes out. The badge and the disabled-scrap reason both key off this.
+ */
+const isCustomerOwned = computed(() => props.instance.customerJobId !== undefined)
+
+/**
+ * Sprint 35: the recondition-to-mint quote (cost + labor + equipment gate),
+ * or null when there is nothing to do (already mint, or scrap). Reconditioning
+ * routes through the exact same repair economy as an on-car repair.
+ */
+const reconditionMint = computed(() =>
+  props.showRecondition && !isScrap.value
+    ? game.reconditionQuoteFor(props.instance.id, 'mint')
+    : null,
+)
+const reconditionDisabled = computed(
+  () =>
+    !reconditionMint.value ||
+    !reconditionMint.value.hasEquipment ||
+    game.laborSlotsRemainingToday <= 0,
+)
+
 function onCardClick(): void {
   if (isScrap.value || !props.fits) return
   emit('select', props.instance.id)
 }
 
 function onScrapClick(): void {
+  if (isCustomerOwned.value) return
   game.scrapPart(props.instance.id)
+}
+
+function onReconditionClick(): void {
+  game.reconditionPart(props.instance.id, 'mint')
 }
 
 // A scrap card never drags (it can never be installed anywhere) - these
@@ -97,29 +133,61 @@ function onPointerUp(event: PointerEvent): void {
       <span class="part-meta">
         {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }}
         <BandChip :band="instance.band" />
+        <span v-if="isCustomerOwned" class="owner-chip" :data-test="'customer-owned-' + instance.id"
+          >customer's part</span
+        >
       </span>
       <span v-if="isScrap" class="scrap-hint">scrap - can't be installed anywhere</span>
       <span v-else-if="!fits" class="no-fit-hint">doesn't fit here</span>
+      <span
+        v-if="reconditionMint && !reconditionMint.hasEquipment"
+        class="no-fit-hint"
+        :data-test="'recondition-blocked-' + instance.id"
+        >needs {{ reconditionMint.group }} tools to recondition</span
+      >
     </div>
-    <button
-      v-if="isScrap"
-      type="button"
-      class="scrap-handle"
-      :data-test="'scrap-part-' + instance.id"
-      @click.stop="onScrapClick"
-    >
-      Scrap it ({{ formatYen(scrapValueYen) }})
-    </button>
-    <button
-      v-else
-      type="button"
-      class="grab-handle"
-      :aria-pressed="draggable.isPicked.value"
-      :data-test="'pick-part-' + instance.id"
-      @click.stop="draggable.togglePick"
-    >
-      {{ draggable.isPicked.value ? 'cancel' : 'move…' }}
-    </button>
+    <div class="part-actions">
+      <button
+        v-if="reconditionMint"
+        type="button"
+        class="recondition-handle"
+        :disabled="reconditionDisabled"
+        :data-test="'recondition-part-' + instance.id"
+        @click.stop="onReconditionClick"
+      >
+        Recondition ({{ formatYen(reconditionMint.costYen) }} &middot;
+        {{ reconditionMint.laborSlotsRequired }} slot{{
+          reconditionMint.laborSlotsRequired === 1 ? '' : 's'
+        }})
+      </button>
+      <template v-if="isScrap">
+        <span
+          v-if="isCustomerOwned"
+          class="locked-reason"
+          :data-test="'scrap-locked-' + instance.id"
+          >customer's part</span
+        >
+        <button
+          v-else
+          type="button"
+          class="scrap-handle"
+          :data-test="'scrap-part-' + instance.id"
+          @click.stop="onScrapClick"
+        >
+          Scrap it ({{ formatYen(scrapValueYen) }})
+        </button>
+      </template>
+      <button
+        v-else
+        type="button"
+        class="grab-handle"
+        :aria-pressed="draggable.isPicked.value"
+        :data-test="'pick-part-' + instance.id"
+        @click.stop="draggable.togglePick"
+      >
+        {{ draggable.isPicked.value ? 'cancel' : 'move…' }}
+      </button>
+    </div>
   </li>
 </template>
 
@@ -190,8 +258,30 @@ function onPointerUp(event: PointerEvent): void {
   font-size: var(--mg-fs-sm);
 }
 
+/* Sprint 35: the customer-owned tag, using BandChip's chip vocabulary (chip
+   padding/border/radius, an --mg-* accent) rather than any new color literal. */
+.owner-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--mg-radius);
+  border: var(--mg-border);
+  border-color: var(--mg-neon-violet);
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
+  text-transform: none;
+}
+
+.part-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--mg-space-1);
+}
+
 .grab-handle,
-.scrap-handle {
+.scrap-handle,
+.recondition-handle {
   flex: none;
   background: var(--mg-panel);
   color: var(--mg-text-dim);
@@ -205,5 +295,22 @@ function onPointerUp(event: PointerEvent): void {
 .scrap-handle {
   color: var(--mg-yen);
   border-color: var(--mg-neon-pink);
+}
+
+.recondition-handle {
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+  cursor: pointer;
+}
+
+.recondition-handle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.locked-reason {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
 }
 </style>

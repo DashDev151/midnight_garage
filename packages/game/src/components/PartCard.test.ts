@@ -1,4 +1,10 @@
-import { PARTS, type Part, type PartInstance } from '@midnight-garage/content'
+import {
+  EQUIPMENT,
+  PARTS,
+  type ConditionBand,
+  type Part,
+  type PartInstance,
+} from '@midnight-garage/content'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -109,6 +115,71 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     it('is omitted on a part with no Rotary requirement', () => {
       const wrapper = mount(PartCard, { props: { instance, part } })
       expect(wrapper.find('.rotary-marker').exists()).toBe(false)
+    })
+  })
+
+  describe('customer-owned parts + in-inventory recondition (Sprint 35)', () => {
+    // `part` is a dampers part -> the suspension group covers its recondition.
+    const SUSPENSION_EQUIP = EQUIPMENT.find((e) => e.componentIds.includes('suspension'))!
+
+    /** Put one below-mint inventory part into the store so the recondition
+     * quote (which reads gameState.partInventory) resolves, and return it. */
+    function grantInventoryPart(band: ConditionBand) {
+      const game = useGameStore()
+      game.devGrantPart(part.id)
+      const granted = game.gameState.partInventory[0]!
+      const instance: PartInstance = { ...granted, band }
+      game.gameState = { ...game.gameState, partInventory: [instance] }
+      return { game, instance }
+    }
+
+    it('shows the customer-owned badge for a tagged part, and none for a player-owned one', () => {
+      const tagged: PartInstance = { ...instance, customerJobId: 'svc-1-0' }
+      const withBadge = mount(PartCard, { props: { instance: tagged, part } })
+      expect(withBadge.find(`[data-test="customer-owned-${tagged.id}"]`).exists()).toBe(true)
+
+      const noBadge = mount(PartCard, { props: { instance, part } })
+      expect(noBadge.find(`[data-test="customer-owned-${instance.id}"]`).exists()).toBe(false)
+    })
+
+    it('locks scrap for a customer-owned scrap part (disabled reason, no Scrap button)', () => {
+      const customerScrap: PartInstance = { ...instance, band: 'scrap', customerJobId: 'svc-1-0' }
+      const wrapper = mount(PartCard, { props: { instance: customerScrap, part } })
+      expect(wrapper.find(`[data-test="scrap-locked-${customerScrap.id}"]`).exists()).toBe(true)
+      expect(wrapper.find(`[data-test="scrap-part-${customerScrap.id}"]`).exists()).toBe(false)
+    })
+
+    it('offers a recondition control on a below-mint part, disabled with a reason when the tools are missing', () => {
+      const { instance: worn } = grantInventoryPart('worn') // no equipment owned
+      const wrapper = mount(PartCard, { props: { instance: worn, part } })
+      const button = wrapper.find(`[data-test="recondition-part-${worn.id}"]`)
+      expect(button.exists()).toBe(true)
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(wrapper.find(`[data-test="recondition-blocked-${worn.id}"]`).exists()).toBe(true)
+    })
+
+    it('omits the recondition control on a mint part (nothing to climb)', () => {
+      const { instance: mint } = grantInventoryPart('mint')
+      const wrapper = mount(PartCard, { props: { instance: mint, part } })
+      expect(wrapper.find(`[data-test="recondition-part-${mint.id}"]`).exists()).toBe(false)
+    })
+
+    it('suppresses the recondition control when show-recondition is false (the Replace drawer)', () => {
+      const { instance: worn } = grantInventoryPart('worn')
+      const wrapper = mount(PartCard, {
+        props: { instance: worn, part, showRecondition: false },
+      })
+      expect(wrapper.find(`[data-test="recondition-part-${worn.id}"]`).exists()).toBe(false)
+    })
+
+    it('clicking Recondition (tools owned) climbs the loose part toward mint through the store', async () => {
+      const { game, instance: worn } = grantInventoryPart('worn')
+      game.devGrantEquipment(SUSPENSION_EQUIP.id)
+      const wrapper = mount(PartCard, { props: { instance: worn, part } })
+
+      await wrapper.find(`[data-test="recondition-part-${worn.id}"]`).trigger('click')
+
+      expect(game.gameState.partInventory[0]?.band).toBe('mint')
     })
   })
 })

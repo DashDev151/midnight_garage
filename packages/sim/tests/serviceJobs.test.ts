@@ -640,6 +640,69 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(failed.state.stagedCarWork[failedJob.car.id]).toBeUndefined()
   })
 
+  describe('close-out reconciliation of customer-owned parts (Sprint 35 decision 5)', () => {
+    const playerOwned: PartInstance = {
+      id: 'pi-mine',
+      partId: 'khs-street-ecu',
+      band: 'mint',
+      genuinePeriod: false,
+    }
+    const taggedWith = (id: string, jobId: string): PartInstance => ({
+      id,
+      partId: 'khs-street-ecu',
+      band: 'poor',
+      genuinePeriod: false,
+      customerJobId: jobId,
+    })
+
+    it('a PAID job removes its own tagged parts, leaving player-owned and other jobs’ parts', () => {
+      const job = activeJob(twoRepairType, {
+        parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      })
+      const ours = taggedWith('pi-this', job.id)
+      const otherJob = taggedWith('pi-other', 'svc-some-other-job')
+      const state = stateWith(job, { partInventory: [ours, playerOwned, otherJob] })
+
+      const { state: next, outcome } = resolveServiceJob(state, job.id, CONTEXT)
+      expect(outcome).toBe('paid')
+      // Our pulled part left with the customer; the player's part and a
+      // different job's part are untouched.
+      expect(next.partInventory).toEqual([playerOwned, otherJob])
+    })
+
+    it('a FAILED (not-paid) job likewise removes its own tagged parts; player-owned survives', () => {
+      const job = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) }) // undone -> failed
+      const ours = taggedWith('pi-this', job.id)
+      const state = stateWith(job, { partInventory: [ours, playerOwned] })
+
+      const { state: next, outcome } = resolveServiceJob(state, job.id, CONTEXT)
+      expect(outcome).toBe('failed')
+      expect(next.partInventory).toEqual([playerOwned])
+    })
+
+    it('drops an in-flight recondition job on a customer part that leaves at close-out (no orphan job)', () => {
+      const job = activeJob(twoRepairType, {
+        parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      })
+      const ours = taggedWith('pi-this', job.id)
+      const reconJob: Job = {
+        id: 'recondition-pi-this',
+        carInstanceId: ours.id, // a recondition job holds the part id here, not a car
+        kind: 'recondition-part',
+        componentId: 'suspension',
+        partInstanceId: ours.id,
+        targetBand: 'mint',
+        laborSlotsRequired: 2,
+        laborSlotsSpent: 1,
+      }
+      const state = stateWith(job, { partInventory: [ours, playerOwned], jobs: [reconJob] })
+
+      const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
+      expect(next.partInventory).toEqual([playerOwned])
+      expect(next.jobs).toHaveLength(0) // the orphaned recondition job is gone too
+    })
+  })
+
   it('a paid install job reports the installed part’s cost and profit; a pricier grade earns more reputation', () => {
     const installTask = installType.tasks[0]!
     if (installTask.action !== 'install') throw new Error('fixture task should be an install task')
