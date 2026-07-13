@@ -47,6 +47,7 @@ function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): num
       toolTiers,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
+      1, // labor sizing is tier-factor-independent - this anchor is about labor, not cost
     ).laborSlotsRequired
   }
   return total

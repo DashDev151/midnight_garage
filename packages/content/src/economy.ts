@@ -329,6 +329,36 @@ export const EconomyConfigSchema = z.object({
     walkAwaySpread: z.number().nonnegative(),
   }),
   /**
+   * Sprint 41 decision 1: the repair-cost tier-scaling knob - a kei car's
+   * wear is cheap to fix, a Supra's is not. `bands.ts`'s
+   * `restorationCostFactorForTier` reads this; every repair-cost function in
+   * the ONE cost pipeline (`costToMintYen`, `planPartRepair`, and via those,
+   * `carCostToMintYen`/`groupCostToMintYen`/`planGroupRepair`/
+   * `serviceJobCostBreakdown`) multiplies REPAIR step costs by the resolved
+   * factor. Replacement pricing (scrap, a missing slot, a non-repairable
+   * consumable) stays flat at `stockReplacementPriceYen` - deliberately NOT
+   * scaled here, since a gearbox costs what a gearbox costs at the parts
+   * market regardless of the car it's bolted to.
+   */
+  restoration: z.object({
+    /**
+     * One multiplier per `RarityTier` the current 10-car roster actually
+     * uses (shitbox/common/uncommon/rare) - covers exactly those four, not
+     * `RarityTier`'s full six-value enum (`gaisha`/`legend` aren't in the
+     * roster yet). `restorationCostFactorForTier` throws if a future car
+     * model's tier has no matching entry here, so adding a gaisha/legend car
+     * needs a matching factor added first - a deliberate fail-loud guard
+     * rather than a silent 1.0 default. First-pass values, explicit
+     * maintainer-tuning bait (sprint41.md).
+     */
+    partsCostFactorByTier: z.object({
+      shitbox: z.number().positive(),
+      common: z.number().positive(),
+      uncommon: z.number().positive(),
+      rare: z.number().positive(),
+    }),
+  }),
+  /**
    * Sprint 21: deterministic supply/demand market pressure - replaces the
    * old pure random walk (`driftMarketHeat`'s +/-4 weekly). Three signals
    * (a slow per-model demand wave, a supply-glut penalty, a flood-the-market

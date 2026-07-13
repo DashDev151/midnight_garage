@@ -1,6 +1,6 @@
 import type { DayLogEntry, GameState } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
-import { planGroupRepair } from './bands'
+import { planGroupRepair, restorationCostFactorForTier } from './bands'
 import { INSTALL_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
 import { findWorkableCar, resolveJobLabor } from './jobs'
@@ -72,6 +72,9 @@ export function confirmStagedWork(
 
     let spec: NewJobSpec | null = null
     if (action.kind === 'repair') {
+      const model = context.modelsById[car.modelId]
+      if (!model) continue // should never happen for real content; nothing to price against
+      const factor = restorationCostFactorForTier(model.tier, context.economy)
       const plan = planGroupRepair(
         car,
         action.componentId,
@@ -79,6 +82,7 @@ export function confirmStagedWork(
         current.toolTiers,
         context.partIdsByGroup,
         context.partsTaxonomyById,
+        factor,
         action.carPartId,
       )
       if (plan.partIds.length > 0) {

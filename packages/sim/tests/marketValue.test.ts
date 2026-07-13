@@ -87,7 +87,7 @@ function expectedBaseValueYen(car: CarInstance, forModel: CarModel, heatPercent 
   const { hassleFactor, floorFraction } = ECONOMY.valuation
   const cleanValue =
     forModel.bookValueYen * mileageFactor(car.mileageKm, ECONOMY) * (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, forModel, PARTS_TAXONOMY_BY_ID)
+  const restorationBill = carCostToMintYen(car, forModel, PARTS_TAXONOMY_BY_ID, ECONOMY)
   const floor = floorFraction * cleanValue
   return Math.round(Math.max(floor, cleanValue - hassleFactor * restorationBill))
 }
@@ -200,7 +200,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
 
   it('clamps at floorFraction x cleanValue when the restoration bill would drive it below zero', () => {
     const wreck = neutralCar({ modelId: cheapModel.id, parts: uniformCarParts('scrap') })
-    const restorationBill = carCostToMintYen(wreck, cheapModel, PARTS_TAXONOMY_BY_ID)
+    const restorationBill = carCostToMintYen(wreck, cheapModel, PARTS_TAXONOMY_BY_ID, ECONOMY)
     const cleanValue = cheapModel.bookValueYen
     // Sanity: this fixture must actually exceed clean value once weighted by
     // hassleFactor, otherwise the floor never engages and the test proves

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CarPartId, ComponentId, ConditionBand, StagedAction } from '@midnight-garage/content'
 import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
+import { bandIndex } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
@@ -55,6 +56,18 @@ const COMPONENTS: readonly ComponentId[] = [
   'interior',
 ]
 
+/**
+ * Sprint 41 decision 4 (condition-panel readability): the 6 groups,
+ * worst-band-first - `Array.prototype.sort` is stable, so groups tied on
+ * worst band keep `COMPONENTS`' own order as a secondary sort. Falls back to
+ * the plain declared order before a car is loaded.
+ */
+const orderedComponents = computed<readonly ComponentId[]>(() => {
+  const d = detail.value
+  if (!d) return COMPONENTS
+  return [...COMPONENTS].sort((a, b) => bandIndex(d.groupBands[a]) - bandIndex(d.groupBands[b]))
+})
+
 // --- Sprint 28: drill-down (group rows expand to their real part rows) --
 
 const expandedGroups = reactive(new Set<ComponentId>())
@@ -67,6 +80,38 @@ function toggleExpanded(componentId: ComponentId): void {
 /** Every real part row within a group, for the drill-down. */
 function rowsFor(componentId: ComponentId) {
   return detail.value ? game.partsInGroup(detail.value.car.id, componentId) : []
+}
+
+// --- Sprint 41 decision 4: fine/mint parts collapse behind a "+N parts in
+// good order" toggle per group, so the drill-down leads with what actually
+// needs attention. -----------------------------------------------------
+
+const expandedGoodOrder = reactive(new Set<ComponentId>())
+
+function toggleGoodOrder(componentId: ComponentId): void {
+  if (expandedGoodOrder.has(componentId)) expandedGoodOrder.delete(componentId)
+  else expandedGoodOrder.add(componentId)
+}
+
+/** A row that needs no attention right now - present and already fine/mint.
+ * Missing, legitimately-absent, scrap, poor, and worn rows all stay always
+ * visible (there's a real decision or defect to see there); only "this part
+ * is basically fine" collapses. */
+function isGoodOrderRow(row: ReturnType<typeof rowsFor>[number]): boolean {
+  return row.band === 'fine' || row.band === 'mint'
+}
+
+/** Every row in `componentId` currently worth collapsing behind the toggle. */
+function goodOrderRowsFor(componentId: ComponentId) {
+  return rowsFor(componentId).filter(isGoodOrderRow)
+}
+
+/** The rows actually rendered for `componentId`'s drill-down right now:
+ * every attention-needed row always, plus the good-order rows too once the
+ * group's own toggle has been opened. */
+function visibleRowsFor(componentId: ComponentId) {
+  if (expandedGoodOrder.has(componentId)) return rowsFor(componentId)
+  return rowsFor(componentId).filter((row) => !isGoodOrderRow(row))
 }
 
 /**
@@ -108,8 +153,35 @@ function selectPartTargetBand(carPartId: CarPartId, band: ConditionBand): void {
   partTargetBand.set(carPartId, band)
 }
 
+/**
+ * Sprint 41 coordinator fix: the group repair control's OWN floor - the
+ * worst REPAIRABLE band in the group, never scrap or a non-repairable
+ * consumable (`worstRepairableBandInGroup`, bands.ts). Distinct from
+ * `detail.groupBands[componentId]` (the display chip, which correctly
+ * includes scrap/non-repairable parts in the group's worst reported
+ * condition) - feeding THAT into the BandPicker let a group with a scrap
+ * part next to a merely-worn one offer `poor` as a dead repair target.
+ */
+function groupRepairFloorBandFor(componentId: ComponentId): ConditionBand | null {
+  return detail.value ? game.groupRepairFloorBand(detail.value.car.id, componentId) : null
+}
+
+/** Template-safe non-null variant - only ever bound where `groupNeedsRepair`
+ * has already guaranteed a real floor exists ('poor' or 'worn'); the 'mint'
+ * fallback is unreachable there, just a type-safe default instead of a
+ * template-side non-null assertion (`vue-eslint-parser` doesn't parse `!`
+ * inside a template expression). */
+function groupRepairFloorBandOrMint(componentId: ComponentId): ConditionBand {
+  return groupRepairFloorBandFor(componentId) ?? 'mint'
+}
+
+/** Whether the group's own "Repair all…" convenience should show at all -
+ * only when the worst REPAIRABLE part is poor or worn (unchanged threshold
+ * from before Sprint 41; `fine` stays a per-part-only repair, same as ever -
+ * the per-part row below still offers it). */
 function groupNeedsRepair(componentId: ComponentId): boolean {
-  return rowsFor(componentId).some((row) => row.band === 'poor' || row.band === 'worn')
+  const floor = groupRepairFloorBandFor(componentId)
+  return floor === 'poor' || floor === 'worn'
 }
 
 /** The open job at this exact address - group-level when `carPartId` is
@@ -462,18 +534,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <h3>
             Components
             <HelpHint label="Components">
-              Expand a group to repair or replace its real parts one at a time, or use a group's own
-              "Repair all" convenience - pick how far to take it with the band buttons. Nothing
+              Worst-off groups lead. Expand a group to repair or replace its real parts one at a
+              time, or use a group's own "Repair all" convenience - pick how far to take it with the
+              band buttons. Parts already in good order collapse behind their own toggle. Nothing
               happens until you Confirm.
             </HelpHint>
           </h3>
           <ul class="components">
-            <li v-for="componentId in COMPONENTS" :key="componentId" class="component-row">
+            <li v-for="componentId in orderedComponents" :key="componentId" class="component-row">
               <div class="meter-line">
                 <span class="component-name" :title="game.componentLabel(componentId)">{{
                   game.componentLabel(componentId)
                 }}</span>
                 <BandChip :band="detail.groupBands[componentId]" />
+                <span class="group-bill" :data-test="'group-bill-' + componentId">{{
+                  formatYen(detail.groupBillYen[componentId])
+                }}</span>
                 <button
                   type="button"
                   class="expand-toggle"
@@ -508,7 +584,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   <template v-if="groupNeedsRepair(componentId)">
                     <BandPicker
                       v-if="!isStagedRepair(componentId)"
-                      :current-band="detail.groupBands[componentId]"
+                      :current-band="groupRepairFloorBandOrMint(componentId)"
                       :selected="groupTargetBandFor(componentId)"
                       :test-id-prefix="'band-group-' + componentId"
                       @select="selectGroupTargetBand(componentId, $event)"
@@ -539,7 +615,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               </div>
 
               <ul v-if="expandedGroups.has(componentId)" class="part-sublist">
-                <li v-for="row in rowsFor(componentId)" :key="row.partId" class="sub-part-row">
+                <li
+                  v-for="row in visibleRowsFor(componentId)"
+                  :key="row.partId"
+                  class="sub-part-row"
+                >
                   <div class="meter-line sub">
                     <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
                     <BandChip :band="row.band" />
@@ -575,7 +655,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     </template>
 
                     <template v-else>
-                      <template v-if="row.band && row.band !== 'mint' && row.band !== 'scrap'">
+                      <template
+                        v-if="
+                          row.band && row.band !== 'mint' && row.band !== 'scrap' && row.repairable
+                        "
+                      >
                         <BandPicker
                           v-if="!isStagedRepair(componentId, row.partId)"
                           :current-band="row.band"
@@ -634,9 +718,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     </template>
                   </div>
                 </li>
+
+                <li v-if="goodOrderRowsFor(componentId).length > 0" class="good-order-row">
+                  <button
+                    type="button"
+                    class="good-order-toggle"
+                    :data-test="'good-order-' + componentId"
+                    @click="toggleGoodOrder(componentId)"
+                  >
+                    {{
+                      expandedGoodOrder.has(componentId)
+                        ? 'Hide parts in good order'
+                        : '+' + goodOrderRowsFor(componentId).length + ' parts in good order'
+                    }}
+                  </button>
+                </li>
               </ul>
             </li>
           </ul>
+
+          <p class="total-bill-line" data-test="total-bill">
+            Total restoration bill: {{ formatYen(detail.totalBillYen) }}
+          </p>
 
           <ReplaceDrawer
             v-if="activeReplacePart"
@@ -929,10 +1032,33 @@ button.primary.danger {
   font-size: var(--mg-fs-sm);
 }
 
+.group-bill {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+  white-space: nowrap;
+}
+
 .expand-toggle {
   margin-left: auto;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+.good-order-row {
+  padding: var(--mg-space-1) 0;
+}
+
+.good-order-toggle {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
+}
+
+.total-bill-line {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+  font-weight: bold;
+  margin: var(--mg-space-2) 0 0;
 }
 
 /* Buttons, hints, and installed/staged status - free to wrap onto as many

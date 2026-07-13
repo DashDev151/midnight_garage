@@ -18,9 +18,8 @@ import { generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import {
   bandIndex,
   bandsBelowExcludingScrap,
-  canRepair,
-  gradesBetween,
-  slotsNeededToClimb,
+  planPartRepair,
+  restorationCostFactorForTier,
 } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
@@ -316,10 +315,20 @@ export interface ServiceJobCostBreakdown {
  * (Sprint 29 decision 1) - split out so the profitability invariant test can
  * inspect the same numbers a real offer derives from, not just the final
  * rounded payout. A repair task on a part that's already at or above
- * `targetBand`, or that's rolled `scrap` (unrepairable, Sprint 26 decision
- * 5 - the job's own `isServiceTaskDone` already treats scrap as satisfied),
- * contributes 0 to both totals: there is genuinely nothing left to charge
- * or labor for.
+ * `targetBand`, that's rolled `scrap`, or (Sprint 41) that's non-repairable
+ * (the job's own `isServiceTaskDone` already treats scrap as satisfied; a
+ * non-repairable part never gets a repair task to begin with - content
+ * integrity test - but `planPartRepair`'s own `canRepair` check covers it
+ * for free either way) contributes 0 to both totals: there is genuinely
+ * nothing left to charge or labor for.
+ *
+ * Sprint 41: reuses `planPartRepair` (bands.ts) directly rather than
+ * re-deriving the grades/cost/labor formula inline - the ONE cost pipeline,
+ * never a second bill implementation - which is also how the tier factor
+ * (`restorationCostFactorForTier(model.tier, ...)`) reaches a repair task's
+ * cost. Repair labor sizes at level 1 (base, "worst case tooling" - a market
+ * rate for the customer's own wrench time, independent of the shop's actual
+ * current tool tier, unchanged from pre-Sprint-41).
  */
 export function serviceJobCostBreakdown(
   tasks: readonly ServiceJobTask[],
@@ -327,6 +336,7 @@ export function serviceJobCostBreakdown(
   model: CarModel,
   context: SimContext,
 ): ServiceJobCostBreakdown {
+  const factor = restorationCostFactorForTier(model.tier, context.economy)
   let taskCostYen = 0
   let laborSlots = 0
   for (const task of tasks) {
@@ -336,10 +346,10 @@ export function serviceJobCostBreakdown(
       // Sprint 32: a missing slot has no band to climb - out of repair's
       // reach exactly like scrap is (0 cost/labor), rather than crashing on
       // a null read.
-      if (!entry || !installed || !canRepair(installed.band)) continue
-      const grades = gradesBetween(installed.band, task.targetBand)
-      taskCostYen += grades * entry.stepCostYen
-      laborSlots += slotsNeededToClimb(grades, 1)
+      if (!entry || !installed) continue
+      const plan = planPartRepair(installed.band, task.targetBand, 1, entry, factor)
+      taskCostYen += plan.costYen
+      laborSlots += plan.laborSlotsRequired
     } else {
       const candidates = fittingPartsForInstallTask(task, model, context)
       taskCostYen += medianYen(candidates.map((part) => part.priceYen))

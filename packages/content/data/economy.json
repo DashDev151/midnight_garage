@@ -52,6 +52,9 @@
     "turnoutBandWeights": [0.2, 0.45, 0.35],
     "maxIncrementsPerNight": 3
   },
+  "restoration": {
+    "partsCostFactorByTier": { "shitbox": 0.12, "common": 0.35, "uncommon": 0.8, "rare": 1.3 }
+  },
   "valuation": {
     "mileageFactorCurve": [
       [30000, 1.05],
@@ -59,8 +62,8 @@
       [120000, 0.85],
       [180000, 0.75]
     ],
-    "hassleFactor": 1.2,
-    "floorFraction": 0.1,
+    "hassleFactor": 0.8,
+    "floorFraction": 0.15,
     "partsRetention": 0.55,
     "genuinePeriodMultiplier": 1.25,
     "tasteSpread": 0.12,

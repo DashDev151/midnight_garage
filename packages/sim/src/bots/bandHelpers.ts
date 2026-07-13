@@ -1,6 +1,11 @@
 import type { CarInstance, ComponentId, ConditionBand, GameState } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
-import { bandIndex, planGroupRepair, presentPartIdsInGroup } from '../bands'
+import {
+  bandIndex,
+  planGroupRepair,
+  presentPartIdsInGroup,
+  restorationCostFactorForTier,
+} from '../bands'
 import type { SimContext } from '../context'
 
 /**
@@ -71,6 +76,9 @@ export function queueGroupRepair(
   context: SimContext,
   laborBudget: number,
 ): number {
+  const model = context.modelsById[car.modelId]
+  if (!model) return 0
+  const factor = restorationCostFactorForTier(model.tier, context.economy)
   const plan = planGroupRepair(
     car,
     groupId,
@@ -78,6 +86,7 @@ export function queueGroupRepair(
     state.toolTiers,
     context.partIdsByGroup,
     context.partsTaxonomyById,
+    factor,
   )
   if (plan.partIds.length === 0) return 0
   const jobIndex = actions.createJobs.length

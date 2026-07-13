@@ -72,7 +72,9 @@ function untaggedPartFor(carPartId: string) {
 
 /** Whether `componentId`'s group has anything the group's own "Repair all to
  * fine" convenience (or a fresh per-part Repair row) would act on right now -
- * the same `poor`/`worn` gate the component itself uses internally. */
+ * the same `poor`/`worn`-and-repairable gate the component itself uses
+ * internally (Sprint 41: a poor/worn non-repairable consumable, e.g. tyres,
+ * never counts - only Replace ever touches it). */
 function needsRepair(
   game: ReturnType<typeof useGameStore>,
   carId: string,
@@ -80,7 +82,24 @@ function needsRepair(
 ): boolean {
   return game
     .partsInGroup(carId, componentId)
-    .some((row) => row.band === 'poor' || row.band === 'worn')
+    .some((row) => (row.band === 'poor' || row.band === 'worn') && row.repairable)
+}
+
+/**
+ * Sprint 41 decision 4: fine/mint part rows collapse behind a "+N parts in
+ * good order" toggle by default - expands a group AND (if the toggle
+ * exists) immediately opens it too, so every real part row is visible,
+ * matching every pre-Sprint-41 test's assumption that one expand click
+ * reveals the whole group. The default-collapsed behavior itself gets its
+ * own dedicated test below.
+ */
+async function expandGroup(
+  wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
+  componentId: ComponentId,
+): Promise<void> {
+  await wrapper.find(`[data-test="expand-${componentId}"]`).trigger('click')
+  const goodOrderBtn = wrapper.find(`[data-test="good-order-${componentId}"]`)
+  if (goodOrderBtn.exists()) await goodOrderBtn.trigger('click')
 }
 
 /** Grants cars (bounded) until `componentId`'s group actually needs repair -
@@ -138,18 +157,31 @@ describe('CarDetailScreen', () => {
     }
   })
 
-  it('expanding a group reveals every real part row; collapsing hides them again', async () => {
+  it('expanding a group reveals its attention-needed rows; fine/mint parts collapse behind "+N parts in good order" (Sprint 41)', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
     const rows = game.partsInGroup(id, 'suspension')
+    const goodOrderRows = rows.filter((r) => r.band === 'fine' || r.band === 'mint')
+    const attentionRows = rows.filter((r) => !goodOrderRows.includes(r))
 
     const { wrapper } = await mountAt(id)
     expect(wrapper.find('.part-sublist').exists()).toBe(false)
 
     await wrapper.find('[data-test="expand-suspension"]').trigger('click')
-    expect(wrapper.findAll('.sub-part-row')).toHaveLength(rows.length)
-    for (const row of rows) expect(wrapper.text()).toContain(row.displayName)
+    expect(wrapper.findAll('.sub-part-row')).toHaveLength(attentionRows.length)
+    for (const row of attentionRows) expect(wrapper.text()).toContain(row.displayName)
+
+    const goodOrderBtn = wrapper.find('[data-test="good-order-suspension"]')
+    if (goodOrderRows.length > 0) {
+      expect(goodOrderBtn.exists()).toBe(true)
+      expect(wrapper.text()).toContain(`+${goodOrderRows.length} parts in good order`)
+      await goodOrderBtn.trigger('click')
+      expect(wrapper.findAll('.sub-part-row')).toHaveLength(rows.length)
+      for (const row of goodOrderRows) expect(wrapper.text()).toContain(row.displayName)
+    } else {
+      expect(goodOrderBtn.exists()).toBe(false)
+    }
 
     await wrapper.find('[data-test="expand-suspension"]').trigger('click')
     expect(wrapper.find('.part-sublist').exists()).toBe(false)
@@ -248,7 +280,7 @@ describe('CarDetailScreen', () => {
         .partsInGroup(id, 'suspension')
         .find((r) => r.band === 'poor' || r.band === 'worn')!
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
 
       // Pick whichever offered band ISN'T mint (the per-part default) -
       // both 'poor' and 'worn' offer at least one non-mint option.
@@ -287,7 +319,7 @@ describe('CarDetailScreen', () => {
       if (rows.length < 2) return // this particular roll only had one part to work with
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find(`[data-test="stage-repair-part-${rows[0]!.partId}"]`).trigger('click')
       await wrapper.find(`[data-test="stage-repair-part-${rows[1]!.partId}"]`).trigger('click')
 
@@ -318,7 +350,7 @@ describe('CarDetailScreen', () => {
         .find((r) => r.band === 'poor' || r.band === 'worn')!
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
       expect(wrapper.text()).toContain('Staged work (1)')
 
@@ -356,7 +388,7 @@ describe('CarDetailScreen', () => {
       }
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       expect(wrapper.find('[data-test="stage-repair-part-dampers"]').exists()).toBe(false)
       // Occupied (even by scrap) - Replace is unavailable until it's removed.
       expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(false)
@@ -378,7 +410,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-engine"]').trigger('click')
+      await expandGroup(wrapper, 'engine')
       expect(wrapper.find('[data-test="stage-repair-part-forcedInduction"]').exists()).toBe(false)
       expect(wrapper.text()).toContain('no turbo (NA)')
 
@@ -400,7 +432,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-engine"]').trigger('click')
+      await expandGroup(wrapper, 'engine')
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
 
       expect(wrapper.text()).toContain('Needs Machine-shop tooling')
@@ -420,7 +452,7 @@ describe('CarDetailScreen', () => {
       expect(originalStockPartId).toBeDefined() // every slot starts stock-filled
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="remove-part-dampers"]').exists()).toBe(true)
 
@@ -445,7 +477,7 @@ describe('CarDetailScreen', () => {
       game.removePart(id, 'dampers')
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
       expect(wrapper.find('[data-test^="pick-part-"]').exists()).toBe(false)
 
@@ -469,7 +501,7 @@ describe('CarDetailScreen', () => {
       const cashBefore = game.cashYen
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await wrapper.find('.part-card').trigger('click')
 
@@ -489,7 +521,7 @@ describe('CarDetailScreen', () => {
       game.removePart(id, 'dampers')
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await dragPast(wrapper, `[data-test^="pick-part-"]`)
       await dropOn(wrapper, '[data-test="replace-part-dampers"]')
@@ -516,7 +548,7 @@ describe('CarDetailScreen', () => {
       }
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find(`[data-test="pick-part-${goodInstanceId}"]`).exists()).toBe(true)
       expect(wrapper.find('[data-test="pick-part-scrap-instance"]').exists()).toBe(false)
@@ -577,7 +609,7 @@ describe('CarDetailScreen', () => {
       ).toBe(false)
 
       const { wrapper } = await mountAt(carB!.id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       // Already staged on carA - omitted from carB's own drawer (decision 3).
       expect(wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).exists()).toBe(false)
@@ -593,7 +625,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
       // Picking doesn't close the drawer, and the drawer's own row still
@@ -621,7 +653,7 @@ describe('CarDetailScreen', () => {
       )!.id
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-engine"]').trigger('click')
+      await expandGroup(wrapper, 'engine')
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
       await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
 
@@ -631,7 +663,7 @@ describe('CarDetailScreen', () => {
       // dampers' own drawer.
       await wrapper.find('[data-test="close-drawer"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
     })
@@ -646,7 +678,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+      await expandGroup(wrapper, 'suspension')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find('[data-test="pick-chip"]').exists()).toBe(false)
 

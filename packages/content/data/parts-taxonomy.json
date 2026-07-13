@@ -93,6 +93,7 @@
     "displayName": "Clutch",
     "stepCostYen": 12000,
     "stockReplacementPriceYen": 60000,
+    "repairable": false,
     "statWeights": { "reliability": 1 }
   },
   {
@@ -157,6 +158,7 @@
     "displayName": "Brake Pads & Discs",
     "stepCostYen": 4000,
     "stockReplacementPriceYen": 20000,
+    "repairable": false,
     "statWeights": { "handling": 1 }
   },
   {
@@ -181,6 +183,7 @@
     "displayName": "Tyres",
     "stepCostYen": 7000,
     "stockReplacementPriceYen": 35000,
+    "repairable": false,
     "statWeights": { "handling": 3 }
   },
   {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
+import economy from '../data/economy.json'
 import partsTaxonomy from '../data/parts-taxonomy.json'
 import parts from '../data/parts.json'
 import serviceJobs from '../data/serviceJobTemplates.json'
@@ -9,6 +10,7 @@ import {
   CarModelsSchema,
   CarPartIdSchema,
   CarPartTaxonomySchema,
+  EconomyConfigSchema,
   PartsSchema,
   ServiceJobTypesSchema,
   type Part,
@@ -216,5 +218,54 @@ describe('referential integrity', () => {
       'no aftermarket forced-induction kit fits an NA Piston roster car',
     ).toBeGreaterThan(0)
     expect(underglowKits.length, 'no underglow kit fits an NA Piston roster car').toBeGreaterThan(0)
+  })
+
+  /**
+   * Sprint 41 decision 1: `restorationCostFactorForTier` (sim/bands.ts)
+   * throws at runtime if a car's own tier has no matching entry in
+   * `economy.json`'s `restoration.partsCostFactorByTier` - the zod schema
+   * only requires the four keys the current roster actually uses, not
+   * `RarityTier`'s full six-value enum, so a roster addition at `gaisha` or
+   * `legend` tier would parse clean but crash the first time anyone prices a
+   * repair on it. This is the guard that catches the gap at content-test
+   * time instead.
+   */
+  it('every roster car tier has a restoration.partsCostFactorByTier entry', () => {
+    const parsedCars = CarModelsSchema.parse(cars)
+    const parsedEconomy = EconomyConfigSchema.parse(economy)
+    const factorByTier = parsedEconomy.restoration.partsCostFactorByTier as Partial<
+      Record<RarityTier, number>
+    >
+    for (const car of parsedCars) {
+      expect(
+        factorByTier[car.tier],
+        `${car.id} is tier "${car.tier}", which has no restoration.partsCostFactorByTier entry`,
+      ).toBeGreaterThan(0)
+    }
+  })
+
+  /**
+   * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only
+   * (`repairable: false` in the taxonomy) - a repair task addressing one is a
+   * content bug (the job would price/complete through a formula that no
+   * longer applies to that part), not a design choice a template author
+   * should ever reach for. Every existing repair task on these three was
+   * converted to an install task this sprint; this is the permanent guard
+   * against a future template reintroducing one.
+   */
+  it('no service-job template contains a repair task addressing a non-repairable part', () => {
+    const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
+    const REPAIRABLE_BY_PART_ID = new Map(
+      PARTS_TAXONOMY.map((entry) => [entry.id, entry.repairable]),
+    )
+    for (const type of parsedTypes) {
+      for (const task of type.tasks) {
+        if (task.action !== 'repair') continue
+        expect(
+          REPAIRABLE_BY_PART_ID.get(task.carPartId),
+          `template "${type.id}" has a repair task addressing non-repairable part "${task.carPartId}"`,
+        ).toBe(true)
+      }
+    }
   })
 })

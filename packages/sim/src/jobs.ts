@@ -18,6 +18,7 @@ import {
   planPartRepair,
   presentPartIdsInGroup,
   repairLevelForGroup,
+  restorationCostFactorForTier,
   type PartRepairPlan,
 } from './bands'
 import type { SimContext } from './context'
@@ -178,13 +179,19 @@ function applyJobToCar(
  * there is nothing to refund, same as `applyJobToCar`'s own mid-job-departure
  * handling.
  */
-function completeReconditionJob(state: GameState, job: Job): GameState {
+function completeReconditionJob(state: GameState, job: Job, context: SimContext): GameState {
   const targetBand = job.targetBand
   if (!job.partInstanceId || !targetBand) return state
   let changed = false
   const partInventory = state.partInventory.map((instance) => {
     if (instance.id !== job.partInstanceId) return instance
-    if (!canRepair(instance.band) || bandIndex(instance.band) >= bandIndex(targetBand)) {
+    const catalogPart = context.partsById[instance.partId]
+    const entry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
+    if (
+      !entry ||
+      !canRepair(instance.band, entry) ||
+      bandIndex(instance.band) >= bandIndex(targetBand)
+    ) {
       return instance
     }
     changed = true
@@ -203,7 +210,7 @@ function completeReconditionJob(state: GameState, job: Job): GameState {
  */
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
   if (job.kind === 'recondition-part') {
-    return { state: completeReconditionJob(state, job), blockedByOccupiedSlot: false }
+    return { state: completeReconditionJob(state, job, context), blockedByOccupiedSlot: false }
   }
 
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
@@ -401,6 +408,9 @@ export function repairJobGate(
   if (!spec.targetBand) return { ok: false, log: [] }
   const car = findWorkableCar(state, spec.carInstanceId)
   if (!car) return { ok: false, log: [] }
+  const model = context.modelsById[car.modelId]
+  if (!model) return { ok: false, log: [] }
+  const factor = restorationCostFactorForTier(model.tier, context.economy)
   const plan = planGroupRepair(
     car,
     spec.componentId,
@@ -408,6 +418,7 @@ export function repairJobGate(
     state.toolTiers,
     context.partIdsByGroup,
     context.partsTaxonomyById,
+    factor,
     spec.carPartId,
   )
   if (plan.partIds.length === 0) {
@@ -689,13 +700,25 @@ interface ReconditionPlan {
 }
 
 /**
+ * Sprint 41: a loose bench part carries no car, so there is no model tier to
+ * scale its repair cost by - reconditioning always prices at the UNSCALED
+ * step cost, same for every part regardless of which car it came from or
+ * might return to. `planPartRepair`'s `factor` parameter exists precisely so
+ * a caller with no car/model context (this one) can opt out cleanly rather
+ * than the pipeline needing a second, factor-less formula.
+ */
+const BENCH_REPAIR_COST_FACTOR = 1
+
+/**
  * Everything the recondition gate/labor needs for a loose inventory part, or
  * null when it can't be reconditioned (not in inventory, no catalog/taxonomy
- * entry, scrap, or already at/above the target). Reuses the on-car repair
- * atoms EXACTLY - `repairLevelForGroup` for the tool-tier repair level
- * and `planPartRepair` (bands.ts) for the cost + labor - so a loose part and
- * the same part installed on a car price and size identically. This is the
- * reuse the sprint exists to enforce: there is no separate bench formula.
+ * entry, scrap, non-repairable, or already at/above the target). Reuses the
+ * on-car repair atoms EXACTLY - `repairLevelForGroup` for the tool-tier
+ * repair level and `planPartRepair` (bands.ts) for the cost + labor - so a
+ * loose part and the same part installed on a car price and size
+ * identically (modulo the tier factor, which a loose part never carries -
+ * see `BENCH_REPAIR_COST_FACTOR`). This is the reuse the sprint exists to
+ * enforce: there is no separate bench formula.
  */
 function planReconditionPart(
   state: GameState,
@@ -710,8 +733,14 @@ function planReconditionPart(
   const group = taxonomyEntry?.group
   if (!catalogPart || !taxonomyEntry || !group) return null
   const repairLevel = repairLevelForGroup(state.toolTiers, group)
-  const plan = planPartRepair(instance.band, targetBand, repairLevel, taxonomyEntry)
-  if (plan.laborSlotsRequired === 0) return null // scrap, or nothing to climb
+  const plan = planPartRepair(
+    instance.band,
+    targetBand,
+    repairLevel,
+    taxonomyEntry,
+    BENCH_REPAIR_COST_FACTOR,
+  )
+  if (plan.laborSlotsRequired === 0) return null // scrap, non-repairable, or nothing to climb
   return { group, plan }
 }
 

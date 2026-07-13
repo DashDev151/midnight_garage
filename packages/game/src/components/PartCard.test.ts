@@ -197,5 +197,23 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
       expect(game.gameState.partInventory[0]?.band).toBe('worn')
     })
+
+    /**
+     * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only -
+     * the recondition control never renders for one, even below mint,
+     * mirroring how it never renders for scrap (there's simply nothing to
+     * fix on the bench either way).
+     */
+    it('omits the recondition control entirely for a non-repairable part (tyres)', () => {
+      const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.grade === 'stock')!
+      const game = useGameStore()
+      game.devGrantPart(tyrePart.id)
+      const granted = game.gameState.partInventory[0]!
+      const wornTyres: PartInstance = { ...granted, band: 'worn' }
+      game.gameState = { ...game.gameState, partInventory: [wornTyres] }
+
+      const wrapper = mount(PartCard, { props: { instance: wornTyres, part: tyrePart } })
+      expect(wrapper.find(`[data-test="recondition-part-${wornTyres.id}"]`).exists()).toBe(false)
+    })
   })
 })

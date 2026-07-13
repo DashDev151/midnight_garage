@@ -141,10 +141,19 @@ describe('seed content validates against schemas', () => {
     // age no longer factors into value at all).
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
     // Sprint 27 (restoration-bill deduction): replaces the retired
-    // conditionFloor/Ceiling/Exponent curve tunables above.
-    expect(result.data.valuation.hassleFactor).toBe(1.2)
-    expect(result.data.valuation.floorFraction).toBe(0.1)
+    // conditionFloor/Ceiling/Exponent curve tunables above. Sprint 41
+    // retunes hassleFactor/floorFraction alongside the new tier-scaled
+    // repair costs (1.2 -> 0.8, 0.1 -> 0.15).
+    expect(result.data.valuation.hassleFactor).toBe(0.8)
+    expect(result.data.valuation.floorFraction).toBe(0.15)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
+    // Sprint 41 decision 1: the tier-scaled repair-cost factor map.
+    expect(result.data.restoration.partsCostFactorByTier).toEqual({
+      shitbox: 0.12,
+      common: 0.35,
+      uncommon: 0.8,
+      rare: 1.3,
+    })
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)

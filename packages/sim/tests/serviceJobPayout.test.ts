@@ -13,7 +13,7 @@ import {
   type ServiceJobTask,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { canRepair, gradesBetween } from '../src/bands'
+import { canRepair, gradesBetween, restorationCostFactorForTier } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { gradeAtLeast, partFitsCar } from '../src/parts'
 import { deriveServiceJobPayoutYen } from '../src/serviceJobs'
@@ -42,8 +42,10 @@ const CONTEXT = buildSimContext(
  * `deriveServiceJobPayoutYen`'s own cost basis (`serviceJobCostBreakdown`)
  * so this test cannot pass merely by re-deriving the same number twice: a
  * repair task's cost is genuinely deterministic (no player choice, so it's
- * the same number either way), but an install task's TRUE minimum is the
- * cheapest fitting part across the full "grade >= minGrade" set - a
+ * the same number either way - Sprint 41: including the tier factor, since
+ * that's now a real, deterministic part of what a repair task actually
+ * costs, not a player-chosen variable), but an install task's TRUE minimum
+ * is the cheapest fitting part across the full "grade >= minGrade" set - a
  * strictly wider set than the payout formula's own narrowed
  * median-of-the-tightest-fitting-tier basis (see `deriveServiceJobPayoutYen`'s
  * doc comment for why that narrowing can only ever price a task at or above
@@ -54,6 +56,7 @@ function playerMinCostYen(
   car: CarInstance,
   model: CarModel,
 ): number {
+  const factor = restorationCostFactorForTier(model.tier, CONTEXT.economy)
   let total = 0
   for (const task of tasks) {
     if (task.action === 'repair') {
@@ -61,9 +64,13 @@ function playerMinCostYen(
       const installed = car.parts[task.carPartId].installed
       // Sprint 32: an empty slot has nothing to repair - same "nothing to
       // charge, already done" treatment as scrap (canRepair covers both:
-      // false for scrap, and there's simply no band to read on a null slot).
-      if (!installed || !canRepair(installed.band)) continue
-      total += gradesBetween(installed.band, task.targetBand) * entry.stepCostYen
+      // false for scrap, and there's simply no band to read on a null slot;
+      // Sprint 41 extends it to a non-repairable consumable too, though no
+      // real template ever puts a repair task on one - content guard).
+      if (!installed || !canRepair(installed.band, entry)) continue
+      total += Math.round(
+        gradesBetween(installed.band, task.targetBand) * entry.stepCostYen * factor,
+      )
     } else {
       const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group
       const fitting = CONTEXT.parts.filter(

@@ -2,7 +2,7 @@ import { emptyDayActions, type DayActions } from '../src/actions'
 import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
-import { planGroupRepair } from '../src/bands'
+import { planGroupRepair, restorationCostFactorForTier } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
 import { createInitialGameState } from '../src/newGame'
@@ -156,6 +156,11 @@ function runCareer(days: number): GameState {
 
 describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
+    // Sprint 41 re-pins this hash (was 7a495efd): tier-scaled repair costs
+    // change the day-1 body repair's real cash charge (and every other
+    // repair cost downstream), a real cash-flow change, not a logic bug -
+    // every other assertion in this file (cash deltas, part installs,
+    // catalog refresh) still passes against the same scripted career.
     // Sprint 38 re-pins this hash (was 7eb02198): the hashed state's SHAPE
     // changed (the new `specialty` record added to GameState) - the offer
     // SEQUENCE itself is unaffected at all-zero specialty (proven directly
@@ -164,7 +169,7 @@ describe('advanceDay golden master', () => {
     // value-model change.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('7a495efd')
+    expect(hashState(finalState)).toBe('ad88a86b')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -202,6 +207,7 @@ describe('advanceDay golden master', () => {
     // repair cost, on top of rent. Rent charges on days 7/14/21/28 within a
     // 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
     const consumablesCostYen = CONTEXT.toolLineFor('body').tiers[0]!.consumablesCostYen
+    // car-0001 is honda-city-e-aa - shitbox tier (Sprint 41 tier-scaled repair costs).
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
@@ -209,6 +215,7 @@ describe('advanceDay golden master', () => {
       testToolTiers(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsTaxonomyById,
+      restorationCostFactorForTier('shitbox', CONTEXT.economy),
     )
     const rentChargeCount = 4
     expect(finalState.cashYen).toBe(
@@ -286,10 +293,15 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
+    // Re-pinned for Sprint 41 (was 8c2d16c4): tier-scaled repair/restoration
+    // costs (and the hassleFactor/floorFraction retune) change this career's
+    // real cash flow and sale value - a real economy change, not a logic
+    // bug (`won.ownedCars`/`sold.ownedCars`/`sold.cashYen > 0` above still
+    // hold).
     // Re-pinned for Sprint 38 (was ce6e0f11): same cause as the 30-day
     // career above - the hashed state's SHAPE gained `specialty`; no draw-
     // order or value-model change (sale price math is untouched).
-    expect(hashState(acquisitionCareer().sold)).toBe('8c2d16c4')
+    expect(hashState(acquisitionCareer().sold)).toBe('7317802d')
   })
 })
 

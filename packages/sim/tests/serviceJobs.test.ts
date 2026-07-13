@@ -65,7 +65,16 @@ const CONTEXT = buildSimContext(
  * loudly instead of silently drifting. */
 const singleRepairType = findType('small-bodywork-touchup') // tasks: [repair panels -> fine]
 const installType = findType('coilover-install') // tasks: [install dampers >= street]
-const twoRepairType = findType('tyres-and-pads-service') // tasks: [repair tyres, repair brakePadsDiscs]
+/**
+ * tasks: [repair dampers -> fine, repair springs -> fine], tier 2.
+ * Sprint 41 decision 2 converted the old source for this fixture
+ * (tyres-and-pads-service) from two repair tasks to two install tasks (both
+ * tyres and brakePadsDiscs are now replace-only consumables) - suspension-
+ * refresh is the real content's remaining two-repair-task template, so
+ * every test below that needs "two independently band-settable repair
+ * tasks" still exercises real content, not a synthetic fixture.
+ */
+const twoRepairType = findType('suspension-refresh') // tasks: [repair dampers, repair springs]
 const mixedType = findType('put-her-in-a-ditch') // tasks: [repair panels, repair dampers, install tyres]
 const twoInstallType = findType('engine-internals-rebuild') // tasks: [install internals, install headValvetrain]
 
@@ -354,8 +363,12 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
   })
 
   it('one tier out in one group is offerable (an upgrade-hint offer); two tiers out, or two deficient groups, is not', () => {
-    // twoRepairType spans two distinct groups (wheels + suspension);
-    // singleRepairType stays within one (body).
+    // singleRepairType stays within one group (body). mixedType
+    // (put-her-in-a-ditch) spans three (body/suspension/wheels) - Sprint 41:
+    // twoRepairType (suspension-refresh) is single-group now that the old
+    // cross-group source (tyres-and-pads-service) converted to two install
+    // tasks (decision 2), so this specific "more than one deficient group"
+    // case borrows a still-real multi-group template instead.
     const oneGroupOneTier = singleRepairType.tasks.map((task) => ({
       ...task,
       minToolTier: 2 as const,
@@ -371,7 +384,7 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
     }))
     expect(isTemplateOfferable(oneGroupTwoTiers, testToolTiers(), CONTEXT)).toBe(false)
 
-    const twoGroupsOneTier = twoRepairType.tasks.map((task) => ({
+    const twoGroupsOneTier = mixedType.tasks.map((task) => ({
       ...task,
       minToolTier: 2 as const,
     }))
@@ -446,13 +459,13 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
   })
 
   it('a multi-task template only forces the specific tasks that are already satisfied', () => {
-    // twoRepairType: repair tyres -> fine, repair brakePadsDiscs -> fine.
+    // twoRepairType: repair dampers -> fine, repair springs -> fine.
     const car = buildCarInstance({
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'poor' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'poor' }),
     })
     const forced = forceTasksOutstanding(car, twoRepairType.tasks, CONTEXT, createRng(6))
-    expect(forced.parts.tyres.installed!.band).not.toBe('mint') // forced below fine
-    expect(forced.parts.brakePadsDiscs.installed!.band).toBe('poor') // untouched
+    expect(forced.parts.dampers.installed!.band).not.toBe('mint') // forced below fine
+    expect(forced.parts.springs.installed!.band).toBe('poor') // untouched
     expect(isServiceWorkDone({ ...activeJob(twoRepairType), car: forced }, CONTEXT)).toBe(false)
   })
 })
@@ -480,13 +493,14 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
     expect(breakdown.laborSlots).toBe(0)
   })
 
-  it('a repair task charges banded-steps cost proportional to how far the part is from target', () => {
+  it('a repair task charges banded-steps cost, tier-scaled by the car model (Sprint 41), proportional to how far the part is from target', () => {
     const car = buildCarInstance({ parts: mintCarParts({ panels: 'poor' }) })
-    const model = CARS[0]!
+    const model = CARS[0]! // honda-city-e-aa - shitbox tier
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     const entry = CONTEXT.partsTaxonomyById.panels!
+    const factor = CONTEXT.economy.restoration.partsCostFactorByTier.shitbox
     // poor -> fine is 2 grades (poor, worn, fine order: poor < worn < fine).
-    expect(breakdown.taskCostYen).toBe(2 * entry.stepCostYen)
+    expect(breakdown.taskCostYen).toBe(Math.round(2 * entry.stepCostYen * factor))
     expect(breakdown.laborSlots).toBeGreaterThan(0)
   })
 
@@ -577,17 +591,17 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
 
   it('isServiceWorkDone requires every task in a multi-task job done, not just one', () => {
     const job = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'worn', brakePadsDiscs: 'worn' }),
+      parts: mintCarParts({ dampers: 'worn', springs: 'worn' }),
     })
     expect(isServiceWorkDone(job, CONTEXT)).toBe(false)
 
     const oneDone = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'worn' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'worn' }),
     })
     expect(isServiceWorkDone(oneDone, CONTEXT)).toBe(false)
 
     const bothDone = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
     })
     expect(isServiceWorkDone(bothDone, CONTEXT)).toBe(true)
   })
@@ -630,7 +644,7 @@ describe('reputation helpers', () => {
 describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)', () => {
   it('pays out + grants reputation (stock rate) when a repair-only job is fully done, and the car leaves', () => {
     const job = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
     })
     const leftover: Job = {
       id: 'job-x',
@@ -657,7 +671,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
   it('fails (no pay, reputation penalty) when at least one task is not done', () => {
     const job = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'worn' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'worn' }),
     })
     const state = stateWith(job, { reputationPoints: 50 })
     const cashBefore = state.cashYen
@@ -671,7 +685,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
   })
 
   it('clamps the reputation penalty at zero', () => {
-    const job = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
+    const job = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
     const state = stateWith(job) // reputationPoints starts at 0
     const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
     expect(next.reputationPoints).toBe(0)
@@ -696,12 +710,17 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
   it("refuses (outcome 'in-transit') while the customer car hasn't arrived yet; resolves normally once it has", () => {
     const offer = {
       ...activeJob(twoRepairType, {
-        parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+        parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
       }),
       dueOnDay: null,
     }
     const dayN = 5
-    const state = { ...createInitialGameState(CONTEXT, 1), day: dayN, serviceJobOffers: [offer] }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      day: dayN,
+      serviceJobOffers: [offer],
+      toolTiers: testToolTiers({ suspension: 2 }), // twoRepairType is tier 2
+    }
     const { state: accepted } = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     const job = accepted.activeServiceJobs[0]!
     expect(isServiceJobInTransit(job, accepted.day)).toBe(true)
@@ -719,7 +738,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
   it('drops the car’s staged work whether the job pays or fails', () => {
     const paidJob = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
     })
     const paidState = stateWith(paidJob, {
       stagedCarWork: {
@@ -730,7 +749,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(paid.outcome).toBe('paid')
     expect(paid.state.stagedCarWork[paidJob.car.id]).toBeUndefined()
 
-    const failedJob = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
+    const failedJob = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
     const failedState = stateWith(failedJob, {
       stagedCarWork: {
         [failedJob.car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
@@ -758,7 +777,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
     it('a PAID job removes its own tagged parts, leaving player-owned and other jobs’ parts', () => {
       const job = activeJob(twoRepairType, {
-        parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+        parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
       })
       const ours = taggedWith('pi-this', job.id)
       const otherJob = taggedWith('pi-other', 'svc-some-other-job')
@@ -772,7 +791,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     })
 
     it('a FAILED (not-paid) job likewise removes its own tagged parts; player-owned survives', () => {
-      const job = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) }) // undone -> failed
+      const job = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) }) // undone -> failed
       const ours = taggedWith('pi-this', job.id)
       const state = stateWith(job, { partInventory: [ours, playerOwned] })
 
@@ -783,7 +802,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
     it('drops an in-flight recondition job on a customer part that leaves at close-out (no orphan job)', () => {
       const job = activeJob(twoRepairType, {
-        parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+        parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
       })
       const ours = taggedWith('pi-this', job.id)
       const reconJob: Job = {
@@ -1310,6 +1329,10 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
+      // twoRepairType (suspension-refresh) is tier 2 - grant it so this
+      // acceptance actually succeeds; the tool-tier gate itself is a
+      // dedicated test below.
+      toolTiers: testToolTiers({ suspension: 2 }),
     }
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(0)
@@ -1336,6 +1359,9 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
       parkingBayCount: 0,
+      // Tier-ready (see the previous test) so the parking gate is the ONLY
+      // refusal reason this test actually exercises.
+      toolTiers: testToolTiers({ suspension: 2 }),
     }
     const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
     expect(result.state.serviceJobOffers).toHaveLength(1)
@@ -1366,7 +1392,10 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
 
     const upgraded = {
       ...state,
-      toolTiers: testToolTiers({ wheels: 2, suspension: 2 }),
+      // twoRepairType (suspension-refresh) is single-group now (Sprint 41) -
+      // both its tasks live in suspension, so upgrading that one line clears
+      // the deficit.
+      toolTiers: testToolTiers({ suspension: 2 }),
     }
     const accepted = resolveAcceptServiceJob(upgraded, offer.id, CONTEXT)
     expect(accepted.state.activeServiceJobs).toHaveLength(1)
@@ -1409,6 +1438,7 @@ describe('service jobs in advanceDay', () => {
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
+      toolTiers: testToolTiers({ suspension: 2 }), // twoRepairType is tier 2
     }
     const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
     const { state: next } = advanceDay(state, actions, 1, CONTEXT)
@@ -1433,6 +1463,7 @@ describe('service jobs in advanceDay', () => {
       ...createInitialGameState(CONTEXT, 1),
       day: dayN,
       serviceJobOffers: [offer],
+      toolTiers: testToolTiers({ suspension: 2 }), // twoRepairType is tier 2
     }
     const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })
     const { state: next } = advanceDay(state, actions, dayN, CONTEXT)
@@ -1445,7 +1476,7 @@ describe('service jobs in advanceDay', () => {
 
   it('the deadline backstop pays a finished job and fails an unfinished one', () => {
     const done = activeJob(twoRepairType, {
-      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
     })
     const paidState = { ...createInitialGameState(CONTEXT, 1), day: 8, activeServiceJobs: [done] }
     const paidBefore = paidState.cashYen
@@ -1453,7 +1484,7 @@ describe('service jobs in advanceDay', () => {
     expect(paid.cashYen).toBe(paidBefore + done.payoutYen)
     expect(paid.activeServiceJobs).toHaveLength(0)
 
-    const undone = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
+    const undone = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
     const failState = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,
@@ -1468,7 +1499,7 @@ describe('service jobs in advanceDay', () => {
   })
 
   it('the deadline backstop drops staged work too - the same resolver, not a second path', () => {
-    const undone = activeJob(twoRepairType, { parts: mintCarParts({ tyres: 'worn' }) })
+    const undone = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       day: 8,

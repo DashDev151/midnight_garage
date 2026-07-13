@@ -174,7 +174,7 @@
     "id": "brake-pads-service",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "brakePadsDiscs", "targetBand": "fine", "minToolTier": 1 }
+      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 1 }
     ],
     "deadlineDays": 3,
     "baseReputation": 4,
@@ -215,7 +215,7 @@
     "id": "brake-system-overhaul",
     "tier": 2,
     "tasks": [
-      { "action": "repair", "carPartId": "brakePadsDiscs", "targetBand": "mint", "minToolTier": 2 },
+      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 2 },
       {
         "action": "repair",
         "carPartId": "brakeCalipersLines",
@@ -247,7 +247,7 @@
   {
     "id": "tyre-fit-and-balance",
     "tier": 1,
-    "tasks": [{ "action": "repair", "carPartId": "tyres", "targetBand": "fine", "minToolTier": 1 }],
+    "tasks": [{ "action": "install", "carPartId": "tyres", "minGrade": "stock", "minToolTier": 1 }],
     "deadlineDays": 3,
     "baseReputation": 4,
     "flavorPool": [
@@ -259,8 +259,8 @@
     "id": "tyres-and-pads-service",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "tyres", "targetBand": "fine", "minToolTier": 1 },
-      { "action": "repair", "carPartId": "brakePadsDiscs", "targetBand": "fine", "minToolTier": 1 }
+      { "action": "install", "carPartId": "tyres", "minGrade": "stock", "minToolTier": 1 },
+      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 1 }
     ],
     "deadlineDays": 4,
     "baseReputation": 6,
@@ -286,7 +286,7 @@
     "tier": 3,
     "tasks": [
       { "action": "install", "carPartId": "rims", "minGrade": "sport", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "tyres", "targetBand": "mint", "minToolTier": 2 }
+      { "action": "install", "carPartId": "tyres", "minGrade": "sport", "minToolTier": 2 }
     ],
     "deadlineDays": 5,
     "baseReputation": 15,
@@ -341,7 +341,7 @@
     "tier": 2,
     "tasks": [
       { "action": "repair", "carPartId": "underbody", "targetBand": "fine", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "brakePadsDiscs", "targetBand": "fine", "minToolTier": 1 },
+      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 1 },
       { "action": "repair", "carPartId": "exhaust", "targetBand": "fine", "minToolTier": 1 }
     ],
     "deadlineDays": 6,
@@ -480,7 +480,7 @@
     "requiresTechnique": "show-fitment",
     "tasks": [
       { "action": "install", "carPartId": "rims", "minGrade": "race", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "tyres", "targetBand": "mint", "minToolTier": 2 }
+      { "action": "install", "carPartId": "tyres", "minGrade": "race", "minToolTier": 2 }
     ],
     "deadlineDays": 7,
     "baseReputation": 26,

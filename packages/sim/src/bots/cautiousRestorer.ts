@@ -161,7 +161,12 @@ export function cautiousRestorerStrategy(
       const heatPercent = state.marketHeat[lot.modelId] ?? 100
       const cleanValue = model.bookValueYen * (heatPercent / 100)
       if (cleanValue <= 0) return false
-      const restorationBill = carCostToMintYen(lot.car, model, context.partsTaxonomyById)
+      const restorationBill = carCostToMintYen(
+        lot.car,
+        model,
+        context.partsTaxonomyById,
+        context.economy,
+      )
       return restorationBill <= cleanValue * MAX_RESTORATION_TO_CLEAN_VALUE_RATIO
     })
     if (candidates.length > 0) {

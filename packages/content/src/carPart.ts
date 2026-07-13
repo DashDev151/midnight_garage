@@ -31,6 +31,16 @@ export const CarPartTaxonomyEntrySchema = z.object({
    * catalog part happens to fit, and the basis for a scrap `PartInstance`'s
    * sell-for-scrap payout. */
   stockReplacementPriceYen: z.number().int().positive(),
+  /**
+   * Sprint 41 decision 2: false for exactly `tyres`, `brakePadsDiscs`, and
+   * `clutch` - true consumables that wear to a genuine end-of-life, not
+   * something a wrench can restore. `canRepair` (bands.ts) folds this in
+   * alongside the existing scrap-is-terminal check, so every repair planner
+   * (on-car, bench recondition, service-job costing) skips a non-repairable
+   * part for free; only Replace ever touches one. Defaults true so every
+   * other part needs no data change.
+   */
+  repairable: z.boolean().default(true),
   statWeights: StatModifierSchema,
 })
 

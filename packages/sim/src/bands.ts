@@ -6,6 +6,7 @@ import type {
   ComponentId,
   ConditionBand,
   EconomyConfig,
+  RarityTier,
   ToolTiers,
 } from '@midnight-garage/content'
 
@@ -41,10 +42,37 @@ export function climbBand(from: ConditionBand, grades: number): ConditionBand {
   return BAND_ORDER[nextIndex]!
 }
 
-/** Sprint 26 decision 5: scrap is terminal - repair is structurally
- * unavailable on it, under any equipment or skill. */
-export function canRepair(band: ConditionBand): boolean {
-  return band !== 'scrap'
+/**
+ * Sprint 26 decision 5 (scrap is terminal, under any equipment or skill) +
+ * Sprint 41 decision 2 (a non-repairable consumable - tyres, brakePadsDiscs,
+ * clutch - is replace-only at every band, not just scrap). The ONE
+ * repairability predicate: every planner (`planPartRepair`/`planGroupRepair`
+ * below, the bench recondition resolver, service-job costing) calls this
+ * rather than re-deriving either check locally.
+ */
+export function canRepair(band: ConditionBand, taxonomyEntry: CarPartTaxonomyEntry): boolean {
+  return band !== 'scrap' && taxonomyEntry.repairable
+}
+
+/**
+ * Sprint 41 decision 1: the repair step-cost multiplier for a car of this
+ * `RarityTier`, read from `economy.json`'s `restoration.partsCostFactorByTier`
+ * - the tier-scaled repair economy's one resolution point, called by every
+ * function below that has (or can derive) the real car's model. Throws
+ * rather than silently defaulting when a tier has no entry (`gaisha`/
+ * `legend` aren't in the roster yet - see the schema's own doc comment and
+ * `packages/content/tests/integrity.test.ts`'s matching guard): a missing
+ * factor is a content gap, not a legitimate "no scaling" case.
+ */
+export function restorationCostFactorForTier(tier: RarityTier, economy: EconomyConfig): number {
+  const factorByTier = economy.restoration.partsCostFactorByTier as Partial<
+    Record<RarityTier, number>
+  >
+  const factor = factorByTier[tier]
+  if (factor === undefined) {
+    throw new Error(`no restoration.partsCostFactorByTier entry for car tier "${tier}"`)
+  }
+  return factor
 }
 
 /**
@@ -72,14 +100,28 @@ export function bandsAbove(current: ConditionBand): ConditionBand[] {
 }
 
 /**
- * Sprint 26 decision 5: for a repairable band, grades-to-mint times the
- * part's `stepCostYen`; for scrap, its `stockReplacementPriceYen` instead,
- * since there is no repair path to price. This is the one atom valuation
+ * Sprint 26 decision 5 + Sprint 41 decisions 1-2: the one atom valuation
  * (decision 4), Sprint 27 pricing, and Sprint 29 job payouts all reuse.
+ *
+ * - `scrap`: `stockReplacementPriceYen`, FLAT (no repair path to price, no
+ *   tier scaling - a replacement part costs what it costs).
+ * - Repairable, non-scrap: `gradesBetween(band, 'mint') * stepCostYen *
+ *   factor`, rounded - the tier-scaled repair economy.
+ * - Non-repairable (a replace-only consumable), non-scrap: `fine`/`mint`
+ *   price at 0 (a nearly-new consumable doesn't discount value); anything
+ *   below `fine` prices at the FLAT, unscaled `stockReplacementPriceYen` -
+ *   there is no repair bill to scale, only a full replacement.
  */
-export function costToMintYen(band: ConditionBand, taxonomyEntry: CarPartTaxonomyEntry): number {
+export function costToMintYen(
+  band: ConditionBand,
+  taxonomyEntry: CarPartTaxonomyEntry,
+  factor: number,
+): number {
   if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYen
-  return gradesBetween(band, 'mint') * taxonomyEntry.stepCostYen
+  if (!taxonomyEntry.repairable) {
+    return bandIndex(band) >= bandIndex('fine') ? 0 : taxonomyEntry.stockReplacementPriceYen
+  }
+  return Math.round(gradesBetween(band, 'mint') * taxonomyEntry.stepCostYen * factor)
 }
 
 /** Sprint 26 decision 6: a scrap PartInstance's sale payout - "pennies on
@@ -150,20 +192,25 @@ export function presentPartIdsInGroup(
  * MISSING slot (`isPartMissing`) prices at a full `stockReplacementPriceYen`
  * (buying a replacement, not climbing a band); a legitimately-absent
  * `forcedInduction` slot on an NA car contributes zero, unchanged from
- * Sprint 26.
+ * Sprint 26. Sprint 41: resolves `model`'s own tier factor once
+ * (`restorationCostFactorForTier`) and threads it into every repairable
+ * part's `costToMintYen` call - a missing slot stays FLAT regardless
+ * (buying a replacement, not a scaled repair).
  */
 export function carCostToMintYen(
   car: CarInstance,
   model: CarModel,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
 ): number {
+  const factor = restorationCostFactorForTier(model.tier, economy)
   let total = 0
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
     const installed = car.parts[partId].installed
     if (installed) {
-      total += costToMintYen(installed.band, entry)
+      total += costToMintYen(installed.band, entry, factor)
     } else if (isPartMissing(car, model, partId)) {
       total += entry.stockReplacementPriceYen
     }
@@ -174,21 +221,24 @@ export function carCostToMintYen(
 /** Sum of `costToMintYen` across one group only - what a group-level repair
  * job (Sprint 26 decision 13's "bridge") actually costs to fully mint, on
  * the same present/missing/absent basis as `carCostToMintYen` above,
- * scoped to `groupId`. */
+ * scoped to `groupId`. Sprint 41: same tier-factor resolution as
+ * `carCostToMintYen`. */
 export function groupCostToMintYen(
   car: CarInstance,
   model: CarModel,
   groupId: ComponentId,
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
 ): number {
+  const factor = restorationCostFactorForTier(model.tier, economy)
   let total = 0
   for (const partId of partIdsByGroup[groupId]) {
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
     const installed = car.parts[partId].installed
     if (installed) {
-      total += costToMintYen(installed.band, entry)
+      total += costToMintYen(installed.band, entry, factor)
     } else if (isPartMissing(car, model, partId)) {
       total += entry.stockReplacementPriceYen
     }
@@ -272,25 +322,31 @@ export interface PartRepairPlan {
 
 /**
  * Sprint 35: the per-part repair atom - the single source of the repair
- * cost/labor formula (Sprint 26 decisions 5+7). Climbing one part from `band`
- * to `targetBand` at `repairLevel` costs `grades * stepCostYen` and takes
- * `ceil(grades / repairLevel)` labor slots; scrap (unrepairable) or a part
- * already at/above the target yields a zero plan. Shared, so on-car group
- * repair (`planGroupRepair` below, per group part) and in-inventory
- * reconditioning (`jobs.ts`'s recondition resolver, one loose part) price and
- * size work through the exact same formula - ONE repair economy, never two.
+ * cost/labor formula (Sprint 26 decisions 5+7; Sprint 41 decisions 1-2 add
+ * the tier `factor` and the non-repairable check). Climbing one part from
+ * `band` to `targetBand` at `repairLevel` costs `round(grades * stepCostYen *
+ * factor)` and takes `ceil(grades / repairLevel)` labor slots; scrap
+ * (unrepairable), a non-repairable consumable (`canRepair` covers both), or
+ * a part already at/above the target yields a zero plan. `factor` is the
+ * caller's resolved `restorationCostFactorForTier` result - pass `1` for a
+ * caller with no car/model context (a loose bench part carries no tier to
+ * scale by). Shared, so on-car group repair (`planGroupRepair` below, per
+ * group part) and in-inventory reconditioning (`jobs.ts`'s recondition
+ * resolver, one loose part) price and size work through the exact same
+ * formula - ONE repair economy, never two.
  */
 export function planPartRepair(
   band: ConditionBand,
   targetBand: ConditionBand,
   repairLevel: 1 | 2 | 3,
   taxonomyEntry: CarPartTaxonomyEntry,
+  factor: number,
 ): PartRepairPlan {
-  if (!canRepair(band)) return { laborSlotsRequired: 0, costYen: 0 }
+  if (!canRepair(band, taxonomyEntry)) return { laborSlotsRequired: 0, costYen: 0 }
   const grades = gradesBetween(band, targetBand)
   return {
     laborSlotsRequired: slotsNeededToClimb(grades, repairLevel),
-    costYen: grades * taxonomyEntry.stepCostYen,
+    costYen: Math.round(grades * taxonomyEntry.stepCostYen * factor),
   }
 }
 
@@ -319,6 +375,12 @@ export interface GroupRepairPlan {
  * (a tool line still covers a whole group, decision 7 - a per-part repair
  * doesn't get its own tier) rather than standing up a parallel
  * single-part planner (directive 4: same concern, extend don't duplicate).
+ *
+ * Sprint 41: `factor` is the caller's resolved `restorationCostFactorForTier`
+ * result (the real car's model tier) - pass `1` for a caller with no
+ * car/model context. Threaded straight into `planPartRepair`; a non-repairable
+ * consumable is excluded from `partIds` exactly like scrap (`canRepair`
+ * covers both), so it never enters the plan.
  */
 export function planGroupRepair(
   car: CarInstance,
@@ -327,6 +389,7 @@ export function planGroupRepair(
   toolTiers: ToolTiers,
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  factor: number,
   onlyPartId?: CarPartId,
 ): GroupRepairPlan {
   const repairLevel = repairLevelForGroup(toolTiers, groupId)
@@ -342,16 +405,50 @@ export function planGroupRepair(
     const band = car.parts[partId].installed!.band
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
-    const plan = planPartRepair(band, targetBand, repairLevel, entry)
+    const plan = planPartRepair(band, targetBand, repairLevel, entry, factor)
     // `laborSlotsRequired > 0` is exactly "repairable and below the target"
-    // (scrap and nothing-to-climb both size to 0 slots) - the same inclusion
-    // set the pre-Sprint-35 explicit `canRepair`/`grades <= 0` guards produced.
+    // (scrap, a non-repairable consumable, and nothing-to-climb all size to 0
+    // slots) - the same inclusion set the pre-Sprint-35 explicit
+    // `canRepair`/`grades <= 0` guards produced.
     if (plan.laborSlotsRequired === 0) continue
     laborSlotsRequired += plan.laborSlotsRequired
     costYen += plan.costYen
     partIds.push(partId)
   }
   return { laborSlotsRequired, costYen, partIds }
+}
+
+/**
+ * Sprint 41 (coordinator follow-up on Sprint 40's `BandPicker`): the worst
+ * REPAIRABLE, sub-mint present-part band within `groupId` - the group
+ * "Repair all" control's own floor. Distinct from the group's worst-band
+ * DISPLAY chip (`gameStore.ts`'s `groupBandsForCar`), which correctly
+ * includes scrap and non-repairable parts in what it reports as the group's
+ * worst condition - that's real information. Feeding that same value into
+ * `BandPicker`'s `currentBand`, though, let a group with a scrap part sitting
+ * next to a merely-worn one offer `poor` as a selectable repair target: a
+ * dead action, since `planGroupRepair` skips the scrap part and finds
+ * nothing repairable below `poor`, producing an empty plan that silently
+ * no-ops on Confirm. This is the fix - the picker's floor is the worst band
+ * a repair action could ACTUALLY move, never scrap or a replace-only
+ * consumable. Null when nothing in the group is both repairable and below
+ * mint - the signal the group repair control should not render at all.
+ */
+export function worstRepairableBandInGroup(
+  car: CarInstance,
+  groupId: ComponentId,
+  partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+): ConditionBand | null {
+  let worst: ConditionBand | null = null
+  for (const partId of presentPartIdsInGroup(car, groupId, partIdsByGroup)) {
+    const installed = car.parts[partId].installed!
+    const entry = partsTaxonomyById[partId]
+    if (!entry || !canRepair(installed.band, entry)) continue
+    if (bandIndex(installed.band) >= bandIndex('mint')) continue
+    if (worst === null || bandIndex(installed.band) < bandIndex(worst)) worst = installed.band
+  }
+  return worst
 }
 
 /**

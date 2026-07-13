@@ -82,7 +82,7 @@ function instanceBaseValueYen(
   const { hassleFactor, floorFraction } = economy.valuation
   const cleanValue =
     model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, model, partsTaxonomyById)
+  const restorationBill = carCostToMintYen(car, model, partsTaxonomyById, economy)
   const floor = floorFraction * cleanValue
   return Math.max(floor, cleanValue - hassleFactor * restorationBill)
 }

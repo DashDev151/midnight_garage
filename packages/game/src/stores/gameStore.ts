@@ -54,6 +54,7 @@ import {
   deriveReputationTier,
   emptyDayActions,
   generateAuctionCarInstance,
+  groupCostToMintYen,
   hasParkingSpace,
   isPartMissing,
   isServiceJobInTransit,
@@ -84,6 +85,7 @@ import {
   resolveSellViaWalkIn,
   resolveServiceJob,
   resolveSetForSale,
+  restorationCostFactorForTier,
   scrapValueYen,
   shopTitle,
   swapCars as swapCarsCore,
@@ -91,6 +93,7 @@ import {
   unlockedTechniques,
   upgradeHintFor,
   valuateCarForBuyer,
+  worstRepairableBandInGroup,
   type DeliverySpeed,
   type NewJobSpec,
   type ServiceJobOutcome,
@@ -161,6 +164,10 @@ export interface CarPartRowView {
    * defect, nothing to fill, distinct copy from `missing`. Always false for
    * every other part. */
   legitimatelyAbsent: boolean
+  /** Sprint 41 decision 2: false for tyres/brakePadsDiscs/clutch - the
+   * per-part repair row and the bench recondition control both hide
+   * themselves when this is false; only Replace ever touches the part. */
+  repairable: boolean
 }
 
 /** A car paired with its resolved model, display name, and derived stats. */
@@ -187,6 +194,16 @@ export interface CarDetail extends DetailedCar {
    * Sprint 28 scope (sprint26.md decision 10/13's own deferral).
    */
   groupBands: Record<ComponentId, ConditionBand>
+  /**
+   * Sprint 41 decision 4 (condition-panel readability): each of the 6
+   * groups' own scaled restoration bill (`groupCostToMintYen`, the car's
+   * real tier factor applied) - the condition panel's per-group bill line.
+   */
+  groupBillYen: Record<ComponentId, number>
+  /** Sprint 41 decision 4: the car's total restoration bill
+   * (`carCostToMintYen`) - the same figure `marketValueYen` deducts,
+   * surfaced as the condition panel's one total-bill line. */
+  totalBillYen: number
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -586,6 +603,58 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * Each of the 6 real groups' own scaled restoration bill (Sprint 41
+   * decision 4) - `groupCostToMintYen` per group, the condition panel's
+   * per-group bill line. Reuses the exact same function `repair()`'s own
+   * cost preview and `carCostToMintYen`'s per-part sum both build on -
+   * never a second bill computation.
+   */
+  function groupBillsForCar(car: CarInstance, model: CarModel): Record<ComponentId, number> {
+    const result = {} as Record<ComponentId, number>
+    for (const groupId of REAL_COMPONENT_GROUPS) {
+      result[groupId] = groupCostToMintYen(
+        car,
+        model,
+        groupId,
+        context.value.partIdsByGroup,
+        context.value.partsTaxonomyById,
+        context.value.economy,
+      )
+    }
+    return result
+  }
+
+  /**
+   * The worst REPAIRABLE, sub-mint present-part band within a group (Sprint
+   * 41 coordinator fix) - the group "Repair all" control's own floor,
+   * distinct from `groupBandsForCar`'s display chip (which correctly
+   * includes scrap/non-repairable parts in what it reports as the group's
+   * worst condition - real information, left unchanged). Feeding THAT value
+   * into `BandPicker`'s `currentBand` let a group with a scrap part next to
+   * a merely-worn one offer `poor` as a selectable target - a dead action,
+   * since `planGroupRepair` finds nothing repairable below `poor` and
+   * silently no-ops. Null when nothing in the group is both repairable and
+   * below mint - the signal the control should not render at all.
+   */
+  function groupRepairFloorBand(carId: string, componentId: ComponentId): ConditionBand | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    return worstRepairableBandInGroup(
+      car,
+      componentId,
+      context.value.partIdsByGroup,
+      context.value.partsTaxonomyById,
+    )
+  }
+
+  /** Sprint 41 decision 2: whether a real car part can be repaired at all -
+   * false for tyres/brakePadsDiscs/clutch. The per-part repair row and the
+   * bench recondition control (`PartCard.vue`) both key off this. */
+  function isPartRepairable(carPartId: CarPartId): boolean {
+    return context.value.partsTaxonomyById[carPartId]?.repairable ?? true
+  }
+
+  /**
    * Every real part addressed to `componentId`'s group on `car` (Sprint 26
    * decision 13) - operates on a `CarInstance` directly so both the
    * owned-car screen (`partsInGroup`, below, looked up by car id) and the
@@ -618,6 +687,7 @@ export const useGameStore = defineStore('game', () => {
         grade: part?.grade ?? null,
         missing,
         legitimatelyAbsent: !installed && !missing,
+        repairable: isPartRepairable(partId),
       }
     })
   }
@@ -736,6 +806,8 @@ export const useGameStore = defineStore('game', () => {
   function carDetail(carId: string): CarDetail | undefined {
     const car = findWorkableCar(carId)
     if (!car) return undefined
+    const model = context.value.modelsById[car.modelId]
+    if (!model) return undefined
     const serviceJob = gameState.value.activeServiceJobs.find((sj) => sj.car.id === carId)
     return {
       ...detailFor(car),
@@ -744,6 +816,13 @@ export const useGameStore = defineStore('game', () => {
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
       stagedActions: gameState.value.stagedCarWork[carId] ?? [],
       groupBands: groupBandsForCar(car),
+      groupBillYen: groupBillsForCar(car, model),
+      totalBillYen: carCostToMintYen(
+        car,
+        model,
+        context.value.partsTaxonomyById,
+        context.value.economy,
+      ),
     }
   }
 
@@ -865,7 +944,12 @@ export const useGameStore = defineStore('game', () => {
       playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(lot.car),
       partRows: allCarPartRows(lot.car, model),
-      restorationBillYen: carCostToMintYen(lot.car, model, context.value.partsTaxonomyById),
+      restorationBillYen: carCostToMintYen(
+        lot.car,
+        model,
+        context.value.partsTaxonomyById,
+        context.value.economy,
+      ),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),
@@ -1258,6 +1342,9 @@ export const useGameStore = defineStore('game', () => {
   ): void {
     const car = findWorkableCar(carId)
     if (!car) return
+    const model = context.value.modelsById[car.modelId]
+    if (!model) return
+    const factor = restorationCostFactorForTier(model.tier, context.value.economy)
     const plan = planGroupRepair(
       car,
       componentId,
@@ -1265,6 +1352,7 @@ export const useGameStore = defineStore('game', () => {
       gameState.value.toolTiers,
       context.value.partIdsByGroup,
       context.value.partsTaxonomyById,
+      factor,
       carPartId,
     )
     if (plan.partIds.length === 0) return
@@ -1978,6 +2066,8 @@ export const useGameStore = defineStore('game', () => {
     buyerName,
     carDetail,
     groupBandsForCar,
+    groupRepairFloorBand,
+    isPartRepairable,
     partsInGroup,
     carPartLabel,
     groupForCarPart,

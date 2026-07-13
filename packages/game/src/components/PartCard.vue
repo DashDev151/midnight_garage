@@ -80,14 +80,23 @@ const isCustomerOwned = computed(() => props.instance.customerJobId !== undefine
 const reconditionTargetBand = ref<ConditionBand>('mint')
 
 /**
+ * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only - a
+ * non-repairable part can't be bench-reconditioned any more than it can be
+ * repaired on a car (`isPartRepairable` reads the same taxonomy flag
+ * `canRepair` does, bands.ts).
+ */
+const isRepairable = computed(() => game.isPartRepairable(props.part.carPartId))
+
+/**
  * Sprint 35: the recondition quote (cost + labor) for the selected band, or
- * null when there is nothing to do (already at/above target, or scrap).
- * Reconditioning routes through the exact same repair economy as an on-car
- * repair. Sprint 36: no tooling gate anymore - only today's labor gates the
- * control. Sprint 40: prices whatever band the player picked, not always mint.
+ * null when there is nothing to do (already at/above target, scrap, or -
+ * Sprint 41 - non-repairable). Reconditioning routes through the exact same
+ * repair economy as an on-car repair. Sprint 36: no tooling gate anymore -
+ * only today's labor gates the control. Sprint 40: prices whatever band the
+ * player picked, not always mint.
  */
 const reconditionQuote = computed(() =>
-  props.showRecondition && !isScrap.value
+  props.showRecondition && !isScrap.value && isRepairable.value
     ? game.reconditionQuoteFor(props.instance.id, reconditionTargetBand.value)
     : null,
 )

@@ -65,18 +65,6 @@ pass."
   stock ones. Composes cleanly with the existing value math (`installedPartsValueYen` already
   prices aftermarket) and the missing-slot roll (a slot is then one of: stock / aftermarket / worn
   / missing).
-- [ ] **`stepCostYen` (the per-grade repair cost in the parts taxonomy) is stock-calibrated and does
-  not scale with a part's value (surfaced during the Sprint 34 double-count fix).** The restoration
-  bill (`bands.ts` `costToMintYen` -> `carCostToMintYen`) charges `gradesBetween(band,'mint') *
-  stepCostYen` to repair ANY part in a slot, whether it is a Y5k stock part or a Y300k race turbo.
-  Since Sprint 34 made the bill the single place condition is priced (aftermarket parts no longer
-  band-discounted in `installedPartsValueYen`), this means wear on an EXPENSIVE aftermarket part is
-  cheap to fix relative to the value it restores, so restoring high-value mods is disproportionately
-  profitable. Structurally the de-dup is correct (condition counted once); the magnitude is the open
-  question: should `stepCostYen` (or the restoration cost generally) scale with the installed part's
-  price/grade rather than being a flat per-slot stock number? A content/calibration decision for the
-  balance pass, not a bug. Only bites once the player mods a car or pre-installed aftermarket parts
-  (above) land; generated cars are all stock today so it is dormant.
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
@@ -101,6 +89,15 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **Donor-car repair arbitrage (found in Sprint 41 review, 2026-07-13).** Repair cost now
+  scales by the HOST car's tier factor while parts remain freely transferable between cars, so
+  the optimal way to restore an expensive car's worn repairable parts is: install them on a kept
+  shitbox (factor 0.12), repair there, swap back - roughly 10x cheaper at the cost of a couple of
+  install/remove labor slots per part. Same root as the bench-recondition asymmetry (bench uses
+  factor 1, deliberately, since a loose part has no car). No bot exploits it; a player will.
+  Candidate fixes when tuning: scale repair cost by the PART's own value/grade instead of (or
+  blended with) the host car's tier, or make swap labor expensive enough to kill the loop. A
+  design call for the balance pass, not a bug fix.
 - [ ] **Sprint 30 living-auction tuning: the board is a fire sale at first-pass numbers
   (maintainer chose commit-as-is, tune in playtest, 2026-07-12).** Mechanics shipped and all hard
   invariants pass, but the balance harness shows 94% of auction wins are cheap "steals" (target
@@ -134,18 +131,6 @@ pass."
   resolve skipped lots offscreen, retune, etc.), build a STRIPPED throwaway demo first: one live
   bidding-round screen on a sample lot, coexisting with the current system, no saves/board/tuning
   touched. Decide from the demo. See the 2026-07-12 chat design write-up.
-- [ ] **Model-independent part restoration costs make cheap cars not restore-worthy (Sprint 27,
-  flag-and-tune-later per maintainer).** `restorationBill` (`carCostToMintYen`, all 29 real parts)
-  is priced from `parts-taxonomy.json`'s flat, model-independent step costs, so a realistically-
-  worn car's bill (~Y400k-1.4M) routinely dwarfs a shitbox/common car's own Y180k-650k book value
-  while being a small fraction of a premium car's Y2-6M. The Sprint 27 auction-seizure symptom
-  (worn cars priced below a static book-value reserve) is FIXED - reserve was rebased onto the
-  guide value (`sprint27.md` Exit follow-up, Sprint 30 decision 2 pulled forward) - but the deeper
-  structural point remains: a cheap car whose restoration bill exceeds its own clean value is
-  genuinely not worth restoring under the current taxonomy. The maintainer chose to flag this and
-  tune later (via `hassleFactor`/`floorFraction`, or eventually model-scaled restoration costs)
-  rather than restructure the frozen taxonomy now. Not blocking; a real balance call for the
-  harness pass.
 - [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
   sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
   behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not
