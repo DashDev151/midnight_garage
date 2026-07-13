@@ -97,12 +97,14 @@ const TURNOUT_LABEL: Record<string, string> = {
 }
 
 /** "current bid + who holds it" (Sprint 20) - the board's headline number,
- * always the real figure, never obfuscated. */
+ * always the real figure, never obfuscated. Sprint 46: "dealer" implied a
+ * real, named rival that doesn't exist (`leadingBidder` is just
+ * `'player' | 'rival'`) - "leading bid" makes no false claim about who. */
 function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' | null): string {
   if (currentBidYen <= 0) return 'no bids yet'
   return leadingBidder === 'player'
     ? `you lead at ${formatYen(currentBidYen)}`
-    : `dealer leads at ${formatYen(currentBidYen)}`
+    : `leading bid ${formatYen(currentBidYen)}`
 }
 </script>
 

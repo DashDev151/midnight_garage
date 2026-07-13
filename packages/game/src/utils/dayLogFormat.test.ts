@@ -16,10 +16,34 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'market-heat-shift', modelId: 'honda-city-e-aa', deltaPercent: -3 },
   { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
   { type: 'auction-bid-placed', lotId: 'lot-1', maxBidYen: 110_000 },
-  { type: 'auction-outbid', lotId: 'lot-1', newBidYen: 140_000 },
-  { type: 'auction-bid-won', lotId: 'lot-1', finalPriceYen: 120_000 },
-  { type: 'auction-bid-lost', lotId: 'lot-1', winningPriceYen: 130_000 },
-  { type: 'lot-bought-out', lotId: 'lot-1', priceYen: 240_000 },
+  {
+    type: 'auction-outbid',
+    lotId: 'lot-1',
+    newBidYen: 140_000,
+    modelId: 'honda-city-e-aa',
+    year: 1984,
+  },
+  {
+    type: 'auction-bid-won',
+    lotId: 'lot-1',
+    finalPriceYen: 120_000,
+    modelId: 'honda-city-e-aa',
+    year: 1984,
+  },
+  {
+    type: 'auction-bid-lost',
+    lotId: 'lot-1',
+    winningPriceYen: 130_000,
+    modelId: 'honda-city-e-aa',
+    year: 1984,
+  },
+  {
+    type: 'lot-bought-out',
+    lotId: 'lot-1',
+    priceYen: 240_000,
+    modelId: 'honda-city-e-aa',
+    year: 1984,
+  },
   {
     type: 'offer-received',
     carInstanceId: 'car-1',
@@ -70,9 +94,52 @@ describe('describeLogEntry', () => {
   })
 
   it('renders the Sprint 20 overnight-outbid beat with the new board price', () => {
-    const line = describeLogEntry({ type: 'auction-outbid', lotId: 'lot-1', newBidYen: 1_240_000 })
+    const line = describeLogEntry({
+      type: 'auction-outbid',
+      lotId: 'lot-1',
+      newBidYen: 1_240_000,
+      modelId: 'm1',
+      year: 1990,
+    })
     expect(line).toContain('Outbid')
     expect(line).toContain('¥1,240,000')
+  })
+
+  it('Sprint 46: won/lost/bought-out entries name the car (year + resolved model), never a raw lot id', () => {
+    const resolveModelName = (id: string) => (id === 'm1' ? 'Test Car' : id)
+
+    const won = describeLogEntry(
+      {
+        type: 'auction-bid-won',
+        lotId: 'lot-1',
+        finalPriceYen: 120_000,
+        modelId: 'm1',
+        year: 1984,
+      },
+      resolveModelName,
+    )
+    expect(won).toBe('Won the 1984 Test Car for ¥120,000')
+    expect(won).not.toContain('lot-1')
+
+    const lost = describeLogEntry(
+      {
+        type: 'auction-bid-lost',
+        lotId: 'lot-1',
+        winningPriceYen: 130_000,
+        modelId: 'm1',
+        year: 1995,
+      },
+      resolveModelName,
+    )
+    expect(lost).toBe('Lost the 1995 Test Car (went for ¥130,000)')
+    expect(lost).not.toContain('lot-1')
+
+    const boughtOut = describeLogEntry(
+      { type: 'lot-bought-out', lotId: 'lot-1', priceYen: 240_000, modelId: 'm1', year: 1987 },
+      resolveModelName,
+    )
+    expect(boughtOut).toBe('Bought the 1987 Test Car for ¥240,000')
+    expect(boughtOut).not.toContain('lot-1')
   })
 
   it('Sprint 25 task 2: accepting a service job reads as the customer, not a raw car id', () => {

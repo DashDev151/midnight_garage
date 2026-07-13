@@ -987,7 +987,13 @@ export const useGameStore = defineStore('game', () => {
     if (lot.currentBidYen === 0) return 'no bids yet - open to bid'
     const threshold = context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER
     const quietNightsLeft = Math.max(1, threshold - lot.quietDays)
-    const backstopNightsLeft = Math.max(1, lot.expiresOnDay - gameState.value.day)
+    // Sprint 46 fix: the real backstop hammer fires when `day >= expiresOnDay`
+    // (bidding.ts's resolveLotForDay), where `day` here is still today's
+    // pre-increment value - so the backstop CANNOT fire tonight when
+    // `day === expiresOnDay - 1`. The `+ 1` mirrors the quiet-days arm's own
+    // implicit offset; without it this showed "final call" one full day
+    // before the backstop could actually close the lot (playtest 2026-07-13).
+    const backstopNightsLeft = Math.max(1, lot.expiresOnDay - gameState.value.day + 1)
     const nightsLeft = Math.min(quietNightsLeft, backstopNightsLeft)
     if (nightsLeft <= 1) return 'final call: closes at End Day unless a new bid comes in'
     return `closes in ${nightsLeft} days unless bid on (any bid resets the clock)`

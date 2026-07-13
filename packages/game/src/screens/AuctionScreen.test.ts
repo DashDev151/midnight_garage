@@ -84,6 +84,43 @@ describe('AuctionScreen', () => {
     }
   })
 
+  describe('the close-label backstop fix (Sprint 46 - playtest 2026-07-13 regression)', () => {
+    /**
+     * Real repro: a lot's expiry backstop hammers when `day >= expiresOnDay`
+     * (bidding.ts), but the badge used to compute `expiresOnDay - day` (no
+     * +1), so it showed "final call" a full day before the backstop could
+     * actually close the lot - a led lot would survive a quiet night despite
+     * the promise, closing only the following day.
+     */
+    it('does NOT show final call one day before the backstop can fire, but DOES show it the day it fires', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      // Give the lot breathing room on the quiet-days arm so only the
+      // backstop arm is under test.
+      const withBid = {
+        ...lot,
+        currentBidYen: lot.currentBidYen || 1,
+        leadingBidder: 'player' as const,
+        playerHasBid: true,
+        quietDays: 0,
+        expiresOnDay: game.gameState.day + 1,
+      }
+      game.gameState = {
+        ...game.gameState,
+        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
+          l.id === lot.id ? withBid : l,
+        ),
+      }
+      // Today is expiresOnDay - 1: the backstop cannot fire tonight.
+      expect(game.lotDetail(lot.id)!.closeLabel).not.toContain('final call')
+
+      game.gameState = { ...game.gameState, day: withBid.expiresOnDay }
+      // Today is expiresOnDay: the backstop fires tonight - the badge must say so.
+      expect(game.lotDetail(lot.id)!.closeLabel).toContain('final call')
+    })
+  })
+
   describe('the capacity cascade warning (Sprint 45)', () => {
     it('shows neither warning while the shop still has real capacity', () => {
       const wrapper = mountScreen()

@@ -71,4 +71,33 @@
 
 ## Exit
 
-(filled at completion)
+Implemented directly. All four tasks done.
+
+**Files touched:**
+
+- `packages/content/src/gameState.ts` - `modelId`/`year` added to `auction-outbid`,
+  `auction-bid-won`, `auction-bid-lost`, `lot-bought-out` (matching `CarInstance.year`'s own
+  `z.number().int()`, no stricter).
+- `packages/sim/src/bidding.ts` - all four entry-creation sites stamp `lot.car.modelId`/
+  `lot.car.year`.
+- `packages/game/src/stores/gameStore.ts` - `auctionCloseLabel`'s backstop arm:
+  `expiresOnDay - day` -> `expiresOnDay - day + 1`, matching the quiet-days arm's own implicit
+  offset.
+- `packages/game/src/screens/AuctionScreen.vue` - `bidStateLabel`'s "dealer leads" -> "leading
+  bid" (no fictional entity implied; `leadingBidder` was always just `'player' | 'rival'`).
+- `packages/game/src/utils/dayLogFormat.ts` - the four cases rewritten to name the car
+  ("Won the 1984 Honda City E for Y38,170", etc.) instead of the raw lot id.
+- Test fixtures updated for the new required fields: `packages/content/tests/gameState.test.ts`,
+  `packages/sim/tests/bidding.test.ts` (two `toEqual` literals), `packages/game/src/utils/
+  dayLogFormat.test.ts` (SAMPLES fixture + a new won/lost/bought-out naming test).
+- New regression test: `packages/game/src/screens/AuctionScreen.test.ts` - reproduces the exact
+  playtest scenario (a lot one day before its expiry backstop must NOT show "final call"; the
+  day the backstop actually fires it must).
+
+**Verification:** `pnpm typecheck` (3 packages) clean, `pnpm lint` clean, `pnpm format` clean,
+`pnpm test` (content+sim+game) **933/933 pass**. Golden hashes in `advanceDay.test.ts` needed
+NO re-pin - confirmed why: `DayLog` is ephemeral (never persisted, `saveCodec.ts` never
+references it - Sprint 45 precedent) and `hashState()` hashes `GameState`, not the log, so
+adding fields to `DayLogEntry` variants has zero effect on the hashed shape. Balance harness
+skipped per instruction (no sim-behavior change - the badge fix and log copy are display-only;
+`bidding.ts`'s actual resolution logic, cash flow, and RNG draws are untouched).

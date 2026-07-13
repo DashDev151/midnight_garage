@@ -372,7 +372,15 @@ export function advanceLotOvernight(
   return {
     lot: workingLot,
     log: displacedPlayer
-      ? [{ type: 'auction-outbid', lotId: lot.id, newBidYen: workingLot.currentBidYen }]
+      ? [
+          {
+            type: 'auction-outbid',
+            lotId: lot.id,
+            newBidYen: workingLot.currentBidYen,
+            modelId: lot.car.modelId,
+            year: lot.car.year,
+          },
+        ]
       : [],
     raised: true,
   }
@@ -488,6 +496,8 @@ export function resolveLotForDay(
         type: 'auction-bid-lost',
         lotId: lot.id,
         winningPriceYen: updatedLot.currentBidYen,
+        modelId: lot.car.modelId,
+        year: lot.car.year,
       })
     }
     return { state: removeLot(state), log }
@@ -501,14 +511,26 @@ export function resolveLotForDay(
   if (!hasAcquisitionSpace(state)) {
     log.push(
       { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-space' },
-      { type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: updatedLot.currentBidYen },
+      {
+        type: 'auction-bid-lost',
+        lotId: lot.id,
+        winningPriceYen: updatedLot.currentBidYen,
+        modelId: lot.car.modelId,
+        year: lot.car.year,
+      },
     )
     return { state: removeLot(state), log }
   }
   if (state.cashYen < updatedLot.currentBidYen) {
     log.push(
       { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-cash' },
-      { type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: updatedLot.currentBidYen },
+      {
+        type: 'auction-bid-lost',
+        lotId: lot.id,
+        winningPriceYen: updatedLot.currentBidYen,
+        modelId: lot.car.modelId,
+        year: lot.car.year,
+      },
     )
     return { state: removeLot(state), log }
   }
@@ -525,7 +547,13 @@ export function resolveLotForDay(
     ),
     updatedLot.car.id,
   )
-  log.push({ type: 'auction-bid-won', lotId: lot.id, finalPriceYen: updatedLot.currentBidYen })
+  log.push({
+    type: 'auction-bid-won',
+    lotId: lot.id,
+    finalPriceYen: updatedLot.currentBidYen,
+    modelId: lot.car.modelId,
+    year: lot.car.year,
+  })
   return { state: withCar, log }
 }
 
@@ -567,6 +595,8 @@ export function resolveBuyoutInstant(
   )
   return {
     state: withCar,
-    log: [{ type: 'lot-bought-out', lotId, priceYen }],
+    log: [
+      { type: 'lot-bought-out', lotId, priceYen, modelId: lot.car.modelId, year: lot.car.year },
+    ],
   }
 }

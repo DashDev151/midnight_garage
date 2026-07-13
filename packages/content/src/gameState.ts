@@ -282,26 +282,38 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
    * Sprint 20 (auction rework II): the overnight-step "you were outbid"
    * beat - fires only when the dealers' raise displaces the player as
    * `leadingBidder` (never on a dealer-vs-dealer raise, which logs nothing).
+   * `modelId`/`year` (Sprint 46) let the log name the car - the lot itself
+   * is gone from state by the time this renders, so both are snapshotted
+   * from `lot.car`/`model` at the point the entry is created, not resolved
+   * later.
    */
   z.object({
     type: z.literal('auction-outbid'),
     lotId: z.string().min(1),
     newBidYen: z.number().int().nonnegative(),
+    modelId: z.string().min(1),
+    year: z.number().int(),
   }),
   z.object({
     type: z.literal('auction-bid-won'),
     lotId: z.string().min(1),
     finalPriceYen: z.number().int().nonnegative(),
+    modelId: z.string().min(1),
+    year: z.number().int(),
   }),
   z.object({
     type: z.literal('auction-bid-lost'),
     lotId: z.string().min(1),
     winningPriceYen: z.number().int().nonnegative(),
+    modelId: z.string().min(1),
+    year: z.number().int(),
   }),
   z.object({
     type: z.literal('lot-bought-out'),
     lotId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
+    modelId: z.string().min(1),
+    year: z.number().int(),
   }),
   z.object({
     type: z.literal('service-job-accepted'),

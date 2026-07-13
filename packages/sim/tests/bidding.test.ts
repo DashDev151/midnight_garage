@@ -506,7 +506,13 @@ describe('advanceLotOvernight', () => {
     const displaced = advanceLotOvernight(playerLed, state, CONTEXT, raised.day)
     expect(displaced.lot.leadingBidder).toBe('rival')
     expect(displaced.log).toEqual([
-      { type: 'auction-outbid', lotId: playerLed.id, newBidYen: displaced.lot.currentBidYen },
+      {
+        type: 'auction-outbid',
+        lotId: playerLed.id,
+        newBidYen: displaced.lot.currentBidYen,
+        modelId: playerLed.car.modelId,
+        year: playerLed.car.year,
+      },
     ])
 
     const rivalLed: AuctionLot = { ...playerLed, leadingBidder: 'rival' }
@@ -792,7 +798,15 @@ describe('resolveBuyoutInstant', () => {
     expect(result.state.activeAuctionLots).toHaveLength(0)
     // Sprint 26: lots are transparent now - no reveal machinery, so the
     // handover log is exactly the buyout entry.
-    expect(result.log).toEqual([{ type: 'lot-bought-out', lotId: lot.id, priceYen }])
+    expect(result.log).toEqual([
+      {
+        type: 'lot-bought-out',
+        lotId: lot.id,
+        priceYen,
+        modelId: lot.car.modelId,
+        year: lot.car.year,
+      },
+    ])
   })
 
   it('Sprint 42: creates the car ledger with purchaseYen = the buyout price', () => {

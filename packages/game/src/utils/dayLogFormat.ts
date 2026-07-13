@@ -41,13 +41,13 @@ export function describeLogEntry(
     case 'auction-bid-placed':
       return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
     case 'auction-outbid':
-      return `Outbid overnight on lot ${entry.lotId} - now ${formatYen(entry.newBidYen)}`
+      return `Outbid overnight on the ${entry.year} ${resolveModelName(entry.modelId)} - now ${formatYen(entry.newBidYen)}`
     case 'auction-bid-won':
-      return `Won lot ${entry.lotId} for ${formatYen(entry.finalPriceYen)}`
+      return `Won the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.finalPriceYen)}`
     case 'auction-bid-lost':
-      return `Lost lot ${entry.lotId} (went for ${formatYen(entry.winningPriceYen)})`
+      return `Lost the ${entry.year} ${resolveModelName(entry.modelId)} (went for ${formatYen(entry.winningPriceYen)})`
     case 'lot-bought-out':
-      return `Bought out lot ${entry.lotId} for ${formatYen(entry.priceYen)}`
+      return `Bought the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.priceYen)}`
     case 'offer-received':
       return offerCopy(
         resolveBuyerName(entry.buyerId),
