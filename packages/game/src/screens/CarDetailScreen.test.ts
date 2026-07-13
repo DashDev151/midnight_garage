@@ -247,7 +247,9 @@ describe('CarDetailScreen', () => {
     // data-test="repair-body") to feed that day's labor into the still-open
     // job - a bounded loop over that real flow.
     for (let i = 0; i < 10 && game.carDetail(id)!.groupBands.body !== step.targetBand; i++) {
-      await wrapper.find('[data-test="end-day"]').trigger('click')
+      // Sprint 51: EndDayButton is App.vue's single global mount point now,
+      // not rendered on this screen - advance via the store directly.
+      game.endDay()
       await flushPromises()
       if (game.carDetail(id)!.groupBands.body === step.targetBand) break
       const continueBtn = wrapper.find('[data-test="repair-body"]')

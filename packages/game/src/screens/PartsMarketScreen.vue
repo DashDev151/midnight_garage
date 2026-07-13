@@ -2,7 +2,6 @@
 import type { CarPartId, ComponentId, Grade, Part } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import EndDayButton from '../components/EndDayButton.vue'
 import RotaryMarker from '../components/RotaryMarker.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -351,8 +350,6 @@ function onCheckout(): void {
         </aside>
       </div>
     </template>
-
-    <EndDayButton />
   </section>
 </template>
 

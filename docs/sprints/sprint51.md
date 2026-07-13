@@ -77,4 +77,46 @@ Upgrades screen, which Sprint 52 rewrites wholesale).
 
 ## Exit
 
-(filled at completion)
+**Implemented and verified 2026-07-13.**
+
+- `packages/game/src/App.vue` - a "Menu" nav link (replacing the removed "Spike" link); a global
+  `keydown` handler (Escape) that, in order, defers to a focused input/textarea/select, defers to
+  CarDetail's own pick-cancel handler (`useDragSession`), closes DayReport or JobComplete if
+  either is open, closes End Day's cart-confirm modal if open, else navigates to `/menu`; the one
+  app-wide `EndDayButton` mount (fixed bottom-right via `.floating-end-day`, `show-cash`, hidden on
+  the menu and the dev-only spike route), reached via a template ref for the Escape handler to
+  read/close its `confirming` state; `<main>` gains bottom padding so content never sits under it.
+- `packages/game/src/components/EndDayButton.vue` - `defineExpose({ confirming, cancel })` so
+  App.vue's global handler can close the cart-confirm modal without new shared state.
+- `packages/game/src/screens/{AuctionScreen,PartsMarketScreen,ServiceJobsScreen,GarageScreen}.vue`
+  and `CarDetailScreen.vue` (both its own instances) - the six per-screen `EndDayButton` mounts and
+  their now-unused imports removed.
+- `packages/game/src/screens/MenuScreen.vue` - a new "Save" section mounting `SaveMenu` (moved out
+  of `App.vue`'s nav); its own save/export/import logic is untouched.
+- `packages/game/src/router/index.ts` - the `/spike` route now registers only under
+  `import.meta.env.DEV`; confirmed via `pnpm build` that the spike screen and its entire PixiJS
+  dependency chain (previously several large chunks) are absent from the production bundle
+  entirely, not merely unreachable - stronger than the doc's own acceptance bar.
+- `packages/game/src/screens/UpgradesScreen.vue` - the stale, factually-wrong "Tool upgrades take
+  cash only" header hint fixed to state the real tools-and-bays-both-cost-cash-and-reputation rule.
+- `packages/game/src/copyGuard.test.ts` (new) - a static-source guard scanning every screen's
+  `<HelpHint>` copy for "gate"/"staged"/"dev" (UpgradesScreen's own tool-wall HelpHint exempted from
+  the "gate" check only, per the doc's carve-out for Sprint 52).
+- `packages/game/src/App.test.ts` (new, 6 tests) - Menu link + single End Day instance; Escape
+  reaches the menu; Escape defers to an in-progress pick session; Escape is ignored while a text
+  field has focus; Escape closes the cart-confirm modal instead of navigating, and the modal's own
+  confirm button still works normally afterward.
+- `GarageScreen.test.ts`/`CarDetailScreen.test.ts` - the handful of tests that used to click the
+  screen's own `EndDayButton` now call `game.endDay()` directly (the same action the button calls),
+  since the button no longer renders on these screens in isolation.
+
+A real test-isolation bug was found and fixed while writing `App.test.ts`: mounted `App` wrappers
+were never unmounted between tests, so each left its `window` keydown listener live; by the later
+tests, multiple stale listeners fired on one Escape dispatch, one of them reading an earlier test's
+already-torn-down state and navigating the shared router regardless of the current test's actual
+modal state. Fixed with the same explicit-teardown array pattern `CarDetailScreen.test.ts` already
+uses for the identical class of leak.
+
+Verification: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format` clean; full suite
+`pnpm test` 957/957 passing; `pnpm build` succeeds. Balance harness skipped - pure chrome/UI
+restructuring, zero sim-economics change.

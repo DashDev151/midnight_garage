@@ -1,0 +1,100 @@
+import { PARTS } from '@midnight-garage/content'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import App from './App.vue'
+import { clearDragSession, useDraggable } from './composables/useDragAndDrop'
+import { router } from './router'
+import { useGameStore } from './stores/gameStore'
+
+/**
+ * Every wrapper `mountAppAt` produces, unmounted in `afterEach` below - App
+ * registers a real `window` keydown listener in `onMounted`; a wrapper left
+ * mounted from a prior test would leave that listener live, so the NEXT
+ * test's Escape dispatch fires both the stale listener (reading the
+ * previous test's now-torn-down pinia/router state) and the current one on
+ * the same event. Same reasoning as `CarDetailScreen.test.ts`'s identical
+ * teardown comment.
+ */
+const mountedWrappers: VueWrapper[] = []
+
+async function mountAppAt(routeName: string) {
+  await router.push({ name: routeName })
+  await router.isReady()
+  const wrapper = mount(App, { global: { plugins: [router] } })
+  mountedWrappers.push(wrapper)
+  await flushPromises()
+  return wrapper
+}
+
+async function escape(): Promise<void> {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+  await flushPromises()
+}
+
+describe('App (Sprint 51: chrome)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    clearDragSession()
+  })
+
+  afterEach(async () => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+    clearDragSession()
+    await router.push({ name: 'garage' })
+  })
+
+  it('shows a Menu nav link and exactly one End Day button on a gameplay screen', async () => {
+    const wrapper = await mountAppAt('garage')
+    expect(wrapper.find('[data-test="nav-menu"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="end-day"]')).toHaveLength(1)
+  })
+
+  it('hides the End Day button (and only that) on the menu screen', async () => {
+    const wrapper = await mountAppAt('menu')
+    expect(wrapper.find('[data-test="end-day"]').exists()).toBe(false)
+  })
+
+  it('Escape reaches the menu from a gameplay screen', async () => {
+    await mountAppAt('garage')
+    await escape()
+    expect(router.currentRoute.value.name).toBe('menu')
+  })
+
+  it('Escape defers to an in-progress pick session rather than navigating (existing CarDetail behavior)', async () => {
+    await mountAppAt('garage')
+    useDraggable(() => 'some-part-id').togglePick()
+    await escape()
+    expect(router.currentRoute.value.name).toBe('garage')
+  })
+
+  it('Escape is ignored while focus is inside a text field', async () => {
+    const wrapper = await mountAppAt('garage')
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    await escape()
+    expect(router.currentRoute.value.name).toBe('garage')
+    document.body.removeChild(input)
+    void wrapper
+  })
+
+  it("Escape closes the End Day cart-confirm modal instead of navigating, and the button's own confirm flow still fires", async () => {
+    const game = useGameStore()
+    game.addToCart(PARTS[0]!.id)
+    const wrapper = await mountAppAt('garage')
+
+    await wrapper.find('[data-test="end-day"]').trigger('click')
+    expect(wrapper.find('[data-test="end-day-cart-warning"]').exists()).toBe(true)
+
+    await escape()
+    expect(router.currentRoute.value.name).toBe('garage') // didn't navigate away
+    expect(wrapper.find('[data-test="end-day-cart-warning"]').exists()).toBe(false)
+
+    // The confirm button underneath still works normally.
+    const dayBefore = game.gameState.day
+    await wrapper.find('[data-test="end-day"]').trigger('click')
+    await wrapper.find('[data-test="end-day-cart-confirm"]').trigger('click')
+    expect(game.gameState.day).toBe(dayBefore + 1)
+  })
+})

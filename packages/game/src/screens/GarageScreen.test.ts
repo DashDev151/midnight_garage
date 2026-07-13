@@ -81,18 +81,25 @@ describe('GarageScreen', () => {
   })
 
   it('End Day advances the rendered day counter (the DoD)', async () => {
+    // Sprint 51: EndDayButton is now App.vue's single global mount point,
+    // not rendered on this screen - advance via the store directly, the
+    // same action the button itself calls.
+    const game = useGameStore()
     const wrapper = mountScreen()
-    await wrapper.get('[data-test="end-day"]').trigger('click')
+    game.endDay()
+    await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('2')
   })
 
   it('shows the empty-log hint before any day passes, then real events after', async () => {
+    const game = useGameStore()
     const wrapper = mountScreen()
     expect(wrapper.text()).toContain('No events yet')
     // Advance a full week so the rent/catalog boundary produces log entries.
     for (let i = 0; i < 7; i++) {
-      await wrapper.get('[data-test="end-day"]').trigger('click')
+      game.endDay()
     }
+    await wrapper.vm.$nextTick()
     expect(wrapper.text()).not.toContain('No events yet')
     expect(wrapper.findAll('.log li').length).toBeGreaterThan(0)
   })
@@ -105,7 +112,7 @@ describe('GarageScreen', () => {
     // unknown-purchase and never log a profit line at all).
     let guard = 0
     while (game.gameState.activeAuctionLots.length === 0 && guard++ < 20) {
-      await wrapper.get('[data-test="end-day"]').trigger('click')
+      game.endDay()
     }
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot after the first catalog')
@@ -115,7 +122,7 @@ describe('GarageScreen', () => {
     expect(game.setForSale(carId, true)).toBe(true)
     guard = 0
     while (!game.gameState.pendingOffers.some((o) => o.carInstanceId === carId) && guard++ < 60) {
-      await wrapper.get('[data-test="end-day"]').trigger('click')
+      game.endDay()
     }
     expect(game.gameState.pendingOffers.some((o) => o.carInstanceId === carId)).toBe(true)
     expect(game.acceptOffer(carId)).toBe(true)

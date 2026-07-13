@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import EndDayButton from '../components/EndDayButton.vue'
 import HelpHint from '../components/HelpHint.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -100,8 +99,6 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
         </li>
       </ul>
     </section>
-
-    <EndDayButton />
   </section>
 </template>
 

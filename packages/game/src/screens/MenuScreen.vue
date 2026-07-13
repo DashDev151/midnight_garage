@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import SaveMenu from '../components/SaveMenu.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
@@ -89,6 +90,11 @@ function onLoadClick(): void {
 
       <button disabled data-test="menu-settings" title="coming soon">Settings</button>
     </div>
+
+    <section class="save-section">
+      <h2>Save</h2>
+      <SaveMenu />
+    </section>
   </section>
 </template>
 
@@ -108,6 +114,17 @@ h1 {
   font-size: var(--mg-fs-xl);
   text-align: center;
   margin: 0;
+}
+
+.save-section {
+  border-top: var(--mg-border);
+  padding-top: var(--mg-space-3);
+}
+
+.save-section h2 {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
 }
 
 .actions {

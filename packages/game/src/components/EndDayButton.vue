@@ -31,6 +31,13 @@ function confirmEndDay(): void {
 function cancel(): void {
   confirming.value = false
 }
+
+/**
+ * Sprint 51 decision 1: this component now has exactly one, app-wide mount
+ * point (`App.vue`) - its cart-confirm modal is the one App.vue's global
+ * Escape handler needs to close instead of navigating to the menu.
+ */
+defineExpose({ confirming, cancel })
 </script>
 
 <template>

@@ -48,8 +48,8 @@ const selectedInfo = computed(() =>
       <h2>
         Upgrades
         <HelpHint label="Upgrades">
-          Tool upgrades take cash only - better tools finish the same work faster. Bays take cash
-          and, past a certain rung, reputation.
+          Better tools finish the same work faster. Tools and bays both cost cash, and past a
+          certain rung, both need reputation too.
         </HelpHint>
       </h2>
       <p class="rep">{{ game.reputationTier }} · {{ formatYen(game.cashYen) }}</p>

@@ -4,7 +4,6 @@ import type { AuctionGrade } from '@midnight-garage/sim'
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
-import EndDayButton from '../components/EndDayButton.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -226,8 +225,6 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
         </li>
       </ul>
     </div>
-
-    <EndDayButton />
   </section>
 </template>
 

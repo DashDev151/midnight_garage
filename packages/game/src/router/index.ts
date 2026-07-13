@@ -1,5 +1,16 @@
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
+
+/**
+ * Sprint 51 decision 4: the art-spike sandbox route registers only in dev
+ * builds - `import.meta.env.DEV` folds to a literal `false` in production,
+ * so this route (and the nav link that used to point at it, now removed)
+ * never reaches a shipped build. The code itself stays, per the maintainer's
+ * instruction - only the reachability is gated.
+ */
+const spikeRoute: RouteRecordRaw[] = import.meta.env.DEV
+  ? [{ path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') }]
+  : []
 
 /**
  * Memory-history routing (decision 1, sprint04.md): the router API - named
@@ -36,7 +47,7 @@ export const router = createRouter({
       name: 'upgrades',
       component: () => import('../screens/UpgradesScreen.vue'),
     },
-    { path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') },
+    ...spikeRoute,
   ],
 })
 

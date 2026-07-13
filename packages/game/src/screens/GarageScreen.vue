@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import EndDayButton from '../components/EndDayButton.vue'
 import HelpHint from '../components/HelpHint.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
@@ -110,10 +109,6 @@ const draggedCarName = computed(() => {
         <dd>{{ game.ownedCarCount }}</dd>
       </div>
     </dl>
-
-    <div class="controls">
-      <EndDayButton />
-    </div>
 
     <section class="bays">
       <h3>
@@ -258,13 +253,6 @@ h3 {
 
 .cash {
   color: var(--mg-yen);
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-3);
-  margin-bottom: var(--mg-space-4);
 }
 
 button {

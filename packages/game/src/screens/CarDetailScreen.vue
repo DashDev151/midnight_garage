@@ -5,7 +5,6 @@ import { bandIndex } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
-import EndDayButton from '../components/EndDayButton.vue'
 import HelpHint from '../components/HelpHint.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import StatRadar from '../components/StatRadar.vue'
@@ -458,7 +457,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <h3>Customer job - {{ detail.serviceJob?.customerName }}</h3>
       <p class="svc-desc">"{{ detail.serviceJob?.description }}"</p>
       <p class="arriving-note">Arriving tomorrow - nothing to do until it's dropped off.</p>
-      <EndDayButton show-cash />
     </section>
 
     <template v-else>
@@ -926,8 +924,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <p v-else class="empty">
           No work in progress. Stage a repair or install and Confirm to start.
         </p>
-
-        <EndDayButton show-cash />
       </section>
     </template>
 
