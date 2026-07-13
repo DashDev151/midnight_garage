@@ -112,7 +112,6 @@ const draggedCarName = computed(() => {
 
     <div class="controls">
       <EndDayButton />
-      <button data-test="new-game" @click="game.newGame()">New Game</button>
     </div>
 
     <section class="bays">

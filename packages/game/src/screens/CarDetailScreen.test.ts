@@ -223,6 +223,55 @@ describe('CarDetailScreen', () => {
     expect(button.attributes('title')).toBeUndefined()
   })
 
+  describe('band pickers (Sprint 40 item 5)', () => {
+    it('picking a non-default band on the group BandPicker flows through to the staged repair target', async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'body')
+      const { wrapper } = await mountAt(id)
+
+      // 'mint' is always offered (the ladder's ceiling), regardless of
+      // whether this roll's worst body part happens to be poor or worn -
+      // and it's NOT the group convenience's default ('fine'), so picking it
+      // proves a real, non-default band flows through.
+      await wrapper.find('[data-test="band-group-body-mint"]').trigger('click')
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+
+      expect(game.stagedActionsFor(id)).toEqual([
+        { kind: 'repair', componentId: 'body', targetBand: 'mint' },
+      ])
+    })
+
+    it('picking a non-default band on a per-part BandPicker flows through to the staged repair target', async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'suspension')
+      const row = game
+        .partsInGroup(id, 'suspension')
+        .find((r) => r.band === 'poor' || r.band === 'worn')!
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="expand-suspension"]').trigger('click')
+
+      // Pick whichever offered band ISN'T mint (the per-part default) -
+      // both 'poor' and 'worn' offer at least one non-mint option.
+      const options = wrapper.findAll(`[data-test^="band-part-${row.partId}-"]`)
+      const nonDefault = options.find((o) => !o.attributes('data-test')!.endsWith('-mint'))!
+      const pickedBand = nonDefault
+        .attributes('data-test')!
+        .slice(`band-part-${row.partId}-`.length)
+
+      await nonDefault.trigger('click')
+      await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
+
+      expect(game.stagedActionsFor(id)).toEqual([
+        {
+          kind: 'repair',
+          componentId: 'suspension',
+          targetBand: pickedBand,
+          carPartId: row.partId,
+        },
+      ])
+    })
+  })
+
   it('redirects to the garage when the car id is not owned', async () => {
     const { router } = await mountAt('ghost-car')
     expect(router.currentRoute.value.name).toBe('garage')

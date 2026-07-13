@@ -183,8 +183,6 @@ pass."
   endgame dump), gated by some combination of rep/skill/staff/money - but which combination gates
   each of the 10, and the actual story-lead writing/delivery, are still undesigned. Depends on the
   cast character-design item above for who delivers the leads.
-- [ ] Real main/pause menu (Continue / Settings / New Game / Load Game) - explicitly lower priority
-  ("at some stage").
 - [ ] Salvage & restore parts mechanic - maintainer said they'll expand on this separately; parked
   until that expansion exists, don't design it unprompted.
 - [ ] **Hidden defects / inspection information game: PAUSED (maintainer, 2026-07-11).** Removed

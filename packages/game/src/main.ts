@@ -11,8 +11,14 @@ app.use(pinia)
 app.use(router)
 
 // Load the autosaved career (if any) before first paint, so a refresh
-// resumes where you were instead of flashing a fresh game.
+// resumes where you were instead of flashing a fresh game. Sprint 40: every
+// session then lands on the menu (Continue/New Game/Load), not straight into
+// the garage - the router replace happens before mount so there's no flash
+// of the garage screen first.
 const game = useGameStore(pinia)
-void game.hydrate().finally(() => {
-  app.mount('#app')
-})
+void game
+  .hydrate()
+  .then(() => router.replace({ name: 'menu' }))
+  .finally(() => {
+    app.mount('#app')
+  })

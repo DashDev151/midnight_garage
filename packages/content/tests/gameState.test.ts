@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DayLogSchema, GameStateSchema } from '../src'
+import { DayLogEntrySchema, DayLogSchema, GameStateSchema } from '../src'
 
 describe('GameState / DayLog round-trip', () => {
   it('a hand-built GameState with one car and one installed part parses unchanged', () => {
@@ -356,5 +356,30 @@ describe('GameState / DayLog round-trip', () => {
 
     const parsed = DayLogSchema.parse(fixture)
     expect(parsed).toEqual(fixture)
+  })
+
+  it("'job-created' accepts an optional nonnegative costYen (Sprint 40 sanction)", () => {
+    const withCost = DayLogEntrySchema.parse({
+      type: 'job-created',
+      jobId: 'job-0001',
+      carInstanceId: 'car-0001',
+      kind: 'repair-zone',
+      costYen: 15_000,
+    })
+    expect(withCost).toEqual({
+      type: 'job-created',
+      jobId: 'job-0001',
+      carInstanceId: 'car-0001',
+      kind: 'repair-zone',
+      costYen: 15_000,
+    })
+
+    const withoutCost = DayLogEntrySchema.parse({
+      type: 'job-created',
+      jobId: 'job-0002',
+      carInstanceId: 'car-0002',
+      kind: 'install-part',
+    })
+    expect(withoutCost).not.toHaveProperty('costYen')
   })
 })

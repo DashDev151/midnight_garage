@@ -37,6 +37,38 @@ describe('ServiceJobsScreen', () => {
     expect(game.serviceJobOffers.some((o) => o.id === offer.id)).toBe(false)
   })
 
+  /**
+   * Sprint 40 item 2: the board must never read "work done - hand back" (or
+   * even "work outstanding") while the customer's car is still in transit -
+   * only "car arriving tomorrow." Board gating keys off `inTransit`, not
+   * `workDone` alone (the pre-fix bug: a rolled car could vacuously satisfy
+   * a task before it ever arrived).
+   */
+  it('shows "car arriving tomorrow" for an in-transit job; the normal work-state line only appears once it arrives', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    warpToOffers(game)
+    const offer = game.serviceJobOffers[0]
+    if (!offer) throw new Error('expected an offer on the board')
+    game.acceptServiceJob(offer.id)
+    const job = game.activeServiceJobs.find((j) => j.id === offer.id)!
+    expect(job.arrivesOnDay).not.toBeNull() // still in transit
+
+    const wrapper = mountScreen()
+    expect(wrapper.text()).toContain('car arriving tomorrow')
+    expect(wrapper.text()).not.toContain('work done - hand back')
+    expect(wrapper.text()).not.toContain('work outstanding')
+
+    // Once it arrives, the normal work-state line takes over.
+    game.endDay()
+    const wrapperAfterArrival = mountScreen()
+    expect(wrapperAfterArrival.text()).not.toContain('car arriving tomorrow')
+    const hasWorkStateLine =
+      wrapperAfterArrival.text().includes('work done - hand back') ||
+      wrapperAfterArrival.text().includes('work outstanding')
+    expect(hasWorkStateLine).toBe(true)
+  })
+
   it('an offer one tool tier short disables Accept, with the upgrade hint as its tooltip (Sprint 36)', () => {
     const game = useGameStore()
     game.newGame(1)

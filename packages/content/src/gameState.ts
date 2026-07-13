@@ -170,6 +170,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     jobId: z.string().min(1),
     carInstanceId: z.string().min(1),
     kind: JobKindSchema,
+    /** Sprint 40 sanction: `jobs.ts`'s `findOrCreateJob` already emits this
+     * (the repair/recondition consumables + banded-repair cost charged to
+     * open the job) but the schema variant lacked the field - it survived
+     * only via an untyped spread. No behavior change; Sprint 42's financial
+     * ledger reads it. */
+    costYen: z.number().int().nonnegative().optional(),
   }),
   z.object({
     type: z.literal('job-progress'),

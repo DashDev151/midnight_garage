@@ -13,6 +13,11 @@ export const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/', name: 'garage', component: () => import('../screens/GarageScreen.vue') },
+    {
+      path: '/menu',
+      name: 'menu',
+      component: () => import('../screens/MenuScreen.vue'),
+    },
     { path: '/car/:id', name: 'car', component: () => import('../screens/CarDetailScreen.vue') },
     {
       path: '/auctions',

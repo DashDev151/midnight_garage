@@ -75,18 +75,25 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
           <div class="active-main">
             <span class="customer">{{ job.customerName }}</span>
             <span class="terms">{{ job.carName }}</span>
-            <ul class="tasks">
+            <ul v-if="!job.inTransit" class="tasks">
               <li v-for="(task, i) in job.tasks" :key="i" :class="{ done: task.done }">
                 {{ task.label }}
               </li>
             </ul>
           </div>
-          <span class="status" :class="{ done: job.workDone }">
-            {{ job.workDone ? 'work done - hand back' : 'work outstanding' }}
-          </span>
-          <span v-if="job.daysLeft !== null" class="days" :class="{ urgent: job.daysLeft <= 2 }">
-            {{ job.daysLeft <= 0 ? 'due today' : job.daysLeft + 'd left' }}
-          </span>
+          <template v-if="job.inTransit">
+            <span class="status arriving" :data-test="'arriving-' + job.id">
+              car arriving tomorrow
+            </span>
+          </template>
+          <template v-else>
+            <span class="status" :class="{ done: job.workDone }">
+              {{ job.workDone ? 'work done - hand back' : 'work outstanding' }}
+            </span>
+            <span v-if="job.daysLeft !== null" class="days" :class="{ urgent: job.daysLeft <= 2 }">
+              {{ job.daysLeft <= 0 ? 'due today' : job.daysLeft + 'd left' }}
+            </span>
+          </template>
           <RouterLink :to="{ name: 'car', params: { id: job.carId } }" class="work-link">
             work on car →
           </RouterLink>

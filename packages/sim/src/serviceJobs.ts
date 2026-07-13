@@ -14,8 +14,14 @@ import type {
   ToolTiers,
 } from '@midnight-garage/content'
 import { ComponentIdSchema } from '@midnight-garage/content'
-import { generateAuctionCarInstance } from './auctions'
-import { bandIndex, canRepair, gradesBetween, slotsNeededToClimb } from './bands'
+import { generateAuctionCarInstance, stockInstanceFor } from './auctions'
+import {
+  bandIndex,
+  bandsBelowExcludingScrap,
+  canRepair,
+  gradesBetween,
+  slotsNeededToClimb,
+} from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
@@ -400,11 +406,61 @@ function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
 }
 
 /**
+ * Sprint 40, the real fix for "work done before the car even arrived": forces
+ * every task in `tasks` to be genuinely outstanding on `car` BEFORE a payout
+ * is derived from it. Pre-Sprint-40, offer generation rolled the template and
+ * the customer car fully independently, with nothing linking them - a repair
+ * task could land on a part that had already rolled at/above its target band
+ * (or scrap, or a missing slot), and an install task could land on a slot
+ * that already held a part meeting `minGrade`. Either way the job read as
+ * "already done" the moment it hit the board, before the player (or bot)
+ * ever touched it.
+ *
+ * A repair task whose `isServiceTaskDone` is already true installs a fresh
+ * stock instance on that exact slot at a band rolled uniformly from strictly
+ * BELOW the target (`bandsBelowExcludingScrap` - never scrap, there must be
+ * real repair work left). An install task already satisfied clears the slot
+ * (`installed: null`) so the fit is real work. One extra `rng.pick` draw per
+ * FORCED slot, none otherwise - a seed with no collisions rolls a
+ * byte-identical car to before this fix.
+ */
+export function forceTasksOutstanding(
+  car: CarInstance,
+  tasks: readonly ServiceJobTask[],
+  context: SimContext,
+  rng: Rng,
+): CarInstance {
+  let parts = car.parts
+  for (const task of tasks) {
+    const working: CarInstance = parts === car.parts ? car : { ...car, parts }
+    if (!isServiceTaskDone(working, task, context.partsById)) continue
+    if (task.action === 'repair') {
+      const candidates = bandsBelowExcludingScrap(task.targetBand)
+      if (candidates.length === 0) continue // no valid "still needs repair" band to roll
+      const band = rng.pick(candidates)
+      const installed = stockInstanceFor(
+        task.carPartId,
+        band,
+        `${car.id}-part`,
+        context.stockPartByCarPartId,
+      )
+      if (!installed) continue // defensive: no stock entry for this slot (never happens for real content)
+      parts = { ...parts, [task.carPartId]: { installed } }
+    } else {
+      parts = { ...parts, [task.carPartId]: { installed: null } }
+    }
+  }
+  return parts === car.parts ? car : { ...car, parts }
+}
+
+/**
  * Generates today's fresh batch of service-job offers (Sprint 29: replaces
  * the Sprint 11 weekly fixed-count dump with a daily bell-curve draw).
- * Each carries a real customer car (rolled like an auction car) and a
- * payout derived from the template's own task list against that specific
- * car (`deriveServiceJobPayoutYen`) - never an authored flat range.
+ * Each carries a real customer car (rolled like an auction car, then run
+ * through `forceTasksOutstanding` - Sprint 40 - so the template's tasks are
+ * guaranteed genuinely outstanding on it) and a payout derived from the
+ * template's own task list against that specific car
+ * (`deriveServiceJobPayoutYen`) - never an authored flat range.
  * `reputationTier` (default `'legend'` = unrestricted) gates which template
  * TIERS are even in the candidate pool (Sprint 29 decision 2); within that
  * pool, `toolTiers` (default: a fresh shop's all-1) drives the Sprint 36
@@ -475,7 +531,17 @@ export function generateDailyServiceJobOffers(
   for (let i = 0; i < count; i++) {
     const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng, titleGroup)
     const model = rng.pick(eligibleModels)
-    const car = generateAuctionCarInstance(model, `svc-car-${day}-${i}`, rng, context, currentYear)
+    const rolledCar = generateAuctionCarInstance(
+      model,
+      `svc-car-${day}-${i}`,
+      rng,
+      context,
+      currentYear,
+    )
+    // Sprint 40: the car and the template rolled fully independently above -
+    // force every task genuinely outstanding before pricing the job off it,
+    // so the payout (and the job itself) never prices in vacuous "work".
+    const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng)
     const inLane =
       singleTaskGroup(template.tasks, context) === topGroup &&
       specialty[topGroup] >= context.economy.specialty.premiumThresholdPoints
@@ -675,7 +741,15 @@ export function reputationForFailure(baseReputation: number): number {
   return Math.round(baseReputation * SERVICE_JOB_FAILURE_REP_MULTIPLIER)
 }
 
-export type ServiceJobOutcome = 'paid' | 'failed' | 'not-found'
+/**
+ * `'in-transit'` (Sprint 40): the job's customer car hasn't actually arrived
+ * yet - `resolveServiceJob`'s own defense-in-depth guard, mirroring
+ * `resolveAcceptServiceJob`'s refusal shape. Currently unreachable through
+ * normal play (the deadline backstop's own `dueOnDay <= next.day` check can
+ * only fire once `dueOnDay`, which is always >= `arrivesOnDay`, has passed -
+ * see `resolveServiceJob`'s own doc comment on the guard).
+ */
+export type ServiceJobOutcome = 'paid' | 'failed' | 'not-found' | 'in-transit'
 
 export interface ServiceJobResolution {
   state: GameState
@@ -761,6 +835,16 @@ function applySpecialtyDelta(
  * touched. This is the single close-out hook because this is the single place
  * an ACTIVE job (one that could have parts pulled) ever ends - an unaccepted
  * OFFER expiring pulls no parts, so it needs no reconciliation.
+ *
+ * Sprint 40 (defense in depth): refuses outright while the customer's car is
+ * still in transit (`isServiceJobInTransit`), mirroring
+ * `resolveAcceptServiceJob`'s existing refusal shape. There is no real path
+ * to this today - the deadline backstop's own `dueOnDay <= next.day` check
+ * can only fire once `dueOnDay` (always >= `arrivesOnDay`) has passed, so an
+ * in-transit job is never yet overdue - but the player's "Complete Job"
+ * click and this function are the one resolution path every caller shares,
+ * so the guard belongs here rather than trusted to every caller re-deriving
+ * it themselves.
  */
 export function resolveServiceJob(
   state: GameState,
@@ -769,6 +853,7 @@ export function resolveServiceJob(
 ): ServiceJobResolution {
   const job = state.activeServiceJobs.find((sj) => sj.id === jobId)
   if (!job) return { state, log: [], outcome: 'not-found' }
+  if (isServiceJobInTransit(job, state.day)) return { state, log: [], outcome: 'in-transit' }
 
   const releasedState = clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id)
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)

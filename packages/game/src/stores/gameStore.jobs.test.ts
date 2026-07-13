@@ -147,12 +147,39 @@ describe('service jobs in the store', () => {
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
     game.acceptServiceJob(offer.id)
+    // Sprint 40: let the car actually arrive first - this test is about
+    // "work not done," not "car not here yet" (that's the in-transit guard's
+    // own test below), and completeServiceJob now correctly refuses the
+    // latter rather than silently failing the job.
+    game.endDay()
 
     const cashBefore = game.cashYen
     const outcome = game.completeServiceJob(offer.id) // work not done
     expect(outcome).toBe('failed')
     expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(false) // car leaves
     expect(game.cashYen).toBe(cashBefore) // no payout
+  })
+
+  /**
+   * Sprint 40 defense in depth: `completeServiceJob` refuses (no state
+   * change) while the customer's car is still in transit - unreachable
+   * through the real UI (the Complete Job button only renders once
+   * `inTransit` is false), but a direct store call must still be safe.
+   */
+  it('clicking Complete before the car has even arrived refuses, no-op (the in-transit guard)', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    warpToRepairOffer(game)
+    const offer = findUnfinishedRepairOffer(game)
+    if (!offer) throw new Error('expected a repair-touching offer on the board')
+    game.acceptServiceJob(offer.id)
+    expect(game.carDetail(offer.car.id)?.serviceJob?.inTransit).toBe(true)
+
+    const cashBefore = game.cashYen
+    const outcome = game.completeServiceJob(offer.id)
+    expect(outcome).toBe('in-transit')
+    expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(true) // still there
+    expect(game.cashYen).toBe(cashBefore)
   })
 
   it('an untouched job auto-fails at its deadline (no pay)', () => {

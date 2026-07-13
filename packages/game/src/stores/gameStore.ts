@@ -277,6 +277,18 @@ export interface ServiceJobView {
   daysLeft: number | null
   /** Set while the customer's car hasn't arrived yet (Sprint 25 task 2); null once it has. */
   arrivesOnDay: number | null
+  /**
+   * True while the customer's car is still in transit (Sprint 40) - derived
+   * via the same `isServiceJobInTransit` helper the sim's own completion
+   * guard uses, rather than callers re-deriving `arrivesOnDay != null`
+   * locally (CarDetailScreen's old local computed did exactly that - a small
+   * DRY violation this field closes). The board and the car page both gate
+   * their "work done" / "work outstanding" display on this, never `workDone`
+   * alone - a job's tasks can read as satisfied on the rolled customer car
+   * before it has even arrived, and that must never render as "hand it
+   * back."
+   */
+  inTransit: boolean
 }
 
 /** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
@@ -471,6 +483,16 @@ export const useGameStore = defineStore('game', () => {
   const reportVisible = ref(false)
   // Immediate feedback shown after a "Complete Job" resolution (paid or failed).
   const lastJobResult = ref<ServiceJobResultView | null>(null)
+  /**
+   * True once `hydrate()` has resolved AND actually loaded a real save
+   * (Sprint 40) - `MenuScreen`'s own flag: Continue shows only when this is
+   * true, and New Game skips its confirmation step when it's false (nothing
+   * to lose yet). Starts false; `hydrate()` silently seeding a fresh career
+   * when no save exists no longer matters for anything else, since the menu
+   * is what reads this flag rather than inferring "is this a real save" any
+   * other way.
+   */
+  const hasExistingSave = ref(false)
 
   /**
    * Session log v0 (Sprint 24, the record-real-play seed - maintainer idea
@@ -741,6 +763,7 @@ export const useGameStore = defineStore('game', () => {
       failureReputationPenalty: reputationForFailure(job.baseReputation),
       daysLeft: job.dueOnDay === null ? null : job.dueOnDay - gameState.value.day,
       arrivesOnDay: job.arrivesOnDay,
+      inTransit: isServiceJobInTransit(job, gameState.value.day),
     }
   }
 
@@ -1677,7 +1700,12 @@ export const useGameStore = defineStore('game', () => {
   function completeServiceJob(jobId: string): ServiceJobOutcome {
     const job = gameState.value.activeServiceJobs.find((sj) => sj.id === jobId)
     const resolution = resolveServiceJob(gameState.value, jobId, context.value)
-    if (resolution.outcome === 'not-found' || !job) return 'not-found'
+    if (!job || resolution.outcome === 'not-found') return 'not-found'
+    // Sprint 40 defense in depth: the resolver itself already refused (no
+    // state change) - a graceful no-op here too, never reachable through the
+    // normal UI (the car-page "Complete Job" button only renders once the
+    // car has arrived) but kept honest in case a caller bypasses that.
+    if (resolution.outcome === 'in-transit') return 'in-transit'
     gameState.value = resolution.state
     dayLog.value.push(...resolution.log)
 
@@ -1789,14 +1817,17 @@ export const useGameStore = defineStore('game', () => {
     const code = await loadSave()
     if (!code) {
       // No save: start a fresh *random* career (not the fixed placeholder seed).
+      hasExistingSave.value = false
       newGame()
       return
     }
     try {
       gameState.value = decodeSave(code)
       dayLog.value = []
+      hasExistingSave.value = true
     } catch {
       // Corrupt/unreadable save - start fresh rather than crash.
+      hasExistingSave.value = false
       newGame()
     }
   }
@@ -2011,6 +2042,7 @@ export const useGameStore = defineStore('game', () => {
     reportVisible,
     dismissReport,
     hydrate,
+    hasExistingSave,
     exportSaveCode,
     importSaveCode,
     newGame,

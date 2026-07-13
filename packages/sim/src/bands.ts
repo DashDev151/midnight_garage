@@ -48,6 +48,30 @@ export function canRepair(band: ConditionBand): boolean {
 }
 
 /**
+ * Every band strictly BELOW `target`, excluding scrap (Sprint 40's
+ * generation-forcing step, `serviceJobs.ts`'s `forceTasksOutstanding`): a
+ * forced repair task must land on a band with real work left to climb, and
+ * scrap is terminal - never a valid "still needs repair" roll. Empty when
+ * `target` is `poor` (nothing valid below it once scrap is excluded) or
+ * `scrap` itself.
+ */
+export function bandsBelowExcludingScrap(target: ConditionBand): ConditionBand[] {
+  const targetIndex = bandIndex(target)
+  return BAND_ORDER.filter((band, i) => band !== 'scrap' && i < targetIndex)
+}
+
+/**
+ * Every band strictly ABOVE `current`, up to mint (Sprint 40's band-picker
+ * control, `BandPicker.vue`) - the valid repair/recondition targets: never
+ * the current band itself, never anything at or below it. Empty once
+ * `current` is already `mint`.
+ */
+export function bandsAbove(current: ConditionBand): ConditionBand[] {
+  const currentIndex = bandIndex(current)
+  return BAND_ORDER.filter((_, i) => i > currentIndex)
+}
+
+/**
  * Sprint 26 decision 5: for a repairable band, grades-to-mint times the
  * part's `stepCostYen`; for scrap, its `stockReplacementPriceYen` instead,
  * since there is no repair path to price. This is the one atom valuation

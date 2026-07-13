@@ -4,6 +4,7 @@ import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
+import BandPicker from '../components/BandPicker.vue'
 import EndDayButton from '../components/EndDayButton.vue'
 import HelpHint from '../components/HelpHint.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
@@ -29,9 +30,12 @@ const detail = computed(() => game.carDetail(carId.value))
  * True while this car is an accepted service job's customer car that hasn't
  * arrived yet (Sprint 25 task 2) - nothing to inspect, stage, or sell until
  * it shows up, so the whole interactive body below is replaced by a single
- * "arriving tomorrow" banner.
+ * "arriving tomorrow" banner. Reads the store's own `inTransit` view field
+ * (Sprint 40, `isServiceJobInTransit` under the hood) rather than a local
+ * `arrivesOnDay != null` re-derivation - the same check the sim's own
+ * completion guard and the job board use, not a second copy of it.
  */
-const inTransit = computed(() => detail.value?.serviceJob?.arrivesOnDay != null)
+const inTransit = computed(() => detail.value?.serviceJob?.inTransit ?? false)
 
 // A sold or unknown car has no detail - send the player back to the garage.
 watch(
@@ -66,14 +70,43 @@ function rowsFor(componentId: ComponentId) {
 }
 
 /**
- * The group's own "Repair all to fine" convenience (decision 1) targets
+ * The group's own "Repair all to…" convenience (decision 1) DEFAULTS to
  * `fine`, not `mint` - a cheap, blanket "get it decent" pass; a specific
  * part worth pushing all the way to mint is what the per-part row below is
- * for. Shown only when something in the group is actually below `fine`
- * (scrap is structurally excluded - decision 1's "skipping any scrap part
- * it can't touch" - and an unfitted slot has nothing to repair, only fit).
+ * for. Sprint 40: the player can now pick any valid band via the group's
+ * own `BandPicker` - this is only the picker's starting selection, not a
+ * hard target anymore. Shown only when something in the group is actually
+ * below `fine` (scrap is structurally excluded - decision 1's "skipping any
+ * scrap part it can't touch" - and an unfitted slot has nothing to repair,
+ * only fit).
  */
-const GROUP_REPAIR_TARGET_BAND: ConditionBand = 'fine'
+const DEFAULT_GROUP_REPAIR_TARGET_BAND: ConditionBand = 'fine'
+/** Sprint 40: the per-part repair picker's own default - unlike the group
+ * convenience above, a single part's repair has always defaulted to mint. */
+const DEFAULT_PART_REPAIR_TARGET_BAND: ConditionBand = 'mint'
+
+/** Sprint 40: the band pickers' own selections, one map per granularity -
+ * unset until the player actually picks something, in which case the
+ * default above still applies (mirrors `expandedGroups`' reactive-Set
+ * pattern just above: read/written directly from the template). */
+const groupTargetBand = reactive(new Map<ComponentId, ConditionBand>())
+const partTargetBand = reactive(new Map<CarPartId, ConditionBand>())
+
+function groupTargetBandFor(componentId: ComponentId): ConditionBand {
+  return groupTargetBand.get(componentId) ?? DEFAULT_GROUP_REPAIR_TARGET_BAND
+}
+
+function partTargetBandFor(carPartId: CarPartId): ConditionBand {
+  return partTargetBand.get(carPartId) ?? DEFAULT_PART_REPAIR_TARGET_BAND
+}
+
+function selectGroupTargetBand(componentId: ComponentId, band: ConditionBand): void {
+  groupTargetBand.set(componentId, band)
+}
+
+function selectPartTargetBand(carPartId: CarPartId, band: ConditionBand): void {
+  partTargetBand.set(carPartId, band)
+}
 
 function groupNeedsRepair(componentId: ComponentId): boolean {
   return rowsFor(componentId).some((row) => row.band === 'poor' || row.band === 'worn')
@@ -176,7 +209,9 @@ function stagedInstallName(componentId: ComponentId, carPartId?: CarPartId): str
   return staged?.kind === 'install' ? partInstanceDisplayName(staged.partInstanceId) : undefined
 }
 
-/** The group's own "Repair all to fine" convenience toggle. */
+/** The group's own "Repair all to…" convenience toggle - targets whatever
+ * band its own `BandPicker` currently has selected (Sprint 40; defaults to
+ * `fine`, unchanged from before the picker existed). */
 function toggleGroupRepairStage(componentId: ComponentId): void {
   const d = detail.value
   if (!d) return
@@ -185,17 +220,26 @@ function toggleGroupRepairStage(componentId: ComponentId): void {
     game.stageAction(d.car.id, {
       kind: 'repair',
       componentId,
-      targetBand: GROUP_REPAIR_TARGET_BAND,
+      targetBand: groupTargetBandFor(componentId),
     })
   }
 }
 
-/** One part row's own "Repair to mint" toggle. */
+/** One part row's own "Repair to…" toggle - targets whatever band its own
+ * `BandPicker` currently has selected (Sprint 40; defaults to `mint`,
+ * unchanged from before the picker existed). */
 function togglePartRepairStage(componentId: ComponentId, carPartId: CarPartId): void {
   const d = detail.value
   if (!d) return
   if (isStagedRepair(componentId, carPartId)) game.unstageAction(d.car.id, componentId, carPartId)
-  else game.stageAction(d.car.id, { kind: 'repair', componentId, targetBand: 'mint', carPartId })
+  else {
+    game.stageAction(d.car.id, {
+      kind: 'repair',
+      componentId,
+      targetBand: partTargetBandFor(carPartId),
+      carPartId,
+    })
+  }
 }
 
 /** Which part's Replace drawer is open right now, if any - only one at a time. */
@@ -419,7 +463,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             Components
             <HelpHint label="Components">
               Expand a group to repair or replace its real parts one at a time, or use a group's own
-              "Repair all to fine" convenience. Nothing happens until you Confirm.
+              "Repair all" convenience - pick how far to take it with the band buttons. Nothing
+              happens until you Confirm.
             </HelpHint>
           </h3>
           <ul class="components">
@@ -460,13 +505,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 </template>
 
                 <template v-else>
-                  <button
-                    v-if="groupNeedsRepair(componentId)"
-                    :data-test="'stage-repair-' + componentId"
-                    @click="toggleGroupRepairStage(componentId)"
-                  >
-                    {{ isStagedRepair(componentId) ? 'Unstage repair' : 'Repair all to fine' }}
-                  </button>
+                  <template v-if="groupNeedsRepair(componentId)">
+                    <BandPicker
+                      v-if="!isStagedRepair(componentId)"
+                      :current-band="detail.groupBands[componentId]"
+                      :selected="groupTargetBandFor(componentId)"
+                      :test-id-prefix="'band-group-' + componentId"
+                      @select="selectGroupTargetBand(componentId, $event)"
+                    />
+                    <button
+                      :data-test="'stage-repair-' + componentId"
+                      @click="toggleGroupRepairStage(componentId)"
+                    >
+                      {{
+                        isStagedRepair(componentId)
+                          ? 'Unstage repair'
+                          : 'Repair all to ' + groupTargetBandFor(componentId)
+                      }}
+                    </button>
+                  </template>
 
                   <template v-if="stagedInstallName(componentId)">
                     <span class="staged-install">staged: {{ stagedInstallName(componentId) }}</span>
@@ -518,17 +575,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     </template>
 
                     <template v-else>
-                      <button
-                        v-if="row.band && row.band !== 'mint' && row.band !== 'scrap'"
-                        :data-test="'stage-repair-part-' + row.partId"
-                        @click="togglePartRepairStage(componentId, row.partId)"
-                      >
-                        {{
-                          isStagedRepair(componentId, row.partId)
-                            ? 'Unstage repair'
-                            : 'Repair to mint'
-                        }}
-                      </button>
+                      <template v-if="row.band && row.band !== 'mint' && row.band !== 'scrap'">
+                        <BandPicker
+                          v-if="!isStagedRepair(componentId, row.partId)"
+                          :current-band="row.band"
+                          :selected="partTargetBandFor(row.partId)"
+                          :test-id-prefix="'band-part-' + row.partId"
+                          @select="selectPartTargetBand(row.partId, $event)"
+                        />
+                        <button
+                          :data-test="'stage-repair-part-' + row.partId"
+                          @click="togglePartRepairStage(componentId, row.partId)"
+                        >
+                          {{
+                            isStagedRepair(componentId, row.partId)
+                              ? 'Unstage repair'
+                              : 'Repair to ' + partTargetBandFor(row.partId)
+                          }}
+                        </button>
+                      </template>
 
                       <template v-if="stagedInstallName(componentId, row.partId)">
                         <span class="staged-install"

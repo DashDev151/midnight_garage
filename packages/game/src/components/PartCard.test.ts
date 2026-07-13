@@ -179,5 +179,23 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
       expect(game.gameState.partInventory[0]?.band).toBe('mint')
     })
+
+    /**
+     * Sprint 40 item 5: the recondition control's own BandPicker defaults to
+     * mint (unchanged), but picking a non-default band must actually change
+     * what clicking Recondition does - proof the picker's selection, not a
+     * hardcoded literal, drives the store call.
+     */
+    it('picking a non-default band flows through to the recondition call', async () => {
+      const { game, instance: poor } = grantInventoryPart('poor')
+      const wrapper = mount(PartCard, { props: { instance: poor, part } })
+
+      // 'poor' offers worn/fine/mint - 'worn' is a real, non-default pick.
+      await wrapper.find(`[data-test="band-recondition-${poor.id}-worn"]`).trigger('click')
+      expect(wrapper.text()).toContain('Recondition to worn')
+
+      await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
+      expect(game.gameState.partInventory[0]?.band).toBe('worn')
+    })
   })
 })

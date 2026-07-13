@@ -96,14 +96,6 @@ describe('GarageScreen', () => {
     expect(wrapper.findAll('.log li').length).toBeGreaterThan(0)
   })
 
-  it('New Game resets the day counter back to 1', async () => {
-    const wrapper = mountScreen()
-    await wrapper.get('[data-test="end-day"]').trigger('click')
-    expect(wrapper.get('[data-test="day-value"]').text()).toBe('2')
-    await wrapper.get('[data-test="new-game"]').trigger('click')
-    expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
-  })
-
   it('a granted car lands in parking (never straight into a bay)', async () => {
     const game = useGameStore()
     const wrapper = mountScreen()

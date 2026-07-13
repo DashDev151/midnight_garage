@@ -270,27 +270,38 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
     expect(reachedLocal).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
   })
 
-  it('reaches `local` via a real sale, a real service job, or both - never stuck at zero cars forever', () => {
-    const { snapshots } = runCareer(competentPolicyStrategy, 1, 100, CONTEXT)
-    const finalSnapshot = snapshots[snapshots.length - 1]
-    // Sprint 32: reputation legitimately oscillates now (a service-job
-    // completion earns it, a later failure - deadline missed while the one
-    // starting service bay is busy elsewhere - floors it straight back to
-    // 0, `applyReputationDelta`'s existing behavior) rather than climbing
-    // monotonically, so pinning the exact FINAL day-100 snapshot is
-    // fragile against exactly where that cycle happens to land - a content
-    // reprice (Sprint 32 decision 1's catalog normalization shifts service-
-    // job payouts and repair costs) can legitimately shift which day a
-    // reset lands on without the underlying mechanic being broken. Assert
-    // the real claim instead: the faucet actually fired at least once
-    // during the career (this is not a career that's dead from day one).
-    expect(snapshots.some((s) => s.reputationPoints > 0)).toBe(true)
-    // Bay-release fix (Sprint 23 M3): the policy must free its service bay
-    // from a stalled restoration so the service-job overflow can ever run -
-    // tool tiers climbing past the tier-1 floor (Sprint 36: the snapshot
-    // field counts upgrades now) is the visible signature that this isn't
-    // happening via cars alone.
-    expect(finalSnapshot?.equipmentOwnedCount).toBeGreaterThan(0)
+  /**
+   * Sprint 32: reputation legitimately oscillates now (a service-job
+   * completion earns it, a later failure - deadline missed while the one
+   * starting service bay is busy elsewhere - floors it straight back to 0,
+   * `applyReputationDelta`'s existing behavior) rather than climbing
+   * monotonically, so pinning either claim to the exact final snapshot of
+   * one hardcoded seed is fragile: a content reprice, or (Sprint 40) the
+   * generation-forcing step's extra rng draw on a collision, can legitimately
+   * shift a career's whole downstream draw sequence - which day a reset
+   * lands on, or whether a tool upgrade happens to fall inside the 100-day
+   * window - without the underlying mechanic being broken (seed 1 itself
+   * flipped from "upgrades by day 4" to "never upgrades in 100 days" purely
+   * from Sprint 40's fix, while still ending on healthy cash/reputation).
+   * Assert both claims across a seed sample instead of betting everything on
+   * seed 1, same shape as the majority check just above.
+   */
+  it('a clear majority of careers see the faucet fire (reputationPoints > 0) and free their service bay for a tool upgrade', () => {
+    let sawFaucetCount = 0
+    let upgradedCount = 0
+    for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
+      const { snapshots } = runCareer(competentPolicyStrategy, seed, 100, CONTEXT)
+      if (snapshots.some((s) => s.reputationPoints > 0)) sawFaucetCount++
+      const finalSnapshot = snapshots[snapshots.length - 1]
+      // Bay-release fix (Sprint 23 M3): the policy must free its service bay
+      // from a stalled restoration so the service-job overflow can ever run -
+      // tool tiers climbing past the tier-1 floor (Sprint 36: the snapshot
+      // field counts upgrades now) is the visible signature that this isn't
+      // happening via cars alone.
+      if (finalSnapshot && finalSnapshot.equipmentOwnedCount > 0) upgradedCount++
+    }
+    expect(sawFaucetCount).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
+    expect(upgradedCount).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
   })
 })
 

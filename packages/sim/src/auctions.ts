@@ -165,8 +165,10 @@ function conditionBaselineRangeForMileage(
  * guarantees never happens for a real 29-part taxonomy id; kept as a
  * defensive fallback (an empty slot) rather than a throw, matching this
  * file's existing tolerance for a not-yet-fully-seeded catalog in tests.
+ * Exported (Sprint 40): `serviceJobs.ts`'s generation-forcing step reuses
+ * this exact stock-instance shape rather than standing up a second one.
  */
-function stockInstanceFor(
+export function stockInstanceFor(
   partId: CarPartId,
   band: ReturnType<typeof bandForMigratedCondition>,
   idPrefix: string,

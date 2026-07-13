@@ -20,12 +20,14 @@ import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
 import { generateAuctionCarInstance } from '../src/auctions'
+import { bandIndex } from '../src/bands'
 import { SERVICE_JOB_ARRIVAL_DELAY_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
   deriveServiceJobPayoutYen,
+  forceTasksOutstanding,
   freshSpecialty,
   generateDailyServiceJobOffers,
   isServiceJobInTransit,
@@ -381,6 +383,94 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
   })
 })
 
+describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
+  it('a repair task already at/above target is forced to a fresh instance strictly below the target band', () => {
+    const task = singleRepairType.tasks[0]!
+    if (task.action !== 'repair') throw new Error('fixture task should be a repair task')
+    const car = buildCarInstance({ parts: mintCarParts({ [task.carPartId]: task.targetBand }) })
+    expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(true)
+
+    const forced = forceTasksOutstanding(car, singleRepairType.tasks, CONTEXT, createRng(1))
+    expect(isServiceTaskDone(forced, task, CONTEXT.partsById)).toBe(false)
+    const band = forced.parts[task.carPartId].installed!.band
+    expect(band).not.toBe('scrap')
+    expect(bandIndex(band)).toBeLessThan(bandIndex(task.targetBand))
+  })
+
+  it('a repair task on a scrap part is forced onto a repairable band below target (scrap is never re-rolled)', () => {
+    const task = singleRepairType.tasks[0]!
+    if (task.action !== 'repair') throw new Error('fixture task should be a repair task')
+    const car = buildCarInstance({ parts: mintCarParts({ [task.carPartId]: 'scrap' }) })
+    expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(true)
+
+    const forced = forceTasksOutstanding(car, singleRepairType.tasks, CONTEXT, createRng(2))
+    const installed = forced.parts[task.carPartId].installed
+    expect(installed).not.toBeNull()
+    expect(installed!.band).not.toBe('scrap')
+    expect(isServiceTaskDone(forced, task, CONTEXT.partsById)).toBe(false)
+  })
+
+  it('a repair task on a missing (empty) slot is forced onto a freshly filled stock part below target', () => {
+    const task = singleRepairType.tasks[0]!
+    if (task.action !== 'repair') throw new Error('fixture task should be a repair task')
+    const car = buildCarInstance({ parts: mintCarParts({ [task.carPartId]: null }) })
+    expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(true)
+
+    const forced = forceTasksOutstanding(car, singleRepairType.tasks, CONTEXT, createRng(3))
+    expect(forced.parts[task.carPartId].installed).not.toBeNull()
+    expect(isServiceTaskDone(forced, task, CONTEXT.partsById)).toBe(false)
+  })
+
+  it('an install task already satisfied is cleared back to an empty slot - real fit work again', () => {
+    const task = installType.tasks[0]!
+    if (task.action !== 'install') throw new Error('fixture task should be an install task')
+    const streetPart = catalogPartFor(task.carPartId, (p) => p.grade === task.minGrade)
+    const car = buildCarInstance({
+      parts: mintCarParts({ [task.carPartId]: partInstance(streetPart.id) }),
+    })
+    expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(true)
+
+    const forced = forceTasksOutstanding(car, installType.tasks, CONTEXT, createRng(4))
+    expect(forced.parts[task.carPartId].installed).toBeNull()
+    expect(isServiceTaskDone(forced, task, CONTEXT.partsById)).toBe(false)
+  })
+
+  it('leaves an already-outstanding task untouched - same car reference, no rng spent on it', () => {
+    const task = singleRepairType.tasks[0]!
+    if (task.action !== 'repair') throw new Error('fixture task should be a repair task')
+    const car = buildCarInstance({ parts: mintCarParts({ [task.carPartId]: 'poor' }) })
+    expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(false)
+
+    const forced = forceTasksOutstanding(car, singleRepairType.tasks, CONTEXT, createRng(5))
+    expect(forced).toBe(car)
+  })
+
+  it('a multi-task template only forces the specific tasks that are already satisfied', () => {
+    // twoRepairType: repair tyres -> fine, repair brakePadsDiscs -> fine.
+    const car = buildCarInstance({
+      parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'poor' }),
+    })
+    const forced = forceTasksOutstanding(car, twoRepairType.tasks, CONTEXT, createRng(6))
+    expect(forced.parts.tyres.installed!.band).not.toBe('mint') // forced below fine
+    expect(forced.parts.brakePadsDiscs.installed!.band).toBe('poor') // untouched
+    expect(isServiceWorkDone({ ...activeJob(twoRepairType), car: forced }, CONTEXT)).toBe(false)
+  })
+})
+
+describe('generation-time task validation (Sprint 40 DoD)', () => {
+  it('across 300 fresh seeds, every generated offer has every task genuinely outstanding on its car', () => {
+    let sawOffer = false
+    for (let seed = 1; seed <= 300; seed++) {
+      const state = createInitialGameState(CONTEXT, seed)
+      for (const offer of state.serviceJobOffers) {
+        sawOffer = true
+        expect(isServiceWorkDone(offer, CONTEXT)).toBe(false)
+      }
+    }
+    expect(sawOffer).toBe(true) // sanity: the board isn't just always empty
+  })
+})
+
 describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decision 1)', () => {
   it('a repair task on an already-mint part contributes nothing to cost or labor', () => {
     const car = buildCarInstance({ parts: mintCarParts() })
@@ -593,6 +683,38 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     const { state: next, outcome } = resolveServiceJob(state, 'nope', CONTEXT)
     expect(outcome).toBe('not-found')
     expect(next).toBe(state)
+  })
+
+  /**
+   * Sprint 40 defense-in-depth guard: `resolveServiceJob` refuses outright
+   * while the customer car is still in transit, even though this path is
+   * currently unreachable through normal play (the deadline backstop only
+   * fires once `dueOnDay`, always >= `arrivesOnDay`, has passed). Accept on
+   * day N, attempt resolve on day N (still in transit) -> refused, no state
+   * change; advance to N + 1 (arrived) -> resolves normally.
+   */
+  it("refuses (outcome 'in-transit') while the customer car hasn't arrived yet; resolves normally once it has", () => {
+    const offer = {
+      ...activeJob(twoRepairType, {
+        parts: mintCarParts({ tyres: 'mint', brakePadsDiscs: 'mint' }),
+      }),
+      dueOnDay: null,
+    }
+    const dayN = 5
+    const state = { ...createInitialGameState(CONTEXT, 1), day: dayN, serviceJobOffers: [offer] }
+    const { state: accepted } = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    const job = accepted.activeServiceJobs[0]!
+    expect(isServiceJobInTransit(job, accepted.day)).toBe(true)
+
+    const refused = resolveServiceJob(accepted, job.id, CONTEXT)
+    expect(refused.outcome).toBe('in-transit')
+    expect(refused.state).toBe(accepted)
+    expect(refused.log).toEqual([])
+
+    const { state: nextDay } = advanceDay(accepted, DayActionsSchema.parse({}), dayN, CONTEXT)
+    expect(isServiceJobInTransit(nextDay.activeServiceJobs[0]!, nextDay.day)).toBe(false)
+    const resolved = resolveServiceJob(nextDay, job.id, CONTEXT)
+    expect(resolved.outcome).toBe('paid')
   })
 
   it('drops the car’s staged work whether the job pays or fails', () => {
