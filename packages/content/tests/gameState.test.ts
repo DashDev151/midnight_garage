@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { DayLogEntrySchema, DayLogSchema, GameStateSchema } from '../src'
+import {
+  CarLedgerSchema,
+  DayLogEntrySchema,
+  DayLogSchema,
+  GameStateSchema,
+  PartInstanceSchema,
+} from '../src'
 
 describe('GameState / DayLog round-trip', () => {
   it('a hand-built GameState with one car and one installed part parses unchanged', () => {
@@ -243,6 +249,7 @@ describe('GameState / DayLog round-trip', () => {
           partId: 'tanuki-street-coilovers',
           band: 'mint',
           genuinePeriod: false,
+          pricePaidYen: 78_000,
         },
       ],
       staff: [],
@@ -278,6 +285,7 @@ describe('GameState / DayLog round-trip', () => {
       cartPartIds: [],
       stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
+      carLedgers: { 'car-0001': { purchaseYen: 900_000, repairYen: 45_000, partsYen: 60_000 } },
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -318,6 +326,7 @@ describe('GameState / DayLog round-trip', () => {
         channel: 'walk-in-offer',
         priceYen: 280_000,
         reputationDelta: 3,
+        profitYen: 40_000,
       },
       {
         type: 'part-bought',
@@ -381,5 +390,104 @@ describe('GameState / DayLog round-trip', () => {
       kind: 'install-part',
     })
     expect(withoutCost).not.toHaveProperty('costYen')
+  })
+
+  it('Sprint 42: CarLedgerSchema requires purchaseYen (nullable) and defaults repair/parts to 0', () => {
+    const known = CarLedgerSchema.parse({
+      purchaseYen: 900_000,
+      repairYen: 45_000,
+      partsYen: 60_000,
+    })
+    expect(known).toEqual({ purchaseYen: 900_000, repairYen: 45_000, partsYen: 60_000 })
+
+    const unknown = CarLedgerSchema.parse({ purchaseYen: null })
+    expect(unknown).toEqual({ purchaseYen: null, repairYen: 0, partsYen: 0 })
+
+    expect(() => CarLedgerSchema.parse({})).toThrow() // purchaseYen has no default - must be stated
+  })
+
+  it('Sprint 42: GameState.carLedgers defaults to {} for a pre-v25 shape', () => {
+    const withoutLedgers: Record<string, unknown> = {
+      day: 1,
+      seed: 1,
+      cashYen: 0,
+      reputationTier: 'unknown',
+      reputationPoints: 0,
+      ownedCars: [],
+      partInventory: [],
+      staff: [],
+      jobs: [],
+      marketHeat: {},
+      activeAuctionLots: [],
+      carsForSale: [],
+      pendingOffers: [],
+      serviceJobOffers: [],
+      activeServiceJobs: [],
+      serviceBayCount: 1,
+      parkingBayCount: 3,
+      serviceBayCarIds: [],
+      parkingCarIds: [],
+      laborSlotsSpentToday: 0,
+      toolTiers: {
+        engine: 1,
+        drivetrain: 1,
+        suspension: 1,
+        wheels: 1,
+        body: 1,
+        interior: 1,
+      },
+      specialty: {
+        engine: 0,
+        drivetrain: 0,
+        suspension: 0,
+        wheels: 0,
+        body: 0,
+        interior: 0,
+      },
+      pendingPartOrders: [],
+      cartPartIds: [],
+      stagedCarWork: {},
+      marketLedger: { lotSupply: {}, playerSales: {} },
+    }
+    const parsed = GameStateSchema.parse(withoutLedgers)
+    expect(parsed.carLedgers).toEqual({})
+  })
+
+  it("'car-sold' accepts an optional profitYen (Sprint 42) and omits it when absent", () => {
+    const withProfit = DayLogEntrySchema.parse({
+      type: 'car-sold',
+      carInstanceId: 'car-0001',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+      profitYen: -20_000,
+    })
+    expect(withProfit).toMatchObject({ profitYen: -20_000 })
+
+    const withoutProfit = DayLogEntrySchema.parse({
+      type: 'car-sold',
+      carInstanceId: 'car-0002',
+      channel: 'walk-in-offer',
+      priceYen: 500_000,
+    })
+    expect(withoutProfit).not.toHaveProperty('profitYen')
+  })
+
+  it('Sprint 42: PartInstance.pricePaidYen is optional and round-trips when present', () => {
+    const priced = PartInstanceSchema.parse({
+      id: 'pi-1',
+      partId: 'khs-street-ecu',
+      band: 'mint',
+      genuinePeriod: false,
+      pricePaidYen: 60_000,
+    })
+    expect(priced.pricePaidYen).toBe(60_000)
+
+    const unpriced = PartInstanceSchema.parse({
+      id: 'pi-2',
+      partId: 'khs-street-ecu',
+      band: 'mint',
+      genuinePeriod: false,
+    })
+    expect(unpriced.pricePaidYen).toBeUndefined()
   })
 })

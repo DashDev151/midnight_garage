@@ -17,7 +17,7 @@ import {
   type DropZoneHandle,
 } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { addressesOverlap } from '../utils/partAddress'
 
 const game = useGameStore()
@@ -243,6 +243,26 @@ function toggleBay(): void {
 const estimate = computed(() => game.estimatedSaleValue(carId.value))
 const forSale = computed(() => game.isForSale(carId.value))
 const offer = computed(() => game.offerFor(carId.value))
+
+// --- Sprint 42: the flip ledger's financial panel - purchase, repairs,
+// parts, guide value, and a live projected profit, so the buy-repair-
+// upgrade-sell loop is visible with every action, not just at sale time. ---
+
+/** Purchase (0 when unknown) + repairs + parts - what's actually sunk into
+ * this car so far. */
+const totalSpentYen = computed(() => {
+  const d = detail.value
+  if (!d) return 0
+  return (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen
+})
+
+/** Guide value minus total spent - the panel's headline number, colored by
+ * sign (`.finance-profit` classes below). */
+const projectedProfitYen = computed(() => {
+  const d = detail.value
+  if (!d) return 0
+  return d.guideValueYen - totalSpentYen.value
+})
 
 function toggleForSale(): void {
   const d = detail.value
@@ -781,6 +801,51 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </div>
 
+      <section v-if="!detail.serviceJob" class="finances" data-test="finance-panel">
+        <h3>
+          Finances
+          <HelpHint label="Finances">
+            What you paid, what you've sunk into it since, and what it's worth right now. Repairing
+            or installing a part updates this immediately.
+          </HelpHint>
+        </h3>
+        <dl class="finance-grid">
+          <div class="finance-row">
+            <dt>Purchase</dt>
+            <dd data-test="finance-purchase">
+              {{ detail.ledger.purchaseYen === null ? '-' : formatYen(detail.ledger.purchaseYen) }}
+            </dd>
+          </div>
+          <div class="finance-row">
+            <dt>Repairs</dt>
+            <dd data-test="finance-repairs">{{ formatYen(detail.ledger.repairYen) }}</dd>
+          </div>
+          <div class="finance-row">
+            <dt>Parts</dt>
+            <dd data-test="finance-parts">{{ formatYen(detail.ledger.partsYen) }}</dd>
+          </div>
+          <div class="finance-row total">
+            <dt>Total spent</dt>
+            <dd data-test="finance-total-spent">{{ formatYen(totalSpentYen) }}</dd>
+          </div>
+          <div class="finance-row">
+            <dt>Guide value</dt>
+            <dd data-test="finance-guide-value">{{ formatYen(detail.guideValueYen) }}</dd>
+          </div>
+          <div class="finance-row">
+            <dt>Restoration bill remaining</dt>
+            <dd data-test="finance-bill-remaining">{{ formatYen(detail.totalBillYen) }}</dd>
+          </div>
+          <div
+            class="finance-row profit"
+            :class="projectedProfitYen >= 0 ? 'positive' : 'negative'"
+          >
+            <dt>Projected profit</dt>
+            <dd data-test="finance-profit">{{ formatYenDelta(projectedProfitYen) }}</dd>
+          </div>
+        </dl>
+      </section>
+
       <section v-if="!detail.serviceJob" class="sell">
         <h3>Sell</h3>
         <p class="sell-est">Ballpark value: ~{{ formatYen(estimate.offerYen) }}</p>
@@ -1119,6 +1184,57 @@ button.primary.danger {
 .staged-install {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
+}
+
+/* Sprint 42: the flip ledger's financial panel - a compact label/value grid,
+   the same shape a receipt reads in, with the profit line singled out by
+   weight + sign color rather than a separate box. */
+.finances {
+  margin: var(--mg-space-4) 0;
+}
+
+.finance-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--mg-space-1) var(--mg-space-3);
+  margin: 0;
+}
+
+.finance-row {
+  display: contents;
+}
+
+.finance-row dt {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.finance-row dd {
+  margin: 0;
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+  text-align: right;
+}
+
+.finance-row.total dt,
+.finance-row.total dd {
+  font-weight: bold;
+  border-top: var(--mg-border);
+  padding-top: var(--mg-space-1);
+}
+
+.finance-row.profit dt,
+.finance-row.profit dd {
+  font-size: var(--mg-fs-md);
+  font-weight: bold;
+}
+
+.finance-row.profit.positive dd {
+  color: var(--mg-success);
+}
+
+.finance-row.profit.negative dd {
+  color: var(--mg-danger);
 }
 
 .sell {

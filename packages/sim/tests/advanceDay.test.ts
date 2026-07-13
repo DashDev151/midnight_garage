@@ -91,6 +91,7 @@ function initialState(): GameState {
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
+    carLedgers: {},
   }
 }
 
@@ -167,9 +168,16 @@ describe('advanceDay golden master', () => {
     // in serviceJobs.test.ts's "byte-identical to pre-Sprint-38 behavior"
     // tests), so this is a pure state-shape change, not a draw-order or
     // value-model change.
+    // Sprint 42 re-pins this hash (was ad88a86b): the hashed state's SHAPE
+    // changed again (the new `carLedgers` record added to GameState). Pure
+    // bookkeeping, not an economic change: a day-by-day cashYen/ownedCars/
+    // partInventory trace of this exact scripted career, captured against
+    // this working tree and against a `git worktree` checkout of the
+    // pre-Sprint-42 commit, diffed byte-identical before this hash was
+    // touched (see sprint42.md's Exit for the full comparison).
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('ad88a86b')
+    expect(hashState(finalState)).toBe('37b5ace7')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -301,7 +309,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned for Sprint 38 (was ce6e0f11): same cause as the 30-day
     // career above - the hashed state's SHAPE gained `specialty`; no draw-
     // order or value-model change (sale price math is untouched).
-    expect(hashState(acquisitionCareer().sold)).toBe('7317802d')
+    // Re-pinned for Sprint 42 (was 7317802d): same cause as the 30-day
+    // career's own Sprint 42 re-pin above - the hashed state's SHAPE gained
+    // `carLedgers`, byte-identical day-by-day cash trace proven against the
+    // pre-Sprint-42 commit before this hash was touched.
+    expect(hashState(acquisitionCareer().sold)).toBe('13501bbf')
   })
 })
 

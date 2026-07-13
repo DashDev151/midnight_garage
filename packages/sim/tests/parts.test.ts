@@ -46,6 +46,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
+    carLedgers: {},
     ...overrides,
   }
 }
@@ -98,6 +99,12 @@ describe('resolveBuyPart - express (Sprint 11 instant resolver, surcharge added 
     expect(second.state.partInventory).toHaveLength(2)
     const ids = second.state.partInventory.map((p) => p.id)
     expect(new Set(ids).size).toBe(2)
+  })
+
+  it('Sprint 42: sets pricePaidYen to the surcharged charge amount', () => {
+    const state = baseState()
+    const result = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'express')
+    expect(result.state.partInventory[0]?.pricePaidYen).toBe(CHEAPEST_EXPRESS_PRICE_YEN)
   })
 })
 
@@ -189,6 +196,13 @@ describe('resolvePartDeliveries (Sprint 14, day arithmetic fixed Sprint 25 task 
         partInstanceId: result.state.partInventory[0]!.id,
       },
     ])
+  })
+
+  it("Sprint 42: sets pricePaidYen to the order's own locked price, not today's sticker price", () => {
+    const ordered = resolveBuyPart(baseState(), CHEAPEST.id, CONTEXT, 'standard').state
+    const order = ordered.pendingPartOrders[0]!
+    const result = resolvePartDeliveries(ordered)
+    expect(result.state.partInventory[0]?.pricePaidYen).toBe(order.priceYen)
   })
 
   it('delivers only the orders due today, leaving a further-out order pending', () => {

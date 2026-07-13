@@ -27,7 +27,13 @@ const SAMPLES: DayLogEntry[] = [
     buyerId: 'tuner',
     priceYen: 200_000,
   },
-  { type: 'car-sold', carInstanceId: 'car-1', channel: 'walk-in-offer', priceYen: 180_000 },
+  {
+    type: 'car-sold',
+    carInstanceId: 'car-1',
+    channel: 'walk-in-offer',
+    priceYen: 180_000,
+    profitYen: 25_000,
+  },
   { type: 'part-bought', partId: 'khs-street-ecu', partInstanceId: 'part-7-0', priceYen: 60_000 },
   { type: 'part-scrapped', partInstanceId: 'part-7-0', priceYen: 4_000 },
   {
@@ -92,6 +98,50 @@ describe('describeLogEntry', () => {
       (id) => (id === 'tuner' ? 'Tuner' : id),
     )
     expect(line).toBe('A tuner is offering ¥1,240,000 for the FC. Today only.')
+  })
+
+  it('Sprint 42: a sale with a known profit shows "profit +Y..." (or a loss with a minus sign)', () => {
+    const gain = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+      profitYen: 40_000,
+    })
+    expect(gain).toContain('profit +¥40,000')
+
+    const loss = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+      profitYen: -20_000,
+    })
+    expect(loss).toContain('profit -¥20,000')
+  })
+
+  it('Sprint 42: a sale with no profitYen (unknown purchase) omits the profit clause entirely', () => {
+    const line = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+    })
+    expect(line).not.toContain('profit')
+  })
+
+  it('Sprint 42: the profit clause appears alongside a reputation/quality clause, not replacing it', () => {
+    const line = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+      profitYen: 40_000,
+      reputationDelta: 3,
+      saleQuality: 'clean',
+    })
+    expect(line).toContain('profit +¥40,000')
+    expect(line).toContain('sold as a clean example, reputation +3')
   })
 
   it('Sprint 36: a tool upgrade reads as the line label and the named tier, never a raw id', () => {

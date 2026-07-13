@@ -1,12 +1,14 @@
 import type {
   AuctionLot,
   Buyer,
+  CarInstance,
   CarModel,
   DayLogEntry,
   EconomyConfig,
   GameState,
   TurnoutBand,
 } from '@midnight-garage/content'
+import { setCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { assignToParking, hasParkingSpace } from './facilities'
 import { marketValueYen } from './marketValue'
@@ -53,20 +55,36 @@ export function interestedBuyers(
  * the hidden-issue system it discounted for is paused and removed; the
  * anchor is `marketValueYen` alone now, unadjusted.
  */
-export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
-  const model = context.modelsById[lot.modelId]
-  if (!model) return 0
+/**
+ * The anchor's own math, generalized to any car+model pair - not only a
+ * lot's own `.car`/`.modelId` (Sprint 42: powers the owned-car financial
+ * panel's "guide value", `gameStore.ts`'s `carDetail`, reusing this EXACT
+ * interested-buyers gate + `marketValueYen` call rather than a second
+ * valuation formula). `anchorValueYen` below is now a thin wrapper over this.
+ */
+export function carGuideValueYen(
+  car: CarInstance,
+  model: CarModel,
+  state: GameState,
+  context: SimContext,
+): number {
   const interested = interestedBuyers(model, context.buyers)
   if (interested.length === 0) return 0
-  const heatPercent = state.marketHeat[lot.modelId] ?? 100
+  const heatPercent = state.marketHeat[model.id] ?? 100
   return marketValueYen(
     model,
-    lot.car,
+    car,
     heatPercent,
     context.partsById,
     context.partsTaxonomyById,
     context.economy,
   )
+}
+
+export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
+  const model = context.modelsById[lot.modelId]
+  if (!model) return 0
+  return carGuideValueYen(lot.car, model, state, context)
 }
 
 /**
@@ -491,11 +509,15 @@ export function resolveLotForDay(
   }
 
   const withCar = assignToParking(
-    {
-      ...removeLot(state),
-      cashYen: state.cashYen - updatedLot.currentBidYen,
-      ownedCars: [...state.ownedCars, updatedLot.car],
-    },
+    setCarLedger(
+      {
+        ...removeLot(state),
+        cashYen: state.cashYen - updatedLot.currentBidYen,
+        ownedCars: [...state.ownedCars, updatedLot.car],
+      },
+      updatedLot.car.id,
+      { purchaseYen: updatedLot.currentBidYen, repairYen: 0, partsYen: 0 },
+    ),
     updatedLot.car.id,
   )
   log.push({ type: 'auction-bid-won', lotId: lot.id, finalPriceYen: updatedLot.currentBidYen })
@@ -526,12 +548,16 @@ export function resolveBuyoutInstant(
   }
 
   const withCar = assignToParking(
-    {
-      ...state,
-      cashYen: state.cashYen - priceYen,
-      ownedCars: [...state.ownedCars, lot.car],
-      activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
-    },
+    setCarLedger(
+      {
+        ...state,
+        cashYen: state.cashYen - priceYen,
+        ownedCars: [...state.ownedCars, lot.car],
+        activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
+      },
+      lot.car.id,
+      { purchaseYen: priceYen, repairYen: 0, partsYen: 0 },
+    ),
     lot.car.id,
   )
   return {

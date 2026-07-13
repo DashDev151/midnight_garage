@@ -39,6 +39,7 @@ function stateOnDay(
     jobs: [],
     marketHeat,
     marketLedger,
+    carLedgers: {},
     activeAuctionLots: [],
     carsForSale: [],
     pendingOffers: [],

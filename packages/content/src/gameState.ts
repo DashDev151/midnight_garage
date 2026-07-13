@@ -31,6 +31,24 @@ export const MarketLedgerSchema = z.object({
 
 export type MarketLedger = z.infer<typeof MarketLedgerSchema>
 
+/**
+ * Sprint 42 (the flip ledger): one owned car's money-in record - what it
+ * cost to acquire (auction win or buyout hammer price), plus every yen sunk
+ * into it since (repairs, installed parts). Pure bookkeeping: recording this
+ * never changes an economic outcome, it only surfaces money that already
+ * moves through the existing resolvers (auction/buyout, repair-job creation,
+ * install completion). `purchaseYen: null` means unknown - a pre-Sprint-42
+ * save's already-owned cars, or a dev-granted car - so the panel shows "-"
+ * rather than fabricating a number.
+ */
+export const CarLedgerSchema = z.object({
+  purchaseYen: z.number().int().nonnegative().nullable(),
+  repairYen: z.number().int().nonnegative().default(0),
+  partsYen: z.number().int().nonnegative().default(0),
+})
+
+export type CarLedger = z.infer<typeof CarLedgerSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -151,6 +169,15 @@ export const GameStateSchema = z.object({
    * drops its entry so staged work never outlives the car.
    */
   stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({}),
+  /**
+   * Sprint 42 (the flip ledger): per-owned-car spend record, keyed by
+   * carInstanceId - created at acquisition (auction win/buyout), updated by
+   * repair charges and part installs, deleted at sale. Entries exist only
+   * for owned cars, never customer service-job cars (never ours). A car with
+   * no entry (a pre-v25 save's already-owned cars, a dev grant) reads as
+   * unknown-purchase, not a fabricated zero - see `CarLedgerSchema` above.
+   */
+  carLedgers: z.record(z.string(), CarLedgerSchema).default({}),
 })
 
 /**
@@ -303,6 +330,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * clean/concours split) - set exactly when `reputationDelta` is, lets the
      * day report name the bonus instead of just its point value. */
     saleQuality: z.enum(['lemon', 'clean', 'concours']).optional(),
+    /** Sprint 42: `priceYen` minus the sold car's ledger (purchase + repairs
+     * + parts) - set only when that car's `purchaseYen` was known. Absent
+     * for an unknown-purchase car (never fabricated) and for any pre-v25
+     * sale (the field didn't exist yet). */
+    profitYen: z.number().int().optional(),
   }),
   z.object({
     type: z.literal('part-bought'),

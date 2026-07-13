@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 import CarDetailScreen from './CarDetailScreen.vue'
 
 // A minimal router so useRoute/useRouter resolve; garage/parts are stub targets
@@ -307,6 +308,99 @@ describe('CarDetailScreen', () => {
   it('redirects to the garage when the car id is not owned', async () => {
     const { router } = await mountAt('ghost-car')
     expect(router.currentRoute.value.name).toBe('garage')
+  })
+
+  describe('Sprint 42: the flip ledger financial panel', () => {
+    /** Wins a lot at auction via a guaranteed buyout (not a dev grant) so
+     * the resulting car carries a real, known ledger entry - a dev grant
+     * bypasses every sim resolver this sprint wired, so it would always
+     * read "unknown purchase" and defeat the point of this test. */
+    function buyoutACar(game: ReturnType<typeof useGameStore>): string {
+      for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
+      const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
+      if (!lot) throw new Error('expected a local-yard lot after the first catalog')
+      expect(game.buyout(lot.id)).toBe(true)
+      return game.gameState.ownedCars.at(-1)!.id
+    }
+
+    it('shows purchase, repairs, parts, total spent, guide value, restoration bill, and a projected profit right after a buyout', async () => {
+      const game = useGameStore()
+      const id = buyoutACar(game)
+      const detail = game.carDetail(id)!
+      expect(detail.ledger.purchaseYen).not.toBeNull()
+
+      const { wrapper } = await mountAt(id)
+      const panel = wrapper.find('[data-test="finance-panel"]')
+      expect(panel.exists()).toBe(true)
+      expect(panel.find('[data-test="finance-purchase"]').text()).toBe(
+        formatYen(detail.ledger.purchaseYen!),
+      )
+      expect(panel.find('[data-test="finance-repairs"]').text()).toBe(formatYen(0))
+      expect(panel.find('[data-test="finance-parts"]').text()).toBe(formatYen(0))
+      expect(panel.find('[data-test="finance-total-spent"]').text()).toBe(
+        formatYen(detail.ledger.purchaseYen!),
+      )
+      expect(panel.find('[data-test="finance-guide-value"]').text()).toBe(
+        formatYen(detail.guideValueYen),
+      )
+      expect(panel.find('[data-test="finance-bill-remaining"]').text()).toBe(
+        formatYen(detail.totalBillYen),
+      )
+      const expectedProfit = detail.guideValueYen - detail.ledger.purchaseYen!
+      expect(panel.find('[data-test="finance-profit"]').text()).toBe(formatYenDelta(expectedProfit))
+    })
+
+    it('shows "-" for purchase on a dev-granted (unknown-purchase) car, with repairs/parts/total still numeric', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+      const panel = wrapper.find('[data-test="finance-panel"]')
+      expect(panel.find('[data-test="finance-purchase"]').text()).toBe('-')
+      expect(panel.find('[data-test="finance-total-spent"]').text()).toBe(formatYen(0))
+    })
+
+    it('repairing the car updates repairs and total spent immediately, moving projected profit', async () => {
+      const game = useGameStore()
+      for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
+      // grantCarNeedingRepair (dev grant) has a proven, bounded roll-until
+      // loop for "needs repair" - the purchase-price plumbing is already
+      // covered by the buyout test above, so a dev-granted (unknown-
+      // purchase) car is fine here; this test is about the REPAIR side of
+      // the panel updating live.
+      const id = grantCarNeedingRepair(game, 'body')
+
+      const before = game.carDetail(id)!
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="toggle-bay"]').trigger('click')
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+      await wrapper.find('[data-test="confirm-work"]').trigger('click')
+      await flushPromises()
+
+      const after = game.carDetail(id)!
+      expect(after.ledger.repairYen).toBeGreaterThan(before.ledger.repairYen)
+      const panel = wrapper.find('[data-test="finance-panel"]')
+      expect(panel.find('[data-test="finance-repairs"]').text()).toBe(
+        formatYen(after.ledger.repairYen),
+      )
+      expect(panel.find('[data-test="finance-total-spent"]').text()).toBe(
+        formatYen((after.ledger.purchaseYen ?? 0) + after.ledger.repairYen + after.ledger.partsYen),
+      )
+    })
+
+    it('is not shown for a customer service-job car (never owned, never ledgered)', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const offer = game.gameState.serviceJobOffers[0]
+      if (!offer) throw new Error('expected a service job offer on day 1')
+      expect(game.acceptServiceJob(offer.id)).toBe(true)
+      game.endDay() // the customer's car arrives the following morning
+      const carId = offer.car.id
+      expect(game.carDetail(carId)!.serviceJob).toBeDefined()
+
+      const { wrapper } = await mountAt(carId)
+      expect(wrapper.find('[data-test="finance-panel"]').exists()).toBe(false)
+    })
   })
 
   describe('per-part drill-down (Sprint 28)', () => {

@@ -12,6 +12,7 @@ import {
   advanceLotOvernight,
   anchorValueYen,
   bidIncrementYen,
+  carGuideValueYen,
   computeBuyoutPriceYen,
   nextRaiseYen,
   privateValuationYen,
@@ -60,6 +61,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
+    carLedgers: {},
     ...overrides,
   }
 }
@@ -122,6 +124,22 @@ describe('anchorValueYen', () => {
     const { lot } = sampleLot(2)
     const state = stateWithLots([lot])
     expect(anchorValueYen(lot, state, NO_BUYERS_CONTEXT)).toBe(0)
+  })
+})
+
+describe('carGuideValueYen (Sprint 42: generalizes anchorValueYen to any car+model, not just a lot)', () => {
+  it("agrees exactly with anchorValueYen on a lot's own car+model - a pure refactor, not a new formula", () => {
+    const { lot, model } = sampleLot(3)
+    const state = stateWithLots([lot])
+    expect(carGuideValueYen(lot.car, model, state, CONTEXT)).toBe(
+      anchorValueYen(lot, state, CONTEXT),
+    )
+  })
+
+  it('is 0 when no buyer archetype has a stated interest in this tier - same gate as anchorValueYen', () => {
+    const { lot, model } = sampleLot(4)
+    const state = stateWithLots([lot])
+    expect(carGuideValueYen(lot.car, model, state, NO_BUYERS_CONTEXT)).toBe(0)
   })
 })
 
@@ -682,6 +700,42 @@ describe('resolveLotForDay - hammer and backstop', () => {
       true,
     )
   })
+
+  it('Sprint 42: a won lot creates the car ledger with purchaseYen = the hammer price, repairs/parts at 0', () => {
+    const { lot } = sampleLot(37)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 2,
+      leadingBidder: 'player',
+      quietDays: CONTEXT.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    const state = stateWithLots([dominant], { cashYen: lot.bookValueYen * 10 })
+    const result = resolveLotForDay(state, dominant, CONTEXT, 1)
+    expect(result.state.ownedCars).toHaveLength(1)
+    const carId = result.state.ownedCars[0]!.id
+    expect(result.state.carLedgers[carId]).toEqual({
+      purchaseYen: dominant.currentBidYen,
+      repairYen: 0,
+      partsYen: 0,
+    })
+  })
+
+  it('Sprint 42: a forfeited win (no-parking/no-cash) creates no ledger entry - no car changed hands', () => {
+    const { lot } = sampleLot(38)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 2,
+      leadingBidder: 'player',
+      quietDays: 2,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    const state = stateWithLots([dominant], { cashYen: 0 })
+    const result = resolveLotForDay(state, dominant, CONTEXT, 1)
+    expect(result.state.carLedgers).toEqual({})
+  })
 })
 
 describe('resolveBuyoutInstant', () => {
@@ -696,6 +750,19 @@ describe('resolveBuyoutInstant', () => {
     // Sprint 26: lots are transparent now - no reveal machinery, so the
     // handover log is exactly the buyout entry.
     expect(result.log).toEqual([{ type: 'lot-bought-out', lotId: lot.id, priceYen }])
+  })
+
+  it('Sprint 42: creates the car ledger with purchaseYen = the buyout price', () => {
+    const { lot } = sampleLot(44)
+    const state = stateWithLots([lot])
+    const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+    const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+    const carId = result.state.ownedCars[0]!.id
+    expect(result.state.carLedgers[carId]).toEqual({
+      purchaseYen: priceYen,
+      repairYen: 0,
+      partsYen: 0,
+    })
   })
 
   it('is a no-op when unaffordable, leaving the lot on the board', () => {

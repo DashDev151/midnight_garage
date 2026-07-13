@@ -96,6 +96,34 @@ describe('GarageScreen', () => {
     expect(wrapper.findAll('.log li').length).toBeGreaterThan(0)
   })
 
+  it('Sprint 42: the recent-activity log shows a realized profit line after a real walk-in sale', async () => {
+    const game = useGameStore()
+    const wrapper = mountScreen()
+
+    // Win a car with a known purchase price (a dev grant would read
+    // unknown-purchase and never log a profit line at all).
+    let guard = 0
+    while (game.gameState.activeAuctionLots.length === 0 && guard++ < 20) {
+      await wrapper.get('[data-test="end-day"]').trigger('click')
+    }
+    const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
+    if (!lot) throw new Error('expected a local-yard lot after the first catalog')
+    expect(game.buyout(lot.id)).toBe(true)
+    const carId = game.gameState.ownedCars.at(-1)!.id
+
+    expect(game.setForSale(carId, true)).toBe(true)
+    guard = 0
+    while (!game.gameState.pendingOffers.some((o) => o.carInstanceId === carId) && guard++ < 60) {
+      await wrapper.get('[data-test="end-day"]').trigger('click')
+    }
+    expect(game.gameState.pendingOffers.some((o) => o.carInstanceId === carId)).toBe(true)
+    expect(game.acceptOffer(carId)).toBe(true)
+    await wrapper.vm.$nextTick()
+
+    const lines = wrapper.findAll('.log li').map((li) => li.text())
+    expect(lines.some((text) => text.includes('Sold') && text.includes('profit'))).toBe(true)
+  })
+
   it('a granted car lands in parking (never straight into a bay)', async () => {
     const game = useGameStore()
     const wrapper = mountScreen()

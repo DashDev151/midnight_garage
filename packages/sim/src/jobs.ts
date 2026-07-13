@@ -21,6 +21,7 @@ import {
   restorationCostFactorForTier,
   type PartRepairPlan,
 } from './bands'
+import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { partFitsCar } from './parts'
 
@@ -219,10 +220,19 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
     if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
     const ownedCars = [...state.ownedCars]
     ownedCars[ownedIndex] = effect.car
-    return {
-      state: { ...state, ownedCars, partInventory: effect.partInventory },
-      blockedByOccupiedSlot: false,
+    let next: GameState = { ...state, ownedCars, partInventory: effect.partInventory }
+    if (job.kind === 'install-part') {
+      // Sprint 42: the part's own cost lands on the car's ledger the moment
+      // it's physically installed (not at purchase - a bought-but-not-yet-
+      // installed part sits in inventory, spent but not yet "on" any car).
+      const pricePaidYen =
+        state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
+      next = updateCarLedger(next, job.carInstanceId, (ledger) => ({
+        ...ledger,
+        partsYen: ledger.partsYen + pricePaidYen,
+      }))
     }
+    return { state: next, blockedByOccupiedSlot: false }
   }
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === job.carInstanceId)
@@ -376,10 +386,10 @@ function chargeRepairWork(
   componentId: ComponentId,
   repairCostYen: number,
   context: SimContext,
-): { ok: true; state: GameState } | { ok: false } {
+): { ok: true; state: GameState; totalCostYen: number } | { ok: false } {
   const totalCostYen = repairConsumablesCostYen(componentId, state, context) + repairCostYen
   if (state.cashYen < totalCostYen) return { ok: false }
-  return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen } }
+  return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen }, totalCostYen }
 }
 
 /**
@@ -431,7 +441,17 @@ export function repairJobGate(
   // Can't afford the work right now - a silent refusal, matching every
   // other can't-afford-it gate in this codebase.
   if (!charged.ok) return { ok: false, log: [] }
-  return { ok: true, state: charged.state }
+  // Sprint 42: this same gate also runs a customer's service-job car (the
+  // player fronts the repair, gets paid via the job's own payout on
+  // handback) - only an OWNED car gets a ledger entry, never a customer's.
+  const isOwnedCar = state.ownedCars.some((c) => c.id === spec.carInstanceId)
+  const chargedState = isOwnedCar
+    ? updateCarLedger(charged.state, spec.carInstanceId, (ledger) => ({
+        ...ledger,
+        repairYen: ledger.repairYen + charged.totalCostYen,
+      }))
+    : charged.state
+  return { ok: true, state: chargedState }
 }
 
 export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
@@ -810,6 +830,17 @@ export function resolveReconditionLabor(
   const charged = chargeRepairWork(state, planned.group, planned.plan.costYen, context)
   if (!charged.ok) return { state, log: [], laborSlotsUsed: 0 }
 
+  // Sprint 42: a bench recondition has no car ledger to charge - the spend
+  // lands on the loose PartInstance's own `pricePaidYen` instead (a
+  // reconditioned part "cost" its buy price plus this work), charged at job
+  // creation, matching every other repair charge's timing.
+  const partInventory = charged.state.partInventory.map((instance) =>
+    instance.id === partInstanceId
+      ? { ...instance, pricePaidYen: (instance.pricePaidYen ?? 0) + charged.totalCostYen }
+      : instance,
+  )
+  const pricedState: GameState = { ...charged.state, partInventory }
+
   const job: Job = {
     id: jobId,
     // No car - a loose part on the bench. `carInstanceId` (required by the
@@ -824,6 +855,6 @@ export function resolveReconditionLabor(
     laborSlotsRequired: planned.plan.laborSlotsRequired,
     laborSlotsSpent: 0,
   }
-  const withJob: GameState = { ...charged.state, jobs: [...charged.state.jobs, job] }
+  const withJob: GameState = { ...pricedState, jobs: [...pricedState.jobs, job] }
   return applyAvailableLaborToJob(withJob, jobId, laborAvailable, context)
 }

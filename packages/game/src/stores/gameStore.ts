@@ -16,6 +16,7 @@ import type {
   BayKind,
   Buyer,
   CarInstance,
+  CarLedger,
   CarModel,
   CarPartId,
   ComponentId,
@@ -46,6 +47,8 @@ import {
   bestFitBuyer,
   buildSimContext,
   carCostToMintYen,
+  carGuideValueYen,
+  carLedgerFor,
   computeBuyoutPriceYen,
   computeDerivedStats,
   confirmStagedWork,
@@ -204,6 +207,23 @@ export interface CarDetail extends DetailedCar {
    * (`carCostToMintYen`) - the same figure `marketValueYen` deducts,
    * surfaced as the condition panel's one total-bill line. */
   totalBillYen: number
+  /**
+   * Sprint 42 (the flip ledger): this car's money-in record - purchase
+   * price (or null when unknown, e.g. a dev grant or a pre-v25 save),
+   * repairs, and installed parts. Always populated (`carLedgerFor`'s
+   * unknown-purchase default when no real entry exists), even for a
+   * customer's service-job car - the financial panel itself only ever
+   * renders for an owned car (mirrors `groupBillYen`/`totalBillYen`, which
+   * are likewise computed unconditionally for both car kinds).
+   */
+  ledger: CarLedger
+  /**
+   * Sprint 42: the same guide value the auction house shows
+   * (`bidding.ts`'s `anchorValueYen`, generalized to any car+model via
+   * `carGuideValueYen` - zero new valuation math). The financial panel's
+   * "projected profit" is this minus total spent.
+   */
+  guideValueYen: number
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -823,6 +843,8 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsTaxonomyById,
         context.value.economy,
       ),
+      ledger: carLedgerFor(gameState.value, carId),
+      guideValueYen: carGuideValueYen(car, model, gameState.value, context.value),
     }
   }
 

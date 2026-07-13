@@ -127,6 +127,7 @@ export function resolveBuyPart(
     partId: part.id,
     band: 'mint',
     genuinePeriod: false,
+    pricePaidYen: priceYen,
   }
   return {
     state: {
@@ -188,6 +189,9 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
       partId: order.partId,
       band: 'mint',
       genuinePeriod: false,
+      // Sprint 42: the order's own locked price (set at purchase time, not
+      // today's sticker price) - a standard order's real cost.
+      pricePaidYen: order.priceYen,
     }
     partInventory = [...partInventory, partInstance]
     log.push({

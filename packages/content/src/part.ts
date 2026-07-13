@@ -42,6 +42,16 @@ export const PartInstanceSchema = z.object({
   band: ConditionBandSchema.default('mint'),
   genuinePeriod: z.boolean().default(false),
   customerJobId: z.string().min(1).optional(),
+  /**
+   * Sprint 42 (the flip ledger): what this specific instance actually cost -
+   * set at purchase (`resolveBuyPart`, express at charge time / standard at
+   * its locked order price on delivery), incremented by a bench-recondition
+   * charge (a reconditioned loose part "cost" its buy price plus the work).
+   * Absent means unknown (every pre-Sprint-42 instance, and any part that
+   * entered inventory some other way, e.g. pulled off a car) - the financial
+   * panel treats a missing value as 0 spent on that part, never a crash.
+   */
+  pricePaidYen: z.number().int().nonnegative().optional(),
 })
 
 export type Part = z.infer<typeof PartSchema>

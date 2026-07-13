@@ -107,6 +107,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
+    carLedgers: {},
     ...overrides,
   }
 }
@@ -184,6 +185,81 @@ describe('completeJob', () => {
     // but it's the instance's own band, not a forced mint.
     expect(result.state.ownedCars[0]?.parts.dampers.installed?.band).toBe(sparePart.band)
     expect(result.state.partInventory).toHaveLength(0)
+  })
+
+  it("Sprint 42: a completed install-part job on an OWNED car adds the part's pricePaidYen to the car's ledger partsYen", () => {
+    const pricedPart: PartInstance = { ...sparePart, id: 'pi-priced', pricePaidYen: 42_000 }
+    const job: Job = {
+      id: 'job-priced',
+      carInstanceId: car.id,
+      kind: 'install-part',
+      componentId: 'suspension',
+      partInstanceId: pricedPart.id,
+      laborSlotsRequired: 1,
+      laborSlotsSpent: 1,
+    }
+    const result = completeJob(baseState({ partInventory: [pricedPart] }), job, CONTEXT)
+    expect(result.state.carLedgers[car.id]).toEqual({
+      purchaseYen: null,
+      repairYen: 0,
+      partsYen: 42_000,
+    })
+  })
+
+  it('Sprint 42: a completed install-part job with no pricePaidYen (unknown) adds 0, still creating the ledger entry', () => {
+    const job: Job = {
+      id: 'job-unpriced',
+      carInstanceId: car.id,
+      kind: 'install-part',
+      componentId: 'suspension',
+      partInstanceId: sparePart.id, // no pricePaidYen set
+      laborSlotsRequired: 1,
+      laborSlotsSpent: 1,
+    }
+    const result = completeJob(baseState(), job, CONTEXT)
+    expect(result.state.carLedgers[car.id]).toEqual({
+      purchaseYen: null,
+      repairYen: 0,
+      partsYen: 0,
+    })
+  })
+
+  it('Sprint 42: an install-part job completed on a CUSTOMER service-job car creates no ledger entry - not owned', () => {
+    const customerCar: CarInstance = buildCarInstance({
+      id: 'car-customer-install',
+      modelId: 'honda-city-e-aa',
+      parts: { ...mintCarParts(), dampers: { installed: null } },
+    })
+    const owningJob: ServiceJob = {
+      id: 'svc-install-test',
+      typeId: 'small-bodywork-touchup',
+      customerName: 'Test Customer',
+      description: 'Suspension work.',
+      tasks: [{ action: 'install', carPartId: 'dampers', minGrade: 'stock', minToolTier: 1 }],
+      car: customerCar,
+      payoutYen: 10_000,
+      baseReputation: 5,
+      deadlineDays: 5,
+      expiresOnDay: 30,
+      arrivesOnDay: null,
+      dueOnDay: 8,
+    }
+    const pricedPart: PartInstance = { ...sparePart, id: 'pi-priced-2', pricePaidYen: 42_000 }
+    const job: Job = {
+      id: 'job-customer-install',
+      carInstanceId: customerCar.id,
+      kind: 'install-part',
+      componentId: 'suspension',
+      partInstanceId: pricedPart.id,
+      laborSlotsRequired: 1,
+      laborSlotsSpent: 1,
+    }
+    const result = completeJob(
+      baseState({ ownedCars: [], activeServiceJobs: [owningJob], partInventory: [pricedPart] }),
+      job,
+      CONTEXT,
+    )
+    expect(result.state.carLedgers).toEqual({})
   })
 
   it('an install-part job into an occupied slot is blocked, not overwritten', () => {
@@ -316,6 +392,36 @@ describe('findOrCreateJob (Sprint 11)', () => {
           costYen: totalCostYen,
         },
       ])
+    })
+
+    it('Sprint 42: creates the ledger entry and adds the full charge (consumables + repair cost) as repairYen for an OWNED car', () => {
+      const plan = planGroupRepair(
+        car,
+        'body',
+        'mint',
+        testToolTiers(),
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsTaxonomyById,
+        CAR_TIER_FACTOR,
+      )
+      const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
+      const result = findOrCreateJob(baseState(), spec, CONTEXT)
+      expect(result.state.carLedgers[car.id]).toEqual({
+        purchaseYen: null,
+        repairYen: totalCostYen,
+        partsYen: 0,
+      })
+    })
+
+    it('Sprint 42: repairYen accumulates across a second repair job on the same car', () => {
+      const first = findOrCreateJob(baseState(), spec, CONTEXT)
+      const afterFirstRepairYen = first.state.carLedgers[car.id]!.repairYen
+      // A different group's own job is independent (one open job per
+      // component at a time, not one per car) - both charges land on the
+      // same car's ledger.
+      const secondSpec = { ...spec, componentId: 'engine' as const, laborSlotsRequired: 2 }
+      const second = findOrCreateJob(first.state, secondSpec, CONTEXT)
+      expect(second.state.carLedgers[car.id]!.repairYen).toBeGreaterThan(afterFirstRepairYen)
     })
 
     it("a tier-2 line charges tier 2's consumables (and takes fewer labor slots), same repair cost", () => {
@@ -681,6 +787,46 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
     )
     expect(gate.ok).toBe(false)
   })
+
+  it('Sprint 42: charges cash for a customer service-job car exactly as before, but records NO ledger entry - not owned', () => {
+    const customerCar: CarInstance = buildCarInstance({
+      id: 'car-customer-repair',
+      modelId: 'honda-city-e-aa',
+      parts: groupCarParts({ body: 'poor' }),
+    })
+    const owningJob: ServiceJob = {
+      id: 'svc-repair-test',
+      typeId: 'small-bodywork-touchup',
+      customerName: 'Test Customer',
+      description: 'Bodywork needs sorting.',
+      tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+      car: customerCar,
+      payoutYen: 10_000,
+      baseReputation: 5,
+      deadlineDays: 5,
+      expiresOnDay: 30,
+      arrivesOnDay: null,
+      dueOnDay: 8,
+    }
+    const state = baseState({ ownedCars: [], activeServiceJobs: [owningJob] })
+    const cashBefore = state.cashYen
+    const gate = repairJobGate(
+      state,
+      {
+        carInstanceId: customerCar.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        targetBand: 'mint',
+        laborSlotsRequired: 3,
+      },
+      CONTEXT,
+    )
+    expect(gate.ok).toBe(true)
+    if (gate.ok) {
+      expect(gate.state.cashYen).toBeLessThan(cashBefore) // real charge still happens
+      expect(gate.state.carLedgers).toEqual({}) // but no ledger for a car we don't own
+    }
+  })
 })
 
 describe('applyAvailableLaborToJob (Sprint 11)', () => {
@@ -939,6 +1085,35 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(result.state.partInventory).toEqual([originalInstance])
     expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
   })
+
+  it('Sprint 42: removal never refunds the ledger - repairYen/partsYen already spent stay spent, and the pulled instance keeps its own pricePaidYen', () => {
+    const aftermarketInstance: PartInstance = {
+      id: 'pi-aftermarket-dampers-2',
+      partId: 'tanuki-street-coilovers',
+      band: 'worn',
+      genuinePeriod: false,
+      pricePaidYen: 55_000,
+    }
+    const carWithAftermarket: CarInstance = {
+      ...car,
+      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+    }
+    const state = baseState({
+      ownedCars: [carWithAftermarket],
+      partInventory: [],
+      carLedgers: { [car.id]: { purchaseYen: 900_000, repairYen: 12_000, partsYen: 55_000 } },
+    })
+    const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
+    // Ledger is completely untouched by the removal itself.
+    expect(result.state.carLedgers[car.id]).toEqual({
+      purchaseYen: 900_000,
+      repairYen: 12_000,
+      partsYen: 55_000,
+    })
+    // The pulled instance still carries its own pricePaidYen - not zeroed,
+    // not refunded anywhere.
+    expect(result.state.partInventory).toEqual([aftermarketInstance])
+  })
 })
 
 describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 decision 4)', () => {
@@ -987,6 +1162,30 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
     expect(quote.laborSlotsRequired).toBe(plan.laborSlotsRequired)
     expect(quote.costYen).toBe(plan.costYen + BODY_CONSUMABLES_T1)
+  })
+
+  it("Sprint 42: a bench recondition adds its full charge (consumables + repair cost) to the loose instance's pricePaidYen, not any car ledger", () => {
+    const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
+    const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
+    const result = resolveReconditionLabor(invState, loosePart.id, 'mint', 10, CONTEXT)
+    const reconditioned = result.state.partInventory.find((p) => p.id === loosePart.id)
+    expect(reconditioned?.band).toBe('mint')
+    expect(reconditioned?.pricePaidYen).toBe(quote.costYen)
+    // No car in play at all - carLedgers is untouched.
+    expect(result.state.carLedgers).toEqual({})
+  })
+
+  it('Sprint 42: pricePaidYen accumulates on top of whatever the instance already cost (buy price + this work)', () => {
+    const alreadyPriced: PartInstance = {
+      ...loosePart,
+      id: 'pi-recon-priced',
+      pricePaidYen: 20_000,
+    }
+    const invState = baseState({ ownedCars: [], partInventory: [alreadyPriced] })
+    const quote = reconditionQuote(invState, alreadyPriced.id, 'mint', CONTEXT)!
+    const result = resolveReconditionLabor(invState, alreadyPriced.id, 'mint', 10, CONTEXT)
+    const reconditioned = result.state.partInventory.find((p) => p.id === alreadyPriced.id)
+    expect(reconditioned?.pricePaidYen).toBe(20_000 + quote.costYen)
   })
 
   it("reconditioning and on-car repair consume the same labor (tier-factor-independent); cash now legitimately differs, since Sprint 41 scales the on-car repair by the car's own tier (shitbox, 0.12x) while the bench has no car to scale by (factor 1) - both still route through the identical planGroupRepair/planPartRepair formula, just with a different, correctly-resolved factor input", () => {

@@ -178,6 +178,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
+    carLedgers: {},
     ...overrides,
   }
 }
@@ -324,6 +325,49 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
     })
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.state.stagedCarWork[car.id]).toBeUndefined()
+  })
+
+  describe('Sprint 42: profitYen + ledger cleanup', () => {
+    it('logs profitYen = priceYen minus (purchase + repairs + parts) when the purchase price is known, and deletes the ledger entry', () => {
+      const state = stateWithOffer(car, 900_000, 'tuner', {
+        carLedgers: {
+          [car.id]: { purchaseYen: 500_000, repairYen: 100_000, partsYen: 50_000 },
+        },
+      })
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.log[0]).toMatchObject({ profitYen: 900_000 - (500_000 + 100_000 + 50_000) })
+      expect(result.state.carLedgers).not.toHaveProperty(car.id)
+    })
+
+    it('logs no profitYen when the purchase price is unknown (no ledger entry at all - a dev grant or pre-v25 save)', () => {
+      const state = stateWithOffer(car, 900_000, 'tuner') // no carLedgers entry for car.id
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.log[0]).not.toHaveProperty('profitYen')
+    })
+
+    it('logs no profitYen when the ledger exists but purchaseYen is explicitly null', () => {
+      const state = stateWithOffer(car, 900_000, 'tuner', {
+        carLedgers: { [car.id]: { purchaseYen: null, repairYen: 20_000, partsYen: 0 } },
+      })
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.log[0]).not.toHaveProperty('profitYen')
+      // The ledger entry is still cleaned up even though profit couldn't be computed.
+      expect(result.state.carLedgers).not.toHaveProperty(car.id)
+    })
+
+    it('a negative profitYen (a loss) is logged as-is, not clamped', () => {
+      const state = stateWithOffer(car, 900_000, 'tuner', {
+        carLedgers: { [car.id]: { purchaseYen: 1_200_000, repairYen: 0, partsYen: 0 } },
+      })
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.log[0]).toMatchObject({ profitYen: 900_000 - 1_200_000 })
+    })
+
+    it('cleaning up the ledger is a no-op (nothing to remove) when the car had no entry', () => {
+      const state = stateWithOffer(car, 900_000, 'tuner')
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.state.carLedgers).toEqual({})
+    })
   })
 })
 

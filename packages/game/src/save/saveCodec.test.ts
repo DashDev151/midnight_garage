@@ -1049,7 +1049,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(24)
+    expect(SAVE_VERSION).toBe(25)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1103,7 +1103,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(24)
+    expect(SAVE_VERSION).toBe(25)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1880,10 +1880,13 @@ describe('saveCodec', () => {
    * pure functions of `state.specialty` (already persisted since v24) plus
    * the technique catalog (content, not save data) - nothing new is ever
    * stored, so a v24 save carrying high specialty decodes identically
-   * whether or not a technique/title derives from it.
+   * whether or not a technique/title derives from it. (Sprint 42 DID bump
+   * the version again, for an unrelated reason - `carLedgers` - so this
+   * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
+   * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump: SAVE_VERSION is still 24', () => {
-    expect(SAVE_VERSION).toBe(24)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 25 (Sprint 42)', () => {
+    expect(SAVE_VERSION).toBe(25)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1893,5 +1896,84 @@ describe('saveCodec', () => {
     })
     const decoded = decodeSave(encodeSave(withHighSpecialty))
     expect(decoded).toEqual(withHighSpecialty)
+  })
+
+  /**
+   * v24 -> v25 (Sprint 42, the flip ledger): `GameStateSchema` gained
+   * `carLedgers` (default `{}`) and `PartInstanceSchema` gained an optional
+   * `pricePaidYen` - the normal additive case (like v2/v22/v24), so it needs
+   * NO `MIGRATIONS[24]` entry, but it DOES bump `SAVE_VERSION` (Save law).
+   * These two tests are its regression coverage: a real pre-v25 (v24
+   * envelope) save with no `carLedgers` field at all still decodes cleanly
+   * under v25 (empty ledgers - every already-owned car reads unknown-
+   * purchase, exactly right since the concept did not exist yet), and a v25
+   * state carrying real ledger/pricePaidYen values round-trips them exactly.
+   */
+  it('a real pre-v25 save (a v24 envelope with no carLedgers field) decodes with empty ledgers under v25', () => {
+    const stateWithoutCarLedgers: Record<string, unknown> = { ...fullState }
+    delete stateWithoutCarLedgers.carLedgers
+    const preV25 = { version: 24, gameState: stateWithoutCarLedgers }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV25))
+    const decoded = decodeSave(code)
+    expect(decoded.carLedgers).toEqual({})
+  })
+
+  it('a v25 state with real carLedgers and a priced PartInstance round-trips them exactly', () => {
+    const withLedger: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-ledger-01',
+          modelId: 'honda-city-e-aa',
+          year: 1984,
+          mileageKm: 100_000,
+          color: 'White',
+          authenticityPercent: 80,
+          parts: mintParts(),
+        },
+      ],
+      partInventory: [
+        {
+          id: 'pi-priced',
+          partId: 'khs-street-ecu',
+          band: 'mint',
+          genuinePeriod: false,
+          pricePaidYen: 60_000,
+        },
+      ],
+      carLedgers: {
+        'car-ledger-01': { purchaseYen: 500_000, repairYen: 20_000, partsYen: 60_000 },
+      },
+    })
+    const decoded = decodeSave(encodeSave(withLedger))
+    expect(decoded).toEqual(withLedger)
+    expect(decoded.carLedgers['car-ledger-01']).toEqual({
+      purchaseYen: 500_000,
+      repairYen: 20_000,
+      partsYen: 60_000,
+    })
+    expect(decoded.partInventory[0]?.pricePaidYen).toBe(60_000)
+  })
+
+  it('a car ledger with purchaseYen: null (unknown purchase) round-trips as null, not 0', () => {
+    const withUnknownPurchase: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-ledger-02',
+          modelId: 'honda-city-e-aa',
+          year: 1984,
+          mileageKm: 100_000,
+          color: 'White',
+          authenticityPercent: 80,
+          parts: mintParts(),
+        },
+      ],
+      carLedgers: {
+        'car-ledger-02': { purchaseYen: null, repairYen: 0, partsYen: 0 },
+      },
+    })
+    const decoded = decodeSave(encodeSave(withUnknownPurchase))
+    expect(decoded.carLedgers['car-ledger-02']?.purchaseYen).toBeNull()
   })
 })

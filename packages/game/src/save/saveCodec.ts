@@ -345,8 +345,20 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   all-zero is exactly the correct backfill, needing no `MIGRATIONS[23]`
  *   entry of its own. The version bump alone is still required (Save law) so
  *   an old client rejects a v24 save rather than silently dropping the field.
+ * - v25 (Sprint 42, the flip ledger): `GameStateSchema` gained `carLedgers`
+ *   (per-owned-car spend record, keyed by carInstanceId - purchase price,
+ *   repairs, installed-part cost), defaulted to `{}`; `PartInstanceSchema`
+ *   gained an optional `pricePaidYen`; `'car-sold'` gained an optional
+ *   `profitYen`. All three are the normal additive case (like v2/v22/v24): a
+ *   pre-v25 save's already-owned cars simply have no ledger entry (the
+ *   concept did not exist), which is exactly `carLedgerFor`'s own
+ *   unknown-purchase default (`gameStore.ts`) - the financial panel shows
+ *   "-" for purchase rather than fabricating a number, needing no
+ *   `MIGRATIONS[24]` entry of its own. The version bump alone is still
+ *   required (Save law) so an old client rejects a v25 save rather than
+ *   silently dropping the new fields.
  */
-export const SAVE_VERSION = 24
+export const SAVE_VERSION = 25
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

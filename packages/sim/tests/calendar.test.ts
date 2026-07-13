@@ -97,6 +97,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       cartPartIds: [],
       stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
+      carLedgers: {},
     }
   }
 

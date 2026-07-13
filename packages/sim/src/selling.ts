@@ -12,6 +12,7 @@ import type {
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
 import { applyReputationDelta } from './calendar'
+import { carLedgerFor, deleteCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
 import { releaseCarFromShop } from './facilities'
@@ -316,15 +317,28 @@ export function resolveSellViaWalkIn(
   // sale was still mechanically a lemon regardless of how much was left to
   // lose - but the logged number is the real, applied one.
   const appliedDelta = released.reputationPoints - clearedState.reputationPoints
+
+  // Sprint 42: realized profit against the ledger recorded since acquisition
+  // - only when the purchase price itself is known (never fabricated for an
+  // unknown-purchase car, e.g. a dev grant or a pre-v25 save).
+  const ledger = carLedgerFor(state, carInstanceId)
+  const profitYen =
+    ledger.purchaseYen === null
+      ? undefined
+      : offer.priceYen - (ledger.purchaseYen + ledger.repairYen + ledger.partsYen)
+
   return {
     state: bumpPlayerSales(
-      {
-        ...released,
-        cashYen: released.cashYen + offer.priceYen,
-        ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
-        carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
-        pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
-      },
+      deleteCarLedger(
+        {
+          ...released,
+          cashYen: released.cashYen + offer.priceYen,
+          ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
+          carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+          pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+        },
+        carInstanceId,
+      ),
       car.modelId,
     ),
     log: [
@@ -333,6 +347,7 @@ export function resolveSellViaWalkIn(
         carInstanceId,
         channel: 'walk-in-offer',
         priceYen: offer.priceYen,
+        ...(profitYen !== undefined ? { profitYen } : {}),
         ...(appliedDelta !== 0
           ? {
               reputationDelta: appliedDelta,

@@ -1,6 +1,6 @@
 import type { DayLogEntry } from '@midnight-garage/content'
 import { COMPONENT_DISPLAY_NAMES, TOOL_LINES, componentDisplayName } from '@midnight-garage/content'
-import { formatYen } from './formatYen'
+import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
 
 /**
@@ -53,16 +53,20 @@ export function describeLogEntry(
         entry.priceYen,
       )
     case 'car-sold': {
+      // Sprint 42: profit reads before the reputation clause, once, so it
+      // shows regardless of which quality branch (or none) fires below.
       const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
+      const withProfit =
+        entry.profitYen !== undefined ? `${base}, profit ${formatYenDelta(entry.profitYen)}` : base
       switch (entry.saleQuality) {
         case 'concours':
-          return `${base} - sold as a concours example, reputation +${entry.reputationDelta}`
+          return `${withProfit} - sold as a concours example, reputation +${entry.reputationDelta}`
         case 'clean':
-          return `${base} - sold as a clean example, reputation +${entry.reputationDelta}`
+          return `${withProfit} - sold as a clean example, reputation +${entry.reputationDelta}`
         case 'lemon':
-          return `${base} - sold as a lemon, reputation ${entry.reputationDelta}`
+          return `${withProfit} - sold as a lemon, reputation ${entry.reputationDelta}`
         default:
-          return base
+          return withProfit
       }
     }
     case 'part-bought':

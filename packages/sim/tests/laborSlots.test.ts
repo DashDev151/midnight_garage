@@ -32,6 +32,7 @@ function baseState(staff: StaffMember[]): GameState {
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
+    carLedgers: {},
   }
 }
 
