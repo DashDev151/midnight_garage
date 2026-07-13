@@ -10,8 +10,8 @@ import PartsInventoryPanel from '../components/PartsInventoryPanel.vue'
     <h2>
       Parts inventory
       <HelpHint label="Parts inventory">
-        Everything you own that isn't already staged on a car. Pick one up here (or drag it
-        directly) and place it on a car's component to stage an install.
+        Everything you own that isn't already planned onto a car. Pick one up here (or drag it
+        directly) and place it on a car's component to plan an install.
       </HelpHint>
     </h2>
     <PartsInventoryPanel />

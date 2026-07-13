@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { ConditionBand, Part, PartInstance } from '@midnight-garage/content'
-import { computed, ref } from 'vue'
+import type { Part, PartInstance } from '@midnight-garage/content'
+import { computed } from 'vue'
 import { useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import BandChip from './BandChip.vue'
-import BandPicker from './BandPicker.vue'
 import RotaryMarker from './RotaryMarker.vue'
 
 const game = useGameStore()
@@ -73,13 +72,6 @@ const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
 const isCustomerOwned = computed(() => props.instance.customerJobId !== undefined)
 
 /**
- * Sprint 40: the recondition target band the player has picked (defaults to
- * `mint`, unchanged from before the picker existed - Sprint 35's original
- * "climb to mint" behavior).
- */
-const reconditionTargetBand = ref<ConditionBand>('mint')
-
-/**
  * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only - a
  * non-repairable part can't be bench-reconditioned any more than it can be
  * repaired on a car (`isPartRepairable` reads the same taxonomy flag
@@ -88,21 +80,17 @@ const reconditionTargetBand = ref<ConditionBand>('mint')
 const isRepairable = computed(() => game.isPartRepairable(props.part.carPartId))
 
 /**
- * Sprint 35: the recondition quote (cost + labor) for the selected band, or
- * null when there is nothing to do (already at/above target, scrap, or -
- * Sprint 41 - non-repairable). Reconditioning routes through the exact same
- * repair economy as an on-car repair. Sprint 36: no tooling gate anymore -
- * only today's labor gates the control. Sprint 40: prices whatever band the
- * player picked, not always mint.
+ * Sprint 48: the click-per-rung bench recondition step - climbs exactly one
+ * band per click, priced/labored off the real recondition quote for that
+ * next rung (never a hardcoded guess). Null when there is nothing left to
+ * recondition (already mint, scrap, or - Sprint 41 - non-repairable).
  */
-const reconditionQuote = computed(() =>
+const nextStep = computed(() =>
   props.showRecondition && !isScrap.value && isRepairable.value
-    ? game.reconditionQuoteFor(props.instance.id, reconditionTargetBand.value)
+    ? game.nextReconditionStep(props.instance.id)
     : null,
 )
-const reconditionDisabled = computed(
-  () => !reconditionQuote.value || game.laborSlotsRemainingToday <= 0,
-)
+const reconditionDisabled = computed(() => !nextStep.value || game.laborSlotsRemainingToday <= 0)
 
 function onCardClick(): void {
   if (isScrap.value || !props.fits) return
@@ -115,11 +103,9 @@ function onScrapClick(): void {
 }
 
 function onReconditionClick(): void {
-  game.reconditionPart(props.instance.id, reconditionTargetBand.value)
-}
-
-function selectReconditionBand(band: ConditionBand): void {
-  reconditionTargetBand.value = band
+  const step = nextStep.value
+  if (!step) return
+  game.reconditionPart(props.instance.id, step.targetBand)
 }
 
 // A scrap card never drags (it can never be installed anywhere) - these
@@ -168,13 +154,7 @@ function onPointerUp(event: PointerEvent): void {
       <span v-else-if="!fits" class="no-fit-hint">{{ noFitReason ?? "doesn't fit here" }}</span>
     </div>
     <div class="part-actions">
-      <template v-if="reconditionQuote">
-        <BandPicker
-          :current-band="instance.band"
-          :selected="reconditionTargetBand"
-          :test-id-prefix="'band-recondition-' + instance.id"
-          @select="selectReconditionBand"
-        />
+      <template v-if="nextStep">
         <button
           type="button"
           class="recondition-handle"
@@ -182,11 +162,9 @@ function onPointerUp(event: PointerEvent): void {
           :data-test="'recondition-part-' + instance.id"
           @click.stop="onReconditionClick"
         >
-          Recondition to {{ reconditionTargetBand }} ({{ formatYen(reconditionQuote.costYen) }}
+          Recondition to {{ nextStep.targetBand }} ({{ formatYen(nextStep.costYen) }}
           &middot;
-          {{ reconditionQuote.laborSlotsRequired }} slot{{
-            reconditionQuote.laborSlotsRequired === 1 ? '' : 's'
-          }})
+          {{ nextStep.laborSlotsRequired }} slot{{ nextStep.laborSlotsRequired === 1 ? '' : 's' }})
         </button>
       </template>
       <template v-if="isScrap">

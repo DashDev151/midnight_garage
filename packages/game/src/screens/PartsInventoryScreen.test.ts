@@ -18,7 +18,7 @@ describe('PartsInventoryScreen', () => {
 
   it('shows the empty-inventory hint with no parts owned', () => {
     const wrapper = mountScreen()
-    expect(wrapper.text()).toContain('No unstaged parts on hand')
+    expect(wrapper.text()).toContain('No unplanned parts on hand')
   })
 
   it('lists every owned part not currently staged anywhere', () => {

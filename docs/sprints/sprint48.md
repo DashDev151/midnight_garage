@@ -92,4 +92,54 @@ nothing about planned work. `BandPicker.vue` is the one shared target-band contr
 
 ## Exit
 
-(filled at completion)
+**Implemented and verified 2026-07-13.**
+
+Files touched:
+
+- `packages/sim/src/stagedWork.ts` - new `previewPlannedWork(state, carInstanceId, context)`, a pure
+  projection (no cash/labor/jobs) reused by the Finances estimate.
+- `packages/sim/tests/stagedWork.test.ts` - 6 new tests covering group repair, per-part repair,
+  install, multiple actions in order, no-op, and unknown-car projection.
+- `packages/game/src/stores/gameStore.ts` - `NextRepairStepView`/`PlannedEstimateView` view types;
+  `nextRepairStep` (group/per-part marginal next-rung diff off the real repair plan);
+  `nextReconditionStep` (bench recondition's own next-rung step, reusing
+  `reconditionQuoteFor`); `plannedRepairCostYen`/`plannedEstimateFor` (the Finances pre-Confirm
+  estimate, built on `previewPlannedWork` + the existing `marketValueYen`/`carCostToMintYen`); all
+  four exposed from the store.
+- `packages/game/src/screens/CarDetailScreen.vue` - one global condition filter
+  (`visibleConditions`/`CONDITION_FILTER_OPTIONS`) replacing the old per-group good-order toggle;
+  click-per-rung repair buttons at both group and per-part granularity
+  (`advanceGroupRepair`/`advancePartRepair`, `repairStepLabel`), each showing the real marginal
+  price/labor and a separate "Clear planned repair" affordance that stays visible even once a plan
+  reaches the mint ceiling; "Staged" -> "Planned" copy throughout; a new pre-Confirm Finances
+  estimate block reading `detail.plannedEstimate`, dimmed/italic and explicitly labeled.
+- `packages/game/src/components/PartCard.vue` - bench recondition converted to the same
+  click-per-rung control via `game.nextReconditionStep`, dropping the per-instance target-band ref.
+- `packages/game/src/components/BandPicker.vue` / `BandPicker.test.ts` - deleted (no consumers
+  left); `packages/sim/src/bands.ts`'s now-dead `bandsAbove` helper also removed.
+- `packages/game/src/screens/PartsInventoryScreen.vue`, `PartsInventoryScreen.test.ts`,
+  `packages/game/src/components/PartsInventoryPanel.vue` - the two remaining player-visible
+  "staged"/"unstaged" copy sites renamed to "planned"/"unplanned".
+- `packages/game/src/components/PartCard.test.ts`,
+  `packages/game/src/screens/CarDetailScreen.test.ts` - rewritten for the click-per-rung
+  interaction pattern (real marginal targets via `game.nextRepairStep`/`nextReconditionStep`
+  instead of hardcoded band literals), the new filter test ids, and a guard test asserting no
+  player-visible "staged" text renders anywhere on the car-detail screen.
+
+Real bug found and fixed during implementation: the group- and per-part-level "Clear planned
+repair" button was nested inside the same `v-if` as the "Repair to…" advance button, both gated on
+`nextRepairStep` returning non-null. Once a planned repair reached the mint ceiling (nothing left
+to climb), `nextRepairStep` correctly returns null, but that also hid the *unstage* control -
+leaving a plan the player could see (via the chip) but not clear from that row. Fixed by splitting
+the advance button and the clear-chip/button into independent `v-if`s, gated respectively on
+"there's a next rung" and "something is already planned here."
+
+Deviations from the design doc: decision 6 (general declutter) was left largely as-is - the
+existing Remove/Replace controls were already mutually exclusive per row (never both shown at
+once), and no redundant inline hint duplicating a `HelpHint` was found, so no further consolidation
+was needed beyond what decisions 1-5 already produced.
+
+Verification: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format` clean; full suite
+`pnpm test` 938/938 passing; `pnpm build` succeeds. Balance harness skipped - this sprint is a pure
+UI/interaction rework with no change to any sim economic function's inputs or outputs (repair
+cost/value/labor formulas are unchanged; only how the player invokes and previews them changed).

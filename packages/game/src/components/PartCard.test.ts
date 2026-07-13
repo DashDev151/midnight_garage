@@ -171,31 +171,34 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       expect(wrapper.find(`[data-test="recondition-part-${worn.id}"]`).exists()).toBe(false)
     })
 
-    it('clicking Recondition climbs the loose part toward mint through the store', async () => {
+    /**
+     * Sprint 48: recondition is click-per-rung now, same as an on-car
+     * repair - one click climbs exactly one band, priced/labored off the
+     * real next-rung quote, never straight to mint in a single click.
+     */
+    it('clicking Recondition climbs the loose part exactly one band through the store', async () => {
       const { game, instance: worn } = grantInventoryPart('worn')
       const wrapper = mount(PartCard, { props: { instance: worn, part } })
 
       await wrapper.find(`[data-test="recondition-part-${worn.id}"]`).trigger('click')
 
-      expect(game.gameState.partInventory[0]?.band).toBe('mint')
+      expect(game.gameState.partInventory[0]?.band).toBe('fine')
     })
 
-    /**
-     * Sprint 40 item 5: the recondition control's own BandPicker defaults to
-     * mint (unchanged), but picking a non-default band must actually change
-     * what clicking Recondition does - proof the picker's selection, not a
-     * hardcoded literal, drives the store call.
-     */
-    it('picking a non-default band flows through to the recondition call', async () => {
+    it('clicking Recondition repeatedly climbs one rung at a time until mint', async () => {
       const { game, instance: poor } = grantInventoryPart('poor')
       const wrapper = mount(PartCard, { props: { instance: poor, part } })
 
-      // 'poor' offers worn/fine/mint - 'worn' is a real, non-default pick.
-      await wrapper.find(`[data-test="band-recondition-${poor.id}-worn"]`).trigger('click')
-      expect(wrapper.text()).toContain('Recondition to worn')
-
       await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
       expect(game.gameState.partInventory[0]?.band).toBe('worn')
+
+      await wrapper.vm.$nextTick()
+      await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
+      expect(game.gameState.partInventory[0]?.band).toBe('fine')
+
+      await wrapper.vm.$nextTick()
+      await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
+      expect(game.gameState.partInventory[0]?.band).toBe('mint')
     })
 
     /**

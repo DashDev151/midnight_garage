@@ -68,17 +68,6 @@ export function bandsBelowExcludingScrap(target: ConditionBand): ConditionBand[]
 }
 
 /**
- * Every band strictly ABOVE `current`, up to mint (Sprint 40's band-picker
- * control, `BandPicker.vue`) - the valid repair/recondition targets: never
- * the current band itself, never anything at or below it. Empty once
- * `current` is already `mint`.
- */
-export function bandsAbove(current: ConditionBand): ConditionBand[] {
-  const currentIndex = bandIndex(current)
-  return BAND_ORDER.filter((_, i) => i > currentIndex)
-}
-
-/**
  * Sprint 26 decision 5 + Sprint 44 decision 1 (revert of Sprint 41's
  * tier-scaling): the one atom valuation (decision 4), Sprint 27 pricing, and
  * Sprint 29 job payouts all reuse.

@@ -18,7 +18,7 @@ const game = useGameStore()
 <template>
   <div class="inventory-panel">
     <p v-if="game.stageableParts.length === 0" class="empty">
-      No unstaged parts on hand - visit the
+      No unplanned parts on hand - visit the
       <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>
     <ul v-else class="parts-list">

@@ -5,7 +5,6 @@ import { bandIndex } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
-import BandPicker from '../components/BandPicker.vue'
 import EndDayButton from '../components/EndDayButton.vue'
 import HelpHint from '../components/HelpHint.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
@@ -82,106 +81,85 @@ function rowsFor(componentId: ComponentId) {
   return detail.value ? game.partsInGroup(detail.value.car.id, componentId) : []
 }
 
-// --- Sprint 41 decision 4: fine/mint parts collapse behind a "+N parts in
-// good order" toggle per group, so the drill-down leads with what actually
-// needs attention. -----------------------------------------------------
+// --- Sprint 48 decision 1: one global condition filter replaces the old
+// per-group "+N parts in good order" toggle - a single dropdown governs
+// every group's drill-down at once. -------------------------------------
 
-const expandedGoodOrder = reactive(new Set<ComponentId>())
+const CONDITION_FILTER_OPTIONS = ['mint', 'fine', 'worn', 'poor', 'scrap', 'missing'] as const
+type ConditionFilterOption = (typeof CONDITION_FILTER_OPTIONS)[number]
 
-function toggleGoodOrder(componentId: ComponentId): void {
-  if (expandedGoodOrder.has(componentId)) expandedGoodOrder.delete(componentId)
-  else expandedGoodOrder.add(componentId)
+/** Default preserves the old de-noised view: worn/poor/scrap/missing shown,
+ * fine/mint hidden. */
+const visibleConditions = reactive(
+  new Set<ConditionFilterOption>(['worn', 'poor', 'scrap', 'missing']),
+)
+
+function toggleConditionFilter(option: ConditionFilterOption): void {
+  if (visibleConditions.has(option)) visibleConditions.delete(option)
+  else visibleConditions.add(option)
 }
 
-/** A row that needs no attention right now - present and already fine/mint.
- * Missing, legitimately-absent, scrap, poor, and worn rows all stay always
- * visible (there's a real decision or defect to see there); only "this part
- * is basically fine" collapses. */
-function isGoodOrderRow(row: ReturnType<typeof rowsFor>[number]): boolean {
-  return row.band === 'fine' || row.band === 'mint'
+/** A row's filter category - `null` for a legitimately-absent slot (forced
+ * induction on an NA car), which is never filterable and always shows,
+ * matching its pre-Sprint-48 always-visible behavior. */
+function rowCategory(row: ReturnType<typeof rowsFor>[number]): ConditionFilterOption | null {
+  if (row.legitimatelyAbsent) return null
+  if (row.missing) return 'missing'
+  return row.band
 }
 
-/** Every row in `componentId` currently worth collapsing behind the toggle. */
-function goodOrderRowsFor(componentId: ComponentId) {
-  return rowsFor(componentId).filter(isGoodOrderRow)
-}
-
-/** The rows actually rendered for `componentId`'s drill-down right now:
- * every attention-needed row always, plus the good-order rows too once the
- * group's own toggle has been opened. */
+/** The rows actually rendered for `componentId`'s drill-down right now,
+ * governed by the one global filter above. */
 function visibleRowsFor(componentId: ComponentId) {
-  if (expandedGoodOrder.has(componentId)) return rowsFor(componentId)
-  return rowsFor(componentId).filter((row) => !isGoodOrderRow(row))
+  return rowsFor(componentId).filter((row) => {
+    const category = rowCategory(row)
+    return category === null || visibleConditions.has(category)
+  })
 }
 
 /**
- * The group's own "Repair all to…" convenience (decision 1) DEFAULTS to
- * `fine`, not `mint` - a cheap, blanket "get it decent" pass; a specific
- * part worth pushing all the way to mint is what the per-part row below is
- * for. Sprint 40: the player can now pick any valid band via the group's
- * own `BandPicker` - this is only the picker's starting selection, not a
- * hard target anymore. Shown only when something in the group is actually
- * below `fine` (scrap is structurally excluded - decision 1's "skipping any
- * scrap part it can't touch" - and an unfitted slot has nothing to repair,
- * only fit).
+ * Sprint 48 decision 2 (maintainer, 2026-07-13, superseding the BandPicker):
+ * one button per repairable row/group, climbing exactly ONE band per click -
+ * "Repair to Worn - ¥X · N labor", then "Repair further, to Fine - +¥Y · +N
+ * labor". Priced/labored off the real repair plan (`game.nextRepairStep`),
+ * never a hardcoded one-click-one-labor assumption.
  */
-const DEFAULT_GROUP_REPAIR_TARGET_BAND: ConditionBand = 'fine'
-/** Sprint 40: the per-part repair picker's own default - unlike the group
- * convenience above, a single part's repair has always defaulted to mint. */
-const DEFAULT_PART_REPAIR_TARGET_BAND: ConditionBand = 'mint'
-
-/** Sprint 40: the band pickers' own selections, one map per granularity -
- * unset until the player actually picks something, in which case the
- * default above still applies (mirrors `expandedGroups`' reactive-Set
- * pattern just above: read/written directly from the template). */
-const groupTargetBand = reactive(new Map<ComponentId, ConditionBand>())
-const partTargetBand = reactive(new Map<CarPartId, ConditionBand>())
-
-function groupTargetBandFor(componentId: ComponentId): ConditionBand {
-  return groupTargetBand.get(componentId) ?? DEFAULT_GROUP_REPAIR_TARGET_BAND
+function nextGroupStep(componentId: ComponentId) {
+  return detail.value ? game.nextRepairStep(detail.value.car.id, componentId) : null
 }
 
-function partTargetBandFor(carPartId: CarPartId): ConditionBand {
-  return partTargetBand.get(carPartId) ?? DEFAULT_PART_REPAIR_TARGET_BAND
+function nextPartStep(componentId: ComponentId, carPartId: CarPartId) {
+  return detail.value ? game.nextRepairStep(detail.value.car.id, componentId, carPartId) : null
 }
 
-function selectGroupTargetBand(componentId: ComponentId, band: ConditionBand): void {
-  groupTargetBand.set(componentId, band)
+/** Template-safe non-null variants of the two functions above - only ever
+ * rendered where `v-if="nextGroupStep(...)"`/`nextPartStep(...)` already
+ * guards them; the fallback is unreachable, just a type-safe default
+ * (`vue-eslint-parser` doesn't parse `!` inside a template expression). */
+function nextGroupStepOrFallback(componentId: ComponentId) {
+  return (
+    nextGroupStep(componentId) ?? { targetBand: 'mint' as const, costYen: 0, laborSlotsRequired: 0 }
+  )
+}
+function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) {
+  return (
+    nextPartStep(componentId, carPartId) ?? {
+      targetBand: 'mint' as const,
+      costYen: 0,
+      laborSlotsRequired: 0,
+    }
+  )
 }
 
-function selectPartTargetBand(carPartId: CarPartId, band: ConditionBand): void {
-  partTargetBand.set(carPartId, band)
-}
-
-/**
- * Sprint 41 coordinator fix: the group repair control's OWN floor - the
- * worst REPAIRABLE band in the group, never scrap or a non-repairable
- * consumable (`worstRepairableBandInGroup`, bands.ts). Distinct from
- * `detail.groupBands[componentId]` (the display chip, which correctly
- * includes scrap/non-repairable parts in the group's worst reported
- * condition) - feeding THAT into the BandPicker let a group with a scrap
- * part next to a merely-worn one offer `poor` as a dead repair target.
- */
-function groupRepairFloorBandFor(componentId: ComponentId): ConditionBand | null {
-  return detail.value ? game.groupRepairFloorBand(detail.value.car.id, componentId) : null
-}
-
-/** Template-safe non-null variant - only ever bound where `groupNeedsRepair`
- * has already guaranteed a real floor exists ('poor' or 'worn'); the 'mint'
- * fallback is unreachable there, just a type-safe default instead of a
- * template-side non-null assertion (`vue-eslint-parser` doesn't parse `!`
- * inside a template expression). */
-function groupRepairFloorBandOrMint(componentId: ComponentId): ConditionBand {
-  return groupRepairFloorBandFor(componentId) ?? 'mint'
-}
-
-/** Whether the group's own "Repair all…" convenience should show at all -
- * only when the worst REPAIRABLE part is poor or worn (unchanged threshold
- * from before Sprint 41; `fine` stays a per-part-only repair, same as ever -
- * the per-part row below still offers it). */
-function groupNeedsRepair(componentId: ComponentId): boolean {
-  const floor = groupRepairFloorBandFor(componentId)
-  return floor === 'poor' || floor === 'worn'
+/** The button's own label, sourced entirely from the real plan - never a
+ * hand-derived "N labor" guess. */
+function repairStepLabel(
+  step: { targetBand: ConditionBand; costYen: number; laborSlotsRequired: number },
+  alreadyPlanned: boolean,
+): string {
+  const sign = alreadyPlanned ? '+' : ''
+  const prefix = alreadyPlanned ? 'Repair further, to ' : 'Repair to '
+  return `${prefix}${step.targetBand} - ${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labor`
 }
 
 /** The open job at this exact address - group-level when `carPartId` is
@@ -290,6 +268,12 @@ function isStagedRepair(componentId: ComponentId, carPartId?: CarPartId): boolea
   return stagedFor(componentId, carPartId)?.kind === 'repair'
 }
 
+/** The currently planned target band's own label, for the "-> Fine" chip. */
+function stagedTargetBandLabel(componentId: ComponentId, carPartId?: CarPartId): string | null {
+  const staged = stagedFor(componentId, carPartId)
+  return staged?.kind === 'repair' ? staged.targetBand : null
+}
+
 function partInstanceDisplayName(partInstanceId: string): string {
   const pi = game.gameState.partInventory.find((p) => p.id === partInstanceId)
   return pi ? game.partName(pi.partId) : partInstanceId
@@ -301,37 +285,30 @@ function stagedInstallName(componentId: ComponentId, carPartId?: CarPartId): str
   return staged?.kind === 'install' ? partInstanceDisplayName(staged.partInstanceId) : undefined
 }
 
-/** The group's own "Repair all to…" convenience toggle - targets whatever
- * band its own `BandPicker` currently has selected (Sprint 40; defaults to
- * `fine`, unchanged from before the picker existed). */
-function toggleGroupRepairStage(componentId: ComponentId): void {
+/**
+ * Sprint 48: the group's "Repair to…" click-per-rung control - each click
+ * plans exactly one more band, re-staging at the new target (`stageAction`
+ * already replaces whatever was staged at this address, so a repeat click
+ * is just calling it again with the next rung).
+ */
+function advanceGroupRepair(componentId: ComponentId): void {
   const d = detail.value
-  if (!d) return
-  if (isStagedRepair(componentId)) game.unstageAction(d.car.id, componentId)
-  else {
-    game.stageAction(d.car.id, {
-      kind: 'repair',
-      componentId,
-      targetBand: groupTargetBandFor(componentId),
-    })
-  }
+  const step = nextGroupStep(componentId)
+  if (!d || !step) return
+  game.stageAction(d.car.id, { kind: 'repair', componentId, targetBand: step.targetBand })
 }
 
-/** One part row's own "Repair to…" toggle - targets whatever band its own
- * `BandPicker` currently has selected (Sprint 40; defaults to `mint`,
- * unchanged from before the picker existed). */
-function togglePartRepairStage(componentId: ComponentId, carPartId: CarPartId): void {
+/** Sprint 48: the per-part counterpart to `advanceGroupRepair` above. */
+function advancePartRepair(componentId: ComponentId, carPartId: CarPartId): void {
   const d = detail.value
-  if (!d) return
-  if (isStagedRepair(componentId, carPartId)) game.unstageAction(d.car.id, componentId, carPartId)
-  else {
-    game.stageAction(d.car.id, {
-      kind: 'repair',
-      componentId,
-      targetBand: partTargetBandFor(carPartId),
-      carPartId,
-    })
-  }
+  const step = nextPartStep(componentId, carPartId)
+  if (!d || !step) return
+  game.stageAction(d.car.id, {
+    kind: 'repair',
+    componentId,
+    targetBand: step.targetBand,
+    carPartId,
+  })
 }
 
 /** Which part's Replace drawer is open right now, if any - only one at a time. */
@@ -555,11 +532,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             Components
             <HelpHint label="Components">
               Worst-off groups lead. Expand a group to repair or replace its real parts one at a
-              time, or use a group's own "Repair all" convenience - pick how far to take it with the
-              band buttons. Parts already in good order collapse behind their own toggle. Nothing
-              happens until you Confirm.
+              time, or use a group's own "Repair" button - each click plans one more band, priced
+              and labored for real. Use the filter to choose which conditions show. Nothing happens
+              until you Confirm.
             </HelpHint>
           </h3>
+
+          <details class="condition-filter" data-test="condition-filter">
+            <summary>Show: {{ visibleConditions.size }}/6 conditions</summary>
+            <label v-for="option in CONDITION_FILTER_OPTIONS" :key="option" class="filter-option">
+              <input
+                type="checkbox"
+                :data-test="'filter-' + option"
+                :checked="visibleConditions.has(option)"
+                @change="toggleConditionFilter(option)"
+              />
+              {{ option }}
+            </label>
+          </details>
+
           <ul class="components">
             <li v-for="componentId in orderedComponents" :key="componentId" class="component-row">
               <div class="meter-line">
@@ -601,28 +592,36 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 </template>
 
                 <template v-else>
-                  <template v-if="groupNeedsRepair(componentId)">
-                    <BandPicker
-                      v-if="!isStagedRepair(componentId)"
-                      :current-band="groupRepairFloorBandOrMint(componentId)"
-                      :selected="groupTargetBandFor(componentId)"
-                      :test-id-prefix="'band-group-' + componentId"
-                      @select="selectGroupTargetBand(componentId, $event)"
-                    />
+                  <template v-if="nextGroupStep(componentId)">
                     <button
                       :data-test="'stage-repair-' + componentId"
-                      @click="toggleGroupRepairStage(componentId)"
+                      @click="advanceGroupRepair(componentId)"
                     >
                       {{
-                        isStagedRepair(componentId)
-                          ? 'Unstage repair'
-                          : 'Repair all to ' + groupTargetBandFor(componentId)
+                        repairStepLabel(
+                          nextGroupStepOrFallback(componentId),
+                          isStagedRepair(componentId),
+                        )
                       }}
+                    </button>
+                  </template>
+                  <template v-if="isStagedRepair(componentId)">
+                    <span class="planned-chip"
+                      >&rarr; {{ stagedTargetBandLabel(componentId) }}</span
+                    >
+                    <button
+                      type="button"
+                      :data-test="'unstage-repair-' + componentId"
+                      @click="game.unstageAction(detail.car.id, componentId)"
+                    >
+                      Clear planned repair
                     </button>
                   </template>
 
                   <template v-if="stagedInstallName(componentId)">
-                    <span class="staged-install">staged: {{ stagedInstallName(componentId) }}</span>
+                    <span class="planned-install"
+                      >planned: {{ stagedInstallName(componentId) }}</span
+                    >
                     <button
                       type="button"
                       :data-test="'unstage-' + componentId"
@@ -675,33 +674,35 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     </template>
 
                     <template v-else>
-                      <template
-                        v-if="
-                          row.band && row.band !== 'mint' && row.band !== 'scrap' && row.repairable
-                        "
-                      >
-                        <BandPicker
-                          v-if="!isStagedRepair(componentId, row.partId)"
-                          :current-band="row.band"
-                          :selected="partTargetBandFor(row.partId)"
-                          :test-id-prefix="'band-part-' + row.partId"
-                          @select="selectPartTargetBand(row.partId, $event)"
-                        />
+                      <template v-if="nextPartStep(componentId, row.partId)">
                         <button
                           :data-test="'stage-repair-part-' + row.partId"
-                          @click="togglePartRepairStage(componentId, row.partId)"
+                          @click="advancePartRepair(componentId, row.partId)"
                         >
                           {{
-                            isStagedRepair(componentId, row.partId)
-                              ? 'Unstage repair'
-                              : 'Repair to ' + partTargetBandFor(row.partId)
+                            repairStepLabel(
+                              nextPartStepOrFallback(componentId, row.partId),
+                              isStagedRepair(componentId, row.partId),
+                            )
                           }}
+                        </button>
+                      </template>
+                      <template v-if="isStagedRepair(componentId, row.partId)">
+                        <span class="planned-chip"
+                          >&rarr; {{ stagedTargetBandLabel(componentId, row.partId) }}</span
+                        >
+                        <button
+                          type="button"
+                          :data-test="'unstage-repair-part-' + row.partId"
+                          @click="game.unstageAction(detail.car.id, componentId, row.partId)"
+                        >
+                          Clear planned repair
                         </button>
                       </template>
 
                       <template v-if="stagedInstallName(componentId, row.partId)">
-                        <span class="staged-install"
-                          >staged: {{ stagedInstallName(componentId, row.partId) }}</span
+                        <span class="planned-install"
+                          >planned: {{ stagedInstallName(componentId, row.partId) }}</span
                         >
                         <button
                           type="button"
@@ -738,21 +739,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     </template>
                   </div>
                 </li>
-
-                <li v-if="goodOrderRowsFor(componentId).length > 0" class="good-order-row">
-                  <button
-                    type="button"
-                    class="good-order-toggle"
-                    :data-test="'good-order-' + componentId"
-                    @click="toggleGoodOrder(componentId)"
-                  >
-                    {{
-                      expandedGoodOrder.has(componentId)
-                        ? 'Hide parts in good order'
-                        : '+' + goodOrderRowsFor(componentId).length + ' parts in good order'
-                    }}
-                  </button>
-                </li>
               </ul>
             </li>
           </ul>
@@ -769,9 +755,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           />
 
           <section class="staged-panel">
-            <h4>Staged work ({{ detail.stagedActions.length }})</h4>
+            <h4>Planned work ({{ detail.stagedActions.length }})</h4>
             <p v-if="detail.stagedActions.length === 0" class="empty">
-              Nothing staged yet - free to add and remove until you Confirm.
+              Nothing planned yet - free to add and remove until you Confirm.
             </p>
             <ul v-else class="staged-list">
               <li
@@ -844,6 +830,45 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <dd data-test="finance-profit">{{ formatYenDelta(projectedProfitYen) }}</dd>
           </div>
         </dl>
+
+        <template v-if="detail.plannedEstimate">
+          <p class="estimate-label">Estimate - not yet confirmed</p>
+          <dl class="finance-grid estimate-grid" data-test="finance-estimate">
+            <div class="finance-row">
+              <dt>Planned repair cost</dt>
+              <dd data-test="finance-estimate-repair-cost">
+                {{ formatYen(detail.plannedEstimate.plannedRepairCostYen) }}
+              </dd>
+            </div>
+            <div class="finance-row">
+              <dt>Total spent after</dt>
+              <dd data-test="finance-estimate-total-spent">
+                {{ formatYen(detail.plannedEstimate.totalSpentYenAfter) }}
+              </dd>
+            </div>
+            <div class="finance-row">
+              <dt>Guide value after</dt>
+              <dd data-test="finance-estimate-guide-value">
+                {{ formatYen(detail.plannedEstimate.guideValueYenAfter) }}
+              </dd>
+            </div>
+            <div class="finance-row">
+              <dt>Restoration bill after</dt>
+              <dd data-test="finance-estimate-bill">
+                {{ formatYen(detail.plannedEstimate.billYenAfter) }}
+              </dd>
+            </div>
+            <div
+              class="finance-row profit"
+              :class="detail.plannedEstimate.projectedProfitYenAfter >= 0 ? 'positive' : 'negative'"
+            >
+              <dt>Projected profit after</dt>
+              <dd data-test="finance-estimate-profit">
+                {{ formatYenDelta(detail.plannedEstimate.projectedProfitYenAfter) }}
+              </dd>
+            </div>
+          </dl>
+        </template>
       </section>
 
       <section v-if="!detail.serviceJob" class="sell">
@@ -1109,14 +1134,23 @@ button.primary.danger {
   font-size: var(--mg-fs-sm);
 }
 
-.good-order-row {
-  padding: var(--mg-space-1) 0;
+/* Sprint 48 decision 1: one global filter replaces the old per-group
+   "+N parts in good order" toggle. */
+.condition-filter {
+  margin: var(--mg-space-1) 0 var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
 }
 
-.good-order-toggle {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  font-style: italic;
+.condition-filter summary {
+  cursor: pointer;
+}
+
+.filter-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-1);
+  margin: var(--mg-space-1) var(--mg-space-2) 0 0;
 }
 
 .total-bill-line {
@@ -1181,7 +1215,12 @@ button.primary.danger {
   color: var(--mg-neon-cyan);
 }
 
-.staged-install {
+.planned-install {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
+}
+
+.planned-chip {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
 }
@@ -1235,6 +1274,23 @@ button.primary.danger {
 
 .finance-row.profit.negative dd {
   color: var(--mg-danger);
+}
+
+/* Sprint 48: the pre-Confirm estimate - visually distinct (dimmed/italic)
+   from the confirmed figures above it, since it's a projection, not fact. */
+.estimate-grid {
+  margin-top: var(--mg-space-1);
+  opacity: 0.75;
+  font-style: italic;
+}
+
+.estimate-label {
+  margin: var(--mg-space-2) 0 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
+  border-top: var(--mg-border);
+  padding-top: var(--mg-space-2);
 }
 
 .sell {

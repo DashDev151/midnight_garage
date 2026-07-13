@@ -44,6 +44,7 @@ import {
   availableLaborSlots,
   advanceDay,
   bandIndex,
+  climbBand,
   bestFitBuyer,
   buildSimContext,
   carCostToMintYen,
@@ -73,6 +74,7 @@ import {
   partFitsCar,
   planGroupRepair,
   presentPartIdsInGroup,
+  previewPlannedWork,
   reconditionQuote,
   REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
@@ -224,6 +226,33 @@ export interface CarDetail extends DetailedCar {
    * "projected profit" is this minus total spent.
    */
   guideValueYen: number
+  /**
+   * Sprint 48: the pre-Confirm estimate of what planned work will do to this
+   * car - null when nothing is planned. Every figure assumes the plan fully
+   * completes (labor permitting); "estimate, not confirmed" is the caller's
+   * job to label.
+   */
+  plannedEstimate: PlannedEstimateView | null
+}
+
+/** Sprint 48: the Finances panel's pre-Confirm preview - null (via
+ * `CarDetail.plannedEstimate`) when there's nothing planned yet. */
+export interface PlannedEstimateView {
+  /** What every currently planned repair action will charge at Confirm -
+   * the exact figure `confirmStagedWork` will deduct, not a guess (planned
+   * installs cost nothing NEW here; that cash already left when the part
+   * was bought, already counted in `ledger.partsYen`). */
+  plannedRepairCostYen: number
+  /** The restoration bill remaining AFTER the plan completes. */
+  billYenAfter: number
+  /** The guide value AFTER the plan completes - the same `marketValueYen`
+   * the real guide value already uses, on the projected car. */
+  guideValueYenAfter: number
+  /** Total spent (purchase + repairs + parts) AFTER the plan completes. */
+  totalSpentYenAfter: number
+  /** `guideValueYenAfter - totalSpentYenAfter` - the Finances panel's
+   * headline "profit after" number. */
+  projectedProfitYenAfter: number
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -251,6 +280,15 @@ export interface ToolTierRungView {
   upgradePriceYen: number | null
   /** This rung's own reputation requirement, regardless of whether it's met yet - null on tier 1. */
   minReputationTier: ReputationTier | null
+}
+
+/** Sprint 48: one click-per-rung repair step, priced/labored off the real
+ * plan - shared shape for the group row, the per-part row, and the bench
+ * recondition control. */
+export interface NextRepairStepView {
+  targetBand: ConditionBand
+  costYen: number
+  laborSlotsRequired: number
 }
 
 export interface ToolLineView {
@@ -714,6 +752,79 @@ export const useGameStore = defineStore('game', () => {
     )
   }
 
+  /**
+   * Sprint 48: one repairable row's or one whole group's NEXT single rung of
+   * repair - "click to plan one more band," replacing the old BandPicker
+   * (pick any target, then a separate Stage button). Priced/labored off the
+   * REAL repair plan (never a hardcoded one-click-one-labor assumption):
+   * computes the plan through the already-staged target (if any) and through
+   * one rung further, and returns the DIFFERENCE - the true marginal cost of
+   * this one click, whether it's the first click (climbing from the real
+   * band) or a repeat click (climbing further from what's already staged).
+   * Null when there is nothing left to plan (unrepairable, scrap, missing,
+   * or already staged/installed at mint).
+   */
+  function nextRepairStep(
+    carId: string,
+    componentId: ComponentId,
+    carPartId?: CarPartId,
+  ): NextRepairStepView | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    const staged = stagedActionsFor(carId).find(
+      (a) => a.kind === 'repair' && a.componentId === componentId && a.carPartId === carPartId,
+    )
+    const stagedTarget = staged && staged.kind === 'repair' ? staged.targetBand : null
+    const realFloor = carPartId
+      ? (car.parts[carPartId].installed?.band ?? null)
+      : groupRepairFloorBand(carId, componentId)
+    if (!realFloor) return null
+    const effectiveCurrent = stagedTarget ?? realFloor
+    if (effectiveCurrent === 'mint') return null
+    const nextRung = climbBand(effectiveCurrent, 1)
+
+    const planTo = (target: ConditionBand) =>
+      planGroupRepair(
+        car,
+        componentId,
+        target,
+        gameState.value.toolTiers,
+        context.value.partIdsByGroup,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy.restoration.repairStepFraction,
+        carPartId,
+      )
+    const alreadyPlanned = stagedTarget
+      ? planTo(stagedTarget)
+      : { costYen: 0, laborSlotsRequired: 0, partIds: [] }
+    const throughNextRung = planTo(nextRung)
+    const costYen = throughNextRung.costYen - alreadyPlanned.costYen
+    const laborSlotsRequired =
+      throughNextRung.laborSlotsRequired - alreadyPlanned.laborSlotsRequired
+    if (laborSlotsRequired <= 0) return null // nothing repairable left to climb (scrap/non-repairable)
+    return { targetBand: nextRung, costYen, laborSlotsRequired }
+  }
+
+  /** Sprint 48: the bench recondition control's own next-rung step - reuses
+   * `reconditionQuoteFor` (already the exact charge `reconditionPart` will
+   * make) rather than re-deriving the plan, since bench work has no staging
+   * step to diff against (each click executes immediately). Null when
+   * there's nothing left to recondition (already mint, scrap, or
+   * non-repairable). */
+  function nextReconditionStep(partInstanceId: string): NextRepairStepView | null {
+    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
+    if (!instance || instance.band === 'mint') return null
+    const nextRung = climbBand(instance.band, 1)
+    const quote = reconditionQuoteFor(partInstanceId, nextRung)
+    if (!quote) return null
+    return {
+      targetBand: nextRung,
+      costYen: quote.costYen,
+      laborSlotsRequired: quote.laborSlotsRequired,
+    }
+  }
+
   /** Sprint 41 decision 2: whether a real car part can be repaired at all -
    * false for tyres/brakePadsDiscs/clutch. The per-part repair row and the
    * bench recondition control (`PartCard.vue`) both key off this. */
@@ -893,6 +1004,64 @@ export const useGameStore = defineStore('game', () => {
       ),
       ledger: carLedgerFor(gameState.value, carId),
       guideValueYen: carGuideValueYen(car, model, gameState.value, context.value),
+      plannedEstimate: plannedEstimateFor(carId),
+    }
+  }
+
+  /** The total yen every currently planned REPAIR action will charge at
+   * Confirm - the exact figure `confirmStagedWork` deducts (Sprint 47: no
+   * consumables fee on top). Planned installs charge nothing NEW here - that
+   * cash already left when the part was bought. */
+  function plannedRepairCostYen(carId: string): number {
+    const car = findWorkableCar(carId)
+    if (!car) return 0
+    let total = 0
+    for (const action of stagedActionsFor(carId)) {
+      if (action.kind !== 'repair') continue
+      total += planGroupRepair(
+        car,
+        action.componentId,
+        action.targetBand,
+        gameState.value.toolTiers,
+        context.value.partIdsByGroup,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy.restoration.repairStepFraction,
+        action.carPartId,
+      ).costYen
+    }
+    return total
+  }
+
+  /** Sprint 48: the Finances panel's pre-Confirm estimate - null when
+   * nothing is planned. Feeds the projected car (`previewPlannedWork`)
+   * straight into the same `carCostToMintYen`/`carGuideValueYen` the real
+   * bill/guide value already use, so "after" is never a parallel estimator. */
+  function plannedEstimateFor(carId: string): PlannedEstimateView | null {
+    if (stagedActionsFor(carId).length === 0) return null
+    const car = findWorkableCar(carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    const preview = previewPlannedWork(gameState.value, carId, context.value)
+    if (!car || !model || !preview) return null
+
+    const repairCostYen = plannedRepairCostYen(carId)
+    const ledger = carLedgerFor(gameState.value, carId)
+    const totalSpentYenAfter =
+      (ledger.purchaseYen ?? 0) + ledger.repairYen + repairCostYen + ledger.partsYen
+    const billYenAfter = carCostToMintYen(
+      preview,
+      model,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      context.value.economy,
+    )
+    const guideValueYenAfter = carGuideValueYen(preview, model, gameState.value, context.value)
+    return {
+      plannedRepairCostYen: repairCostYen,
+      billYenAfter,
+      guideValueYenAfter,
+      totalSpentYenAfter,
+      projectedProfitYenAfter: guideValueYenAfter - totalSpentYenAfter,
     }
   }
 
@@ -2195,6 +2364,7 @@ export const useGameStore = defineStore('game', () => {
     carDetail,
     groupBandsForCar,
     groupRepairFloorBand,
+    nextRepairStep,
     isPartRepairable,
     partsInGroup,
     carPartLabel,
@@ -2245,6 +2415,7 @@ export const useGameStore = defineStore('game', () => {
     scrapPart,
     scrapValueForPart,
     reconditionQuoteFor,
+    nextReconditionStep,
     reconditionPart,
     cartItems,
     cartStandardTotalYen,

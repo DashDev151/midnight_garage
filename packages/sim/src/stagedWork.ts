@@ -1,6 +1,6 @@
-import type { DayLogEntry, GameState } from '@midnight-garage/content'
+import type { CarInstance, DayLogEntry, GameState } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
-import { planGroupRepair } from './bands'
+import { bandIndex, canRepair, planGroupRepair } from './bands'
 import { INSTALL_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
 import { findWorkableCar, resolveJobLabor } from './jobs'
@@ -112,4 +112,51 @@ export function confirmStagedWork(
   }
 
   return { state: clearStagedWork(current, carInstanceId), log }
+}
+
+/**
+ * Sprint 48: a pure "what would this car look like if every currently
+ * planned action fully completed" projection - no cash, no labor, no jobs
+ * created, nothing in `state` mutated. Powers the Finances panel's
+ * pre-confirm estimate: the projected car feeds straight into the same
+ * `marketValueYen` the real guide value already uses, so "value after" is
+ * never a parallel estimator. Deliberately simpler than `confirmStagedWork`
+ * (no labor budget, no partial completion) - a preview assumes every planned
+ * action finishes, which is exactly what "projected after Confirm, assuming
+ * enough labor" should show.
+ */
+export function previewPlannedWork(
+  state: GameState,
+  carInstanceId: string,
+  context: SimContext,
+): CarInstance | null {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car) return null
+  const staged = state.stagedCarWork[carInstanceId] ?? []
+  let parts = car.parts
+
+  for (const action of staged) {
+    if (action.kind === 'repair') {
+      const candidateIds = action.carPartId
+        ? [action.carPartId]
+        : context.partIdsByGroup[action.componentId]
+      for (const partId of candidateIds) {
+        const installed = parts[partId].installed
+        if (!installed) continue
+        const entry = context.partsTaxonomyById[partId]
+        if (!entry || !canRepair(installed.band, entry)) continue
+        if (bandIndex(installed.band) >= bandIndex(action.targetBand)) continue
+        parts = { ...parts, [partId]: { installed: { ...installed, band: action.targetBand } } }
+      }
+    } else {
+      const partInstance = state.partInventory.find((p) => p.id === action.partInstanceId)
+      if (!partInstance) continue
+      const catalogPart = context.partsById[partInstance.partId]
+      const targetPartId = action.carPartId ?? catalogPart?.carPartId
+      if (!targetPartId) continue
+      parts = { ...parts, [targetPartId]: { installed: partInstance } }
+    }
+  }
+
+  return { ...car, parts }
 }

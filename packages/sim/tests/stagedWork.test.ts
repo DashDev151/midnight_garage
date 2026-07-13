@@ -9,7 +9,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { clearStagedWork, confirmStagedWork } from '../src/stagedWork'
+import { clearStagedWork, confirmStagedWork, previewPlannedWork } from '../src/stagedWork'
 import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
 // Real CARS/PARTS (Sprint 24 fix 2: findOrCreateJob validates install-part
@@ -186,5 +186,70 @@ describe('confirmStagedWork', () => {
     const result = confirmStagedWork(state, car.id, 5, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
+  })
+})
+
+describe('previewPlannedWork (Sprint 48)', () => {
+  it('projects a planned group repair without spending cash, labor, or creating a job', () => {
+    const state = baseState({
+      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
+    })
+    const preview = previewPlannedWork(state, car.id, CONTEXT)
+    expect(preview?.parts.panels.installed?.band).toBe('mint')
+    expect(preview?.parts.aero.installed?.band).toBe('mint')
+    // Nothing in state itself changed - this is a pure projection.
+    expect(state.cashYen).toBe(5_000_000)
+    expect(state.jobs).toHaveLength(0)
+    expect(state.ownedCars[0]?.parts.panels.installed?.band).toBe('poor')
+  })
+
+  it('projects a planned per-part repair, leaving sibling parts in the group untouched', () => {
+    const state = baseState({
+      stagedCarWork: {
+        [car.id]: [
+          { kind: 'repair', componentId: 'body', targetBand: 'mint', carPartId: 'panels' },
+        ],
+      },
+    })
+    const preview = previewPlannedWork(state, car.id, CONTEXT)
+    expect(preview?.parts.panels.installed?.band).toBe('mint')
+    expect(preview?.parts.aero.installed?.band).toBe('poor') // untouched - not the addressed part
+  })
+
+  it('projects a planned install onto the addressed slot', () => {
+    const state = baseState({
+      stagedCarWork: {
+        [car.id]: [{ kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id }],
+      },
+    })
+    const preview = previewPlannedWork(state, car.id, CONTEXT)
+    expect(preview?.parts.dampers.installed?.id).toBe(sparePart.id)
+    // The real inventory is untouched - a preview never mutates state.
+    expect(state.partInventory).toHaveLength(1)
+  })
+
+  it('projects multiple staged actions together, in order', () => {
+    const state = baseState({
+      stagedCarWork: {
+        [car.id]: [
+          { kind: 'repair', componentId: 'body', targetBand: 'fine' },
+          { kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id },
+        ],
+      },
+    })
+    const preview = previewPlannedWork(state, car.id, CONTEXT)
+    expect(preview?.parts.panels.installed?.band).toBe('fine')
+    expect(preview?.parts.dampers.installed?.id).toBe(sparePart.id)
+  })
+
+  it('is a no-op projection (returns the real car unchanged) for a car with nothing planned', () => {
+    const state = baseState()
+    const preview = previewPlannedWork(state, car.id, CONTEXT)
+    expect(preview?.parts.panels.installed?.band).toBe('poor')
+  })
+
+  it('returns null for an unknown car', () => {
+    const state = baseState()
+    expect(previewPlannedWork(state, 'no-such-car', CONTEXT)).toBeNull()
   })
 })

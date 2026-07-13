@@ -71,11 +71,12 @@ function untaggedPartFor(carPartId: string) {
   return PARTS.find((p) => p.carPartId === carPartId && p.grade !== 'stock')!
 }
 
-/** Whether `componentId`'s group has anything the group's own "Repair all to
- * fine" convenience (or a fresh per-part Repair row) would act on right now -
- * the same `poor`/`worn`-and-repairable gate the component itself uses
- * internally (Sprint 41: a poor/worn non-repairable consumable, e.g. tyres,
- * never counts - only Replace ever touches it). */
+/** Whether `componentId`'s group has anything the group's own "Repair to…"
+ * click-per-rung convenience (or a fresh per-part Repair row) would act on
+ * right now - the same worst-repairable-band-below-mint gate `nextGroupStep`
+ * uses internally (Sprint 41/48: a non-repairable consumable, e.g. tyres,
+ * never counts - only Replace ever touches it; `fine` DOES count now, since
+ * fine -> mint is a valid one-rung climb same as any other). */
 function needsRepair(
   game: ReturnType<typeof useGameStore>,
   carId: string,
@@ -83,24 +84,34 @@ function needsRepair(
 ): boolean {
   return game
     .partsInGroup(carId, componentId)
-    .some((row) => (row.band === 'poor' || row.band === 'worn') && row.repairable)
+    .some(
+      (row) => row.band !== null && row.band !== 'mint' && row.band !== 'scrap' && row.repairable,
+    )
 }
 
 /**
- * Sprint 41 decision 4: fine/mint part rows collapse behind a "+N parts in
- * good order" toggle by default - expands a group AND (if the toggle
- * exists) immediately opens it too, so every real part row is visible,
- * matching every pre-Sprint-41 test's assumption that one expand click
- * reveals the whole group. The default-collapsed behavior itself gets its
- * own dedicated test below.
+ * Sprint 48: fine/mint part rows collapse behind the global condition filter
+ * by default - reveals them too (idempotent - safe to call once per group in
+ * a test that expands more than one), so every real part row is visible,
+ * matching every pre-Sprint-48 test's assumption that one expand click
+ * reveals the whole group. The default-hidden behavior itself gets its own
+ * dedicated test below.
  */
+async function showAllConditions(
+  wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
+): Promise<void> {
+  for (const option of ['mint', 'fine']) {
+    const checkbox = wrapper.find<HTMLInputElement>(`[data-test="filter-${option}"]`)
+    if (checkbox.exists() && !checkbox.element.checked) await checkbox.trigger('change')
+  }
+}
+
 async function expandGroup(
   wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
   componentId: ComponentId,
 ): Promise<void> {
   await wrapper.find(`[data-test="expand-${componentId}"]`).trigger('click')
-  const goodOrderBtn = wrapper.find(`[data-test="good-order-${componentId}"]`)
-  if (goodOrderBtn.exists()) await goodOrderBtn.trigger('click')
+  await showAllConditions(wrapper)
 }
 
 /** Grants cars (bounded) until `componentId`'s group actually needs repair -
@@ -150,45 +161,60 @@ describe('CarDetailScreen', () => {
     ]
     for (const componentId of componentIds) {
       expect(wrapper.find(`[data-test="expand-${componentId}"]`).exists()).toBe(true)
-      // Every group with at least one poor/worn part offers the group
-      // convenience (Sprint 28: "Repair all to fine", not "to mint").
+      // Every group with at least one repairable part below mint offers the
+      // group's own click-per-rung "Repair to…" convenience (Sprint 48).
       expect(wrapper.find(`[data-test="stage-repair-${componentId}"]`).exists()).toBe(
         needsRepair(game, id, componentId),
       )
     }
   })
 
-  it('expanding a group reveals its attention-needed rows; fine/mint parts collapse behind "+N parts in good order" (Sprint 41)', async () => {
+  it('never renders player-visible "staged" copy anywhere on this screen (Sprint 48 decision 4)', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const id = game.gameState.ownedCars[0]!.id
+    const part = untaggedPartFor('dampers')
+    game.devGrantPart(part.id)
+    game.removePart(id, 'dampers')
+
+    const { wrapper } = await mountAt(id)
+    await expandGroup(wrapper, 'suspension')
+    await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
+    await wrapper.find('.part-card').trigger('click')
+    if (needsRepair(game, id, 'body'))
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+
+    expect(wrapper.text().toLowerCase()).not.toContain('staged')
+  })
+
+  it('expanding a group reveals its attention-needed rows; the condition filter defaults to hiding fine/mint parts and toggling reveals them (Sprint 48)', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
     const rows = game.partsInGroup(id, 'suspension')
-    const goodOrderRows = rows.filter((r) => r.band === 'fine' || r.band === 'mint')
-    const attentionRows = rows.filter((r) => !goodOrderRows.includes(r))
+    const hiddenByDefault = rows.filter((r) => r.band === 'fine' || r.band === 'mint')
+    const visibleByDefault = rows.filter((r) => !hiddenByDefault.includes(r))
 
     const { wrapper } = await mountAt(id)
     expect(wrapper.find('.part-sublist').exists()).toBe(false)
 
     await wrapper.find('[data-test="expand-suspension"]').trigger('click')
-    expect(wrapper.findAll('.sub-part-row')).toHaveLength(attentionRows.length)
-    for (const row of attentionRows) expect(wrapper.text()).toContain(row.displayName)
+    expect(wrapper.findAll('.sub-part-row')).toHaveLength(visibleByDefault.length)
+    for (const row of visibleByDefault) expect(wrapper.text()).toContain(row.displayName)
 
-    const goodOrderBtn = wrapper.find('[data-test="good-order-suspension"]')
-    if (goodOrderRows.length > 0) {
-      expect(goodOrderBtn.exists()).toBe(true)
-      expect(wrapper.text()).toContain(`+${goodOrderRows.length} parts in good order`)
-      await goodOrderBtn.trigger('click')
+    if (hiddenByDefault.length > 0) {
+      for (const row of hiddenByDefault) expect(wrapper.text()).not.toContain(row.displayName)
+
+      await showAllConditions(wrapper)
       expect(wrapper.findAll('.sub-part-row')).toHaveLength(rows.length)
-      for (const row of goodOrderRows) expect(wrapper.text()).toContain(row.displayName)
-    } else {
-      expect(goodOrderBtn.exists()).toBe(false)
+      for (const row of hiddenByDefault) expect(wrapper.text()).toContain(row.displayName)
     }
 
     await wrapper.find('[data-test="expand-suspension"]').trigger('click')
     expect(wrapper.find('.part-sublist').exists()).toBe(false)
   })
 
-  it('staging the group "Repair all to fine" convenience, then Confirm, actually creates and labors the job - settling at fine, not mint', async () => {
+  it('staging the group repair click-per-rung, then Confirm, actually creates and labors the job - settling one rung up, not mint', async () => {
     const game = useGameStore()
     // Sprint 36: no ownership gate exists - max the tiers so the bounded
     // continue-repair loop below keeps its old all-equipment pacing.
@@ -200,15 +226,16 @@ describe('CarDetailScreen', () => {
     // so the repair job it's about to queue can actually receive labor.
     await wrapper.find('[data-test="toggle-bay"]').trigger('click')
     expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeDefined()
+    const step = game.nextRepairStep(id, 'body')!
     await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
-    expect(wrapper.text()).toContain('Staged work (1)')
-    expect(wrapper.text()).toContain('Repair Body to fine')
+    expect(wrapper.text()).toContain('Planned work (1)')
+    expect(wrapper.text()).toContain(`Repair Body to ${step.targetBand}`)
     expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeUndefined()
 
     await wrapper.find('[data-test="confirm-work"]').trigger('click')
-    expect(wrapper.text()).toContain('Staged work (0)')
+    expect(wrapper.text()).toContain('Planned work (0)')
     expect(
-      game.carDetail(id)!.groupBands.body === 'fine' ||
+      game.carDetail(id)!.groupBands.body === step.targetBand ||
         game.gameState.jobs.some((j) => j.componentId === 'body'),
     ).toBe(true)
 
@@ -219,28 +246,28 @@ describe('CarDetailScreen', () => {
     // (the componentBusy branch's instant `continueJob` control,
     // data-test="repair-body") to feed that day's labor into the still-open
     // job - a bounded loop over that real flow.
-    for (let i = 0; i < 10 && game.carDetail(id)!.groupBands.body !== 'fine'; i++) {
+    for (let i = 0; i < 10 && game.carDetail(id)!.groupBands.body !== step.targetBand; i++) {
       await wrapper.find('[data-test="end-day"]').trigger('click')
       await flushPromises()
-      if (game.carDetail(id)!.groupBands.body === 'fine') break
+      if (game.carDetail(id)!.groupBands.body === step.targetBand) break
       const continueBtn = wrapper.find('[data-test="repair-body"]')
       if (continueBtn.exists()) {
         await continueBtn.trigger('click')
         await flushPromises()
       }
     }
-    expect(game.carDetail(id)!.groupBands.body).toBe('fine')
+    expect(game.carDetail(id)!.groupBands.body).toBe(step.targetBand)
   })
 
-  it('unstaging a group repair costs nothing and creates no job', async () => {
+  it('clearing a planned group repair costs nothing and creates no job', async () => {
     const game = useGameStore()
     const id = grantCarNeedingRepair(game, 'body')
     const { wrapper } = await mountAt(id)
 
     await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
-    expect(wrapper.text()).toContain('Staged work (1)')
-    await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
-    expect(wrapper.text()).toContain('Staged work (0)')
+    expect(wrapper.text()).toContain('Planned work (1)')
+    await wrapper.find('[data-test="unstage-repair-body"]').trigger('click')
+    expect(wrapper.text()).toContain('Planned work (0)')
     expect(game.gameState.jobs).toHaveLength(0)
   })
 
@@ -256,49 +283,45 @@ describe('CarDetailScreen', () => {
     expect(button.attributes('title')).toBeUndefined()
   })
 
-  describe('band pickers (Sprint 40 item 5)', () => {
-    it('picking a non-default band on the group BandPicker flows through to the staged repair target', async () => {
+  describe('click-per-rung repair (Sprint 48)', () => {
+    it('each group click advances the planned target exactly one band, with the real marginal price/labor', async () => {
       const game = useGameStore()
       const id = grantCarNeedingRepair(game, 'body')
       const { wrapper } = await mountAt(id)
 
-      // 'mint' is always offered (the ladder's ceiling), regardless of
-      // whether this roll's worst body part happens to be poor or worn -
-      // and it's NOT the group convenience's default ('fine'), so picking it
-      // proves a real, non-default band flows through.
-      await wrapper.find('[data-test="band-group-body-mint"]').trigger('click')
+      const firstStep = game.nextRepairStep(id, 'body')!
       await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
-
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'repair', componentId: 'body', targetBand: 'mint' },
+        { kind: 'repair', componentId: 'body', targetBand: firstStep.targetBand },
+      ])
+
+      if (firstStep.targetBand === 'mint') return // already at the ceiling in one click
+
+      const secondStep = game.nextRepairStep(id, 'body')!
+      expect(secondStep.targetBand).not.toBe(firstStep.targetBand)
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+      expect(game.stagedActionsFor(id)).toEqual([
+        { kind: 'repair', componentId: 'body', targetBand: secondStep.targetBand },
       ])
     })
 
-    it('picking a non-default band on a per-part BandPicker flows through to the staged repair target', async () => {
+    it('each per-part click advances that part exactly one band', async () => {
       const game = useGameStore()
       const id = grantCarNeedingRepair(game, 'suspension')
       const row = game
         .partsInGroup(id, 'suspension')
-        .find((r) => r.band === 'poor' || r.band === 'worn')!
+        .find((r) => r.band !== null && r.band !== 'mint' && r.band !== 'scrap' && r.repairable)!
       const { wrapper } = await mountAt(id)
       await expandGroup(wrapper, 'suspension')
 
-      // Pick whichever offered band ISN'T mint (the per-part default) -
-      // both 'poor' and 'worn' offer at least one non-mint option.
-      const options = wrapper.findAll(`[data-test^="band-part-${row.partId}-"]`)
-      const nonDefault = options.find((o) => !o.attributes('data-test')!.endsWith('-mint'))!
-      const pickedBand = nonDefault
-        .attributes('data-test')!
-        .slice(`band-part-${row.partId}-`.length)
-
-      await nonDefault.trigger('click')
+      const step = game.nextRepairStep(id, 'suspension', row.partId)!
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
 
       expect(game.stagedActionsFor(id)).toEqual([
         {
           kind: 'repair',
           componentId: 'suspension',
-          targetBand: pickedBand,
+          targetBand: step.targetBand,
           carPartId: row.partId,
         },
       ])
@@ -414,22 +437,24 @@ describe('CarDetailScreen', () => {
 
       const { wrapper } = await mountAt(id)
       await expandGroup(wrapper, 'suspension')
+      const step0 = game.nextRepairStep(id, 'suspension', rows[0]!.partId)!
+      const step1 = game.nextRepairStep(id, 'suspension', rows[1]!.partId)!
       await wrapper.find(`[data-test="stage-repair-part-${rows[0]!.partId}"]`).trigger('click')
       await wrapper.find(`[data-test="stage-repair-part-${rows[1]!.partId}"]`).trigger('click')
 
-      expect(wrapper.text()).toContain('Staged work (2)')
+      expect(wrapper.text()).toContain('Planned work (2)')
       expect(game.stagedActionsFor(id)).toEqual(
         expect.arrayContaining([
           {
             kind: 'repair',
             componentId: 'suspension',
-            targetBand: 'mint',
+            targetBand: step0.targetBand,
             carPartId: rows[0]!.partId,
           },
           {
             kind: 'repair',
             componentId: 'suspension',
-            targetBand: 'mint',
+            targetBand: step1.targetBand,
             carPartId: rows[1]!.partId,
           },
         ]),
@@ -441,17 +466,18 @@ describe('CarDetailScreen', () => {
       const id = grantCarNeedingRepair(game, 'suspension')
       const row = game
         .partsInGroup(id, 'suspension')
-        .find((r) => r.band === 'poor' || r.band === 'worn')!
+        .find((r) => r.band !== null && r.band !== 'mint' && r.band !== 'scrap' && r.repairable)!
 
       const { wrapper } = await mountAt(id)
       await expandGroup(wrapper, 'suspension')
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
-      expect(wrapper.text()).toContain('Staged work (1)')
+      expect(wrapper.text()).toContain('Planned work (1)')
 
+      const groupStep = game.nextRepairStep(id, 'suspension')!
       await wrapper.find('[data-test="stage-repair-suspension"]').trigger('click')
-      expect(wrapper.text()).toContain('Staged work (1)')
+      expect(wrapper.text()).toContain('Planned work (1)')
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'repair', componentId: 'suspension', targetBand: 'fine' },
+        { kind: 'repair', componentId: 'suspension', targetBand: groupStep.targetBand },
       ])
     })
 
@@ -510,7 +536,7 @@ describe('CarDetailScreen', () => {
 
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
       await wrapper.find('.part-card').trigger('click')
-      expect(wrapper.text()).toContain('staged:')
+      expect(wrapper.text()).toContain('planned:')
 
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
       await wrapper.find('[data-test="confirm-work"]').trigger('click')
@@ -531,7 +557,7 @@ describe('CarDetailScreen', () => {
 
       expect(wrapper.text()).toContain('Needs Machine-shop tooling')
       await wrapper.find('.part-card').trigger('click')
-      expect(wrapper.text()).not.toContain('staged:')
+      expect(wrapper.text()).not.toContain('planned:')
       expect(game.gameState.ownedCars[0]!.parts.forcedInduction.installed?.id).not.toBe(
         partInstanceId,
       )
@@ -599,7 +625,7 @@ describe('CarDetailScreen', () => {
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await wrapper.find('.part-card').trigger('click')
 
-      expect(wrapper.text()).toContain('staged:')
+      expect(wrapper.text()).toContain('planned:')
       expect(game.cashYen).toBe(cashBefore) // free until Confirm
       expect(car.parts.dampers.installed).toBeNull() // not real yet
       // Selecting closes the drawer.
@@ -620,7 +646,7 @@ describe('CarDetailScreen', () => {
       await dragPast(wrapper, `[data-test^="pick-part-"]`)
       await dropOn(wrapper, '[data-test="replace-part-dampers"]')
 
-      expect(wrapper.text()).toContain('staged:')
+      expect(wrapper.text()).toContain('planned:')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false) // closed on drop
     })
 
@@ -727,7 +753,7 @@ describe('CarDetailScreen', () => {
       // path) stages the install.
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
 
-      expect(wrapper.text()).toContain('staged:')
+      expect(wrapper.text()).toContain('planned:')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
     })
 
