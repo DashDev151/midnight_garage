@@ -14,16 +14,74 @@ const cheapest = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
 describe('PartsMarketScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('renders the parts catalog', () => {
+  it('shows six department hero cards and no parts list by default (Sprint 49 decision 1)', () => {
     const wrapper = mountScreen()
+    expect(wrapper.findAll('.hero-card')).toHaveLength(6)
+    expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(true)
+    expect(wrapper.findAll('.part')).toHaveLength(0)
+    expect(wrapper.find('[data-test="browse-everything"]').exists()).toBe(true)
+  })
+
+  it('"Browse everything" shows the full flat catalog', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
     expect(wrapper.findAll('.part').length).toBe(PARTS.length)
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
+  })
+
+  it('the breadcrumb root returns from browse-everything back to the six heroes', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
+    expect(wrapper.findAll('.hero-card')).toHaveLength(0)
+
+    await wrapper.find('[data-test="breadcrumb-root"]').trigger('click')
+    expect(wrapper.findAll('.hero-card')).toHaveLength(6)
+    expect(wrapper.findAll('.part')).toHaveLength(0)
+  })
+
+  it('clicking a hero enters that department: breadcrumb, chips, and a scoped list, no other hero visible', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+
+    expect(wrapper.find('[data-test="breadcrumb-root"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Engine')
+    expect(wrapper.find('[data-test="catalog-part-ignitionEcu"]').exists()).toBe(true)
+    expect(wrapper.findAll('.hero-card')).toHaveLength(0)
+
+    const suspensionPart = PARTS.find((p) => p.carPartId === 'dampers')!
+    expect(wrapper.text()).not.toContain(`${suspensionPart.brand} ${suspensionPart.name}`)
+  })
+
+  it('drills down group -> sub-part to filter the catalog (Sprint 33 decision 3), then leaves the department via the breadcrumb', async () => {
+    const wrapper = mountScreen()
+    const ignitionEcuOnly = PARTS.filter((p) => p.carPartId === 'ignitionEcu')
+
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+    await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
+    expect(wrapper.findAll('.part').length).toBe(ignitionEcuOnly.length)
+
+    // Leaving a department is via the breadcrumb root (Sprint 49 decision 2) -
+    // back to the six heroes, not a flat "all parts" tile inside the catalog.
+    await wrapper.find('[data-test="breadcrumb-root"]').trigger('click')
+    expect(wrapper.findAll('.hero-card')).toHaveLength(6)
+  })
+
+  it('grade/sort filters persist while browsing within a department', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+    await wrapper.find('[data-test="filter-grade"]').setValue('race')
+    await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
+
+    expect((wrapper.find('[data-test="filter-grade"]').element as HTMLSelectElement).value).toBe(
+      'race',
+    )
   })
 
   it('adding to cart spends nothing (Sprint 14 misclick safeguard)', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     expect(game.cashYen).toBe(cashBefore)
     expect(game.gameState.partInventory).toHaveLength(0)
@@ -35,6 +93,7 @@ describe('PartsMarketScreen', () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     await wrapper.find('[data-test="delivery-standard"]').setValue(true)
     await wrapper.find('[data-test="checkout"]').trigger('click')
@@ -49,6 +108,7 @@ describe('PartsMarketScreen', () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     await wrapper.find('[data-test="delivery-express"]').setValue(true)
     await wrapper.find('[data-test="checkout"]').trigger('click')
@@ -62,34 +122,24 @@ describe('PartsMarketScreen', () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     await wrapper.find(`[data-test="remove-from-cart-${cheapest.id}"]`).trigger('click')
     expect(game.cartItems).toHaveLength(0)
     expect(game.cashYen).toBe(cashBefore)
   })
 
-  it('drills down group -> sub-part to filter the catalog (Sprint 33 decision 3)', async () => {
+  it('the cart rail (and On order, once populated) render beside the list, not gated behind entering a department first for cart contents to survive navigation', async () => {
+    const game = useGameStore()
     const wrapper = mountScreen()
-    const ignitionEcuOnly = PARTS.filter((p) => p.carPartId === 'ignitionEcu')
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
+    await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
+    expect(game.cartItems).toHaveLength(1)
 
-    // Clicking a group narrows to every part in it (sub-part chips appear).
-    await wrapper.find('[data-test="catalog-group-engine"]').trigger('click')
-    expect(wrapper.find('[data-test="catalog-part-ignitionEcu"]').exists()).toBe(true)
-
-    // Clicking a sub-part chip narrows to that exact CarPartId.
-    await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
-    expect(wrapper.findAll('.part').length).toBe(ignitionEcuOnly.length)
-
-    // Clicking "All parts" resets back to the full flat catalog.
-    await wrapper.find('[data-test="catalog-group-all"]').trigger('click')
-    expect(wrapper.findAll('.part').length).toBe(PARTS.length)
-  })
-
-  it('clicking a group alone (no sub-part) narrows to every part in that group', async () => {
-    const wrapper = mountScreen()
-    await wrapper.find('[data-test="catalog-group-engine"]').trigger('click')
-    // Sanity: a part from a different group is no longer shown.
-    const suspensionPart = PARTS.find((p) => p.carPartId === 'dampers')!
-    expect(wrapper.text()).not.toContain(`${suspensionPart.brand} ${suspensionPart.name}`)
+    // Navigating home and back into a (different) department doesn't lose
+    // the cart's real state - it's store-backed, not view-local.
+    await wrapper.find('[data-test="breadcrumb-root"]').trigger('click')
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+    expect(wrapper.find('[data-test="cart-panel"]').text()).toContain(cheapest.name)
   })
 })

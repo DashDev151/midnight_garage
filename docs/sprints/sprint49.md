@@ -66,4 +66,27 @@ list rather than gating it. The Cart renders BELOW the catalog and on-order sect
 
 ## Exit
 
-(filled at completion)
+**Implemented and verified 2026-07-13.**
+
+`PartsMarketScreen.vue`: a `view` ref (`'home' | 'browse-everything' | 'department'`) gates the
+whole template split. Home renders six hero cards (group name, slot count, a blank 2:1 art
+placeholder) plus a demoted "Browse everything" link; either path sets `view` to `'department'`
+or `'browse-everything'` and the catalog view renders a breadcrumb ("Parts market > Engine" or
+"Parts market > All parts"), the existing per-part chips when a department is selected, the
+existing grade/sort filters (untouched, still persist across navigation since they're independent
+refs), and a `.market-layout` two-column grid (`1fr 300px`, sticky cart rail, stacking to one
+column under 800px) with the catalog list on the left and the cart + On order sections in the
+right rail, in that order. `selectGroup`/`resetDrillDown` replaced by `enterDepartment`/
+`enterBrowseEverything`/`returnHome`; every existing store call (`addToCart`, `removeFromCart`,
+`checkoutCart`, `cartItems`, etc.) is unchanged.
+
+`PartsMarketScreen.test.ts` rewritten for the new navigation shape (hero click, breadcrumb root,
+browse-everything link) while every purchase-flow assertion (add/remove/checkout/delivery-speed)
+survives unchanged in substance, just reached through the new entry points; added tests for the
+default hero-only view, browse-everything, breadcrumb round-trip, grade/sort persistence within a
+department, and that the cart survives navigating home and into a different department (store-
+backed, not view-local).
+
+Verification: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format` clean; full suite
+`pnpm test` 942/942 passing; `pnpm build` succeeds. Balance harness skipped - pure UI/interaction
+restructuring, zero sim/store-logic changes (every existing getter/action call survives verbatim).
