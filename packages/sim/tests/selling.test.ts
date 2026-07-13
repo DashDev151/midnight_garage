@@ -180,6 +180,8 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    machineListing: null,
+    nextMachineListingDay: null,
     ...overrides,
   }
 }

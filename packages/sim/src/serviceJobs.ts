@@ -422,6 +422,24 @@ function sampleDailyOfferCount(weights: readonly number[], rng: Rng): number {
 }
 
 /**
+ * Sprint 52 decision 1: the day-1 pacing ramp - a step function (never
+ * smooth interpolation; an offer count is always a whole number) over
+ * `economy.json`'s `serviceJobs.offerCountCapByDay` ascending `[day,
+ * capAtOrAfterThatDay]` pairs. Returns the cap in effect for `day` - the
+ * value from the LAST breakpoint whose own day is `<= day`.
+ */
+function offerCountCapForDay(
+  breakpoints: readonly (readonly [number, number])[],
+  day: number,
+): number {
+  let cap = breakpoints[0]![1]
+  for (const [thresholdDay, value] of breakpoints) {
+    if (day >= thresholdDay) cap = value
+  }
+  return cap
+}
+
+/**
  * Sprint 40, the real fix for "work done before the car even arrived": forces
  * every task in `tasks` to be genuinely outstanding on `car` BEFORE a payout
  * is derived from it. Pre-Sprint-40, offer generation rolled the template and
@@ -542,7 +560,11 @@ export function generateDailyServiceJobOffers(
 
   const topGroup = topSpecialtyGroup(specialty)
   const titleGroup = titleGroupFor(specialty, context)
-  const count = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
+  const rawCount = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
+  const count = Math.min(
+    rawCount,
+    offerCountCapForDay(context.economy.serviceJobs.offerCountCapByDay, day),
+  )
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
     const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng, titleGroup)

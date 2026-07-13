@@ -53,6 +53,8 @@ function stateWithLots(
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    machineListing: null,
+    nextMachineListingDay: null,
   }
 }
 

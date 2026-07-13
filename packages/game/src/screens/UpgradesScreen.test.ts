@@ -1,3 +1,4 @@
+import type { ComponentId, ToolTier } from '@midnight-garage/content'
 import { FACILITIES, TOOL_LINES } from '@midnight-garage/content'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -9,6 +10,26 @@ const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
 
 function mountScreen() {
   return mount(UpgradesScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+}
+
+/** Sprint 52 decision 2: a purchase also needs a live classifieds listing
+ * for the exact line+tier - tests that exercise a real purchase must seed
+ * one directly, same as they already seed reputation/cash. */
+function listingFor(
+  game: ReturnType<typeof useGameStore>,
+  componentId: ComponentId,
+  tier: ToolTier,
+) {
+  game.gameState = {
+    ...game.gameState,
+    machineListing: {
+      componentId,
+      tier,
+      priceYen: 1,
+      postedOnDay: game.gameState.day,
+      expiresOnDay: game.gameState.day + 3,
+    },
+  }
 }
 
 describe('UpgradesScreen', () => {
@@ -33,6 +54,7 @@ describe('UpgradesScreen', () => {
     game.newGame(1)
     game.devGiveCash(WHEELS_T2.upgradePriceYen)
     game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
+    listingFor(game, 'wheels', 2)
     const wrapper = mountScreen()
     await wrapper.get('[data-test="upgrade-tool-wheels"]').trigger('click')
     expect(game.gameState.toolTiers.wheels).toBe(2)
@@ -55,6 +77,7 @@ describe('UpgradesScreen', () => {
     expect(wrapper.text()).toContain(`needs ${WHEELS_T2.minReputationTier} reputation`)
 
     game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
+    listingFor(game, 'wheels', 2)
     await wrapper.vm.$nextTick()
     expect(
       (wrapper.get('[data-test="upgrade-tool-wheels"]').element as HTMLButtonElement).disabled,
@@ -113,5 +136,39 @@ describe('UpgradesScreen', () => {
     const wrapper = mountScreen()
     await wrapper.get('[data-test="buy-service-bay"]').trigger('click')
     expect(game.serviceBayCount).toBe(startingCount + 1)
+  })
+
+  describe('the classifieds section (Sprint 52 decision 2)', () => {
+    it('shows the empty state on a fresh game with no listing', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="no-listing"]').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Nothing in the classifieds this week')
+      expect(wrapper.find('[data-test="machine-listing"]').exists()).toBe(false)
+    })
+
+    it('shows the live listing (tier, name, price, days left) once one is posted', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      listingFor(game, 'wheels', 2)
+      const wrapper = mountScreen()
+      const card = wrapper.get('[data-test="machine-listing"]')
+      expect(card.text()).toContain(WHEELS_T2.displayName)
+      expect(card.text()).toContain('Tier 2')
+      expect(wrapper.find('[data-test="no-listing"]').exists()).toBe(false)
+    })
+
+    it('an otherwise-eligible rung stays disabled with a classifieds hint until its tier is actually listed', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devGiveCash(999_999_999)
+      game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
+      const wrapper = mountScreen()
+      const button = wrapper.get('[data-test="upgrade-tool-wheels"]')
+      expect((button.element as HTMLButtonElement).disabled).toBe(true)
+      expect(wrapper.find('[data-test="needs-listing-wheels"]').exists()).toBe(true)
+      expect(wrapper.text()).not.toContain(`needs ${WHEELS_T2.minReputationTier} reputation`)
+    })
   })
 })

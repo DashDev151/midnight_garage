@@ -287,6 +287,8 @@ describe('GameState / DayLog round-trip', () => {
       stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
       carLedgers: { 'car-0001': { purchaseYen: 900_000, repairYen: 45_000, partsYen: 60_000 } },
+      machineListing: null,
+      nextMachineListingDay: null,
     }
 
     const parsed = GameStateSchema.parse(fixture)

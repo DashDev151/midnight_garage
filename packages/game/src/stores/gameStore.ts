@@ -25,6 +25,7 @@ import type {
   GameState,
   Grade,
   Job,
+  MachineListing,
   Part,
   PartInstance,
   ReputationTier,
@@ -63,6 +64,7 @@ import {
   hasParkingSpace,
   isPartMissing,
   isServiceJobInTransit,
+  isToolTierListed,
   isServiceTaskDone,
   isServiceWorkDone,
   moveCarToSlot as moveCarToSlotCore,
@@ -282,6 +284,24 @@ export interface ToolTierRungView {
   upgradePriceYen: number | null
   /** This rung's own reputation requirement, regardless of whether it's met yet - null on tier 1. */
   minReputationTier: ReputationTier | null
+  /**
+   * Sprint 52 decision 2: true only when a live classifieds listing exists
+   * for exactly this line+tier - reputation/cash alone no longer make a
+   * tier purchasable, so the Upgrade button reads this too.
+   */
+  isListed: boolean
+}
+
+/** Sprint 52 decision 2: the one live used-machinery classifieds listing,
+ * surfaced for the Upgrades screen - null when nothing's on offer this
+ * week ("nothing in the classifieds this week" empty state). */
+export interface MachineListingView {
+  componentId: ComponentId
+  componentLabel: string
+  tier: ToolTier
+  displayName: string
+  priceYen: number
+  daysLeft: number
 }
 
 /** Sprint 48: one click-per-rung repair step, priced/labored off the real
@@ -1534,10 +1554,30 @@ export const useGameStore = defineStore('game', () => {
           owned: i + 1 <= currentTier,
           upgradePriceYen: i === 0 ? null : rung.upgradePriceYen,
           minReputationTier: rung.minReputationTier ?? null,
+          isListed: isToolTierListed(gameState.value, componentId, (i + 1) as ToolTier),
         })),
       }
     }),
   )
+
+  /**
+   * Sprint 52 decision 2: the current classifieds listing for the Upgrades
+   * screen, or null for the "nothing in the classifieds this week" empty
+   * state.
+   */
+  const machineListingView = computed<MachineListingView | null>(() => {
+    const listing: MachineListing | null = gameState.value.machineListing
+    if (!listing) return null
+    return {
+      componentId: listing.componentId,
+      componentLabel: componentLabel(listing.componentId),
+      tier: listing.tier,
+      displayName:
+        context.value.toolLines[listing.componentId].tiers[listing.tier - 1]!.displayName,
+      priceYen: listing.priceYen,
+      daysLeft: Math.max(0, listing.expiresOnDay - gameState.value.day),
+    }
+  })
 
   /**
    * Sprint 43 tool-wall info box: what reaching `tier` of `componentId`'s
@@ -2390,6 +2430,7 @@ export const useGameStore = defineStore('game', () => {
     toolLineViews,
     toolTierInfo,
     upgradeToolLine,
+    machineListingView,
     specialtyView,
     shopTitleName,
     unlockedTechniqueViews,

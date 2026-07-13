@@ -34,6 +34,8 @@ function baseState(staff: StaffMember[]): GameState {
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    machineListing: null,
+    nextMachineListingDay: null,
   }
 }
 

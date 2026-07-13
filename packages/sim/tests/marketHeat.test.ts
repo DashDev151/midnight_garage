@@ -40,6 +40,8 @@ function stateOnDay(
     marketHeat,
     marketLedger,
     carLedgers: {},
+    machineListing: null,
+    nextMachineListingDay: null,
     activeAuctionLots: [],
     carsForSale: [],
     pendingOffers: [],

@@ -208,6 +208,43 @@ describe('generateDailyServiceJobOffers', () => {
       expect(Math.abs(observed - weights[i]!)).toBeLessThan(0.05)
     }
   })
+
+  /**
+   * Sprint 52 decision 1: the day-1 pacing ramp - a step-function clamp on
+   * the bell-curve draw above (`economy.json`'s `serviceJobs.
+   * offerCountCapByDay`), so a fresh career sees a gentle trickle before the
+   * full distribution unlocks. Statistical across many seeds, same style as
+   * the bell-curve test just above - the ramp is a CLAMP, so the true max
+   * observed count at each rung is the assertion, not a distribution match.
+   */
+  describe('the day-1 pacing ramp (Sprint 52 decision 1)', () => {
+    const SEEDS = 300
+
+    function maxCountOverSeeds(day: number): number {
+      let max = 0
+      for (let seed = 1; seed <= SEEDS; seed++) {
+        const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(seed))
+        max = Math.max(max, result.length)
+      }
+      return max
+    }
+
+    it('never exceeds 1 offer on days 1-3', () => {
+      for (const day of [1, 2, 3]) expect(maxCountOverSeeds(day)).toBeLessThanOrEqual(1)
+    })
+
+    it('never exceeds 2 offers on days 4-7', () => {
+      for (const day of [4, 5, 7]) expect(maxCountOverSeeds(day)).toBeLessThanOrEqual(2)
+    })
+
+    it('never exceeds 3 offers on days 8-11', () => {
+      for (const day of [8, 9, 11]) expect(maxCountOverSeeds(day)).toBeLessThanOrEqual(3)
+    })
+
+    it('reaches the full unclamped distribution (up to 4) by day 12', () => {
+      expect(maxCountOverSeeds(12)).toBe(4)
+    })
+  })
 })
 
 describe('service-job template tier gating (Sprint 29 decision 2)', () => {

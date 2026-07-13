@@ -345,12 +345,18 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
       // board catalog rebase) measurably cooled tool-upgrade adoption for
       // this policy (measured 48/100, down from a majority pre-Sprint-44) -
       // cheaper repairs plausibly reduce the cash pressure that used to push
-      // the bot toward upgrading tools within the 100-day window. Re-pinned
-      // to the real measured floor rather than re-asserting "a clear
-      // majority," which is no longer true; flagged in sprint44.md's Exit
-      // for the maintainer's balance pass, since this is a real behavior
-      // shift worth knowing about, not just noise to paper over.
-      expect(upgradedCount).toBeGreaterThan(35)
+      // the bot toward upgrading tools within the 100-day window.
+      // Re-pinned again (Sprint 52, the classifieds gate): reputation/cash
+      // eligibility no longer means purchasable - a live listing for the
+      // exact line+tier is required too, and only one listing exists at a
+      // time across all six lines with a real, roughly-4-8-day gap between
+      // them. Measured 14/100 within the 100-day window, down hard from 48 -
+      // exactly the timing shift `sprint52.md`'s own decision 2 anticipated
+      // ("competent-policy's tool timing will shift"), not a bug. Floor set
+      // well below the measured value (not at it) so normal seed-to-seed
+      // variance doesn't flake the suite; flagged for the maintainer's
+      // balance pass same as the Sprint 44 precedent above.
+      expect(upgradedCount).toBeGreaterThan(5)
     },
     REPUTATION_SAMPLE_TIMEOUT_MS,
   )

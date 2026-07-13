@@ -1049,7 +1049,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(26)
+    expect(SAVE_VERSION).toBe(27)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1103,7 +1103,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(26)
+    expect(SAVE_VERSION).toBe(27)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1885,8 +1885,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 26 (Sprint 45)', () => {
-    expect(SAVE_VERSION).toBe(26)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 27 (Sprint 52)', () => {
+    expect(SAVE_VERSION).toBe(27)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1987,8 +1987,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION is 26 (Sprint 45)', () => {
-    expect(SAVE_VERSION).toBe(26)
+  it('SAVE_VERSION has since moved to 27 (Sprint 52)', () => {
+    expect(SAVE_VERSION).toBe(27)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -2007,5 +2007,53 @@ describe('saveCodec', () => {
     })
     const decoded = decodeSave(encodeSave(withGraceParking))
     expect(decoded.graceParkingCarId).toBe('car-double-parked-01')
+  })
+
+  /**
+   * v26 -> v27 (Sprint 52, the used-machinery classifieds): `GameStateSchema`
+   * gained `machineListing` and `nextMachineListingDay` (both default `null`)
+   * - the normal additive case (like v2/v22/v24/v25/v26), so it needs NO
+   * `MIGRATIONS[26]` entry, but it DOES bump `SAVE_VERSION` (Save law). These
+   * three tests are its regression coverage: a real pre-v27 (v26 envelope)
+   * save with neither field at all still decodes cleanly under v27 (nothing
+   * listed, nothing scheduled - exactly right since the concept did not
+   * exist yet), and a v27 state with a real live listing round-trips it
+   * exactly.
+   */
+  it('SAVE_VERSION is 27 (Sprint 52)', () => {
+    expect(SAVE_VERSION).toBe(27)
+  })
+
+  it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
+    const stateWithoutListing: Record<string, unknown> = { ...fullState }
+    delete stateWithoutListing.machineListing
+    delete stateWithoutListing.nextMachineListingDay
+    const preV27 = { version: 26, gameState: stateWithoutListing }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV27))
+    const decoded = decodeSave(code)
+    expect(decoded.machineListing).toBeNull()
+    expect(decoded.nextMachineListingDay).toBeNull()
+  })
+
+  it('a v27 state with a real live listing round-trips machineListing exactly', () => {
+    const withListing: GameState = GameStateSchema.parse({
+      ...fullState,
+      machineListing: {
+        componentId: 'wheels',
+        tier: 2,
+        priceYen: 250_000,
+        postedOnDay: 10,
+        expiresOnDay: 13,
+      },
+      nextMachineListingDay: null,
+    })
+    const decoded = decodeSave(encodeSave(withListing))
+    expect(decoded.machineListing).toEqual({
+      componentId: 'wheels',
+      tier: 2,
+      priceYen: 250_000,
+      postedOnDay: 10,
+      expiresOnDay: 13,
+    })
   })
 })

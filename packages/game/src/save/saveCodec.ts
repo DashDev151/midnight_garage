@@ -365,8 +365,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   correct backfill, needing no `MIGRATIONS[25]` entry of its own. The
  *   version bump alone is still required (Save law) so an old client rejects
  *   a v26 save rather than silently dropping the field.
+ * - v27 (Sprint 52, the used-machinery classifieds): `GameStateSchema` gained
+ *   `machineListing` (the current listing, if any) and `nextMachineListingDay`
+ *   (the gap timer), both defaulted to `null`. The normal additive case (like
+ *   v2/v22/v24/v25/v26): a pre-v27 save never had a listing or a scheduled
+ *   one (the concept did not exist - every tool tier that cleared reputation
+ *   was instantly purchasable), so `null`/`null` is exactly the correct
+ *   backfill (the very first `rollMachineListings` day-boundary tick after
+ *   loading starts the gap timer fresh, same as a brand-new career reaching
+ *   eligibility for the first time), needing no `MIGRATIONS[26]` entry of its
+ *   own. The version bump alone is still required (Save law) so an old
+ *   client rejects a v27 save rather than silently dropping the fields.
  */
-export const SAVE_VERSION = 26
+export const SAVE_VERSION = 27
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

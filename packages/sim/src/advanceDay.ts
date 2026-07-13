@@ -5,7 +5,7 @@ import { currentGameYear } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
-import { applyToolUpgrades } from './toolLines'
+import { applyToolUpgrades, rollMachineListings } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves, resolveGraceParking } from './facilities'
 import {
@@ -366,6 +366,13 @@ export function advanceDay(
   const offerDraw = drawDailyOffers(next, context, rng)
   next = offerDraw.state
   log.push(...offerDraw.log)
+
+  // 7a3. Sprint 52 decision 2: the used-machinery classifieds' day-boundary
+  // step - same "posted for the day about to begin" `next.day + 1` position
+  // as 7a/7a2 immediately above.
+  const listingRoll = rollMachineListings(next, context, next.day + 1, rng)
+  next = listingRoll.state
+  log.push(...listingRoll.log)
 
   // 7b. Deadline backstop: any accepted job now at/past its due day is handed
   // back automatically via the same resolver the player's click uses - paid if

@@ -49,6 +49,26 @@ export const CarLedgerSchema = z.object({
 
 export type CarLedger = z.infer<typeof CarLedgerSchema>
 
+/**
+ * Sprint 52 decision 2: the one live used-machinery classified listing, if
+ * any - reputation gates which tool tiers are ELIGIBLE (Sprint 43,
+ * unchanged), but only a listing for this exact `componentId`+`tier` makes
+ * it actually PURCHASABLE (`applyToolUpgrade`, toolLines.ts). `priceYen` is
+ * captured at listing time (the tier's own `upgradePriceYen`, which never
+ * changes mid-career, but locking it here keeps the listing self-contained).
+ * At most one live at a time by construction (`GameState.machineListing` is
+ * a single nullable field, never a list).
+ */
+export const MachineListingSchema = z.object({
+  componentId: ComponentIdSchema,
+  tier: ToolTierSchema,
+  priceYen: z.number().int().nonnegative(),
+  postedOnDay: z.number().int().positive(),
+  expiresOnDay: z.number().int().positive(),
+})
+
+export type MachineListing = z.infer<typeof MachineListingSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -189,6 +209,20 @@ export const GameStateSchema = z.object({
    * unknown-purchase, not a fabricated zero - see `CarLedgerSchema` above.
    */
   carLedgers: z.record(z.string(), CarLedgerSchema).default({}),
+  /**
+   * Sprint 52 decision 2: the current classifieds listing, if any - `null`
+   * is the common case (nothing on offer right now). Purely additive.
+   */
+  machineListing: MachineListingSchema.nullable().default(null),
+  /**
+   * The day the NEXT listing is due to roll (`rollMachineListings`,
+   * toolLines.ts) - `null` while a listing is live (nothing to schedule
+   * yet) or before anything has ever become tier-eligible (the gap timer
+   * only starts once there's a real candidate, so reaching a reputation
+   * milestone never instantly cashes in a silently-elapsed wait). Purely
+   * additive.
+   */
+  nextMachineListingDay: z.number().int().positive().nullable().default(null),
 })
 
 /**
@@ -462,6 +496,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('tool-upgraded'),
     componentId: ComponentIdSchema,
     toTier: ToolTierSchema,
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 52 decision 2: a fresh used-machinery classified listing went
+   * live today. */
+  z.object({
+    type: z.literal('machine-listed'),
+    componentId: ComponentIdSchema,
+    tier: ToolTierSchema,
     priceYen: z.number().int().nonnegative(),
   }),
 ])

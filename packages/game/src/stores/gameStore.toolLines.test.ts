@@ -25,9 +25,19 @@ describe('tool lines in the store (Sprint 36)', () => {
     }
   })
 
-  it('upgradeToolLine deducts cash, takes effect immediately, and logs tool-upgraded, once reputation clears the gate', () => {
+  it('upgradeToolLine deducts cash, takes effect immediately, and logs tool-upgraded, once reputation clears the gate and a listing exists', () => {
     const game = useGameStore()
-    game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
+    game.gameState = {
+      ...game.gameState,
+      reputationTier: WHEELS_T2.minReputationTier!,
+      machineListing: {
+        componentId: 'wheels',
+        tier: 2,
+        priceYen: WHEELS_T2.upgradePriceYen,
+        postedOnDay: game.gameState.day,
+        expiresOnDay: game.gameState.day + 3,
+      },
+    }
     const cashBefore = game.cashYen
     expect(game.upgradeToolLine('wheels')).toBe(true)
     expect(game.cashYen).toBe(cashBefore - WHEELS_T2.upgradePriceYen)

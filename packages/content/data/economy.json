@@ -205,7 +205,13 @@
     "marginMax": 1.65,
     "laborRateYen": 6000,
     "calloutFeeYen": 5000,
-    "dailyOfferCountWeights": [0.05, 0.22, 0.42, 0.23, 0.08]
+    "dailyOfferCountWeights": [0.05, 0.22, 0.42, 0.23, 0.08],
+    "offerCountCapByDay": [
+      [1, 1],
+      [4, 2],
+      [8, 3],
+      [12, 99]
+    ]
   },
   "selling": {
     "offerChanceBase": 0.65,
@@ -236,5 +242,10 @@
     "inLanePremium": 1.15,
     "titleThresholdPoints": 80,
     "titleBiasMultiplier": 1.25
+  },
+  "machineListings": {
+    "minGapDays": 4,
+    "maxGapDays": 8,
+    "windowDays": 3
   }
 }

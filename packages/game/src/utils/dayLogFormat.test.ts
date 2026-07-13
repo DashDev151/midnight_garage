@@ -71,6 +71,7 @@ const SAMPLES: DayLogEntry[] = [
   // Kept for old-log decode compatibility (Sprint 36 retired the action).
   { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
   { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
+  { type: 'machine-listed', componentId: 'wheels', tier: 2, priceYen: 150_000 },
 ]
 
 describe('describeLogEntry', () => {
@@ -220,5 +221,15 @@ describe('describeLogEntry', () => {
     })
     expect(line).toBe('Upgraded Wheels to Tyre machine & balancer for ¥150,000')
     expect(line).not.toContain('wheels')
+  })
+
+  it('Sprint 52: a fresh classifieds listing reads as the named tier and its price', () => {
+    const line = describeLogEntry({
+      type: 'machine-listed',
+      componentId: 'wheels',
+      tier: 2,
+      priceYen: 150_000,
+    })
+    expect(line).toBe('Classifieds: Tyre machine & balancer listed, ¥150,000')
   })
 })

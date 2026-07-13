@@ -626,6 +626,17 @@ export const EconomyConfigSchema = z.object({
        * sum to 1 (`generateDailyServiceJobOffers`'s own sampling reads this
        * as a discrete distribution). */
       dailyOfferCountWeights: z.array(z.number().min(0)).length(5),
+      /**
+       * Sprint 52 decision 1: a linear-stepped ramp clamping the weighted
+       * draw above so a fresh career sees a gentle trickle before the full
+       * distribution unlocks - `[dayThreshold, capAtOrAfterThatDay]` pairs,
+       * ascending by day, the step-function reading `offerCountCapForDay`
+       * (serviceJobs.ts) uses (NOT smooth interpolation - an offer count is
+       * always a whole number). Tuning bait.
+       */
+      offerCountCapByDay: z
+        .array(z.tuple([z.number().int().positive(), z.number().int().nonnegative()]))
+        .min(1),
     })
     .refine((s) => s.marginMin <= s.marginMax, {
       message: 'serviceJobs.marginMin must be <= marginMax',
@@ -711,6 +722,26 @@ export const EconomyConfigSchema = z.object({
     titleThresholdPoints: z.number().nonnegative(),
     titleBiasMultiplier: z.number().positive(),
   }),
+  /**
+   * Sprint 52 decision 2 (maintainer-approved 2026-07-13): the used-
+   * machinery classifieds cadence. Reputation still gates which tool tiers
+   * are ELIGIBLE (Sprint 43's per-tier thresholds, unchanged); a listing is
+   * what makes an eligible tier actually PURCHASABLE, one machine at a time.
+   * `minGapDays`/`maxGapDays` bound the seeded roll for how long the
+   * classifieds stay quiet after a listing lapses (or before the first one
+   * ever appears, once something becomes eligible); `windowDays` is how long
+   * a fresh listing stays live before it lapses (unbought machines are never
+   * lost - a later issue can list the same one again). Tuning bait.
+   */
+  machineListings: z
+    .object({
+      minGapDays: z.number().int().positive(),
+      maxGapDays: z.number().int().positive(),
+      windowDays: z.number().int().positive(),
+    })
+    .refine((m) => m.minGapDays <= m.maxGapDays, {
+      message: 'machineListings.minGapDays must be <= maxGapDays',
+    }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

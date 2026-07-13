@@ -93,6 +93,8 @@ function initialState(): GameState {
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    machineListing: null,
+    nextMachineListingDay: null,
   }
 }
 
@@ -200,16 +202,14 @@ describe('advanceDay golden master', () => {
     // This scripted career never actually double-parks a car, so the field
     // stays `null` throughout; every other assertion in this file still
     // passes unchanged against this same scripted career.
-    // Re-pinned again (Sprint 47, was 18b48709): a real, intended economy
-    // rewrite - the consumables fee is gone, repairStepFraction dropped
-    // 0.15 -> 0.1, the valuation curve replaced the old hassle/floor clamp,
-    // and generation now rolls a per-car upkeep tier (a real RNG-sequence
-    // change on top of the value change). Every other assertion in this file
-    // still passes unchanged against this same scripted career - only cash/
-    // condition numbers moved.
+    // Re-pinned again (Sprint 52, was 008cd2e7): the day-1 offer-count ramp
+    // and the new classifieds day-boundary step both add real GameState
+    // fields and consume the shared rng stream, shifting every subsequent
+    // draw - expected, not a regression. Every other assertion in this file
+    // still passes unchanged against this same scripted career.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('008cd2e7')
+    expect(hashState(finalState)).toBe('4e6c8a68')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -357,12 +357,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // never actually double-parks a car, so the field stays `null`
     // throughout - `wins a lot at auction, then sells the car` above still
     // holds unchanged.
-    // Re-pinned again (Sprint 47, was 0ade03bc): same cause as the 30-day
-    // career's own Sprint 47 re-pin above (consumables removed, repair
-    // fraction and valuation curve rewritten, generation's upkeep roll
-    // changes the RNG sequence) - `wins a lot at auction, then sells the
+    // Re-pinned again (Sprint 52, was b70f72e9): same cause as the 30-day
+    // career's own Sprint 52 re-pin above (the offer-count ramp and the new
+    // classifieds day-boundary step both shift the shared rng sequence and
+    // add new GameState fields) - `wins a lot at auction, then sells the
     // car` above still holds unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('b70f72e9')
+    expect(hashState(acquisitionCareer().sold)).toBe('ab316a54')
   })
 })
 

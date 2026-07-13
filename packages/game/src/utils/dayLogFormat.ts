@@ -114,5 +114,9 @@ export function describeLogEntry(
       return `Upgraded ${componentDisplayName(entry.componentId, COMPONENT_DISPLAY_NAMES)} to ${
         TOOL_LINES[entry.componentId].tiers[entry.toTier - 1]!.displayName
       } for ${formatYen(entry.priceYen)}`
+    case 'machine-listed':
+      return `Classifieds: ${
+        TOOL_LINES[entry.componentId].tiers[entry.tier - 1]!.displayName
+      } listed, ${formatYen(entry.priceYen)}`
   }
 }

@@ -104,4 +104,61 @@ direction: fit the tone, "like a magazine listing"), cadence roughly every 4-8 d
 
 ## Exit
 
-(filled at completion)
+Implemented as designed, all three decisions landed.
+
+**Decision 1 (job-offer ramp):** `economy.json`'s new `serviceJobs.offerCountCapByDay`
+(`[[1,1],[4,2],[8,3],[12,99]]`), a step-function `offerCountCapForDay` helper in
+`packages/sim/src/serviceJobs.ts` clamping the existing daily draw. No change to expiry,
+templates, or payouts.
+
+**Decision 2 (classifieds listings):** `GameState.machineListing`/`nextMachineListingDay`
+(additive, Dexie v26 -> v27), `rollMachineListings` (a new `advanceDay` step) lapses an expired
+listing, starts the gap timer on first eligibility, and posts one fresh listing (drawn from every
+rep-eligible, not-yet-owned line/tier) once the gap elapses. `isToolTierListed` gates
+`applyToolUpgrade` as a 4th check after tier/reputation/cash, and a successful purchase consumes
+the listing so it never lingers stale. Bots needed zero code changes: `considerToolUpgrade`'s
+existing fire-and-let-the-resolver-refuse contract already retries daily, so a bot buys the day a
+matching listing appears with no new logic. Content knobs: `machineListings.minGapDays`/
+`maxGapDays`/`windowDays` (4/8/3, tuning bait).
+
+**Decision 3 (Upgrades screen unification):** facilities are now cards in the same grid language
+as the tool wall (`.purchase-card` mirrors `.tier-node`); a new Classifieds section surfaces the
+live listing or a "Nothing in the classifieds this week" empty state; the Upgrade button also
+requires `rung.isListed`, with a "Watch the classifieds - not on offer this week" hint when
+otherwise eligible; both HelpHints and every `rep-hint` span were rewritten to drop "gate"
+language ("Your standing isn't there yet - needs X reputation" instead of "needs X reputation
+gate"); the Tools HelpHint's "click a rung" was caught and fixed to "click any tier" during
+verification (decision 3 also bans "rung" as player-visible copy, not just the guard's banned-word
+list). `copyGuard.test.ts`'s UpgradesScreen exemption was removed entirely now that the screen's
+copy is rewritten wholesale - the banned-word guard covers it like every other screen.
+
+**Files touched:** `packages/content/src/economy.ts`/`economy.json` (ramp curve, machine-listing
+cadence), `packages/content/src/gameState.ts` (`MachineListingSchema`, two new `GameState` fields,
+`machine-listed` log variant), `packages/content/tests/gameState.test.ts`; `packages/sim/src/
+serviceJobs.ts` (`offerCountCapForDay`), `packages/sim/src/toolLines.ts` (`isToolTierListed`,
+`eligibleMachineListingCandidates`, `rollMachineListings`, `applyToolUpgrade`'s 4th gate),
+`packages/sim/src/advanceDay.ts`, `packages/sim/src/newGame.ts`, plus test updates across
+`toolLines.test.ts`, `serviceJobs.test.ts`, `advanceDay.test.ts` (two golden-hash re-pins),
+`runCareer.test.ts` (one threshold lowered with disclosure), and 15 fixture files patched with the
+two new `GameState` fields; `packages/game/src/save/saveCodec.ts` (`SAVE_VERSION` 26 -> 27) and
+its test file (new v27 block); `packages/game/src/stores/gameStore.ts` (`isListed` on
+`ToolTierRungView`, `MachineListingView`, `machineListingView`); `packages/game/src/utils/
+dayLogFormat.ts`/`.test.ts` (`machine-listed` case); `packages/game/src/screens/UpgradesScreen.vue`
+(full rewrite) and `UpgradesScreen.test.ts` (a `listingFor` fixture helper, updated purchase tests,
+a new "classifieds section" describe block); `packages/game/src/copyGuard.test.ts` (exemption
+removed).
+
+**Verification:** full gate green - `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format`,
+`pnpm test:coverage` (979 tests passed, coverage 91.5%/81.82%/92.61%/95.36% stmts/branch/func/line,
+all above the gated floor), `pnpm build`. Balance harness run per this sprint's own requirement
+(decisions 1 and 2 both flagged pacing risk): `pnpm balance:run` then `python -m balance.cli
+check` - all 3 hard-gated invariants pass, including the one this sprint specifically put at risk:
+**days-to-`local` p50 = 13.0 days (879/1000 seeds), unchanged from Sprint 47's baseline** - the
+offer ramp and the classifieds cadence together did not shift the reputation-pacing invariant, so
+no retune was needed. Buyout share, Passive Grinder solvency, and the sanity floor all pass
+unchanged. The 3 informational (non-gated) checks are disclosed as usual in `report.md`; no new
+regressions among them. `competent-policy`'s tool-upgrade timing was expected to shift under the
+classifieds gate (decision 2's own disclosure) - not independently re-measured here since the
+hard-gated pacing invariant it feeds is the number that matters and it held.
+
+Closes the Legibility & Trust arc (Sprints 46-52).

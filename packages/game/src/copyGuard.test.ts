@@ -10,12 +10,10 @@ const HELP_HINT_RE = /<HelpHint\b[^>]*>([\s\S]*?)<\/HelpHint>/g
 /**
  * Sprint 51 decision 5: dev-facing/internal words that must never leak into
  * player-visible HelpHint copy - "gate" (mechanic jargon), "staged" (retired
- * Sprint 48 terminology), "dev" (internal tooling). UpgradesScreen's own
- * tool-wall HelpHint is exempted from the "gate" check only - Sprint 52
- * rewrites that screen's copy wholesale.
+ * Sprint 48 terminology), "dev" (internal tooling). Sprint 52 rewrote
+ * UpgradesScreen's copy wholesale, so it is no longer exempt from any check.
  */
 const BANNED_WORDS = ['gate', 'staged', 'dev'] as const
-const UPGRADES_SCREEN_EXEMPT_WORD = 'gate'
 
 function findOffenses(): string[] {
   const offenses: string[] = []
@@ -27,7 +25,6 @@ function findOffenses(): string[] {
     for (const match of contents.matchAll(HELP_HINT_RE)) {
       const hintText = match[1] ?? ''
       for (const word of BANNED_WORDS) {
-        if (fileName === 'UpgradesScreen.vue' && word === UPGRADES_SCREEN_EXEMPT_WORD) continue
         if (new RegExp(`\\b${word}\\b`, 'i').test(hintText)) {
           offenses.push(`${relativePath}: "${word}" in HelpHint copy`)
         }

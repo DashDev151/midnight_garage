@@ -48,46 +48,70 @@ const selectedInfo = computed(() =>
       <h2>
         Upgrades
         <HelpHint label="Upgrades">
-          Better tools finish the same work faster. Tools and bays both cost cash, and past a
-          certain rung, both need reputation too.
+          Better tools finish the same work faster. Tools and bays both cost cash, and once your
+          standing in town grows, both cost a little reputation too.
         </HelpHint>
       </h2>
       <p class="rep">{{ game.reputationTier }} · {{ formatYen(game.cashYen) }}</p>
     </header>
 
+    <section class="classifieds">
+      <h3>
+        Classifieds
+        <HelpHint label="Classifieds">
+          Used machinery doesn't show up on demand - the trade paper lists one used machine at a
+          time, every few days, drawn from whatever your standing already qualifies you for. Miss
+          one and it isn't gone for good; a later issue can list it again.
+        </HelpHint>
+      </h3>
+      <div v-if="game.machineListingView" class="listing-card" data-test="machine-listing">
+        <span class="listing-line"
+          >Tier {{ game.machineListingView.tier }} - {{ game.machineListingView.displayName }}</span
+        >
+        <span class="listing-line">{{ game.machineListingView.componentLabel }}</span>
+        <span class="listing-price">{{ formatYen(game.machineListingView.priceYen) }}</span>
+        <span class="listing-days">{{ game.machineListingView.daysLeft }} day(s) left</span>
+      </div>
+      <p v-else class="empty" data-test="no-listing">Nothing in the classifieds this week.</p>
+    </section>
+
     <section class="facilities">
       <h3>Facilities</h3>
-      <div class="facility-row">
-        <span>Service bays: {{ game.serviceBayCount }}</span>
-        <template v-if="nextServiceBayPriceYen !== null">
-          <button
-            :disabled="game.cashYen < nextServiceBayPriceYen || nextServiceBayRepGate !== null"
-            data-test="buy-service-bay"
-            @click="game.buyBay('service')"
-          >
-            Buy next bay ({{ formatYen(nextServiceBayPriceYen) }})
-          </button>
-          <span v-if="nextServiceBayRepGate" class="rep-hint">
-            needs {{ nextServiceBayRepGate }} reputation
-          </span>
-        </template>
-        <span v-else class="maxed">maxed out</span>
-      </div>
-      <div class="facility-row">
-        <span>Parking bays: {{ game.parkingCapacity }}</span>
-        <template v-if="nextParkingBayPriceYen !== null">
-          <button
-            :disabled="game.cashYen < nextParkingBayPriceYen || nextParkingBayRepGate !== null"
-            data-test="buy-parking-bay"
-            @click="game.buyBay('parking')"
-          >
-            Buy next bay ({{ formatYen(nextParkingBayPriceYen) }})
-          </button>
-          <span v-if="nextParkingBayRepGate" class="rep-hint">
-            needs {{ nextParkingBayRepGate }} reputation
-          </span>
-        </template>
-        <span v-else class="maxed">maxed out</span>
+      <div class="purchase-grid">
+        <div class="purchase-card">
+          <h4>Service bays</h4>
+          <p class="owned-count">{{ game.serviceBayCount }} owned</p>
+          <template v-if="nextServiceBayPriceYen !== null">
+            <button
+              :disabled="game.cashYen < nextServiceBayPriceYen || nextServiceBayRepGate !== null"
+              data-test="buy-service-bay"
+              @click="game.buyBay('service')"
+            >
+              Next bay - {{ formatYen(nextServiceBayPriceYen) }}
+            </button>
+            <span v-if="nextServiceBayRepGate" class="rep-hint">
+              Your standing isn't there yet - needs {{ nextServiceBayRepGate }} reputation
+            </span>
+          </template>
+          <span v-else class="maxed">Fully equipped</span>
+        </div>
+        <div class="purchase-card">
+          <h4>Parking bays</h4>
+          <p class="owned-count">{{ game.parkingCapacity }} owned</p>
+          <template v-if="nextParkingBayPriceYen !== null">
+            <button
+              :disabled="game.cashYen < nextParkingBayPriceYen || nextParkingBayRepGate !== null"
+              data-test="buy-parking-bay"
+              @click="game.buyBay('parking')"
+            >
+              Next bay - {{ formatYen(nextParkingBayPriceYen) }}
+            </button>
+            <span v-if="nextParkingBayRepGate" class="rep-hint">
+              Your standing isn't there yet - needs {{ nextParkingBayRepGate }} reputation
+            </span>
+          </template>
+          <span v-else class="maxed">Fully equipped</span>
+        </div>
       </div>
     </section>
 
@@ -95,8 +119,9 @@ const selectedInfo = computed(() =>
       <h3>
         Tools
         <HelpHint label="Tools">
-          Tier 1 of every line is free from day one - nothing basic is ever locked. Tiers 2 and 3
-          cost cash AND reputation, the same gate bays use. Click a rung to see what it unlocks.
+          Tier 1 of every line is free from day one - nothing basic is ever locked. Reaching tier 2
+          or 3 takes cash, reputation, and a live classifieds listing for that exact machine. Click
+          any tier to see what it unlocks.
         </HelpHint>
       </h3>
       <div class="tool-wall">
@@ -124,7 +149,9 @@ const selectedInfo = computed(() =>
               <template v-if="!rung.owned && rung.tier === line.currentTier + 1">
                 <button
                   :disabled="
-                    game.cashYen < (rung.upgradePriceYen ?? 0) || line.nextTierRepGate !== null
+                    game.cashYen < (rung.upgradePriceYen ?? 0) ||
+                    line.nextTierRepGate !== null ||
+                    !rung.isListed
                   "
                   :data-test="'upgrade-tool-' + line.componentId"
                   @click.stop="game.upgradeToolLine(line.componentId)"
@@ -132,7 +159,14 @@ const selectedInfo = computed(() =>
                   {{ formatYen(rung.upgradePriceYen ?? 0) }}
                 </button>
                 <span v-if="line.nextTierRepGate" class="rep-hint">
-                  needs {{ line.nextTierRepGate }} reputation
+                  Your standing isn't there yet - needs {{ line.nextTierRepGate }} reputation
+                </span>
+                <span
+                  v-else-if="!rung.isListed"
+                  class="listing-hint"
+                  :data-test="'needs-listing-' + line.componentId"
+                >
+                  Watch the classifieds - not on offer this week
                 </span>
               </template>
               <span v-else-if="rung.minReputationTier" class="tier-rep-req">
@@ -194,25 +228,80 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.facilities {
-  display: grid;
-  gap: var(--mg-space-2);
+.classifieds {
   margin-bottom: var(--mg-space-4);
 }
 
-.facility-row {
+.listing-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--mg-space-3);
   background: var(--mg-panel);
-  border: var(--mg-border);
+  border: 1px solid var(--mg-neon-cyan);
   border-radius: var(--mg-radius);
   padding: var(--mg-space-2) var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
 }
 
-.facility-row button {
-  padding: 2px 10px;
+.listing-line {
+  color: var(--mg-text);
+}
+
+.listing-price {
+  color: var(--mg-yen);
+  font-weight: bold;
+}
+
+.listing-days {
+  color: var(--mg-text-dim);
+}
+
+.listing-hint {
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+  font-style: italic;
+}
+
+.empty {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.facilities {
+  margin-bottom: var(--mg-space-4);
+}
+
+/* Sprint 52 decision 3: facilities become cards in the same grid/card
+   language the tool wall already uses - symmetrical columns, consistent
+   padding, no separate visual dialect. */
+.purchase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--mg-space-3);
+}
+
+.purchase-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mg-space-1);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  text-align: center;
+}
+
+.purchase-card h4 {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: 0;
+}
+
+.owned-count {
+  margin: 0;
+  font-size: var(--mg-fs-md);
 }
 
 .maxed {
