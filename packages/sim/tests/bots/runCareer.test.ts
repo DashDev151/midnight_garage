@@ -212,15 +212,27 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
   )
 
   it(
-    'a majority of those that bootstrap also invest in the shop - at least one tool-line upgrade',
+    'almost none of those that bootstrap ever invest in the shop, once tool tiers gate on reputation (Sprint 43)',
     () => {
-      // Before the Sprint 19c fix: 0/1000 real seeds ever bought equipment at
-      // all (the engine-crane-first deadlock). Sprint 36 keeps the same shape
-      // of claim under the tool-line model: a bootstrapped restorer with a car
-      // to work should upgrade at least one line past the tier-1 floor
-      // (`considerToolUpgrade` before each group repair) in a majority of
-      // careers - real shop investment, not the separate, harder claim (full
-      // restoration + reputation) documented above as still open.
+      // Before Sprint 19c: 0/1000 real seeds ever bought equipment at all (the
+      // engine-crane-first deadlock). Sprint 36 restored a real majority under
+      // the tool-line model (any line, tier 1 -> 2, cash-gated only). Sprint 43
+      // (maintainer decision, 2026-07-13: tiers 2/3 gate on reputation same as
+      // bays) inverts that majority back toward zero for THIS bot specifically -
+      // measured directly (this exact harness, 200 real seeds): 200/200
+      // bootstrap into car ownership, but only 2/200 ever clear even tier 2's
+      // `local` floor on ANY of the six lines. Root cause confirmed structural,
+      // not a bug: this bot never runs service jobs and its sales rarely clear
+      // the clean/concours bar (the only two ways reputation accrues), so it has
+      // no realistic route to `local` - the exact "0/30 ever earn a point"
+      // finding already documented above for this same bot, now blocking EVERY
+      // tool tier instead of just the reputation-only claims that were already
+      // known-open. Maintainer-confirmed (2026-07-13): this is the simulation
+      // exposing a bot that plays the game in an unintended way (cash-only,
+      // no reputation faucet), and the resulting tool-upgrade lockout is the
+      // correct, intended consequence of gating tools on reputation - not a
+      // defect to tune away. Deferred to TODO.md for a future bot-behavior
+      // pass (give this archetype some route to reputation), not fixed here.
       let bootstrapped = 0
       let upgraded = 0
       for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
@@ -229,8 +241,8 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
         bootstrapped++
         if (restorer.some((s) => s.equipmentOwnedCount > 0)) upgraded++
       }
-      expect(bootstrapped).toBeGreaterThan(0)
-      expect(upgraded).toBeGreaterThan(bootstrapped / 2)
+      expect(bootstrapped).toBeGreaterThan(SEED_SAMPLE_SIZE * 0.9)
+      expect(upgraded).toBeLessThan(bootstrapped * 0.1)
     },
     BOOTSTRAP_SAMPLE_TIMEOUT_MS,
   )
@@ -345,15 +357,29 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
 })
 
 describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
-  it('Handyman actually upgrades tool lines over a career; Investor never does', () => {
-    // Sprint 36: `equipmentOwnedCount` counts tool-tier upgrades (sum of
-    // tiers minus 6) under its legacy CSV name - Handyman is the tier-payback
-    // archetype (upgrades whenever it can buffer the cheapest next tier),
-    // Investor the never-upgrades control, so the pair still brackets the
-    // payback curve exactly as it did under equipment ownership.
-    const handyman = runCareer(handymanStrategy, 1, 100, CONTEXT).snapshots
+  /**
+   * Sprint 43 (maintainer decision, 2026-07-13: tool tiers 2/3 gate on
+   * reputation, same as bays) inverts this claim for Handyman specifically.
+   * Measured directly (this exact harness, 30 real seeds): 0/30 ever clear
+   * even tier 2's `local` floor on any of the six lines - Handyman never
+   * runs service jobs and its sales rarely clear the clean/concours bar, the
+   * only two ways reputation accrues, so it has no realistic route to
+   * `local`. Confirmed structural, not a bug (maintainer, 2026-07-13): a bot
+   * with no reputation faucet is playing the game in an unintended way, and
+   * being permanently locked out of every tool tier is the correct,
+   * intended consequence of gating tools on reputation - not tuned away
+   * here. Deferred to TODO.md for a future bot-behavior pass. Investor
+   * (the never-upgrades control) is unaffected either way - it never
+   * intended to upgrade in the first place.
+   */
+  it('Handyman no longer upgrades any tool line (reputation-gated tiers, Sprint 43); Investor still never does', () => {
+    let upgraded = 0
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = runCareer(handymanStrategy, seed, 100, CONTEXT).snapshots
+      if (s.some((x) => x.equipmentOwnedCount > 0)) upgraded++
+    }
     const investor = runCareer(investorStrategy, 1, 100, CONTEXT).snapshots
-    expect(handyman.some((s) => s.equipmentOwnedCount > 0)).toBe(true)
+    expect(upgraded).toBe(0)
     expect(investor.every((s) => s.equipmentOwnedCount === 0)).toBe(true)
   })
 })

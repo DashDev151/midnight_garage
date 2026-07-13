@@ -9,12 +9,14 @@
       {
         "displayName": "Engine crane & stand",
         "upgradePriceYen": 600000,
-        "consumablesCostYen": 5000
+        "consumablesCostYen": 5000,
+        "minReputationTier": "local"
       },
       {
         "displayName": "Machine-shop tooling",
         "upgradePriceYen": 1500000,
-        "consumablesCostYen": 8000
+        "consumablesCostYen": 8000,
+        "minReputationTier": "known"
       }
     ]
   },
@@ -24,12 +26,14 @@
       {
         "displayName": "Transmission bench",
         "upgradePriceYen": 900000,
-        "consumablesCostYen": 9000
+        "consumablesCostYen": 9000,
+        "minReputationTier": "local"
       },
       {
         "displayName": "Driveline rebuild bench & press",
         "upgradePriceYen": 1800000,
-        "consumablesCostYen": 11000
+        "consumablesCostYen": 11000,
+        "minReputationTier": "known"
       }
     ]
   },
@@ -40,11 +44,17 @@
         "upgradePriceYen": 0,
         "consumablesCostYen": 2000
       },
-      { "displayName": "Two-post lift", "upgradePriceYen": 250000, "consumablesCostYen": 3000 },
+      {
+        "displayName": "Two-post lift",
+        "upgradePriceYen": 250000,
+        "consumablesCostYen": 3000,
+        "minReputationTier": "local"
+      },
       {
         "displayName": "Drive-on alignment lift",
         "upgradePriceYen": 400000,
-        "consumablesCostYen": 10000
+        "consumablesCostYen": 10000,
+        "minReputationTier": "known"
       }
     ]
   },
@@ -58,12 +68,14 @@
       {
         "displayName": "Tyre machine & balancer",
         "upgradePriceYen": 150000,
-        "consumablesCostYen": 8000
+        "consumablesCostYen": 8000,
+        "minReputationTier": "local"
       },
       {
         "displayName": "Alignment & road-force rig",
         "upgradePriceYen": 350000,
-        "consumablesCostYen": 9000
+        "consumablesCostYen": 9000,
+        "minReputationTier": "known"
       }
     ]
   },
@@ -77,12 +89,14 @@
       {
         "displayName": "MIG welder & panel tools",
         "upgradePriceYen": 700000,
-        "consumablesCostYen": 6000
+        "consumablesCostYen": 6000,
+        "minReputationTier": "local"
       },
       {
         "displayName": "Spray booth & chassis jig",
         "upgradePriceYen": 1400000,
-        "consumablesCostYen": 8000
+        "consumablesCostYen": 8000,
+        "minReputationTier": "known"
       }
     ]
   },
@@ -96,9 +110,15 @@
       {
         "displayName": "Upholstery & trim bench",
         "upgradePriceYen": 350000,
-        "consumablesCostYen": 8000
+        "consumablesCostYen": 8000,
+        "minReputationTier": "local"
       },
-      { "displayName": "Full trim shop", "upgradePriceYen": 700000, "consumablesCostYen": 9000 }
+      {
+        "displayName": "Full trim shop",
+        "upgradePriceYen": 700000,
+        "consumablesCostYen": 9000,
+        "minReputationTier": "known"
+      }
     ]
   }
 }

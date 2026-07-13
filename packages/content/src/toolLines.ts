@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ComponentIdSchema } from './tags'
+import { ComponentIdSchema, ReputationTierSchema } from './tags'
 
 /**
  * One tier of a tool line (Sprint 36 - replaces binary equipment ownership).
@@ -7,12 +7,17 @@ import { ComponentIdSchema } from './tags'
  * not-yet-upgraded-to. `upgradePriceYen` is what upgrading TO this tier
  * costs (0 for tier 1, owned from day one); `consumablesCostYen` is the
  * flat per-job charge repair work in this line pays while this tier is the
- * line's current tier.
+ * line's current tier. `minReputationTier` (Sprint 43, maintainer decision
+ * 2026-07-13: tools gate on cash AND reputation, the same as facilities) is
+ * the reputation floor required to buy UP TO this tier - always absent on
+ * tier 1 (owned from day one, gating it would be meaningless), always
+ * present on tiers 2/3.
  */
 export const ToolLineTierSchema = z.object({
   displayName: z.string().min(1),
   upgradePriceYen: z.number().int().nonnegative(),
   consumablesCostYen: z.number().int().nonnegative(),
+  minReputationTier: ReputationTierSchema.optional(),
 })
 
 /**
@@ -35,6 +40,12 @@ export const ToolLineSchema = z
       ),
     { message: 'upgrade prices must strictly increase within a line' },
   )
+  .refine((line) => line.tiers[0]?.minReputationTier === undefined, {
+    message: 'tier 1 is owned from the start - it must not carry a minReputationTier',
+  })
+  .refine((line) => line.tiers.slice(1).every((tier) => tier.minReputationTier !== undefined), {
+    message: 'tiers 2 and 3 must carry a minReputationTier (Sprint 43)',
+  })
 
 /**
  * The six tool lines, keyed by the existing 6-group `ComponentId` vocabulary

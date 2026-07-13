@@ -25,8 +25,9 @@ describe('tool lines in the store (Sprint 36)', () => {
     }
   })
 
-  it('upgradeToolLine deducts cash, takes effect immediately, and logs tool-upgraded', () => {
+  it('upgradeToolLine deducts cash, takes effect immediately, and logs tool-upgraded, once reputation clears the gate', () => {
     const game = useGameStore()
+    game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
     const cashBefore = game.cashYen
     expect(game.upgradeToolLine('wheels')).toBe(true)
     expect(game.cashYen).toBe(cashBefore - WHEELS_T2.upgradePriceYen)
@@ -42,9 +43,21 @@ describe('tool lines in the store (Sprint 36)', () => {
     })
   })
 
-  it('refuses when unaffordable, with no state change', () => {
+  it('refuses when unaffordable (reputation already cleared), with no state change', () => {
     const game = useGameStore()
+    game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
     game.devGiveCash(-game.cashYen) // drain to zero
+    expect(game.upgradeToolLine('wheels')).toBe(false)
+    expect(game.gameState.toolTiers.wheels).toBe(1)
+  })
+
+  /**
+   * Sprint 43 (maintainer decision, 2026-07-13): tools now gate on cash AND
+   * reputation for tiers 2/3.
+   */
+  it("refuses (reputation gate) below wheels tier 2's rep floor even with unlimited cash", () => {
+    const game = useGameStore()
+    game.devGiveCash(999_999_999)
     expect(game.upgradeToolLine('wheels')).toBe(false)
     expect(game.gameState.toolTiers.wheels).toBe(1)
   })

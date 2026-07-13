@@ -68,6 +68,7 @@ import {
   nextBayMinReputationTier,
   nextBayPriceYen,
   nextRaiseYen,
+  nextToolTierRepGate,
   parkingOccupancy,
   partFitsCar,
   planGroupRepair,
@@ -240,6 +241,18 @@ export interface ShopCarView {
 }
 
 /** One tool line's ladder state, for the Upgrades screen (Sprint 36). */
+/** One rung of a tool line's 3-node ladder (Sprint 43 tool wall). */
+export interface ToolTierRungView {
+  tier: ToolTier
+  displayName: string
+  /** True for every tier at or below the line's current tier. */
+  owned: boolean
+  /** Null for tier 1 (always owned, never priced) - the yen cost to reach this rung. */
+  upgradePriceYen: number | null
+  /** This rung's own reputation requirement, regardless of whether it's met yet - null on tier 1. */
+  minReputationTier: ReputationTier | null
+}
+
 export interface ToolLineView {
   componentId: ComponentId
   /** The line's group in display words ("Engine", never a raw id). */
@@ -250,7 +263,41 @@ export interface ToolLineView {
   /** The next tier's name and price - null once the line is maxed. */
   nextTierName: string | null
   nextTierPriceYen: number | null
+  /** The reputation tier still needed for the next rung, or null if already met/ungated/maxed
+   * (Sprint 43 - mirrors `nextBayReputationGate`'s hint-only-when-unmet shape). */
+  nextTierRepGate: ReputationTier | null
   maxed: boolean
+  /** The full 3-rung ladder, for the tool-wall grid (Sprint 43). */
+  tiers: ToolTierRungView[]
+}
+
+/** Sprint 43: a readable job-template name derived from its kebab-case
+ * catalog id, zero new authored strings ("cooling-system-service" ->
+ * "Cooling System Service"). Templates have no player-facing display name
+ * anywhere else in the game (players only ever see a generated job's own
+ * flavor text), so the id itself is the only real, derivable label. */
+function humanizeTemplateId(id: string): string {
+  return id
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+/** Sprint 43 tool-wall info box: what reaching `tier` of `componentId`'s
+ * line actually unlocks - derived live from the real catalog, nothing
+ * hand-authored. */
+export interface ToolTierInfo {
+  /** Real job templates with a task in this group whose minToolTier is
+   * exactly this rung - "reaching this tier makes these jobs offerable"
+   * (assuming no other group is deficient, same one-tier-away rule
+   * `isTemplateOfferable` uses). */
+  unlocksJobTemplateNames: string[]
+  /** True only for engine tier 3 - the one real own-car capability ceiling
+   * (`toolCeilings.naToTurboConversionEngineTier`). */
+  unlocksNaToTurboConversion: boolean
+  /** The speed effect every tier has, in plain words - `ceil(grades /
+   * tier)` labor slots per grade climbed (`slotsNeededToClimb`, bands.ts). */
+  laborSlotsPerGradeText: string
 }
 
 /** One line of the parts-market cart, aggregated by part (repeats in
@@ -1297,7 +1344,8 @@ export const useGameStore = defineStore('game', () => {
   // --- tool lines (Sprint 36) ---------------------------------------------
 
   /** The six tool-line ladders with their current/next tier, for the
-   * Upgrades screen (Sprint 36 - replaces the equipment catalog). */
+   * Upgrades screen (Sprint 36 - replaces the equipment catalog; Sprint 43
+   * extends it into a full 3-rung ladder plus the reputation-gate hint). */
   const toolLineViews = computed<ToolLineView[]>(() =>
     REAL_COMPONENT_GROUPS.map((componentId) => {
       const line = context.value.toolLines[componentId]
@@ -1310,10 +1358,41 @@ export const useGameStore = defineStore('game', () => {
         currentTierName: line.tiers[currentTier - 1]!.displayName,
         nextTierName: nextTier?.displayName ?? null,
         nextTierPriceYen: nextTier?.upgradePriceYen ?? null,
+        nextTierRepGate: nextToolTierRepGate(gameState.value, componentId, context.value),
         maxed: currentTier >= 3,
+        tiers: line.tiers.map((rung, i) => ({
+          tier: (i + 1) as ToolTier,
+          displayName: rung.displayName,
+          owned: i + 1 <= currentTier,
+          upgradePriceYen: i === 0 ? null : rung.upgradePriceYen,
+          minReputationTier: rung.minReputationTier ?? null,
+        })),
       }
     }),
   )
+
+  /**
+   * Sprint 43 tool-wall info box: what reaching `tier` of `componentId`'s
+   * line unlocks, derived live from the real catalog (job templates whose
+   * task list needs exactly this tier in this group, the engine tier-3
+   * NA-to-turbo ceiling, and the tier's own speed effect).
+   */
+  function toolTierInfo(componentId: ComponentId, tier: ToolTier): ToolTierInfo {
+    const unlocksJobTemplateNames = SERVICE_JOB_TYPES.filter((template) =>
+      template.tasks.some(
+        (task) =>
+          context.value.partsTaxonomyById[task.carPartId]?.group === componentId &&
+          task.minToolTier === tier,
+      ),
+    ).map((template) => humanizeTemplateId(template.id))
+    return {
+      unlocksJobTemplateNames,
+      unlocksNaToTurboConversion:
+        componentId === 'engine' &&
+        tier === context.value.economy.toolCeilings.naToTurboConversionEngineTier,
+      laborSlotsPerGradeText: `Repair work takes ceil(grades-to-climb / ${tier}) labor slots at this tier`,
+    }
+  }
 
   // --- specialty (Sprint 38) -----------------------------------------------
 
@@ -2140,6 +2219,7 @@ export const useGameStore = defineStore('game', () => {
     moveCarToSlot,
     buyBay,
     toolLineViews,
+    toolTierInfo,
     upgradeToolLine,
     specialtyView,
     shopTitleName,

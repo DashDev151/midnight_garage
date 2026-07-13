@@ -24,14 +24,21 @@ export function toolUpgradeBudget(): ToolUpgradeBudget {
  * logic. Queues the line's next tier iff the line is below 3 AND the bot
  * can cover `upgradePriceYen * cashBufferMultiplier` from its current cash
  * (the same headroom style every bot already applies to its other spends).
- * NO reputation gate (bible: upgrade prices are the only gate on
- * capability), and never a prerequisite for working: repair is always
- * possible at the current tier, so callers proceed with their work whether
- * or not this queues anything.
+ * Never a prerequisite for working: repair is always possible at the
+ * current tier, so callers proceed with their work whether or not this
+ * queues anything.
+ *
+ * Deliberately NO bot-side reputation check (Sprint 43 added a reputation
+ * floor on tiers 2/3, `applyToolUpgrade`/`nextToolTierRepGate`, toolLines.ts):
+ * a bot below the gate still queues the upgrade exactly as before, and the
+ * resolver silently refuses it - the same no-op contract an unaffordable
+ * upgrade already has. No bot needs to reason about reputation to decide
+ * whether to try.
  *
  * Returns `true` when an upgrade was queued this call (or already queued
  * this same tick - the budget dedupe); `false` when the line is maxed or
- * the buffer isn't covered.
+ * the buffer isn't covered. Note this return value reflects intent only -
+ * a queued upgrade can still be refused reputation-side at resolution.
  */
 export function considerToolUpgrade(
   state: GameState,

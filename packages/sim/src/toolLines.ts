@@ -2,9 +2,11 @@ import type {
   ComponentId,
   DayLogEntry,
   GameState,
+  ReputationTier,
   ToolTier,
   ToolTiers,
 } from '@midnight-garage/content'
+import { reputationAtLeast } from './calendar'
 import type { SimContext } from './context'
 import type { UpgradeToolLineAction } from './actions'
 
@@ -44,16 +46,34 @@ export interface ToolUpgradeResult {
 }
 
 /**
+ * The reputation tier still required for `componentId`'s NEXT tool tier
+ * (Sprint 43), or null if it's already met (or there's no gate - tier 1 has
+ * none - or the line is maxed). Mirrors `nextBayMinReputationTier`
+ * (facilities.ts) exactly, one gate vocabulary for both purchasable things.
+ */
+export function nextToolTierRepGate(
+  state: GameState,
+  componentId: ComponentId,
+  context: SimContext,
+): ReputationTier | null {
+  const currentTier = state.toolTiers[componentId]
+  if (currentTier >= 3) return null
+  const required = context.toolLines[componentId].tiers[currentTier]!.minReputationTier
+  if (!required || reputationAtLeast(state.reputationTier, required)) return null
+  return required
+}
+
+/**
  * The pure "upgrade one tool line one tier" core (Sprint 36) - same
  * instant-for-the-player / DayAction-for-bots pattern as `applyBayPurchase`.
  * Sequential only: one call climbs exactly one tier, and gates in order:
- * already at 3 -> no-op not-applied; can't afford the next tier's
- * `upgradePriceYen` -> no-op not-applied; otherwise deduct, set tier + 1,
- * and log `tool-upgraded`. NO reputation gate (progression bible: tools
- * have no reputation gates - upgrade prices are the only gate on
- * capability). A same-day duplicate in a bot's batch re-checks cash and
- * tier per call, so it is either a genuine second sequential step or a
- * no-op - never a double charge for the same tier.
+ * already at 3 -> no-op not-applied; below the tier's reputation floor
+ * (Sprint 43 - tiers 2/3 gate on reputation same as bays, tier 1 never
+ * does) -> no-op not-applied; can't afford the next tier's `upgradePriceYen`
+ * -> no-op not-applied; otherwise deduct, set tier + 1, and log
+ * `tool-upgraded`. A same-day duplicate in a bot's batch re-checks
+ * reputation/cash/tier per call, so it is either a genuine second
+ * sequential step or a no-op - never a double charge for the same tier.
  */
 export function applyToolUpgrade(
   state: GameState,
@@ -62,6 +82,9 @@ export function applyToolUpgrade(
 ): ToolUpgradeResult {
   const currentTier = state.toolTiers[componentId]
   if (currentTier >= 3) return { state, log: [], applied: false }
+  if (nextToolTierRepGate(state, componentId, context) !== null) {
+    return { state, log: [], applied: false }
+  }
   const nextTier = context.toolLines[componentId].tiers[currentTier]!
   if (state.cashYen < nextTier.upgradePriceYen) return { state, log: [], applied: false }
 

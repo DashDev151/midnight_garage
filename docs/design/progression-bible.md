@@ -31,7 +31,7 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
 
 | Pillar | Gates (allowed) | May NEVER gate |
 |---|---|---|
-| **Reputation** (vertical) | BREADTH: auction tiers, job reputation-tiers, clientele quality, facility expansion | which disciplines you can work in; tool purchases; anything speed-related |
+| **Reputation** (vertical) | BREADTH: auction tiers, job reputation-tiers, clientele quality, facility expansion, tool-tier purchases (tiers 2/3 only, alongside cash - Sprint 43 amendment, 2026-07-13) | which disciplines you can work in; anything speed-related |
 | **Specialty** (horizontal) | DEPTH: specialty offer mix, in-lane premium pay, techniques, shop title | repair speed; repair cost; whether basic work is possible |
 | **Cash** | Capability purchases (tool tiers, bays, staff), parts, cars | reputation or specialty directly (money never buys standing) |
 | **Capability** (tools, bays, staff) | THROUGHPUT: labor efficiency, parallelism; CEILINGS: involved/fabrication work | offer quality or pay rates (that is specialty's job) |
@@ -66,7 +66,12 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
 - **Payouts price worst-case tooling.** Customers pay the standard rate derived at tier-1 labor;
   better tools finish faster and the freed labor is the upgrade's payoff. Never fork pricing by
   tier.
-- **Tools have no reputation gates.** Upgrade prices are the only gate on capability.
+- **Tools gate on cash AND reputation (amended 2026-07-13, Sprint 43 maintainer decision).**
+  Originally: "tools have no reputation gates, upgrade prices are the only gate on capability."
+  The maintainer overturned that for tiers 2 and 3 specifically (tier 1 stays free and ungated,
+  per law 1): a tool-tier purchase now mirrors the facilities gate exactly (`minReputationTier`
+  alongside `upgradePriceYen`), the same coarse-banding pattern bays already used. The original
+  cash-only rationale is kept here as history, not as the current rule.
 - **Specialist vs generalist:** emergent, via opportunity cost and the shop title's soft bias.
   Both are valid; neither is punished.
 - **Specialty earns from work performed** (service jobs in v1; sale attribution is an open design

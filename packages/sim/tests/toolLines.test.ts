@@ -6,18 +6,26 @@ import {
   applyToolUpgrade,
   applyToolUpgrades,
   freshToolTiers,
+  nextToolTierRepGate,
   toolTierForGroup,
 } from '../src/toolLines'
 
 /**
  * Sprint 36: tool lines replace binary equipment ownership. Upgrades are
- * sequential, cash-gated only (no reputation gate), and every line is owned
- * at tier 1 from day one.
+ * sequential; every line is owned at tier 1 from day one. Sprint 43 added a
+ * reputation floor on tiers 2/3 (mirrors the bay gate) - every fixture below
+ * that upgrades past tier 1 sets `reputationTier` to the real content
+ * requirement rather than a guessed value, so a future JSON retune can't
+ * silently desync these tests from the actual gate.
  */
 const CONTEXT = buildSimContext([], [], [], [], [], undefined, [], TOOL_LINES)
 
-const WHEELS_T2_PRICE = TOOL_LINES.wheels.tiers[1]!.upgradePriceYen
-const WHEELS_T3_PRICE = TOOL_LINES.wheels.tiers[2]!.upgradePriceYen
+const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
+const WHEELS_T3 = TOOL_LINES.wheels.tiers[2]!
+const WHEELS_T2_PRICE = WHEELS_T2.upgradePriceYen
+const WHEELS_T3_PRICE = WHEELS_T3.upgradePriceYen
+const WHEELS_T2_REP = WHEELS_T2.minReputationTier!
+const WHEELS_T3_REP = WHEELS_T3.minReputationTier!
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
   return { ...createInitialGameState(CONTEXT, 1), ...overrides }
@@ -38,8 +46,8 @@ describe('a new game starts every tool line at tier 1', () => {
 })
 
 describe('applyToolUpgrade', () => {
-  it('climbs one tier, deducts the next tier price, and logs tool-upgraded', () => {
-    const state = baseState({ cashYen: WHEELS_T2_PRICE })
+  it('climbs one tier, deducts the next tier price, and logs tool-upgraded, once reputation clears the gate', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
     const result = applyToolUpgrade(state, 'wheels', CONTEXT)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
@@ -50,13 +58,13 @@ describe('applyToolUpgrade', () => {
   })
 
   it('leaves every other line untouched', () => {
-    const state = baseState({ cashYen: WHEELS_T2_PRICE })
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
     const result = applyToolUpgrade(state, 'wheels', CONTEXT)
     expect(result.state.toolTiers).toEqual({ ...freshToolTiers(), wheels: 2 })
   })
 
-  it('refuses when unaffordable, with no state change', () => {
-    const state = baseState({ cashYen: WHEELS_T2_PRICE - 1 })
+  it('refuses when unaffordable (reputation already cleared), with no state change', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE - 1, reputationTier: WHEELS_T2_REP })
     const result = applyToolUpgrade(state, 'wheels', CONTEXT)
     expect(result.applied).toBe(false)
     expect(result.state).toBe(state)
@@ -73,18 +81,58 @@ describe('applyToolUpgrade', () => {
     expect(result.state).toBe(state)
   })
 
-  it('has NO reputation gate: an unknown-reputation shop can buy the priciest upgrade', () => {
-    const engineT2Price = TOOL_LINES.engine.tiers[1]!.upgradePriceYen
-    const state = baseState({ cashYen: engineT2Price, reputationTier: 'unknown' })
-    const result = applyToolUpgrade(state, 'engine', CONTEXT)
+  /**
+   * Sprint 43 (maintainer decision, 2026-07-13): tools now gate on cash AND
+   * reputation for tiers 2/3 - inverts the old "has NO reputation gate"
+   * assertion this describe block used to make.
+   */
+  it("refuses (reputation gate) below the next tier's rep floor even with unlimited cash, with no state change", () => {
+    const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
+    const result = applyToolUpgrade(state, 'wheels', CONTEXT)
+    expect(result.applied).toBe(false)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('succeeds once reputation clears the gate, with cash still checked', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
+    const result = applyToolUpgrade(state, 'wheels', CONTEXT)
     expect(result.applied).toBe(true)
-    expect(result.state.toolTiers.engine).toBe(2)
+    expect(result.state.toolTiers.wheels).toBe(2)
+  })
+})
+
+describe('nextToolTierRepGate (Sprint 43)', () => {
+  it("reports the next tier's own requirement at a fresh, unranked game", () => {
+    const state = baseState({ reputationTier: 'unknown' })
+    expect(nextToolTierRepGate(state, 'wheels', CONTEXT)).toBe(WHEELS_T2_REP)
+  })
+
+  it('is null once the tier is already met', () => {
+    const state = baseState({ reputationTier: WHEELS_T2_REP })
+    expect(nextToolTierRepGate(state, 'wheels', CONTEXT)).toBeNull()
+  })
+
+  it('is null once maxCount (tier 3) is reached - nothing left to gate', () => {
+    const state = baseState({
+      reputationTier: 'unknown',
+      toolTiers: { ...freshToolTiers(), wheels: 3 },
+    })
+    expect(nextToolTierRepGate(state, 'wheels', CONTEXT)).toBeNull()
+  })
+
+  it("reports tier 3's own (higher) requirement once tier 2 is already owned", () => {
+    const state = baseState({
+      reputationTier: WHEELS_T2_REP,
+      toolTiers: { ...freshToolTiers(), wheels: 2 },
+    })
+    expect(nextToolTierRepGate(state, 'wheels', CONTEXT)).toBe(WHEELS_T3_REP)
   })
 })
 
 describe('applyToolUpgrades (bots batch path) - sequential, re-checked per call', () => {
-  it('two same-line upgrades the same day apply once when there is cash for one', () => {
-    const state = baseState({ cashYen: WHEELS_T2_PRICE })
+  it('two same-line upgrades the same day apply once when there is cash for one (reputation already cleared)', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T3_REP })
     const result = applyToolUpgrades(
       state,
       [{ componentId: 'wheels' }, { componentId: 'wheels' }],
@@ -95,8 +143,11 @@ describe('applyToolUpgrades (bots batch path) - sequential, re-checked per call'
     expect(result.log).toHaveLength(1)
   })
 
-  it('two same-line upgrades the same day both apply when cash covers both (a genuine 1 -> 3 climb)', () => {
-    const state = baseState({ cashYen: WHEELS_T2_PRICE + WHEELS_T3_PRICE })
+  it('two same-line upgrades the same day both apply when cash AND reputation cover both (a genuine 1 -> 3 climb)', () => {
+    const state = baseState({
+      cashYen: WHEELS_T2_PRICE + WHEELS_T3_PRICE,
+      reputationTier: WHEELS_T3_REP,
+    })
     const result = applyToolUpgrades(
       state,
       [{ componentId: 'wheels' }, { componentId: 'wheels' }],
@@ -108,6 +159,14 @@ describe('applyToolUpgrades (bots batch path) - sequential, re-checked per call'
       { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: WHEELS_T2_PRICE },
       { type: 'tool-upgraded', componentId: 'wheels', toTier: 3, priceYen: WHEELS_T3_PRICE },
     ])
+  })
+
+  it('a same-line upgrade is refused (no state change) while reputation is below the gate, even with cash for it', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: 'unknown' })
+    const result = applyToolUpgrades(state, [{ componentId: 'wheels' }], CONTEXT)
+    expect(result.state.toolTiers.wheels).toBe(1)
+    expect(result.state.cashYen).toBe(WHEELS_T2_PRICE)
+    expect(result.log).toEqual([])
   })
 
   it('an empty batch is a no-op', () => {

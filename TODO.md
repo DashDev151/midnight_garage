@@ -42,6 +42,20 @@ pass."
   and how a derived ruleset plugs into the existing `(state, context) => DayActions` bot shape.
   Blocked on there being real play data to parse - the next playtest (above) is the first session
   this can actually capture.
+- [ ] **Handyman and Cautious Restorer have no realistic route to reputation, so Sprint 43's
+  tool-tier reputation gate (tiers 2/3 need `local`/`known`, maintainer decision 2026-07-13) locks
+  them out of upgrading ANY tool line, not just the higher ones.** Measured directly
+  (`runCareer.test.ts`, this exact harness): Handyman 0/30 seeds ever clear tier 2 on any of the six
+  lines (100-day careers); Cautious Restorer 2/200. Root cause: neither bot runs service jobs, and
+  neither bot's sales reliably clear the clean/concours quality bar - the only two ways reputation
+  accrues - so a bot with a cash-only identity has nothing to spend toward the gate no matter how
+  much cash it has. Maintainer-confirmed (2026-07-13): this is the simulation exposing a bot playing
+  the game in an unintended way, not a design defect in the reputation gate itself, and the two
+  `runCareer.test.ts` assertions were rewritten to the honestly-measured (near-total lockout)
+  reality rather than loosened to force a pass. Deferred here rather than fixed in Sprint 43: give
+  Handyman/Cautious Restorer some route to reputation (an occasional service job, or a repair
+  target that reliably clears clean/concours) so their tool-upgrade behavior actually exercises the
+  new gate instead of just proving it exists.
 
 ## Open engineering
 
