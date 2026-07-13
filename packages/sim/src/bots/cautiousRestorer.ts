@@ -164,6 +164,7 @@ export function cautiousRestorerStrategy(
       const restorationBill = carCostToMintYen(
         lot.car,
         model,
+        context.partsById,
         context.partsTaxonomyById,
         context.economy,
       )

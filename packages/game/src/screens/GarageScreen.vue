@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import EndDayButton from '../components/EndDayButton.vue'
 import HelpHint from '../components/HelpHint.vue'
 import ShopSlot from '../components/ShopSlot.vue'
@@ -155,6 +156,29 @@ const draggedCarName = computed(() => {
       </ul>
     </section>
 
+    <section v-if="game.graceParkedCarView" class="grace-parking" data-test="grace-parking">
+      <h3>
+        Double parked
+        <HelpHint label="Double parking">
+          No real bay was free when this car arrived, so it's sitting in the one unowned overflow
+          space above your bays. It migrates into a real bay automatically the moment one opens up -
+          buy a bay, sell a car, or free up any slot. Until then, a fine is charged every day it
+          stays here.
+        </HelpHint>
+      </h3>
+      <div class="grace-slot">
+        <RouterLink
+          :to="{ name: 'car', params: { id: game.graceParkedCarView.carId } }"
+          class="grace-car"
+        >
+          {{ game.graceParkedCarView.displayName }}
+        </RouterLink>
+        <span class="grace-warning"
+          >DOUBLE PARKED - {{ formatYen(game.doubleParkingFineYen) }}/day fine</span
+        >
+      </div>
+    </section>
+
     <section v-if="game.pendingOffersView.length" class="offers">
       <h3>Offers ({{ game.pendingOffersView.length }})</h3>
       <ul>
@@ -275,6 +299,36 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--mg-space-3);
+}
+
+.grace-parking h3 {
+  color: var(--mg-danger);
+}
+
+.grace-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
+  max-width: 420px;
+  margin: 0 0 var(--mg-space-4);
+  background: var(--mg-panel);
+  border: 2px solid var(--mg-danger);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+}
+
+.grace-car {
+  color: var(--mg-neon-cyan);
+  text-decoration: none;
+  font-size: var(--mg-fs-sm);
+}
+
+.grace-warning {
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+  font-weight: bold;
+  text-align: right;
 }
 
 .offers ul {

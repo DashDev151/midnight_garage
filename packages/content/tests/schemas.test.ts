@@ -115,6 +115,9 @@ describe('seed content validates against schemas', () => {
     // weekly gross margin, rounded to the nearest Y10,000 - see economy.ts's
     // own doc comment for the full derivation).
     expect(result.data.WEEKLY_RENT_YEN).toBe(20_000)
+    // Sprint 45: the daily fine for leaving a car in the grace/"double
+    // parking" overflow slot - first-pass number, explicit tuning bait.
+    expect(result.data.DOUBLE_PARKING_FINE_YEN).toBe(8_000)
     expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
     expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
     // New Sprint 20 auction-rework knobs, born in JSON from day one.
@@ -141,19 +144,15 @@ describe('seed content validates against schemas', () => {
     // age no longer factors into value at all).
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
     // Sprint 27 (restoration-bill deduction): replaces the retired
-    // conditionFloor/Ceiling/Exponent curve tunables above. Sprint 41
-    // retunes hassleFactor/floorFraction alongside the new tier-scaled
-    // repair costs (1.2 -> 0.8, 0.1 -> 0.15).
+    // conditionFloor/Ceiling/Exponent curve tunables above. Sprint 44 retunes
+    // floorFraction (0.1 -> 0.15 in Sprint 41 -> 0.22) alongside the
+    // across-the-board price rebase; hassleFactor stays Sprint 41's 0.8.
     expect(result.data.valuation.hassleFactor).toBe(0.8)
-    expect(result.data.valuation.floorFraction).toBe(0.15)
+    expect(result.data.valuation.floorFraction).toBe(0.22)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
-    // Sprint 41 decision 1: the tier-scaled repair-cost factor map.
-    expect(result.data.restoration.partsCostFactorByTier).toEqual({
-      shitbox: 0.12,
-      common: 0.35,
-      uncommon: 0.8,
-      rare: 1.3,
-    })
+    // Sprint 44 decision 1: repair cost derives from a part's own price via
+    // this one global fraction, replacing Sprint 41's tier-scaled factor map.
+    expect(result.data.restoration.repairStepFraction).toBe(0.15)
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)

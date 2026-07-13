@@ -221,26 +221,38 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 41 decision 1: `restorationCostFactorForTier` (sim/bands.ts)
-   * throws at runtime if a car's own tier has no matching entry in
-   * `economy.json`'s `restoration.partsCostFactorByTier` - the zod schema
-   * only requires the four keys the current roster actually uses, not
-   * `RarityTier`'s full six-value enum, so a roster addition at `gaisha` or
-   * `legend` tier would parse clean but crash the first time anyone prices a
-   * repair on it. This is the guard that catches the gap at content-test
-   * time instead.
+   * Sprint 44: `restoration.repairStepFraction` is the ONE knob every repair
+   * cost in the pipeline scales by - must be a real, positive fraction of a
+   * part's price (never negative, never able to exceed the part's own value
+   * per grade), matching the schema's own `.positive().max(1)` bound.
    */
-  it('every roster car tier has a restoration.partsCostFactorByTier entry', () => {
-    const parsedCars = CarModelsSchema.parse(cars)
+  it('economy.restoration.repairStepFraction is a positive fraction of a part price', () => {
     const parsedEconomy = EconomyConfigSchema.parse(economy)
-    const factorByTier = parsedEconomy.restoration.partsCostFactorByTier as Partial<
-      Record<RarityTier, number>
-    >
-    for (const car of parsedCars) {
+    const { repairStepFraction } = parsedEconomy.restoration
+    expect(repairStepFraction).toBeGreaterThan(0)
+    expect(repairStepFraction).toBeLessThanOrEqual(1)
+  })
+
+  /**
+   * Sprint 44: repair cost derives from the INSTALLED instance's own catalog
+   * `priceYen`, and the flat replacement price (scrap, a missing slot, a
+   * non-repairable consumable) is the taxonomy's `stockReplacementPriceYen` -
+   * these two numbers are meant to describe the same real-world price for a
+   * stock part, so they must never drift apart. This is the guard that would
+   * catch a rebase touching one file and not the other.
+   */
+  it("every stock-grade catalog part's price matches its taxonomy entry's stockReplacementPriceYen", () => {
+    const parsedParts = PartsSchema.parse(parts)
+    const parsedTaxonomy = CarPartTaxonomySchema.parse(partsTaxonomy)
+    const taxonomyById = new Map(parsedTaxonomy.map((entry) => [entry.id, entry]))
+    for (const part of parsedParts) {
+      if (part.grade !== 'stock') continue
+      const entry = taxonomyById.get(part.carPartId)
+      expect(entry, `${part.id} addresses unknown taxonomy id ${part.carPartId}`).toBeDefined()
       expect(
-        factorByTier[car.tier],
-        `${car.id} is tier "${car.tier}", which has no restoration.partsCostFactorByTier entry`,
-      ).toBeGreaterThan(0)
+        part.priceYen,
+        `${part.id} (stock, ${part.carPartId}) priceYen does not match its taxonomy entry's stockReplacementPriceYen`,
+      ).toBe(entry!.stockReplacementPriceYen)
     }
   })
 

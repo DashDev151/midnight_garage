@@ -2,7 +2,7 @@ import { emptyDayActions, type DayActions } from '../src/actions'
 import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
-import { planGroupRepair, restorationCostFactorForTier } from '../src/bands'
+import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
 import { createInitialGameState } from '../src/newGame'
@@ -81,6 +81,7 @@ function initialState(): GameState {
     // now, not "any owned car not in a service bay") - day 1's scripted
     // move-to-service action needs a real source slot to move it out of.
     parkingCarIds: ['car-0001', null, null],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     // Sprint 36: every tool line is owned at tier 1 from day one - the
     // scripted day-1 body repair just runs at the tier-1 repair level; the
@@ -175,9 +176,33 @@ describe('advanceDay golden master', () => {
     // this working tree and against a `git worktree` checkout of the
     // pre-Sprint-42 commit, diffed byte-identical before this hash was
     // touched (see sprint42.md's Exit for the full comparison).
+    // Sprint 44 re-pins this hash (was 37b5ace7): repair cost is now derived
+    // from the installed part's own catalog price (a much cheaper formula
+    // than Sprint 41's tier-scaled step cost) and the catalog itself was
+    // rebased across the board - a real, intended cash-flow change (the
+    // day-1 body repair and every downstream repair charge less), not a
+    // logic bug. Every other assertion in this file (job completion, band/
+    // slot changes, determinism) still passes unchanged against this same
+    // scripted career - only the cash number moved.
+    // Re-pinned again same day (was d73f6273): fixes a real playtest bug -
+    // `generateDailyAuctionArrivals` used `next.day` (still 1 on the first
+    // advanceDay call) instead of `next.day + 1`, colliding with the day-1
+    // seed batch's own `lot-1-*` ids (see the new
+    // "no colliding auction lot ids" describe block below for the full
+    // mechanism). This scripted career's own auction catalog refresh now
+    // mints different lot ids/expiresOnDay values on the days that spawn a
+    // fresh arrival - a real, intended id/day-stamp change, not a value-model
+    // regression. Every other assertion in this file still passes unchanged.
+    // Re-pinned again (Sprint 45, was 118d523d): `GameState` gained the new
+    // `graceParkingCarId` field (the double-parking grace slot) and every
+    // `advanceDay` tick now runs a new day-boundary step (`resolveGraceParking`)
+    // - a real shape change to the hashed state, not a value-model regression.
+    // This scripted career never actually double-parks a car, so the field
+    // stays `null` throughout; every other assertion in this file still
+    // passes unchanged against this same scripted career.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('37b5ace7')
+    expect(hashState(finalState)).toBe('18b48709')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -215,15 +240,15 @@ describe('advanceDay golden master', () => {
     // repair cost, on top of rent. Rent charges on days 7/14/21/28 within a
     // 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
     const consumablesCostYen = CONTEXT.toolLineFor('body').tiers[0]!.consumablesCostYen
-    // car-0001 is honda-city-e-aa - shitbox tier (Sprint 41 tier-scaled repair costs).
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      restorationCostFactorForTier('shitbox', CONTEXT.economy),
+      CONTEXT.economy.restoration.repairStepFraction,
     )
     const rentChargeCount = 4
     expect(finalState.cashYen).toBe(
@@ -313,7 +338,69 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // career's own Sprint 42 re-pin above - the hashed state's SHAPE gained
     // `carLedgers`, byte-identical day-by-day cash trace proven against the
     // pre-Sprint-42 commit before this hash was touched.
-    expect(hashState(acquisitionCareer().sold)).toBe('13501bbf')
+    // Re-pinned for Sprint 44 (was 13501bbf): same cause as the 30-day
+    // career's own Sprint 44 re-pin above - repair cost now derives from the
+    // installed part's own (rebased, cheaper) catalog price, a real cash-flow
+    // change; `won.ownedCars`/`sold.ownedCars`/`sold.cashYen > 0` above still
+    // hold unchanged.
+    // Re-pinned again same day (was 6849aad8): same cause as the 30-day
+    // career's own same-day re-pin above - the auction-lot-id collision fix
+    // (`next.day + 1`) changes which id/expiresOnDay a fresh arrival lot
+    // gets stamped with; `wins a lot at auction, then sells the car` above
+    // still holds unchanged (real car won, real sale, positive cash).
+    // Re-pinned again (Sprint 45, was 345b10a8): same cause as the 30-day
+    // career's own Sprint 45 re-pin above - `GameState` gained
+    // `graceParkingCarId` (a real shape change) and the new
+    // `resolveGraceParking` day-boundary step runs on every tick; this career
+    // never actually double-parks a car, so the field stays `null`
+    // throughout - `wins a lot at auction, then sells the car` above still
+    // holds unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('0ade03bc')
+  })
+})
+
+/**
+ * Regression test for a real playtest bug (2026-07-13): the day-1 opening
+ * board (`createInitialGameState` -> `refreshCatalogs`) and the first daily
+ * arrivals roll (`generateDailyAuctionArrivals`, called from inside the very
+ * first `advanceDay`) used to both stamp fresh lots `lot-1-${tier}-${i}` -
+ * `next.day` was still 1 on that first call, identical to the day-1 seed
+ * batch's own day. Two DIFFERENT lots sharing one id string then collapsed
+ * into "the same lot" everywhere bidding.ts keys off `lotId` (`resolvePlaceBid`
+ * mirrors a bid onto every array entry matching the id; `removeLot` filters
+ * all of them out on one hammer). The player-visible symptom: a genuine win
+ * (cash spent, car received) immediately followed by a bogus "Lost lot ...
+ * went for Y..." for a phantom duplicate that never had a leg to stand on -
+ * read by the player as "I was leading and then randomly lost," reported
+ * repeatedly before this trace pinned the exact mechanism. Fixed by
+ * generating the first day's arrivals for `next.day + 1`, the same offset
+ * `generateDailyServiceJobOffers` already used one call below for the
+ * identical hazard.
+ */
+describe('advanceDay: no colliding auction lot ids (2026-07-13 regression)', () => {
+  it('the first advanceDay call never mints an arrival lot id that collides with the day-1 seed batch', () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      let state = createInitialGameState(CONTEXT, seed)
+      state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
+      const ids = state.activeAuctionLots.map((lot) => lot.id)
+      expect(new Set(ids).size, `seed ${seed}: duplicate lot id in activeAuctionLots`).toBe(
+        ids.length,
+      )
+    }
+  })
+
+  it('30 days into a career, no two active lots ever share an id', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      let state = createInitialGameState(CONTEXT, seed)
+      for (let day = 1; day <= 30; day++) {
+        state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
+        const ids = state.activeAuctionLots.map((lot) => lot.id)
+        expect(
+          new Set(ids).size,
+          `seed ${seed} day ${day}: duplicate lot id in activeAuctionLots`,
+        ).toBe(ids.length)
+      }
+    }
   })
 })
 

@@ -18,6 +18,8 @@ export function describeLogEntry(
   switch (entry.type) {
     case 'rent-paid':
       return `Rent paid: ${formatYen(entry.amountYen)}`
+    case 'double-parking-fine':
+      return `Double-parking fine (${entry.carInstanceId}): ${formatYen(entry.amountYen)}`
     case 'wage-paid':
       return `Wage paid to ${entry.staffId}: ${formatYen(entry.amountYen)}`
     case 'job-created':
@@ -95,14 +97,17 @@ export function describeLogEntry(
       return `Swapped ${entry.serviceCarId} and ${entry.parkingCarId}`
     case 'bay-purchased':
       return `Bought a ${entry.kind} bay for ${formatYen(entry.priceYen)}`
-    case 'acquisition-blocked':
-      return `${entry.kind} blocked - ${
-        entry.reason === 'no-parking'
-          ? 'no parking space'
+    case 'acquisition-blocked': {
+      const reasonText =
+        entry.reason === 'no-space'
+          ? 'no room anywhere - parking, every bay, and the double-parking spot are all full'
           : entry.reason === 'no-cash'
             ? 'not enough cash'
-            : 'needs a tool upgrade'
-      }`
+            : entry.reason === 'technique'
+              ? 'needs a technique not yet unlocked'
+              : 'needs a tool upgrade'
+      return `${entry.kind} blocked - ${reasonText}`
+    }
     case 'equipment-purchased':
       return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
     case 'tool-upgraded':

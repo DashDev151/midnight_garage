@@ -357,8 +357,16 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   `MIGRATIONS[24]` entry of its own. The version bump alone is still
  *   required (Save law) so an old client rejects a v25 save rather than
  *   silently dropping the new fields.
+ * - v26 (Sprint 45, the double-parking grace slot): `GameStateSchema` gained
+ *   `graceParkingCarId`, defaulted to `null`. The normal additive case (like
+ *   v2/v22/v24/v25): a pre-v26 save never had a double-parked car (the
+ *   concept did not exist - every pre-Sprint-45 acquisition either placed
+ *   into real parking or was refused outright), so `null` is exactly the
+ *   correct backfill, needing no `MIGRATIONS[25]` entry of its own. The
+ *   version bump alone is still required (Save law) so an old client rejects
+ *   a v26 save rather than silently dropping the field.
  */
-export const SAVE_VERSION = 25
+export const SAVE_VERSION = 26
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

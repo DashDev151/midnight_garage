@@ -13,7 +13,7 @@ import {
   type ServiceJobTask,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { canRepair, gradesBetween, restorationCostFactorForTier } from '../src/bands'
+import { canRepair, gradesBetween } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { gradeAtLeast, partFitsCar } from '../src/parts'
 import { deriveServiceJobPayoutYen } from '../src/serviceJobs'
@@ -42,21 +42,21 @@ const CONTEXT = buildSimContext(
  * `deriveServiceJobPayoutYen`'s own cost basis (`serviceJobCostBreakdown`)
  * so this test cannot pass merely by re-deriving the same number twice: a
  * repair task's cost is genuinely deterministic (no player choice, so it's
- * the same number either way - Sprint 41: including the tier factor, since
- * that's now a real, deterministic part of what a repair task actually
- * costs, not a player-chosen variable), but an install task's TRUE minimum
- * is the cheapest fitting part across the full "grade >= minGrade" set - a
- * strictly wider set than the payout formula's own narrowed
- * median-of-the-tightest-fitting-tier basis (see `deriveServiceJobPayoutYen`'s
- * doc comment for why that narrowing can only ever price a task at or above
- * this test's true minimum, never below it).
+ * the same number either way - Sprint 44: derived from the installed
+ * instance's own catalog price, since that's now a real, deterministic part
+ * of what a repair task actually costs, never a player-chosen variable), but
+ * an install task's TRUE minimum is the cheapest fitting part across the
+ * full "grade >= minGrade" set - a strictly wider set than the payout
+ * formula's own narrowed median-of-the-tightest-fitting-tier basis (see
+ * `deriveServiceJobPayoutYen`'s doc comment for why that narrowing can only
+ * ever price a task at or above this test's true minimum, never below it).
  */
 function playerMinCostYen(
   tasks: readonly ServiceJobTask[],
   car: CarInstance,
   model: CarModel,
 ): number {
-  const factor = restorationCostFactorForTier(model.tier, CONTEXT.economy)
+  const { repairStepFraction } = CONTEXT.economy.restoration
   let total = 0
   for (const task of tasks) {
     if (task.action === 'repair') {
@@ -68,8 +68,10 @@ function playerMinCostYen(
       // Sprint 41 extends it to a non-repairable consumable too, though no
       // real template ever puts a repair task on one - content guard).
       if (!installed || !canRepair(installed.band, entry)) continue
+      const catalogPart = CONTEXT.partsById[installed.partId]
+      if (!catalogPart) continue
       total += Math.round(
-        gradesBetween(installed.band, task.targetBand) * entry.stepCostYen * factor,
+        gradesBetween(installed.band, task.targetBand) * repairStepFraction * catalogPart.priceYen,
       )
     } else {
       const group = CONTEXT.partsTaxonomyById[task.carPartId]!.group

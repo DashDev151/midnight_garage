@@ -205,5 +205,6 @@ For comparison, the value formula's own output on the same uniformly-worn fixtur
 ### Needs maintainer attention (playtest/tuning, not a defect)
 
 - The worn-bill-vs-book overshoot on the shitbox tier (City 1.307x, above the ~0.3-0.9x target) - a first-pass constant, not a bug; the two obvious levers are lowering the 3 non-repairable `stockReplacementPriceYen`s or the `shitbox` factor's relative headroom against them.
+  **Superseded by Sprint 44** (2026-07-13): the maintainer rejected host-car tier scaling outright (it also enabled a donor-car repair arbitrage) in favor of constant, price-derived repair costs plus a full catalog rebase - see `sprint44.md` for the replacement model and its own worn-bill-vs-book table.
 - The auction frenzy tail (32.1%, target 5-15%) remains outside its informational band - unrelated to this sprint's changes (an open item from Sprint 30's tuning pass), not investigated further here per the "disclose, don't deep-tune" instruction.
 - TODO.md's two retired items (below) are now closed by this sprint's tier-factor + replace-only model; everything else in TODO.md is untouched.

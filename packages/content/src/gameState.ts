@@ -130,6 +130,17 @@ export const GameStateSchema = z.object({
    * identity a drag-and-drop could target or a player could rely on. */
   parkingCarIds: z.array(z.string().min(1).nullable()).default([]),
   /**
+   * Sprint 45: the one "double parking" overflow slot - always exactly one
+   * slot past whatever real parking/service-bay capacity the player
+   * currently owns, never purchasable or expandable. A car lands here only
+   * when both `parkingCarIds` and `serviceBayCarIds` are full at acquisition
+   * time (`facilities.ts`'s `assignToShop`); occupying it costs a daily fine
+   * (`resolveGraceParking`) until real capacity opens up or the car leaves
+   * the shop entirely. `null` when nothing is double-parked - the common
+   * case. Purely additive.
+   */
+  graceParkingCarId: z.string().min(1).nullable().default(null),
+  /**
    * Labor slots already spent today (Sprint 11). Instant actions (repair,
    * install, inspect) decrement against `availableLaborSlots(state) -
    * laborSlotsSpentToday` the moment they're clicked, instead of a
@@ -187,6 +198,16 @@ export const GameStateSchema = z.object({
  */
 export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rent-paid'), amountYen: z.number().int() }),
+  /** Sprint 45: the daily cost of leaving `carInstanceId` in the grace/
+   * "double parking" overflow slot - charged instead of, never alongside,
+   * `car-moved` on any given day for that car (the migration check runs
+   * first; a car that moves into real capacity is never also fined the same
+   * day). */
+  z.object({
+    type: z.literal('double-parking-fine'),
+    carInstanceId: z.string().min(1),
+    amountYen: z.number().int().nonnegative(),
+  }),
   z.object({
     type: z.literal('wage-paid'),
     staffId: z.string().min(1),
@@ -402,17 +423,20 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('acquisition-blocked'),
     kind: z.enum(['auction-win', 'buyout', 'service-accept']),
-    /** `no-cash` (Sprint 19): a winning bid can no longer be covered on the lot's resolution
+    /** `no-space` (renamed from `no-parking` in Sprint 45): parking, every service bay, AND the
+     * one grace/"double parking" overflow slot are all full - genuinely nowhere to put the car.
+     * No money spent, the win is forfeited rather than the purchase failing loudly.
+     * `no-cash` (Sprint 19): a winning bid can no longer be covered on the lot's resolution
      * day - cash was reserved at bid time under the old instant-resolve model, but multi-day
      * bidding has no escrow, so affordability is only checked again when the lot actually
-     * resolves. Mirrors `no-parking`'s existing forfeit shape exactly: no money spent, the win
+     * resolves. Mirrors `no-space`'s existing forfeit shape exactly: no money spent, the win
      * is forfeited rather than the purchase failing loudly.
      * `tool-tier` (Sprint 36): a service-job accept refused because at least one task's
      * `minToolTier` exceeds the line's current tier - replaces the old `no-equipment` refusal.
      * `technique` (Sprint 39): a signature template's `requiresTechnique` is no longer unlocked
      * at accept time (specialty dropped, or the offer is stale) - the technique-gated twin of
      * `tool-tier`. */
-    reason: z.enum(['no-parking', 'no-cash', 'tool-tier', 'technique']),
+    reason: z.enum(['no-space', 'no-cash', 'tool-tier', 'technique']),
   }),
   /** Kept for old-log decode compatibility (Sprint 36 retired the buy-equipment
    * action itself; `tool-upgraded` below is its replacement). */

@@ -1049,7 +1049,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(25)
+    expect(SAVE_VERSION).toBe(26)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1103,7 +1103,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(25)
+    expect(SAVE_VERSION).toBe(26)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1885,8 +1885,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 25 (Sprint 42)', () => {
-    expect(SAVE_VERSION).toBe(25)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 26 (Sprint 45)', () => {
+    expect(SAVE_VERSION).toBe(26)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1975,5 +1975,37 @@ describe('saveCodec', () => {
     })
     const decoded = decodeSave(encodeSave(withUnknownPurchase))
     expect(decoded.carLedgers['car-ledger-02']?.purchaseYen).toBeNull()
+  })
+
+  /**
+   * v25 -> v26 (Sprint 45, the double-parking grace slot): `GameStateSchema`
+   * gained `graceParkingCarId` (default `null`) - the normal additive case
+   * (like v2/v22/v24/v25), so it needs NO `MIGRATIONS[25]` entry, but it DOES
+   * bump `SAVE_VERSION` (Save law). These two tests are its regression
+   * coverage: a real pre-v26 (v25 envelope) save with no `graceParkingCarId`
+   * field at all still decodes cleanly under v26 (nothing double-parked,
+   * exactly right since the concept did not exist yet), and a v26 state with
+   * a real double-parked car round-trips it exactly.
+   */
+  it('SAVE_VERSION is 26 (Sprint 45)', () => {
+    expect(SAVE_VERSION).toBe(26)
+  })
+
+  it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
+    const stateWithoutGraceParking: Record<string, unknown> = { ...fullState }
+    delete stateWithoutGraceParking.graceParkingCarId
+    const preV26 = { version: 25, gameState: stateWithoutGraceParking }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV26))
+    const decoded = decodeSave(code)
+    expect(decoded.graceParkingCarId).toBeNull()
+  })
+
+  it('a v26 state with a real double-parked car round-trips graceParkingCarId exactly', () => {
+    const withGraceParking: GameState = GameStateSchema.parse({
+      ...fullState,
+      graceParkingCarId: 'car-double-parked-01',
+    })
+    const decoded = decodeSave(encodeSave(withGraceParking))
+    expect(decoded.graceParkingCarId).toBe('car-double-parked-01')
   })
 })

@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -15,13 +16,20 @@ import {
   applyBayPurchases,
   applyMoves,
   assignToParking,
+  assignToShop,
+  hasAcquisitionSpace,
+  hasGraceSpace,
+  hasOwnedShopSpace,
   hasParkingSpace,
+  hasServiceBaySpace,
   moveCar,
   moveCarToSlot,
   nextBayMinReputationTier,
   nextBayPriceYen,
   parkingOccupancy,
   releaseCarFromShop,
+  resolveGraceParking,
+  serviceBayOccupancy,
   swapCars,
 } from '../src/facilities'
 import { createInitialGameState } from '../src/newGame'
@@ -119,6 +127,183 @@ describe('assignToParking (Sprint 17)', () => {
   })
 })
 
+describe('serviceBayOccupancy / hasServiceBaySpace (Sprint 45)', () => {
+  it('counts every real, explicitly-placed service-bay slot', () => {
+    const state = baseState({ serviceBayCount: 3, serviceBayCarIds: ['car-1', null, 'car-2'] })
+    expect(serviceBayOccupancy(state)).toBe(2)
+  })
+
+  it('is full once occupancy reaches serviceBayCount', () => {
+    const state = baseState({ serviceBayCount: 1, serviceBayCarIds: ['car-1'] })
+    expect(hasServiceBaySpace(state)).toBe(false)
+  })
+
+  it('has space below capacity', () => {
+    const state = baseState({ serviceBayCount: 2, serviceBayCarIds: ['car-1', null] })
+    expect(hasServiceBaySpace(state)).toBe(true)
+  })
+})
+
+describe('hasOwnedShopSpace / hasGraceSpace / hasAcquisitionSpace (Sprint 45)', () => {
+  it('hasOwnedShopSpace is true if EITHER parking or a service bay is open', () => {
+    const parkingOnly = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: [null],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-1'],
+    })
+    expect(hasOwnedShopSpace(parkingOnly)).toBe(true)
+
+    const bayOnly = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: [null],
+    })
+    expect(hasOwnedShopSpace(bayOnly)).toBe(true)
+  })
+
+  it('hasOwnedShopSpace is false only when both parking and every service bay are full', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+    })
+    expect(hasOwnedShopSpace(state)).toBe(false)
+  })
+
+  it('hasGraceSpace is true only when nothing is double-parked', () => {
+    expect(hasGraceSpace(baseState({ graceParkingCarId: null }))).toBe(true)
+    expect(hasGraceSpace(baseState({ graceParkingCarId: 'car-1' }))).toBe(false)
+  })
+
+  it('hasAcquisitionSpace is true whenever real capacity OR the grace slot is free', () => {
+    const graceOnly = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      graceParkingCarId: null,
+    })
+    expect(hasAcquisitionSpace(graceOnly)).toBe(true)
+  })
+
+  it('hasAcquisitionSpace is false only once parking, every service bay, AND the grace slot are full', () => {
+    const full = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      graceParkingCarId: 'car-3',
+    })
+    expect(hasAcquisitionSpace(full)).toBe(false)
+  })
+})
+
+describe('assignToShop (Sprint 45 decision 1+2: the real acquisition placement cascade)', () => {
+  it('places into parking first when it has room', () => {
+    const state = baseState({
+      parkingBayCount: 2,
+      parkingCarIds: [null, null],
+      serviceBayCount: 1,
+      serviceBayCarIds: [null],
+    })
+    const next = assignToShop(state, 'car-1')
+    expect(next.parkingCarIds).toEqual(['car-1', null])
+    expect(next.serviceBayCarIds).toEqual([null])
+    expect(next.graceParkingCarId).toBeNull()
+  })
+
+  it('falls back to a service bay once parking is full', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: [null],
+    })
+    const next = assignToShop(state, 'car-1')
+    expect(next.parkingCarIds).toEqual(['car-0'])
+    expect(next.serviceBayCarIds).toEqual(['car-1'])
+    expect(next.graceParkingCarId).toBeNull()
+  })
+
+  it('falls back to the grace slot only once parking AND every service bay are full', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-00'],
+    })
+    const next = assignToShop(state, 'car-1')
+    expect(next.parkingCarIds).toEqual(['car-0'])
+    expect(next.serviceBayCarIds).toEqual(['car-00'])
+    expect(next.graceParkingCarId).toBe('car-1')
+  })
+})
+
+describe('resolveGraceParking (Sprint 45 decision 3: day-boundary migrate-then-fine)', () => {
+  it('is a no-op (same state, empty log) when nothing is double-parked', () => {
+    const state = baseState({ graceParkingCarId: null })
+    const result = resolveGraceParking(state, ECONOMY)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('migrates into parking, without charging the fine, once a parking slot has opened up', () => {
+    const state = baseState({
+      graceParkingCarId: 'car-1',
+      parkingBayCount: 1,
+      parkingCarIds: [null],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      cashYen: 1_000_000,
+    })
+    const result = resolveGraceParking(state, ECONOMY)
+    expect(result.state.graceParkingCarId).toBeNull()
+    expect(result.state.parkingCarIds).toEqual(['car-1'])
+    expect(result.state.cashYen).toBe(1_000_000) // unfined - it moved before the fine check
+    expect(result.log).toEqual([{ type: 'car-moved', carInstanceId: 'car-1', to: 'parking' }])
+  })
+
+  it('migrates into a service bay (not parking) when only a bay has opened up', () => {
+    const state = baseState({
+      graceParkingCarId: 'car-1',
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: [null],
+      cashYen: 1_000_000,
+    })
+    const result = resolveGraceParking(state, ECONOMY)
+    expect(result.state.graceParkingCarId).toBeNull()
+    expect(result.state.serviceBayCarIds).toEqual(['car-1'])
+    expect(result.state.cashYen).toBe(1_000_000)
+    expect(result.log).toEqual([{ type: 'car-moved', carInstanceId: 'car-1', to: 'service' }])
+  })
+
+  it('charges the daily fine, unconditionally, when the slot is still occupied and nothing opened up', () => {
+    const state = baseState({
+      graceParkingCarId: 'car-1',
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      cashYen: 1_000_000,
+    })
+    const result = resolveGraceParking(state, ECONOMY)
+    expect(result.state.graceParkingCarId).toBe('car-1') // still double-parked
+    expect(result.state.cashYen).toBe(1_000_000 - ECONOMY.DOUBLE_PARKING_FINE_YEN)
+    expect(result.log).toEqual([
+      {
+        type: 'double-parking-fine',
+        carInstanceId: 'car-1',
+        amountYen: ECONOMY.DOUBLE_PARKING_FINE_YEN,
+      },
+    ])
+  })
+})
+
 describe('releaseCarFromShop (Sprint 17: renamed - releases from wherever the car actually sits)', () => {
   it('clears the slot if the car is in a service bay', () => {
     const state = baseState({ serviceBayCarIds: ['car-1', 'car-2'] })
@@ -130,6 +315,12 @@ describe('releaseCarFromShop (Sprint 17: renamed - releases from wherever the ca
     const state = baseState({ parkingCarIds: ['car-1', 'car-2', null] })
     const next = releaseCarFromShop(state, 'car-1')
     expect(next.parkingCarIds).toEqual([null, 'car-2', null])
+  })
+
+  it('clears the grace slot if the car is double-parked (Sprint 45)', () => {
+    const state = baseState({ graceParkingCarId: 'car-1' })
+    const next = releaseCarFromShop(state, 'car-1')
+    expect(next.graceParkingCarId).toBeNull()
   })
 
   it('is a no-op (same reference) if the car has no slot anywhere', () => {

@@ -493,14 +493,15 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
     expect(breakdown.laborSlots).toBe(0)
   })
 
-  it('a repair task charges banded-steps cost, tier-scaled by the car model (Sprint 41), proportional to how far the part is from target', () => {
+  it("a repair task charges banded-steps cost, derived from the installed instance's own catalog price (Sprint 44), proportional to how far the part is from target", () => {
     const car = buildCarInstance({ parts: mintCarParts({ panels: 'poor' }) })
-    const model = CARS[0]! // honda-city-e-aa - shitbox tier
+    const model = CARS[0]! // honda-city-e-aa
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
-    const entry = CONTEXT.partsTaxonomyById.panels!
-    const factor = CONTEXT.economy.restoration.partsCostFactorByTier.shitbox
+    const installedPartId = car.parts.panels.installed!.partId
+    const priceYen = CONTEXT.partsById[installedPartId]!.priceYen
+    const { repairStepFraction } = CONTEXT.economy.restoration
     // poor -> fine is 2 grades (poor, worn, fine order: poor < worn < fine).
-    expect(breakdown.taskCostYen).toBe(Math.round(2 * entry.stepCostYen * factor))
+    expect(breakdown.taskCostYen).toBe(Math.round(2 * repairStepFraction * priceYen))
     expect(breakdown.laborSlots).toBeGreaterThan(0)
   })
 
@@ -1353,13 +1354,52 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     expect(result.log).toEqual([])
   })
 
-  it('leaves the offer on the board (no state change) when parking is full', () => {
+  it('lands in an open service bay when parking is full, instead of being refused (Sprint 45 decision 1)', () => {
     const offer = { ...activeJob(twoRepairType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       serviceJobOffers: [offer],
       parkingBayCount: 0,
-      // Tier-ready (see the previous test) so the parking gate is the ONLY
+      // Tier-ready (see the earlier test) so capacity is the ONLY thing this
+      // test exercises.
+      toolTiers: testToolTiers({ suspension: 2 }),
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(result.state.serviceJobOffers).toHaveLength(0)
+    expect(result.state.activeServiceJobs).toHaveLength(1)
+    expect(result.log).toEqual([
+      { type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id },
+    ])
+  })
+
+  it('double-parks in the grace slot when parking AND every service bay are full, instead of being refused (Sprint 45 decision 2)', () => {
+    const offer = { ...activeJob(twoRepairType), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      serviceBayCarIds: [],
+      toolTiers: testToolTiers({ suspension: 2 }),
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, CONTEXT)
+    expect(result.state.serviceJobOffers).toHaveLength(0)
+    expect(result.state.activeServiceJobs).toHaveLength(1)
+    expect(result.log).toEqual([
+      { type: 'service-job-accepted', jobId: offer.id, carInstanceId: offer.car.id },
+    ])
+  })
+
+  it('leaves the offer on the board (no state change) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
+    const offer = { ...activeJob(twoRepairType), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offer],
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      serviceBayCarIds: [],
+      graceParkingCarId: 'someone-elses-car',
+      // Tier-ready (see the earlier test) so capacity is the ONLY
       // refusal reason this test actually exercises.
       toolTiers: testToolTiers({ suspension: 2 }),
     }
@@ -1367,7 +1407,7 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     expect(result.state.serviceJobOffers).toHaveLength(1)
     expect(result.state.activeServiceJobs).toHaveLength(0)
     expect(result.log).toEqual([
-      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-parking' },
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-space' },
     ])
   })
 

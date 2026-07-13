@@ -18,7 +18,6 @@ import {
   planPartRepair,
   presentPartIdsInGroup,
   repairLevelForGroup,
-  restorationCostFactorForTier,
   type PartRepairPlan,
 } from './bands'
 import { updateCarLedger } from './carLedger'
@@ -420,15 +419,15 @@ export function repairJobGate(
   if (!car) return { ok: false, log: [] }
   const model = context.modelsById[car.modelId]
   if (!model) return { ok: false, log: [] }
-  const factor = restorationCostFactorForTier(model.tier, context.economy)
   const plan = planGroupRepair(
     car,
     spec.componentId,
     spec.targetBand,
     state.toolTiers,
     context.partIdsByGroup,
+    context.partsById,
     context.partsTaxonomyById,
-    factor,
+    context.economy.restoration.repairStepFraction,
     spec.carPartId,
   )
   if (plan.partIds.length === 0) {
@@ -720,25 +719,17 @@ interface ReconditionPlan {
 }
 
 /**
- * Sprint 41: a loose bench part carries no car, so there is no model tier to
- * scale its repair cost by - reconditioning always prices at the UNSCALED
- * step cost, same for every part regardless of which car it came from or
- * might return to. `planPartRepair`'s `factor` parameter exists precisely so
- * a caller with no car/model context (this one) can opt out cleanly rather
- * than the pipeline needing a second, factor-less formula.
- */
-const BENCH_REPAIR_COST_FACTOR = 1
-
-/**
  * Everything the recondition gate/labor needs for a loose inventory part, or
  * null when it can't be reconditioned (not in inventory, no catalog/taxonomy
  * entry, scrap, non-repairable, or already at/above the target). Reuses the
  * on-car repair atoms EXACTLY - `repairLevelForGroup` for the tool-tier
- * repair level and `planPartRepair` (bands.ts) for the cost + labor - so a
- * loose part and the same part installed on a car price and size
- * identically (modulo the tier factor, which a loose part never carries -
- * see `BENCH_REPAIR_COST_FACTOR`). This is the reuse the sprint exists to
- * enforce: there is no separate bench formula.
+ * repair level and `planPartRepair` (bands.ts) for the cost + labor, priced
+ * off the SAME `catalogPart.priceYen` an on-car repair of the identical
+ * instance would use - so a loose part and the same part installed on a car
+ * price and size identically (Sprint 44: the bench/on-car asymmetry Sprint 41
+ * introduced is gone - a part's repair price is intrinsic to the part, never
+ * to whether or which car it's bolted to). This is the reuse the sprint
+ * exists to enforce: there is no separate bench formula.
  */
 function planReconditionPart(
   state: GameState,
@@ -758,7 +749,8 @@ function planReconditionPart(
     targetBand,
     repairLevel,
     taxonomyEntry,
-    BENCH_REPAIR_COST_FACTOR,
+    catalogPart.priceYen,
+    context.economy.restoration.repairStepFraction,
   )
   if (plan.laborSlotsRequired === 0) return null // scrap, non-repairable, or nothing to climb
   return { group, plan }

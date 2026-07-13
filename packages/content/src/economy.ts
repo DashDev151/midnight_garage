@@ -144,6 +144,15 @@ export const EconomyConfigSchema = z.object({
    */
   WEEKLY_RENT_YEN: z.number().int().nonnegative(),
   /**
+   * Sprint 45: the daily cost of leaving a car in the one grace/"double
+   * parking" overflow slot (`facilities.ts`'s `resolveGraceParking`) - charged
+   * every End Day the slot is still occupied, same unconditional-deduction
+   * shape as `WEEKLY_RENT_YEN` (no floor check; going negative is an already-
+   * accepted possibility elsewhere in this economy). First-pass number,
+   * explicit maintainer-tuning bait.
+   */
+  DOUBLE_PARKING_FINE_YEN: z.number().int().nonnegative(),
+  /**
    * Seller's floor under a deal, as a fraction of the lot's GUIDE VALUE
    * (`bidding.ts`'s `anchorValueYen` = `marketValueYen`, the Sprint 27
    * restoration-bill `instanceValue`) - NOT book value. Sprint 27 (Sprint 30
@@ -329,34 +338,30 @@ export const EconomyConfigSchema = z.object({
     walkAwaySpread: z.number().nonnegative(),
   }),
   /**
-   * Sprint 41 decision 1: the repair-cost tier-scaling knob - a kei car's
-   * wear is cheap to fix, a Supra's is not. `bands.ts`'s
-   * `restorationCostFactorForTier` reads this; every repair-cost function in
-   * the ONE cost pipeline (`costToMintYen`, `planPartRepair`, and via those,
-   * `carCostToMintYen`/`groupCostToMintYen`/`planGroupRepair`/
-   * `serviceJobCostBreakdown`) multiplies REPAIR step costs by the resolved
-   * factor. Replacement pricing (scrap, a missing slot, a non-repairable
-   * consumable) stays flat at `stockReplacementPriceYen` - deliberately NOT
-   * scaled here, since a gearbox costs what a gearbox costs at the parts
-   * market regardless of the car it's bolted to.
+   * Sprint 44 decision 1 (revert of Sprint 41's tier-scaled repair costs -
+   * maintainer rejection, 2026-07-13: "we should probably not be scaling
+   * component costs per car... constant"): repair cost per grade is ONE
+   * global fraction of the INSTALLED part's own catalog `priceYen`, never the
+   * host car's tier - `round(repairStepFraction * catalogPart.priceYen)`.
+   * Every repair-cost function in the ONE cost pipeline (`costToMintYen`,
+   * `planPartRepair`, and via those, `carCostToMintYen`/`groupCostToMintYen`/
+   * `planGroupRepair`/`serviceJobCostBreakdown`) reads this. Structurally
+   * closes the donor-car repair arbitrage the tier-scaling model allowed
+   * (launder an expensive car's worn parts through a kept shitbox at 0.12x):
+   * a part's repair price is intrinsic to the part now, identical on-car or
+   * on the bench, wherever it sits and whoever owns the car. Replacement
+   * pricing (scrap, a missing slot, a non-repairable consumable) stays flat
+   * at `stockReplacementPriceYen`, unchanged from Sprint 41 - a gearbox costs
+   * what a gearbox costs at the parts market regardless of the car it's
+   * bolted to.
    */
   restoration: z.object({
-    /**
-     * One multiplier per `RarityTier` the current 10-car roster actually
-     * uses (shitbox/common/uncommon/rare) - covers exactly those four, not
-     * `RarityTier`'s full six-value enum (`gaisha`/`legend` aren't in the
-     * roster yet). `restorationCostFactorForTier` throws if a future car
-     * model's tier has no matching entry here, so adding a gaisha/legend car
-     * needs a matching factor added first - a deliberate fail-loud guard
-     * rather than a silent 1.0 default. First-pass values, explicit
-     * maintainer-tuning bait (sprint41.md).
-     */
-    partsCostFactorByTier: z.object({
-      shitbox: z.number().positive(),
-      common: z.number().positive(),
-      uncommon: z.number().positive(),
-      rare: z.number().positive(),
-    }),
+    /** Fraction of the installed part's own `priceYen` one grade of repair
+     * costs - worn -> mint (2 grades) costs `2 * repairStepFraction` of a
+     * fresh part, so repair-vs-replace stays a real decision on every slot.
+     * Tuning bait (sprint44.md): "repairs feel wrong globally" = move this
+     * ONE number. */
+    repairStepFraction: z.number().positive().max(1),
   }),
   /**
    * Sprint 21: deterministic supply/demand market pressure - replaces the
@@ -426,8 +431,11 @@ export const EconomyConfigSchema = z.object({
    * `issues` block entirely - the hidden-issue/inspection system is paused
    * and removed (maintainer decision 2026-07-11; see TODO.md), and every
    * number that used to live there (repair cost, severity, labor sizing) is
-   * now either a per-part content field (`parts-taxonomy.json`'s
-   * `stepCostYen`) or gone outright.
+   * now either a per-part content field or gone outright. (Repair cost
+   * itself moved again in Sprint 44: from the taxonomy's authored
+   * `stepCostYen`, since deleted, to this same schema's `restoration.
+   * repairStepFraction` above, applied to the installed part's own catalog
+   * price.)
    */
   bands: z.object({
     /** Value factor per condition band (decision 1) - mint's baseline 1.0

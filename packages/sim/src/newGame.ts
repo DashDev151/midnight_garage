@@ -46,6 +46,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     parkingBayCount: context.facilities.parking.startCount,
     serviceBayCarIds: new Array<null>(context.facilities.service.startCount).fill(null),
     parkingCarIds: new Array<null>(context.facilities.parking.startCount).fill(null),
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: freshToolTiers(),
     pendingPartOrders: [],

@@ -24,7 +24,7 @@ import {
   resolveReconditionLabor,
   resolveRemovePart,
 } from '../src/jobs'
-import { planGroupRepair, restorationCostFactorForTier } from '../src/bands'
+import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import {
   buildCarInstance,
@@ -67,10 +67,11 @@ const car: CarInstance = buildCarInstance({
   },
 })
 
-/** `car`'s model (honda-city-e-aa) is shitbox tier - the real repair-cost
- * factor `repairJobGate` itself resolves internally (Sprint 41), reused here
- * so these tests' own `planGroupRepair` calls predict the exact same charge. */
-const CAR_TIER_FACTOR = restorationCostFactorForTier('shitbox', CONTEXT.economy)
+/** The one global repair-cost knob `repairJobGate` itself resolves internally
+ * (Sprint 44: derived from the installed part's own price, never the host
+ * car's tier) - reused here so these tests' own `planGroupRepair` calls
+ * predict the exact same charge. */
+const REPAIR_STEP_FRACTION = CONTEXT.economy.restoration.repairStepFraction
 
 const sparePart: PartInstance = {
   id: 'pi-0001',
@@ -101,6 +102,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [],
     parkingCarIds: [],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
@@ -375,8 +377,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
         'mint',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
-        CAR_TIER_FACTOR,
+        REPAIR_STEP_FRACTION,
       )
       const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
       const cashBefore = baseState().cashYen
@@ -401,8 +404,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
         'mint',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
-        CAR_TIER_FACTOR,
+        REPAIR_STEP_FRACTION,
       )
       const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
@@ -432,8 +436,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
         'mint',
         t2State.toolTiers,
         CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
-        CAR_TIER_FACTOR,
+        REPAIR_STEP_FRACTION,
       )
       const t1Plan = planGroupRepair(
         car,
@@ -441,8 +446,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
         'mint',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
-        CAR_TIER_FACTOR,
+        REPAIR_STEP_FRACTION,
       )
       expect(t2Plan.costYen).toBe(t1Plan.costYen)
       expect(t2Plan.laborSlotsRequired).toBeLessThan(t1Plan.laborSlotsRequired)
@@ -471,8 +477,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
         'mint',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
-        CAR_TIER_FACTOR,
+        REPAIR_STEP_FRACTION,
       )
       const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
       const broke = baseState({ cashYen: totalCostYen - 1 })
@@ -1139,24 +1146,24 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     })
   }
 
-  it('the recondition quote matches the on-car per-part repair plan at the SAME factor (cost + labor), exactly - the shared formula, isolated from tier scaling', () => {
+  it('the recondition quote matches the on-car per-part repair plan for the identical part, exactly - Sprint 44: one shared formula, no car-dependent factor to isolate from', () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
     const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
     expect(quote).not.toBeNull()
 
-    // The on-car per-part plan for the identical part, at factor 1 (matching
-    // the bench path's own neutral factor - Sprint 41: a loose part has no
-    // car to scale by, so `reconditionQuote` always prices at factor 1; this
-    // isolates the underlying formula, not real on-car pricing, which DOES
-    // scale by the car's own tier - see the next test).
+    // The on-car per-part plan for the identical part - Sprint 44: cost
+    // derives from the installed instance's own catalog price, never a
+    // car/tier factor, so the bench and on-car formulas are simply the same
+    // call with the same inputs.
     const plan = planGroupRepair(
       carWithPoorPanels(),
       'body',
       'mint',
       invState.toolTiers,
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      1,
+      REPAIR_STEP_FRACTION,
       'panels',
     )
 
@@ -1188,7 +1195,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     expect(reconditioned?.pricePaidYen).toBe(20_000 + quote.costYen)
   })
 
-  it("reconditioning and on-car repair consume the same labor (tier-factor-independent); cash now legitimately differs, since Sprint 41 scales the on-car repair by the car's own tier (shitbox, 0.12x) while the bench has no car to scale by (factor 1) - both still route through the identical planGroupRepair/planPartRepair formula, just with a different, correctly-resolved factor input", () => {
+  it('reconditioning and on-car repair of the identical part cost and take exactly the same cash and labor - Sprint 44: repair price is intrinsic to the part, never the host car, structurally closing the donor-car arbitrage a car-dependent factor would allow', () => {
     // On-car reference: repair the panels slot to mint, car in the service bay.
     // Size the spec off `planGroupRepair` exactly the way the store's `repair`
     // action does (gameStore.ts) - the job's labor comes from the spec, so the
@@ -1204,8 +1211,9 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'mint',
       carState.toolTiers,
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      CAR_TIER_FACTOR, // honda-city-e-aa is shitbox tier
+      REPAIR_STEP_FRACTION,
       'panels',
     )
     const carResult = resolveJobLabor(
@@ -1228,8 +1236,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     expect(carLaborSpent).toBeGreaterThan(0)
     expect(carCashSpent).toBe(BODY_CONSUMABLES_T1 + onCarPlan.costYen)
 
-    // In-inventory: recondition the identical loose part to mint - always at
-    // the bench's neutral factor 1 (no car to scale by).
+    // In-inventory: recondition the identical loose part (same catalog part,
+    // same starting band) to mint - the SAME repairStepFraction, priced off
+    // the SAME instance's own catalog price, since there is no car-dependent
+    // factor left to differ by.
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
     const benchPlan = planGroupRepair(
       carWithPoorPanels(),
@@ -1237,8 +1247,9 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'mint',
       invState.toolTiers,
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      1,
+      REPAIR_STEP_FRACTION,
       'panels',
     )
     const invResult = resolveReconditionLabor(invState, loosePart.id, 'mint', 6, CONTEXT)
@@ -1246,12 +1257,14 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     const invLaborSpent = invResult.state.laborSlotsSpentToday
     expect(invCashSpent).toBe(BODY_CONSUMABLES_T1 + benchPlan.costYen)
 
-    // Same labor either way - labor sizing is tier-factor-independent.
+    // Same labor either way (tier-independent labor sizing, unchanged).
     expect(invLaborSpent).toBe(carLaborSpent)
-    // Cash genuinely differs now: the shitbox car's repair is scaled down
-    // (0.12x), the bench's is not (1x) - not a forked economy, a correctly
-    // different factor input to the same shared formula.
-    expect(carCashSpent).toBeLessThan(invCashSpent)
+    // Same repair cash too - the arbitrage-death assertion: a Sprint 41-style
+    // car-tier factor would have made these differ (e.g. a shitbox car
+    // repairing far cheaper than the bench); Sprint 44 makes them identical,
+    // since price is intrinsic to the part, not to whether or which car it's
+    // bolted to.
+    expect(carCashSpent).toBe(invCashSpent)
     // The loose part climbed to mint (and is no longer an open job).
     expect(invResult.state.partInventory[0]?.band).toBe('mint')
     expect(invResult.state.jobs).toHaveLength(0)
@@ -1284,8 +1297,9 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'mint',
       testToolTiers({ body: 3 }),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      1, // factor is irrelevant to labor sizing - only laborSlotsRequired is checked below
+      1, // repairStepFraction is irrelevant to labor sizing - only laborSlotsRequired is checked below
       'panels',
     )
     expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)

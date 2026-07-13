@@ -3,96 +3,84 @@
     "id": "block",
     "group": "engine",
     "displayName": "Block",
-    "stepCostYen": 70000,
-    "stockReplacementPriceYen": 350000,
+    "stockReplacementPriceYen": 160000,
     "statWeights": { "reliability": 2 }
   },
   {
     "id": "internals",
     "group": "engine",
     "displayName": "Internals",
-    "stepCostYen": 45000,
-    "stockReplacementPriceYen": 220000,
+    "stockReplacementPriceYen": 90000,
     "statWeights": { "power": 2, "reliability": 2 }
   },
   {
     "id": "headValvetrain",
     "group": "engine",
     "displayName": "Head & Valvetrain",
-    "stepCostYen": 30000,
-    "stockReplacementPriceYen": 150000,
+    "stockReplacementPriceYen": 70000,
     "statWeights": { "reliability": 2 }
   },
   {
     "id": "camsTiming",
     "group": "engine",
     "displayName": "Cams & Timing",
-    "stepCostYen": 15000,
-    "stockReplacementPriceYen": 80000,
+    "stockReplacementPriceYen": 30000,
     "statWeights": { "power": 2, "reliability": 1 }
   },
   {
     "id": "intake",
     "group": "engine",
     "displayName": "Intake",
-    "stepCostYen": 7000,
-    "stockReplacementPriceYen": 35000,
+    "stockReplacementPriceYen": 15000,
     "statWeights": { "power": 1, "reliability": 1 }
   },
   {
     "id": "exhaust",
     "group": "engine",
     "displayName": "Exhaust",
-    "stepCostYen": 9000,
-    "stockReplacementPriceYen": 45000,
+    "stockReplacementPriceYen": 25000,
     "statWeights": { "power": 1, "reliability": 1 }
   },
   {
     "id": "fuelSystem",
     "group": "engine",
     "displayName": "Fuel System",
-    "stepCostYen": 8000,
-    "stockReplacementPriceYen": 40000,
+    "stockReplacementPriceYen": 18000,
     "statWeights": { "reliability": 1 }
   },
   {
     "id": "ignitionEcu",
     "group": "engine",
     "displayName": "Ignition & ECU",
-    "stepCostYen": 9000,
-    "stockReplacementPriceYen": 45000,
+    "stockReplacementPriceYen": 20000,
     "statWeights": { "power": 2, "reliability": 1 }
   },
   {
     "id": "cooling",
     "group": "engine",
     "displayName": "Cooling",
-    "stepCostYen": 6000,
-    "stockReplacementPriceYen": 30000,
+    "stockReplacementPriceYen": 14000,
     "statWeights": { "reliability": 3 }
   },
   {
     "id": "forcedInduction",
     "group": "engine",
     "displayName": "Forced Induction",
-    "stepCostYen": 35000,
-    "stockReplacementPriceYen": 180000,
+    "stockReplacementPriceYen": 90000,
     "statWeights": { "power": 3, "reliability": 1 }
   },
   {
     "id": "gearbox",
     "group": "drivetrain",
     "displayName": "Gearbox",
-    "stepCostYen": 50000,
-    "stockReplacementPriceYen": 250000,
+    "stockReplacementPriceYen": 110000,
     "statWeights": { "reliability": 2 }
   },
   {
     "id": "clutch",
     "group": "drivetrain",
     "displayName": "Clutch",
-    "stepCostYen": 12000,
-    "stockReplacementPriceYen": 60000,
+    "stockReplacementPriceYen": 28000,
     "repairable": false,
     "statWeights": { "reliability": 1 }
   },
@@ -100,64 +88,56 @@
     "id": "differential",
     "group": "drivetrain",
     "displayName": "Differential",
-    "stepCostYen": 25000,
-    "stockReplacementPriceYen": 120000,
+    "stockReplacementPriceYen": 55000,
     "statWeights": { "reliability": 1 }
   },
   {
     "id": "driveline",
     "group": "drivetrain",
     "displayName": "Driveline",
-    "stepCostYen": 15000,
-    "stockReplacementPriceYen": 70000,
+    "stockReplacementPriceYen": 30000,
     "statWeights": { "reliability": 1 }
   },
   {
     "id": "chassis",
     "group": "drivetrain",
     "displayName": "Chassis",
-    "stepCostYen": 60000,
-    "stockReplacementPriceYen": 300000,
+    "stockReplacementPriceYen": 130000,
     "statWeights": { "reliability": 2 }
   },
   {
     "id": "dampers",
     "group": "suspension",
     "displayName": "Dampers",
-    "stepCostYen": 10000,
-    "stockReplacementPriceYen": 50000,
+    "stockReplacementPriceYen": 26000,
     "statWeights": { "handling": 2 }
   },
   {
     "id": "springs",
     "group": "suspension",
     "displayName": "Springs",
-    "stepCostYen": 5000,
-    "stockReplacementPriceYen": 25000,
+    "stockReplacementPriceYen": 14000,
     "statWeights": { "handling": 2 }
   },
   {
     "id": "antiRollBars",
     "group": "suspension",
     "displayName": "Anti-Roll Bars",
-    "stepCostYen": 4000,
-    "stockReplacementPriceYen": 20000,
+    "stockReplacementPriceYen": 12000,
     "statWeights": { "handling": 2 }
   },
   {
     "id": "steering",
     "group": "suspension",
     "displayName": "Steering",
-    "stepCostYen": 9000,
-    "stockReplacementPriceYen": 45000,
+    "stockReplacementPriceYen": 22000,
     "statWeights": { "handling": 2 }
   },
   {
     "id": "brakePadsDiscs",
     "group": "suspension",
     "displayName": "Brake Pads & Discs",
-    "stepCostYen": 4000,
-    "stockReplacementPriceYen": 20000,
+    "stockReplacementPriceYen": 8000,
     "repairable": false,
     "statWeights": { "handling": 1 }
   },
@@ -165,24 +145,21 @@
     "id": "brakeCalipersLines",
     "group": "suspension",
     "displayName": "Brake Calipers & Lines",
-    "stepCostYen": 8000,
-    "stockReplacementPriceYen": 40000,
+    "stockReplacementPriceYen": 18000,
     "statWeights": { "handling": 1 }
   },
   {
     "id": "rims",
     "group": "wheels",
     "displayName": "Rims",
-    "stepCostYen": 10000,
-    "stockReplacementPriceYen": 55000,
+    "stockReplacementPriceYen": 30000,
     "statWeights": { "style": 3 }
   },
   {
     "id": "tyres",
     "group": "wheels",
     "displayName": "Tyres",
-    "stepCostYen": 7000,
-    "stockReplacementPriceYen": 35000,
+    "stockReplacementPriceYen": 22000,
     "repairable": false,
     "statWeights": { "handling": 3 }
   },
@@ -190,48 +167,42 @@
     "id": "panels",
     "group": "body",
     "displayName": "Panels",
-    "stepCostYen": 12000,
-    "stockReplacementPriceYen": 60000,
+    "stockReplacementPriceYen": 28000,
     "statWeights": { "style": 2 }
   },
   {
     "id": "paint",
     "group": "body",
     "displayName": "Paint",
-    "stepCostYen": 15000,
-    "stockReplacementPriceYen": 80000,
+    "stockReplacementPriceYen": 40000,
     "statWeights": { "style": 2 }
   },
   {
     "id": "underbody",
     "group": "body",
     "displayName": "Underbody",
-    "stepCostYen": 10000,
-    "stockReplacementPriceYen": 50000,
+    "stockReplacementPriceYen": 24000,
     "statWeights": { "style": 2 }
   },
   {
     "id": "aero",
     "group": "body",
     "displayName": "Aero",
-    "stepCostYen": 8000,
-    "stockReplacementPriceYen": 40000,
+    "stockReplacementPriceYen": 18000,
     "statWeights": { "style": 2, "handling": 1 }
   },
   {
     "id": "seats",
     "group": "interior",
     "displayName": "Seats",
-    "stepCostYen": 20000,
-    "stockReplacementPriceYen": 95000,
+    "stockReplacementPriceYen": 35000,
     "statWeights": { "style": 2 }
   },
   {
     "id": "dashGauges",
     "group": "interior",
     "displayName": "Dash & Gauges",
-    "stepCostYen": 6000,
-    "stockReplacementPriceYen": 30000,
+    "stockReplacementPriceYen": 12000,
     "statWeights": { "style": 1 }
   }
 ]

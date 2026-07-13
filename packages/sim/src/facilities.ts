@@ -1,6 +1,7 @@
 import type {
   BayKind,
   DayLogEntry,
+  EconomyConfig,
   Facilities,
   GameState,
   ReputationTier,
@@ -47,13 +48,57 @@ export function hasParkingSpace(state: GameState): boolean {
   return parkingOccupancy(state) < state.parkingBayCount
 }
 
+/** How many cars are currently sitting in a service bay - the service-side
+ * counterpart to `parkingOccupancy`. */
+export function serviceBayOccupancy(state: GameState): number {
+  return state.serviceBayCarIds.filter((id) => id !== null).length
+}
+
+/** Whether one more car could occupy a service bay right now - the
+ * service-side counterpart to `hasParkingSpace`. */
+export function hasServiceBaySpace(state: GameState): boolean {
+  return serviceBayOccupancy(state) < state.serviceBayCount
+}
+
 /**
- * Clears a car's slot - wherever it currently sits, service or parking -
- * called whenever a car leaves the shop entirely (sold, listed, or a
- * service job resolved) so the freed slot is immediately reusable, not
- * haunted by a stale id. Before Sprint 17 this only ever needed to check
- * the service-bay array (parking had no stored slots to leak); now a car
- * can just as easily be leaving from a specific parking slot.
+ * Whether the shop has any REAL (owned) capacity free right now - parking or
+ * a service bay, either counts. Sprint 45 decision 1: acquisition capacity
+ * checks both, not parking alone, so a car with no free parking spot but an
+ * open bay still has somewhere real to go.
+ */
+export function hasOwnedShopSpace(state: GameState): boolean {
+  return hasParkingSpace(state) || hasServiceBaySpace(state)
+}
+
+/**
+ * Whether the one grace/"double parking" overflow slot (Sprint 45) is free.
+ * Always exactly one slot, never purchasable - `null` means nothing is
+ * double-parked right now.
+ */
+export function hasGraceSpace(state: GameState): boolean {
+  return state.graceParkingCarId === null
+}
+
+/**
+ * The real acquisition gate (Sprint 45, replaces the old parking-only
+ * `hasParkingSpace` check at every acquisition call site): true whenever
+ * there is ANYWHERE for a new car to go - real capacity first, the grace
+ * slot as the last resort. Only when this is false does an acquisition
+ * genuinely fail with no money spent (the same no-escrow forfeit shape the
+ * pre-Sprint-45 parking-only check already used).
+ */
+export function hasAcquisitionSpace(state: GameState): boolean {
+  return hasOwnedShopSpace(state) || hasGraceSpace(state)
+}
+
+/**
+ * Clears a car's slot - wherever it currently sits, service, parking, or the
+ * grace overflow slot (Sprint 45) - called whenever a car leaves the shop
+ * entirely (sold, listed, scrapped, or a service job resolved) so the freed
+ * slot is immediately reusable, not haunted by a stale id. Before Sprint 17
+ * this only ever needed to check the service-bay array (parking had no
+ * stored slots to leak); now a car can just as easily be leaving from a
+ * specific parking slot or the grace slot.
  */
 export function releaseCarFromShop(state: GameState, carInstanceId: string): GameState {
   const serviceIndex = state.serviceBayCarIds.indexOf(carInstanceId)
@@ -64,6 +109,9 @@ export function releaseCarFromShop(state: GameState, carInstanceId: string): Gam
   if (parkingIndex !== -1) {
     return { ...state, parkingCarIds: withSlot(state.parkingCarIds, parkingIndex, null) }
   }
+  if (state.graceParkingCarId === carInstanceId) {
+    return { ...state, graceParkingCarId: null }
+  }
   return state
 }
 
@@ -71,11 +119,12 @@ export function releaseCarFromShop(state: GameState, carInstanceId: string): Gam
  * Assigns a car that just entered the shop (won at auction, a service-job
  * customer's car, a dev grant) to a parking slot - the first empty one
  * (real or implicit, up to `parkingBayCount`), or a genuinely appended slot
- * beyond that if none is free. Every normal acquisition path already checks
- * `hasParkingSpace` before calling this, so the overflow branch should only
- * ever be reached via a capacity-bypassing path (the dev console) - it
- * exists so a car is never silently unplaced, not as a workaround for real
- * gameplay capacity.
+ * beyond that if none is free. Every normal acquisition path now checks
+ * `hasAcquisitionSpace` and places through `assignToShop` (Sprint 45) rather
+ * than calling this directly - `assignToParking` itself is UNCHANGED and
+ * still backs `devGrantCar` exactly as before (a deliberate capacity-
+ * bypassing dev tool, not a path Sprint 45 touches), so its overflow branch
+ * still exists purely so a dev-granted car is never silently unplaced.
  */
 export function assignToParking(state: GameState, carInstanceId: string): GameState {
   if (
@@ -90,6 +139,91 @@ export function assignToParking(state: GameState, carInstanceId: string): GameSt
     }
   }
   return { ...state, parkingCarIds: [...state.parkingCarIds, carInstanceId] }
+}
+
+/**
+ * Assigns a car to the first free spot of `to` ('service' or 'parking') at
+ * whatever slot index is open - the shared placement core `assignToShop`
+ * (below) and the grace-slot migration in `resolveGraceParking` both use, so
+ * "find the first empty real slot" has exactly one implementation.
+ */
+function assignToFirstOpenRealSlot(
+  state: GameState,
+  carInstanceId: string,
+  to: BayKind,
+): GameState {
+  const destArray = to === 'service' ? state.serviceBayCarIds : state.parkingCarIds
+  const destCount = to === 'service' ? state.serviceBayCount : state.parkingBayCount
+  for (let i = 0; i < destCount; i++) {
+    if (slotAt(destArray, i) === null) {
+      const filled = withSlot(destArray, i, carInstanceId)
+      return to === 'service'
+        ? { ...state, serviceBayCarIds: filled }
+        : { ...state, parkingCarIds: filled }
+    }
+  }
+  return state // should not happen - caller already confirmed room via hasParkingSpace/hasServiceBaySpace
+}
+
+/**
+ * The real acquisition placement cascade (Sprint 45 decision 1+2): parking
+ * first, a service bay if parking is full, the one grace/"double parking"
+ * overflow slot only if neither real option is free. Callers must already
+ * have confirmed `hasAcquisitionSpace(state)` - this function does not
+ * re-check or refuse, it places into whichever tier is actually free, and
+ * the grace branch is only ever reached when both real tiers are genuinely
+ * full.
+ */
+export function assignToShop(state: GameState, carInstanceId: string): GameState {
+  if (hasParkingSpace(state)) return assignToFirstOpenRealSlot(state, carInstanceId, 'parking')
+  if (hasServiceBaySpace(state)) return assignToFirstOpenRealSlot(state, carInstanceId, 'service')
+  return { ...state, graceParkingCarId: carInstanceId }
+}
+
+export interface GraceParkingResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * The day-boundary resolution for the grace/"double parking" slot (Sprint 45
+ * decision 3), called once per `advanceDay` tick. Migrates the double-parked
+ * car into real capacity FIRST if any has opened up since it was placed
+ * there (a car sold, a bay bought, another car released) - logging the
+ * existing `'car-moved'` entry, the same shape any other slot change uses -
+ * so a car that frees its own overflow slot the same day it becomes fined-
+ * eligible is never actually fined that day. Only if the slot is STILL
+ * occupied after that check does the daily fine apply
+ * (`economy.DOUBLE_PARKING_FINE_YEN`, unconditional deduction, no floor
+ * check - the same shape `applyWeeklyRentAndWages` already uses for rent). A
+ * no-op (empty log, unchanged state) when nothing is double-parked.
+ */
+export function resolveGraceParking(state: GameState, economy: EconomyConfig): GraceParkingResult {
+  const carInstanceId = state.graceParkingCarId
+  if (!carInstanceId) return { state, log: [] }
+
+  if (hasParkingSpace(state)) {
+    const moved = assignToFirstOpenRealSlot(
+      { ...state, graceParkingCarId: null },
+      carInstanceId,
+      'parking',
+    )
+    return { state: moved, log: [{ type: 'car-moved', carInstanceId, to: 'parking' }] }
+  }
+  if (hasServiceBaySpace(state)) {
+    const moved = assignToFirstOpenRealSlot(
+      { ...state, graceParkingCarId: null },
+      carInstanceId,
+      'service',
+    )
+    return { state: moved, log: [{ type: 'car-moved', carInstanceId, to: 'service' }] }
+  }
+
+  const amountYen = economy.DOUBLE_PARKING_FINE_YEN
+  return {
+    state: { ...state, cashYen: state.cashYen - amountYen },
+    log: [{ type: 'double-parking-fine', carInstanceId, amountYen }],
+  }
 }
 
 export interface MoveResult {

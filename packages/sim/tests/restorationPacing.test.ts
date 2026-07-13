@@ -1,5 +1,6 @@
 import {
   ComponentIdSchema,
+  PARTS,
   PARTS_TAXONOMY,
   type CarInstance,
   type ComponentId,
@@ -21,9 +22,13 @@ import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
  * and doesn't also couple to whatever the generation-condition curve
  * (decision 6) happens to roll on a given seed. Sprint 36 re-anchors the
  * tooling axis: the tool line's TIER is the repair level now, so the anchor
- * compares an all-tier-1 shop against an all-tier-3 one.
+ * compares an all-tier-1 shop against an all-tier-3 one. Real `PARTS` are
+ * needed (Sprint 44): `planGroupRepair` now resolves each installed
+ * instance's own catalog part to price it, and skips anything it can't
+ * resolve - an empty parts catalog would silently zero out every part's
+ * labor too, not just its cost.
  */
-const CONTEXT = buildSimContext([], [], [], PARTS_TAXONOMY)
+const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
 
 const ALL_TIER_ONE = testToolTiers()
@@ -46,8 +51,9 @@ function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): num
       'mint',
       toolTiers,
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      1, // labor sizing is tier-factor-independent - this anchor is about labor, not cost
+      1, // labor sizing is repairStepFraction-independent - this anchor is about labor, not cost
     ).laborSlotsRequired
   }
   return total

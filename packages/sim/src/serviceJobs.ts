@@ -15,12 +15,7 @@ import type {
 } from '@midnight-garage/content'
 import { ComponentIdSchema } from '@midnight-garage/content'
 import { generateAuctionCarInstance, stockInstanceFor } from './auctions'
-import {
-  bandIndex,
-  bandsBelowExcludingScrap,
-  planPartRepair,
-  restorationCostFactorForTier,
-} from './bands'
+import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
@@ -30,7 +25,7 @@ import {
   SERVICE_JOB_TIER_MIN_REPUTATION,
 } from './constants'
 import type { SimContext } from './context'
-import { assignToParking, hasParkingSpace, releaseCarFromShop } from './facilities'
+import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
 import { gradeAtLeast, partFitsCar } from './parts'
 import type { Rng } from './rng'
 import { clearStagedWork } from './stagedWork'
@@ -324,11 +319,13 @@ export interface ServiceJobCostBreakdown {
  *
  * Sprint 41: reuses `planPartRepair` (bands.ts) directly rather than
  * re-deriving the grades/cost/labor formula inline - the ONE cost pipeline,
- * never a second bill implementation - which is also how the tier factor
- * (`restorationCostFactorForTier(model.tier, ...)`) reaches a repair task's
- * cost. Repair labor sizes at level 1 (base, "worst case tooling" - a market
- * rate for the customer's own wrench time, independent of the shop's actual
- * current tool tier, unchanged from pre-Sprint-41).
+ * never a second bill implementation. Sprint 44: a repair task's cost derives
+ * from the installed instance's own catalog `priceYen`
+ * (`context.partsById[installed.partId]`) times `economy.restoration.
+ * repairStepFraction`, never a car/model-derived factor. Repair labor sizes
+ * at level 1 (base, "worst case tooling" - a market rate for the customer's
+ * own wrench time, independent of the shop's actual current tool tier,
+ * unchanged from pre-Sprint-41).
  */
 export function serviceJobCostBreakdown(
   tasks: readonly ServiceJobTask[],
@@ -336,7 +333,7 @@ export function serviceJobCostBreakdown(
   model: CarModel,
   context: SimContext,
 ): ServiceJobCostBreakdown {
-  const factor = restorationCostFactorForTier(model.tier, context.economy)
+  const { repairStepFraction } = context.economy.restoration
   let taskCostYen = 0
   let laborSlots = 0
   for (const task of tasks) {
@@ -347,7 +344,16 @@ export function serviceJobCostBreakdown(
       // reach exactly like scrap is (0 cost/labor), rather than crashing on
       // a null read.
       if (!entry || !installed) continue
-      const plan = planPartRepair(installed.band, task.targetBand, 1, entry, factor)
+      const catalogPart = context.partsById[installed.partId]
+      if (!catalogPart) continue
+      const plan = planPartRepair(
+        installed.band,
+        task.targetBand,
+        1,
+        entry,
+        catalogPart.priceYen,
+        repairStepFraction,
+      )
       taskCostYen += plan.costYen
       laborSlots += plan.laborSlotsRequired
     } else {
@@ -642,10 +648,10 @@ export function resolveAcceptServiceJob(
       log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'technique' }],
     }
   }
-  if (!hasParkingSpace(state)) {
+  if (!hasAcquisitionSpace(state)) {
     return {
       state,
-      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-parking' }],
+      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'no-space' }],
     }
   }
   const arrivesOnDay = state.day + SERVICE_JOB_ARRIVAL_DELAY_DAYS
@@ -654,7 +660,7 @@ export function resolveAcceptServiceJob(
     arrivesOnDay,
     dueOnDay: arrivesOnDay + offer.deadlineDays,
   }
-  const withCar = assignToParking(
+  const withCar = assignToShop(
     {
       ...state,
       serviceJobOffers: state.serviceJobOffers.filter((o) => o.id !== offerId),

@@ -7,7 +7,7 @@ import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { applyToolUpgrades } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
-import { applyBayPurchases, applyMoves } from './facilities'
+import { applyBayPurchases, applyMoves, resolveGraceParking } from './facilities'
 import {
   applyAvailableLaborToJob,
   completeJob,
@@ -300,7 +300,22 @@ export function advanceDay(
   const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
   next = { ...next, serviceJobOffers: unexpiredOffers }
 
-  const arrivalsToday = generateDailyAuctionArrivals(next, context, next.day, rng)
+  // `next.day + 1` (not `next.day`), same pre-increment-day convention as
+  // `generateDailyServiceJobOffers` just below - these lots are posted for
+  // the day about to begin, and generation's own `lot-${day}-${tier}-${i}`
+  // id scheme would otherwise collide with `createInitialGameState`'s day-1
+  // seed batch (both would generate `lot-1-*` ids on the very first
+  // advanceDay call, silently merging two DIFFERENT lots under one id - every
+  // id-keyed operation in bidding.ts then treats them as the same lot, so a
+  // single bid mirrors onto both and one lot's hammer resolution removes
+  // both from the board; whichever of the two resolves second, if parking or
+  // cash no longer allows it, then logs a bogus "lost" for a lot the player
+  // already genuinely won and paid for on the first resolution. This is the
+  // exact hazard `generateDailyServiceJobOffers`'s own `next.day + 1` was
+  // already guarding against in this same file - Sprint 30 introduced the
+  // unconditional daily call without carrying that offset over. Found via a
+  // real playtest report, 2026-07-13.
+  const arrivalsToday = generateDailyAuctionArrivals(next, context, next.day + 1, rng)
   for (const { tier, lotCount } of arrivalsToday.lotsByTier) {
     log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
   }
@@ -375,6 +390,16 @@ export function advanceDay(
     next = { ...next, cashYen: next.cashYen + serviceIncome }
     log.push({ type: 'service-bay-income', amountYen: serviceIncome })
   }
+
+  // 8a. Sprint 45: the grace/"double parking" overflow slot's own day-
+  // boundary resolution - migrates the double-parked car into real capacity
+  // FIRST if any opened up today (a sale, a bought bay, a released car), so
+  // it's never fined the same day it frees itself; only charges the daily
+  // fine if the slot is still occupied after that check. A no-op when
+  // nothing is double-parked.
+  const graceParking = resolveGraceParking(next, context.economy)
+  next = graceParking.state
+  log.push(...graceParking.log)
 
   // 9. Weekly rent/wages + market-heat update (both fire on 7-day boundaries).
   const finances = applyWeeklyRentAndWages(next, context.economy)

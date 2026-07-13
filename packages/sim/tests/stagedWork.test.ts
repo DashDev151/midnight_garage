@@ -7,7 +7,7 @@ import {
   type PartInstance,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { planGroupRepair, restorationCostFactorForTier } from '../src/bands'
+import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { clearStagedWork, confirmStagedWork } from '../src/stagedWork'
 import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
@@ -41,9 +41,6 @@ const car: CarInstance = buildCarInstance({
  * `confirmStagedWork` itself does - tests assert against these rather than
  * a hand-guessed number, so a `parts-taxonomy.json`/tool-line retune can't
  * silently desync the fixture from the assertions. */
-// car-0001 is honda-city-e-aa - shitbox tier (Sprint 41 tier-scaled repair costs).
-const CAR_TIER_FACTOR = restorationCostFactorForTier('shitbox', CONTEXT.economy)
-
 function planFor(groupId: 'body' | 'engine' | 'suspension') {
   return planGroupRepair(
     car,
@@ -51,8 +48,9 @@ function planFor(groupId: 'body' | 'engine' | 'suspension') {
     'mint',
     TOOL_TIERS,
     CONTEXT.partIdsByGroup,
+    CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
-    CAR_TIER_FACTOR,
+    CONTEXT.economy.restoration.repairStepFraction,
   )
 }
 
@@ -85,6 +83,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [car.id],
     parkingCarIds: [],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: TOOL_TIERS,
     pendingPartOrders: [],

@@ -26,6 +26,20 @@ function toggleLotDetail(lotId: string): void {
 }
 
 /**
+ * Sprint 45: the shop's real capacity (parking + every service bay) is full,
+ * but the one grace/"double parking" overflow slot is not - a won lot still
+ * has somewhere to go, it just double-parks and starts costing a daily fine
+ * rather than being genuinely lost.
+ */
+const willDoubleParkOnWin = computed(() => game.shopAtCapacity && !game.graceSlotOccupied)
+
+/**
+ * Sprint 45: real capacity AND the grace slot are both full - only now does
+ * a won lot have genuinely nowhere to go and get forfeited to a rival.
+ */
+const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccupied)
+
+/**
  * Sprint 33 decision 4: the flat 29-row condition report was unreadable (a
  * single wrapping grid with no structure). `CONDITION_GROUPS` is the same
  * 6-group stable order every other drill-down in this app uses
@@ -109,9 +123,13 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
       warp) and check back.
     </p>
 
-    <p v-if="game.parkingFull" class="parking-warning">
-      Parking is full ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }}) - a won lot has
-      nowhere to go and will be lost to a rival. Free up a bay or buy more parking first.
+    <p v-if="willBeLostOnWin" class="parking-warning" data-test="lost-warning">
+      The shop is full AND the double-parking overflow spot is already taken - a won lot has nowhere
+      to go and will be lost to a rival. Free up a bay, sell a car, or buy more capacity first.
+    </p>
+    <p v-else-if="willDoubleParkOnWin" class="double-park-warning" data-test="double-park-warning">
+      The shop is full - a won lot will double-park in the one unowned overflow spot and cost a
+      daily fine until real space opens up. Free up a bay or buy more capacity to avoid it.
     </p>
 
     <section v-if="game.myActiveBids.length > 0" class="my-bids">
@@ -297,6 +315,12 @@ h3 {
 
 .parking-warning {
   color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+  margin: var(--mg-space-3) 0;
+}
+
+.double-park-warning {
+  color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
   margin: var(--mg-space-3) 0;
 }

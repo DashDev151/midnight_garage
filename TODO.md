@@ -89,15 +89,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **Donor-car repair arbitrage (found in Sprint 41 review, 2026-07-13).** Repair cost now
-  scales by the HOST car's tier factor while parts remain freely transferable between cars, so
-  the optimal way to restore an expensive car's worn repairable parts is: install them on a kept
-  shitbox (factor 0.12), repair there, swap back - roughly 10x cheaper at the cost of a couple of
-  install/remove labor slots per part. Same root as the bench-recondition asymmetry (bench uses
-  factor 1, deliberately, since a loose part has no car). No bot exploits it; a player will.
-  Candidate fixes when tuning: scale repair cost by the PART's own value/grade instead of (or
-  blended with) the host car's tier, or make swap labor expensive enough to kill the loop. A
-  design call for the balance pass, not a bug fix.
 - [ ] **Sprint 30 living-auction tuning: the board is a fire sale at first-pass numbers
   (maintainer chose commit-as-is, tune in playtest, 2026-07-12).** Mechanics shipped and all hard
   invariants pass, but the balance harness shows 94% of auction wins are cheap "steals" (target

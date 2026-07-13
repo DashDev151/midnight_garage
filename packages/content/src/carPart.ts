@@ -22,10 +22,6 @@ export const CarPartTaxonomyEntrySchema = z.object({
   id: CarPartIdSchema,
   group: ComponentIdSchema,
   displayName: z.string().min(1),
-  /** Yen cost to climb one grade (band) toward mint - the repair price atom
-   * every repair cost, `costToMint`, and (via Sprint 29) job payout derives
-   * from. */
-  stepCostYen: z.number().int().positive(),
   /** Generic stock-equivalent replacement cost: a scrap part's `costToMint`
    * (there is no repair path to price), the fallback Replace price when no
    * catalog part happens to fit, and the basis for a scrap `PartInstance`'s

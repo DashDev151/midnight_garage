@@ -13,7 +13,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 350000
+    "priceYen": 160000
   },
   {
     "id": "hagane-stroker-kit",
@@ -29,7 +29,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 490000
+    "priceYen": 224000
   },
   {
     "id": "hagane-sport-block",
@@ -45,7 +45,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "priceYen": 700000
+    "priceYen": 320000
   },
   {
     "id": "hagane-race-block",
@@ -61,7 +61,7 @@
       "reliability": -14,
       "authenticity": 0
     },
-    "priceYen": 990000
+    "priceYen": 453000
   },
   {
     "id": "stock-internals",
@@ -77,7 +77,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 220000
+    "priceYen": 90000
   },
   {
     "id": "oni-forged-piston-kit",
@@ -93,7 +93,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 310000
+    "priceYen": 127000
   },
   {
     "id": "khs-sport-internals",
@@ -109,7 +109,7 @@
       "reliability": -7,
       "authenticity": 0
     },
-    "priceYen": 420000
+    "priceYen": 172000
   },
   {
     "id": "oni-race-piston-kit",
@@ -125,7 +125,7 @@
       "reliability": -12,
       "authenticity": 0
     },
-    "priceYen": 650000
+    "priceYen": 266000
   },
   {
     "id": "stock-head-valvetrain",
@@ -141,7 +141,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 150000
+    "priceYen": 70000
   },
   {
     "id": "genbu-ported-head-kit",
@@ -157,7 +157,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 195000
+    "priceYen": 91000
   },
   {
     "id": "genbu-sport-head-kit",
@@ -173,7 +173,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "priceYen": 300000
+    "priceYen": 140000
   },
   {
     "id": "genbu-race-head-kit",
@@ -189,7 +189,7 @@
       "reliability": -10,
       "authenticity": 0
     },
-    "priceYen": 420000
+    "priceYen": 196000
   },
   {
     "id": "stock-cams-timing",
@@ -205,7 +205,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 80000
+    "priceYen": 30000
   },
   {
     "id": "raiden-street-cams",
@@ -221,7 +221,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 112000
+    "priceYen": 42000
   },
   {
     "id": "raiden-sport-cams",
@@ -237,7 +237,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 170000
+    "priceYen": 64000
   },
   {
     "id": "raiden-race-cams",
@@ -253,7 +253,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "priceYen": 230000
+    "priceYen": 86000
   },
   {
     "id": "stock-intake",
@@ -269,7 +269,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 35000
+    "priceYen": 15000
   },
   {
     "id": "fubuki-cold-air-kit",
@@ -285,7 +285,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 48000
+    "priceYen": 21000
   },
   {
     "id": "fubuki-sport-intake-kit",
@@ -301,7 +301,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 72000
+    "priceYen": 31000
   },
   {
     "id": "fubuki-velocity-stack-kit",
@@ -317,7 +317,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 98000
+    "priceYen": 42000
   },
   {
     "id": "stock-exhaust",
@@ -333,7 +333,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 45000
+    "priceYen": 25000
   },
   {
     "id": "suzaku-street-catback",
@@ -349,7 +349,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 60000
+    "priceYen": 33000
   },
   {
     "id": "suzaku-sport-catback",
@@ -365,7 +365,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 92000
+    "priceYen": 51000
   },
   {
     "id": "suzaku-race-header-kit",
@@ -381,7 +381,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 130000
+    "priceYen": 72000
   },
   {
     "id": "stock-fuel-system",
@@ -397,7 +397,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 40000
+    "priceYen": 18000
   },
   {
     "id": "koi-street-injector-kit",
@@ -413,7 +413,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 56000
+    "priceYen": 25000
   },
   {
     "id": "koi-sport-fuel-system",
@@ -429,7 +429,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 85000
+    "priceYen": 38000
   },
   {
     "id": "koi-race-fuel-system",
@@ -445,7 +445,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 118000
+    "priceYen": 53000
   },
   {
     "id": "stock-ignition-ecu",
@@ -461,7 +461,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 45000
+    "priceYen": 20000
   },
   {
     "id": "khs-street-ecu",
@@ -477,7 +477,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 52000
+    "priceYen": 23000
   },
   {
     "id": "khs-sport-ecu",
@@ -493,7 +493,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 85000
+    "priceYen": 38000
   },
   {
     "id": "khs-race-ecu",
@@ -509,7 +509,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "priceYen": 135000
+    "priceYen": 60000
   },
   {
     "id": "stock-cooling",
@@ -525,7 +525,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 30000
+    "priceYen": 14000
   },
   {
     "id": "suiko-street-radiator",
@@ -541,7 +541,7 @@
       "reliability": 8,
       "authenticity": 0
     },
-    "priceYen": 42000
+    "priceYen": 20000
   },
   {
     "id": "suiko-track-radiator-kit",
@@ -557,7 +557,7 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "priceYen": 65000
+    "priceYen": 30000
   },
   {
     "id": "suiko-race-cooling-kit",
@@ -573,7 +573,7 @@
       "reliability": 16,
       "authenticity": 0
     },
-    "priceYen": 95000
+    "priceYen": 44000
   },
   {
     "id": "stock-forced-induction",
@@ -589,7 +589,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 180000
+    "priceYen": 90000
   },
   {
     "id": "kaze-bolton-turbo",
@@ -605,7 +605,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 205000
+    "priceYen": 103000
   },
   {
     "id": "khs-tr-350",
@@ -621,7 +621,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "priceYen": 320000
+    "priceYen": 160000
   },
   {
     "id": "khs-tr-500",
@@ -637,7 +637,7 @@
       "reliability": -15,
       "authenticity": 0
     },
-    "priceYen": 520000
+    "priceYen": 260000
   },
   {
     "id": "stock-gearbox",
@@ -653,7 +653,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 250000
+    "priceYen": 110000
   },
   {
     "id": "ittou-close-ratio-kit",
@@ -669,7 +669,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 340000
+    "priceYen": 150000
   },
   {
     "id": "ittou-sport-gearset",
@@ -685,7 +685,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 460000
+    "priceYen": 202000
   },
   {
     "id": "ittou-sequential-dogbox",
@@ -701,7 +701,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "priceYen": 620000
+    "priceYen": 273000
   },
   {
     "id": "stock-clutch",
@@ -717,7 +717,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 60000
+    "priceYen": 28000
   },
   {
     "id": "katana-street-clutch",
@@ -733,7 +733,7 @@
       "reliability": 5,
       "authenticity": 0
     },
-    "priceYen": 68000
+    "priceYen": 32000
   },
   {
     "id": "katana-sport-clutch",
@@ -749,7 +749,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 120000
+    "priceYen": 56000
   },
   {
     "id": "katana-race-clutch",
@@ -765,7 +765,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 175000
+    "priceYen": 82000
   },
   {
     "id": "stock-differential",
@@ -781,7 +781,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 120000
+    "priceYen": 55000
   },
   {
     "id": "tsuru-street-lsd",
@@ -797,7 +797,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 155000
+    "priceYen": 71000
   },
   {
     "id": "tsuru-2way-lsd",
@@ -813,7 +813,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 230000
+    "priceYen": 105000
   },
   {
     "id": "tsuru-race-diff",
@@ -829,7 +829,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "priceYen": 340000
+    "priceYen": 156000
   },
   {
     "id": "stock-driveline",
@@ -845,7 +845,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 70000
+    "priceYen": 30000
   },
   {
     "id": "namazu-reinforced-driveshaft",
@@ -861,7 +861,7 @@
       "reliability": 7,
       "authenticity": 0
     },
-    "priceYen": 91000
+    "priceYen": 39000
   },
   {
     "id": "namazu-sport-driveshaft",
@@ -877,7 +877,7 @@
       "reliability": 10,
       "authenticity": 0
     },
-    "priceYen": 145000
+    "priceYen": 62000
   },
   {
     "id": "namazu-race-driveshaft",
@@ -893,7 +893,7 @@
       "reliability": 14,
       "authenticity": 0
     },
-    "priceYen": 205000
+    "priceYen": 88000
   },
   {
     "id": "stock-chassis",
@@ -909,7 +909,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 300000
+    "priceYen": 130000
   },
   {
     "id": "namazu-seam-weld-kit",
@@ -925,7 +925,7 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "priceYen": 400000
+    "priceYen": 173000
   },
   {
     "id": "namazu-sport-chassis-kit",
@@ -941,7 +941,7 @@
       "reliability": 17,
       "authenticity": 0
     },
-    "priceYen": 620000
+    "priceYen": 269000
   },
   {
     "id": "namazu-tube-chassis-kit",
@@ -957,7 +957,7 @@
       "reliability": 22,
       "authenticity": 0
     },
-    "priceYen": 880000
+    "priceYen": 381000
   },
   {
     "id": "stock-dampers",
@@ -973,7 +973,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 50000
+    "priceYen": 26000
   },
   {
     "id": "tanuki-street-coilovers",
@@ -989,7 +989,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 70000
+    "priceYen": 36000
   },
   {
     "id": "tanuki-circuit-coilovers",
@@ -1005,7 +1005,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 180000
+    "priceYen": 94000
   },
   {
     "id": "tanuki-n1-coilovers",
@@ -1021,7 +1021,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "priceYen": 380000
+    "priceYen": 198000
   },
   {
     "id": "stock-springs",
@@ -1037,7 +1037,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 25000
+    "priceYen": 14000
   },
   {
     "id": "enzan-lowering-springs",
@@ -1053,7 +1053,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 33000
+    "priceYen": 18000
   },
   {
     "id": "enzan-sport-springs",
@@ -1069,7 +1069,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 52000
+    "priceYen": 29000
   },
   {
     "id": "enzan-race-springs",
@@ -1085,7 +1085,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 72000
+    "priceYen": 40000
   },
   {
     "id": "stock-anti-roll-bars",
@@ -1101,7 +1101,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 20000
+    "priceYen": 12000
   },
   {
     "id": "kumo-adjustable-swaybars",
@@ -1117,7 +1117,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 27000
+    "priceYen": 16000
   },
   {
     "id": "kumo-sport-swaybars",
@@ -1133,7 +1133,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 42000
+    "priceYen": 25000
   },
   {
     "id": "kumo-race-swaybars",
@@ -1149,7 +1149,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 58000
+    "priceYen": 35000
   },
   {
     "id": "stock-steering",
@@ -1165,7 +1165,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 45000
+    "priceYen": 22000
   },
   {
     "id": "kitsune-quick-rack",
@@ -1181,7 +1181,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 58000
+    "priceYen": 28000
   },
   {
     "id": "kitsune-sport-rack",
@@ -1197,7 +1197,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 92000
+    "priceYen": 45000
   },
   {
     "id": "kitsune-race-rack",
@@ -1213,7 +1213,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 128000
+    "priceYen": 63000
   },
   {
     "id": "stock-brake-pads-discs",
@@ -1229,7 +1229,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 20000
+    "priceYen": 8000
   },
   {
     "id": "shuriken-street-pads",
@@ -1245,7 +1245,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 26000
+    "priceYen": 10000
   },
   {
     "id": "shuriken-sport-pads",
@@ -1261,7 +1261,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 40000
+    "priceYen": 16000
   },
   {
     "id": "shuriken-race-pads",
@@ -1277,7 +1277,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 56000
+    "priceYen": 22000
   },
   {
     "id": "stock-brake-calipers-lines",
@@ -1293,7 +1293,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 40000
+    "priceYen": 18000
   },
   {
     "id": "shuriken-street-calipers",
@@ -1309,7 +1309,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 52000
+    "priceYen": 23000
   },
   {
     "id": "katana-4pot-kit",
@@ -1325,7 +1325,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 85000
+    "priceYen": 38000
   },
   {
     "id": "shuriken-race-calipers",
@@ -1341,7 +1341,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 115000
+    "priceYen": 52000
   },
   {
     "id": "stock-rims",
@@ -1357,7 +1357,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 55000
+    "priceYen": 30000
   },
   {
     "id": "ronin-street-alloys",
@@ -1373,7 +1373,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 72000
+    "priceYen": 39000
   },
   {
     "id": "vulk-ve37",
@@ -1389,7 +1389,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 130000
+    "priceYen": 71000
   },
   {
     "id": "ronin-race-forged",
@@ -1405,7 +1405,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 165000
+    "priceYen": 90000
   },
   {
     "id": "stock-tyres",
@@ -1421,7 +1421,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 35000
+    "priceYen": 22000
   },
   {
     "id": "tsume-street-tyres",
@@ -1437,7 +1437,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 46000
+    "priceYen": 29000
   },
   {
     "id": "tsume-sport-tyres",
@@ -1453,7 +1453,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 70000
+    "priceYen": 44000
   },
   {
     "id": "tsume-race-slicks",
@@ -1469,7 +1469,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 98000
+    "priceYen": 62000
   },
   {
     "id": "stock-panels",
@@ -1485,7 +1485,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 60000
+    "priceYen": 28000
   },
   {
     "id": "frp-lightweight-panels",
@@ -1501,7 +1501,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 82000
+    "priceYen": 38000
   },
   {
     "id": "frp-sport-panel-kit",
@@ -1517,7 +1517,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 125000
+    "priceYen": 58000
   },
   {
     "id": "frp-carbon-panel-kit",
@@ -1533,7 +1533,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 175000
+    "priceYen": 82000
   },
   {
     "id": "stock-paint",
@@ -1549,7 +1549,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 80000
+    "priceYen": 40000
   },
   {
     "id": "akai-custom-twotone",
@@ -1565,7 +1565,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 105000
+    "priceYen": 53000
   },
   {
     "id": "akai-sport-livery",
@@ -1581,7 +1581,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 165000
+    "priceYen": 83000
   },
   {
     "id": "akai-full-livery-wrap",
@@ -1597,7 +1597,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 235000
+    "priceYen": 118000
   },
   {
     "id": "stock-underbody",
@@ -1613,7 +1613,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 50000
+    "priceYen": 24000
   },
   {
     "id": "neon-doraku-underglow-kit",
@@ -1629,7 +1629,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 68000
+    "priceYen": 33000
   },
   {
     "id": "namazu-sport-underbody-kit",
@@ -1645,7 +1645,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 105000
+    "priceYen": 50000
   },
   {
     "id": "namazu-flatfloor-kit",
@@ -1661,7 +1661,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 148000
+    "priceYen": 71000
   },
   {
     "id": "stock-aero",
@@ -1677,7 +1677,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 40000
+    "priceYen": 18000
   },
   {
     "id": "mikoshi-lip-kit",
@@ -1693,7 +1693,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 46000
+    "priceYen": 21000
   },
   {
     "id": "mikoshi-gt-wing",
@@ -1709,7 +1709,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 120000
+    "priceYen": 54000
   },
   {
     "id": "frp-race-aero",
@@ -1725,7 +1725,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 450000
+    "priceYen": 203000
   },
   {
     "id": "stock-seats",
@@ -1741,7 +1741,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 95000
+    "priceYen": 35000
   },
   {
     "id": "zashiki-street-seats",
@@ -1757,7 +1757,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 128000
+    "priceYen": 47000
   },
   {
     "id": "zashiki-bucket-seat",
@@ -1773,7 +1773,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 175000
+    "priceYen": 64000
   },
   {
     "id": "zashiki-race-buckets",
@@ -1789,7 +1789,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 280000
+    "priceYen": 103000
   },
   {
     "id": "stock-dash-gauges",
@@ -1805,7 +1805,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 30000
+    "priceYen": 12000
   },
   {
     "id": "sokudo-boost-gauge-pod",
@@ -1821,7 +1821,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 39000
+    "priceYen": 16000
   },
   {
     "id": "sokudo-sport-gauge-cluster",
@@ -1837,7 +1837,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 62000
+    "priceYen": 25000
   },
   {
     "id": "sokudo-digital-race-dash",
@@ -1853,6 +1853,6 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 88000
+    "priceYen": 35000
   }
 ]

@@ -264,6 +264,7 @@ describe('GameState / DayLog round-trip', () => {
       parkingBayCount: 3,
       serviceBayCarIds: ['car-0001'],
       parkingCarIds: [null, null, null],
+      graceParkingCarId: null,
       laborSlotsSpentToday: 0,
       toolTiers: {
         engine: 1,
@@ -295,6 +296,7 @@ describe('GameState / DayLog round-trip', () => {
   it('a DayLog with one entry per event type parses unchanged', () => {
     const fixture = [
       { type: 'rent-paid', amountYen: -90_000 },
+      { type: 'double-parking-fine', carInstanceId: 'car-0001', amountYen: 8_000 },
       { type: 'wage-paid', staffId: 'staff-0001', amountYen: -45_000 },
       { type: 'job-created', jobId: 'job-0001', carInstanceId: 'car-0001', kind: 'repair-zone' },
       { type: 'job-progress', jobId: 'job-0001', laborSlotsSpent: 1 },
@@ -357,7 +359,7 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'car-moved', carInstanceId: 'car-0001', to: 'service' },
       { type: 'cars-swapped', serviceCarId: 'car-0001', parkingCarId: 'car-0002' },
       { type: 'bay-purchased', kind: 'service', priceYen: 300_000 },
-      { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' },
+      { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-space' },
       { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
       { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 150_000 },
       { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },

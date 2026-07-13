@@ -10,7 +10,7 @@ import type {
 } from '@midnight-garage/content'
 import { setCarLedger } from './carLedger'
 import type { SimContext } from './context'
-import { assignToParking, hasParkingSpace } from './facilities'
+import { assignToShop, hasAcquisitionSpace } from './facilities'
 import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 
@@ -433,8 +433,10 @@ export function resolvePlaceBid(
  * At the hammer: no leader resolves silently (kept behavior, matching the
  * old "expired unsold" case); a dealer win logs the loss only when
  * `playerHasBid` (today's only-log-if-the-player-had-skin rule); a player
- * win runs the existing no-cash/no-parking forfeit checks (decision 7: no
- * escrow, cash and parking are only checked now) before the handover.
+ * win runs the existing no-cash/no-space forfeit checks (decision 7: no
+ * escrow, cash and space are only checked now; Sprint 45: "space" covers
+ * real capacity plus the grace overflow slot, not parking alone) before the
+ * handover.
  */
 export function resolveLotForDay(
   state: GameState,
@@ -492,10 +494,13 @@ export function resolveLotForDay(
   }
 
   // The player leads - wins at currentBidYen, the literal board number
-  // (first-price). No escrow: cash and parking are only checked now.
-  if (!hasParkingSpace(state)) {
+  // (first-price). No escrow: cash and space are only checked now. Sprint
+  // 45: "space" means real capacity (parking or a service bay) OR the one
+  // grace/"double parking" overflow slot - only genuinely nowhere to put the
+  // car forfeits the win.
+  if (!hasAcquisitionSpace(state)) {
     log.push(
-      { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-parking' },
+      { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-space' },
       { type: 'auction-bid-lost', lotId: lot.id, winningPriceYen: updatedLot.currentBidYen },
     )
     return { state: removeLot(state), log }
@@ -508,7 +513,7 @@ export function resolveLotForDay(
     return { state: removeLot(state), log }
   }
 
-  const withCar = assignToParking(
+  const withCar = assignToShop(
     setCarLedger(
       {
         ...removeLot(state),
@@ -540,14 +545,14 @@ export function resolveBuyoutInstant(
   if (!lot) return { state, log: [] }
   const priceYen = computeBuyoutPriceYen(lot, state, context)
   if (state.cashYen < priceYen) return { state, log: [] }
-  if (!hasParkingSpace(state)) {
+  if (!hasAcquisitionSpace(state)) {
     return {
       state,
-      log: [{ type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' }],
+      log: [{ type: 'acquisition-blocked', kind: 'buyout', reason: 'no-space' }],
     }
   }
 
-  const withCar = assignToParking(
+  const withCar = assignToShop(
     setCarLedger(
       {
         ...state,

@@ -1,6 +1,8 @@
 import {
   ECONOMY,
+  PARTS,
   PARTS_TAXONOMY,
+  type CarInstance,
   type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
@@ -22,7 +24,6 @@ import {
   planGroupRepair,
   presentPartIdsInGroup,
   repairLevelForGroup,
-  restorationCostFactorForTier,
   scrapValueYen,
   slotsNeededToClimb,
   worstRepairableBandInGroup,
@@ -39,10 +40,11 @@ import {
 /**
  * Sprint 26: unit tests for the band-math primitives every other condition-
  * aware sim module (jobs, staged work, market value, save migration) builds
- * on. No models/parts/buyers are needed for this module's own functions, so
- * those catalogs are empty; the taxonomy context is real content.
+ * on. Real `PARTS` are needed (Sprint 44: repair cost derives from an
+ * installed instance's own catalog price, so the fixture cars' stock parts
+ * must actually resolve).
  */
-const CONTEXT = buildSimContext([], [], [], PARTS_TAXONOMY)
+const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const TAXONOMY_BY_ID = CONTEXT.partsTaxonomyById
 
 /**
@@ -77,14 +79,22 @@ const NA_MODEL: CarModel = {
   tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
 }
 
-/** Sprint 41: TEST_MODEL/NA_MODEL are both tier 'common' (factor 0.35 in the
- * real content). Tests that isolate the pre-Sprint-41 band-math sums (not
- * the tier-scaling feature itself) use this neutral override (every tier at
- * factor 1) so their expected values stay the plain `grades * stepCostYen`
- * arithmetic; the scaling itself gets its own dedicated tests below. */
+/** Sprint 44: `repairStepFraction` at 1 isolates the plain `grades * price`
+ * arithmetic from the real tuning value (0.15) - tests that check the
+ * band-math sums themselves (not the scaling feature) use this neutral
+ * override; the scaling itself gets its own dedicated tests below. */
 const NEUTRAL_ECONOMY: EconomyConfig = {
   ...ECONOMY,
-  restoration: { partsCostFactorByTier: { shitbox: 1, common: 1, uncommon: 1, rare: 1 } },
+  restoration: { repairStepFraction: 1 },
+}
+
+/** The real catalog price of whatever is actually installed at `partId` on
+ * `car` - Sprint 44's repair cost derives from this, never a car/model
+ * identity, so expected-value math in these tests reads it back the same
+ * way the pipeline does rather than hardcoding a number that would silently
+ * drift from the next catalog rebase. */
+function installedPriceYen(car: CarInstance, partId: CarPartId): number {
+  return CONTEXT.partsById[car.parts[partId].installed!.partId]!.priceYen
 }
 
 describe('bandIndex - ordering (worst to best: scrap, poor, worn, fine, mint)', () => {
@@ -152,52 +162,54 @@ describe('canRepair (Sprint 26 decision 5: scrap is terminal; Sprint 41 decision
   })
 })
 
-describe('restorationCostFactorForTier (Sprint 41 decision 1)', () => {
-  it('resolves the real content factor for each of the four roster tiers', () => {
-    const { shitbox, common, uncommon, rare } = ECONOMY.restoration.partsCostFactorByTier
-    expect(restorationCostFactorForTier('shitbox', ECONOMY)).toBe(shitbox)
-    expect(restorationCostFactorForTier('common', ECONOMY)).toBe(common)
-    expect(restorationCostFactorForTier('uncommon', ECONOMY)).toBe(uncommon)
-    expect(restorationCostFactorForTier('rare', ECONOMY)).toBe(rare)
-  })
-
-  it('throws for a tier with no matching entry (gaisha/legend are not in the roster yet)', () => {
-    expect(() => restorationCostFactorForTier('gaisha', ECONOMY)).toThrow()
-    expect(() => restorationCostFactorForTier('legend', ECONOMY)).toThrow()
-  })
-})
-
-describe('costToMintYen (Sprint 26 decision 5; Sprint 41 decisions 1-2: tier factor + non-repairable)', () => {
+describe("costToMintYen (Sprint 26 decision 5; Sprint 44 decision 1: derived from the installed part's own price, never the host car)", () => {
   const dampers = TAXONOMY_BY_ID.dampers // repairable
   const tyres = TAXONOMY_BY_ID.tyres // non-repairable
+  // Arbitrary - these tests prove the formula shape, not any specific
+  // catalog tuning.
+  const PART_PRICE_YEN = 100_000
 
-  it('is gradesToMint times stepCostYen times factor for a repairable band, rounded', () => {
-    expect(costToMintYen('fine', dampers, 1)).toBe(1 * dampers.stepCostYen)
-    expect(costToMintYen('worn', dampers, 1)).toBe(2 * dampers.stepCostYen)
-    expect(costToMintYen('poor', dampers, 1)).toBe(3 * dampers.stepCostYen)
-    expect(costToMintYen('poor', dampers, 0.35)).toBe(Math.round(3 * dampers.stepCostYen * 0.35))
+  it('is gradesToMint times repairStepFraction times the part price for a repairable band, rounded', () => {
+    expect(costToMintYen('fine', dampers, PART_PRICE_YEN, 0.15)).toBe(
+      Math.round(1 * 0.15 * PART_PRICE_YEN),
+    )
+    expect(costToMintYen('worn', dampers, PART_PRICE_YEN, 0.15)).toBe(
+      Math.round(2 * 0.15 * PART_PRICE_YEN),
+    )
+    expect(costToMintYen('poor', dampers, PART_PRICE_YEN, 0.15)).toBe(
+      Math.round(3 * 0.15 * PART_PRICE_YEN),
+    )
+    expect(costToMintYen('poor', dampers, PART_PRICE_YEN, 0.35)).toBe(
+      Math.round(3 * 0.35 * PART_PRICE_YEN),
+    )
   })
 
-  it('is zero for a repairable part already at mint, regardless of factor', () => {
-    expect(costToMintYen('mint', dampers, 1)).toBe(0)
-    expect(costToMintYen('mint', dampers, 0.12)).toBe(0)
+  it('is zero for a repairable part already at mint, regardless of price or fraction', () => {
+    expect(costToMintYen('mint', dampers, PART_PRICE_YEN, 0.15)).toBe(0)
+    expect(costToMintYen('mint', dampers, PART_PRICE_YEN, 1)).toBe(0)
   })
 
-  it('is stockReplacementPriceYen for scrap, FLAT - unscaled by factor, since there is no repair path to price', () => {
-    expect(costToMintYen('scrap', dampers, 1)).toBe(dampers.stockReplacementPriceYen)
-    expect(costToMintYen('scrap', dampers, 0.12)).toBe(dampers.stockReplacementPriceYen)
-    expect(costToMintYen('scrap', dampers, 1)).not.toBe(4 * dampers.stepCostYen)
+  it("is stockReplacementPriceYen for scrap, FLAT - unscaled by the installed instance's price or fraction, since there is no repair path to price", () => {
+    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 0.15)).toBe(
+      dampers.stockReplacementPriceYen,
+    )
+    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 1)).toBe(
+      dampers.stockReplacementPriceYen,
+    )
+    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 0.15)).not.toBe(
+      Math.round(4 * 0.15 * PART_PRICE_YEN),
+    )
   })
 
-  it('a non-repairable consumable below fine prices FLAT at stockReplacementPriceYen, unscaled by factor', () => {
-    expect(costToMintYen('poor', tyres, 1)).toBe(tyres.stockReplacementPriceYen)
-    expect(costToMintYen('worn', tyres, 1)).toBe(tyres.stockReplacementPriceYen)
-    expect(costToMintYen('worn', tyres, 0.12)).toBe(tyres.stockReplacementPriceYen)
+  it('a non-repairable consumable below fine prices FLAT at stockReplacementPriceYen, unscaled by price or fraction', () => {
+    expect(costToMintYen('poor', tyres, PART_PRICE_YEN, 0.15)).toBe(tyres.stockReplacementPriceYen)
+    expect(costToMintYen('worn', tyres, PART_PRICE_YEN, 0.15)).toBe(tyres.stockReplacementPriceYen)
+    expect(costToMintYen('worn', tyres, PART_PRICE_YEN, 1)).toBe(tyres.stockReplacementPriceYen)
   })
 
   it('a non-repairable consumable at fine or mint prices at zero - a nearly-new consumable does not discount value', () => {
-    expect(costToMintYen('fine', tyres, 1)).toBe(0)
-    expect(costToMintYen('mint', tyres, 1)).toBe(0)
+    expect(costToMintYen('fine', tyres, PART_PRICE_YEN, 0.15)).toBe(0)
+    expect(costToMintYen('mint', tyres, PART_PRICE_YEN, 0.15)).toBe(0)
   })
 })
 
@@ -257,7 +269,7 @@ describe('slotsNeededToClimb (Sprint 26 decision 7 worked examples)', () => {
   })
 })
 
-describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)', () => {
+describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price)", () => {
   // suspension group: dampers worn (2 grades), springs poor (3 grades),
   // steering scrap (unrepairable - excluded), antiRollBars fine (1 grade),
   // brakePadsDiscs worn (non-repairable consumable - excluded even though
@@ -273,39 +285,39 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)'
     }),
   })
 
-  it('sums labor slots and yen (at factor 1) across every non-mint, non-scrap, repairable present part, and excludes mint/scrap/non-repairable parts from partIds', () => {
+  it('sums labor slots and yen across every non-mint, non-scrap, repairable present part, and excludes mint/scrap/non-repairable parts from partIds', () => {
     const plan = planGroupRepair(
       suspensionCar,
       'suspension',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
-      1,
+      1, // repairStepFraction = 1 isolates the grades*price arithmetic
     )
-    const dampers = TAXONOMY_BY_ID.dampers
-    const springs = TAXONOMY_BY_ID.springs
-    const antiRollBars = TAXONOMY_BY_ID.antiRollBars
+    const dampersPrice = installedPriceYen(suspensionCar, 'dampers')
+    const springsPrice = installedPriceYen(suspensionCar, 'springs')
+    const antiRollBarsPrice = installedPriceYen(suspensionCar, 'antiRollBars')
 
     expect(plan.partIds).toEqual(['dampers', 'springs', 'antiRollBars'])
     // brakePadsDiscs (non-repairable) never enters the plan despite being
     // worn, not scrap - replace-only semantics, not just the terminal-scrap
     // exclusion.
     expect(plan.partIds).not.toContain('brakePadsDiscs')
-    expect(plan.costYen).toBe(
-      2 * dampers.stepCostYen + 3 * springs.stepCostYen + 1 * antiRollBars.stepCostYen,
-    )
+    expect(plan.costYen).toBe(2 * dampersPrice + 3 * springsPrice + 1 * antiRollBarsPrice)
     // Tool line at tier 1 -> repair level 1: exactly 1 grade climbed per slot.
     expect(plan.laborSlotsRequired).toBe(2 + 3 + 1)
   })
 
-  it('scales costYen by factor, rounded per part, without changing laborSlotsRequired or partIds', () => {
+  it('scales costYen by repairStepFraction, rounded per part, without changing laborSlotsRequired or partIds', () => {
     const unscaled = planGroupRepair(
       suspensionCar,
       'suspension',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
     )
@@ -315,16 +327,17 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)'
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       0.35,
     )
-    const dampers = TAXONOMY_BY_ID.dampers
-    const springs = TAXONOMY_BY_ID.springs
-    const antiRollBars = TAXONOMY_BY_ID.antiRollBars
+    const dampersPrice = installedPriceYen(suspensionCar, 'dampers')
+    const springsPrice = installedPriceYen(suspensionCar, 'springs')
+    const antiRollBarsPrice = installedPriceYen(suspensionCar, 'antiRollBars')
     const expectedScaledCost =
-      Math.round(2 * dampers.stepCostYen * 0.35) +
-      Math.round(3 * springs.stepCostYen * 0.35) +
-      Math.round(1 * antiRollBars.stepCostYen * 0.35)
+      Math.round(2 * dampersPrice * 0.35) +
+      Math.round(3 * springsPrice * 0.35) +
+      Math.round(1 * antiRollBarsPrice * 0.35)
 
     expect(scaled.costYen).toBe(expectedScaledCost)
     expect(scaled.costYen).toBeLessThan(unscaled.costYen)
@@ -339,6 +352,7 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)'
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
     )
@@ -348,6 +362,7 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)'
       'mint',
       testToolTiers({ suspension: 3 }),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
     )
@@ -366,6 +381,7 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)'
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
     )
@@ -388,6 +404,7 @@ describe('planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decisions 1-2)'
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
     )
@@ -568,7 +585,7 @@ describe('isPartMissing (Sprint 32: a real defect vs. legitimate absence)', () =
   })
 })
 
-describe('carCostToMintYen and groupCostToMintYen (sum across present parts)', () => {
+describe("carCostToMintYen and groupCostToMintYen (sum across present parts; Sprint 44: priced off each installed instance's own catalog price)", () => {
   const ENGINE_PARTS_EXCLUDING_FI = [
     'block',
     'internals',
@@ -590,7 +607,7 @@ describe('carCostToMintYen and groupCostToMintYen (sum across present parts)', (
   it('sums costToMintYen across every present part in a group, excluding a legitimately-empty forcedInduction slot on an NA car even though it is also worn', () => {
     const car = buildWornEngineNaCar()
     const expectedCostExcludingFI = ENGINE_PARTS_EXCLUDING_FI.reduce(
-      (sum, id) => sum + 2 * TAXONOMY_BY_ID[id].stepCostYen,
+      (sum, id) => sum + 2 * installedPriceYen(car, id),
       0,
     )
 
@@ -599,15 +616,16 @@ describe('carCostToMintYen and groupCostToMintYen (sum across present parts)', (
       NA_MODEL,
       'engine',
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       NEUTRAL_ECONOMY,
     )
     expect(groupCost).toBe(expectedCostExcludingFI)
     // If the empty forcedInduction slot were wrongly counted, this would be
-    // higher by its own worn-to-mint cost.
-    expect(groupCost).not.toBe(
-      expectedCostExcludingFI + 2 * TAXONOMY_BY_ID.forcedInduction.stepCostYen,
-    )
+    // higher - it has no installed instance to price at all when missing, so
+    // the comparison instead just asserts a strictly lower total than adding
+    // any positive amount would produce.
+    expect(groupCost).toBeLessThan(expectedCostExcludingFI + 1)
   })
 
   it('a MISSING (non-FI) slot prices at the full stock replacement price, not a worn-to-mint step cost', () => {
@@ -620,51 +638,76 @@ describe('carCostToMintYen and groupCostToMintYen (sum across present parts)', (
       TEST_MODEL,
       'engine',
       CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       NEUTRAL_ECONOMY,
     )
     const otherEngineParts = ENGINE_PARTS_EXCLUDING_FI.filter((id) => id !== 'exhaust')
     const expectedCost =
-      otherEngineParts.reduce((sum, id) => sum + 2 * TAXONOMY_BY_ID[id].stepCostYen, 0) +
-      2 * TAXONOMY_BY_ID.forcedInduction.stepCostYen +
+      otherEngineParts.reduce((sum, id) => sum + 2 * installedPriceYen(car, id), 0) +
+      2 * installedPriceYen(car, 'forcedInduction') +
       TAXONOMY_BY_ID.exhaust.stockReplacementPriceYen
     expect(groupCost).toBe(expectedCost)
   })
 
   it('carCostToMintYen equals groupCostToMintYen("engine") here, since every other group stays mint', () => {
     const car = buildWornEngineNaCar()
-    expect(carCostToMintYen(car, NA_MODEL, CONTEXT.partsTaxonomyById, NEUTRAL_ECONOMY)).toBe(
+    expect(
+      carCostToMintYen(
+        car,
+        NA_MODEL,
+        CONTEXT.partsById,
+        CONTEXT.partsTaxonomyById,
+        NEUTRAL_ECONOMY,
+      ),
+    ).toBe(
       groupCostToMintYen(
         car,
         NA_MODEL,
         'engine',
         CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         NEUTRAL_ECONOMY,
       ),
     )
   })
 
-  it('carCostToMintYen sums correctly across a uniformly-fine whole car (at factor 1: non-repairable consumables contribute zero at fine, everything else its own stepCostYen)', () => {
+  it('carCostToMintYen sums correctly across a uniformly-fine whole car (non-repairable consumables contribute zero at fine, everything else its installed price at repairStepFraction 1)', () => {
     const car = buildCarInstance({ parts: uniformCarParts('fine') })
     const expectedTotal = PARTS_TAXONOMY.reduce(
-      (sum, entry) => sum + (entry.repairable ? entry.stepCostYen : 0),
+      (sum, entry) => sum + (entry.repairable ? installedPriceYen(car, entry.id) : 0),
       0,
     )
-    expect(carCostToMintYen(car, TEST_MODEL, CONTEXT.partsTaxonomyById, NEUTRAL_ECONOMY)).toBe(
-      expectedTotal,
-    )
+    expect(
+      carCostToMintYen(
+        car,
+        TEST_MODEL,
+        CONTEXT.partsById,
+        CONTEXT.partsTaxonomyById,
+        NEUTRAL_ECONOMY,
+      ),
+    ).toBe(expectedTotal)
   })
 
-  it('carCostToMintYen scales a repairable part by the resolved tier factor - a common-tier car pays less than the unscaled sum', () => {
+  it('carCostToMintYen scales every repairable part by economy.restoration.repairStepFraction - a smaller fraction pays less than a larger one', () => {
     const car = buildCarInstance({ parts: uniformCarParts('fine') })
-    const unscaledTotal = PARTS_TAXONOMY.reduce(
-      (sum, entry) => sum + (entry.repairable ? entry.stepCostYen : 0),
-      0,
+    const unscaledTotal = carCostToMintYen(
+      car,
+      TEST_MODEL,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      NEUTRAL_ECONOMY,
     )
-    // TEST_MODEL.tier is 'common' - real content factor is < 1.
-    expect(ECONOMY.restoration.partsCostFactorByTier.common).toBeLessThan(1)
-    const scaledTotal = carCostToMintYen(car, TEST_MODEL, CONTEXT.partsTaxonomyById, ECONOMY)
+    // The real content's repairStepFraction is well under 1.
+    expect(ECONOMY.restoration.repairStepFraction).toBeLessThan(1)
+    const scaledTotal = carCostToMintYen(
+      car,
+      TEST_MODEL,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      ECONOMY,
+    )
     expect(scaledTotal).toBeLessThan(unscaledTotal)
   })
 })

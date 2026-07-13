@@ -76,13 +76,14 @@ function instanceBaseValueYen(
   model: CarModel,
   car: CarInstance,
   heatPercent: number,
+  partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
   const { hassleFactor, floorFraction } = economy.valuation
   const cleanValue =
     model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, model, partsTaxonomyById, economy)
+  const restorationBill = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
   const floor = floorFraction * cleanValue
   return Math.max(floor, cleanValue - hassleFactor * restorationBill)
 }
@@ -153,7 +154,7 @@ export function marketValueYen(
   economy: EconomyConfig,
 ): number {
   const baseValue = Math.round(
-    instanceBaseValueYen(model, car, heatPercent, partsTaxonomyById, economy),
+    instanceBaseValueYen(model, car, heatPercent, partsById, partsTaxonomyById, economy),
   )
   return baseValue + installedPartsValueYen(car, partsById, economy)
 }

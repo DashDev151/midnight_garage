@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  ECONOMY,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -108,22 +109,42 @@ describe('labor is gated by service-bay membership', () => {
 })
 
 describe('acquisitions require a free parking space at delivery, never at bidding', () => {
-  it('a buyout is skipped (no spend, lot stays) when parking is full', () => {
-    const { state, lot } = stateWithLot(1, { parkingBayCount: 0 })
+  it('a buyout is skipped (no spend, lot stays) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
+    const { state, lot } = stateWithLot(1, {
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      graceParkingCarId: 'someone-elses-car',
+    })
     const actions = DayActionsSchema.parse({ buyoutLots: [{ lotId: lot.id }] })
     const cashBefore = state.cashYen
     const { state: next, log } = advanceDay(state, actions, 1, CONTEXT)
     expect(next.ownedCars).toHaveLength(0)
-    expect(next.cashYen).toBe(cashBefore)
+    // The blocked buyout itself spends nothing - the only cash movement is
+    // the pre-existing grace occupant's own daily fine (step 8a), unrelated
+    // to this buyout attempt.
+    expect(next.cashYen).toBe(cashBefore - ECONOMY.DOUBLE_PARKING_FINE_YEN)
     expect(next.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
     expect(log.find((e) => e.type === 'acquisition-blocked')).toMatchObject({
       kind: 'buyout',
-      reason: 'no-parking',
+      reason: 'no-space',
     })
   })
 
-  it('a won bid is forfeited to the rivals when parking is full - bid never blocked', () => {
+  it('a buyout with parking full but a service bay open still succeeds, in the bay (Sprint 45 decision 1)', () => {
     const { state, lot } = stateWithLot(1, { parkingBayCount: 0 })
+    const actions = DayActionsSchema.parse({ buyoutLots: [{ lotId: lot.id }] })
+    const { state: next, log } = advanceDay(state, actions, 1, CONTEXT)
+    expect(next.ownedCars).toHaveLength(1)
+    expect(next.serviceBayCarIds).toContain(lot.car.id)
+    expect(log.some((e) => e.type === 'acquisition-blocked')).toBe(false)
+  })
+
+  it('a won bid is forfeited to the rivals only once parking, every service bay, AND the grace slot are all full - bid never blocked', () => {
+    const { state, lot } = stateWithLot(1, {
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      graceParkingCarId: 'someone-elses-car',
+    })
     // An over-market bid - well above the buyout cap every rival is capped
     // at - guarantees a win once the lot's own duration elapses (Sprint 19:
     // bidding no longer resolves same-day, so this places the bid, then
@@ -162,17 +183,22 @@ describe('acquisitions require a free parking space at delivery, never at biddin
     expect(next.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false) // lot is gone either way
     expect(allLog.find((e) => e.type === 'acquisition-blocked')).toMatchObject({
       kind: 'auction-win',
-      reason: 'no-parking',
+      reason: 'no-space',
     })
     expect(allLog.find((e) => e.type === 'auction-bid-lost')).toBeDefined()
   })
 
-  it('accepting a service job is skipped (offer stays) when parking is full', () => {
+  it('accepting a service job is skipped (offer stays) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
     const base = createInitialGameState(CONTEXT, 1)
     // Sprint 36: no equipment/tool gate can interfere here - every line is
     // owned at tier 1 and all shipped templates default to minToolTier 1,
-    // so this test is purely about parking.
-    const full = { ...base, parkingBayCount: 0 }
+    // so this test is purely about capacity.
+    const full = {
+      ...base,
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      graceParkingCarId: 'someone-elses-car',
+    }
     // Force a weekly offer refresh to get a real offer on the board.
     const withOffers = advanceDay({ ...full, day: 7 }, noActions, 1, CONTEXT).state
     expect(withOffers.serviceJobOffers.length).toBeGreaterThan(0)
@@ -183,7 +209,7 @@ describe('acquisitions require a free parking space at delivery, never at biddin
     expect(next.serviceJobOffers.some((o) => o.id === offer.id)).toBe(true)
     expect(log.find((e) => e.type === 'acquisition-blocked')).toMatchObject({
       kind: 'service-accept',
-      reason: 'no-parking',
+      reason: 'no-space',
     })
   })
 })

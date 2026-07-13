@@ -88,7 +88,6 @@ import {
   resolveSellViaWalkIn,
   resolveServiceJob,
   resolveSetForSale,
-  restorationCostFactorForTier,
   scrapValueYen,
   shopTitle,
   swapCars as swapCarsCore,
@@ -637,6 +636,7 @@ export const useGameStore = defineStore('game', () => {
         model,
         groupId,
         context.value.partIdsByGroup,
+        context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy,
       )
@@ -840,6 +840,7 @@ export const useGameStore = defineStore('game', () => {
       totalBillYen: carCostToMintYen(
         car,
         model,
+        context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy,
       ),
@@ -969,6 +970,7 @@ export const useGameStore = defineStore('game', () => {
       restorationBillYen: carCostToMintYen(
         lot.car,
         model,
+        context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy,
       ),
@@ -1193,6 +1195,27 @@ export const useGameStore = defineStore('game', () => {
   /** True when neither side has a free slot - a direct move can never succeed, only a swap can. */
   const shopAtCapacity = computed(() => parkingFull.value && serviceBayFreeCount.value <= 0)
 
+  /**
+   * Sprint 45: the one double-parked car (grace/overflow slot), if any -
+   * reuses `shopCarView` since a double-parked car is still either an owned
+   * car or a customer's, just without a real bay to sit in.
+   */
+  const graceParkedCarView = computed<ShopCarView | undefined>(() => {
+    const carId = gameState.value.graceParkingCarId
+    return carId ? shopCarView(carId) : undefined
+  })
+
+  /**
+   * Whether the grace slot is occupied right now - the raw capacity fact
+   * (for gating acquisition-loss warnings), distinct from
+   * `graceParkedCarView` (which additionally needs the occupant to resolve
+   * to a real, displayable car).
+   */
+  const graceSlotOccupied = computed(() => gameState.value.graceParkingCarId !== null)
+
+  /** The daily fine charged (`resolveGraceParking`) while the grace slot stays occupied at End Day. */
+  const doubleParkingFineYen = computed(() => context.value.economy.DOUBLE_PARKING_FINE_YEN)
+
   /** Price of the next bay of this kind, or null once it's maxed out. */
   function nextBayPrice(kind: BayKind): number | null {
     return nextBayPriceYen(gameState.value, kind, context.value.facilities)
@@ -1364,17 +1387,15 @@ export const useGameStore = defineStore('game', () => {
   ): void {
     const car = findWorkableCar(carId)
     if (!car) return
-    const model = context.value.modelsById[car.modelId]
-    if (!model) return
-    const factor = restorationCostFactorForTier(model.tier, context.value.economy)
     const plan = planGroupRepair(
       car,
       componentId,
       targetBand,
       gameState.value.toolTiers,
       context.value.partIdsByGroup,
+      context.value.partsById,
       context.value.partsTaxonomyById,
-      factor,
+      context.value.economy.restoration.repairStepFraction,
       carPartId,
     )
     if (plan.partIds.length === 0) return
@@ -2109,6 +2130,9 @@ export const useGameStore = defineStore('game', () => {
     serviceBayCount,
     serviceBayFreeCount,
     shopAtCapacity,
+    graceParkedCarView,
+    graceSlotOccupied,
+    doubleParkingFineYen,
     nextBayPrice,
     nextBayReputationGate,
     moveCar,

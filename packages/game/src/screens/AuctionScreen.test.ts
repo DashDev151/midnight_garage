@@ -84,6 +84,43 @@ describe('AuctionScreen', () => {
     }
   })
 
+  describe('the capacity cascade warning (Sprint 45)', () => {
+    it('shows neither warning while the shop still has real capacity', () => {
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="double-park-warning"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="lost-warning"]').exists()).toBe(false)
+    })
+
+    it('warns about double-parking (not loss) once the shop is full but the grace slot is still free', () => {
+      const game = useGameStore()
+      game.gameState = {
+        ...game.gameState,
+        parkingBayCount: 0,
+        parkingCarIds: [],
+        serviceBayCount: 0,
+        serviceBayCarIds: [],
+      }
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="double-park-warning"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="lost-warning"]').exists()).toBe(false)
+    })
+
+    it('warns about genuine loss only once the shop AND the grace slot are both full', () => {
+      const game = useGameStore()
+      game.gameState = {
+        ...game.gameState,
+        parkingBayCount: 0,
+        parkingCarIds: [],
+        serviceBayCount: 0,
+        serviceBayCarIds: [],
+        graceParkingCarId: 'someone-elses-car',
+      }
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="lost-warning"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="double-park-warning"]').exists()).toBe(false)
+    })
+  })
+
   describe('the full condition report (Sprint 33 decision 4: grouped, not one flat 29-row grid)', () => {
     it('is hidden until toggled, then shows every real part row grouped under its component', async () => {
       const game = useGameStore()

@@ -36,6 +36,15 @@ const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
 ) as Record<CarPartId, CarPartTaxonomyEntry>
 
+/**
+ * Sprint 44: repair cost derives from an installed instance's own catalog
+ * price, so a rolled lot's real stock parts need a real `partsById` to price
+ * the restoration bill correctly - `{}` would silently skip every repairable
+ * part's contribution (only scrap/missing still price flat), collapsing the
+ * measured uplift toward zero for the common no-scrap-no-missing lot.
+ */
+const PARTS_BY_ID = CONTEXT.partsById
+
 const PROBE_MODEL = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
 if (!PROBE_MODEL) throw new Error('fixture car missing from seed content')
 const PROBE_MODELS: readonly CarModel[] = [PROBE_MODEL]
@@ -64,6 +73,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     parkingBayCount: 3,
     serviceBayCarIds: [],
     parkingCarIds: [],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
@@ -141,7 +151,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         lot.car,
         100,
-        {},
+        PARTS_BY_ID,
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
       )
@@ -149,7 +159,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         fullyRestored(lot.car, PROBE_MODEL),
         100,
-        {},
+        PARTS_BY_ID,
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
       )
@@ -171,7 +181,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         lot.car,
         100,
-        {},
+        PARTS_BY_ID,
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
       )
@@ -179,7 +189,7 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
         PROBE_MODEL,
         fullyRestored(lot.car, PROBE_MODEL),
         100,
-        {},
+        PARTS_BY_ID,
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
       )

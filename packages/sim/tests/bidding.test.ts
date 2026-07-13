@@ -55,6 +55,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     parkingBayCount: 3,
     serviceBayCarIds: [],
     parkingCarIds: [],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
@@ -662,7 +663,7 @@ describe('resolveLotForDay - hammer and backstop', () => {
     ).toBe(true)
   })
 
-  it('a won lot forfeits (no-parking) without spending cash, still logging the loss', () => {
+  it('a won lot forfeits (no-space) without spending cash, still logging the loss - ONLY once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
     const { lot } = sampleLot(35)
     const dominant: AuctionLot = {
       ...lot,
@@ -672,14 +673,56 @@ describe('resolveLotForDay - hammer and backstop', () => {
       playerHasBid: true,
       expiresOnDay: 1000,
     }
-    const state = stateWithLots([dominant], { parkingBayCount: 0 })
+    const state = stateWithLots([dominant], {
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      graceParkingCarId: 'someone-elses-car',
+    })
     const result = resolveLotForDay(state, dominant, CONTEXT, 1)
     expect(result.state.ownedCars).toHaveLength(0)
     expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.graceParkingCarId).toBe('someone-elses-car') // untouched, not overwritten
     expect(
-      result.log.some((e) => e.type === 'acquisition-blocked' && e.reason === 'no-parking'),
+      result.log.some((e) => e.type === 'acquisition-blocked' && e.reason === 'no-space'),
     ).toBe(true)
     expect(result.log.some((e) => e.type === 'auction-bid-lost')).toBe(true)
+  })
+
+  it('a won lot with parking full but a service bay open lands in the bay, not lost (Sprint 45 decision 1)', () => {
+    const { lot } = sampleLot(37)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 2,
+      leadingBidder: 'player',
+      quietDays: 2,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    const state = stateWithLots([dominant], { parkingBayCount: 0, serviceBayCount: 1 })
+    const result = resolveLotForDay(state, dominant, CONTEXT, 1)
+    expect(result.state.ownedCars).toHaveLength(1)
+    expect(result.state.serviceBayCarIds).toContain(lot.car.id)
+    expect(result.state.graceParkingCarId).toBeNull()
+    expect(result.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
+    expect(result.log.some((e) => e.type === 'acquisition-blocked')).toBe(false)
+  })
+
+  it('a won lot with parking AND every service bay full double-parks in the grace slot instead of being lost (Sprint 45 decision 2)', () => {
+    const { lot } = sampleLot(38)
+    const dominant: AuctionLot = {
+      ...lot,
+      currentBidYen: lot.bookValueYen * 2,
+      leadingBidder: 'player',
+      quietDays: 2,
+      playerHasBid: true,
+      expiresOnDay: 1000,
+    }
+    const state = stateWithLots([dominant], { parkingBayCount: 0, serviceBayCount: 0 })
+    const result = resolveLotForDay(state, dominant, CONTEXT, 1)
+    expect(result.state.ownedCars).toHaveLength(1)
+    expect(result.state.graceParkingCarId).toBe(lot.car.id)
+    expect(result.log.some((e) => e.type === 'auction-bid-won')).toBe(true)
+    expect(result.log.some((e) => e.type === 'acquisition-blocked')).toBe(false)
   })
 
   it('a won lot forfeits (no-cash) without spending cash, still logging the loss', () => {
@@ -773,14 +816,38 @@ describe('resolveBuyoutInstant', () => {
     expect(result.log).toEqual([])
   })
 
-  it('leaves the lot on the board (no money spent) when parking is full', () => {
+  it('lands in an open service bay when parking is full, instead of being refused (Sprint 45 decision 1)', () => {
     const { lot } = sampleLot(42)
-    const state = stateWithLots([lot], { parkingBayCount: 0 })
+    const state = stateWithLots([lot], { parkingBayCount: 0, serviceBayCount: 1 })
+    const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+    expect(result.state.ownedCars).toHaveLength(1)
+    expect(result.state.serviceBayCarIds).toContain(lot.car.id)
+    expect(result.state.activeAuctionLots).toHaveLength(0)
+    expect(result.log.some((e) => e.type === 'acquisition-blocked')).toBe(false)
+  })
+
+  it('double-parks in the grace slot when parking AND every service bay are full, instead of being refused (Sprint 45 decision 2)', () => {
+    const { lot } = sampleLot(43)
+    const state = stateWithLots([lot], { parkingBayCount: 0, serviceBayCount: 0 })
+    const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+    expect(result.state.ownedCars).toHaveLength(1)
+    expect(result.state.graceParkingCarId).toBe(lot.car.id)
+    expect(result.state.activeAuctionLots).toHaveLength(0)
+    expect(result.log.some((e) => e.type === 'acquisition-blocked')).toBe(false)
+  })
+
+  it('leaves the lot on the board (no money spent) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
+    const { lot } = sampleLot(45)
+    const state = stateWithLots([lot], {
+      parkingBayCount: 0,
+      serviceBayCount: 0,
+      graceParkingCarId: 'someone-elses-car',
+    })
     const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
     expect(result.state.activeAuctionLots).toHaveLength(1)
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.log).toEqual([
-      { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-parking' },
+      { type: 'acquisition-blocked', kind: 'buyout', reason: 'no-space' },
     ])
   })
 
@@ -844,7 +911,11 @@ describe('distribution probes', () => {
     const p90 = finalRatios[Math.floor(finalRatios.length * 0.9)]!
     expect(p10).toBeGreaterThan(0.35)
     expect(median).toBeGreaterThan(0.55)
-    expect(median).toBeLessThan(0.85)
+    // Sprint 44 (constant part costs + the floorFraction bump) shifted the
+    // anchor-value distribution slightly - re-measured median ~0.852 (was
+    // <0.85); re-pinned with headroom rather than chasing the exact figure,
+    // same "report the real number" policy as everywhere else in this probe.
+    expect(median).toBeLessThan(0.88)
     expect(p90).toBeGreaterThan(0.55)
     // A real upper tail: some lots roll high enough spread/turnout to clear
     // well above the median.

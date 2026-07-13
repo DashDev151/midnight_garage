@@ -25,6 +25,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [],
     parkingCarIds: [],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],

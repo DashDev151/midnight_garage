@@ -1,6 +1,6 @@
 import type { GameState, Job, ServiceJob, ServiceJobTask } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
-import { planGroupRepair, restorationCostFactorForTier } from '../bands'
+import { planGroupRepair } from '../bands'
 import { INSTALL_LABOR_SLOTS } from '../constants'
 import type { SimContext } from '../context'
 import { gradeAtLeast, partFitsCar } from '../parts'
@@ -116,15 +116,15 @@ export function queueServiceJobTasks(
     if (!model) continue
 
     if (task.action === 'repair') {
-      const factor = restorationCostFactorForTier(model.tier, context.economy)
       const plan = planGroupRepair(
         car,
         group,
         task.targetBand,
         state.toolTiers,
         context.partIdsByGroup,
+        context.partsById,
         context.partsTaxonomyById,
-        factor,
+        context.economy.restoration.repairStepFraction,
         task.carPartId,
       )
       if (plan.partIds.length === 0) continue

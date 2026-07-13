@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
+import { formatYen } from '../utils/formatYen'
 import GarageScreen from './GarageScreen.vue'
 
 function mountScreen() {
@@ -138,6 +139,30 @@ describe('GarageScreen', () => {
 
     expect(wrapper.findAll('.parking-list .car-card')).toHaveLength(1)
     expect(wrapper.text()).toContain(game.carsDetailed[0]!.displayName)
+  })
+
+  describe('the double-parking grace slot (Sprint 45)', () => {
+    it('renders nothing when no car is double-parked', () => {
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="grace-parking"]').exists()).toBe(false)
+    })
+
+    it('shows the red double-parked warning with the car name and daily fine once a car occupies the grace slot', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      game.gameState = {
+        ...game.gameState,
+        parkingCarIds: [],
+        graceParkingCarId: carId,
+      }
+      const wrapper = mountScreen()
+
+      const grace = wrapper.get('[data-test="grace-parking"]')
+      expect(grace.text()).toContain(game.carsDetailed[0]!.displayName)
+      expect(grace.text()).toContain('DOUBLE PARKED')
+      expect(grace.text()).toContain(formatYen(game.doubleParkingFineYen))
+    })
   })
 
   it('moving a parked car into the service bay updates both lists', async () => {

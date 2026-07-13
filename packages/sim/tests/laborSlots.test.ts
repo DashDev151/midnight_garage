@@ -26,6 +26,7 @@ function baseState(staff: StaffMember[]): GameState {
     parkingBayCount: 3,
     serviceBayCarIds: [],
     parkingCarIds: [],
+    graceParkingCarId: null,
     laborSlotsSpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
