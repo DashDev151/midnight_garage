@@ -50,6 +50,7 @@ import {
   carCostToMintYen,
   carGuideValueYen,
   carLedgerFor,
+  computeAuctionGrade,
   computeBuyoutPriceYen,
   computeDerivedStats,
   confirmStagedWork,
@@ -99,6 +100,7 @@ import {
   upgradeHintFor,
   valuateCarForBuyer,
   worstRepairableBandInGroup,
+  type AuctionGrade,
   type DeliverySpeed,
   type NewJobSpec,
   type ServiceJobOutcome,
@@ -486,11 +488,12 @@ export interface LotDetail {
    */
   groupBands: Record<ComponentId, ConditionBand>
   /**
-   * The full 29-part band list (Sprint 27 decision 3), read-only - "opening"
-   * a lot shows exactly this, the same per-part row shape the owned-car
-   * screen already uses. Player and bots see identical information.
+   * Sprint 50: a real-world auction-style condition summary (overall
+   * number/letter plus exterior/interior letter grades) computed purely
+   * from the car's existing band state - replaces the old expandable
+   * 29-part condition report as this card's pre-bid condition signal.
    */
-  partRows: CarPartRowView[]
+  auctionGrade: AuctionGrade
   /**
    * The real cost to bring every present part on this specific car to mint,
    * at the player's current (equipment-independent, per Sprint 26 decision
@@ -882,16 +885,6 @@ export const useGameStore = defineStore('game', () => {
     return carPartRowsInGroup(car, model, componentId)
   }
 
-  /**
-   * The full 29-part band list for `car`, grouped in `REAL_COMPONENT_GROUPS`
-   * order (Sprint 27 decision 3) - the auction lot-detail's "open the lot"
-   * view: every real part, always visible, never gated behind an inspection
-   * step. Player and bots see identical information.
-   */
-  function allCarPartRows(car: CarInstance, model: CarModel): CarPartRowView[] {
-    return REAL_COMPONENT_GROUPS.flatMap((groupId) => carPartRowsInGroup(car, model, groupId))
-  }
-
   const carsDetailed = computed<DetailedCar[]>(() => gameState.value.ownedCars.map(detailFor))
 
   const ownedCarNames = computed(() => carsDetailed.value.map((d) => d.displayName))
@@ -1188,7 +1181,7 @@ export const useGameStore = defineStore('game', () => {
       nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
       playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(lot.car),
-      partRows: allCarPartRows(lot.car, model),
+      auctionGrade: computeAuctionGrade(lot.car, model, context.value.partIdsByGroup),
       restorationBillYen: carCostToMintYen(
         lot.car,
         model,

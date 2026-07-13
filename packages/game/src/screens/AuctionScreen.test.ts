@@ -158,41 +158,46 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('the full condition report (Sprint 33 decision 4: grouped, not one flat 29-row grid)', () => {
-    it('is hidden until toggled, then shows every real part row grouped under its component', async () => {
+  describe('the auction-grade line (Sprint 50: replaces the old expandable condition report)', () => {
+    it('shows an always-visible grade line per lot, matching computeAuctionGrade for that car - no toggle needed', () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
       const detail = game.lotDetail(lot.id)!
       const wrapper = mountScreen()
 
+      const gradeLine = wrapper.find(`[data-test="auction-grade-${lot.id}"]`)
+      expect(gradeLine.exists()).toBe(true)
+      expect(gradeLine.text()).toContain(`Grade ${detail.auctionGrade.overall}`)
+      expect(gradeLine.text()).toContain(`Ext ${detail.auctionGrade.exterior}`)
+      expect(gradeLine.text()).toContain(`Int ${detail.auctionGrade.interior}`)
+      expect(gradeLine.text()).toContain('restoration bill')
+
+      // The old expandable report is gone entirely.
+      expect(wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).exists()).toBe(false)
       expect(wrapper.find('.condition-groups').exists()).toBe(false)
-      await wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).trigger('click')
-
-      const groups = wrapper.findAll('.condition-group')
-      // One card per component group that actually has rows on this car - at
-      // most 6 (engine/drivetrain/suspension/wheels/body/interior).
-      expect(groups.length).toBeGreaterThan(0)
-      expect(groups.length).toBeLessThanOrEqual(6)
-
-      // Every one of the lot's real part rows renders somewhere in the report.
-      for (const row of detail.partRows) {
-        expect(wrapper.text()).toContain(row.displayName)
-      }
-      // Rows total matches the full 29-part taxonomy, split across the groups.
-      const totalRows = wrapper.findAll('.part-row').length
-      expect(totalRows).toBe(detail.partRows.length)
     })
+  })
 
-    it('toggles closed again on a second click', async () => {
+  describe('the art placeholder (Sprint 50 decision 1)', () => {
+    it('renders one placeholder block per lot card', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+      expect(wrapper.findAll('.lot-art').length).toBe(game.gameState.activeAuctionLots.length)
+    })
+  })
+
+  describe('My Active Bids as a table (Sprint 50 decision 3)', () => {
+    it('renders bid rows as table rows once the player has an active bid', async () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
       const wrapper = mountScreen()
-      await wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).trigger('click')
-      expect(wrapper.find('.condition-groups').exists()).toBe(true)
-      await wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).trigger('click')
-      expect(wrapper.find('.condition-groups').exists()).toBe(false)
+      await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
+
+      expect(wrapper.find('.bids-table').exists()).toBe(true)
+      expect(wrapper.findAll('.bids-table tbody tr').length).toBe(game.myActiveBids.length)
     })
   })
 })
