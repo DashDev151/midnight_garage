@@ -200,9 +200,16 @@ describe('advanceDay golden master', () => {
     // This scripted career never actually double-parks a car, so the field
     // stays `null` throughout; every other assertion in this file still
     // passes unchanged against this same scripted career.
+    // Re-pinned again (Sprint 47, was 18b48709): a real, intended economy
+    // rewrite - the consumables fee is gone, repairStepFraction dropped
+    // 0.15 -> 0.1, the valuation curve replaced the old hassle/floor clamp,
+    // and generation now rolls a per-car upkeep tier (a real RNG-sequence
+    // change on top of the value change). Every other assertion in this file
+    // still passes unchanged against this same scripted career - only cash/
+    // condition numbers moved.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('18b48709')
+    expect(hashState(finalState)).toBe('008cd2e7')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -234,12 +241,10 @@ describe('advanceDay golden master', () => {
 
   it('rent is charged again, every 7 days (Sprint 23 decision 4: restored from 0)', () => {
     const finalState = runCareer(30)
-    // The day-1 body repair also charges the body tool line's tier-1
-    // per-job consumables cost once (Sprint 36: tier-sourced, replacing the
-    // old equipment flat fee), plus (Sprint 26) the group's real per-grade
-    // repair cost, on top of rent. Rent charges on days 7/14/21/28 within a
-    // 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
-    const consumablesCostYen = CONTEXT.toolLineFor('body').tiers[0]!.consumablesCostYen
+    // The day-1 body repair charges (Sprint 26) the group's real per-grade
+    // repair cost, on top of rent - no consumables fee (Sprint 47 decision 1
+    // deleted the old per-job flat charge). Rent charges on days 7/14/21/28
+    // within a 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
@@ -252,10 +257,7 @@ describe('advanceDay golden master', () => {
     )
     const rentChargeCount = 4
     expect(finalState.cashYen).toBe(
-      1_200_000 -
-        consumablesCostYen -
-        bodyPlan.costYen -
-        rentChargeCount * CONTEXT.economy.WEEKLY_RENT_YEN,
+      1_200_000 - bodyPlan.costYen - rentChargeCount * CONTEXT.economy.WEEKLY_RENT_YEN,
     )
   })
 })
@@ -355,7 +357,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // never actually double-parks a car, so the field stays `null`
     // throughout - `wins a lot at auction, then sells the car` above still
     // holds unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('0ade03bc')
+    // Re-pinned again (Sprint 47, was 0ade03bc): same cause as the 30-day
+    // career's own Sprint 47 re-pin above (consumables removed, repair
+    // fraction and valuation curve rewritten, generation's upkeep roll
+    // changes the RNG sequence) - `wins a lot at auction, then sells the
+    // car` above still holds unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('b70f72e9')
   })
 })
 

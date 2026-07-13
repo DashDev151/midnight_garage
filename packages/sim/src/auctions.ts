@@ -11,18 +11,38 @@ import {
   type TurnoutBand,
 } from '@midnight-garage/content'
 import { bandForMigratedCondition, hasForcedInduction } from './bands'
-import { CAR_CONDITION_JITTER, DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
+import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
 
-const PROVENANCE_POOL = [
-  'one-owner, garage kept',
-  'dealer trade-in, service history unknown',
-  'estate sale, low mileage claimed',
-  'daily driver, honest wear',
-] as const
+/** Sprint 47 decision 4: the flavor blurb now correlates with the car's real
+ * rolled upkeep tier (used to be one flat pool with no mechanical meaning at
+ * all) - the variance is legible pre-bid, not hidden. */
+const PROVENANCE_POOL_BY_UPKEEP_TIER = {
+  cherished: ['one-owner, garage kept', 'estate sale, low mileage claimed'],
+  average: ['daily driver, honest wear', 'dealer trade-in, service history unknown'],
+  neglected: ['parked up for years, ran when it went in', 'sold as-is, no history offered'],
+} as const
+
+/** Sprint 47 decision 4: a per-car upkeep roll, layered on top of the
+ * mileage-based condition baseline - real cross-car variance at the same
+ * mileage, so a car isn't interchangeably mediocre with every other car of
+ * the same age. */
+type UpkeepTier = 'neglected' | 'average' | 'cherished'
+
+function rollUpkeepTier(weights: Readonly<Record<UpkeepTier, number>>, rng: Rng): UpkeepTier {
+  const entries = Object.entries(weights) as [UpkeepTier, number][]
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (const [tier, weight] of entries) {
+    cumulative += weight
+    if (roll < cumulative) return tier
+  }
+  return entries[entries.length - 1]![0]
+}
 
 /**
  * GDD 4.5: Gaisha is sourced only via the (unbuilt) Import Broker, "no
@@ -191,8 +211,9 @@ export function stockInstanceFor(
  * that rolled a pristine engine and a wrecked transmission with no
  * relationship between them read as arbitrary rather than "this car has had
  * a hard life." One 0-100 baseline is rolled per car, and each of the 29
- * real parts (Sprint 26) jitters around it (CAR_CONDITION_JITTER), then
- * buckets into its condition band via `bandForMigratedCondition` (bands.ts)
+ * real parts (Sprint 26) jitters around it (a per-upkeep-tier range since
+ * Sprint 47, see below), then buckets into its condition band via
+ * `bandForMigratedCondition` (bands.ts)
  * - the same percent-to-band mapping the save migration uses, reused here
  * rather than authoring a second one (directive 16). The band is rolled for
  * EVERY part unconditionally, including one that ends up empty, so the RNG
@@ -224,6 +245,23 @@ export function stockInstanceFor(
  * infinite/undefined age. This is generation only, not value - `marketValue.ts`
  * never re-gained an age factor (a maintainer decision after Sprint 30 removed
  * it there specifically); mileage reaches value solely via `mileageFactor`.
+ *
+ * Sprint 47 decision 4: a per-car upkeep tier (neglected/average/cherished,
+ * `economy.partsGeneration.upkeepTierWeights`) is rolled once and layered ON
+ * TOP of the mileage-based baseline above - it offsets the baseline, reshapes
+ * the per-part jitter range (a wider, harsher-tailed spread for neglected, a
+ * tighter and gentler one for cherished, replacing the old flat symmetric
+ * `CAR_CONDITION_JITTER`), and scales the missing-slot chance. Two cars at the
+ * identical mileage can now be a genuine wreck or genuinely sound, not
+ * interchangeably mediocre - the tier also picks `provenanceNote` from a
+ * tier-matched pool, so the variance reads pre-bid instead of only after the
+ * condition report is opened.
+ *
+ * Sprint 47 decision 7: `allowMissingSlots` (default `true`, unchanged for
+ * every existing auction-lot caller) lets `serviceJobs.ts`'s customer-car
+ * generation pass `false` - a customer's car should never turn up missing a
+ * part unrelated to the job it's booked for; only `forceTasksOutstanding`'s
+ * install-task branch empties a slot on a customer car, deliberately.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -231,6 +269,7 @@ export function generateAuctionCarInstance(
   rng: Rng,
   context: SimContext,
   currentYear: number = Infinity,
+  allowMissingSlots: boolean = true,
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const year = Math.min(model.spec.yearFrom + rng.int(0, 8), currentYear)
@@ -240,15 +279,18 @@ export function generateAuctionCarInstance(
   const [mileageMin, mileageMax] = mileageRangeForAge(ageYears, economy)
   const mileageKm = rng.int(mileageMin, mileageMax)
   const [baselineMin, baselineMax] = conditionBaselineRangeForMileage(mileageKm, economy)
-  const conditionBaseline = rng.int(baselineMin, baselineMax)
+  const rolledBaseline = rng.int(baselineMin, baselineMax)
   const carHasForcedInduction = hasForcedInduction(model)
   const { missingSlotBaseChance, missingSlotWeightByPart } = economy.partsGeneration
+  const { upkeepTierWeights, upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier } =
+    economy.partsGeneration
+  const upkeepTier = rollUpkeepTier(upkeepTierWeights, rng)
+  const conditionBaseline = clampCondition(rolledBaseline + upkeepBaselineOffset[upkeepTier])
+  const [jitterMin, jitterMax] = upkeepJitterRange[upkeepTier]
 
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
-      const percent = clampCondition(
-        conditionBaseline + rng.int(-CAR_CONDITION_JITTER, CAR_CONDITION_JITTER),
-      )
+      const percent = clampCondition(conditionBaseline + rng.int(jitterMin, jitterMax))
       const band = bandForMigratedCondition(percent, economy)
 
       if (partId === 'forcedInduction') {
@@ -258,7 +300,11 @@ export function generateAuctionCarInstance(
         return [partId, { installed }]
       }
 
-      const missingChance = missingSlotBaseChance * missingSlotWeightByPart[partId]
+      const missingChance = allowMissingSlots
+        ? missingSlotBaseChance *
+          missingSlotWeightByPart[partId] *
+          upkeepMissingMultiplier[upkeepTier]
+        : 0
       const rolledMissing = rng.next() < missingChance
       const installed = rolledMissing
         ? null
@@ -273,7 +319,7 @@ export function generateAuctionCarInstance(
     year,
     mileageKm,
     color: rng.pick(COLOR_POOL),
-    provenanceNote: rng.pick(PROVENANCE_POOL),
+    provenanceNote: rng.pick(PROVENANCE_POOL_BY_UPKEEP_TIER[upkeepTier]),
     authenticityPercent: rng.int(60, 95),
     parts,
   }

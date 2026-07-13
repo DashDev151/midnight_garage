@@ -142,8 +142,9 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     game.confirmCarWork(car.id)
 
     expect(game.stagedActionsFor(car.id)).toEqual([])
-    // The repair really started: consumables + the group's repair bill were
-    // charged. No refusal path exists anymore - nothing gets job-blocked.
+    // The repair really started: the group's repair bill was charged (no
+    // consumables fee since Sprint 47). No refusal path exists anymore -
+    // nothing gets job-blocked.
     expect(game.cashYen).toBeLessThan(cashBefore)
     expect(game.dayLog.some((e) => e.type === 'job-blocked')).toBe(false)
   })

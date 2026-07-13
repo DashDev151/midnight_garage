@@ -2,7 +2,6 @@ import {
   CARS,
   PARTS,
   PARTS_TAXONOMY,
-  TOOL_LINES,
   type CarInstance,
   type GameState,
   type Job,
@@ -38,11 +37,6 @@ import {
 // now validates install-part fit against the actual model/part catalog, so
 // an install spec needs both to resolve to something real.
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
-
-/** The body line's per-job consumables at each tier (Sprint 36: the charge
- * follows the line's CURRENT tier, not an owned machine). */
-const BODY_CONSUMABLES_T1 = TOOL_LINES.body.tiers[0]!.consumablesCostYen
-const BODY_CONSUMABLES_T2 = TOOL_LINES.body.tiers[1]!.consumablesCostYen
 
 const car: CarInstance = buildCarInstance({
   id: 'car-0001',
@@ -370,7 +364,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
     })
 
-    it("charges the CURRENT tier's consumables plus the group's real (tier-scaled) repair cost, deducted from cash", () => {
+    it("charges exactly the group's real (tier-scaled) repair cost, deducted from cash - no consumables fee (Sprint 47)", () => {
       const plan = planGroupRepair(
         car,
         'body',
@@ -381,7 +375,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
       )
-      const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
+      const totalCostYen = plan.costYen
       const cashBefore = baseState().cashYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.job).not.toBeNull()
@@ -397,7 +391,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       ])
     })
 
-    it('Sprint 42: creates the ledger entry and adds the full charge (consumables + repair cost) as repairYen for an OWNED car', () => {
+    it('Sprint 42: creates the ledger entry and adds the full repair charge as repairYen for an OWNED car', () => {
       const plan = planGroupRepair(
         car,
         'body',
@@ -408,7 +402,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
       )
-      const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
+      const totalCostYen = plan.costYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.state.carLedgers[car.id]).toEqual({
         purchaseYen: null,
@@ -428,7 +422,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(second.state.carLedgers[car.id]!.repairYen).toBeGreaterThan(afterFirstRepairYen)
     })
 
-    it("a tier-2 line charges tier 2's consumables (and takes fewer labor slots), same repair cost", () => {
+    it('a tier-2 line takes fewer labor slots for the same repair cost (Sprint 47: tier no longer affects cost at all)', () => {
       const t2State = baseState({ toolTiers: testToolTiers({ body: 2 }) })
       const t2Plan = planGroupRepair(
         car,
@@ -460,7 +454,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT,
       )
       expect(result.job).not.toBeNull()
-      expect(result.state.cashYen).toBe(cashBefore - BODY_CONSUMABLES_T2 - t2Plan.costYen)
+      expect(result.state.cashYen).toBe(cashBefore - t2Plan.costYen)
     })
 
     it('does not re-charge when a repeat call continues the existing job', () => {
@@ -481,7 +475,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
       )
-      const totalCostYen = BODY_CONSUMABLES_T1 + plan.costYen
+      const totalCostYen = plan.costYen
       const broke = baseState({ cashYen: totalCostYen - 1 })
       const result = findOrCreateJob(broke, spec, CONTEXT)
       expect(result.job).toBeNull()
@@ -1168,10 +1162,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     )
 
     expect(quote.laborSlotsRequired).toBe(plan.laborSlotsRequired)
-    expect(quote.costYen).toBe(plan.costYen + BODY_CONSUMABLES_T1)
+    expect(quote.costYen).toBe(plan.costYen)
   })
 
-  it("Sprint 42: a bench recondition adds its full charge (consumables + repair cost) to the loose instance's pricePaidYen, not any car ledger", () => {
+  it("Sprint 42: a bench recondition adds its full repair charge to the loose instance's pricePaidYen, not any car ledger", () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
     const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
     const result = resolveReconditionLabor(invState, loosePart.id, 'mint', 10, CONTEXT)
@@ -1234,7 +1228,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
     expect(carCashSpent).toBeGreaterThan(0)
     expect(carLaborSpent).toBeGreaterThan(0)
-    expect(carCashSpent).toBe(BODY_CONSUMABLES_T1 + onCarPlan.costYen)
+    expect(carCashSpent).toBe(onCarPlan.costYen)
 
     // In-inventory: recondition the identical loose part (same catalog part,
     // same starting band) to mint - the SAME repairStepFraction, priced off
@@ -1255,7 +1249,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     const invResult = resolveReconditionLabor(invState, loosePart.id, 'mint', 6, CONTEXT)
     const invCashSpent = invState.cashYen - invResult.state.cashYen
     const invLaborSpent = invResult.state.laborSlotsSpentToday
-    expect(invCashSpent).toBe(BODY_CONSUMABLES_T1 + benchPlan.costYen)
+    expect(invCashSpent).toBe(benchPlan.costYen)
 
     // Same labor either way (tier-independent labor sizing, unchanged).
     expect(invLaborSpent).toBe(carLaborSpent)
@@ -1303,11 +1297,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'panels',
     )
     expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)
-    // The yen cost of the work itself is tier-independent (decision 7);
-    // only the tier's own consumables differ between the two quotes.
-    expect(t3Quote.costYen - TOOL_LINES.body.tiers[2]!.consumablesCostYen).toBe(
-      t1Quote.costYen - BODY_CONSUMABLES_T1,
-    )
+    // The yen cost of the work itself is tier-independent (decision 7), and
+    // Sprint 47 removed the per-tier consumables fee entirely - the two
+    // quotes cost exactly the same.
+    expect(t3Quote.costYen).toBe(t1Quote.costYen)
   })
 
   /**

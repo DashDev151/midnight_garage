@@ -293,9 +293,10 @@ export const EconomyConfigSchema = z.object({
   /**
    * Sprint 21 (per-component weights); Sprint 26 decision 4 replaced the old
    * hand-authored `componentValueWeights` with a cost-weighted mean of band
-   * factors; Sprint 27 replaces THAT shim outright with a transparent
-   * restoration-bill deduction (`marketValueYen`'s own doc comment carries
-   * the formula) - `hassleFactor`/`floorFraction` are its two tunables.
+   * factors; Sprint 27 replaced THAT shim with a transparent restoration-bill
+   * deduction; Sprint 47 replaces Sprint 27's hard floor-clamp deduction with
+   * a two-slope premium that never flattens to zero marginal return
+   * (`marketValueYen`'s own doc comment carries the current formula).
    */
   valuation: z.object({
     /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - a small
@@ -303,17 +304,36 @@ export const EconomyConfigSchema = z.object({
      * clamped to the first/last factor outside the breakpoint range. */
     mileageFactorCurve: CurveSchema,
     /**
-     * Sprint 27 decision 1: `restorationBill`'s weight in `instanceValue =
-     * max(floor, cleanValue - hassleFactor * restorationBill) +
-     * installedPartsValueYen`. Above 1.0 (propose 1.2) so a buyer discounts
-     * MORE than the raw bill - the old 1.3 issue-penalty multiplier's intent,
-     * now applied to a real, transparent number instead of a hidden one.
+     * Sprint 47 decision 3: the valuation bill (a FINE-referenced bill,
+     * distinct from the mint-referenced restoration bill shown on car
+     * screens) weights a repairable part's fine-to-mint remainder at this
+     * fraction of its to-fine cost - worn-to-fine work is the real money
+     * play (full weight), fine-to-mint polish counts for less toward market
+     * value (it stays primarily the reputation/clean-sale play). 0.5
+     * first-pass, tuning bait.
      */
-    hassleFactor: z.number().positive(),
-    /** Sprint 27 decision 1: `instanceValue`'s floor as a fraction of clean
-     * value - a wreck whose restoration bill would drive it below zero still
-     * has chassis/parts scrap value, never worth literally nothing. */
-    floorFraction: z.number().min(0).max(1),
+    mintGapWeight: z.number().min(0).max(1),
+    /**
+     * Sprint 47 decision 3: the deduction's marginal rate (yen of value lost
+     * per yen of valuation bill) while `valuationBill / cleanValue` is at or
+     * below `valuationPremiumThresholdFraction` - above 1.0 (buyers pay a
+     * premium for done-ness, the old `hassleFactor`'s intent). This is the
+     * sane-flip region: every repair yen spent here returns more than itself.
+     */
+    valuationPremiumNear: z.number().positive(),
+    /**
+     * Sprint 47 decision 3: the deduction's marginal rate once
+     * `valuationBill / cleanValue` exceeds the threshold - deliberately still
+     * POSITIVE-RETURN (never 0, no dead zone) so a genuine wreck's guide
+     * value keeps falling smoothly with its bill instead of hard-floor-
+     * clamping, while a donor-priced repair on a wreck (far cheaper than this
+     * marginal rate implies) still turns a real profit.
+     */
+    valuationPremiumFar: z.number().positive(),
+    /** Sprint 47 decision 3: where the deduction's marginal rate switches
+     * from `valuationPremiumNear` to `valuationPremiumFar`, as a fraction of
+     * clean value. */
+    valuationPremiumThresholdFraction: z.number().positive(),
     /** Installed-part value retention: a part is worth this fraction of its
      * catalog price toward the car's market value (real markets: mods return
      * cents on the yen, they don't multiply the chassis price). */
@@ -511,12 +531,53 @@ export const EconomyConfigSchema = z.object({
      * pre-jitter) as a function of the rolled mileage - replaces Sprint 33's
      * age-keyed condition curves. `auctions.ts`'s
      * `conditionBaselineRangeForMileage` samples both at the rolled mileage
-     * and rolls `rng.int(min, max)` once; each of the 29 parts then jitters
-     * +/- `CAR_CONDITION_JITTER` around that baseline (unchanged). Higher
-     * mileage skews condition worse; low-mileage cars stay mostly good.
+     * and rolls `rng.int(min, max)` once; the car's upkeep tier (Sprint 47,
+     * below) then offsets this baseline before each of the 29 parts jitters
+     * around it in a per-tier range. Higher mileage skews condition worse;
+     * low-mileage cars stay mostly good.
      */
     conditionBaselineMinByMileageKm: CurveSchema,
     conditionBaselineMaxByMileageKm: CurveSchema,
+    /**
+     * Sprint 47 decision 4: a per-car upkeep roll, layered ON TOP of the
+     * mileage-based baseline above (that chain is unchanged) - real
+     * cross-car variance, so two cars at the same mileage can be a genuine
+     * wreck or genuinely sound, not interchangeably mediocre (the playtest's
+     * "no scrap, no poor parts, so why is it worth so little" complaint).
+     * Weights for the three tiers (`generateAuctionCarInstance` rolls one
+     * per car, weighted).
+     */
+    upkeepTierWeights: z.object({
+      neglected: z.number().nonnegative(),
+      average: z.number().nonnegative(),
+      cherished: z.number().nonnegative(),
+    }),
+    /** Added to the mileage-rolled condition baseline (percent) before
+     * per-part jitter - negative for neglected, 0 for average, positive for
+     * cherished. Clamped into [0, 100] same as the baseline+jitter always
+     * has been. */
+    upkeepBaselineOffset: z.object({
+      neglected: z.number(),
+      average: z.number(),
+      cherished: z.number(),
+    }),
+    /** Per-tier `[min, max]` per-part jitter range (percent), replacing the
+     * old flat symmetric `CAR_CONDITION_JITTER` (+/-15 for every car) -
+     * neglected skews a harsher negative tail (individual trashed
+     * components), cherished a gentler one. */
+    upkeepJitterRange: z.object({
+      neglected: z.tuple([z.number(), z.number()]),
+      average: z.tuple([z.number(), z.number()]),
+      cherished: z.tuple([z.number(), z.number()]),
+    }),
+    /** Multiplies `missingSlotBaseChance * missingSlotWeightByPart[partId]`
+     * by the car's upkeep tier - a neglected car sheds parts more often, a
+     * cherished one almost never. */
+    upkeepMissingMultiplier: z.object({
+      neglected: z.number().nonnegative(),
+      average: z.number().nonnegative(),
+      cherished: z.number().nonnegative(),
+    }),
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar

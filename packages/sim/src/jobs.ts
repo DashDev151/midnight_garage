@@ -360,48 +360,42 @@ function jobIdFor(spec: NewJobSpec): string {
 
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
 
-/** The consumables charge for repair work in `componentId` - the tool
- * line's CURRENT-tier per-job `consumablesCostYen` (Sprint 36: tier-sourced,
- * never an ownership scan). */
-function repairConsumablesCostYen(
-  componentId: ComponentId,
-  state: GameState,
-  context: SimContext,
-): number {
-  const tier = state.toolTiers[componentId]
-  return context.toolLines[componentId].tiers[tier - 1]!.consumablesCostYen
-}
-
 /**
  * Sprint 35: the single money step shared by on-car repair (`repairJobGate`
  * below) and in-inventory recondition (`resolveReconditionLabor`) - charges
- * consumables + the already-priced repair work against cash, or refuses
- * silently when unaffordable (matching every can't-afford gate in this
- * codebase). ONE repair economy: both paths deduct the same consumables + the
- * same banded-repair `costYen`.
+ * the already-priced repair work against cash, or refuses silently when
+ * unaffordable (matching every can't-afford gate in this codebase). ONE
+ * repair economy: both paths deduct the exact same banded-repair `costYen`.
+ * Sprint 47 decision 1 (maintainer, 2026-07-13: "get rid of the ¥2,000
+ * charge"): the per-job flat consumables fee is gone - it was a hidden
+ * surcharge the displayed restoration bill never included (the playtest's
+ * "bill said 24k, charged 35k" complaint), so bill truth is now structural:
+ * this IS the number `carCostToMintYen`/`planGroupRepair` already show.
  */
 function chargeRepairWork(
   state: GameState,
-  componentId: ComponentId,
   repairCostYen: number,
-  context: SimContext,
 ): { ok: true; state: GameState; totalCostYen: number } | { ok: false } {
-  const totalCostYen = repairConsumablesCostYen(componentId, state, context) + repairCostYen
-  if (state.cashYen < totalCostYen) return { ok: false }
-  return { ok: true, state: { ...state, cashYen: state.cashYen - totalCostYen }, totalCostYen }
+  if (state.cashYen < repairCostYen) return { ok: false }
+  return {
+    ok: true,
+    state: { ...state, cashYen: state.cashYen - repairCostYen },
+    totalCostYen: repairCostYen,
+  }
 }
 
 /**
- * The consumables + repair-cost gate on *starting* a new repair-zone job -
- * checked once, at creation, never again. Sprint 36: there is NO ownership
- * gate anymore (tool lines are always owned - progression bible law 1); the
- * shop's current tool tier only sets the repair level the work climbs at.
+ * The repair-cost gate on *starting* a new repair-zone job - checked once,
+ * at creation, never again. Sprint 36: there is NO ownership gate anymore
+ * (tool lines are always owned - progression bible law 1); the shop's
+ * current tool tier only sets the repair level the work climbs at.
  *
  * Sprint 26 decisions 5+7: repair-zone charges the real yen cost of the
  * work - `planGroupRepair`'s `costYen` (grades climbed times each part's
- * `stepCostYen`, summed across every eligible part in the group) on top of
- * consumables. A group with nothing left to repair (every part already at
- * or above the target, or every part scrap) refuses quietly - there is
+ * own catalog price, summed across every eligible part in the group), and
+ * nothing else (Sprint 47 decision 1 removed the old per-job consumables
+ * fee). A group with nothing left to repair (every part already at or
+ * above the target, or every part scrap) refuses quietly - there is
  * nothing to create a job for. `install-part` is a no-op here (it has never
  * charged anything beyond the part itself, bought separately). Shared by the
  * player's instant `findOrCreateJob` path and advanceDay's bot batch
@@ -436,7 +430,7 @@ export function repairJobGate(
     return { ok: false, log: [] }
   }
 
-  const charged = chargeRepairWork(state, spec.componentId, plan.costYen, context)
+  const charged = chargeRepairWork(state, plan.costYen)
   // Can't afford the work right now - a silent refusal, matching every
   // other can't-afford-it gate in this codebase.
   if (!charged.ok) return { ok: false, log: [] }
@@ -566,8 +560,8 @@ export function installFitGate(
  * deterministically from car+kind+componentId instead of a day/index
  * counter, so "the same job" is recognizable across days without extra
  * bookkeeping. Sprint 13: a *new* repair-zone job additionally passes
- * `repairJobGate` (equipment owned + consumables + repair cost affordable)
- * before it's created - `job` comes back `null` when the gate refuses, since
+ * `repairJobGate` (repair cost affordable) before it's created - `job`
+ * comes back `null` when the gate refuses, since
  * nothing was created to return. Sprint 24: a *new* install-part job
  * likewise passes `installFitGate` (fix 2).
  */
@@ -757,8 +751,8 @@ function planReconditionPart(
 }
 
 export interface ReconditionQuote {
-  /** Yen the work costs (consumables + banded-repair `costYen`) - the same
-   * figure `chargeRepairWork` deducts, so the UI previews the real charge. */
+  /** Yen the work costs (the banded-repair `costYen`) - the same figure
+   * `chargeRepairWork` deducts, so the UI previews the real charge. */
   costYen: number
   /** Labor slots the recondition takes at the shop's current repair level. */
   laborSlotsRequired: number
@@ -771,8 +765,9 @@ export interface ReconditionQuote {
  * (cost/labor preview) without mutating anything - it routes through the
  * exact same `planReconditionPart` the resolver does, so the previewed
  * cost/labor is precisely what the player will be charged. Sprint 36: no
- * tooling gate anymore - the current tool tier only sets speed and the
- * consumables charge.
+ * tooling gate anymore - the current tool tier only sets speed. Sprint 47:
+ * no consumables charge either (decision 1) - the current tool tier affects
+ * only labor speed now, never cost.
  */
 export function reconditionQuote(
   state: GameState,
@@ -783,7 +778,7 @@ export function reconditionQuote(
   const planned = planReconditionPart(state, partInstanceId, targetBand, context)
   if (!planned) return null
   return {
-    costYen: repairConsumablesCostYen(planned.group, state, context) + planned.plan.costYen,
+    costYen: planned.plan.costYen,
     laborSlotsRequired: planned.plan.laborSlotsRequired,
   }
 }
@@ -792,7 +787,7 @@ export function reconditionQuote(
  * The instant player-facing recondition resolver (Sprint 35) - the loose-part
  * analogue of `resolveJobLabor`. Finds the part's already-open recondition
  * job (a repeat click continues it) or creates one through the SAME repair
- * economy as an on-car repair: the same consumables + banded-repair charge
+ * economy as an on-car repair: the same banded-repair charge
  * (`chargeRepairWork`), the same tool-tier-sized labor (`planPartRepair`).
  * Then it spends today's remaining labor via the SAME
  * `applyAvailableLaborToJob` the on-car click uses (which books the spend
@@ -819,7 +814,7 @@ export function resolveReconditionLabor(
   const planned = planReconditionPart(state, partInstanceId, targetBand, context)
   if (!planned) return { state, log: [], laborSlotsUsed: 0 }
 
-  const charged = chargeRepairWork(state, planned.group, planned.plan.costYen, context)
+  const charged = chargeRepairWork(state, planned.plan.costYen)
   if (!charged.ok) return { state, log: [], laborSlotsUsed: 0 }
 
   // Sprint 42: a bench recondition has no car ledger to charge - the spend

@@ -7,6 +7,7 @@ import {
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
+  type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { DayActionsSchema } from '../src/actions'
@@ -42,16 +43,49 @@ function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
 
 const noActions = DayActionsSchema.parse({})
 
+/**
+ * Sprint 47: generation now rolls a per-car upkeep tier, so a given seed's
+ * panels slot is no longer guaranteed to land below mint - forces it to a
+ * known repairable 'worn' band (a real stock part) so createJobs below is
+ * guaranteed to find something to repair regardless of the roll. These
+ * tests are purely about the labor gate/timing, not condition.
+ */
+function withWornPanels(state: GameState): GameState {
+  const car = state.ownedCars[0]!
+  return {
+    ...state,
+    ownedCars: [
+      {
+        ...car,
+        parts: {
+          ...car.parts,
+          panels: {
+            installed: {
+              id: 'test-panels',
+              partId: CONTEXT.stockPartByCarPartId.panels!.id,
+              band: 'worn',
+              genuinePeriod: false,
+            },
+          },
+        },
+      },
+      ...state.ownedCars.slice(1),
+    ],
+  }
+}
+
 describe('labor is gated by service-bay membership', () => {
   it('a job on a parked car makes no progress and is logged blocked', () => {
     const { state } = stateWithLot(1)
     // Win the lot first (parking starts open) to get an owned car, untouched by any move.
-    const won = advanceDay(
-      state,
-      { ...noActions, buyoutLots: [{ lotId: state.activeAuctionLots[0]!.id }] },
-      1,
-      CONTEXT,
-    ).state
+    const won = withWornPanels(
+      advanceDay(
+        state,
+        { ...noActions, buyoutLots: [{ lotId: state.activeAuctionLots[0]!.id }] },
+        1,
+        CONTEXT,
+      ).state,
+    )
     const car = won.ownedCars[0]!
     // Delivered straight to parking, not a service bay (Sprint 17: real
     // indexed slots now, not a compact "who's occupied" list).
@@ -80,12 +114,14 @@ describe('labor is gated by service-bay membership', () => {
 
   it('moving the car in first lets the same-day job receive labor', () => {
     const { state } = stateWithLot(1)
-    const won = advanceDay(
-      state,
-      { ...noActions, buyoutLots: [{ lotId: state.activeAuctionLots[0]!.id }] },
-      1,
-      CONTEXT,
-    ).state
+    const won = withWornPanels(
+      advanceDay(
+        state,
+        { ...noActions, buyoutLots: [{ lotId: state.activeAuctionLots[0]!.id }] },
+        1,
+        CONTEXT,
+      ).state,
+    )
     const car = won.ownedCars[0]!
 
     const actions = {

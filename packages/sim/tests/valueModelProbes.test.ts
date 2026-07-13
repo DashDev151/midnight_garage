@@ -2,6 +2,7 @@ import {
   ALL_CAR_PART_IDS,
   BUYERS,
   CARS,
+  ComponentIdSchema,
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
@@ -15,13 +16,13 @@ import {
 import { describe, expect, it } from 'vitest'
 import { anchorValueYen, nextRaiseYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
 import { generateAuctionCatalog } from '../src/auctions'
-import { hasForcedInduction } from '../src/bands'
+import { hasForcedInduction, planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { marketValueYen } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { bestFitBuyer } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
-import { testSpecialty, testToolTiers } from './testFixtures'
+import { buildCarInstance, testSpecialty, testToolTiers, uniformCarParts } from './testFixtures'
 
 /**
  * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
@@ -280,5 +281,122 @@ describe('full-flip probe (acceptance, sprint21.md)', () => {
     // sale loop should still be profitable most of the time.
     expect(marginMedian).toBeGreaterThan(0)
     expect(positiveShare).toBeGreaterThanOrEqual(0.5)
+  })
+})
+
+/**
+ * Sprint 47 decision 6 acceptance probes (playtest 2026-07-13: repairing a
+ * car for resale must be reliably profitable on ordinary work, and buying
+ * wrecks for parts must still make sense). Deterministic, uniform-band cars
+ * rather than a random sample - the point is to prove the value/repair
+ * formulas' own math, not to re-run the generation roll.
+ */
+describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
+  const COMMON_MODEL = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
+  if (!COMMON_MODEL) throw new Error('fixture common-tier car missing from seed content')
+
+  const SHITBOX_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!SHITBOX_MODEL) throw new Error('fixture shitbox-tier car missing from seed content')
+
+  /** Total yen to bring every repairable part in `car` from its current
+   * band to `targetBand`, across all six real groups - the same pipeline a
+   * real "repair all" confirm would charge (Sprint 47: no consumables fee on
+   * top, per decision 1). */
+  function totalRepairCostYen(car: CarInstance, targetBand: 'fine' | 'mint'): number {
+    let total = 0
+    for (const groupId of ComponentIdSchema.options) {
+      total += planGroupRepair(
+        car,
+        groupId,
+        targetBand,
+        testToolTiers(),
+        CONTEXT.partIdsByGroup,
+        CONTEXT.partsById,
+        CONTEXT.partsTaxonomyById,
+        CONTEXT.economy.restoration.repairStepFraction,
+      ).costYen
+    }
+    return total
+  }
+
+  /** Sprint 47 decision 6(a), HARD-GATED: an average-condition common-tier
+   * car, bought at reserve, repaired worn -> fine only (no parts, no mint
+   * polishing), sold at guide value - must net a real positive margin. This
+   * is the direct, computed answer to the playtest's City scenario. */
+  it('a sane flip (average-upkeep common car, worn -> fine repairs only) is reliably profitable', () => {
+    const wornCar = buildCarInstance({
+      modelId: COMMON_MODEL.id,
+      year: 1993,
+      mileageKm: 90_000,
+      parts: uniformCarParts('worn'),
+    })
+    const buyPriceYen = Math.round(
+      marketValueYen(COMMON_MODEL, wornCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY) *
+        ECONOMY.AUCTION_RESERVE_PRICE_FRACTION,
+    )
+    const repairCostYen = totalRepairCostYen(wornCar, 'fine')
+    expect(repairCostYen).toBeGreaterThan(0) // sanity: this fixture has real work to price
+
+    const fineCar: CarInstance = { ...wornCar, parts: uniformCarParts('fine') }
+    const sellPriceYen = marketValueYen(
+      COMMON_MODEL,
+      fineCar,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+
+    // Measured: buy ~Y169,295, repair ~Y113,600, sell ~Y535,930 -> margin
+    // ~+Y253,035 - a real, comfortable profit on ordinary worn->fine work.
+    const marginYen = sellPriceYen - buyPriceYen - repairCostYen
+    expect(marginYen).toBeGreaterThan(0)
+  })
+
+  /**
+   * Sprint 47 decision 6(b), INFORMATIONAL (disclosed, not gated): a
+   * neglected wreck (uniform scrap - the extreme end of the neglected
+   * upkeep tier) bought at reserve, fully parted out from a second,
+   * identically-cheap donor wreck (every slot filled at the donor's own
+   * purchase price, not catalog price), then sold. Measures whether the
+   * "buy two wrecks, cannibalize one" salvage economy the maintainer asked
+   * about actually pencils out under the new value curve.
+   */
+  it('a salvage flip (two neglected wrecks, one dismantled to fix the other) - margin measured and disclosed', () => {
+    const wreckCar = buildCarInstance({
+      modelId: SHITBOX_MODEL.id,
+      year: 1984,
+      mileageKm: 150_000,
+      parts: uniformCarParts('scrap'),
+    })
+    const wreckPriceYen = Math.round(
+      marketValueYen(SHITBOX_MODEL, wreckCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY) *
+        ECONOMY.AUCTION_RESERVE_PRICE_FRACTION,
+    )
+    // Two wrecks bought at the same cheap reserve; the second is fully
+    // parted out into the first, so its purchase price IS the "repair" cost.
+    const totalCostYen = wreckPriceYen * 2
+
+    const partedOutCar: CarInstance = { ...wreckCar, parts: uniformCarParts('mint') }
+    const sellPriceYen = marketValueYen(
+      SHITBOX_MODEL,
+      partedOutCar,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+
+    // Measured: each wreck ~Y3,600 (near the scrap-value floor), two wrecks
+    // ~Y7,200 total, sold parted-out ~Y144,000 -> margin ~+Y136,800 - the
+    // wreck-profit path (decision 3's requirement 2) really does work, even
+    // at this maximally extreme uniform-scrap case.
+    const marginYen = sellPriceYen - totalCostYen
+    // Disclosed, not gated (decision 6(b)): a real number for the maintainer,
+    // not asserted to be positive - a full scrap-to-mint parting-out is the
+    // most extreme case, not the typical "fill a few missing slots" salvage
+    // play. Sanity bound only: the formula must produce a finite, real yen
+    // figure, not NaN/Infinity from a division or missing-catalog lookup.
+    expect(Number.isFinite(marginYen)).toBe(true)
   })
 })

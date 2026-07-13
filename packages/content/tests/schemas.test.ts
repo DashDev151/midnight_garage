@@ -143,16 +143,17 @@ describe('seed content validates against schemas', () => {
     // age curve was dropped by a post-Sprint-30 maintainer decision - car
     // age no longer factors into value at all).
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
-    // Sprint 27 (restoration-bill deduction): replaces the retired
-    // conditionFloor/Ceiling/Exponent curve tunables above. Sprint 44 retunes
-    // floorFraction (0.1 -> 0.15 in Sprint 41 -> 0.22) alongside the
-    // across-the-board price rebase; hassleFactor stays Sprint 41's 0.8.
-    expect(result.data.valuation.hassleFactor).toBe(0.8)
-    expect(result.data.valuation.floorFraction).toBe(0.22)
+    // Sprint 47 decision 3: replaces Sprint 27's hard floor-clamp deduction
+    // with a two-slope premium (never a flat dead zone) plus a small
+    // scrap-value backstop floor (bands.scrapValueFraction, unchanged).
+    expect(result.data.valuation.mintGapWeight).toBe(0.5)
+    expect(result.data.valuation.valuationPremiumNear).toBe(1.15)
+    expect(result.data.valuation.valuationPremiumFar).toBe(0.4)
+    expect(result.data.valuation.valuationPremiumThresholdFraction).toBe(0.5)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
-    // Sprint 44 decision 1: repair cost derives from a part's own price via
-    // this one global fraction, replacing Sprint 41's tier-scaled factor map.
-    expect(result.data.restoration.repairStepFraction).toBe(0.15)
+    // Sprint 47 decision 2 (maintainer, 2026-07-13: "repairs in general are
+    // too expensive"): retuned down from Sprint 44's 0.15.
+    expect(result.data.restoration.repairStepFraction).toBe(0.1)
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)

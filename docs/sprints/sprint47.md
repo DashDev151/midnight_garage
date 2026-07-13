@@ -171,4 +171,99 @@ economy centerpiece.
 
 ## Exit
 
-(filled at completion)
+Implemented directly. All five tasks done.
+
+**Files touched:**
+
+- `packages/sim/src/jobs.ts` - the per-job consumables charge deleted (`chargeRepairWork`
+  simplified to charge the plan's `costYen` alone); `reconditionQuote` no longer adds it.
+- `packages/content/src/toolLines.ts` / `data/toolLines.json` - `consumablesCostYen` removed from
+  the schema and every tier.
+- `packages/sim/src/bands.ts` - new `costToValuationYen`/`carValuationBillYen`: the FINE-referenced
+  valuation bill (to-fine at full weight, fine-to-mint remainder at `mintGapWeight`), distinct from
+  the unchanged mint-referenced `costToMintYen`/`carCostToMintYen` restoration bill still shown to
+  the player.
+- `packages/sim/src/marketValue.ts` - `instanceBaseValueYen` rewritten: the old single-rate
+  hassle-factor-plus-hard-floor deduction replaced by a two-slope premium (`valuationPremiumNear`
+  below the threshold, `valuationPremiumFar` above it - both strictly positive, no dead zone) plus
+  a small `scrapValueFraction`-based backstop floor that only binds for a near-total-scrap car.
+- `packages/content/src/economy.ts` / `data/economy.json` - `hassleFactor`/`floorFraction` removed;
+  `mintGapWeight` (0.5), `valuationPremiumNear` (1.15), `valuationPremiumFar` (0.4),
+  `valuationPremiumThresholdFraction` (0.5) added; `restoration.repairStepFraction` 0.15 -> 0.1;
+  `serviceJobs.marginMin`/`marginMax` 1.2/1.45 -> 1.4/1.65 (compensating for the cheaper repair
+  fraction shrinking `taskCostYen`, so payouts hold roughly steady); four new
+  `partsGeneration.upkeep*` knobs (tier weights, baseline offset, jitter range, missing multiplier).
+- `packages/sim/src/auctions.ts` - `generateAuctionCarInstance` rolls a per-car upkeep tier
+  (neglected/average/cherished) that offsets the condition baseline, reshapes the per-part jitter
+  range (replacing the old flat `CAR_CONDITION_JITTER`, now deleted from `constants.ts`), scales
+  the missing-slot chance, and picks `provenanceNote` from a tier-matched flavor pool; gained a new
+  `allowMissingSlots` parameter (default `true`, every existing auction-lot call site unaffected).
+- `packages/sim/src/serviceJobs.ts` - customer-car generation passes `allowMissingSlots: false`;
+  `forceTasksOutstanding` (unchanged) remains the only way a customer car's slot goes empty.
+- `packages/sim/tests/valueModelProbes.test.ts` - two new acceptance probes (decision 6): a
+  hard-gated sane-flip (average-upkeep common car, worn->fine repairs only) and an informational
+  salvage-flip (two neglected wrecks, one parted into the other).
+- Test fixture fallout fixed across `marketValue.test.ts` (the closed-form helper and every
+  hand-derived hassleFactor/floorFraction assertion rewritten to the two-slope formula),
+  `jobs.test.ts` (every consumables-inclusive assertion simplified), `advanceDay.test.ts` (a
+  dynamically-computed cash assertion, plus both golden hashes re-pinned), `schemas.test.ts` (the
+  new economy knobs), `gameState.test.ts`-adjacent content tests, and
+  `facilitiesInAdvanceDay.test.ts` (two tests that assumed a seed's panels slot would roll below
+  mint now force it explicitly, since the upkeep roll changed what that seed produces).
+
+### Verification
+
+Full gate, all green:
+
+- `pnpm typecheck` (content/sim/game) - clean.
+- `pnpm lint` - clean.
+- `pnpm format` - clean (Prettier reflowed a few files; no logic changes).
+- `pnpm test` (content+sim+game) - **935/935 pass**, 74/74 files.
+
+Golden hashes re-pinned in `advanceDay.test.ts` (both the 30-day career and the acquisition-and-
+sale path) - a real, intended economy rewrite (consumables gone, repair fraction and valuation
+curve rewritten, generation's upkeep roll changes the RNG draw sequence), not a logic break; every
+other assertion in the file (job completion, determinism, "wins a lot at auction, then sells the
+car") still passes unchanged.
+
+**Acceptance probes (decision 6), measured:**
+
+- Sane flip (average-upkeep common car, worn->fine only): buy ~Y169,295, repair ~Y113,600, sell
+  ~Y535,930 -> **margin +Y253,035**. Hard-gated, passes.
+- Salvage flip (two neglected wrecks, one parted into the other, full scrap->mint): each wreck
+  ~Y3,600, two wrecks ~Y7,200 total, sold parted-out ~Y144,000 -> **margin +Y136,800**. Disclosed,
+  not gated - the wreck-profit path (decision 3's requirement 2) holds even at this maximally
+  extreme case.
+- The playtest's own City scenario, re-derived: an all-worn/fine car at ~93k km now prices near
+  clean value instead of floor-clamping, and every repair yen spent on it returns real value - the
+  reported "guaranteed loss" is structurally gone.
+
+**Balance harness** - run in full (not skipped) given the scope of this sprint's economy rewrite.
+All hard invariants pass: days-to-`local` p50=13.0 (in [10,35], 868/1000 seeds reached it); buyout
+share 0.0%; Passive Grinder solvency, Flipper-vs-Passive separation, and the sanity floor all hold.
+Disclosed: most non-passive strategies' day-100 median cash rose again relative to the prior commit
+(balanced-player Y887,406 -> Y1,190,658; flipper Y824,170 -> Y1,039,448; cautious-restorer
+Y524,096 -> Y820,956; random Y547,004 -> Y779,880; handyman Y546,665 -> Y827,623) - the direct,
+expected effect of cheaper repairs (0.1 vs 0.15 fraction) and a value curve that no longer
+floor-clamps ordinary cars, so restoration work now genuinely pays for itself instead of being a
+pure sink. Competent-policy (the one bot with a real reputation faucet) continued to improve
+(Y1,519,846 -> Y1,545,884).
+
+### Deviations from the spec / notable calls
+
+- The service-job payout margin retune (1.2/1.45 -> 1.4/1.65) is a reasoned first-pass
+  compensating estimate (the payout formula also includes labor/callout terms unaffected by
+  `repairStepFraction`, so an exact "hold payouts perfectly steady" retune would need the real
+  task-cost/labor mix per template) - not empirically re-verified template-by-template beyond the
+  full balance harness's aggregate pass above. Flagged as tuning bait, matching every other
+  first-pass economy knob in this sprint.
+- The salvage-flip probe uses a uniform-scrap car (every one of 29 parts scrap) as the "neglected
+  wreck" stand-in, rather than sampling the real generation roll's neglected-tier mix (~25%
+  scrap/~40% poor) - a deliberately more extreme, fully-deterministic case for a hard-to-flake
+  acceptance test, not a claim that every neglected car is this bad. The generation-side upkeep
+  roll itself (tested via the balance harness's real career data, not a dedicated unit test of the
+  band-mix distribution) is what actually produces the softer neglected/average/cherished spread
+  in play.
+
+Nothing has been committed yet - queued for its own commit next, per the maintainer's "commit and
+move to the next sprint when all green" instruction.

@@ -9,7 +9,7 @@ import {
   type Part,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { carCostToMintYen } from '../src/bands'
+import { carValuationBillYen } from '../src/bands'
 import { installedPartsValueYen, marketValueYen, mileageFactor } from '../src/marketValue'
 import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
@@ -88,12 +88,11 @@ function neutralCar(overrides: Partial<CarInstance> = {}): CarInstance {
 }
 
 /**
- * Sprint 27 decision 1's formula, read straight from `economy.json` rather
- * than hardcoded, so a retune of `hassleFactor`/`floorFraction` doesn't make
- * this test lie about what `marketValueYen` actually does. Mirrors the
- * pre-Sprint-27 `expectedFactor` helper's own reasoning. Sprint 30: also
- * folds in `mileageFactor` via the real exported function (rather than
- * assuming it away), even though every fixture in this file keeps it at 1.0.
+ * Sprint 47 decision 3's two-slope formula, read straight from
+ * `economy.json` rather than hardcoded, so a retune doesn't make this test
+ * lie about what `marketValueYen` actually does. Sprint 30: also folds in
+ * `mileageFactor` via the real exported function (rather than assuming it
+ * away), even though every fixture in this file keeps it at 1.0.
  */
 function expectedBaseValueYen(
   car: CarInstance,
@@ -101,12 +100,17 @@ function expectedBaseValueYen(
   heatPercent = 100,
   partsById: Readonly<Record<string, Part>> = PARTS_BY_ID,
 ): number {
-  const { hassleFactor, floorFraction } = ECONOMY.valuation
+  const { valuationPremiumNear, valuationPremiumFar, valuationPremiumThresholdFraction } =
+    ECONOMY.valuation
   const cleanValue =
     forModel.bookValueYen * mileageFactor(car.mileageKm, ECONOMY) * (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, forModel, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
-  const floor = floorFraction * cleanValue
-  return Math.round(Math.max(floor, cleanValue - hassleFactor * restorationBill))
+  const valuationBill = carValuationBillYen(car, forModel, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
+  const thresholdBill = valuationPremiumThresholdFraction * cleanValue
+  const nearBill = Math.min(valuationBill, thresholdBill)
+  const farBill = Math.max(0, valuationBill - thresholdBill)
+  const deduction = valuationPremiumNear * nearBill + valuationPremiumFar * farBill
+  const backstopFloor = ECONOMY.bands.scrapValueFraction * cleanValue
+  return Math.round(Math.max(backstopFloor, cleanValue - deduction))
 }
 
 describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
@@ -128,7 +132,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     )
   })
 
-  it('a missing (non-FI) part lowers value by exactly hassleFactor x its stock replacement price', () => {
+  it('a missing (non-FI) part lowers value by exactly valuationPremiumNear x its stock replacement price (well inside the near region for this fixture)', () => {
     const stockCar = neutralCar({ parts: mintCarParts() })
     const missingBrakesCar = neutralCar({ parts: mintCarParts({ brakePadsDiscs: null }) })
     const stockValue = marketValueYen(
@@ -148,7 +152,8 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       ECONOMY,
     )
     const expectedDiffYen = Math.round(
-      ECONOMY.valuation.hassleFactor * PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen,
+      ECONOMY.valuation.valuationPremiumNear *
+        PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen,
     )
     expect(stockValue - missingValue).toBe(expectedDiffYen)
     expect(missingValue).toBeLessThan(stockValue)
@@ -180,11 +185,12 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
   /**
    * Sprint 27 decision 5, verbatim: two otherwise-identical cars, one with a
    * scrap forcedInduction (fitted) and the other with scrap brakePadsDiscs,
-   * must differ in value by exactly `hassleFactor * (stockReplacementPriceYen(FI)
-   * - stockReplacementPriceYen(brakePadsDiscs))` - FI being the costlier part
-   * by content, so the turbo car is worth strictly less.
+   * must differ in value by exactly `valuationPremiumNear *
+   * (stockReplacementPriceYen(FI) - stockReplacementPriceYen(brakePadsDiscs))`
+   * (well inside the near region for this fixture) - FI being the costlier
+   * part by content, so the turbo car is worth strictly less.
    */
-  it("differs by hassleFactor x the stock-price gap between a scrap-turbo car and a scrap-brakes car (the maintainer's worked case)", () => {
+  it("differs by valuationPremiumNear x the stock-price gap between a scrap-turbo car and a scrap-brakes car (the maintainer's worked case)", () => {
     const scrapTurboCar = neutralCar({
       parts: mintCarParts({ forcedInduction: 'scrap' }),
     })
@@ -213,7 +219,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       ECONOMY,
     )
     const expectedDiffYen = Math.round(
-      ECONOMY.valuation.hassleFactor * (fiPriceYen - brakesPriceYen),
+      ECONOMY.valuation.valuationPremiumNear * (fiPriceYen - brakesPriceYen),
     )
     expect(brakesValue - turboValue).toBe(expectedDiffYen)
     expect(turboValue).toBeLessThan(brakesValue)
@@ -229,9 +235,9 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     ).toBe(marketValueYen(naModel, fullyStockCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY))
   })
 
-  it('clamps at floorFraction x cleanValue when the restoration bill would drive it below zero', () => {
+  it('hits the small scrap-value backstop floor only for a near-total-scrap car - not the wide dead zone the old hard floor created', () => {
     const wreck = neutralCar({ modelId: cheapModel.id, parts: uniformCarParts('scrap') })
-    const restorationBill = carCostToMintYen(
+    const valuationBill = carValuationBillYen(
       wreck,
       cheapModel,
       PARTS_BY_ID,
@@ -239,11 +245,17 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       ECONOMY,
     )
     const cleanValue = cheapModel.bookValueYen
-    // Sanity: this fixture must actually exceed clean value once weighted by
-    // hassleFactor, otherwise the floor never engages and the test proves
-    // nothing.
-    expect(ECONOMY.valuation.hassleFactor * restorationBill).toBeGreaterThan(cleanValue)
-    const expectedFloor = Math.round(ECONOMY.valuation.floorFraction * cleanValue)
+    const { valuationPremiumNear, valuationPremiumFar, valuationPremiumThresholdFraction } =
+      ECONOMY.valuation
+    const thresholdBill = valuationPremiumThresholdFraction * cleanValue
+    const rawDeduction =
+      valuationPremiumNear * Math.min(valuationBill, thresholdBill) +
+      valuationPremiumFar * Math.max(0, valuationBill - thresholdBill)
+    // Sanity: this all-scrap fixture must actually drive the raw (unclamped)
+    // value below the backstop floor, otherwise the floor never engages and
+    // the test proves nothing.
+    expect(cleanValue - rawDeduction).toBeLessThan(ECONOMY.bands.scrapValueFraction * cleanValue)
+    const expectedFloor = Math.round(ECONOMY.bands.scrapValueFraction * cleanValue)
     expect(marketValueYen(cheapModel, wreck, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
       expectedFloor,
     )

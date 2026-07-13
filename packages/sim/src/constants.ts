@@ -86,20 +86,6 @@ export const REPUTATION_INCOME_MULTIPLIER: Readonly<Record<ReputationTier, numbe
 export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
 
 /**
- * Correlated per-car condition roll (Sprint 12): a car's real parts don't
- * roll condition independently (which let a car land a pristine engine and
- * a wrecked transmission with no relationship between them) - one 0-100
- * baseline is rolled per car, and each part jitters around it (see
- * CAR_CONDITION_JITTER) before bucketing into its condition band (Sprint 26:
- * `bandForMigratedCondition`, bands.ts). Sprint 34: the baseline's own [min,
- * max] range is now derived from the car's rolled mileage (`economy.json`'s
- * `partsGeneration.conditionBaselineMinByMileageKm`/`MaxByMileageKm`, sampled
- * in `auctions.ts`), which is itself rolled from the car's age - so mileage is
- * the single coherent wear driver and a low-mileage car stays mostly good.
- */
-export const CAR_CONDITION_JITTER = 15
-
-/**
  * Sprint 34: generation's `age -> mileage -> condition` chain needs a concrete
  * calendar age (`currentYear - car.year`) to pick the mileage range;
  * `generateAuctionCarInstance`'s `currentYear` defaults to `Infinity` for

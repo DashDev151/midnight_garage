@@ -7,7 +7,7 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { carCostToMintYen } from './bands'
+import { carValuationBillYen } from './bands'
 
 /**
  * Sprint 27 - the taste-free "what is this car worth" answer, shared by
@@ -55,22 +55,28 @@ export function mileageFactor(mileageKm: number, economy: EconomyConfig): number
 }
 
 /**
- * The restoration-bill deduction (decision 1):
- * `max(floor, cleanValue - hassleFactor * restorationBill)`, where
+ * The valuation-bill deduction (Sprint 47 decision 3, replaces Sprint 27's
+ * single-rate hassle-factor-plus-hard-floor deduction): a two-slope premium
+ * with strictly positive marginal return everywhere - no dead zone. Below
+ * `valuationPremiumThresholdFraction` of clean value, each yen of
+ * `valuationBill` (`carValuationBillYen`, bands.ts - FINE-referenced, unlike
+ * the mint-referenced restoration bill shown on car screens) costs
+ * `valuationPremiumNear` yen of value (above 1.0 - buyers pay a premium for
+ * done-ness, the sane-flip region). Beyond that threshold, each yen costs
+ * only `valuationPremiumFar` (still positive, deliberately never 0 - a
+ * donor-priced repair on a genuine wreck still recovers real value, even
+ * though a full catalog-priced restoration of one never pencils out). A
+ * small backstop floor (scrap-value fraction of clean, the same "pennies on
+ * the yen" rate a single scrapped part sells for) guards only against a
+ * near-total-scrap car's bill driving the raw formula negative - it does
+ * NOT create a wide dead zone the way the old hard floor did, since the far
+ * slope alone keeps marginal return positive across the whole realistic
+ * range this catalog can produce.
+ *
  * `cleanValue = bookValueYen * mileageFactor * (heatPercent / 100)` (heat
- * applies exactly once - the Sprint 21 heat-once law - nowhere else in the
- * game multiplies by market heat a second time; mileage joined it Sprint 30 -
- * a maintainer decision after Sprint 30 dropped the matching age factor, so
- * a car's registration year no longer scales value at all) and
- * `restorationBill` is `carCostToMintYen` (bands.ts): the sum of every
- * present part's real cost to bring to mint - an unfitted forced-induction
- * slot contributes zero (an NA car isn't "missing" a turbo), and a scrap
- * part prices at its `stockReplacementPriceYen` (bands.ts decision 5), since
- * scrap has no repair path to draw a step cost from. `hassleFactor` (above
- * 1.0) means a buyer discounts MORE than the raw bill - real buyers price in
- * the hassle of getting work done, not just the parts-and-labor total.
- * `floor = floorFraction * cleanValue` - a wreck whose bill would drive it
- * below zero still has scrap-level worth, never literally nothing.
+ * applies exactly once - the Sprint 21 heat-once law; mileage joined it
+ * Sprint 30 - a maintainer decision after Sprint 30 dropped the matching age
+ * factor, so a car's registration year no longer scales value at all).
  */
 function instanceBaseValueYen(
   model: CarModel,
@@ -80,12 +86,17 @@ function instanceBaseValueYen(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
-  const { hassleFactor, floorFraction } = economy.valuation
+  const { valuationPremiumNear, valuationPremiumFar, valuationPremiumThresholdFraction } =
+    economy.valuation
   const cleanValue =
     model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
-  const restorationBill = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
-  const floor = floorFraction * cleanValue
-  return Math.max(floor, cleanValue - hassleFactor * restorationBill)
+  const valuationBill = carValuationBillYen(car, model, partsById, partsTaxonomyById, economy)
+  const thresholdBill = valuationPremiumThresholdFraction * cleanValue
+  const nearBill = Math.min(valuationBill, thresholdBill)
+  const farBill = Math.max(0, valuationBill - thresholdBill)
+  const deduction = valuationPremiumNear * nearBill + valuationPremiumFar * farBill
+  const backstopFloor = economy.bands.scrapValueFraction * cleanValue
+  return Math.max(backstopFloor, cleanValue - deduction)
 }
 
 /**

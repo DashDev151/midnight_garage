@@ -1666,11 +1666,11 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Confirm - locks in every staged action on this car at once: creates or
-   * continues the real jobs and spends today's remaining labor (and any
-   * repair consumables) for real, through the exact same resolvers the old
-   * instant-click flow always used (Sprint 18). The staged list is cleared
-   * whether or not every action could be fully labored today - a
-   * partial-labor action just leaves a normal continuable job behind.
+   * continues the real jobs and spends today's remaining labor and cash for
+   * real, through the exact same resolvers the old instant-click flow
+   * always used (Sprint 18). The staged list is cleared whether or not
+   * every action could be fully labored today - a partial-labor action just
+   * leaves a normal continuable job behind.
    */
   function confirmCarWork(carId: string): void {
     const result = confirmStagedWork(

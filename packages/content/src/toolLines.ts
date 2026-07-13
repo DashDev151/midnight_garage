@@ -5,18 +5,19 @@ import { ComponentIdSchema, ReputationTierSchema } from './tags'
  * One tier of a tool line (Sprint 36 - replaces binary equipment ownership).
  * Every line is always owned at some tier; a tier is never "unowned", only
  * not-yet-upgraded-to. `upgradePriceYen` is what upgrading TO this tier
- * costs (0 for tier 1, owned from day one); `consumablesCostYen` is the
- * flat per-job charge repair work in this line pays while this tier is the
- * line's current tier. `minReputationTier` (Sprint 43, maintainer decision
- * 2026-07-13: tools gate on cash AND reputation, the same as facilities) is
- * the reputation floor required to buy UP TO this tier - always absent on
- * tier 1 (owned from day one, gating it would be meaningless), always
- * present on tiers 2/3.
+ * costs (0 for tier 1, owned from day one) - a higher tier speeds labor
+ * only (`repairLevelForGroup`, bands.ts); it carries no per-job cost of its
+ * own (Sprint 47 decision 1, maintainer 2026-07-13: the flat consumables fee
+ * this tier used to charge is gone - it was a hidden surcharge the
+ * displayed restoration bill never included). `minReputationTier` (Sprint
+ * 43, maintainer decision 2026-07-13: tools gate on cash AND reputation, the
+ * same as facilities) is the reputation floor required to buy UP TO this
+ * tier - always absent on tier 1 (owned from day one, gating it would be
+ * meaningless), always present on tiers 2/3.
  */
 export const ToolLineTierSchema = z.object({
   displayName: z.string().min(1),
   upgradePriceYen: z.number().int().nonnegative(),
-  consumablesCostYen: z.number().int().nonnegative(),
   minReputationTier: ReputationTierSchema.optional(),
 })
 

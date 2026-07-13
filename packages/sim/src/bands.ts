@@ -109,6 +109,72 @@ export function costToMintYen(
   return Math.round(gradesBetween(band, 'mint') * repairStepFraction * partPriceYen)
 }
 
+/**
+ * Sprint 47 decision 3: the per-part atom for the VALUATION bill - distinct
+ * from `costToMintYen`'s mint-referenced restoration bill (still shown to
+ * the player as "what full restoration costs"). A buyer prices roadworthy
+ * (fine), not showroom (mint): the to-fine portion counts at full weight,
+ * the fine-to-mint remainder at `mintGapWeight` (worn->fine is the real
+ * money play; fine->mint stays primarily the reputation/clean-sale play).
+ * Scrap/missing and non-repairable-below-fine still price at the flat
+ * `stockReplacementPriceYen` - a replacement resolves the defect completely
+ * regardless of which reference band you're pricing against, so there is no
+ * separate fine/mint split for those cases.
+ */
+export function costToValuationYen(
+  band: ConditionBand,
+  taxonomyEntry: CarPartTaxonomyEntry,
+  partPriceYen: number,
+  repairStepFraction: number,
+  mintGapWeight: number,
+): number {
+  if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYen
+  if (!taxonomyEntry.repairable) {
+    return bandIndex(band) >= bandIndex('fine') ? 0 : taxonomyEntry.stockReplacementPriceYen
+  }
+  const toFineGrades = gradesBetween(band, 'fine')
+  const mintRemainderGrades = gradesBetween(band, 'mint') - toFineGrades
+  return Math.round(
+    repairStepFraction * partPriceYen * (toFineGrades + mintGapWeight * mintRemainderGrades),
+  )
+}
+
+/** Sum of `costToValuationYen` across every part on `car` - the bill
+ * `marketValueYen` deducts from clean value (Sprint 47, replaces the
+ * mint-referenced `carCostToMintYen` for valuation purposes only; the
+ * player-facing restoration bill still targets mint via `carCostToMintYen`).
+ * Same present/missing/absent handling as `carCostToMintYen`. */
+export function carValuationBillYen(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+): number {
+  const { repairStepFraction } = economy.restoration
+  const { mintGapWeight } = economy.valuation
+  let total = 0
+  for (const partId of Object.keys(car.parts) as CarPartId[]) {
+    const entry = partsTaxonomyById[partId]
+    if (!entry) continue
+    const installed = car.parts[partId].installed
+    if (installed) {
+      const catalogPart = partsById[installed.partId]
+      if (!catalogPart) continue
+      total += costToValuationYen(
+        installed.band,
+        entry,
+        catalogPart.priceYen,
+        repairStepFraction,
+        mintGapWeight,
+      )
+    } else if (isPartMissing(car, model, partId)) {
+      total += entry.stockReplacementPriceYen
+    }
+  }
+  return total
+}
+
 /** Sprint 26 decision 6: a scrap PartInstance's sale payout - "pennies on
  * the yen" against its stock-equivalent replacement cost. */
 export function scrapValueYen(taxonomyEntry: CarPartTaxonomyEntry, economy: EconomyConfig): number {

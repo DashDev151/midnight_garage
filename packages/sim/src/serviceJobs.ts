@@ -547,12 +547,18 @@ export function generateDailyServiceJobOffers(
   for (let i = 0; i < count; i++) {
     const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng, titleGroup)
     const model = rng.pick(eligibleModels)
+    // Sprint 47 decision 7 (playtest 2026-07-13: "how did the car even get
+    // here with a missing diff?"): a customer's car never rolls a random
+    // missing slot (`allowMissingSlots: false`) - `forceTasksOutstanding`
+    // below is the only way one of its slots ends up empty, and only when
+    // the job's own install task calls for it.
     const rolledCar = generateAuctionCarInstance(
       model,
       `svc-car-${day}-${i}`,
       rng,
       context,
       currentYear,
+      false,
     )
     // Sprint 40: the car and the template rolled fully independently above -
     // force every task genuinely outstanding before pricing the job off it,

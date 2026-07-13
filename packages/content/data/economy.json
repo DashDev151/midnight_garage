@@ -54,7 +54,7 @@
     "maxIncrementsPerNight": 3
   },
   "restoration": {
-    "repairStepFraction": 0.15
+    "repairStepFraction": 0.1
   },
   "valuation": {
     "mileageFactorCurve": [
@@ -63,8 +63,10 @@
       [120000, 0.85],
       [180000, 0.75]
     ],
-    "hassleFactor": 0.8,
-    "floorFraction": 0.22,
+    "mintGapWeight": 0.5,
+    "valuationPremiumNear": 1.15,
+    "valuationPremiumFar": 0.4,
+    "valuationPremiumThresholdFraction": 0.5,
     "partsRetention": 0.55,
     "genuinePeriodMultiplier": 1.25,
     "tasteSpread": 0.12,
@@ -170,7 +172,27 @@
       [60000, 88],
       [120000, 78],
       [200000, 68]
-    ]
+    ],
+    "upkeepTierWeights": {
+      "neglected": 0.25,
+      "average": 0.5,
+      "cherished": 0.25
+    },
+    "upkeepBaselineOffset": {
+      "neglected": -22,
+      "average": 0,
+      "cherished": 12
+    },
+    "upkeepJitterRange": {
+      "neglected": [-30, 10],
+      "average": [-15, 15],
+      "cherished": [-8, 15]
+    },
+    "upkeepMissingMultiplier": {
+      "neglected": 3,
+      "average": 1,
+      "cherished": 0
+    }
   },
   "reputation": {
     "cleanSaleMinBand": "fine",
@@ -179,8 +201,8 @@
     "concoursSaleBonus": 4
   },
   "serviceJobs": {
-    "marginMin": 1.2,
-    "marginMax": 1.45,
+    "marginMin": 1.4,
+    "marginMax": 1.65,
     "laborRateYen": 6000,
     "calloutFeeYen": 5000,
     "dailyOfferCountWeights": [0.05, 0.22, 0.42, 0.23, 0.08]
