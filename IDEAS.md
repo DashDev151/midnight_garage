@@ -14,6 +14,14 @@ parking lot, not the roadmap.
 mode with **no gameplay weight**. Not designed yet, not scheduled into a sprint - a post-launch /
 expansion candidate, but a wanted one, not a likely-cut one.*
 
+*Update 2026-07-12: a full technical implementation spec (physics model, rendering approach, map
+pipeline, phased delivery) now exists at `docs/design/drive-mode-spec.md`, filed after a technical
+review found the architecture sound. Still not scheduled - this is groundwork for whenever it's
+picked up, not a signal that it's moving into a sprint. The one open design question the review
+flagged: the spec's real slip-angle physics genuinely reward driving skill in the moment, which
+sits in tension with this entry's "stat-linked, not twitch-linked" constraint below - worth a
+deliberate look when this is scheduled, not a blocker to having filed the spec.*
+
 **The dream:** actually *drive* the cars you build, at least a little - a simplified top-down /
 isometric driving physics minigame, rally-flavored, in the spirit of **Super Woden GP** but pared
 way down. The emotional payoff: the car you hunted, restored, and tuned isn't just a stat block you
