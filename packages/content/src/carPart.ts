@@ -17,16 +17,15 @@ import { StatModifierSchema } from './stats'
  * `forcedInduction` is the one part whose presence on a given car is
  * conditional (see `CarInstance.parts`'s `fitted` flag on that entry) -
  * every other part is always present on every car.
+ *
+ * Sprint 53 (economy-bible.md law 3): this is the raw, hand-authored content
+ * shape - no price field. The per-class stock-replacement price is derived
+ * (see `CarPartTaxonomyEntrySchema` below), never hand-typed here.
  */
-export const CarPartTaxonomyEntrySchema = z.object({
+export const CarPartTaxonomyEntryContentSchema = z.object({
   id: CarPartIdSchema,
   group: ComponentIdSchema,
   displayName: z.string().min(1),
-  /** Generic stock-equivalent replacement cost: a scrap part's `costToMint`
-   * (there is no repair path to price), the fallback Replace price when no
-   * catalog part happens to fit, and the basis for a scrap `PartInstance`'s
-   * sell-for-scrap payout. */
-  stockReplacementPriceYen: z.number().int().positive(),
   /**
    * Sprint 41 decision 2: false for exactly `tyres`, `brakePadsDiscs`, and
    * `clutch` - true consumables that wear to a genuine end-of-life, not
@@ -38,6 +37,33 @@ export const CarPartTaxonomyEntrySchema = z.object({
    */
   repairable: z.boolean().default(true),
   statWeights: StatModifierSchema,
+})
+
+export const CarPartTaxonomyContentSchema = z.array(CarPartTaxonomyEntryContentSchema).min(1)
+
+export type CarPartTaxonomyEntryContent = z.infer<typeof CarPartTaxonomyEntryContentSchema>
+
+const StockReplacementPriceByClassSchema = z.object({
+  shitbox: z.number().int().positive(),
+  common: z.number().int().positive(),
+  uncommon: z.number().int().positive(),
+  rare: z.number().int().positive(),
+})
+
+/**
+ * The resolved taxonomy shape sim/game consume. Sprint 53: the old flat
+ * `stockReplacementPriceYen` becomes `stockReplacementPriceYenByClass` -
+ * generic stock-equivalent replacement cost, PER FITMENT CLASS: a scrap
+ * part's `costToMint` (there is no repair path to price), the fallback
+ * Replace price when no catalog part happens to fit, and the basis for a
+ * scrap `PartInstance`'s sell-for-scrap payout. Derived once by `data.ts`
+ * from the resolved catalog's own class-priced stock SKUs - never a
+ * hand-maintained mirror, so it can never drift from the catalog it
+ * describes (closes the exact drift class the pre-Sprint-53 flat mirror
+ * needed its own integrity test to catch).
+ */
+export const CarPartTaxonomyEntrySchema = CarPartTaxonomyEntryContentSchema.extend({
+  stockReplacementPriceYenByClass: StockReplacementPriceByClassSchema,
 })
 
 export const CarPartTaxonomySchema = z.array(CarPartTaxonomyEntrySchema).min(1)

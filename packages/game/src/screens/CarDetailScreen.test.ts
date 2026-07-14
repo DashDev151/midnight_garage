@@ -64,11 +64,17 @@ async function dropOn(
   await wrapper.get(zoneSelector).trigger('pointerup', { pointerId: 1 })
 }
 
-/** An aftermarket (non-stock) catalog part for this slot - every part fits
- * any car now (Sprint 32 decision 1 drops requiredTags), so this just needs
- * to avoid the stock grade (already occupying every slot by default). */
+/**
+ * An aftermarket (non-stock) catalog part for this slot - every part fits
+ * any car of the right CLASS now (Sprint 32 decision 1 drops requiredTags;
+ * Sprint 53 adds the fitment-class check), so this just needs to avoid the
+ * stock grade (already occupying every slot by default). Pinned to
+ * `shitbox` - every car this file grants (`CARS[0]`/`CARS[1]`) is that tier.
+ */
 function untaggedPartFor(carPartId: string) {
-  return PARTS.find((p) => p.carPartId === carPartId && p.grade !== 'stock')!
+  return PARTS.find(
+    (p) => p.carPartId === carPartId && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+  )!
 }
 
 /** Whether `componentId`'s group has anything the group's own "Repair to…"
@@ -527,7 +533,11 @@ describe('CarDetailScreen', () => {
       game.devSetToolTier('engine', 3)
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      const turboKit = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
+      // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+      const turboKit = PARTS.find(
+        (p) =>
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      )!
       game.devGrantPart(turboKit.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
@@ -549,7 +559,11 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      const turboKit = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
+      // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+      const turboKit = PARTS.find(
+        (p) =>
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      )!
       game.devGrantPart(turboKit.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 

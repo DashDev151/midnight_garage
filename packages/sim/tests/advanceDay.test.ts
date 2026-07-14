@@ -63,7 +63,9 @@ function initialState(): GameState {
     partInventory: [
       {
         id: 'pi-0001',
-        partId: 'tanuki-street-coilovers',
+        // Sprint 53: honda-city-e-aa (car-0001) is 'shitbox' tier - the
+        // fitment-class gate refuses a mismatched-class spare part.
+        partId: 'shitbox-tanuki-street-coilovers',
         band: 'mint',
         genuinePeriod: false,
       },
@@ -207,9 +209,19 @@ describe('advanceDay golden master', () => {
     // fields and consume the shared rng stream, shifting every subsequent
     // draw - expected, not a regression. Every other assertion in this file
     // still passes unchanged against this same scripted career.
+    // Re-pinned again (Sprint 53, was 4e6c8a68): fitment-class parts
+    // (economy-bible.md law 3) - every stock/aftermarket part now resolves
+    // to a class-scoped catalog SKU (this fixture's own spare coilovers
+    // needed updating from `tanuki-street-coilovers` to
+    // `shitbox-tanuki-street-coilovers` to still fit `car-0001`, a shitbox-
+    // tier car), and the catalog itself grew from 116 to 464 entries with
+    // fitment-derived prices - a real, intended catalog/pricing change, not
+    // a logic bug. Every other assertion in this file (job completion,
+    // determinism, the day-3 install landing on the dampers slot) still
+    // passes unchanged against this same scripted career.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('4e6c8a68')
+    expect(hashState(finalState)).toBe('9a900aae')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -228,7 +240,7 @@ describe('advanceDay golden master', () => {
   it('the install-part job moves the spare coilovers onto the dampers slot', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
-    expect(car?.parts.dampers.installed?.partId).toBe('tanuki-street-coilovers')
+    expect(car?.parts.dampers.installed?.partId).toBe('shitbox-tanuki-street-coilovers')
     expect(finalState.partInventory).toHaveLength(0)
   })
 
@@ -362,7 +374,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // classifieds day-boundary step both shift the shared rng sequence and
     // add new GameState fields) - `wins a lot at auction, then sells the
     // car` above still holds unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('ab316a54')
+    // Re-pinned again (Sprint 53, was ab316a54): same cause as the 30-day
+    // career's own Sprint 53 re-pin above - fitment-class parts (economy-
+    // bible.md law 3) rebase the whole catalog's identity/pricing; this
+    // career is purely auction-generation-driven (no hand-fixed part
+    // fixture), so the shift is a real, intended value-model/generation
+    // change, not a logic bug - `wins a lot at auction, then sells the car`
+    // above still holds unchanged (real car won, real sale, positive cash).
+    expect(hashState(acquisitionCareer().sold)).toBe('63d7048c')
   })
 })
 

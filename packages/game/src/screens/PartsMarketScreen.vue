@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import type { CarPartId, ComponentId, Grade, Part } from '@midnight-garage/content'
+import type {
+  CarPartId,
+  ComponentId,
+  Grade,
+  Part,
+  PartFitmentClass,
+} from '@midnight-garage/content'
+import {
+  fitmentClassForTier,
+  PART_FITMENT_CLASS_DISPLAY_NAMES,
+  PartFitmentClassSchema,
+} from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import RotaryMarker from '../components/RotaryMarker.vue'
@@ -7,6 +18,10 @@ import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+
+/** Sprint 53 decision 5: the plain class slicer's options, in a stable
+ * shitbox -> rare order (cheapest to priciest) rather than object-key order. */
+const FITMENT_CLASS_OPTIONS: readonly PartFitmentClass[] = PartFitmentClassSchema.options
 
 /** The 6 real component groups, in the same stable order the car-detail
  * drill-down uses - the filter's own group-then-part structure (Sprint 28
@@ -96,6 +111,25 @@ const gradeFilter = ref<Grade | ''>('')
 const sortBy = ref<(typeof SORT_OPTIONS)[number]['value']>('price-asc')
 const deliverySpeed = ref<'standard' | 'express'>('standard')
 
+/**
+ * Sprint 53 decision 5: two fitment controls. `classFilter` is the plain
+ * class slicer; `vehicleFilter` is the "Fits this vehicle" picker - choosing
+ * a car sets `classFilter` to that car's own fitment class so the counter
+ * narrows to what could ever go on it. The two stay independently editable
+ * afterward (picking a vehicle is a shortcut to a class, not a separate mode).
+ */
+const classFilter = ref<PartFitmentClass | ''>('')
+const vehicleFilter = ref<string>('')
+
+const vehicleOptions = computed(() =>
+  game.carsDetailed.map((d) => ({ id: d.car.id, label: d.displayName, tier: d.model.tier })),
+)
+
+function onVehicleFilterChange(): void {
+  const chosen = vehicleOptions.value.find((v) => v.id === vehicleFilter.value)
+  classFilter.value = chosen ? fitmentClassForTier(chosen.tier) : ''
+}
+
 /** Hero click: home -> a specific department's catalog view. */
 function enterDepartment(groupId: ComponentId): void {
   selectedGroup.value = groupId
@@ -130,16 +164,15 @@ const selectedGroupParts = computed(() => {
   return group?.parts ?? []
 })
 
-// The set of platform tags across owned cars, to hint part compatibility.
-const ownedTags = computed(() => {
-  const tags = new Set<string>()
-  for (const d of game.carsDetailed) for (const t of d.model.tags) tags.add(t)
-  return tags
-})
-
+/** Sprint 53: a part also has to be the right fitment class for at least
+ * one owned car, on top of the pre-existing platform-tag check. */
 function fitsAnyOwnedCar(part: Part): boolean {
   if (game.carsDetailed.length === 0) return false
-  return part.requiredTags.every((t) => ownedTags.value.has(t))
+  return game.carsDetailed.some(
+    (d) =>
+      fitmentClassForTier(d.model.tier) === part.fitmentClass &&
+      part.requiredTags.every((t) => d.model.tags.includes(t)),
+  )
 }
 
 function statSummary(part: Part): string {
@@ -158,10 +191,15 @@ const visibleParts = computed(() => {
     parts = parts.filter((p) => game.groupForCarPart(p.carPartId) === selectedGroup.value)
   }
   if (gradeFilter.value) parts = parts.filter((p) => p.grade === gradeFilter.value)
+  if (classFilter.value) parts = parts.filter((p) => p.fitmentClass === classFilter.value)
   return parts.sort((a, b) =>
     sortBy.value === 'price-asc' ? a.priceYen - b.priceYen : b.priceYen - a.priceYen,
   )
 })
+
+function fitmentClassLabel(fitmentClass: PartFitmentClass): string {
+  return PART_FITMENT_CLASS_DISPLAY_NAMES[fitmentClass]
+}
 
 const checkoutTotal = computed(() =>
   deliverySpeed.value === 'express' ? game.cartExpressTotalYen : game.cartStandardTotalYen,
@@ -242,6 +280,16 @@ function onCheckout(): void {
           <option value="">all grades</option>
           <option v-for="g in GRADE_OPTIONS" :key="g" :value="g">{{ g }}</option>
         </select>
+        <select v-model="classFilter" data-test="filter-class">
+          <option value="">all classes</option>
+          <option v-for="c in FITMENT_CLASS_OPTIONS" :key="c" :value="c">
+            {{ fitmentClassLabel(c) }}
+          </option>
+        </select>
+        <select v-model="vehicleFilter" data-test="filter-vehicle" @change="onVehicleFilterChange">
+          <option value="">fits this vehicle...</option>
+          <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.label }}</option>
+        </select>
         <select v-model="sortBy" data-test="sort-by">
           <option v-for="s in SORT_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
         </select>
@@ -253,11 +301,11 @@ function onCheckout(): void {
             v-for="part in visibleParts"
             :key="part.id"
             class="part"
-            :class="{ 'no-fit': part.requiredTags.length > 0 && !fitsAnyOwnedCar(part) }"
+            :class="{ 'no-fit': !fitsAnyOwnedCar(part) }"
           >
             <div class="part-main">
               <span class="part-name"
-                >{{ part.brand }} {{ part.name
+                >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
                 }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
               /></span>
               <span class="part-meta"
@@ -265,10 +313,10 @@ function onCheckout(): void {
                 {{ statSummary(part) || 'no stat change' }}</span
               >
               <span
-                v-if="part.requiredTags.length"
+                v-if="game.carsDetailed.length > 0"
                 class="part-fit"
                 :class="{ fit: fitsAnyOwnedCar(part) }"
-                :title="'Requires: ' + part.requiredTags.join(', ')"
+                :title="part.requiredTags.length ? 'Requires: ' + part.requiredTags.join(', ') : ''"
               >
                 {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
               </span>
@@ -288,7 +336,10 @@ function onCheckout(): void {
             <p v-if="game.cartItems.length === 0" class="empty">Cart is empty.</p>
             <ul v-else class="cart-items">
               <li v-for="item in game.cartItems" :key="item.part.id" class="cart-item">
-                <span class="cart-item-name">{{ item.part.brand }} {{ item.part.name }}</span>
+                <span class="cart-item-name"
+                  >{{ fitmentClassLabel(item.part.fitmentClass) }} {{ item.part.brand }}
+                  {{ item.part.name }}</span
+                >
                 <span class="cart-item-qty">x{{ item.quantity }}</span>
                 <span class="cart-item-subtotal">{{ formatYen(item.subtotalYen) }}</span>
                 <button

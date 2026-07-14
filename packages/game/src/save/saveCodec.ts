@@ -2,10 +2,13 @@ import {
   ALL_CAR_PART_IDS,
   CARS,
   ECONOMY,
+  fitmentClassForTier,
   PARTS,
   GameStateSchema,
   type ComponentId,
   type GameState,
+  type PartFitmentClass,
+  type RarityTier,
 } from '@midnight-garage/content'
 import { bandForMigratedCondition } from '@midnight-garage/sim'
 
@@ -376,8 +379,28 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   eligibility for the first time), needing no `MIGRATIONS[26]` entry of its
  *   own. The version bump alone is still required (Save law) so an old
  *   client rejects a v27 save rather than silently dropping the fields.
+ * - v28 (Sprint 53, fitment-class parts): the catalog gained real per-class
+ *   SKUs (economy-bible.md law 3) - the pre-Sprint-53 116 ids are kept
+ *   unchanged as the `common` class, so a pre-v28 save's `partId` references
+ *   still resolve (no schema field changed shape; `Part.fitmentClass` is
+ *   catalog data, not save data). NOT the pure-additive case, though: a
+ *   pre-v28 save's installed/inventory parts are all implicitly `common`-
+ *   class regardless of their host car's real tier, which would leave an
+ *   already-owned shitbox showing family-priced (4x too expensive) repair
+ *   bills forever. `migrateV27ToV28` remaps every real `PartInstance`
+ *   reference (`ownedCars`, `activeAuctionLots[].car`, `activeServiceJobs[].car`,
+ *   `serviceJobOffers[].car`, plus customer-tagged loose `partInventory`
+ *   entries whose owning job is still active) from its old `common`-class id
+ *   to the matching SKU at its host car's real fitment class, same
+ *   (carPartId, grade) - a straight sideways relabel, never a price or
+ *   condition change. Untagged loose `partInventory` parts (no recoverable
+ *   host car) and `pendingPartOrders` are left as `common` (decision 6's own
+ *   "else common" default) - they already are. The version bump is still
+ *   required (Save law) even though `GameStateSchema` itself gained no new
+ *   field, since a pre-v28 client's `Part` lookups would silently mis-price
+ *   a v28-authored save without it.
  */
-export const SAVE_VERSION = 27
+export const SAVE_VERSION = 28
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -830,10 +853,16 @@ function migrateV19ToV20(gameState: unknown): unknown {
  * `CarPartId`, the fallback a slot with nothing explicitly `installed`
  * migrates to (see `migratePartSlotToStock` below). A historical mapping
  * needed only for this migration - the live game reads `SimContext`'s own
- * `stockPartByCarPartId` instead (sim/context.ts).
+ * `stockPartByCarPartId` instead (sim/context.ts). Sprint 53: pinned to the
+ * `common` fitment class - every save this migration ever runs against
+ * predates the class system, and `common` is the pre-Sprint-53 catalog
+ * unchanged, so this is exactly the part these saves would have seen.
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
-  PARTS.filter((part) => part.grade === 'stock').map((part) => [part.carPartId, part.id]),
+  PARTS.filter((part) => part.grade === 'stock' && part.fitmentClass === 'common').map((part) => [
+    part.carPartId,
+    part.id,
+  ]),
 )
 
 /** Monotonic id suffix for a synthesized stock `PartInstance` - migrations
@@ -980,6 +1009,154 @@ function migrateV22ToV23(gameState: unknown): unknown {
   return migrated
 }
 
+/** Model id -> roster tier, for v27 -> v28's class remap (which fitment
+ * class a car's parts should carry). */
+const MODEL_TIER_BY_ID: Record<string, RarityTier> = Object.fromEntries(
+  CARS.map((model) => [model.id, model.tier]),
+)
+
+/** Catalog SKU id -> its (carPartId, grade) identity, for v27 -> v28's
+ * "find the sibling SKU at a different class" lookup. */
+const PART_IDENTITY_BY_ID: Record<string, { carPartId: string; grade: string }> =
+  Object.fromEntries(
+    PARTS.map((part) => [part.id, { carPartId: part.carPartId, grade: part.grade }]),
+  )
+
+/** `${carPartId}|${grade}|${fitmentClass}` -> the one matching catalog SKU
+ * id - v27 -> v28's remap target index. */
+const PART_ID_BY_IDENTITY_AND_CLASS: Map<string, string> = new Map(
+  PARTS.map((part) => [`${part.carPartId}|${part.grade}|${part.fitmentClass}`, part.id]),
+)
+
+/**
+ * v27 -> v28 (Sprint 53): the sibling SKU at `targetClass`, same (carPartId,
+ * grade) as `oldPartId` - a pre-v28 id is always `common`-class by
+ * construction (the class system did not exist), so this is always a real
+ * sideways relabel, never a price or condition change. Unknown ids (never
+ * happens for real content) pass through untouched rather than crash.
+ */
+function remappedPartId(oldPartId: string, targetClass: PartFitmentClass): string {
+  const identity = PART_IDENTITY_BY_ID[oldPartId]
+  if (!identity) return oldPartId
+  const key = `${identity.carPartId}|${identity.grade}|${targetClass}`
+  return PART_ID_BY_IDENTITY_AND_CLASS.get(key) ?? oldPartId
+}
+
+/**
+ * v27 -> v28: remaps every installed `PartInstance.partId` on one
+ * `CarInstance` to its own model's fitment class - a pre-v28 owned/lot/
+ * service-job car's parts are all implicitly `common`-class regardless of
+ * its real tier, which would otherwise leave (for example) an already-owned
+ * shitbox showing family-priced repair bills forever. Defensive against a
+ * malformed/hand-edited save or an unresolvable model, same shape as every
+ * other migration in this file.
+ */
+function migrateCarInstancePartsToClass(car: unknown): unknown {
+  if (typeof car !== 'object' || car === null) return car
+  const c = car as Record<string, unknown>
+  const modelId = typeof c.modelId === 'string' ? c.modelId : undefined
+  const tier = modelId ? MODEL_TIER_BY_ID[modelId] : undefined
+  if (!tier || typeof c.parts !== 'object' || c.parts === null) return c
+  const targetClass = fitmentClassForTier(tier)
+
+  const oldParts = c.parts as Record<string, unknown>
+  const parts: Record<string, unknown> = {}
+  for (const [carPartId, slot] of Object.entries(oldParts)) {
+    if (typeof slot !== 'object' || slot === null) {
+      parts[carPartId] = slot
+      continue
+    }
+    const s = slot as { installed?: unknown }
+    const installed =
+      typeof s.installed === 'object' && s.installed !== null
+        ? (s.installed as Record<string, unknown>)
+        : null
+    const oldPartId = installed && typeof installed.partId === 'string' ? installed.partId : null
+    parts[carPartId] = oldPartId
+      ? { ...slot, installed: { ...installed, partId: remappedPartId(oldPartId, targetClass) } }
+      : slot
+  }
+  return { ...c, parts }
+}
+
+/**
+ * v27 -> v28: applies `migrateCarInstancePartsToClass` across every real
+ * `CarInstance` population (mirrors v20 -> v21's own population list above),
+ * plus customer-tagged loose `partInventory` parts whose service job is
+ * still active (Sprint 35 decision 1's tag) - remapped to THAT job's car's
+ * class, since that is the car the part will be reinstalled onto. An
+ * untagged (ordinary player-owned) loose part, or one whose job has already
+ * closed, is left alone - decision 6's "else common" default, which it
+ * already is. `pendingPartOrders` are likewise left alone (no host car to
+ * resolve a class from).
+ */
+function migrateV27ToV28(gameState: unknown): unknown {
+  if (typeof gameState !== 'object' || gameState === null) return gameState
+  const state = gameState as Record<string, unknown>
+
+  const ownedCars = Array.isArray(state.ownedCars)
+    ? state.ownedCars.map(migrateCarInstancePartsToClass)
+    : state.ownedCars
+
+  const activeAuctionLots = Array.isArray(state.activeAuctionLots)
+    ? state.activeAuctionLots.map((lot) => {
+        if (typeof lot !== 'object' || lot === null) return lot
+        const l = lot as Record<string, unknown>
+        return { ...l, car: migrateCarInstancePartsToClass(l.car) }
+      })
+    : state.activeAuctionLots
+
+  const activeServiceJobs = Array.isArray(state.activeServiceJobs)
+    ? state.activeServiceJobs.map((sj) => {
+        if (typeof sj !== 'object' || sj === null) return sj
+        const s = sj as Record<string, unknown>
+        return { ...s, car: migrateCarInstancePartsToClass(s.car) }
+      })
+    : state.activeServiceJobs
+
+  const serviceJobOffers = Array.isArray(state.serviceJobOffers)
+    ? state.serviceJobOffers.map((sj) => {
+        if (typeof sj !== 'object' || sj === null) return sj
+        const s = sj as Record<string, unknown>
+        return { ...s, car: migrateCarInstancePartsToClass(s.car) }
+      })
+    : state.serviceJobOffers
+
+  const activeJobCarTierById = new Map<string, RarityTier>()
+  if (Array.isArray(state.activeServiceJobs)) {
+    for (const sj of state.activeServiceJobs) {
+      if (typeof sj !== 'object' || sj === null) continue
+      const s = sj as Record<string, unknown>
+      const jobId = typeof s.id === 'string' ? s.id : undefined
+      const jobCar =
+        typeof s.car === 'object' && s.car !== null ? (s.car as Record<string, unknown>) : undefined
+      const modelId = jobCar && typeof jobCar.modelId === 'string' ? jobCar.modelId : undefined
+      const tier = modelId ? MODEL_TIER_BY_ID[modelId] : undefined
+      if (jobId && tier) activeJobCarTierById.set(jobId, tier)
+    }
+  }
+  const partInventory = Array.isArray(state.partInventory)
+    ? state.partInventory.map((instance) => {
+        if (typeof instance !== 'object' || instance === null) return instance
+        const i = instance as Record<string, unknown>
+        const jobId = typeof i.customerJobId === 'string' ? i.customerJobId : undefined
+        const tier = jobId ? activeJobCarTierById.get(jobId) : undefined
+        const oldPartId = typeof i.partId === 'string' ? i.partId : undefined
+        if (!tier || !oldPartId) return instance
+        return { ...i, partId: remappedPartId(oldPartId, fitmentClassForTier(tier)) }
+      })
+    : state.partInventory
+
+  return {
+    ...state,
+    ownedCars,
+    activeAuctionLots,
+    activeServiceJobs,
+    serviceJobOffers,
+    partInventory,
+  }
+}
+
 /**
  * Per-version upgrade steps: MIGRATIONS[v] turns a version-`v` gameState
  * into a version-`v+1` one. The Save law: a future version bump adds its
@@ -995,6 +1172,7 @@ const MIGRATIONS: Record<number, (gameState: unknown) => unknown> = {
   19: migrateV19ToV20,
   20: migrateV20ToV21,
   22: migrateV22ToV23,
+  27: migrateV27ToV28,
 }
 
 /** Runs the chain of migrations from an older save up to the current version. */

@@ -4,7 +4,7 @@ import parts from '../data/parts.json'
 import serviceJobs from '../data/serviceJobTemplates.json'
 import {
   CarModelsSchema,
-  PartsSchema,
+  PartCatalogEntriesSchema,
   REAL_BRANDS,
   REAL_MODEL_TOKENS,
   ServiceJobTypesSchema,
@@ -39,7 +39,7 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
   })
 
   it('no part brand collides with a real car brand', () => {
-    const parsedParts = PartsSchema.parse(parts)
+    const parsedParts = PartCatalogEntriesSchema.parse(parts)
     const realBrandsLower = REAL_BRANDS.map((b) => b.toLowerCase())
     for (const part of parsedParts) {
       expect(realBrandsLower.includes(part.brand.toLowerCase())).toBe(false)

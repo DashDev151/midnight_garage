@@ -62,7 +62,8 @@ function withWornPanels(state: GameState): GameState {
           panels: {
             installed: {
               id: 'test-panels',
-              partId: CONTEXT.stockPartByCarPartId.panels!.id,
+              // honda-city-e-aa (this file's fixture model) is shitbox tier.
+              partId: CONTEXT.stockPartByCarPartId.shitbox.panels!.id,
               band: 'worn',
               genuinePeriod: false,
             },

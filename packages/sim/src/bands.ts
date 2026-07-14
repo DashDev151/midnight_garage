@@ -1,13 +1,15 @@
-import type {
-  CarInstance,
-  CarModel,
-  CarPartId,
-  CarPartTaxonomyEntry,
-  ComponentId,
-  ConditionBand,
-  EconomyConfig,
-  Part,
-  ToolTiers,
+import {
+  fitmentClassForTier,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+  type ComponentId,
+  type ConditionBand,
+  type EconomyConfig,
+  type Part,
+  type PartFitmentClass,
+  type ToolTiers,
 } from '@midnight-garage/content'
 
 /**
@@ -72,8 +74,9 @@ export function bandsBelowExcludingScrap(target: ConditionBand): ConditionBand[]
  * tier-scaling): the one atom valuation (decision 4), Sprint 27 pricing, and
  * Sprint 29 job payouts all reuse.
  *
- * - `scrap`: `stockReplacementPriceYen`, FLAT (no repair path to price - a
- *   replacement part costs what it costs).
+ * - `scrap`: the class's own `stockReplacementPriceYenByClass`, FLAT (no
+ *   repair path to price - a replacement part costs what it costs, at the
+ *   class it's actually replacing).
  * - Repairable, non-scrap: `gradesBetween(band, 'mint') * repairStepFraction
  *   * partPriceYen`, rounded - the derived repair economy. `partPriceYen` is
  *   the INSTALLED instance's own catalog `priceYen` (a race turbo repairs at
@@ -82,18 +85,26 @@ export function bandsBelowExcludingScrap(target: ConditionBand): ConditionBand[]
  *   tier-scaling allowed.
  * - Non-repairable (a replace-only consumable), non-scrap: `fine`/`mint`
  *   price at 0 (a nearly-new consumable doesn't discount value); anything
- *   below `fine` prices at the FLAT `stockReplacementPriceYen` - there is no
- *   repair bill to derive, only a full replacement.
+ *   below `fine` prices at the FLAT class-scoped stock-replacement price -
+ *   there is no repair bill to derive, only a full replacement.
+ *
+ * Sprint 53: `fitmentClass` selects which class's stock-replacement price
+ * applies to the scrap/non-repairable branches - always the INSTALLED
+ * part's own class (`catalogPart.fitmentClass`, guaranteed equal to the host
+ * car's own class by the fitment gate), never independently derived.
  */
 export function costToMintYen(
   band: ConditionBand,
   taxonomyEntry: CarPartTaxonomyEntry,
   partPriceYen: number,
   repairStepFraction: number,
+  fitmentClass: PartFitmentClass,
 ): number {
-  if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYen
+  if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass]
   if (!taxonomyEntry.repairable) {
-    return bandIndex(band) >= bandIndex('fine') ? 0 : taxonomyEntry.stockReplacementPriceYen
+    return bandIndex(band) >= bandIndex('fine')
+      ? 0
+      : taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass]
   }
   return Math.round(gradesBetween(band, 'mint') * repairStepFraction * partPriceYen)
 }
@@ -106,9 +117,9 @@ export function costToMintYen(
  * the fine-to-mint remainder at `mintGapWeight` (worn->fine is the real
  * money play; fine->mint stays primarily the reputation/clean-sale play).
  * Scrap/missing and non-repairable-below-fine still price at the flat
- * `stockReplacementPriceYen` - a replacement resolves the defect completely
- * regardless of which reference band you're pricing against, so there is no
- * separate fine/mint split for those cases.
+ * class-scoped stock-replacement price - a replacement resolves the defect
+ * completely regardless of which reference band you're pricing against, so
+ * there is no separate fine/mint split for those cases.
  */
 export function costToValuationYen(
   band: ConditionBand,
@@ -116,10 +127,13 @@ export function costToValuationYen(
   partPriceYen: number,
   repairStepFraction: number,
   mintGapWeight: number,
+  fitmentClass: PartFitmentClass,
 ): number {
-  if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYen
+  if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass]
   if (!taxonomyEntry.repairable) {
-    return bandIndex(band) >= bandIndex('fine') ? 0 : taxonomyEntry.stockReplacementPriceYen
+    return bandIndex(band) >= bandIndex('fine')
+      ? 0
+      : taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass]
   }
   const toFineGrades = gradesBetween(band, 'fine')
   const mintRemainderGrades = gradesBetween(band, 'mint') - toFineGrades
@@ -142,6 +156,7 @@ export function carValuationBillYen(
 ): number {
   const { repairStepFraction } = economy.restoration
   const { mintGapWeight } = economy.valuation
+  const carFitmentClass = fitmentClassForTier(model.tier)
   let total = 0
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
     const entry = partsTaxonomyById[partId]
@@ -156,18 +171,29 @@ export function carValuationBillYen(
         catalogPart.priceYen,
         repairStepFraction,
         mintGapWeight,
+        catalogPart.fitmentClass,
       )
     } else if (isPartMissing(car, model, partId)) {
-      total += entry.stockReplacementPriceYen
+      total += entry.stockReplacementPriceYenByClass[carFitmentClass]
     }
   }
   return total
 }
 
-/** Sprint 26 decision 6: a scrap PartInstance's sale payout - "pennies on
- * the yen" against its stock-equivalent replacement cost. */
-export function scrapValueYen(taxonomyEntry: CarPartTaxonomyEntry, economy: EconomyConfig): number {
-  return Math.round(taxonomyEntry.stockReplacementPriceYen * economy.bands.scrapValueFraction)
+/**
+ * Sprint 26 decision 6: a scrap PartInstance's sale payout - "pennies on the
+ * yen" against its stock-equivalent replacement cost. Sprint 53:
+ * `fitmentClass` is the SCRAPPED instance's own catalog class (it's a real
+ * part sitting in inventory, so its class is never ambiguous).
+ */
+export function scrapValueYen(
+  taxonomyEntry: CarPartTaxonomyEntry,
+  economy: EconomyConfig,
+  fitmentClass: PartFitmentClass,
+): number {
+  return Math.round(
+    taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass] * economy.bands.scrapValueFraction,
+  )
 }
 
 /**
@@ -247,6 +273,7 @@ export function carCostToMintYen(
   economy: EconomyConfig,
 ): number {
   const { repairStepFraction } = economy.restoration
+  const carFitmentClass = fitmentClassForTier(model.tier)
   let total = 0
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
     const entry = partsTaxonomyById[partId]
@@ -255,9 +282,15 @@ export function carCostToMintYen(
     if (installed) {
       const catalogPart = partsById[installed.partId]
       if (!catalogPart) continue
-      total += costToMintYen(installed.band, entry, catalogPart.priceYen, repairStepFraction)
+      total += costToMintYen(
+        installed.band,
+        entry,
+        catalogPart.priceYen,
+        repairStepFraction,
+        catalogPart.fitmentClass,
+      )
     } else if (isPartMissing(car, model, partId)) {
-      total += entry.stockReplacementPriceYen
+      total += entry.stockReplacementPriceYenByClass[carFitmentClass]
     }
   }
   return total
@@ -278,6 +311,7 @@ export function groupCostToMintYen(
   economy: EconomyConfig,
 ): number {
   const { repairStepFraction } = economy.restoration
+  const carFitmentClass = fitmentClassForTier(model.tier)
   let total = 0
   for (const partId of partIdsByGroup[groupId]) {
     const entry = partsTaxonomyById[partId]
@@ -286,9 +320,15 @@ export function groupCostToMintYen(
     if (installed) {
       const catalogPart = partsById[installed.partId]
       if (!catalogPart) continue
-      total += costToMintYen(installed.band, entry, catalogPart.priceYen, repairStepFraction)
+      total += costToMintYen(
+        installed.band,
+        entry,
+        catalogPart.priceYen,
+        repairStepFraction,
+        catalogPart.fitmentClass,
+      )
     } else if (isPartMissing(car, model, partId)) {
-      total += entry.stockReplacementPriceYen
+      total += entry.stockReplacementPriceYenByClass[carFitmentClass]
     }
   }
   return total
@@ -296,8 +336,9 @@ export function groupCostToMintYen(
 
 /**
  * Sprint 26 decision 4 - the value shim: a 0-1 mean of every present part's
- * band factor, weighted by that part's own worth (`stockReplacementPriceYen`
- * - a fixed, band-independent figure, not `costToMintYen`). A part with a
+ * band factor, weighted by that part's own worth (its class-scoped
+ * `stockReplacementPriceYenByClass` - a fixed, band-independent figure, not
+ * `costToMintYen`). A part with a
  * bigger stock value (a turbo, say) drags the average further when it's bad
  * than a cheap one (brake pads) on otherwise-identical cars - the
  * maintainer's own worked case.
@@ -324,6 +365,7 @@ export function costWeightedBandFactor(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
+  const carFitmentClass = fitmentClassForTier(model.tier)
   let weightedSum = 0
   let totalWeight = 0
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
@@ -331,7 +373,7 @@ export function costWeightedBandFactor(
     if (!entry) continue
     const installed = car.parts[partId].installed
     if (!installed && !isPartMissing(car, model, partId)) continue // legitimately absent
-    const weight = entry.stockReplacementPriceYen
+    const weight = entry.stockReplacementPriceYenByClass[carFitmentClass]
     const factor = installed ? bandFactor(installed.band, economy) : 0
     weightedSum += weight * factor
     totalWeight += weight

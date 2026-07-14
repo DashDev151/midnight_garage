@@ -13,7 +13,7 @@ import type {
   Technique,
   ToolTiers,
 } from '@midnight-garage/content'
-import { ComponentIdSchema } from '@midnight-garage/content'
+import { ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content'
 import { generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
@@ -464,6 +464,8 @@ export function forceTasksOutstanding(
   context: SimContext,
   rng: Rng,
 ): CarInstance {
+  const model = context.modelsById[car.modelId]
+  const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
   let parts = car.parts
   for (const task of tasks) {
     const working: CarInstance = parts === car.parts ? car : { ...car, parts }
@@ -476,6 +478,7 @@ export function forceTasksOutstanding(
         task.carPartId,
         band,
         `${car.id}-part`,
+        fitmentClass,
         context.stockPartByCarPartId,
       )
       if (!installed) continue // defensive: no stock entry for this slot (never happens for real content)

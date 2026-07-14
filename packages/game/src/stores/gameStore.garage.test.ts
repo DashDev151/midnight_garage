@@ -1,5 +1,6 @@
 import {
   CARS,
+  fitmentClassForTier,
   PARTS,
   type CarPartId,
   type ComponentId,
@@ -116,7 +117,11 @@ describe('garage: instant part install', () => {
       | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
-      const model = CARS.find((c) => part.requiredTags.every((t) => c.tags.includes(t)))
+      const model = CARS.find(
+        (c) =>
+          fitmentClassForTier(c.tier) === part.fitmentClass &&
+          part.requiredTags.every((t) => c.tags.includes(t)),
+      )
       const componentId = game.groupForCarPart(part.carPartId)
       if (model && componentId) {
         pair = { partId: part.id, componentId, carPartId: part.carPartId, modelId: model.id }
@@ -151,7 +156,10 @@ describe('garage: instant part install', () => {
 
   it('installablePartsFor is empty while every slot in the group is occupied, and offers a fitting part once one opens up', () => {
     const game = useGameStore()
-    const part = PARTS.find((p) => p.carPartId === 'seats' && p.grade !== 'stock')!
+    // CARS[0] (honda-city-e-aa) is 'shitbox' tier - the part must match.
+    const part = PARTS.find(
+      (p) => p.carPartId === 'seats' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    )!
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
@@ -175,7 +183,10 @@ describe('garage: instant part install', () => {
 
   it("installablePartsFor excludes a customer-owned tagged part on any car but the owning job's own (the close-out escape TODO.md flagged)", () => {
     const game = useGameStore()
-    const part = PARTS.find((p) => p.carPartId === 'seats' && p.grade !== 'stock')!
+    // CARS[0] (honda-city-e-aa) is 'shitbox' tier - the part must match.
+    const part = PARTS.find(
+      (p) => p.carPartId === 'seats' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    )!
     game.devGrantCar(CARS[0]!.id)
     const ownCar = game.gameState.ownedCars[0]!
     game.devGrantCar(CARS[0]!.id)

@@ -1,25 +1,62 @@
 import { z } from 'zod'
 import { CarPartIdSchema, ConditionBandSchema, GradeSchema, TagSchema } from './tags'
+import { PartFitmentClassSchema } from './partFitment'
 import { StatModifierSchema } from './stats'
+import { resolvePartPriceYen, type PartPricingSheet } from './partPricing'
 
 /**
  * Parts are parody-branded from day one (GDD 2.4) - no real/parody split.
  * `carPartId` is a catalog part's address (Sprint 26 - replaces the old
  * 8-way `componentId`; a part's group is derived by looking its
  * `carPartId` up in `parts-taxonomy.json`, not stored redundantly here).
+ *
+ * Sprint 53 (economy-bible.md law 3): this is the raw, hand-authored catalog
+ * shape - identity only, no `priceYen`. `fitmentClass` is the one new field:
+ * every component slot ships 16 real SKUs (4 fitment classes x 4 grades), a
+ * SKU's `id`/`brand`/`name`/`grade` identical across classes (the class
+ * label is a UI-time prefix, never baked into the string - see
+ * economy-bible.md's naming convention). Price is derived, not authored -
+ * see `PartSchema`/`resolvePartsCatalog` below.
  */
-export const PartSchema = z.object({
+export const PartCatalogEntrySchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
   brand: z.string().min(1),
   name: z.string().min(1),
   carPartId: CarPartIdSchema,
+  fitmentClass: PartFitmentClassSchema,
   grade: GradeSchema,
   requiredTags: z.array(TagSchema).default([]),
   statModifiers: StatModifierSchema,
+})
+
+export const PartCatalogEntriesSchema = z.array(PartCatalogEntrySchema).min(1)
+
+export type PartCatalogEntry = z.infer<typeof PartCatalogEntrySchema>
+
+/**
+ * The resolved catalog shape sim/game consume - identical to the pre-Sprint-53
+ * shape (same `priceYen` field, same type name) so every downstream reader is
+ * unchanged; only where the number comes from is different now (content-load-
+ * time derivation via `resolvePartsCatalog`, not a hand-typed JSON field).
+ */
+export const PartSchema = PartCatalogEntrySchema.extend({
   priceYen: z.number().int().nonnegative(),
 })
 
 export const PartsSchema = z.array(PartSchema).min(1)
+
+/**
+ * Sprint 53: the one content-load-time derivation point - every SKU's price
+ * comes from `resolvePartPriceYen` (partPricing.ts) against the pricing
+ * sheet, never a hand-authored number. Called once by `data.ts`; nothing
+ * downstream (sim, game, tests) ever calls this itself.
+ */
+export function resolvePartsCatalog(
+  entries: readonly PartCatalogEntry[],
+  sheet: PartPricingSheet,
+): Part[] {
+  return entries.map((entry) => ({ ...entry, priceYen: resolvePartPriceYen(entry, sheet) }))
+}
 
 /**
  * An owned/installed part. Band and genuine-period status are per-instance

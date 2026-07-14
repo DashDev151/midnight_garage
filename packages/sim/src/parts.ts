@@ -1,4 +1,5 @@
 import {
+  fitmentClassForTier,
   GradeSchema,
   type CarModel,
   type CarPartId,
@@ -52,6 +53,13 @@ export function gradeAtLeast(grade: Grade, min: Grade): boolean {
  * in this group" to "addresses this exact part" - the per-part Replace
  * drawer's own fit predicate. Omitted, this is exactly the pre-Sprint-28
  * group-level check.
+ *
+ * Sprint 53 (economy-bible.md law 3): additionally requires the part's own
+ * `fitmentClass` to match the car's (derived from its roster tier) - a
+ * kei-class part physically cannot go on a sports car, full stop. This is
+ * the one check that makes cross-class repair arbitrage structurally
+ * impossible (Sprint 44's own rationale for flattening prices, now honored
+ * through fitment instead of through a flat catalog).
  */
 export function partFitsCar(
   part: Part,
@@ -65,6 +73,7 @@ export function partFitsCar(
     !!taxonomyEntry &&
     taxonomyEntry.group === componentId &&
     (!carPartId || part.carPartId === carPartId) &&
+    part.fitmentClass === fitmentClassForTier(model.tier) &&
     part.requiredTags.every((tag) => model.tags.includes(tag))
   )
 }
@@ -236,9 +245,9 @@ export function resolveScrapPart(
   if (!instance || instance.band !== 'scrap' || instance.customerJobId) return { state, log: [] }
   const part = context.partsById[instance.partId]
   const taxonomyEntry = part ? context.partsTaxonomyById[part.carPartId] : undefined
-  if (!taxonomyEntry) return { state, log: [] }
+  if (!part || !taxonomyEntry) return { state, log: [] }
 
-  const priceYen = scrapValueYen(taxonomyEntry, context.economy)
+  const priceYen = scrapValueYen(taxonomyEntry, context.economy, part.fitmentClass)
   return {
     state: {
       ...state,

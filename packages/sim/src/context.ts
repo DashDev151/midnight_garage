@@ -7,6 +7,7 @@ import type {
   EconomyConfig,
   Facilities,
   Part,
+  PartFitmentClass,
   ServiceJobType,
   SpecialtyCopy,
   Technique,
@@ -40,12 +41,15 @@ export interface SimContext {
   modelsById: Readonly<Record<string, CarModel>>
   parts: readonly Part[]
   partsById: Readonly<Record<string, Part>>
-  /** The one generic, brand-neutral `grade: 'stock'` catalog part per
-   * `CarPartId` (Sprint 32 decision 1) - what generation fills a non-empty
-   * slot with by default, and what removing an aftermarket part reverts a
-   * slot to (`jobs.ts`'s `resolveRemovePart`). Derived once from `parts`
-   * rather than filtered on every generation/removal call. */
-  stockPartByCarPartId: Readonly<Record<CarPartId, Part>>
+  /**
+   * The one generic, brand-neutral `grade: 'stock'` catalog part per
+   * `CarPartId`, PER FITMENT CLASS (Sprint 32 decision 1; Sprint 53 adds the
+   * class dimension) - what generation fills a non-empty slot with by
+   * default, and what removing an aftermarket part reverts a slot to
+   * (`jobs.ts`'s `resolveRemovePart`). Derived once from `parts` rather than
+   * filtered on every generation/removal call.
+   */
+  stockPartByCarPartId: Readonly<Record<PartFitmentClass, Readonly<Record<CarPartId, Part>>>>
   buyers: readonly Buyer[]
   /** The 29-part taxonomy (Sprint 26), indexed by CarPartId - replaces the
    * Sprint 22 hidden-issue catalogs, which are paused and removed. */
@@ -90,14 +94,25 @@ function groupPartIdsByGroup(
   return result as Record<ComponentId, readonly CarPartId[]>
 }
 
-/** One `grade: 'stock'` catalog part per `CarPartId` (Sprint 32 decision 1
- * guarantees exactly one exists per component). */
-function indexStockPartsByCarPartId(parts: readonly Part[]): Record<CarPartId, Part> {
-  const result: Record<string, Part> = {}
-  for (const part of parts) {
-    if (part.grade === 'stock') result[part.carPartId] = part
+const FITMENT_CLASSES: readonly PartFitmentClass[] = ['shitbox', 'common', 'uncommon', 'rare']
+
+/** One `grade: 'stock'` catalog part per `CarPartId`, per fitment class
+ * (Sprint 32 decision 1 + Sprint 53's class dimension - the resolved catalog
+ * guarantees exactly one exists per component per class). */
+function indexStockPartsByCarPartId(
+  parts: readonly Part[],
+): Record<PartFitmentClass, Record<CarPartId, Part>> {
+  const result = {} as Record<PartFitmentClass, Record<CarPartId, Part>>
+  for (const fitmentClass of FITMENT_CLASSES) {
+    const byCarPartId: Record<string, Part> = {}
+    for (const part of parts) {
+      if (part.grade === 'stock' && part.fitmentClass === fitmentClass) {
+        byCarPartId[part.carPartId] = part
+      }
+    }
+    result[fitmentClass] = byCarPartId as Record<CarPartId, Part>
   }
-  return result as Record<CarPartId, Part>
+  return result
 }
 
 /**

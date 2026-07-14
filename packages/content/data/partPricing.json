@@ -1,0 +1,47 @@
+{
+  "baseCostYen": {
+    "block": 160000,
+    "internals": 90000,
+    "headValvetrain": 70000,
+    "camsTiming": 30000,
+    "intake": 15000,
+    "exhaust": 25000,
+    "fuelSystem": 18000,
+    "ignitionEcu": 20000,
+    "cooling": 14000,
+    "forcedInduction": 90000,
+    "gearbox": 110000,
+    "clutch": 28000,
+    "differential": 55000,
+    "driveline": 30000,
+    "chassis": 130000,
+    "dampers": 26000,
+    "springs": 14000,
+    "antiRollBars": 12000,
+    "steering": 22000,
+    "brakePadsDiscs": 8000,
+    "brakeCalipersLines": 18000,
+    "rims": 30000,
+    "tyres": 22000,
+    "panels": 28000,
+    "paint": 40000,
+    "underbody": 24000,
+    "aero": 18000,
+    "seats": 35000,
+    "dashGauges": 12000
+  },
+  "classFactors": {
+    "shitbox": 0.25,
+    "common": 1.0,
+    "uncommon": 1.6,
+    "rare": 2.5
+  },
+  "gradeFactors": {
+    "stock": 1.0,
+    "street": 1.3,
+    "sport": 2.0,
+    "race": 2.8
+  },
+  "globalFactor": 1.0,
+  "overrides": {}
+}

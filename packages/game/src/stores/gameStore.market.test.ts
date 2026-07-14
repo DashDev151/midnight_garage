@@ -1,4 +1,11 @@
-import { CARS, ECONOMY, PARTS, type CarPartId, type ComponentId } from '@midnight-garage/content'
+import {
+  CARS,
+  ECONOMY,
+  fitmentClassForTier,
+  PARTS,
+  type CarPartId,
+  type ComponentId,
+} from '@midnight-garage/content'
 import { bidIncrementYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -232,7 +239,11 @@ describe('market: buying parts', () => {
       | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
-      const model = CARS.find((c) => part.requiredTags.every((t) => c.tags.includes(t)))
+      const model = CARS.find(
+        (c) =>
+          fitmentClassForTier(c.tier) === part.fitmentClass &&
+          part.requiredTags.every((t) => c.tags.includes(t)),
+      )
       const componentId = game.groupForCarPart(part.carPartId)
       if (model && componentId) {
         pair = { partId: part.id, componentId, carPartId: part.carPartId, modelId: model.id }

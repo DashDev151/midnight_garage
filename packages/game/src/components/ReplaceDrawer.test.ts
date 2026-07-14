@@ -16,7 +16,10 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     // filled slot (dampers) instead.
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+    // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+    const fitting = PARTS.find(
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    )!
     // A totally different address - must never appear in this drawer at all.
     const wrongAddress = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
     game.devGrantPart(fitting.id)
@@ -38,7 +41,10 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+    // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+    const fitting = PARTS.find(
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    )!
     game.devGrantPart(fitting.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
     // Empty the slot directly (bypassing removePart's own inventory side
@@ -67,7 +73,9 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     const carId = game.gameState.ownedCars[0]!.id
     // dampers is already stock-filled by default - nothing addressed to it
     // can actually land there without removing the incumbent first.
-    const nonFitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+    const nonFitting = PARTS.find(
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    )!
     game.devGrantPart(nonFitting.id)
 
     const wrapper = mount(ReplaceDrawer, {
@@ -85,7 +93,10 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.removePart(carId, 'dampers')
-    const fitting = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+    // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+    const fitting = PARTS.find(
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    )!
     game.devGrantPart(fitting.id)
     const instance = game.gameState.partInventory.at(-1)!
     game.gameState = {

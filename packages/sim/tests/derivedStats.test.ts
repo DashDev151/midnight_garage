@@ -34,6 +34,7 @@ const coilovers: Part = {
   brand: 'Tanuki',
   name: 'Street Coilovers',
   carPartId: 'dampers',
+  fitmentClass: 'shitbox',
   grade: 'street',
   requiredTags: [],
   statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },

@@ -1,11 +1,13 @@
 import {
   ALL_CAR_PART_IDS,
+  fitmentClassForTier,
   type AuctionLot,
   type AuctionTier,
   type CarInstance,
   type CarModel,
   type CarPartId,
   type EconomyConfig,
+  type PartFitmentClass,
   type PartInstance,
   type RarityTier,
   type TurnoutBand,
@@ -187,14 +189,19 @@ function conditionBaselineRangeForMileage(
  * file's existing tolerance for a not-yet-fully-seeded catalog in tests.
  * Exported (Sprint 40): `serviceJobs.ts`'s generation-forcing step reuses
  * this exact stock-instance shape rather than standing up a second one.
+ *
+ * Sprint 53: `fitmentClass` selects which class's stock SKU fills the slot -
+ * always the host car's own class, so a shitbox never rolls a family-priced
+ * stock part (economy-bible.md law 3).
  */
 export function stockInstanceFor(
   partId: CarPartId,
   band: ReturnType<typeof bandForMigratedCondition>,
   idPrefix: string,
+  fitmentClass: PartFitmentClass,
   stockPartByCarPartId: SimContext['stockPartByCarPartId'],
 ): PartInstance | null {
-  const catalogPart = stockPartByCarPartId[partId]
+  const catalogPart = stockPartByCarPartId[fitmentClass]?.[partId]
   if (!catalogPart) return null
   return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false }
 }
@@ -272,6 +279,7 @@ export function generateAuctionCarInstance(
   allowMissingSlots: boolean = true,
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
+  const fitmentClass = fitmentClassForTier(model.tier)
   const year = Math.min(model.spec.yearFrom + rng.int(0, 8), currentYear)
   const ageYears = Number.isFinite(currentYear)
     ? Math.max(0, currentYear - year)
@@ -295,7 +303,7 @@ export function generateAuctionCarInstance(
 
       if (partId === 'forcedInduction') {
         const installed = carHasForcedInduction
-          ? stockInstanceFor(partId, band, `${id}-part`, stockPartByCarPartId)
+          ? stockInstanceFor(partId, band, `${id}-part`, fitmentClass, stockPartByCarPartId)
           : null
         return [partId, { installed }]
       }
@@ -308,7 +316,7 @@ export function generateAuctionCarInstance(
       const rolledMissing = rng.next() < missingChance
       const installed = rolledMissing
         ? null
-        : stockInstanceFor(partId, band, `${id}-part`, stockPartByCarPartId)
+        : stockInstanceFor(partId, band, `${id}-part`, fitmentClass, stockPartByCarPartId)
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']

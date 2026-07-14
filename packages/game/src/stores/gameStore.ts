@@ -27,6 +27,7 @@ import type {
   Job,
   MachineListing,
   Part,
+  PartFitmentClass,
   PartInstance,
   ReputationTier,
   ServiceJob,
@@ -35,7 +36,11 @@ import type {
   StatBlock,
   ToolTier,
 } from '@midnight-garage/content'
-import { componentDisplayName, resolveCarDisplayName } from '@midnight-garage/content'
+import {
+  componentDisplayName,
+  partFitmentClassLabel,
+  resolveCarDisplayName,
+} from '@midnight-garage/content'
 import {
   anchorValueYen,
   applyBayPurchase,
@@ -943,6 +948,16 @@ export const useGameStore = defineStore('game', () => {
    * catalog/taxonomy lookup every group-level UI action needs. */
   function groupForCarPart(id: CarPartId): ComponentId | undefined {
     return context.value.partsTaxonomyById[id]?.group
+  }
+
+  /**
+   * Display label for a part's fitment class (Sprint 53) - the diegetic
+   * name ("Kei & Compact", "Family", ...), never the raw code identifier
+   * (`shitbox`/`common`/...). Every template renders a SKU's class through
+   * this instead of interpolating `fitmentClass` directly.
+   */
+  function fitmentClassLabel(fitmentClass: PartFitmentClass): string {
+    return partFitmentClassLabel(fitmentClass)
   }
 
   /**
@@ -1916,7 +1931,9 @@ export const useGameStore = defineStore('game', () => {
     if (!instance || instance.band !== 'scrap') return 0
     const part = context.value.partsById[instance.partId]
     const taxonomyEntry = part ? context.value.partsTaxonomyById[part.carPartId] : undefined
-    return taxonomyEntry ? scrapValueYen(taxonomyEntry, context.value.economy) : 0
+    return part && taxonomyEntry
+      ? scrapValueYen(taxonomyEntry, context.value.economy, part.fitmentClass)
+      : 0
   }
 
   /**
@@ -2393,6 +2410,7 @@ export const useGameStore = defineStore('game', () => {
     resolveModelName,
     partName,
     componentLabel,
+    fitmentClassLabel,
     buyerName,
     carDetail,
     groupBandsForCar,

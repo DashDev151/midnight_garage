@@ -4,11 +4,18 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
 
-/** An aftermarket (non-stock) catalog part for this slot - every part fits
- * any car now (Sprint 32 decision 1 drops requiredTags), so this just needs
- * to avoid the stock grade (already occupying every slot by default). */
+/**
+ * An aftermarket (non-stock) catalog part for this slot - every part fits
+ * any car of the right CLASS now (Sprint 32 decision 1 drops requiredTags;
+ * Sprint 53 adds the fitment-class check), so this just needs to avoid the
+ * stock grade (already occupying every slot by default). Pinned to
+ * `shitbox` - every car this file grants (`CARS[0]`/`CARS[1]`,
+ * honda-city-e-aa/suzuki-wagon-r-ct21s) is that tier.
+ */
 function untaggedPartFor(carPartId: string) {
-  return PARTS.find((p) => p.carPartId === carPartId && p.grade !== 'stock')!
+  return PARTS.find(
+    (p) => p.carPartId === carPartId && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+  )!
 }
 
 describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)', () => {

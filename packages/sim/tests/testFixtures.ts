@@ -48,12 +48,18 @@ export function testSpecialty(
 }
 
 /**
- * One `grade: 'stock'` catalog part id per `CarPartId` (Sprint 32 decision 1
- * guarantees exactly one) - what a fixture car's slot defaults to, same as
- * real generation (`generateAuctionCarInstance`, sim/auctions.ts).
+ * One `grade: 'stock'` catalog part id per `CarPartId`, `common` fitment
+ * class (Sprint 32 decision 1; Sprint 53 adds the class dimension - `common`
+ * is the pre-Sprint-53 catalog unchanged, so every existing fixture car's
+ * default parts stay byte-identical) - what a fixture car's slot defaults
+ * to, same shape as real generation (`generateAuctionCarInstance`,
+ * sim/auctions.ts) at the `common` class.
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
-  PARTS.filter((part) => part.grade === 'stock').map((part) => [part.carPartId, part.id]),
+  PARTS.filter((part) => part.grade === 'stock' && part.fitmentClass === 'common').map((part) => [
+    part.carPartId,
+    part.id,
+  ]),
 )
 
 function stockInstanceFor(partId: CarPartId, band: ConditionBand): PartInstance {

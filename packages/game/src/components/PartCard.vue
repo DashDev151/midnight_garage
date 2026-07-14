@@ -144,7 +144,8 @@ function onPointerUp(event: PointerEvent): void {
         >{{ part.brand }} {{ part.name }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
       /></span>
       <span class="part-meta">
-        {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }}
+        {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }} &middot;
+        {{ game.fitmentClassLabel(part.fitmentClass) }}
         <BandChip :band="instance.band" />
         <span v-if="isCustomerOwned" class="owner-chip" :data-test="'customer-owned-' + instance.id"
           >customer's part</span

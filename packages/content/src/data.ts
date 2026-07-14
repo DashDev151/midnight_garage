@@ -3,6 +3,7 @@ import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
 import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
+import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
@@ -13,11 +14,18 @@ import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
-import { CarPartTaxonomySchema } from './carPart'
+import {
+  CarPartTaxonomyContentSchema,
+  CarPartTaxonomySchema,
+  type CarPartTaxonomyEntry,
+} from './carPart'
 import { ComponentDisplayNamesSchema } from './componentDisplayName'
 import { EconomyConfigSchema } from './economy'
 import { FacilitiesSchema } from './facilities'
-import { PartsSchema } from './part'
+import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
+import { PartPricingSheetSchema } from './partPricing'
+import type { PartFitmentClass } from './partFitment'
+import type { CarPartId } from './tags'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
 import { TraitDefinitionsSchema } from './staff'
@@ -32,8 +40,49 @@ import { ToolLinesSchema } from './toolLines'
  * that would reach past the package boundary.
  */
 export const CARS = CarModelsSchema.parse(carsJson)
-export const PARTS = PartsSchema.parse(partsJson)
-export const PARTS_TAXONOMY = CarPartTaxonomySchema.parse(partsTaxonomyJson)
+
+/**
+ * Sprint 53 (economy-bible.md): every SKU's `priceYen` is resolved once here,
+ * at content-load time, from the pricing sheet - never a hand-authored JSON
+ * field. `PARTS` keeps the exact shape/name every downstream reader already
+ * expects; only where the number comes from changed.
+ */
+const PART_CATALOG_ENTRIES = PartCatalogEntriesSchema.parse(partsJson)
+const PART_PRICING_SHEET = PartPricingSheetSchema.parse(partPricingJson)
+export const PARTS = PartsSchema.parse(
+  resolvePartsCatalog(PART_CATALOG_ENTRIES, PART_PRICING_SHEET),
+)
+
+const FITMENT_CLASSES: readonly PartFitmentClass[] = ['shitbox', 'common', 'uncommon', 'rare']
+
+/**
+ * Sprint 53: a taxonomy entry's per-class stock-replacement price is simply
+ * that class's own stock-grade SKU price - derived from the resolved `PARTS`
+ * catalog, never a hand-maintained mirror, so it can never drift from the
+ * catalog it describes.
+ */
+function stockReplacementPricesByClass(carPartId: CarPartId): Record<PartFitmentClass, number> {
+  const result = {} as Record<PartFitmentClass, number>
+  for (const fitmentClass of FITMENT_CLASSES) {
+    const stockPart = PARTS.find(
+      (p) => p.carPartId === carPartId && p.grade === 'stock' && p.fitmentClass === fitmentClass,
+    )
+    if (!stockPart) {
+      throw new Error(`no stock-grade "${fitmentClass}" catalog part addresses "${carPartId}"`)
+    }
+    result[fitmentClass] = stockPart.priceYen
+  }
+  return result
+}
+
+const TAXONOMY_CONTENT = CarPartTaxonomyContentSchema.parse(partsTaxonomyJson)
+export const PARTS_TAXONOMY: CarPartTaxonomyEntry[] = CarPartTaxonomySchema.parse(
+  TAXONOMY_CONTENT.map((entry) => ({
+    ...entry,
+    stockReplacementPriceYenByClass: stockReplacementPricesByClass(entry.id),
+  })),
+)
+
 export const BUYERS = BuyersSchema.parse(buyersJson)
 export const TRAITS = TraitDefinitionsSchema.parse(traitsJson)
 export const SERVICE_JOB_TYPES = ServiceJobTypesSchema.parse(serviceJobTemplatesJson)

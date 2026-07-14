@@ -78,7 +78,10 @@ describe('investorStrategy replace-loop fixes (2026-07-12)', () => {
   })
 
   it('installs a PRIOR-tick purchase onto the exact empty slot once it is genuinely in inventory', () => {
-    const boughtPartId = 'stock-seats'
+    // Sprint 53: car (honda-city-e-aa) is 'shitbox' tier - the landed part
+    // must be the shitbox-class SKU or the fitment-class gate refuses it,
+    // sending the bot to (correctly) buy a fresh matching one instead.
+    const boughtPartId = 'shitbox-stock-seats'
     const landed = {
       id: 'part-landed-01',
       partId: boughtPartId,

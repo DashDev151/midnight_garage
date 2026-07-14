@@ -3,206 +3,242 @@
     "id": "block",
     "group": "engine",
     "displayName": "Block",
-    "stockReplacementPriceYen": 160000,
-    "statWeights": { "reliability": 2 }
+    "statWeights": {
+      "reliability": 2
+    }
   },
   {
     "id": "internals",
     "group": "engine",
     "displayName": "Internals",
-    "stockReplacementPriceYen": 90000,
-    "statWeights": { "power": 2, "reliability": 2 }
+    "statWeights": {
+      "power": 2,
+      "reliability": 2
+    }
   },
   {
     "id": "headValvetrain",
     "group": "engine",
     "displayName": "Head & Valvetrain",
-    "stockReplacementPriceYen": 70000,
-    "statWeights": { "reliability": 2 }
+    "statWeights": {
+      "reliability": 2
+    }
   },
   {
     "id": "camsTiming",
     "group": "engine",
     "displayName": "Cams & Timing",
-    "stockReplacementPriceYen": 30000,
-    "statWeights": { "power": 2, "reliability": 1 }
+    "statWeights": {
+      "power": 2,
+      "reliability": 1
+    }
   },
   {
     "id": "intake",
     "group": "engine",
     "displayName": "Intake",
-    "stockReplacementPriceYen": 15000,
-    "statWeights": { "power": 1, "reliability": 1 }
+    "statWeights": {
+      "power": 1,
+      "reliability": 1
+    }
   },
   {
     "id": "exhaust",
     "group": "engine",
     "displayName": "Exhaust",
-    "stockReplacementPriceYen": 25000,
-    "statWeights": { "power": 1, "reliability": 1 }
+    "statWeights": {
+      "power": 1,
+      "reliability": 1
+    }
   },
   {
     "id": "fuelSystem",
     "group": "engine",
     "displayName": "Fuel System",
-    "stockReplacementPriceYen": 18000,
-    "statWeights": { "reliability": 1 }
+    "statWeights": {
+      "reliability": 1
+    }
   },
   {
     "id": "ignitionEcu",
     "group": "engine",
     "displayName": "Ignition & ECU",
-    "stockReplacementPriceYen": 20000,
-    "statWeights": { "power": 2, "reliability": 1 }
+    "statWeights": {
+      "power": 2,
+      "reliability": 1
+    }
   },
   {
     "id": "cooling",
     "group": "engine",
     "displayName": "Cooling",
-    "stockReplacementPriceYen": 14000,
-    "statWeights": { "reliability": 3 }
+    "statWeights": {
+      "reliability": 3
+    }
   },
   {
     "id": "forcedInduction",
     "group": "engine",
     "displayName": "Forced Induction",
-    "stockReplacementPriceYen": 90000,
-    "statWeights": { "power": 3, "reliability": 1 }
+    "statWeights": {
+      "power": 3,
+      "reliability": 1
+    }
   },
   {
     "id": "gearbox",
     "group": "drivetrain",
     "displayName": "Gearbox",
-    "stockReplacementPriceYen": 110000,
-    "statWeights": { "reliability": 2 }
+    "statWeights": {
+      "reliability": 2
+    }
   },
   {
     "id": "clutch",
     "group": "drivetrain",
     "displayName": "Clutch",
-    "stockReplacementPriceYen": 28000,
     "repairable": false,
-    "statWeights": { "reliability": 1 }
+    "statWeights": {
+      "reliability": 1
+    }
   },
   {
     "id": "differential",
     "group": "drivetrain",
     "displayName": "Differential",
-    "stockReplacementPriceYen": 55000,
-    "statWeights": { "reliability": 1 }
+    "statWeights": {
+      "reliability": 1
+    }
   },
   {
     "id": "driveline",
     "group": "drivetrain",
     "displayName": "Driveline",
-    "stockReplacementPriceYen": 30000,
-    "statWeights": { "reliability": 1 }
+    "statWeights": {
+      "reliability": 1
+    }
   },
   {
     "id": "chassis",
     "group": "drivetrain",
     "displayName": "Chassis",
-    "stockReplacementPriceYen": 130000,
-    "statWeights": { "reliability": 2 }
+    "statWeights": {
+      "reliability": 2
+    }
   },
   {
     "id": "dampers",
     "group": "suspension",
     "displayName": "Dampers",
-    "stockReplacementPriceYen": 26000,
-    "statWeights": { "handling": 2 }
+    "statWeights": {
+      "handling": 2
+    }
   },
   {
     "id": "springs",
     "group": "suspension",
     "displayName": "Springs",
-    "stockReplacementPriceYen": 14000,
-    "statWeights": { "handling": 2 }
+    "statWeights": {
+      "handling": 2
+    }
   },
   {
     "id": "antiRollBars",
     "group": "suspension",
     "displayName": "Anti-Roll Bars",
-    "stockReplacementPriceYen": 12000,
-    "statWeights": { "handling": 2 }
+    "statWeights": {
+      "handling": 2
+    }
   },
   {
     "id": "steering",
     "group": "suspension",
     "displayName": "Steering",
-    "stockReplacementPriceYen": 22000,
-    "statWeights": { "handling": 2 }
+    "statWeights": {
+      "handling": 2
+    }
   },
   {
     "id": "brakePadsDiscs",
     "group": "suspension",
     "displayName": "Brake Pads & Discs",
-    "stockReplacementPriceYen": 8000,
     "repairable": false,
-    "statWeights": { "handling": 1 }
+    "statWeights": {
+      "handling": 1
+    }
   },
   {
     "id": "brakeCalipersLines",
     "group": "suspension",
     "displayName": "Brake Calipers & Lines",
-    "stockReplacementPriceYen": 18000,
-    "statWeights": { "handling": 1 }
+    "statWeights": {
+      "handling": 1
+    }
   },
   {
     "id": "rims",
     "group": "wheels",
     "displayName": "Rims",
-    "stockReplacementPriceYen": 30000,
-    "statWeights": { "style": 3 }
+    "statWeights": {
+      "style": 3
+    }
   },
   {
     "id": "tyres",
     "group": "wheels",
     "displayName": "Tyres",
-    "stockReplacementPriceYen": 22000,
     "repairable": false,
-    "statWeights": { "handling": 3 }
+    "statWeights": {
+      "handling": 3
+    }
   },
   {
     "id": "panels",
     "group": "body",
     "displayName": "Panels",
-    "stockReplacementPriceYen": 28000,
-    "statWeights": { "style": 2 }
+    "statWeights": {
+      "style": 2
+    }
   },
   {
     "id": "paint",
     "group": "body",
     "displayName": "Paint",
-    "stockReplacementPriceYen": 40000,
-    "statWeights": { "style": 2 }
+    "statWeights": {
+      "style": 2
+    }
   },
   {
     "id": "underbody",
     "group": "body",
     "displayName": "Underbody",
-    "stockReplacementPriceYen": 24000,
-    "statWeights": { "style": 2 }
+    "statWeights": {
+      "style": 2
+    }
   },
   {
     "id": "aero",
     "group": "body",
     "displayName": "Aero",
-    "stockReplacementPriceYen": 18000,
-    "statWeights": { "style": 2, "handling": 1 }
+    "statWeights": {
+      "style": 2,
+      "handling": 1
+    }
   },
   {
     "id": "seats",
     "group": "interior",
     "displayName": "Seats",
-    "stockReplacementPriceYen": 35000,
-    "statWeights": { "style": 2 }
+    "statWeights": {
+      "style": 2
+    }
   },
   {
     "id": "dashGauges",
     "group": "interior",
     "displayName": "Dash & Gauges",
-    "stockReplacementPriceYen": 12000,
-    "statWeights": { "style": 1 }
+    "statWeights": {
+      "style": 1
+    }
   }
 ]

@@ -1049,7 +1049,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(27)
+    expect(SAVE_VERSION).toBe(28)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1103,7 +1103,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(27)
+    expect(SAVE_VERSION).toBe(28)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1263,23 +1263,31 @@ describe('saveCodec', () => {
     })
 
     it('relocates an installed part to its correct specific slot by catalog carPartId', () => {
-      expect(turboCar.parts.ignitionEcu.installed?.partId).toBe('khs-street-ecu')
+      // Sprint 53: decodeSave's full chain now also runs v27 -> v28, which
+      // remaps every installed part to its own model's fitment class -
+      // nissan-180sx-rps13 (turboCar) is 'uncommon' tier.
+      expect(turboCar.parts.ignitionEcu.installed?.partId).toBe('uncommon-khs-street-ecu')
       expect(turboCar.parts.ignitionEcu.installed?.band).toBe('fine')
       // Every other engine part instead gets v20 -> v21's synthesized generic
       // stock part (it was never explicitly installed) - not left unoccupied
       // the way it was under the pre-Sprint-32 shape.
-      expect(turboCar.parts.block.installed?.partId).toBe('stock-block')
+      expect(turboCar.parts.block.installed?.partId).toBe('uncommon-stock-block')
     })
 
     it('aero always migrates to mint - no old-model counterpart existed for it - and v20 -> v21 fills it with a mint stock part', () => {
-      expect(turboCar.parts.aero.installed?.partId).toBe('stock-aero')
+      // Sprint 53: nissan-180sx-rps13 (turboCar) is 'uncommon' tier;
+      // honda-city-e-aa (naCar) is 'shitbox' tier.
+      expect(turboCar.parts.aero.installed?.partId).toBe('uncommon-stock-aero')
       expect(turboCar.parts.aero.installed?.band).toBe('mint')
-      expect(naCar.parts.aero.installed?.partId).toBe('stock-aero')
+      expect(naCar.parts.aero.installed?.partId).toBe('shitbox-stock-aero')
       expect(naCar.parts.aero.installed?.band).toBe('mint')
     })
 
     it('forced induction follows the Turbo/Supercharged tag: a factory turbo gets a synthesized stock turbo at its rolled band, an NA slot stays genuinely empty', () => {
-      expect(turboCar.parts.forcedInduction.installed?.partId).toBe('stock-forced-induction')
+      // Sprint 53: nissan-180sx-rps13 (turboCar) is 'uncommon' tier.
+      expect(turboCar.parts.forcedInduction.installed?.partId).toBe(
+        'uncommon-stock-forced-induction',
+      )
       expect(turboCar.parts.forcedInduction.installed?.band).toBe('worn')
       expect(naCar.parts.forcedInduction.installed).toBeNull()
     })
@@ -1729,22 +1737,29 @@ describe('saveCodec', () => {
     const naCar = decoded.ownedCars.find((c) => c.id === 'na-car')!
 
     it('keeps an already-installed aftermarket part exactly as-is - it already carries its own band', () => {
+      // Sprint 53: decodeSave's full chain now also runs v27 -> v28, which
+      // remaps every installed part (stock or aftermarket) to its own
+      // model's fitment class - nissan-180sx-rps13 (turboCar) is 'uncommon'
+      // tier. Band/id/genuinePeriod are otherwise untouched - "as-is" still
+      // holds for everything but the class-corrected catalog address.
       expect(turboCar.parts.dampers.installed).toEqual({
         id: 'pi-coilovers',
-        partId: 'tanuki-street-coilovers',
+        partId: 'uncommon-tanuki-street-coilovers',
         band: 'fine',
         genuinePeriod: false,
       })
     })
 
     it('synthesizes a fresh generic stock part for an ordinary slot with nothing explicitly installed, at the old slot band', () => {
-      expect(turboCar.parts.tyres.installed?.partId).toBe('stock-tyres')
+      expect(turboCar.parts.tyres.installed?.partId).toBe('uncommon-stock-tyres')
       expect(turboCar.parts.tyres.installed?.band).toBe('worn')
       expect(turboCar.parts.tyres.installed?.genuinePeriod).toBe(false)
     })
 
     it('synthesizes a fresh stock turbo for a factory-turbo car, at the old slot band', () => {
-      expect(turboCar.parts.forcedInduction.installed?.partId).toBe('stock-forced-induction')
+      expect(turboCar.parts.forcedInduction.installed?.partId).toBe(
+        'uncommon-stock-forced-induction',
+      )
       expect(turboCar.parts.forcedInduction.installed?.band).toBe('worn')
     })
 
@@ -1753,7 +1768,9 @@ describe('saveCodec', () => {
     })
 
     it('every ordinary mint/unoccupied slot synthesizes a mint generic stock part', () => {
-      expect(turboCar.parts.block.installed?.partId).toBe('stock-block')
+      // honda-city-e-aa (naCar) is 'shitbox' tier - unaffected here since
+      // this assertion targets turboCar ('uncommon').
+      expect(turboCar.parts.block.installed?.partId).toBe('uncommon-stock-block')
       expect(turboCar.parts.block.installed?.band).toBe('mint')
     })
 
@@ -1885,8 +1902,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 27 (Sprint 52)', () => {
-    expect(SAVE_VERSION).toBe(27)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 28 (Sprint 53)', () => {
+    expect(SAVE_VERSION).toBe(28)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1987,8 +2004,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 27 (Sprint 52)', () => {
-    expect(SAVE_VERSION).toBe(27)
+  it('SAVE_VERSION has since moved to 28 (Sprint 53)', () => {
+    expect(SAVE_VERSION).toBe(28)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -2020,8 +2037,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 27 (Sprint 52)', () => {
-    expect(SAVE_VERSION).toBe(27)
+  it('SAVE_VERSION is 28 (Sprint 53)', () => {
+    expect(SAVE_VERSION).toBe(28)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -2055,5 +2072,107 @@ describe('saveCodec', () => {
       postedOnDay: 10,
       expiresOnDay: 13,
     })
+  })
+
+  /**
+   * v27 -> v28 (Sprint 53, fitment-class parts): NOT the pure-additive case
+   * (`GameStateSchema` gained no new field) - a pre-v28 save's installed
+   * parts are all implicitly `common`-class regardless of their host car's
+   * real tier, so `migrateV27ToV28` remaps every real `CarInstance`
+   * population's installed parts to their own model's fitment class. A real
+   * pre-v28 (v27 envelope) shitbox car with the pre-Sprint-53 `stock-block`
+   * id installed must come out re-addressed to the shitbox-class sibling SKU,
+   * same slot, same band, same everything else.
+   */
+  it('SAVE_VERSION is 28 (Sprint 53)', () => {
+    expect(SAVE_VERSION).toBe(28)
+  })
+
+  it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
+    const preV28State = {
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-0001',
+          modelId: 'honda-city-e-aa',
+          year: 1990,
+          mileageKm: 80_000,
+          color: 'Red',
+          provenanceNote: '',
+          authenticityPercent: 80,
+          parts: mintParts({
+            block: { id: 'pi-block-01', partId: 'stock-block', band: 'worn', genuinePeriod: false },
+          }),
+        },
+      ],
+    }
+    const preV28 = { version: 27, gameState: preV28State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV28))
+    const decoded = decodeSave(code)
+    const block = decoded.ownedCars[0]!.parts.block.installed
+    expect(block?.partId).toBe('shitbox-stock-block')
+    // Everything else about the instance survives untouched.
+    expect(block?.id).toBe('pi-block-01')
+    expect(block?.band).toBe('worn')
+  })
+
+  it("a customer-owned loose part tagged to a still-open service job remaps to that job car's class", () => {
+    const preV28State = {
+      ...fullState,
+      partInventory: [
+        {
+          id: 'pi-loose-01',
+          partId: 'stock-block',
+          band: 'mint',
+          genuinePeriod: false,
+          customerJobId: 'job-01',
+        },
+      ],
+      activeServiceJobs: [
+        {
+          id: 'job-01',
+          typeId: 'test-job',
+          customerName: 'Test Customer',
+          description: 'test',
+          tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint', minToolTier: 1 }],
+          car: {
+            id: 'car-customer-01',
+            modelId: 'toyota-supra-rz-jza80',
+            year: 1994,
+            mileageKm: 60_000,
+            color: 'White',
+            provenanceNote: '',
+            authenticityPercent: 85,
+            parts: mintParts(),
+          },
+          payoutYen: 50_000,
+          baseReputation: 1,
+          deadlineDays: 5,
+          expiresOnDay: 10,
+          arrivesOnDay: 2,
+          dueOnDay: 7,
+        },
+      ],
+    }
+    const preV28 = { version: 27, gameState: preV28State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV28))
+    const decoded = decodeSave(code)
+    const loosePart = decoded.partInventory.find((p) => p.id === 'pi-loose-01')
+    // toyota-supra-rz-jza80 is a 'rare' tier model.
+    expect(loosePart?.partId).toBe('rare-stock-block')
+  })
+
+  it('an untagged loose part (no recoverable host car) is left at its pre-v28 (common-class) id', () => {
+    const preV28State = {
+      ...fullState,
+      partInventory: [
+        { id: 'pi-loose-02', partId: 'stock-block', band: 'mint', genuinePeriod: false },
+      ],
+    }
+    const preV28 = { version: 27, gameState: preV28State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV28))
+    const decoded = decodeSave(code)
+    const loosePart = decoded.partInventory.find((p) => p.id === 'pi-loose-02')
+    expect(loosePart?.partId).toBe('stock-block')
   })
 })

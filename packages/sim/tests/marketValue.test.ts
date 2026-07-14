@@ -151,9 +151,12 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
     )
+    // A genuinely missing slot prices at the CAR's own fitment class
+    // (`model.tier` is 'rare' in this fixture) - see `carValuationBillYen`'s
+    // missing-slot branch.
     const expectedDiffYen = Math.round(
       ECONOMY.valuation.valuationPremiumNear *
-        PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen,
+        PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.rare,
     )
     expect(stockValue - missingValue).toBe(expectedDiffYen)
     expect(missingValue).toBeLessThan(stockValue)
@@ -198,8 +201,12 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       parts: mintCarParts({ brakePadsDiscs: 'scrap' }),
     })
 
-    const fiPriceYen = PARTS_TAXONOMY_BY_ID.forcedInduction.stockReplacementPriceYen
-    const brakesPriceYen = PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYen
+    // A scrap INSTALLED part prices at ITS OWN catalog class - the fixture
+    // helper (`mintCarParts`'s string-shorthand override) always builds a
+    // `common`-class stock instance regardless of the host model's own tier.
+    const fiPriceYen = PARTS_TAXONOMY_BY_ID.forcedInduction.stockReplacementPriceYenByClass.common
+    const brakesPriceYen =
+      PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.common
     expect(fiPriceYen).toBeGreaterThan(brakesPriceYen)
 
     const turboValue = marketValueYen(
@@ -283,6 +290,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       brand: 'Tanuki',
       name: 'Street Coilovers',
       carPartId: 'dampers',
+      fitmentClass: 'rare',
       grade: 'street',
       requiredTags: [],
       statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
@@ -373,6 +381,7 @@ describe('installedPartsValueYen', () => {
     brand: 'Tanuki',
     name: 'Street Coilovers',
     carPartId: 'dampers',
+    fitmentClass: 'rare',
     grade: 'street',
     requiredTags: [],
     statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },

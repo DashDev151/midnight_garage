@@ -54,9 +54,11 @@ function planFor(groupId: 'body' | 'engine' | 'suspension') {
   )
 }
 
+// Sprint 53: `car` (honda-city-e-aa) is 'shitbox' tier - the fitment-class
+// gate refuses a mismatched-class spare part.
 const sparePart: PartInstance = {
   id: 'pi-0001',
-  partId: 'tanuki-street-coilovers',
+  partId: 'shitbox-tanuki-street-coilovers',
   band: 'mint',
   genuinePeriod: false,
 }

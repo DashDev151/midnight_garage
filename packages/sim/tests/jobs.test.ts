@@ -67,9 +67,13 @@ const car: CarInstance = buildCarInstance({
  * predict the exact same charge. */
 const REPAIR_STEP_FRACTION = CONTEXT.economy.restoration.repairStepFraction
 
+// Sprint 53: `car` (honda-city-e-aa) is 'shitbox' tier - every fitting
+// catalog part in this file's fixtures must be the shitbox-class SKU, or
+// the new fitment-class check refuses it before any of these tests' own
+// gates are ever reached.
 const sparePart: PartInstance = {
   id: 'pi-0001',
-  partId: 'tanuki-street-coilovers',
+  partId: 'shitbox-tanuki-street-coilovers',
   band: 'mint',
   genuinePeriod: false,
 }
@@ -557,7 +561,13 @@ describe('findOrCreateJob (Sprint 11)', () => {
         ...car,
         parts: { ...car.parts, forcedInduction: { installed: null } },
       }
-      const turboKit = PARTS.find((p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock')!
+      // Sprint 53: naCar (honda-city-e-aa) is 'shitbox' tier - the turbo kit
+      // must be the shitbox-class SKU or the new fitment check refuses it
+      // before ever reaching the tool-tier gate this test is about.
+      const turboKit = PARTS.find(
+        (p) =>
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      )!
       const turboInstance: PartInstance = {
         id: 'pi-turbo',
         partId: turboKit.id,
@@ -959,7 +969,9 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const revertedSlot = result.state.ownedCars[0]?.parts.dampers.installed
     expect(revertedSlot).not.toBeNull()
     expect(revertedSlot?.id).not.toBe(aftermarketInstance.id)
-    expect(revertedSlot?.partId).toBe('stock-dampers')
+    // Sprint 53: the fresh stock part matches the CAR's own fitment class -
+    // honda-city-e-aa (the module-level `car` fixture) is 'shitbox' tier.
+    expect(revertedSlot?.partId).toBe('shitbox-stock-dampers')
     expect(revertedSlot?.band).toBe('mint')
 
     expect(result.state.partInventory).toEqual([aftermarketInstance])

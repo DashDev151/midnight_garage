@@ -1,13 +1,14 @@
-import type {
-  CarInstance,
-  CarModel,
-  CarPartId,
-  ComponentId,
-  ConditionBand,
-  DayLogEntry,
-  GameState,
-  Job,
-  PartInstance,
+import {
+  fitmentClassForTier,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type ComponentId,
+  type ConditionBand,
+  type DayLogEntry,
+  type GameState,
+  type Job,
+  type PartInstance,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 import {
@@ -300,9 +301,11 @@ export function resolveRemovePart(
   )
   if (busy) return { state, log: [] }
 
+  const model = context.modelsById[car.modelId]
+  const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
   const removedCatalogPart = context.partsById[installed.partId]
   const isStock = removedCatalogPart?.grade === 'stock'
-  const stockCatalogPart = context.stockPartByCarPartId[carPartId]
+  const stockCatalogPart = context.stockPartByCarPartId[fitmentClass]?.[carPartId]
   const freshStockInstance: PartInstance | null = stockCatalogPart
     ? {
         id: `part-removed-${state.day}-${state.partInventory.length}`,

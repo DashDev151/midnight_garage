@@ -9,16 +9,20 @@ import {
   BuyersSchema,
   CarModelsSchema,
   CarPartIdSchema,
-  CarPartTaxonomySchema,
+  CarPartTaxonomyContentSchema,
   EconomyConfigSchema,
-  PartsSchema,
+  GradeSchema,
+  PART_FITMENT_CLASS_DISPLAY_NAMES,
+  PartCatalogEntriesSchema,
+  PARTS,
+  PARTS_TAXONOMY,
   ServiceJobTypesSchema,
-  type Part,
+  type PartCatalogEntry,
   type RarityTier,
 } from '../src'
 
-const PARTS_TAXONOMY = CarPartTaxonomySchema.parse(partsTaxonomy)
-const GROUP_BY_PART_ID = new Map(PARTS_TAXONOMY.map((entry) => [entry.id, entry.group]))
+const TAXONOMY_CONTENT = CarPartTaxonomyContentSchema.parse(partsTaxonomy)
+const GROUP_BY_PART_ID = new Map(TAXONOMY_CONTENT.map((entry) => [entry.id, entry.group]))
 
 describe('referential integrity', () => {
   it('every buyer statWeights covers exactly the five derived stats', () => {
@@ -59,7 +63,7 @@ describe('referential integrity', () => {
    * specific taxonomy part (`rims`), not the old flat `wheels` component.
    */
   it('the former wheelsInterior parts landed on the correct real part', () => {
-    const parsedParts = PartsSchema.parse(parts)
+    const parsedParts = PartCatalogEntriesSchema.parse(parts)
     const byId = Object.fromEntries(parsedParts.map((p) => [p.id, p]))
     expect(byId['ronin-street-alloys']?.carPartId).toBe('rims')
     expect(byId['vulk-ve37']?.carPartId).toBe('rims')
@@ -136,7 +140,7 @@ describe('referential integrity', () => {
    */
   it('every real car part has a catalog part addressed to it that fits at least one roster car (Sprint 28)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
-    const parsedParts = PartsSchema.parse(parts)
+    const parsedParts = PartCatalogEntriesSchema.parse(parts)
     for (const carPartId of CarPartIdSchema.options) {
       const candidates = parsedParts.filter((p) => p.carPartId === carPartId)
       expect(candidates.length, `no catalog part addresses "${carPartId}"`).toBeGreaterThan(0)
@@ -159,7 +163,7 @@ describe('referential integrity', () => {
    */
   it('every Rotary-tagged roster car has a fitting catalog part for every real engine-group part', () => {
     const parsedCars = CarModelsSchema.parse(cars)
-    const parsedParts = PartsSchema.parse(parts)
+    const parsedParts = PartCatalogEntriesSchema.parse(parts)
     const rotaryCars = parsedCars.filter((c) => c.tags.includes('Rotary'))
     expect(rotaryCars.length, 'no Rotary-tagged car in the roster to test against').toBeGreaterThan(
       0,
@@ -194,7 +198,7 @@ describe('referential integrity', () => {
    */
   it('at least one forced-induction kit and one underglow kit fit an NA Piston roster car', () => {
     const parsedCars = CarModelsSchema.parse(cars)
-    const parsedParts = PartsSchema.parse(parts)
+    const parsedParts = PartCatalogEntriesSchema.parse(parts)
     const naPistonCar = parsedCars.find(
       (c) =>
         c.tags.includes('NA') &&
@@ -203,7 +207,7 @@ describe('referential integrity', () => {
         !c.tags.includes('Supercharged'),
     )
     expect(naPistonCar, 'no NA Piston car in the roster to test against').toBeDefined()
-    const fitsNaCar = (part: Part) =>
+    const fitsNaCar = (part: PartCatalogEntry) =>
       part.requiredTags.every((tag) => naPistonCar!.tags.includes(tag))
 
     const forcedInductionKits = parsedParts.filter(
@@ -234,25 +238,61 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 44: repair cost derives from the INSTALLED instance's own catalog
-   * `priceYen`, and the flat replacement price (scrap, a missing slot, a
-   * non-repairable consumable) is the taxonomy's `stockReplacementPriceYen` -
-   * these two numbers are meant to describe the same real-world price for a
-   * stock part, so they must never drift apart. This is the guard that would
-   * catch a rebase touching one file and not the other.
+   * Sprint 53 (economy-bible.md law 3): repair cost derives from the
+   * INSTALLED instance's own resolved `priceYen`, and the flat replacement
+   * price (scrap, a missing slot, a non-repairable consumable) is the
+   * taxonomy's `stockReplacementPriceYenByClass` - these two numbers are
+   * DERIVED from the same resolved catalog (data.ts), so they can never
+   * hand-drift apart the way two independently authored numbers could; this
+   * guards the derivation wiring itself (a refactor that breaks the link
+   * between `PARTS` and `PARTS_TAXONOMY` would still be caught here).
    */
-  it("every stock-grade catalog part's price matches its taxonomy entry's stockReplacementPriceYen", () => {
-    const parsedParts = PartsSchema.parse(parts)
-    const parsedTaxonomy = CarPartTaxonomySchema.parse(partsTaxonomy)
-    const taxonomyById = new Map(parsedTaxonomy.map((entry) => [entry.id, entry]))
-    for (const part of parsedParts) {
+  it("every stock-grade catalog part's resolved price matches its taxonomy entry's per-class stock-replacement price", () => {
+    for (const part of PARTS) {
       if (part.grade !== 'stock') continue
-      const entry = taxonomyById.get(part.carPartId)
+      const entry = PARTS_TAXONOMY.find((e) => e.id === part.carPartId)
       expect(entry, `${part.id} addresses unknown taxonomy id ${part.carPartId}`).toBeDefined()
       expect(
         part.priceYen,
-        `${part.id} (stock, ${part.carPartId}) priceYen does not match its taxonomy entry's stockReplacementPriceYen`,
-      ).toBe(entry!.stockReplacementPriceYen)
+        `${part.id} (stock, ${part.carPartId}, ${part.fitmentClass}) priceYen does not match its taxonomy entry's per-class stock-replacement price`,
+      ).toBe(entry!.stockReplacementPriceYenByClass[part.fitmentClass])
+    }
+  })
+
+  /**
+   * Sprint 53 Definition of Done: every component slot ships 16 real store
+   * SKUs (4 fitment classes x 4 grades) - real, separately named catalog
+   * entries, never a single part with a runtime price switch. Guards both
+   * directions: nothing missing, nothing accidentally duplicated.
+   */
+  it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
+    const FITMENT_CLASSES = ['shitbox', 'common', 'uncommon', 'rare'] as const
+    for (const carPartId of CarPartIdSchema.options) {
+      for (const fitmentClass of FITMENT_CLASSES) {
+        for (const grade of GradeSchema.options) {
+          const candidates = PARTS.filter(
+            (p) =>
+              p.carPartId === carPartId && p.fitmentClass === fitmentClass && p.grade === grade,
+          )
+          expect(
+            candidates.length,
+            `expected exactly 1 SKU for ${carPartId}/${fitmentClass}/${grade}, found ${candidates.length}`,
+          ).toBe(1)
+        }
+      }
+    }
+  })
+
+  /**
+   * Sprint 53: the diegetic class names never leak a raw fitment-class
+   * identifier back at the player (mirrors the Sprint 25 component-display-
+   * name law's own guard).
+   */
+  it('every fitment class has a real display name, never the raw identifier', () => {
+    for (const fitmentClass of ['shitbox', 'common', 'uncommon', 'rare'] as const) {
+      const label = PART_FITMENT_CLASS_DISPLAY_NAMES[fitmentClass]
+      expect(label, `${fitmentClass} has no display name`).toBeTruthy()
+      expect(label).not.toBe(fitmentClass)
     }
   })
 

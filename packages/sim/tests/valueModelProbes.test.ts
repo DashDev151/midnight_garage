@@ -4,6 +4,7 @@ import {
   CARS,
   ComponentIdSchema,
   ECONOMY,
+  fitmentClassForTier,
   PARTS,
   PARTS_TAXONOMY,
   type AuctionLot,
@@ -115,6 +116,7 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
  * absent either way.
  */
 function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
+  const fitmentClass = fitmentClassForTier(model.tier)
   const parts = { ...car.parts }
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = parts[partId].installed
@@ -123,7 +125,7 @@ function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
       continue
     }
     if (partId === 'forcedInduction' && !hasForcedInduction(model)) continue // legitimately absent
-    const stockPart = CONTEXT.stockPartByCarPartId[partId]
+    const stockPart = CONTEXT.stockPartByCarPartId[fitmentClass][partId]
     parts[partId] = {
       installed: stockPart
         ? {

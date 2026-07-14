@@ -4,6 +4,7 @@ import cars from '../data/cars.json'
 import componentDisplayNames from '../data/componentDisplayNames.json'
 import economy from '../data/economy.json'
 import facilities from '../data/facilities.json'
+import partPricing from '../data/partPricing.json'
 import parts from '../data/parts.json'
 import partsTaxonomy from '../data/parts-taxonomy.json'
 import toolLines from '../data/toolLines.json'
@@ -11,12 +12,13 @@ import traits from '../data/traits.json'
 import {
   BuyersSchema,
   CarModelsSchema,
-  CarPartTaxonomySchema,
+  CarPartTaxonomyContentSchema,
   ComponentDisplayNamesSchema,
   ComponentIdSchema,
   EconomyConfigSchema,
   FacilitiesSchema,
-  PartsSchema,
+  PartCatalogEntriesSchema,
+  PartPricingSheetSchema,
   ToolLinesSchema,
   TraitDefinitionsSchema,
 } from '../src'
@@ -28,10 +30,19 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
+  /** Sprint 53: the raw catalog is identity-only, no `priceYen` - that's
+   * resolved at content-load time (data.ts) from `partPricing.json`. */
   it('parts.json', () => {
-    const result = PartsSchema.safeParse(parts)
+    const result = PartCatalogEntriesSchema.safeParse(parts)
     if (!result.success) throw new Error(result.error.message)
     expect(result.data.length).toBeGreaterThan(0)
+  })
+
+  /** Sprint 53: the centralised pricing sheet every SKU's price resolves from. */
+  it('partPricing.json', () => {
+    const result = PartPricingSheetSchema.safeParse(partPricing)
+    if (!result.success) throw new Error(result.error.message)
+    expect(result.data.overrides).toEqual({})
   })
 
   it('buyers.json', () => {
@@ -40,10 +51,14 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
-  /** Sprint 26: the 29-part taxonomy replaces hidden-issues.json (archived,
-   * not deleted - the paused feature's data, not this sprint's schema). */
+  /**
+   * Sprint 26: the 29-part taxonomy replaces hidden-issues.json (archived,
+   * not deleted - the paused feature's data, not this sprint's schema).
+   * Sprint 53: the raw content has no price field - `stockReplacementPriceYenByClass`
+   * is derived at content-load time (data.ts) from the resolved parts catalog.
+   */
   it('parts-taxonomy.json', () => {
-    const result = CarPartTaxonomySchema.safeParse(partsTaxonomy)
+    const result = CarPartTaxonomyContentSchema.safeParse(partsTaxonomy)
     if (!result.success) throw new Error(result.error.message)
     expect(result.data.length).toBe(29)
   })
@@ -189,7 +204,7 @@ describe('seed content ids are unique', () => {
   })
 
   it('part ids', () => {
-    const ids = PartsSchema.parse(parts).map((p) => p.id)
+    const ids = PartCatalogEntriesSchema.parse(parts).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
@@ -199,7 +214,7 @@ describe('seed content ids are unique', () => {
   })
 
   it('parts-taxonomy ids cover exactly the 29 real parts, no duplicates', () => {
-    const ids = CarPartTaxonomySchema.parse(partsTaxonomy).map((p) => p.id)
+    const ids = CarPartTaxonomyContentSchema.parse(partsTaxonomy).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.length).toBe(29)
   })

@@ -13,7 +13,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 160000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-block",
+    "brand": "OEM",
+    "name": "Stock Block",
+    "carPartId": "block",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-block",
+    "brand": "OEM",
+    "name": "Stock Block",
+    "carPartId": "block",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-block",
+    "brand": "OEM",
+    "name": "Stock Block",
+    "carPartId": "block",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "hagane-stroker-kit",
@@ -29,7 +77,55 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 224000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-hagane-stroker-kit",
+    "brand": "Hagane",
+    "name": "Stroker Kit",
+    "carPartId": "block",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-hagane-stroker-kit",
+    "brand": "Hagane",
+    "name": "Stroker Kit",
+    "carPartId": "block",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-hagane-stroker-kit",
+    "brand": "Hagane",
+    "name": "Stroker Kit",
+    "carPartId": "block",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "hagane-sport-block",
@@ -45,7 +141,55 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "priceYen": 320000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-hagane-sport-block",
+    "brand": "Hagane",
+    "name": "Sport Block Kit",
+    "carPartId": "block",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-hagane-sport-block",
+    "brand": "Hagane",
+    "name": "Sport Block Kit",
+    "carPartId": "block",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-hagane-sport-block",
+    "brand": "Hagane",
+    "name": "Sport Block Kit",
+    "carPartId": "block",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "hagane-race-block",
@@ -61,7 +205,55 @@
       "reliability": -14,
       "authenticity": 0
     },
-    "priceYen": 453000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-hagane-race-block",
+    "brand": "Hagane",
+    "name": "Forged Race Block",
+    "carPartId": "block",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 32,
+      "handling": 0,
+      "style": 0,
+      "reliability": -14,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-hagane-race-block",
+    "brand": "Hagane",
+    "name": "Forged Race Block",
+    "carPartId": "block",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 32,
+      "handling": 0,
+      "style": 0,
+      "reliability": -14,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-hagane-race-block",
+    "brand": "Hagane",
+    "name": "Forged Race Block",
+    "carPartId": "block",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 32,
+      "handling": 0,
+      "style": 0,
+      "reliability": -14,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-internals",
@@ -77,7 +269,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 90000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-internals",
+    "brand": "OEM",
+    "name": "Stock Internals",
+    "carPartId": "internals",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-internals",
+    "brand": "OEM",
+    "name": "Stock Internals",
+    "carPartId": "internals",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-internals",
+    "brand": "OEM",
+    "name": "Stock Internals",
+    "carPartId": "internals",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "oni-forged-piston-kit",
@@ -93,7 +333,55 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 127000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-oni-forged-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Forged Piston Kit",
+    "carPartId": "internals",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-oni-forged-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Forged Piston Kit",
+    "carPartId": "internals",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-oni-forged-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Forged Piston Kit",
+    "carPartId": "internals",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "khs-sport-internals",
@@ -109,7 +397,55 @@
       "reliability": -7,
       "authenticity": 0
     },
-    "priceYen": 172000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-khs-sport-internals",
+    "brand": "KHS",
+    "name": "Sport Internals",
+    "carPartId": "internals",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 18,
+      "handling": 0,
+      "style": 0,
+      "reliability": -7,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-khs-sport-internals",
+    "brand": "KHS",
+    "name": "Sport Internals",
+    "carPartId": "internals",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 18,
+      "handling": 0,
+      "style": 0,
+      "reliability": -7,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-khs-sport-internals",
+    "brand": "KHS",
+    "name": "Sport Internals",
+    "carPartId": "internals",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 18,
+      "handling": 0,
+      "style": 0,
+      "reliability": -7,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "oni-race-piston-kit",
@@ -125,7 +461,55 @@
       "reliability": -12,
       "authenticity": 0
     },
-    "priceYen": 266000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-oni-race-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Race Piston Kit",
+    "carPartId": "internals",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 26,
+      "handling": 0,
+      "style": 0,
+      "reliability": -12,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-oni-race-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Race Piston Kit",
+    "carPartId": "internals",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 26,
+      "handling": 0,
+      "style": 0,
+      "reliability": -12,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-oni-race-piston-kit",
+    "brand": "Oni Motorsports",
+    "name": "Race Piston Kit",
+    "carPartId": "internals",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 26,
+      "handling": 0,
+      "style": 0,
+      "reliability": -12,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-head-valvetrain",
@@ -141,7 +525,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 70000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-head-valvetrain",
+    "brand": "OEM",
+    "name": "Stock Head & Valvetrain",
+    "carPartId": "headValvetrain",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-head-valvetrain",
+    "brand": "OEM",
+    "name": "Stock Head & Valvetrain",
+    "carPartId": "headValvetrain",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-head-valvetrain",
+    "brand": "OEM",
+    "name": "Stock Head & Valvetrain",
+    "carPartId": "headValvetrain",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "genbu-ported-head-kit",
@@ -157,7 +589,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 91000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-genbu-ported-head-kit",
+    "brand": "Genbu",
+    "name": "Ported Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-genbu-ported-head-kit",
+    "brand": "Genbu",
+    "name": "Ported Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-genbu-ported-head-kit",
+    "brand": "Genbu",
+    "name": "Ported Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "genbu-sport-head-kit",
@@ -173,7 +653,55 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "priceYen": 140000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-genbu-sport-head-kit",
+    "brand": "Genbu",
+    "name": "Sport Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-genbu-sport-head-kit",
+    "brand": "Genbu",
+    "name": "Sport Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-genbu-sport-head-kit",
+    "brand": "Genbu",
+    "name": "Sport Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 14,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "genbu-race-head-kit",
@@ -189,7 +717,55 @@
       "reliability": -10,
       "authenticity": 0
     },
-    "priceYen": 196000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-genbu-race-head-kit",
+    "brand": "Genbu",
+    "name": "Race Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -10,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-genbu-race-head-kit",
+    "brand": "Genbu",
+    "name": "Race Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -10,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-genbu-race-head-kit",
+    "brand": "Genbu",
+    "name": "Race Head Kit",
+    "carPartId": "headValvetrain",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -10,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-cams-timing",
@@ -205,7 +781,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 30000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-cams-timing",
+    "brand": "OEM",
+    "name": "Stock Cams & Timing",
+    "carPartId": "camsTiming",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-cams-timing",
+    "brand": "OEM",
+    "name": "Stock Cams & Timing",
+    "carPartId": "camsTiming",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-cams-timing",
+    "brand": "OEM",
+    "name": "Stock Cams & Timing",
+    "carPartId": "camsTiming",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "raiden-street-cams",
@@ -221,7 +845,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 42000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-raiden-street-cams",
+    "brand": "Raiden",
+    "name": "Street Cams",
+    "carPartId": "camsTiming",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-raiden-street-cams",
+    "brand": "Raiden",
+    "name": "Street Cams",
+    "carPartId": "camsTiming",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-raiden-street-cams",
+    "brand": "Raiden",
+    "name": "Street Cams",
+    "carPartId": "camsTiming",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "raiden-sport-cams",
@@ -237,7 +909,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 64000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-raiden-sport-cams",
+    "brand": "Raiden",
+    "name": "Sport Cams",
+    "carPartId": "camsTiming",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-raiden-sport-cams",
+    "brand": "Raiden",
+    "name": "Sport Cams",
+    "carPartId": "camsTiming",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-raiden-sport-cams",
+    "brand": "Raiden",
+    "name": "Sport Cams",
+    "carPartId": "camsTiming",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "raiden-race-cams",
@@ -253,7 +973,55 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "priceYen": 86000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-raiden-race-cams",
+    "brand": "Raiden",
+    "name": "Race Cams",
+    "carPartId": "camsTiming",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-raiden-race-cams",
+    "brand": "Raiden",
+    "name": "Race Cams",
+    "carPartId": "camsTiming",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-raiden-race-cams",
+    "brand": "Raiden",
+    "name": "Race Cams",
+    "carPartId": "camsTiming",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 22,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-intake",
@@ -269,7 +1037,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 15000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-intake",
+    "brand": "OEM",
+    "name": "Stock Intake",
+    "carPartId": "intake",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-intake",
+    "brand": "OEM",
+    "name": "Stock Intake",
+    "carPartId": "intake",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-intake",
+    "brand": "OEM",
+    "name": "Stock Intake",
+    "carPartId": "intake",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "fubuki-cold-air-kit",
@@ -285,7 +1101,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 21000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-fubuki-cold-air-kit",
+    "brand": "Fubuki",
+    "name": "Cold Air Intake Kit",
+    "carPartId": "intake",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-fubuki-cold-air-kit",
+    "brand": "Fubuki",
+    "name": "Cold Air Intake Kit",
+    "carPartId": "intake",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-fubuki-cold-air-kit",
+    "brand": "Fubuki",
+    "name": "Cold Air Intake Kit",
+    "carPartId": "intake",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "fubuki-sport-intake-kit",
@@ -301,7 +1165,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 31000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-fubuki-sport-intake-kit",
+    "brand": "Fubuki",
+    "name": "Sport Intake Kit",
+    "carPartId": "intake",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-fubuki-sport-intake-kit",
+    "brand": "Fubuki",
+    "name": "Sport Intake Kit",
+    "carPartId": "intake",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-fubuki-sport-intake-kit",
+    "brand": "Fubuki",
+    "name": "Sport Intake Kit",
+    "carPartId": "intake",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 8,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "fubuki-velocity-stack-kit",
@@ -317,7 +1229,55 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 42000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-fubuki-velocity-stack-kit",
+    "brand": "Fubuki",
+    "name": "Velocity Stack Kit",
+    "carPartId": "intake",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 12,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-fubuki-velocity-stack-kit",
+    "brand": "Fubuki",
+    "name": "Velocity Stack Kit",
+    "carPartId": "intake",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 12,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-fubuki-velocity-stack-kit",
+    "brand": "Fubuki",
+    "name": "Velocity Stack Kit",
+    "carPartId": "intake",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 12,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-exhaust",
@@ -333,7 +1293,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 25000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-exhaust",
+    "brand": "OEM",
+    "name": "Stock Exhaust",
+    "carPartId": "exhaust",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-exhaust",
+    "brand": "OEM",
+    "name": "Stock Exhaust",
+    "carPartId": "exhaust",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-exhaust",
+    "brand": "OEM",
+    "name": "Stock Exhaust",
+    "carPartId": "exhaust",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "suzaku-street-catback",
@@ -349,7 +1357,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 33000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-suzaku-street-catback",
+    "brand": "Suzaku",
+    "name": "Street Catback",
+    "carPartId": "exhaust",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-suzaku-street-catback",
+    "brand": "Suzaku",
+    "name": "Street Catback",
+    "carPartId": "exhaust",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-suzaku-street-catback",
+    "brand": "Suzaku",
+    "name": "Street Catback",
+    "carPartId": "exhaust",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "suzaku-sport-catback",
@@ -365,7 +1421,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 51000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-suzaku-sport-catback",
+    "brand": "Suzaku",
+    "name": "Sport Catback",
+    "carPartId": "exhaust",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-suzaku-sport-catback",
+    "brand": "Suzaku",
+    "name": "Sport Catback",
+    "carPartId": "exhaust",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-suzaku-sport-catback",
+    "brand": "Suzaku",
+    "name": "Sport Catback",
+    "carPartId": "exhaust",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 9,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "suzaku-race-header-kit",
@@ -381,7 +1485,55 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 72000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-suzaku-race-header-kit",
+    "brand": "Suzaku",
+    "name": "Race Header Kit",
+    "carPartId": "exhaust",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 13,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-suzaku-race-header-kit",
+    "brand": "Suzaku",
+    "name": "Race Header Kit",
+    "carPartId": "exhaust",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 13,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-suzaku-race-header-kit",
+    "brand": "Suzaku",
+    "name": "Race Header Kit",
+    "carPartId": "exhaust",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 13,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-fuel-system",
@@ -397,7 +1549,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 18000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-fuel-system",
+    "brand": "OEM",
+    "name": "Stock Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-fuel-system",
+    "brand": "OEM",
+    "name": "Stock Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-fuel-system",
+    "brand": "OEM",
+    "name": "Stock Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "koi-street-injector-kit",
@@ -413,7 +1613,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 25000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-koi-street-injector-kit",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Street Injector Kit",
+    "carPartId": "fuelSystem",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 4,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-koi-street-injector-kit",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Street Injector Kit",
+    "carPartId": "fuelSystem",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 4,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-koi-street-injector-kit",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Street Injector Kit",
+    "carPartId": "fuelSystem",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 4,
+      "handling": 0,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "koi-sport-fuel-system",
@@ -429,7 +1677,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 38000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-koi-sport-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Sport Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 7,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-koi-sport-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Sport Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 7,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-koi-sport-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Sport Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 7,
+      "handling": 0,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "koi-race-fuel-system",
@@ -445,7 +1741,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 53000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-koi-race-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Race Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 11,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-koi-race-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Race Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 11,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-koi-race-fuel-system",
+    "brand": "Koi Fuel Dynamics",
+    "name": "Race Fuel System",
+    "carPartId": "fuelSystem",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 11,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-ignition-ecu",
@@ -461,7 +1805,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 20000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-ignition-ecu",
+    "brand": "OEM",
+    "name": "Stock Ignition & ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-ignition-ecu",
+    "brand": "OEM",
+    "name": "Stock Ignition & ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-ignition-ecu",
+    "brand": "OEM",
+    "name": "Stock Ignition & ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "khs-street-ecu",
@@ -477,7 +1869,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 23000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-khs-street-ecu",
+    "brand": "KHS",
+    "name": "Street ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-khs-street-ecu",
+    "brand": "KHS",
+    "name": "Street ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-khs-street-ecu",
+    "brand": "KHS",
+    "name": "Street ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 5,
+      "handling": 0,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "khs-sport-ecu",
@@ -493,7 +1933,55 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 38000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-khs-sport-ecu",
+    "brand": "KHS",
+    "name": "Sport ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-khs-sport-ecu",
+    "brand": "KHS",
+    "name": "Sport ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-khs-sport-ecu",
+    "brand": "KHS",
+    "name": "Sport ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 10,
+      "handling": 0,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "khs-race-ecu",
@@ -509,7 +1997,55 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "priceYen": 60000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-khs-race-ecu",
+    "brand": "KHS",
+    "name": "Race ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-khs-race-ecu",
+    "brand": "KHS",
+    "name": "Race ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-khs-race-ecu",
+    "brand": "KHS",
+    "name": "Race ECU",
+    "carPartId": "ignitionEcu",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 16,
+      "handling": 0,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-cooling",
@@ -525,7 +2061,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 14000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-cooling",
+    "brand": "OEM",
+    "name": "Stock Cooling",
+    "carPartId": "cooling",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-cooling",
+    "brand": "OEM",
+    "name": "Stock Cooling",
+    "carPartId": "cooling",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-cooling",
+    "brand": "OEM",
+    "name": "Stock Cooling",
+    "carPartId": "cooling",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "suiko-street-radiator",
@@ -541,7 +2125,55 @@
       "reliability": 8,
       "authenticity": 0
     },
-    "priceYen": 20000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-suiko-street-radiator",
+    "brand": "Suiko",
+    "name": "Sport Radiator",
+    "carPartId": "cooling",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 8,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-suiko-street-radiator",
+    "brand": "Suiko",
+    "name": "Sport Radiator",
+    "carPartId": "cooling",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 8,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-suiko-street-radiator",
+    "brand": "Suiko",
+    "name": "Sport Radiator",
+    "carPartId": "cooling",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 8,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "suiko-track-radiator-kit",
@@ -557,7 +2189,55 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "priceYen": 30000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-suiko-track-radiator-kit",
+    "brand": "Suiko",
+    "name": "Track Radiator Kit",
+    "carPartId": "cooling",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-suiko-track-radiator-kit",
+    "brand": "Suiko",
+    "name": "Track Radiator Kit",
+    "carPartId": "cooling",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-suiko-track-radiator-kit",
+    "brand": "Suiko",
+    "name": "Track Radiator Kit",
+    "carPartId": "cooling",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "suiko-race-cooling-kit",
@@ -573,7 +2253,55 @@
       "reliability": 16,
       "authenticity": 0
     },
-    "priceYen": 44000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-suiko-race-cooling-kit",
+    "brand": "Suiko",
+    "name": "Race Cooling Kit",
+    "carPartId": "cooling",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 16,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-suiko-race-cooling-kit",
+    "brand": "Suiko",
+    "name": "Race Cooling Kit",
+    "carPartId": "cooling",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 16,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-suiko-race-cooling-kit",
+    "brand": "Suiko",
+    "name": "Race Cooling Kit",
+    "carPartId": "cooling",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 16,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-forced-induction",
@@ -589,7 +2317,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 90000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-forced-induction",
+    "brand": "OEM",
+    "name": "Stock Forced Induction",
+    "carPartId": "forcedInduction",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-forced-induction",
+    "brand": "OEM",
+    "name": "Stock Forced Induction",
+    "carPartId": "forcedInduction",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-forced-induction",
+    "brand": "OEM",
+    "name": "Stock Forced Induction",
+    "carPartId": "forcedInduction",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kaze-bolton-turbo",
@@ -605,7 +2381,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 103000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kaze-bolton-turbo",
+    "brand": "Kaze",
+    "name": "Bolt-On Turbo",
+    "carPartId": "forcedInduction",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kaze-bolton-turbo",
+    "brand": "Kaze",
+    "name": "Bolt-On Turbo",
+    "carPartId": "forcedInduction",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kaze-bolton-turbo",
+    "brand": "Kaze",
+    "name": "Bolt-On Turbo",
+    "carPartId": "forcedInduction",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 20,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "khs-tr-350",
@@ -621,7 +2445,55 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "priceYen": 160000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-khs-tr-350",
+    "brand": "KHS",
+    "name": "TR-350 Turbo Kit",
+    "carPartId": "forcedInduction",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 30,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-khs-tr-350",
+    "brand": "KHS",
+    "name": "TR-350 Turbo Kit",
+    "carPartId": "forcedInduction",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 30,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-khs-tr-350",
+    "brand": "KHS",
+    "name": "TR-350 Turbo Kit",
+    "carPartId": "forcedInduction",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 30,
+      "handling": 0,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "khs-tr-500",
@@ -637,7 +2509,55 @@
       "reliability": -15,
       "authenticity": 0
     },
-    "priceYen": 260000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-khs-tr-500",
+    "brand": "KHS",
+    "name": "TR-500 Turbo Kit",
+    "carPartId": "forcedInduction",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 45,
+      "handling": 0,
+      "style": 0,
+      "reliability": -15,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-khs-tr-500",
+    "brand": "KHS",
+    "name": "TR-500 Turbo Kit",
+    "carPartId": "forcedInduction",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 45,
+      "handling": 0,
+      "style": 0,
+      "reliability": -15,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-khs-tr-500",
+    "brand": "KHS",
+    "name": "TR-500 Turbo Kit",
+    "carPartId": "forcedInduction",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 45,
+      "handling": 0,
+      "style": 0,
+      "reliability": -15,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-gearbox",
@@ -653,7 +2573,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 110000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-gearbox",
+    "brand": "OEM",
+    "name": "Stock Gearbox",
+    "carPartId": "gearbox",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-gearbox",
+    "brand": "OEM",
+    "name": "Stock Gearbox",
+    "carPartId": "gearbox",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-gearbox",
+    "brand": "OEM",
+    "name": "Stock Gearbox",
+    "carPartId": "gearbox",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "ittou-close-ratio-kit",
@@ -669,7 +2637,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 150000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-ittou-close-ratio-kit",
+    "brand": "Ittou",
+    "name": "Close-Ratio Kit",
+    "carPartId": "gearbox",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-ittou-close-ratio-kit",
+    "brand": "Ittou",
+    "name": "Close-Ratio Kit",
+    "carPartId": "gearbox",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-ittou-close-ratio-kit",
+    "brand": "Ittou",
+    "name": "Close-Ratio Kit",
+    "carPartId": "gearbox",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "ittou-sport-gearset",
@@ -685,7 +2701,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 202000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-ittou-sport-gearset",
+    "brand": "Ittou",
+    "name": "Sport Gearset",
+    "carPartId": "gearbox",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-ittou-sport-gearset",
+    "brand": "Ittou",
+    "name": "Sport Gearset",
+    "carPartId": "gearbox",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-ittou-sport-gearset",
+    "brand": "Ittou",
+    "name": "Sport Gearset",
+    "carPartId": "gearbox",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "ittou-sequential-dogbox",
@@ -701,7 +2765,55 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "priceYen": 273000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-ittou-sequential-dogbox",
+    "brand": "Ittou",
+    "name": "Sequential Dogbox",
+    "carPartId": "gearbox",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 14,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-ittou-sequential-dogbox",
+    "brand": "Ittou",
+    "name": "Sequential Dogbox",
+    "carPartId": "gearbox",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 14,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-ittou-sequential-dogbox",
+    "brand": "Ittou",
+    "name": "Sequential Dogbox",
+    "carPartId": "gearbox",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 14,
+      "style": 0,
+      "reliability": -9,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-clutch",
@@ -717,7 +2829,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 28000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-clutch",
+    "brand": "OEM",
+    "name": "Stock Clutch",
+    "carPartId": "clutch",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-clutch",
+    "brand": "OEM",
+    "name": "Stock Clutch",
+    "carPartId": "clutch",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-clutch",
+    "brand": "OEM",
+    "name": "Stock Clutch",
+    "carPartId": "clutch",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "katana-street-clutch",
@@ -733,7 +2893,55 @@
       "reliability": 5,
       "authenticity": 0
     },
-    "priceYen": 32000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-katana-street-clutch",
+    "brand": "Katana",
+    "name": "Street Clutch",
+    "carPartId": "clutch",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-katana-street-clutch",
+    "brand": "Katana",
+    "name": "Street Clutch",
+    "carPartId": "clutch",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-katana-street-clutch",
+    "brand": "Katana",
+    "name": "Street Clutch",
+    "carPartId": "clutch",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "katana-sport-clutch",
@@ -749,7 +2957,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 56000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-katana-sport-clutch",
+    "brand": "Katana",
+    "name": "Sport Clutch",
+    "carPartId": "clutch",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 2,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-katana-sport-clutch",
+    "brand": "Katana",
+    "name": "Sport Clutch",
+    "carPartId": "clutch",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 2,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-katana-sport-clutch",
+    "brand": "Katana",
+    "name": "Sport Clutch",
+    "carPartId": "clutch",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 2,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "katana-race-clutch",
@@ -765,7 +3021,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 82000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-katana-race-clutch",
+    "brand": "Katana",
+    "name": "Race Clutch",
+    "carPartId": "clutch",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 3,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-katana-race-clutch",
+    "brand": "Katana",
+    "name": "Race Clutch",
+    "carPartId": "clutch",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 3,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-katana-race-clutch",
+    "brand": "Katana",
+    "name": "Race Clutch",
+    "carPartId": "clutch",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 3,
+      "handling": 0,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-differential",
@@ -781,7 +3085,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 55000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-differential",
+    "brand": "OEM",
+    "name": "Stock Differential",
+    "carPartId": "differential",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-differential",
+    "brand": "OEM",
+    "name": "Stock Differential",
+    "carPartId": "differential",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-differential",
+    "brand": "OEM",
+    "name": "Stock Differential",
+    "carPartId": "differential",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tsuru-street-lsd",
@@ -797,7 +3149,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 71000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tsuru-street-lsd",
+    "brand": "Tsuru",
+    "name": "Street LSD",
+    "carPartId": "differential",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tsuru-street-lsd",
+    "brand": "Tsuru",
+    "name": "Street LSD",
+    "carPartId": "differential",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tsuru-street-lsd",
+    "brand": "Tsuru",
+    "name": "Street LSD",
+    "carPartId": "differential",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 6,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tsuru-2way-lsd",
@@ -813,7 +3213,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 105000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tsuru-2way-lsd",
+    "brand": "Tsuru",
+    "name": "2-Way LSD",
+    "carPartId": "differential",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tsuru-2way-lsd",
+    "brand": "Tsuru",
+    "name": "2-Way LSD",
+    "carPartId": "differential",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tsuru-2way-lsd",
+    "brand": "Tsuru",
+    "name": "2-Way LSD",
+    "carPartId": "differential",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tsuru-race-diff",
@@ -829,7 +3277,55 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "priceYen": 156000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tsuru-race-diff",
+    "brand": "Tsuru",
+    "name": "Race Differential",
+    "carPartId": "differential",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 16,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tsuru-race-diff",
+    "brand": "Tsuru",
+    "name": "Race Differential",
+    "carPartId": "differential",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 16,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tsuru-race-diff",
+    "brand": "Tsuru",
+    "name": "Race Differential",
+    "carPartId": "differential",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 16,
+      "style": 0,
+      "reliability": -8,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-driveline",
@@ -845,7 +3341,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 30000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-driveline",
+    "brand": "OEM",
+    "name": "Stock Driveline",
+    "carPartId": "driveline",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-driveline",
+    "brand": "OEM",
+    "name": "Stock Driveline",
+    "carPartId": "driveline",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-driveline",
+    "brand": "OEM",
+    "name": "Stock Driveline",
+    "carPartId": "driveline",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-reinforced-driveshaft",
@@ -861,7 +3405,55 @@
       "reliability": 7,
       "authenticity": 0
     },
-    "priceYen": 39000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-reinforced-driveshaft",
+    "brand": "Namazu",
+    "name": "Reinforced Driveshaft",
+    "carPartId": "driveline",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 7,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-reinforced-driveshaft",
+    "brand": "Namazu",
+    "name": "Reinforced Driveshaft",
+    "carPartId": "driveline",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 7,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-reinforced-driveshaft",
+    "brand": "Namazu",
+    "name": "Reinforced Driveshaft",
+    "carPartId": "driveline",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 7,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-sport-driveshaft",
@@ -877,7 +3469,55 @@
       "reliability": 10,
       "authenticity": 0
     },
-    "priceYen": 62000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-sport-driveshaft",
+    "brand": "Namazu",
+    "name": "Sport Driveshaft",
+    "carPartId": "driveline",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 10,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-sport-driveshaft",
+    "brand": "Namazu",
+    "name": "Sport Driveshaft",
+    "carPartId": "driveline",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 10,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-sport-driveshaft",
+    "brand": "Namazu",
+    "name": "Sport Driveshaft",
+    "carPartId": "driveline",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 10,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-race-driveshaft",
@@ -893,7 +3533,55 @@
       "reliability": 14,
       "authenticity": 0
     },
-    "priceYen": 88000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-race-driveshaft",
+    "brand": "Namazu",
+    "name": "Race Driveshaft",
+    "carPartId": "driveline",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 14,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-race-driveshaft",
+    "brand": "Namazu",
+    "name": "Race Driveshaft",
+    "carPartId": "driveline",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 14,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-race-driveshaft",
+    "brand": "Namazu",
+    "name": "Race Driveshaft",
+    "carPartId": "driveline",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 14,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-chassis",
@@ -909,7 +3597,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 130000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-chassis",
+    "brand": "OEM",
+    "name": "Stock Chassis",
+    "carPartId": "chassis",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-chassis",
+    "brand": "OEM",
+    "name": "Stock Chassis",
+    "carPartId": "chassis",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-chassis",
+    "brand": "OEM",
+    "name": "Stock Chassis",
+    "carPartId": "chassis",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-seam-weld-kit",
@@ -925,7 +3661,55 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "priceYen": 173000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-seam-weld-kit",
+    "brand": "Namazu",
+    "name": "Seam-Weld Stiffening Kit",
+    "carPartId": "chassis",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-seam-weld-kit",
+    "brand": "Namazu",
+    "name": "Seam-Weld Stiffening Kit",
+    "carPartId": "chassis",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-seam-weld-kit",
+    "brand": "Namazu",
+    "name": "Seam-Weld Stiffening Kit",
+    "carPartId": "chassis",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 0,
+      "reliability": 12,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-sport-chassis-kit",
@@ -941,7 +3725,55 @@
       "reliability": 17,
       "authenticity": 0
     },
-    "priceYen": 269000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-sport-chassis-kit",
+    "brand": "Namazu",
+    "name": "Sport Chassis Kit",
+    "carPartId": "chassis",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 17,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-sport-chassis-kit",
+    "brand": "Namazu",
+    "name": "Sport Chassis Kit",
+    "carPartId": "chassis",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 17,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-sport-chassis-kit",
+    "brand": "Namazu",
+    "name": "Sport Chassis Kit",
+    "carPartId": "chassis",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 17,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-tube-chassis-kit",
@@ -957,7 +3789,55 @@
       "reliability": 22,
       "authenticity": 0
     },
-    "priceYen": 381000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-tube-chassis-kit",
+    "brand": "Namazu",
+    "name": "Tube Chassis Reinforcement Kit",
+    "carPartId": "chassis",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": 22,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-tube-chassis-kit",
+    "brand": "Namazu",
+    "name": "Tube Chassis Reinforcement Kit",
+    "carPartId": "chassis",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": 22,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-tube-chassis-kit",
+    "brand": "Namazu",
+    "name": "Tube Chassis Reinforcement Kit",
+    "carPartId": "chassis",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": 22,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-dampers",
@@ -973,7 +3853,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 26000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-dampers",
+    "brand": "OEM",
+    "name": "Stock Dampers",
+    "carPartId": "dampers",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-dampers",
+    "brand": "OEM",
+    "name": "Stock Dampers",
+    "carPartId": "dampers",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-dampers",
+    "brand": "OEM",
+    "name": "Stock Dampers",
+    "carPartId": "dampers",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tanuki-street-coilovers",
@@ -989,7 +3917,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 36000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tanuki-street-coilovers",
+    "brand": "Tanuki",
+    "name": "Street Coilovers",
+    "carPartId": "dampers",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 3,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tanuki-street-coilovers",
+    "brand": "Tanuki",
+    "name": "Street Coilovers",
+    "carPartId": "dampers",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 3,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tanuki-street-coilovers",
+    "brand": "Tanuki",
+    "name": "Street Coilovers",
+    "carPartId": "dampers",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 3,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tanuki-circuit-coilovers",
@@ -1005,7 +3981,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 94000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tanuki-circuit-coilovers",
+    "brand": "Tanuki",
+    "name": "Circuit Coilovers",
+    "carPartId": "dampers",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tanuki-circuit-coilovers",
+    "brand": "Tanuki",
+    "name": "Circuit Coilovers",
+    "carPartId": "dampers",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tanuki-circuit-coilovers",
+    "brand": "Tanuki",
+    "name": "Circuit Coilovers",
+    "carPartId": "dampers",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tanuki-n1-coilovers",
@@ -1021,7 +4045,55 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "priceYen": 198000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tanuki-n1-coilovers",
+    "brand": "Tanuki",
+    "name": "N1 Coilovers",
+    "carPartId": "dampers",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 28,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tanuki-n1-coilovers",
+    "brand": "Tanuki",
+    "name": "N1 Coilovers",
+    "carPartId": "dampers",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 28,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tanuki-n1-coilovers",
+    "brand": "Tanuki",
+    "name": "N1 Coilovers",
+    "carPartId": "dampers",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 28,
+      "style": 0,
+      "reliability": -6,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-springs",
@@ -1037,7 +4109,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 14000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-springs",
+    "brand": "OEM",
+    "name": "Stock Springs",
+    "carPartId": "springs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-springs",
+    "brand": "OEM",
+    "name": "Stock Springs",
+    "carPartId": "springs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-springs",
+    "brand": "OEM",
+    "name": "Stock Springs",
+    "carPartId": "springs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "enzan-lowering-springs",
@@ -1053,7 +4173,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 18000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-enzan-lowering-springs",
+    "brand": "Enzan",
+    "name": "Lowering Springs",
+    "carPartId": "springs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-enzan-lowering-springs",
+    "brand": "Enzan",
+    "name": "Lowering Springs",
+    "carPartId": "springs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-enzan-lowering-springs",
+    "brand": "Enzan",
+    "name": "Lowering Springs",
+    "carPartId": "springs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "enzan-sport-springs",
@@ -1069,7 +4237,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 29000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-enzan-sport-springs",
+    "brand": "Enzan",
+    "name": "Sport Springs",
+    "carPartId": "springs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-enzan-sport-springs",
+    "brand": "Enzan",
+    "name": "Sport Springs",
+    "carPartId": "springs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-enzan-sport-springs",
+    "brand": "Enzan",
+    "name": "Sport Springs",
+    "carPartId": "springs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "enzan-race-springs",
@@ -1085,7 +4301,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 40000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-enzan-race-springs",
+    "brand": "Enzan",
+    "name": "Race Springs",
+    "carPartId": "springs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-enzan-race-springs",
+    "brand": "Enzan",
+    "name": "Race Springs",
+    "carPartId": "springs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-enzan-race-springs",
+    "brand": "Enzan",
+    "name": "Race Springs",
+    "carPartId": "springs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-anti-roll-bars",
@@ -1101,7 +4365,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 12000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-anti-roll-bars",
+    "brand": "OEM",
+    "name": "Stock Anti-Roll Bars",
+    "carPartId": "antiRollBars",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-anti-roll-bars",
+    "brand": "OEM",
+    "name": "Stock Anti-Roll Bars",
+    "carPartId": "antiRollBars",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-anti-roll-bars",
+    "brand": "OEM",
+    "name": "Stock Anti-Roll Bars",
+    "carPartId": "antiRollBars",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kumo-adjustable-swaybars",
@@ -1117,7 +4429,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 16000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kumo-adjustable-swaybars",
+    "brand": "Kumo",
+    "name": "Adjustable Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kumo-adjustable-swaybars",
+    "brand": "Kumo",
+    "name": "Adjustable Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kumo-adjustable-swaybars",
+    "brand": "Kumo",
+    "name": "Adjustable Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kumo-sport-swaybars",
@@ -1133,7 +4493,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 25000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kumo-sport-swaybars",
+    "brand": "Kumo",
+    "name": "Sport Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kumo-sport-swaybars",
+    "brand": "Kumo",
+    "name": "Sport Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kumo-sport-swaybars",
+    "brand": "Kumo",
+    "name": "Sport Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kumo-race-swaybars",
@@ -1149,7 +4557,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 35000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kumo-race-swaybars",
+    "brand": "Kumo",
+    "name": "Race Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 17,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kumo-race-swaybars",
+    "brand": "Kumo",
+    "name": "Race Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 17,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kumo-race-swaybars",
+    "brand": "Kumo",
+    "name": "Race Sway Bars",
+    "carPartId": "antiRollBars",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 17,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-steering",
@@ -1165,7 +4621,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 22000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-steering",
+    "brand": "OEM",
+    "name": "Stock Steering",
+    "carPartId": "steering",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-steering",
+    "brand": "OEM",
+    "name": "Stock Steering",
+    "carPartId": "steering",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-steering",
+    "brand": "OEM",
+    "name": "Stock Steering",
+    "carPartId": "steering",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kitsune-quick-rack",
@@ -1181,7 +4685,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 28000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kitsune-quick-rack",
+    "brand": "Kitsune",
+    "name": "Quick-Ratio Rack",
+    "carPartId": "steering",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kitsune-quick-rack",
+    "brand": "Kitsune",
+    "name": "Quick-Ratio Rack",
+    "carPartId": "steering",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kitsune-quick-rack",
+    "brand": "Kitsune",
+    "name": "Quick-Ratio Rack",
+    "carPartId": "steering",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 8,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kitsune-sport-rack",
@@ -1197,7 +4749,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 45000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kitsune-sport-rack",
+    "brand": "Kitsune",
+    "name": "Sport Rack",
+    "carPartId": "steering",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 13,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kitsune-sport-rack",
+    "brand": "Kitsune",
+    "name": "Sport Rack",
+    "carPartId": "steering",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 13,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kitsune-sport-rack",
+    "brand": "Kitsune",
+    "name": "Sport Rack",
+    "carPartId": "steering",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 13,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "kitsune-race-rack",
@@ -1213,7 +4813,55 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "priceYen": 63000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-kitsune-race-rack",
+    "brand": "Kitsune",
+    "name": "Race Steering Rack",
+    "carPartId": "steering",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 19,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-kitsune-race-rack",
+    "brand": "Kitsune",
+    "name": "Race Steering Rack",
+    "carPartId": "steering",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 19,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-kitsune-race-rack",
+    "brand": "Kitsune",
+    "name": "Race Steering Rack",
+    "carPartId": "steering",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 19,
+      "style": 0,
+      "reliability": -4,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-brake-pads-discs",
@@ -1229,7 +4877,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 8000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-brake-pads-discs",
+    "brand": "OEM",
+    "name": "Stock Brake Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-brake-pads-discs",
+    "brand": "OEM",
+    "name": "Stock Brake Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-brake-pads-discs",
+    "brand": "OEM",
+    "name": "Stock Brake Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "shuriken-street-pads",
@@ -1245,7 +4941,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 10000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-shuriken-street-pads",
+    "brand": "Shuriken",
+    "name": "Street Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-shuriken-street-pads",
+    "brand": "Shuriken",
+    "name": "Street Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-shuriken-street-pads",
+    "brand": "Shuriken",
+    "name": "Street Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "shuriken-sport-pads",
@@ -1261,7 +5005,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 16000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-shuriken-sport-pads",
+    "brand": "Shuriken",
+    "name": "Sport Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-shuriken-sport-pads",
+    "brand": "Shuriken",
+    "name": "Sport Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-shuriken-sport-pads",
+    "brand": "Shuriken",
+    "name": "Sport Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 7,
+      "style": 0,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "shuriken-race-pads",
@@ -1277,7 +5069,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 22000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-shuriken-race-pads",
+    "brand": "Shuriken",
+    "name": "Race Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-shuriken-race-pads",
+    "brand": "Shuriken",
+    "name": "Race Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-shuriken-race-pads",
+    "brand": "Shuriken",
+    "name": "Race Pads & Discs",
+    "carPartId": "brakePadsDiscs",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-brake-calipers-lines",
@@ -1293,7 +5133,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 18000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-brake-calipers-lines",
+    "brand": "OEM",
+    "name": "Stock Brake Calipers & Lines",
+    "carPartId": "brakeCalipersLines",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-brake-calipers-lines",
+    "brand": "OEM",
+    "name": "Stock Brake Calipers & Lines",
+    "carPartId": "brakeCalipersLines",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-brake-calipers-lines",
+    "brand": "OEM",
+    "name": "Stock Brake Calipers & Lines",
+    "carPartId": "brakeCalipersLines",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "shuriken-street-calipers",
@@ -1309,7 +5197,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 23000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-shuriken-street-calipers",
+    "brand": "Shuriken",
+    "name": "Street Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-shuriken-street-calipers",
+    "brand": "Shuriken",
+    "name": "Street Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-shuriken-street-calipers",
+    "brand": "Shuriken",
+    "name": "Street Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "katana-4pot-kit",
@@ -1325,7 +5261,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 38000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-katana-4pot-kit",
+    "brand": "Katana",
+    "name": "4-Pot Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-katana-4pot-kit",
+    "brand": "Katana",
+    "name": "4-Pot Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-katana-4pot-kit",
+    "brand": "Katana",
+    "name": "4-Pot Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "shuriken-race-calipers",
@@ -1341,7 +5325,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 52000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-shuriken-race-calipers",
+    "brand": "Shuriken",
+    "name": "Race Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-shuriken-race-calipers",
+    "brand": "Shuriken",
+    "name": "Race Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-shuriken-race-calipers",
+    "brand": "Shuriken",
+    "name": "Race Caliper Kit",
+    "carPartId": "brakeCalipersLines",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 12,
+      "style": 0,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-rims",
@@ -1357,7 +5389,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 30000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-rims",
+    "brand": "OEM",
+    "name": "Stock Rims",
+    "carPartId": "rims",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-rims",
+    "brand": "OEM",
+    "name": "Stock Rims",
+    "carPartId": "rims",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-rims",
+    "brand": "OEM",
+    "name": "Stock Rims",
+    "carPartId": "rims",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "ronin-street-alloys",
@@ -1373,7 +5453,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 39000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-ronin-street-alloys",
+    "brand": "Ronin",
+    "name": "Street Alloys",
+    "carPartId": "rims",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-ronin-street-alloys",
+    "brand": "Ronin",
+    "name": "Street Alloys",
+    "carPartId": "rims",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-ronin-street-alloys",
+    "brand": "Ronin",
+    "name": "Street Alloys",
+    "carPartId": "rims",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "vulk-ve37",
@@ -1389,7 +5517,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 71000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-vulk-ve37",
+    "brand": "Vulk Racing",
+    "name": "VE37",
+    "carPartId": "rims",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 15,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-vulk-ve37",
+    "brand": "Vulk Racing",
+    "name": "VE37",
+    "carPartId": "rims",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 15,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-vulk-ve37",
+    "brand": "Vulk Racing",
+    "name": "VE37",
+    "carPartId": "rims",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 15,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "ronin-race-forged",
@@ -1405,7 +5581,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 90000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-ronin-race-forged",
+    "brand": "Ronin",
+    "name": "Race Forged Wheels",
+    "carPartId": "rims",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-ronin-race-forged",
+    "brand": "Ronin",
+    "name": "Race Forged Wheels",
+    "carPartId": "rims",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-ronin-race-forged",
+    "brand": "Ronin",
+    "name": "Race Forged Wheels",
+    "carPartId": "rims",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-tyres",
@@ -1421,7 +5645,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 22000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-tyres",
+    "brand": "OEM",
+    "name": "Stock Tyres",
+    "carPartId": "tyres",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-tyres",
+    "brand": "OEM",
+    "name": "Stock Tyres",
+    "carPartId": "tyres",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-tyres",
+    "brand": "OEM",
+    "name": "Stock Tyres",
+    "carPartId": "tyres",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tsume-street-tyres",
@@ -1437,7 +5709,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 29000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tsume-street-tyres",
+    "brand": "Tsume",
+    "name": "Street Tyres",
+    "carPartId": "tyres",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tsume-street-tyres",
+    "brand": "Tsume",
+    "name": "Street Tyres",
+    "carPartId": "tyres",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tsume-street-tyres",
+    "brand": "Tsume",
+    "name": "Street Tyres",
+    "carPartId": "tyres",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 10,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tsume-sport-tyres",
@@ -1453,7 +5773,55 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 44000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tsume-sport-tyres",
+    "brand": "Tsume",
+    "name": "Sport Tyres",
+    "carPartId": "tyres",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tsume-sport-tyres",
+    "brand": "Tsume",
+    "name": "Sport Tyres",
+    "carPartId": "tyres",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tsume-sport-tyres",
+    "brand": "Tsume",
+    "name": "Sport Tyres",
+    "carPartId": "tyres",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 18,
+      "style": 0,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "tsume-race-slicks",
@@ -1469,7 +5837,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 62000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-tsume-race-slicks",
+    "brand": "Tsume",
+    "name": "Race Slicks",
+    "carPartId": "tyres",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 26,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-tsume-race-slicks",
+    "brand": "Tsume",
+    "name": "Race Slicks",
+    "carPartId": "tyres",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 26,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-tsume-race-slicks",
+    "brand": "Tsume",
+    "name": "Race Slicks",
+    "carPartId": "tyres",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 26,
+      "style": 0,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-panels",
@@ -1485,7 +5901,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 28000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-panels",
+    "brand": "OEM",
+    "name": "Stock Panels",
+    "carPartId": "panels",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-panels",
+    "brand": "OEM",
+    "name": "Stock Panels",
+    "carPartId": "panels",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-panels",
+    "brand": "OEM",
+    "name": "Stock Panels",
+    "carPartId": "panels",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "frp-lightweight-panels",
@@ -1501,7 +5965,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 38000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-frp-lightweight-panels",
+    "brand": "FRP",
+    "name": "Lightweight Panel Kit",
+    "carPartId": "panels",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 2,
+      "style": 7,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-frp-lightweight-panels",
+    "brand": "FRP",
+    "name": "Lightweight Panel Kit",
+    "carPartId": "panels",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 2,
+      "style": 7,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-frp-lightweight-panels",
+    "brand": "FRP",
+    "name": "Lightweight Panel Kit",
+    "carPartId": "panels",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 2,
+      "style": 7,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "frp-sport-panel-kit",
@@ -1517,7 +6029,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 58000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-frp-sport-panel-kit",
+    "brand": "FRP",
+    "name": "Sport Panel Kit",
+    "carPartId": "panels",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 11,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-frp-sport-panel-kit",
+    "brand": "FRP",
+    "name": "Sport Panel Kit",
+    "carPartId": "panels",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 11,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-frp-sport-panel-kit",
+    "brand": "FRP",
+    "name": "Sport Panel Kit",
+    "carPartId": "panels",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 3,
+      "style": 11,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "frp-carbon-panel-kit",
@@ -1533,7 +6093,55 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "priceYen": 82000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-frp-carbon-panel-kit",
+    "brand": "FRP",
+    "name": "Carbon Panel Kit",
+    "carPartId": "panels",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 16,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-frp-carbon-panel-kit",
+    "brand": "FRP",
+    "name": "Carbon Panel Kit",
+    "carPartId": "panels",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 16,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-frp-carbon-panel-kit",
+    "brand": "FRP",
+    "name": "Carbon Panel Kit",
+    "carPartId": "panels",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 16,
+      "reliability": -3,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-paint",
@@ -1549,7 +6157,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 40000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-paint",
+    "brand": "OEM",
+    "name": "Stock Paint",
+    "carPartId": "paint",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-paint",
+    "brand": "OEM",
+    "name": "Stock Paint",
+    "carPartId": "paint",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-paint",
+    "brand": "OEM",
+    "name": "Stock Paint",
+    "carPartId": "paint",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "akai-custom-twotone",
@@ -1565,7 +6221,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 53000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-akai-custom-twotone",
+    "brand": "Studio Akai",
+    "name": "Custom Two-Tone",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-akai-custom-twotone",
+    "brand": "Studio Akai",
+    "name": "Custom Two-Tone",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-akai-custom-twotone",
+    "brand": "Studio Akai",
+    "name": "Custom Two-Tone",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "akai-sport-livery",
@@ -1581,7 +6285,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 83000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-akai-sport-livery",
+    "brand": "Studio Akai",
+    "name": "Sport Livery",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 14,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-akai-sport-livery",
+    "brand": "Studio Akai",
+    "name": "Sport Livery",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 14,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-akai-sport-livery",
+    "brand": "Studio Akai",
+    "name": "Sport Livery",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 14,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "akai-full-livery-wrap",
@@ -1597,7 +6349,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 118000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-akai-full-livery-wrap",
+    "brand": "Studio Akai",
+    "name": "Full Livery Wrap",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-akai-full-livery-wrap",
+    "brand": "Studio Akai",
+    "name": "Full Livery Wrap",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-akai-full-livery-wrap",
+    "brand": "Studio Akai",
+    "name": "Full Livery Wrap",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 20,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-underbody",
@@ -1613,7 +6413,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 24000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-underbody",
+    "brand": "OEM",
+    "name": "Stock Underbody",
+    "carPartId": "underbody",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-underbody",
+    "brand": "OEM",
+    "name": "Stock Underbody",
+    "carPartId": "underbody",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-underbody",
+    "brand": "OEM",
+    "name": "Stock Underbody",
+    "carPartId": "underbody",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "neon-doraku-underglow-kit",
@@ -1629,7 +6477,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 33000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-neon-doraku-underglow-kit",
+    "brand": "Neon Doraku",
+    "name": "Underglow Kit",
+    "carPartId": "underbody",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-neon-doraku-underglow-kit",
+    "brand": "Neon Doraku",
+    "name": "Underglow Kit",
+    "carPartId": "underbody",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-neon-doraku-underglow-kit",
+    "brand": "Neon Doraku",
+    "name": "Underglow Kit",
+    "carPartId": "underbody",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-sport-underbody-kit",
@@ -1645,7 +6541,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 50000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-sport-underbody-kit",
+    "brand": "Namazu",
+    "name": "Sport Underbody Kit",
+    "carPartId": "underbody",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-sport-underbody-kit",
+    "brand": "Namazu",
+    "name": "Sport Underbody Kit",
+    "carPartId": "underbody",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-sport-underbody-kit",
+    "brand": "Namazu",
+    "name": "Sport Underbody Kit",
+    "carPartId": "underbody",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "namazu-flatfloor-kit",
@@ -1661,7 +6605,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 71000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-namazu-flatfloor-kit",
+    "brand": "Namazu",
+    "name": "Flat Floor Kit",
+    "carPartId": "underbody",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 9,
+      "style": 8,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-namazu-flatfloor-kit",
+    "brand": "Namazu",
+    "name": "Flat Floor Kit",
+    "carPartId": "underbody",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 9,
+      "style": 8,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-namazu-flatfloor-kit",
+    "brand": "Namazu",
+    "name": "Flat Floor Kit",
+    "carPartId": "underbody",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 9,
+      "style": 8,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-aero",
@@ -1677,7 +6669,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 18000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-aero",
+    "brand": "OEM",
+    "name": "Stock Aero",
+    "carPartId": "aero",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-aero",
+    "brand": "OEM",
+    "name": "Stock Aero",
+    "carPartId": "aero",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-aero",
+    "brand": "OEM",
+    "name": "Stock Aero",
+    "carPartId": "aero",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "mikoshi-lip-kit",
@@ -1693,7 +6733,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 21000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-mikoshi-lip-kit",
+    "brand": "Mikoshi",
+    "name": "Lip Kit",
+    "carPartId": "aero",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-mikoshi-lip-kit",
+    "brand": "Mikoshi",
+    "name": "Lip Kit",
+    "carPartId": "aero",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-mikoshi-lip-kit",
+    "brand": "Mikoshi",
+    "name": "Lip Kit",
+    "carPartId": "aero",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 10,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "mikoshi-gt-wing",
@@ -1709,7 +6797,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 54000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-mikoshi-gt-wing",
+    "brand": "Mikoshi",
+    "name": "GT Wing",
+    "carPartId": "aero",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-mikoshi-gt-wing",
+    "brand": "Mikoshi",
+    "name": "GT Wing",
+    "carPartId": "aero",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-mikoshi-gt-wing",
+    "brand": "Mikoshi",
+    "name": "GT Wing",
+    "carPartId": "aero",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 5,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "frp-race-aero",
@@ -1725,7 +6861,55 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "priceYen": 203000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-frp-race-aero",
+    "brand": "FRP",
+    "name": "Race Aero Kit",
+    "carPartId": "aero",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 15,
+      "style": 30,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-frp-race-aero",
+    "brand": "FRP",
+    "name": "Race Aero Kit",
+    "carPartId": "aero",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 15,
+      "style": 30,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-frp-race-aero",
+    "brand": "FRP",
+    "name": "Race Aero Kit",
+    "carPartId": "aero",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 15,
+      "style": 30,
+      "reliability": -5,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-seats",
@@ -1741,7 +6925,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 35000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-seats",
+    "brand": "OEM",
+    "name": "Stock Seats",
+    "carPartId": "seats",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-seats",
+    "brand": "OEM",
+    "name": "Stock Seats",
+    "carPartId": "seats",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-seats",
+    "brand": "OEM",
+    "name": "Stock Seats",
+    "carPartId": "seats",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "zashiki-street-seats",
@@ -1757,7 +6989,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 47000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zashiki-street-seats",
+    "brand": "Zashiki",
+    "name": "Sport-Style Seats",
+    "carPartId": "seats",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zashiki-street-seats",
+    "brand": "Zashiki",
+    "name": "Sport-Style Seats",
+    "carPartId": "seats",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zashiki-street-seats",
+    "brand": "Zashiki",
+    "name": "Sport-Style Seats",
+    "carPartId": "seats",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 9,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "zashiki-bucket-seat",
@@ -1773,7 +7053,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 64000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zashiki-bucket-seat",
+    "brand": "Zashiki",
+    "name": "Bucket Seat",
+    "carPartId": "seats",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 13,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zashiki-bucket-seat",
+    "brand": "Zashiki",
+    "name": "Bucket Seat",
+    "carPartId": "seats",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 13,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zashiki-bucket-seat",
+    "brand": "Zashiki",
+    "name": "Bucket Seat",
+    "carPartId": "seats",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 13,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "zashiki-race-buckets",
@@ -1789,7 +7117,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 103000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zashiki-race-buckets",
+    "brand": "Zashiki",
+    "name": "Race Bucket Seats",
+    "carPartId": "seats",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zashiki-race-buckets",
+    "brand": "Zashiki",
+    "name": "Race Bucket Seats",
+    "carPartId": "seats",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zashiki-race-buckets",
+    "brand": "Zashiki",
+    "name": "Race Bucket Seats",
+    "carPartId": "seats",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 4,
+      "style": 18,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "stock-dash-gauges",
@@ -1805,7 +7181,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 12000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-stock-dash-gauges",
+    "brand": "OEM",
+    "name": "Stock Dash & Gauges",
+    "carPartId": "dashGauges",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-stock-dash-gauges",
+    "brand": "OEM",
+    "name": "Stock Dash & Gauges",
+    "carPartId": "dashGauges",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-stock-dash-gauges",
+    "brand": "OEM",
+    "name": "Stock Dash & Gauges",
+    "carPartId": "dashGauges",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "sokudo-boost-gauge-pod",
@@ -1821,7 +7245,55 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "priceYen": 16000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-sokudo-boost-gauge-pod",
+    "brand": "Sokudo",
+    "name": "Boost Gauge Pod",
+    "carPartId": "dashGauges",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 5,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-sokudo-boost-gauge-pod",
+    "brand": "Sokudo",
+    "name": "Boost Gauge Pod",
+    "carPartId": "dashGauges",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 5,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-sokudo-boost-gauge-pod",
+    "brand": "Sokudo",
+    "name": "Boost Gauge Pod",
+    "carPartId": "dashGauges",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 5,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "sokudo-sport-gauge-cluster",
@@ -1837,7 +7309,55 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "priceYen": 25000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-sokudo-sport-gauge-cluster",
+    "brand": "Sokudo",
+    "name": "Sport Gauge Cluster",
+    "carPartId": "dashGauges",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 8,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-sokudo-sport-gauge-cluster",
+    "brand": "Sokudo",
+    "name": "Sport Gauge Cluster",
+    "carPartId": "dashGauges",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 8,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-sokudo-sport-gauge-cluster",
+    "brand": "Sokudo",
+    "name": "Sport Gauge Cluster",
+    "carPartId": "dashGauges",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 8,
+      "reliability": -1,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   },
   {
     "id": "sokudo-digital-race-dash",
@@ -1853,6 +7373,54 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "priceYen": 35000
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-sokudo-digital-race-dash",
+    "brand": "Sokudo",
+    "name": "Digital Race Dash",
+    "carPartId": "dashGauges",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-sokudo-digital-race-dash",
+    "brand": "Sokudo",
+    "name": "Digital Race Dash",
+    "carPartId": "dashGauges",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-sokudo-digital-race-dash",
+    "brand": "Sokudo",
+    "name": "Digital Race Dash",
+    "carPartId": "dashGauges",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 11,
+      "reliability": -2,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
   }
 ]
