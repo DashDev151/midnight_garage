@@ -246,6 +246,7 @@ describe('completeJob', () => {
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
+      baselineInstalledPartIds: {},
     }
     const pricedPart: PartInstance = { ...sparePart, id: 'pi-priced-2', pricePaidYen: 42_000 }
     const job: Job = {
@@ -719,6 +720,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         expiresOnDay: 30,
         arrivesOnDay: null,
         dueOnDay: 8,
+        baselineInstalledPartIds: {},
       }
       const taggedInstance: PartInstance = {
         ...sparePart,
@@ -822,6 +824,7 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
+      baselineInstalledPartIds: {},
     }
     const state = baseState({ ownedCars: [], activeServiceJobs: [owningJob] })
     const cashBefore = state.cashYen
@@ -1071,6 +1074,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expiresOnDay: 30,
     arrivesOnDay: null,
     dueOnDay: 8,
+    baselineInstalledPartIds: {},
   }
 
   it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it, tagged with the job id', () => {

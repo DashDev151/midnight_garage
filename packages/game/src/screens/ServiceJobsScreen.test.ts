@@ -113,4 +113,18 @@ describe('ServiceJobsScreen', () => {
     expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(false)
     expect(game.lastJobResult?.outcome).toBe('failed')
   })
+
+  it('shows a fitment-class chip on each offer card (Sprint 61 item 15)', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const offer = game.serviceJobOfferViews[0]
+    if (!offer) throw new Error('expected an offer on the board')
+    expect(offer.fitmentClass).not.toBeNull()
+    const wrapper = mountScreen()
+    const chip = wrapper.find(`[data-test="class-${offer.id}"]`)
+    expect(chip.exists()).toBe(true)
+    // Renders the class display name (e.g. "Kei & Compact"), not the raw enum.
+    expect(chip.text()).toBe(game.fitmentClassLabel(offer.fitmentClass!))
+    expect(chip.text()).not.toBe(offer.fitmentClass)
+  })
 })

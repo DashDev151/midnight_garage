@@ -46,10 +46,15 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
               <li v-for="(task, i) in offer.tasks" :key="i">{{ task.label }}</li>
             </ul>
             <span class="terms">
-              {{ offer.carName }} · pays {{ formatYen(offer.payoutYen) }} · +{{
-                offer.baseReputation
-              }}
-              rep base · offer expires day {{ offer.expiresOnDay }}
+              {{ offer.carName
+              }}<span
+                v-if="offer.fitmentClass"
+                class="class-chip"
+                :data-test="'class-' + offer.id"
+                >{{ game.fitmentClassLabel(offer.fitmentClass) }}</span
+              >
+              · pays {{ formatYen(offer.payoutYen) }} · +{{ offer.baseReputation }} rep base · offer
+              expires day {{ offer.expiresOnDay }}
             </span>
           </div>
           <div class="offer-foot">
@@ -73,7 +78,12 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
         <li v-for="job in game.activeServiceJobViews" :key="job.id" class="active-row">
           <div class="active-main">
             <span class="customer">{{ job.customerName }}</span>
-            <span class="terms">{{ job.carName }}</span>
+            <span class="terms"
+              >{{ job.carName
+              }}<span v-if="job.fitmentClass" class="class-chip">{{
+                game.fitmentClassLabel(job.fitmentClass)
+              }}</span></span
+            >
             <ul v-if="!job.inTransit" class="tasks">
               <li v-for="(task, i) in job.tasks" :key="i" :class="{ done: task.done }">
                 {{ task.label }}
@@ -203,6 +213,18 @@ h3 {
 .terms {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+/* Sprint 61 (item 15): a small muted class chip so the player knows which
+   class of parts fits this customer's car (Kei & Compact / Sports / ...). */
+.class-chip {
+  display: inline-block;
+  margin-left: var(--mg-space-1);
+  padding: 0 var(--mg-space-1);
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: 4px;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-xs, 0.7rem);
 }
 
 .offer-foot {

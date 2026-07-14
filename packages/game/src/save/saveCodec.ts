@@ -404,8 +404,16 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * v28 -> v29 (Sprint 57, the job ledger): `GameStateSchema` gained
  * `serviceJobLedgers` (default `{}`) - the normal additive case, so it needs
  * no `MIGRATIONS[28]` entry, but it DOES bump `SAVE_VERSION` (Save law).
+ * v29 -> v30 (Sprint 61, baseline-tracked installs): `ServiceJobSchema` gained
+ * `baselineInstalledPartIds` (default `{}`) - again the normal additive case,
+ * no `MIGRATIONS[29]` entry needed. An in-flight pre-v30 job decodes with an
+ * empty baseline, which `isServiceTaskDone` reads as the legacy "any
+ * qualifying part present is done" semantics for that job only (so a save
+ * mid-job never breaks); every new offer snapshots a real baseline. The
+ * version bump alone is still required (Save law) so an old client rejects a
+ * v30 save rather than silently dropping the field.
  */
-export const SAVE_VERSION = 29
+export const SAVE_VERSION = 30
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

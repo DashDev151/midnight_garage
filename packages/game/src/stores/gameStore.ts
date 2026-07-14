@@ -38,6 +38,7 @@ import type {
 } from '@midnight-garage/content'
 import {
   componentDisplayName,
+  fitmentClassForTier,
   partFitmentClassLabel,
   resolveCarDisplayName,
 } from '@midnight-garage/content'
@@ -396,6 +397,14 @@ export interface ServiceJobTaskView {
   done: boolean
 }
 
+/** Sprint 61 (item 10): one "fits this vehicle" option in the parts market -
+ * an owned car or an accepted customer service-job car (arrived or inbound). */
+export interface PartsFitVehicleOption {
+  id: string
+  label: string
+  fitmentClass: PartFitmentClass | null
+}
+
 /** A service-job offer on the board (accept to bring the car into the shop). */
 export interface ServiceJobOfferView {
   id: string
@@ -403,6 +412,10 @@ export interface ServiceJobOfferView {
   description: string
   tasks: ServiceJobTaskView[]
   carName: string
+  /** Sprint 61: the customer car's fitment class (which class of parts fit
+   * it) - `null` if the model is somehow unresolved. Rendered as a small chip
+   * so the player knows which parts to buy for the job. */
+  fitmentClass: PartFitmentClass | null
   payoutYen: number
   baseReputation: number
   expiresOnDay: number
@@ -426,6 +439,10 @@ export interface ServiceJobView {
   tasks: ServiceJobTaskView[]
   carId: string
   carName: string
+  /** Sprint 61: the customer car's fitment class - same chip as the offer
+   * card, so the in-shop job also shows which parts fit it. `null` if the
+   * model is somehow unresolved. */
+  fitmentClass: PartFitmentClass | null
   payoutYen: number
   baseReputation: number
   /** True once every task has actually been done on the car. */
@@ -487,6 +504,10 @@ export interface LotDetail {
   lot: AuctionLot
   model: CarModel
   displayName: string
+  /** Sprint 61: the car's fitment class (which class of parts fit it),
+   * rendered as a small chip on the lot card so a bidder knows what they'd be
+   * buying parts for. */
+  fitmentClass: PartFitmentClass
   /**
    * The card's headline number (Sprint 30 decision 2's UI half): the same
    * transparent `instanceValue` every price in the game reads from
@@ -705,6 +726,7 @@ export const useGameStore = defineStore('game', () => {
         description: offer.description,
         tasks: serviceJobTaskViews(offer),
         carName: model ? resolveCarDisplayName(model) : offer.car.modelId,
+        fitmentClass: model ? fitmentClassForTier(model.tier) : null,
         payoutYen: offer.payoutYen,
         baseReputation: offer.baseReputation,
         expiresOnDay: offer.expiresOnDay,
@@ -720,6 +742,42 @@ export const useGameStore = defineStore('game', () => {
   const activeServiceJobViews = computed<ServiceJobView[]>(() =>
     gameState.value.activeServiceJobs.map(serviceJobViewFor),
   )
+
+  /**
+   * Sprint 61 (item 10): the parts market's "fits this vehicle" filter's
+   * options - every owned car PLUS every accepted service-job customer car,
+   * including one that hasn't arrived yet. The core loop is accept the job,
+   * order the right-class parts, then car and parts arrive together the next
+   * morning - so a customer car the player can't buy parts for until it's
+   * physically in the shop would break exactly the flow this serves. Each
+   * carries the car's fitment class directly (what the filter narrows to) and
+   * a context-labelled name.
+   */
+  const partsFitVehicleOptions = computed<PartsFitVehicleOption[]>(() => {
+    const owned = gameState.value.ownedCars.map((car) => {
+      const model = context.value.modelsById[car.modelId]
+      return {
+        id: car.id,
+        label: model ? resolveCarDisplayName(model) : car.modelId,
+        fitmentClass: model ? fitmentClassForTier(model.tier) : null,
+      }
+    })
+    const customer = gameState.value.activeServiceJobs.map((job) => {
+      const model = context.value.modelsById[job.car.modelId]
+      const name = model ? resolveCarDisplayName(model) : job.car.modelId
+      const arriving = isServiceJobInTransit(job, gameState.value.day)
+      const suffix =
+        arriving && job.arrivesOnDay !== null
+          ? ` (customer, arrives day ${job.arrivesOnDay})`
+          : ' (customer, in the shop)'
+      return {
+        id: job.car.id,
+        label: `${name}${suffix}`,
+        fitmentClass: model ? fitmentClassForTier(model.tier) : null,
+      }
+    })
+    return [...owned, ...customer]
+  })
 
   function detailFor(car: CarInstance): DetailedCar {
     const model = context.value.modelsById[car.modelId]
@@ -1006,7 +1064,7 @@ export const useGameStore = defineStore('game', () => {
   function serviceJobTaskViews(job: ServiceJob): ServiceJobTaskView[] {
     return job.tasks.map((task) => ({
       label: taskLabel(task),
-      done: isServiceTaskDone(job.car, task, context.value.partsById),
+      done: isServiceTaskDone(job.car, task, context.value.partsById, job.baselineInstalledPartIds),
     }))
   }
 
@@ -1157,6 +1215,7 @@ export const useGameStore = defineStore('game', () => {
       tasks: serviceJobTaskViews(job),
       carId: job.car.id,
       carName: model ? resolveCarDisplayName(model) : job.car.modelId,
+      fitmentClass: model ? fitmentClassForTier(model.tier) : null,
       payoutYen: job.payoutYen,
       baseReputation: job.baseReputation,
       workDone: isServiceWorkDone(job, context.value),
@@ -1275,6 +1334,7 @@ export const useGameStore = defineStore('game', () => {
       lot,
       model,
       displayName: resolveCarDisplayName(model),
+      fitmentClass: fitmentClassForTier(model.tier),
       guideValueYen: anchorValueYen(lot, gameState.value, context.value),
       reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
@@ -2478,6 +2538,7 @@ export const useGameStore = defineStore('game', () => {
     activeServiceJobs,
     serviceJobOfferViews,
     activeServiceJobViews,
+    partsFitVehicleOptions,
     carsDetailed,
     ownedCarNames,
     partsCatalog,

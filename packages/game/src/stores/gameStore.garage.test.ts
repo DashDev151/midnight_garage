@@ -210,6 +210,7 @@ describe('garage: instant part install', () => {
       expiresOnDay: 999,
       arrivesOnDay: null,
       dueOnDay: 1,
+      baselineInstalledPartIds: {},
     }
     game.gameState = {
       ...game.gameState,

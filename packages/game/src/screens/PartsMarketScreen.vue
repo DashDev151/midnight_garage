@@ -121,13 +121,14 @@ const deliverySpeed = ref<'standard' | 'express'>('standard')
 const classFilter = ref<PartFitmentClass | ''>('')
 const vehicleFilter = ref<string>('')
 
-const vehicleOptions = computed(() =>
-  game.carsDetailed.map((d) => ({ id: d.car.id, label: d.displayName, tier: d.model.tier })),
-)
+// Sprint 61 (item 10): owned cars AND accepted customer service-job cars
+// (arrived or inbound) - so the accept-job, order-parts, both-arrive-tomorrow
+// loop can filter parts to a car that isn't physically in the shop yet.
+const vehicleOptions = computed(() => game.partsFitVehicleOptions)
 
 function onVehicleFilterChange(): void {
   const chosen = vehicleOptions.value.find((v) => v.id === vehicleFilter.value)
-  classFilter.value = chosen ? fitmentClassForTier(chosen.tier) : ''
+  classFilter.value = chosen?.fitmentClass ?? ''
 }
 
 /** Hero click: home -> a specific department's catalog view. */

@@ -63,6 +63,7 @@ function serviceCar(id: string): ServiceJob {
     expiresOnDay: 30,
     arrivesOnDay: null,
     dueOnDay: 10,
+    baselineInstalledPartIds: {},
   }
 }
 

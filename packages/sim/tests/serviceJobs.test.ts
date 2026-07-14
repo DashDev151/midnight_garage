@@ -100,6 +100,7 @@ function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}
     expiresOnDay: 30,
     arrivesOnDay: null, // an already-arrived, workable job by default in these fixtures
     dueOnDay: 8,
+    baselineInstalledPartIds: {},
   }
 }
 
@@ -471,18 +472,30 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
     expect(isServiceTaskDone(forced, task, CONTEXT.partsById)).toBe(false)
   })
 
-  it('an install task already satisfied is cleared back to an empty slot - real fit work again', () => {
+  it("keeps an install task's original part (rolled down to a neglected band), never clearing the slot (Sprint 61)", () => {
+    // Sprint 61 (the maintainer's "keep track of the original part"
+    // direction, replacing Sprint 40's slot-clearing hack): an install task
+    // no longer manufactures a missing slot. The customer's original part
+    // stays present (same instance id, which becomes the job's baseline),
+    // just degraded to a neglected band so the complaint is honest, and the
+    // task's completion is gated on fitting a DIFFERENT part.
     const task = installType.tasks[0]!
     if (task.action !== 'install') throw new Error('fixture task should be an install task')
     const streetPart = catalogPartFor(task.carPartId, (p) => p.grade === task.minGrade)
-    const car = buildCarInstance({
-      parts: mintCarParts({ [task.carPartId]: partInstance(streetPart.id) }),
-    })
-    expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(true)
+    const original = partInstance(streetPart.id)
+    const car = buildCarInstance({ parts: mintCarParts({ [task.carPartId]: original }) })
 
     const forced = forceTasksOutstanding(car, installType.tasks, CONTEXT, createRng(4))
-    expect(forced.parts[task.carPartId].installed).toBeNull()
-    expect(isServiceTaskDone(forced, task, CONTEXT.partsById)).toBe(false)
+    const installed = forced.parts[task.carPartId].installed
+    // Present, not cleared - the original instance, kept by id.
+    expect(installed).not.toBeNull()
+    expect(installed!.id).toBe(original.id)
+    // Rolled down to a neglected band so the complaint ("it's worn") is real.
+    expect(['poor', 'scrap']).toContain(installed!.band)
+    // With that original id as the baseline, the task is NOT done (re-fitting
+    // the customer's own part never satisfies it).
+    const baseline = { [task.carPartId]: original.id }
+    expect(isServiceTaskDone(forced, task, CONTEXT.partsById, baseline)).toBe(false)
   })
 
   it('leaves an already-outstanding task untouched - same car reference, no rng spent on it', () => {
@@ -625,6 +638,76 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
       parts: mintCarParts({ [task.carPartId]: partInstance(racePart.id) }),
     })
     expect(isServiceTaskDone(withRace, task, CONTEXT.partsById)).toBe(true)
+  })
+
+  describe('install completion is baseline-gated (Sprint 61): a genuinely NEW part is required', () => {
+    const task = installType.tasks[0]!
+    if (task.action !== 'install') throw new Error('fixture task should be an install task')
+    const originalId = 'pi-customer-original'
+    const streetPart = catalogPartFor(task.carPartId, (p) => p.grade === task.minGrade)
+    const baseline = { [task.carPartId]: originalId }
+
+    it("is NOT done while the slot still holds the customer's own arrived part (same instance id)", () => {
+      const car = buildCarInstance({
+        parts: mintCarParts({
+          [task.carPartId]: {
+            id: originalId,
+            partId: streetPart.id,
+            band: 'poor',
+            genuinePeriod: false,
+          },
+        }),
+      })
+      // A qualifying part is present, but it IS the baseline - not done.
+      expect(isServiceTaskDone(car, task, CONTEXT.partsById, baseline)).toBe(false)
+    })
+
+    it('is done once a DIFFERENT qualifying part is fitted (a real replacement)', () => {
+      const car = buildCarInstance({
+        parts: mintCarParts({
+          [task.carPartId]: {
+            id: 'pi-fresh',
+            partId: streetPart.id,
+            band: 'mint',
+            genuinePeriod: false,
+          },
+        }),
+      })
+      expect(isServiceTaskDone(car, task, CONTEXT.partsById, baseline)).toBe(true)
+    })
+
+    it('still enforces minGrade under the baseline - a different but under-grade part does not count', () => {
+      const stockPart = catalogPartFor(task.carPartId, (p) => p.grade === 'stock')
+      const car = buildCarInstance({
+        parts: mintCarParts({
+          [task.carPartId]: {
+            id: 'pi-fresh-stock',
+            partId: stockPart.id,
+            band: 'mint',
+            genuinePeriod: false,
+          },
+        }),
+      })
+      // A NEW part (different id) but stock < street - not done.
+      expect(isServiceTaskDone(car, task, CONTEXT.partsById, baseline)).toBe(false)
+    })
+
+    it('falls back to legacy "any qualifying part present is done" when no baseline is tracked (a pre-Sprint-61 job)', () => {
+      const car = buildCarInstance({
+        parts: mintCarParts({
+          [task.carPartId]: {
+            id: originalId,
+            partId: streetPart.id,
+            band: 'poor',
+            genuinePeriod: false,
+          },
+        }),
+      })
+      // Empty baseline (default) = legacy semantics: the same qualifying part
+      // that reads "not done" WITH a baseline reads "done" without one.
+      expect(isServiceTaskDone(car, task, CONTEXT.partsById, {})).toBe(true)
+      expect(isServiceTaskDone(car, task, CONTEXT.partsById)).toBe(true)
+    })
   })
 
   it('isServiceWorkDone requires every task in a multi-task job done, not just one', () => {

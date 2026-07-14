@@ -125,6 +125,19 @@ export const ServiceJobSchema = z.object({
    * not from acceptance, so the in-transit day never silently shortens it.
    */
   dueOnDay: z.number().int().positive().nullable().default(null),
+  /**
+   * Sprint 61: the `PartInstance.id` present in each of this job's INSTALL-task
+   * slots at generation time (or `null` if that slot was empty). An install
+   * task is done only once its slot holds a DIFFERENT part instance that also
+   * meets `minGrade` - so re-fitting the customer's own pulled-out part
+   * (same id) never counts, and a customer's car keeps its original (worn)
+   * part rather than the Sprint 40 slot-clearing hack manufacturing a missing
+   * one. A partial map, keyed only by the install-task slots; a `carPartId`
+   * absent from it (a legacy pre-Sprint-61 in-flight job, whose default is
+   * `{}`) falls back to the legacy "any qualifying part present is done"
+   * semantics for that task only.
+   */
+  baselineInstalledPartIds: z.record(z.string(), z.string().nullable()).default({}),
 })
 
 export const ServiceJobsSchema = z.array(ServiceJobSchema)

@@ -441,23 +441,39 @@ function offerCountCapForDay(
 }
 
 /**
+ * The condition bands an install task's original part is rolled down to
+ * (Sprint 61) - a visibly-neglected part so the customer's complaint is
+ * honest ("pads are down to metal"), never a manufactured missing slot. Poor
+ * or scrap: bad enough to justify a replacement without the odd middle
+ * ground of "worn but the customer's furious."
+ */
+const INSTALL_OUTSTANDING_BANDS = ['poor', 'scrap'] as const
+
+/**
  * Sprint 40, the real fix for "work done before the car even arrived": forces
  * every task in `tasks` to be genuinely outstanding on `car` BEFORE a payout
  * is derived from it. Pre-Sprint-40, offer generation rolled the template and
  * the customer car fully independently, with nothing linking them - a repair
- * task could land on a part that had already rolled at/above its target band
- * (or scrap, or a missing slot), and an install task could land on a slot
- * that already held a part meeting `minGrade`. Either way the job read as
- * "already done" the moment it hit the board, before the player (or bot)
- * ever touched it.
+ * task could land on a part that had already rolled at/above its target band,
+ * and an install task could land on a slot that already held a part meeting
+ * `minGrade`. Either way the job read as "already done" the moment it hit the
+ * board, before the player (or bot) ever touched it.
  *
  * A repair task whose `isServiceTaskDone` is already true installs a fresh
  * stock instance on that exact slot at a band rolled uniformly from strictly
  * BELOW the target (`bandsBelowExcludingScrap` - never scrap, there must be
- * real repair work left). An install task already satisfied clears the slot
- * (`installed: null`) so the fit is real work. One extra `rng.pick` draw per
- * FORCED slot, none otherwise - a seed with no collisions rolls a
- * byte-identical car to before this fix.
+ * real repair work left).
+ *
+ * Sprint 61 (the maintainer's "keep track of the original part" direction,
+ * replacing Sprint 40's slot-clearing hack): an install task NO LONGER clears
+ * its slot. The customer's car keeps its ORIGINAL part (same `PartInstance.id`,
+ * which becomes the job's baseline), rolled down to a neglected band so the
+ * complaint is honest - the task's completion is then gated on fitting a
+ * DIFFERENT part (`isServiceTaskDone`'s baseline check), never on the slot
+ * being empty. This structurally kills the "customer says the tyres are worn
+ * but the car has no tyres" contradiction: the tyres are present and worn, as
+ * described. A slot that is somehow already empty is left empty (defensive;
+ * service cars never roll a missing slot).
  */
 export function forceTasksOutstanding(
   car: CarInstance,
@@ -469,24 +485,29 @@ export function forceTasksOutstanding(
   const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
   let parts = car.parts
   for (const task of tasks) {
+    if (task.action === 'install') {
+      // Roll the original part down to a neglected band, keeping its instance
+      // (its id is the job's baseline) - present, not missing.
+      const installed = parts[task.carPartId].installed
+      if (!installed) continue // defensive: already empty, leave it
+      const band = rng.pick(INSTALL_OUTSTANDING_BANDS)
+      parts = { ...parts, [task.carPartId]: { installed: { ...installed, band } } }
+      continue
+    }
     const working: CarInstance = parts === car.parts ? car : { ...car, parts }
     if (!isServiceTaskDone(working, task, context.partsById)) continue
-    if (task.action === 'repair') {
-      const candidates = bandsBelowExcludingScrap(task.targetBand)
-      if (candidates.length === 0) continue // no valid "still needs repair" band to roll
-      const band = rng.pick(candidates)
-      const installed = stockInstanceFor(
-        task.carPartId,
-        band,
-        `${car.id}-part`,
-        fitmentClass,
-        context.stockPartByCarPartId,
-      )
-      if (!installed) continue // defensive: no stock entry for this slot (never happens for real content)
-      parts = { ...parts, [task.carPartId]: { installed } }
-    } else {
-      parts = { ...parts, [task.carPartId]: { installed: null } }
-    }
+    const candidates = bandsBelowExcludingScrap(task.targetBand)
+    if (candidates.length === 0) continue // no valid "still needs repair" band to roll
+    const band = rng.pick(candidates)
+    const installed = stockInstanceFor(
+      task.carPartId,
+      band,
+      `${car.id}-part`,
+      fitmentClass,
+      context.stockPartByCarPartId,
+    )
+    if (!installed) continue // defensive: no stock entry for this slot (never happens for real content)
+    parts = { ...parts, [task.carPartId]: { installed } }
   }
   return parts === car.parts ? car : { ...car, parts }
 }
@@ -590,6 +611,15 @@ export function generateDailyServiceJobOffers(
     // force every task genuinely outstanding before pricing the job off it,
     // so the payout (and the job itself) never prices in vacuous "work".
     const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng)
+    // Sprint 61: snapshot each install-task slot's original part instance id
+    // (the customer's arrived part) - the job is done only once a DIFFERENT
+    // part is fitted, so re-fitting the customer's own pulled part never
+    // satisfies it.
+    const baselineInstalledPartIds: Record<string, string | null> = {}
+    for (const task of template.tasks) {
+      if (task.action !== 'install') continue
+      baselineInstalledPartIds[task.carPartId] = car.parts[task.carPartId].installed?.id ?? null
+    }
     const inLane =
       singleTaskGroup(template.tasks, context) === topGroup &&
       specialty[topGroup] >= context.economy.specialty.premiumThresholdPoints
@@ -614,6 +644,7 @@ export function generateDailyServiceJobOffers(
       expiresOnDay: day + expiresInDays,
       arrivesOnDay: null,
       dueOnDay: null,
+      baselineInstalledPartIds,
     })
   }
   return offers
@@ -747,11 +778,22 @@ export function resolveServiceJobArrivals(state: GameState): ServiceJobArrivalRe
  * slot holds a catalog part graded at least `minGrade` (Sprint 29: "at
  * least," a player who overdelivers still passes, same as the offer's own
  * cost basis being priced off the narrowest satisfying tier - see
- * `fittingPartsForInstallTask`). */
+ * `fittingPartsForInstallTask`).
+ *
+ * Sprint 61: an install task also requires the slot's part to be a
+ * genuinely NEW instance - `baselineInstalledPartIds[carPartId]` is the
+ * part instance the customer's car arrived with, and re-fitting that exact
+ * part (its own `PartInstance.id`, preserved by the Sprint 35 pull/keep
+ * flow) never satisfies the job. A `carPartId` absent from the baseline map
+ * (an install task on a legacy pre-Sprint-61 job, whose baseline defaults to
+ * `{}`, or any call that doesn't thread the baseline) falls back to the
+ * pre-Sprint-61 "any qualifying part present is done" semantics.
+ */
 export function isServiceTaskDone(
   car: CarInstance,
   task: ServiceJobTask,
   partsById: Readonly<Record<string, Part>>,
+  baselineInstalledPartIds: Readonly<Record<string, string | null>> = {},
 ): boolean {
   if (task.action === 'repair') {
     const installed = car.parts[task.carPartId].installed
@@ -761,7 +803,13 @@ export function isServiceTaskDone(
   const installed = car.parts[task.carPartId].installed
   if (!installed) return false
   const part = partsById[installed.partId]
-  return !!part && gradeAtLeast(part.grade, task.minGrade)
+  if (!part || !gradeAtLeast(part.grade, task.minGrade)) return false
+  // Sprint 61: a NEW part is required, not the customer's own arrived part.
+  // An absent baseline (legacy job / untracked call) keeps the old "present
+  // and qualifying is enough" behavior for that task.
+  const baselineId = baselineInstalledPartIds[task.carPartId]
+  if (baselineId === undefined) return true
+  return installed.id !== baselineId
 }
 
 /**
@@ -769,10 +817,14 @@ export function isServiceTaskDone(
  * every task in the job's list satisfied (Sprint 29: extends the Sprint 26
  * group-level "bridge" to a real per-task, per-part list). Multi-task
  * completion requires ALL tasks done; a partial hand-back is the existing
- * failure path (`resolveServiceJob` below), unchanged.
+ * failure path (`resolveServiceJob` below), unchanged. Sprint 61: threads the
+ * job's own `baselineInstalledPartIds` so install tasks require a genuinely
+ * new part.
  */
 export function isServiceWorkDone(job: ServiceJob, context: SimContext): boolean {
-  return job.tasks.every((task) => isServiceTaskDone(job.car, task, context.partsById))
+  return job.tasks.every((task) =>
+    isServiceTaskDone(job.car, task, context.partsById, job.baselineInstalledPartIds),
+  )
 }
 
 /**

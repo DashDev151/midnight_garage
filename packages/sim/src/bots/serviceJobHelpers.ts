@@ -99,7 +99,13 @@ export function queueServiceJobTasks(
 
   for (const task of serviceJob.tasks) {
     if (remainingLabor <= 0) break
-    if (isServiceTaskDone(car, task, context.partsById)) continue
+    // Sprint 61: pass the job's baseline so an install task is seen as "not
+    // done" until a genuinely new part is fitted - the customer's car now
+    // keeps its (worn) original part rather than an empty slot, so without
+    // the baseline the bot would read a qualifying stock part as already done
+    // and never do the work.
+    if (isServiceTaskDone(car, task, context.partsById, serviceJob.baselineInstalledPartIds))
+      continue
 
     const existing = findExistingTaskJob(state, car.id, task)
     if (existing) {

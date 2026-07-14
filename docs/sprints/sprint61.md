@@ -101,4 +101,71 @@ names; the Dexie bump + golden-save pattern.
 
 ## Exit
 
-Not started.
+Implemented and committed.
+
+**Baseline-tracked installs (decisions 1-2).** `ServiceJob` gains
+`baselineInstalledPartIds: Record<carPartId, string | null>` (default `{}`), snapshotted at offer
+generation for each install-task slot - the `PartInstance.id` the customer's car arrived with.
+`isServiceTaskDone` gained an optional baseline parameter: an install task is done only when the
+slot holds a part of `minGrade`-or-better whose instance id DIFFERS from the baseline (an absent
+baseline entry falls back to the pre-Sprint-61 "any qualifying part present is done" semantics, so
+a legacy in-flight job never breaks). `forceTasksOutstanding` stops clearing install slots (Sprint
+40's hack that manufactured missing parts); instead it rolls the customer's ORIGINAL part down to
+a neglected band (poor/scrap) so the complaint is honest while the part stays present, and that
+original id becomes the baseline. Threaded through the two other callers that operate on a job:
+the bot helper (`serviceJobHelpers.ts`) and the game store's per-task `done` view. `SAVE_VERSION`
+29 -> 30, additive (no migration function; the schema default handles legacy saves), with two new
+golden-save tests (a pre-v30 job decodes with an empty baseline; a v30 job round-trips a real
+captured baseline).
+
+**Flavour sanity (decision 3).** With the root cause gone, the missing-part contradiction class
+is structurally impossible - every install slot now holds a present, neglected part. Reviewed all
+25 install-template flavour pools: every line is framed as an upgrade or wear ("clutch is
+slipping", "pads down to metal", "tyres are bald", "shredded a tyre", "stock gearbox can't take
+it") - none imply a genuinely absent part, so with the present-but-worn car they are all honest as
+written. No content edit was needed; the review is the deliverable.
+
+**Class chips (decision 4).** `ServiceJobOfferView`, `ServiceJobView`, and `LotDetail` each gained
+a `fitmentClass` field (the model, previously looked up and discarded, is now read for it). A
+small muted chip renders `game.fitmentClassLabel(...)` ("Kei & Compact", "Sports", ...) on the
+auction lot card and on both job cards (offer + in-shop), answering "which class of parts do I buy
+for this?" directly.
+
+**The fit filter (decision 5).** A new store getter `partsFitVehicleOptions` returns every owned
+car PLUS every accepted customer service-job car - including an inbound one that hasn't arrived
+yet, labelled "(customer, arrives day N)" / "(customer, in the shop)". `PartsMarketScreen`'s
+"fits this vehicle" filter reads it, so the core loop (accept the job, order the right-class
+parts, both arrive next morning) now works.
+
+**Testing.** Sim: rewrote the one stale `forceTasksOutstanding` test that asserted the old
+clear-to-empty behavior (directive 17, stale case - it now asserts the original part is kept,
+degraded, and its id is the baseline); added a dedicated baseline-semantics describe block
+(new-part-required, own-part-reinstall rejected, minGrade still enforced under the baseline,
+legacy-null fallback). Nine raw `ServiceJob` test literals across sim and game needed the new
+field (mechanical fixture fallout of a required schema field). Game: a new ServiceJobsScreen test
+(the class chip renders the display name, not the raw enum) and a new PartsMarketScreen test (the
+fit filter lists an inbound customer car and selecting it sets the class filter). Save: the six
+`SAVE_VERSION` canary assertions and their titles bumped to 30/Sprint 61, plus the two new
+golden-save tests.
+
+**Verification.** Full gate green: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format`
+(three touched files auto-formatted), `pnpm test:coverage` (1059 tests, 79 files; coverage
+91.50%/82.05%/92.91%/95.33%, all above the ratchet floor), `pnpm build`. Balance harness re-run
+(this IS a sim behavioural change): all 9 hard gates pass. Days-to-`local` p50 moved 12 -> 16,
+still comfortably inside the hard-gated [10,35] band, so no maintainer band-move was needed - an
+expected, disclosed consequence: an install job now takes an extra tick (the bot does
+remove -> buy -> install onto the present original part, instead of buy -> install onto the empty
+slot Sprint 40 manufactured), so the service-job-driven reputation loop runs slightly slower.
+Service-grinder and competent-policy day-100 median cash dropped accordingly (441k/435k, down from
+572k/643k in Sprint 60) - fewer install jobs cleared per career, the direct effect of the
+more-honest, one-more-step install semantics; every other invariant holds unchanged. No golden
+career hash moved (the scripted-career fixtures' own day-1 boards aren't affected in a
+hash-visible way).
+
+**Definition of done, checked against the sprint doc:**
+- No customer car can present a complaint its own state contradicts; install jobs require a
+  genuinely new part; the customer's original part flows through the Sprint 35 reconciliation -
+  yes.
+- Auction lots and job cards show the car's class; the fit filter serves inbound customer cars -
+  yes.
+- Dexie migration + golden saves green; full gate green; harness hard gates pass - yes.

@@ -166,4 +166,29 @@ describe('PartsMarketScreen', () => {
     await wrapper.find('[data-test="market-back"]').trigger('click')
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
   })
+
+  it('the "fits this vehicle" filter lists an accepted (inbound) customer service-job car (Sprint 61 item 10)', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const offer = game.serviceJobOffers[0]
+    if (!offer) throw new Error('expected a service job offer on day 1')
+    expect(game.acceptServiceJob(offer.id)).toBe(true)
+    // The car is still inbound (arrives tomorrow), yet must already be a
+    // fit-filter option so the player can order parts for it today.
+    const customerCarId = offer.car.id
+    const option = game.partsFitVehicleOptions.find((v) => v.id === customerCarId)
+    expect(option).toBeDefined()
+    expect(option!.label).toContain('customer')
+    expect(option!.fitmentClass).not.toBeNull()
+
+    // Selecting it in the DOM sets the class filter to the car's own class.
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
+    const select = wrapper.find('[data-test="filter-vehicle"]')
+    expect(select.findAll('option').some((o) => o.element.value === customerCarId)).toBe(true)
+    await select.setValue(customerCarId)
+    expect((wrapper.find('[data-test="filter-class"]').element as HTMLSelectElement).value).toBe(
+      option!.fitmentClass,
+    )
+  })
 })

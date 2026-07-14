@@ -38,6 +38,22 @@ pass."
   `tools/balance/src/balance/invariants.py`'s module docstring and `docs/sprints/sprint55.md`'s
   Exit for the real numbers). The economy-pacing symptom is resolved; the harness-vs-real-play
   methodological doubt itself is not, and stays open.
+- [ ] **No bot ever installs an AFTERMARKET part, so the harness cannot exercise any premium/
+  build-quality economics at all** (maintainer finding, 2026-07-14, after Sprint 60). This is a
+  concrete, high-priority instance of the harness-realism doubt above: every bot only ever
+  repairs stock parts and sells, so across all 9 strategies x 1000 careers every owned car
+  carries a ZERO aftermarket premium. Sprint 60's foundation law (economy-bible Law 5) scales the
+  premium term - and the harness run came back byte-for-byte identical to Sprint 59's, because the
+  factor multiplies a premium that is always zero in bot play. The whole point of the harness is
+  to simulate how a REAL player might play, and a real player buys street/sport/race parts and
+  builds cars up; the bots don't, so the harness is blind to the entire aftermarket half of the
+  economy (installed-part value, the foundation law, the coherence of a modified build, buyer
+  taste on modified cars). Needs at least one bot archetype (a "builder"/"tuner") that buys
+  aftermarket parts from the market and installs them - ideally one that builds INCOHERENTLY
+  sometimes (fancy parts on bad foundations) so the harness actually stresses Law 5, and one that
+  builds coherently, so the report can show the two diverge the way the law intends. Until then,
+  every premium-related invariant is proven only by the unit/probe tests, never by career-scale
+  Monte Carlo.
 - [ ] **Recorded-play idea** (user-proposed 2026-07-09): parse real play sessions into per-archetype
   statistical rulesets - rates and biases ("bids X% below book," "does these repairs, buys that
   part"), not literal replay, and **phase-aware** (a career can drift mid-run; today's bots don't).

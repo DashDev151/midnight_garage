@@ -156,7 +156,12 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
           <!-- Sprint 56 decision 3: left panel - identity, art, grade stamps. -->
           <div class="lot-left">
             <div class="lot-head">
-              <span class="lot-name">{{ d.displayName }}</span>
+              <span class="lot-name"
+                >{{ d.displayName
+                }}<span class="class-chip" :data-test="'lot-class-' + d.lot.id">{{
+                  game.fitmentClassLabel(d.fitmentClass)
+                }}</span></span
+              >
               <span class="lot-meta">
                 {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
                 {{ d.lot.car.color }}
@@ -418,6 +423,19 @@ h3 {
 
 .lot-name {
   color: var(--mg-neon-cyan);
+}
+
+/* Sprint 61 (item 15): a small muted class chip so a bidder knows which
+   class of parts this car takes (Kei & Compact / Sports / ...). */
+.class-chip {
+  display: inline-block;
+  margin-left: var(--mg-space-2);
+  padding: 0 var(--mg-space-1);
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: 4px;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-xs, 0.7rem);
+  vertical-align: middle;
 }
 
 .lot-meta,
