@@ -289,6 +289,7 @@ describe('GameState / DayLog round-trip', () => {
       carLedgers: { 'car-0001': { purchaseYen: 900_000, repairYen: 45_000, partsYen: 60_000 } },
       machineListing: null,
       nextMachineListingDay: null,
+      serviceJobLedgers: {},
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -334,6 +335,17 @@ describe('GameState / DayLog round-trip', () => {
         jobId: 'svc-0001',
         payoutYen: 42_000,
         reputationGained: 4,
+        repairCostYen: 8_000,
+        partsCostYen: 0,
+        specialtyGained: {
+          engine: 4,
+          drivetrain: 0,
+          suspension: 0,
+          wheels: 0,
+          body: 0,
+          interior: 0,
+        },
+        netProfitYen: 34_000,
       },
       {
         type: 'offer-received',

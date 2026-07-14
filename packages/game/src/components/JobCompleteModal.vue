@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -6,6 +7,16 @@ import { formatYen, formatYenDelta } from '../utils/formatYen'
 const game = useGameStore()
 
 const result = computed(() => game.lastJobResult)
+
+/** Sprint 57: one line per group the job's tasks actually touched - the
+ * untouched groups (0) stay silent. */
+const specialtyLines = computed(() => {
+  const r = result.value
+  if (!r) return []
+  return (Object.entries(r.specialtyGained) as [ComponentId, number][])
+    .filter(([, delta]) => delta !== 0)
+    .map(([group, delta]) => `${game.componentLabel(group)} ${delta >= 0 ? '+' : ''}${delta}`)
+})
 
 /**
  * One flavor line, varying by outcome - no garage-name templating (no such
@@ -39,14 +50,18 @@ const flavorLine = computed(() => {
           <dt>Payout</dt>
           <dd class="up">{{ formatYen(result.payoutYen) }}</dd>
         </div>
-        <div v-if="result.partCostYen !== undefined">
-          <dt>Part cost</dt>
-          <dd>{{ formatYen(result.partCostYen) }}</dd>
+        <div v-if="result.repairCostYen > 0">
+          <dt>Repair cost</dt>
+          <dd>{{ formatYen(result.repairCostYen) }}</dd>
         </div>
-        <div v-if="result.profitYen !== undefined">
-          <dt>Profit</dt>
-          <dd :class="result.profitYen >= 0 ? 'up' : 'down'">
-            {{ formatYenDelta(result.profitYen) }}
+        <div v-if="result.partsCostYen > 0">
+          <dt>Parts cost</dt>
+          <dd>{{ formatYen(result.partsCostYen) }}</dd>
+        </div>
+        <div>
+          <dt>{{ result.outcome === 'paid' ? 'Net profit' : 'Sunk cost' }}</dt>
+          <dd :class="result.netProfitYen >= 0 ? 'up' : 'down'" data-test="job-result-net-profit">
+            {{ formatYenDelta(result.netProfitYen) }}
           </dd>
         </div>
         <div>
@@ -54,6 +69,10 @@ const flavorLine = computed(() => {
           <dd :class="result.reputationDelta >= 0 ? 'up' : 'down'">
             {{ formatYenDelta(result.reputationDelta).replace('¥', '') }}
           </dd>
+        </div>
+        <div v-if="specialtyLines.length">
+          <dt>Specialty</dt>
+          <dd>{{ specialtyLines.join(', ') }}</dd>
         </div>
         <div v-if="result.daysSpent !== undefined">
           <dt>Days on the job</dt>

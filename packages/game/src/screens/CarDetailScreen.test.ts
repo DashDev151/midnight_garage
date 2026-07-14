@@ -434,6 +434,24 @@ describe('CarDetailScreen', () => {
     })
   })
 
+  describe('the service banner no longer offers completion (Sprint 57 decision 1)', () => {
+    it('shows the work status but not the Complete/Give Up button - that moved to the jobs screen', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const offer = game.gameState.serviceJobOffers[0]
+      if (!offer) throw new Error('expected a service job offer on day 1')
+      expect(game.acceptServiceJob(offer.id)).toBe(true)
+      game.endDay() // the customer's car arrives the following morning
+      const carId = offer.car.id
+
+      const { wrapper } = await mountAt(carId)
+      expect(wrapper.find('[data-test="complete-service-job"]').exists()).toBe(false)
+      const hasStatusLine =
+        wrapper.text().includes('Work done') || wrapper.text().includes('Work unfinished')
+      expect(hasStatusLine).toBe(true)
+    })
+  })
+
   describe('per-part drill-down (Sprint 28)', () => {
     it('a group with two non-mint parts lets both be repaired independently, without one displacing the other', async () => {
       const game = useGameStore()

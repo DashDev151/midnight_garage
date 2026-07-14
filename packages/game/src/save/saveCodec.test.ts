@@ -1049,7 +1049,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(28)
+    expect(SAVE_VERSION).toBe(29)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1103,7 +1103,7 @@ describe('saveCodec', () => {
   })
 
   it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(28)
+    expect(SAVE_VERSION).toBe(29)
     const withTaggedPart: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1902,8 +1902,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 28 (Sprint 53)', () => {
-    expect(SAVE_VERSION).toBe(28)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 29 (Sprint 57)', () => {
+    expect(SAVE_VERSION).toBe(29)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -2004,8 +2004,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 28 (Sprint 53)', () => {
-    expect(SAVE_VERSION).toBe(28)
+  it('SAVE_VERSION has since moved to 29 (Sprint 57)', () => {
+    expect(SAVE_VERSION).toBe(29)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -2037,8 +2037,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 28 (Sprint 53)', () => {
-    expect(SAVE_VERSION).toBe(28)
+  it('SAVE_VERSION is 29 (Sprint 57)', () => {
+    expect(SAVE_VERSION).toBe(29)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -2084,8 +2084,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 28 (Sprint 53)', () => {
-    expect(SAVE_VERSION).toBe(28)
+  it('SAVE_VERSION is 29 (Sprint 57)', () => {
+    expect(SAVE_VERSION).toBe(29)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -2174,5 +2174,35 @@ describe('saveCodec', () => {
     const decoded = decodeSave(code)
     const loosePart = decoded.partInventory.find((p) => p.id === 'pi-loose-02')
     expect(loosePart?.partId).toBe('stock-block')
+  })
+
+  /**
+   * v28 -> v29 (Sprint 57, the service-job ledger): `GameStateSchema` gained
+   * `serviceJobLedgers` (default `{}`) - the normal additive case, so it
+   * needs NO `MIGRATIONS[28]` entry, but it DOES bump `SAVE_VERSION` (Save
+   * law). These two tests are its regression coverage: a real pre-v29 (v28
+   * envelope) save with no `serviceJobLedgers` field at all still decodes
+   * cleanly under v29 (no job has spent anything, exactly right since the
+   * concept did not exist yet), and a v29 state with a real per-job ledger
+   * round-trips it exactly.
+   */
+  it('a real pre-v29 save (a v28 envelope with no serviceJobLedgers field) decodes with every job ledger empty under v29', () => {
+    const stateWithoutServiceJobLedgers: Record<string, unknown> = { ...fullState }
+    delete stateWithoutServiceJobLedgers.serviceJobLedgers
+    const preV29 = { version: 28, gameState: stateWithoutServiceJobLedgers }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV29))
+    const decoded = decodeSave(code)
+    expect(decoded.serviceJobLedgers).toEqual({})
+  })
+
+  it('a v29 state with a real per-job ledger round-trips it exactly', () => {
+    const withLedger: GameState = GameStateSchema.parse({
+      ...fullState,
+      serviceJobLedgers: { 'svc-real-job': { repairYen: 8_000, partsYen: 15_000 } },
+    })
+    const decoded = decodeSave(encodeSave(withLedger))
+    expect(decoded.serviceJobLedgers).toEqual({
+      'svc-real-job': { repairYen: 8_000, partsYen: 15_000 },
+    })
   })
 })

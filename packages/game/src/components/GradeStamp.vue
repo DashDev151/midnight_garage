@@ -35,10 +35,15 @@ function toneFor(grade: string): StampTone {
 }
 
 const tone = computed(() => toneFor(props.grade))
+const rotationDeg = (Math.random() * 3 - 1.5).toFixed(2)
 </script>
 
 <template>
-  <span class="grade-stamp" :class="'stamp-' + tone">
+  <span
+    class="grade-stamp"
+    :class="'stamp-' + tone"
+    :style="{ transform: `rotate(${rotationDeg}deg)` }"
+  >
     <span class="stamp-label">{{ label }}</span>
     <span class="stamp-value">{{ grade }}</span>
   </span>
@@ -66,23 +71,6 @@ const tone = computed(() => toneFor(props.grade))
   transition: filter 0.15s ease;
   /* Forces its own compositor layer so the rotated text stays crisp. */
   backface-visibility: hidden;
-}
-
-/* Slight rotation jitter per stamp position (decision 2) - a fixed,
-   deterministic offset per slot (never randomized - three stamps always
-   render in the same Overall/Ext/Int order), so the row reads as
-   hand-stamped without any snapshot-test flakiness. Kept small (see the
-   comment on `.grade-stamp` above) so the ink stays legible. */
-.grade-stamp:nth-of-type(1) {
-  transform: rotate(-1deg);
-}
-
-.grade-stamp:nth-of-type(2) {
-  transform: rotate(0.75deg);
-}
-
-.grade-stamp:nth-of-type(3) {
-  transform: rotate(-0.5deg);
 }
 
 .stamp-label {

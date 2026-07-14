@@ -97,6 +97,7 @@ function initialState(): GameState {
     carLedgers: {},
     machineListing: null,
     nextMachineListingDay: null,
+    serviceJobLedgers: {},
   }
 }
 
@@ -219,9 +220,14 @@ describe('advanceDay golden master', () => {
     // a logic bug. Every other assertion in this file (job completion,
     // determinism, the day-3 install landing on the dampers slot) still
     // passes unchanged against this same scripted career.
+    // Re-pinned again (Sprint 57, was 9a900aae): `GameState` gained
+    // `serviceJobLedgers` (additive, default `{}`) - a real state-shape
+    // change, not a logic bug; this scripted career never accepts a
+    // service job, so the field stays empty throughout and every other
+    // assertion in this file still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('9a900aae')
+    expect(hashState(finalState)).toBe('f354f178')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -395,7 +401,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // real, intended content retunes touching this career's auction/sale
     // price path, not a logic bug; `wins a lot at auction, then sells the
     // car` above still holds unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('60785b98')
+    // Re-pinned again (Sprint 57, was 60785b98): `GameState` gained
+    // `serviceJobLedgers` (additive, default `{}`) - a real state-shape
+    // change, not a logic bug; this career never touches a service job, so
+    // the field stays empty throughout and `wins a lot at auction, then
+    // sells the car` above still holds unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('179db04e')
   })
 })
 

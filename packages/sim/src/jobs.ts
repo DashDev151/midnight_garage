@@ -24,6 +24,7 @@ import {
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { partFitsCar } from './parts'
+import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
  * A car the player can work on - either an owned car or a customer's car
@@ -242,10 +243,19 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
     if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
     const activeServiceJobs = [...state.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: effect.car }
-    return {
-      state: { ...state, activeServiceJobs, partInventory: effect.partInventory },
-      blockedByOccupiedSlot: false,
+    let next: GameState = { ...state, activeServiceJobs, partInventory: effect.partInventory }
+    if (job.kind === 'install-part') {
+      // Sprint 57: the same paid-price accounting as the owned-car branch
+      // above, at job scope instead of car scope, so the completion report
+      // can show what this specific job actually cost, not a catalog price.
+      const pricePaidYen =
+        state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
+      next = updateServiceJobLedger(next, serviceJob.id, (ledger) => ({
+        ...ledger,
+        partsYen: ledger.partsYen + pricePaidYen,
+      }))
     }
+    return { state: next, blockedByOccupiedSlot: false }
   }
 
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
@@ -439,10 +449,20 @@ export function repairJobGate(
   if (!charged.ok) return { ok: false, log: [] }
   // Sprint 42: this same gate also runs a customer's service-job car (the
   // player fronts the repair, gets paid via the job's own payout on
-  // handback) - only an OWNED car gets a ledger entry, never a customer's.
+  // handback) - an owned car gets a car ledger entry; a customer's (Sprint
+  // 57) gets its job's own ledger entry instead, so the completion report
+  // can show what the player actually spent.
   const isOwnedCar = state.ownedCars.some((c) => c.id === spec.carInstanceId)
-  const chargedState = isOwnedCar
-    ? updateCarLedger(charged.state, spec.carInstanceId, (ledger) => ({
+  if (isOwnedCar) {
+    const chargedState = updateCarLedger(charged.state, spec.carInstanceId, (ledger) => ({
+      ...ledger,
+      repairYen: ledger.repairYen + charged.totalCostYen,
+    }))
+    return { ok: true, state: chargedState }
+  }
+  const serviceJob = state.activeServiceJobs.find((sj) => sj.car.id === spec.carInstanceId)
+  const chargedState = serviceJob
+    ? updateServiceJobLedger(charged.state, serviceJob.id, (ledger) => ({
         ...ledger,
         repairYen: ledger.repairYen + charged.totalCostYen,
       }))

@@ -110,6 +110,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     carLedgers: {},
     machineListing: null,
     nextMachineListingDay: null,
+    serviceJobLedgers: {},
     ...overrides,
   }
 }
@@ -226,7 +227,7 @@ describe('completeJob', () => {
     })
   })
 
-  it('Sprint 42: an install-part job completed on a CUSTOMER service-job car creates no ledger entry - not owned', () => {
+  it('an install-part job completed on a CUSTOMER service-job car creates no CAR ledger entry (never owned) but does update its own job ledger (Sprint 57)', () => {
     const customerCar: CarInstance = buildCarInstance({
       id: 'car-customer-install',
       modelId: 'honda-city-e-aa',
@@ -262,6 +263,7 @@ describe('completeJob', () => {
       CONTEXT,
     )
     expect(result.state.carLedgers).toEqual({})
+    expect(result.state.serviceJobLedgers[owningJob.id]).toEqual({ repairYen: 0, partsYen: 42_000 })
   })
 
   it('an install-part job into an occupied slot is blocked, not overwritten', () => {
@@ -801,7 +803,7 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
     expect(gate.ok).toBe(false)
   })
 
-  it('Sprint 42: charges cash for a customer service-job car exactly as before, but records NO ledger entry - not owned', () => {
+  it('charges cash for a customer service-job car exactly as before, records NO car ledger entry (never owned), but does update its own job ledger (Sprint 57)', () => {
     const customerCar: CarInstance = buildCarInstance({
       id: 'car-customer-repair',
       modelId: 'honda-city-e-aa',
@@ -836,8 +838,13 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
     )
     expect(gate.ok).toBe(true)
     if (gate.ok) {
-      expect(gate.state.cashYen).toBeLessThan(cashBefore) // real charge still happens
-      expect(gate.state.carLedgers).toEqual({}) // but no ledger for a car we don't own
+      const chargedYen = cashBefore - gate.state.cashYen
+      expect(chargedYen).toBeGreaterThan(0) // real charge still happens
+      expect(gate.state.carLedgers).toEqual({}) // but no CAR ledger for a car we don't own
+      expect(gate.state.serviceJobLedgers[owningJob.id]).toEqual({
+        repairYen: chargedYen,
+        partsYen: 0,
+      })
     }
   })
 })

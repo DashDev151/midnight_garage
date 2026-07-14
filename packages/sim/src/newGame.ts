@@ -55,6 +55,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     carLedgers: {},
     machineListing: null,
     nextMachineListingDay: null,
+    serviceJobLedgers: {},
   }
 
   // One rng stream for both, in sequence - the same "one rng per day, drawn

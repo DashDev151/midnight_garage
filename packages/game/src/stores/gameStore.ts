@@ -449,10 +449,19 @@ export interface ServiceJobResultView {
   payoutYen: number
   /** Positive for a paid job, negative (or zero) for a failed one. */
   reputationDelta: number
-  /** Set for a paid job with at least one install task: the sum of every
-   * installed part's cost and the resulting profit. */
-  partCostYen?: number
-  profitYen?: number
+  /**
+   * Sprint 57: what the player actually paid, read from the job's own
+   * ledger - present (0 when that kind of spend never happened) whether
+   * the job paid or failed, so a repair-only job reports real numbers too.
+   */
+  repairCostYen: number
+  partsCostYen: number
+  /** `payoutYen - repairCostYen - partsCostYen` - always <= 0 on failure
+   * (no payout, sunk cost only). */
+  netProfitYen: number
+  /** Per-group specialty earned or lost, split evenly across every group
+   * the job's tasks touched - untouched groups are 0, not omitted. */
+  specialtyGained: Record<ComponentId, number>
   /** Days between acceptance and this resolution. */
   daysSpent?: number
 }
@@ -2175,8 +2184,10 @@ export const useGameStore = defineStore('game', () => {
         taskLabels: job.tasks.map(taskLabel),
         payoutYen: entry.payoutYen,
         reputationDelta: entry.reputationGained,
-        partCostYen: entry.partCostYen,
-        profitYen: entry.profitYen,
+        repairCostYen: entry.repairCostYen,
+        partsCostYen: entry.partsCostYen,
+        netProfitYen: entry.netProfitYen,
+        specialtyGained: entry.specialtyGained,
         daysSpent: entry.daysSpent,
       }
     } else if (entry?.type === 'service-job-failed') {
@@ -2186,6 +2197,10 @@ export const useGameStore = defineStore('game', () => {
         taskLabels: job.tasks.map(taskLabel),
         payoutYen: 0,
         reputationDelta: -entry.reputationLost,
+        repairCostYen: entry.repairCostYen,
+        partsCostYen: entry.partsCostYen,
+        netProfitYen: entry.netProfitYen,
+        specialtyGained: entry.specialtyGained,
       }
     }
     logSessionEvent('completeServiceJob', { jobId, outcome: resolution.outcome })

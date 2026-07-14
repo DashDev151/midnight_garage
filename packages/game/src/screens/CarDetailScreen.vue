@@ -198,15 +198,6 @@ function continueJob(componentId: ComponentId, carPartId?: CarPartId): void {
   else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId, carPartId)
 }
 
-/**
- * Resolve a customer job immediately (paid if the work's done, forfeited with a
- * reputation hit if not). The car then leaves the shop, so the detail computed
- * goes undefined and the watcher above returns us to the garage.
- */
-function onCompleteJob(jobId: string): void {
-  game.completeServiceJob(jobId)
-}
-
 /** Move this car between parking and the service bay - instant, free. */
 function toggleBay(): void {
   const d = detail.value
@@ -503,20 +494,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <span class="svc-status" :class="{ done: detail.serviceJob.workDone }">
             {{
               detail.serviceJob.workDone
-                ? 'Work done - hand it back to get paid now.'
+                ? 'Work done - hand it back from the job board to get paid.'
                 : 'Work unfinished - completing now forfeits the job (−' +
                   detail.serviceJob.failureReputationPenalty +
-                  ' rep).'
+                  ' rep). Complete or Give Up from the job board.'
             }}
           </span>
-          <button
-            class="primary"
-            :class="{ danger: !detail.serviceJob.workDone }"
-            data-test="complete-service-job"
-            @click="onCompleteJob(detail.serviceJob.id)"
-          >
-            {{ detail.serviceJob.workDone ? 'Complete Job' : 'Give Up Job' }}
-          </button>
         </div>
       </section>
 
@@ -1067,12 +1050,6 @@ h4 {
 
 .svc-deadline.urgent {
   color: var(--mg-neon-pink);
-}
-
-button.primary.danger {
-  background: var(--mg-panel);
-  color: var(--mg-neon-pink);
-  border-color: var(--mg-neon-pink);
 }
 
 .cols {

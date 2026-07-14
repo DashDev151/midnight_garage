@@ -47,6 +47,22 @@ export const CarLedgerSchema = z.object({
   partsYen: z.number().int().nonnegative().default(0),
 })
 
+/**
+ * Sprint 57: the same repairYen/partsYen shape as `CarLedgerSchema`, at job
+ * scope instead of car scope - what the player actually spent on a customer's
+ * service job (repair charges fronted on their car, parts installed at their
+ * paid price), keyed by job id. No `purchaseYen`: a service job has no
+ * acquisition cost. Created lazily (a job with no entry has spent nothing
+ * yet) and deleted at close-out (`resolveServiceJob`), same lifecycle as
+ * `CarLedgerSchema` minus the "created at acquisition" step.
+ */
+export const ServiceJobLedgerSchema = z.object({
+  repairYen: z.number().int().nonnegative().default(0),
+  partsYen: z.number().int().nonnegative().default(0),
+})
+
+export type ServiceJobLedger = z.infer<typeof ServiceJobLedgerSchema>
+
 export type CarLedger = z.infer<typeof CarLedgerSchema>
 
 /**
@@ -223,6 +239,15 @@ export const GameStateSchema = z.object({
    * additive.
    */
   nextMachineListingDay: z.number().int().positive().nullable().default(null),
+  /**
+   * Sprint 57: per-active-service-job spend record, keyed by job id -
+   * created lazily by the two charge sites (a customer-car repair charge, an
+   * install completion at the part's own paid price), read and deleted at
+   * close-out (`resolveServiceJob`) so the completion report can show what
+   * the player actually paid rather than a catalog-price reconstruction.
+   * Purely additive.
+   */
+  serviceJobLedgers: z.record(z.string(), ServiceJobLedgerSchema).default({}),
 })
 
 /**
@@ -359,10 +384,21 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     jobId: z.string().min(1),
     payoutYen: z.number().int().nonnegative(),
     reputationGained: z.number().int().nonnegative(),
-    /** Set for install jobs only: the installed part's price and the resulting
-     * profit (payoutYen - partCostYen). Absent for repair jobs (no part cost). */
-    partCostYen: z.number().int().nonnegative().optional(),
-    profitYen: z.number().int().optional(),
+    /**
+     * Sprint 57: what the player actually paid, read from the job's own
+     * ledger (`ServiceJobLedgerSchema`) at close-out - never a catalog-price
+     * reconstruction. Always present (0 when that kind of spend never
+     * happened), so a repair-only job reports real numbers too, not just
+     * install jobs.
+     */
+    repairCostYen: z.number().int().nonnegative(),
+    partsCostYen: z.number().int().nonnegative(),
+    /** Per-group specialty earned, split evenly across every distinct group
+     * the job's tasks touched (`applySpecialtyDelta`) - untouched groups
+     * are 0, not omitted. */
+    specialtyGained: z.record(ComponentIdSchema, z.number().int()),
+    /** `payoutYen - repairCostYen - partsCostYen`. */
+    netProfitYen: z.number().int(),
     /** Days between acceptance and this completion, for the feedback modal. */
     daysSpent: z.number().int().nonnegative().optional(),
   }),
@@ -370,6 +406,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('service-job-failed'),
     jobId: z.string().min(1),
     reputationLost: z.number().int().nonnegative(),
+    /** Sunk cost (Sprint 57): the same real spend a completed job reports,
+     * shown even on a failure - honesty cuts both ways. */
+    repairCostYen: z.number().int().nonnegative(),
+    partsCostYen: z.number().int().nonnegative(),
+    specialtyGained: z.record(ComponentIdSchema, z.number().int()),
+    /** Always `<= 0`: `-repairCostYen - partsCostYen` (no payout on a failure). */
+    netProfitYen: z.number().int(),
   }),
   /**
    * Sprint 31: a for-sale car drew a live offer, valid today only - the

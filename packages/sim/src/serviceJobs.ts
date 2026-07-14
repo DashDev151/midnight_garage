@@ -28,6 +28,7 @@ import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
 import { gradeAtLeast, partFitsCar } from './parts'
 import type { Rng } from './rng'
+import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
 import { clearStagedWork } from './stagedWork'
 import { freshToolTiers } from './toolLines'
 
@@ -842,6 +843,14 @@ function distinctTaskGroups(tasks: readonly ServiceJobTask[], context: SimContex
   return [...groups]
 }
 
+export interface SpecialtyDeltaResult {
+  state: GameState
+  /** Per-group delta actually applied - all 6 groups present, 0 for any
+   * group `totalDelta` didn't touch (Sprint 57: surfaced in the completion
+   * report, `service-job-completed`/`-failed`'s `specialtyGained`). */
+  deltas: Record<ComponentId, number>
+}
+
 /**
  * Sprint 38: splits `totalDelta` evenly across `groups` and applies it to
  * `state.specialty`, clamped at 0 per group - the specialty twin of
@@ -853,14 +862,16 @@ function applySpecialtyDelta(
   state: GameState,
   groups: readonly ComponentId[],
   totalDelta: number,
-): GameState {
-  if (groups.length === 0) return state
+): SpecialtyDeltaResult {
+  const deltas = freshSpecialty()
+  if (groups.length === 0) return { state, deltas }
   const perGroup = Math.round(totalDelta / groups.length)
   const specialty = { ...state.specialty }
   for (const group of groups) {
     specialty[group] = Math.max(0, specialty[group] + perGroup)
+    deltas[group] = perGroup
   }
-  return { ...state, specialty }
+  return { state: { ...state, specialty }, deltas }
 }
 
 /**
@@ -902,7 +913,13 @@ export function resolveServiceJob(
   if (!job) return { state, log: [], outcome: 'not-found' }
   if (isServiceJobInTransit(job, state.day)) return { state, log: [], outcome: 'in-transit' }
 
-  const releasedState = clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id)
+  // Sprint 57: read the job's real spend before its ledger is deleted at
+  // close-out - the honest report's repair/parts cost lines.
+  const ledger = serviceJobLedgerFor(state, job.id)
+  const releasedState = deleteServiceJobLedger(
+    clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id),
+    job.id,
+  )
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
   // Sprint 35 decision 5: the customer's pulled parts (tagged with this job)
   // leave with them at close-out; any in-flight recondition job on one of
@@ -928,13 +945,9 @@ export function resolveServiceJob(
       job.baseReputation,
       highestInstalledGrade(installedParts),
     )
-    const partCostYen =
-      installedParts.length > 0
-        ? installedParts.reduce((sum, part) => sum + part.priceYen, 0)
-        : undefined
     const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - job.deadlineDays
     const withReputation = applyReputationDelta(releasedState, reputationGained)
-    const withSpecialty = applySpecialtyDelta(
+    const { state: withSpecialty, deltas: specialtyGained } = applySpecialtyDelta(
       withReputation,
       distinctTaskGroups(job.tasks, context),
       reputationGained,
@@ -953,9 +966,10 @@ export function resolveServiceJob(
           jobId: job.id,
           payoutYen: job.payoutYen,
           reputationGained,
-          ...(partCostYen !== undefined
-            ? { partCostYen, profitYen: job.payoutYen - partCostYen }
-            : {}),
+          repairCostYen: ledger.repairYen,
+          partsCostYen: ledger.partsYen,
+          specialtyGained,
+          netProfitYen: job.payoutYen - ledger.repairYen - ledger.partsYen,
           ...(acceptedOnDay !== null ? { daysSpent: releasedState.day - acceptedOnDay } : {}),
         },
       ],
@@ -965,7 +979,7 @@ export function resolveServiceJob(
 
   const penalty = reputationForFailure(job.baseReputation)
   const withReputation = applyReputationDelta(releasedState, -penalty)
-  const withSpecialty = applySpecialtyDelta(
+  const { state: withSpecialty, deltas: specialtyGained } = applySpecialtyDelta(
     withReputation,
     distinctTaskGroups(job.tasks, context),
     -penalty,
@@ -973,7 +987,17 @@ export function resolveServiceJob(
   const reputationLost = releasedState.reputationPoints - withReputation.reputationPoints
   return {
     state: { ...withSpecialty, activeServiceJobs, jobs, partInventory },
-    log: [{ type: 'service-job-failed', jobId: job.id, reputationLost }],
+    log: [
+      {
+        type: 'service-job-failed',
+        jobId: job.id,
+        reputationLost,
+        repairCostYen: ledger.repairYen,
+        partsCostYen: ledger.partsYen,
+        specialtyGained,
+        netProfitYen: -ledger.repairYen - ledger.partsYen,
+      },
+    ],
     outcome: 'failed',
   }
 }

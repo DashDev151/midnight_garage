@@ -703,8 +703,13 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(next.activeServiceJobs).toHaveLength(0)
     expect(next.ownedCars).toHaveLength(0) // never owned
     expect(next.jobs).toHaveLength(0) // leftover jobs on the departed car dropped
-    expect(log[0]).toMatchObject({ type: 'service-job-completed', payoutYen: job.payoutYen })
-    expect(log[0]).not.toMatchObject({ partCostYen: expect.anything() })
+    expect(log[0]).toMatchObject({
+      type: 'service-job-completed',
+      payoutYen: job.payoutYen,
+      repairCostYen: 0,
+      partsCostYen: 0,
+      netProfitYen: job.payoutYen,
+    })
   })
 
   it('fails (no pay, reputation penalty) when at least one task is not done', () => {
@@ -861,7 +866,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     })
   })
 
-  it('a paid install job reports the installed part’s cost and profit; a pricier grade earns more reputation', () => {
+  it('a paid install job reports the ACTUAL price paid (Sprint 57, the job ledger) - not a catalog-price reconstruction; a pricier grade earns more reputation', () => {
     const installTask = installType.tasks[0]!
     if (installTask.action !== 'install') throw new Error('fixture task should be an install task')
     const carPartId = installTask.carPartId
@@ -869,12 +874,18 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     // below-floor "budget" part would leave the job undone, not paid.
     const budget = catalogPartFor(carPartId, (p) => p.grade === installTask.minGrade)
     const pricey = catalogPartFor(carPartId, (p) => p.grade === 'race')
+    // Deliberately different from either part's own catalog priceYen -
+    // proves the report reads what was actually charged, not the catalog.
+    const paidYen = budget.priceYen + 12_345
 
     function resolveWith(part: Part) {
       const job = activeJob(installType, {
         parts: mintCarParts({ [carPartId]: partInstance(part.id) }),
       })
-      const resolution = resolveServiceJob(stateWith(job), job.id, CONTEXT)
+      const state = stateWith(job, {
+        serviceJobLedgers: { [job.id]: { repairYen: 0, partsYen: paidYen } },
+      })
+      const resolution = resolveServiceJob(state, job.id, CONTEXT)
       return { resolution, payoutYen: job.payoutYen }
     }
 
@@ -882,15 +893,16 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     const priceyResult = resolveWith(pricey)
     expect(budgetResult.resolution.outcome).toBe('paid')
     expect(budgetResult.resolution.log[0]).toMatchObject({
-      partCostYen: budget.priceYen,
-      profitYen: budgetResult.payoutYen - budget.priceYen,
+      partsCostYen: paidYen,
+      repairCostYen: 0,
+      netProfitYen: budgetResult.payoutYen - paidYen,
     })
     expect(priceyResult.resolution.state.reputationPoints).toBeGreaterThan(
       budgetResult.resolution.state.reputationPoints,
     )
   })
 
-  it('a multi-install job scales reputation off its priciest installed grade, and sums every part cost', () => {
+  it('a multi-install job scales reputation off its priciest installed grade, and reports the actual price paid (sum), not a catalog reconstruction', () => {
     const [internalsTask, headTask] = twoInstallType.tasks as {
       action: 'install'
       carPartId: CarPartId
@@ -904,20 +916,56 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
         [headTask!.carPartId]: partInstance(headPart.id),
       }),
     })
-    const { state: next, log } = resolveServiceJob(stateWith(job), job.id, CONTEXT)
-    expect(log[0]).toMatchObject({
-      partCostYen: internalsPart.priceYen + headPart.priceYen,
+    // Deliberately different from the catalog sum.
+    const paidYen = internalsPart.priceYen + headPart.priceYen + 5_000
+    const state = stateWith(job, {
+      serviceJobLedgers: { [job.id]: { repairYen: 0, partsYen: paidYen } },
     })
+    const { state: next, log } = resolveServiceJob(state, job.id, CONTEXT)
+    expect(log[0]).toMatchObject({ partsCostYen: paidYen })
     // race beats sport - the completion reputation should match a pure-race grade.
     expect(next.reputationPoints).toBe(reputationForCompletion(job.baseReputation, 'race'))
+  })
+
+  it('a repair-only job reports its real repair spend (the job ledger), and cleans the ledger up on close', () => {
+    const job = activeJob(twoRepairType, {
+      parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
+    })
+    const state = stateWith(job, {
+      serviceJobLedgers: { [job.id]: { repairYen: 6_500, partsYen: 0 } },
+    })
+    const { state: next, log } = resolveServiceJob(state, job.id, CONTEXT)
+    expect(log[0]).toMatchObject({
+      type: 'service-job-completed',
+      repairCostYen: 6_500,
+      partsCostYen: 0,
+      netProfitYen: job.payoutYen - 6_500,
+    })
+    // The job's ledger is gone once it closes - it never outlives the job.
+    expect(next.serviceJobLedgers[job.id]).toBeUndefined()
+  })
+
+  it('a failed job reports its sunk costs (repair + parts already spent) as a negative net profit, and cleans the ledger up too', () => {
+    const job = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) }) // undone -> failed
+    const state = stateWith(job, {
+      serviceJobLedgers: { [job.id]: { repairYen: 4_000, partsYen: 1_000 } },
+    })
+    const { state: next, log } = resolveServiceJob(state, job.id, CONTEXT)
+    expect(log[0]).toMatchObject({
+      type: 'service-job-failed',
+      repairCostYen: 4_000,
+      partsCostYen: 1_000,
+      netProfitYen: -5_000,
+    })
+    expect(next.serviceJobLedgers[job.id]).toBeUndefined()
   })
 })
 
 describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
   describe('earning, split evenly across every distinct task group', () => {
-    it("completion splits reputationGained across put-her-in-a-ditch's three groups (body/suspension/wheels)", () => {
+    it("completion splits reputationGained across put-her-in-a-ditch's three groups (body/suspension/wheels), and the log entry's specialtyGained matches", () => {
       const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'fine', dampers: 'fine' }) })
-      const { state: next, outcome } = resolveServiceJob(stateWith(job), job.id, CONTEXT)
+      const { state: next, outcome, log } = resolveServiceJob(stateWith(job), job.id, CONTEXT)
       expect(outcome).toBe('paid')
       const perGroup = Math.round(next.reputationPoints / 3)
       expect(next.specialty.body).toBe(perGroup)
@@ -927,16 +975,26 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
       expect(next.specialty.engine).toBe(0)
       expect(next.specialty.drivetrain).toBe(0)
       expect(next.specialty.interior).toBe(0)
+      expect(log[0]).toMatchObject({
+        specialtyGained: {
+          body: perGroup,
+          suspension: perGroup,
+          wheels: perGroup,
+          engine: 0,
+          drivetrain: 0,
+          interior: 0,
+        },
+      })
     })
 
     it('failure splits the penalty across the same three groups, subtracting from whatever specialty was already there', () => {
       const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'poor' }) }) // undone -> failed
       const starting = testSpecialty({ body: 50, suspension: 50, wheels: 50 })
-      const { state: next, outcome } = resolveServiceJob(
-        stateWith(job, { specialty: starting }),
-        job.id,
-        CONTEXT,
-      )
+      const {
+        state: next,
+        outcome,
+        log,
+      } = resolveServiceJob(stateWith(job, { specialty: starting }), job.id, CONTEXT)
       expect(outcome).toBe('failed')
       const penalty = reputationForFailure(job.baseReputation)
       const perGroup = Math.round(penalty / 3)
@@ -944,6 +1002,9 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
       expect(next.specialty.suspension).toBe(50 - perGroup)
       expect(next.specialty.wheels).toBe(50 - perGroup)
       expect(next.specialty.engine).toBe(0) // untouched group, unaffected either way
+      expect(log[0]).toMatchObject({
+        specialtyGained: { body: -perGroup, suspension: -perGroup, wheels: -perGroup, engine: 0 },
+      })
     })
 
     it("the per-group floor clamps at 0, mirroring applyReputationDelta's own clamp", () => {

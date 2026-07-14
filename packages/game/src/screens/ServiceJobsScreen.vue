@@ -92,6 +92,14 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
             <span v-if="job.daysLeft !== null" class="days" :class="{ urgent: job.daysLeft <= 2 }">
               {{ job.daysLeft <= 0 ? 'due today' : job.daysLeft + 'd left' }}
             </span>
+            <button
+              class="primary"
+              :class="{ danger: !job.workDone }"
+              data-test="complete-service-job"
+              @click="game.completeServiceJob(job.id)"
+            >
+              {{ job.workDone ? 'Complete Job' : 'Give Up Job' }}
+            </button>
           </template>
           <RouterLink :to="{ name: 'car', params: { id: job.carId } }" class="work-link">
             work on car →
@@ -282,5 +290,15 @@ button.primary {
   padding: var(--mg-space-2) var(--mg-space-4);
   font-size: var(--mg-fs-md);
   margin-top: var(--mg-space-3);
+}
+
+.active-row button.primary {
+  margin-top: 0;
+}
+
+button.primary.danger {
+  background: var(--mg-panel);
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
 }
 </style>

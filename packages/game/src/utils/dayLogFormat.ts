@@ -88,9 +88,9 @@ export function describeLogEntry(
       // this reads as the customer's own promise, not a status update.
       return `Thanks - I'll drop it off first thing in the morning.`
     case 'service-job-completed':
-      return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep)`
+      return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep), profit ${formatYenDelta(entry.netProfitYen)}`
     case 'service-job-failed':
-      return `Service job failed (-${entry.reputationLost} rep)`
+      return `Service job failed (-${entry.reputationLost} rep), sunk ${formatYen(entry.repairCostYen + entry.partsCostYen)}`
     case 'car-moved':
       return `Moved ${entry.carInstanceId} to ${entry.to}`
     case 'cars-swapped':

@@ -55,6 +55,7 @@ function stateWithLots(
     carLedgers: {},
     machineListing: null,
     nextMachineListingDay: null,
+    serviceJobLedgers: {},
   }
 }
 

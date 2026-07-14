@@ -138,6 +138,16 @@ describe('service jobs in the store', () => {
     expect(game.reputationPoints).toBeGreaterThan(repBefore)
     expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(false)
     expect(game.ownedCarCount).toBe(0)
+    // Sprint 57: the completion report reads real spend off the job's own
+    // ledger - this career did real (charged) repair/install work, so at
+    // least one of the two cost lines should be a real, non-zero number,
+    // and the net profit is exactly payout minus what was actually spent.
+    const result = game.lastJobResult
+    expect(result?.outcome).toBe('paid')
+    expect((result?.repairCostYen ?? 0) + (result?.partsCostYen ?? 0)).toBeGreaterThan(0)
+    expect(result?.netProfitYen).toBe(
+      (result?.payoutYen ?? 0) - (result?.repairCostYen ?? 0) - (result?.partsCostYen ?? 0),
+    )
   })
 
   it('clicking Complete before the work is done fails the job immediately, no pay', () => {

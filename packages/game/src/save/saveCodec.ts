@@ -400,7 +400,12 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   field, since a pre-v28 client's `Part` lookups would silently mis-price
  *   a v28-authored save without it.
  */
-export const SAVE_VERSION = 28
+/**
+ * v28 -> v29 (Sprint 57, the job ledger): `GameStateSchema` gained
+ * `serviceJobLedgers` (default `{}`) - the normal additive case, so it needs
+ * no `MIGRATIONS[28]` entry, but it DOES bump `SAVE_VERSION` (Save law).
+ */
+export const SAVE_VERSION = 29
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

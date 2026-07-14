@@ -55,6 +55,7 @@ function stateOnDay(
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
+    serviceJobLedgers: {},
   }
 }
 

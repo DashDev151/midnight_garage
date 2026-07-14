@@ -90,4 +90,27 @@ describe('ServiceJobsScreen', () => {
     expect((button.element as HTMLButtonElement).disabled).toBe(true)
     expect(button.attributes('title')).toContain('needs')
   })
+
+  /**
+   * Sprint 57 decision 1: completion moves to this screen - one place to
+   * accept, one and the same place to complete. Clicking the button here
+   * (not the car page, which no longer offers it) resolves the job.
+   */
+  it('completes (or gives up) a job right from this screen, once the car has arrived', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    warpToOffers(game)
+    const offer = game.serviceJobOffers[0]
+    if (!offer) throw new Error('expected an offer on the board')
+    game.acceptServiceJob(offer.id)
+    game.endDay() // the customer's car actually arrives
+
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="complete-service-job"]').exists()).toBe(true)
+    await wrapper.find('[data-test="complete-service-job"]').trigger('click')
+    // No real work was done, so this reads as "Give Up Job" - the job
+    // resolves (fails) and leaves the active list either way.
+    expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(false)
+    expect(game.lastJobResult?.outcome).toBe('failed')
+  })
 })
