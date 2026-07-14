@@ -145,10 +145,31 @@ describe('AuctionScreen', () => {
           l.id === lot.id ? withBid : l,
         ),
       }
-      const label = game.lotDetail(lot.id)!.closeLabel
-      expect(label).toContain('closes in')
-      expect(label).toContain('unless bid on')
-      expect(label).not.toContain('resets the clock')
+      const detail = game.lotDetail(lot.id)!
+      expect(detail.closeLabel).toContain('closes in')
+      expect(detail.closeLabel).toContain('unless bid on')
+      expect(detail.closeLabel).not.toContain('resets the clock')
+      // Bounded by the quiet-days arm (3), tighter here than the 10-day
+      // backstop headroom.
+      expect(detail.closeNightsLeft).toBe(3)
+    })
+
+    it('closeNightsLeft is null when there is no meaningful count to show (no bid yet, or final call)', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      // Fresh lot: no bid yet.
+      expect(game.lotDetail(lot.id)!.closeNightsLeft).toBeNull()
+
+      const finalCall = { ...lot, currentBidYen: 1, quietDays: 0, expiresOnDay: game.gameState.day }
+      game.gameState = {
+        ...game.gameState,
+        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
+          l.id === lot.id ? finalCall : l,
+        ),
+      }
+      expect(game.lotDetail(lot.id)!.closeLabel).toContain('final call')
+      expect(game.lotDetail(lot.id)!.closeNightsLeft).toBeNull()
     })
   })
 
@@ -207,8 +228,8 @@ describe('AuctionScreen', () => {
       expect(ext.text()).toContain(detail.auctionGrade.exterior)
       expect(int.text()).toContain(detail.auctionGrade.interior)
 
-      // The restoration bill still shows, just as its own line now.
-      expect(wrapper.text()).toContain('restoration bill')
+      // The restoration bill still shows, shortened to "bill" now.
+      expect(wrapper.text()).toContain('bill ¥')
 
       // The old expandable report is gone entirely.
       expect(wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).exists()).toBe(false)

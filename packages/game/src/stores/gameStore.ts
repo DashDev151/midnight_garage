@@ -540,6 +540,12 @@ export interface LotDetail {
    * anti-snipe rule, `bidding.ts`'s `resolveLotForDay`).
    */
   closeLabel: string
+  /**
+   * The same countdown `closeLabel` carries, as a raw number the UI can
+   * size up - null when there's no meaningful count (no bid yet, or
+   * already down to "final call").
+   */
+  closeNightsLeft: number | null
 }
 
 /**
@@ -1180,8 +1186,15 @@ export const useGameStore = defineStore('game', () => {
    * rule) extends the lot a day, so this is genuinely "soonest it can close
    * if nobody bids again," never a surprise.
    */
-  function auctionCloseLabel(lot: AuctionLot): string {
-    if (lot.currentBidYen === 0) return 'no bids yet - open to bid'
+  /**
+   * Nights left until this lot could next close (min of the quiet-day and
+   * backstop arms) - null when there's nothing meaningful to show: nobody
+   * has bid, or it's already down to the final night ("final call", not a
+   * number). Shared by `auctionCloseLabel` and `LotDetail.closeNightsLeft`
+   * so the two can never disagree.
+   */
+  function auctionNightsLeft(lot: AuctionLot): number | null {
+    if (lot.currentBidYen === 0) return null
     const threshold = context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER
     const quietNightsLeft = Math.max(1, threshold - lot.quietDays)
     // Sprint 46 fix: the real backstop hammer fires when `day >= expiresOnDay`
@@ -1192,7 +1205,13 @@ export const useGameStore = defineStore('game', () => {
     // before the backstop could actually close the lot (playtest 2026-07-13).
     const backstopNightsLeft = Math.max(1, lot.expiresOnDay - gameState.value.day + 1)
     const nightsLeft = Math.min(quietNightsLeft, backstopNightsLeft)
-    if (nightsLeft <= 1) return 'final call: closes at End Day unless a new bid comes in'
+    return nightsLeft > 1 ? nightsLeft : null
+  }
+
+  function auctionCloseLabel(lot: AuctionLot): string {
+    if (lot.currentBidYen === 0) return 'no bids yet - open to bid'
+    const nightsLeft = auctionNightsLeft(lot)
+    if (nightsLeft === null) return 'final call: closes at End Day unless a new bid comes in'
     // Sprint 56 decision 5: the "(any bid resets the clock)" parenthetical
     // is gone (playtest 2026-07-14 item 8) - the "closes in N days unless
     // bid on" lead-in already carries the mechanic on its own.
@@ -1230,6 +1249,7 @@ export const useGameStore = defineStore('game', () => {
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),
+      closeNightsLeft: auctionNightsLeft(lot),
     }
   }
 

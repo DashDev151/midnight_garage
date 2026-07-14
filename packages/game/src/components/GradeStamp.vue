@@ -57,42 +57,47 @@ const tone = computed(() => toneFor(props.grade))
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  padding: 2px var(--mg-space-2);
+  min-width: 64px;
+  padding: var(--mg-space-1) var(--mg-space-3);
   border: 3px solid currentColor;
   border-radius: 3px;
   font-family: inherit;
   filter: saturate(0.5) brightness(0.85);
   transition: filter 0.15s ease;
+  /* Forces its own compositor layer so the rotated text stays crisp. */
+  backface-visibility: hidden;
 }
 
 /* Slight rotation jitter per stamp position (decision 2) - a fixed,
    deterministic offset per slot (never randomized - three stamps always
    render in the same Overall/Ext/Int order), so the row reads as
-   hand-stamped without any snapshot-test flakiness. */
+   hand-stamped without any snapshot-test flakiness. Kept small (see the
+   comment on `.grade-stamp` above) so the ink stays legible. */
 .grade-stamp:nth-of-type(1) {
-  transform: rotate(-2deg);
-}
-
-.grade-stamp:nth-of-type(2) {
-  transform: rotate(1.5deg);
-}
-
-.grade-stamp:nth-of-type(3) {
   transform: rotate(-1deg);
 }
 
+.grade-stamp:nth-of-type(2) {
+  transform: rotate(0.75deg);
+}
+
+.grade-stamp:nth-of-type(3) {
+  transform: rotate(-0.5deg);
+}
+
 .stamp-label {
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   opacity: 0.8;
 }
 
 .stamp-value {
-  font-size: var(--mg-fs-md);
+  font-size: var(--mg-fs-lg);
   font-weight: bold;
-  line-height: 1.1;
+  line-height: 1.15;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .stamp-green {

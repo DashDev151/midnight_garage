@@ -182,3 +182,11 @@ apply, right text renders) but not how it actually looks or feels to use.
   structure while staying inside the art bible's palette (reused tokens only, no new colors) and
   pixel discipline (aspect ratio preserved, integer-scaling note kept in the CSS comment) - yes.
 - "(any bid resets the clock)" is gone. Full gate green; tests updated per decision 6 - yes.
+
+**Follow-up polish pass (maintainer live feedback against the running dev server):** stamp text
+was rendering blurry (rotation angle reduced, stamps enlarged); the +/- steppers and bid input were
+too small (enlarged, and the bid-field markup fixed to associate the `<label>` with only the
+input, not all three controls); the title/spec line ran onto one wrapping line (`.lot-head` now a
+column); the right panel read as top-bunched with everything crammed into one row at the bottom
+(current price is now the centered headline, guide/reserve/bill secondary, a real "N days left"
+timer chip, and a two-row, centered action block). Full gate re-verified green (374 game tests).

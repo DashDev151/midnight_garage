@@ -200,29 +200,39 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
             </div>
           </div>
 
-          <!-- Right panel - money, status, and the bid stack. -->
+          <!-- Right panel: current price is the headline, guide/reserve/bill
+               are secondary, then the bid stack. -->
           <div class="lot-right">
-            <!-- The card is honest (Sprint 30 decision 2): guide value is the
-                 headline, the same transparent instanceValue everyone prices
-                 from - book value is never shown. -->
-            <p class="guide-value">Guide value {{ formatYen(d.guideValueYen) }}</p>
-
-            <div class="lot-status-row">
-              <span>reserve {{ formatYen(d.reserveYen) }}</span>
-              <span
-                class="current-bid"
-                :class="{ 'current-bid-mine': d.leadingBidder === 'player' }"
+            <div class="lot-info">
+              <p
+                class="current-price"
+                :class="{ 'current-price-mine': d.leadingBidder === 'player' }"
               >
                 {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
-              </span>
+              </p>
+
+              <!-- The card is still honest (Sprint 30 decision 2): guide
+                   value is the same transparent instanceValue everyone
+                   prices from - book value is never shown - just no longer
+                   the headline. -->
+              <div class="lot-secondary">
+                <span>guide {{ formatYen(d.guideValueYen) }}</span>
+                <span>reserve {{ formatYen(d.reserveYen) }}</span>
+                <span>bill {{ formatYen(d.restorationBillYen) }}</span>
+              </div>
+
+              <div class="close-timer">
+                <template v-if="d.closeNightsLeft !== null">
+                  <span class="close-count">{{ d.closeNightsLeft }}</span>
+                  <span class="close-caption">days left unless bid on</span>
+                </template>
+                <span v-else class="close-caption">{{ d.closeLabel }}</span>
+              </div>
             </div>
 
-            <p class="restoration-bill">restoration bill {{ formatYen(d.restorationBillYen) }}</p>
-            <p class="backstop">{{ d.closeLabel }}</p>
-
-            <div class="lot-bid">
-              <label class="bid-field">
-                raise to
+            <div class="lot-actions">
+              <div class="bid-field">
+                <label :for="'bid-input-' + d.lot.id">raise to</label>
                 <span class="stepper-group">
                   <button
                     type="button"
@@ -234,6 +244,7 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                     -
                   </button>
                   <input
+                    :id="'bid-input-' + d.lot.id"
                     v-model.number="bidInputs[d.lot.id]"
                     type="number"
                     :step="stepYenFor(d)"
@@ -249,22 +260,24 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                     +
                   </button>
                 </span>
-              </label>
-              <button
-                class="primary"
-                :data-test="(d.playerHasBid ? 'raise-' : 'bid-') + d.lot.id"
-                @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.nextRaiseYen)"
-              >
-                {{ d.playerHasBid ? 'Raise bid' : 'Place bid' }}
-              </button>
-              <button
-                class="buyout"
-                :disabled="game.cashYen < d.buyoutPriceYen"
-                :data-test="'buyout-' + d.lot.id"
-                @click="game.buyout(d.lot.id)"
-              >
-                Buy now ({{ formatYen(d.buyoutPriceYen) }})
-              </button>
+              </div>
+              <div class="lot-action-buttons">
+                <button
+                  class="primary"
+                  :data-test="(d.playerHasBid ? 'raise-' : 'bid-') + d.lot.id"
+                  @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.nextRaiseYen)"
+                >
+                  {{ d.playerHasBid ? 'Raise bid' : 'Place bid' }}
+                </button>
+                <button
+                  class="buyout"
+                  :disabled="game.cashYen < d.buyoutPriceYen"
+                  :data-test="'buyout-' + d.lot.id"
+                  @click="game.buyout(d.lot.id)"
+                >
+                  Buy now ({{ formatYen(d.buyoutPriceYen) }})
+                </button>
+              </div>
             </div>
           </div>
         </li>
@@ -354,8 +367,25 @@ h3 {
 .lot-right {
   display: flex;
   flex-direction: column;
-  gap: var(--mg-space-2);
+  justify-content: space-evenly;
+  align-items: center;
+  gap: var(--mg-space-3);
   min-width: 0;
+  text-align: center;
+}
+
+.lot-info,
+.lot-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+.lot-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* The 2:1 (96x48-proportioned) art placeholder, doubled to a 320x160 box
@@ -391,24 +421,55 @@ h3 {
 }
 
 .lot-meta,
-.lot-status-row,
 .lot-turnout {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 
-/* The card's headline number (Sprint 30 decision 2) - reserve/buyout below
-   read as fractions of this, not competing top-line figures. */
-.guide-value {
+/* The headline number (Sprint 30 decision 2's transparency law) - real
+   current price or "no bids yet"; guide/reserve/bill below are secondary. */
+.current-price {
   margin: 0;
   color: var(--mg-yen);
-  font-size: var(--mg-fs-md);
+  font-size: 1.15rem;
   font-weight: bold;
 }
 
-.restoration-bill,
-.backstop {
-  margin: 0;
+.current-price-mine {
+  color: var(--mg-success);
+}
+
+.lot-secondary {
+  display: flex;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+/* Day count as a real countdown, not a line buried in prose; falls back to
+   `d.closeLabel` verbatim when there's no count to show ("no bids yet" /
+   "final call"). */
+.close-timer {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+  padding: var(--mg-space-1) var(--mg-space-3);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  background: var(--mg-night-deep);
+  width: fit-content;
+}
+
+.close-count {
+  color: var(--mg-neon-violet);
+  font-size: 1.4rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.close-caption {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
@@ -451,19 +512,8 @@ h3 {
 .buyout {
   border-color: var(--mg-neon-violet);
   color: var(--mg-neon-violet);
-}
-
-.lot-status-row {
-  display: flex;
-  gap: var(--mg-space-3);
-  flex-wrap: wrap;
-}
-
-.lot-bid {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-  flex-wrap: wrap;
+  padding: var(--mg-space-2) var(--mg-space-4);
+  font-size: var(--mg-fs-md);
 }
 
 .bid-field {
@@ -472,36 +522,42 @@ h3 {
   gap: var(--mg-space-2);
 }
 
+.lot-action-buttons {
+  display: flex;
+  gap: var(--mg-space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .stepper-group {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--mg-space-1);
 }
 
-.lot-bid input {
-  width: 100px;
+.stepper-group input {
+  width: 130px;
+  height: 40px;
   background: var(--mg-night-deep);
   color: var(--mg-text);
   border: var(--mg-border);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: var(--mg-space-1) var(--mg-space-2);
   font-family: inherit;
+  font-size: var(--mg-fs-md);
   text-align: center;
 }
 
-/* Sprint 56 decision 4 (art-bible exception, flagged for maintainer sign-off
-   on sight): physical push-button steppers rather than a rotary dial - the
-   maintainer's mockup calls for steppers here. The feedback stack's visual-
-   travel component (art-direction.md 4.2) is real (press moves the button
-   down, shadow collapses); the mechanical-sound component is deferred until
-   the audio pipeline lands, per the sprint doc's own "foley when audio
-   lands" note. */
+/* Physical push-button steppers (art-bible exception, decision 4 - flagged
+   for maintainer sign-off) with a real press-travel state; foley deferred
+   until the audio pipeline exists. */
 .stepper {
-  width: 26px;
-  height: 26px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   line-height: 1;
   font-weight: bold;
+  font-size: var(--mg-fs-lg);
   background: var(--mg-night-deep);
   color: var(--mg-text);
   border: var(--mg-border);
@@ -553,10 +609,6 @@ h3 {
 
 .current-bid {
   color: var(--mg-yen);
-}
-
-.current-bid-mine {
-  color: var(--mg-success);
 }
 
 .days-left {
