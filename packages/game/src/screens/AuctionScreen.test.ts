@@ -74,14 +74,18 @@ describe('AuctionScreen', () => {
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
 
-  it('every lot shows its real group bands, always - no inspection step (Sprint 26 decision 10)', () => {
+  it('shows grade stamps instead of per-group bands on the auction card (Sprint 56 - amends Sprint 26 decision 10)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    for (const band of Object.values(game.lotDetail(lot.id)!.groupBands)) {
-      expect(wrapper.text()).toContain(band)
-    }
+    // The per-group BandChip row is gone entirely from the auction card -
+    // full per-part truth now lives on the car detail screen after
+    // acquisition; the grade trio is the pre-bid condition read.
+    expect(wrapper.find('.lot-bands').exists()).toBe(false)
+    expect(wrapper.find(`[data-test="grade-stamp-overall-${lot.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-test="grade-stamp-ext-${lot.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-test="grade-stamp-int-${lot.id}"]`).exists()).toBe(true)
   })
 
   describe('the close-label backstop fix (Sprint 46 - playtest 2026-07-13 regression)', () => {
@@ -118,6 +122,33 @@ describe('AuctionScreen', () => {
       game.gameState = { ...game.gameState, day: withBid.expiresOnDay }
       // Today is expiresOnDay: the backstop fires tonight - the badge must say so.
       expect(game.lotDetail(lot.id)!.closeLabel).toContain('final call')
+    })
+
+    it('no longer shows the "(any bid resets the clock)" parenthetical (Sprint 56 decision 5)', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      // Force the plain "closes in N days" branch: a real bid on the board,
+      // plenty of quiet-day and backstop headroom so it's neither "no bids
+      // yet" nor "final call".
+      const withBid = {
+        ...lot,
+        currentBidYen: lot.currentBidYen || 1,
+        leadingBidder: 'player' as const,
+        playerHasBid: true,
+        quietDays: 0,
+        expiresOnDay: game.gameState.day + 10,
+      }
+      game.gameState = {
+        ...game.gameState,
+        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
+          l.id === lot.id ? withBid : l,
+        ),
+      }
+      const label = game.lotDetail(lot.id)!.closeLabel
+      expect(label).toContain('closes in')
+      expect(label).toContain('unless bid on')
+      expect(label).not.toContain('resets the clock')
     })
   })
 
@@ -158,20 +189,26 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('the auction-grade line (Sprint 50: replaces the old expandable condition report)', () => {
-    it('shows an always-visible grade line per lot, matching computeAuctionGrade for that car - no toggle needed', () => {
+  describe('the auction-grade stamps (Sprint 56: replaces the Sprint 50 grade-line text)', () => {
+    it('shows three grade stamps per lot, matching computeAuctionGrade for that car - no toggle needed', () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
       const detail = game.lotDetail(lot.id)!
       const wrapper = mountScreen()
 
-      const gradeLine = wrapper.find(`[data-test="auction-grade-${lot.id}"]`)
-      expect(gradeLine.exists()).toBe(true)
-      expect(gradeLine.text()).toContain(`Grade ${detail.auctionGrade.overall}`)
-      expect(gradeLine.text()).toContain(`Ext ${detail.auctionGrade.exterior}`)
-      expect(gradeLine.text()).toContain(`Int ${detail.auctionGrade.interior}`)
-      expect(gradeLine.text()).toContain('restoration bill')
+      const overall = wrapper.find(`[data-test="grade-stamp-overall-${lot.id}"]`)
+      const ext = wrapper.find(`[data-test="grade-stamp-ext-${lot.id}"]`)
+      const int = wrapper.find(`[data-test="grade-stamp-int-${lot.id}"]`)
+      expect(overall.exists()).toBe(true)
+      expect(ext.exists()).toBe(true)
+      expect(int.exists()).toBe(true)
+      expect(overall.text()).toContain(detail.auctionGrade.overall)
+      expect(ext.text()).toContain(detail.auctionGrade.exterior)
+      expect(int.text()).toContain(detail.auctionGrade.interior)
+
+      // The restoration bill still shows, just as its own line now.
+      expect(wrapper.text()).toContain('restoration bill')
 
       // The old expandable report is gone entirely.
       expect(wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).exists()).toBe(false)

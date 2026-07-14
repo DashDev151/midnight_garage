@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { ComponentId, ConditionBand } from '@midnight-garage/content'
-import type { AuctionGrade } from '@midnight-garage/sim'
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
-import BandChip from '../components/BandChip.vue'
+import GradeStamp from '../components/GradeStamp.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -26,16 +24,6 @@ const willDoubleParkOnWin = computed(() => game.shopAtCapacity && !game.graceSlo
  */
 const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccupied)
 
-/**
- * Sprint 50 decision 2: the always-visible replacement for the old
- * expandable 29-part condition report - a real-world auction-style grade
- * line computed by `computeAuctionGrade` (sim/auctionGrade.ts), read once
- * per lot as `LotDetail.auctionGrade`.
- */
-function auctionGradeLabel(grade: AuctionGrade): string {
-  return `Grade ${grade.overall} · Ext ${grade.exterior} · Int ${grade.interior}`
-}
-
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
 const detailedGroups = computed(() =>
   game.auctionLotsByTier.map((g) => ({
@@ -46,11 +34,34 @@ const detailedGroups = computed(() =>
 
 const hasLots = computed(() => detailedGroups.value.length > 0)
 
-/** Group bands as `[ComponentId, ConditionBand][]`, for a stable v-for key. */
-function groupBandEntries(
-  bands: Record<ComponentId, ConditionBand>,
-): [ComponentId, ConditionBand][] {
-  return Object.entries(bands) as [ComponentId, ConditionBand][]
+/**
+ * Sprint 56 decision 3: the stepper's per-click delta. Once a lot has a real
+ * bid on the board, this is the exact ladder increment (`nextRaiseYen` is
+ * already `currentBid + one increment`); before a lot has opened,
+ * `nextRaiseYen` is a lump-sum reserve, not a step, so the stepper falls
+ * back to the sim's own bid-increment floor (`AUCTION_BID_INCREMENT_FRACTION`'s
+ * `max(Y10,000, ...)`, `bidding.ts`) as a sensible rounded step. Typing a
+ * value directly into the field stays possible either way.
+ */
+const STEPPER_FALLBACK_STEP_YEN = 10_000
+
+function stepYenFor(d: LotDetail): number {
+  const ladderStep = d.nextRaiseYen - d.lot.currentBidYen
+  return ladderStep > 0 ? ladderStep : STEPPER_FALLBACK_STEP_YEN
+}
+
+function currentBidInput(d: LotDetail): number {
+  return bidInputs[d.lot.id] ?? d.nextRaiseYen
+}
+
+function incrementBid(d: LotDetail): void {
+  bidInputs[d.lot.id] = currentBidInput(d) + stepYenFor(d)
+}
+
+/** Never steps below the real minimum valid raise - a physical stepper
+ * wouldn't let you dial past its own floor. */
+function decrementBid(d: LotDetail): void {
+  bidInputs[d.lot.id] = Math.max(d.nextRaiseYen, currentBidInput(d) - stepYenFor(d))
 }
 
 /** Turnout badge text (Sprint 30 decision 3: a real bidder-count band now,
@@ -142,35 +153,14 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
       <h3>{{ group.tier }}</h3>
       <ul class="lots">
         <li v-for="d in group.lots" :key="d.lot.id" class="lot">
-          <div class="lot-art" aria-hidden="true"></div>
-
-          <div class="lot-body">
+          <!-- Sprint 56 decision 3: left panel - identity, art, grade stamps. -->
+          <div class="lot-left">
             <div class="lot-head">
               <span class="lot-name">{{ d.displayName }}</span>
               <span class="lot-meta">
                 {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
                 {{ d.lot.car.color }}
               </span>
-            </div>
-
-            <!-- The card is honest (Sprint 30 decision 2): guide value is the
-                 headline, the same transparent instanceValue everyone prices
-                 from - book value is never shown. -->
-            <p class="guide-value">Guide value {{ formatYen(d.guideValueYen) }}</p>
-            <p class="grade-line" :data-test="'auction-grade-' + d.lot.id">
-              {{ auctionGradeLabel(d.auctionGrade) }} · restoration bill
-              {{ formatYen(d.restorationBillYen) }}
-            </p>
-
-            <div class="lot-status-row">
-              <span>reserve {{ formatYen(d.reserveYen) }}</span>
-              <span
-                class="current-bid"
-                :class="{ 'current-bid-mine': d.leadingBidder === 'player' }"
-              >
-                {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
-              </span>
-              <span class="backstop">{{ d.closeLabel }}</span>
             </div>
 
             <div class="lot-turnout">
@@ -186,27 +176,82 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               </span>
             </div>
 
-            <div class="lot-bands">
+            <div class="lot-art" aria-hidden="true"></div>
+
+            <!-- Sprint 56 decision 2: the grade stamps replace the old
+                 per-group BandChip row entirely - full per-part truth stays
+                 on the car detail screen after acquisition. -->
+            <div class="grade-stamps">
+              <GradeStamp
+                label="Overall"
+                :grade="d.auctionGrade.overall"
+                :data-test="'grade-stamp-overall-' + d.lot.id"
+              />
+              <GradeStamp
+                label="Ext"
+                :grade="d.auctionGrade.exterior"
+                :data-test="'grade-stamp-ext-' + d.lot.id"
+              />
+              <GradeStamp
+                label="Int"
+                :grade="d.auctionGrade.interior"
+                :data-test="'grade-stamp-int-' + d.lot.id"
+              />
+            </div>
+          </div>
+
+          <!-- Right panel - money, status, and the bid stack. -->
+          <div class="lot-right">
+            <!-- The card is honest (Sprint 30 decision 2): guide value is the
+                 headline, the same transparent instanceValue everyone prices
+                 from - book value is never shown. -->
+            <p class="guide-value">Guide value {{ formatYen(d.guideValueYen) }}</p>
+
+            <div class="lot-status-row">
+              <span>reserve {{ formatYen(d.reserveYen) }}</span>
               <span
-                v-for="[groupId, band] in groupBandEntries(d.groupBands)"
-                :key="groupId"
-                class="lot-band-entry"
+                class="current-bid"
+                :class="{ 'current-bid-mine': d.leadingBidder === 'player' }"
               >
-                {{ game.componentLabel(groupId) }}: <BandChip :band="band" />
+                {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
               </span>
             </div>
 
+            <p class="restoration-bill">restoration bill {{ formatYen(d.restorationBillYen) }}</p>
+            <p class="backstop">{{ d.closeLabel }}</p>
+
             <div class="lot-bid">
-              <label>
+              <label class="bid-field">
                 raise to
-                <input
-                  v-model.number="bidInputs[d.lot.id]"
-                  type="number"
-                  step="10000"
-                  :placeholder="String(d.nextRaiseYen)"
-                />
+                <span class="stepper-group">
+                  <button
+                    type="button"
+                    class="stepper stepper-down"
+                    :data-test="'bid-down-' + d.lot.id"
+                    aria-label="Lower bid amount"
+                    @click="decrementBid(d)"
+                  >
+                    -
+                  </button>
+                  <input
+                    v-model.number="bidInputs[d.lot.id]"
+                    type="number"
+                    :step="stepYenFor(d)"
+                    :placeholder="String(d.nextRaiseYen)"
+                  />
+                  <button
+                    type="button"
+                    class="stepper stepper-up"
+                    :data-test="'bid-up-' + d.lot.id"
+                    aria-label="Raise bid amount"
+                    @click="incrementBid(d)"
+                  >
+                    +
+                  </button>
+                </span>
               </label>
               <button
+                class="primary"
                 :data-test="(d.playerHasBid ? 'raise-' : 'bid-') + d.lot.id"
                 @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.nextRaiseYen)"
               >
@@ -286,22 +331,37 @@ h3 {
   gap: var(--mg-space-3);
 }
 
-/* Sprint 50 decision 1: a fixed grid - the art placeholder on the left,
-   every info row strictly stacked on the right. Nothing wraps or competes
-   for width at normal desktop sizes. */
+/* Sprint 56 decision 3: the two-panel card - a fixed-width left identity
+   panel (art + grades) and a flexible right panel (money + bid stack),
+   replacing Sprint 50's single 160px art column + one info stack. */
 .lot {
   background: var(--mg-panel);
   border: var(--mg-border);
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
   display: grid;
-  grid-template-columns: 160px 1fr;
+  grid-template-columns: 320px 1fr;
   gap: var(--mg-space-3);
 }
 
-/* The 2:1 (96x48-proportioned) art placeholder (Sprint 50 decision 1) -
-   empty and bordered until real sprites exist; sized so they'll drop in
-   edge to edge later. */
+.lot-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-2);
+  min-width: 0;
+}
+
+.lot-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-2);
+  min-width: 0;
+}
+
+/* The 2:1 (96x48-proportioned) art placeholder, doubled to a 320x160 box
+   (Sprint 56 decision 3, was 160x80) - empty and bordered until real
+   sprites exist; a future 96x48 master renders inside at integer 3x
+   (288x144) with padding, preserving integer-only scaling. */
 .lot-art {
   width: 100%;
   aspect-ratio: 2 / 1;
@@ -310,11 +370,20 @@ h3 {
   background: var(--mg-night-deep);
 }
 
-.lot-body {
+.grade-stamps {
   display: flex;
-  flex-direction: column;
   gap: var(--mg-space-2);
-  min-width: 0;
+  justify-content: center;
+}
+
+/* Rule-of-glow compliance (art-direction.md 2): stamps stay muted at rest
+   (GradeStamp's own default), reaching full ink saturation only while this
+   specific card is hovered or has focus inside it (tabbing into the bid
+   controls counts) - reaching into the child component's scoped class via
+   `:deep()`, the standard Vue mechanism for this. */
+.lot:hover :deep(.grade-stamp),
+.lot:focus-within :deep(.grade-stamp) {
+  filter: saturate(1) brightness(1);
 }
 
 .lot-name {
@@ -323,7 +392,6 @@ h3 {
 
 .lot-meta,
 .lot-status-row,
-.lot-bands,
 .lot-turnout {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
@@ -338,26 +406,11 @@ h3 {
   font-weight: bold;
 }
 
-/* Sprint 50 decision 2: the always-visible replacement for the old
-   expandable condition report - one short line, no toggle. */
-.grade-line {
+.restoration-bill,
+.backstop {
   margin: 0;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-}
-
-.lot-bands {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--mg-space-2);
-}
-
-/* The band value itself is a shared BandChip (Sprint 28) - this only lays
-   out the "<group>: " label beside it. */
-.lot-band-entry {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .lot-turnout {
@@ -406,10 +459,6 @@ h3 {
   flex-wrap: wrap;
 }
 
-.backstop {
-  color: var(--mg-text-dim);
-}
-
 .lot-bid {
   display: flex;
   align-items: center;
@@ -417,14 +466,55 @@ h3 {
   flex-wrap: wrap;
 }
 
+.bid-field {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+.stepper-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .lot-bid input {
-  width: 120px;
+  width: 100px;
   background: var(--mg-night-deep);
   color: var(--mg-text);
   border: var(--mg-border);
   border-radius: 4px;
   padding: 2px 6px;
   font-family: inherit;
+  text-align: center;
+}
+
+/* Sprint 56 decision 4 (art-bible exception, flagged for maintainer sign-off
+   on sight): physical push-button steppers rather than a rotary dial - the
+   maintainer's mockup calls for steppers here. The feedback stack's visual-
+   travel component (art-direction.md 4.2) is real (press moves the button
+   down, shadow collapses); the mechanical-sound component is deferred until
+   the audio pipeline lands, per the sprint doc's own "foley when audio
+   lands" note. */
+.stepper {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+  font-weight: bold;
+  background: var(--mg-night-deep);
+  color: var(--mg-text);
+  border: var(--mg-border);
+  border-radius: 4px;
+  box-shadow: 0 2px 0 var(--mg-panel-edge);
+  transition:
+    transform 0.05s ease,
+    box-shadow 0.05s ease;
+}
+
+.stepper:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--mg-panel-edge);
 }
 
 .my-bids {
@@ -513,6 +603,5 @@ button.primary {
   border-color: var(--mg-neon-pink);
   padding: var(--mg-space-2) var(--mg-space-4);
   font-size: var(--mg-fs-md);
-  margin-top: var(--mg-space-3);
 }
 </style>

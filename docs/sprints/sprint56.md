@@ -109,4 +109,76 @@ no sim or economics change (the numbers on the card keep coming from the same de
 
 ## Exit
 
-Not started.
+Implemented and committed.
+
+**GradeStamp.vue (decision 2, new component):** renders one grade as a chunky ink-stamp box (thick
+`currentColor` border, a fixed per-position rotation jitter so the row of three never lines up
+dead-straight, no randomness so it stays snapshot-stable). Ink ramp exactly per decision 2: green
+(`S`/`6`/`5` overall, `A`/`B` letter), sodium amber (`4.5`/`4`/`3.5` overall, `C` letter), red
+(`3`/`2`/`1` overall, `D`/`E` letter), and `R` gets its own distinct `stamp-defect` tone (deepest
+red, never folded into the ordinary red bucket) - unit-tested exhaustively (`GradeStamp.test.ts`,
+14 cases) including the R-vs-red distinctness assertion. Rule-of-glow compliance: stamps render at
+`saturate(0.5)` by default; `AuctionScreen.vue` reaches into the child's scoped class via `:deep()`
+to bring them to full saturation only while that specific card is hovered or has focus inside it
+(tabbing into the bid controls counts).
+
+**AuctionScreen.vue two-panel restructure (decisions 1, 3, 4):** `.lot` is now a `320px 1fr` grid.
+Left panel: title/spec line, turnout badge, the art placeholder doubled to a 320x160 box (was
+160x80 - a future 96x48 sprite still renders inside at integer 3x, 288x144, preserving the pixel
+discipline), and the three grade stamps in a row underneath. Right panel: guide value, reserve,
+leading bid, restoration bill (its own line now, previously baked into the old grade-line text),
+close label, then the bid stack - a raise-to field flanked by `-`/`+` stepper buttons, a large
+`primary`-styled Place/Raise button (the `.primary` class already existed in this file's own CSS,
+unused until now), and Buy Now beneath it. The old per-group `BandChip` row (`.lot-bands`) is
+deleted outright, per decision 1 amending Sprint 26 decision 10/Sprint 27's pre-bid-transparency
+law by explicit maintainer decision - full per-part truth stays on the car detail screen after
+acquisition; the grade trio is the new pre-bid condition read.
+
+**Steppers (decision 3-4):** `stepYenFor` derives the per-click delta from the lot itself - the
+real bid-ladder increment (`nextRaiseYen - currentBidYen`) once a lot has a bid on the board, or a
+10,000-yen fallback (the sim's own `AUCTION_BID_INCREMENT_FRACTION` floor) before it has opened and
+there's no ladder step yet to read. The down-stepper is clamped at `nextRaiseYen` (a physical
+stepper shouldn't let you dial below the real minimum valid raise); typing a custom value into the
+field directly still works exactly as before. Steppers get a real CSS press-travel state
+(`:active` moves the button down 2px and collapses its drop shadow) per the art bible's feedback-
+stack law; the mechanical-sound component of that law is deferred until the audio pipeline exists,
+matching the sprint doc's own "foley when audio lands" note - not implemented here. Decision 4's
+art-bible exception (steppers instead of a rotary dial, since the maintainer's mockup calls for
+steppers) is flagged in-code for maintainer sign-off on sight; not yet recorded in the art bible's
+own decisions log pending that confirmation.
+
+**Copy (decision 5):** `auctionCloseLabel`'s "(any bid resets the clock)" parenthetical is gone;
+the "closes in N days unless bid on" lead-in is unchanged.
+
+**Tests (decision 6):** the Sprint 26 "every lot shows its real group bands" test is rewritten to
+assert the stamps are present and `.lot-bands` is gone (the amendment decision 1 makes explicit,
+not a silent regression). The Sprint 50 grade-line test is rewritten to check three separate stamp
+elements instead of one text line (`data-test="grade-stamp-overall/ext/int-<lotId>"`). A new test
+confirms the close-label parenthetical is gone while the lead-in survives. `GradeStamp.test.ts` is
+new (14 cases: every real grade value's tone bucket, plus R's distinctness). The art-placeholder
+test needed no change - `.lot-art`'s class name is unchanged, only its CSS size. `LotDetail.groupBands`
+itself is untouched in `gameStore.ts` (still exercised directly by `gameStore.market.test.ts`) -
+only the auction card's RENDERING of it is removed, per decision 1's precise scope.
+
+**Verification:** full gate green - `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format`,
+`pnpm test:coverage` (1018 tests, 78 files; coverage 91.17%/81.41%/91.71%/95.02%, all above the
+ratchet floor), `pnpm build`. No balance harness run - this sprint is pure presentation over
+existing derived data (guide value, reserve, grade, bill, close label all unchanged sources), per
+the sprint doc's own precedent (Sprint 50) and task list item 4.
+
+**Not done by me, flagged per CLAUDE.md's UI-verification directive:** I did not start the dev
+server or view the new card in a browser - starting a long-running process is outside what I'm
+allowed to run myself. The sprint doc's own "User-only (maintainer)" task already assigns this:
+run `pnpm dev` and eyeball the stamp look, the muted-by-default/hover-saturation treatment, and the
+steppers-vs-dial exception, confirming or redirecting before this reaches the art bible's decisions
+log. Test suites verify the DOM structure and logic (right data-test hooks exist, right classes
+apply, right text renders) but not how it actually looks or feels to use.
+
+**Definition of done, checked against the sprint doc:**
+- No per-group condition chips on any auction card; grade stamps carry the condition read - yes.
+- Stamps are a visual feature: stamp-styled, color-ramped red to green, `R` unmistakably worst -
+  yes, and unit-tested.
+- The art box is 2x its old size (320x160 vs 160x80) and the card reads as the mockup's two-panel
+  structure while staying inside the art bible's palette (reused tokens only, no new colors) and
+  pixel discipline (aspect ratio preserved, integer-scaling note kept in the CSS comment) - yes.
+- "(any bid resets the clock)" is gone. Full gate green; tests updated per decision 6 - yes.

@@ -1,0 +1,117 @@
+<script setup lang="ts">
+import type { LetterAuctionGrade, OverallAuctionGrade } from '@midnight-garage/sim'
+import { computed } from 'vue'
+
+/**
+ * Sprint 56 decision 2: one real-world auction-style grade rendered as a
+ * chunky ink-stamp box - the auction card's replacement for the old
+ * per-group `BandChip` row (`AuctionScreen.vue`). Pure presentation over
+ * `computeAuctionGrade`'s own output (sim/auctionGrade.ts); this component
+ * adds no new grading logic, only an ink-color mapping and stamp styling.
+ *
+ * Ink ramp (decision 2): green for a strong grade (S/6/5 overall, A/B
+ * letter), sodium amber for a middling one (4.5/4/3.5 overall, C letter),
+ * red for a weak one (3/2/1 overall, D/E letter), and `R` (the structural-
+ * defect flag `computeAuctionGrade` returns when a mechanical part is
+ * scrap or genuinely missing) gets its own deepest-red tone, visually
+ * distinct from an ordinary weak grade rather than folded into the same
+ * bucket.
+ */
+const props = defineProps<{
+  label: string
+  grade: OverallAuctionGrade | LetterAuctionGrade
+}>()
+
+type StampTone = 'green' | 'amber' | 'red' | 'defect'
+
+const GREEN_GRADES = new Set<string>(['S', '6', '5', 'A', 'B'])
+const AMBER_GRADES = new Set<string>(['4.5', '4', '3.5', 'C'])
+
+function toneFor(grade: string): StampTone {
+  if (grade === 'R') return 'defect'
+  if (GREEN_GRADES.has(grade)) return 'green'
+  if (AMBER_GRADES.has(grade)) return 'amber'
+  return 'red' // 3/2/1 (overall), D/E (letter) - every remaining real grade
+}
+
+const tone = computed(() => toneFor(props.grade))
+</script>
+
+<template>
+  <span class="grade-stamp" :class="'stamp-' + tone">
+    <span class="stamp-label">{{ label }}</span>
+    <span class="stamp-value">{{ grade }}</span>
+  </span>
+</template>
+
+<style scoped>
+/*
+ * Rule-of-glow compliance (art-direction.md 2): several lots on the board
+ * at once, three stamps each, would blow the "2-3 saturated elements per
+ * screen" budget at full ink strength - stamps sit muted by default and
+ * only reach full saturation on the hovered/focused card (the parent
+ * `.lot` in AuctionScreen.vue reaches in via `:deep()` to flip this).
+ */
+.grade-stamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 2px var(--mg-space-2);
+  border: 3px solid currentColor;
+  border-radius: 3px;
+  font-family: inherit;
+  filter: saturate(0.5) brightness(0.85);
+  transition: filter 0.15s ease;
+}
+
+/* Slight rotation jitter per stamp position (decision 2) - a fixed,
+   deterministic offset per slot (never randomized - three stamps always
+   render in the same Overall/Ext/Int order), so the row reads as
+   hand-stamped without any snapshot-test flakiness. */
+.grade-stamp:nth-of-type(1) {
+  transform: rotate(-2deg);
+}
+
+.grade-stamp:nth-of-type(2) {
+  transform: rotate(1.5deg);
+}
+
+.grade-stamp:nth-of-type(3) {
+  transform: rotate(-1deg);
+}
+
+.stamp-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.stamp-value {
+  font-size: var(--mg-fs-md);
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.stamp-green {
+  color: var(--mg-success);
+}
+
+.stamp-amber {
+  color: var(--mg-neon-violet);
+}
+
+.stamp-red {
+  color: var(--mg-danger);
+}
+
+/* The structural-defect flag: the deepest, most saturated red of the four -
+   unmistakably worse than an ordinary weak grade, never at rest with the
+   others even when the card isn't hovered. */
+.stamp-defect {
+  color: var(--mg-danger);
+  filter: saturate(0.85) brightness(0.75);
+}
+</style>

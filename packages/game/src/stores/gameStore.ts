@@ -1193,7 +1193,10 @@ export const useGameStore = defineStore('game', () => {
     const backstopNightsLeft = Math.max(1, lot.expiresOnDay - gameState.value.day + 1)
     const nightsLeft = Math.min(quietNightsLeft, backstopNightsLeft)
     if (nightsLeft <= 1) return 'final call: closes at End Day unless a new bid comes in'
-    return `closes in ${nightsLeft} days unless bid on (any bid resets the clock)`
+    // Sprint 56 decision 5: the "(any bid resets the clock)" parenthetical
+    // is gone (playtest 2026-07-14 item 8) - the "closes in N days unless
+    // bid on" lead-in already carries the mechanic on its own.
+    return `closes in ${nightsLeft} days unless bid on`
   }
 
   function lotDetail(lotId: string): LotDetail | undefined {
