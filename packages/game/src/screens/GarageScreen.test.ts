@@ -62,7 +62,9 @@ describe('GarageScreen', () => {
   it('renders the starting day and cash', () => {
     const wrapper = mountScreen()
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
-    expect(wrapper.text()).toContain('¥1,500,000')
+    // Sprint 59: STARTING_CASH_YEN retuned 1,500,000 -> 300,000 (derived from
+    // roster medians, see economy.ts's own schema doc comment).
+    expect(wrapper.text()).toContain('¥300,000')
   })
 
   it('shows no shop title on a fresh game, and shows it in plain copy once specialty clears the threshold (Sprint 39)', async () => {

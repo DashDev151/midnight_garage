@@ -14,13 +14,15 @@ import { createInitialGameState } from '../src/newGame'
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
 
 describe('createInitialGameState', () => {
-  it('returns a day-1, schema-valid state with the Sprint 03 starting cash', () => {
+  it('returns a day-1, schema-valid state with the content-derived starting cash', () => {
     const state = createInitialGameState(CONTEXT, 42)
     expect(() => GameStateSchema.parse(state)).not.toThrow()
     expect(state.day).toBe(1)
     expect(state.seed).toBe(42)
     expect(state.cashYen).toBe(ECONOMY.STARTING_CASH_YEN)
-    expect(ECONOMY.STARTING_CASH_YEN).toBe(1_500_000)
+    // Sprint 59 (playtest item 12): derived from real roster medians, not
+    // asserted - see STARTING_CASH_YEN's own schema doc comment.
+    expect(ECONOMY.STARTING_CASH_YEN).toBe(300_000)
     expect(state.reputationTier).toBe('unknown')
     expect(state.ownedCars).toEqual([])
   })

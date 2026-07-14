@@ -61,6 +61,19 @@ pass."
   Handyman/Cautious Restorer some route to reputation (an occasional service job, or a repair
   target that reliably clears clean/concours) so their tool-upgrade behavior actually exercises the
   new gate instead of just proving it exists.
+  **Update (Sprint 59, the earned-yen retune, 2026-07-14): the lockout now extends to
+  competent-policy too** - the one bot built specifically to climb the reputation ladder.
+  Measured directly (same harness): 0/100 seeds ever clear a tool-tier upgrade within 100 days,
+  down from 14/100 pre-Sprint-59 (itself already down from 48/100 pre-Sprint-52). Root cause is
+  cash pressure, not reputation: competent-policy clears reputation gates easily (day-100 median
+  202 points, `local` by p50=12 days), but Sprint 59's starting-cash cut (Y1.5M -> Y300k) plus the
+  tightened service-job margins leave it without the Y600k-900k a tier-2 tool line costs within the
+  100-day window even though its day-100 median cash (Y643,697) would clear it later. The
+  `runCareer.test.ts` assertion was rewritten to the honestly-measured value (near-zero), not
+  loosened to force a pass. Worth a maintainer look alongside the Handyman/Cautious-Restorer item
+  above - a single future bot-tuning/pacing pass could address all three at once (e.g. per-bot tool-
+  upgrade eagerness, or checking the 100-day harness window itself is long enough to see a slower-
+  but-real tool-upgrade loop through).
 
 ## Open engineering
 
@@ -108,43 +121,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **LARGE ECONOMY ADJUSTMENT, needs full scoping - revisit after Sprint 58: the value formula has
-  no concept of build "coherence," so an incoherent build (expensive mods bolted onto a neglected,
-  unsafe, or unsound car) can be just as profitable as a sensible one (maintainer finding,
-  2026-07-14, raised immediately after the Economy Rebuild arc, Sprints 53-55, closed).**
-  Verified directly against the current code, not a guess: `marketValueYen` (`marketValue.ts`) is
-  `(clean value minus the repair bill)` PLUS the flat sum of every installed aftermarket part's own
-  retained value (`installedPartsValueYen`). That sum is purely additive, part by part - a part's
-  contribution never depends on any other part's condition. The only mechanism that ever looks at
-  more than one part together is the buyer "taste" multiplier (`valuation.ts`'s `tasteMultiplier`,
-  used in `valuateCarForBuyer`), and it is hard-bounded to nudge the final price by at most
-  `+/- valuation.tasteSpread` (currently 0.12, so +/-12%) - nowhere near enough to offset a
-  five-or-six-figure aftermarket engine/turbo/cosmetic install. There is no hard "a buyer refuses
-  this car" check anywhere in the value or sale pipeline; stats only ever nudge price, never gate
-  whether the car is worth anything (`valuateCarForBuyer`'s own doc comment states this as
-  deliberate, pre-existing design).
-
-  Maintainer's illustrative example (verbatim, 2026-07-14): buy a cheap kei truck; leave the brakes
-  stock and worn, hardly working; leave the body peeling and rusted; but install an expensive race
-  turbo, a race engine, and the most expensive underglow available. Under the current formula this
-  exact build nets a real, calculable profit - the neglected brakes and body only ever cost their
-  own small stock-replacement bill, while the race engine, turbo, and underglow are credited in
-  full regardless of the rest of the car's condition. In the maintainer's words, in reality this
-  build "should lose the player a bunch of money," since a real buyer cares whether the car is safe
-  and sound as a whole, not just whether any one part is impressive - the current system has no way
-  to express that.
-
-  Maintainer's own framing for future scoping (not yet designed): something like "a hierarchy of
-  needs for cars" - certain foundational components may need to clear some bar before buyers are
-  meaningfully interested at all, independent of how good other components are.
-
-  This is a large adjustment to the same value formula the Economy Rebuild arc (Sprints 53-55) just
-  finished proving safe under its four laws (`docs/design/economy-bible.md`), so any fix here would
-  need to be checked against those same laws, not just added on top. Explicitly left unscoped:
-  which components count as "foundational," what the bar should be, whether the mechanism is a
-  price adjustment or a sale-eligibility gate or something else, and how it interacts with the
-  existing buyer-taste system. Do not implement without a full design pass and maintainer sign-off.
-  Revisit after Sprint 58.
 - [ ] **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
   The maintainer took the targeted Option B fix (above) for now but is not sold on the current
   async, overnight-resolved auction model even debugged: bidding is inherently slow (one

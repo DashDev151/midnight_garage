@@ -400,10 +400,10 @@ describe('advanceLotOvernight', () => {
     //
     // Re-measured (not re-derived) against Sprint 30's daily bidder-interest
     // process (per-cohort private valuations centered at
-    // AUCTION_WHOLESALE_FRACTION = 0.75 of guide value, reserve at 0.5 of
-    // the same guide value): the bar stays a plain "clear majority" (> 0.5)
-    // with generous headroom rather than pinning the exact rate, per this
-    // test's own established pattern.
+    // AUCTION_WHOLESALE_FRACTION = 0.97 of guide value, reserve at 0.6 of
+    // the same guide value, both Sprint 59 figures): the bar stays a plain
+    // "clear majority" (> 0.5) with generous headroom rather than pinning the
+    // exact rate, per this test's own established pattern.
     const opened = statLots(200, 'open-check').map(
       (l) => advanceLotOvernight(l, state, CONTEXT, 1).lot,
     )
@@ -885,7 +885,7 @@ describe('resolveBuyoutInstant', () => {
  * exact function `advanceDay` calls.
  */
 describe('distribution probes', () => {
-  it('hammer/anchor lands below the wholesale center on typical lots, with a real upper tail', () => {
+  it('hammer/anchor clusters near guide value with a real frenzy tail (Sprint 59 retune)', () => {
     // No player involvement at all: every lot clears purely via dealers
     // bidding among themselves (the "background market selling to itself"),
     // stepped directly through `advanceLotOvernight` up to its own hammer
@@ -926,32 +926,48 @@ describe('distribution probes', () => {
     const p10 = finalRatios[Math.floor(finalRatios.length * 0.1)]!
     const median = finalRatios[Math.floor(finalRatios.length / 2)]!
     const p90 = finalRatios[Math.floor(finalRatios.length * 0.9)]!
-    expect(p10).toBeGreaterThan(0.35)
-    expect(median).toBeGreaterThan(0.55)
-    // Sprint 55 decision 3 (economy-bible.md law 4's retune pass):
-    // `AUCTION_WHOLESALE_FRACTION` moved 0.85 -> 0.75 once Sprint 54's value
-    // law raised anchorValueYen enough that the same contestation rules were
-    // pushing hammer prices past guide value far too often (the balance
-    // harness's auction frenzy tail); this median moves down with it but
-    // still clears the same wide, headroom-first band rather than chasing an
-    // exact figure, same "report the real number" policy as everywhere else
-    // in this probe.
-    expect(median).toBeLessThan(0.88)
-    expect(p90).toBeGreaterThan(0.55)
-    // A real upper tail: some lots roll high enough spread/turnout to clear
-    // well above the median.
-    expect(finalRatios.some((r) => r > 0.8)).toBe(true)
+    // Sprint 59 (playtest item 19, the ~156k unimproved instant-flip bug):
+    // `AUCTION_WHOLESALE_FRACTION` moved 0.75 -> 0.97 so a contested close
+    // converges on fair value instead of a wholesale discount - re-measured
+    // (not re-derived) against this exact population: p10 ~0.82, median
+    // ~0.97 (right at the new wholesale center), p90 ~1.10, with a genuine
+    // frenzy tail (93% of lots clear above 0.8x guide, 36% clear above guide
+    // value outright). Bounds kept as generous headroom around the real
+    // measurement, same "report the real number" policy as the rest of this
+    // probe.
+    expect(p10).toBeGreaterThan(0.6)
+    expect(median).toBeGreaterThan(0.85)
+    expect(median).toBeLessThan(1.1)
+    expect(p90).toBeGreaterThan(0.9)
+    // A real frenzy tail: a meaningful share of lots clear above guide value
+    // outright, not just above some arbitrary threshold below it.
+    expect(finalRatios.some((r) => r > 1.0)).toBe(true)
   })
 
-  it('a scripted patient bidder (raises to a fair target, walks above it) acquires cheaper than buyout on >= 70% of lots it pursues', () => {
-    // Empirically measured against this exact (deterministic) population:
-    // 196/200 (98%) - comfortably clears the sprint doc's >= 70% target.
+  it('a scripted patient bidder (raises to a fair target, walks above it) wins less often post-Sprint-59, but every win beats buyout', () => {
+    // Sprint 59 (playtest item 19) real, expected shape change: this test
+    // used to measure 196/200 (98%) wins at target = guide value, comfortably
+    // clearing the sprint20.md doc's >= 70% target. That target was only
+    // ever high BECAUSE rivals bid to a wholesale-discounted ceiling
+    // (`AUCTION_WHOLESALE_FRACTION` 0.75) - a disciplined bidder capped at
+    // guide value rarely had to compete with anyone bidding ABOVE guide
+    // value. Now that rivals price near/above guide value (0.97), the same
+    // disciplined bidder wins only 82/200 (41%) of the lots it pursues -
+    // that drop IS the fix (the free lunch this sprint closes was exactly
+    // "rivals never contest past a wholesale discount"). What still holds,
+    // and is worth hard-gating: EVERY win is still cheaper than an instant
+    // buyout (82/82, 100%) - true by construction (the bidder's own target,
+    // guide value, is always below `AUCTION_BUYOUT_PREMIUM` x guide value),
+    // but worth a permanent regression test that the buyout premium itself
+    // never accidentally collapses onto the target.
+    //
     // "Pursues" = a lot the bidder is willing to open at all (its opening
     // price doesn't already exceed the target); "acquires cheaper than
     // buyout" = wins it, at a price below what an instant buyout would
     // have cost at the moment the lot first appeared.
     const TARGET_MULTIPLIER = 1.0 // never pays more than the car is genuinely worth
     let pursued = 0
+    let wonCount = 0
     let acquiredCheap = 0
 
     for (const initial of independentLots(200, 9000)) {
@@ -991,11 +1007,23 @@ describe('distribution probes', () => {
         break
       }
 
-      if (won && finalPriceYen < buyoutAtStartYen) acquiredCheap++
+      if (won) {
+        wonCount++
+        if (finalPriceYen < buyoutAtStartYen) acquiredCheap++
+      }
     }
 
     expect(pursued).toBeGreaterThan(50)
-    expect(acquiredCheap / pursued).toBeGreaterThanOrEqual(0.7)
+    // Real, disclosed win rate at the new economics - not gated high (a
+    // disciplined bidder is SUPPOSED to lose most contested lots now), just
+    // bounded sane: not near-zero (the market isn't a total lockout) and
+    // not near-100% (that would mean the fix didn't land).
+    expect(wonCount / pursued).toBeGreaterThan(0.2)
+    expect(wonCount / pursued).toBeLessThan(0.7)
+    // Hard-gated: whenever this disciplined bidder DOES win, it is always
+    // cheaper than an instant buyout would have been.
+    expect(wonCount).toBeGreaterThan(20)
+    expect(acquiredCheap).toBe(wonCount)
   })
 })
 
@@ -1091,16 +1119,25 @@ describe('Sprint 30 decision 3 behavioral proofs', () => {
   })
 
   /**
-   * (c) Player wins above guide value get rarer as turnout rises: an
-   * aggressive player who chases every raise up to a real premium (1.3x
-   * guide value) occasionally ends up paying MORE than the car is genuinely
-   * worth when only a lone, unusually-high-valuing rival contests it (thin
-   * turnout - little regression to the mean). With many cohorts in play
-   * (packed), the competing pool is large enough that the price that
-   * actually clears tracks the wholesale center far more reliably, so a
-   * final price above guide value is comparatively rare.
+   * (c) Sprint 59 (playtest item 19) INVERTS this proof's own direction, and
+   * the inversion is real, not a bug. Pre-Sprint-59, `AUCTION_WHOLESALE_
+   * FRACTION` (0.75) was a genuine discount below guide value, so more
+   * cohorts (packed) meant the price reliably converged on that discount -
+   * "packed clusters near a wholesale center below guide value" was true.
+   * Now the wholesale center is 0.97 (basically AT guide value), so there is
+   * no discount left for a larger field to converge on: a PACKED field's
+   * closing price is the near-maximum of 5-7 independent draws even from its
+   * own tighter spread (0.08 SD), and order statistics push that maximum
+   * meaningfully above the 0.97 center - often past guide value (1.0)
+   * outright. A THIN field's closing price is the max of only 1-2 draws from
+   * a much WIDER spread (0.3 SD) - usually close to the center, occasionally
+   * a genuine high-tail outlier, but rarely pushed as far by sheer sample
+   * count. Net effect, measured against this exact population: thin wins
+   * clear above guide value 25% of the time; packed wins clear above guide
+   * value 74% of the time - the opposite ranking from the pre-retune world,
+   * and exactly what "rivals now price near fair value" should produce.
    */
-  it('(c) wins above guide value are rarer under packed turnout than thin, for an aggressive chaser', () => {
+  it('(c) wins above guide value are now MORE common under packed turnout than thin (Sprint 59 retune)', () => {
     const { lot } = sampleLot(1)
     const SAMPLE = 150
     const CEILING_MULTIPLIER = 1.3
@@ -1155,6 +1192,8 @@ describe('Sprint 30 decision 3 behavioral proofs', () => {
 
     const thinShare = aboveGuideWinShare('thin')
     const packedShare = aboveGuideWinShare('packed')
-    expect(thinShare).toBeGreaterThan(packedShare)
+    expect(packedShare).toBeGreaterThan(thinShare)
+    expect(thinShare).toBeLessThan(0.45)
+    expect(packedShare).toBeGreaterThan(0.55)
   })
 })

@@ -1,8 +1,8 @@
 {
-  "STARTING_CASH_YEN": 1500000,
+  "STARTING_CASH_YEN": 300000,
   "WEEKLY_RENT_YEN": 20000,
   "DOUBLE_PARKING_FINE_YEN": 8000,
-  "AUCTION_RESERVE_PRICE_FRACTION": 0.5,
+  "AUCTION_RESERVE_PRICE_FRACTION": 0.6,
   "AUCTION_LOTS_PER_TIER": {
     "local-yard": 3,
     "regional": 3,
@@ -21,7 +21,7 @@
     "collector-network": 40000
   },
   "AUCTION_BUYOUT_PREMIUM": 1.25,
-  "AUCTION_WHOLESALE_FRACTION": 0.75,
+  "AUCTION_WHOLESALE_FRACTION": 0.97,
   "AUCTION_QUIET_DAYS_TO_HAMMER": 3,
   "AUCTION_BID_INCREMENT_FRACTION": 0.05,
   "AUCTION_DAILY_SPAWN_RATE": {
@@ -199,8 +199,8 @@
     "concoursSaleBonus": 4
   },
   "serviceJobs": {
-    "marginMin": 1.4,
-    "marginMax": 1.65,
+    "marginMin": 1.18,
+    "marginMax": 1.35,
     "laborRateYen": 6000,
     "calloutFeeYen": 5000,
     "dailyOfferCountWeights": [0.05, 0.22, 0.42, 0.23, 0.08],
@@ -228,7 +228,7 @@
       "normal": 1.0,
       "hot": 1.3
     },
-    "offerSpread": [0.9, 1.08]
+    "offerSpread": [0.93, 1.05]
   },
   "toolCeilings": {
     "naToTurboConversionEngineTier": 3

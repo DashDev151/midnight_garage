@@ -28,6 +28,11 @@ describe('market: bidding', () => {
     if (!lot) throw new Error('expected a local-yard lot after the first catalog')
 
     const carsBefore = game.ownedCarCount
+    // Sprint 59 retuned STARTING_CASH_YEN down (1,500,000 -> 300,000) - the
+    // scripted "well over market" bid below exists to guarantee a win
+    // regardless of rival bidding, not to exercise real cash affordability,
+    // so it needs headroom the new lower starting cash no longer gives it.
+    game.devGiveCash(lot.bookValueYen * 3)
     // Well over market -> should win once the lot's own rolled duration
     // elapses - bidding no longer resolves instantly.
     expect(game.placeBid(lot.id, lot.bookValueYen * 3)).toBe(true)

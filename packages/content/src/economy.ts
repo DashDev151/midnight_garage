@@ -123,13 +123,17 @@ export const CurveSchema = z
  */
 export const EconomyConfigSchema = z.object({
   /**
-   * Day-1 starting cash (was `STARTING_CASH_YEN` in sim/newGame.ts). Balance-
-   * harness finding (Sprint 03): 100 days of `WEEKLY_RENT_YEN` (Y1,260,000)
-   * almost exactly consumed the original economy-v0.md draft of Y1,200,000,
-   * leaving zero operating margin for any strategy - even one with
-   * genuinely profitable trades goes under from a single bad run or a slow
-   * start. Bumped to give real working capital; economy-v0.md updated to
-   * match.
+   * Day-1 starting cash (was `STARTING_CASH_YEN` in sim/newGame.ts). Retuned
+   * 1,500,000 -> 300,000 (Sprint 59, playtest item 12: the old figure gave a
+   * fresh career several free flips of runway before the economy's own risk
+   * ever mattered). Derived, not asserted: pooling the shitbox and common
+   * roster tiers across many generated lots, the median guide value is
+   * ~Y133,795 and the median full-restore bill ~Y80,800; buying at the new
+   * 0.6 reserve (~Y80,277) plus that restoration (~Y161,077 total) plus four
+   * weeks' rent (Y80,000) plus an early parts float (~Y30,000) gives a
+   * derived floor of ~Y271,000 - one full cheapest-tier flip cycle. 300,000
+   * sits a real margin above that floor, not bare survival. See
+   * `docs/sprints/sprint59.md`'s Exit for the full working.
    */
   STARTING_CASH_YEN: z.number().int().positive(),
   /**
@@ -160,8 +164,15 @@ export const EconomyConfigSchema = z.object({
    * reserve moves with a specific worn car instead of a static per-model
    * constant; the old 0.4 was calibrated against book value and is meaningless
    * on this basis (a book-value reserve sat above most worn cars' actual guide
-   * value, seizing the whole auction market). 0.5 is Sprint 30 decision 2's
+   * value, seizing the whole auction market). 0.5 was Sprint 30 decision 2's
    * proposed value on the new basis (GDD 6.5).
+   *
+   * Retuned 0.5 -> 0.6 (Sprint 59, playtest item 19): a pure SELLER FLOOR, not
+   * the price-setter - opening low and letting a lot go unsold below this line
+   * is deliberately kept, so bidding still reads as a hunt. The instant-flip
+   * exploit this fixes lived in contestation (`AUCTION_WHOLESALE_FRACTION`
+   * below), not the floor; this edit only trims how cheap an uncontested
+   * open-and-hammer lot could still be.
    */
   AUCTION_RESERVE_PRICE_FRACTION: z.number().positive().max(1),
   /** New lots per tier on DAY 1 ONLY (`newGame.ts`'s `createInitialGameState`,
@@ -209,6 +220,19 @@ export const EconomyConfigSchema = z.object({
    * steal down to 7.3% against a 10% floor) - lowering the wholesale center
    * back toward its pre-2026-07-12 value pulls rival private valuations back
    * down relative to the new, less-discounted anchor.
+   *
+   * Retuned 0.75 -> 0.97 (Sprint 59, playtest item 19: the ~156k unimproved
+   * instant-flip bug). Root cause was here, not the reserve: rival cohorts
+   * were pricing like wholesalers with a guaranteed retail exit, so even a
+   * CONTESTED close sat far below guide value while walk-in sales paid ~0.99x
+   * guide - the ~49% gap was structural. Raising this to 0.97 means rivals now
+   * price close to guide (their margin has to come from the work, exactly
+   * like the player's), so a contested close converges on fair value. Lots
+   * still open at the (lower) reserve and can occasionally go uncontested and
+   * cheap - the fix is in what a REAL bidding war converges to, not in
+   * forbidding cheap opens. A first-instinct fix (a high reserve floor
+   * instead) was explicitly rejected by the maintainer: it would flatten
+   * bidding into a dead sliver and kill the auction as a game.
    */
   AUCTION_WHOLESALE_FRACTION: z.number().positive().max(1),
   /** Consecutive quiet overnight steps (no raise) before a lot hammers to
@@ -613,8 +637,16 @@ export const EconomyConfigSchema = z.object({
    */
   serviceJobs: z
     .object({
-      /** `payout`'s margin rolls uniform in `[marginMin, marginMax]` over the
-       * task+labor cost pool (`deriveServiceJobPayoutYen`, serviceJobs.ts). */
+      /**
+       * `payout`'s margin rolls uniform in `[marginMin, marginMax]` over the
+       * task+labor cost pool (`deriveServiceJobPayoutYen`, serviceJobs.ts).
+       * Retuned `[1.4, 1.65]` -> `[1.18, 1.35]` (Sprint 59, playtest item 16:
+       * a single tyre-install job was clearing ~Y47,000 profit, read as a
+       * windfall for one part swap). The floor stays above the Law 4
+       * hard-gated payout-coverage minimum (1.15) with real headroom; the
+       * ceiling drops enough that the same tyre exemplar now profits roughly
+       * Y15,000-25,000 - paid work, not a jackpot.
+       */
       marginMin: z.number().positive(),
       marginMax: z.number().positive(),
       /** Yen per labor slot the payout formula credits toward the job's
@@ -692,6 +724,11 @@ export const EconomyConfigSchema = z.object({
        * that an unmodified car's expected walk-in sale never nets a profit
        * over its own guide value, `valueModelProbes.test.ts`) - `[0.90, 1.08]`
        * keeps the mean at 0.99, still a real discount on average.
+       *
+       * Retuned again `[0.90, 1.08]` -> `[0.93, 1.05]` (Sprint 59, playtest
+       * item 19): narrower tails so a patient, unimproved flip can't rely on a
+       * lucky high roll to clear a real profit - the mean stays 0.99,
+       * preserving the same no-free-lunch invariant unchanged.
        */
       offerSpread: z
         .tuple([z.number().positive(), z.number().positive()])

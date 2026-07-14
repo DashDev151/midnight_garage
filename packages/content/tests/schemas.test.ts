@@ -137,7 +137,12 @@ describe('seed content validates against schemas', () => {
     // parking" overflow slot - first-pass number, explicit tuning bait.
     expect(result.data.DOUBLE_PARKING_FINE_YEN).toBe(8_000)
     expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
-    expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
+    // Sprint 59 (playtest item 12): derived from real roster medians, not
+    // asserted - see STARTING_CASH_YEN's own schema doc comment.
+    expect(result.data.STARTING_CASH_YEN).toBe(300_000)
+    // Sprint 59 (playtest item 19): the reserve is a pure seller floor, not
+    // the price-setter - see AUCTION_RESERVE_PRICE_FRACTION's own doc comment.
+    expect(result.data.AUCTION_RESERVE_PRICE_FRACTION).toBe(0.6)
     // New Sprint 20 auction-rework knobs, born in JSON from day one.
     // Auction-close + rival-contest knobs, retuned by the 2026-07-12
     // auction fix (anti-snipe + longer visible window + more contest), then
@@ -145,7 +150,10 @@ describe('seed content validates against schemas', () => {
     // pass): the wholesale center moved back down once Sprint 54's gentler
     // value law raised anchorValueYen enough that the same contestation
     // rules were overshooting into a frenzy tail instead of a steal one.
-    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.75)
+    // Retuned again by Sprint 59 (playtest item 19, the ~156k unimproved
+    // instant-flip bug): rivals now price near guide value instead of
+    // wholesale, so a contested close converges on fair value.
+    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.97)
     expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(3)
     expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
     // Sprint 30 (living auctions): daily arrivals + the bidder-interest
@@ -204,8 +212,10 @@ describe('seed content validates against schemas', () => {
     // from [0.82, 1.12] so a bad walk-in roll can no longer erase the
     // worst-case flip margin the Law 2 generation guard still permits; the
     // upper edge came down to keep the spread's own mean at/below 1.0 (the
-    // Sprint 54 no-free-lunch invariant).
-    expect(result.data.selling.offerSpread).toEqual([0.9, 1.08])
+    // Sprint 54 no-free-lunch invariant). Narrowed again to [0.93, 1.05] by
+    // Sprint 59 (playtest item 19): the mean stays 0.99, but the tails can no
+    // longer let a lucky roll manufacture profit on an unimproved flip.
+    expect(result.data.selling.offerSpread).toEqual([0.93, 1.05])
     // Sprint 55 (economy-bible.md law 4): the roster-coherence "brake pads
     // vs car price" cap - a content anchor, not a hardcoded check constant.
     expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)

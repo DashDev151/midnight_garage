@@ -288,7 +288,14 @@ describe('advanceDay golden master', () => {
  */
 describe('advanceDay golden master - acquisition and sale path', () => {
   function acquisitionCareer(): { won: GameState; sold: GameState } {
-    let state = createInitialGameState(CONTEXT, 42)
+    // Sprint 59 retuned STARTING_CASH_YEN down (1,500,000 -> 300,000) - this
+    // scenario's own scripted "over-market" bid (bookValueYen * 3) exists to
+    // guarantee a win against ANY realistic rival ceiling, not to exercise
+    // real starting-cash affordability, so it needs headroom the new lower
+    // starting cash no longer gives it. Bumped here rather than lowering the
+    // bid multiplier, so this test stays decoupled from future starting-cash
+    // retunes entirely.
+    let state = { ...createInitialGameState(CONTEXT, 42), cashYen: 5_000_000 }
     let guard = 0
     while (state.activeAuctionLots.length === 0 && guard++ < 30) {
       state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
@@ -406,7 +413,15 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // change, not a logic bug; this career never touches a service job, so
     // the field stays empty throughout and `wins a lot at auction, then
     // sells the car` above still holds unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('179db04e')
+    // Re-pinned again (Sprint 59, was 179db04e): the retuned
+    // AUCTION_WHOLESALE_FRACTION/AUCTION_RESERVE_PRICE_FRACTION/selling
+    // .offerSpread all shift this career's real auction/sale price path, and
+    // `acquisitionCareer`'s own starting cash is now bumped to 5,000,000 (the
+    // scripted over-market bid needs headroom the new, much lower
+    // STARTING_CASH_YEN no longer gives it) - both real, intended changes,
+    // not a logic bug; `wins a lot at auction, then sells the car` above
+    // still holds unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('2103500e')
   })
 })
 
