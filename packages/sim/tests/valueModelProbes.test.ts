@@ -23,7 +23,7 @@ import {
 } from '../src/auctions'
 import { carCostToMintYen, hasForcedInduction, planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { marketValueYen, mileageFactor } from '../src/marketValue'
+import { installedPartsValueYen, marketValueYen, mileageFactor } from '../src/marketValue'
 import { createRng, hashStringToSeed } from '../src/rng'
 import { bestFitBuyer, sellViaWalkIn } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
@@ -840,4 +840,167 @@ describe('unimproved-flip probe (Sprint 59 decision 1, playtest item 19)', () =>
       expect(Math.abs(marginMedian)).toBeLessThanOrEqual(0.07)
     },
   )
+})
+
+/**
+ * Sprint 60 acceptance probes (economy-bible.md law 5 - the foundation law).
+ * The maintainer's verbatim example becomes a permanent, machine-checked
+ * test: an incoherent build (expensive aftermarket parts bolted onto a car
+ * with neglected foundations) must LOSE money, not profit like a coherent
+ * build. Probe (b) (repairing the foundation releases the premium) and the
+ * pure-function behavior live in `marketValue.test.ts`; probes (c)/(d) (the
+ * no-inflation ceiling and Sprint 59's flip band) are the unchanged probes
+ * above, which still pass because a generated lot's stock parts carry no
+ * premium for the factor to scale.
+ */
+describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5, item 18)', () => {
+  const SHITBOX_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!SHITBOX_MODEL) throw new Error('fixture shitbox-tier car missing from seed content')
+
+  // The maintainer's build, in real shitbox-class catalog SKUs: a race
+  // engine (block + internals), a race turbo, and expensive cosmetics
+  // (livery + aero) - each bought at full catalog price at the parts market.
+  const RACE_PART_IDS = [
+    'shitbox-hagane-race-block',
+    'shitbox-oni-race-piston-kit',
+    'shitbox-khs-tr-500',
+    'shitbox-akai-full-livery-wrap',
+    'shitbox-frp-race-aero',
+  ] as const
+
+  function installRaceParts(parts: CarInstance['parts']): CarInstance['parts'] {
+    const next = { ...parts }
+    for (const partId of RACE_PART_IDS) {
+      const part = PARTS_BY_ID[partId]
+      if (!part) throw new Error(`fixture race part ${partId} missing from catalog`)
+      next[part.carPartId] = {
+        installed: { id: `built-${partId}`, partId, band: 'mint', genuinePeriod: false },
+      }
+    }
+    return next
+  }
+
+  it('buying the wreck, fitting a race engine/turbo/cosmetics, and selling loses money while the foundations stay neglected', () => {
+    // The neglected foundations the maintainer described: barely-working
+    // brakes, bald tyres, a rusted-through body.
+    const neglectedFoundations = {
+      brakePadsDiscs: 'scrap' as const,
+      tyres: 'scrap' as const,
+      underbody: 'scrap' as const,
+    }
+
+    // The wreck as bought - neglected foundations, stock everywhere else, NO
+    // race parts yet. Bought at auction at the reserve (a real acquisition
+    // discount, the most generous case for the flipper).
+    const wreckCar = buildCarInstance({
+      modelId: SHITBOX_MODEL.id,
+      mileageKm: 116_226,
+      parts: mintCarParts(neglectedFoundations),
+    })
+    const wreckGuideYen = marketValueYen(
+      SHITBOX_MODEL,
+      wreckCar,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const buyYen = Math.round(wreckGuideYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+
+    // Fit the race parts (money spent at the parts market, full catalog price)
+    // WITHOUT touching the neglected foundations - the exact incoherent build.
+    const partsSpentYen = RACE_PART_IDS.reduce((sum, id) => sum + PARTS_BY_ID[id]!.priceYen, 0)
+    const builtCar: CarInstance = { ...wreckCar, parts: installRaceParts(wreckCar.parts) }
+    // Sell at the FULL guide value (the most generous case - a real walk-in
+    // sale is a discount on top). If it loses money even here, it loses money
+    // for real.
+    const sellYen = marketValueYen(
+      SHITBOX_MODEL,
+      builtCar,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+
+    const marginYen = sellYen - buyYen - partsSpentYen
+    expect(marginYen).toBeLessThan(0)
+  })
+
+  it('the SAME build with sound foundations instead is not a guaranteed loss - the difference is the foundation law, not the parts', () => {
+    // Identical race build, but the foundations are sound (worn) instead of
+    // scrap: the premium is now credited in full, so the same parts spend is
+    // no longer thrown away. Proves the loss above is the foundation gate, not
+    // some blanket "aftermarket never pays" rule.
+    const soundFoundations = {
+      brakePadsDiscs: 'worn' as const,
+      tyres: 'worn' as const,
+      underbody: 'worn' as const,
+    }
+    const soundWreck = buildCarInstance({
+      modelId: SHITBOX_MODEL.id,
+      mileageKm: 116_226,
+      parts: mintCarParts(soundFoundations),
+    })
+    const scrapWreck = buildCarInstance({
+      modelId: SHITBOX_MODEL.id,
+      mileageKm: 116_226,
+      parts: mintCarParts({
+        brakePadsDiscs: 'scrap',
+        tyres: 'scrap',
+        underbody: 'scrap',
+      }),
+    })
+    const soundBuilt: CarInstance = { ...soundWreck, parts: installRaceParts(soundWreck.parts) }
+    const scrapBuilt: CarInstance = { ...scrapWreck, parts: installRaceParts(scrapWreck.parts) }
+    const soundSell = marketValueYen(
+      SHITBOX_MODEL,
+      soundBuilt,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const scrapSell = marketValueYen(
+      SHITBOX_MODEL,
+      scrapBuilt,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    // The sound-foundation build is worth strictly more, by the released
+    // premium, than the identical scrap-foundation build.
+    expect(soundSell).toBeGreaterThan(scrapSell)
+  })
+
+  it('is inert on the coherence probe car (all-scrap STOCK, zero premium) - the coherence table is arithmetically unchanged (probe e)', () => {
+    // computeRosterCoherence builds an all-scrap car of STOCK parts (no
+    // aftermarket premium). foundationFactor multiplies a zero premium to
+    // zero either way, so Law 5 cannot move any coherence figure - asserted
+    // directly here so a future factor edit can never silently shift the
+    // machine-checked coherence gate.
+    for (const model of CARS) {
+      const fitmentClass = fitmentClassForTier(model.tier)
+      const parts = Object.fromEntries(
+        ALL_CAR_PART_IDS.map((partId) => {
+          if (partId === 'forcedInduction' && !hasForcedInduction(model)) {
+            return [partId, { installed: null }]
+          }
+          const stockPart = CONTEXT.stockPartByCarPartId[fitmentClass][partId]
+          return [
+            partId,
+            {
+              installed: stockPart
+                ? { id: `cov-${partId}`, partId: stockPart.id, band: 'scrap', genuinePeriod: false }
+                : null,
+            },
+          ]
+        }),
+      ) as CarInstance['parts']
+      const car = buildCarInstance({ modelId: model.id, parts })
+      // Zero premium -> foundationFactor is inert by construction.
+      expect(installedPartsValueYen(car, PARTS_BY_ID, ECONOMY)).toBe(0)
+    }
+  })
 })

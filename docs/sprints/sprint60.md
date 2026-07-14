@@ -93,4 +93,72 @@ keys; the probe-suite pattern carries the acceptance tests.
 
 ## Exit
 
-Not started.
+Implemented and committed.
+
+**The one-line value change (decision 1).** `marketValueYen` is now `baseValue +
+round(foundationFactor(car) x installedPartsValueYen)` (`marketValue.ts`) - the base term
+(clean value minus the restoration bill) is byte-for-byte untouched, so Law 1 holds structurally
+and the entire repair economy is unchanged. `foundationFactor` is a new pure function over the
+car's own bands/missing state - the factor of the single WORST foundational part, exported from
+sim.
+
+**The content anchor (decision 2).** `valuation.foundation` in `economy.json`: `parts` =
+[tyres, brakePadsDiscs, brakeCalipersLines, steering, chassis, underbody]; `factorByState` =
+{missing 0.10, scrap 0.15, poor 0.45, worn 1.0, fine 1.0, mint 1.0}. The schema enforces the law
+structurally: every factor is clamped to [0, 1] (`.min(0).max(1)`) and the table must be
+monotonic non-decreasing (a `.refine`), so the law can only ever WITHHOLD premium, never inflate
+it, and a worse state can never withhold less than a better one. First-pass numbers, maintainer
+tuning bait. The `schemas.test.ts` content assertion covers the new block; the top-level
+anchor-audit test is unaffected (`foundation` nests under the existing `valuation` key).
+
+**The probes (decision 3).** `valueModelProbes.test.ts` gains the foundation-law describe block:
+(a) the maintainer's verbatim kei-truck build - a shitbox bought at reserve, fitted with real
+shitbox-class race engine/turbo/cosmetics SKUs at full catalog price while the brakes, tyres and
+underbody stay scrap - loses money end to end even when sold at FULL guide value (the most
+generous case); (a') the SAME build with sound foundations instead is worth strictly more, by the
+released premium, proving the loss is the foundation gate and not a blanket "aftermarket never
+pays" rule; (e) the coherence probe car (all-scrap STOCK) carries zero premium, asserted
+directly, so Law 5 cannot move any coherence figure. Probe (b) (repairing the foundation releases
+the premium, the marginal-return law) and (c) (the no-inflation ceiling) live in
+`marketValue.test.ts`'s new `foundationFactor`/`marketValueYen`-scaling describe blocks (6 pure
+`foundationFactor` unit tests plus 3 integration tests: full premium on sound foundations,
+withheld premium on a scrap brake, released premium on repair). Probe (d) (Sprint 59's
+unimproved-flip band) is the unchanged flip probe, still green - a generated lot's stock parts
+carry no premium for the factor to scale, so it is inert on every generatable car by
+construction.
+
+**The surfacing (decision 4).** `CarDetailScreen.vue`'s Finances panel gains a warning line
+(`data-test="foundation-warning"`), rendered only when a bad foundation is actually withholding
+premium: it names the failing foundational parts (via the existing `carPartLabel` lookup) and the
+withheld yen, in shop-owner words ("No buyer pays for the extras while the basics are shot - sort
+the X first."). Backed by a new `CarDetail.foundationWarning` store field computed from the same
+`foundationFactor`/`installedPartsValueYen` the price itself uses, so the panel and the price can
+never disagree. Two component tests (warning names the brakes and shows a positive withheld
+figure on a real premium+scrap-brake car; no warning when the foundations are sound). No auction-
+card change - the grade trio and `R` flag already carry the pre-bid read (decision 4).
+
+**The bible amendment (decision 5).** Law 5 recorded in `economy-bible.md` (the "four laws"
+section becomes five, with a full litmus and the maintainer's worked example), the anchor
+inventory row extended, and a dated amendment-log entry added - the recorded maintainer approval
+Law 5's own amendment rule requires (this sprint doc's approval constitutes it).
+
+**Bots (decision 6).** No bot installs aftermarket parts, so every harness career's cars carry
+zero premium and the factor is inert across the entire run - the balance harness output
+(`report.md`, the invariant check) is byte-for-byte identical to Sprint 59's, disclosed as such
+rather than presented as a fresh result. This is the cleanest possible confirmation that Law 5
+touches only the premium term and nothing in the base economy.
+
+**Verification.** Full gate green: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format`
+(two touched files auto-formatted), `pnpm test:coverage` (1051 tests, 79 files; coverage
+91.31%/82.10%/92.40%/95.25%, all above the ratchet floor), `pnpm build`. Balance harness re-run:
+all 9 hard gates pass, days-to-`local` p50=12 (identical to Sprint 59), and every disclosed
+figure - including the coherence table's Law 1/2/3 numbers - matches Sprint 59's exactly, proving
+zero economic drift outside the premium term. No golden-master hash moved (the scripted careers
+use generated all-stock cars, zero premium, so the factor is inert on them too).
+
+**Definition of done, checked against the sprint doc:**
+- The verbatim kei-truck build loses money, probe-enforced; foundational repair releases the
+  premium; ceiling and flip-band probes still green - yes.
+- Law 5 recorded in `economy-bible.md`; anchors audited; coherence table unchanged (proven
+  byte-identical) - yes.
+- Full gate green; harness hard gates pass; Exit discloses the numbers - yes.

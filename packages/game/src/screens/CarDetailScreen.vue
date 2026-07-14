@@ -812,6 +812,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </div>
         </dl>
 
+        <p
+          v-if="detail.foundationWarning"
+          class="foundation-warning"
+          data-test="foundation-warning"
+        >
+          No buyer pays for the extras while the basics are shot - sort the
+          {{ detail.foundationWarning.failingParts.join(', ') }} first. That's holding back about
+          {{ formatYen(detail.foundationWarning.withheldYen) }} of the parts you've fitted.
+        </p>
+
         <template v-if="detail.plannedEstimate">
           <p class="estimate-label">Estimate - not yet confirmed</p>
           <dl class="finance-grid estimate-grid" data-test="finance-estimate">
@@ -1247,6 +1257,17 @@ h4 {
 
 .finance-row.profit.negative dd {
   color: var(--mg-danger);
+}
+
+/* Sprint 60 (law 5): the foundation-law notice - the aftermarket premium is
+   being withheld until the basics are sound. Warning-toned, not an error. */
+.foundation-warning {
+  margin: var(--mg-space-2) 0 0;
+  padding: var(--mg-space-2);
+  border: 1px solid var(--mg-danger);
+  border-radius: var(--mg-radius);
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
 }
 
 /* Sprint 48: the pre-Confirm estimate - visually distinct (dimmed/italic)

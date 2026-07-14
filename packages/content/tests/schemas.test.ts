@@ -178,6 +178,14 @@ describe('seed content validates against schemas', () => {
     // scrap-value backstop floor (bands.scrapValueFraction, unchanged).
     expect(result.data.valuation.marketRepairDiscount).toBe(1.2)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
+    // Sprint 60 (economy-bible.md law 5, the foundation law): the aftermarket
+    // premium is scaled by the worst foundational part's factor. Foundational
+    // parts are safety/structure; the factor table is monotonic and capped at
+    // 1 (the schema enforces both), withholding premium for a bad foundation
+    // and never inflating it.
+    expect(result.data.valuation.foundation.parts).toContain('brakePadsDiscs')
+    expect(result.data.valuation.foundation.factorByState.scrap).toBe(0.15)
+    expect(result.data.valuation.foundation.factorByState.worn).toBe(1.0)
     // Sprint 54 decision 4 (economy-bible.md law 2): the generation-time
     // bill-vs-clean-value ceiling every generated car is softened to satisfy.
     expect(result.data.partsGeneration.maxBillFraction).toBe(0.7)

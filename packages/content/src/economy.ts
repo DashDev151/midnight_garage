@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CarPartIdSchema } from './tags'
 import { ToolTierSchema } from './toolLines'
 
 /**
@@ -372,6 +373,54 @@ export const EconomyConfigSchema = z.object({
      * land exactly on the shared anchor.
      */
     walkAwaySpread: z.number().nonnegative(),
+    /**
+     * Sprint 60 (economy-bible.md law 5 - the foundation law): the aftermarket
+     * premium (`marketValue.ts`'s `installedPartsValueYen`) is multiplied by
+     * the factor of the SINGLE WORST foundational part before it counts toward
+     * market value - no buyer pays for a race turbo in a car that can't stop
+     * or steer. The base value (clean minus the restoration bill) already
+     * prices broken parts through the bill; this gates only the ADD-ON
+     * premium, so Law 1 (every repair yen returns more than itself) is
+     * untouched, and repairing a failed foundational part returns EXTRA on top
+     * of the `marketRepairDiscount` slope by releasing the withheld premium.
+     */
+    foundation: z.object({
+      /** The foundational slots a buyer treats as non-negotiable - safety and
+       * structure (brakes, tyres, steering, chassis, rust), not performance.
+       * If the WORST of these is bad, the extras stop counting. */
+      parts: z.array(CarPartIdSchema).min(1),
+      /**
+       * The premium multiplier by the worst foundational part's state
+       * (`missing` = the slot is empty; otherwise its condition band). Must be
+       * monotonic non-decreasing (a worse state never withholds LESS premium)
+       * and never above 1 (the foundation law only ever WITHHOLDS premium, it
+       * never inflates it - the no-inflation ceiling from Law 1, extended to
+       * the premium term). `worn`-or-better at 1.0 means a roadworthy car pays
+       * full premium; the base value already handled the mild wear through the
+       * bill.
+       */
+      factorByState: z
+        .object({
+          missing: z.number().min(0).max(1),
+          scrap: z.number().min(0).max(1),
+          poor: z.number().min(0).max(1),
+          worn: z.number().min(0).max(1),
+          fine: z.number().min(0).max(1),
+          mint: z.number().min(0).max(1),
+        })
+        .refine(
+          (f) =>
+            f.missing <= f.scrap &&
+            f.scrap <= f.poor &&
+            f.poor <= f.worn &&
+            f.worn <= f.fine &&
+            f.fine <= f.mint,
+          {
+            message:
+              'valuation.foundation.factorByState must be monotonic non-decreasing (missing <= scrap <= poor <= worn <= fine <= mint)',
+          },
+        ),
+    }),
   }),
   /**
    * Sprint 44 decision 1 (revert of Sprint 41's tier-scaled repair costs -

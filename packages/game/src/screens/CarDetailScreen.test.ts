@@ -432,6 +432,68 @@ describe('CarDetailScreen', () => {
       const { wrapper } = await mountAt(carId)
       expect(wrapper.find('[data-test="finance-panel"]').exists()).toBe(false)
     })
+
+    it('names the failing foundation and shows the withheld premium when a foundational part is bad (Sprint 60, law 5)', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id) // honda-city-e-aa (shitbox)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      // Fit a real aftermarket part (a premium to withhold) on a NON-foundation
+      // slot, and leave a foundational part (brakes) scrap.
+      car.parts.internals = {
+        installed: {
+          id: 'pi-premium',
+          partId: 'shitbox-oni-race-piston-kit',
+          band: 'mint',
+          genuinePeriod: false,
+        },
+      }
+      car.parts.brakePadsDiscs = {
+        installed: { ...car.parts.brakePadsDiscs.installed!, band: 'scrap' },
+      }
+
+      const warning = game.carDetail(id)!.foundationWarning
+      expect(warning).not.toBeNull()
+      expect(warning!.withheldYen).toBeGreaterThan(0)
+
+      const { wrapper } = await mountAt(id)
+      const el = wrapper.find('[data-test="foundation-warning"]')
+      expect(el.exists()).toBe(true)
+      // Names the failing foundation part (brakes) in plain copy.
+      expect(el.text().toLowerCase()).toContain('brake')
+    })
+
+    it('shows no foundation warning when the foundations are sound (Sprint 60)', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      // A real premium, but every foundational part sound (mint) - nothing to
+      // withhold, so no warning.
+      car.parts.internals = {
+        installed: {
+          id: 'pi-premium',
+          partId: 'shitbox-oni-race-piston-kit',
+          band: 'mint',
+          genuinePeriod: false,
+        },
+      }
+      for (const partId of [
+        'brakePadsDiscs',
+        'brakeCalipersLines',
+        'tyres',
+        'steering',
+        'chassis',
+        'underbody',
+      ] as const) {
+        const installed = car.parts[partId].installed
+        if (installed) car.parts[partId] = { installed: { ...installed, band: 'mint' } }
+      }
+      expect(game.carDetail(id)!.foundationWarning).toBeNull()
+
+      const { wrapper } = await mountAt(id)
+      expect(wrapper.find('[data-test="foundation-warning"]').exists()).toBe(false)
+    })
   })
 
   describe('the service banner no longer offers completion (Sprint 57 decision 1)', () => {

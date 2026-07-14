@@ -138,14 +138,42 @@ export function installedPartsValueYen(
 }
 
 /**
+ * Sprint 60 (economy-bible.md law 5 - the foundation law): the multiplier
+ * applied to the aftermarket premium before it counts toward market value,
+ * = the factor of the SINGLE WORST foundational part on the car. One
+ * deathtrap element (scrap brakes, a missing tyre, a rusted-through
+ * underbody) poisons the whole premium - a mean would let chrome buy back
+ * trust a real buyer would never extend. Foundational parts and their
+ * per-state factors are content (`valuation.foundation`); a slot with no
+ * installed part reads as `missing` (its own worst state). Pure over
+ * `(car, economy)` - reads only condition bands and missing state.
+ */
+export function foundationFactor(car: CarInstance, economy: EconomyConfig): number {
+  const { parts, factorByState } = economy.valuation.foundation
+  let worst = 1
+  for (const partId of parts) {
+    const installed = car.parts[partId].installed
+    const state = installed ? installed.band : 'missing'
+    const factor = factorByState[state]
+    if (factor < worst) worst = factor
+  }
+  return worst
+}
+
+/**
  * The single shared value answer (Sprint 27 decision 1): `round(instanceValue)
- * + installedPartsValueYen`, where `instanceValue` is `instanceBaseValueYen`
- * above - clean value (mileage/heat scaled, Sprint 30 decision 1; a
- * maintainer decision after Sprint 30 dropped car age from the value model
- * entirely) minus the hassle-weighted restoration bill, floored. Heat
- * applies exactly once, inside clean value (decision 6, unchanged from
+ * + foundationFactor x installedPartsValueYen`, where `instanceValue` is
+ * `instanceBaseValueYen` above - clean value (mileage/heat scaled, Sprint 30
+ * decision 1; a maintainer decision after Sprint 30 dropped car age from the
+ * value model entirely) minus the hassle-weighted restoration bill, floored.
+ * Heat applies exactly once, inside clean value (decision 6, unchanged from
  * Sprint 21) - no other price in the game multiplies by market heat a
- * second time. Every other price (the auction anchor, walk-in offers,
+ * second time. Sprint 60 (law 5): the aftermarket premium is scaled by
+ * `foundationFactor` - a buyer withholds what they'd pay for the extras until
+ * the car's foundations (brakes, tyres, steering, chassis, rust) are sound;
+ * the base term is untouched, so the repair economy (Law 1) is unchanged and
+ * fixing a failed foundation part returns its own repair value PLUS the
+ * released premium. Every other price (the auction anchor, walk-in offers,
  * listing asking price, buyer taste, bot walk-away targets) is this value
  * times a bounded multiplier, never a competing formula.
  */
@@ -160,5 +188,6 @@ export function marketValueYen(
   const baseValue = Math.round(
     instanceBaseValueYen(model, car, heatPercent, partsById, partsTaxonomyById, economy),
   )
-  return baseValue + installedPartsValueYen(car, partsById, economy)
+  const premiumYen = installedPartsValueYen(car, partsById, economy)
+  return baseValue + Math.round(foundationFactor(car, economy) * premiumYen)
 }

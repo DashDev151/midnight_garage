@@ -43,7 +43,10 @@ at the time:
 Full arithmetic trace: `docs/sprints/sprint53.md`'s Diagnosis section (this bible condenses it;
 that sprint doc is the historical record).
 
-## The four laws
+## The laws
+
+The Economy Rebuild arc (Sprints 53-55) locked four laws; Sprint 60 added a fifth (the
+foundation law) by explicit maintainer approval - see the Amendment log.
 
 1. **Repair margin (Law 1).** The marginal value returned per repair yen is >= 1 at every
    reachable state of every car - first-pass 1.2 (buyers pay a premium for done-ness; the hassle
@@ -64,6 +67,24 @@ that sprint doc is the historical record).
    content sheet or a pure function of one; cross-price coherence is machine-checked on every
    change, not eyeballed. *Litmus: if two prices drifted apart, would a test catch it before a
    playtest does?* (Sprint 55.)
+5. **The foundation law (Law 5).** A car's aftermarket premium (the retained value of every
+   installed street/sport/race part) is credited only in proportion to its worst FOUNDATIONAL
+   part - safety and structure (brakes, tyres, steering, chassis, rust), not performance. One
+   deathtrap element (a scrap brake, a missing tyre, a rusted-through underbody) withholds almost
+   all of the premium, no matter how expensive the toys bolted on top are; the single worst
+   foundational part governs, never an average (chrome can never buy back trust a real buyer
+   would refuse). This gates ONLY the add-on premium - the base value (clean minus the
+   restoration bill) is untouched, so Law 1 holds unchanged AND repairing a failed foundational
+   part returns its own repair value PLUS the released premium (foundations first, then the toys
+   count). The multiplier is never above 1, so the law only ever withholds, never inflates.
+   *Litmus: does a build with an expensive engine but neglected brakes profit the same as a sound
+   one? If yes, the formula is wrong.* (Sprint 60.)
+
+   The maintainer's worked example this law exists to fix (2026-07-14): buy a cheap kei truck;
+   leave the brakes stock and worn, the body peeling and rusted; but fit an expensive race turbo,
+   a race engine, and the priciest cosmetics. Under the pre-Sprint-60 additive formula this build
+   turned a real profit. Under Law 5 it loses money end to end - the parts were bought at full
+   catalog price but credited at ~8% of it while the foundations stay neglected.
 
 ## Fitment classes (Sprint 53)
 
@@ -141,7 +162,7 @@ fails that test outright, rather than silently drifting).
 | `STARTING_CASH_YEN`, `WEEKLY_RENT_YEN`, `DOUBLE_PARKING_FINE_YEN` | `economy.json` | Career solvency pacing |
 | `AUCTION_RESERVE_PRICE_FRACTION`, `AUCTION_BUYOUT_PREMIUM`, `AUCTION_WHOLESALE_FRACTION`, `AUCTION_BID_INCREMENT_FRACTION`, `AUCTION_QUIET_DAYS_TO_HAMMER`, `AUCTION_LOTS_PER_TIER`, `AUCTION_DURATION_*`, `AUCTION_FLASH_CHANCE`, `AUCTION_LONG_CHANCE_UNCOMMON_RARE`, `AUCTION_TRAVEL_FEE_YEN`, `AUCTION_DAILY_SPAWN_RATE`, `auctionInterest.*` | `economy.json` | The whole auction reserve/buyout/contestation model (`bidding.ts`, `auctions.ts`) |
 | `restoration.repairStepFraction` | `economy.json` | Every repair-cost formula (`bands.ts`'s `costToMintYen` family) |
-| `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread` | `economy.json` | `marketValue.ts`'s guide-value formula |
+| `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread`, `valuation.foundation` (Law 5) | `economy.json` | `marketValue.ts`'s guide-value formula (`valuation.foundation` scales the aftermarket premium by the worst foundational part) |
 | `marketPressure.*` | `economy.json` | Weekly market-heat drift (`marketHeat.ts`) |
 | `statFormulas.*` | `economy.json` | Derived car stats (`derivedStats.ts`) and buyer taste normalization |
 | `bands.bandFactors`, `bands.migrationThresholds`, `bands.scrapValueFraction` | `economy.json` | The condition-band model and its save-migration mapping |
@@ -231,3 +252,20 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   breaking Sprint 54's no-free-lunch invariant). Book values and the mileage-curve floor stayed
   untouched - the coherence table showed no model out of line at either. Full before/after
   harness numbers in `docs/sprints/sprint55.md`'s Exit.
+- 2026-07-14: **Law 5 (the foundation law) added by explicit maintainer approval** (Sprint 60,
+  playtest pass-2 item 18), graduating the "build coherence" TODO capture into a designed system.
+  `marketValueYen` becomes `base + foundationFactor(car) x installedPartsValueYen` - the ONLY
+  change is that the additive aftermarket premium is now scaled by the worst foundational part's
+  factor (`marketValue.ts`'s new `foundationFactor`, a pure read over the car's own bands/missing
+  state). New content anchor `valuation.foundation` (`parts`: tyres, brakePadsDiscs,
+  brakeCalipersLines, steering, chassis, underbody; `factorByState`: missing 0.10, scrap 0.15,
+  poor 0.45, worn-or-better 1.0), schema-enforced monotonic and capped at 1 (the law withholds,
+  never inflates). The base term is untouched, so Law 1 holds unchanged and repairing a failed
+  foundation returns EXTRA (its repair value plus the released premium). Verified: the
+  maintainer's verbatim kei-truck build is now a permanent losing-money probe
+  (`valueModelProbes.test.ts`), the "sound foundations recover the premium" and marginal-return
+  behavior are proved in `marketValue.test.ts`, and the coherence table is arithmetically
+  unchanged (its all-scrap-STOCK probe car carries zero premium, so the factor is inert on it -
+  asserted directly). Balance harness re-run clean: all 9 hard gates pass, days-to-`local` p50
+  unchanged. First-pass factor numbers are maintainer-tuning bait. Full detail in
+  `docs/sprints/sprint60.md`'s Exit.

@@ -10,7 +10,12 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { carCostToMintYen } from '../src/bands'
-import { installedPartsValueYen, marketValueYen, mileageFactor } from '../src/marketValue'
+import {
+  foundationFactor,
+  installedPartsValueYen,
+  marketValueYen,
+  mileageFactor,
+} from '../src/marketValue'
 import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
@@ -477,5 +482,161 @@ describe('installedPartsValueYen', () => {
     const one = installedPartsValueYen(car, partsById, ECONOMY)
     const two = installedPartsValueYen(withTwo, partsById, ECONOMY)
     expect(two).toBe(one * 2)
+  })
+})
+
+/**
+ * Sprint 60 (economy-bible.md law 5 - the foundation law). `foundationFactor`
+ * is a pure read over the car's own bands/missing state, so its unit tests
+ * need no premium; the `marketValueYen` integration tests below build a real
+ * aftermarket premium (an installed race intake on a NON-foundation slot) and
+ * vary a foundation part independently to prove the premium is withheld and
+ * then released.
+ */
+describe('foundationFactor (Sprint 60, law 5)', () => {
+  const { factorByState } = ECONOMY.valuation.foundation
+
+  it('is 1.0 when every foundational part is sound (worn or better)', () => {
+    expect(foundationFactor(carAtUniformBand('mint'), ECONOMY)).toBe(1)
+    expect(foundationFactor(carAtUniformBand('worn'), ECONOMY)).toBe(1)
+  })
+
+  it('drops to the scrap factor for a single scrap foundational part', () => {
+    const car = neutralCar({ parts: mintCarParts({ brakePadsDiscs: 'scrap' }) })
+    expect(foundationFactor(car, ECONOMY)).toBe(factorByState.scrap)
+  })
+
+  it('drops to the missing factor (its own worst state) for an empty foundational slot', () => {
+    const car = neutralCar({ parts: mintCarParts({ tyres: null }) })
+    expect(foundationFactor(car, ECONOMY)).toBe(factorByState.missing)
+  })
+
+  it('drops to the poor factor for a single poor foundational part', () => {
+    const car = neutralCar({ parts: mintCarParts({ steering: 'poor' }) })
+    expect(foundationFactor(car, ECONOMY)).toBe(factorByState.poor)
+  })
+
+  it('takes the WORST foundational part, not an average (one deathtrap poisons the build)', () => {
+    // A scrap brake AND a poor steering box: the factor is the scrap one (the
+    // worst), never a mean that a merely-poor part could soften.
+    const car = neutralCar({ parts: mintCarParts({ brakePadsDiscs: 'scrap', steering: 'poor' }) })
+    expect(foundationFactor(car, ECONOMY)).toBe(factorByState.scrap)
+    expect(factorByState.scrap).toBeLessThan(factorByState.poor)
+  })
+
+  it('ignores a bad NON-foundational part (a scrap intake is not a deathtrap)', () => {
+    const car = neutralCar({ parts: mintCarParts({ intake: 'scrap' }) })
+    expect(foundationFactor(car, ECONOMY)).toBe(1)
+  })
+})
+
+describe('marketValueYen scales the aftermarket premium by foundationFactor (Sprint 60, law 5)', () => {
+  const raceIntake: Part = {
+    id: 'rare-fubuki-velocity-stack-kit',
+    brand: 'Fubuki',
+    name: 'Velocity Stack Kit',
+    carPartId: 'intake',
+    fitmentClass: 'rare',
+    grade: 'race',
+    requiredTags: [],
+    statModifiers: { power: 20, handling: 0, style: 4, reliability: -4, authenticity: 0 },
+    priceYen: 260_000,
+  }
+  const partsById = { ...PARTS_BY_ID, [raceIntake.id]: raceIntake }
+
+  /** An all-mint car (sound foundations) with a real race intake bolted on -
+   * `foundationOverrides` lets a test degrade a foundation part in isolation. */
+  function carWithPremium(
+    foundationOverrides: Partial<
+      Record<CarPartId, 'scrap' | 'poor' | 'worn' | 'fine' | 'mint' | null>
+    > = {},
+  ): CarInstance {
+    return neutralCar({
+      parts: mintCarParts({
+        ...foundationOverrides,
+        intake: { id: 'pi-race-intake', partId: raceIntake.id, band: 'mint', genuinePeriod: false },
+      }),
+    })
+  }
+
+  const soundValue = () =>
+    marketValueYen(model, carWithPremium(), 100, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
+
+  it('credits the full premium when foundations are sound', () => {
+    const premiumYen = installedPartsValueYen(carWithPremium(), partsById, ECONOMY)
+    expect(premiumYen).toBeGreaterThan(0) // the fixture really has a premium to withhold
+    const stockValue = marketValueYen(
+      model,
+      neutralCar({ parts: mintCarParts() }),
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    // full premium, undiminished, on a sound car (foundationFactor 1.0)
+    expect(soundValue() - stockValue).toBe(premiumYen)
+  })
+
+  it('withholds most of the premium when a foundational part is scrap', () => {
+    const scrapBrakeCar = carWithPremium({ brakePadsDiscs: 'scrap' })
+    const premiumYen = installedPartsValueYen(scrapBrakeCar, partsById, ECONOMY)
+    const factor = ECONOMY.valuation.foundation.factorByState.scrap
+    // The base value already prices the scrap brake through the bill; on TOP
+    // of that, the premium is scaled to the scrap factor - the two effects are
+    // separable, so compare the scrap-brake-WITH-premium car against the same
+    // scrap-brake car with NO premium: the only difference is the scaled
+    // premium.
+    const scrapBrakeNoPremium = neutralCar({ parts: mintCarParts({ brakePadsDiscs: 'scrap' }) })
+    const withPremium = marketValueYen(
+      model,
+      scrapBrakeCar,
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const withoutPremium = marketValueYen(
+      model,
+      scrapBrakeNoPremium,
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    expect(withPremium - withoutPremium).toBe(Math.round(factor * premiumYen))
+  })
+
+  it('releases the withheld premium when the failed foundational part is repaired (the marginal-return law)', () => {
+    // Same car, brake at scrap vs. brake repaired to worn - the premium
+    // contribution jumps from scrap-scaled to full, ON TOP of the base value's
+    // own repair gain. This is the "fix the foundations, then the toys count"
+    // behavior expressed as a value delta.
+    const scrapValue = marketValueYen(
+      model,
+      carWithPremium({ brakePadsDiscs: 'scrap' }),
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const wornValue = marketValueYen(
+      model,
+      carWithPremium({ brakePadsDiscs: 'worn' }),
+      100,
+      partsById,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const premiumYen = installedPartsValueYen(carWithPremium(), partsById, ECONOMY)
+    const releasedPremiumYen =
+      premiumYen - Math.round(ECONOMY.valuation.foundation.factorByState.scrap * premiumYen)
+    // The total gain exceeds the base-value repair gain alone by exactly the
+    // released premium - proving repairing a foundation returns MORE than the
+    // marketRepairDiscount slope would give on its own.
+    const baseRepairGain =
+      expectedBaseValueYen(neutralCar({ parts: mintCarParts({ brakePadsDiscs: 'worn' }) }), model) -
+      expectedBaseValueYen(neutralCar({ parts: mintCarParts({ brakePadsDiscs: 'scrap' }) }), model)
+    expect(wornValue - scrapValue).toBe(baseRepairGain + releasedPremiumYen)
+    expect(releasedPremiumYen).toBeGreaterThan(0)
   })
 })

@@ -67,7 +67,25 @@
     "partsRetention": 0.55,
     "genuinePeriodMultiplier": 1.25,
     "tasteSpread": 0.12,
-    "walkAwaySpread": 0.05
+    "walkAwaySpread": 0.05,
+    "foundation": {
+      "parts": [
+        "tyres",
+        "brakePadsDiscs",
+        "brakeCalipersLines",
+        "steering",
+        "chassis",
+        "underbody"
+      ],
+      "factorByState": {
+        "missing": 0.1,
+        "scrap": 0.15,
+        "poor": 0.45,
+        "worn": 1.0,
+        "fine": 1.0,
+        "mint": 1.0
+      }
+    }
   },
   "marketPressure": {
     "WAVE_AMPLITUDE": 12,

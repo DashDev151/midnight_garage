@@ -64,8 +64,10 @@ import {
   createRng,
   deriveReputationTier,
   emptyDayActions,
+  foundationFactor,
   generateAuctionCarInstance,
   groupCostToMintYen,
+  installedPartsValueYen,
   hasParkingSpace,
   isPartMissing,
   isServiceJobInTransit,
@@ -235,6 +237,15 @@ export interface CarDetail extends DetailedCar {
    * "projected profit" is this minus total spent.
    */
   guideValueYen: number
+  /**
+   * Sprint 60 (economy-bible.md law 5, the foundation law): non-null only
+   * when a bad foundational part is withholding real aftermarket-premium
+   * value from this car - the failing part display names and the withheld
+   * yen, so the Finances panel can name what to fix first. Null when the
+   * foundation is sound (factor 1.0) or the car carries no premium to
+   * withhold in the first place.
+   */
+  foundationWarning: { failingParts: string[]; withheldYen: number } | null
   /**
    * Sprint 48: the pre-Confirm estimate of what planned work will do to this
    * car - null when nothing is planned. Every figure assumes the plan fully
@@ -1024,6 +1035,33 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** Full detail bundle for one workable car (owned or in-shop), or undefined. */
+  /**
+   * Sprint 60 (economy-bible.md law 5): the foundation-law surfacing for one
+   * car - the failing foundational parts and the aftermarket-premium yen they
+   * withhold, or null when the foundation is sound OR the car carries no
+   * premium to withhold. Reads the same `foundationFactor`/
+   * `installedPartsValueYen` the value formula itself uses, so what the panel
+   * says and what the price does can never disagree.
+   */
+  function foundationWarningFor(
+    car: CarInstance,
+  ): { failingParts: string[]; withheldYen: number } | null {
+    const economy = context.value.economy
+    const premiumYen = installedPartsValueYen(car, context.value.partsById, economy)
+    const factor = foundationFactor(car, economy)
+    const withheldYen = Math.round(premiumYen * (1 - factor))
+    if (withheldYen <= 0) return null
+    const { parts, factorByState } = economy.valuation.foundation
+    const failingParts = parts
+      .filter((partId) => {
+        const installed = car.parts[partId].installed
+        const state = installed ? installed.band : 'missing'
+        return factorByState[state] < 1
+      })
+      .map((partId) => carPartLabel(partId))
+    return { failingParts, withheldYen }
+  }
+
   function carDetail(carId: string): CarDetail | undefined {
     const car = findWorkableCar(carId)
     if (!car) return undefined
@@ -1047,6 +1085,7 @@ export const useGameStore = defineStore('game', () => {
       ),
       ledger: carLedgerFor(gameState.value, carId),
       guideValueYen: carGuideValueYen(car, model, gameState.value, context.value),
+      foundationWarning: foundationWarningFor(car),
       plannedEstimate: plannedEstimateFor(carId),
     }
   }
