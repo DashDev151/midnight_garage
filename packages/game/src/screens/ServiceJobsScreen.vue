@@ -22,8 +22,12 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
         </HelpHint>
       </h2>
       <p class="rep">
-        {{ game.reputationPoints }} rep · {{ formatYen(game.cashYen) }} · labour
-        {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }}
+        <RouterLink :to="{ name: 'standing' }" class="standing-link" data-test="standing-link"
+          >{{ game.reputationPoints }} rep</RouterLink
+        >
+        · {{ formatYen(game.cashYen) }} · labour {{ game.laborSlotsRemainingToday }}/{{
+          game.laborSlotsPerDay
+        }}
       </p>
     </header>
 
@@ -156,6 +160,18 @@ h3 {
 .rep {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
+}
+
+/* Sprint 62: the rep figure links to the Standing screen (the one place the
+   granular numbers live). */
+.standing-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--mg-panel-edge);
+}
+
+.standing-link:hover {
+  color: var(--mg-neon-cyan);
 }
 
 .empty {

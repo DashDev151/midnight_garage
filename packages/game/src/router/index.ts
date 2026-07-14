@@ -47,6 +47,11 @@ export const router = createRouter({
       name: 'upgrades',
       component: () => import('../screens/UpgradesScreen.vue'),
     },
+    {
+      path: '/standing',
+      name: 'standing',
+      component: () => import('../screens/StandingScreen.vue'),
+    },
     ...spikeRoute,
   ],
 })

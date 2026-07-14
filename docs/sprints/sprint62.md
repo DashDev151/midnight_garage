@@ -71,4 +71,42 @@ everything is a pure function of existing state, exactly like Sprint 39's title.
 
 ## Exit
 
-Not started.
+Implemented and committed.
+
+**The Standing screen (decisions 1-2).** New `StandingScreen.vue` at route `/standing`, a pure
+renderer over one new store computed `standingView` (`gameStore.ts`) - reputation (the named tier,
+exact points, and the named next tier with its threshold, or a "top of the ladder" line at
+legend), all six specialty disciplines (display name, exact points, and each discipline's named
+tier-4 technique shown whether earned or not - progression bible law 5), and the derived shop
+title in prose. Words and tables only: no bars, no percentages, no toasts, no live overlay. The
+screen is reached diegetically - the garage-header reputation line and the jobs-screen rep figure
+both became links to it (`data-test="standing-link"`), so the granular numbers live in exactly one
+place, pulled up on demand.
+
+**No new state.** `standingView` is a pure function of `reputationTier`/`reputationPoints`,
+`specialty`, the `techniques` content, and the `REPUTATION_TIER_THRESHOLDS` table - the same
+"derive, don't store" shape Sprint 39's shop title established. No schema change, no save bump, no
+migration.
+
+**The bible amendment (decision 3).** Progression bible Law 4 amended (recorded in the doc with
+the date and rationale; this sprint's approval is the required maintainer approval): a single
+dedicated, pull-not-push standing screen MAY show exact reputation/specialty points and the named
+next threshold; the ban on ambient meters/bars/toasts/floating numbers on gameplay screens is
+otherwise unchanged. Banned vocabulary is untouched and absent from the copy (a `StandingScreen`
+test asserts "xp"/"mastery"/"level"/"prestige" never appear).
+
+**Testing.** New `StandingScreen.test.ts` (tier + exact points render; the next tier is named with
+its threshold; the top tier shows "nowhere higher" instead; all six disciplines render with points
+and a named technique; an earned technique flips to "Earned" once the discipline clears 120; banned
+vocabulary absent). New link-presence tests on `GarageScreen.test.ts` and `ServiceJobsScreen.test.ts`
+(the rep line is a RouterLink to `standing`).
+
+**Verification.** Full gate green: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format`,
+`pnpm test:coverage` (1065 tests, 80 files; coverage 91.55%/82.14%/92.98%/95.36%, all above the
+ratchet floor), `pnpm build` (the `StandingScreen` lazy chunk emits cleanly). No balance harness
+run - this is pure UI over existing derived state, zero sim or economic surface touched.
+
+**Definition of done, checked against the sprint doc:**
+- One view shows granular reputation (points + named next tier) and all six specialty disciplines
+  (points + named technique), reachable from the garage header and jobs screen - yes.
+- Bible amendment recorded; banned vocabulary absent from the copy; full gate green - yes.

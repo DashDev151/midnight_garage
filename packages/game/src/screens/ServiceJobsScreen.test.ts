@@ -114,6 +114,17 @@ describe('ServiceJobsScreen', () => {
     expect(game.lastJobResult?.outcome).toBe('failed')
   })
 
+  it('the rep figure links to the Standing screen (Sprint 62 item 17)', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const wrapper = mountScreen()
+    const link = wrapper
+      .findAllComponents(RouterLinkStub)
+      .find((c) => c.attributes('data-test') === 'standing-link')
+    expect(link).toBeDefined()
+    expect(link!.props('to')).toEqual({ name: 'standing' })
+  })
+
   it('shows a fitment-class chip on each offer card (Sprint 61 item 15)', () => {
     const game = useGameStore()
     game.newGame(1)

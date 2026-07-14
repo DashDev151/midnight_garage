@@ -48,9 +48,16 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
    access. Reputation buys breadth. Cash buys capability. *Litmus: if two pillars grant the same
    kind of reward, one of them is fake and must be cut.*
 4. **Progression is revealed diegetically.** Who walks in, what they bring, what they say, what
-   shows up at auction. No meters, no bars, no toasts, no jingles, no floating numbers. Sim
-   numbers may appear in the dev console only. *Litmus: could a 1995 shop owner perceive this
-   signal in the real world? If not, it does not render.*
+   shows up at auction. No AMBIENT meters, no bars, no toasts, no jingles, no floating numbers on
+   any gameplay screen. *Litmus: could a 1995 shop owner perceive this signal in the real world?
+   If not, it does not render.* **Amendment (Sprint 62, 2026-07-14, maintainer-approved):** the
+   one exception is a single dedicated "Your standing" screen (the shop's own record on the wall),
+   reachable on demand, which MAY show exact reputation and specialty points and the named next
+   threshold - the player asked for a place to see their granular standing, and a shop owner CAN
+   keep a ledger of their own record. This is not a meter (no bar, no percentage, no live overlay,
+   no toast); it is a static, pull-not-push page the player chooses to open. Everywhere else stays
+   diegetic - offer mix, walk-ins, and copy do the ambient work, and no number leaks onto a
+   gameplay screen. The dev console remains a separate, unrelated debug surface.
 5. **Every unlock is a named, real thing** from the era and the culture (corner weighting,
    blueprinting, NA-to-turbo conversion), with parody brands only. *Litmus: if an unlock needs a
    made-up fantasy name or a number ("Repair II"), it is not grounded enough to ship.*
@@ -97,3 +104,11 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
 - 2026-07-12: v1 locked (Progression Rework arc, maintainer + Claude). Naming: vertical axis
   stays "Reputation"; horizontal axis named "Specialty" (replacing the working names "prestige"
   and "renown", both now banned).
+- 2026-07-14: Law 4 amended (Sprint 62, playtest pass-2 item 17, maintainer-approved). A single
+  dedicated, pull-not-push "Your standing" screen may display exact reputation and specialty
+  points plus the named next threshold; the ban on ambient meters/bars/toasts/floating numbers on
+  gameplay screens is otherwise unchanged. The maintainer asked for one place to see the granular
+  standing every job builds; a shop keeping its own ledger is diegetically sound. Implemented as
+  `StandingScreen.vue` over the store's `standingView` (pure derivation, no new state); reached
+  from the garage-header reputation line and the jobs-screen rep figure. Banned vocabulary
+  untouched - the copy says "standing", "specialty", "discipline", never "mastery"/"XP"/"level".

@@ -67,6 +67,15 @@ describe('GarageScreen', () => {
     expect(wrapper.text()).toContain('¥300,000')
   })
 
+  it('the reputation line links to the Standing screen (Sprint 62 item 17)', () => {
+    const wrapper = mountScreen()
+    const link = wrapper
+      .findAllComponents(RouterLinkStub)
+      .find((c) => c.attributes('data-test') === 'standing-link')
+    expect(link).toBeDefined()
+    expect(link!.props('to')).toEqual({ name: 'standing' })
+  })
+
   it('shows no shop title on a fresh game, and shows it in plain copy once specialty clears the threshold (Sprint 39)', async () => {
     const game = useGameStore()
     const wrapper = mountScreen()

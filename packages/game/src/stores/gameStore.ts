@@ -405,6 +405,35 @@ export interface PartsFitVehicleOption {
   fitmentClass: PartFitmentClass | null
 }
 
+/** Sprint 62 (item 17): the reputation half of the Standing screen. */
+export interface StandingReputationView {
+  tier: ReputationTier
+  points: number
+  /** The next tier by name and its threshold, or null once at the top
+   * (legend) - so the screen can say "X at N, you're at M". */
+  nextTier: { tier: ReputationTier; threshold: number } | null
+}
+
+/** Sprint 62: one discipline's row on the Standing screen - its points and
+ * the named tier-4 technique it earns (shown whether or not it's unlocked,
+ * progression bible law 5: every unlock is a named real thing). */
+export interface StandingSpecialtyView {
+  componentId: ComponentId
+  componentLabel: string
+  points: number
+  technique: { displayName: string; thresholdPoints: number; unlocked: boolean } | null
+}
+
+/** Sprint 62 (item 17): everything the Standing screen renders - granular
+ * reputation, all six specialty disciplines, and the derived shop title. Pure
+ * function of existing state (no new persisted field), the same shape Sprint
+ * 39's title derivation already established. */
+export interface StandingView {
+  reputation: StandingReputationView
+  specialties: StandingSpecialtyView[]
+  shopTitleName: string | null
+}
+
 /** A service-job offer on the board (accept to bring the car into the shop). */
 export interface ServiceJobOfferView {
   id: string
@@ -1786,6 +1815,47 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
+   * Sprint 62 (item 17): the Standing screen's whole payload - granular
+   * reputation (points + the named next tier), all six specialty disciplines
+   * (points + their named technique), and the shop title. Progression bible
+   * law 4 was amended this sprint to permit these exact numbers on this ONE
+   * dedicated view; every other surface stays meter-free. Pure derivation, no
+   * new state.
+   */
+  const standingView = computed<StandingView>(() => {
+    const points = gameState.value.reputationPoints
+    const orderedTiers = (
+      Object.entries(REPUTATION_TIER_THRESHOLDS) as [ReputationTier, number][]
+    ).sort((a, b) => a[1] - b[1])
+    const nextEntry = orderedTiers.find(([, threshold]) => threshold > points)
+    const specialties: StandingSpecialtyView[] = REAL_COMPONENT_GROUPS.map((componentId) => {
+      const technique = context.value.techniques.find((t) => t.componentId === componentId)
+      const disciplinePoints = gameState.value.specialty[componentId]
+      return {
+        componentId,
+        componentLabel: componentLabel(componentId),
+        points: disciplinePoints,
+        technique: technique
+          ? {
+              displayName: technique.displayName,
+              thresholdPoints: technique.thresholdPoints,
+              unlocked: disciplinePoints >= technique.thresholdPoints,
+            }
+          : null,
+      }
+    })
+    return {
+      reputation: {
+        tier: gameState.value.reputationTier,
+        points,
+        nextTier: nextEntry ? { tier: nextEntry[0], threshold: nextEntry[1] } : null,
+      },
+      specialties,
+      shopTitleName: shopTitleName.value,
+    }
+  })
+
+  /**
    * Upgrade one tool line to its next tier - instant, effective the same day
    * (repair work sizes off the new tier immediately). Cash-gated only, no
    * reputation gate (Sprint 36). Returns false if maxed or unaffordable.
@@ -2590,6 +2660,7 @@ export const useGameStore = defineStore('game', () => {
     specialtyView,
     shopTitleName,
     unlockedTechniqueViews,
+    standingView,
     repair,
     install,
     isPartStagedAnywhere,

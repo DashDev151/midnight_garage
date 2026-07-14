@@ -98,9 +98,11 @@ const draggedCarName = computed(() => {
       <div>
         <dt>Reputation</dt>
         <dd data-test="reputation-value">
-          {{ game.reputationTier
-          }}<span v-if="game.shopTitleName" data-test="shop-title">
-            , known as "{{ game.shopTitleName }}"</span
+          <RouterLink :to="{ name: 'standing' }" class="standing-link" data-test="standing-link">
+            {{ game.reputationTier
+            }}<span v-if="game.shopTitleName" data-test="shop-title">
+              , known as "{{ game.shopTitleName }}"</span
+            ></RouterLink
           >
         </dd>
       </div>
@@ -253,6 +255,18 @@ h3 {
 
 .cash {
   color: var(--mg-yen);
+}
+
+/* Sprint 62: the reputation line is the diegetic door to the Standing screen
+   (the shop's own name and record on the wall). */
+.standing-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--mg-panel-edge);
+}
+
+.standing-link:hover {
+  color: var(--mg-neon-cyan);
 }
 
 button {
