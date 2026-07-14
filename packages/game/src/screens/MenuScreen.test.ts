@@ -86,42 +86,10 @@ describe('MenuScreen (Sprint 40 item 1)', () => {
     expect(router.currentRoute.value.name).toBe('garage')
   })
 
-  it('loading a valid save code replaces the career and navigates to the garage', async () => {
-    const game = useGameStore()
-    game.newGame(1)
-    game.endDay()
-    game.endDay()
-    const code = game.exportSaveCode()
-    const savedDay = game.day
-
-    game.newGame(2) // simulate a different in-memory career before loading
-    const { wrapper, router } = await mountMenu()
-
-    await wrapper.find('[data-test="menu-load-code"]').setValue(code)
-    await wrapper.find('[data-test="menu-load"]').trigger('click')
-    await flushPromises()
-
-    expect(game.day).toBe(savedDay)
-    expect(router.currentRoute.value.name).toBe('garage')
-  })
-
-  it('an invalid save code shows an error and never navigates', async () => {
-    const { wrapper, router } = await mountMenu()
-
-    await wrapper.find('[data-test="menu-load-code"]').setValue('not a real code')
-    await wrapper.find('[data-test="menu-load"]').trigger('click')
-
-    expect(wrapper.text()).toMatch(/save code/i)
-    expect(router.currentRoute.value.name).toBe('menu')
-  })
-
-  it('the Load button is disabled until something is pasted', async () => {
+  it('renders exactly one Save surface (SaveMenu), no second inline load panel', async () => {
     const { wrapper } = await mountMenu()
-    const button = wrapper.get('[data-test="menu-load"]')
-    expect((button.element as HTMLButtonElement).disabled).toBe(true)
-
-    await wrapper.find('[data-test="menu-load-code"]').setValue('abc')
-    expect((button.element as HTMLButtonElement).disabled).toBe(false)
+    expect(wrapper.findAll('[data-test="save-toggle"]')).toHaveLength(1)
+    expect(wrapper.find('[data-test="menu-load-code"]').exists()).toBe(false)
   })
 
   it('Settings is a disabled stub', async () => {

@@ -55,6 +55,11 @@ describe('App (Sprint 51: chrome)', () => {
     expect(wrapper.find('[data-test="end-day"]').exists()).toBe(false)
   })
 
+  it('shows "MIDNIGHT GARAGE" exactly once on the menu screen (Sprint 58 decision 1)', async () => {
+    const wrapper = await mountAppAt('menu')
+    expect(wrapper.findAll('h1').filter((h) => h.text() === 'MIDNIGHT GARAGE')).toHaveLength(1)
+  })
+
   it('Escape reaches the menu from a gameplay screen', async () => {
     await mountAppAt('garage')
     await escape()

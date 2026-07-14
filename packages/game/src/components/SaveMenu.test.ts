@@ -45,3 +45,59 @@ describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
     clickSpy.mockRestore()
   })
 })
+
+/**
+ * Sprint 58 decision 2: the menu's own inline load panel is gone - SaveMenu
+ * is the single load surface now, so its load-behavior coverage moves here
+ * (ported from the old MenuScreen tests; SaveMenu's load path had no direct
+ * coverage of its own before this).
+ */
+describe('SaveMenu - loading a save code', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  async function mountOpen() {
+    const wrapper = mount(SaveMenu)
+    await wrapper.find('[data-test="save-toggle"]').trigger('click')
+    return wrapper
+  }
+
+  it('loading a valid save code replaces the career', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.endDay()
+    game.endDay()
+    const code = game.exportSaveCode()
+    const savedDay = game.day
+
+    game.newGame(2) // simulate a different in-memory career before loading
+    const wrapper = await mountOpen()
+
+    await wrapper.find('[data-test="save-code-field"]').setValue(code)
+    await wrapper.find('[data-test="import-save"]').trigger('click')
+
+    expect(game.day).toBe(savedDay)
+    expect(wrapper.text()).toContain('Save loaded.')
+  })
+
+  it('an invalid save code shows an error and leaves the career untouched', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const dayBefore = game.day
+    const wrapper = await mountOpen()
+
+    await wrapper.find('[data-test="save-code-field"]').setValue('not a real code')
+    await wrapper.find('[data-test="import-save"]').trigger('click')
+
+    expect(wrapper.text()).toMatch(/save code/i)
+    expect(game.day).toBe(dayBefore)
+  })
+
+  it('the Load button is disabled until something is pasted', async () => {
+    const wrapper = await mountOpen()
+    const button = wrapper.get('[data-test="import-save"]')
+    expect((button.element as HTMLButtonElement).disabled).toBe(true)
+
+    await wrapper.find('[data-test="save-code-field"]').setValue('abc')
+    expect((button.element as HTMLButtonElement).disabled).toBe(false)
+  })
+})

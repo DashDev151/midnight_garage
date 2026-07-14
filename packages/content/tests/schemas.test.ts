@@ -103,6 +103,9 @@ describe('seed content validates against schemas', () => {
         /[a-z][A-Z]/,
       )
     }
+    // Sprint 58: the schema's own key set is exactly the 6 real groups - no
+    // dead pre-Sprint-26 entries (`brakes`, `forcedInduction`) survive.
+    expect(Object.keys(result.data).sort()).toEqual([...ComponentIdSchema.options].sort())
   })
 
   it('facilities.json', () => {

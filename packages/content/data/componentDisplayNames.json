@@ -1,9 +1,7 @@
 {
   "engine": "Engine",
-  "forcedInduction": "Forced Induction",
   "drivetrain": "Drivetrain",
-  "suspension": "Suspension",
-  "brakes": "Brakes",
+  "suspension": "Suspension and Brakes",
   "wheels": "Wheels",
   "body": "Body",
   "interior": "Interior"

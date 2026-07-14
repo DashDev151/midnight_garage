@@ -142,4 +142,28 @@ describe('PartsMarketScreen', () => {
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
     expect(wrapper.find('[data-test="cart-panel"]').text()).toContain(cheapest.name)
   })
+
+  it('the cart rail is visible on the home view too, not only inside a department (Sprint 58 decision 3)', async () => {
+    const game = useGameStore()
+    const wrapper = mountScreen()
+    expect(wrapper.findAll('.hero-card')).toHaveLength(6) // still the home view
+    expect(wrapper.find('[data-test="cart-panel"]').exists()).toBe(true)
+
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
+    await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
+    await wrapper.find('[data-test="breadcrumb-root"]').trigger('click')
+
+    expect(wrapper.findAll('.hero-card')).toHaveLength(6) // back on home
+    expect(game.cartItems).toHaveLength(1)
+    expect(wrapper.find('[data-test="cart-panel"]').text()).toContain(cheapest.name)
+  })
+
+  it('a Back button exits a department without hunting the breadcrumb (Sprint 58 decision 5)', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+    expect(wrapper.findAll('.hero-card')).toHaveLength(0)
+
+    await wrapper.find('[data-test="market-back"]').trigger('click')
+    expect(wrapper.findAll('.hero-card')).toHaveLength(6)
+  })
 })

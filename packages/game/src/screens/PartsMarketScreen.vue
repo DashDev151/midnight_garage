@@ -220,187 +220,199 @@ function onCheckout(): void {
       <p class="cash">{{ formatYen(game.cashYen) }}</p>
     </header>
 
-    <template v-if="view === 'home'">
-      <ul class="hero-grid">
-        <li v-for="group in groupedCarPartOptions" :key="group.groupId">
-          <button
-            type="button"
-            class="hero-card"
-            :data-test="'hero-' + group.groupId"
-            @click="enterDepartment(group.groupId)"
-          >
-            <div class="hero-art" aria-hidden="true"></div>
-            <span class="hero-label">{{ group.label }}</span>
-            <span class="hero-count">{{ group.parts.length }} slots</span>
-          </button>
-        </li>
-      </ul>
-      <button
-        type="button"
-        class="browse-all"
-        data-test="browse-everything"
-        @click="enterBrowseEverything"
-      >
-        Browse everything
-      </button>
-    </template>
-
-    <template v-else>
-      <nav class="breadcrumb" aria-label="Parts market breadcrumb">
-        <button
-          type="button"
-          class="breadcrumb-root"
-          data-test="breadcrumb-root"
-          @click="returnHome"
-        >
-          Parts market
-        </button>
-        <span class="breadcrumb-sep">&gt;</span>
-        <span class="breadcrumb-current">{{
-          selectedGroup ? game.componentLabel(selectedGroup) : 'All parts'
-        }}</span>
-      </nav>
-
-      <ul v-if="selectedGroup" class="part-chips">
-        <li v-for="partId in selectedGroupParts" :key="partId">
-          <button
-            type="button"
-            class="chip"
-            :class="{ active: componentFilter === partId }"
-            :data-test="'catalog-part-' + partId"
-            @click="selectPart(partId)"
-          >
-            {{ game.carPartLabel(partId) }}
-          </button>
-        </li>
-      </ul>
-
-      <div class="filters">
-        <select v-model="gradeFilter" data-test="filter-grade">
-          <option value="">all grades</option>
-          <option v-for="g in GRADE_OPTIONS" :key="g" :value="g">{{ g }}</option>
-        </select>
-        <select v-model="classFilter" data-test="filter-class">
-          <option value="">all classes</option>
-          <option v-for="c in FITMENT_CLASS_OPTIONS" :key="c" :value="c">
-            {{ fitmentClassLabel(c) }}
-          </option>
-        </select>
-        <select v-model="vehicleFilter" data-test="filter-vehicle" @change="onVehicleFilterChange">
-          <option value="">fits this vehicle...</option>
-          <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.label }}</option>
-        </select>
-        <select v-model="sortBy" data-test="sort-by">
-          <option v-for="s in SORT_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
-        </select>
-      </div>
-
-      <div class="market-layout">
-        <ul class="catalog">
-          <li
-            v-for="part in visibleParts"
-            :key="part.id"
-            class="part"
-            :class="{ 'no-fit': !fitsAnyOwnedCar(part) }"
-          >
-            <div class="part-main">
-              <span class="part-name"
-                >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
-                }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
-              /></span>
-              <span class="part-meta"
-                >{{ game.carPartLabel(part.carPartId) }} · {{ part.grade }} ·
-                {{ statSummary(part) || 'no stat change' }}</span
-              >
-              <span
-                v-if="game.carsDetailed.length > 0"
-                class="part-fit"
-                :class="{ fit: fitsAnyOwnedCar(part) }"
-                :title="part.requiredTags.length ? 'Requires: ' + part.requiredTags.join(', ') : ''"
-              >
-                {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
-              </span>
-            </div>
-            <div class="part-buy">
-              <span class="price">{{ formatYen(part.priceYen) }}</span>
-              <button :data-test="'add-to-cart-' + part.id" @click="game.addToCart(part.id)">
-                Add to cart
-              </button>
-            </div>
-          </li>
-        </ul>
-
-        <aside class="cart-rail">
-          <section class="cart" data-test="cart-panel">
-            <h3>Cart</h3>
-            <p v-if="game.cartItems.length === 0" class="empty">Cart is empty.</p>
-            <ul v-else class="cart-items">
-              <li v-for="item in game.cartItems" :key="item.part.id" class="cart-item">
-                <span class="cart-item-name"
-                  >{{ fitmentClassLabel(item.part.fitmentClass) }} {{ item.part.brand }}
-                  {{ item.part.name }}</span
-                >
-                <span class="cart-item-qty">x{{ item.quantity }}</span>
-                <span class="cart-item-subtotal">{{ formatYen(item.subtotalYen) }}</span>
-                <button
-                  :data-test="'remove-from-cart-' + item.part.id"
-                  @click="game.removeFromCart(item.part.id)"
-                >
-                  Remove
-                </button>
-              </li>
-            </ul>
-
-            <div v-if="game.cartItems.length > 0" class="checkout">
-              <div class="delivery-choice">
-                <label>
-                  <input
-                    v-model="deliverySpeed"
-                    type="radio"
-                    value="standard"
-                    data-test="delivery-standard"
-                  />
-                  Standard - {{ formatYen(game.cartStandardTotalYen) }} (arrives next day)
-                </label>
-                <label>
-                  <input
-                    v-model="deliverySpeed"
-                    type="radio"
-                    value="express"
-                    data-test="delivery-express"
-                  />
-                  Express - {{ formatYen(game.cartExpressTotalYen) }} (arrives today)
-                </label>
-              </div>
+    <div class="market-layout">
+      <div class="market-main">
+        <template v-if="view === 'home'">
+          <ul class="hero-grid">
+            <li v-for="group in groupedCarPartOptions" :key="group.groupId">
               <button
-                class="primary"
-                data-test="checkout"
-                :disabled="game.cashYen < checkoutTotal"
-                @click="onCheckout"
+                type="button"
+                class="hero-card"
+                :data-test="'hero-' + group.groupId"
+                @click="enterDepartment(group.groupId)"
               >
-                Checkout ({{ formatYen(checkoutTotal) }})
+                <div class="hero-art" aria-hidden="true"></div>
+                <span class="hero-label">{{ group.label }}</span>
+                <span class="hero-count">{{ group.parts.length }} slots</span>
               </button>
-              <p
-                v-if="lastCheckoutResult && lastCheckoutResult.remainingCount > 0"
-                class="checkout-warning"
-              >
-                Bought {{ lastCheckoutResult.boughtCount }} - couldn't afford the rest, still in
-                cart.
-              </p>
-            </div>
-          </section>
+            </li>
+          </ul>
+          <button
+            type="button"
+            class="browse-all"
+            data-test="browse-everything"
+            @click="enterBrowseEverything"
+          >
+            Browse everything
+          </button>
+        </template>
 
-          <section v-if="game.pendingPartOrders.length" class="orders">
-            <h3>On order</h3>
-            <ul>
-              <li v-for="order in game.pendingPartOrders" :key="order.id">
-                {{ game.partName(order.partId) }} - arrives day {{ order.arrivesOnDay }}
-              </li>
-            </ul>
-          </section>
-        </aside>
+        <template v-else>
+          <nav class="breadcrumb" aria-label="Parts market breadcrumb">
+            <button type="button" class="market-back" data-test="market-back" @click="returnHome">
+              &lt; Back
+            </button>
+            <button
+              type="button"
+              class="breadcrumb-root"
+              data-test="breadcrumb-root"
+              @click="returnHome"
+            >
+              Parts market
+            </button>
+            <span class="breadcrumb-sep">&gt;</span>
+            <span class="breadcrumb-current">{{
+              selectedGroup ? game.componentLabel(selectedGroup) : 'All parts'
+            }}</span>
+          </nav>
+
+          <ul v-if="selectedGroup" class="part-chips">
+            <li v-for="partId in selectedGroupParts" :key="partId">
+              <button
+                type="button"
+                class="chip"
+                :class="{ active: componentFilter === partId }"
+                :data-test="'catalog-part-' + partId"
+                @click="selectPart(partId)"
+              >
+                {{ game.carPartLabel(partId) }}
+              </button>
+            </li>
+          </ul>
+
+          <div class="filters">
+            <select v-model="gradeFilter" data-test="filter-grade">
+              <option value="">all grades</option>
+              <option v-for="g in GRADE_OPTIONS" :key="g" :value="g">{{ g }}</option>
+            </select>
+            <select v-model="classFilter" data-test="filter-class">
+              <option value="">all classes</option>
+              <option v-for="c in FITMENT_CLASS_OPTIONS" :key="c" :value="c">
+                {{ fitmentClassLabel(c) }}
+              </option>
+            </select>
+            <select
+              v-model="vehicleFilter"
+              data-test="filter-vehicle"
+              @change="onVehicleFilterChange"
+            >
+              <option value="">fits this vehicle...</option>
+              <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.label }}</option>
+            </select>
+            <select v-model="sortBy" data-test="sort-by">
+              <option v-for="s in SORT_OPTIONS" :key="s.value" :value="s.value">
+                {{ s.label }}
+              </option>
+            </select>
+          </div>
+
+          <ul class="catalog">
+            <li
+              v-for="part in visibleParts"
+              :key="part.id"
+              class="part"
+              :class="{ 'no-fit': !fitsAnyOwnedCar(part) }"
+            >
+              <div class="part-main">
+                <span class="part-name"
+                  >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
+                  }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
+                /></span>
+                <span class="part-meta"
+                  >{{ game.carPartLabel(part.carPartId) }} · {{ part.grade }} ·
+                  {{ statSummary(part) || 'no stat change' }}</span
+                >
+                <span
+                  v-if="game.carsDetailed.length > 0"
+                  class="part-fit"
+                  :class="{ fit: fitsAnyOwnedCar(part) }"
+                  :title="
+                    part.requiredTags.length ? 'Requires: ' + part.requiredTags.join(', ') : ''
+                  "
+                >
+                  {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
+                </span>
+              </div>
+              <div class="part-buy">
+                <span class="price">{{ formatYen(part.priceYen) }}</span>
+                <button :data-test="'add-to-cart-' + part.id" @click="game.addToCart(part.id)">
+                  Add to cart
+                </button>
+              </div>
+            </li>
+          </ul>
+        </template>
       </div>
-    </template>
+
+      <aside class="cart-rail">
+        <section class="cart" data-test="cart-panel">
+          <h3>Cart</h3>
+          <p v-if="game.cartItems.length === 0" class="empty">Cart is empty.</p>
+          <ul v-else class="cart-items">
+            <li v-for="item in game.cartItems" :key="item.part.id" class="cart-item">
+              <span class="cart-item-name"
+                >{{ fitmentClassLabel(item.part.fitmentClass) }} {{ item.part.brand }}
+                {{ item.part.name }}</span
+              >
+              <span class="cart-item-qty">x{{ item.quantity }}</span>
+              <span class="cart-item-subtotal">{{ formatYen(item.subtotalYen) }}</span>
+              <button
+                :data-test="'remove-from-cart-' + item.part.id"
+                @click="game.removeFromCart(item.part.id)"
+              >
+                Remove
+              </button>
+            </li>
+          </ul>
+
+          <div v-if="game.cartItems.length > 0" class="checkout">
+            <div class="delivery-choice">
+              <label>
+                <input
+                  v-model="deliverySpeed"
+                  type="radio"
+                  value="standard"
+                  data-test="delivery-standard"
+                />
+                Standard - {{ formatYen(game.cartStandardTotalYen) }} (arrives next day)
+              </label>
+              <label>
+                <input
+                  v-model="deliverySpeed"
+                  type="radio"
+                  value="express"
+                  data-test="delivery-express"
+                />
+                Express - {{ formatYen(game.cartExpressTotalYen) }} (arrives today)
+              </label>
+            </div>
+            <button
+              class="primary"
+              data-test="checkout"
+              :disabled="game.cashYen < checkoutTotal"
+              @click="onCheckout"
+            >
+              Checkout ({{ formatYen(checkoutTotal) }})
+            </button>
+            <p
+              v-if="lastCheckoutResult && lastCheckoutResult.remainingCount > 0"
+              class="checkout-warning"
+            >
+              Bought {{ lastCheckoutResult.boughtCount }} - couldn't afford the rest, still in cart.
+            </p>
+          </div>
+        </section>
+
+        <section v-if="game.pendingPartOrders.length" class="orders">
+          <h3>On order</h3>
+          <ul>
+            <li v-for="order in game.pendingPartOrders" :key="order.id">
+              {{ game.partName(order.partId) }} - arrives day {{ order.arrivesOnDay }}
+            </li>
+          </ul>
+        </section>
+      </aside>
+    </div>
   </section>
 </template>
 
@@ -501,6 +513,11 @@ h3 {
   gap: var(--mg-space-1);
   margin: var(--mg-space-2) 0 var(--mg-space-3);
   font-size: var(--mg-fs-sm);
+}
+
+.market-back {
+  font-size: var(--mg-fs-sm);
+  padding: 2px 10px;
 }
 
 .breadcrumb-root {

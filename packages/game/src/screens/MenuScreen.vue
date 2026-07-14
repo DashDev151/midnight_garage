@@ -17,8 +17,6 @@ const game = useGameStore()
 const router = useRouter()
 
 const confirmingNewGame = ref(false)
-const loadCode = ref('')
-const loadError = ref('')
 
 function goToGarage(): void {
   void router.push({ name: 'garage' })
@@ -37,23 +35,10 @@ function onNewGameClick(): void {
 function cancelNewGame(): void {
   confirmingNewGame.value = false
 }
-
-function onLoadClick(): void {
-  const result = game.importSaveCode(loadCode.value)
-  if (result.ok) {
-    loadCode.value = ''
-    loadError.value = ''
-    goToGarage()
-  } else {
-    loadError.value = result.error
-  }
-}
 </script>
 
 <template>
   <section class="menu">
-    <h1>MIDNIGHT GARAGE</h1>
-
     <div class="actions">
       <button
         v-if="game.hasExistingSave"
@@ -75,19 +60,6 @@ function onLoadClick(): void {
       </div>
       <button v-else data-test="menu-new-game" @click="onNewGameClick">New Game</button>
 
-      <div class="load-panel">
-        <textarea
-          v-model="loadCode"
-          data-test="menu-load-code"
-          rows="3"
-          placeholder="paste a save code to load it"
-        />
-        <button :disabled="!loadCode.trim()" data-test="menu-load" @click="onLoadClick">
-          Load save code
-        </button>
-        <p v-if="loadError" class="error">{{ loadError }}</p>
-      </div>
-
       <button disabled data-test="menu-settings" title="coming soon">Settings</button>
     </div>
 
@@ -106,14 +78,6 @@ function onLoadClick(): void {
   flex-direction: column;
   align-items: stretch;
   gap: var(--mg-space-4);
-}
-
-h1 {
-  color: var(--mg-neon-cyan);
-  letter-spacing: 0.3em;
-  font-size: var(--mg-fs-xl);
-  text-align: center;
-  margin: 0;
 }
 
 .save-section {
@@ -174,29 +138,5 @@ button.primary {
 .confirm-row {
   display: flex;
   gap: var(--mg-space-2);
-}
-
-.load-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-2);
-}
-
-textarea {
-  width: 100%;
-  background: var(--mg-night-deep);
-  color: var(--mg-text);
-  border: var(--mg-border);
-  border-radius: 4px;
-  padding: var(--mg-space-2);
-  font-family: inherit;
-  font-size: var(--mg-fs-sm);
-  resize: vertical;
-}
-
-.error {
-  color: var(--mg-neon-pink);
-  font-size: var(--mg-fs-sm);
-  margin: 0;
 }
 </style>
