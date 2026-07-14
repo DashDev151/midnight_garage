@@ -287,8 +287,11 @@ describe('CarDetailScreen', () => {
     const button = wrapper.find('[data-test="stage-repair-body"]')
     expect(button.exists()).toBe(true)
     expect(button.attributes('disabled')).toBeUndefined()
-    // The old needs-equipment tooltip is gone with the gate itself.
-    expect(button.attributes('title')).toBeUndefined()
+    // Sprint 63: the compact "+" control's own tooltip describes the repair
+    // step ("Repair to ...") - it is NOT the retired needs-equipment gate
+    // tooltip, which stayed gone.
+    expect(button.attributes('title')).toContain('Repair')
+    expect(button.attributes('title')).not.toContain('Needs')
   })
 
   describe('click-per-rung repair (Sprint 48)', () => {
@@ -333,6 +336,81 @@ describe('CarDetailScreen', () => {
           carPartId: row.partId,
         },
       ])
+    })
+  })
+
+  describe('the reworked repair row and honest Confirm (Sprint 63)', () => {
+    it('no repair control is a sentence-button - the group step is a compact "+" with the cost as a caption', async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'body')
+      const { wrapper } = await mountAt(id)
+
+      const button = wrapper.find('[data-test="stage-repair-body"]')
+      // The button's own visible text is just the "+" glyph, never a sentence.
+      expect(button.text()).toBe('+')
+      expect(button.text()).not.toContain('Repair to')
+      // The cost/labour rides in a caption beside it, in British "labour".
+      const row = button.element.closest('.action-line')!
+      const caption = row.querySelector('.step-cost')!
+      expect(caption.textContent).toContain('labour')
+      expect(caption.textContent).not.toContain('labor ')
+    })
+
+    it('shows a current -> planned band preview once a repair is staged, cleared by the x', async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'body')
+      const { wrapper } = await mountAt(id)
+
+      expect(wrapper.find('[data-test="plan-preview-body"]').exists()).toBe(false)
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+
+      const preview = wrapper.find('[data-test="plan-preview-body"]')
+      expect(preview.exists()).toBe(true)
+      // Two band chips (current and planned) with an arrow between them.
+      expect(preview.findAll('.band-chip').length).toBe(2)
+
+      await wrapper.find('[data-test="unstage-repair-body"]').trigger('click')
+      expect(wrapper.find('[data-test="plan-preview-body"]').exists()).toBe(false)
+    })
+
+    it('Confirm shows the PLANNED labour and cost, and it grows as more work is planned', async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'body')
+      const { wrapper } = await mountAt(id)
+
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+      const afterOne = game.carDetail(id)!.plannedEstimate!.plannedLaborSlots
+      expect(afterOne).toBeGreaterThan(0)
+      expect(wrapper.find('[data-test="confirm-cost"]').text()).toContain(`${afterOne} labour`)
+
+      // Plan more work (another group that needs it) - the Confirm figure grows.
+      const other = (['engine', 'drivetrain', 'suspension', 'interior'] as const).find((g) =>
+        needsRepair(game, id, g),
+      )
+      if (other) {
+        await wrapper.find(`[data-test="stage-repair-${other}"]`).trigger('click')
+        const afterTwo = game.carDetail(id)!.plannedEstimate!.plannedLaborSlots
+        expect(afterTwo).toBeGreaterThan(afterOne)
+        expect(wrapper.find('[data-test="confirm-cost"]').text()).toContain(`${afterTwo} labour`)
+      }
+    })
+
+    it('the remaining-today figure is a caption that warns (never blocks) when the plan overruns today', async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'body')
+      // Spend every labour slot so nothing is left today.
+      game.gameState = { ...game.gameState, laborSlotsSpentToday: game.laborSlotsPerDay }
+      expect(game.laborSlotsRemainingToday).toBe(0)
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+
+      const caption = wrapper.find('[data-test="confirm-labour-caption"]')
+      expect(caption.exists()).toBe(true)
+      expect(caption.classes()).toContain('warn')
+      expect(caption.text()).toContain('carries to tomorrow')
+      // A warning, not a block: Confirm stays enabled.
+      expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeUndefined()
     })
   })
 

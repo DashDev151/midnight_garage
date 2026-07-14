@@ -251,7 +251,8 @@ describe('describeLogEntry', () => {
       toTier: 2,
       priceYen: 150_000,
     })
-    expect(line).toBe('Upgraded Wheels to Tyre machine & balancer for ¥150,000')
+    // Sprint 63 (item 9): the wheels group label is "Wheels and Tyres" now.
+    expect(line).toBe('Upgraded Wheels and Tyres to Tyre machine & balancer for ¥150,000')
     expect(line).not.toContain('wheels')
   })
 

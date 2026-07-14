@@ -156,17 +156,23 @@ function onPointerUp(event: PointerEvent): void {
     </div>
     <div class="part-actions">
       <template v-if="nextStep">
-        <button
-          type="button"
-          class="recondition-handle"
-          :disabled="reconditionDisabled"
-          :data-test="'recondition-part-' + instance.id"
-          @click.stop="onReconditionClick"
-        >
-          Recondition to {{ nextStep.targetBand }} ({{ formatYen(nextStep.costYen) }}
-          &middot;
-          {{ nextStep.laborSlotsRequired }} slot{{ nextStep.laborSlotsRequired === 1 ? '' : 's' }})
-        </button>
+        <div class="recondition-step">
+          <button
+            type="button"
+            class="recondition-handle step-up"
+            :disabled="reconditionDisabled"
+            :data-test="'recondition-part-' + instance.id"
+            :aria-label="'Recondition to ' + nextStep.targetBand"
+            :title="'Recondition to ' + nextStep.targetBand"
+            @click.stop="onReconditionClick"
+          >
+            +
+          </button>
+          <span class="step-cost"
+            >&rarr; {{ nextStep.targetBand }} &middot; {{ formatYen(nextStep.costYen) }} &middot;
+            {{ nextStep.laborSlotsRequired }} labour</span
+          >
+        </div>
       </template>
       <template v-if="isScrap">
         <span
@@ -314,6 +320,27 @@ function onPointerUp(event: PointerEvent): void {
 .recondition-handle:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* Sprint 63 (item 7): the bench recondition control matches the car page's
+   repair rows - a compact `+` button with the cost as a quiet caption, never
+   a sentence in the button. */
+.recondition-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-1);
+}
+
+.recondition-handle.step-up {
+  min-width: 28px;
+  padding: 2px 8px;
+  font-size: var(--mg-fs-md);
+  line-height: 1;
+}
+
+.step-cost {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .locked-reason {

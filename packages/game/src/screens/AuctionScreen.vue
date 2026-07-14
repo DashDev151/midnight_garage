@@ -91,7 +91,7 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
     <header class="head">
       <h2>Auctions</h2>
       <p class="cash">
-        {{ formatYen(game.cashYen) }} · labor {{ game.laborSlotsRemainingToday }}/{{
+        {{ formatYen(game.cashYen) }} · labour {{ game.laborSlotsRemainingToday }}/{{
           game.laborSlotsPerDay
         }}
       </p>

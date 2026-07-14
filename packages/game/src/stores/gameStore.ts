@@ -264,6 +264,12 @@ export interface PlannedEstimateView {
    * installs cost nothing NEW here; that cash already left when the part
    * was bought, already counted in `ledger.partsYen`). */
   plannedRepairCostYen: number
+  /** Sprint 63: the total labour slots the planned work will require at
+   * Confirm - the same accounting `confirmStagedWork` uses (a repair action's
+   * `planGroupRepair.laborSlotsRequired`, plus `INSTALL_LABOR_SLOTS` per
+   * planned install). The Confirm button shows THIS, not the remaining-today
+   * figure, so the player knows what a click actually costs. */
+  plannedLaborSlots: number
   /** The restoration bill remaining AFTER the plan completes. */
   billYenAfter: number
   /** The guide value AFTER the plan completes - the same `marketValueYen`
@@ -1202,6 +1208,36 @@ export const useGameStore = defineStore('game', () => {
     return total
   }
 
+  /** Sprint 63: the total labour slots the currently planned work will
+   * require at Confirm - mirrors `confirmStagedWork`'s own accounting exactly
+   * (a repair action's `planGroupRepair.laborSlotsRequired` when it has real
+   * work, plus `INSTALL_LABOR_SLOTS` per planned install), so the Confirm
+   * button shows what a click actually spends, not the day's remaining total. */
+  function plannedLaborSlots(carId: string): number {
+    const car = findWorkableCar(carId)
+    if (!car) return 0
+    let total = 0
+    for (const action of stagedActionsFor(carId)) {
+      if (action.kind === 'repair') {
+        const plan = planGroupRepair(
+          car,
+          action.componentId,
+          action.targetBand,
+          gameState.value.toolTiers,
+          context.value.partIdsByGroup,
+          context.value.partsById,
+          context.value.partsTaxonomyById,
+          context.value.economy.restoration.repairStepFraction,
+          action.carPartId,
+        )
+        if (plan.partIds.length > 0) total += plan.laborSlotsRequired
+      } else {
+        total += INSTALL_LABOR_SLOTS
+      }
+    }
+    return total
+  }
+
   /** Sprint 48: the Finances panel's pre-Confirm estimate - null when
    * nothing is planned. Feeds the projected car (`previewPlannedWork`)
    * straight into the same `carCostToMintYen`/`carGuideValueYen` the real
@@ -1227,6 +1263,7 @@ export const useGameStore = defineStore('game', () => {
     const guideValueYenAfter = carGuideValueYen(preview, model, gameState.value, context.value)
     return {
       plannedRepairCostYen: repairCostYen,
+      plannedLaborSlots: plannedLaborSlots(carId),
       billYenAfter,
       guideValueYenAfter,
       totalSpentYenAfter,

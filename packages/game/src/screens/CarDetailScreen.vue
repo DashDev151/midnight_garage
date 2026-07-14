@@ -25,6 +25,12 @@ const router = useRouter()
 const carId = computed(() => String(route.params.id))
 const detail = computed(() => game.carDetail(carId.value))
 
+/** Sprint 63: whether the planned work needs more labour than is left today -
+ * a caption warning, never a block (queued work already spans days). */
+const plannedLaborOverToday = computed(
+  () => (detail.value?.plannedEstimate?.plannedLaborSlots ?? 0) > game.laborSlotsRemainingToday,
+)
+
 /**
  * True while this car is an accepted service job's customer car that hasn't
  * arrived yet (Sprint 25 task 2) - nothing to inspect, stage, or sell until
@@ -118,10 +124,10 @@ function visibleRowsFor(componentId: ComponentId) {
 
 /**
  * Sprint 48 decision 2 (maintainer, 2026-07-13, superseding the BandPicker):
- * one button per repairable row/group, climbing exactly ONE band per click -
- * "Repair to Worn - ¥X · N labor", then "Repair further, to Fine - +¥Y · +N
- * labor". Priced/labored off the real repair plan (`game.nextRepairStep`),
- * never a hardcoded one-click-one-labor assumption.
+ * one control per repairable row/group, climbing exactly ONE band per click.
+ * Sprint 63 made that control a compact `+` button with the cost as a
+ * caption, priced/laboured off the real repair plan (`game.nextRepairStep`),
+ * never a hardcoded one-click-one-slot assumption.
  */
 function nextGroupStep(componentId: ComponentId) {
   return detail.value ? game.nextRepairStep(detail.value.car.id, componentId) : null
@@ -150,15 +156,39 @@ function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) 
   )
 }
 
-/** The button's own label, sourced entirely from the real plan - never a
- * hand-derived "N labor" guess. */
+/**
+ * Sprint 63: the climb-one-band control is now a compact `+` button, not a
+ * sentence - this builds the accessible `title` tooltip (the full "Repair to
+ * X" phrase), sourced entirely from the real plan, never a hand-derived
+ * guess. British "labour" per directive 18.
+ */
 function repairStepLabel(
   step: { targetBand: ConditionBand; costYen: number; laborSlotsRequired: number },
   alreadyPlanned: boolean,
 ): string {
   const sign = alreadyPlanned ? '+' : ''
   const prefix = alreadyPlanned ? 'Repair further, to ' : 'Repair to '
-  return `${prefix}${step.targetBand} - ${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labor`
+  return `${prefix}${step.targetBand} - ${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labour`
+}
+
+/**
+ * Sprint 63: the quiet cost caption beside the `+` button - just the
+ * incremental cost and labour, never a full sentence in a button. A `+`
+ * sign prefixes it when the row already has a plan (this is a further rung).
+ */
+function stepCost(
+  step: { costYen: number; laborSlotsRequired: number },
+  alreadyPlanned: boolean,
+): string {
+  const sign = alreadyPlanned ? '+' : ''
+  return `${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labour`
+}
+
+/** Sprint 63: the currently planned target band (a real `ConditionBand`, for
+ * the planned `BandChip`), or null when nothing's planned at this address. */
+function stagedTargetBand(componentId: ComponentId, carPartId?: CarPartId): ConditionBand | null {
+  const staged = stagedFor(componentId, carPartId)
+  return staged?.kind === 'repair' ? staged.targetBand : null
 }
 
 /** The open job at this exact address - group-level when `carPartId` is
@@ -183,7 +213,7 @@ function componentBusy(componentId: ComponentId): boolean {
  * kind, either busy) - Sprint 18 exposes a case the old always-instant
  * install flow never could: an install job (usually a single-slot job that
  * completes the moment Confirm reaches it) can now be left open if Confirm
- * ran out of labor before reaching it in the staged list. Calling
+ * ran out of labour before reaching it in the staged list. Calling
  * `game.repair(...)`/`game.install(...)` unconditionally here would silently
  * create an unrelated *second* job instead of continuing this one; the
  * `targetBand`/`carPartId` arguments passed through are only ever consulted
@@ -256,12 +286,6 @@ function stagedFor(componentId: ComponentId, carPartId?: CarPartId): StagedActio
 
 function isStagedRepair(componentId: ComponentId, carPartId?: CarPartId): boolean {
   return stagedFor(componentId, carPartId)?.kind === 'repair'
-}
-
-/** The currently planned target band's own label, for the "-> Fine" chip. */
-function stagedTargetBandLabel(componentId: ComponentId, carPartId?: CarPartId): string | null {
-  const staged = stagedFor(componentId, carPartId)
-  return staged?.kind === 'repair' ? staged.targetBand : null
 }
 
 function partInstanceDisplayName(partInstanceId: string): string {
@@ -573,31 +597,53 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 </template>
 
                 <template v-else>
+                  <span
+                    v-if="isStagedRepair(componentId)"
+                    class="plan-preview"
+                    :data-test="'plan-preview-' + componentId"
+                  >
+                    <BandChip :band="detail.groupBands[componentId]" />
+                    <span class="plan-arrow" aria-hidden="true">&rarr;</span>
+                    <BandChip :band="stagedTargetBand(componentId)" />
+                  </span>
+
                   <template v-if="nextGroupStep(componentId)">
                     <button
+                      type="button"
+                      class="step-up"
                       :data-test="'stage-repair-' + componentId"
-                      @click="advanceGroupRepair(componentId)"
-                    >
-                      {{
+                      :aria-label="
                         repairStepLabel(
                           nextGroupStepOrFallback(componentId),
                           isStagedRepair(componentId),
                         )
-                      }}
-                    </button>
-                  </template>
-                  <template v-if="isStagedRepair(componentId)">
-                    <span class="planned-chip"
-                      >&rarr; {{ stagedTargetBandLabel(componentId) }}</span
+                      "
+                      :title="
+                        repairStepLabel(
+                          nextGroupStepOrFallback(componentId),
+                          isStagedRepair(componentId),
+                        )
+                      "
+                      @click="advanceGroupRepair(componentId)"
                     >
-                    <button
-                      type="button"
-                      :data-test="'unstage-repair-' + componentId"
-                      @click="game.unstageAction(detail.car.id, componentId)"
-                    >
-                      Clear planned repair
+                      +
                     </button>
+                    <span class="step-cost">{{
+                      stepCost(nextGroupStepOrFallback(componentId), isStagedRepair(componentId))
+                    }}</span>
                   </template>
+
+                  <button
+                    v-if="isStagedRepair(componentId)"
+                    type="button"
+                    class="clear-plan"
+                    :data-test="'unstage-repair-' + componentId"
+                    aria-label="Clear planned repair"
+                    title="Clear planned repair"
+                    @click="game.unstageAction(detail.car.id, componentId)"
+                  >
+                    &times;
+                  </button>
 
                   <template v-if="stagedInstallName(componentId)">
                     <span class="planned-install"
@@ -605,10 +651,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     >
                     <button
                       type="button"
+                      class="clear-plan"
                       :data-test="'unstage-' + componentId"
+                      aria-label="Clear planned install"
+                      title="Clear planned install"
                       @click="game.unstageAction(detail.car.id, componentId)"
                     >
-                      unstage
+                      &times;
                     </button>
                   </template>
                 </template>
@@ -655,31 +704,56 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     </template>
 
                     <template v-else>
+                      <span
+                        v-if="isStagedRepair(componentId, row.partId)"
+                        class="plan-preview"
+                        :data-test="'plan-preview-part-' + row.partId"
+                      >
+                        <BandChip :band="row.band" />
+                        <span class="plan-arrow" aria-hidden="true">&rarr;</span>
+                        <BandChip :band="stagedTargetBand(componentId, row.partId)" />
+                      </span>
+
                       <template v-if="nextPartStep(componentId, row.partId)">
                         <button
+                          type="button"
+                          class="step-up"
                           :data-test="'stage-repair-part-' + row.partId"
-                          @click="advancePartRepair(componentId, row.partId)"
-                        >
-                          {{
+                          :aria-label="
                             repairStepLabel(
                               nextPartStepOrFallback(componentId, row.partId),
                               isStagedRepair(componentId, row.partId),
                             )
-                          }}
-                        </button>
-                      </template>
-                      <template v-if="isStagedRepair(componentId, row.partId)">
-                        <span class="planned-chip"
-                          >&rarr; {{ stagedTargetBandLabel(componentId, row.partId) }}</span
+                          "
+                          :title="
+                            repairStepLabel(
+                              nextPartStepOrFallback(componentId, row.partId),
+                              isStagedRepair(componentId, row.partId),
+                            )
+                          "
+                          @click="advancePartRepair(componentId, row.partId)"
                         >
-                        <button
-                          type="button"
-                          :data-test="'unstage-repair-part-' + row.partId"
-                          @click="game.unstageAction(detail.car.id, componentId, row.partId)"
-                        >
-                          Clear planned repair
+                          +
                         </button>
+                        <span class="step-cost">{{
+                          stepCost(
+                            nextPartStepOrFallback(componentId, row.partId),
+                            isStagedRepair(componentId, row.partId),
+                          )
+                        }}</span>
                       </template>
+
+                      <button
+                        v-if="isStagedRepair(componentId, row.partId)"
+                        type="button"
+                        class="clear-plan"
+                        :data-test="'unstage-repair-part-' + row.partId"
+                        aria-label="Clear planned repair"
+                        title="Clear planned repair"
+                        @click="game.unstageAction(detail.car.id, componentId, row.partId)"
+                      >
+                        &times;
+                      </button>
 
                       <template v-if="stagedInstallName(componentId, row.partId)">
                         <span class="planned-install"
@@ -687,10 +761,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                         >
                         <button
                           type="button"
+                          class="clear-plan"
                           :data-test="'unstage-part-' + row.partId"
+                          aria-label="Clear planned install"
+                          title="Clear planned install"
                           @click="game.unstageAction(detail.car.id, componentId, row.partId)"
                         >
-                          unstage
+                          &times;
                         </button>
                       </template>
 
@@ -756,14 +833,32 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 </button>
               </li>
             </ul>
-            <button
-              class="primary confirm-lever"
-              data-test="confirm-work"
-              :disabled="detail.stagedActions.length === 0"
-              @click="onConfirm"
-            >
-              Confirm ({{ game.laborSlotsRemainingToday }} labor left today)
-            </button>
+            <div class="confirm-block">
+              <button
+                class="primary confirm-lever"
+                data-test="confirm-work"
+                :disabled="detail.stagedActions.length === 0"
+                @click="onConfirm"
+              >
+                Confirm
+                <span v-if="detail.plannedEstimate" class="confirm-cost" data-test="confirm-cost"
+                  >{{ formatYen(detail.plannedEstimate.plannedRepairCostYen) }} ·
+                  {{ detail.plannedEstimate.plannedLaborSlots }} labour</span
+                >
+              </button>
+              <p
+                v-if="detail.plannedEstimate"
+                class="confirm-caption"
+                :class="{ warn: plannedLaborOverToday }"
+                data-test="confirm-labour-caption"
+              >
+                {{ game.laborSlotsRemainingToday }} labour left today<span
+                  v-if="plannedLaborOverToday"
+                >
+                  - the rest carries to tomorrow</span
+                >.
+              </p>
+            </div>
           </section>
         </div>
       </div>
@@ -1203,8 +1298,34 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-.planned-chip {
-  color: var(--mg-neon-violet);
+/* Sprint 63 (item 7): the repair row's own anatomy - a current -> planned
+   band preview, a compact `+` climb-one-band button with the cost as a quiet
+   caption beside it, and an `x` to clear the plan. No sentence in any button. */
+.plan-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-1);
+}
+
+.plan-arrow {
+  color: var(--mg-text-dim);
+}
+
+.step-up,
+.clear-plan {
+  min-width: 28px;
+  padding: 2px 8px;
+  font-size: var(--mg-fs-md);
+  line-height: 1;
+}
+
+.clear-plan {
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-panel-edge);
+}
+
+.step-cost {
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 
@@ -1391,6 +1512,29 @@ h4 {
 
 .confirm-lever {
   width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--mg-space-2);
+}
+
+/* Sprint 63 (item 8): the planned cost/labour rides on the Confirm button
+   itself; the remaining-today figure is a quiet caption below, warning (not
+   blocking) when the plan overruns today's labour. */
+.confirm-cost {
+  font-size: var(--mg-fs-sm);
+  opacity: 0.85;
+}
+
+.confirm-caption {
+  margin: var(--mg-space-1) 0 0;
+  text-align: center;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.confirm-caption.warn {
+  color: var(--mg-neon-violet);
 }
 
 .empty {

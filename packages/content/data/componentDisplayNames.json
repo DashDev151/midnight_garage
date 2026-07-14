@@ -2,7 +2,7 @@
   "engine": "Engine",
   "drivetrain": "Drivetrain",
   "suspension": "Suspension and Brakes",
-  "wheels": "Wheels",
+  "wheels": "Wheels and Tyres",
   "body": "Body",
   "interior": "Interior"
 }

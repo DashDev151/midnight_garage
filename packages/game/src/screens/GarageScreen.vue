@@ -116,7 +116,7 @@ const draggedCarName = computed(() => {
       <h3>
         Service bays ({{ game.serviceBayFreeCount }}/{{ game.serviceBayCount }} free)
         <HelpHint label="Service bays">
-          Labor only reaches a car sitting in a service bay. Moves are free and instant.
+          Labour only reaches a car sitting in a service bay. Moves are free and instant.
         </HelpHint>
       </h3>
       <ul class="bay-slots">

@@ -41,6 +41,30 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(game.cashYen).toBe(cashBefore)
   })
 
+  it('the planned estimate sums the labour the planned work will actually cost (Sprint 63)', () => {
+    const game = useGameStore()
+    // A car whose body group genuinely needs repair, so a real plan exists.
+    let car = game.gameState.ownedCars.at(-1)
+    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
+      game.devGrantCar(CARS[0]!.id)
+      car = game.gameState.ownedCars.at(-1)!
+    }
+    if (!car) throw new Error('expected a granted car needing body repair')
+    const carId = car.id
+
+    expect(game.carDetail(carId)!.plannedEstimate).toBeNull() // nothing planned yet
+
+    const step = game.nextRepairStep(carId, 'body')!
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: step.targetBand })
+
+    const estimate = game.carDetail(carId)!.plannedEstimate!
+    // The estimate's planned labour equals the plan's own labour figure (the
+    // same accounting confirmStagedWork uses), and rides beside the yen total.
+    expect(estimate.plannedLaborSlots).toBe(step.laborSlotsRequired)
+    expect(estimate.plannedLaborSlots).toBeGreaterThan(0)
+    expect(estimate.plannedRepairCostYen).toBe(step.costYen)
+  })
+
   it('refuses to stage over a component with an open job (decision 4)', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
