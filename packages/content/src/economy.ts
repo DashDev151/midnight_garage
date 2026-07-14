@@ -197,7 +197,18 @@ export const EconomyConfigSchema = z.object({
    * margin. Sprint 30 decision 3 reuses this as the CENTER each individual
    * rival cohort's private valuation (`bidding.ts`'s `privateValuationYen`)
    * spreads around, replacing the old single lot-wide demand ceiling this
-   * fraction used to anchor.
+   * fraction used to anchor. Retuned 0.85 -> 0.75 (Sprint 55 decision 3,
+   * economy-bible.md law 4's retune pass): Sprint 54's gentler one-slope
+   * value law raised anchorValueYen for a damaged car far above its old
+   * floor-collapsed level, while `AUCTION_BID_INCREMENT_FRACTION` stayed
+   * pegged to the car's static `bookValueYen` - the same fixed-yen raise now
+   * represents a SMALLER fraction of the (higher) anchor, so the same
+   * contestation rules climbed further before running out of eligible
+   * cohorts. Re-measured 2026-07-14: the historical 84% steal-tail problem
+   * had flipped into the opposite extreme (36.1% frenzy vs a 15% ceiling,
+   * steal down to 7.3% against a 10% floor) - lowering the wholesale center
+   * back toward its pre-2026-07-12 value pulls rival private valuations back
+   * down relative to the new, less-discounted anchor.
    */
   AUCTION_WHOLESALE_FRACTION: z.number().positive().max(1),
   /** Consecutive quiet overnight steps (no raise) before a lot hammers to
@@ -664,11 +675,23 @@ export const EconomyConfigSchema = z.object({
         hot: z.number().nonnegative(),
       }),
       /**
-       * `offerYen = valuateCarForBuyer * uniform(min, max)` (decision 2's
-       * locked `[0.82, 1.12]`) - the "fast, variable" walk-in-style roll,
-       * unchanged in kind since Sprint 11's `WALK_IN_OFFER_RANGE`, just
-       * re-homed to content and widened slightly so an offer can occasionally
-       * clear true value by more than the old range allowed.
+       * `offerYen = valuateCarForBuyer * uniform(min, max)` - the "fast,
+       * variable" walk-in-style roll, unchanged in kind since Sprint 11's
+       * `WALK_IN_OFFER_RANGE`. Retuned `[0.82, 1.12]` -> `[0.90, 1.08]`
+       * (Sprint 55 decision 3, economy-bible.md law 4's retune pass):
+       * `valuateCarForBuyer`'s own taste spread can already land as low as
+       * ~0.88x guide value on a bad roll (`valuation.tasteSpread`); compounded
+       * with the old 0.82 lower edge, a fully-restored car's worst-case
+       * walk-in sale could clear as little as ~72% of clean value - enough to
+       * erase the worst-case flip margin the Law 2 generation guard still
+       * permits (as low as ~22% of clean value at the guard's own ceiling,
+       * `coherence.ts`). The raised floor keeps a genuinely bad walk-in roll
+       * from being able to turn a profitable restoration into a loss. The
+       * upper edge came down to match (1.15 would have raised the spread's
+       * own mean above 1.0, breaking the Sprint 54 no-free-lunch invariant
+       * that an unmodified car's expected walk-in sale never nets a profit
+       * over its own guide value, `valueModelProbes.test.ts`) - `[0.90, 1.08]`
+       * keeps the mean at 0.99, still a real discount on average.
        */
       offerSpread: z
         .tuple([z.number().positive(), z.number().positive()])
@@ -733,6 +756,18 @@ export const EconomyConfigSchema = z.object({
     .refine((m) => m.minGapDays <= m.maxGapDays, {
       message: 'machineListings.minGapDays must be <= maxGapDays',
     }),
+  /**
+   * Sprint 55 (economy-bible.md law 4 - one derived ledger, machine-checked):
+   * the one number the roster-wide coherence check (`coherence.ts`,
+   * `tools/balance/src/balance/invariants.py`) gates the "brake pads vs car
+   * price" guard against - the full tyres+brakePadsDiscs+clutch consumable
+   * set, class-priced, must never exceed this fraction of a model's own book
+   * value. A content anchor rather than a hardcoded check constant, so
+   * retuning it is a one-line content edit like every other economy knob.
+   */
+  coherence: z.object({
+    maxConsumablesShareOfBookValue: z.number().positive().max(1),
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

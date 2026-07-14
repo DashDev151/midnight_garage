@@ -58,6 +58,20 @@ the maintainer's own framing is the right one - this isn't a
 regression from a known-good baseline (none was ever established),
 it's the sim producing a new answer after its logic changed, which is
 exactly what an unvalidated simulation is expected to do.
+
+Update (Sprint 55, economy-bible.md's Economy Rebuild arc close-out):
+all 3 informational checks above now read differently than the history
+this docstring records. Once the repair-margin/no-value-trap laws (Sprints
+53-54) and this sprint's own retune pass (`AUCTION_WHOLESALE_FRACTION`
+0.85 -> 0.75, `selling.offerSpread` `[0.82, 1.12]` -> `[0.90, 1.08]`) landed,
+a fresh 1000-career run shows most active strategies beating Passive
+Grinder's day-100 cash, Flipper clearing its own starting cash, and the
+auction win-price tails (steal/frenzy) both inside their target band for
+the first time this file has ever recorded. Kept informational rather
+than promoted to hard-gated here - that call belongs to a maintainer
+reviewing a few more runs first, not a unilateral change bundled into the
+sprint that happened to fix the underlying economy; see this sprint's own
+Exit for the full before/after numbers.
 """
 
 import argparse
@@ -66,7 +80,14 @@ from pathlib import Path
 
 import polars as pl
 
-from balance.data import load_acquisitions, load_auction_wins, load_careers, load_careers_manifest
+from balance.data import (
+    load_acquisitions,
+    load_auction_wins,
+    load_careers,
+    load_careers_manifest,
+    load_coherence,
+    load_coherence_manifest,
+)
 
 SANITY_FLOOR_YEN = -2_000_000
 SEPARATION_THRESHOLD_YEN = 20_000
@@ -82,6 +103,10 @@ SEPARATION_THRESHOLD_YEN = 20_000
 DAYS_TO_LOCAL_BAND = (10, 35)
 AUCTION_TAIL_BAND = (0.05, 0.15)
 BUYOUT_SHARE_CEILING = 0.30
+# Floating-point slack on the Law 2 ratio check - `enforceMaxBillFraction`
+# guarantees the bill lands AT or under the cap, not strictly under, so an
+# exact-equality roll must not read as a spurious failure.
+COHERENCE_RATIO_EPSILON = 1e-6
 COMPETENT_POLICY_STRATEGY = "competent-policy"
 PASSIVE_STRATEGY = "passive-grinder"
 FLIPPER_STRATEGY = "flipper"
@@ -121,6 +146,8 @@ def check_invariants(
     auction_wins: pl.DataFrame,
     acquisitions: pl.DataFrame,
     manifest: dict,
+    coherence: pl.DataFrame,
+    coherence_manifest: dict,
 ) -> list[tuple[str, bool, str]]:
     passive_100 = median_cash(df, PASSIVE_STRATEGY, 100)
     flipper_100 = median_cash(df, FLIPPER_STRATEGY, 100)
@@ -211,6 +238,70 @@ def check_invariants(
         )
     )
 
+    # --- Invariants 7-10 (hard-gated, Sprint 55 decision 2 - economy-bible.md
+    # law 4): the closed-form roster-coherence facts. Each calls the real
+    # sim value/generation-guard functions per model (`coherence.csv`), so a
+    # failure here means the actual shipped game, not a stale check, is out
+    # of line - see `docs/design/economy-bible.md`'s four laws. ---
+    max_bill_fraction = coherence_manifest["maxBillFraction"]
+    ratio_failures = [
+        f"{row['modelId']}: ratio {row['billToCleanRatio']:.3f} > {max_bill_fraction}"
+        for row in coherence.iter_rows(named=True)
+        if row["billToCleanRatio"] > max_bill_fraction + COHERENCE_RATIO_EPSILON
+    ]
+    results.append(
+        (
+            "Law 2: every roster model's worst-case bill/clean-value ratio "
+            f"<= maxBillFraction ({max_bill_fraction})",
+            len(ratio_failures) == 0,
+            f"{len(ratio_failures)}/{coherence.height} models out of band"
+            + (f": {'; '.join(ratio_failures)}" if ratio_failures else ""),
+        )
+    )
+
+    margin_failures = [
+        f"{row['modelId']}: margin Y{row['flipMarginYen']:,.0f}"
+        for row in coherence.iter_rows(named=True)
+        if row["flipMarginYen"] <= 0
+    ]
+    results.append(
+        (
+            "Law 1: every roster model's worst-roll flip margin "
+            "(buy at reserve + full-restore + sell at guide) is positive",
+            len(margin_failures) == 0,
+            f"{len(margin_failures)}/{coherence.height} models non-positive"
+            + (f": {'; '.join(margin_failures)}" if margin_failures else ""),
+        )
+    )
+
+    max_consumables_share = coherence_manifest["maxConsumablesShareOfBookValue"]
+    consumables_failures = [
+        f"{row['modelId']}: share {row['consumablesShare']:.1%}"
+        for row in coherence.iter_rows(named=True)
+        if row["consumablesShare"] > max_consumables_share
+    ]
+    results.append(
+        (
+            "Law 3: every roster model's full consumable-replacement share of "
+            f"book value <= the content cap ({max_consumables_share:.0%})",
+            len(consumables_failures) == 0,
+            f"{len(consumables_failures)}/{coherence.height} models over cap"
+            + (f": {'; '.join(consumables_failures)}" if consumables_failures else ""),
+        )
+    )
+
+    payout_margin_min = coherence_manifest["payoutMarginMin"]
+    payout_required_coverage = coherence_manifest["payoutRequiredCoverage"]
+    results.append(
+        (
+            "Law 4: the service-job payout margin floor clears the "
+            f"profitability invariant's required coverage ({payout_required_coverage}x) - "
+            "the full per-template/per-model proof is serviceJobPayout.test.ts",
+            payout_margin_min >= payout_required_coverage,
+            f"marginMin={payout_margin_min} required={payout_required_coverage}",
+        )
+    )
+
     # --- Invariant 1 ([INFO], real measurement fails broadly - see module docstring) ---
     beats_passive = {s: v > passive_100 for s, v in non_passive_100.items()}
     results.append(
@@ -265,7 +356,11 @@ def main(argv: list[str] | None = None) -> int:
     manifest = load_careers_manifest(data_dir)
     auction_wins = load_auction_wins(data_dir)
     acquisitions = load_acquisitions(data_dir)
-    results = check_invariants(df, auction_wins, acquisitions, manifest)
+    coherence = load_coherence(data_dir)
+    coherence_manifest = load_coherence_manifest(data_dir)
+    results = check_invariants(
+        df, auction_wins, acquisitions, manifest, coherence, coherence_manifest
+    )
 
     all_passed = True
     for name, passed, detail in results:

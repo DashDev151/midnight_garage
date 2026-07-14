@@ -387,7 +387,15 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // conditioned - a real, intended value-model change, not a logic bug;
     // `wins a lot at auction, then sells the car` above still holds
     // unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('2ec1f080')
+    // Re-pinned again (Sprint 55, was 2ec1f080): decision 3's retune pass
+    // (economy-bible.md law 4) moved `AUCTION_WHOLESALE_FRACTION` (0.85 ->
+    // 0.75, pulling rival private valuations back down once the Sprint 54
+    // value law made anchorValueYen less discounted) and `selling.offerSpread`
+    // (`[0.82, 1.12]` -> `[0.90, 1.08]`, raising the walk-in sale floor) - both
+    // real, intended content retunes touching this career's auction/sale
+    // price path, not a logic bug; `wins a lot at auction, then sells the
+    // car` above still holds unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('60785b98')
   })
 })
 

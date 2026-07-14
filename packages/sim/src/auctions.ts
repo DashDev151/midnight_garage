@@ -367,8 +367,13 @@ export function generateAuctionCarInstance(
  *
  * Both passes are pure functions of the already-rolled `car` (no additional
  * RNG draws), so determinism for a given seed is unaffected.
+ *
+ * Exported (Sprint 55): the coherence harness calls this SAME function
+ * against a deliberately worse-than-generation-could-ever-roll car for every
+ * roster model, proving Law 2 holds everywhere rather than re-deriving its
+ * math a second time (`coherence.ts`).
  */
-function enforceMaxBillFraction(
+export function enforceMaxBillFraction(
   car: CarInstance,
   model: CarModel,
   context: SimContext,

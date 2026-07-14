@@ -21,7 +21,7 @@
     "collector-network": 40000
   },
   "AUCTION_BUYOUT_PREMIUM": 1.25,
-  "AUCTION_WHOLESALE_FRACTION": 0.85,
+  "AUCTION_WHOLESALE_FRACTION": 0.75,
   "AUCTION_QUIET_DAYS_TO_HAMMER": 3,
   "AUCTION_BID_INCREMENT_FRACTION": 0.05,
   "AUCTION_DAILY_SPAWN_RATE": {
@@ -228,7 +228,7 @@
       "normal": 1.0,
       "hot": 1.3
     },
-    "offerSpread": [0.82, 1.12]
+    "offerSpread": [0.9, 1.08]
   },
   "toolCeilings": {
     "naToTurboConversionEngineTier": 3
@@ -245,5 +245,8 @@
     "minGapDays": 4,
     "maxGapDays": 8,
     "windowDays": 3
+  },
+  "coherence": {
+    "maxConsumablesShareOfBookValue": 0.15
   }
 }

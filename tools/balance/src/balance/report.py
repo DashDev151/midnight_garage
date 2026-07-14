@@ -9,7 +9,7 @@ from pathlib import Path
 
 import polars as pl
 
-from balance.data import load_acquisitions, load_auction_wins, load_careers
+from balance.data import load_acquisitions, load_auction_wins, load_careers, load_coherence
 from balance.invariants import COMPETENT_POLICY_STRATEGY, days_to_tier, percentile
 
 CHECKPOINT_DAYS = [25, 40, 70, 100]
@@ -184,17 +184,56 @@ def render_specialty_section(df: pl.DataFrame) -> list[str]:
     return lines
 
 
+def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
+    """Sprint 55 (economy-bible.md law 4): the closed-form Law 1/Law 2/Law 3
+    facts, per roster model - `computeRosterCoherence` (sim) derives every
+    column by calling the real value/generation-guard functions directly, so
+    this table can never drift from what the game itself does. The "whole
+    roster's economy on one page" view the 2026-07-14 playtest (item 6)
+    asked for."""
+    lines = [
+        "## Roster coherence (Sprint 55, economy-bible.md law 4)",
+        "",
+        "Per-model closed-form facts at the worst plausible roll (post Law-2 "
+        "generation guard): clean value, the softened worst-case restoration "
+        "bill and its ratio to clean value (must stay <= `maxBillFraction`), "
+        "the flip margin buying at reserve + fully restoring + selling at guide "
+        "would clear (must stay positive), and the full consumable-replacement "
+        "share of book value (must stay under the content cap).",
+        "",
+        "| Model | Class | Clean value | Worst bill | Ratio | Flip margin | Consumables share |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for row in coherence.sort("modelId").iter_rows(named=True):
+        lines.append(
+            f"| {row['modelId']} | {row['fitmentClass']} "
+            f"| Y{row['cleanValueYen']:,.0f} | Y{row['worstBillYen']:,.0f} "
+            f"| {row['billToCleanRatio']:.1%} | Y{row['flipMarginYen']:,.0f} "
+            f"| {row['consumablesShare']:.1%} |"
+        )
+    lines.append("")
+    return lines
+
+
 INVARIANTS_ENFORCED_SECTION = [
-    "## Invariants enforced (Sprint 23 decision 7)",
+    "## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2)",
     "",
-    "`balance.cli check` hard-gates 5 checks against this data: days-to-`local` p50 "
-    "in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, and the "
+    "`balance.cli check` hard-gates 9 checks against this data: days-to-`local` p50 "
+    "in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, the "
     "3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive "
-    "separation, sanity floor). 3 more are measured and reported but NOT gated - real "
-    "measurement showed every active strategy's day-100 cash below Passive Grinder's, "
-    "Flipper below its own starting cash, and the auction frenzy tail outside its "
-    "target band; see `invariants.py`'s module docstring for the full disclosure "
-    "rather than a silently loosened band.",
+    "separation, sanity floor), and 4 Sprint 55 roster-coherence checks (economy-bible.md "
+    "law 4): every model's worst-case bill-to-clean ratio <= `maxBillFraction` (law 2), "
+    "every model's flip margin at the worst roll is positive (law 1), every model's full "
+    "consumable-replacement share of book value <= the content cap (law 3), and the "
+    "service-job payout margin floor clears the profitability invariant's required "
+    "coverage (law 4 - the full per-template/per-model proof is `serviceJobPayout.test.ts`, "
+    "already gated in the standard test suite). 3 more are measured and reported but NOT "
+    "gated (kept informational rather than promoted, since no maintainer has signed off on "
+    "hard-gating them yet) - see `invariants.py`'s module docstring for their history. As of "
+    "the Sprint 55 retune, all 3 read differently than that history describes: most active "
+    "strategies now beat Passive Grinder's day-100 cash, Flipper now clears its own starting "
+    "cash, and the auction win-price tails now sit inside their target band - see this "
+    "report's own tables above for the current real numbers.",
     "",
 ]
 
@@ -205,6 +244,7 @@ def render_markdown(
     acquisitions_section: list[str],
     days_to_tier_section: list[str],
     specialty_section: list[str],
+    coherence_section: list[str],
 ) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
@@ -225,6 +265,7 @@ def render_markdown(
     lines.append("")
     lines.extend(days_to_tier_section)
     lines.extend(specialty_section)
+    lines.extend(coherence_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
     lines.extend(INVARIANTS_ENFORCED_SECTION)
@@ -242,16 +283,20 @@ def main(argv: list[str] | None = None) -> int:
     auction_wins = load_auction_wins(data_dir)
     acquisitions = load_acquisitions(data_dir)
 
+    coherence = load_coherence(data_dir)
+
     auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
     days_to_tier_section = render_days_to_tier_section(df)
     specialty_section = render_specialty_section(df)
+    coherence_section = render_coherence_section(coherence)
     report = render_markdown(
         summarize(df),
         auction_section,
         acquisitions_section,
         days_to_tier_section,
         specialty_section,
+        coherence_section,
     )
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)

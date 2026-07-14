@@ -137,8 +137,12 @@ describe('seed content validates against schemas', () => {
     expect(result.data.STARTING_CASH_YEN).toBe(1_500_000)
     // New Sprint 20 auction-rework knobs, born in JSON from day one.
     // Auction-close + rival-contest knobs, retuned by the 2026-07-12
-    // auction fix (anti-snipe + longer visible window + more contest).
-    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.85)
+    // auction fix (anti-snipe + longer visible window + more contest), then
+    // retuned again by Sprint 55 decision 3 (economy-bible.md law 4's retune
+    // pass): the wholesale center moved back down once Sprint 54's gentler
+    // value law raised anchorValueYen enough that the same contestation
+    // rules were overshooting into a frenzy tail instead of a steal one.
+    expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.75)
     expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(3)
     expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
     // Sprint 30 (living auctions): daily arrivals + the bidder-interest
@@ -193,7 +197,60 @@ describe('seed content validates against schemas', () => {
     expect(result.data.selling.offerChanceByHeatBand.hot).toBeGreaterThan(
       result.data.selling.offerChanceByHeatBand.cold,
     )
-    expect(result.data.selling.offerSpread).toEqual([0.82, 1.12])
+    // Sprint 55 decision 3 (economy-bible.md law 4's retune pass): raised
+    // from [0.82, 1.12] so a bad walk-in roll can no longer erase the
+    // worst-case flip margin the Law 2 generation guard still permits; the
+    // upper edge came down to keep the spread's own mean at/below 1.0 (the
+    // Sprint 54 no-free-lunch invariant).
+    expect(result.data.selling.offerSpread).toEqual([0.9, 1.08])
+    // Sprint 55 (economy-bible.md law 4): the roster-coherence "brake pads
+    // vs car price" cap - a content anchor, not a hardcoded check constant.
+    expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)
+  })
+
+  /**
+   * Sprint 55 (economy-bible.md law 4 - one derived ledger, machine-checked):
+   * every top-level `economy.json` group is a hand-authored anchor, listed in
+   * the bible's Anchor Inventory section. This is the machine half of that
+   * claim - a new top-level field added here without updating the bible's
+   * table (or this list) fails loudly instead of silently drifting, exactly
+   * the "if two prices drifted apart, would a test catch it" litmus the law
+   * itself poses.
+   */
+  it('economy.json top-level anchors match the bible audit table', () => {
+    const expectedTopLevelKeys = [
+      'STARTING_CASH_YEN',
+      'WEEKLY_RENT_YEN',
+      'DOUBLE_PARKING_FINE_YEN',
+      'AUCTION_RESERVE_PRICE_FRACTION',
+      'AUCTION_LOTS_PER_TIER',
+      'AUCTION_DURATION_STANDARD_RANGE_DAYS',
+      'AUCTION_DURATION_LONG_RANGE_DAYS',
+      'AUCTION_DURATION_FLASH_DAYS',
+      'AUCTION_FLASH_CHANCE',
+      'AUCTION_LONG_CHANCE_UNCOMMON_RARE',
+      'AUCTION_TRAVEL_FEE_YEN',
+      'AUCTION_BUYOUT_PREMIUM',
+      'AUCTION_WHOLESALE_FRACTION',
+      'AUCTION_QUIET_DAYS_TO_HAMMER',
+      'AUCTION_BID_INCREMENT_FRACTION',
+      'AUCTION_DAILY_SPAWN_RATE',
+      'auctionInterest',
+      'restoration',
+      'valuation',
+      'marketPressure',
+      'statFormulas',
+      'bands',
+      'partsGeneration',
+      'reputation',
+      'serviceJobs',
+      'selling',
+      'toolCeilings',
+      'specialty',
+      'machineListings',
+      'coherence',
+    ].sort()
+    expect(Object.keys(economy).sort()).toEqual(expectedTopLevelKeys)
   })
 })
 

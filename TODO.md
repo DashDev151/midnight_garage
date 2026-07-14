@@ -28,11 +28,16 @@ pass."
 
 - [ ] **Whether the balance harness (bots + invariants) actually reflects real gameplay is still an
   open doubt**, restated increasingly sharply since 2026-07-08: bots may behave consistently with
-  each other without resembling how a real player plays. Sprint 23's fresh harness run sharpened
-  this further - every active strategy underperforms a do-nothing baseline at day 100 under current
-  mechanics (see `tools/balance/src/balance/invariants.py`'s module docstring for the numbers) - a
-  genuine finding about the economy's pacing/cost curve, not yet resolved. "N invariants pass" is
-  evidence the mechanism works, never evidence the game is fun or the bots are realistic.
+  each other without resembling how a real player plays. "N invariants pass" is evidence the
+  mechanism works, never evidence the game is fun or the bots are realistic - that judgment call
+  stays open regardless of the numbers below. Sprint 23's fresh harness run had sharpened this with
+  a specific finding (every active strategy underperforming a do-nothing baseline at day 100); the
+  Economy Rebuild arc's laws (Sprints 53-55) have since reversed it - a fresh 1000-career run
+  post-Sprint-55 shows most active strategies beating Passive Grinder's day-100 cash and Flipper
+  clearing its own starting cash for the first time this harness has recorded (see
+  `tools/balance/src/balance/invariants.py`'s module docstring and `docs/sprints/sprint55.md`'s
+  Exit for the real numbers). The economy-pacing symptom is resolved; the harness-vs-real-play
+  methodological doubt itself is not, and stays open.
 - [ ] **Recorded-play idea** (user-proposed 2026-07-09): parse real play sessions into per-archetype
   statistical rulesets - rates and biases ("bids X% below book," "does these repairs, buys that
   part"), not literal replay, and **phase-aware** (a career can drift mid-run; today's bots don't).
@@ -103,26 +108,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **Sprint 30 living-auction tuning: the board is a fire sale at first-pass numbers
-  (maintainer chose commit-as-is, tune in playtest, 2026-07-12).** Mechanics shipped and all hard
-  invariants pass, but the balance harness shows 94% of auction wins are cheap "steals" (target
-  ~10%, was 20% in Sprint 29) and Flipper is now a NET LOSS vs the do-nothing baseline
-  (-Y115,178 below passive, was +Y34k above). Three compounding, all-JSON-tunable causes:
-  staggered arrivals flood the board (92,990 acquisitions vs 21k, oversupply drags heat/sale
-  prices), the new bidder interest is too weak to contest lots, and age/mileage depresses this
-  old roster's values. Levers: `AUCTION_DAILY_SPAWN_RATE` (down), `auctionInterest.perCohortBidChance`
-  / `turnoutBandWeights` (up), `ageFactorCurve`/`mileageFactorCurve` shapes. Also revisit the
-  invented `cohortValuationSpreadByTurnout` + `eligible^2/bidderCount` damping (see `sprint30.md`
-  Exit). Telemetry columns (`bidEvents`, `daysOpen`) now in `auctionWins.csv`; the Python report
-  section to render them is a small unwired follow-up. This is the sprint's own user-only
-  "playtest an auction week, tune curves in JSON" task, now with the measured starting point.
-  **Update (2026-07-12 auction fix, commit after Sprint 32):** the two real BUGS this playtest
-  also exposed are now fixed (the anti-snipe "leading then instantly outbid and closed" bug, and
-  the invisible/black-box close), and a first-pass contest re-tune moved the fire sale the right
-  way (auction steal tail 94% -> 84%, frenzy 6% -> 15%; `AUCTION_WHOLESALE_FRACTION` 0.75 -> 0.85,
-  `perCohortBidChance` up, `turnoutBandWeights` toward packed, `maxIncrementsPerNight` 2 -> 3,
-  `AUCTION_QUIET_DAYS_TO_HAMMER` 2 -> 3). Steals are STILL too high (84%), so the JSON contest
-  calibration above remains open; the mechanic bugs are done.
 - [ ] **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
   The maintainer took the targeted Option B fix (above) for now but is not sold on the current
   async, overnight-resolved auction model even debugged: bidding is inherently slow (one

@@ -38,6 +38,7 @@ import { passiveGrinderStrategy } from '../bots/passiveGrinder'
 import { randomStrategy } from '../bots/randomStrategy'
 import { serviceGrinderStrategy } from '../bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../bots/runCareer'
+import { computeRosterCoherence } from '../coherence'
 import { buildSimContext } from '../context'
 
 const CAREERS_PER_STRATEGY = 1000
@@ -117,6 +118,22 @@ const OFFERS_COLUMNS = [
   { name: 'offerYen', type: 'int64' },
   { name: 'valueYen', type: 'int64' },
   { name: 'accepted', type: 'bool' },
+] as const
+
+/** Sprint 55 (economy-bible.md law 4): one row per roster model, the
+ * closed-form coherence facts `computeRosterCoherence` derives by calling
+ * the real Law 1/Law 2 sim functions directly - no seeded careers needed,
+ * so this exports once, not per-seed. */
+const COHERENCE_COLUMNS = [
+  { name: 'modelId', type: 'string' },
+  { name: 'fitmentClass', type: 'string' },
+  { name: 'cleanValueYen', type: 'int64' },
+  { name: 'worstBillYen', type: 'int64' },
+  { name: 'billToCleanRatio', type: 'float64' },
+  { name: 'flipMarginYen', type: 'int64' },
+  { name: 'flipMarginFraction', type: 'float64' },
+  { name: 'consumablesCostYen', type: 'int64' },
+  { name: 'consumablesShare', type: 'float64' },
 ] as const
 
 function writeCsv(
@@ -247,6 +264,33 @@ function main(): void {
     columns: OFFERS_COLUMNS,
   })
 
+  const coherenceRows = computeRosterCoherence(CARS, context).map((row) =>
+    [
+      row.modelId,
+      row.fitmentClass,
+      row.cleanValueYen,
+      row.worstBillYen,
+      row.billToCleanRatio.toFixed(6),
+      row.flipMarginYen,
+      row.flipMarginFraction.toFixed(6),
+      row.consumablesCostYen,
+      row.consumablesShare.toFixed(6),
+    ].join(','),
+  )
+  writeCsv('coherence.csv', COHERENCE_COLUMNS, coherenceRows)
+  writeManifest('coherence.manifest.json', {
+    simVersion: SIM_VERSION,
+    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
+    columns: COHERENCE_COLUMNS,
+    // Sprint 55: the two content thresholds the Python coherence checks
+    // gate against, sourced from the same economy.json this export actually
+    // ran with (Sprint 23's own "validate against the real run" precedent).
+    maxBillFraction: ECONOMY.partsGeneration.maxBillFraction,
+    maxConsumablesShareOfBookValue: ECONOMY.coherence.maxConsumablesShareOfBookValue,
+    payoutMarginMin: ECONOMY.serviceJobs.marginMin,
+    payoutRequiredCoverage: 1.15,
+  })
+
   const strategyList = STRATEGIES.map((s) => s.name).join(', ')
   console.log(
     `Wrote ${rows.length} rows (${STRATEGIES.length} strategies [${strategyList}] x ${CAREERS_PER_STRATEGY} careers x ${DAYS_PER_CAREER} days) to ${OUTPUT_DIR}`,
@@ -254,6 +298,7 @@ function main(): void {
   console.log(
     `Wrote ${auctionWinRows.length} auction-win rows, ${acquisitionRows.length} acquisition rows, and ${offerRows.length} offer rows to ${OUTPUT_DIR}`,
   )
+  console.log(`Wrote ${coherenceRows.length} coherence rows to ${OUTPUT_DIR}`)
 }
 
 main()

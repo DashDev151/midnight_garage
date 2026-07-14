@@ -124,18 +124,38 @@ scrapped slot) derives the same way, per class: it is simply that class's own st
 price - never a separately hand-authored number, so it can never drift from the catalog it
 describes.
 
-## The anchor inventory (v1 - full audit lands Sprint 55)
+## The anchor inventory (Sprint 55 audit table)
 
-Hand-authored anchors (change these and everything downstream recomputes):
+Every yen number in content is either a hand-authored anchor below, or derived from one - the
+`economy.json` top-level key set is machine-checked against this table
+(`packages/content/tests/schemas.test.ts`'s "economy.json top-level anchors match the bible audit
+table" - a new top-level field added to `economy.json` without a matching row here, or vice versa,
+fails that test outright, rather than silently drifting).
 
-- Car `bookValueYen` per model (`cars.json`).
-- `partPricing.json`'s `baseCostYen`/`classFactors`/`gradeFactors`/`globalFactor`/`overrides`.
-- Labor rate, callout fee, rent, starting cash, reserve fraction, offer spreads, mileage/condition
-  generation curves (`economy.json`).
+**Hand-authored anchors** (change these and everything downstream recomputes):
 
-Derived (never edit directly; edit the anchor that feeds them):
+| Anchor | Lives in | What it feeds |
+|---|---|---|
+| `bookValueYen` per model | `cars.json` | Clean value, and therefore every price in the game |
+| `baseCostYen` / `classFactors` / `gradeFactors` / `globalFactor` / `overrides` | `partPricing.json` | Every catalog SKU's `priceYen`, every taxonomy entry's per-class stock-replacement price |
+| `STARTING_CASH_YEN`, `WEEKLY_RENT_YEN`, `DOUBLE_PARKING_FINE_YEN` | `economy.json` | Career solvency pacing |
+| `AUCTION_RESERVE_PRICE_FRACTION`, `AUCTION_BUYOUT_PREMIUM`, `AUCTION_WHOLESALE_FRACTION`, `AUCTION_BID_INCREMENT_FRACTION`, `AUCTION_QUIET_DAYS_TO_HAMMER`, `AUCTION_LOTS_PER_TIER`, `AUCTION_DURATION_*`, `AUCTION_FLASH_CHANCE`, `AUCTION_LONG_CHANCE_UNCOMMON_RARE`, `AUCTION_TRAVEL_FEE_YEN`, `AUCTION_DAILY_SPAWN_RATE`, `auctionInterest.*` | `economy.json` | The whole auction reserve/buyout/contestation model (`bidding.ts`, `auctions.ts`) |
+| `restoration.repairStepFraction` | `economy.json` | Every repair-cost formula (`bands.ts`'s `costToMintYen` family) |
+| `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread` | `economy.json` | `marketValue.ts`'s guide-value formula |
+| `marketPressure.*` | `economy.json` | Weekly market-heat drift (`marketHeat.ts`) |
+| `statFormulas.*` | `economy.json` | Derived car stats (`derivedStats.ts`) and buyer taste normalization |
+| `bands.bandFactors`, `bands.migrationThresholds`, `bands.scrapValueFraction` | `economy.json` | The condition-band model and its save-migration mapping |
+| `partsGeneration.*` including `maxBillFraction` (Law 2) | `economy.json` | Car generation (`auctions.ts`'s `generateAuctionCarInstance`/`enforceMaxBillFraction`) |
+| `reputation.*` | `economy.json` | Clean/concours sale-quality bars and bonuses |
+| `serviceJobs.marginMin`/`marginMax`/`laborRateYen`/`calloutFeeYen`/`dailyOfferCountWeights`/`offerCountCapByDay` | `economy.json` | Service-job payout derivation (Law 4's payout-sanity check) |
+| `selling.*` including `offerSpread` | `economy.json` | Walk-in sale offers |
+| `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
+| `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
 
-- Every SKU's `priceYen` and every taxonomy entry's per-class stock-replacement price (Sprint 53).
+**Derived** (never edit directly; edit the anchor that feeds them):
+
+- Every SKU's `priceYen` and every taxonomy entry's per-class stock-replacement price (Sprint 53) -
+  `resolvePartPriceYen`/`data.ts`.
 - Repair/restoration bills (`bands.ts`'s `costToMintYen` family) - a fraction of the INSTALLED
   part's own resolved price, never the host car's identity (Sprint 44's anti-arbitrage law,
   preserved).
@@ -143,10 +163,41 @@ Derived (never edit directly; edit the anchor that feeds them):
   (Sprint 54).
 - Auction reserve, buyout premium, service-job payouts - all fractions or margins over guide value
   or task cost, never independently authored.
+- The roster-coherence table below (Sprint 55) - every column is a live call into the real sim
+  functions (`coherence.ts`), never a hand-computed number.
 
-Sprint 55 promotes this section into a machine-checked table (per-model bill/value ratios, flip
-margins, consumables-vs-car-value share) so a maintainer can eyeball the whole roster's economy on
-one page instead of discovering a drift via playtest.
+**Per-SKU price overrides** (`partPricing.json`'s `overrides` map): ships EMPTY. Any future entry
+is a deliberate, individually-justified maintainer decision; the balance report's roster-coherence
+section is the place a drifted override would first become visible (no override is active as of
+Sprint 55, so there is nothing yet to flag - the machinery is proactive, not reactive).
+
+## The roster-coherence machine check (Sprint 55, Law 4 fully in force)
+
+`packages/sim/src/coherence.ts`'s `computeRosterCoherence` derives, per roster model, by calling
+the real sim functions directly (never re-deriving their math):
+
+- **Clean value** and the **worst plausible restoration bill** a car of this model could carry
+  AFTER the Law 2 generation guard has softened it (`enforceMaxBillFraction`, stress-tested against
+  every real slot at `scrap`, at the roster's worst reachable mileage).
+- **Bill-to-clean ratio** - must stay `<= partsGeneration.maxBillFraction` for every model (Law 2).
+- **Flip margin** - buy at reserve off the worst-bill lot's own damaged guide value, pay the worst
+  bill to fully restore, sell at guide (= clean value, Law 1's structural ceiling); must stay
+  positive for every model (Law 1).
+- **Consumables share** - the full tyres+brakePadsDiscs+clutch replacement cost at the model's own
+  class, as a fraction of book value; must stay under `coherence.maxConsumablesShareOfBookValue`
+  (Law 3's direct "brake pads vs car price" guard).
+
+All four render as a per-model table in `tools/balance/report.md` (`pnpm balance:run` then
+`python -m balance.cli report`) and hard-gate `python -m balance.cli check`
+(`tools/balance/src/balance/invariants.py`) - a maintainer can eyeball the whole roster's economy on
+one page, and a regression fails the build, not just a playtest. A fifth check (payout sanity, Law
+4) confirms `serviceJobs.marginMin` still clears the profitability invariant's required coverage;
+the full per-template/per-model proof remains `packages/sim/tests/serviceJobPayout.test.ts`
+(Sprint 29), already gated in the standard test suite - this sprint's check is the one-line
+structural confirmation, not a re-derivation.
+
+This closes Law 4: every anchor is named, every derived number is a live function call, and a
+maintainer or CI run can catch a coherence drift before a playtest does.
 
 ## Amendment log
 
@@ -162,3 +213,21 @@ one page instead of discovering a drift via playtest.
   families added to `packages/sim/tests/valueModelProbes.test.ts`: the Honda City probe (the
   exact playtest regression), a full-restore-per-tier probe, a no-free-lunch probe, and a
   ceiling probe proving a fully restored car is worth exactly clean value, never more.
+- 2026-07-14: Law 4 implemented (Sprint 55), closing the Economy Rebuild arc. The anchor
+  inventory above is now a complete audit table, machine-checked against `economy.json`'s real
+  top-level key set (`packages/content/tests/schemas.test.ts`). `computeRosterCoherence`
+  (`packages/sim/src/coherence.ts`) derives four closed-form facts per roster model by calling
+  the real Law 1/Law 2 sim functions directly - bill-to-clean ratio, flip margin, and
+  consumables share all render as a per-model table in `tools/balance/report.md` and hard-gate
+  `python -m balance.cli check`; a fifth check confirms the service-job payout margin floor
+  still clears its profitability invariant. A new `coherence.maxConsumablesShareOfBookValue`
+  (0.15) anchor is the content-tunable cap Law 3's consumables check gates against. The sprint's
+  own retune pass (decision 3), applied once the re-measured auction/walk-in numbers under the
+  new laws showed a real problem: `AUCTION_WHOLESALE_FRACTION` 0.85 -> 0.75 (the historical
+  84%-steal fire sale had flipped into a 36.1%-frenzy problem once Sprint 54's gentler value law
+  raised anchorValueYen enough that the unchanged contestation rules overshot it) and
+  `selling.offerSpread` `[0.82, 1.12]` -> `[0.90, 1.08]` (closing the tail risk where a bad
+  walk-in roll could erase the worst-case flip margin the Law 2 guard still permits, without
+  breaking Sprint 54's no-free-lunch invariant). Book values and the mileage-curve floor stayed
+  untouched - the coherence table showed no model out of line at either. Full before/after
+  harness numbers in `docs/sprints/sprint55.md`'s Exit.

@@ -927,10 +927,14 @@ describe('distribution probes', () => {
     const p90 = finalRatios[Math.floor(finalRatios.length * 0.9)]!
     expect(p10).toBeGreaterThan(0.35)
     expect(median).toBeGreaterThan(0.55)
-    // Sprint 44 (constant part costs + the floorFraction bump) shifted the
-    // anchor-value distribution slightly - re-measured median ~0.852 (was
-    // <0.85); re-pinned with headroom rather than chasing the exact figure,
-    // same "report the real number" policy as everywhere else in this probe.
+    // Sprint 55 decision 3 (economy-bible.md law 4's retune pass):
+    // `AUCTION_WHOLESALE_FRACTION` moved 0.85 -> 0.75 once Sprint 54's value
+    // law raised anchorValueYen enough that the same contestation rules were
+    // pushing hammer prices past guide value far too often (the balance
+    // harness's auction frenzy tail); this median moves down with it but
+    // still clears the same wide, headroom-first band rather than chasing an
+    // exact figure, same "report the real number" policy as everywhere else
+    // in this probe.
     expect(median).toBeLessThan(0.88)
     expect(p90).toBeGreaterThan(0.55)
     // A real upper tail: some lots roll high enough spread/turnout to clear
