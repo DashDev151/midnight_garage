@@ -7,7 +7,7 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { carValuationBillYen } from './bands'
+import { carCostToMintYen } from './bands'
 
 /**
  * Sprint 27 - the taste-free "what is this car worth" answer, shared by
@@ -55,23 +55,21 @@ export function mileageFactor(mileageKm: number, economy: EconomyConfig): number
 }
 
 /**
- * The valuation-bill deduction (Sprint 47 decision 3, replaces Sprint 27's
- * single-rate hassle-factor-plus-hard-floor deduction): a two-slope premium
- * with strictly positive marginal return everywhere - no dead zone. Below
- * `valuationPremiumThresholdFraction` of clean value, each yen of
- * `valuationBill` (`carValuationBillYen`, bands.ts - FINE-referenced, unlike
- * the mint-referenced restoration bill shown on car screens) costs
- * `valuationPremiumNear` yen of value (above 1.0 - buyers pay a premium for
- * done-ness, the sane-flip region). Beyond that threshold, each yen costs
- * only `valuationPremiumFar` (still positive, deliberately never 0 - a
- * donor-priced repair on a genuine wreck still recovers real value, even
- * though a full catalog-priced restoration of one never pencils out). A
- * small backstop floor (scrap-value fraction of clean, the same "pennies on
- * the yen" rate a single scrapped part sells for) guards only against a
- * near-total-scrap car's bill driving the raw formula negative - it does
- * NOT create a wide dead zone the way the old hard floor did, since the far
- * slope alone keeps marginal return positive across the whole realistic
- * range this catalog can produce.
+ * The restoration-bill deduction (Sprint 54 decision 1, economy-bible.md law
+ * 1 - replaces Sprint 47's two-slope premium): ONE slope, always above 1 -
+ * `marketRepairDiscount` (1.2 first-pass) yen of guide value per yen of
+ * `billToMintYen` (`carCostToMintYen`, bands.ts - the SAME mint-referenced
+ * bill the player sees on screen as "restoration bill remaining"; Sprint 47's
+ * separate fine-referenced `carValuationBillYen` retires, so the displayed
+ * number and the priced number are now identical). At `billToMintYen = 0`
+ * (fully restored, no missing/scrap/worn parts) this returns exactly
+ * `cleanValue` - a fully restored car can never be worth more than the
+ * identical clean car; the ceiling is structural, not a clamp. A small
+ * backstop floor (scrap-value fraction of clean, the same "pennies on the
+ * yen" rate a single scrapped part sells for) guards only against a
+ * near-total-scrap car's bill driving the raw formula negative - Law 2 (the
+ * generation-time bill guard, auctions.ts) guarantees no generated car's
+ * bill is ever large enough to actually reach this floor.
  *
  * `cleanValue = bookValueYen * mileageFactor * (heatPercent / 100)` (heat
  * applies exactly once - the Sprint 21 heat-once law; mileage joined it
@@ -86,17 +84,12 @@ function instanceBaseValueYen(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
-  const { valuationPremiumNear, valuationPremiumFar, valuationPremiumThresholdFraction } =
-    economy.valuation
+  const { marketRepairDiscount } = economy.valuation
   const cleanValue =
     model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
-  const valuationBill = carValuationBillYen(car, model, partsById, partsTaxonomyById, economy)
-  const thresholdBill = valuationPremiumThresholdFraction * cleanValue
-  const nearBill = Math.min(valuationBill, thresholdBill)
-  const farBill = Math.max(0, valuationBill - thresholdBill)
-  const deduction = valuationPremiumNear * nearBill + valuationPremiumFar * farBill
+  const billToMintYen = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
   const backstopFloor = economy.bands.scrapValueFraction * cleanValue
-  return Math.max(backstopFloor, cleanValue - deduction)
+  return Math.max(backstopFloor, cleanValue - marketRepairDiscount * billToMintYen)
 }
 
 /**

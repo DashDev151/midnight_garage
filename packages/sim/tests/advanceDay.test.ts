@@ -381,7 +381,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // fixture), so the shift is a real, intended value-model/generation
     // change, not a logic bug - `wins a lot at auction, then sells the car`
     // above still holds unchanged (real car won, real sale, positive cash).
-    expect(hashState(acquisitionCareer().sold)).toBe('63d7048c')
+    // Re-pinned again (Sprint 54, was 63d7048c): the one-slope value formula
+    // (economy-bible.md law 1) and the generation-time bill guard (law 2)
+    // both change how this career's rolled/generated car is priced and
+    // conditioned - a real, intended value-model change, not a logic bug;
+    // `wins a lot at auction, then sells the car` above still holds
+    // unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('2ec1f080')
   })
 })
 

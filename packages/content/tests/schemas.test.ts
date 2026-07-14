@@ -158,14 +158,14 @@ describe('seed content validates against schemas', () => {
     // age curve was dropped by a post-Sprint-30 maintainer decision - car
     // age no longer factors into value at all).
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
-    // Sprint 47 decision 3: replaces Sprint 27's hard floor-clamp deduction
-    // with a two-slope premium (never a flat dead zone) plus a small
+    // Sprint 54 decision 1 (economy-bible.md law 1): replaces Sprint 47's
+    // two-slope premium with ONE slope, always above 1, plus the same small
     // scrap-value backstop floor (bands.scrapValueFraction, unchanged).
-    expect(result.data.valuation.mintGapWeight).toBe(0.5)
-    expect(result.data.valuation.valuationPremiumNear).toBe(1.15)
-    expect(result.data.valuation.valuationPremiumFar).toBe(0.4)
-    expect(result.data.valuation.valuationPremiumThresholdFraction).toBe(0.5)
+    expect(result.data.valuation.marketRepairDiscount).toBe(1.2)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
+    // Sprint 54 decision 4 (economy-bible.md law 2): the generation-time
+    // bill-vs-clean-value ceiling every generated car is softened to satisfy.
+    expect(result.data.partsGeneration.maxBillFraction).toBe(0.7)
     // Sprint 47 decision 2 (maintainer, 2026-07-13: "repairs in general are
     // too expensive"): retuned down from Sprint 44's 0.15.
     expect(result.data.restoration.repairStepFraction).toBe(0.1)

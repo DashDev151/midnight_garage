@@ -12,9 +12,17 @@ import {
   type RarityTier,
   type TurnoutBand,
 } from '@midnight-garage/content'
-import { bandForMigratedCondition, hasForcedInduction } from './bands'
+import {
+  bandForMigratedCondition,
+  bandIndex,
+  carCostToMintYen,
+  climbBand,
+  hasForcedInduction,
+  isPartMissing,
+} from './bands'
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
+import { mileageFactor } from './marketValue'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
@@ -321,7 +329,7 @@ export function generateAuctionCarInstance(
     }),
   ) as CarInstance['parts']
 
-  return {
+  const rolled: CarInstance = {
     id,
     modelId: model.id,
     year,
@@ -331,6 +339,87 @@ export function generateAuctionCarInstance(
     authenticityPercent: rng.int(60, 95),
     parts,
   }
+  return enforceMaxBillFraction(rolled, model, context)
+}
+
+/**
+ * Sprint 54 decision 4 (economy-bible.md law 2 - no value traps): softens a
+ * freshly-rolled car until `carCostToMintYen(car) <= maxBillFraction x
+ * cleanValue` (at neutral, heat-100 reference - generation doesn't know a
+ * model's future live heat) - every generatable lot is therefore profitably
+ * restorable. Two bounded, always-convergent passes, in this order because
+ * band damage is the common case and missing slots are comparatively rare
+ * (preserves "a missing slot is reachable" as the normal outcome, not
+ * something this guard silently erases):
+ *
+ * 1. Up to 4 passes lifting every part currently at the car's single worst
+ *    band by one step (scrap -> poor -> worn -> fine -> mint is at most 4
+ *    climbs for any part), re-checking the bill after each pass. This
+ *    softens ordinary condition damage, the common trap cause.
+ * 2. If the bill still exceeds budget once every part is mint (only possible
+ *    when one or more genuinely-missing slots are themselves driving the
+ *    bill - a mint slot contributes nothing, so nothing further to climb),
+ *    fills every genuinely-missing slot with a fresh mint stock part.
+ *    Guaranteed to satisfy the guard: at that point every present part is
+ *    mint and no real defect remains, so the bill is exactly zero (or the
+ *    cost of a legitimately-absent forcedInduction slot on an NA car, which
+ *    is also zero).
+ *
+ * Both passes are pure functions of the already-rolled `car` (no additional
+ * RNG draws), so determinism for a given seed is unaffected.
+ */
+function enforceMaxBillFraction(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+): CarInstance {
+  const { economy, partsById, partsTaxonomyById, stockPartByCarPartId } = context
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const cleanValue = model.bookValueYen * mileageFactor(car.mileageKm, economy)
+  const maxBillYen = economy.partsGeneration.maxBillFraction * cleanValue
+  const billFor = (c: CarInstance) =>
+    carCostToMintYen(c, model, partsById, partsTaxonomyById, economy)
+
+  let working = car
+  for (let pass = 0; pass < ALL_CAR_PART_IDS.length && billFor(working) > maxBillYen; pass++) {
+    let worstBandIdx: number | null = null
+    for (const partId of ALL_CAR_PART_IDS) {
+      const installed = working.parts[partId].installed
+      if (!installed) continue
+      const idx = bandIndex(installed.band)
+      if (worstBandIdx === null || idx < worstBandIdx) worstBandIdx = idx
+    }
+    if (worstBandIdx === null || worstBandIdx >= bandIndex('mint')) break
+    let parts = working.parts
+    for (const partId of ALL_CAR_PART_IDS) {
+      const installed = parts[partId].installed
+      if (!installed || bandIndex(installed.band) !== worstBandIdx) continue
+      parts = {
+        ...parts,
+        [partId]: { installed: { ...installed, band: climbBand(installed.band, 1) } },
+      }
+    }
+    working = { ...working, parts }
+  }
+
+  if (billFor(working) > maxBillYen) {
+    let parts = working.parts
+    for (const partId of ALL_CAR_PART_IDS) {
+      if (parts[partId].installed) continue
+      if (!isPartMissing(working, model, partId)) continue // legitimately-absent FI - leave alone
+      const fresh = stockInstanceFor(
+        partId,
+        'mint',
+        `${car.id}-softened`,
+        fitmentClass,
+        stockPartByCarPartId,
+      )
+      if (fresh) parts = { ...parts, [partId]: { installed: fresh } }
+    }
+    working = { ...working, parts }
+  }
+
+  return working
 }
 
 /**

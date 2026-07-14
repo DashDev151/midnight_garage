@@ -16,14 +16,20 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { anchorValueYen, nextRaiseYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
-import { generateAuctionCatalog } from '../src/auctions'
-import { hasForcedInduction, planGroupRepair } from '../src/bands'
+import { generateAuctionCarInstance, generateAuctionCatalog } from '../src/auctions'
+import { carCostToMintYen, hasForcedInduction, planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { marketValueYen } from '../src/marketValue'
+import { marketValueYen, mileageFactor } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { bestFitBuyer } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
-import { buildCarInstance, testSpecialty, testToolTiers, uniformCarParts } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  testSpecialty,
+  testToolTiers,
+  uniformCarParts,
+} from './testFixtures'
 
 /**
  * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
@@ -402,5 +408,328 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
     // play. Sanity bound only: the formula must produce a finite, real yen
     // figure, not NaN/Infinity from a division or missing-catalog lookup.
     expect(Number.isFinite(marginYen)).toBe(true)
+  })
+})
+
+/**
+ * Sprint 54 acceptance probes (economy-bible.md laws 1-2, decision 5). Every
+ * probe below would have caught the exact playtest bug (buy a cheap shitbox,
+ * triage-repair it, guide value doesn't move) this sprint exists to retire.
+ */
+
+const CITY_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
+if (!CITY_MODEL) throw new Error('fixture car missing from seed content')
+
+/**
+ * A uniform-band car with every slot filled at the MODEL's own fitment
+ * class (`testFixtures.ts`'s shared `uniformCarParts` is pinned to `common`
+ * regardless of the model passed in - fine for a `rare`-tier fixture like
+ * this file's other probes, but wrong here: honda-city-e-aa is `shitbox`
+ * tier, and a `common`-class bill is ~4x too expensive for it, which would
+ * silently pin this probe's own guide value to the scrap-value floor before
+ * it ever exercises the repair-margin math this probe exists to prove).
+ */
+function uniformClassedCarParts(
+  model: CarModel,
+  band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint',
+): CarInstance['parts'] {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const carHasForcedInduction = hasForcedInduction(model)
+  return Object.fromEntries(
+    ALL_CAR_PART_IDS.map((partId) => {
+      if (partId === 'forcedInduction' && !carHasForcedInduction) {
+        return [partId, { installed: null }]
+      }
+      const stockPart = CONTEXT.stockPartByCarPartId[fitmentClass][partId]
+      return [
+        partId,
+        {
+          installed: stockPart
+            ? { id: `probe-${partId}`, partId: stockPart.id, band, genuinePeriod: false }
+            : null,
+        },
+      ]
+    }),
+  ) as CarInstance['parts']
+}
+
+/** Bumps every part `planGroupRepair` finds eligible in `groupId` to
+ * `targetBand`, returning the updated car and the real yen cost - the same
+ * pipeline a "repair to band" confirm click charges. */
+function applyGroupRepairToBand(
+  car: CarInstance,
+  groupId: (typeof ComponentIdSchema.options)[number],
+  targetBand: 'worn' | 'fine' | 'mint',
+): { car: CarInstance; costYen: number } {
+  const plan = planGroupRepair(
+    car,
+    groupId,
+    targetBand,
+    testToolTiers(),
+    CONTEXT.partIdsByGroup,
+    CONTEXT.partsById,
+    CONTEXT.partsTaxonomyById,
+    CONTEXT.economy.restoration.repairStepFraction,
+  )
+  let parts = car.parts
+  for (const partId of plan.partIds) {
+    const installed = parts[partId].installed!
+    parts = { ...parts, [partId]: { installed: { ...installed, band: targetBand } } }
+  }
+  return { car: { ...car, parts }, costYen: plan.costYen }
+}
+
+/** Replaces one non-repairable consumable (tyres/brakePadsDiscs/clutch) with
+ * a fresh, class-correct mint stock part - the real "Replace" cost for a
+ * part `planGroupRepair` always prices at zero (it never touches
+ * non-repairable slots). */
+function replaceConsumable(
+  car: CarInstance,
+  model: CarModel,
+  carPartId: CarPartId,
+): { car: CarInstance; costYen: number } {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const stockPart = CONTEXT.stockPartByCarPartId[fitmentClass][carPartId]
+  const entry = PARTS_TAXONOMY_BY_ID[carPartId]
+  const costYen = entry.stockReplacementPriceYenByClass[fitmentClass]
+  const parts = {
+    ...car.parts,
+    [carPartId]: {
+      installed: {
+        id: `${car.id}-fresh-${carPartId}`,
+        partId: stockPart.id,
+        band: 'mint' as const,
+        genuinePeriod: false,
+      },
+    },
+  }
+  return { car: { ...car, parts }, costYen }
+}
+
+describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regression)', () => {
+  it('buying a worst-case (all-poor) shitbox at reserve then triage-repairing it (consumables + a couple cheap groups) raises projected profit at every step, never a loss', () => {
+    let car = buildCarInstance({
+      modelId: CITY_MODEL.id,
+      year: 1983,
+      mileageKm: 116_226,
+      parts: uniformClassedCarParts(CITY_MODEL, 'poor'),
+    })
+    const { marketRepairDiscount } = ECONOMY.valuation
+    const guideAsBought = marketValueYen(
+      CITY_MODEL,
+      car,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const buyPriceYen = Math.round(guideAsBought * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+
+    let spentYen = 0
+    let guideYen = guideAsBought
+    let profitYen = guideYen - buyPriceYen - spentYen
+    expect(profitYen).toBeGreaterThanOrEqual(0) // the acquisition discount alone is already non-negative
+
+    // The playtest's own triage play: replace the two cheapest consumables,
+    // then step a couple of ordinary groups from poor to worn.
+    const triageSteps: (() => { car: CarInstance; costYen: number })[] = [
+      () => replaceConsumable(car, CITY_MODEL, 'tyres'),
+      () => replaceConsumable(car, CITY_MODEL, 'brakePadsDiscs'),
+      () => applyGroupRepairToBand(car, 'suspension', 'worn'),
+      () => applyGroupRepairToBand(car, 'interior', 'worn'),
+    ]
+
+    for (const step of triageSteps) {
+      const result = step()
+      car = result.car
+      spentYen += result.costYen
+      const nextGuideYen = marketValueYen(
+        CITY_MODEL,
+        car,
+        100,
+        PARTS_BY_ID,
+        PARTS_TAXONOMY_BY_ID,
+        ECONOMY,
+      )
+      const guideDeltaYen = nextGuideYen - guideYen
+      // Law 1, literally: this one step's own guide-value gain is at least
+      // marketRepairDiscount x its own cost - a 5% relative tolerance absorbs
+      // the per-part independent rounding a multi-part group step can
+      // accumulate (each part's own costToMintYen rounds separately), without
+      // masking a real formula regression (which would miss by far more).
+      expect(guideDeltaYen).toBeGreaterThanOrEqual(marketRepairDiscount * result.costYen * 0.95)
+      const nextProfitYen = nextGuideYen - buyPriceYen - spentYen
+      expect(nextProfitYen).toBeGreaterThanOrEqual(profitYen) // never a step backwards
+      guideYen = nextGuideYen
+      profitYen = nextProfitYen
+    }
+
+    expect(profitYen).toBeGreaterThan(0) // the exact playtest scenario now actually profits
+  })
+})
+
+describe('full-restore probe per tier (Sprint 54 decision 5 - law 2, no value traps)', () => {
+  it.each(['shitbox', 'common', 'uncommon', 'rare'] as const)(
+    'the worst generatable roll for a %s-tier car, fully restored and sold at guide, clears a positive flip margin',
+    (tier) => {
+      const models = CARS.filter((c) => c.tier === tier)
+      expect(models.length, `no ${tier}-tier car in the roster to probe`).toBeGreaterThan(0)
+
+      let worst: { car: CarInstance; model: CarModel; guideYen: number } | null = null
+      for (const model of models) {
+        for (let seed = 0; seed < 40; seed++) {
+          const car = generateAuctionCarInstance(
+            model,
+            `worst-${tier}-${seed}`,
+            createRng(seed),
+            CONTEXT,
+          )
+          const guideYen = marketValueYen(
+            model,
+            car,
+            100,
+            PARTS_BY_ID,
+            PARTS_TAXONOMY_BY_ID,
+            ECONOMY,
+          )
+          if (!worst || guideYen < worst.guideYen) worst = { car, model, guideYen }
+        }
+      }
+      if (!worst) throw new Error('unreachable: models.length already asserted > 0')
+
+      const buyPriceYen = Math.round(worst.guideYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+      const repairCostYen = carCostToMintYen(
+        worst.car,
+        worst.model,
+        PARTS_BY_ID,
+        PARTS_TAXONOMY_BY_ID,
+        ECONOMY,
+      )
+      const restoredCar = fullyRestored(worst.car, worst.model)
+      const sellPriceYen = marketValueYen(
+        worst.model,
+        restoredCar,
+        100,
+        PARTS_BY_ID,
+        PARTS_TAXONOMY_BY_ID,
+        ECONOMY,
+      )
+      const marginYen = sellPriceYen - buyPriceYen - repairCostYen
+      expect(marginYen).toBeGreaterThan(0)
+    },
+  )
+})
+
+describe('no-free-lunch probe (Sprint 54 decision 5)', () => {
+  it('buying at full guide value with no repair done nets no expected profit via the real walk-in sale channel', () => {
+    const [min, max] = ECONOMY.selling.offerSpread
+    const expectedOfferMultiplier = (min + max) / 2
+    // The walk-in offer spread is centered at or below 1.0 (an instant sale
+    // trades at a discount, not a premium) - the profit engine is the
+    // acquisition discount plus repair margin, never merely holding a car.
+    expect(expectedOfferMultiplier).toBeLessThanOrEqual(1)
+    for (const lot of independentLots(50, 8000)) {
+      const guideYen = marketValueYen(
+        PROBE_MODEL,
+        lot.car,
+        100,
+        PARTS_BY_ID,
+        PARTS_TAXONOMY_BY_ID,
+        ECONOMY,
+      )
+      expect(guideYen).toBeGreaterThan(0)
+      expect(guideYen * expectedOfferMultiplier).toBeLessThanOrEqual(guideYen)
+    }
+  })
+})
+
+describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
+  const COMMON_MODEL = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
+  if (!COMMON_MODEL) throw new Error('fixture common-tier car missing from seed content')
+
+  it('an all-stock-mint car (zero restoration bill) is worth exactly its clean value, never above', () => {
+    const car = buildCarInstance({
+      modelId: COMMON_MODEL.id,
+      mileageKm: 60_000,
+      parts: mintCarParts(),
+    })
+    // 60,000 km is a defined breakpoint on the mileage curve (factor exactly
+    // 1.0), so this is an exact, not approximate, comparison.
+    const cleanValueYen = COMMON_MODEL.bookValueYen * mileageFactor(60_000, ECONOMY)
+    const guideValueYen = marketValueYen(
+      COMMON_MODEL,
+      car,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    expect(guideValueYen).toBe(Math.round(cleanValueYen))
+  })
+
+  it('a restored high-mileage car is worth strictly less than a restored low-mileage example of the same model', () => {
+    const freshCar = buildCarInstance({
+      modelId: COMMON_MODEL.id,
+      mileageKm: 30_000,
+      parts: mintCarParts(),
+    })
+    const wornMileageCar = buildCarInstance({
+      modelId: COMMON_MODEL.id,
+      mileageKm: 180_000,
+      parts: mintCarParts(),
+    })
+    const freshGuideYen = marketValueYen(
+      COMMON_MODEL,
+      freshCar,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    const wornGuideYen = marketValueYen(
+      COMMON_MODEL,
+      wornMileageCar,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+    )
+    expect(wornGuideYen).toBeLessThan(freshGuideYen)
+  })
+
+  it('fully restoring any generated car never prices it above its own clean value', () => {
+    for (const lot of independentLots(80, 9000)) {
+      const restored = fullyRestored(lot.car, PROBE_MODEL)
+      const cleanValueYen = PROBE_MODEL.bookValueYen * mileageFactor(restored.mileageKm, ECONOMY)
+      const guideValueYen = marketValueYen(
+        PROBE_MODEL,
+        restored,
+        100,
+        PARTS_BY_ID,
+        PARTS_TAXONOMY_BY_ID,
+        ECONOMY,
+      )
+      expect(guideValueYen).toBeLessThanOrEqual(Math.round(cleanValueYen) + 1) // rounding slack
+    }
+  })
+})
+
+describe('the scrap-value floor never binds on a generated lot (Sprint 54 decision 3)', () => {
+  it('every model, seeded across many rolls, never needs the backstop floor - Law 2 keeps the unclamped formula above it on its own', () => {
+    for (const model of CARS) {
+      for (let seed = 0; seed < 30; seed++) {
+        const car = generateAuctionCarInstance(
+          model,
+          `floor-check-${model.id}-${seed}`,
+          createRng(seed),
+          CONTEXT,
+        )
+        const cleanValueYen = model.bookValueYen * mileageFactor(car.mileageKm, ECONOMY)
+        const floorYen = ECONOMY.bands.scrapValueFraction * cleanValueYen
+        const billYen = carCostToMintYen(car, model, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)
+        const unclampedValueYen = cleanValueYen - ECONOMY.valuation.marketRepairDiscount * billYen
+        expect(unclampedValueYen).toBeGreaterThanOrEqual(floorYen)
+      }
+    }
   })
 })

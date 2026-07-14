@@ -130,4 +130,82 @@ law cannot hold on cheap cars because their real spend exceeds their ceiling.
 
 ## Exit
 
-Not started.
+Implemented as designed. `docs/design/economy-bible.md` updated: Laws 1 and 2 now marked
+implemented (Law 3 landed Sprint 53; Law 4 remains Sprint 55 scope).
+
+**Content:** `packages/content/src/economy.ts`/`economy.json`: `valuation.mintGapWeight`,
+`valuationPremiumNear`, `valuationPremiumFar`, `valuationPremiumThresholdFraction` all deleted;
+replaced by one field, `valuation.marketRepairDiscount` (1.2, schema-enforced `.min(1)` - Law 1
+as a structural constraint, not just a convention). `partsGeneration.maxBillFraction` (0.7,
+`.positive().max(1)`) added - the generation-time ceiling Law 2 enforces.
+
+**Sim:** `packages/sim/src/bands.ts` - `costToValuationYen` and `carValuationBillYen` deleted
+outright (the fine-referenced bill retires; `carCostToMintYen`, already used for the
+player-facing "restoration bill," is now also the ONLY bill the market prices against).
+`packages/sim/src/marketValue.ts` - `instanceBaseValueYen` rewritten to the one-slope formula
+(`max(floor, cleanValue - marketRepairDiscount * billToMintYen)`); at `billToMintYen = 0` this
+returns exactly `cleanValue`, so the no-inflation ceiling is structural, not clamped.
+`packages/sim/src/auctions.ts` - `generateAuctionCarInstance` now runs every rolled car through
+a new `enforceMaxBillFraction` guard before returning: up to 4 bounded passes lift every part at
+the car's current worst band by one step (band damage is the common trap cause), and only if
+still over budget once everything is mint does a fallback pass fill genuinely-missing slots
+(rare, and only actually needed when missing slots themselves are what's driving the bill) - both
+passes are pure functions of the already-rolled car, so determinism per seed is unaffected. Both
+`auctions.ts`'s own catalog generation and `serviceJobs.ts`'s customer-car rolling share this one
+function, so the guard covers both call sites for free (task 2), with zero changes needed to
+`serviceJobs.ts` itself.
+
+**Game:** zero functional changes, confirmed rather than assumed - `gameStore.ts`'s
+`restorationBillYen`/`totalBillYen` already read `carCostToMintYen` and `guideValueYen` already
+reads `carGuideValueYen` (which wraps `marketValueYen`), both with unchanged signatures; no
+HelpHint copy referenced the retired two-slope wording, so no copy edit was needed either.
+
+**Tests:** `packages/sim/tests/valueModelProbes.test.ts` gained the four acceptance-probe
+families from decision 5 - the Honda City probe (the exact playtest scenario: an all-poor
+shitbox, bought at reserve, triage-repaired exactly as played, asserting guide value rises by
+>= marketRepairDiscount x every step's own cost and profit never regresses), a full-restore
+probe per roster tier (the worst generatable roll for each of shitbox/common/uncommon/rare,
+fully restored and sold at guide, must clear a positive margin - proven mathematically in the
+sprint's own design work to hold with real margin: `0.5*cleanValue - 0.4*billYen >= 0.22*cleanValue`
+at the worst permitted bill), a no-free-lunch probe (buying at full guide with no repair can't
+expect to profit via the real walk-in channel), and a ceiling probe (an all-stock-mint car
+prices at exactly its clean value, never above; a restored high-mileage car stays below a
+restored low-mileage one). A fifth new test asserts the scrap-value floor never actually binds
+on any of the ~300 generated lots this sprint's probes sample across the whole roster (Law 2's
+own guarantee, checked directly against the unclamped formula, not inferred from output). One
+real bug caught by the Honda City probe during its own construction: the test's first fixture
+used `testFixtures.ts`'s `uniformCarParts` helper, which is pinned to `common`-class stock parts
+regardless of the model passed in - fine for this file's other (rare-tier) probes, but silently
+wrong for a shitbox-tier car, since a `common`-class bill is ~4x too expensive for it and pinned
+the probe's own guide value to the scrap floor before any repair math ran. Fixed with a small
+local `uniformClassedCarParts` helper that resolves stock parts at the MODEL's own fitment
+class - the exact class-mismatch failure mode Sprint 53 fixed everywhere else, caught here by
+the probe itself doing its job.
+
+Existing Sprint 47 tests (`marketValue.test.ts`) rewritten in place for the one-slope formula
+(no behavior change to what they test, only the formula they check against); the pre-existing
+"backstop floor" test kept (a hand-built, Law-2-bypassing fixture still needs the floor to
+exist as a genuine backstop) with its own doc comment clarifying that a real generated lot can
+never reach it.
+
+**Verification:** full gate green - `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm
+format`, `pnpm test:coverage` (996 tests passed, coverage 91.18%/81.48%/92.12%/95.09%
+stmts/branch/func/line, all above the gated floor), `pnpm build`. One golden-master hash
+re-pinned (`packages/sim/tests/advanceDay.test.ts`'s acquisition-and-sale-path career,
+`63d7048c` -> `2ec1f080`) - the real, intended effect of rewriting the value formula on a
+generation-driven career with no hand-fixed part fixture to insulate it; the file's own
+scripted-30-day-career hash was unaffected (that career apparently never exercises enough
+value-formula-dependent paths to shift).
+
+Balance harness (`pnpm balance:run` then `python -m balance.cli check`): all hard-gated
+invariants pass. **Days-to-`local` p50 = 12.0 days (940/1000 seeds)** - unchanged from Sprint
+53's own p50=12.0, though more seeds now reach it within the horizon (940 vs 915) - no retune
+needed. Buyout share 0.0%, Passive Grinder solvency Y1,220,000 (unchanged, it never trades),
+sanity floor clear across every strategy. The disclosed cash-curve shift this sprint's own
+design work anticipated is real and in the expected direction: **Handyman's day-100 median cash
+moved from below Passive Grinder (Y1,086,811 in Sprint 53's report) to above it
+(Y1,281,496)** - the repair-focused bot now genuinely profits from repairing, which is exactly
+the loop this sprint exists to fix. Cautious Restorer (also repair-heavy) rose from Y977,146 to
+Y1,064,228, though it still sits below Passive Grinder. Flipper rose slightly (Y1,317,295 ->
+Y1,331,581). `report.md` regenerated and committed with these figures. Law 4 (the full
+machine-checked global coherence audit) remains Sprint 55 scope, as designed.

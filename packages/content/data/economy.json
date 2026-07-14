@@ -63,10 +63,7 @@
       [120000, 0.85],
       [180000, 0.75]
     ],
-    "mintGapWeight": 0.5,
-    "valuationPremiumNear": 1.15,
-    "valuationPremiumFar": 0.4,
-    "valuationPremiumThresholdFraction": 0.5,
+    "marketRepairDiscount": 1.2,
     "partsRetention": 0.55,
     "genuinePeriodMultiplier": 1.25,
     "tasteSpread": 0.12,
@@ -192,7 +189,8 @@
       "neglected": 3,
       "average": 1,
       "cherished": 0
-    }
+    },
+    "maxBillFraction": 0.7
   },
   "reputation": {
     "cleanSaleMinBand": "fine",

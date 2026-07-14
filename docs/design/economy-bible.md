@@ -153,3 +153,12 @@ one page instead of discovering a drift via playtest.
 - 2026-07-14: document created; Law 3 and the fitment-class/pricing-sheet system implemented
   (Sprint 53). Laws 1 and 2 designed, implementation pending (Sprint 54). Law 4's full machine-
   checked audit designed, implementation pending (Sprint 55).
+- 2026-07-14: Laws 1 and 2 implemented (Sprint 54). `marketValueYen` now discounts the SAME
+  mint-referenced bill the player sees ("restoration bill remaining") at one flat rate,
+  `valuation.marketRepairDiscount` (1.2) - the two-slope premium, the separate fine-referenced
+  `carValuationBillYen`, and `mintGapWeight` all retired. `partsGeneration.maxBillFraction`
+  (0.7) is the generation-time guard `auctions.ts` softens every rolled car against, so Law 2
+  holds for every generatable lot, not just as a formula property. Four acceptance-probe
+  families added to `packages/sim/tests/valueModelProbes.test.ts`: the Honda City probe (the
+  exact playtest regression), a full-restore-per-tier probe, a no-free-lunch probe, and a
+  ceiling probe proving a fully restored car is worth exactly clean value, never more.

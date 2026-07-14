@@ -294,8 +294,10 @@ export const EconomyConfigSchema = z.object({
    * Sprint 21 (per-component weights); Sprint 26 decision 4 replaced the old
    * hand-authored `componentValueWeights` with a cost-weighted mean of band
    * factors; Sprint 27 replaced THAT shim with a transparent restoration-bill
-   * deduction; Sprint 47 replaces Sprint 27's hard floor-clamp deduction with
-   * a two-slope premium that never flattens to zero marginal return
+   * deduction; Sprint 47 replaced Sprint 27's hard floor-clamp deduction with
+   * a two-slope premium; Sprint 54 (economy-bible.md law 1) replaces the
+   * two-slope model with ONE slope, always above 1 - every repair yen returns
+   * more than itself, by construction, at every reachable state
    * (`marketValueYen`'s own doc comment carries the current formula).
    */
   valuation: z.object({
@@ -304,36 +306,15 @@ export const EconomyConfigSchema = z.object({
      * clamped to the first/last factor outside the breakpoint range. */
     mileageFactorCurve: CurveSchema,
     /**
-     * Sprint 47 decision 3: the valuation bill (a FINE-referenced bill,
-     * distinct from the mint-referenced restoration bill shown on car
-     * screens) weights a repairable part's fine-to-mint remainder at this
-     * fraction of its to-fine cost - worn-to-fine work is the real money
-     * play (full weight), fine-to-mint polish counts for less toward market
-     * value (it stays primarily the reputation/clean-sale play). 0.5
-     * first-pass, tuning bait.
+     * Sprint 54 decision 1 (economy-bible.md law 1): the ONE deduction rate -
+     * yen of guide value gained per yen of the (mint-referenced) restoration
+     * bill paid off. `.min(1)` is the law itself, enforced structurally: a
+     * value < 1 would mean repairing a car for real yen returns less than
+     * that yen back, exactly the guaranteed-loss bug this sprint exists to
+     * retire. 1.2 first-pass (buyers pay a premium for done-ness), tuning
+     * bait - never below 1.
      */
-    mintGapWeight: z.number().min(0).max(1),
-    /**
-     * Sprint 47 decision 3: the deduction's marginal rate (yen of value lost
-     * per yen of valuation bill) while `valuationBill / cleanValue` is at or
-     * below `valuationPremiumThresholdFraction` - above 1.0 (buyers pay a
-     * premium for done-ness, the old `hassleFactor`'s intent). This is the
-     * sane-flip region: every repair yen spent here returns more than itself.
-     */
-    valuationPremiumNear: z.number().positive(),
-    /**
-     * Sprint 47 decision 3: the deduction's marginal rate once
-     * `valuationBill / cleanValue` exceeds the threshold - deliberately still
-     * POSITIVE-RETURN (never 0, no dead zone) so a genuine wreck's guide
-     * value keeps falling smoothly with its bill instead of hard-floor-
-     * clamping, while a donor-priced repair on a wreck (far cheaper than this
-     * marginal rate implies) still turns a real profit.
-     */
-    valuationPremiumFar: z.number().positive(),
-    /** Sprint 47 decision 3: where the deduction's marginal rate switches
-     * from `valuationPremiumNear` to `valuationPremiumFar`, as a fraction of
-     * clean value. */
-    valuationPremiumThresholdFraction: z.number().positive(),
+    marketRepairDiscount: z.number().min(1),
     /** Installed-part value retention: a part is worth this fraction of its
      * catalog price toward the car's market value (real markets: mods return
      * cents on the yen, they don't multiply the chassis price). */
@@ -578,6 +559,16 @@ export const EconomyConfigSchema = z.object({
       average: z.number().nonnegative(),
       cherished: z.number().nonnegative(),
     }),
+    /**
+     * Sprint 54 decision 4 (economy-bible.md law 2 - no value traps): the
+     * hard ceiling on a generated car's restoration bill, as a fraction of
+     * its clean value (at neutral heat) - `generateAuctionCarInstance`
+     * softens the worst-rolled parts, one band at a time in seeded order,
+     * until `carCostToMintYen(car) <= maxBillFraction * cleanValue`. Every
+     * generatable lot is therefore profitably restorable by construction;
+     * 0.7 first-pass, tuning bait.
+     */
+    maxBillFraction: z.number().positive().max(1),
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar
