@@ -231,6 +231,65 @@ pass."
   painful) - open question for the spreadsheet pass. (The parts-pricing-curve question that used to
   sit here moved into Sprint 28's catalog work.)
 
+## Next up (scheduled, NOT designed)
+
+- [ ] **PARTS PROVENANCE, GROUND UP - a real system, replacing the ad hoc ownership rules**
+  (maintainer directive, 2026-07-15). **Scheduled: immediately after Sprint 69.** *Not designed -
+  the maintainer scopes this sprint. This entry records the diagnosis and the intent only.*
+
+  **What is wrong today.** A `PartInstance` does not know where it came from. It is born with
+  `{ id, partId, band, genuinePeriod }` and nothing else. Ownership - "is this part mine or the
+  customer's" - is therefore never a fact the part carries; it is **inferred, after the event, from
+  side channels**. Every bug in this area traces to that one absence, and every fix so far has been
+  a patch on the previous patch:
+
+  1. **Sprint 35** invented `customerJobId`: a mutable tag stamped onto a part at REMOVAL time,
+     decided by **where the car happened to be parked** (`resolveRemovePart`'s owned-car branch vs.
+     its service-job branch). Where a car is parked is not who owns a part.
+  2. **Sprint 61** added `ServiceJob.baselineInstalledPartIds`: a separate snapshot, on a different
+     object, recording which instance sat in each INSTALL-TASK slot at generation - built to answer
+     a different question ("has a genuinely new part been fitted yet?", for `isServiceTaskDone`).
+  3. **Sprint 68** discovered the Sprint 35 tag meant the game **confiscated parts the player had
+     bought** (fit a part to a customer's car, pull it back off, and close-out took it), and fixed
+     it by making the tag consult the Sprint 61 snapshot - patching one side channel with another.
+  4. **Sprint 68 again, hours later:** that fix was itself wrong. The snapshot only covered
+     install-task slots, so "no baseline for this slot" was read as "the player must have fitted
+     it" - meaning on any job carrying an install task, the player could pull the customer's
+     **engine** (a slot no task touches) and keep it. One theft traded for its mirror image, with a
+     test asserting the wrong behaviour and confident wrong reasoning attached to it. Patched again
+     by making the snapshot total over the car.
+
+  Four passes, three mechanisms (`customerJobId`, `baselineInstalledPartIds`, `isCustomersOwnPart`),
+  and the question is still answered by inference. The shape of the problem is visible in the
+  numbers: a part can be born at exactly **four** sites (`auctions.ts`'s `stockInstanceFor`,
+  `jobs.ts`'s removal-replacement stock instance, and two in `parts.ts`), **none** of which records
+  an origin - while provenance is currently read or written across **nine** files
+  (`jobs.ts`, `parts.ts`, `serviceJobs.ts`, `gameStore.ts`, `saveCodec.ts`, `PartCard.vue`, plus
+  tests). Four places know the truth and throw it away; nine places try to reconstruct it.
+
+  **What the maintainer wants built.** Provenance as a real, ground-up system rather than ad hoc
+  rules:
+  - **A part is linked to its car at spawn.** When a car is generated, every part on it is
+    recorded as having come from that car - whoever owns the car, player or customer, no distinction
+    at birth.
+  - **Tracked centrally, and consulted by EVERY action** that touches a part (remove, install,
+    scrap, sell, recondition, service-job close-out), rather than each resolver re-deriving
+    ownership from whatever is nearest to hand.
+  - **"Where did this come from" is answerable for any part in inventory, exactly.** A player should
+    be able to look at a part and know its history - which car it was pulled from, or that it was
+    bought.
+
+  **The maintainer's framing, kept verbatim because it is the whole point:** *"We needed it from the
+  start, not ad hoc rules to try and patch it... Doing this properly ground up eliminates all janky
+  behaviour that you are trying to bandaid."*
+
+  **Two notes for whoever scopes it.** (a) Directive 19 (no save backwards compatibility before
+  launch) makes the schema change cheap - a version bump, no migration, no golden-save test, and no
+  legacy-compat branch. This was materially more expensive a week ago. (b) `baselineInstalledPartIds`
+  currently serves TWO masters - ownership (Sprint 68) and install-task completion (Sprint 61,
+  `isServiceTaskDone`). A real origin record answers both, so the rework should expect to retire it
+  entirely rather than leave it serving one caller.
+
 ## Planned systems (designed, not yet scheduled)
 
 - [ ] **Skill / XP progression** - learn-by-doing growth for staff *and* the player character; skill
