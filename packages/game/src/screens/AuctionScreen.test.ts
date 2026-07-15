@@ -313,4 +313,92 @@ describe('AuctionScreen', () => {
       expect(wrapper.findAll('.bids-table tbody tr').length).toBe(game.myActiveBids.length)
     })
   })
+
+  describe('board filters', () => {
+    /** Every lot's entry price - what `matchesFilters` actually filters on. */
+    function entryPrices(game: ReturnType<typeof useGameStore>): number[] {
+      return game.auctionLotsByTier
+        .flatMap((g) => g.lots)
+        .map((l) => game.lotDetail(l.id)!.nextRaiseYen)
+    }
+
+    it('Affordable hides every lot the player cannot afford to bid on', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const prices = entryPrices(game)
+      expect(prices.length).toBeGreaterThan(1)
+
+      // Set cash so SOME lots are affordable and some are not - a filter that
+      // hides everything (or nothing) proves nothing.
+      const sorted = [...prices].sort((a, b) => a - b)
+      game.gameState = { ...game.gameState, cashYen: sorted[0]! }
+
+      const wrapper = mountScreen()
+      const before = wrapper.findAll('.lot').length
+      await wrapper.find('[data-test="filter-affordable"]').setValue(true)
+      const after = wrapper.findAll('.lot').length
+
+      expect(after).toBeLessThan(before)
+      expect(after).toBe(prices.filter((p) => p <= game.cashYen).length)
+    })
+
+    it('the price range shows only lots between min and max', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const prices = entryPrices(game)
+      const sorted = [...prices].sort((a, b) => a - b)
+      const min = sorted[0]!
+      const max = sorted[Math.floor(sorted.length / 2)]!
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="filter-min-price"]').setValue(min)
+      await wrapper.find('[data-test="filter-max-price"]').setValue(max)
+
+      expect(wrapper.findAll('.lot').length).toBe(prices.filter((p) => p >= min && p <= max).length)
+    })
+
+    it('says the filters hid everything, rather than pretending the board is empty', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+
+      await wrapper.find('[data-test="filter-max-price"]').setValue(1)
+
+      expect(wrapper.findAll('.lot').length).toBe(0)
+      // The board is NOT empty - that is a different fact and a different fix.
+      const filtered = wrapper.find('[data-test="all-filtered"]')
+      expect(filtered.exists()).toBe(true)
+      expect(filtered.text()).toContain('none matching your filters')
+    })
+
+    it('Clear restores the whole board', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+      const before = wrapper.findAll('.lot').length
+
+      await wrapper.find('[data-test="filter-max-price"]').setValue(1)
+      expect(wrapper.findAll('.lot').length).toBe(0)
+      await wrapper.find('[data-test="filter-clear"]').trigger('click')
+
+      expect(wrapper.findAll('.lot').length).toBe(before)
+      expect(wrapper.find('[data-test="filter-clear"]').exists()).toBe(false)
+    })
+
+    it('counts what is shown against what exists', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const total = entryPrices(game).length
+      const wrapper = mountScreen()
+
+      expect(wrapper.find('[data-test="filter-count"]').text()).toBe(`${total}/${total} lots`)
+      await wrapper.find('[data-test="filter-max-price"]').setValue(1)
+      expect(wrapper.find('[data-test="filter-count"]').text()).toBe(`0/${total} lots`)
+    })
+  })
 })

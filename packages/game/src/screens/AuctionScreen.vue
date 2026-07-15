@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import GradeStamp from '../components/GradeStamp.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
@@ -44,15 +44,63 @@ const willDoubleParkOnWin = computed(() => game.shopAtCapacity && !game.graceSlo
  */
 const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccupied)
 
+/**
+ * Board filters. The auction cadence got a lot busier (Sprint 66 roughly
+ * doubled arrivals), so the board needs a way to cut itself down to what a
+ * player can actually act on.
+ *
+ * Both filters read ONE number - `nextRaiseYen`, what it costs to get INTO
+ * this lot right now (the reserve on an unbid lot, the next ladder step on a
+ * contested one). Deliberately not the buyout price: filtering on buyout would
+ * hide lots you could win cheaply by bidding, which is most of them, and
+ * bidding is the point of an auction. Deliberately not guide value either -
+ * that is what the car is worth, not what it costs you today.
+ */
+const affordableOnly = ref(false)
+const minPriceYen = ref<number | null>(null)
+const maxPriceYen = ref<number | null>(null)
+
+function matchesFilters(d: LotDetail): boolean {
+  const entryYen = d.nextRaiseYen
+  if (affordableOnly.value && entryYen > game.cashYen) return false
+  if (minPriceYen.value !== null && entryYen < minPriceYen.value) return false
+  if (maxPriceYen.value !== null && entryYen > maxPriceYen.value) return false
+  return true
+}
+
+function clearFilters(): void {
+  affordableOnly.value = false
+  minPriceYen.value = null
+  maxPriceYen.value = null
+}
+
+const filtersActive = computed(
+  () => affordableOnly.value || minPriceYen.value !== null || maxPriceYen.value !== null,
+)
+
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
-const detailedGroups = computed(() =>
+const allGroups = computed(() =>
   game.auctionLotsByTier.map((g) => ({
     tier: g.tier,
     lots: g.lots.map((l) => game.lotDetail(l.id)).filter((d): d is LotDetail => d !== undefined),
   })),
 )
 
-const hasLots = computed(() => detailedGroups.value.length > 0)
+/** A tier with nothing left after filtering drops out entirely - an empty
+ * heading is just noise. */
+const detailedGroups = computed(() =>
+  allGroups.value
+    .map((g) => ({ tier: g.tier, lots: g.lots.filter(matchesFilters) }))
+    .filter((g) => g.lots.length > 0),
+)
+
+const totalLots = computed(() => allGroups.value.reduce((n, g) => n + g.lots.length, 0))
+const shownLots = computed(() => detailedGroups.value.reduce((n, g) => n + g.lots.length, 0))
+
+/** Distinguishes "the board is empty" from "your filters hid everything" -
+ * two very different things to tell a player. */
+const hasLots = computed(() => totalLots.value > 0)
+const hasVisibleLots = computed(() => shownLots.value > 0)
 
 /**
  * Sprint 56 decision 3: the stepper's per-click delta. Once a lot has a real
@@ -120,6 +168,42 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
     <p v-if="!hasLots" class="empty">
       No lots listed right now. New lots can arrive any day - End Day (or use the dev console to
       warp) and check back.
+    </p>
+
+    <div v-if="hasLots" class="filters" data-test="auction-filters">
+      <label class="filter-check">
+        <input v-model="affordableOnly" type="checkbox" data-test="filter-affordable" />
+        Affordable
+      </label>
+      <label class="filter-range">
+        Price
+        <input
+          v-model.number="minPriceYen"
+          type="number"
+          min="0"
+          step="10000"
+          placeholder="min"
+          data-test="filter-min-price"
+        />
+        to
+        <input
+          v-model.number="maxPriceYen"
+          type="number"
+          min="0"
+          step="10000"
+          placeholder="max"
+          data-test="filter-max-price"
+        />
+      </label>
+      <span class="filter-count" data-test="filter-count"
+        >{{ shownLots }}/{{ totalLots }} lots</span
+      >
+      <button v-if="filtersActive" data-test="filter-clear" @click="clearFilters">Clear</button>
+    </div>
+
+    <p v-if="hasLots && !hasVisibleLots" class="empty" data-test="all-filtered">
+      {{ totalLots }} lots on the board, none matching your filters. Widen the price range or untick
+      Affordable.
     </p>
 
     <p v-if="willBeLostOnWin" class="parking-warning" data-test="lost-warning">
@@ -367,6 +451,43 @@ h3 {
 .cash {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  margin: 0 0 var(--mg-space-3);
+  padding: var(--mg-space-2);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  background: var(--mg-panel);
+  font-size: var(--mg-fs-sm);
+}
+
+.filter-check,
+.filter-range {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  color: var(--mg-text-dim);
+}
+
+.filter-range input {
+  width: 7em;
+  background: var(--mg-night-deep);
+  border: var(--mg-border);
+  border-radius: 4px;
+  color: var(--mg-text);
+  font-family: inherit;
+  font-size: var(--mg-fs-sm);
+  padding: 2px 6px;
+}
+
+.filter-count {
+  color: var(--mg-text-dim);
+  margin-left: auto;
 }
 
 .empty {
