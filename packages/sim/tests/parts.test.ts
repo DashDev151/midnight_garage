@@ -5,12 +5,14 @@ import {
   PARTS_TAXONOMY,
   type GameState,
   type PartInstance,
+  type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from '../src/parts'
-import { testSpecialty, testToolTiers } from './testFixtures'
+import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
+import { buildCarInstance, testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const CHEAPEST = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
@@ -226,6 +228,7 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
     partId: CHEAPEST.id,
     band: 'scrap',
     genuinePeriod: false,
+    origin: makeMarketOrigin(1),
   }
 
   it('scraps a player-owned scrap part for cash and removes it from inventory', () => {
@@ -236,9 +239,34 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
     expect(result.log[0]).toMatchObject({ type: 'part-scrapped', partInstanceId: scrapInstance.id })
   })
 
-  it('refuses to scrap a customer-owned part (customerJobId set) - a no-op', () => {
-    const customerScrap: PartInstance = { ...scrapInstance, customerJobId: 'svc-1-0' }
-    const state = baseState({ partInventory: [customerScrap] })
+  /**
+   * Sprint 70: ownership is read from the instance's own `origin` against
+   * every active service job (`provenance.ts`'s `isCustomerOriginPart`), not
+   * a mutable `customerJobId` tag - directive-17 case (a), same rule as
+   * before, reimplemented over the new mechanism.
+   */
+  it("refuses to scrap a part whose origin traces to an active customer job's car - a no-op", () => {
+    const customerCar = buildCarInstance({ id: 'car-customer-scrap' })
+    const owningJob: ServiceJob = {
+      id: 'svc-1-0',
+      typeId: 'small-bodywork-touchup',
+      customerName: 'Test Customer',
+      description: 'Bodywork needs sorting.',
+      tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+      car: customerCar,
+      payoutYen: 10_000,
+      baseReputation: 5,
+      deadlineDays: 5,
+      expiresOnDay: 30,
+      arrivesOnDay: null,
+      dueOnDay: 8,
+      baselineInstalledPartIds: {},
+    }
+    const customerScrap: PartInstance = {
+      ...scrapInstance,
+      origin: makeCarOrigin(customerCar.id, 'Customer Car', 0),
+    }
+    const state = baseState({ partInventory: [customerScrap], activeServiceJobs: [owningJob] })
     const result = resolveScrapPart(state, customerScrap.id, CONTEXT)
     expect(result.state).toBe(state) // untouched: still in inventory, no cash
     expect(result.log).toEqual([])

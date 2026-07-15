@@ -7,6 +7,7 @@ import {
   type PartInstance,
   type ServiceJob,
 } from '@midnight-garage/content'
+import { makeCarOrigin } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -195,7 +196,14 @@ describe('garage: instant part install', () => {
     game.removePart(customerCar.id, 'seats')
     game.devGrantPart(part.id)
     const granted = game.gameState.partInventory.at(-1)!
-    const tagged: PartInstance = { ...granted, customerJobId: 'svc-fake' }
+    // Sprint 70: ownership is read from the instance's own `origin` against
+    // every active service job, not a mutable `customerJobId` tag - the
+    // instance's origin must trace to the owning job's car for the "not this
+    // car" refusal below to have anything real to refuse.
+    const tagged: PartInstance = {
+      ...granted,
+      origin: makeCarOrigin(customerCar.id, 'Customer Car', 0),
+    }
 
     const fakeJob: ServiceJob = {
       id: 'svc-fake',

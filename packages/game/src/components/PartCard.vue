@@ -68,8 +68,14 @@ const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
  * Sprint 35: a part pulled off a customer's car is tracked here but locked
  * from sale/scrap (only reconditioning and refitting are allowed) until the
  * job closes out. The badge and the disabled-scrap reason both key off this.
+ * Sprint 70: ownership is read from the instance's own `origin` against every
+ * active service job, not a mutable tag (`game.isCustomerOwnedPart`).
  */
-const isCustomerOwned = computed(() => props.instance.customerJobId !== undefined)
+const isCustomerOwned = computed(() => game.isCustomerOwnedPart(props.instance))
+
+/** Sprint 70: the dim "where did this come from" caption line beneath the
+ * part name. */
+const originCaption = computed(() => game.describePartOrigin(props.instance))
 
 /**
  * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only - a
@@ -143,6 +149,7 @@ function onPointerUp(event: PointerEvent): void {
       <span class="part-name"
         >{{ part.brand }} {{ part.name }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
       /></span>
+      <span class="origin-caption">{{ originCaption }}</span>
       <span class="part-meta">
         {{ game.carPartLabel(part.carPartId) }} &middot; {{ part.grade }} &middot;
         {{ game.fitmentClassLabel(part.fitmentClass) }}
@@ -254,6 +261,11 @@ function onPointerUp(event: PointerEvent): void {
 
 .part-name {
   color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+}
+
+.origin-caption {
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 

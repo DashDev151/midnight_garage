@@ -26,6 +26,7 @@ import {
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
+import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import {
   buildCarInstance,
   groupCarParts,
@@ -77,6 +78,7 @@ const sparePart: PartInstance = {
   partId: 'shitbox-tanuki-street-coilovers',
   band: 'mint',
   genuinePeriod: false,
+  origin: makeMarketOrigin(1),
 }
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
@@ -279,6 +281,7 @@ describe('completeJob', () => {
             partId: 'tanuki-n1-coilovers',
             band: 'fine',
             genuinePeriod: true,
+            origin: makeMarketOrigin(1),
           },
         },
       },
@@ -526,6 +529,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         partId: wrongPart.id,
         band: 'mint',
         genuinePeriod: false,
+        origin: makeMarketOrigin(1),
       }
       const state = baseState({ partInventory: [sparePart, wrongInstance] })
       const result = findOrCreateJob(
@@ -577,6 +581,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         partId: turboKit.id,
         band: 'mint',
         genuinePeriod: false,
+        origin: makeMarketOrigin(1),
       }
       const spec = {
         carInstanceId: naCar.id,
@@ -674,6 +679,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         partId: sparePart.partId,
         band: 'scrap',
         genuinePeriod: false,
+        origin: makeMarketOrigin(1),
       }
       const state = baseState({ partInventory: [scrapInstance] })
       const result = findOrCreateJob(
@@ -726,7 +732,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const taggedInstance: PartInstance = {
         ...sparePart,
         id: 'pi-customer',
-        customerJobId: owningJob.id,
+        origin: makeCarOrigin(customerCar.id, 'Customer Car', 0),
       }
 
       const ontoOwnCar = findOrCreateJob(
@@ -969,6 +975,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       partId: 'tanuki-street-coilovers', // grade 'street' - aftermarket
       band: 'worn',
       genuinePeriod: false,
+      origin: makeMarketOrigin(1),
     }
     const carWithAftermarket: CarInstance = {
       ...car,
@@ -1083,7 +1090,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     ),
   }
 
-  it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it, tagged with the job id', () => {
+  it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it in inventory, with its origin unchanged', () => {
     const originalInstance = car.parts.panels.installed!
     const state = baseState({
       ownedCars: [],
@@ -1095,11 +1102,12 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     // The slot still updates exactly like the owned-car case (panels is
     // stock, so the slot goes genuinely empty)...
     expect(result.state.activeServiceJobs[0]?.car.parts.panels.installed).toBeNull()
-    // ...and the removed part is now in OUR inventory, tagged customer-owned
-    // (Sprint 35 supersedes Sprint 33's discard).
-    expect(result.state.partInventory).toEqual([
-      { ...originalInstance, customerJobId: customerServiceJob.id },
-    ])
+    // ...and the removed part lands in OUR inventory completely unchanged.
+    // Sprint 70 retired the customerJobId tag this test used to check for:
+    // ownership is now a fact the instance was born with (`origin`), never
+    // stamped by removal, so the pulled instance is byte-identical to the
+    // one that was on the car.
+    expect(result.state.partInventory).toEqual([originalInstance])
     expect(result.log).toEqual([
       {
         type: 'part-removed',
@@ -1111,146 +1119,41 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   /**
-   * Sprint 68 decision 1 (playtest item 17). The bug: this branch tagged
-   * EVERY part pulled off a customer's car, deciding ownership by where the
-   * car was parked rather than by whose part it was. So a part the player
-   * bought and fitted became the customer's the instant they pulled it back
-   * off - and close-out, which drops everything carrying the job's id, then
-   * confiscated it. Sprint 61's `baselineInstalledPartIds` already recorded
-   * exactly which instance was the customer's; it just was not consulted here.
+   * Sprint 70 (parts provenance, ground up): `resolveRemovePart` no longer
+   * decides whose part it is - Sprint 68's `baselineInstalledPartIds`-vs-tag
+   * dance (and the two theft bugs it patched, TODO.md's "parts provenance"
+   * diagnosis) is retired along with the `customerJobId` tag itself. Ownership
+   * is now a fact stamped once at birth (`origin`) and never rewritten, so
+   * removal is a pure passthrough regardless of who actually fitted the part
+   * or which slot it sat in - directive-17 case (a): the OLD test asserted a
+   * mechanism (tag-stamping via baseline comparison) that no longer exists;
+   * the real behaviour it was protecting (a player-bought part stays player-
+   * owned even after being pulled back off a customer's car) is still true,
+   * just structurally so now rather than something this function computes.
    */
-  describe('whose part is it (Sprint 68 decision 1, item 17)', () => {
-    const CUSTOMERS_OWN = 'pi-customers-original'
-    const PLAYER_BOUGHT = 'pi-player-bought'
-
-    /** A job that DOES record a baseline (Sprint 61 onward), with the
-     * customer's own damper recorded as what arrived in the slot. */
-    function jobWithBaseline(installedId: string): { job: ServiceJob; customerCar: CarInstance } {
-      const customerCar: CarInstance = {
-        ...car,
-        parts: {
-          ...car.parts,
-          dampers: {
-            installed: {
-              id: installedId,
-              partId: 'tanuki-street-coilovers',
-              band: 'worn',
-              genuinePeriod: false,
-            },
-          },
-        },
-      }
-      return {
-        customerCar,
-        job: {
-          id: 'svc-baseline',
-          typeId: 'small-bodywork-touchup',
-          customerName: 'Test Customer',
-          description: 'Fit better dampers.',
-          tasks: [{ action: 'install', carPartId: 'dampers', minGrade: 'street', minToolTier: 1 }],
-          car: customerCar,
-          payoutYen: 10_000,
-          baseReputation: 5,
-          deadlineDays: 5,
-          expiresOnDay: 30,
-          arrivesOnDay: null,
-          dueOnDay: 8,
-          // Total over the car (Sprint 68 fix): every slot records what the
-          // customer ARRIVED with, so "whose part is this" is decidable for
-          // any slot, not just an install task's. `dampers` is always the
-          // customer's own here - `installedId` is what is fitted NOW, which
-          // is the whole point of the comparison.
-          baselineInstalledPartIds: {
-            ...Object.fromEntries(
-              ALL_CAR_PART_IDS.map((id) => [id, customerCar.parts[id].installed?.id ?? null]),
-            ),
-            dampers: CUSTOMERS_OWN,
-          },
-        },
-      }
+  it("a market-bought part fitted onto a customer's car keeps its market origin when pulled back off - it was never the customer's", () => {
+    const marketBought: PartInstance = {
+      id: 'pi-player-bought',
+      partId: 'tanuki-street-coilovers',
+      band: 'worn',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(3),
     }
-
-    it('a part the PLAYER bought and fitted comes back untagged - it stays theirs', () => {
-      const { job, customerCar } = jobWithBaseline(PLAYER_BOUGHT)
-      const state = baseState({
-        ownedCars: [],
-        activeServiceJobs: [job],
-        partInventory: [],
-      })
-      const result = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)
-      expect(result.state.partInventory).toHaveLength(1)
-      expect(result.state.partInventory[0]!.id).toBe(PLAYER_BOUGHT)
-      expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
-    })
-
-    it("the CUSTOMER's original still tags, so it still reconciles out at close-out", () => {
-      const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
-      const state = baseState({
-        ownedCars: [],
-        activeServiceJobs: [job],
-        partInventory: [],
-      })
-      const result = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)
-      expect(result.state.partInventory[0]!.customerJobId).toBe(job.id)
-    })
-
-    it('a slot with NO install task still belongs to the customer - they arrived with it', () => {
-      // The bug Sprint 68's first pass introduced, and directive 19's review
-      // caught: `baselineInstalledPartIds` recorded only INSTALL-task slots,
-      // and the ownership check read "no baseline for this slot" as "the
-      // player must have fitted it". So on a job with any install task, the
-      // player could pull the customer's PANELS - a slot no task touches - and
-      // keep them. One theft traded for its mirror image. The baseline is now
-      // total over the car, so every slot answers for itself.
-      const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
-      const state = baseState({
-        ownedCars: [],
-        activeServiceJobs: [job],
-        partInventory: [],
-      })
-      const result = resolveRemovePart(state, customerCar.id, 'panels', CONTEXT)
-      expect(result.state.partInventory[0]!.customerJobId).toBe(job.id)
-    })
-
-    it("a part fitted into a slot the car arrived with EMPTY is the player's", () => {
-      // The baseline records `null` for an empty slot, which no real
-      // PartInstance.id can equal - so this is decided by the record, not by
-      // the absence of one.
-      const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
-      const withPlayerPart: ServiceJob = {
-        ...job,
-        car: {
-          ...customerCar,
-          parts: {
-            ...customerCar.parts,
-            aero: {
-              installed: {
-                id: PLAYER_BOUGHT,
-                partId: 'shitbox-tanuki-street-coilovers',
-                band: 'mint',
-                genuinePeriod: false,
-              },
-            },
-          },
-        },
-        baselineInstalledPartIds: { ...job.baselineInstalledPartIds, aero: null },
-      }
-      const state = baseState({
-        ownedCars: [],
-        activeServiceJobs: [withPlayerPart],
-        partInventory: [],
-      })
-      const result = resolveRemovePart(state, customerCar.id, 'aero', CONTEXT)
-      expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
-    })
+    const customerCar: CarInstance = {
+      ...car,
+      parts: { ...car.parts, dampers: { installed: marketBought } },
+    }
+    const job: ServiceJob = { ...customerServiceJob, id: 'svc-market-part', car: customerCar }
+    const state = baseState({ ownedCars: [], activeServiceJobs: [job], partInventory: [] })
+    const result = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)
+    expect(result.state.partInventory).toEqual([marketBought])
   })
 
-  it('Sprint 35: removing the same part from an OWNED car keeps it UNtagged (player-owned)', () => {
+  it('Sprint 35: removing the same part from an OWNED car keeps its origin unchanged too', () => {
     const originalInstance = car.parts.panels.installed!
     const state = baseState({ partInventory: [] }) // ownedCars: [car] by default
     const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
     expect(result.state.partInventory).toEqual([originalInstance])
-    expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
   })
 
   it('Sprint 42: removal never refunds the ledger - repairYen/partsYen already spent stay spent, and the pulled instance keeps its own pricePaidYen', () => {
@@ -1259,6 +1162,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       partId: 'tanuki-street-coilovers',
       band: 'worn',
       genuinePeriod: false,
+      origin: makeMarketOrigin(1),
       pricePaidYen: 55_000,
     }
     const carWithAftermarket: CarInstance = {
@@ -1294,6 +1198,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     partId: stockPanelsId,
     band: 'poor',
     genuinePeriod: false,
+    origin: makeMarketOrigin(1),
   }
 
   /** A car whose only non-mint part is `panels`, holding the same content as
@@ -1481,6 +1386,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       partId: wornTyresId,
       band: 'worn',
       genuinePeriod: false,
+      origin: makeMarketOrigin(1),
     }
     const state = baseState({ ownedCars: [], partInventory: [wornTyres] })
 

@@ -68,6 +68,7 @@ function initialState(): GameState {
         partId: 'shitbox-tanuki-street-coilovers',
         band: 'mint',
         genuinePeriod: false,
+        origin: { kind: 'market', day: 1 },
       },
     ],
     staff: [],
@@ -236,9 +237,13 @@ describe('advanceDay golden master', () => {
     // than taken on trust: the ceiling/floor/no-free-lunch/foundation/wage
     // probes and the whole `generationCoherence` suite all pass, and every
     // other test in this file still passes unchanged.
+    // Re-pinned again (Sprint 70, was 9f8e0a15): `PartInstanceSchema` gained
+    // a required `origin` field (parts provenance) - a new field in every
+    // hashed state, not a logic change; every other assertion in this file
+    // still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('9f8e0a15')
+    expect(hashState(finalState)).toBe('edd4dc35')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -435,7 +440,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned (Sprint 66, was 2103500e): same cause as the 30-day career
     // hash above - this career buys and sells a car, so the new value slope
     // and the rebuilt generation chain both reach its end state by design.
-    expect(hashState(acquisitionCareer().sold)).toBe('cfabcf38')
+    // Re-pinned again (Sprint 70, was cfabcf38): same cause as the 30-day
+    // career hash above - `PartInstanceSchema` gained a required `origin`
+    // field (parts provenance), a new field in every hashed state.
+    expect(hashState(acquisitionCareer().sold)).toBe('79f49596')
   })
 })
 

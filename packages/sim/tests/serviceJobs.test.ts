@@ -25,6 +25,7 @@ import { SERVICE_JOB_ARRIVAL_DELAY_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { resolveRemovePart } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
+import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { createRng } from '../src/rng'
 import {
   deriveServiceJobPayoutYen,
@@ -106,7 +107,13 @@ function activeJob(type: ServiceJobType, carOverrides: Partial<CarInstance> = {}
 }
 
 function partInstance(partId: string): PartInstance {
-  return { id: `pi-${partId}`, partId, band: 'mint', genuinePeriod: false }
+  return {
+    id: `pi-${partId}`,
+    partId,
+    band: 'mint',
+    genuinePeriod: false,
+    origin: makeMarketOrigin(1),
+  }
 }
 
 /** A template's tasks with every `minToolTier` raised to `tier` - the
@@ -887,27 +894,40 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(failed.state.stagedCarWork[failedJob.car.id]).toBeUndefined()
   })
 
+  /**
+   * Sprint 70 (parts provenance): reconciliation now reads a part's own
+   * `origin` (`partsOriginatingFromCar`, provenance.ts) rather than a
+   * mutable `customerJobId` tag - directive-17 case (a), the mechanism
+   * changed but the rule (a customer's pulled parts leave at close-out;
+   * anyone else's don't) is exactly the one Sprint 35 decision 5 established.
+   * Since a job's car has its own unique id, keying reconciliation off the
+   * car (`origin.carInstanceId`) rather than the job is behaviourally
+   * identical - one customer car per job, always.
+   */
   describe('close-out reconciliation of customer-owned parts (Sprint 35 decision 5)', () => {
     const playerOwned: PartInstance = {
       id: 'pi-mine',
       partId: 'khs-street-ecu',
       band: 'mint',
       genuinePeriod: false,
+      origin: makeMarketOrigin(1),
     }
-    const taggedWith = (id: string, jobId: string): PartInstance => ({
+    /** A part whose origin traces to `carInstanceId` - the Sprint 70
+     * stand-in for the old `customerJobId` tag. */
+    const customerOwned = (id: string, carInstanceId: string): PartInstance => ({
       id,
       partId: 'khs-street-ecu',
       band: 'poor',
       genuinePeriod: false,
-      customerJobId: jobId,
+      origin: makeCarOrigin(carInstanceId, 'Customer Car', 0),
     })
 
     it('a PAID job removes its own tagged parts, leaving player-owned and other jobs’ parts', () => {
       const job = activeJob(twoRepairType, {
         parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
       })
-      const ours = taggedWith('pi-this', job.id)
-      const otherJob = taggedWith('pi-other', 'svc-some-other-job')
+      const ours = customerOwned('pi-this', job.car.id)
+      const otherJob = customerOwned('pi-other', 'svc-car-some-other-job')
       const state = stateWith(job, { partInventory: [ours, playerOwned, otherJob] })
 
       const { state: next, outcome } = resolveServiceJob(state, job.id, CONTEXT)
@@ -949,6 +969,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
                 partId: 'khs-street-ecu',
                 band: 'mint',
                 genuinePeriod: false,
+                origin: makeMarketOrigin(1),
                 pricePaidYen: 40_000,
               },
             },
@@ -962,10 +983,10 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
         'dampers',
         CONTEXT,
       )
-      // It comes back untagged - still the player's.
+      // It comes back with its market origin unchanged - still the player's.
       expect(removed.state.partInventory).toHaveLength(1)
       expect(removed.state.partInventory[0]!.id).toBe(PLAYER_BOUGHT)
-      expect(removed.state.partInventory[0]).not.toHaveProperty('customerJobId')
+      expect(removed.state.partInventory[0]!.origin.kind).toBe('market')
 
       // ...and close-out leaves it exactly where it is.
       const closed = resolveServiceJob(removed.state, jobWithPlayerPart.id, CONTEXT)
@@ -977,7 +998,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
     it('a FAILED (not-paid) job likewise removes its own tagged parts; player-owned survives', () => {
       const job = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) }) // undone -> failed
-      const ours = taggedWith('pi-this', job.id)
+      const ours = customerOwned('pi-this', job.car.id)
       const state = stateWith(job, { partInventory: [ours, playerOwned] })
 
       const { state: next, outcome } = resolveServiceJob(state, job.id, CONTEXT)
@@ -989,7 +1010,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       const job = activeJob(twoRepairType, {
         parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
       })
-      const ours = taggedWith('pi-this', job.id)
+      const ours = customerOwned('pi-this', job.car.id)
       const reconJob: Job = {
         id: 'recondition-pi-this',
         carInstanceId: ours.id, // a recondition job holds the part id here, not a car

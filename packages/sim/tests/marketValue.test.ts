@@ -319,6 +319,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
             partId: suspensionKit.id,
             band: 'mint',
             genuinePeriod: false,
+            origin: { kind: 'market', day: 1 },
           },
         },
       },
@@ -397,7 +398,13 @@ describe('installedPartsValueYen', () => {
       parts: {
         ...car.parts,
         dampers: {
-          installed: { id: 'pi-0001', partId: suspensionKit.id, band, genuinePeriod },
+          installed: {
+            id: 'pi-0001',
+            partId: suspensionKit.id,
+            band,
+            genuinePeriod,
+            origin: { kind: 'market', day: 1 },
+          },
         },
       },
     }
@@ -475,6 +482,7 @@ describe('installedPartsValueYen', () => {
             partId: suspensionKit.id,
             band: 'mint',
             genuinePeriod: false,
+            origin: { kind: 'market', day: 1 },
           },
         },
       },
@@ -554,7 +562,13 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
     return neutralCar({
       parts: mintCarParts({
         ...foundationOverrides,
-        intake: { id: 'pi-race-intake', partId: raceIntake.id, band: 'mint', genuinePeriod: false },
+        intake: {
+          id: 'pi-race-intake',
+          partId: raceIntake.id,
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
       }),
     })
   }

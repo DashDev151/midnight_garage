@@ -1,6 +1,8 @@
 import {
   ALL_CAR_PART_IDS,
   fitmentClassForTier,
+  resolveCarDisplayName,
+  type AgeBand,
   type AuctionLot,
   type AuctionTier,
   type CarInstance,
@@ -9,8 +11,10 @@ import {
   type EconomyConfig,
   type PartFitmentClass,
   type PartInstance,
+  type PartOrigin,
   type RarityTier,
   type TurnoutBand,
+  type UpkeepTier,
 } from '@midnight-garage/content'
 import {
   bandForMigratedCondition,
@@ -23,6 +27,7 @@ import {
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
 import { mileageFactor } from './marketValue'
+import { makeCarOrigin } from './provenance'
 import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
@@ -37,30 +42,11 @@ const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as co
  * with 11 km on it - the maintainer's verbatim "how can the service history be
  * unknown?". A blurb has to fit the car it is describing: a nearly-new car has
  * a short, known history; only an old one can have been parked up for years.
+ *
+ * Sprint 70: the pool itself moved to `packages/content/data/provenance.json`
+ * (`context.provenancePool`) - the content law now covers it (it was
+ * previously hardcoded here). `AgeBand`/`UpkeepTier` are content types now too.
  */
-const PROVENANCE_POOL: Record<AgeBand, Record<UpkeepTier, readonly string[]>> = {
-  young: {
-    cherished: ['first owner, dealer-serviced from new', 'barely run in, every stamp in the book'],
-    average: ['lease return, serviced on schedule', 'company car, second owner, books present'],
-    neglected: ['repossessed, sat on a forecourt since', 'insurance buy-back, lightly knocked'],
-  },
-  middling: {
-    cherished: ['one-owner, garage kept', 'enthusiast-owned, receipts for everything'],
-    average: ['daily driver, honest wear', 'dealer trade-in, service history unknown'],
-    neglected: ['traded in rough, owner gave up on it', 'sold as-is, no history offered'],
-  },
-  old: {
-    cherished: ['estate sale, low mileage claimed', 'long-term collection car, dry stored'],
-    average: ['second-hand for years, patchy history', 'honest survivor, some receipts'],
-    neglected: ['parked up for years, ran when it went in', 'barn find, no history at all'],
-  },
-}
-
-/** The three age brackets `PROVENANCE_POOL` is keyed by (Sprint 66) - a blurb
- * must fit the car's age, not just its upkeep. `young` is anything inside the
- * `middlingFromYears` floor, `old` anything at/past `oldFromYears`. */
-type AgeBand = 'young' | 'middling' | 'old'
-
 const AGE_BAND_MIDDLING_FROM_YEARS = 6
 const AGE_BAND_OLD_FROM_YEARS = 15
 
@@ -74,8 +60,6 @@ function ageBandFor(ageYears: number): AgeBand {
  * mileage-based condition baseline - real cross-car variance at the same
  * mileage, so a car isn't interchangeably mediocre with every other car of
  * the same age. */
-type UpkeepTier = 'neglected' | 'average' | 'cherished'
-
 function rollUpkeepTier(weights: Readonly<Record<UpkeepTier, number>>, rng: Rng): UpkeepTier {
   const entries = Object.entries(weights) as [UpkeepTier, number][]
   const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
@@ -251,6 +235,9 @@ export function wearExposure(mileageKm: number, economy: EconomyConfig): number 
  * Sprint 53: `fitmentClass` selects which class's stock SKU fills the slot -
  * always the host car's own class, so a shitbox never rolls a family-priced
  * stock part (economy-bible.md law 3).
+ *
+ * Sprint 70: `origin` is required (every caller is generating this part as
+ * part of a specific car's birth, so it always has one to stamp).
  */
 export function stockInstanceFor(
   partId: CarPartId,
@@ -258,10 +245,18 @@ export function stockInstanceFor(
   idPrefix: string,
   fitmentClass: PartFitmentClass,
   stockPartByCarPartId: SimContext['stockPartByCarPartId'],
+  origin: PartOrigin,
 ): PartInstance | null {
   const catalogPart = stockPartByCarPartId[fitmentClass]?.[partId]
   if (!catalogPart) return null
-  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false }
+  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
+}
+
+/** The denormalised label a `PartOrigin` carries (Sprint 70 decision 1) -
+ * `"'95 Corolla"` style, using the model's display name and the instance
+ * year, so it still reads correctly after the donor car is sold or scrapped. */
+export function carOriginLabel(model: CarModel, year: number): string {
+  return `'${String(year % 100).padStart(2, '0')} ${resolveCarDisplayName(model)}`
 }
 
 /**
@@ -327,6 +322,12 @@ export function stockInstanceFor(
  * generation pass `false` - a customer's car should never turn up missing a
  * part unrelated to the job it's booked for; only `forceTasksOutstanding`'s
  * install-task branch empties a slot on a customer car, deliberately.
+ *
+ * Sprint 70: `day` (default 0 - unchanged for every existing test/dev-tool
+ * caller with no real calendar) is the in-game day this car is generated on -
+ * stamped onto every part's `origin` (`makeCarOrigin`) alongside this car's
+ * own id and denormalised label, built once here and threaded down to every
+ * `stockInstanceFor` call this function makes.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -335,6 +336,7 @@ export function generateAuctionCarInstance(
   context: SimContext,
   currentYear: number = Infinity,
   allowMissingSlots: boolean = true,
+  day: number = 0,
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
@@ -370,6 +372,10 @@ export function generateAuctionCarInstance(
   )
   const [rawJitterMin, jitterMax] = upkeepJitterRange[upkeepTier]
   const jitterMin = Math.round(rawJitterMin * exposure)
+  // Sprint 70: every part this car is born with shares this one origin -
+  // built once, before any per-part loop, so the whole car reads as a single
+  // birth event.
+  const carOrigin = makeCarOrigin(id, carOriginLabel(model, year), day)
 
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
@@ -378,7 +384,14 @@ export function generateAuctionCarInstance(
 
       if (partId === 'forcedInduction') {
         const installed = carHasForcedInduction
-          ? stockInstanceFor(partId, band, `${id}-part`, fitmentClass, stockPartByCarPartId)
+          ? stockInstanceFor(
+              partId,
+              band,
+              `${id}-part`,
+              fitmentClass,
+              stockPartByCarPartId,
+              carOrigin,
+            )
           : null
         return [partId, { installed }]
       }
@@ -391,7 +404,14 @@ export function generateAuctionCarInstance(
       const rolledMissing = rng.next() < missingChance
       const installed = rolledMissing
         ? null
-        : stockInstanceFor(partId, band, `${id}-part`, fitmentClass, stockPartByCarPartId)
+        : stockInstanceFor(
+            partId,
+            band,
+            `${id}-part`,
+            fitmentClass,
+            stockPartByCarPartId,
+            carOrigin,
+          )
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']
@@ -405,11 +425,11 @@ export function generateAuctionCarInstance(
     // Sprint 66 (item 6a): the blurb must fit the car's AGE as well as its
     // upkeep - keying on upkeep alone put "service history unknown" on an
     // 11 km car.
-    provenanceNote: rng.pick(PROVENANCE_POOL[ageBandFor(ageYears)][upkeepTier]),
+    provenanceNote: rng.pick(context.provenancePool[ageBandFor(ageYears)][upkeepTier]),
     authenticityPercent: rng.int(60, 95),
     parts,
   }
-  return enforceMaxBillFraction(rolled, model, context)
+  return enforceMaxBillFraction(rolled, model, context, carOrigin)
 }
 
 /**
@@ -442,11 +462,17 @@ export function generateAuctionCarInstance(
  * against a deliberately worse-than-generation-could-ever-roll car for every
  * roster model, proving Law 2 holds everywhere rather than re-deriving its
  * math a second time (`coherence.ts`).
+ *
+ * Sprint 70: `origin` is the fresh part's stamp when the missing-slot fill
+ * pass fires - the same origin every other part on `car` already carries
+ * (this is still generation, softening a car that hasn't left the birth
+ * process yet).
  */
 export function enforceMaxBillFraction(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  origin: PartOrigin,
 ): CarInstance {
   const { economy, partsById, partsTaxonomyById, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
@@ -488,6 +514,7 @@ export function enforceMaxBillFraction(
         `${car.id}-softened`,
         fitmentClass,
         stockPartByCarPartId,
+        origin,
       )
       if (fresh) parts = { ...parts, [partId]: { installed: fresh } }
     }
@@ -525,7 +552,15 @@ export function generateAuctionCatalog(
   for (let i = 0; i < count; i++) {
     const model = rng.pick(eligible)
     const lotId = `lot-${day}-${tier}-${i}`
-    const car = generateAuctionCarInstance(model, `car-${lotId}`, rng, context, currentYear)
+    const car = generateAuctionCarInstance(
+      model,
+      `car-${lotId}`,
+      rng,
+      context,
+      currentYear,
+      true,
+      day,
+    )
     lots.push({
       id: lotId,
       tier,

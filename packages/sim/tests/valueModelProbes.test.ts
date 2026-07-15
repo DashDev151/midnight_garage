@@ -145,6 +145,7 @@ function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
             partId: stockPart.id,
             band: 'mint',
             genuinePeriod: false,
+            origin: { kind: 'market', day: 1 },
           }
         : null,
     }
@@ -883,7 +884,13 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
       const part = PARTS_BY_ID[partId]
       if (!part) throw new Error(`fixture race part ${partId} missing from catalog`)
       next[part.carPartId] = {
-        installed: { id: `built-${partId}`, partId, band: 'mint', genuinePeriod: false },
+        installed: {
+          id: `built-${partId}`,
+          partId,
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
       }
     }
     return next

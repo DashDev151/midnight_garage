@@ -8,13 +8,20 @@ import type {
   Facilities,
   Part,
   PartFitmentClass,
+  ProvenancePool,
   ServiceJobType,
   SpecialtyCopy,
   Technique,
   ToolLine,
   ToolLines,
 } from '@midnight-garage/content'
-import { ECONOMY, SPECIALTY_COPY, TECHNIQUES, TOOL_LINES } from '@midnight-garage/content'
+import {
+  ECONOMY,
+  PROVENANCE_POOL,
+  SPECIALTY_COPY,
+  TECHNIQUES,
+  TOOL_LINES,
+} from '@midnight-garage/content'
 
 /**
  * Permissive fallback so pre-Sprint-09 call sites (many sim tests) that don't
@@ -74,6 +81,10 @@ export interface SimContext {
   /** Sprint 39: the named-craft catalog gating signature templates
    * (`unlockedTechniques`/`requiresUnmetTechnique`, serviceJobs.ts). */
   techniques: readonly Technique[]
+  /** Sprint 70: the car-history flavour pool (`CarInstance.provenanceNote`),
+   * relocated from `auctions.ts`'s hardcoded `PROVENANCE_POOL` into content -
+   * `auctions.ts` reads it from here instead of a local constant. */
+  provenancePool: ProvenancePool
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -139,6 +150,8 @@ function indexStockPartsByCarPartId(
  * treatment as `economy` right before it.
  *
  * Sprint 39: `techniques` is an 11th (trailing) parameter, same treatment.
+ *
+ * Sprint 70: `provenancePool` is a 12th (trailing) parameter, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -152,6 +165,7 @@ export function buildSimContext(
   economy: EconomyConfig = ECONOMY,
   specialtyCopy: SpecialtyCopy = SPECIALTY_COPY,
   techniques: readonly Technique[] = TECHNIQUES,
+  provenancePool: ProvenancePool = PROVENANCE_POOL,
 ): SimContext {
   return {
     models,
@@ -171,5 +185,6 @@ export function buildSimContext(
     economy,
     specialtyCopy,
     techniques,
+    provenancePool,
   }
 }

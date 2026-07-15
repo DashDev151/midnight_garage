@@ -168,14 +168,6 @@ pass."
 
 ## Open engineering
 
-- [ ] **The auction provenance pool violates the content law** (deferred from Sprint 66, which
-  planned to move it and did not). `PROVENANCE_POOL` in `packages/sim/src/auctions.ts` is authored
-  player-facing copy (`"barn find, no history at all"`) living in code, keyed by
-  `(ageBand, upkeepTier)`. It belongs in `packages/content` as `provenance.json` with a schema and
-  a content test asserting every `(ageBand, upkeepTier)` cell has at least 2 lines. Sprint 66 kept
-  its diff on the economy and left this behind; nothing depends on the move, it is purely the
-  content law going unenforced on one constant.
-
 - [ ] **Specialty (Sprint 38, the progression bible's horizontal axis) earns from service-job work
   only, never from sales.** A deliberate scope line, not an oversight: attributing a SALE'S
   reputation-quality delta to "the disciplines the player actually improved on that car" would
@@ -195,7 +187,7 @@ pass."
   rolled condition band), so the world has genuinely-modified cars to buy and repair, not just
   stock ones. Composes cleanly with the existing value math (`installedPartsValueYen` already
   prices aftermarket) and the missing-slot roll (a slot is then one of: stock / aftermarket / worn
-  / missing).
+  / missing). **Scheduled: rides in Sprint 75** (`docs/sprints/sprint75.md`, decision 1).
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
@@ -241,84 +233,45 @@ pass."
   painful) - open question for the spreadsheet pass. (The parts-pricing-curve question that used to
   sit here moved into Sprint 28's catalog work.)
 
-## Next up (scheduled, NOT designed)
-
-- [ ] **PARTS PROVENANCE, GROUND UP - a real system, replacing the ad hoc ownership rules**
-  (maintainer directive, 2026-07-15). **Scheduled: immediately after Sprint 69.** *Not designed -
-  the maintainer scopes this sprint. This entry records the diagnosis and the intent only.*
-
-  **What is wrong today.** A `PartInstance` does not know where it came from. It is born with
-  `{ id, partId, band, genuinePeriod }` and nothing else. Ownership - "is this part mine or the
-  customer's" - is therefore never a fact the part carries; it is **inferred, after the event, from
-  side channels**. Every bug in this area traces to that one absence, and every fix so far has been
-  a patch on the previous patch:
-
-  1. **Sprint 35** invented `customerJobId`: a mutable tag stamped onto a part at REMOVAL time,
-     decided by **where the car happened to be parked** (`resolveRemovePart`'s owned-car branch vs.
-     its service-job branch). Where a car is parked is not who owns a part.
-  2. **Sprint 61** added `ServiceJob.baselineInstalledPartIds`: a separate snapshot, on a different
-     object, recording which instance sat in each INSTALL-TASK slot at generation - built to answer
-     a different question ("has a genuinely new part been fitted yet?", for `isServiceTaskDone`).
-  3. **Sprint 68** discovered the Sprint 35 tag meant the game **confiscated parts the player had
-     bought** (fit a part to a customer's car, pull it back off, and close-out took it), and fixed
-     it by making the tag consult the Sprint 61 snapshot - patching one side channel with another.
-  4. **Sprint 68 again, hours later:** that fix was itself wrong. The snapshot only covered
-     install-task slots, so "no baseline for this slot" was read as "the player must have fitted
-     it" - meaning on any job carrying an install task, the player could pull the customer's
-     **engine** (a slot no task touches) and keep it. One theft traded for its mirror image, with a
-     test asserting the wrong behaviour and confident wrong reasoning attached to it. Patched again
-     by making the snapshot total over the car.
-
-  Four passes, three mechanisms (`customerJobId`, `baselineInstalledPartIds`, `isCustomersOwnPart`),
-  and the question is still answered by inference. The shape of the problem is visible in the
-  numbers: a part can be born at exactly **four** sites (`auctions.ts`'s `stockInstanceFor`,
-  `jobs.ts`'s removal-replacement stock instance, and two in `parts.ts`), **none** of which records
-  an origin - while provenance is currently read or written across **nine** files
-  (`jobs.ts`, `parts.ts`, `serviceJobs.ts`, `gameStore.ts`, `saveCodec.ts`, `PartCard.vue`, plus
-  tests). Four places know the truth and throw it away; nine places try to reconstruct it.
-
-  **What the maintainer wants built.** Provenance as a real, ground-up system rather than ad hoc
-  rules:
-  - **A part is linked to its car at spawn.** When a car is generated, every part on it is
-    recorded as having come from that car - whoever owns the car, player or customer, no distinction
-    at birth.
-  - **Tracked centrally, and consulted by EVERY action** that touches a part (remove, install,
-    scrap, sell, recondition, service-job close-out), rather than each resolver re-deriving
-    ownership from whatever is nearest to hand.
-  - **"Where did this come from" is answerable for any part in inventory, exactly.** A player should
-    be able to look at a part and know its history - which car it was pulled from, or that it was
-    bought.
-
-  **The maintainer's framing, kept verbatim because it is the whole point:** *"We needed it from the
-  start, not ad hoc rules to try and patch it... Doing this properly ground up eliminates all janky
-  behaviour that you are trying to bandaid."*
-
-  **Two notes for whoever scopes it.** (a) Directive 19 (no save backwards compatibility before
-  launch) makes the schema change cheap - a version bump, no migration, no golden-save test, and no
-  legacy-compat branch. This was materially more expensive a week ago. (b) `baselineInstalledPartIds`
-  currently serves TWO masters - ownership (Sprint 68) and install-task completion (Sprint 61,
-  `isServiceTaskDone`). A real origin record answers both, so the rework should expect to retire it
-  entirely rather than leave it serving one caller.
-
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **Diagnosis - the information game** (`docs/design/diagnosis-spec.md`, 2026-07-15). Restores
-  GDD §3.2/§4.1/§6.5/§7's inspection + hidden-issue + sliding-scale-lemon system, which actual
-  Sprint 26 paused and removed and which Sprint 27's pre-bid transparency law has contradicted ever
-  since. A RETURN to canonical scope, not new surface: no GDD amendment, but it repeals that law.
-  Fixes the loop's missing verb - today there is no `diagnose` between hunt and build, and buying is
-  arithmetic off a printed guide value. Half the architecture already stands (`computeAuctionGrade`
-  IS the auction sheet §6.5 asks for). **Four maintainer decisions listed in the spec**, the
-  load-bearing one being the variance curve's shape. **Sequence: this before story builds** - they
-  interlock, and story builds on a transparent auction is a solved shopping list.
+The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
+sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown -> 72 outcome
+jobs -> 73-75 diagnosis -> 76-78 story missions** (`docs/sprints/sprint70.md` through
+`sprint78.md`; sprint70.md's Exit is the permanent record of the provenance rework itself). Each
+later system consumes verbs the earlier one builds (provenance answers ownership on every part
+verb; the component arc supplies uninstall-reveals-truth and the shared outcome-predicate module;
+diagnosis makes commissions a gamble instead of a shopping list). Entries below stay until their
+sprints land.
 
-- [ ] **Story builds - outcome-based build commissions** (`docs/design/story-builds-spec.md` v2,
-  2026-07-15). A customer names an OUTCOME, not a car. **Maintainer decision 2026-07-15: this is the
-  first proper progression addition, and the Hall of Legends is deferred behind it.** v1's four open
-  questions are resolved in v2 (reliabilityFloor is a clean read; synthetic reference times with the
-  cost disclosed; derived customer price through the Law 4 floor; the retired flip-inversion claim).
-  Four new ones remain, listed in the spec. Depends on diagnosis. Roadmap: Phase 4, beside the
-  commissions line.
+- [ ] **Component removal & repair hierarchy - the teardown game**
+  (`docs/design/component-hierarchy-spec.md`, 2026-07-15; expanded from the maintainer's scoping
+  notes the same day). Repair moves to the bench: uninstall (validated by a data-driven
+  `blockedBy` hierarchy at existing slot granularity, three depth classes) -> repair from
+  inventory -> reinstall. Service jobs become OUTCOME-based ("coilovers must be fine", any route
+  counts) via a `Requirement` predicate module shared with story missions; customer parts return
+  at close-out by provenance, retiring `baselineInstalledPartIds` entirely. Economy consequences
+  (teardown labour in Law 1 margins and Law 6 payouts) land in the same arc. Depends on the parts
+  provenance rework. **Scoped: Sprints 71-72.**
+
+- [ ] **Diagnosis - the detective game** (`docs/design/diagnosis-spec.md`, now v2, 2026-07-15;
+  v1's pay-to-reveal design was rejected as loot-box shaped and is recorded dead in the spec).
+  Symptoms are free and public; every symptom has an open weighted cause table; inspection is a
+  1-slot per-house visit with an hour budget spent running tests that eliminate causes. **The
+  pricing law: the room prices the symptom, the player prices the cause** - rivals never see test
+  results; sleeper and trap factories both authored; a closed-form blind-buy guardrail keeps the
+  edge skill, not arbitrage. Defaults for all dials are decided in the spec. Repeals Sprint 27's
+  pre-bid transparency law; this SUPERSEDES the 2026-07-11 pause on hidden defects (the pause
+  demanded a design that beats transparency by creating real decisions and pricing information
+  coherently - this is that design, and the maintainer directed the sprint planning 2026-07-15).
+  Depends on the component hierarchy (uninstall-reveals-truth). **Scoped: Sprints 73-75.**
+
+- [ ] **Story missions - outcome-based build commissions** (`docs/design/story-builds-spec.md`
+  v2 with the 2026-07-15 rulings). A customer names an OUTCOME, not a car. **Maintainer rulings: first
+  proper progression addition (Hall of Legends deferred behind it); v1.0 is a HAND-AUTHORED
+  campaign with recurring named characters, procedural commissions deferred to endgame
+  replayability.** Consumes the shared `Requirement` module from the component arc. Depends on
+  diagnosis. Roadmap: Phase 4, beside the commissions line. **Scoped: Sprints 76-78.**
 
 - [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing
@@ -357,13 +310,14 @@ pass."
   cast character-design item above for who delivers the leads.
 - [ ] Salvage & restore parts mechanic - maintainer said they'll expand on this separately; parked
   until that expansion exists, don't design it unprompted.
-- [ ] **Hidden defects / inspection information game: PAUSED (maintainer, 2026-07-11).** Removed
-  from the game in Sprint 26 after the playtest verdict (fix costs uncorrelated with car value;
-  inspection purely epistemic with no legible market meaning). Full pre-bid transparency
-  (Sprint 27) is the baseline now. The feature may return only with a design that demonstrably
-  beats transparency: it must create real decisions (not "the car is secretly a band worse"),
-  answer exactly when and what the player sees pre-bid, and price the information coherently.
-  Do not reintroduce casually.
+- [ ] **The game needs a JDM-specific hook - flagged by the maintainer 2026-07-15, to be scoped
+  in a separate session; do not design unprompted.** The concern, verbatim in spirit: the current
+  repair/component systems are mechanically generic - swap the car roster for European cars and
+  the game plays identically, which risks the love-letter-to-90s-JDM identity reading as a reskin.
+  Needs a mechanical, narrative, or cultural element that ties the core experience to the setting.
+  Seed observation from the design pass (an input for that session, not a design): the cheapest
+  carriers are content rather than mechanics - diagnosis symptom/cause tables keyed to signature
+  engine families, period parts culture, and the story-mission cast.
 
 ## User-only tasks (air-gapped / purchases / accounts / legal)
 

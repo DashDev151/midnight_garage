@@ -14,7 +14,7 @@ import type {
   ToolTiers,
 } from '@midnight-garage/content'
 import { ALL_CAR_PART_IDS, ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content'
-import { generateAuctionCarInstance, stockInstanceFor } from './auctions'
+import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
@@ -27,6 +27,7 @@ import {
 import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
 import { gradeAtLeast, partFitsCar } from './parts'
+import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
 import type { Rng } from './rng'
 import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
 import { clearStagedWork } from './stagedWork'
@@ -474,15 +475,26 @@ const INSTALL_OUTSTANDING_BANDS = ['poor', 'scrap'] as const
  * but the car has no tyres" contradiction: the tyres are present and worn, as
  * described. A slot that is somehow already empty is left empty (defensive;
  * service cars never roll a missing slot).
+ *
+ * Sprint 70: `day` (default 0, unchanged for existing test callers) stamps
+ * any freshly-rolled repair-task replacement with this same customer car's
+ * origin (`makeCarOrigin`) - it is still generation, before the offer ever
+ * reaches the board.
  */
 export function forceTasksOutstanding(
   car: CarInstance,
   tasks: readonly ServiceJobTask[],
   context: SimContext,
   rng: Rng,
+  day: number = 0,
 ): CarInstance {
   const model = context.modelsById[car.modelId]
   const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
+  const carOrigin = makeCarOrigin(
+    car.id,
+    model ? carOriginLabel(model, car.year) : car.modelId,
+    day,
+  )
   let parts = car.parts
   for (const task of tasks) {
     if (task.action === 'install') {
@@ -505,6 +517,7 @@ export function forceTasksOutstanding(
       `${car.id}-part`,
       fitmentClass,
       context.stockPartByCarPartId,
+      carOrigin,
     )
     if (!installed) continue // defensive: no stock entry for this slot (never happens for real content)
     parts = { ...parts, [task.carPartId]: { installed } }
@@ -606,11 +619,12 @@ export function generateDailyServiceJobOffers(
       context,
       currentYear,
       false,
+      day,
     )
     // Sprint 40: the car and the template rolled fully independently above -
     // force every task genuinely outstanding before pricing the job off it,
     // so the payout (and the job itself) never prices in vacuous "work".
-    const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng)
+    const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng, day)
     // Sprint 61: snapshot the original part instance id in each slot (the
     // parts the customer's car arrived with). An install task is done only
     // once a DIFFERENT part is fitted, so re-fitting the customer's own pulled
@@ -980,12 +994,14 @@ export function resolveServiceJob(
     job.id,
   )
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
-  // Sprint 35 decision 5: the customer's pulled parts (tagged with this job)
-  // leave with them at close-out; any in-flight recondition job on one of
-  // those parts goes with it (nothing left to bench-repair), alongside the
-  // usual dropping of car jobs on the departing car.
+  // Sprint 35 decision 5: the customer's pulled parts leave with them at
+  // close-out; any in-flight recondition job on one of those parts goes with
+  // it (nothing left to bench-repair), alongside the usual dropping of car
+  // jobs on the departing car. Sprint 70: which parts those are is read from
+  // origin (`provenance.ts`), not a mutable tag - every loose inventory part
+  // that traces back to this job's car reconciles out, exactly as before.
   const reconciledPartIds = new Set(
-    releasedState.partInventory.filter((p) => p.customerJobId === job.id).map((p) => p.id),
+    partsOriginatingFromCar(releasedState.partInventory, job.car.id).map((p) => p.id),
   )
   const jobs = releasedState.jobs.filter(
     (j) =>
@@ -996,7 +1012,7 @@ export function resolveServiceJob(
         reconciledPartIds.has(j.partInstanceId)
       ),
   )
-  const partInventory = releasedState.partInventory.filter((p) => p.customerJobId !== job.id)
+  const partInventory = releasedState.partInventory.filter((p) => !reconciledPartIds.has(p.id))
 
   if (isServiceWorkDone(job, context)) {
     const installedParts = installedTaskParts(job, context)

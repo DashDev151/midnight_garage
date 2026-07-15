@@ -6,6 +6,7 @@ import facilitiesJson from '../data/facilities.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
+import provenanceJson from '../data/provenance.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
 import specialtyCopyJson from '../data/specialtyCopy.json'
@@ -26,6 +27,7 @@ import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './pa
 import { PartPricingSheetSchema } from './partPricing'
 import type { PartFitmentClass } from './partFitment'
 import type { CarPartId } from './tags'
+import { ProvenancePoolSchema } from './provenance'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
 import { TraitDefinitionsSchema } from './staff'
@@ -95,3 +97,10 @@ export const ECONOMY = EconomyConfigSchema.parse(economyJson)
 export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)
 export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
 export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)
+
+/**
+ * Sprint 70: the car-history flavour pool (`CarInstance.provenanceNote`),
+ * relocated from `packages/sim/src/auctions.ts`'s `PROVENANCE_POOL` constant -
+ * the content law now covers it too.
+ */
+export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)

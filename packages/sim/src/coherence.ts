@@ -8,11 +8,12 @@ import {
   type ConditionBand,
   type PartFitmentClass,
 } from '@midnight-garage/content'
-import { enforceMaxBillFraction, stockInstanceFor } from './auctions'
+import { carOriginLabel, enforceMaxBillFraction, stockInstanceFor } from './auctions'
 import { carCostToMintYen, hasForcedInduction, planGroupRepair } from './bands'
 import { PLAYER_BASE_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
 import { expectationForCar, marketValueYen, mileageFactor } from './marketValue'
+import { makeCarOrigin } from './provenance'
 import { freshToolTiers } from './toolLines'
 
 /**
@@ -140,6 +141,8 @@ function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance
   const mileageKm = worstCaseMileageKm(context)
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
+  const carId = `coherence-${model.id}`
+  const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
       if (partId === 'forcedInduction' && !carHasForcedInduction) {
@@ -151,12 +154,13 @@ function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance
         `coherence-${model.id}`,
         fitmentClass,
         context.stockPartByCarPartId,
+        origin,
       )
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']
   return {
-    id: `coherence-${model.id}`,
+    id: carId,
     modelId: model.id,
     year: model.spec.yearFrom,
     mileageKm,
@@ -189,6 +193,8 @@ function buildWageProbeCar(
 ): CarInstance {
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
+  const carId = `wage-${model.id}`
+  const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
       if (partId === 'forcedInduction' && !carHasForcedInduction) {
@@ -206,12 +212,13 @@ function buildWageProbeCar(
         `wage-${model.id}`,
         fitmentClass,
         context.stockPartByCarPartId,
+        origin,
       )
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']
   return {
-    id: `wage-${model.id}`,
+    id: carId,
     modelId: model.id,
     year: model.spec.yearFrom,
     mileageKm: worstCaseMileageKm(context),
@@ -226,7 +233,12 @@ function buildWageProbeCar(
 export function computeModelCoherence(model: CarModel, context: SimContext): ModelCoherenceRow {
   const fitmentClass = fitmentClassForTier(model.tier)
   const rawCar = buildWorstCaseRawCar(model, context)
-  const softened = enforceMaxBillFraction(rawCar, model, context)
+  const softened = enforceMaxBillFraction(
+    rawCar,
+    model,
+    context,
+    makeCarOrigin(rawCar.id, carOriginLabel(model, rawCar.year), 0),
+  )
 
   const cleanValueYen = model.bookValueYen * mileageFactor(softened.mileageKm, context.economy)
   const worstBillYen = carCostToMintYen(

@@ -634,6 +634,7 @@ describe('CarDetailScreen', () => {
           partId: 'shitbox-oni-race-piston-kit',
           band: 'mint',
           genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
         },
       }
       car.parts.brakePadsDiscs = {
@@ -708,6 +709,7 @@ describe('CarDetailScreen', () => {
           partId: 'shitbox-oni-race-piston-kit',
           band: 'mint',
           genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
         },
       }
       for (const partId of [
@@ -820,6 +822,7 @@ describe('CarDetailScreen', () => {
                   partId: scrapPart.id,
                   band: 'scrap',
                   genuinePeriod: false,
+                  origin: { kind: 'market', day: 1 },
                 },
               },
             },
@@ -991,7 +994,13 @@ describe('CarDetailScreen', () => {
         ...game.gameState,
         partInventory: [
           ...game.gameState.partInventory,
-          { id: 'scrap-instance', partId: goodPart.id, band: 'scrap', genuinePeriod: false },
+          {
+            id: 'scrap-instance',
+            partId: goodPart.id,
+            band: 'scrap',
+            genuinePeriod: false,
+            origin: { kind: 'market', day: 1 },
+          },
         ],
       }
 

@@ -1,4 +1,12 @@
-import { PARTS, type ConditionBand, type Part, type PartInstance } from '@midnight-garage/content'
+import {
+  CARS,
+  PARTS,
+  type ConditionBand,
+  type Part,
+  type PartInstance,
+  type ServiceJob,
+} from '@midnight-garage/content'
+import { makeCarOrigin, makeMarketOrigin } from '@midnight-garage/sim'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -13,6 +21,7 @@ const instance: PartInstance = {
   partId: part.id,
   band: 'mint',
   genuinePeriod: false,
+  origin: makeMarketOrigin(1),
 }
 
 describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () => {
@@ -101,6 +110,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
         partId: rotaryPart.id,
         band: 'mint',
         genuinePeriod: false,
+        origin: makeMarketOrigin(1),
       }
       const wrapper = mount(PartCard, { props: { instance: rotaryInstance, part: rotaryPart } })
       expect(wrapper.find('.rotary-marker').exists()).toBe(true)
@@ -124,8 +134,46 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       return { game, instance }
     }
 
+    /**
+     * Sprint 70: ownership is read from the instance's own `origin` against
+     * every active service job (`game.isCustomerOwnedPart`), not a mutable
+     * `customerJobId` tag - the store needs a real active service job whose
+     * car matches the origin for the badge/lock to have anything to key off.
+     */
+    function grantCustomerOwnedPart(band: ConditionBand) {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const customerCar = game.gameState.ownedCars[0]!
+      const fakeJob: ServiceJob = {
+        id: 'svc-1-0',
+        typeId: 'small-bodywork-touchup',
+        customerName: 'Test Customer',
+        description: 'test fixture',
+        tasks: [],
+        car: customerCar,
+        payoutYen: 1,
+        baseReputation: 1,
+        deadlineDays: 1,
+        expiresOnDay: 999,
+        arrivesOnDay: null,
+        dueOnDay: 1,
+        baselineInstalledPartIds: {},
+      }
+      const tagged: PartInstance = {
+        ...instance,
+        band,
+        origin: makeCarOrigin(customerCar.id, 'Customer Car', 0),
+      }
+      game.gameState = {
+        ...game.gameState,
+        partInventory: [tagged],
+        activeServiceJobs: [fakeJob],
+      }
+      return { game, tagged }
+    }
+
     it('shows the customer-owned badge for a tagged part, and none for a player-owned one', () => {
-      const tagged: PartInstance = { ...instance, customerJobId: 'svc-1-0' }
+      const { tagged } = grantCustomerOwnedPart('mint')
       const withBadge = mount(PartCard, { props: { instance: tagged, part } })
       expect(withBadge.find(`[data-test="customer-owned-${tagged.id}"]`).exists()).toBe(true)
 
@@ -134,7 +182,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     })
 
     it('locks scrap for a customer-owned scrap part (disabled reason, no Scrap button)', () => {
-      const customerScrap: PartInstance = { ...instance, band: 'scrap', customerJobId: 'svc-1-0' }
+      const { tagged: customerScrap } = grantCustomerOwnedPart('scrap')
       const wrapper = mount(PartCard, { props: { instance: customerScrap, part } })
       expect(wrapper.find(`[data-test="scrap-locked-${customerScrap.id}"]`).exists()).toBe(true)
       expect(wrapper.find(`[data-test="scrap-part-${customerScrap.id}"]`).exists()).toBe(false)

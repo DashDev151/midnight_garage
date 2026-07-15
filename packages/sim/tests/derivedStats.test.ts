@@ -58,7 +58,13 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          installed: { id: 'pi-0001', partId: coilovers.id, band: 'mint', genuinePeriod: true },
+          installed: {
+            id: 'pi-0001',
+            partId: coilovers.id,
+            band: 'mint',
+            genuinePeriod: true,
+            origin: { kind: 'market', day: 1 },
+          },
         },
       },
     }
@@ -74,7 +80,13 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          installed: { id: 'pi-0001', partId: coilovers.id, band: 'mint', genuinePeriod: true },
+          installed: {
+            id: 'pi-0001',
+            partId: coilovers.id,
+            band: 'mint',
+            genuinePeriod: true,
+            origin: { kind: 'market', day: 1 },
+          },
         },
       },
     }
@@ -83,7 +95,13 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          installed: { id: 'pi-0002', partId: coilovers.id, band: 'worn', genuinePeriod: true },
+          installed: {
+            id: 'pi-0002',
+            partId: coilovers.id,
+            band: 'worn',
+            genuinePeriod: true,
+            origin: { kind: 'market', day: 1 },
+          },
         },
       },
     }
@@ -106,7 +124,13 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         block: {
-          installed: { id: 'pi-0004', partId: brokenPart.id, band: 'mint', genuinePeriod: true },
+          installed: {
+            id: 'pi-0004',
+            partId: brokenPart.id,
+            band: 'mint',
+            genuinePeriod: true,
+            origin: { kind: 'market', day: 1 },
+          },
         },
       },
     }
@@ -125,7 +149,13 @@ describe('computeDerivedStats', () => {
       parts: {
         ...baseInstance.parts,
         dampers: {
-          installed: { id: 'pi-0003', partId: modifiedPart.id, band: 'mint', genuinePeriod: false },
+          installed: {
+            id: 'pi-0003',
+            partId: modifiedPart.id,
+            band: 'mint',
+            genuinePeriod: false,
+            origin: { kind: 'market', day: 1 },
+          },
         },
       },
     }

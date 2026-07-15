@@ -110,6 +110,7 @@ function stockPartFixture(carPartId: string, band: ConditionBandFixture): PartIn
     partId: `fixture-stock-part-${carPartId}`,
     band,
     genuinePeriod: false,
+    origin: { kind: 'market', day: 1 },
   }
 }
 
@@ -328,16 +329,13 @@ describe('saveCodec', () => {
    * but invisible to the new parking view).
    */
   it('decodes a pre-v9 save, reconstructing indexed bay/parking arrays from the old exclusion model', () => {
-    const carComponents = {
-      engine: { condition: 80, installed: null },
-      forcedInduction: { condition: 80, installed: null },
-      drivetrain: { condition: 80, installed: null },
-      suspension: { condition: 80, installed: null },
-      brakes: { condition: 80, installed: null },
-      wheels: { condition: 80, installed: null },
-      body: { condition: 80, installed: null },
-      interior: { condition: 80, installed: null },
-    }
+    // Sprint 70: this test's own subject (bay/parking array reconstruction)
+    // has nothing to do with a car's parts - `parts: mintParts()` (the
+    // current, origin-carrying shape) is used here in place of the
+    // historically-accurate pre-Sprint-26 `components` shape, same testing
+    // convenience the v17 -> v19 blocks below already rely on, since a
+    // genuinely pre-v26 `components` shape can no longer reach final schema
+    // validation at all (see the v15 -> v16/v20 -> v21 retirement notes).
     const ownedCar = (id: string) => ({
       id,
       modelId: 'honda-city-e-aa',
@@ -345,9 +343,8 @@ describe('saveCodec', () => {
       mileageKm: 100_000,
       color: 'White',
       provenanceNote: '',
-      hiddenIssues: [],
       authenticityPercent: 90,
-      components: carComponents,
+      parts: mintParts(),
     })
     const preV9 = {
       version: 8,
@@ -427,16 +424,6 @@ describe('saveCodec', () => {
   })
 
   it('decodes a pre-v11 save with an active lot that never had a bid (Sprint 19: purely additive)', () => {
-    const carComponents = {
-      engine: { condition: 60, installed: null },
-      forcedInduction: { condition: 100, installed: null },
-      drivetrain: { condition: 60, installed: null },
-      suspension: { condition: 60, installed: null },
-      brakes: { condition: 100, installed: null },
-      wheels: { condition: 100, installed: null },
-      body: { condition: 60, installed: null },
-      interior: { condition: 60, installed: null },
-    }
     const preV11 = {
       version: 10,
       gameState: {
@@ -463,9 +450,8 @@ describe('saveCodec', () => {
               mileageKm: 120_000,
               color: 'White',
               provenanceNote: '',
-              hiddenIssues: [],
               authenticityPercent: 85,
-              components: carComponents,
+              parts: mintParts(),
             },
           },
         ],
@@ -495,16 +481,6 @@ describe('saveCodec', () => {
    * migration, same category as v9's bay/parking reconstruction).
    */
   it('decodes a pre-v12 save with in-flight bids, reconstructing open-bidding state (Sprint 20 migration)', () => {
-    const carComponents = {
-      engine: { condition: 60, installed: null },
-      forcedInduction: { condition: 100, installed: null },
-      drivetrain: { condition: 60, installed: null },
-      suspension: { condition: 60, installed: null },
-      brakes: { condition: 100, installed: null },
-      wheels: { condition: 100, installed: null },
-      body: { condition: 60, installed: null },
-      interior: { condition: 60, installed: null },
-    }
     const lotCar = (id: string) => ({
       id,
       modelId: 'honda-city-e-aa',
@@ -512,9 +488,8 @@ describe('saveCodec', () => {
       mileageKm: 120_000,
       color: 'White',
       provenanceNote: '',
-      hiddenIssues: [],
       authenticityPercent: 85,
-      components: carComponents,
+      parts: mintParts(),
     })
     const preV12 = {
       version: 11,
@@ -668,18 +643,14 @@ describe('saveCodec', () => {
    * service job) still decodes cleanly through the now-much-longer chain
    * rather than crashing, and that each car's `hiddenIssues` data is gone
    * (not merely defaulted) on the far side.
+   *
+   * Sprint 70: `parts: mintParts()` stands in for the historically-accurate
+   * pre-Sprint-26 `components` shape (same convenience as the pre-v9/v11/v12
+   * tests above) - a genuinely old `components` shape can no longer reach
+   * final schema validation at all (see the v15 -> v16 retirement note). This
+   * test's own subject, `hiddenIssues` dropping cleanly, is unaffected.
    */
   it('decodes a pre-v14 save carrying hiddenIssues on all three CarInstance populations, dropping them cleanly through the full chain to v16', () => {
-    const carComponents = {
-      engine: { condition: 60, installed: null },
-      forcedInduction: { condition: 100, installed: null },
-      drivetrain: { condition: 60, installed: null },
-      suspension: { condition: 60, installed: null },
-      brakes: { condition: 100, installed: null },
-      wheels: { condition: 100, installed: null },
-      body: { condition: 60, installed: null },
-      interior: { condition: 60, installed: null },
-    }
     const preV14 = {
       version: 13,
       gameState: {
@@ -698,7 +669,7 @@ describe('saveCodec', () => {
             provenanceNote: '',
             hiddenIssues: [{ issueId: 'rusted-rails', revealed: true }],
             authenticityPercent: 85,
-            components: carComponents,
+            parts: mintParts(),
           },
         ],
         activeAuctionLots: [
@@ -721,7 +692,7 @@ describe('saveCodec', () => {
               provenanceNote: '',
               hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
               authenticityPercent: 85,
-              components: carComponents,
+              parts: mintParts(),
             },
           },
         ],
@@ -745,7 +716,7 @@ describe('saveCodec', () => {
               provenanceNote: '',
               hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
               authenticityPercent: 85,
-              components: carComponents,
+              parts: mintParts(),
             },
           },
         ],
@@ -775,16 +746,6 @@ describe('saveCodec', () => {
    * already fully in the shop, not still in transit.
    */
   it('decodes a pre-v15 save, treating every existing accepted service job as already arrived', () => {
-    const carComponents = {
-      engine: { condition: 60, installed: null },
-      forcedInduction: { condition: 100, installed: null },
-      drivetrain: { condition: 60, installed: null },
-      suspension: { condition: 60, installed: null },
-      brakes: { condition: 100, installed: null },
-      wheels: { condition: 100, installed: null },
-      body: { condition: 60, installed: null },
-      interior: { condition: 60, installed: null },
-    }
     const preV15 = {
       version: 14,
       gameState: {
@@ -811,9 +772,8 @@ describe('saveCodec', () => {
               mileageKm: 120_000,
               color: 'White',
               provenanceNote: '',
-              hiddenIssues: [],
               authenticityPercent: 85,
-              components: carComponents,
+              parts: mintParts(),
             },
           },
         ],
@@ -1049,7 +1009,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(30)
+    expect(SAVE_VERSION).toBe(31)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1077,93 +1037,94 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v21 -> v22 (Sprint 35, customer-owned parts): `PartInstance` gained an
-   * optional `customerJobId` - the normal additive case (like v2-v8/v17), so
-   * it needs NO `MIGRATIONS[21]` entry, but it DOES bump `SAVE_VERSION` (Save
-   * law / engineering law 4). These two tests are its regression coverage: a
-   * real pre-v22 (v21 envelope) save with an untagged inventory part still
-   * decodes cleanly under v22 (the part reads player-owned, `customerJobId`
-   * absent), and a v22 state carrying a `customerJobId`-tagged part round-trips
-   * the tag exactly.
+   * v30 -> v31 (Sprint 70, parts provenance): `PartInstance` gained a
+   * REQUIRED `origin` and lost `customerJobId` entirely. Directive 17 case
+   * (a): these two tests used to cover the Sprint 35 tag's own additive
+   * migration (v21 -> v22) and round-trip - that mechanism is gone, and
+   * directive 19 (no pre-launch save compatibility) means there is
+   * deliberately no migration path backfilling `origin` onto an old save, so
+   * the OLD assertion ("a pre-v22 save still decodes, player-owned") is now
+   * false. The new correct behaviour: any pre-v31 save fails to decode
+   * outright, and a v31 save round-trips `origin` (not a tag) exactly.
    */
-  it('a real pre-v22 save (a v21 envelope with an untagged inventory part) decodes as player-owned under v22', () => {
-    const preV22 = {
-      version: 21,
+  it('a pre-v31 save (a part with no origin) fails to decode cleanly rather than crashing', () => {
+    const preV31 = {
+      version: 30,
       gameState: {
         ...fullState,
-        partInventory: [{ id: 'pi-spare-1', partId: 'khs-street-ecu', band: 'worn' }],
+        partInventory: [
+          { id: 'pi-spare-1', partId: 'khs-street-ecu', band: 'worn', genuinePeriod: false },
+        ],
       },
     }
-    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV22))
-    const decoded = decodeSave(code)
-    // The additive case: a v21 part decodes unchanged under v22, with
-    // `customerJobId` simply absent (which IS "player-owned" now).
-    expect(decoded.partInventory[0]?.band).toBe('worn')
-    expect(decoded.partInventory[0]).not.toHaveProperty('customerJobId')
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV31))
+    expect(() => decodeSave(code)).toThrow()
   })
 
-  it('a v22 state with a customer-owned (tagged) inventory part round-trips the tag exactly', () => {
-    expect(SAVE_VERSION).toBe(30)
-    const withTaggedPart: GameState = GameStateSchema.parse({
+  it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
+    expect(SAVE_VERSION).toBe(31)
+    const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
-        { id: 'pi-owned', partId: 'khs-street-ecu', band: 'mint' },
-        { id: 'pi-customer', partId: 'khs-street-ecu', band: 'poor', customerJobId: 'svc-5-0' },
+        {
+          id: 'pi-owned',
+          partId: 'khs-street-ecu',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        {
+          id: 'pi-customer',
+          partId: 'khs-street-ecu',
+          band: 'poor',
+          origin: {
+            kind: 'car',
+            carInstanceId: 'car-customer',
+            carLabel: "Customer's Car",
+            day: 3,
+          },
+        },
       ],
     })
-    const decoded = decodeSave(encodeSave(withTaggedPart))
-    expect(decoded).toEqual(withTaggedPart)
-    expect(decoded.partInventory[0]).not.toHaveProperty('customerJobId')
-    expect(decoded.partInventory[1]?.customerJobId).toBe('svc-5-0')
+    const decoded = decodeSave(encodeSave(withOrigin))
+    expect(decoded).toEqual(withOrigin)
+    expect(decoded.partInventory[0]?.origin).toEqual({ kind: 'market', day: 1 })
+    expect(decoded.partInventory[1]?.origin).toEqual({
+      kind: 'car',
+      carInstanceId: 'car-customer',
+      carLabel: "Customer's Car",
+      day: 3,
+    })
   })
 
   /**
-   * v15 -> v16 (Sprint 26, the banded parts model) - the single biggest
-   * structural migration this file carries (see the SAVE_VERSION doc
-   * comment). Exercises the full mapping from sprint26.md decision 11 on one
-   * real save: non-uniform group conditions bucket into distinct bands, an
-   * installed part relocates to its correct specific slot by catalog
-   * address, `aero` always comes back mint (no old-model counterpart),
-   * `forcedInduction.fitted` follows the model's Turbo/Supercharged tag, a
-   * retired `fix-issue` job/staged action is dropped outright, a surviving
-   * `repair-zone`/`repair` entry backfills `targetBand: 'mint'`, an old
-   * 8-way `componentId` remaps through the new 6-way group set, and
-   * `partInventory`'s `conditionPercent` becomes `band`.
+   * v15 -> v16 (Sprint 26, the banded parts model) - RETIRED by Sprint 70
+   * (parts provenance). This block used to decode a real pre-Sprint-26 save
+   * (percent/`components` shape) through the full migration chain and assert
+   * the resulting shape: non-uniform group conditions bucketing into bands,
+   * an installed part relocating to its correct slot, `aero`/
+   * `forcedInduction` handling, the retired `fix-issue` drop, the old 8-way
+   * `componentId` remap, `partInventory.conditionPercent` -> `band` - see git
+   * history for the full test bodies (8 tests, all decoding one shared
+   * fixture).
+   *
+   * `PartInstanceSchema` gaining a REQUIRED `origin` with directive 19's
+   * intentional NO migration makes this permanently unreachable:
+   * `migratePartInstance`/`migrateCarInstanceToBands` (the functions THIS
+   * migration step calls to synthesize `PartInstance`s from raw percentages)
+   * predate `origin` and were deliberately left untouched - adding a de facto
+   * origin backfill there would be exactly the "make an old save work again"
+   * migration directive 19 forbids. A pre-v31 save can therefore never again
+   * reach final schema validation, regardless of which historical step is
+   * under test. Decision 2's own words: "old saves break; that is accepted
+   * and intended" - and directive 19 bans "golden-save tests that pin a
+   * legacy shape" outright, which is exactly what this block was. What
+   * remains: confirming decode still fails cleanly for this specific shape.
    */
-  describe('v15 -> v16 migration (Sprint 26, banded parts model)', () => {
-    // economy.json's bands.migrationThresholds: mint >= 90, fine >= 70,
-    // worn >= 40, poor >= 15, else scrap.
-    const turboCarComponents = {
-      engine: {
-        condition: 95,
-        installed: { id: 'pi-ecu-1', partId: 'khs-street-ecu', conditionPercent: 72 },
-      },
-      forcedInduction: { condition: 55, installed: null },
-      drivetrain: { condition: 40, installed: null },
-      suspension: { condition: 25, installed: null },
-      brakes: { condition: 95, installed: null },
-      wheels: { condition: 95, installed: null },
-      body: { condition: 95, installed: null },
-      interior: { condition: 95, installed: null },
-    }
-    const naCarComponents = {
-      engine: { condition: 95, installed: null },
-      forcedInduction: { condition: 95, installed: null },
-      drivetrain: { condition: 95, installed: null },
-      suspension: { condition: 95, installed: null },
-      brakes: { condition: 95, installed: null },
-      wheels: { condition: 95, installed: null },
-      body: { condition: 95, installed: null },
-      interior: { condition: 95, installed: null },
-    }
+  it('a pre-v16 (v15 envelope, pre-banded-parts) save also fails to decode - no migration reaches that far back anymore', () => {
     const preV16 = {
       version: 15,
       gameState: {
-        day: 120,
-        seed: 17,
-        cashYen: 4_000_000,
-        reputationTier: 'known',
-        reputationPoints: 70,
+        ...fullState,
         ownedCars: [
           {
             id: 'turbo-car',
@@ -1172,156 +1133,27 @@ describe('saveCodec', () => {
             mileageKm: 140_000,
             color: 'Black',
             provenanceNote: '',
-            hiddenIssues: [
-              { issueId: 'rusted-rails', revealed: true, severityPercent: 0, repaired: true },
-            ],
             authenticityPercent: 80,
-            components: turboCarComponents,
-          },
-          {
-            id: 'na-car',
-            modelId: 'honda-city-e-aa',
-            year: 1984,
-            mileageKm: 100_000,
-            color: 'White',
-            provenanceNote: '',
-            hiddenIssues: [],
-            authenticityPercent: 90,
-            components: naCarComponents,
+            components: {
+              engine: {
+                condition: 95,
+                installed: { id: 'pi-ecu-1', partId: 'khs-street-ecu', conditionPercent: 72 },
+              },
+              forcedInduction: { condition: 55, installed: null },
+              drivetrain: { condition: 40, installed: null },
+              suspension: { condition: 25, installed: null },
+              brakes: { condition: 95, installed: null },
+              wheels: { condition: 95, installed: null },
+              body: { condition: 95, installed: null },
+              interior: { condition: 95, installed: null },
+            },
           },
         ],
         partInventory: [{ id: 'pi-spare-1', partId: 'khs-street-ecu', conditionPercent: 50 }],
-        serviceJobOffers: [
-          {
-            id: 'offer-1',
-            typeId: 'repair-brakes',
-            customerName: 'Tanaka-san',
-            description: 'squeaky brakes',
-            work: { kind: 'repair', componentId: 'brakes' },
-            car: {
-              id: 'offer-car',
-              modelId: 'honda-city-e-aa',
-              year: 1984,
-              mileageKm: 100_000,
-              color: 'White',
-              provenanceNote: '',
-              hiddenIssues: [],
-              authenticityPercent: 90,
-              components: naCarComponents,
-            },
-            payoutYen: 12_000,
-            baseReputation: 1,
-            expiresOnDay: 130,
-          },
-        ],
-        jobs: [
-          {
-            id: 'job-repair',
-            carInstanceId: 'turbo-car',
-            kind: 'repair-zone',
-            componentId: 'brakes',
-            laborSlotsRequired: 2,
-            laborSlotsSpent: 0,
-          },
-          {
-            id: 'job-fix-issue',
-            carInstanceId: 'turbo-car',
-            kind: 'fix-issue',
-            componentId: 'body',
-            issueId: 'rusted-rails',
-            laborSlotsRequired: 1,
-            laborSlotsSpent: 0,
-          },
-        ],
-        stagedCarWork: {
-          'turbo-car': [
-            { kind: 'repair', componentId: 'forcedInduction' },
-            { kind: 'fix-issue', componentId: 'body', issueId: 'rusted-rails' },
-          ],
-        },
       },
     }
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV16))
-    const decoded = decodeSave(code)
-    const turboCar = decoded.ownedCars.find((c) => c.id === 'turbo-car')!
-    const naCar = decoded.ownedCars.find((c) => c.id === 'na-car')!
-
-    // decodeSave runs the FULL migration chain, v15 all the way to the
-    // current v21 - so every assertion below reads the final Sprint 32
-    // `{ installed }` shape (`migrateV20ToV21`'s own synthesized-stock-part
-    // mapping), not the intermediate v16 `{ band, installed, fitted }` one
-    // this describe block's own migration (v15 -> v16) originally produced.
-    it('buckets each old group condition through the same band thresholds auction generation uses, fanning out to every part in the group', () => {
-      // engine: 95 -> mint, fanned out to all 9 non-FI engine parts - no
-      // instance was ever explicitly installed on these slots, so v20 -> v21
-      // synthesizes a fresh stock PartInstance at the bucketed band.
-      expect(turboCar.parts.block.installed?.band).toBe('mint')
-      expect(turboCar.parts.cooling.installed?.band).toBe('mint')
-      // suspension: 25 -> poor, fanned out to the 4 non-brake parts.
-      expect(turboCar.parts.dampers.installed?.band).toBe('poor')
-      expect(turboCar.parts.steering.installed?.band).toBe('poor')
-    })
-
-    it('relocates an installed part to its correct specific slot by catalog carPartId', () => {
-      // Sprint 53: decodeSave's full chain now also runs v27 -> v28, which
-      // remaps every installed part to its own model's fitment class -
-      // nissan-180sx-rps13 (turboCar) is 'uncommon' tier.
-      expect(turboCar.parts.ignitionEcu.installed?.partId).toBe('uncommon-khs-street-ecu')
-      expect(turboCar.parts.ignitionEcu.installed?.band).toBe('fine')
-      // Every other engine part instead gets v20 -> v21's synthesized generic
-      // stock part (it was never explicitly installed) - not left unoccupied
-      // the way it was under the pre-Sprint-32 shape.
-      expect(turboCar.parts.block.installed?.partId).toBe('uncommon-stock-block')
-    })
-
-    it('aero always migrates to mint - no old-model counterpart existed for it - and v20 -> v21 fills it with a mint stock part', () => {
-      // Sprint 53: nissan-180sx-rps13 (turboCar) is 'uncommon' tier;
-      // honda-city-e-aa (naCar) is 'shitbox' tier.
-      expect(turboCar.parts.aero.installed?.partId).toBe('uncommon-stock-aero')
-      expect(turboCar.parts.aero.installed?.band).toBe('mint')
-      expect(naCar.parts.aero.installed?.partId).toBe('shitbox-stock-aero')
-      expect(naCar.parts.aero.installed?.band).toBe('mint')
-    })
-
-    it('forced induction follows the Turbo/Supercharged tag: a factory turbo gets a synthesized stock turbo at its rolled band, an NA slot stays genuinely empty', () => {
-      // Sprint 53: nissan-180sx-rps13 (turboCar) is 'uncommon' tier.
-      expect(turboCar.parts.forcedInduction.installed?.partId).toBe(
-        'uncommon-stock-forced-induction',
-      )
-      expect(turboCar.parts.forcedInduction.installed?.band).toBe('worn')
-      expect(naCar.parts.forcedInduction.installed).toBeNull()
-    })
-
-    it('drops a retired fix-issue job outright and backfills targetBand on the surviving repair-zone job', () => {
-      expect(decoded.jobs).toHaveLength(1)
-      expect(decoded.jobs[0]?.kind).toBe('repair-zone')
-      expect(decoded.jobs[0]?.targetBand).toBe('mint')
-      // brakes folds into suspension under the new 6-way group set.
-      expect(decoded.jobs[0]?.componentId).toBe('suspension')
-    })
-
-    it('drops a retired fix-issue staged action and backfills targetBand on the surviving repair stage, remapping its group', () => {
-      const staged = decoded.stagedCarWork['turbo-car']
-      expect(staged).toHaveLength(1)
-      expect(staged?.[0]).toEqual({ kind: 'repair', componentId: 'engine', targetBand: 'mint' })
-    })
-
-    it('migrates partInventory conditionPercent to band', () => {
-      expect(decoded.partInventory[0]?.band).toBe('worn')
-      expect(decoded.partInventory[0]).not.toHaveProperty('conditionPercent')
-    })
-
-    // Sprint 29 (v17 -> v18): serviceJobOffers are dropped, not mapped, by
-    // the later migration this same decodeSave call also runs (see that
-    // version's SAVE_VERSION doc comment) - so a pre-v16 offer's `work`
-    // (whatever the v15 -> v16 group remap left it as) is no longer
-    // observable through the public decodeSave path by the time decoding
-    // finishes. The v17 -> v18 describe block below covers the group remap's
-    // real successor: an ACTIVE (already-accepted) job's `work` surviving as
-    // a real, addressable `tasks` entry instead.
-    it('drops the pre-v16 offer entirely (Sprint 29: offers are dropped, not mapped, by v17 -> v18)', () => {
-      expect(decoded.serviceJobOffers).toEqual([])
-    })
+    expect(() => decodeSave(code)).toThrow()
   })
 
   /**
@@ -1646,132 +1478,43 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v20 -> v21 (Sprint 32, stock-baseline/missing-slot model): the
-   * `{ band, installed, fitted }` -> `{ installed }` reshape - see the
-   * SAVE_VERSION doc comment above for the full mapping. Exercises every
-   * branch on one real pre-v21 save: an already-aftermarket-installed slot
-   * (kept as-is), an ordinary slot with nothing installed (synthesized to a
-   * fresh stock part at its old band), a factory turbo (synthesized to a
-   * fresh stock TURBO at its old band), and an NA car's unfitted forced
-   * induction (migrates to a genuinely empty `null`, not a synthesized
-   * part).
+   * v20 -> v21 (Sprint 32, stock-baseline/missing-slot model) - the
+   * old-shape-decode half of this block is RETIRED by Sprint 70 (parts
+   * provenance), same reasoning as the v15 -> v16 retirement above:
+   * `migrateCarInstanceToStockBaseline`/`migratePartSlotToStock` synthesize
+   * fresh `PartInstance`s from the pre-v21 `{ band, installed, fitted }`
+   * shape, and that synthesis predates `origin` - left untouched per
+   * directive 19, so it can never again produce schema-valid output. What
+   * survives: the current-shape (v21+) round-trip test below, and a check
+   * that a genuine pre-v21 save now fails to decode rather than crashing.
    */
   describe('v20 -> v21 migration (Sprint 32, stock-baseline/missing-slot model)', () => {
-    /** A pre-v21 29-key `parts` map in the old `{ band, installed, fitted }`
-     * shape, mint/unoccupied/fitted by default - the old-model counterpart
-     * to this file's own current-shape `mintParts` above. */
-    function oldShapeParts(
-      overrides: Partial<
-        Record<string, { band: string; installed: unknown; fitted: boolean }>
-      > = {},
-    ): Record<string, { band: string; installed: unknown; fitted: boolean }> {
-      const base: Record<string, { band: string; installed: unknown; fitted: boolean }> =
-        Object.fromEntries(
-          ALL_CAR_PART_IDS_FOR_TEST.map((id) => [
-            id,
-            { band: 'mint', installed: null, fitted: true },
-          ]),
-        )
-      for (const [id, override] of Object.entries(overrides)) {
-        if (override !== undefined) base[id] = override
+    it('a pre-v21 save (the old { band, installed, fitted } shape) fails to decode - no migration reaches that far back anymore', () => {
+      const preV21 = {
+        version: 20,
+        gameState: {
+          ...fullState,
+          ownedCars: [
+            {
+              id: 'turbo-car',
+              modelId: 'nissan-180sx-rps13',
+              year: 1994,
+              mileageKm: 90_000,
+              color: 'Black',
+              provenanceNote: '',
+              authenticityPercent: 80,
+              parts: Object.fromEntries(
+                ALL_CAR_PART_IDS_FOR_TEST.map((id) => [
+                  id,
+                  { band: 'mint', installed: null, fitted: true },
+                ]),
+              ),
+            },
+          ],
+        },
       }
-      return base
-    }
-
-    const preV21 = {
-      version: 20,
-      gameState: {
-        ...fullState,
-        ownedCars: [
-          {
-            id: 'turbo-car',
-            // nissan-180sx-rps13 is Turbo-tagged (used as the turbo fixture
-            // model throughout this file's v15 -> v16 block above).
-            modelId: 'nissan-180sx-rps13',
-            year: 1994,
-            mileageKm: 90_000,
-            color: 'Black',
-            provenanceNote: '',
-            authenticityPercent: 80,
-            parts: oldShapeParts({
-              // Already aftermarket-installed - kept exactly as-is, it
-              // already carries its own band.
-              dampers: {
-                band: 'mint',
-                installed: {
-                  id: 'pi-coilovers',
-                  partId: 'tanuki-street-coilovers',
-                  band: 'fine',
-                  genuinePeriod: false,
-                },
-                fitted: true,
-              },
-              // Ordinary part, nothing explicitly installed - synthesizes a
-              // fresh generic stock part at the old slot band.
-              tyres: { band: 'worn', installed: null, fitted: true },
-              // A factory turbo (fitted: true, nothing explicitly
-              // installed) - synthesizes a fresh stock TURBO at the old band.
-              forcedInduction: { band: 'worn', installed: null, fitted: true },
-            }),
-          },
-          {
-            id: 'na-car',
-            // honda-city-e-aa is NA-tagged (used as the NA fixture model
-            // throughout this file's v15 -> v16 block above).
-            modelId: 'honda-city-e-aa',
-            year: 1984,
-            mileageKm: 100_000,
-            color: 'White',
-            provenanceNote: '',
-            authenticityPercent: 90,
-            parts: oldShapeParts({
-              forcedInduction: { band: 'mint', installed: null, fitted: false },
-            }),
-          },
-        ],
-      },
-    }
-    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV21))
-    const decoded = decodeSave(code)
-    const turboCar = decoded.ownedCars.find((c) => c.id === 'turbo-car')!
-    const naCar = decoded.ownedCars.find((c) => c.id === 'na-car')!
-
-    it('keeps an already-installed aftermarket part exactly as-is - it already carries its own band', () => {
-      // Sprint 53: decodeSave's full chain now also runs v27 -> v28, which
-      // remaps every installed part (stock or aftermarket) to its own
-      // model's fitment class - nissan-180sx-rps13 (turboCar) is 'uncommon'
-      // tier. Band/id/genuinePeriod are otherwise untouched - "as-is" still
-      // holds for everything but the class-corrected catalog address.
-      expect(turboCar.parts.dampers.installed).toEqual({
-        id: 'pi-coilovers',
-        partId: 'uncommon-tanuki-street-coilovers',
-        band: 'fine',
-        genuinePeriod: false,
-      })
-    })
-
-    it('synthesizes a fresh generic stock part for an ordinary slot with nothing explicitly installed, at the old slot band', () => {
-      expect(turboCar.parts.tyres.installed?.partId).toBe('uncommon-stock-tyres')
-      expect(turboCar.parts.tyres.installed?.band).toBe('worn')
-      expect(turboCar.parts.tyres.installed?.genuinePeriod).toBe(false)
-    })
-
-    it('synthesizes a fresh stock turbo for a factory-turbo car, at the old slot band', () => {
-      expect(turboCar.parts.forcedInduction.installed?.partId).toBe(
-        'uncommon-stock-forced-induction',
-      )
-      expect(turboCar.parts.forcedInduction.installed?.band).toBe('worn')
-    })
-
-    it('migrates an NA car’s unfitted forced induction to a genuinely empty slot, not a synthesized part', () => {
-      expect(naCar.parts.forcedInduction.installed).toBeNull()
-    })
-
-    it('every ordinary mint/unoccupied slot synthesizes a mint generic stock part', () => {
-      // honda-city-e-aa (naCar) is 'shitbox' tier - unaffected here since
-      // this assertion targets turboCar ('uncommon').
-      expect(turboCar.parts.block.installed?.partId).toBe('uncommon-stock-block')
-      expect(turboCar.parts.block.installed?.band).toBe('mint')
+      const code = 'MGSAVE1.' + btoa(JSON.stringify(preV21))
+      expect(() => decodeSave(code)).toThrow()
     })
 
     it('round-trips a current v21 state with a real missing slot and a real aftermarket part', () => {
@@ -1795,6 +1538,7 @@ describe('saveCodec', () => {
                 partId: 'tanuki-street-coilovers',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             }),
           },
@@ -1902,8 +1646,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 30 (Sprint 61)', () => {
-    expect(SAVE_VERSION).toBe(30)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 31 (Sprint 70)', () => {
+    expect(SAVE_VERSION).toBe(31)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1955,6 +1699,7 @@ describe('saveCodec', () => {
           partId: 'khs-street-ecu',
           band: 'mint',
           genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
           pricePaidYen: 60_000,
         },
       ],
@@ -2004,8 +1749,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 30 (Sprint 61)', () => {
-    expect(SAVE_VERSION).toBe(30)
+  it('SAVE_VERSION has since moved to 31 (Sprint 70)', () => {
+    expect(SAVE_VERSION).toBe(31)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -2037,8 +1782,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 30 (Sprint 61)', () => {
-    expect(SAVE_VERSION).toBe(30)
+  it('SAVE_VERSION is 31 (Sprint 70)', () => {
+    expect(SAVE_VERSION).toBe(31)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -2084,8 +1829,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 30 (Sprint 61)', () => {
-    expect(SAVE_VERSION).toBe(30)
+  it('SAVE_VERSION is 31 (Sprint 70)', () => {
+    expect(SAVE_VERSION).toBe(31)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -2101,7 +1846,13 @@ describe('saveCodec', () => {
           provenanceNote: '',
           authenticityPercent: 80,
           parts: mintParts({
-            block: { id: 'pi-block-01', partId: 'stock-block', band: 'worn', genuinePeriod: false },
+            block: {
+              id: 'pi-block-01',
+              partId: 'stock-block',
+              band: 'worn',
+              genuinePeriod: false,
+              origin: { kind: 'market', day: 1 },
+            },
           }),
         },
       ],
@@ -2125,6 +1876,12 @@ describe('saveCodec', () => {
           partId: 'stock-block',
           band: 'mint',
           genuinePeriod: false,
+          // Sprint 70: `origin` is required by the current schema, but this
+          // migration itself (and this test's own assertions) only ever
+          // touch `customerJobId`/`partId` - `origin` is untouched filler so
+          // the final `GameStateSchema.parse` below has something valid to
+          // read (directive 19: no migration backfills it).
+          origin: { kind: 'market', day: 1 },
           customerJobId: 'job-01',
         },
       ],
@@ -2166,7 +1923,13 @@ describe('saveCodec', () => {
     const preV28State = {
       ...fullState,
       partInventory: [
-        { id: 'pi-loose-02', partId: 'stock-block', band: 'mint', genuinePeriod: false },
+        {
+          id: 'pi-loose-02',
+          partId: 'stock-block',
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
       ],
     }
     const preV28 = { version: 27, gameState: preV28State }

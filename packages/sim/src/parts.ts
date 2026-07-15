@@ -15,6 +15,7 @@ import {
 import { scrapValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
+import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
 
 export type DeliverySpeed = 'standard' | 'express'
 
@@ -136,6 +137,7 @@ export function resolveBuyPart(
     partId: part.id,
     band: 'mint',
     genuinePeriod: false,
+    origin: makeMarketOrigin(state.day),
     pricePaidYen: priceYen,
   }
   return {
@@ -198,6 +200,7 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
       partId: order.partId,
       band: 'mint',
       genuinePeriod: false,
+      origin: makeMarketOrigin(state.day),
       // Sprint 42: the order's own locked price (set at purchase time, not
       // today's sticker price) - a standard order's real cost.
       pricePaidYen: order.priceYen,
@@ -229,12 +232,14 @@ export interface ScrapPartResult {
  * to recover any value from it. A no-op if the instance doesn't exist or
  * isn't actually scrap.
  *
- * Sprint 35 decision 3: a customer-owned part (`customerJobId` set - pulled
- * off a customer's car and awaiting close-out) is locked from scrap too. It
- * was never ours to sell; scrapping it is refused (a silent no-op here, gated
- * with a visible reason in the UI). This is the sell/scrap half of the tag's
- * two locks - the other being that it can only leave via close-out
- * reconciliation (`resolveServiceJob`), never our hands.
+ * Sprint 35 decision 3: a customer-owned part (pulled off a customer's car
+ * and awaiting close-out) is locked from scrap too. It was never ours to
+ * sell; scrapping it is refused (a silent no-op here, gated with a visible
+ * reason in the UI). This is the sell/scrap half of the ownership lock - the
+ * other being that it can only leave via close-out reconciliation
+ * (`resolveServiceJob`), never our hands. Sprint 70: ownership is read from
+ * the instance's own `origin` against every active service job
+ * (`provenance.ts`), not a mutable tag.
  */
 export function resolveScrapPart(
   state: GameState,
@@ -242,7 +247,10 @@ export function resolveScrapPart(
   context: SimContext,
 ): ScrapPartResult {
   const instance = state.partInventory.find((p) => p.id === partInstanceId)
-  if (!instance || instance.band !== 'scrap' || instance.customerJobId) return { state, log: [] }
+  if (!instance || instance.band !== 'scrap') return { state, log: [] }
+  if (state.activeServiceJobs.some((job) => isCustomerOriginPart(instance, job))) {
+    return { state, log: [] }
+  }
   const part = context.partsById[instance.partId]
   const taxonomyEntry = part ? context.partsTaxonomyById[part.carPartId] : undefined
   if (!part || !taxonomyEntry) return { state, log: [] }

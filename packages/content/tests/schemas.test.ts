@@ -7,9 +7,11 @@ import facilities from '../data/facilities.json'
 import partPricing from '../data/partPricing.json'
 import parts from '../data/parts.json'
 import partsTaxonomy from '../data/parts-taxonomy.json'
+import provenance from '../data/provenance.json'
 import toolLines from '../data/toolLines.json'
 import traits from '../data/traits.json'
 import {
+  AgeBandSchema,
   BuyersSchema,
   CarModelsSchema,
   CarPartTaxonomyContentSchema,
@@ -19,8 +21,10 @@ import {
   FacilitiesSchema,
   PartCatalogEntriesSchema,
   PartPricingSheetSchema,
+  ProvenancePoolSchema,
   ToolLinesSchema,
   TraitDefinitionsSchema,
+  UpkeepTierSchema,
 } from '../src'
 
 describe('seed content validates against schemas', () => {
@@ -106,6 +110,27 @@ describe('seed content validates against schemas', () => {
     // Sprint 58: the schema's own key set is exactly the 6 real groups - no
     // dead pre-Sprint-26 entries (`brakes`, `forcedInduction`) survive.
     expect(Object.keys(result.data).sort()).toEqual([...ComponentIdSchema.options].sort())
+  })
+
+  /**
+   * Sprint 70: `PROVENANCE_POOL` relocated here from `packages/sim/src/
+   * auctions.ts` (the content law now covers it) - every `(ageBand,
+   * upkeepTier)` cell must carry at least 2 lines for real variety, checked
+   * explicitly per cell rather than trusting the schema's own `.min(2)` alone.
+   */
+  it('provenance.json', () => {
+    const result = ProvenancePoolSchema.safeParse(provenance)
+    if (!result.success) throw new Error(result.error.message)
+    for (const ageBand of AgeBandSchema.options) {
+      for (const upkeepTier of UpkeepTierSchema.options) {
+        const lines = result.data[ageBand]?.[upkeepTier]
+        expect(lines, `${ageBand}/${upkeepTier} has no line pool`).toBeTruthy()
+        expect(
+          lines!.length,
+          `${ageBand}/${upkeepTier} has fewer than 2 lines`,
+        ).toBeGreaterThanOrEqual(2)
+      }
+    }
   })
 
   it('facilities.json', () => {

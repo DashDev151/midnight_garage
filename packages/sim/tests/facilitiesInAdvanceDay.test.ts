@@ -66,6 +66,7 @@ function withWornPanels(state: GameState): GameState {
               partId: CONTEXT.stockPartByCarPartId.shitbox.panels!.id,
               band: 'worn',
               genuinePeriod: false,
+              origin: { kind: 'market', day: 1 },
             },
           },
         },

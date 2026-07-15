@@ -64,6 +64,7 @@ import {
   confirmStagedWork,
   createInitialGameState,
   createRng,
+  describeOrigin,
   deriveReputationTier,
   emptyDayActions,
   expectationForCar,
@@ -72,7 +73,9 @@ import {
   groupCostToMintYen,
   installedPartsValueYen,
   hasParkingSpace,
+  isCustomerOriginPart,
   isPartMissing,
+  makeMarketOrigin,
   isServiceJobInTransit,
   isToolTierListed,
   isServiceTaskDone,
@@ -1602,17 +1605,31 @@ export const useGameStore = defineStore('game', () => {
    */
   /**
    * Whether a loose inventory part is legally installable onto `carId` -
-   * always true for an untagged (player-owned) part, but a customer-owned
-   * tagged part (Sprint 35 decision 2) may only go back onto the SAME
-   * customer's car it was pulled from, never a different one, including the
-   * player's own (mirrors the sim-side gate, `installFitGate` in jobs.ts).
+   * always true for a player-owned part, but a part whose origin traces to an
+   * active customer job (Sprint 70) may only go back onto that SAME
+   * customer's car, never a different one, including the player's own
+   * (mirrors the sim-side gate, `installFitGate` in jobs.ts).
    */
   function isPartAvailableFor(part: PartInstance, carId: string): boolean {
-    if (!part.customerJobId) return true
-    return (
-      gameState.value.activeServiceJobs.find((job) => job.id === part.customerJobId)?.car.id ===
-      carId
+    const owningJob = gameState.value.activeServiceJobs.find((job) =>
+      isCustomerOriginPart(part, job),
     )
+    return !owningJob || owningJob.car.id === carId
+  }
+
+  /**
+   * Whether a loose inventory part currently belongs to an active service
+   * job's customer (Sprint 70) - the badge/lock `PartCard.vue` shows. Asks the
+   * same question as `isPartAvailableFor`, just without a target car in mind.
+   */
+  function isCustomerOwnedPart(part: PartInstance): boolean {
+    return gameState.value.activeServiceJobs.some((job) => isCustomerOriginPart(part, job))
+  }
+
+  /** The dim "where did this come from" caption line `PartCard.vue` shows
+   * beneath a part's name (Sprint 70). */
+  function describePartOrigin(part: PartInstance): string {
+    return describeOrigin(part.origin)
   }
 
   function installablePartsFor(carId: string, componentId: ComponentId): PartInstance[] {
@@ -2684,7 +2701,15 @@ export const useGameStore = defineStore('game', () => {
     if (!model) return
     grantCounter.value += 1
     const id = `dev-car-${grantCounter.value}`
-    const car = generateAuctionCarInstance(model, id, createRng(grantCounter.value), context.value)
+    const car = generateAuctionCarInstance(
+      model,
+      id,
+      createRng(grantCounter.value),
+      context.value,
+      Infinity,
+      true,
+      gameState.value.day,
+    )
     // Sprint 17: parking is a real indexed array now - a granted car needs an
     // actual slot, not just membership in `ownedCars` (assignToParking grows
     // the array if parking happens to be nominally full, since this bypasses
@@ -2705,6 +2730,7 @@ export const useGameStore = defineStore('game', () => {
       partId: part.id,
       band: 'mint',
       genuinePeriod: false,
+      origin: makeMarketOrigin(gameState.value.day),
     }
     gameState.value = {
       ...gameState.value,
@@ -2793,6 +2819,8 @@ export const useGameStore = defineStore('game', () => {
     nextRepairStep,
     plannedStepFor,
     isPartRepairable,
+    isCustomerOwnedPart,
+    describePartOrigin,
     partsInGroup,
     carPartLabel,
     groupForCarPart,

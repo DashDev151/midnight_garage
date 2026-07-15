@@ -1,0 +1,20 @@
+{
+  "young": {
+    "cherished": [
+      "first owner, dealer-serviced from new",
+      "barely run in, every stamp in the book"
+    ],
+    "average": ["lease return, serviced on schedule", "company car, second owner, books present"],
+    "neglected": ["repossessed, sat on a forecourt since", "insurance buy-back, lightly knocked"]
+  },
+  "middling": {
+    "cherished": ["one-owner, garage kept", "enthusiast-owned, receipts for everything"],
+    "average": ["daily driver, honest wear", "dealer trade-in, service history unknown"],
+    "neglected": ["traded in rough, owner gave up on it", "sold as-is, no history offered"]
+  },
+  "old": {
+    "cherished": ["estate sale, low mileage claimed", "long-term collection car, dry stored"],
+    "average": ["second-hand for years, patchy history", "honest survivor, some receipts"],
+    "neglected": ["parked up for years, ran when it went in", "barn find, no history at all"]
+  }
+}

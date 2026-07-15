@@ -412,8 +412,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * mid-job never breaks); every new offer snapshots a real baseline. The
  * version bump alone is still required (Save law) so an old client rejects a
  * v30 save rather than silently dropping the field.
+ * v30 -> v31 (Sprint 70, parts provenance): `PartInstanceSchema` gained a
+ * REQUIRED `origin` field and lost `customerJobId` entirely. Not the pure
+ * additive case, and directive 19 (no pre-launch save compatibility) is what
+ * makes that fine: no `MIGRATIONS[30]` entry, no backfill, no legacy-compat
+ * branch. A pre-v31 save simply fails to decode - `origin` is required, so
+ * `GameStateSchema.parse` throws a `ZodError` on every part in it (this
+ * function does not catch that itself); every real caller already wraps
+ * `decodeSave` in its own try/catch (`hydrate`/`importSaveCode`,
+ * gameStore.ts) and falls back to a new game on any decode failure, same as
+ * a corrupted save code. The version bump is what makes a v31 save at least
+ * attempt this schema rather than an older one silently misreading it.
  */
-export const SAVE_VERSION = 30
+export const SAVE_VERSION = 31
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

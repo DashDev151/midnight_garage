@@ -9,9 +9,9 @@ import {
   type GameState,
   type Job,
   type PartInstance,
-  type ServiceJob,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
+import { carOriginLabel } from './auctions'
 import {
   bandIndex,
   canRepair,
@@ -25,6 +25,7 @@ import {
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { partFitsCar } from './parts'
+import { makeCarOrigin, isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
@@ -285,13 +286,17 @@ export interface RemovePartResult {
  *
  * Sprint 35 decision 2 (supersedes Sprint 33 decision 8): a part pulled off a
  * service-job CUSTOMER's car is no longer discarded - it lands in OUR
- * `partInventory` tagged `customerJobId` with that job's id, so it can be
- * tracked and reconditioned (the PC-Building-Sim model) while staying locked
- * from sale/scrap and reconciled out at close-out (`resolveServiceJob`). A
- * part pulled off a car we actually own is kept untagged (player-owned),
- * unchanged from Sprint 32. The slot's own replacement (a fresh stock
- * instance, or genuinely empty for a removed stock part) is identical either
- * way; only the inventory side-effect's tag differs by ownership.
+ * `partInventory`, tracked and reconditionable (the PC-Building-Sim model)
+ * while staying locked from sale/scrap and reconciled out at close-out
+ * (`resolveServiceJob`). A part pulled off a car we actually own is simply
+ * ours, unchanged from Sprint 32. Either way the instance moves into
+ * inventory completely unchanged - Sprint 70 retired the old
+ * `customerJobId` tag this function used to stamp on: the pulled instance
+ * already carries its immutable `origin` from birth, which is what every
+ * ownership question (`provenance.ts`) now reads instead. The slot's own
+ * replacement (a fresh stock instance, or genuinely empty for a removed
+ * stock part) carries the SAME car's origin, since it is materialising onto
+ * this exact car.
  */
 export function resolveRemovePart(
   state: GameState,
@@ -317,12 +322,14 @@ export function resolveRemovePart(
   const removedCatalogPart = context.partsById[installed.partId]
   const isStock = removedCatalogPart?.grade === 'stock'
   const stockCatalogPart = context.stockPartByCarPartId[fitmentClass]?.[carPartId]
+  const carLabel = model ? carOriginLabel(model, car.year) : car.modelId
   const freshStockInstance: PartInstance | null = stockCatalogPart
     ? {
         id: `part-removed-${state.day}-${state.partInventory.length}`,
         partId: stockCatalogPart.id,
         band: 'mint',
         genuinePeriod: false,
+        origin: makeCarOrigin(carInstanceId, carLabel, state.day),
       }
     : null
 
@@ -345,51 +352,21 @@ export function resolveRemovePart(
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {
-    // A customer's car (Sprint 35 decision 2): a pulled part stays in our
-    // inventory tagged with the owning job - not ours to sell or scrap, but
-    // ours to recondition until the job closes out.
-    //
-    // Sprint 68 decision 1 (playtest item 17): the tag now depends on whose
-    // part it actually IS, not on where the car happens to be parked. Before
-    // this, the branch tagged EVERY removed part unconditionally, so a damper
-    // the player bought and fitted became the customer's property the instant
-    // they pulled it back off - and `resolveServiceJob`'s close-out, which
-    // drops every inventory entry carrying the job's id, then confiscated it
-    // outright. The player was robbed of their own part for changing their
-    // mind.
+    // A customer's car: a pulled part stays in our inventory - not ours to
+    // sell or scrap, but ours to recondition until the job closes out. Sprint
+    // 70 retired the Sprint 35/68 tagging dance here entirely: `installed`
+    // already carries whichever origin it was born with (the customer's car,
+    // or the market if the player bought and fitted it), and that is what
+    // every ownership question now reads (`provenance.ts`) - nothing to stamp
+    // on the way into inventory.
     const serviceJob = state.activeServiceJobs[serviceIndex]!
     const activeServiceJobs = [...state.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
-    const keptPart = isCustomersOwnPart(serviceJob, carPartId, installed)
-      ? { ...installed, customerJobId: serviceJob.id }
-      : installed
-    const partInventory = [...state.partInventory, keptPart]
+    const partInventory = [...state.partInventory, installed]
     return { state: { ...state, activeServiceJobs, partInventory }, log }
   }
 
   return { state, log: [] }
-}
-
-/**
- * Whether `installed` is the part the CUSTOMER arrived with, rather than one
- * the player bought and fitted (Sprint 68 decision 1, playtest item 17).
- *
- * `baselineInstalledPartIds` (Sprint 61, made total over the car in Sprint 68)
- * records the exact `PartInstance.id` in every slot at generation, so this is
- * a direct identity check: the customer's part is the one that was there when
- * the car arrived, and nothing else is.
- *
- * The `?? null` matters. A slot the car arrived with EMPTY has a recorded
- * baseline of `null`, which no real `PartInstance.id` can equal - so a part the
- * player fits into a genuinely empty slot is theirs, decided by the record
- * rather than by the absence of one.
- */
-function isCustomersOwnPart(
-  job: ServiceJob,
-  carPartId: CarPartId,
-  installed: PartInstance,
-): boolean {
-  return installed.id === job.baselineInstalledPartIds[carPartId]
 }
 
 /**
@@ -588,18 +565,14 @@ export function installFitGate(
   if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
   }
-  // A customer-owned tagged part (Sprint 35 decision 2) is only ever ours to
-  // recondition and reinstall onto the SAME customer's car it was pulled
-  // from - never sold, scrapped, or (the gap this closes) installed onto a
-  // different car, including the player's own. `partInstance` is guaranteed
-  // defined here (part of the `fits` conjunction above).
-  if (partInstance!.customerJobId) {
-    const owningCarId = state.activeServiceJobs.find(
-      (job) => job.id === partInstance!.customerJobId,
-    )?.car.id
-    if (owningCarId !== spec.carInstanceId) {
-      return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'not-your-part' }] }
-    }
+  // A part whose origin traces to an active customer job (Sprint 70) is only
+  // ever ours to recondition and reinstall onto that SAME customer's car -
+  // never sold, scrapped, or installed onto a different car, including the
+  // player's own. `partInstance` is guaranteed defined here (part of the
+  // `fits` conjunction above).
+  const owningJob = state.activeServiceJobs.find((job) => isCustomerOriginPart(partInstance!, job))
+  if (owningJob && owningJob.car.id !== spec.carInstanceId) {
+    return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'not-your-part' }] }
   }
   // model and part are both guaranteed defined here (part of the `fits`
   // conjunction above) - TS doesn't narrow through the boolean variable.

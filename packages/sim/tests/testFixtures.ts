@@ -62,12 +62,18 @@ const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
   ]),
 )
 
+/** Sprint 70: every fixture-stock part carries the fixture car's own origin
+ * (`BASE_CAR_INSTANCE.id` below) - plain, not-a-customer-job car origin, so
+ * ownership-neutral tests never accidentally trip a provenance gate. Tests
+ * that DO exercise ownership build their own specific `PartInstance` (with an
+ * explicit `origin`) via the `CarPartOverride` escape hatch instead. */
 function stockInstanceFor(partId: CarPartId, band: ConditionBand): PartInstance {
   return {
     id: `fixture-stock-${partId}`,
     partId: STOCK_PART_ID_BY_CAR_PART_ID[partId]!,
     band,
     genuinePeriod: false,
+    origin: { kind: 'car', carInstanceId: BASE_CAR_INSTANCE.id, carLabel: 'Test Car', day: 0 },
   }
 }
 

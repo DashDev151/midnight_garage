@@ -31,6 +31,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-block',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             internals: {
@@ -39,6 +40,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-internals',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             headValvetrain: {
@@ -47,6 +49,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-head-valvetrain',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             camsTiming: {
@@ -55,6 +58,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-cams-timing',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             intake: {
@@ -63,6 +67,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-intake',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             exhaust: {
@@ -71,6 +76,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-exhaust',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             fuelSystem: {
@@ -79,6 +85,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-fuel-system',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             ignitionEcu: {
@@ -87,6 +94,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'khs-street-ecu',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             cooling: {
@@ -95,6 +103,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-cooling',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             forcedInduction: { installed: null },
@@ -104,6 +113,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-gearbox',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             clutch: {
@@ -112,6 +122,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-clutch',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             differential: {
@@ -120,6 +131,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-differential',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             driveline: {
@@ -128,6 +140,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-driveline',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             chassis: {
@@ -136,6 +149,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-chassis',
                 band: 'fine',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             dampers: {
@@ -144,6 +158,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-dampers',
                 band: 'poor',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             springs: {
@@ -152,6 +167,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-springs',
                 band: 'poor',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             antiRollBars: {
@@ -160,6 +176,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-anti-roll-bars',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             steering: {
@@ -168,6 +185,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-steering',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             brakePadsDiscs: {
@@ -176,6 +194,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-brake-pads-discs',
                 band: 'mint',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             brakeCalipersLines: {
@@ -184,10 +203,17 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-brake-calipers-lines',
                 band: 'mint',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             rims: {
-              installed: { id: 'p-rims', partId: 'stock-rims', band: 'mint', genuinePeriod: false },
+              installed: {
+                id: 'p-rims',
+                partId: 'stock-rims',
+                band: 'mint',
+                genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
+              },
             },
             tyres: {
               installed: {
@@ -195,6 +221,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-tyres',
                 band: 'mint',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             panels: {
@@ -203,6 +230,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-panels',
                 band: 'poor',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             paint: {
@@ -211,6 +239,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-paint',
                 band: 'poor',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             underbody: {
@@ -219,10 +248,17 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-underbody',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             aero: {
-              installed: { id: 'p-aero', partId: 'stock-aero', band: 'mint', genuinePeriod: false },
+              installed: {
+                id: 'p-aero',
+                partId: 'stock-aero',
+                band: 'mint',
+                genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
+              },
             },
             seats: {
               installed: {
@@ -230,6 +266,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-seats',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
             dashGauges: {
@@ -238,6 +275,7 @@ describe('GameState / DayLog round-trip', () => {
                 partId: 'stock-dash-gauges',
                 band: 'worn',
                 genuinePeriod: false,
+                origin: { kind: 'market', day: 1 },
               },
             },
           },
@@ -249,6 +287,7 @@ describe('GameState / DayLog round-trip', () => {
           partId: 'tanuki-street-coilovers',
           band: 'mint',
           genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
           pricePaidYen: 78_000,
         },
       ],
@@ -512,6 +551,7 @@ describe('GameState / DayLog round-trip', () => {
       partId: 'khs-street-ecu',
       band: 'mint',
       genuinePeriod: false,
+      origin: { kind: 'market', day: 1 },
       pricePaidYen: 60_000,
     })
     expect(priced.pricePaidYen).toBe(60_000)
@@ -521,6 +561,7 @@ describe('GameState / DayLog round-trip', () => {
       partId: 'khs-street-ecu',
       band: 'mint',
       genuinePeriod: false,
+      origin: { kind: 'market', day: 1 },
     })
     expect(unpriced.pricePaidYen).toBeUndefined()
   })

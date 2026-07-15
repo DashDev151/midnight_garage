@@ -61,6 +61,7 @@ const sparePart: PartInstance = {
   partId: 'shitbox-tanuki-street-coilovers',
   band: 'mint',
   genuinePeriod: false,
+  origin: { kind: 'market', day: 1 },
 }
 
 function baseState(overrides: Partial<GameState> = {}): GameState {

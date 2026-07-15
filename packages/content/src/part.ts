@@ -59,26 +59,51 @@ export function resolvePartsCatalog(
 }
 
 /**
+ * Sprint 70 (parts provenance, ground up): where a `PartInstance` came from,
+ * stamped at birth and never rewritten. `car` means it was pulled from (or
+ * generated already installed on) a specific `CarInstance` - `carLabel` is
+ * denormalised (not looked up live) so it still reads correctly after the
+ * donor car is sold or scrapped. `market` means the player bought it. This is
+ * the one fact every ownership question in the codebase now routes through
+ * (`packages/sim/src/provenance.ts`) - replaces the old `customerJobId`
+ * inference chain (Sprint 35/61/68), which derived ownership after the fact
+ * from where a car happened to be parked rather than a part ever carrying its
+ * own history.
+ */
+export const PartOriginSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('car'),
+    carInstanceId: z.string().min(1),
+    carLabel: z.string().min(1),
+    day: z.number().int().nonnegative(),
+  }),
+  z.object({
+    kind: z.literal('market'),
+    day: z.number().int().nonnegative(),
+  }),
+])
+
+export type PartOrigin = z.infer<typeof PartOriginSchema>
+
+/**
  * An owned/installed part. Band and genuine-period status are per-instance
  * (GDD 5.3: a used genuine part differs from a new reproduction of the same
  * catalog part), so they live here, not on Part. Sprint 26: `band` replaces
  * the old `conditionPercent` - a purchased part always starts `mint`
  * (matching the old `conditionPercent: 100` default).
  *
- * Sprint 35 decision 1: `customerJobId`, when present, marks this instance as
- * belonging to that active service job's customer - a part pulled off their
- * car (`resolveRemovePart`), tracked in our inventory but never ours to sell
- * or scrap, and reconciled out at close-out (`resolveServiceJob`). Absent
- * (the default and the state of every existing part) means player-owned.
- * Chosen over a bare boolean so close-out can reconcile the specific job's
- * parts.
+ * Sprint 70: `origin` is required and immutable - every birth site stamps it
+ * (`provenance.ts`'s `makeCarOrigin`/`makeMarketOrigin`), and no code path may
+ * rewrite it once set. Directive 19 (no pre-launch save compatibility) is
+ * what makes a required field cheap here: old saves simply fail to decode
+ * (SAVE_VERSION bump), no migration.
  */
 export const PartInstanceSchema = z.object({
   id: z.string().min(1),
   partId: z.string().min(1),
   band: ConditionBandSchema.default('mint'),
   genuinePeriod: z.boolean().default(false),
-  customerJobId: z.string().min(1).optional(),
+  origin: PartOriginSchema,
   /**
    * Sprint 42 (the flip ledger): what this specific instance actually cost -
    * set at purchase (`resolveBuyPart`, express at charge time / standard at
