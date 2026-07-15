@@ -26,34 +26,60 @@ the old checklist:
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
 pass."
 
-- [ ] **Whether the balance harness (bots + invariants) actually reflects real gameplay is still an
-  open doubt**, restated increasingly sharply since 2026-07-08: bots may behave consistently with
-  each other without resembling how a real player plays. "N invariants pass" is evidence the
-  mechanism works, never evidence the game is fun or the bots are realistic - that judgment call
-  stays open regardless of the numbers below. Sprint 23's fresh harness run had sharpened this with
-  a specific finding (every active strategy underperforming a do-nothing baseline at day 100); the
-  Economy Rebuild arc's laws (Sprints 53-55) have since reversed it - a fresh 1000-career run
-  post-Sprint-55 shows most active strategies beating Passive Grinder's day-100 cash and Flipper
-  clearing its own starting cash for the first time this harness has recorded (see
-  `tools/balance/src/balance/invariants.py`'s module docstring and `docs/sprints/sprint55.md`'s
-  Exit for the real numbers). The economy-pacing symptom is resolved; the harness-vs-real-play
-  methodological doubt itself is not, and stays open.
-- [ ] **No bot ever installs an AFTERMARKET part, so the harness cannot exercise any premium/
-  build-quality economics at all** (maintainer finding, 2026-07-14, after Sprint 60). This is a
-  concrete, high-priority instance of the harness-realism doubt above: every bot only ever
-  repairs stock parts and sells, so across all 9 strategies x 1000 careers every owned car
-  carries a ZERO aftermarket premium. Sprint 60's foundation law (economy-bible Law 5) scales the
-  premium term - and the harness run came back byte-for-byte identical to Sprint 59's, because the
-  factor multiplies a premium that is always zero in bot play. The whole point of the harness is
-  to simulate how a REAL player might play, and a real player buys street/sport/race parts and
-  builds cars up; the bots don't, so the harness is blind to the entire aftermarket half of the
-  economy (installed-part value, the foundation law, the coherence of a modified build, buyer
-  taste on modified cars). Needs at least one bot archetype (a "builder"/"tuner") that buys
-  aftermarket parts from the market and installs them - ideally one that builds INCOHERENTLY
-  sometimes (fancy parts on bad foundations) so the harness actually stresses Law 5, and one that
-  builds coherently, so the report can show the two diverge the way the law intends. Until then,
-  every premium-related invariant is proven only by the unit/probe tests, never by career-scale
-  Monte Carlo.
+- [ ] **THE BOT HARNESS NEEDS A FULL REWORK - it does not simulate real gameplay, and its
+  career-derived numbers should not be trusted as design evidence** (maintainer verdict,
+  2026-07-15: *"basically right now we know that the entire Sim part with the bots is kinda
+  useless. This needs a full rework to ACTUALLY SIMULATE REAL GAMEPLAY"*). This supersedes and
+  consolidates the three separate entries that used to sit here (the standing harness-vs-real-play
+  doubt restated since 2026-07-08, the no-aftermarket gap, and the days-to-`local` bot-patience
+  finding). The doubt is no longer a doubt - it is measured, repeatedly, from four independent
+  directions:
+
+  1. **Rep rate is 5x off.** The maintainer's own session reached 32 rep and the `local` rung by
+     **day 6** (~5 rep/day). The `competent-policy` probe earns ~**1 rep/day**, p50 **day 16**.
+     Consequence: days-to-`local` - one of only NINE hard-gated invariants, and the flagship
+     "is progression paced right" check since Sprint 23 - has been answering *"how long does this
+     bot take"* for its entire life. The reputation ladder was then scaled to that answer, so it
+     collapsed under real play (the old `local` at 15 falls on day 3 for a real player). Sprint 69
+     re-bases the band around the bot's rate because the probe is the only thing measuring it -
+     an honest workaround for a broken instrument, not a fix.
+  2. **No bot installs an aftermarket part - ever.** Across 9 strategies x 1000 careers, every
+     owned car carries a ZERO aftermarket premium. Sprint 60's foundation law (economy-bible Law 5)
+     scales exactly that premium term, and the harness run came back **byte-for-byte identical** to
+     Sprint 59's. The harness is structurally blind to the entire aftermarket half of the economy:
+     installed-part value, the foundation law, build coherence, buyer taste on modified cars.
+  3. **Bots never make mistakes, so whole mechanics go untested.** The Sprint 68 provenance bug
+     (buy a part, fit it to a customer's car, remove it, and the game confiscates it as the
+     customer's) survived every harness run ever done, because no bot has ever mis-bought a part.
+     Same for the grace/double-parking slot, rejecting an offer, or planning work and not
+     confirming it.
+  4. **Bots can't reach the content they're meant to test.** Handyman 0/30 and Cautious Restorer
+     2/200 seeds ever clear a tool tier; post-Sprint-59 `competent-policy` - the bot built
+     specifically to climb - affords **zero** tool upgrades in 100 days. Large parts of the
+     progression system are simply never exercised.
+
+  **What survives the rework, and must not be thrown away.** The distinction matters: the harness
+  has two halves and only one is broken.
+  - **Bot-derived (unreliable):** every days-to-tier figure, every per-strategy cash curve, the
+    auction win-price tails, the buyout share. Treat these as bot statistics, not design
+    statistics.
+  - **Closed-form and sound (bot-free):** `computeRosterCoherence`'s Law 1/2/3/4 checks call the
+    real sim functions against deliberately-constructed worst-case cars - no bots, no RNG, no
+    careers. Same for the `valueModelProbes` acceptance families and the golden-master
+    determinism hashes. These are the checks that actually caught things, and they should be
+    where more verification goes, not less.
+
+  **What a real rework has to do** (unscoped - needs its own design pass, not a sprint bolt-on):
+  make a bot's *decision rate and decision mix* resemble a person's, not just its decision
+  *legality*. That means at minimum: a builder/tuner archetype that buys and installs aftermarket
+  (coherently AND incoherently, so Law 5 is stressed); rep-earning behaviour calibrated to a
+  measured human rate rather than emergent bot patience; error injection (mis-buys, wrong-grade
+  fits, forgotten hand-backs); and archetypes that can actually reach the mid-game content they
+  exist to test. The **recorded-play idea** below is the most promising route to calibrating any of
+  this against reality rather than against another guess - it is now a prerequisite for trusting
+  the harness again, not a nice-to-have. Until this lands, every economy/pacing decision should
+  lean on closed-form probes plus maintainer playtest, and treat "N invariants pass" as evidence
+  the mechanism doesn't crash - never evidence the game is paced right or is fun.
 - [ ] **Recorded-play idea** (user-proposed 2026-07-09): parse real play sessions into per-archetype
   statistical rulesets - rates and biases ("bids X% below book," "does these repairs, buys that
   part"), not literal replay, and **phase-aware** (a career can drift mid-run; today's bots don't).
