@@ -11,6 +11,26 @@ const game = useGameStore()
 const bidInputs = reactive<Record<string, number | undefined>>({})
 
 /**
+ * Sprint 64 (item 3): Buy Now is a two-step commit - the first click arms
+ * this per-lot confirm state, the second actually buys. A car is expensive
+ * and irreversible, so it must never fire on a single stray click; the same
+ * two-step pattern the End Day cart-confirm and New Game confirm use.
+ */
+const buyoutConfirming = reactive<Record<string, boolean>>({})
+
+function onBuyoutClick(lotId: string): void {
+  if (buyoutConfirming[lotId]) {
+    buyoutConfirming[lotId] = false
+    game.buyout(lotId)
+  } else {
+    // Only one lot is ever armed at a time - arming this one disarms any
+    // other, so a stale confirm on a different card can't linger.
+    for (const id of Object.keys(buyoutConfirming)) buyoutConfirming[id] = false
+    buyoutConfirming[lotId] = true
+  }
+}
+
+/**
  * Sprint 45: the shop's real capacity (parking + every service bay) is full,
  * but the one grace/"double parking" overflow slot is not - a won lot still
  * has somewhere to go, it just double-parks and starts costing a daily fine
@@ -274,15 +294,31 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                 >
                   {{ d.playerHasBid ? 'Raise bid' : 'Place bid' }}
                 </button>
-                <button
-                  class="buyout"
-                  :disabled="game.cashYen < d.buyoutPriceYen"
-                  :data-test="'buyout-' + d.lot.id"
-                  @click="game.buyout(d.lot.id)"
-                >
-                  Buy now ({{ formatYen(d.buyoutPriceYen) }})
-                </button>
               </div>
+            </div>
+
+            <!-- Sprint 64 (item 3): Buy Now is demoted to a small, separated
+                 ghost control below the bid stack, and takes two clicks - it
+                 can never fire on a stray press against the Raise button. -->
+            <div class="buyout-row">
+              <button
+                class="buyout"
+                :class="{ confirming: buyoutConfirming[d.lot.id] }"
+                :disabled="game.cashYen < d.buyoutPriceYen"
+                :title="
+                  game.cashYen < d.buyoutPriceYen
+                    ? 'Not enough cash - Buy Now costs ' + formatYen(d.buyoutPriceYen)
+                    : 'Skip the bidding and buy this lot outright'
+                "
+                :data-test="'buyout-' + d.lot.id"
+                @click="onBuyoutClick(d.lot.id)"
+              >
+                {{
+                  buyoutConfirming[d.lot.id]
+                    ? 'Confirm buyout (' + formatYen(d.buyoutPriceYen) + ')'
+                    : 'Buy now (' + formatYen(d.buyoutPriceYen) + ')'
+                }}
+              </button>
             </div>
           </div>
         </li>
@@ -527,11 +563,33 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
+/* Sprint 64 (item 3): Buy Now sits below the bid stack, separated by a rule,
+   as a small ghost control - deliberately not competing with Place/Raise. */
+.buyout-row {
+  margin-top: var(--mg-space-2);
+  padding-top: var(--mg-space-2);
+  border-top: var(--mg-border);
+  display: flex;
+  justify-content: center;
+}
+
 .buyout {
-  border-color: var(--mg-neon-violet);
-  color: var(--mg-neon-violet);
-  padding: var(--mg-space-2) var(--mg-space-4);
-  font-size: var(--mg-fs-md);
+  background: transparent;
+  border-color: var(--mg-panel-edge);
+  color: var(--mg-text-dim);
+  padding: 2px var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+}
+
+.buyout:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The armed second-click state - now it reads as a real commitment. */
+.buyout.confirming {
+  border-color: var(--mg-neon-pink);
+  color: var(--mg-neon-pink);
 }
 
 .bid-field {

@@ -78,4 +78,50 @@ confirm, New Game confirm) carries Buy Now; `formatYen`/`formatYenDelta` as-is.
 
 ## Exit
 
-Not started.
+Implemented and committed.
+
+**The sectioned report (decision 1).** A new `classifyDayReport` (`dayLogFormat.ts`) derives the
+morning report's structure entirely in the game layer from a day's `DayLogEntry[]` (the sim is
+untouched): winning or buying a car produces a `DayReportWin` (model, year, price); the recurring
+money is summed into `{ earnedYen, onCarsYen, billsYen }`; the meaningful shop/market lines are
+ordered with outbid alerts first (they're actionable); and the pure noise (market-heat drift,
+catalogue refreshes, per-tick labour) is aggregated into a couple of grammar-correct quiet lines.
+`DayReport.vue` renders it as sections: **win cards first** (accent-coloured, `--mg-success`
+border, never red), then the compact money split, then the net delta DEMOTED to a small secondary
+line (no longer the scary red headline), then the notable lines, then the dim aggregated noise.
+The core item-13 fix: after winning an auction the first thing the player sees is "WON 1987 Honda
+City for ¥156,030" in green, not a huge red -¥156,030.
+
+**Pluralisation (decision 2).** A shared `pluralise(count, noun)` helper is the one place count
+copy is made grammatical; the `auction-catalog-refreshed` line in `describeLogEntry` (still used by
+the garage event log) and the report's aggregated noise lines both go through it, so "1 lots" is
+structurally impossible now.
+
+**Buy Now demoted and confirmed (decision 3).** Buy Now left the `.lot-action-buttons` block (which
+now holds only Place/Raise) for its own separated `.buyout-row` below the bid stack, styled as a
+small ghost control. It takes two clicks: the first arms a per-lot confirm ("Buy now ¥X" ->
+"Confirm buyout ¥X"), the second buys - the same two-step pattern as the End Day cart confirm, so a
+car can never change hands on a stray click against Raise. Arming one lot disarms any other, so a
+stale confirm never lingers. The buyout's disabled state (short on cash) now explains itself in a
+`title` tooltip, closing the no-hint gap the audit flagged.
+
+**Testing.** Game: 4 new `DayReport.test.ts` tests (a won car renders as a green celebration card
+with the net demoted, not red; routine noise aggregates into correctly-pluralised quiet lines with
+"1 lots" proven dead; an outbid alert is first in the notable list) plus the two existing tests
+still green; 4 new `AuctionScreen.test.ts` tests (first click only arms, no car changes hands;
+second click completes; Buy Now is not in the bid-button block; a disabled Buy Now explains itself)
+and a directive-17 rewrite of the one existing test that asserted the old single-click buyout.
+`dayLogFormat.test.ts`'s catalog sample (`lotCount: 3`) already reads "3 lots", unaffected.
+
+**Verification.** Full gate green: `pnpm typecheck` (all 3 packages), `pnpm lint`, `pnpm format`,
+`pnpm test:coverage` (1078 tests, 81 files; coverage 91.34%/82.17%/92.86%/95.04%, all above the
+ratchet floor), `pnpm build`. No balance harness run - this is pure presentation (report layout,
+a game-layer classifier, and a two-step confirm wrapper over the SAME `game.buyout`); buyout
+mechanics are untouched and every sim golden hash held (the full test run passed).
+
+**Definition of done, checked against the sprint doc:**
+- Winning an auction opens the report with a celebration, not a red number; routine lines are
+  aggregated, correctly pluralised, and visually quiet - yes.
+- Buying out a lot takes two deliberate clicks on a control that no longer sits against Raise;
+  disabled auction buttons explain themselves - yes.
+- Full gate green; zero sim change - yes.

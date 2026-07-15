@@ -1,17 +1,34 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
-import { describeLogEntry } from '../utils/dayLogFormat'
-import { formatYenDelta } from '../utils/formatYen'
+import { classifyDayReport } from '../utils/dayLogFormat'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 const game = useGameStore()
 
 const report = computed(() => game.lastDayReport)
-const lines = computed(() =>
-  (report.value?.entries ?? []).map((entry, i) => ({
-    id: i,
-    text: describeLogEntry(entry, game.resolveModelName, game.buyerName),
-  })),
+
+/**
+ * Sprint 64: the report's structured view - wins as celebration cards, the
+ * recurring money in one honest line, the meaningful shop/market lines
+ * (outbid first), and the pure noise aggregated. All derived in the game
+ * layer via `classifyDayReport`; the sim is untouched.
+ */
+const view = computed(() =>
+  classifyDayReport(report.value?.entries ?? [], game.resolveModelName, game.buyerName),
+)
+
+const hasMoney = computed(() => {
+  const m = view.value.money
+  return m.earnedYen > 0 || m.onCarsYen > 0 || m.billsYen > 0
+})
+
+const isQuietDay = computed(
+  () =>
+    view.value.wins.length === 0 &&
+    view.value.notable.length === 0 &&
+    view.value.noise.length === 0 &&
+    !hasMoney.value,
 )
 </script>
 
@@ -19,14 +36,41 @@ const lines = computed(() =>
   <div v-if="game.reportVisible && report" class="overlay" data-test="day-report">
     <div class="report">
       <h3>Day {{ report.day }} complete</h3>
-      <p class="delta" :class="report.cashDeltaYen < 0 ? 'down' : 'up'">
-        {{ formatYenDelta(report.cashDeltaYen) }}
+
+      <!-- Wins first: a car you won reads as the win it is, never a red loss. -->
+      <ul v-if="view.wins.length" class="wins" data-test="report-wins">
+        <li v-for="(win, i) in view.wins" :key="i" class="win-card">
+          <span class="win-banner">{{ win.kind === 'bought' ? 'Bought' : 'Won' }}</span>
+          <span class="win-name">{{ win.year }} {{ win.modelName }}</span>
+          <span class="win-price">for {{ formatYen(win.priceYen) }}</span>
+        </li>
+      </ul>
+
+      <!-- The recurring money, honestly split - the net delta is secondary now. -->
+      <div v-if="hasMoney" class="money" data-test="report-money">
+        <span v-if="view.money.earnedYen > 0" class="money-in"
+          >Earned {{ formatYen(view.money.earnedYen) }}</span
+        >
+        <span v-if="view.money.onCarsYen > 0" class="money-out"
+          >Bought cars {{ formatYen(view.money.onCarsYen) }}</span
+        >
+        <span v-if="view.money.billsYen > 0" class="money-out"
+          >Bills {{ formatYen(view.money.billsYen) }}</span
+        >
+      </div>
+      <p class="net" :class="report.cashDeltaYen < 0 ? 'down' : 'up'" data-test="report-net">
+        Net today {{ formatYenDelta(report.cashDeltaYen) }}
       </p>
 
-      <p v-if="lines.length === 0" class="quiet">A quiet day - nothing to report.</p>
-      <ul v-else>
-        <li v-for="line in lines" :key="line.id">{{ line.text }}</li>
+      <ul v-if="view.notable.length" class="notable" data-test="report-notable">
+        <li v-for="(line, i) in view.notable" :key="i">{{ line }}</li>
       </ul>
+
+      <ul v-if="view.noise.length" class="noise" data-test="report-noise">
+        <li v-for="(line, i) in view.noise" :key="i">{{ line }}</li>
+      </ul>
+
+      <p v-if="isQuietDay" class="quiet">A quiet day - nothing to report.</p>
 
       <button class="primary" data-test="report-continue" @click="game.dismissReport()">
         Continue
@@ -63,37 +107,99 @@ h3 {
   margin-top: 0;
 }
 
-.delta {
-  font-size: var(--mg-fs-lg);
-  margin: var(--mg-space-2) 0 var(--mg-space-3);
+/* Sprint 64: the win cards - the first thing the eye lands on, in accent
+   colour, never red. */
+.wins {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-3);
+  display: grid;
+  gap: var(--mg-space-2);
 }
 
-.delta.up {
+.win-card {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+  flex-wrap: wrap;
+  background: var(--mg-night-deep);
+  border: 1px solid var(--mg-success);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+}
+
+.win-banner {
+  color: var(--mg-success);
+  font-size: var(--mg-fs-md);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.win-name {
+  color: var(--mg-neon-cyan);
+}
+
+.win-price {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+}
+
+/* The money split: a compact, quiet line - earned in, spend out. */
+.money {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-1) var(--mg-space-3);
+  margin: 0 0 var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+}
+
+.money-in {
   color: var(--mg-success);
 }
 
-.delta.down {
-  color: var(--mg-danger);
+.money-out {
+  color: var(--mg-text-dim);
+}
+
+.net {
+  margin: 0 0 var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+}
+
+.net.up {
+  color: var(--mg-success);
+}
+
+.net.down {
+  color: var(--mg-text-dim);
 }
 
 .quiet {
   color: var(--mg-text-dim);
 }
 
-ul {
+.notable,
+.noise {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--mg-space-3);
 }
 
-li {
+.notable li {
   padding: var(--mg-space-1) 0;
   border-bottom: var(--mg-border);
   font-size: var(--mg-fs-sm);
 }
 
-li:last-child {
+.notable li:last-child {
   border-bottom: none;
+}
+
+/* Aggregated noise: dimmer and lighter than the notable lines. */
+.noise li {
+  padding: 2px 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .primary {

@@ -68,10 +68,65 @@ describe('AuctionScreen', () => {
     expect(wrapper.text()).toMatch(/Thin turnout|Steady turnout|Packed turnout/)
     // Buy Now is offered on every lot, bid on or not (maintainer decision 2).
     expect(wrapper.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
-    const carsBefore = game.ownedCarCount
-    await wrapper.find(`[data-test="buyout-${lot.id}"]`).trigger('click')
-    expect(game.ownedCarCount).toBe(carsBefore + 1)
-    expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
+  })
+
+  describe('Buy Now is demoted and takes two clicks (Sprint 64 item 3)', () => {
+    it('the first click only arms a confirm - no car changes hands', async () => {
+      const game = useGameStore()
+      game.devGiveCash(5_000_000) // comfortably afford any buyout
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const wrapper = mountScreen()
+
+      const button = wrapper.find(`[data-test="buyout-${lot.id}"]`)
+      expect(button.text()).toContain('Buy now')
+      const carsBefore = game.ownedCarCount
+
+      await button.trigger('click')
+      // Still owned by nobody - the first click only armed the confirm.
+      expect(game.ownedCarCount).toBe(carsBefore)
+      expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
+      expect(wrapper.find(`[data-test="buyout-${lot.id}"]`).text()).toContain('Confirm buyout')
+    })
+
+    it('the second click completes the buyout', async () => {
+      const game = useGameStore()
+      game.devGiveCash(5_000_000)
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const wrapper = mountScreen()
+      const carsBefore = game.ownedCarCount
+
+      await wrapper.find(`[data-test="buyout-${lot.id}"]`).trigger('click')
+      await wrapper.find(`[data-test="buyout-${lot.id}"]`).trigger('click')
+
+      expect(game.ownedCarCount).toBe(carsBefore + 1)
+      expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
+    })
+
+    it("Buy Now no longer sits in the same button block as Place/Raise (can't be hit by a stray click)", () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const wrapper = mountScreen()
+      // The bid action block holds only the bid button; Buy Now lives in its
+      // own separated row.
+      const bidBlock = wrapper.find('.lot-action-buttons')
+      expect(bidBlock.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(false)
+      expect(wrapper.find('.buyout-row').find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
+    })
+
+    it('a disabled Buy Now (short on cash) explains itself in a tooltip', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      // Drain cash so no buyout is affordable.
+      game.gameState = { ...game.gameState, cashYen: 1 }
+      const wrapper = mountScreen()
+      const button = wrapper.find(`[data-test="buyout-${lot.id}"]`)
+      expect((button.element as HTMLButtonElement).disabled).toBe(true)
+      expect(button.attributes('title')).toContain('Not enough cash')
+    })
   })
 
   it('shows grade stamps instead of per-group bands on the auction card (Sprint 56 - amends Sprint 26 decision 10)', () => {

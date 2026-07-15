@@ -3,6 +3,14 @@ import { COMPONENT_DISPLAY_NAMES, TOOL_LINES, componentDisplayName } from '@midn
 import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
 
+/** `count noun` with an `s` on the noun unless the count is exactly 1 - the
+ * one place count copy is pluralised, so "1 lots" can never come back
+ * (Sprint 64 decision 2). Handles only regular `-s` plurals, which is every
+ * count noun the day report uses. */
+export function pluralise(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
 /**
  * Renders one DayLogEntry as a human-readable line for the event log.
  * `resolveModelName`/`resolveBuyerName` (both optional) turn a modelId/
@@ -37,7 +45,7 @@ export function describeLogEntry(
     case 'market-heat-shift':
       return `Market heat: ${resolveModelName(entry.modelId)} ${entry.deltaPercent >= 0 ? '+' : ''}${entry.deltaPercent}%`
     case 'auction-catalog-refreshed':
-      return `New ${entry.tier} auction catalog: ${entry.lotCount} lots`
+      return `New ${entry.tier} auction catalog: ${pluralise(entry.lotCount, 'lot')}`
     case 'auction-bid-placed':
       return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
     case 'auction-outbid':
@@ -119,4 +127,142 @@ export function describeLogEntry(
         TOOL_LINES[entry.componentId].tiers[entry.tier - 1]!.displayName
       } listed, ${formatYen(entry.priceYen)}`
   }
+}
+
+/**
+ * Sprint 64 (playtest pass-2 item 13): the morning report's structured view,
+ * derived entirely in the game layer from a day's `DayLogEntry[]` (the sim is
+ * untouched). Winning a car opens the report as a celebration, not a red
+ * number; the recurring money is summed into one honest line; the meaningful
+ * shop/market lines are ordered (outbid alerts first, they're actionable);
+ * and the pure noise (heat drift, catalogue refreshes, per-tick labour) is
+ * aggregated into a couple of quiet, correctly-pluralised lines instead of
+ * flooding the list.
+ */
+export interface DayReportWin {
+  modelName: string
+  year: number
+  priceYen: number
+  /** `won` = a contested auction win, `bought` = an instant buyout. */
+  kind: 'won' | 'bought'
+}
+
+export interface DayReportMoney {
+  /** Money in: sales, service-job payouts, passive bay income, scrap. */
+  earnedYen: number
+  /** Money out on acquiring cars: auction wins + buyouts. */
+  onCarsYen: number
+  /** Recurring costs: rent, wages, double-parking fines. */
+  billsYen: number
+}
+
+export interface DayReportView {
+  wins: DayReportWin[]
+  money: DayReportMoney
+  /** The meaningful, individually-worth-reading lines, outbid alerts first. */
+  notable: string[]
+  /** Aggregated quiet lines - grammar-correct, low decision value. */
+  noise: string[]
+}
+
+/** Types that become celebration cards, not list lines. */
+const WIN_TYPES = new Set<DayLogEntry['type']>(['auction-bid-won', 'lot-bought-out'])
+/** Types represented in the money split only - no individual list line. */
+const MONEY_ONLY_TYPES = new Set<DayLogEntry['type']>([
+  'rent-paid',
+  'wage-paid',
+  'service-bay-income',
+])
+/** Types folded into aggregated noise lines rather than shown one-per-entry. */
+const NOISE_TYPES = new Set<DayLogEntry['type']>([
+  'market-heat-shift',
+  'auction-catalog-refreshed',
+  'job-progress',
+])
+
+export function classifyDayReport(
+  entries: readonly DayLogEntry[],
+  resolveModelName: (modelId: string) => string = (id) => id,
+  resolveBuyerName: (buyerId: string) => string = (id) => id,
+): DayReportView {
+  const wins: DayReportWin[] = []
+  const money: DayReportMoney = { earnedYen: 0, onCarsYen: 0, billsYen: 0 }
+  const outbid: string[] = []
+  const rest: string[] = []
+  let refreshedLots = 0
+  let heatShifts = 0
+  let labourTicked = 0
+
+  for (const entry of entries) {
+    switch (entry.type) {
+      case 'auction-bid-won':
+        wins.push({
+          modelName: resolveModelName(entry.modelId),
+          year: entry.year,
+          priceYen: entry.finalPriceYen,
+          kind: 'won',
+        })
+        money.onCarsYen += entry.finalPriceYen
+        break
+      case 'lot-bought-out':
+        wins.push({
+          modelName: resolveModelName(entry.modelId),
+          year: entry.year,
+          priceYen: entry.priceYen,
+          kind: 'bought',
+        })
+        money.onCarsYen += entry.priceYen
+        break
+      case 'car-sold':
+        money.earnedYen += entry.priceYen
+        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        break
+      case 'service-job-completed':
+        money.earnedYen += entry.payoutYen
+        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        break
+      case 'part-scrapped':
+        money.earnedYen += entry.priceYen
+        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        break
+      case 'service-bay-income':
+        money.earnedYen += entry.amountYen
+        break
+      case 'rent-paid':
+      case 'wage-paid':
+        money.billsYen += Math.abs(entry.amountYen)
+        break
+      case 'double-parking-fine':
+        money.billsYen += Math.abs(entry.amountYen)
+        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        break
+      case 'auction-outbid':
+        outbid.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        break
+      case 'auction-catalog-refreshed':
+        refreshedLots += entry.lotCount
+        break
+      case 'market-heat-shift':
+        heatShifts += 1
+        break
+      case 'job-progress':
+        labourTicked += entry.laborSlotsSpent
+        break
+      default:
+        if (
+          !WIN_TYPES.has(entry.type) &&
+          !MONEY_ONLY_TYPES.has(entry.type) &&
+          !NOISE_TYPES.has(entry.type)
+        ) {
+          rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        }
+    }
+  }
+
+  const noise: string[] = []
+  if (refreshedLots > 0) noise.push(`${pluralise(refreshedLots, 'new lot')} at the auctions`)
+  if (heatShifts > 0) noise.push(`Market prices moved on ${pluralise(heatShifts, 'car')}`)
+  if (labourTicked > 0) noise.push(`${pluralise(labourTicked, 'labour slot')} spent in the shop`)
+
+  return { wins, money, notable: [...outbid, ...rest], noise }
 }
