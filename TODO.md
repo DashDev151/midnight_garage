@@ -302,12 +302,23 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **Story builds - outcome-based build commissions** (`docs/design/story-builds-spec.md`,
-  2026-07-15). A customer names an OUTCOME, not a car. Spec'd, not scoped. **Blocked on one
-  maintainer scope call before it can become a sprint:** does it extend the already-shipped
-  `commissions`/service-job surface (in-GDD, canonical), or is it new enough surface to need an
-  `IDEAS.md` entry plus a GDD amendment first? The v1.0 GDD feature set is frozen, so that call
-  decides whether this is v1.0 at all. Roadmap: Phase 4, beside the commissions line.
+- [ ] **Diagnosis - the information game** (`docs/design/diagnosis-spec.md`, 2026-07-15). Restores
+  GDD §3.2/§4.1/§6.5/§7's inspection + hidden-issue + sliding-scale-lemon system, which actual
+  Sprint 26 paused and removed and which Sprint 27's pre-bid transparency law has contradicted ever
+  since. A RETURN to canonical scope, not new surface: no GDD amendment, but it repeals that law.
+  Fixes the loop's missing verb - today there is no `diagnose` between hunt and build, and buying is
+  arithmetic off a printed guide value. Half the architecture already stands (`computeAuctionGrade`
+  IS the auction sheet §6.5 asks for). **Four maintainer decisions listed in the spec**, the
+  load-bearing one being the variance curve's shape. **Sequence: this before story builds** - they
+  interlock, and story builds on a transparent auction is a solved shopping list.
+
+- [ ] **Story builds - outcome-based build commissions** (`docs/design/story-builds-spec.md` v2,
+  2026-07-15). A customer names an OUTCOME, not a car. **Maintainer decision 2026-07-15: this is the
+  first proper progression addition, and the Hall of Legends is deferred behind it.** v1's four open
+  questions are resolved in v2 (reliabilityFloor is a clean read; synthetic reference times with the
+  cost disclosed; derived customer price through the Law 4 floor; the retired flip-inversion claim).
+  Four new ones remain, listed in the spec. Depends on diagnosis. Roadmap: Phase 4, beside the
+  commissions line.
 
 - [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing

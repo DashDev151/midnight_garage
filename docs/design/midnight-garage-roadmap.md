@@ -183,11 +183,17 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 
 - **Sprint 13 - SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc). **Includes the skill/XP progression system** - learn-by-doing growth for staff *and* the player character, where skill *optimizes* (efficiency/quality) but never *unlocks* tiers (tools + rep still do that). Still fully unbuilt as of actual Sprint 39; see the 2026-07-12 update in the Numbering reconciliation note above and `docs/design/skill-progression.md`.
 - **Sprint 14 - Commissions & rep tiers** (briefs, scoring, act gating, equipment purchases as unlocks). Superseded in practice - see the Numbering reconciliation note above: commissions shipped as derived-payout service jobs (Loop Rework arc), never a "briefs, scoring" system, and "equipment purchases as unlocks" was replaced entirely by the six-tool-tier model (Progression Rework arc).
-- **Story builds** (`docs/design/story-builds-spec.md`, spec'd 2026-07-15, NOT scoped): outcome-based
-  build commissions - a customer names an outcome, not a car. Sits here because it either EXTENDS
-  the shipped service-job/commission surface above or is new enough to need an `IDEAS.md` entry
-  plus a GDD amendment first. **That scope call is the maintainer's and is the gate on this
-  entering a sprint at all** - the spec is the design, not the decision.
+- **Diagnosis** (`docs/design/diagnosis-spec.md`, spec'd 2026-07-15, NOT scoped): restores the
+  inspection / hidden-issue / sliding-scale-lemon system this plan's own GDD already specifies
+  (§3.2, §4.1, §6.5, §7) and actual-Sprint 26 removed. Not new scope - a return to canonical scope,
+  and the repeal of Sprint 27's pre-bid transparency law, which has contradicted the GDD since it
+  landed. It is what makes the hunt a decision rather than arithmetic, and it restores the missing
+  `diagnose` verb between hunt and build.
+- **Story builds** (`docs/design/story-builds-spec.md` v2, spec'd 2026-07-15, NOT scoped):
+  outcome-based build commissions - a customer names an outcome, not a car. **Maintainer decision
+  2026-07-15: the first proper progression addition; the Hall of Legends (§9.2) is deferred behind
+  it.** Extends the commissions line above. **Depends on diagnosis** - on a transparent auction it
+  degrades into a solved shopping list.
 - **Sprint 15 - Events I:** night meet, show & shine (incl. Gentleman's Class), magazine features → market heat spikes.
 - **Sprint 16 - Events II:** touge nights (pace dial, sector-by-sector cutaway resolution, damage), part scouts.
 - **Sprint 17 - Rival shop AI** (auction bidding personality, event presence, offers) + private meetings + engine swaps & dyno tune screen.
