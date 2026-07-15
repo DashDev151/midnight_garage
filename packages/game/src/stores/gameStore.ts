@@ -661,28 +661,6 @@ export interface LotDetail {
 }
 
 /**
- * One of the player's still-unresolved active bids, for the "My Active
- * Bids" section. Sprint 20: deliberately keeps showing a lot the player is
- * currently LOSING (`leadingBidder !== 'player'`) - "you're being outbid,
- * go raise" is the panel's whole point, not just a list of wins-so-far.
- */
-export interface MyActiveBidView {
-  lot: AuctionLot
-  model: CarModel
-  displayName: string
-  currentBidYen: number
-  leadingBidder: 'player' | 'rival' | null
-  isWinning: boolean
-  nextRaiseYen: number
-  quietDays: number
-  hammerThreshold: number
-  turnout: TurnoutBand
-  expiresOnDay: number
-  daysLeft: number
-  closeLabel: string
-}
-
-/**
  * A ballpark market-value preview for an owned car (Sprint 31) - the
  * for-sale toggle's "roughly what to expect" number. Not a real offer: real
  * offers only exist once the daily draw actually rolls one (see
@@ -1571,41 +1549,6 @@ export const useGameStore = defineStore('game', () => {
       closeNightsLeft: auctionNightsLeft(lot),
     }
   }
-
-  /**
-   * Every lot the player has ever raised on (Sprint 20: `playerHasBid`,
-   * never reset) - a pure filter over `activeAuctionLots`, not a separate
-   * tracked list (a lot with a bid is already fully addressable through the
-   * existing catalog, so a parallel "active bids" array would just be the
-   * same data twice). `activeAuctionLots` only ever holds still-active lots,
-   * so "lot still active" needs no separate check here. Deliberately
-   * INCLUDES lots the player is currently losing - "you're being outbid, go
-   * raise" is the panel's whole point.
-   */
-  const myActiveBids = computed<MyActiveBidView[]>(() =>
-    gameState.value.activeAuctionLots.flatMap((lot) => {
-      if (!lot.playerHasBid) return []
-      const model = context.value.modelsById[lot.modelId]
-      if (!model) return []
-      return [
-        {
-          lot,
-          model,
-          displayName: resolveCarDisplayName(model),
-          currentBidYen: lot.currentBidYen,
-          leadingBidder: lot.leadingBidder,
-          isWinning: lot.leadingBidder === 'player',
-          nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
-          quietDays: lot.quietDays,
-          hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
-          turnout: lot.turnout,
-          expiresOnDay: lot.expiresOnDay,
-          daysLeft: lot.expiresOnDay - gameState.value.day,
-          closeLabel: auctionCloseLabel(lot),
-        },
-      ]
-    }),
-  )
 
   /**
    * Ballpark market-value preview for an owned car (Sprint 31) - the
@@ -2839,7 +2782,6 @@ export const useGameStore = defineStore('game', () => {
     partsCatalog,
     modelsCatalog,
     auctionLotsByTier,
-    myActiveBids,
     resolveModelName,
     partName,
     componentLabel,

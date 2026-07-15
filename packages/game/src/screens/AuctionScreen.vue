@@ -57,6 +57,11 @@ const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccu
  * that is what the car is worth, not what it costs you today.
  */
 const affordableOnly = ref(false)
+/** Replaces the old "My Active Bids" table (Sprint 20/50). That section listed
+ * every lot you had bid on a second time, in a different shape, above the same
+ * cards - two places to read one lot, and the raise control existed twice. A
+ * filter says the same thing without the duplicate. */
+const myLotsOnly = ref(false)
 /** `null` means "unset", which is what keeps the filter honest as the board
  * changes: an unset bound re-reads the CURRENT board rather than pinning to
  * whatever the range happened to be when the player last touched it. */
@@ -129,6 +134,8 @@ function onMaxInput(event: Event): void {
 
 function matchesFilters(d: LotDetail): boolean {
   const entryYen = d.nextRaiseYen
+  // Winning or losing - "my lots" is about having skin in it, not leading.
+  if (myLotsOnly.value && !d.playerHasBid) return false
   if (affordableOnly.value && entryYen > game.cashYen) return false
   if (minPriceYen.value !== null && entryYen < minPriceYen.value) return false
   if (maxPriceYen.value !== null && entryYen > maxPriceYen.value) return false
@@ -137,12 +144,23 @@ function matchesFilters(d: LotDetail): boolean {
 
 function clearFilters(): void {
   affordableOnly.value = false
+  myLotsOnly.value = false
   minPriceYen.value = null
   maxPriceYen.value = null
 }
 
 const filtersActive = computed(
-  () => affordableOnly.value || minPriceYen.value !== null || maxPriceYen.value !== null,
+  () =>
+    affordableOnly.value ||
+    myLotsOnly.value ||
+    minPriceYen.value !== null ||
+    maxPriceYen.value !== null,
+)
+
+/** Lots the player has money riding on right now - the count that made the old
+ * table feel necessary, kept as a number on the filter itself. */
+const myLotCount = computed(
+  () => allGroups.value.flatMap((g) => g.lots).filter((d) => d.playerHasBid).length,
 )
 
 // Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
@@ -242,6 +260,10 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
         <input v-model="affordableOnly" type="checkbox" data-test="filter-affordable" />
         Affordable
       </label>
+      <label class="filter-check">
+        <input v-model="myLotsOnly" type="checkbox" data-test="filter-my-lots" />
+        My active lots<span v-if="myLotCount > 0" class="filter-badge">{{ myLotCount }}</span>
+      </label>
       <div class="filter-range">
         <span class="filter-legend">Price</span>
         <!-- Two overlapping range inputs: native `type=range` has one handle,
@@ -302,44 +324,6 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
       The shop is full - a won lot will double-park in the one unowned overflow spot and cost a
       daily fine until real space opens up. Free up a bay or buy more capacity to avoid it.
     </p>
-
-    <section v-if="game.myActiveBids.length > 0" class="my-bids">
-      <h3>My Active Bids</h3>
-      <table class="bids-table">
-        <thead>
-          <tr>
-            <th>Car</th>
-            <th>Your bid</th>
-            <th>State</th>
-            <th>Close</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="b in game.myActiveBids" :key="b.lot.id" class="my-bid-row">
-            <td class="lot-name">{{ b.displayName }}</td>
-            <td class="current-bid">{{ bidStateLabel(b.currentBidYen, b.leadingBidder) }}</td>
-            <td>
-              <span class="winning-state" :class="b.isWinning ? 'winning' : 'outbid'">
-                {{ b.isWinning ? 'winning' : 'outbid' }}
-              </span>
-            </td>
-            <td class="days-left">{{ b.closeLabel }}</td>
-            <td>
-              <!-- Outbid is the call to action: raise straight from this panel. -->
-              <button
-                v-if="!b.isWinning"
-                class="quick-raise"
-                :data-test="'quick-raise-' + b.lot.id"
-                @click="game.placeBid(b.lot.id, b.nextRaiseYen)"
-              >
-                Raise to {{ formatYen(b.nextRaiseYen) }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
 
     <div v-for="group in detailedGroups" :key="group.tier" class="tier">
       <h3>{{ group.tier }}</h3>
@@ -631,6 +615,15 @@ h3 {
   border: 1px solid var(--mg-night-deep);
   background: var(--mg-neon-cyan);
   cursor: pointer;
+}
+
+.filter-badge {
+  margin-left: var(--mg-space-1);
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--mg-neon-cyan);
+  color: var(--mg-night-deep);
+  font-size: var(--mg-fs-xs, 0.7rem);
 }
 
 .filter-count {
@@ -927,47 +920,8 @@ h3 {
   box-shadow: 0 0 0 var(--mg-panel-edge);
 }
 
-.my-bids {
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-3);
-  margin: 0 0 var(--mg-space-4);
-}
-
 /* Sprint 50 decision 3: a proper table (car / your bid / state / action)
    instead of a wrapping flex row per bid. */
-.bids-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--mg-fs-sm);
-  color: var(--mg-text-dim);
-}
-
-.bids-table th {
-  text-align: left;
-  font-weight: normal;
-  color: var(--mg-text-dim);
-  padding: 0 var(--mg-space-2) var(--mg-space-1) 0;
-  border-bottom: var(--mg-border);
-}
-
-.bids-table td {
-  padding: var(--mg-space-1) var(--mg-space-2) var(--mg-space-1) 0;
-  vertical-align: middle;
-}
-
-.my-bid-row + .my-bid-row td {
-  border-top: var(--mg-border);
-}
-
-.current-bid {
-  color: var(--mg-yen);
-}
-
-.days-left {
-  color: var(--mg-text-dim);
-}
 
 .winning-state {
   font-size: var(--mg-fs-sm);
@@ -975,16 +929,7 @@ h3 {
   letter-spacing: 0.05em;
 }
 
-.winning-state.winning {
-  color: var(--mg-success);
-}
-
 .winning-state.outbid {
-  color: var(--mg-danger);
-}
-
-.quick-raise {
-  border-color: var(--mg-danger);
   color: var(--mg-danger);
 }
 

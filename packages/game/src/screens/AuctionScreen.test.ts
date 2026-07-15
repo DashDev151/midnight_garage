@@ -25,7 +25,7 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="bid-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('placing a bid opens (or raises) it, never resolves the lot instantly, and lists it under My Active Bids (Sprint 20)', async () => {
+  it('placing a bid opens (or raises) it and never resolves the lot instantly (Sprint 20)', async () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
@@ -36,7 +36,6 @@ describe('AuctionScreen', () => {
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
     expect(game.lotDetail(lot.id)?.playerHasBid).toBe(true)
     expect(game.lotDetail(lot.id)?.leadingBidder).toBe('player')
-    expect(wrapper.text()).toContain('My Active Bids')
     // The catalog card's own control switches from "bid" to "raise" once
     // the player already holds a position on this lot.
     expect(wrapper.find(`[data-test="raise-${lot.id}"]`).exists()).toBe(true)
@@ -301,19 +300,6 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('My Active Bids as a table (Sprint 50 decision 3)', () => {
-    it('renders bid rows as table rows once the player has an active bid', async () => {
-      const game = useGameStore()
-      warpToCatalog(game)
-      const lot = game.gameState.activeAuctionLots[0]!
-      const wrapper = mountScreen()
-      await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-
-      expect(wrapper.find('.bids-table').exists()).toBe(true)
-      expect(wrapper.findAll('.bids-table tbody tr').length).toBe(game.myActiveBids.length)
-    })
-  })
-
   describe('board filters', () => {
     /** Every lot's entry price - what `matchesFilters` actually filters on. */
     function entryPrices(game: ReturnType<typeof useGameStore>): number[] {
@@ -339,6 +325,54 @@ describe('AuctionScreen', () => {
       await input.setValue(value)
       return Number((input.element as HTMLInputElement).value)
     }
+
+    it('My active lots shows only lots the player has bid on - winning or not', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+      const total = wrapper.findAll('.lot').length
+      expect(total).toBeGreaterThan(1)
+
+      const lot = game.gameState.activeAuctionLots[0]!
+      await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
+      await wrapper.find('[data-test="filter-my-lots"]').setValue(true)
+
+      expect(wrapper.findAll('.lot').length).toBe(1)
+      expect(wrapper.text()).toContain(game.lotDetail(lot.id)!.displayName)
+    })
+
+    it('keeps a lot in My active lots after a rival takes the lead - skin in it, not leading', async () => {
+      // The old My Active Bids table listed outbid lots too; the filter has to
+      // as well, or being outbid would make the lot vanish from the one view
+      // you would go looking for it in.
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      game.placeBid(lot.id, game.lotDetail(lot.id)!.nextRaiseYen)
+
+      let guard = 0
+      while (game.lotDetail(lot.id)?.leadingBidder === 'player' && guard++ < 15) game.endDay()
+      const detail = game.lotDetail(lot.id)
+      if (!detail || detail.leadingBidder !== 'rival') return // never contested; nothing to assert
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="filter-my-lots"]').setValue(true)
+      expect(wrapper.text()).toContain(detail.displayName)
+    })
+
+    it('badges how many lots the player has money riding on', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+      expect(wrapper.find('.filter-badge').exists()).toBe(false)
+
+      const lot = game.gameState.activeAuctionLots[0]!
+      await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
+      expect(wrapper.find('.filter-badge').text()).toBe('1')
+    })
 
     it('Affordable hides every lot the player cannot afford to bid on', async () => {
       const game = useGameStore()

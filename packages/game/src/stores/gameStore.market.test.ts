@@ -45,7 +45,7 @@ describe('market: bidding', () => {
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
   })
 
-  it('placeBid opens the board and lotDetail/myActiveBids reflect the new leader (Sprint 20: open bidding)', () => {
+  it('placeBid opens the board and lotDetail reflects the new leader (Sprint 20: open bidding)', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
@@ -53,7 +53,6 @@ describe('market: bidding', () => {
     expect(before.currentBidYen).toBe(0)
     expect(before.leadingBidder).toBeNull()
     expect(before.playerHasBid).toBe(false)
-    expect(game.myActiveBids).toHaveLength(0)
 
     const openingBidYen = before.nextRaiseYen // reserve, since bidding hasn't opened
     expect(game.placeBid(lot.id, openingBidYen)).toBe(true)
@@ -62,7 +61,6 @@ describe('market: bidding', () => {
     expect(after.currentBidYen).toBe(openingBidYen)
     expect(after.leadingBidder).toBe('player')
     expect(after.playerHasBid).toBe(true)
-    expect(game.myActiveBids.map((b) => b.lot.id)).toContain(lot.id)
   })
 
   it('placeBid refuses any raise below the minimum next-raise ladder (Sprint 20, mirrors the sim rule)', () => {
@@ -114,18 +112,27 @@ describe('market: bidding', () => {
       game.placeBid(lot.id, game.lotDetail(lot.id)!.nextRaiseYen)
     }
 
+    // Read through `lotDetail`, the one view the board itself renders from
+    // (the `myActiveBids` getter this used to use was a second lens on the
+    // same lots, deleted with the My Active Bids table it fed).
+    const myLots = () =>
+      game.auctionLotsByTier
+        .flatMap((g) => g.lots)
+        .map((l) => game.lotDetail(l.id)!)
+        .filter((d) => d.playerHasBid)
+
     let outbidLotId: string | undefined
     for (let i = 0; i < 15 && !outbidLotId; i++) {
       game.endDay()
-      outbidLotId = game.myActiveBids.find((b) => b.leadingBidder === 'rival')?.lot.id
+      outbidLotId = myLots().find((d) => d.leadingBidder === 'rival')?.lot.id
     }
 
     expect(outbidLotId).toBeDefined()
-    const outbidEntry = game.myActiveBids.find((b) => b.lot.id === outbidLotId)!
-    expect(outbidEntry.isWinning).toBe(false)
-    expect(outbidEntry.leadingBidder).toBe('rival')
-    // The lot is still fully addressable - the player can raise again.
-    expect(game.lotDetail(outbidLotId!)?.playerHasBid).toBe(true)
+    const outbid = game.lotDetail(outbidLotId!)!
+    expect(outbid.leadingBidder).toBe('rival')
+    // The lot is still fully addressable - the player can raise again, and it
+    // still counts as one of theirs (which is what the new filter shows).
+    expect(outbid.playerHasBid).toBe(true)
   })
 
   it('lotDetail always carries the real group bands - lots are transparent now (Sprint 26 decision 10)', () => {
