@@ -14,5 +14,19 @@ export const useUiStore = defineStore('ui', () => {
     devConsoleOpen.value = !devConsoleOpen.value
   }
 
-  return { devConsoleOpen, toggleDevConsole }
+  /**
+   * Sprint 65 decision 1: the gameplay route the player was last on before
+   * opening the menu (Escape or the header control). The menu's Continue, and
+   * Escape while on the menu, both return here - pause-menu semantics - so the
+   * menu never dumps the player back on the garage from, say, the auction
+   * house. Defaults to `garage` (the boot fallback: opening the menu straight
+   * off a fresh boot has no prior gameplay screen to return to).
+   */
+  const lastGameplayRoute = ref('garage')
+
+  function rememberGameplayRoute(routeName: string): void {
+    lastGameplayRoute.value = routeName
+  }
+
+  return { devConsoleOpen, toggleDevConsole, lastGameplayRoute, rememberGameplayRoute }
 })

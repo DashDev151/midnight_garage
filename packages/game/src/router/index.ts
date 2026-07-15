@@ -28,6 +28,9 @@ export const router = createRouter({
       path: '/menu',
       name: 'menu',
       component: () => import('../screens/MenuScreen.vue'),
+      // Sprint 65 decision 1: the menu is a real full-screen menu, not a tab -
+      // `App.vue` hides the header/nav chrome on any route with `chrome: false`.
+      meta: { chrome: false },
     },
     { path: '/car/:id', name: 'car', component: () => import('../screens/CarDetailScreen.vue') },
     {

@@ -86,9 +86,14 @@ describe('MenuScreen (Sprint 40 item 1)', () => {
     expect(router.currentRoute.value.name).toBe('garage')
   })
 
-  it('renders exactly one Save surface (SaveMenu), no second inline load panel', async () => {
+  it('renders exactly one Save surface (SaveMenu), inline, no toggle and no second load panel', async () => {
     const { wrapper } = await mountMenu()
-    expect(wrapper.findAll('[data-test="save-toggle"]')).toHaveLength(1)
+    // Sprint 65: SaveMenu's controls render inline (no toggle-and-popover);
+    // exactly one copy-save control, one load-reveal, and no leftover inline
+    // menu load panel from the pre-Sprint-58 era.
+    expect(wrapper.findAll('[data-test="copy-save"]')).toHaveLength(1)
+    expect(wrapper.findAll('[data-test="reveal-load"]')).toHaveLength(1)
+    expect(wrapper.find('[data-test="save-toggle"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="menu-load-code"]').exists()).toBe(false)
   })
 

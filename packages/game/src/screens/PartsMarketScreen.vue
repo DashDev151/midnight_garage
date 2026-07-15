@@ -308,12 +308,7 @@ function onCheckout(): void {
           </div>
 
           <ul class="catalog">
-            <li
-              v-for="part in visibleParts"
-              :key="part.id"
-              class="part"
-              :class="{ 'no-fit': !fitsAnyOwnedCar(part) }"
-            >
+            <li v-for="part in visibleParts" :key="part.id" class="part">
               <div class="part-main">
                 <span class="part-name"
                   >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
@@ -491,6 +486,12 @@ h3 {
 .hero-label {
   color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-md);
+  /* Sprint 65 decision 4: reserve two lines so a wrapping label ("Suspension
+     and Brakes") doesn't render its hero card taller than the single-line
+     siblings in the same grid row. */
+  min-height: 2.6em;
+  display: flex;
+  align-items: center;
 }
 
 .hero-count {
@@ -622,12 +623,10 @@ h3 {
   padding: var(--mg-space-2) var(--mg-space-3);
 }
 
-/* A part requiring a tag no owned car has, dimmed rather than hidden or
-   explained with raw tag jargon (Sprint 28 decision 2) - the full reason
-   lives in the row's own title tooltip. */
-.part.no-fit {
-  opacity: 0.55;
-}
+/* Sprint 65 decision 5: a part that doesn't fit an owned car is NOT dimmed -
+   it's fully buyable (parts don't have to fit a current car to be bought),
+   and dimming read as "disabled". Fit status is carried by the `.part-fit`
+   tag below (recoloured), not by greying out a clickable row. */
 
 .part-main {
   display: flex;
@@ -648,6 +647,12 @@ h3 {
 .fit {
   color: var(--mg-success);
   margin-left: var(--mg-space-2);
+}
+
+/* Sprint 65 decision 5: the "doesn't fit a car you own" tag reads as a note,
+   not a disabled state - a distinct muted violet, legible against the panel. */
+.part-fit:not(.fit) {
+  color: var(--mg-neon-violet);
 }
 
 .part-buy {

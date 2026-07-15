@@ -3,23 +3,25 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import SaveMenu from '../components/SaveMenu.vue'
 import { useGameStore } from '../stores/gameStore'
+import { useUiStore } from '../stores/uiStore'
 
 /**
- * Sprint 40 item 1: the temporary main menu every session now boots to
- * (`main.ts` replaces the route to here right after `hydrate()` resolves) -
- * closes the New Game data-loss footgun (it used to sit on the garage
- * screen with no confirmation, one misclick from overwriting a career) and
- * gives the game a real front door: Continue, New Game, Load, Settings.
- * Deliberately plain, same design tokens as every other screen - no art
- * pass, this is a placeholder until a real title screen exists.
+ * Sprint 40 item 1 / Sprint 65: the game's real front door - a full-screen
+ * menu (no app chrome, Sprint 65 decision 1) that every session boots to and
+ * that Escape/the header menu control open on demand as a pause menu.
+ * Continue (and Escape while here) returns to the gameplay route the player
+ * left, tracked in the ui store - pause-menu semantics, not always the garage.
+ * Closes the New Game data-loss footgun (a confirm step before overwriting a
+ * career). Deliberately plain, same design tokens as every other screen.
  */
 const game = useGameStore()
 const router = useRouter()
+const ui = useUiStore()
 
 const confirmingNewGame = ref(false)
 
-function goToGarage(): void {
-  void router.push({ name: 'garage' })
+function onContinue(): void {
+  void router.push({ name: ui.lastGameplayRoute })
 }
 
 function onNewGameClick(): void {
@@ -29,7 +31,7 @@ function onNewGameClick(): void {
   }
   game.newGame()
   confirmingNewGame.value = false
-  goToGarage()
+  void router.push({ name: 'garage' })
 }
 
 function cancelNewGame(): void {
@@ -39,12 +41,14 @@ function cancelNewGame(): void {
 
 <template>
   <section class="menu">
+    <h1>MIDNIGHT GARAGE</h1>
+
     <div class="actions">
       <button
         v-if="game.hasExistingSave"
         class="primary"
         data-test="menu-continue"
-        @click="goToGarage"
+        @click="onContinue"
       >
         Continue
       </button>
@@ -60,13 +64,10 @@ function cancelNewGame(): void {
       </div>
       <button v-else data-test="menu-new-game" @click="onNewGameClick">New Game</button>
 
+      <SaveMenu />
+
       <button disabled data-test="menu-settings" title="coming soon">Settings</button>
     </div>
-
-    <section class="save-section">
-      <h2>Save</h2>
-      <SaveMenu />
-    </section>
   </section>
 </template>
 
@@ -80,15 +81,12 @@ function cancelNewGame(): void {
   gap: var(--mg-space-4);
 }
 
-.save-section {
-  border-top: var(--mg-border);
-  padding-top: var(--mg-space-3);
-}
-
-.save-section h2 {
-  color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-md);
-  margin: 0 0 var(--mg-space-2);
+h1 {
+  color: var(--mg-neon-cyan);
+  letter-spacing: 0.3em;
+  font-size: var(--mg-fs-xl);
+  text-align: center;
+  margin: 0;
 }
 
 .actions {

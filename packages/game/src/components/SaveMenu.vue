@@ -5,7 +5,7 @@ import { useGameStore } from '../stores/gameStore'
 
 const game = useGameStore()
 
-const open = ref(false)
+const loadOpen = ref(false)
 const importText = ref('')
 const status = ref('')
 
@@ -47,51 +47,41 @@ async function exportSessionLog(): Promise<void> {
 </script>
 
 <template>
+  <!-- Sprint 65 decision 2: the save controls render inline as the menu's own
+       full-width buttons (no toggle-and-popover, no redundant "Save" title) -
+       one honest save surface. The Load textarea reveals on demand so the
+       menu isn't cluttered by an input the player rarely uses. -->
   <div class="save-menu">
-    <button class="toggle" data-test="save-toggle" @click="open = !open">Save</button>
-    <div v-if="open" class="panel">
-      <p class="nudge">Your save code is your backup - some browsers can forget the game.</p>
-      <button data-test="copy-save" @click="copyCode">Copy save code</button>
+    <p class="nudge">Your save code is your backup - some browsers can forget the game.</p>
+    <button class="menu-btn" data-test="copy-save" @click="copyCode">Copy save code</button>
+    <button class="menu-btn" data-test="reveal-load" @click="loadOpen = !loadOpen">
+      Load from a code
+    </button>
+    <div v-if="loadOpen" class="load-row">
       <textarea
         v-model="importText"
         data-test="save-code-field"
         rows="3"
         placeholder="paste a save code to load it"
       />
-      <button :disabled="!importText.trim()" data-test="import-save" @click="importCode">
+      <button
+        class="menu-btn"
+        :disabled="!importText.trim()"
+        data-test="import-save"
+        @click="importCode"
+      >
         Load pasted code
       </button>
-      <button data-test="export-session-log" @click="exportSessionLog">Export session log</button>
-      <p v-if="status" class="status">{{ status }}</p>
     </div>
+    <button class="menu-btn" data-test="export-session-log" @click="exportSessionLog">
+      Export session log
+    </button>
+    <p v-if="status" class="status" data-test="save-status">{{ status }}</p>
   </div>
 </template>
 
 <style scoped>
 .save-menu {
-  position: relative;
-}
-
-.toggle {
-  background: transparent;
-  color: var(--mg-text-dim);
-  border: 1px solid var(--mg-panel-edge);
-  border-radius: 4px;
-  padding: 2px 10px;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.panel {
-  position: absolute;
-  right: 0;
-  top: 120%;
-  width: 280px;
-  background: var(--mg-night);
-  border: 1px solid var(--mg-panel-edge);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-3);
-  z-index: 150;
   display: flex;
   flex-direction: column;
   gap: var(--mg-space-2);
@@ -103,19 +93,26 @@ async function exportSessionLog(): Promise<void> {
   margin: 0;
 }
 
-.panel button {
+.menu-btn {
   background: var(--mg-panel);
   color: var(--mg-text);
   border: var(--mg-border);
-  border-radius: 4px;
-  padding: var(--mg-space-1) var(--mg-space-2);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-4);
   font-family: inherit;
+  font-size: var(--mg-fs-md);
   cursor: pointer;
 }
 
-.panel button:disabled {
+.menu-btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.load-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-2);
 }
 
 textarea {
@@ -124,7 +121,7 @@ textarea {
   color: var(--mg-text);
   border: var(--mg-border);
   border-radius: 4px;
-  padding: var(--mg-space-1);
+  padding: var(--mg-space-2);
   font-family: inherit;
   font-size: var(--mg-fs-sm);
   resize: vertical;

@@ -171,4 +171,38 @@ describe('UpgradesScreen', () => {
       expect(wrapper.text()).not.toContain(`needs ${WHEELS_T2.minReputationTier} reputation`)
     })
   })
+
+  describe('gate explanations are tooltips, not always-visible sentences (Sprint 65 decision 3)', () => {
+    it('a rep-gated rung carries its reason in a HintTooltip, and the old always-visible hint classes are gone', () => {
+      const game = useGameStore()
+      game.newGame(1) // fresh: unknown reputation, so tier 2 is rep-gated
+      game.devGiveCash(999_999_999)
+      const wrapper = mountScreen()
+
+      // The retired always-visible gate-sentence classes no longer render.
+      expect(wrapper.find('.rep-hint').exists()).toBe(false)
+      expect(wrapper.find('.listing-hint').exists()).toBe(false)
+      expect(wrapper.find('.tier-rep-req').exists()).toBe(false)
+
+      // The reason lives in a HintTooltip bubble instead (present in the DOM,
+      // revealed on hover/focus) - at least one rep gate exists on a fresh game.
+      const tips = wrapper.findAll('[data-test^="gate-tip-rep-"]')
+      expect(tips.length).toBeGreaterThan(0)
+      expect(tips[0]!.find('[role="tooltip"]').text()).toContain('reputation')
+    })
+
+    it('a gated facility card dims and explains itself via a tooltip, not a permanent sentence', () => {
+      const game = useGameStore()
+      game.newGame(1) // unknown rep: bays are rep-gated
+      game.devGiveCash(999_999_999)
+      const wrapper = mountScreen()
+
+      const gatedCard = wrapper.findAll('.purchase-card').find((c) => c.classes().includes('gated'))
+      expect(gatedCard).toBeDefined()
+      // The reason is in the tooltip, not an always-visible sentence in the card.
+      const tip = gatedCard!.find('[role="tooltip"]')
+      expect(tip.exists()).toBe(true)
+      expect(tip.text()).toContain('reputation')
+    })
+  })
 })

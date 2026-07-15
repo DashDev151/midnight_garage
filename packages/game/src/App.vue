@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import DayReport from './components/DayReport.vue'
 import EndDayButton from './components/EndDayButton.vue'
@@ -22,11 +22,38 @@ const dragSession = useDragSession()
 const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevConsole.vue')) : null
 
 /**
+ * Sprint 65 decision 1: the menu is a real full-screen menu, not a tab. Any
+ * route flagged `meta: { chrome: false }` (the menu) hides the header/nav and
+ * the End Day button; every gameplay route shows them.
+ */
+const showChrome = computed(() => route.meta.chrome !== false)
+
+/**
+ * Sprint 65: remember the gameplay route the player leaves when the menu
+ * opens, so the menu's Continue and Escape-from-menu return there (pause-menu
+ * semantics), not always to the garage. The dev-only spike sandbox is never a
+ * "return here" target.
+ */
+watch(
+  () => route.name,
+  (name) => {
+    if (typeof name === 'string' && name !== 'menu' && name !== 'spike') {
+      ui.rememberGameplayRoute(name)
+    }
+  },
+  { immediate: true },
+)
+
+function openMenu(): void {
+  if (route.name !== 'menu') void router.push({ name: 'menu' })
+}
+
+/**
  * Sprint 51 decision 3: the one app-wide End Day mount point - shown on
- * every gameplay route (not the menu, not the dev-only spike sandbox).
+ * every gameplay route (chrome routes), never on the menu.
  */
 const endDayButton = ref<InstanceType<typeof EndDayButton> | null>(null)
-const showEndDay = computed(() => route.name !== 'menu' && route.name !== 'spike')
+const showEndDay = computed(() => showChrome.value)
 
 /**
  * Sprint 51 decision 1: Escape reaches the menu from anywhere in gameplay,
@@ -54,14 +81,20 @@ function onGlobalKeydown(event: KeyboardEvent): void {
     endDayButton.value.cancel()
     return
   }
-  if (route.name !== 'menu') void router.push({ name: 'menu' })
+  // Sprint 65: Escape is a pause-menu toggle - open the menu from gameplay,
+  // and from the menu return to the gameplay route the player left.
+  if (route.name === 'menu') {
+    void router.push({ name: ui.lastGameplayRoute })
+  } else {
+    void router.push({ name: 'menu' })
+  }
 }
 onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
 </script>
 
 <template>
-  <header class="chrome">
+  <header v-if="showChrome" class="chrome">
     <h1>MIDNIGHT GARAGE</h1>
     <nav>
       <RouterLink :to="{ name: 'garage' }">Garage</RouterLink>
@@ -70,12 +103,16 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       <RouterLink :to="{ name: 'parts' }">Parts</RouterLink>
       <RouterLink :to="{ name: 'inventory' }">Inventory</RouterLink>
       <RouterLink :to="{ name: 'upgrades' }">Upgrades</RouterLink>
-      <RouterLink :to="{ name: 'menu' }" data-test="nav-menu">Menu</RouterLink>
+      <!-- Sprint 65 decision 1: a menu CONTROL (not a tab) - a mouse player's
+           way into the full-screen menu, mirroring Escape. -->
+      <button class="menu-button" data-test="open-menu" title="Menu (Esc)" @click="openMenu">
+        Menu
+      </button>
       <button v-if="isDev" class="dev-toggle" @click="ui.toggleDevConsole()">dev</button>
     </nav>
   </header>
 
-  <main class="with-end-day">
+  <main :class="{ 'with-end-day': showChrome }">
     <RouterView />
   </main>
 
@@ -122,6 +159,23 @@ nav a {
 
 nav a.router-link-active {
   color: var(--mg-neon-pink);
+}
+
+/* Sprint 65 decision 1: the menu control - a button styled like the dev
+   toggle (a control, not a nav tab). */
+.menu-button {
+  background: transparent;
+  color: var(--mg-text-dim);
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.menu-button:hover {
+  color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
 }
 
 .dev-toggle {

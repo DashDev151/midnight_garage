@@ -34,7 +34,6 @@ describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
     ])
 
     const wrapper = mount(SaveMenu)
-    await wrapper.find('[data-test="save-toggle"]').trigger('click')
 
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     await wrapper.find('[data-test="export-session-log"]').trigger('click')
@@ -50,14 +49,16 @@ describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
  * Sprint 58 decision 2: the menu's own inline load panel is gone - SaveMenu
  * is the single load surface now, so its load-behavior coverage moves here
  * (ported from the old MenuScreen tests; SaveMenu's load path had no direct
- * coverage of its own before this).
+ * coverage of its own before this). Sprint 65: the load textarea reveals via
+ * the inline "Load from a code" button (no toggle-and-popover), so opening it
+ * is a `reveal-load` click.
  */
 describe('SaveMenu - loading a save code', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   async function mountOpen() {
     const wrapper = mount(SaveMenu)
-    await wrapper.find('[data-test="save-toggle"]').trigger('click')
+    await wrapper.find('[data-test="reveal-load"]').trigger('click')
     return wrapper
   }
 

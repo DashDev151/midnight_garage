@@ -44,26 +44,39 @@ describe('App (Sprint 51: chrome)', () => {
     await router.push({ name: 'garage' })
   })
 
-  it('shows a Menu nav link and exactly one End Day button on a gameplay screen', async () => {
+  it('shows the chrome (header + menu control + one End Day button) on a gameplay screen', async () => {
     const wrapper = await mountAppAt('garage')
-    expect(wrapper.find('[data-test="nav-menu"]').exists()).toBe(true)
+    expect(wrapper.find('header.chrome').exists()).toBe(true)
+    expect(wrapper.find('[data-test="open-menu"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-test="end-day"]')).toHaveLength(1)
   })
 
-  it('hides the End Day button (and only that) on the menu screen', async () => {
+  it('hides the whole chrome (header, nav, End Day) on the full-screen menu (Sprint 65 decision 1)', async () => {
     const wrapper = await mountAppAt('menu')
+    expect(wrapper.find('header.chrome').exists()).toBe(false)
+    expect(wrapper.find('[data-test="open-menu"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="end-day"]').exists()).toBe(false)
   })
 
-  it('shows "MIDNIGHT GARAGE" exactly once on the menu screen (Sprint 58 decision 1)', async () => {
+  it('shows "MIDNIGHT GARAGE" exactly once on the menu screen - the menu\'s own, the chrome one gone', async () => {
     const wrapper = await mountAppAt('menu')
     expect(wrapper.findAll('h1').filter((h) => h.text() === 'MIDNIGHT GARAGE')).toHaveLength(1)
   })
 
-  it('Escape reaches the menu from a gameplay screen', async () => {
-    await mountAppAt('garage')
+  it('the header menu control opens the full-screen menu', async () => {
+    const wrapper = await mountAppAt('garage')
+    await wrapper.find('[data-test="open-menu"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('menu')
+  })
+
+  it('Escape opens the menu from a gameplay screen, and Escape again returns to that same screen (pause-menu toggle)', async () => {
+    await mountAppAt('auctions')
     await escape()
     expect(router.currentRoute.value.name).toBe('menu')
+    await escape()
+    // Back to where we were, not the garage default.
+    expect(router.currentRoute.value.name).toBe('auctions')
   })
 
   it('Escape defers to an in-progress pick session rather than navigating (existing CarDetail behavior)', async () => {

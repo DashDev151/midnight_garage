@@ -3,6 +3,7 @@ import type { ComponentId, ToolTier } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
+import HintTooltip from '../components/HintTooltip.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -78,7 +79,7 @@ const selectedInfo = computed(() =>
     <section class="facilities">
       <h3>Facilities</h3>
       <div class="purchase-grid">
-        <div class="purchase-card">
+        <div class="purchase-card" :class="{ gated: nextServiceBayRepGate !== null }">
           <h4>Service bays</h4>
           <p class="owned-count">{{ game.serviceBayCount }} owned</p>
           <template v-if="nextServiceBayPriceYen !== null">
@@ -89,13 +90,15 @@ const selectedInfo = computed(() =>
             >
               Next bay - {{ formatYen(nextServiceBayPriceYen) }}
             </button>
-            <span v-if="nextServiceBayRepGate" class="rep-hint">
-              Your standing isn't there yet - needs {{ nextServiceBayRepGate }} reputation
-            </span>
+            <HintTooltip
+              v-if="nextServiceBayRepGate"
+              data-test="gate-tip-service-bay"
+              :text="`Your standing isn't there yet - needs ${nextServiceBayRepGate} reputation`"
+            />
           </template>
           <span v-else class="maxed">Fully equipped</span>
         </div>
-        <div class="purchase-card">
+        <div class="purchase-card" :class="{ gated: nextParkingBayRepGate !== null }">
           <h4>Parking bays</h4>
           <p class="owned-count">{{ game.parkingCapacity }} owned</p>
           <template v-if="nextParkingBayPriceYen !== null">
@@ -106,9 +109,11 @@ const selectedInfo = computed(() =>
             >
               Next bay - {{ formatYen(nextParkingBayPriceYen) }}
             </button>
-            <span v-if="nextParkingBayRepGate" class="rep-hint">
-              Your standing isn't there yet - needs {{ nextParkingBayRepGate }} reputation
-            </span>
+            <HintTooltip
+              v-if="nextParkingBayRepGate"
+              data-test="gate-tip-parking-bay"
+              :text="`Your standing isn't there yet - needs ${nextParkingBayRepGate} reputation`"
+            />
           </template>
           <span v-else class="maxed">Fully equipped</span>
         </div>
@@ -137,6 +142,10 @@ const selectedInfo = computed(() =>
                 owned: rung.owned,
                 next: !rung.owned && rung.tier === line.currentTier + 1,
                 locked: !rung.owned && rung.tier !== line.currentTier + 1,
+                gated:
+                  !rung.owned &&
+                  rung.tier === line.currentTier + 1 &&
+                  (line.nextTierRepGate !== null || !rung.isListed),
                 selected:
                   selectedNode?.componentId === line.componentId &&
                   selectedNode?.tier === rung.tier,
@@ -158,20 +167,22 @@ const selectedInfo = computed(() =>
                 >
                   {{ formatYen(rung.upgradePriceYen ?? 0) }}
                 </button>
-                <span v-if="line.nextTierRepGate" class="rep-hint">
-                  Your standing isn't there yet - needs {{ line.nextTierRepGate }} reputation
-                </span>
-                <span
+                <HintTooltip
+                  v-if="line.nextTierRepGate"
+                  :data-test="'gate-tip-rep-' + line.componentId"
+                  :text="`Your standing isn't there yet - needs ${line.nextTierRepGate} reputation`"
+                />
+                <HintTooltip
                   v-else-if="!rung.isListed"
-                  class="listing-hint"
                   :data-test="'needs-listing-' + line.componentId"
-                >
-                  Watch the classifieds - not on offer this week
-                </span>
+                  text="Watch the classifieds - this machine isn't on offer this week"
+                />
               </template>
-              <span v-else-if="rung.minReputationTier" class="tier-rep-req">
-                needs {{ rung.minReputationTier }}
-              </span>
+              <HintTooltip
+                v-else-if="rung.minReputationTier"
+                :data-test="'gate-tip-tier-' + line.componentId + '-' + rung.tier"
+                :text="`Needs ${rung.minReputationTier} reputation`"
+              />
             </li>
           </ul>
         </div>
@@ -257,12 +268,6 @@ h3 {
   color: var(--mg-text-dim);
 }
 
-.listing-hint {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  font-style: italic;
-}
-
 .empty {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
@@ -291,6 +296,16 @@ h3 {
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
   text-align: center;
+  /* Sprint 65 decision 4: a fixed floor so a gated card (with its tooltip
+     trigger) never renders taller than its sibling, staggering the grid. */
+  min-height: 132px;
+  justify-content: flex-start;
+}
+
+/* Sprint 65 decision 3: a gated card dims but keeps its price legible; the
+   reason lives in the HintTooltip, not a permanent sentence. */
+.purchase-card.gated {
+  opacity: 0.7;
 }
 
 .purchase-card h4 {
@@ -309,11 +324,6 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.rep-hint {
-  color: var(--mg-danger);
-  font-size: var(--mg-fs-sm);
-}
-
 .tool-wall {
   display: grid;
   grid-template-columns: repeat(6, minmax(120px, 1fr));
@@ -327,6 +337,10 @@ h3 {
   font-size: var(--mg-fs-sm);
   text-align: center;
   margin: 0 0 var(--mg-space-2);
+  /* Sprint 65 decision 4: reserve two lines so a wrapping label ("Suspension
+     and Brakes", "Wheels and Tyres") doesn't push its column's ladder down
+     out of line with the single-line columns. */
+  min-height: 2.4em;
 }
 
 .tier-ladder {
@@ -350,6 +364,10 @@ h3 {
   font-size: var(--mg-fs-sm);
   text-align: center;
   cursor: pointer;
+  /* Sprint 65 decision 4: a fixed floor so a node carrying a gate tooltip is
+     the same height as one that doesn't - the whole ladder stays aligned. */
+  min-height: 76px;
+  justify-content: center;
 }
 
 .tier-node.owned {
@@ -360,7 +378,10 @@ h3 {
   border-color: var(--mg-neon-cyan);
 }
 
-.tier-node.locked {
+/* A gated next-rung (rep or classifieds) dims like a locked one; the WHY is
+   its HintTooltip (Sprint 65 decision 3). */
+.tier-node.locked,
+.tier-node.gated {
   opacity: 0.55;
 }
 
@@ -378,11 +399,6 @@ h3 {
 
 .tier-name {
   font-size: 0.9em;
-}
-
-.tier-rep-req {
-  color: var(--mg-text-dim);
-  font-size: 0.75em;
 }
 
 .tier-node button {
