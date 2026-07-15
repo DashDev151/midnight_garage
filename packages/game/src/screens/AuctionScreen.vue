@@ -57,8 +57,75 @@ const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccu
  * that is what the car is worth, not what it costs you today.
  */
 const affordableOnly = ref(false)
+/** `null` means "unset", which is what keeps the filter honest as the board
+ * changes: an unset bound re-reads the CURRENT board rather than pinning to
+ * whatever the range happened to be when the player last touched it. */
 const minPriceYen = ref<number | null>(null)
 const maxPriceYen = ref<number | null>(null)
+
+const SLIDER_STEP_YEN = 10_000
+
+/** The slider's ceiling: the dearest lot actually on the board, rounded up to
+ * a whole step. Derived, so the range always spans real lots instead of an
+ * authored guess that goes stale the moment the roster or the economy moves. */
+const boardMaxYen = computed(() => {
+  const prices = allGroups.value.flatMap((g) => g.lots.map((d) => d.nextRaiseYen))
+  if (prices.length === 0) return SLIDER_STEP_YEN
+  return Math.ceil(Math.max(...prices) / SLIDER_STEP_YEN) * SLIDER_STEP_YEN
+})
+
+/**
+ * The two handles. A handle parked at its own end of the track means "no
+ * bound", which is why these map to `null` there - otherwise a full-width
+ * range would still count as an active filter and the board would quietly
+ * re-filter itself every time a dearer lot arrived.
+ *
+ * Each setter clamps against the other, so the handles cannot cross.
+ *
+ * `v-model` is NOT used on these (see `onMinInput`/`onMaxInput`): a rejected
+ * drag leaves the model unchanged, so Vue re-renders nothing and the thumb
+ * stays where the pointer dropped it - showing one range while the board
+ * filters by another.
+ */
+const minSlider = computed({
+  get: () => minPriceYen.value ?? 0,
+  set: (value: number) => {
+    const clamped = Math.min(value, maxSlider.value)
+    minPriceYen.value = clamped <= 0 ? null : clamped
+  },
+})
+
+const maxSlider = computed({
+  get: () => maxPriceYen.value ?? boardMaxYen.value,
+  set: (value: number) => {
+    const clamped = Math.max(value, minSlider.value)
+    maxPriceYen.value = clamped >= boardMaxYen.value ? null : clamped
+  },
+})
+
+/**
+ * Drive the handles by hand rather than with `v-model`, and force the element
+ * back onto the value the clamp actually accepted.
+ *
+ * Why this is not `v-model`: drag max below min and the setter clamps it back
+ * to min - which is frequently the value the ref ALREADY held, so nothing
+ * reactive changed, so Vue patches nothing, so the thumb sits wherever the
+ * pointer left it while the board filters by something else. The control would
+ * lie about its own state. Re-asserting the accepted value onto the element
+ * makes the clamp visible: the handle springs back, which is what a real
+ * physical stop does.
+ */
+function onMinInput(event: Event): void {
+  const el = event.target as HTMLInputElement
+  minSlider.value = Number(el.value)
+  el.value = String(minSlider.value)
+}
+
+function onMaxInput(event: Event): void {
+  const el = event.target as HTMLInputElement
+  maxSlider.value = Number(el.value)
+  el.value = String(maxSlider.value)
+}
 
 function matchesFilters(d: LotDetail): boolean {
   const entryYen = d.nextRaiseYen
@@ -175,26 +242,47 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
         <input v-model="affordableOnly" type="checkbox" data-test="filter-affordable" />
         Affordable
       </label>
-      <label class="filter-range">
-        Price
-        <input
-          v-model.number="minPriceYen"
-          type="number"
-          min="0"
-          step="10000"
-          placeholder="min"
-          data-test="filter-min-price"
-        />
-        to
-        <input
-          v-model.number="maxPriceYen"
-          type="number"
-          min="0"
-          step="10000"
-          placeholder="max"
-          data-test="filter-max-price"
-        />
-      </label>
+      <div class="filter-range">
+        <span class="filter-legend">Price</span>
+        <!-- Two overlapping range inputs: native `type=range` has one handle,
+             so a real min/max needs a pair. The track below sits behind them
+             and only the thumbs take pointer events, so both stay grabbable
+             even where they overlap. -->
+        <div class="price-slider">
+          <div class="slider-track" aria-hidden="true"></div>
+          <div
+            class="slider-fill"
+            aria-hidden="true"
+            :style="{
+              left: `${(minSlider / boardMaxYen) * 100}%`,
+              right: `${100 - (maxSlider / boardMaxYen) * 100}%`,
+            }"
+          ></div>
+          <input
+            type="range"
+            :value="minSlider"
+            :min="0"
+            :max="boardMaxYen"
+            :step="SLIDER_STEP_YEN"
+            aria-label="Lowest price"
+            data-test="filter-min-price"
+            @input="onMinInput"
+          />
+          <input
+            type="range"
+            :value="maxSlider"
+            :min="0"
+            :max="boardMaxYen"
+            :step="SLIDER_STEP_YEN"
+            aria-label="Highest price"
+            data-test="filter-max-price"
+            @input="onMaxInput"
+          />
+        </div>
+        <span class="filter-readout" data-test="filter-price-readout">
+          {{ formatYen(minSlider) }} - {{ formatYen(maxSlider) }}
+        </span>
+      </div>
       <span class="filter-count" data-test="filter-count"
         >{{ shownLots }}/{{ totalLots }} lots</span
       >
@@ -474,15 +562,75 @@ h3 {
   color: var(--mg-text-dim);
 }
 
-.filter-range input {
-  width: 7em;
-  background: var(--mg-night-deep);
-  border: var(--mg-border);
-  border-radius: 4px;
-  color: var(--mg-text);
-  font-family: inherit;
-  font-size: var(--mg-fs-sm);
-  padding: 2px 6px;
+.filter-legend,
+.filter-readout {
+  color: var(--mg-text-dim);
+  white-space: nowrap;
+}
+
+.filter-readout {
+  min-width: 12em;
+}
+
+.price-slider {
+  position: relative;
+  width: 180px;
+  height: 20px;
+}
+
+.slider-track,
+.slider-fill {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.slider-track {
+  left: 0;
+  right: 0;
+  background: var(--mg-panel-edge);
+}
+
+.slider-fill {
+  background: var(--mg-neon-cyan);
+}
+
+/* Both inputs stack on the same track. The input itself ignores the pointer
+   so the one underneath is still reachable; only the thumbs are grabbable. */
+.price-slider input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.price-slider input::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--mg-night-deep);
+  background: var(--mg-neon-cyan);
+  cursor: pointer;
+}
+
+.price-slider input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--mg-night-deep);
+  background: var(--mg-neon-cyan);
+  cursor: pointer;
 }
 
 .filter-count {

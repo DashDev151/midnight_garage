@@ -322,6 +322,24 @@ describe('AuctionScreen', () => {
         .map((l) => game.lotDetail(l.id)!.nextRaiseYen)
     }
 
+    /**
+     * Drives a slider and returns the value it ACTUALLY holds afterwards.
+     *
+     * A `type=range` snaps to its `step` and clamps to its bounds in a real
+     * browser; happy-dom does not. Asserting against the value we asked for
+     * would pass here and describe something that cannot happen on screen, so
+     * every assertion below reads the applied value back instead.
+     */
+    async function setSlider(
+      wrapper: ReturnType<typeof mountScreen>,
+      test: string,
+      value: number,
+    ): Promise<number> {
+      const input = wrapper.find(`[data-test="${test}"]`)
+      await input.setValue(value)
+      return Number((input.element as HTMLInputElement).value)
+    }
+
     it('Affordable hides every lot the player cannot afford to bid on', async () => {
       const game = useGameStore()
       game.newGame(1)
@@ -365,13 +383,47 @@ describe('AuctionScreen', () => {
       warpToCatalog(game)
       const wrapper = mountScreen()
 
-      await wrapper.find('[data-test="filter-max-price"]').setValue(1)
+      await setSlider(wrapper, 'filter-max-price', 0)
 
       expect(wrapper.findAll('.lot').length).toBe(0)
       // The board is NOT empty - that is a different fact and a different fix.
       const filtered = wrapper.find('[data-test="all-filtered"]')
       expect(filtered.exists()).toBe(true)
       expect(filtered.text()).toContain('none matching your filters')
+    })
+
+    it('the handles cannot cross - dragging min past max pins it, and vice versa', async () => {
+      // The one thing a two-handle range can actually get wrong: an inverted
+      // range silently matches nothing and looks like a broken board.
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+
+      const ceiling = Number(
+        (wrapper.find('[data-test="filter-max-price"]').element as HTMLInputElement).max,
+      )
+      await setSlider(wrapper, 'filter-max-price', ceiling / 2)
+      // Shove min far past max.
+      const appliedMin = await setSlider(wrapper, 'filter-min-price', ceiling)
+      expect(appliedMin).toBeLessThanOrEqual(ceiling / 2)
+
+      // ...and max back below min.
+      await setSlider(wrapper, 'filter-min-price', ceiling / 2)
+      const appliedMax = await setSlider(wrapper, 'filter-max-price', 0)
+      expect(appliedMax).toBeGreaterThanOrEqual(ceiling / 2)
+    })
+
+    it('reads out the live range in yen', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+
+      const readout = () => wrapper.find('[data-test="filter-price-readout"]').text()
+      expect(readout()).toContain('¥0')
+      await setSlider(wrapper, 'filter-min-price', 10_000)
+      expect(readout()).toContain('¥10,000')
     })
 
     it('Clear restores the whole board', async () => {
@@ -381,7 +433,7 @@ describe('AuctionScreen', () => {
       const wrapper = mountScreen()
       const before = wrapper.findAll('.lot').length
 
-      await wrapper.find('[data-test="filter-max-price"]').setValue(1)
+      await setSlider(wrapper, 'filter-max-price', 0)
       expect(wrapper.findAll('.lot').length).toBe(0)
       await wrapper.find('[data-test="filter-clear"]').trigger('click')
 
@@ -397,7 +449,7 @@ describe('AuctionScreen', () => {
       const wrapper = mountScreen()
 
       expect(wrapper.find('[data-test="filter-count"]').text()).toBe(`${total}/${total} lots`)
-      await wrapper.find('[data-test="filter-max-price"]').setValue(1)
+      await setSlider(wrapper, 'filter-max-price', 0)
       expect(wrapper.find('[data-test="filter-count"]').text()).toBe(`0/${total} lots`)
     })
   })
