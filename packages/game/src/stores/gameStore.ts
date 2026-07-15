@@ -54,6 +54,7 @@ import {
   climbBand,
   bestFitBuyer,
   buildSimContext,
+  carCostToBandYen,
   carCostToMintYen,
   carGuideValueYen,
   carLedgerFor,
@@ -65,6 +66,7 @@ import {
   createRng,
   deriveReputationTier,
   emptyDayActions,
+  expectationForCar,
   foundationFactor,
   generateAuctionCarInstance,
   groupCostToMintYen,
@@ -247,6 +249,10 @@ export interface CarDetail extends DetailedCar {
    * withhold in the first place.
    */
   foundationWarning: { failingParts: string[]; withheldYen: number } | null
+  /** economy-bible law 1's legibility clause (Sprint 66): non-null when this
+   * car has repair work available ABOVE its tier's expectation band, i.e. work
+   * that costs more than it returns. See `passionSpendNoticeFor`. */
+  passionSpendNotice: { band: ConditionBand; returnRate: number } | null
   /**
    * Sprint 48: the pre-Confirm estimate of what planned work will do to this
    * car - null when nothing is planned. Every figure assumes the plan fully
@@ -1155,6 +1161,46 @@ export const useGameStore = defineStore('game', () => {
     return { failingParts, withheldYen }
   }
 
+  /**
+   * The legibility clause of economy-bible law 1 (as amended, Sprint 66),
+   * which is part of the law and not a nicety: work planned ABOVE the car's
+   * tier expectation band returns less than it costs, deliberately, and the
+   * player has to be told so in the same breath as the price. A disclosed,
+   * optional money-loser is a choice; an undisclosed one is a value trap.
+   *
+   * Returns null unless this car can ACTUALLY lose money above the band:
+   * - `band === 'mint'`: nothing is above it.
+   * - `beyondDiscount >= 1`: work past the band still returns more than it
+   *   costs (the uncommon tier sits at 1.2), so it is a smaller profit, not a
+   *   loss. Warning there would be a lie.
+   * - no bill above the band: nothing to warn about.
+   */
+  function passionSpendNoticeFor(
+    car: CarInstance,
+    model: CarModel,
+  ): { band: ConditionBand; returnRate: number } | null {
+    const economy = context.value.economy
+    const expectation = expectationForCar(model, economy)
+    if (expectation.band === 'mint' || expectation.beyondDiscount >= 1) return null
+    const billToMint = carCostToMintYen(
+      car,
+      model,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      economy,
+    )
+    const billToBand = carCostToBandYen(
+      car,
+      model,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      economy,
+      expectation.band,
+    )
+    if (billToMint - billToBand <= 0) return null
+    return { band: expectation.band, returnRate: expectation.beyondDiscount }
+  }
+
   function carDetail(carId: string): CarDetail | undefined {
     const car = findWorkableCar(carId)
     if (!car) return undefined
@@ -1179,6 +1225,7 @@ export const useGameStore = defineStore('game', () => {
       ledger: carLedgerFor(gameState.value, carId),
       guideValueYen: carGuideValueYen(car, model, gameState.value, context.value),
       foundationWarning: foundationWarningFor(car),
+      passionSpendNotice: passionSpendNoticeFor(car, model),
       plannedEstimate: plannedEstimateFor(carId),
     }
   }

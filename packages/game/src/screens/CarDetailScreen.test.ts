@@ -1,4 +1,10 @@
-import { CARS, PARTS, type CarPartId, type ComponentId } from '@midnight-garage/content'
+import {
+  ALL_CAR_PART_IDS,
+  CARS,
+  PARTS,
+  type CarPartId,
+  type ComponentId,
+} from '@midnight-garage/content'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -539,6 +545,50 @@ describe('CarDetailScreen', () => {
       expect(el.exists()).toBe(true)
       // Names the failing foundation part (brakes) in plain copy.
       expect(el.text().toLowerCase()).toContain('brake')
+    })
+
+    it('tells the player when work on this car stops paying for itself (Sprint 66, law 1 legibility clause)', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id) // honda-city-e-aa (shitbox: expects `worn`, 0.4 beyond)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      // Sound and roadworthy, but not perfect - so there IS a bill above the
+      // shitbox expectation band, and it is the losing kind of work.
+      for (const partId of ALL_CAR_PART_IDS) {
+        const installed = car.parts[partId].installed
+        if (installed) car.parts[partId] = { installed: { ...installed, band: 'worn' } }
+      }
+
+      const notice = game.carDetail(id)!.passionSpendNotice
+      expect(notice).not.toBeNull()
+      expect(notice!.band).toBe('worn')
+      expect(notice!.returnRate).toBeLessThan(1)
+
+      const { wrapper } = await mountAt(id)
+      const el = wrapper.find('[data-test="passion-notice"]')
+      expect(el.exists()).toBe(true)
+      // Says it in the player's terms, not the schema's.
+      expect(el.text().toLowerCase()).toContain('because you want to')
+      expect(el.text().toLowerCase()).not.toContain('expectation band')
+      expect(el.text().toLowerCase()).not.toContain('discount')
+    })
+
+    it('stays silent on a car where work above the band still pays (Sprint 66)', async () => {
+      // The uncommon tier's `beyondDiscount` is 1.2 - above 1, so chasing mint
+      // is a SMALLER profit, never a loss. Warning here would be a lie.
+      const game = useGameStore()
+      const uncommon = CARS.find((c) => c.tier === 'uncommon')!
+      game.devGrantCar(uncommon.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      for (const partId of ALL_CAR_PART_IDS) {
+        const installed = car.parts[partId].installed
+        if (installed) car.parts[partId] = { installed: { ...installed, band: 'worn' } }
+      }
+
+      expect(game.carDetail(id)!.passionSpendNotice).toBeNull()
+      const { wrapper } = await mountAt(id)
+      expect(wrapper.find('[data-test="passion-notice"]').exists()).toBe(false)
     })
 
     it('shows no foundation warning when the foundations are sound (Sprint 60)', async () => {

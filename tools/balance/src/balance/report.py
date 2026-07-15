@@ -197,18 +197,41 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
         "Per-model closed-form facts at the worst plausible roll (post Law-2 "
         "generation guard): clean value, the softened worst-case restoration "
         "bill and its ratio to clean value (must stay <= `maxBillFraction`), "
-        "the flip margin buying at reserve + fully restoring + selling at guide "
-        "would clear (must stay positive), and the full consumable-replacement "
-        "share of book value (must stay under the content cap).",
+        "the flip margin buying at reserve + fully restoring TO MINT + selling "
+        "at guide would clear (must stay positive), and the full "
+        "consumable-replacement share of book value (must stay under the "
+        "content cap).",
         "",
-        "| Model | Class | Clean value | Worst bill | Ratio | Flip margin | Consumables share |",
-        "|---|---|---|---|---|---|---|",
+        "Read **Sensible margin** first (Sprint 66). Since Law 1 gained a "
+        "per-tier expectation band, a full mint restore is no longer the play "
+        "the economy asks for on a cheap car - the market barely discounts a "
+        "worn kei, so you pay near clean value for one and the mint bill burns "
+        "the margin. **Sensible margin** is the real core loop: buy rough "
+        "(every slot `poor`) at reserve, repair up to the tier's expectation "
+        "band and not a yen past, sell at the resulting guide. **Mint flip** "
+        "stays gated as Law 2's literal claim (full restoration must always be "
+        "*capable* of profit), but on the shitbox tier it correctly collapses.",
+        "",
+        "**Wage** (Law 6) is the value a repair returns over its own cost, less "
+        "the rent accrued over the labour it takes, on a rough-but-fixable car "
+        "at a fresh shop's tier-1 tools. It must stay positive. The **xRent** "
+        "ratio is the tuning dial: it is invariant to the target band (cost and "
+        "labour both scale with grade count), and falls down the roster because "
+        "repair labour is value-blind while the margin scales with part price.",
+        "",
+        "| Model | Class | Clean value | Worst bill | Ratio | Sensible margin | Mint flip "
+        "| Wage | xRent | Consumables share |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for row in coherence.sort("modelId").iter_rows(named=True):
         lines.append(
             f"| {row['modelId']} | {row['fitmentClass']} "
             f"| Y{row['cleanValueYen']:,.0f} | Y{row['worstBillYen']:,.0f} "
-            f"| {row['billToCleanRatio']:.1%} | Y{row['flipMarginYen']:,.0f} "
+            f"| {row['billToCleanRatio']:.1%} "
+            f"| Y{row['sensibleFlipMarginYen']:,.0f} "
+            f"({row['sensibleFlipMarginFraction']:.1%}) "
+            f"| Y{row['flipMarginYen']:,.0f} "
+            f"| Y{row['wageMarginYen']:,.0f} | {row['wageRatio']:.2f}x "
             f"| {row['consumablesShare']:.1%} |"
         )
     lines.append("")
@@ -218,22 +241,30 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
 INVARIANTS_ENFORCED_SECTION = [
     "## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2)",
     "",
-    "`balance.cli check` hard-gates 9 checks against this data: days-to-`local` p50 "
+    "`balance.cli check` hard-gates 11 checks against this data: days-to-`local` p50 "
     "in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, the "
     "3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive "
-    "separation, sanity floor), and 4 Sprint 55 roster-coherence checks (economy-bible.md "
-    "law 4): every model's worst-case bill-to-clean ratio <= `maxBillFraction` (law 2), "
-    "every model's flip margin at the worst roll is positive (law 1), every model's full "
+    "separation, sanity floor), and 6 roster-coherence checks (economy-bible.md "
+    "law 4, Sprints 55 and 66): every model's worst-case bill-to-clean ratio <= "
+    "`maxBillFraction` (law 2), every model's flip margin at the worst roll is positive "
+    "(law 1), every model's SENSIBLE-play margin is positive (law 1 as amended, Sprint 66), "
+    "every model's repair wage beats the rent over the labour it takes (law 6, Sprint 66), "
+    "every model's full "
     "consumable-replacement share of book value <= the content cap (law 3), and the "
     "service-job payout margin floor clears the profitability invariant's required "
     "coverage (law 4 - the full per-template/per-model proof is `serviceJobPayout.test.ts`, "
     "already gated in the standard test suite). 3 more are measured and reported but NOT "
     "gated (kept informational rather than promoted, since no maintainer has signed off on "
-    "hard-gating them yet) - see `invariants.py`'s module docstring for their history. As of "
-    "the Sprint 55 retune, all 3 read differently than that history describes: most active "
-    "strategies now beat Passive Grinder's day-100 cash, Flipper now clears its own starting "
-    "cash, and the auction win-price tails now sit inside their target band - see this "
-    "report's own tables above for the current real numbers.",
+    "hard-gating them yet) - see `invariants.py`'s module docstring for their history. "
+    "All 3 currently read BADLY, and deliberately so: as of Sprint 66 most strategies "
+    "lose money (Flipper is well below its own starting cash) and the auction tail is "
+    "frenzy-dominant. Do not tune the economy against those figures. They measure BOT "
+    "behaviour, and the bots restore every car to mint - which economy-bible law 1, as "
+    "amended in Sprint 66, now correctly punishes on a cheap car. The closed-form "
+    "coherence table above is bot-free and proves the same cars clear a healthy margin "
+    "on the play the economy actually asks for. The bots needing a rework to play the "
+    "real game is a known, recorded defect (`TODO.md`), not an economy failure - see "
+    "`docs/sprints/sprint66.md`'s Exit.",
     "",
 ]
 

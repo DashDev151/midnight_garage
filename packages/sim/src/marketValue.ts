@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  fitmentClassForTier,
   type CarInstance,
   type CarModel,
   type CarPartId,
@@ -7,7 +8,7 @@ import {
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { carCostToMintYen } from './bands'
+import { carCostToBandYen, carCostToMintYen } from './bands'
 
 /**
  * Sprint 27 - the taste-free "what is this car worth" answer, shared by
@@ -56,20 +57,41 @@ export function mileageFactor(mileageKm: number, economy: EconomyConfig): number
 
 /**
  * The restoration-bill deduction (Sprint 54 decision 1, economy-bible.md law
- * 1 - replaces Sprint 47's two-slope premium): ONE slope, always above 1 -
- * `marketRepairDiscount` (1.2 first-pass) yen of guide value per yen of
- * `billToMintYen` (`carCostToMintYen`, bands.ts - the SAME mint-referenced
- * bill the player sees on screen as "restoration bill remaining"; Sprint 47's
- * separate fine-referenced `carValuationBillYen` retires, so the displayed
- * number and the priced number are now identical). At `billToMintYen = 0`
- * (fully restored, no missing/scrap/worn parts) this returns exactly
- * `cleanValue` - a fully restored car can never be worth more than the
- * identical clean car; the ceiling is structural, not a clamp. A small
- * backstop floor (scrap-value fraction of clean, the same "pennies on the
- * yen" rate a single scrapped part sells for) guards only against a
+ * 1; re-sloped by Sprint 66 decision 7 as the law's tier-keyed amendment).
+ *
+ * The bill is the SAME mint-referenced `carCostToMintYen` the player sees on
+ * screen as "restoration bill remaining" (Sprint 47's separate fine-referenced
+ * `carValuationBillYen` retired in Sprint 54, so the displayed number and the
+ * priced number are identical). Sprint 66 SPLITS that bill at the car's tier
+ * expectation band (`valuation.expectationByTier`) and discounts the halves at
+ * different rates:
+ *
+ *   base = cleanValue
+ *        - marketRepairDiscount x billBelowExpectation
+ *        - beyondDiscount       x billAboveExpectation
+ *
+ * Below the band the rate is `marketRepairDiscount` (1.5), `.min(1)`-enforced:
+ * Law 1's guarantee that every repair yen returns more than itself is absolute
+ * over the whole range the economy asks a player to repair. Above the band the
+ * rate is the tier's own `beyondDiscount`, deliberately allowed below 1 -
+ * restoring a shitbox kei to mint is passion spend, not investment. See the
+ * `expectationByTier` schema doc for the full rationale.
+ *
+ * Two properties fall out rather than needing clamps:
+ * - At `billToMintYen = 0` BOTH halves are zero, so this returns exactly
+ *   `cleanValue`. A fully restored car can never be worth more than the
+ *   identical clean car - Sprint 54's ceiling, structurally intact.
+ * - The halves are `carCostToBandYen(expectation)` and the remainder, both
+ *   derived from the one `costToBandYen` atom, so they always sum to the
+ *   displayed bill exactly. The split can never invent or lose a yen.
+ *
+ * A small backstop floor (scrap-value fraction of clean, the same "pennies on
+ * the yen" rate a single scrapped part sells for) guards only against a
  * near-total-scrap car's bill driving the raw formula negative - Law 2 (the
- * generation-time bill guard, auctions.ts) guarantees no generated car's
- * bill is ever large enough to actually reach this floor.
+ * generation-time bill guard, auctions.ts) guarantees no generated car's bill
+ * is ever large enough to actually reach it, and `beyondDiscount <=
+ * marketRepairDiscount` (schema-enforced) means this split can only ever raise
+ * the raw value, never push it closer to the floor.
  *
  * `cleanValue = bookValueYen * mileageFactor * (heatPercent / 100)` (heat
  * applies exactly once - the Sprint 21 heat-once law; mileage joined it
@@ -87,9 +109,46 @@ function instanceBaseValueYen(
   const { marketRepairDiscount } = economy.valuation
   const cleanValue =
     model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
+
+  const expectation = expectationForCar(model, economy)
   const billToMintYen = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
+  const billBelowYen = carCostToBandYen(
+    car,
+    model,
+    partsById,
+    partsTaxonomyById,
+    economy,
+    expectation.band,
+  )
+  const billAboveYen = billToMintYen - billBelowYen
+
   const backstopFloor = economy.bands.scrapValueFraction * cleanValue
-  return Math.max(backstopFloor, cleanValue - marketRepairDiscount * billToMintYen)
+  const raw =
+    cleanValue - marketRepairDiscount * billBelowYen - expectation.beyondDiscount * billAboveYen
+  return Math.max(backstopFloor, raw)
+}
+
+/**
+ * The market's expectation of this car (Sprint 66, economy-bible.md law 1 as
+ * amended): which condition band it is worth repairing to, how much a yen
+ * spent past that returns, and how much of an aftermarket premium the market
+ * credits on this kind of car at all.
+ *
+ * Keyed on the car's fitment class, which IS its roster tier
+ * (`fitmentClassForTier`) - the same identity Law 3's parts pricing uses, so a
+ * car's expectations and its parts costs can never disagree about what kind of
+ * car it is.
+ */
+export function expectationForCar(model: CarModel, economy: EconomyConfig) {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const expectation = economy.valuation.expectationByTier[fitmentClass]
+  if (!expectation) {
+    // The schema requires every class, so this is unreachable with real
+    // content; failing loudly beats silently pricing a car as if it had no
+    // expectations at all.
+    throw new Error(`valuation.expectationByTier is missing fitment class "${fitmentClass}"`)
+  }
+  return expectation
 }
 
 /**
@@ -173,9 +232,20 @@ export function foundationFactor(car: CarInstance, economy: EconomyConfig): numb
  * the car's foundations (brakes, tyres, steering, chassis, rust) are sound;
  * the base term is untouched, so the repair economy (Law 1) is unchanged and
  * fixing a failed foundation part returns its own repair value PLUS the
- * released premium. Every other price (the auction anchor, walk-in offers,
- * listing asking price, buyer taste, bot walk-away targets) is this value
- * times a bounded multiplier, never a competing formula.
+ * released premium.
+ *
+ * Sprint 66 (law 5 as amended) adds the premium's second multiplier,
+ * `aftermarketReturn` - the tier's own answer to "is this the kind of car
+ * anyone pays extra to modify?". A race turbo on a kei returns a fraction of
+ * its cost; on a rare car, all of it. The two multipliers ask different
+ * questions and compose: `foundationFactor` is about whether this SPECIFIC car
+ * is trustworthy, `aftermarketReturn` about whether this KIND of car rewards
+ * modification. Both are capped at 1, so the premium term can only ever be
+ * withheld, never inflated.
+ *
+ * Every other price (the auction anchor, walk-in offers, listing asking price,
+ * buyer taste, bot walk-away targets) is this value times a bounded
+ * multiplier, never a competing formula.
  */
 export function marketValueYen(
   model: CarModel,
@@ -189,5 +259,9 @@ export function marketValueYen(
     instanceBaseValueYen(model, car, heatPercent, partsById, partsTaxonomyById, economy),
   )
   const premiumYen = installedPartsValueYen(car, partsById, economy)
-  return baseValue + Math.round(foundationFactor(car, economy) * premiumYen)
+  const creditedPremiumYen =
+    foundationFactor(car, economy) *
+    expectationForCar(model, economy).aftermarketReturn *
+    premiumYen
+  return baseValue + Math.round(creditedPremiumYen)
 }

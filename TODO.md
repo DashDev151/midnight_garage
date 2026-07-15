@@ -57,6 +57,17 @@ pass."
      2/200 seeds ever clear a tool tier; post-Sprint-59 `competent-policy` - the bot built
      specifically to climb - affords **zero** tool upgrades in 100 days. Large parts of the
      progression system are simply never exercised.
+  5. **Every bot restores every car to mint, always** (found Sprint 66). `bots/bandHelpers.ts`
+     hardcodes `targetBand: 'mint'`, and every strategy's done-check is
+     `isGroupAtLeast(car, id, 'mint', ...)`. No bot has ever chosen a repair depth - the single
+     most consequential decision the game asks of a player. This stopped being merely unrealistic
+     in Sprint 66: economy-bible Law 1's tier-expectation amendment makes a mint restore
+     deliberately unprofitable on a cheap car, so the bots now execute the exact play the economy
+     is designed to punish. Their day-100 cash curves went sharply negative (Flipper Y-106,183
+     against Y300,000 starting cash) while the bot-free coherence table proves the SAME cars clear
+     +9.6% to +34.5% of clean value on the sensible play. That gap is the clearest measurement of
+     this defect yet produced: the economy is fine and the bots cannot play it. **Do not tune the
+     economy against these curves** - a rewritten bot must pick a target band per car.
 
   **What survives the rework, and must not be thrown away.** The distinction matters: the harness
   has two halves and only one is broken.
@@ -118,6 +129,14 @@ pass."
   but-real tool-upgrade loop through).
 
 ## Open engineering
+
+- [ ] **The auction provenance pool violates the content law** (deferred from Sprint 66, which
+  planned to move it and did not). `PROVENANCE_POOL` in `packages/sim/src/auctions.ts` is authored
+  player-facing copy (`"barn find, no history at all"`) living in code, keyed by
+  `(ageBand, upkeepTier)`. It belongs in `packages/content` as `provenance.json` with a schema and
+  a content test asserting every `(ageBand, upkeepTier)` cell has at least 2 lines. Sprint 66 kept
+  its diff on the economy and left this behind; nothing depends on the move, it is purely the
+  content law going unenforced on one constant.
 
 - [ ] **Specialty (Sprint 38, the progression bible's horizontal axis) earns from service-job work
   only, never from sales.** A deliberate scope line, not an oversight: attributing a SALE'S

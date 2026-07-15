@@ -46,19 +46,48 @@ that sprint doc is the historical record).
 ## The laws
 
 The Economy Rebuild arc (Sprints 53-55) locked four laws; Sprint 60 added a fifth (the
-foundation law) by explicit maintainer approval - see the Amendment log.
+foundation law) and Sprint 66 a sixth (the wage law), both by explicit maintainer approval.
+Sprint 66 also amended Laws 1 and 5. See the Amendment log for all of it.
 
-1. **Repair margin (Law 1).** The marginal value returned per repair yen is >= 1 at every
-   reachable state of every car - first-pass 1.2 (buyers pay a premium for done-ness; the hassle
-   premium is the flipper's edge). No zone anywhere with slope < 1. *Litmus: can a maintainer point
-   to any car, any damage state, where spending a repair yen returns less than a yen of value? If
-   yes, the formula is wrong, not the maintainer's play.* (Sprint 54.)
+1. **Repair margin (Law 1).** *Amended Sprint 66 - see the Amendment log. The clause below is the
+   law as it now stands; the pre-Sprint-66 text is kept in the log as history.*
+
+   Every car has a **market expectation band** set by its tier (`valuation.expectationByTier`):
+   the condition the market actually expects of that kind of car. The law has two clauses either
+   side of it.
+
+   - **Below the expectation band, the return is >= 1 at every reachable state of every car,
+     absolutely and by construction** (`valuation.marketRepairDiscount`, first-pass 1.5 - buyers
+     pay a premium for done-ness; the hassle premium is the flipper's edge). No zone anywhere with
+     slope < 1. Making a car roadworthy always pays, on every tier, at every damage state. This is
+     the original law, intact, over the range where it was ever really about protecting the player.
+   - **Above the expectation band, the return is per-tier (`beyondDiscount`) and MAY fall below
+     1 - deliberately.** It is not worth restoring a shitbox kei to mint; it IS worth building a
+     sports car into something special. The point of diminishing return is higher on a better car.
+     Above the line the player is knowingly spending on passion rather than investing.
+   - **The legibility clause, which is part of the law and not a nicety:** work planned above the
+     expectation band must be marked as passion spend on the car page, in the same breath as its
+     cost. A value trap is one you cannot see. A disclosed, optional money-loser is a choice; an
+     undisclosed one is the Sprint 47 bug wearing a new hat.
+
+   `beyondDiscount <= marketRepairDiscount` is schema-enforced, so the second clause can only ever
+   be gentler than the first, never steeper - which also keeps the (D, F) interlock (Law 2) safe
+   rather than weakening it.
+
+   *Litmus: can a maintainer point to any car, at any damage state BELOW its expectation band,
+   where spending a repair yen returns less than a yen? If yes, the formula is wrong, not the
+   maintainer's play. And above the band: does the car page tell the player they are spending for
+   love rather than money? If not, the formula is fine but the screen is lying.* (Sprint 54,
+   amended Sprint 66.)
 2. **No value traps (Law 2).** Every car the game generates satisfies `worstCaseBill <=
-   maxBillFraction x cleanValue` (first-pass 0.7) - buy at reserve, fully restore, sell at guide
-   clears a positive margin on every generatable lot. Enforced at generation and as a closed-form
-   invariant over the whole roster, forever. *Litmus: pick any lot ever generated - is full
+   maxBillFraction x cleanValue` (0.6 since Sprint 66, formerly 0.7) - buy at reserve, fully
+   restore, sell at guide clears a positive margin on every generatable lot. Enforced at
+   generation and as a closed-form invariant over the whole roster, forever.
+   **`marketRepairDiscount x maxBillFraction` must stay below 1** (0.90 today): above 1, the worst
+   generatable car's value falls through the `scrapValueFraction` floor and this law's guarantee
+   dies. The two move together or not at all. *Litmus: pick any lot ever generated - is full
    restoration mathematically capable of turning a profit?* (Sprint 54, guarded forever by
-   Sprint 55.)
+   Sprint 55, interlock recorded Sprint 66.)
 3. **Proportionate parts (Law 3).** Parts and repair costs scale with the car's fitment class, and
    cross-class arbitrage is physically impossible (a part that doesn't fit doesn't install) - so
    "brake pads cost twice the car" cannot exist by construction, not by tuning. *Litmus: does any
@@ -78,13 +107,37 @@ foundation law) by explicit maintainer approval - see the Amendment log.
    part returns its own repair value PLUS the released premium (foundations first, then the toys
    count). The multiplier is never above 1, so the law only ever withholds, never inflates.
    *Litmus: does a build with an expensive engine but neglected brakes profit the same as a sound
-   one? If yes, the formula is wrong.* (Sprint 60.)
+   one? If yes, the formula is wrong.* (Sprint 60, amended Sprint 66.)
+
+   *Amended Sprint 66 - see the Amendment log.* The premium is additionally scaled by a per-tier
+   `aftermarketReturn` (`valuation.expectationByTier`) - the same diminishing-returns idea Law 1
+   now carries, applied to the toys rather than the repairs. A race turbo on a kei returns a
+   fraction of its cost; on a rare car it returns all of it. Two multipliers on one term, each
+   answering a different question: `foundationFactor` asks *would a buyer trust this car at all*,
+   `aftermarketReturn` asks *is this the kind of car anyone pays extra to modify*. Both are capped
+   at 1 and both only ever withhold, so Law 5's "never inflates" property is unchanged.
 
    The maintainer's worked example this law exists to fix (2026-07-14): buy a cheap kei truck;
    leave the brakes stock and worn, the body peeling and rusted; but fit an expensive race turbo,
    a race engine, and the priciest cosmetics. Under the pre-Sprint-60 additive formula this build
    turned a real profit. Under Law 5 it loses money end to end - the parts were bought at full
    catalog price but credited at ~8% of it while the foundations stay neglected.
+
+6. **The wage law (Law 6).** A day at the bench must out-earn a day of standing still. Stated
+   checkably: for every roster model, `profit(buy -> repair -> sell) - profit(buy -> sell as-is)`
+   exceeds the rent accrued over the labour days that repair takes - measured at the car's own
+   **expectation band** (Law 1), never at mint, because mint is not the repair a sane player
+   performs on a kei. Both plays start from the same purchase price, so the bidding discount is
+   common to both and cancels; repair's advantage is exactly `(marketRepairDiscount - 1) x
+   repairCost` on top of it. That product IS the wage: a repair's cash cost and the bill reduction
+   it buys are identical by construction (both are `repairStepFraction x partPriceYen`), so the
+   discount rate above 1 is the entire return. *Litmus: is a day at the bench worth more than a
+   day doing nothing?* Hard-gated per model in `computeRosterCoherence`. (Sprint 66.)
+
+   This is the law the 2026-07-15 playtest was actually asking for, and the one Law 1 (slope >= 1)
+   was too weak to deliver: at the pre-Sprint-66 1.2, ten yen of work bought two yen of margin,
+   which is what the maintainer felt as "I have done a lot of work and the projected profit barely
+   moved". Law 1 held the whole time. It was simply never a promise worth anything.
 
 ## Fitment classes (Sprint 53)
 
@@ -269,3 +322,36 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   asserted directly). Balance harness re-run clean: all 9 hard gates pass, days-to-`local` p50
   unchanged. First-pass factor numbers are maintainer-tuning bait. Full detail in
   `docs/sprints/sprint60.md`'s Exit.
+- 2026-07-15: **Law 6 (the wage law) added, and Laws 1 and 5 amended, by explicit maintainer
+  approval** (Sprint 66, playtest pass-3 item 19). Approving `sprint66.md` carries Law 6; the
+  Law 1/Law 5 amendments were approved separately and in terms ("Happy to make the amendment
+  Carefully") after the maintainer read the diminishing-returns proposal in decision 7.
+
+  *Law 6* answers the diagnosis that a repair returned exactly 20% of spend: `marketRepairDiscount`
+  1.2 -> 1.5 with `partsGeneration.maxBillFraction` 0.7 -> 0.6 to hold the (D, F) interlock at
+  0.90 < 1. **That interlock is now a law-level constraint, written here so no future sprint moves
+  one without the other:** `marketRepairDiscount x maxBillFraction` must stay below 1, or the worst
+  generatable car's value falls through the `scrapValueFraction` floor and Law 2's guarantee dies.
+  It is why 1.2 could never simply be raised on its own.
+
+  *Law 1's amendment* is a SCOPING, not a weakening. It was forced by measurement: with the wage
+  law implemented and the coherence table read for the first time, restoring the worst generatable
+  shitbox to mint returned Y26,170 for ~8 bench days, or 1.10x the rent it cost - against 7.34x for
+  a rare car. The first reading ("repair labour is value-blind, so cheap cars pay badly") was filed
+  as a disclosure and was wrong. The maintainer's correction: nobody should be taking a Honda City
+  to mint in the first place. The model was fine; the TARGET BAND was the mistake, and the table
+  was faithfully measuring an act no sane player would perform. Hence `valuation.expectationByTier`
+  (band + `beyondDiscount` + `aftermarketReturn`), the bill split at the expectation band, and the
+  two-slope base value. Law 1's guarantee survives intact below the band, where it was ever really
+  about protecting the player; above it the return may fall under 1 deliberately, and the
+  legibility clause is what keeps that a choice rather than a trap. `beyondDiscount <=
+  marketRepairDiscount` is schema-enforced, so the interlock above is strengthened, never loosened.
+
+  *Law 5's amendment* is the same idea on the premium term: a per-tier `aftermarketReturn` so a
+  race turbo on a kei returns a fraction of its cost. The maintainer's framing, kept verbatim
+  because it is the whole design: it is not financially worth building a shitbox kei into a mint
+  show car "though it might still be fun", while on a sports car it genuinely is - the point of
+  diminishing return is higher on a better car.
+
+  All eight decision-7 numbers are first-pass tuning bait. Full detail and the measured
+  before/after in `docs/sprints/sprint66.md`'s Exit.

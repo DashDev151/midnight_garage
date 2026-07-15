@@ -22,6 +22,7 @@ import {
   generateAuctionCatalog,
 } from '../src/auctions'
 import { carCostToMintYen, hasForcedInduction, planGroupRepair } from '../src/bands'
+import { computeRosterCoherence } from '../src/coherence'
 import { buildSimContext } from '../src/context'
 import { installedPartsValueYen, marketValueYen, mileageFactor } from '../src/marketValue'
 import { createRng, hashStringToSeed } from '../src/rng'
@@ -828,16 +829,24 @@ describe('unimproved-flip probe (Sprint 59 decision 1, playtest item 19)', () =>
 
       expect(marginFractions.length).toBeGreaterThan(10)
       const marginMedian = median(marginFractions)
-      // Measured against this exact population: shitbox +5.5%, common +2.8%,
-      // uncommon +2.5%, rare +5.7% - a real, large improvement over the
-      // ~49% structural giveaway this sprint exists to close, and always on
-      // the profit side (a disciplined bidder who never overpays wins a
-      // real, if modest, discount more often than a loss). 7% is generous
-      // headroom above every measured tier. Disclosed, not silently
-      // resolved: this is a PERCENTAGE band, so the same 5-6% reads as "a
-      // few thousand yen" on a cheap shitbox but a much larger absolute sum
-      // on a rare-tier car - see sprint59.md's Exit.
-      expect(Math.abs(marginMedian)).toBeLessThanOrEqual(0.07)
+      // Re-measured against Sprint 66's population (the band, not the law,
+      // is population-relative - and Sprint 66 deliberately rebuilt the
+      // population it is measured over: `wearExposure` stops rolling worn
+      // parts onto barely-driven cars, `maxBillFraction` 0.7 -> 0.6 caps how
+      // rough a lot can be, and `marketRepairDiscount` 1.2 -> 1.5 re-slopes
+      // damaged-car value). Now: shitbox +7.3%, common +5.9%, uncommon
+      // +5.1%, rare +5.2%, against Sprint 59's +5.5/+2.8/+2.5/+5.7. All four
+      // drifted UP a few points and all stay on the profit side - disclosed
+      // rather than tuned away, since this is still an order of magnitude
+      // below the ~49% structural giveaway item 19 reported, and a
+      // disciplined bidder winning a modest discount is the intended shape.
+      // 8% is headroom above every measured tier.
+      //
+      // This band does NOT gate the wage law: both the as-is flip and the
+      // repair flip start from the same won price, so the bidding discount
+      // is common to both and cancels. Repair's advantage is
+      // `(D - 1) x bill` ON TOP of it - see the wage probe below.
+      expect(Math.abs(marginMedian)).toBeLessThanOrEqual(0.08)
     },
   )
 })
@@ -1002,5 +1011,91 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
       // Zero premium -> foundationFactor is inert by construction.
       expect(installedPartsValueYen(car, PARTS_BY_ID, ECONOMY)).toBe(0)
     }
+  })
+})
+
+describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
+  /**
+   * The maintainer's law, verbatim: "It should ALWAYS be more profitable to
+   * make sensible repairs to a car and then sell than just selling the piece
+   * of shit."
+   *
+   * Repairing is the same product twice over: a repair's cash cost and the
+   * bill reduction it buys are IDENTICAL by construction (both are
+   * `repairStepFraction x partPriceYen`), and guide value moves by
+   * `marketRepairDiscount x` the bill reduction. So the profit delta between
+   * repair-then-sell and sell-as-is is exactly `(D - 1) x repairCost`, and
+   * `marketRepairDiscount` IS the entire wage. Before Sprint 66, D was 1.20:
+   * ten yen of work bought two yen of margin, which is what the playtest felt
+   * as "I have done a lot of work and the projected profit barely moved".
+   */
+  it('repairing and selling always beats selling as-is, for every roster model', () => {
+    for (const row of computeRosterCoherence(CARS, CONTEXT)) {
+      expect(
+        row.wageMarginYen,
+        `${row.modelId}: repairing nets ${row.wageMarginYen} yen over selling as-is - the bench must never be a losing use of a day`,
+      ).toBeGreaterThan(0)
+    }
+  })
+
+  it('the margin is the discount rate above 1, applied to the plan the player actually pays', () => {
+    // Not a re-derivation: this asserts the identity the law RESTS on, so a
+    // future change that decouples repair cost from bill reduction fails here
+    // rather than silently making the wage a fiction.
+    for (const row of computeRosterCoherence(CARS, CONTEXT)) {
+      expect(row.repairGainYen).toBe(
+        Math.round((ECONOMY.valuation.marketRepairDiscount - 1) * row.repairCostYen),
+      )
+    }
+  })
+
+  it('the sensible play clears a real margin on EVERY roster model (Sprint 66 decision 7)', () => {
+    // Buy rough, repair to the tier's expectation band, sell. This is the play
+    // the economy asks for, and the one `flipMarginYen` stopped describing the
+    // moment Law 1 gained a tier expectation: a full mint restore of a Honda
+    // City nets Y3,202, because the market barely discounts a worn kei so you
+    // pay near clean value for one. The same car on the sensible play nets
+    // Y34,309. The economy is sound; measuring a mint kei was the mistake.
+    for (const row of computeRosterCoherence(CARS, CONTEXT)) {
+      expect(
+        row.sensibleFlipMarginFraction,
+        `${row.modelId}: buying rough, repairing to ${row.fitmentClass}'s expectation band and selling nets ${row.sensibleFlipMarginYen} yen (${(row.sensibleFlipMarginFraction * 100).toFixed(1)}% of clean) - the core loop must pay on every car in the game`,
+      ).toBeGreaterThan(0.05)
+    }
+  })
+
+  it('a mint restore is a WORSE play than the sensible one on a shitbox, and a BETTER one on a rare car', () => {
+    // The whole point of decision 7, as one assertion. Diminishing returns are
+    // real and tier-keyed: chasing mint destroys margin on a cheap car and
+    // creates it on an expensive one.
+    const rows = computeRosterCoherence(CARS, CONTEXT)
+    for (const row of rows.filter((r) => r.fitmentClass === 'shitbox')) {
+      expect(
+        row.flipMarginYen,
+        `${row.modelId}: a mint restore should be the WORSE play on a shitbox`,
+      ).toBeLessThan(row.sensibleFlipMarginYen)
+    }
+    for (const row of rows.filter((r) => r.fitmentClass === 'rare')) {
+      expect(
+        row.flipMarginYen,
+        `${row.modelId}: chasing mint should PAY on a rare car - that is what makes it a project`,
+      ).toBeGreaterThan(row.sensibleFlipMarginYen)
+    }
+  })
+
+  it('discloses the tier spread: bench work pays a shitbox far worse than a rare car', () => {
+    // Repair LABOUR is value-blind (a shitbox takes about as many slots as a
+    // rare car) while the gain scales with part price, so `wageRatio` falls
+    // hard down the roster. This is not a gate - it pins the CURRENT shape so
+    // the disclosure in sprint66.md's Exit cannot rot unnoticed.
+    const rows = computeRosterCoherence(CARS, CONTEXT)
+    const shitbox = rows.filter((r) => r.fitmentClass === 'shitbox')
+    const rare = rows.filter((r) => r.fitmentClass === 'rare')
+    expect(shitbox.length, 'expected shitbox-class models on the roster').toBeGreaterThan(0)
+    expect(rare.length, 'expected rare-class models on the roster').toBeGreaterThan(0)
+    const worstShitbox = Math.min(...shitbox.map((r) => r.wageRatio))
+    const bestRare = Math.max(...rare.map((r) => r.wageRatio))
+    expect(worstShitbox).toBeGreaterThan(1)
+    expect(bestRare).toBeGreaterThan(worstShitbox * 3)
   })
 })

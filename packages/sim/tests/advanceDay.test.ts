@@ -225,9 +225,20 @@ describe('advanceDay golden master', () => {
     // change, not a logic bug; this scripted career never accepts a
     // service job, so the field stays empty throughout and every other
     // assertion in this file still passes unchanged.
+    // Re-pinned again (Sprint 66, was f354f178): the economy changed on
+    // purpose, in three ways that all reach a scripted career's end state -
+    // `marketRepairDiscount` 1.2 -> 1.5 with `maxBillFraction` 0.7 -> 0.6 (the
+    // wage law, economy-bible law 6), the value formula's new two-slope split
+    // at each tier's expectation band (law 1 as amended), and a rebuilt
+    // generation chain (`wearExposure`, `AUCTION_MIN_AGE_YEARS`, ~doubled
+    // spawn rates). A golden master that did NOT move here would mean those
+    // changes did nothing. The drift is covered by targeted assertions rather
+    // than taken on trust: the ceiling/floor/no-free-lunch/foundation/wage
+    // probes and the whole `generationCoherence` suite all pass, and every
+    // other test in this file still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('f354f178')
+    expect(hashState(finalState)).toBe('9f8e0a15')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -421,7 +432,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // STARTING_CASH_YEN no longer gives it) - both real, intended changes,
     // not a logic bug; `wins a lot at auction, then sells the car` above
     // still holds unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('2103500e')
+    // Re-pinned (Sprint 66, was 2103500e): same cause as the 30-day career
+    // hash above - this career buys and sells a car, so the new value slope
+    // and the rebuilt generation chain both reach its end state by design.
+    expect(hashState(acquisitionCareer().sold)).toBe('cfabcf38')
   })
 })
 

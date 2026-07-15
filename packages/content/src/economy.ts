@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { CarPartIdSchema } from './tags'
+import { PartFitmentClassSchema } from './partFitment'
+import { CarPartIdSchema, ConditionBandSchema } from './tags'
 import { ToolTierSchema } from './toolLines'
 
 /**
@@ -254,6 +255,18 @@ export const EconomyConfigSchema = z.object({
    */
   AUCTION_DAILY_SPAWN_RATE: ByAuctionTierRateSchema,
   /**
+   * Sprint 66 (playtest 2026-07-15 item 6a): the youngest a generated car may
+   * be, in years, when a real calendar year is known. The maintainer's point:
+   * *"why is the car coming to a backyard mechanic if it was just bought from
+   * a dealer?"* - a current-model-year car does not turn up at a local yard.
+   * `generateAuctionCarInstance` clamps the rolled `year` to at most
+   * `currentYear - AUCTION_MIN_AGE_YEARS`, never below the model's own
+   * `spec.yearFrom` (a car cannot predate its own model - a model released
+   * within this window simply generates at its release year). Inert when the
+   * caller passes no finite `currentYear`.
+   */
+  AUCTION_MIN_AGE_YEARS: z.number().int().nonnegative(),
+  /**
    * Sprint 30 decision 3: the daily bidder-interest process replacing the
    * old one-shot demand ceiling (Sprint 20) and its Sprint 25 interim patches
    * (both deleted, decision 5). Turnout is rolled once per lot at creation
@@ -336,92 +349,174 @@ export const EconomyConfigSchema = z.object({
    * more than itself, by construction, at every reachable state
    * (`marketValueYen`'s own doc comment carries the current formula).
    */
-  valuation: z.object({
-    /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - a small
-     * low-mileage bonus flattening to 1.0, then falling off with mileage,
-     * clamped to the first/last factor outside the breakpoint range. */
-    mileageFactorCurve: CurveSchema,
-    /**
-     * Sprint 54 decision 1 (economy-bible.md law 1): the ONE deduction rate -
-     * yen of guide value gained per yen of the (mint-referenced) restoration
-     * bill paid off. `.min(1)` is the law itself, enforced structurally: a
-     * value < 1 would mean repairing a car for real yen returns less than
-     * that yen back, exactly the guaranteed-loss bug this sprint exists to
-     * retire. 1.2 first-pass (buyers pay a premium for done-ness), tuning
-     * bait - never below 1.
-     */
-    marketRepairDiscount: z.number().min(1),
-    /** Installed-part value retention: a part is worth this fraction of its
-     * catalog price toward the car's market value (real markets: mods return
-     * cents on the yen, they don't multiply the chassis price). */
-    partsRetention: z.number().min(0).max(1),
-    /** Multiplier applied to a genuine-period installed part's contribution
-     * (on top of `partsRetention`) - period-correct parts hold more value
-     * than a modern reproduction of the same catalog part. */
-    genuinePeriodMultiplier: z.number().positive(),
-    /** Buyer-taste spread (decision 4): `valuateCarForBuyer` bounds its taste
-     * multiplier to `[1 - tasteSpread, 1 + tasteSpread]` around `marketValueYen`
-     * - how well a buyer archetype's stat weights fit this car, never whether
-     * the car is worth anything (that's `marketValueYen` alone). */
-    tasteSpread: z.number().min(0).max(1),
-    /**
-     * Sprint 27 decision 4: a bot's walk-away target
-     * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) is `instanceValue x
-     * strategyMultiplier` times a small private spread, bell-shaped around
-     * 1.0 with this standard deviation - even though every bidder reads the
-     * identical transparent bands, no two private valuations of the same car
-     * land exactly on the shared anchor.
-     */
-    walkAwaySpread: z.number().nonnegative(),
-    /**
-     * Sprint 60 (economy-bible.md law 5 - the foundation law): the aftermarket
-     * premium (`marketValue.ts`'s `installedPartsValueYen`) is multiplied by
-     * the factor of the SINGLE WORST foundational part before it counts toward
-     * market value - no buyer pays for a race turbo in a car that can't stop
-     * or steer. The base value (clean minus the restoration bill) already
-     * prices broken parts through the bill; this gates only the ADD-ON
-     * premium, so Law 1 (every repair yen returns more than itself) is
-     * untouched, and repairing a failed foundational part returns EXTRA on top
-     * of the `marketRepairDiscount` slope by releasing the withheld premium.
-     */
-    foundation: z.object({
-      /** The foundational slots a buyer treats as non-negotiable - safety and
-       * structure (brakes, tyres, steering, chassis, rust), not performance.
-       * If the WORST of these is bad, the extras stop counting. */
-      parts: z.array(CarPartIdSchema).min(1),
+  valuation: z
+    .object({
+      /** Sprint 30 decision 1: `[mileageKm, factor]` breakpoints - a small
+       * low-mileage bonus flattening to 1.0, then falling off with mileage,
+       * clamped to the first/last factor outside the breakpoint range. */
+      mileageFactorCurve: CurveSchema,
       /**
-       * The premium multiplier by the worst foundational part's state
-       * (`missing` = the slot is empty; otherwise its condition band). Must be
-       * monotonic non-decreasing (a worse state never withholds LESS premium)
-       * and never above 1 (the foundation law only ever WITHHOLDS premium, it
-       * never inflates it - the no-inflation ceiling from Law 1, extended to
-       * the premium term). `worn`-or-better at 1.0 means a roadworthy car pays
-       * full premium; the base value already handled the mild wear through the
-       * bill.
+       * Sprint 54 decision 1 (economy-bible.md law 1): the deduction rate for
+       * the portion of the (mint-referenced) restoration bill BELOW the car's
+       * tier expectation band - yen of guide value gained per repair yen paid
+       * off. `.min(1)` is Law 1 itself, enforced structurally: a value < 1 would
+       * mean repairing a car for real yen returns less than that yen back,
+       * exactly the guaranteed-loss bug Sprint 54 retired.
+       *
+       * Sprint 66 scoped this rather than weakened it: work ABOVE the tier's
+       * expectation band is discounted at `expectationByTier[tier].beyondDiscount`
+       * instead, which is deliberately allowed below 1 (see that field). This
+       * rate, and its >= 1 guarantee, still govern every repair up to the band -
+       * which is every repair the economy asks a player to make.
+       *
+       * Retuned 1.2 -> 1.5 (Sprint 66, economy-bible.md law 6 - the wage law).
+       * A repair's cash cost and its bill reduction are identical by
+       * construction (`planPartRepair` and `costToMintYen` are the same
+       * `repairStepFraction x partPriceYen` product), so THIS NUMBER IS THE
+       * ENTIRE RETURN ON REPAIR WORK: paying X yen returns `marketRepairDiscount
+       * x X`. At 1.2 that was a 20% margin on spend - technically Law 1
+       * compliant, but so thin that a playtest (2026-07-15) found a full
+       * poor->worn pass barely moved projected profit. At 1.5 every repair yen
+       * returns 1.5 yen, a 50% margin, which is what makes bench time pay.
+       *
+       * CONSTRAINT - never move this alone. `instanceBaseValueYen` floors at
+       * `bands.scrapValueFraction x cleanValue`, so for the floor never to bind
+       * on a generatable car we need
+       * `marketRepairDiscount x partsGeneration.maxBillFraction < 1`.
+       * Today: 1.5 x 0.6 = 0.90. Raising this rate REQUIRES lowering
+       * `maxBillFraction` in the same edit (and vice versa); `valueModelProbes`'
+       * floor probe is the machine check that catches a violation.
        */
-      factorByState: z
-        .object({
-          missing: z.number().min(0).max(1),
-          scrap: z.number().min(0).max(1),
-          poor: z.number().min(0).max(1),
-          worn: z.number().min(0).max(1),
-          fine: z.number().min(0).max(1),
-          mint: z.number().min(0).max(1),
-        })
-        .refine(
-          (f) =>
-            f.missing <= f.scrap &&
-            f.scrap <= f.poor &&
-            f.poor <= f.worn &&
-            f.worn <= f.fine &&
-            f.fine <= f.mint,
-          {
-            message:
-              'valuation.foundation.factorByState must be monotonic non-decreasing (missing <= scrap <= poor <= worn <= fine <= mint)',
-          },
+      marketRepairDiscount: z.number().min(1),
+      /** Installed-part value retention: a part is worth this fraction of its
+       * catalog price toward the car's market value (real markets: mods return
+       * cents on the yen, they don't multiply the chassis price). */
+      partsRetention: z.number().min(0).max(1),
+      /** Multiplier applied to a genuine-period installed part's contribution
+       * (on top of `partsRetention`) - period-correct parts hold more value
+       * than a modern reproduction of the same catalog part. */
+      genuinePeriodMultiplier: z.number().positive(),
+      /** Buyer-taste spread (decision 4): `valuateCarForBuyer` bounds its taste
+       * multiplier to `[1 - tasteSpread, 1 + tasteSpread]` around `marketValueYen`
+       * - how well a buyer archetype's stat weights fit this car, never whether
+       * the car is worth anything (that's `marketValueYen` alone). */
+      tasteSpread: z.number().min(0).max(1),
+      /**
+       * Sprint 27 decision 4: a bot's walk-away target
+       * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) is `instanceValue x
+       * strategyMultiplier` times a small private spread, bell-shaped around
+       * 1.0 with this standard deviation - even though every bidder reads the
+       * identical transparent bands, no two private valuations of the same car
+       * land exactly on the shared anchor.
+       */
+      walkAwaySpread: z.number().nonnegative(),
+      /**
+       * Sprint 60 (economy-bible.md law 5 - the foundation law): the aftermarket
+       * premium (`marketValue.ts`'s `installedPartsValueYen`) is multiplied by
+       * the factor of the SINGLE WORST foundational part before it counts toward
+       * market value - no buyer pays for a race turbo in a car that can't stop
+       * or steer. The base value (clean minus the restoration bill) already
+       * prices broken parts through the bill; this gates only the ADD-ON
+       * premium, so Law 1 (every repair yen returns more than itself) is
+       * untouched, and repairing a failed foundational part returns EXTRA on top
+       * of the `marketRepairDiscount` slope by releasing the withheld premium.
+       */
+      foundation: z.object({
+        /** The foundational slots a buyer treats as non-negotiable - safety and
+         * structure (brakes, tyres, steering, chassis, rust), not performance.
+         * If the WORST of these is bad, the extras stop counting. */
+        parts: z.array(CarPartIdSchema).min(1),
+        /**
+         * The premium multiplier by the worst foundational part's state
+         * (`missing` = the slot is empty; otherwise its condition band). Must be
+         * monotonic non-decreasing (a worse state never withholds LESS premium)
+         * and never above 1 (the foundation law only ever WITHHOLDS premium, it
+         * never inflates it - the no-inflation ceiling from Law 1, extended to
+         * the premium term). `worn`-or-better at 1.0 means a roadworthy car pays
+         * full premium; the base value already handled the mild wear through the
+         * bill.
+         */
+        factorByState: z
+          .object({
+            missing: z.number().min(0).max(1),
+            scrap: z.number().min(0).max(1),
+            poor: z.number().min(0).max(1),
+            worn: z.number().min(0).max(1),
+            fine: z.number().min(0).max(1),
+            mint: z.number().min(0).max(1),
+          })
+          .refine(
+            (f) =>
+              f.missing <= f.scrap &&
+              f.scrap <= f.poor &&
+              f.poor <= f.worn &&
+              f.worn <= f.fine &&
+              f.fine <= f.mint,
+            {
+              message:
+                'valuation.foundation.factorByState must be monotonic non-decreasing (missing <= scrap <= poor <= worn <= fine <= mint)',
+            },
+          ),
+      }),
+      /**
+       * Sprint 66 (economy-bible.md law 1 as amended, and law 5's second
+       * multiplier): diminishing returns, keyed to the car's tier.
+       *
+       * The market expects a different standard of a kei runabout than of a
+       * collector car, and the value formula has to be able to say so. Each
+       * tier names the `band` the market actually expects of that kind of car;
+       * the mint-referenced restoration bill splits there, and the two halves
+       * are discounted at different rates:
+       *
+       *   baseValue = cleanValue
+       *             - marketRepairDiscount x billBelowExpectation
+       *             - beyondDiscount        x billAboveExpectation
+       *
+       * Below the band, `marketRepairDiscount` applies and Law 1's >= 1
+       * guarantee is absolute: making a car roadworthy always pays, every tier,
+       * every damage state. Above it, `beyondDiscount` applies and MAY be below
+       * 1 deliberately - restoring a shitbox kei to mint is passion spend, not
+       * an investment (the maintainer's framing, 2026-07-15: "it might still be
+       * fun"). At mint both bills are zero, so a fully restored car is worth
+       * exactly clean value and Sprint 54's no-inflation ceiling is untouched.
+       *
+       * The shape this produces is the real-world one: a tidy running Wagon R
+       * (`beyondDiscount` 0.4) prices within touching distance of a mint one,
+       * while a scruffy FD (1.5) is worth a fraction of a concours FD.
+       *
+       * `aftermarketReturn` is the same idea on Law 5's premium term - a race
+       * turbo on a kei returns a fraction of its cost, on a rare car all of it.
+       * Capped at 1, so like `foundationFactor` it only ever withholds.
+       */
+      expectationByTier: z.record(
+        PartFitmentClassSchema,
+        z.object({
+          /** The condition the market expects of this tier. Repair up to here
+           * is investment; past here is passion. */
+          band: ConditionBandSchema,
+          /** The value returned per repair yen spent ABOVE `band`. May be < 1
+           * (that is the whole point); never above `marketRepairDiscount`,
+           * enforced below. */
+          beyondDiscount: z.number().min(0),
+          /** Law 5's second multiplier on the aftermarket premium. */
+          aftermarketReturn: z.number().min(0).max(1),
+        }),
+      ),
+    })
+    .refine(
+      (v) =>
+        Object.values(v.expectationByTier).every(
+          (e) => e!.beyondDiscount <= v.marketRepairDiscount,
         ),
-    }),
-  }),
+      {
+        message:
+          'valuation.expectationByTier[*].beyondDiscount must never exceed valuation.marketRepairDiscount - the market can only ever care LESS about work above a tier expectation, never more, and this is what keeps the (D, F) interlock (economy-bible law 2) safe',
+      },
+    )
+    .refine(
+      (v) => PartFitmentClassSchema.options.every((c) => v.expectationByTier[c] !== undefined),
+      { message: 'valuation.expectationByTier must name every fitment class' },
+    ),
   /**
    * Sprint 44 decision 1 (revert of Sprint 41's tier-scaled repair costs -
    * maintainer rejection, 2026-07-13: "we should probably not be scaling
@@ -620,7 +715,9 @@ export const EconomyConfigSchema = z.object({
     /** Added to the mileage-rolled condition baseline (percent) before
      * per-part jitter - negative for neglected, 0 for average, positive for
      * cherished. Clamped into [0, 100] same as the baseline+jitter always
-     * has been. */
+     * has been. Sprint 66: SCALED by `wearExposureByMileageKm` below, so
+     * upkeep only expresses itself in proportion to how far the car has
+     * actually been driven. */
     upkeepBaselineOffset: z.object({
       neglected: z.number(),
       average: z.number(),
@@ -629,12 +726,33 @@ export const EconomyConfigSchema = z.object({
     /** Per-tier `[min, max]` per-part jitter range (percent), replacing the
      * old flat symmetric `CAR_CONDITION_JITTER` (+/-15 for every car) -
      * neglected skews a harsher negative tail (individual trashed
-     * components), cherished a gentler one. */
+     * components), cherished a gentler one. Sprint 66: the NEGATIVE bound is
+     * scaled by `wearExposureByMileageKm` (the positive bound is not - a car
+     * can be better than its baseline at any age; it cannot be worn out
+     * before it has been driven). */
     upkeepJitterRange: z.object({
       neglected: z.tuple([z.number(), z.number()]),
       average: z.tuple([z.number(), z.number()]),
       cherished: z.tuple([z.number(), z.number()]),
     }),
+    /**
+     * Sprint 66 (playtest 2026-07-15 item 6a): how much of the upkeep tier's
+     * wear can express itself, by the car's own mileage - `[mileageKm,
+     * exposure]` breakpoints in [0, 1], read through the same
+     * `interpolateCurve` every other curve here uses.
+     *
+     * The bug this fixes: `upkeepBaselineOffset`/`upkeepJitterRange` used to
+     * apply as ABSOLUTE offsets regardless of age, so a `neglected` roll
+     * (-22 baseline, -30 jitter) could drive an 11 km car's parts to `poor` -
+     * the maintainer's verbatim "was that 11km driven on the surface of the
+     * sun?". Mileage-driven wear already lives in the condition baseline
+     * itself (`conditionBaselineMinByMileageKm`); this curve governs the
+     * SECOND, independent axis - how badly the previous owner treated it -
+     * which cannot have expressed itself on a car that has barely moved.
+     * At exposure 0 every upkeep tier produces the same near-mint car; at
+     * exposure 1 a neglected roll bites exactly as hard as it did before.
+     */
+    wearExposureByMileageKm: CurveSchema,
     /** Multiplies `missingSlotBaseChance * missingSlotWeightByPart[partId]`
      * by the car's upkeep tier - a neglected car sheds parts more often, a
      * cherished one almost never. */
@@ -649,8 +767,15 @@ export const EconomyConfigSchema = z.object({
      * its clean value (at neutral heat) - `generateAuctionCarInstance`
      * softens the worst-rolled parts, one band at a time in seeded order,
      * until `carCostToMintYen(car) <= maxBillFraction * cleanValue`. Every
-     * generatable lot is therefore profitably restorable by construction;
-     * 0.7 first-pass, tuning bait.
+     * generatable lot is therefore profitably restorable by construction.
+     *
+     * Retuned 0.7 -> 0.6 (Sprint 66) as the OTHER half of the wage law's
+     * (D, F) pair - see `valuation.marketRepairDiscount`'s own doc comment
+     * for the full constraint. In short: `marketRepairDiscount x
+     * maxBillFraction` must stay below 1 or a worst-case car's value falls
+     * through the scrap floor, so raising the repair return to 1.5 required
+     * pulling this ceiling down to 0.6 in the same edit (1.5 x 0.6 = 0.90).
+     * Never move one without the other.
      */
     maxBillFraction: z.number().positive().max(1),
   }),

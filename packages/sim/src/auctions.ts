@@ -27,14 +27,48 @@ import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
 
-/** Sprint 47 decision 4: the flavor blurb now correlates with the car's real
- * rolled upkeep tier (used to be one flat pool with no mechanical meaning at
- * all) - the variance is legible pre-bid, not hidden. */
-const PROVENANCE_POOL_BY_UPKEEP_TIER = {
-  cherished: ['one-owner, garage kept', 'estate sale, low mileage claimed'],
-  average: ['daily driver, honest wear', 'dealer trade-in, service history unknown'],
-  neglected: ['parked up for years, ran when it went in', 'sold as-is, no history offered'],
-} as const
+/**
+ * Sprint 47 decision 4: the flavor blurb correlates with the car's real rolled
+ * upkeep tier (it used to be one flat pool with no mechanical meaning at all) -
+ * the variance is legible pre-bid, not hidden.
+ *
+ * Sprint 66 (playtest 2026-07-15 item 6a): keyed by AGE BAND as well. Keying on
+ * upkeep alone put "dealer trade-in, service history unknown" on a 1995 car
+ * with 11 km on it - the maintainer's verbatim "how can the service history be
+ * unknown?". A blurb has to fit the car it is describing: a nearly-new car has
+ * a short, known history; only an old one can have been parked up for years.
+ */
+const PROVENANCE_POOL: Record<AgeBand, Record<UpkeepTier, readonly string[]>> = {
+  young: {
+    cherished: ['first owner, dealer-serviced from new', 'barely run in, every stamp in the book'],
+    average: ['lease return, serviced on schedule', 'company car, second owner, books present'],
+    neglected: ['repossessed, sat on a forecourt since', 'insurance buy-back, lightly knocked'],
+  },
+  middling: {
+    cherished: ['one-owner, garage kept', 'enthusiast-owned, receipts for everything'],
+    average: ['daily driver, honest wear', 'dealer trade-in, service history unknown'],
+    neglected: ['traded in rough, owner gave up on it', 'sold as-is, no history offered'],
+  },
+  old: {
+    cherished: ['estate sale, low mileage claimed', 'long-term collection car, dry stored'],
+    average: ['second-hand for years, patchy history', 'honest survivor, some receipts'],
+    neglected: ['parked up for years, ran when it went in', 'barn find, no history at all'],
+  },
+}
+
+/** The three age brackets `PROVENANCE_POOL` is keyed by (Sprint 66) - a blurb
+ * must fit the car's age, not just its upkeep. `young` is anything inside the
+ * `middlingFromYears` floor, `old` anything at/past `oldFromYears`. */
+type AgeBand = 'young' | 'middling' | 'old'
+
+const AGE_BAND_MIDDLING_FROM_YEARS = 6
+const AGE_BAND_OLD_FROM_YEARS = 15
+
+function ageBandFor(ageYears: number): AgeBand {
+  if (ageYears < AGE_BAND_MIDDLING_FROM_YEARS) return 'young'
+  if (ageYears < AGE_BAND_OLD_FROM_YEARS) return 'middling'
+  return 'old'
+}
 
 /** Sprint 47 decision 4: a per-car upkeep roll, layered on top of the
  * mileage-based condition baseline - real cross-car variance at the same
@@ -189,6 +223,22 @@ function conditionBaselineRangeForMileage(
 }
 
 /**
+ * Sprint 66 (playtest 2026-07-15 item 6a): how much of the upkeep tier's wear
+ * this car's mileage lets express, in [0, 1]
+ * (`partsGeneration.wearExposureByMileageKm`).
+ *
+ * Mileage-driven wear is ALREADY in the condition baseline above; this governs
+ * the second, independent axis - how the previous owner treated it - which
+ * simply cannot have shown up on a car that has barely turned a wheel. Without
+ * it, a `neglected` roll applied its full -22 baseline offset and -30 jitter to
+ * an 11 km car and produced `poor` parts on a nearly-new vehicle.
+ */
+export function wearExposure(mileageKm: number, economy: EconomyConfig): number {
+  const raw = interpolateCurve(economy.partsGeneration.wearExposureByMileageKm, mileageKm)
+  return Math.max(0, Math.min(1, raw))
+}
+
+/**
  * Rolls one fresh, mint-catalog stock `PartInstance` at `band` for `partId`
  * (Sprint 32 decision 6's default fill) - `undefined` only if the catalog
  * genuinely has no stock entry for this `CarPartId`, which decision 1
@@ -288,7 +338,14 @@ export function generateAuctionCarInstance(
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
-  const year = Math.min(model.spec.yearFrom + rng.int(0, 8), currentYear)
+  // Sprint 66 (item 6a): a current-model-year car doesn't turn up at a backyard
+  // auction. Clamp the rolled year to at least `AUCTION_MIN_AGE_YEARS` old,
+  // never earlier than the model's own release (a car can't predate its model,
+  // so a just-released model still generates at its release year).
+  const youngestAllowedYear = Number.isFinite(currentYear)
+    ? Math.max(model.spec.yearFrom, currentYear - economy.AUCTION_MIN_AGE_YEARS)
+    : Infinity
+  const year = Math.min(model.spec.yearFrom + rng.int(0, 8), youngestAllowedYear)
   const ageYears = Number.isFinite(currentYear)
     ? Math.max(0, currentYear - year)
     : DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED
@@ -301,8 +358,18 @@ export function generateAuctionCarInstance(
   const { upkeepTierWeights, upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier } =
     economy.partsGeneration
   const upkeepTier = rollUpkeepTier(upkeepTierWeights, rng)
-  const conditionBaseline = clampCondition(rolledBaseline + upkeepBaselineOffset[upkeepTier])
-  const [jitterMin, jitterMax] = upkeepJitterRange[upkeepTier]
+  // Sprint 66 (item 6a): upkeep only expresses in proportion to how far the car
+  // has actually been driven - see `wearExposure`. At ~0 km the offset and the
+  // negative jitter tail both vanish, so a nearly-new car is near-mint whoever
+  // owned it; at high mileage a neglected roll bites exactly as hard as before.
+  // The POSITIVE jitter bound is untouched: a car can be better than its
+  // baseline at any age, it just cannot be worn out before it has been used.
+  const exposure = wearExposure(mileageKm, economy)
+  const conditionBaseline = clampCondition(
+    rolledBaseline + upkeepBaselineOffset[upkeepTier] * exposure,
+  )
+  const [rawJitterMin, jitterMax] = upkeepJitterRange[upkeepTier]
+  const jitterMin = Math.round(rawJitterMin * exposure)
 
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
@@ -335,7 +402,10 @@ export function generateAuctionCarInstance(
     year,
     mileageKm,
     color: rng.pick(COLOR_POOL),
-    provenanceNote: rng.pick(PROVENANCE_POOL_BY_UPKEEP_TIER[upkeepTier]),
+    // Sprint 66 (item 6a): the blurb must fit the car's AGE as well as its
+    // upkeep - keying on upkeep alone put "service history unknown" on an
+    // 11 km car.
+    provenanceNote: rng.pick(PROVENANCE_POOL[ageBandFor(ageYears)][upkeepTier]),
     authenticityPercent: rng.int(60, 95),
     parts,
   }

@@ -917,6 +917,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           {{ formatYen(detail.foundationWarning.withheldYen) }} of the parts you've fitted.
         </p>
 
+        <p v-if="detail.passionSpendNotice" class="passion-notice" data-test="passion-notice">
+          Nobody round here pays extra for a car like this past
+          <BandChip :band="detail.passionSpendNotice.band" /> - work beyond that earns back about
+          {{ formatYen(Math.round(detail.passionSpendNotice.returnRate * 100)) }} of every
+          {{ formatYen(100) }} you put in. Take it further because you want to, not for the money.
+        </p>
+
         <template v-if="detail.plannedEstimate">
           <p class="estimate-label">Estimate - not yet confirmed</p>
           <dl class="finance-grid estimate-grid" data-test="finance-estimate">
@@ -1388,6 +1395,19 @@ h4 {
   border: 1px solid var(--mg-danger);
   border-radius: var(--mg-radius);
   color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+}
+
+/* Deliberately NOT the danger styling above: a bad foundation is a fault, but
+ * taking a car past what its market pays for is a legitimate choice the player
+ * is entitled to make with their eyes open (economy-bible law 1's legibility
+ * clause). Muted and factual, never an alarm. */
+.passion-notice {
+  margin: var(--mg-space-2) 0 0;
+  padding: var(--mg-space-2);
+  border: 1px dashed var(--mg-panel-edge);
+  border-radius: var(--mg-radius);
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 

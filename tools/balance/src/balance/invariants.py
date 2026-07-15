@@ -274,6 +274,36 @@ def check_invariants(
         )
     )
 
+    sensible_failures = [
+        f"{row['modelId']}: margin Y{row['sensibleFlipMarginYen']:,.0f}"
+        for row in coherence.iter_rows(named=True)
+        if row["sensibleFlipMarginYen"] <= 0
+    ]
+    results.append(
+        (
+            "Law 1 (Sprint 66): every roster model's SENSIBLE-play margin "
+            "(buy rough + repair to the tier's expectation band + sell) is positive",
+            len(sensible_failures) == 0,
+            f"{len(sensible_failures)}/{coherence.height} models non-positive"
+            + (f": {'; '.join(sensible_failures)}" if sensible_failures else ""),
+        )
+    )
+
+    wage_failures = [
+        f"{row['modelId']}: wage Y{row['wageMarginYen']:,.0f} ({row['wageRatio']:.2f}x rent)"
+        for row in coherence.iter_rows(named=True)
+        if row["wageMarginYen"] <= 0
+    ]
+    results.append(
+        (
+            "Law 6: every roster model's repair wage (the value a repair returns "
+            "over its cost) beats the rent accrued over the labour it takes",
+            len(wage_failures) == 0,
+            f"{len(wage_failures)}/{coherence.height} models non-positive"
+            + (f": {'; '.join(wage_failures)}" if wage_failures else ""),
+        )
+    )
+
     max_consumables_share = coherence_manifest["maxConsumablesShareOfBookValue"]
     consumables_failures = [
         f"{row['modelId']}: share {row['consumablesShare']:.1%}"

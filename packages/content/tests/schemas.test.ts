@@ -158,7 +158,11 @@ describe('seed content validates against schemas', () => {
     expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
     // Sprint 30 (living auctions): daily arrivals + the bidder-interest
     // process knobs replacing the Sprint 20/25 demand-ceiling family above.
-    expect(result.data.AUCTION_DAILY_SPAWN_RATE['local-yard']).toBe(0.6)
+    // Sprint 66 (playtest item 15): the board turns over roughly twice as
+    // fast - rates above 1 mean a guaranteed lot plus a fractional chance.
+    expect(result.data.AUCTION_DAILY_SPAWN_RATE['local-yard']).toBe(1.3)
+    // Sprint 66 (item 6a): no current-model-year car at a backyard auction.
+    expect(result.data.AUCTION_MIN_AGE_YEARS).toBe(3)
     expect(result.data.auctionInterest.perCohortBidChance['local-yard']).toBe(0.55)
     expect(result.data.auctionInterest.turnoutBidderCounts.packed).toEqual([5, 7])
     expect(result.data.auctionInterest.turnoutBandWeights).toEqual([0.2, 0.45, 0.35])
@@ -176,7 +180,15 @@ describe('seed content validates against schemas', () => {
     // Sprint 54 decision 1 (economy-bible.md law 1): replaces Sprint 47's
     // two-slope premium with ONE slope, always above 1, plus the same small
     // scrap-value backstop floor (bands.scrapValueFraction, unchanged).
-    expect(result.data.valuation.marketRepairDiscount).toBe(1.2)
+    // Sprint 66 (economy-bible.md law 6, the wage law): raised 1.2 -> 1.5 so
+    // repair work pays a real wage. This number IS the entire return on a
+    // repair (cost and bill reduction are the same product), and it is
+    // jointly constrained with maxBillFraction below - their product must
+    // stay under 1 or the scrap floor binds. Asserted together, deliberately.
+    expect(result.data.valuation.marketRepairDiscount).toBe(1.5)
+    expect(
+      result.data.valuation.marketRepairDiscount * result.data.partsGeneration.maxBillFraction,
+    ).toBeLessThan(1)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
     // Sprint 60 (economy-bible.md law 5, the foundation law): the aftermarket
     // premium is scaled by the worst foundational part's factor. Foundational
@@ -188,7 +200,12 @@ describe('seed content validates against schemas', () => {
     expect(result.data.valuation.foundation.factorByState.worn).toBe(1.0)
     // Sprint 54 decision 4 (economy-bible.md law 2): the generation-time
     // bill-vs-clean-value ceiling every generated car is softened to satisfy.
-    expect(result.data.partsGeneration.maxBillFraction).toBe(0.7)
+    // Sprint 66: pulled 0.7 -> 0.6 as the other half of the wage law's (D, F)
+    // pair (see marketRepairDiscount above).
+    expect(result.data.partsGeneration.maxBillFraction).toBe(0.6)
+    // Sprint 66 (item 6a): upkeep wear can only express in proportion to the
+    // car's own mileage - a brand-new car is mint whoever owned it.
+    expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])
     // Sprint 47 decision 2 (maintainer, 2026-07-13: "repairs in general are
     // too expensive"): retuned down from Sprint 44's 0.15.
     expect(result.data.restoration.repairStepFraction).toBe(0.1)
@@ -256,6 +273,7 @@ describe('seed content validates against schemas', () => {
       'AUCTION_QUIET_DAYS_TO_HAMMER',
       'AUCTION_BID_INCREMENT_FRACTION',
       'AUCTION_DAILY_SPAWN_RATE',
+      'AUCTION_MIN_AGE_YEARS',
       'auctionInterest',
       'restoration',
       'valuation',

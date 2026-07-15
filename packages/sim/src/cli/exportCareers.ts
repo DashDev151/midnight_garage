@@ -132,8 +132,16 @@ const COHERENCE_COLUMNS = [
   { name: 'billToCleanRatio', type: 'float64' },
   { name: 'flipMarginYen', type: 'int64' },
   { name: 'flipMarginFraction', type: 'float64' },
+  { name: 'sensibleFlipMarginYen', type: 'int64' },
+  { name: 'sensibleFlipMarginFraction', type: 'float64' },
   { name: 'consumablesCostYen', type: 'int64' },
   { name: 'consumablesShare', type: 'float64' },
+  { name: 'repairCostYen', type: 'int64' },
+  { name: 'repairLaborSlots', type: 'int64' },
+  { name: 'repairGainYen', type: 'int64' },
+  { name: 'rentDuringRepairYen', type: 'int64' },
+  { name: 'wageMarginYen', type: 'int64' },
+  { name: 'wageRatio', type: 'float64' },
 ] as const
 
 function writeCsv(
@@ -273,8 +281,16 @@ function main(): void {
       row.billToCleanRatio.toFixed(6),
       row.flipMarginYen,
       row.flipMarginFraction.toFixed(6),
+      row.sensibleFlipMarginYen,
+      row.sensibleFlipMarginFraction.toFixed(6),
       row.consumablesCostYen,
       row.consumablesShare.toFixed(6),
+      row.repairCostYen,
+      row.repairLaborSlots,
+      row.repairGainYen,
+      row.rentDuringRepairYen,
+      row.wageMarginYen,
+      row.wageRatio.toFixed(6),
     ].join(','),
   )
   writeCsv('coherence.csv', COHERENCE_COLUMNS, coherenceRows)

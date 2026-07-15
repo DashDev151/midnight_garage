@@ -100,13 +100,43 @@ export function costToMintYen(
   repairStepFraction: number,
   fitmentClass: PartFitmentClass,
 ): number {
+  return costToBandYen(band, 'mint', taxonomyEntry, partPriceYen, repairStepFraction, fitmentClass)
+}
+
+/**
+ * Sprint 66 (economy-bible.md law 1 as amended): the same atom as
+ * `costToMintYen` (which is now just this with `targetBand = 'mint'`),
+ * generalized to any target - what it costs to bring ONE part up to
+ * `targetBand`, zero if it is already there or better.
+ *
+ * This exists so `marketValueYen` can split the restoration bill at the car's
+ * tier expectation band and discount the two halves at different rates. The
+ * split is exact by construction: `costToBandYen(b, t) + (cost above t) ===
+ * costToMintYen(b)` for every band, because both sides come from this one
+ * function.
+ *
+ * The all-or-nothing branches (scrap, and a non-repairable part below `fine`)
+ * charge their FULL replacement price toward any target above the part's
+ * current band, and nothing above that - you cannot half-replace a part, and
+ * the replacement arrives at mint. So that whole spend counts as work below
+ * the expectation band: it is what the band costs to reach, not passion spend.
+ */
+export function costToBandYen(
+  band: ConditionBand,
+  targetBand: ConditionBand,
+  taxonomyEntry: CarPartTaxonomyEntry,
+  partPriceYen: number,
+  repairStepFraction: number,
+  fitmentClass: PartFitmentClass,
+): number {
+  if (bandIndex(band) >= bandIndex(targetBand)) return 0
   if (band === 'scrap') return taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass]
   if (!taxonomyEntry.repairable) {
     return bandIndex(band) >= bandIndex('fine')
       ? 0
       : taxonomyEntry.stockReplacementPriceYenByClass[fitmentClass]
   }
-  return Math.round(gradesBetween(band, 'mint') * repairStepFraction * partPriceYen)
+  return Math.round(gradesBetween(band, targetBand) * repairStepFraction * partPriceYen)
 }
 
 /**
@@ -201,6 +231,27 @@ export function carCostToMintYen(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
+  return carCostToBandYen(car, model, partsById, partsTaxonomyById, economy, 'mint')
+}
+
+/**
+ * Sprint 66: the whole-car form of `costToBandYen` - what it costs to bring
+ * every part of `car` up to `targetBand`. `carCostToMintYen` is this with
+ * `'mint'`, so the player-facing "restoration bill remaining" and the value
+ * formula's split can never drift apart.
+ *
+ * A missing slot charges its full stock replacement price toward any target,
+ * exactly as it does toward mint - the same all-or-nothing reasoning as
+ * `costToBandYen`'s scrap branch.
+ */
+export function carCostToBandYen(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+  targetBand: ConditionBand,
+): number {
   const { repairStepFraction } = economy.restoration
   const carFitmentClass = fitmentClassForTier(model.tier)
   let total = 0
@@ -211,8 +262,9 @@ export function carCostToMintYen(
     if (installed) {
       const catalogPart = partsById[installed.partId]
       if (!catalogPart) continue
-      total += costToMintYen(
+      total += costToBandYen(
         installed.band,
+        targetBand,
         entry,
         catalogPart.priceYen,
         repairStepFraction,
