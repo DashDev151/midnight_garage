@@ -13,6 +13,7 @@ import {
 } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import GradeChip from '../components/GradeChip.vue'
 import RotaryMarker from '../components/RotaryMarker.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -314,10 +315,11 @@ function onCheckout(): void {
                   >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
                   }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
                 /></span>
-                <span class="part-meta"
-                  >{{ game.carPartLabel(part.carPartId) }} · {{ part.grade }} ·
-                  {{ statSummary(part) || 'no stat change' }}</span
-                >
+                <span class="part-meta">
+                  {{ game.carPartLabel(part.carPartId) }}
+                  <GradeChip :grade="part.grade" />
+                  · {{ statSummary(part) || 'no stat change' }}
+                </span>
                 <span
                   v-if="game.carsDetailed.length > 0"
                   class="part-fit"

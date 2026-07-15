@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
  * Sprint 62 (playtest pass-2 item 17): the one place the shop's granular
  * standing lives - exact reputation points with the named next tier, all six
  * specialty disciplines with their points and named tier-4 technique, and the
- * derived shop title. Progression bible law 4 was amended this sprint to
- * permit these exact numbers on THIS view only; everywhere else stays
- * meter-free (offer mix and copy do the ambient work). Pure renderer over
- * `game.standingView` - no local logic, no new state.
+ * derived shop title. Progression bible law 4 was amended in Sprint 62 to
+ * permit these exact numbers on THIS view only, and amended a SECOND time in
+ * Sprint 69 to permit progress bars here too (the maintainer, having used the
+ * prose version: "Make the mastery progress bars. Like 19/120 to next level.
+ * Same with Rep."). Everywhere else stays meter-free - nothing follows the
+ * player around, nothing pops up mid-job. Pure renderer over
+ * `game.standingView` - no local logic, no new state; the bars are a
+ * re-presentation of numbers that view already carried.
  */
 const game = useGameStore()
 
@@ -31,6 +36,16 @@ const standing = computed(() => game.standingView)
         <strong data-test="rep-points">{{ standing.reputation.points }}</strong>
         rep.
       </p>
+      <ProgressBar
+        :value="standing.reputation.points"
+        :max="standing.reputation.nextTier?.threshold ?? null"
+        :caption="
+          standing.reputation.nextTier
+            ? `to ${standing.reputation.nextTier.tier}`
+            : 'top of the ladder'
+        "
+        data-test="rep-bar"
+      />
       <p v-if="standing.reputation.nextTier" class="next" data-test="rep-next">
         Next: <strong>{{ standing.reputation.nextTier.tier }}</strong> at
         {{ standing.reputation.nextTier.threshold }} rep.
@@ -63,6 +78,13 @@ const standing = computed(() => game.standingView)
             <span class="discipline-name">{{ row.componentLabel }}</span>
             <span class="discipline-points">{{ row.points }} pts</span>
           </div>
+          <ProgressBar
+            :value="row.points"
+            :max="row.technique?.thresholdPoints ?? null"
+            :complete="row.technique?.unlocked ?? false"
+            :caption="row.technique ? `to ${row.technique.displayName}` : undefined"
+            :data-test="'specialty-bar-' + row.componentId"
+          />
           <p v-if="row.technique" class="technique" :class="{ earned: row.technique.unlocked }">
             <span v-if="row.technique.unlocked"> Earned: {{ row.technique.displayName }}. </span>
             <span v-else>

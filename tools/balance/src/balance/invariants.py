@@ -91,16 +91,32 @@ from balance.data import (
 
 SANITY_FLOOR_YEN = -2_000_000
 SEPARATION_THRESHOLD_YEN = 20_000
-# Retuned Sprint 29 (2026-07-11), maintainer-approved, from (15, 35). The
-# service-jobs v2 rework (daily offer cadence, profitable tier-1 jobs from
-# day 1) plus a fixed competent-policy bot bug (its predicted install
-# partInstanceId was zeroing its own reputation) make the probe reach `local`
-# faster: p50 dropped 16 -> 11. The old floor was calibrated in Sprint 23
-# against a different (and partly broken) probe, so it is stale, not a
-# regression. Floor lowered to 10 (still catches a trivial <10-day unlock);
-# ceiling kept at 35 (still catches a grindy pace). Reaching the 2nd of 5
-# reputation tiers in ~11 days is intended early-game onboarding.
-DAYS_TO_LOCAL_BAND = (10, 35)
+# Re-based Sprint 69 (2026-07-15) from (10, 35), by explicit maintainer
+# approval: the reputation ladder rose ~4x (`local` 15 -> 60) and this gate
+# measures the ~1 rep/day probe bot, so its p50 moved almost 1:1 with the
+# threshold - 16 -> 69 days. The maintainer overruled the collision in terms
+# ("I don't care. Just raise the requirements across the board"), which is the
+# recorded approval the Sprint 29 precedent requires. The real figure is
+# disclosed, never force-passed: p50=69, 362/1000 seeds reach `local` inside
+# the 100-day horizon (was 942/1000).
+#
+# Band derived from the measurement, not drawn around it after the fact:
+# 69 +/- ~35%, clamped to stay inside the 100-day career horizon (an upper
+# bound past ~95 cannot be observed at all, so it would gate on nothing).
+#
+# READ THIS BEFORE TRUSTING THE NUMBER. Two things now undermine it:
+#  1. `days_to_tier` counts ONLY seeds that reached the tier, so at 362/1000
+#     this p50 is the median of the FASTEST THIRD, not of a typical career.
+#     The true all-careers median is past the horizon, i.e. unmeasurable here.
+#     The statistic understates the real pace and gets worse as reach falls.
+#  2. It measures BOT PATIENCE, not game pacing. The probe earns ~1 rep/day;
+#     the maintainer's own session earned ~5 rep/day and hit `local` on day 6.
+#     At a real player's rate this same ladder puts `local` around day 12.
+# Both are recorded in TODO.md's bot-harness rework entry. Re-basing is the
+# honest short-term move; fixing the probe is a bigger job than one sprint.
+# Whether the 100-day window should grow to measure the upper rungs at all is
+# flagged for the maintainer (sprint69.md decision 6), not decided here.
+DAYS_TO_LOCAL_BAND = (45, 95)
 AUCTION_TAIL_BAND = (0.05, 0.15)
 BUYOUT_SHARE_CEILING = 0.30
 # Floating-point slack on the Law 2 ratio check - `enforceMaxBillFraction`

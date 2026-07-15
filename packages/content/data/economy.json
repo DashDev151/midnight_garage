@@ -225,6 +225,13 @@
     ]
   },
   "reputation": {
+    "tierThresholds": {
+      "unknown": 0,
+      "local": 60,
+      "known": 200,
+      "respected": 500,
+      "legend": 1400
+    },
     "cleanSaleMinBand": "fine",
     "cleanSaleBonus": 2,
     "concoursSaleMinAuthenticityPercent": 85,

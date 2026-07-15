@@ -35,7 +35,7 @@ pass."
   finding). The doubt is no longer a doubt - it is measured, repeatedly, from four independent
   directions:
 
-  1. **Rep rate is 5x off.** The maintainer's own session reached 32 rep and the `local` rung by
+  1. **Rep rate is 5x off, and the gate that measures it is now statistically hollow.** The maintainer's own session reached 32 rep and the `local` rung by
      **day 6** (~5 rep/day). The `competent-policy` probe earns ~**1 rep/day**, p50 **day 16**.
      Consequence: days-to-`local` - one of only NINE hard-gated invariants, and the flagship
      "is progression paced right" check since Sprint 23 - has been answering *"how long does this
@@ -43,6 +43,16 @@ pass."
      collapsed under real play (the old `local` at 15 falls on day 3 for a real player). Sprint 69
      re-bases the band around the bot's rate because the probe is the only thing measuring it -
      an honest workaround for a broken instrument, not a fix.
+
+     **Sprint 69 made this worse, measurably.** With `local` at 60 the probe reaches it in only
+     **362/1000** careers inside the 100-day horizon (was 942/1000), and `days_to_tier` counts
+     ONLY the seeds that arrived - so the gated p50 (now 69 days) is the median of the **fastest
+     third**, not of a typical career. The true all-careers median is past the horizon and cannot
+     be observed at all. The statistic understates the real pace, and gets less meaningful the
+     harder the ladder gets. Two things follow, neither decided: (a) the reach COUNT is now a more
+     honest gate than the percentile, and (b) the 100-day window may need to grow to measure the
+     upper rungs (`respected`/`legend`) at all - flagged for the maintainer in `sprint69.md`
+     decision 6.
   2. **No bot installs an aftermarket part - ever.** Across 9 strategies x 1000 careers, every
      owned car carries a ZERO aftermarket premium. Sprint 60's foundation law (economy-bible Law 5)
      scales exactly that premium term, and the harness run came back **byte-for-byte identical** to
@@ -291,6 +301,21 @@ pass."
   entirely rather than leave it serving one caller.
 
 ## Planned systems (designed, not yet scheduled)
+
+- [ ] **Story builds - outcome-based build commissions** (`docs/design/story-builds-spec.md`,
+  2026-07-15). A customer names an OUTCOME, not a car. Spec'd, not scoped. **Blocked on one
+  maintainer scope call before it can become a sprint:** does it extend the already-shipped
+  `commissions`/service-job surface (in-GDD, canonical), or is it new enough surface to need an
+  `IDEAS.md` entry plus a GDD amendment first? The v1.0 GDD feature set is frozen, so that call
+  decides whether this is v1.0 at all. Roadmap: Phase 4, beside the commissions line.
+
+- [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
+  Drive a finished build before flipping it. **Post-launch, by the maintainer's standing
+  2026-07-08 sign-off** (optional, zero gameplay weight - which is what keeps it inside the
+  no-reflex-input hard rule rather than an exception to it; do not flag it as a rules violation).
+  Slip-angle physics in `packages/sim`, Mode 7 chase cam in Pixi; a technical review found the
+  architecture sound. Binding constraint before it ever enters a sprint, from the spec itself:
+  **stat-linked, not twitch-linked.** Roadmap: Phase 7, post-launch.
 
 - [ ] **Skill / XP progression** - learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands

@@ -121,23 +121,6 @@ export const PARTS_EXPRESS_SURCHARGE_FRACTION = 0.1
 export const PARTS_STANDARD_DELIVERY_DAYS = 1
 
 /**
- * Reputation-point ladder (Sprint 15): first-pass, openly adjustable
- * thresholds, scaled against what a service-job-only career can realistically
- * earn (`baseReputation` in content is 1-4 per job, up to ~2.2x for a
- * race-grade install). Not claimed correct - the shape (each tier
- * meaningfully harder than the last) is what any future retune preserves,
- * once real harness/playtest data exists (see the `reputationPoints` harness
- * sample this sprint adds to careers.csv).
- */
-export const REPUTATION_TIER_THRESHOLDS: Readonly<Record<ReputationTier, number>> = {
-  unknown: 0,
-  local: 15,
-  known: 50,
-  respected: 120,
-  legend: 300,
-}
-
-/**
  * Selling a "lemon" costs reputation instead (Sprint 15; re-based on bands,
  * Sprint 26 decision 9): the car's cost-weighted band factor
  * (`costWeightedBandFactor`, bands.ts) at or below `LEMON_MAX_AVERAGE_BAND_FACTOR`,

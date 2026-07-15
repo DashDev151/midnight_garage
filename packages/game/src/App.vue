@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } fr
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import DayReport from './components/DayReport.vue'
 import EndDayButton from './components/EndDayButton.vue'
+import EventLogDrawer from './components/EventLogDrawer.vue'
 import JobCompleteModal from './components/JobCompleteModal.vue'
 import SaleCompleteModal from './components/SaleCompleteModal.vue'
 import { useDragSession } from './composables/useDragAndDrop'
@@ -54,6 +55,7 @@ function openMenu(): void {
  * every gameplay route (chrome routes), never on the menu.
  */
 const endDayButton = ref<InstanceType<typeof EndDayButton> | null>(null)
+const logDrawer = ref<InstanceType<typeof EventLogDrawer> | null>(null)
 const showEndDay = computed(() => showChrome.value)
 
 /**
@@ -62,8 +64,8 @@ const showEndDay = computed(() => showChrome.value)
  * (1) typing in a field - Escape is left to the field itself; (2) a live
  * pick/drag session - CarDetailScreen's own handler already clears that
  * (existing Sprint 24 behavior), so the global handler defers by doing
- * nothing; (3) any open modal (DayReport, JobComplete, SaleComplete, End
- * Day's cart confirm) - Escape closes it instead of navigating away
+ * nothing; (3) any open modal (DayReport, JobComplete, SaleComplete, the
+ * event-log drawer, End Day's cart confirm) - Escape closes it instead of navigating away
  * underneath it.
  */
 function onGlobalKeydown(event: KeyboardEvent): void {
@@ -81,6 +83,10 @@ function onGlobalKeydown(event: KeyboardEvent): void {
   }
   if (game.lastSaleResult) {
     game.dismissSaleResult()
+    return
+  }
+  if (logDrawer.value?.open) {
+    logDrawer.value.close()
     return
   }
   if (endDayButton.value?.confirming) {
@@ -110,6 +116,10 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       <RouterLink :to="{ name: 'inventory' }">Inventory</RouterLink>
       <RouterLink :to="{ name: 'upgrades' }">Upgrades</RouterLink>
       <RouterLink :to="{ name: 'standing' }" data-test="nav-standing">Standing</RouterLink>
+      <!-- Sprint 69 item 20: the event log is reference material, not a
+           permanent wall under the garage's bays. A control in the chrome,
+           opened on demand. -->
+      <EventLogDrawer ref="logDrawer" />
       <!-- Sprint 65 decision 1: a menu CONTROL (not a tab) - a mouse player's
            way into the full-screen menu, mirroring Escape. -->
       <button class="menu-button" data-test="open-menu" title="Menu (Esc)" @click="openMenu">
@@ -124,7 +134,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   </main>
 
   <div v-if="showEndDay" class="floating-end-day">
-    <EndDayButton ref="endDayButton" show-cash />
+    <EndDayButton ref="endDayButton" />
   </div>
 
   <DayReport />

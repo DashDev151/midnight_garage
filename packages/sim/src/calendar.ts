@@ -1,5 +1,9 @@
-import { ReputationTierSchema, type GameState, type ReputationTier } from '@midnight-garage/content'
-import { REPUTATION_TIER_THRESHOLDS } from './constants'
+import {
+  ReputationTierSchema,
+  type EconomyConfig,
+  type GameState,
+  type ReputationTier,
+} from '@midnight-garage/content'
 
 /** GDD 2.2: "starting in 1995." */
 const CALENDAR_START_YEAR = 1995
@@ -33,13 +37,19 @@ export function currentGameYear(reputationTier: ReputationTier): number {
 
 /**
  * Turns accrued reputation points into a tier (Sprint 15) - the highest tier
- * whose threshold `points` has reached, reading `REPUTATION_TIER_THRESHOLDS`
- * so there is exactly one place the point/tier mapping is defined.
+ * whose threshold `points` has reached, reading `economy.reputation
+ * .tierThresholds` so there is exactly one place the point/tier mapping is
+ * defined.
+ *
+ * Sprint 69: the ladder moved from `sim/constants.ts` into content (the
+ * content law), so this takes the economy rather than closing over a
+ * hardcoded table.
  */
-export function deriveReputationTier(points: number): ReputationTier {
+export function deriveReputationTier(points: number, economy: EconomyConfig): ReputationTier {
+  const thresholds = economy.reputation.tierThresholds
   let tier: ReputationTier = 'unknown'
   for (const candidate of ReputationTierSchema.options) {
-    if (points >= REPUTATION_TIER_THRESHOLDS[candidate]) tier = candidate
+    if (points >= thresholds[candidate]) tier = candidate
   }
   return tier
 }
@@ -50,7 +60,15 @@ export function deriveReputationTier(points: number): ReputationTier {
  * service-job-failure clamp) and re-derives `reputationTier` in the same
  * step, so the tier is never stale relative to the points underneath it.
  */
-export function applyReputationDelta(state: GameState, delta: number): GameState {
+export function applyReputationDelta(
+  state: GameState,
+  delta: number,
+  economy: EconomyConfig,
+): GameState {
   const reputationPoints = Math.max(0, state.reputationPoints + delta)
-  return { ...state, reputationPoints, reputationTier: deriveReputationTier(reputationPoints) }
+  return {
+    ...state,
+    reputationPoints,
+    reputationTier: deriveReputationTier(reputationPoints, economy),
+  }
 }

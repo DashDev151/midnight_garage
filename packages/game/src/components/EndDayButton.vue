@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen } from '../utils/formatYen'
 import { pluralise } from '../utils/dayLogFormat'
 
 /**
@@ -11,8 +10,6 @@ import { pluralise } from '../utils/dayLogFormat'
  * warning (playtest 2026-07-10 #1) needed one place to land, not five.
  * `DevConsole.vue`'s direct call stays ungated (dev tool, not a player flow).
  */
-withDefaults(defineProps<{ showCash?: boolean }>(), { showCash: false })
-
 const game = useGameStore()
 const confirming = ref(false)
 
@@ -73,9 +70,7 @@ defineExpose({ confirming, cancel })
 </script>
 
 <template>
-  <button class="primary" data-test="end-day" @click="onClick">
-    End Day<template v-if="showCash"> ({{ formatYen(game.cashYen) }})</template>
-  </button>
+  <button class="primary" data-test="end-day" @click="onClick">End Day</button>
 
   <!-- `end-day-cart-warning` and its cancel/confirm hooks keep their Sprint
        51 names: the same modal, now carrying every warning rather than only
@@ -161,5 +156,14 @@ button {
   padding: var(--mg-space-2) var(--mg-space-4);
   font-family: inherit;
   font-size: var(--mg-fs-md);
+  /* Sprint 69 item 2: real travel, borrowed verbatim from AuctionScreen's
+     `.stepper` - the shadow IS the height the button falls through, so the
+     two must always move together. */
+  box-shadow: 0 2px 0 var(--mg-panel-edge);
+}
+
+.primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--mg-panel-edge);
 }
 </style>

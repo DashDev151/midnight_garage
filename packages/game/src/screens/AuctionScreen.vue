@@ -192,12 +192,21 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               <span class="turnout-badge" :class="'turnout-' + d.turnout">
                 {{ TURNOUT_LABEL[d.turnout] }}
               </span>
+              <!-- Sprint 69 item 3: one lead indicator per card. The badge's
+                   "you lead" duplicated the current-price headline's
+                   "you lead at Y-X" on the same card, which is what read as
+                   "YOU LEAD" everywhere.
+
+                   "outbid" STAYS, deliberately against the letter of decision
+                   8: the headline reads a neutral "leading bid Y-X" when a
+                   rival is ahead, so nothing else on the card would tell you
+                   that YOU bid and are losing. That is a different fact, not a
+                   duplicate one. -->
               <span
-                v-if="d.playerHasBid"
-                class="winning-state"
-                :class="d.leadingBidder === 'player' ? 'winning' : 'outbid'"
+                v-if="d.playerHasBid && d.leadingBidder !== 'player'"
+                class="winning-state outbid"
               >
-                {{ d.leadingBidder === 'player' ? 'you lead' : 'outbid' }}
+                outbid
               </span>
             </div>
 

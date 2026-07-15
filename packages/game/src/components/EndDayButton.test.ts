@@ -146,11 +146,10 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     })
   })
 
-  it('shows the cash total only when show-cash is set', () => {
-    const withoutCash = mount(EndDayButton)
-    expect(withoutCash.text()).toBe('End Day')
-
-    const withCash = mount(EndDayButton, { props: { showCash: true } })
-    expect(withCash.text()).toContain('End Day (')
+  it('says exactly "End Day" and nothing else (Sprint 69 items 1 + 2)', () => {
+    // The `showCash` prop is gone, not just unset: cash already lives in the
+    // garage tiles and every screen header, so the button repeated a number
+    // the player could already see. One word, one job.
+    expect(mount(EndDayButton).find('[data-test="end-day"]').text()).toBe('End Day')
   })
 })

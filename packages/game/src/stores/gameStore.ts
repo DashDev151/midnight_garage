@@ -89,7 +89,6 @@ import {
   presentPartIdsInGroup,
   previewPlannedWork,
   reconditionQuote,
-  REPUTATION_TIER_THRESHOLDS,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
   resolveAcceptServiceJob,
@@ -2010,7 +2009,7 @@ export const useGameStore = defineStore('game', () => {
   const standingView = computed<StandingView>(() => {
     const points = gameState.value.reputationPoints
     const orderedTiers = (
-      Object.entries(REPUTATION_TIER_THRESHOLDS) as [ReputationTier, number][]
+      Object.entries(context.value.economy.reputation.tierThresholds) as [ReputationTier, number][]
     ).sort((a, b) => a[1] - b[1])
     const nextEntry = orderedTiers.find(([, threshold]) => threshold > points)
     const specialties: StandingSpecialtyView[] = REAL_COMPONENT_GROUPS.map((componentId) => {
@@ -2802,17 +2801,17 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Jump straight to a reputation tier, bypassing however many points it would
    * normally take to earn - dev/test only. Sets `reputationPoints` to that
-   * tier's exact threshold (`REPUTATION_TIER_THRESHOLDS`) and re-derives
+   * tier's exact threshold (`economy.reputation.tierThresholds`) and re-derives
    * `reputationTier` from it in the same step, the same way every real
    * reputation change does (`applyReputationDelta`) - `reputationTier` is
    * never set directly anywhere, including here.
    */
   function devSetReputationTier(tier: ReputationTier): void {
-    const reputationPoints = REPUTATION_TIER_THRESHOLDS[tier]
+    const reputationPoints = context.value.economy.reputation.tierThresholds[tier]
     gameState.value = {
       ...gameState.value,
       reputationPoints,
-      reputationTier: deriveReputationTier(reputationPoints),
+      reputationTier: deriveReputationTier(reputationPoints, context.value.economy),
     }
   }
 

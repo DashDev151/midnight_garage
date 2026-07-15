@@ -343,7 +343,7 @@ export function resolveSellViaWalkIn(
     context.economy,
   )
   const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
-  const released = applyReputationDelta(clearedState, nominalDelta)
+  const released = applyReputationDelta(clearedState, nominalDelta, context.economy)
   // Sprint 24 fix 3: log what actually happened, not the nominal delta -
   // `applyReputationDelta` floors `reputationPoints` at 0, so a player at 2
   // points selling a lemon (nominal -5) only ever loses 2, not 5. The

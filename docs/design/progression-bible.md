@@ -54,10 +54,24 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
    one exception is a single dedicated "Your standing" screen (the shop's own record on the wall),
    reachable on demand, which MAY show exact reputation and specialty points and the named next
    threshold - the player asked for a place to see their granular standing, and a shop owner CAN
-   keep a ledger of their own record. This is not a meter (no bar, no percentage, no live overlay,
-   no toast); it is a static, pull-not-push page the player chooses to open. Everywhere else stays
-   diegetic - offer mix, walk-ins, and copy do the ambient work, and no number leaks onto a
-   gameplay screen. The dev console remains a separate, unrelated debug surface.
+   keep a ledger of their own record. It is a pull-not-push page the player chooses to open.
+   Everywhere else stays diegetic - offer mix, walk-ins, and copy do the ambient work, and no
+   number leaks onto a gameplay screen. The dev console remains a separate, unrelated debug
+   surface.
+
+   **Second amendment (Sprint 69, 2026-07-15, maintainer-approved).** Sprint 62's amendment
+   permitted exact numbers on that screen but explicitly kept "no bar, no percentage". The
+   maintainer, having actually used the prose version, asked for exactly bars: *"Make the mastery
+   progress bars. Like 19/120 to next level. Same with Rep."* **That one Standing screen may now
+   use progress bars against named thresholds.** The rest of the law is untouched and still binds
+   everywhere it already bound: the ban is on AMBIENT progression - nothing follows the player
+   around, nothing pops up mid-job, nothing renders on a gameplay screen. A bar on a page you
+   opened on purpose is not ambient; it is a shop owner reading their own ledger, which is exactly
+   the fiction Law 4 protects. "No percentage" survives as written - the bars read `19 / 120`, real
+   points against a real named threshold, never a percent (guard-asserted in
+   `StandingScreen.test.ts`). Banned vocabulary (xp/mastery/level/prestige) is untouched: the
+   maintainer's word "mastery" is their shorthand, and shipped copy still says
+   *specialty*/*discipline*.
 5. **Every unlock is a named, real thing** from the era and the culture (corner weighting,
    blueprinting, NA-to-turbo conversion), with parody brands only. *Litmus: if an unlock needs a
    made-up fantasy name or a number ("Repair II"), it is not grounded enough to ship.*
@@ -112,3 +126,21 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
   `StandingScreen.vue` over the store's `standingView` (pure derivation, no new state); reached
   from the garage-header reputation line and the jobs-screen rep figure. Banned vocabulary
   untouched - the copy says "standing", "specialty", "discipline", never "mastery"/"XP"/"level".
+- 2026-07-15: **Law 4 amended a SECOND time** (Sprint 69, playtest 2026-07-15 item 24,
+  maintainer-approved). Sprint 62's amendment above allowed exact numbers on the Standing screen
+  but explicitly kept "no bar, no percentage". The maintainer, having now actually used that
+  screen, asked for exactly bars: *"Make the mastery progress bars. Like 19/120 to next level.
+  Same with Rep."* The one Standing screen may now use progress bars against named thresholds.
+  Nothing else moves: the ban is on AMBIENT progression, and a bar on a page the player opened on
+  purpose is not ambient. "No percentage" survives literally - the bars read `19 / 120`, real
+  points against a real named threshold, guard-asserted (`StandingScreen.test.ts` fails on a `%`
+  reaching the screen). Implemented as a shared `ProgressBar.vue` used only here: one bar for
+  reputation against the next tier's threshold, one per discipline against its technique
+  threshold. At `legend` the bar reads FULL rather than empty - an empty rail at the top of a
+  ladder reads as failure, which is the opposite of the truth. Banned vocabulary untouched: the
+  maintainer's word "mastery" is shorthand, and shipped copy still says specialty/discipline.
+- 2026-07-15: **Sprint 69 also recorded a CANCELLATION, not an amendment.** An earlier draft of
+  that sprint proposed folding the Standing screen into `UpgradesScreen` (reasoning: progression
+  belongs where it is gated). The maintainer overruled it after using the screen - *"The standing
+  page is fine, don't move it to upgrades."* It stays at `/standing` with its own nav entry.
+  Recorded here so no future sprint re-litigates a decision already made by the person using it.

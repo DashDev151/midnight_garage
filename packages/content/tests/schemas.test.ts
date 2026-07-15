@@ -215,10 +215,21 @@ describe('seed content validates against schemas', () => {
     expect(result.data.statFormulas.powerNormalizationCeiling).toBe(300)
     // Sprint 23 decision 1: the clean/concours sale-quality bars and bonuses.
     // Sprint 26: clean's bar is a band now, not a condition percent.
+    // Sprint 69: the ladder lives in content now (it was `sim/constants.ts`'s
+    // `REPUTATION_TIER_THRESHOLDS`, a content-law violation), raised ~4x and
+    // calibrated against real play rather than the ~1 rep/day probe bot.
+    expect(result.data.reputation.tierThresholds).toEqual({
+      unknown: 0,
+      local: 60,
+      known: 200,
+      respected: 500,
+      legend: 1400,
+    })
     expect(result.data.reputation.cleanSaleMinBand).toBe('fine')
     expect(result.data.reputation.cleanSaleBonus).toBe(2)
     expect(result.data.reputation.concoursSaleMinAuthenticityPercent).toBe(85)
     expect(result.data.reputation.concoursSaleBonus).toBe(4)
+
     // Sprint 26: the banded parts model's own tunables, born in JSON.
     expect(result.data.bands.bandFactors.mint).toBe(1.0)
     expect(result.data.bands.bandFactors.scrap).toBe(0.15)
@@ -313,5 +324,25 @@ describe('seed content ids are unique', () => {
     const ids = CarPartTaxonomyContentSchema.parse(partsTaxonomy).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.length).toBe(29)
+  })
+
+  it('the reputation ladder is strictly ascending and starts at zero (Sprint 69)', () => {
+    // Structural, not a taste check: a ladder that goes down, or that a fresh
+    // shop does not start at the bottom of, is a bug rather than a tuning
+    // choice - so the schema refuses it rather than trusting the JSON.
+    const bad = {
+      ...economy,
+      reputation: {
+        ...economy.reputation,
+        tierThresholds: { ...economy.reputation.tierThresholds, known: 10 },
+      },
+    }
+    expect(EconomyConfigSchema.safeParse(bad).success).toBe(false)
+
+    const ladder = EconomyConfigSchema.parse(economy).reputation.tierThresholds
+    expect(ladder.unknown).toBe(0)
+    expect(ladder.local).toBeLessThan(ladder.known)
+    expect(ladder.known).toBeLessThan(ladder.respected)
+    expect(ladder.respected).toBeLessThan(ladder.legend)
   })
 })

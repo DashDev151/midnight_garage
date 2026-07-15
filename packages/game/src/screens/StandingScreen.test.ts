@@ -1,4 +1,5 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
+import { ECONOMY } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
@@ -14,15 +15,18 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
   it('shows the current reputation tier and exact points, and names the next tier', () => {
     const game = useGameStore()
     game.newGame(1)
-    game.devSetReputationTier('local') // sets points to the local threshold (15)
+    game.devSetReputationTier('local') // sets points to the local threshold
     const wrapper = mountScreen()
 
     expect(wrapper.find('[data-test="rep-tier"]').text()).toBe('local')
     expect(wrapper.find('[data-test="rep-points"]').text()).toBe(String(game.reputationPoints))
-    // Next tier is named with its threshold - not a bar or a percentage.
+    // The next tier is named with its real threshold, read from content
+    // (Sprint 69 moved the ladder into `economy.json`) - never a number this
+    // test hardcodes, which is exactly what made it stale when the ladder
+    // moved.
     const next = wrapper.find('[data-test="rep-next"]').text()
     expect(next).toContain('known')
-    expect(next).toContain('50')
+    expect(next).toContain(String(ECONOMY.reputation.tierThresholds.known))
   })
 
   it('at the top tier, says there is nowhere higher rather than naming a next tier', () => {
@@ -65,5 +69,75 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
     const engineRow = wrapper.find('[data-test="specialty-engine"]')
     expect(engineRow.text()).toContain('Earned')
     expect(engineRow.find('.technique.earned').exists()).toBe(true)
+  })
+
+  describe('progress bars (Sprint 69, playtest item 24)', () => {
+    it("shows reputation as points against the NEXT tier's real threshold", () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devSetReputationTier('local')
+      const wrapper = mountScreen()
+
+      const bar = wrapper.find('[data-test="rep-bar"]')
+      expect(bar.exists()).toBe(true)
+      // "60 / 200" - the maintainer's "19/120 to next level", for rep.
+      expect(bar.find('[data-test="progress-readout"]').text()).toBe(
+        `${game.reputationPoints} / ${ECONOMY.reputation.tierThresholds.known}`,
+      )
+      expect(bar.text()).toContain('to known')
+    })
+
+    it('reads FULL at the top of the ladder, never an empty rail', () => {
+      // An empty bar at legend would read as failure, which is the opposite
+      // of the truth - there is simply nothing left to climb.
+      const game = useGameStore()
+      game.newGame(1)
+      game.devSetReputationTier('legend')
+      const wrapper = mountScreen()
+
+      const bar = wrapper.find('[data-test="rep-bar"]')
+      expect(bar.find('[data-test="progress-fill"]').attributes('style')).toContain('width: 100%')
+      expect(bar.text()).toContain('top of the ladder')
+      // No "N / M" against a threshold that does not exist.
+      expect(bar.find('[data-test="progress-readout"]').text()).not.toContain('/')
+    })
+
+    it('shows one bar per discipline, against its technique threshold', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.gameState = { ...game.gameState, specialty: { ...game.gameState.specialty, engine: 19 } }
+      const wrapper = mountScreen()
+
+      expect(wrapper.findAll('[data-test^="specialty-bar-"]')).toHaveLength(6)
+      const engine = wrapper.find('[data-test="specialty-bar-engine"]')
+      // The maintainer's own example, literally: "like 19/120 to next level".
+      expect(engine.find('[data-test="progress-readout"]').text()).toBe('19 / 120')
+    })
+
+    it('marks a cleared discipline complete and fills its bar', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.gameState = {
+        ...game.gameState,
+        specialty: { ...game.gameState.specialty, engine: 130 },
+      }
+      const wrapper = mountScreen()
+
+      const engine = wrapper.find('[data-test="specialty-bar-engine"]')
+      expect(engine.find('.rail.complete').exists()).toBe(true)
+      expect(engine.find('[data-test="progress-fill"]').attributes('style')).toContain(
+        'width: 100%',
+      )
+    })
+
+    it('the bars introduce no banned progression vocabulary', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devSetReputationTier('local')
+      const text = mountScreen().text().toLowerCase()
+      for (const banned of ['xp', 'mastery', 'level', 'prestige', '%']) {
+        expect(text, `"${banned}" reached the Standing screen`).not.toContain(banned)
+      }
+    })
   })
 })

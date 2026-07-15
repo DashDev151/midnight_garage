@@ -12,10 +12,10 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 | cautious-restorer | 40 | Y-18,959 | Y138,716 | Y185,753 | 0.0 | 1.0 |
 | cautious-restorer | 70 | Y-118,959 | Y57,034 | Y98,891 | 0.0 | 0.0 |
 | cautious-restorer | 100 | Y-198,959 | Y-22,858 | Y19,083 | 0.0 | 0.0 |
-| competent-policy | 25 | Y111,272 | Y286,378 | Y381,078 | 0.0 | 16.0 |
-| competent-policy | 40 | Y112,839 | Y305,156 | Y417,117 | 0.0 | 25.0 |
-| competent-policy | 70 | Y98,817 | Y342,766 | Y473,111 | 0.0 | 63.0 |
-| competent-policy | 100 | Y67,193 | Y401,414 | Y551,666 | 0.0 | 102.5 |
+| competent-policy | 25 | Y105,929 | Y224,802 | Y351,144 | 1.0 | 16.0 |
+| competent-policy | 40 | Y102,072 | Y227,601 | Y355,618 | 1.0 | 20.0 |
+| competent-policy | 70 | Y50,153 | Y196,540 | Y388,994 | 1.0 | 30.0 |
+| competent-policy | 100 | Y-19,306 | Y199,380 | Y443,145 | 1.0 | 39.0 |
 | flipper | 25 | Y28,818 | Y89,251 | Y218,069 | 1.0 | 0.0 |
 | flipper | 40 | Y6,664 | Y69,368 | Y192,014 | 1.0 | 0.0 |
 | flipper | 70 | Y-92,459 | Y-26,183 | Y91,649 | 1.0 | 0.0 |
@@ -36,10 +36,10 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 | random | 40 | Y58,690 | Y169,604 | Y213,203 | 0.0 | 0.0 |
 | random | 70 | Y48,962 | Y85,905 | Y135,893 | 0.0 | 0.0 |
 | random | 100 | Y-30,886 | Y6,934 | Y62,032 | 0.0 | 0.0 |
-| service-grinder | 25 | Y262,611 | Y329,426 | Y383,147 | 0.0 | 23.0 |
-| service-grinder | 40 | Y261,988 | Y347,752 | Y421,341 | 0.0 | 40.0 |
-| service-grinder | 70 | Y255,461 | Y379,248 | Y469,169 | 0.0 | 78.0 |
-| service-grinder | 100 | Y248,148 | Y418,498 | Y527,642 | 0.0 | 113.0 |
+| service-grinder | 25 | Y262,694 | Y330,333 | Y383,165 | 0.0 | 23.0 |
+| service-grinder | 40 | Y270,729 | Y357,126 | Y426,242 | 0.0 | 36.0 |
+| service-grinder | 70 | Y289,532 | Y385,155 | Y471,592 | 0.0 | 64.0 |
+| service-grinder | 100 | Y318,845 | Y438,427 | Y545,246 | 0.0 | 99.0 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
@@ -47,9 +47,9 @@ First day each seeded `competent-policy` career reaches each reputation tier or 
 
 | Tier | Reached | p10 | p50 | p90 |
 |---|---|---|---|---|
-| local | 948/1000 | 10 | 16 | 43 |
-| known | 801/1000 | 30 | 50 | 83 |
-| respected | 386/1000 | 67 | 84 | 97 |
+| local | 362/1000 | 43 | 69 | 94 |
+| known | 0/1000 | - | - | - |
+| respected | 0/1000 | - | - | - |
 
 ## Specialty (Sprint 38, informational)
 
@@ -59,13 +59,13 @@ Day-100 top specialty group (most common across seeds) and its median point valu
 |---|---|---|
 | balanced-player | engine | 0.0 |
 | cautious-restorer | engine | 0.0 |
-| competent-policy | engine | 45.0 |
+| competent-policy | engine | 30.0 |
 | flipper | engine | 0.0 |
 | handyman | engine | 0.0 |
 | investor | engine | 0.0 |
 | passive-grinder | engine | 0.0 |
 | random | engine | 0.0 |
-| service-grinder | engine | 50.0 |
+| service-grinder | engine | 51.0 |
 
 ## Roster coherence (Sprint 55, economy-bible.md law 4)
 
@@ -94,9 +94,9 @@ Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot b
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 3.8% | 10%-25% |
-| mid | 21.0% | 50%-100% |
-| frenzy | 75.1% | 5%-15% |
+| steal | 3.7% | 10%-25% |
+| mid | 21.4% | 50%-100% |
+| frenzy | 74.8% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 

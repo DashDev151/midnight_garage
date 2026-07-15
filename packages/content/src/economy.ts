@@ -792,6 +792,47 @@ export const EconomyConfigSchema = z.object({
    * `sim/constants.ts`, unchanged in kind since Sprint 15.
    */
   reputation: z.object({
+    /**
+     * The reputation ladder (Sprint 69). Lived in `sim/constants.ts` as
+     * `REPUTATION_TIER_THRESHOLDS` until now, which broke the content law
+     * (engineering law 2: every designer-tunable number lives in JSON) - and
+     * this is the sprint that retunes it, so it had to move first.
+     *
+     * Raised ~4x across the board on the maintainer's instruction ("Rep levels
+     * are climbed too quickly. Raise the rep level needed for every rep rung"):
+     * local 15 -> 60, known 50 -> 200, respected 120 -> 500, legend 300 ->
+     * 1400.
+     *
+     * CALIBRATED AGAINST REAL PLAY, NOT THE BOT - which is the whole point.
+     * The maintainer's own session reached 32 rep and `local` by DAY 6, about
+     * 5 rep/day. The harness's `competent-policy` probe earns about 1 rep/day
+     * and takes until p50 day 16. The old ladder was scaled to the bot, so it
+     * collapsed under real play: at 5/day the old `local` (15) falls on day 3.
+     *
+     * INTERLOCK: `local` drives the hard-gated days-to-`local` invariant
+     * (`tools/balance/invariants.py`), which measures the ~1 rep/day BOT - so
+     * raising `local` moves that gate's p50 almost 1:1 and the band must move
+     * with it. The band was re-based in this sprint by explicit maintainer
+     * approval. The deeper problem (that invariant has been measuring bot
+     * patience rather than game pacing for its whole life) is recorded in
+     * `TODO.md`'s harness-rework entry, not solved here.
+     *
+     * Must be monotonic and start at 0 - a ladder that goes down, or that a
+     * fresh shop does not start at the bottom of, is a bug, not a tuning
+     * choice.
+     */
+    tierThresholds: z
+      .object({
+        unknown: z.literal(0),
+        local: z.number().int().positive(),
+        known: z.number().int().positive(),
+        respected: z.number().int().positive(),
+        legend: z.number().int().positive(),
+      })
+      .refine((t) => t.local < t.known && t.known < t.respected && t.respected < t.legend, {
+        message:
+          'reputation.tierThresholds must be strictly ascending (each rung genuinely harder than the last)',
+      }),
     /** Every part's band must be at or above this to count as a clean sale -
      * a floor per part (Sprint 23's fix for "seven great parts can't hide
      * one neglected one"), reachable by effort alone, unlike the

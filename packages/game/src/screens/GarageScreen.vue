@@ -5,20 +5,9 @@ import HelpHint from '../components/HelpHint.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
-import { describeLogEntry } from '../utils/dayLogFormat'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
-
-const recentLog = computed(() =>
-  game.dayLog
-    .slice(-40)
-    .reverse()
-    .map((entry, i) => ({
-      id: game.dayLog.length - i,
-      text: describeLogEntry(entry, game.resolveModelName, game.buyerName),
-    })),
-)
 
 const occupiedServiceCars = computed(() =>
   game.serviceBaysView.filter((s): s is ShopCarView => s !== null),
@@ -194,16 +183,6 @@ const draggedCarName = computed(() => {
             Accept
           </button>
         </li>
-      </ul>
-    </section>
-
-    <section class="log">
-      <h3>Event log</h3>
-      <p v-if="recentLog.length === 0" class="empty">
-        No events yet. End a day to advance the sim.
-      </p>
-      <ul v-else>
-        <li v-for="line in recentLog" :key="line.id">{{ line.text }}</li>
       </ul>
     </section>
 

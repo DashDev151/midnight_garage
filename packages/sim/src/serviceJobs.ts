@@ -1005,7 +1005,7 @@ export function resolveServiceJob(
       highestInstalledGrade(installedParts),
     )
     const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - job.deadlineDays
-    const withReputation = applyReputationDelta(releasedState, reputationGained)
+    const withReputation = applyReputationDelta(releasedState, reputationGained, context.economy)
     const { state: withSpecialty, deltas: specialtyGained } = applySpecialtyDelta(
       withReputation,
       distinctTaskGroups(job.tasks, context),
@@ -1037,7 +1037,7 @@ export function resolveServiceJob(
   }
 
   const penalty = reputationForFailure(job.baseReputation)
-  const withReputation = applyReputationDelta(releasedState, -penalty)
+  const withReputation = applyReputationDelta(releasedState, -penalty, context.economy)
   const { state: withSpecialty, deltas: specialtyGained } = applySpecialtyDelta(
     withReputation,
     distinctTaskGroups(job.tasks, context),

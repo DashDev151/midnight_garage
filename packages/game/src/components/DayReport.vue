@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
-import { classifyDayReport } from '../utils/dayLogFormat'
+import { classifyDayReport, pluralise } from '../utils/dayLogFormat'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -35,7 +35,20 @@ const isQuietDay = computed(
 <template>
   <div v-if="game.reportVisible && report" class="overlay" data-test="day-report">
     <div class="report">
-      <h3>Day {{ report.day }} complete</h3>
+      <!-- Sprint 69 item 6b: the heading leads with the win. Sprint 64 put
+           win cards first and they still did not land - a weight problem, not
+           a missing feature - so the very first words of the report are now
+           the thing that happened. -->
+      <h3 data-test="report-heading">
+        <template v-if="view.wins.length === 1 && view.wins[0]">
+          Day {{ report.day }} - you {{ view.wins[0].kind === 'bought' ? 'bought' : 'won' }} the
+          {{ view.wins[0].modelName }}
+        </template>
+        <template v-else-if="view.wins.length > 1">
+          Day {{ report.day }} - {{ pluralise(view.wins.length, 'car') }} in the shop
+        </template>
+        <template v-else>Day {{ report.day }} complete</template>
+      </h3>
 
       <!-- Wins first: a car you won reads as the win it is, never a red loss. -->
       <ul v-if="view.wins.length" class="wins" data-test="report-wins">
@@ -118,14 +131,33 @@ h3 {
 }
 
 .win-card {
-  display: flex;
-  align-items: baseline;
-  gap: var(--mg-space-2);
-  flex-wrap: wrap;
+  /* Sprint 69 item 6b: real weight. Was a baseline-aligned row that read like
+     any other line; now the banner and the car name carry the card and it is
+     unmistakably the loudest thing in the report. */
+  display: grid;
+  gap: 2px;
   background: var(--mg-night-deep);
-  border: 1px solid var(--mg-success);
+  border: 2px solid var(--mg-success);
   border-radius: var(--mg-radius);
-  padding: var(--mg-space-2) var(--mg-space-3);
+  padding: var(--mg-space-3);
+  text-align: center;
+}
+
+.win-card .win-banner {
+  font-size: var(--mg-fs-sm);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mg-success);
+}
+
+.win-card .win-name {
+  font-size: var(--mg-fs-lg);
+  color: var(--mg-text);
+}
+
+.win-card .win-price {
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
 }
 
 .win-banner {

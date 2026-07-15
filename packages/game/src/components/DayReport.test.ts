@@ -100,11 +100,16 @@ describe('DayReport', () => {
     const noise = wrapper.find('[data-test="report-noise"]')
     expect(noise.exists()).toBe(true)
     // 1 + 2 lots aggregate into one line, pluralised correctly.
-    expect(noise.text()).toContain('3 new lots at the auctions')
+    // Sprint 69 item 5: the auction-catalogue line is GONE. The maintainer
+    // does not want the morning report narrating inventory churn they can go
+    // and look at, so both refresh entries above now produce no line at all -
+    // the sim still logs them, the report just swallows them.
+    expect(noise.text()).not.toContain('at the auctions')
+    expect(noise.text()).not.toContain('new lot')
     expect(noise.text()).toContain('Market prices moved on 1 car')
     expect(noise.text()).not.toContain('1 lots') // the pluralisation bug is dead
-    // The four noisy entries collapsed to at most three quiet lines.
-    expect(noise.findAll('li').length).toBeLessThanOrEqual(3)
+    // The four noisy entries collapse to at most two quiet lines now.
+    expect(noise.findAll('li').length).toBeLessThanOrEqual(2)
   })
 
   it('Sprint 64: an outbid alert is prominent - first in the notable list', async () => {

@@ -326,10 +326,13 @@ h3 {
 
 .tool-wall {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  /* Sprint 69 item 4: `minmax(0, 1fr)` lets the columns actually shrink. The
+     scrollbar was a symptom of the 120px floor - six columns that cannot go
+     below 120px overflow any container narrower than ~750px, so `overflow-x`
+     was papering over a grid that could not fit by construction. */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--mg-space-3);
   margin: 0 0 var(--mg-space-3);
-  overflow-x: auto;
 }
 
 .tool-column h4 {

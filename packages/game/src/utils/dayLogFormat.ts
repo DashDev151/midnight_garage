@@ -191,7 +191,6 @@ export function classifyDayReport(
   const money: DayReportMoney = { earnedYen: 0, onCarsYen: 0, billsYen: 0 }
   const outbid: string[] = []
   const rest: string[] = []
-  let refreshedLots = 0
   let heatShifts = 0
   let labourTicked = 0
 
@@ -241,8 +240,10 @@ export function classifyDayReport(
       case 'auction-outbid':
         outbid.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
+      // Sprint 69 item 5: swallowed on purpose. The sim still logs the entry
+      // (the day log and the harness both read it); the morning report simply
+      // stops narrating inventory churn the player can go and look at.
       case 'auction-catalog-refreshed':
-        refreshedLots += entry.lotCount
         break
       case 'market-heat-shift':
         heatShifts += 1
@@ -262,7 +263,6 @@ export function classifyDayReport(
   }
 
   const noise: string[] = []
-  if (refreshedLots > 0) noise.push(`${pluralise(refreshedLots, 'new lot')} at the auctions`)
   if (heatShifts > 0) noise.push(`Market prices moved on ${pluralise(heatShifts, 'car')}`)
   if (labourTicked > 0) noise.push(`${pluralise(labourTicked, 'labour slot')} spent in the shop`)
 

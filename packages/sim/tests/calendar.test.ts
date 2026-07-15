@@ -1,4 +1,9 @@
-import { ReputationTierSchema, type GameState, type ReputationTier } from '@midnight-garage/content'
+import {
+  ECONOMY,
+  ReputationTierSchema,
+  type GameState,
+  type ReputationTier,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
   applyReputationDelta,
@@ -6,7 +11,6 @@ import {
   deriveReputationTier,
   reputationAtLeast,
 } from '../src/calendar'
-import { REPUTATION_TIER_THRESHOLDS } from '../src/constants'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
 describe('currentGameYear', () => {
@@ -46,25 +50,31 @@ describe('reputationAtLeast', () => {
 
 describe('deriveReputationTier (Sprint 15)', () => {
   it('returns unknown below every threshold', () => {
-    expect(deriveReputationTier(0)).toBe('unknown')
-    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.local - 1)).toBe('unknown')
+    expect(deriveReputationTier(0, ECONOMY)).toBe('unknown')
+    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.local - 1, ECONOMY)).toBe(
+      'unknown',
+    )
   })
 
   it('lands exactly on a tier at its threshold, not one below', () => {
     const tiers = ReputationTierSchema.options
     for (const tier of tiers) {
-      expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS[tier])).toBe(tier)
+      expect(deriveReputationTier(ECONOMY.reputation.tierThresholds[tier], ECONOMY)).toBe(tier)
     }
   })
 
   it('stays on a tier one point below the next threshold', () => {
-    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.known - 1)).toBe('local')
-    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.legend - 1)).toBe('respected')
+    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.known - 1, ECONOMY)).toBe('local')
+    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.legend - 1, ECONOMY)).toBe(
+      'respected',
+    )
   })
 
   it('reaches legend at and above the top threshold', () => {
-    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.legend)).toBe('legend')
-    expect(deriveReputationTier(REPUTATION_TIER_THRESHOLDS.legend + 1_000)).toBe('legend')
+    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.legend, ECONOMY)).toBe('legend')
+    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.legend + 1_000, ECONOMY)).toBe(
+      'legend',
+    )
   })
 })
 
@@ -74,7 +84,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       day: 1,
       seed: 1,
       cashYen: 0,
-      reputationTier: deriveReputationTier(reputationPoints),
+      reputationTier: deriveReputationTier(reputationPoints, ECONOMY),
       reputationPoints,
       specialty: testSpecialty(),
       ownedCars: [],
@@ -106,22 +116,22 @@ describe('applyReputationDelta (Sprint 15)', () => {
   }
 
   it('adds a positive delta and re-derives the tier', () => {
-    const next = applyReputationDelta(stateWith(10), 10)
+    const next = applyReputationDelta(stateWith(10), 10, ECONOMY)
     expect(next.reputationPoints).toBe(20)
-    expect(next.reputationTier).toBe(deriveReputationTier(20))
+    expect(next.reputationTier).toBe(deriveReputationTier(20, ECONOMY))
   })
 
   it('clamps a negative delta at zero rather than going negative', () => {
-    const next = applyReputationDelta(stateWith(3), -10)
+    const next = applyReputationDelta(stateWith(3), -10, ECONOMY)
     expect(next.reputationPoints).toBe(0)
     expect(next.reputationTier).toBe('unknown')
   })
 
   it('crossing a tier threshold updates reputationTier, not just reputationPoints', () => {
-    const justBelow = stateWith(REPUTATION_TIER_THRESHOLDS.known - 1)
+    const justBelow = stateWith(ECONOMY.reputation.tierThresholds.known - 1)
     expect(justBelow.reputationTier).toBe('local')
-    const next = applyReputationDelta(justBelow, 1)
-    expect(next.reputationPoints).toBe(REPUTATION_TIER_THRESHOLDS.known)
+    const next = applyReputationDelta(justBelow, 1, ECONOMY)
+    expect(next.reputationPoints).toBe(ECONOMY.reputation.tierThresholds.known)
     expect(next.reputationTier).toBe('known')
   })
 })

@@ -1,5 +1,9 @@
-import { FACILITIES, GameStateSchema, ReputationTierSchema } from '@midnight-garage/content'
-import { REPUTATION_TIER_THRESHOLDS } from '@midnight-garage/sim'
+import {
+  ECONOMY,
+  FACILITIES,
+  GameStateSchema,
+  ReputationTierSchema,
+} from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -101,7 +105,7 @@ describe('useGameStore', () => {
     for (const tier of ReputationTierSchema.options) {
       game.devSetReputationTier(tier)
       expect(game.reputationTier).toBe(tier)
-      expect(game.reputationPoints).toBe(REPUTATION_TIER_THRESHOLDS[tier])
+      expect(game.reputationPoints).toBe(ECONOMY.reputation.tierThresholds[tier])
     }
   })
 
