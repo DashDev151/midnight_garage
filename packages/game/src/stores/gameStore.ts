@@ -1285,6 +1285,53 @@ export const useGameStore = defineStore('game', () => {
     return total
   }
 
+  /**
+   * Sprint 67 decision 1 (playtest item 7): what the action planned at ONE
+   * address will cost and cost in labour - null when nothing is planned there.
+   *
+   * The bug this closes: a row's caption used to show the NEXT rung's
+   * increment, so a `poor -> fine` plan (2 rungs) read "+Y4,800 - +1 labour"
+   * while Confirm correctly charged "Y9,600 - 2 labour". Both numbers were
+   * individually right; the row was answering a different question than the
+   * player was asking. Now the row shows the ROW's own planned total and the
+   * increment lives in the `+` button's tooltip.
+   *
+   * Deliberately the same `planGroupRepair` call, with the same arguments, as
+   * `plannedRepairCostYen`/`plannedLaborSlots` make - scoped to one staged
+   * action instead of summed over all of them. That is what makes the row
+   * totals sum to Confirm's figure by construction rather than by agreement,
+   * and it is asserted directly in the store tests.
+   */
+  function plannedStepFor(
+    carId: string,
+    componentId: ComponentId,
+    carPartId?: CarPartId,
+  ): { costYen: number; laborSlots: number } | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    const action = stagedActionsFor(carId).find(
+      (a) => a.kind === 'repair' && a.componentId === componentId && a.carPartId === carPartId,
+    )
+    if (!action || action.kind !== 'repair') return null
+    const plan = planGroupRepair(
+      car,
+      action.componentId,
+      action.targetBand,
+      gameState.value.toolTiers,
+      context.value.partIdsByGroup,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      context.value.economy.restoration.repairStepFraction,
+      action.carPartId,
+    )
+    return {
+      costYen: plan.costYen,
+      // Mirrors `plannedLaborSlots`' own accounting: a plan with no real work
+      // costs no labour, matching what `confirmStagedWork` actually spends.
+      laborSlots: plan.partIds.length > 0 ? plan.laborSlotsRequired : 0,
+    }
+  }
+
   /** Sprint 48: the Finances panel's pre-Confirm estimate - null when
    * nothing is planned. Feeds the projected car (`previewPlannedWork`)
    * straight into the same `carCostToMintYen`/`carGuideValueYen` the real
@@ -2708,6 +2755,7 @@ export const useGameStore = defineStore('game', () => {
     groupBandsForCar,
     groupRepairFloorBand,
     nextRepairStep,
+    plannedStepFor,
     isPartRepairable,
     partsInGroup,
     carPartLabel,

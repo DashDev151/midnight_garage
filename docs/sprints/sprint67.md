@@ -124,4 +124,63 @@ add/clear. The `.stat-tile`/`dl` pattern on GarageScreen carries the labour card
 
 ## Exit
 
-Not started.
+Implemented and verified. Full gate green: **1134 tests** (up from 1096), coverage
+91.45/82.40/92.96/95.09, typecheck/lint/format/build clean. No balance harness, as designed: the
+sprint's own check is that `packages/sim/` has **zero** changes in the diff, so no golden hash could
+move. It doesn't, and none did.
+
+All eight items landed as specced, decisions 1-7 unchanged.
+
+### The two that were one bug
+
+`rowCategory`'s `null` for a legitimately-absent slot was exactly what the discovery predicted: it
+made the row unfilterable AND parked it under Missing. Returning `'absent'` closed items 18 and 10
+in one line, and the filter's contract is now total (a row shows iff its category is ticked),
+proven both ways - the FI slot stays hidden even with Missing as the ONLY ticked category, and
+`Show all` is the only thing that reveals it.
+
+### Found while working, fixed, not deferred
+
+- **The spelling guard had a hole, and a real American spelling was sitting in shipped copy.**
+  `BANNED` held bare words, so `\blabor\b` could never match "labored" - the boundary requires
+  nothing after "labor". `CarDetailScreen`'s Components hint had read "priced and labored for real"
+  since Sprint 63 with the guard green the whole time. Copy fixed; `BANNED` now enumerates
+  inflections (`labor(s|ed|ing|er|ers)?`), deliberately NOT `\w*`, which would trip on
+  "laboratory". `tire` deliberately does not enumerate `-d`/`-ing` ("a tired engine" is genuine car
+  idiom, not the American spelling of "tyre").
+- **The guard now checks itself** (+23 tests). It had no proof it worked, which is precisely how
+  the hole survived: a guard that matches nothing passes exactly as quietly as a clean codebase.
+  It now asserts it catches every American inflection and leaves the British forms, "laboratory",
+  "tired" and "tiring" alone. Directly downstream of the 2026-07-15 testing conversation: "0
+  offenses" means nothing unless the instrument is known to fire.
+- **The Components HelpHint still said "Worst-off groups lead"** - Sprint 41 decision 4's
+  behaviour, which decision 4 retires. Rewritten.
+- **A latent bug in the row caption.** `.step-cost` sat inside `<template v-if="nextGroupStep(...)">`,
+  so a row planned all the way to mint had no next step and therefore showed no cost at all. The
+  new caption renders outside that guard, keyed on the plan rather than the increment.
+- **A vacuous assertion in my own new test.** I asserted against `.part-row`; the real class is
+  `.sub-part-row`, so the selector matched nothing and the expectation would have passed on an
+  empty page. Caught because `Expand all` was asserted to produce >20 rows and produced 0.
+
+### Decisions recorded
+
+**Sprint 41 decision 4 is retired** (item 16): `orderedComponents` drops the band sort and returns
+`COMPONENTS` verbatim. Its rationale (surface the roughest work first) was real, but it loses to
+muscle memory - a panel that reorders itself as you repair it is a panel you re-read every time.
+Pinned by a test that wrecks the LAST group in declared order and asserts it stays last.
+
+### Consequence worth a look during the playtest
+
+Decision 2 puts the NA car's forced-induction slot behind `Show all` by default. That is the spec,
+and it kills item 10 dead, but it also means the NA-to-turbo conversion path (the one real own-car
+capability ceiling, gated on engine tier 3) is now invisible until a player thinks to press
+`Show all`. Flagged rather than silently deviated from - if it reads as a discoverability loss in
+play, the cheap fix is adding `absent` to the default filter set, one line.
+
+### Not done
+
+I did not start the dev server to eyeball the radar or the reordered panel (long-running processes
+are outside what I run myself). `pnpm dev`, then any owned car's page. The radar's geometry is
+tested (four rings outermost-first so the filled rim paints beneath the hairlines; one vertex per
+axis per ring; every label anchored away from the plot), but "does it look right" is the sprint's
+own listed user-only task.

@@ -95,6 +95,15 @@ const draggedCarName = computed(() => {
         <dt>Cash</dt>
         <dd class="cash">{{ formatYen(game.cashYen) }}</dd>
       </div>
+      <!-- Sprint 67 decision 6 (playtest item 13): labour left today is a
+           first-class stat here, not just a caption buried on the car page.
+           It is the one resource the whole day is budgeted against. -->
+      <div>
+        <dt>Labour left today</dt>
+        <dd data-test="labour-value">
+          {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} slots
+        </dd>
+      </div>
       <div>
         <dt>Reputation</dt>
         <dd data-test="reputation-value">

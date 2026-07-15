@@ -18,7 +18,25 @@ const REPO_ROOT = join(__dirname, '..', '..', '..')
  * exempt per directive 18 (renaming persisted `labor*` save fields is a
  * migration for zero player value); only what renders is checked.
  */
-const BANNED = ['labor', 'tire', 'tires', 'color', 'gray'] as const
+/**
+ * Each entry is a regex source, matched case-insensitively between word
+ * boundaries.
+ *
+ * Sprint 67: these were bare words, so `\blabor\b` missed "labored" - the
+ * boundary requires nothing after "labor" - and a real American spelling sat
+ * in `CarDetailScreen`'s Components hint from Sprint 63 until it was found by
+ * hand. Inflections are now enumerated explicitly rather than with `\w*`,
+ * which would trip on "laboratory" (a real word that starts with "labor").
+ *
+ * `tire` deliberately does NOT enumerate `-d`/`-ing`: "a tired engine" is
+ * genuine car idiom, not the American spelling of "tyre".
+ */
+const BANNED = [
+  'labor(s|ed|ing|er|ers)?',
+  'tires?',
+  'color(s|ed|ing|ful|less)?',
+  'gray(s|ed|ing|ish|er|est)?',
+] as const
 
 /** The visible text of a `.vue` file's template - everything a player could
  * read, with all the code and markup stripped out. */
@@ -43,10 +61,11 @@ function templateLiterals(contents: string): string {
 
 function offensesIn(relativePath: string, text: string): string[] {
   const found: string[] = []
-  for (const word of BANNED) {
-    if (new RegExp(`\\b${word}\\b`, 'i').test(text)) {
-      found.push(`${relativePath}: American spelling "${word}"`)
-    }
+  for (const pattern of BANNED) {
+    // Report the word actually found, not the pattern - "labored" is a far
+    // more useful failure message than "labor(s|ed|ing|er|ers)?".
+    const match = new RegExp(`\\b${pattern}\\b`, 'i').exec(text)
+    if (match) found.push(`${relativePath}: American spelling "${match[0]}"`)
   }
   return found
 }
@@ -70,5 +89,52 @@ describe('British spelling in player-visible copy (Sprint 63, CLAUDE.md directiv
   it('contains no American spellings', () => {
     const offenses = findOffenses()
     expect(offenses, `American spelling(s) found:\n${offenses.join('\n')}`).toEqual([])
+  })
+
+  /**
+   * Sprint 67: the guard checks ITSELF, because a guard that matches nothing
+   * passes just as quietly as a clean codebase. That is not hypothetical - the
+   * pre-Sprint-67 `\blabor\b` could never match "labored" (the boundary
+   * requires nothing after "labor"), so a real American spelling sat in
+   * `CarDetailScreen`'s Components hint from Sprint 63 until it was found by
+   * hand, with this test green the whole time. These cases are the proof the
+   * instrument works; without them "0 offenses" means nothing.
+   */
+  it.each([
+    ['labored', true],
+    ['laboring', true],
+    ['laborer', true],
+    ['colored', true],
+    ['coloring', true],
+    ['colorful', true],
+    ['gray', true],
+    ['grayish', true],
+    ['tires', true],
+    ['tire', true],
+  ])('catches the American spelling %s', (word, shouldCatch) => {
+    expect(offensesIn('probe.vue', `Fit the ${word} on the bench.`).length > 0).toBe(shouldCatch)
+  })
+
+  it.each([
+    // British forms - must never trip.
+    'laboured',
+    'labouring',
+    'labourer',
+    'coloured',
+    'colouring',
+    'colourful',
+    'grey',
+    'greyish',
+    'tyres',
+    'tyre',
+    // Real English words that merely LOOK like a banned stem. "a tired
+    // engine" is genuine car idiom, not the American spelling of "tyre";
+    // "laboratory" starts with "labor". Enumerated inflections (rather than
+    // `\w*`) are what keep these clean.
+    'laboratory',
+    'tired',
+    'tiring',
+  ])('leaves %s alone', (word) => {
+    expect(offensesIn('probe.vue', `Fit the ${word} on the bench.`)).toEqual([])
   })
 })

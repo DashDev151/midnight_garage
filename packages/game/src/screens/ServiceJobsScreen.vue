@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
+import ServiceTaskList from '../components/ServiceTaskList.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -46,9 +47,7 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
           <div class="offer-main">
             <span class="customer">{{ offer.customerName }}</span>
             <span class="desc">{{ offer.description }}</span>
-            <ul class="tasks">
-              <li v-for="(task, i) in offer.tasks" :key="i">{{ task.label }}</li>
-            </ul>
+            <ServiceTaskList :tasks="offer.tasks" />
             <span class="terms">
               {{ offer.carName
               }}<span
@@ -88,11 +87,10 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
                 game.fitmentClassLabel(job.fitmentClass)
               }}</span></span
             >
-            <ul v-if="!job.inTransit" class="tasks">
-              <li v-for="(task, i) in job.tasks" :key="i" :class="{ done: task.done }">
-                {{ task.label }}
-              </li>
-            </ul>
+            <!-- Sprint 67 decision 7 (item 12): no `!job.inTransit` guard.
+                 An in-transit job's tasks are exactly what a player needs in
+                 order to go and buy parts before the car lands. -->
+            <ServiceTaskList :tasks="job.tasks" />
           </div>
           <template v-if="job.inTransit">
             <span class="status arriving" :data-test="'arriving-' + job.id">
@@ -210,21 +208,6 @@ h3 {
 
 .desc {
   display: block;
-}
-
-/* One line per service-job task (Sprint 29 - a job's work is a themed list
-   now, not a single work label). */
-.tasks {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 2px;
-  font-size: var(--mg-fs-sm);
-}
-
-.tasks li.done {
-  color: var(--mg-success);
 }
 
 .terms {

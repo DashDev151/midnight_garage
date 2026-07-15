@@ -1,7 +1,15 @@
 import type { StatBlock } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { RADAR_POWER_REFERENCE_PS } from '../constants'
-import { axisPoint, normalizeStats, RADAR_AXES, statPolygonPoints } from './radar'
+import {
+  axisAnchor,
+  axisPoint,
+  gridPolygonPoints,
+  normalizeStats,
+  RADAR_AXES,
+  RADAR_RING_MAGNITUDES,
+  statPolygonPoints,
+} from './radar'
 
 const ZERO: StatBlock = { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 }
 
@@ -69,5 +77,56 @@ describe('statPolygonPoints', () => {
       authenticity: 90,
     }
     expect(spread(strong)).toBeGreaterThan(spread(weak))
+  })
+})
+
+describe('the readable radar (Sprint 67 decision 5, playtest item 8)', () => {
+  it('draws four concentric rings, outermost first so the filled rim paints beneath them', () => {
+    // The order is load bearing: SVG paints in document order and only the rim
+    // is filled, so a rim drawn last hides every inner ring and the radar is
+    // back to the one lonely pentagon item 8 complained about.
+    expect([...RADAR_RING_MAGNITUDES]).toEqual([1, 0.75, 0.5, 0.25])
+  })
+
+  it('a smaller ring sits strictly inside a larger one', () => {
+    const distances = RADAR_RING_MAGNITUDES.map((m) => {
+      const [x, y] = gridPolygonPoints(100, m).split(' ')[0]!.split(',').map(Number)
+      return Math.hypot(x! - 50, y! - 50)
+    })
+    // Outermost first, so distances descend.
+    for (let i = 1; i < distances.length; i++) {
+      expect(distances[i]!).toBeLessThan(distances[i - 1]!)
+    }
+  })
+
+  it('every ring has one vertex per axis', () => {
+    for (const magnitude of RADAR_RING_MAGNITUDES) {
+      expect(gridPolygonPoints(100, magnitude).split(' ')).toHaveLength(RADAR_AXES.length)
+    }
+  })
+
+  it('defaults to the rim, so existing callers are unchanged', () => {
+    expect(gridPolygonPoints(100)).toBe(gridPolygonPoints(100, 1))
+  })
+
+  it('anchors each label away from the plot, never centred over a side vertex', () => {
+    // The bug: every label was `text-anchor="middle"`, so a long one
+    // ("authenticity") was centred on its vertex and half of it rode into the
+    // polygon. A label right of centre must START at its vertex and grow
+    // right; left of centre it must END at its vertex and grow left.
+    RADAR_AXES.forEach((axis, i) => {
+      const p = axisPoint(i, 1, 0, 0, 1)
+      const anchor = axisAnchor(i)
+      if (Math.abs(p.x) < 0.01) expect(anchor, axis).toBe('middle')
+      else if (p.x > 0) expect(anchor, axis).toBe('start')
+      else expect(anchor, axis).toBe('end')
+    })
+  })
+
+  it('puts the top axis at middle and gives both sides an outward anchor', () => {
+    expect(axisAnchor(0)).toBe('middle') // straight up - no side to grow toward
+    const anchors = RADAR_AXES.map((_, i) => axisAnchor(i))
+    expect(anchors).toContain('start')
+    expect(anchors).toContain('end')
   })
 })

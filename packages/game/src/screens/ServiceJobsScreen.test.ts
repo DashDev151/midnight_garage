@@ -38,6 +38,32 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
+   * Sprint 67 decision 7 (playtest item 12): an in-transit job STILL shows
+   * what the customer asked for. The list used to be hidden behind
+   * `v-if="!job.inTransit"` here and skipped entirely on the car page, so the
+   * one thing a player needs in order to go and buy parts before the car lands
+   * was unreadable on both screens at once.
+   */
+  it('shows an in-transit job\'s task list, not just "car arriving tomorrow"', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    warpToOffers(game)
+    const offer = game.serviceJobOffers[0]
+    if (!offer) throw new Error('expected an offer on the board')
+    const taskLabels = game.serviceJobOfferViews
+      .find((o) => o.id === offer.id)!
+      .tasks.map((t) => t.label)
+    expect(taskLabels.length).toBeGreaterThan(0)
+    game.acceptServiceJob(offer.id)
+    expect(game.activeServiceJobs.find((j) => j.id === offer.id)!.arrivesOnDay).not.toBeNull()
+
+    const wrapper = mountScreen()
+    const inShop = wrapper.find('.active')
+    expect(inShop.text()).toContain('car arriving tomorrow')
+    for (const label of taskLabels) expect(inShop.text()).toContain(label)
+  })
+
+  /**
    * Sprint 40 item 2: the board must never read "work done - hand back" (or
    * even "work outstanding") while the customer's car is still in transit -
    * only "car arriving tomorrow." Board gating keys off `inTransit`, not

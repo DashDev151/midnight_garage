@@ -224,3 +224,79 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(decoded.stagedCarWork).toEqual(game.gameState.stagedCarWork)
   })
 })
+
+describe('plannedStepFor (Sprint 67 decision 1, playtest item 7)', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it("reports the ROW's whole planned total, not the next rung's increment", () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    const car = game.gameState.ownedCars[0]!
+    // Put the whole body group at `poor`, so a plan to `fine` is unambiguously
+    // multi-rung (poor -> worn -> fine) - the exact shape that produced the bug.
+    for (const partId of ['panels', 'paint', 'underbody', 'aero'] as const) {
+      const installed = car.parts[partId].installed
+      if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
+    }
+
+    expect(game.plannedStepFor(carId, 'body')).toBeNull() // nothing planned yet
+
+    // The increment ONE click buys - the number the row used to show while
+    // Confirm charged for the whole plan.
+    const oneRung = game.nextRepairStep(carId, 'body')
+    expect(oneRung).not.toBeNull()
+
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'fine' })
+    const step = game.plannedStepFor(carId, 'body')
+    expect(step).not.toBeNull()
+
+    // The row's figure IS what Confirm will charge for it. With `body` the
+    // only planned action, the per-car total and the per-address total are the
+    // same number by construction - that is the property the decision rests
+    // on. Asserted against `plannedEstimate`, which is the exact object the
+    // Confirm button renders from.
+    const estimate = game.carDetail(carId)!.plannedEstimate!
+    expect(step!.costYen).toBe(estimate.plannedRepairCostYen)
+    expect(step!.laborSlots).toBe(estimate.plannedLaborSlots)
+
+    // And it is genuinely the multi-rung total, not one rung: strictly more
+    // than the single increment the row used to display.
+    expect(step!.costYen).toBeGreaterThan(oneRung!.costYen)
+  })
+
+  it('per-address totals sum to what Confirm charges across every planned row', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
+    game.stageAction(carId, { kind: 'repair', componentId: 'interior', targetBand: 'mint' })
+
+    const rows = (['body', 'interior'] as const).map((id) => game.plannedStepFor(carId, id))
+    expect(rows.every((r) => r !== null)).toBe(true)
+
+    const summedCost = rows.reduce((n, r) => n + r!.costYen, 0)
+    const summedLabor = rows.reduce((n, r) => n + r!.laborSlots, 0)
+    const estimate = game.carDetail(carId)!.plannedEstimate!
+    expect(summedCost).toBe(estimate.plannedRepairCostYen)
+    expect(summedLabor).toBe(estimate.plannedLaborSlots)
+  })
+
+  it('addresses a per-part plan separately from its group', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+
+    game.stageAction(carId, {
+      kind: 'repair',
+      componentId: 'body',
+      targetBand: 'mint',
+      carPartId: 'paint',
+    })
+    // The plan lives at the per-part address, so the group address is empty -
+    // otherwise a group row would double-count its own part's work.
+    expect(game.plannedStepFor(carId, 'body', 'paint')).not.toBeNull()
+    expect(game.plannedStepFor(carId, 'body')).toBeNull()
+  })
+})

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { CarPartId, ComponentId, ConditionBand, StagedAction } from '@midnight-garage/content'
 import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
-import { bandIndex } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
+import ServiceTaskList from '../components/ServiceTaskList.vue'
 import StatRadar from '../components/StatRadar.vue'
 import {
   clearDragSession,
@@ -61,16 +61,17 @@ const COMPONENTS: readonly ComponentId[] = [
 ]
 
 /**
- * Sprint 41 decision 4 (condition-panel readability): the 6 groups,
- * worst-band-first - `Array.prototype.sort` is stable, so groups tied on
- * worst band keep `COMPONENTS`' own order as a secondary sort. Falls back to
- * the plain declared order before a car is loaded.
+ * Sprint 67 decision 4 (playtest item 16): ONE constant order - engine,
+ * drivetrain, suspension, wheels, body, interior - the same on every car,
+ * forever.
+ *
+ * This explicitly RETIRES Sprint 41 decision 4, which sorted worst-band-first
+ * for "condition-panel readability". That rationale was real but loses to
+ * muscle memory: a panel that reorders itself as you repair it is a panel you
+ * have to re-read every time. The maintainer's instruction is the decision;
+ * the reversal is recorded in `sprint67.md`.
  */
-const orderedComponents = computed<readonly ComponentId[]>(() => {
-  const d = detail.value
-  if (!d) return COMPONENTS
-  return [...COMPONENTS].sort((a, b) => bandIndex(d.groupBands[a]) - bandIndex(d.groupBands[b]))
-})
+const orderedComponents: readonly ComponentId[] = COMPONENTS
 
 // --- Sprint 28: drill-down (group rows expand to their real part rows) --
 
@@ -79,6 +80,15 @@ const expandedGroups = reactive(new Set<ComponentId>())
 function toggleExpanded(componentId: ComponentId): void {
   if (expandedGroups.has(componentId)) expandedGroups.delete(componentId)
   else expandedGroups.add(componentId)
+}
+
+/** Sprint 67 decision 3 (playtest item 9): bulk drill-down controls. */
+function expandAllGroups(): void {
+  for (const componentId of COMPONENTS) expandedGroups.add(componentId)
+}
+
+function collapseAllGroups(): void {
+  expandedGroups.clear()
 }
 
 /** Every real part row within a group, for the drill-down. */
@@ -90,8 +100,19 @@ function rowsFor(componentId: ComponentId) {
 // per-group "+N parts in good order" toggle - a single dropdown governs
 // every group's drill-down at once. -------------------------------------
 
+/**
+ * Sprint 67 decision 2 (playtest items 18 + 10): `absent` is a real category,
+ * not a null. It has no checkbox of its own - it is simply not in the default
+ * `visibleConditions`, so a legitimately-absent slot (forced induction on an
+ * NA car) hides by default and `Show all` reveals it.
+ */
 const CONDITION_FILTER_OPTIONS = ['mint', 'fine', 'worn', 'poor', 'scrap', 'missing'] as const
-type ConditionFilterOption = (typeof CONDITION_FILTER_OPTIONS)[number]
+type ConditionFilterOption = (typeof CONDITION_FILTER_OPTIONS)[number] | 'absent'
+/** Every category the filter can hold, including the checkbox-less `absent`. */
+const ALL_FILTER_CATEGORIES: readonly ConditionFilterOption[] = [
+  ...CONDITION_FILTER_OPTIONS,
+  'absent',
+]
 
 /** Default preserves the old de-noised view: worn/poor/scrap/missing shown,
  * fine/mint hidden. */
@@ -104,22 +125,40 @@ function toggleConditionFilter(option: ConditionFilterOption): void {
   else visibleConditions.add(option)
 }
 
-/** A row's filter category - `null` for a legitimately-absent slot (forced
- * induction on an NA car), which is never filterable and always shows,
- * matching its pre-Sprint-48 always-visible behavior. */
-function rowCategory(row: ReturnType<typeof rowsFor>[number]): ConditionFilterOption | null {
-  if (row.legitimatelyAbsent) return null
+/**
+ * A row's filter category. Sprint 67 decision 2 (playtest items 18 + 10):
+ * a legitimately-absent slot is `'absent'`, never `null`.
+ *
+ * The `null` it used to return made the row unfilterable and permanently
+ * visible, which was BOTH bugs the maintainer reported: item 18 ("it shows
+ * missing slots even if only poor is selected") and item 10 ("an empty FI slot
+ * shouldn't appear under Missing"). One category closes both, and the filter's
+ * contract becomes total: a row shows if and only if its category is ticked.
+ */
+function rowCategory(row: ReturnType<typeof rowsFor>[number]): ConditionFilterOption {
+  if (row.legitimatelyAbsent) return 'absent'
   if (row.missing) return 'missing'
-  return row.band
+  // A slot with no band is an empty one; `absent` is the honest bucket for it.
+  // The two guards above should already cover every real empty slot, but the
+  // filter's contract is that EVERY row has a category - never a null that
+  // slips past the filter, which was the whole bug.
+  return row.band ?? 'absent'
 }
 
 /** The rows actually rendered for `componentId`'s drill-down right now,
  * governed by the one global filter above. */
 function visibleRowsFor(componentId: ComponentId) {
-  return rowsFor(componentId).filter((row) => {
-    const category = rowCategory(row)
-    return category === null || visibleConditions.has(category)
-  })
+  return rowsFor(componentId).filter((row) => visibleConditions.has(rowCategory(row)))
+}
+
+/** Sprint 67 decision 3 (playtest items 18 + 9): bulk filter controls.
+ * `Show all` includes `absent`, which has no checkbox of its own. */
+function showAllConditions(): void {
+  for (const option of ALL_FILTER_CATEGORIES) visibleConditions.add(option)
+}
+
+function hideAllConditions(): void {
+  visibleConditions.clear()
 }
 
 /**
@@ -172,16 +211,24 @@ function repairStepLabel(
 }
 
 /**
- * Sprint 63: the quiet cost caption beside the `+` button - just the
- * incremental cost and labour, never a full sentence in a button. A `+`
- * sign prefixes it when the row already has a plan (this is a further rung).
+ * Sprint 67 decision 1 (playtest item 7): the quiet caption beside the `+`
+ * button is the ROW'S OWN PLANNED TOTAL - what Confirm will actually charge
+ * for this row - and null when nothing is planned here.
+ *
+ * It used to show the NEXT rung's increment (Sprint 63's `stepCost`), so a
+ * `poor -> fine` plan read "+Y4,800 · +1 labour" while Confirm charged
+ * "Y9,600 · 2 labour". Both were individually right; the row was answering a
+ * question the player wasn't asking. The increment now lives ONLY in the `+`
+ * button's tooltip (`repairStepLabel`), where it answers "what does one more
+ * click cost" without competing with the total. Every number on screen
+ * answers exactly one question.
  */
-function stepCost(
-  step: { costYen: number; laborSlotsRequired: number },
-  alreadyPlanned: boolean,
-): string {
-  const sign = alreadyPlanned ? '+' : ''
-  return `${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labour`
+function plannedRowCost(componentId: ComponentId, carPartId?: CarPartId): string | null {
+  const carId = detail.value?.car.id
+  if (!carId) return null
+  const step = game.plannedStepFor(carId, componentId, carPartId)
+  if (!step) return null
+  return `${formatYen(step.costYen)} · ${step.laborSlots} labour`
 }
 
 /** Sprint 63: the currently planned target band (a real `ConditionBand`, for
@@ -471,6 +518,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     <section v-if="inTransit" class="arriving-banner" data-test="arriving-banner">
       <h3>Customer job - {{ detail.serviceJob?.customerName }}</h3>
       <p class="svc-desc">"{{ detail.serviceJob?.description }}"</p>
+      <!-- Sprint 67 decision 7 (item 12): the task list shows here too. The
+           work cannot start until the car arrives, but knowing what the
+           customer asked for is exactly what lets a player go and buy the
+           parts today (Sprint 61 already put inbound cars in the parts-market
+           fit filter - this is the half that was missing). -->
+      <ServiceTaskList v-if="detail.serviceJob" :tasks="detail.serviceJob.tasks" />
       <p class="arriving-note">Arriving tomorrow - nothing to do until it's dropped off.</p>
     </section>
 
@@ -492,11 +545,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <section v-if="detail.serviceJob" class="service-banner">
         <h3>Customer job - {{ detail.serviceJob.customerName }}</h3>
         <p class="svc-desc">"{{ detail.serviceJob.description }}"</p>
-        <ul class="svc-tasks">
-          <li v-for="(task, i) in detail.serviceJob.tasks" :key="i" :class="{ done: task.done }">
-            {{ task.label }}
-          </li>
-        </ul>
+        <ServiceTaskList :tasks="detail.serviceJob.tasks" />
         <p class="svc-req">
           Pays {{ formatYen(detail.serviceJob.payoutYen) }} · +{{
             detail.serviceJob.baseReputation
@@ -536,25 +585,41 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <h3>
             Components
             <HelpHint label="Components">
-              Worst-off groups lead. Expand a group to repair or replace its real parts one at a
-              time, or use a group's own "Repair" button - each click plans one more band, priced
-              and labored for real. Use the filter to choose which conditions show. Nothing happens
-              until you Confirm.
+              Expand a group to repair or replace its real parts one at a time, or use the group's
+              own button - each click plans one more band, priced and laboured for real. Use the
+              filter to choose which conditions show. Nothing happens until you Confirm.
             </HelpHint>
           </h3>
 
-          <details class="condition-filter" data-test="condition-filter">
-            <summary>Show: {{ visibleConditions.size }}/6 conditions</summary>
-            <label v-for="option in CONDITION_FILTER_OPTIONS" :key="option" class="filter-option">
-              <input
-                type="checkbox"
-                :data-test="'filter-' + option"
-                :checked="visibleConditions.has(option)"
-                @change="toggleConditionFilter(option)"
-              />
-              {{ option }}
-            </label>
-          </details>
+          <div class="panel-controls">
+            <details class="condition-filter" data-test="condition-filter">
+              <summary>
+                Show: {{ visibleConditions.size }}/{{ ALL_FILTER_CATEGORIES.length }} conditions
+              </summary>
+              <label v-for="option in CONDITION_FILTER_OPTIONS" :key="option" class="filter-option">
+                <input
+                  type="checkbox"
+                  :data-test="'filter-' + option"
+                  :checked="visibleConditions.has(option)"
+                  @change="toggleConditionFilter(option)"
+                />
+                {{ option }}
+              </label>
+            </details>
+
+            <button type="button" data-test="filter-show-all" @click="showAllConditions()">
+              Show all
+            </button>
+            <button type="button" data-test="filter-hide-all" @click="hideAllConditions()">
+              Hide all
+            </button>
+            <button type="button" data-test="expand-all" @click="expandAllGroups()">
+              Expand all
+            </button>
+            <button type="button" data-test="collapse-all" @click="collapseAllGroups()">
+              Collapse all
+            </button>
+          </div>
 
           <ul class="components">
             <li v-for="componentId in orderedComponents" :key="componentId" class="component-row">
@@ -628,10 +693,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                     >
                       +
                     </button>
-                    <span class="step-cost">{{
-                      stepCost(nextGroupStepOrFallback(componentId), isStagedRepair(componentId))
-                    }}</span>
                   </template>
+
+                  <!-- Outside the `+` guard on purpose: a row planned all the
+                       way to mint has no next step but still has a total to
+                       show. -->
+                  <span
+                    v-if="plannedRowCost(componentId)"
+                    class="step-cost"
+                    :data-test="'planned-cost-' + componentId"
+                    >{{ plannedRowCost(componentId) }}</span
+                  >
 
                   <button
                     v-if="isStagedRepair(componentId)"
@@ -735,13 +807,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                         >
                           +
                         </button>
-                        <span class="step-cost">{{
-                          stepCost(
-                            nextPartStepOrFallback(componentId, row.partId),
-                            isStagedRepair(componentId, row.partId),
-                          )
-                        }}</span>
                       </template>
+
+                      <span
+                        v-if="plannedRowCost(componentId, row.partId)"
+                        class="step-cost"
+                        :data-test="'planned-cost-part-' + row.partId"
+                        >{{ plannedRowCost(componentId, row.partId) }}</span
+                      >
 
                       <button
                         v-if="isStagedRepair(componentId, row.partId)"
@@ -994,8 +1067,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section class="jobs">
         <h3>Work</h3>
-        <p class="labor">
-          Labour: {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} slots left today
+        <p class="labor" data-test="labour-card">
+          Labour left today:
+          <strong>{{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }}</strong> slots
         </p>
 
         <div v-if="detail.jobs.length" class="job-group">
@@ -1118,20 +1192,6 @@ h4 {
 
 /* One line per service-job task (Sprint 29 - a job's work is a themed list
    now, not a single required-work label). */
-.svc-tasks {
-  list-style: none;
-  margin: var(--mg-space-1) 0;
-  padding: 0;
-  display: grid;
-  gap: 2px;
-  font-size: var(--mg-fs-sm);
-  color: var(--mg-text-dim);
-}
-
-.svc-tasks li.done {
-  color: var(--mg-success);
-}
-
 .svc-req {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
@@ -1566,9 +1626,22 @@ h4 {
   margin: var(--mg-space-4) 0;
 }
 
+/* Sprint 67 decision 6 (playtest item 13): promoted from a dim caption to the
+ * same weight as the garage's own Labour tile - it is the resource the day is
+ * budgeted against, not an afterthought. One number, two places, one source. */
 .labor {
-  color: var(--mg-text-dim);
+  margin: 0 0 var(--mg-space-2);
+  padding: var(--mg-space-2);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  background: var(--mg-panel);
+  color: var(--mg-text);
   font-size: var(--mg-fs-sm);
+  text-align: center;
+}
+
+.labor strong {
+  color: var(--mg-neon-cyan);
 }
 
 button {

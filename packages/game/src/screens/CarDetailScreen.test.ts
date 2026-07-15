@@ -102,20 +102,19 @@ function needsRepair(
 }
 
 /**
- * Sprint 48: fine/mint part rows collapse behind the global condition filter
- * by default - reveals them too (idempotent - safe to call once per group in
- * a test that expands more than one), so every real part row is visible,
- * matching every pre-Sprint-48 test's assumption that one expand click
- * reveals the whole group. The default-hidden behavior itself gets its own
- * dedicated test below.
+ * Reveals every part row, so a test that expands a group sees all of it
+ * (fine/mint rows hide behind the global condition filter by default,
+ * Sprint 48). Idempotent - safe to call once per group.
+ *
+ * Sprint 67: clicks the real `Show all` control rather than ticking `mint` and
+ * `fine` by hand. It has to: `absent` (a legitimately-absent slot, e.g. forced
+ * induction on an NA car) is a real filter category with NO checkbox of its
+ * own, and `Show all` is the only way to reveal it.
  */
 async function showAllConditions(
   wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
 ): Promise<void> {
-  for (const option of ['mint', 'fine']) {
-    const checkbox = wrapper.find<HTMLInputElement>(`[data-test="filter-${option}"]`)
-    if (checkbox.exists() && !checkbox.element.checked) await checkbox.trigger('change')
-  }
+  await wrapper.find('[data-test="filter-show-all"]').trigger('click')
 }
 
 async function expandGroup(
@@ -345,8 +344,86 @@ describe('CarDetailScreen', () => {
     })
   })
 
+  describe('the condition filter is total (Sprint 67 decision 2, items 18 + 10)', () => {
+    it('never shows an NA car\'s empty forced-induction slot under "Missing"', async () => {
+      // Item 10, and the half of item 18 that made it unfilterable: the slot
+      // used to return a `null` category, which slipped past the filter
+      // entirely and rendered no matter what was ticked - including a
+      // Missing-only view, where an NA car's FI slot is not a defect at all.
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id) // honda-city-e-aa is naturally aspirated
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="expand-engine"]').trigger('click')
+
+      // Default view (worn/poor/scrap/missing) - the FI slot is not in it.
+      expect(wrapper.text()).not.toContain('no turbo (NA)')
+
+      // Even with Missing explicitly the ONLY category ticked.
+      await wrapper.find('[data-test="filter-hide-all"]').trigger('click')
+      await wrapper.find('[data-test="filter-missing"]').trigger('change')
+      expect(wrapper.text()).not.toContain('no turbo (NA)')
+    })
+
+    it('Show all reveals the absent slot; Hide all empties every group', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="expand-engine"]').trigger('click')
+
+      // `absent` has no checkbox of its own - Show all is the only way in.
+      await wrapper.find('[data-test="filter-show-all"]').trigger('click')
+      expect(wrapper.text()).toContain('no turbo (NA)')
+
+      await wrapper.find('[data-test="filter-hide-all"]').trigger('click')
+      expect(wrapper.text()).not.toContain('no turbo (NA)')
+      expect(wrapper.findAll('.sub-part-row')).toHaveLength(0)
+    })
+  })
+
+  describe('panel controls (Sprint 67 decisions 3 + 4, items 9 + 16)', () => {
+    it('Expand all opens every group and Collapse all closes them', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+
+      expect(wrapper.findAll('.sub-part-row').length).toBe(0)
+      await wrapper.find('[data-test="expand-all"]').trigger('click')
+      await wrapper.find('[data-test="filter-show-all"]').trigger('click')
+      expect(wrapper.findAll('.sub-part-row').length).toBeGreaterThan(20) // all 6 groups
+
+      await wrapper.find('[data-test="collapse-all"]').trigger('click')
+      expect(wrapper.findAll('.sub-part-row').length).toBe(0)
+    })
+
+    it('renders component groups in one constant order, whatever their condition (item 16)', async () => {
+      // Sprint 41 decision 4 sorted worst-band-first, so the panel reshuffled
+      // itself as you repaired it. Retired: order is now positional, forever.
+      const EXPECTED = ['engine', 'drivetrain', 'suspension', 'wheels', 'body', 'interior']
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars[0]!
+      // Wreck the LAST group in declared order - under the old sort this
+      // would have jumped it to the top.
+      for (const partId of ['seats', 'dashGauges'] as const) {
+        const installed = car.parts[partId].installed
+        if (installed) car.parts[partId] = { installed: { ...installed, band: 'scrap' } }
+      }
+
+      const { wrapper } = await mountAt(id)
+      const order = wrapper.findAll('.component-row').map((row) => {
+        const el = row.find('[data-test^="expand-"]')
+        return el.attributes('data-test')!.replace('expand-', '')
+      })
+      expect(order).toEqual(EXPECTED)
+    })
+  })
+
   describe('the reworked repair row and honest Confirm (Sprint 63)', () => {
-    it('no repair control is a sentence-button - the group step is a compact "+" with the cost as a caption', async () => {
+    it('no repair control is a sentence-button - the group step is a compact "+" and its increment lives in the tooltip (Sprint 63; Sprint 67 decision 1)', async () => {
       const game = useGameStore()
       const id = grantCarNeedingRepair(game, 'body')
       const { wrapper } = await mountAt(id)
@@ -355,11 +432,38 @@ describe('CarDetailScreen', () => {
       // The button's own visible text is just the "+" glyph, never a sentence.
       expect(button.text()).toBe('+')
       expect(button.text()).not.toContain('Repair to')
-      // The cost/labour rides in a caption beside it, in British "labour".
-      const row = button.element.closest('.action-line')!
-      const caption = row.querySelector('.step-cost')!
-      expect(caption.textContent).toContain('labour')
-      expect(caption.textContent).not.toContain('labor ')
+
+      // Sprint 67 decision 1: with nothing planned there is no caption at all.
+      // The increment - what ONE more click costs - lives only in the tooltip,
+      // so it can never be mistaken for what Confirm will charge.
+      expect(wrapper.find('[data-test="planned-cost-body"]').exists()).toBe(false)
+      expect(button.attributes('title')).toContain('labour')
+      expect(button.attributes('title')).not.toContain('labor ')
+    })
+
+    it("the row's caption is the ROW's planned total, not the next rung's increment (Sprint 67 decision 1, item 7)", async () => {
+      const game = useGameStore()
+      const id = grantCarNeedingRepair(game, 'body')
+      const { wrapper } = await mountAt(id)
+
+      // Two clicks = a two-rung plan. The caption must report BOTH rungs (what
+      // Confirm charges), not just the next one - the exact bug item 7 hit.
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
+      const afterOne = wrapper.find('[data-test="planned-cost-body"]').text()
+      expect(afterOne).toContain('labour')
+
+      const second = wrapper.find('[data-test="stage-repair-body"]')
+      if (second.exists()) {
+        await second.trigger('click')
+        const afterTwo = wrapper.find('[data-test="planned-cost-body"]').text()
+        expect(afterTwo).not.toBe(afterOne) // the total grew with the plan
+      }
+
+      // And it equals what the store says Confirm will charge for that row.
+      const step = game.plannedStepFor(id, 'body')!
+      expect(wrapper.find('[data-test="planned-cost-body"]').text()).toContain(
+        String(step.laborSlots),
+      )
     })
 
     it('shows a current -> planned band preview once a repair is staged, cleared by the x', async () => {
