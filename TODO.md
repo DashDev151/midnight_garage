@@ -80,16 +80,44 @@ pass."
     determinism hashes. These are the checks that actually caught things, and they should be
     where more verification goes, not less.
 
-  **What a real rework has to do** (unscoped - needs its own design pass, not a sprint bolt-on):
-  make a bot's *decision rate and decision mix* resemble a person's, not just its decision
-  *legality*. That means at minimum: a builder/tuner archetype that buys and installs aftermarket
-  (coherently AND incoherently, so Law 5 is stressed); rep-earning behaviour calibrated to a
-  measured human rate rather than emergent bot patience; error injection (mis-buys, wrong-grade
-  fits, forgotten hand-backs); and archetypes that can actually reach the mid-game content they
-  exist to test. The **recorded-play idea** below is the most promising route to calibrating any of
-  this against reality rather than against another guess - it is now a prerequisite for trusting
-  the harness again, not a nice-to-have. Until this lands, every economy/pacing decision should
-  lean on closed-form probes plus maintainer playtest, and treat "N invariants pass" as evidence
+  **The epistemics problem, which any rework must answer first** (maintainer discussion,
+  2026-07-15, prompted by *"not a single test has ever picked something up that improved the
+  economy balancing or gameplay experience"*). That observation is correct, and it generalises
+  past the tests: **a bot is a test wearing a costume.** Both encode a strategy someone already
+  wrote down, so both can only ever report how well that guess plays. Neither can surprise you.
+  Of 1096 tests, the 19 in `valueModelProbes.test.ts` do real economic reasoning; everything else
+  is a regression net (worth keeping - it buys velocity, not insight - but it is not an
+  instrument). Every genuine discovery in 66 sprints came from something that RENDERED NUMBERS TO
+  A HUMAN: the maintainer's playtests, and `report.md`'s ten-row coherence table (Sprint 55's
+  frenzy finding and Sprint 66's entire diminishing-returns law both came from one read of it).
+  The suite is not too big; it is lopsided - ~98% "is it still what we said", ~2% "what is it
+  actually", and one report page carrying the whole discovery load.
+
+  So **"smarter bots" is the wrong target.** It would spend the effort and return a better-dressed
+  mirror. Sprint 66 is the proof: the bots went Y106k negative and told us nothing the ten
+  closed-form rows had not already said better.
+
+  **What a real rework should build instead: a DECISION REPORT** (unscoped - needs its own design
+  pass, not a sprint bolt-on). Not a simulated player, but an enumeration of the choices the game
+  actually puts in front of one, each scored closed-form: day 1, Y300k, here are the eight lots on
+  the board; here is the best play on each, what it returns, and how long it takes. The question
+  that matters then becomes directly measurable - **what is the spread between the best choice and
+  the worst?** A spread near zero means the decision is fake and the day is filler. If a shitbox
+  and a Supra both answer "just fix it up", the tier system is decoration. This is the same
+  instrument that has worked twice already (the coherence table), pointed at gameplay instead of
+  at prices; it has no bots in it so it cannot inherit their blindness, and it would have caught
+  the mint-kei problem on day one rather than fifteen sprints in.
+
+  **If bots survive at all**, they need to resemble a person's *decision rate and decision mix*,
+  not just decision *legality*: a builder/tuner archetype that installs aftermarket (coherently AND
+  incoherently, so Law 5 is stressed); a per-car target-band choice rather than hardcoded mint
+  (finding 5); rep-earning calibrated to a measured human rate rather than emergent patience;
+  error injection (mis-buys, wrong-grade fits, forgotten hand-backs); archetypes that can actually
+  reach the mid-game content they exist to test. The **recorded-play idea** below is the most
+  promising route to calibrating any of that against reality rather than against another guess -
+  it is now a prerequisite for trusting bot output again, not a nice-to-have. Until this lands,
+  every economy/pacing decision should lean on closed-form probes plus maintainer playtest, and
+  treat "N invariants pass" as evidence
   the mechanism doesn't crash - never evidence the game is paced right or is fun.
 - [ ] **Recorded-play idea** (user-proposed 2026-07-09): parse real play sessions into per-archetype
   statistical rulesets - rates and biases ("bids X% below book," "does these repairs, buys that
