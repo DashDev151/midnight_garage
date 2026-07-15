@@ -1051,6 +1051,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Accept
             </button>
+            <!-- Sprint 68 decision 3 (item 21): turning a lowball down is a
+                 real move, not "do nothing and hope". The car stays listed,
+                 so tomorrow's draw can bring a better one. -->
+            <button
+              data-test="reject-offer"
+              title="Turn this offer down. The car stays up for sale."
+              @click="game.rejectOffer(detail.car.id)"
+            >
+              Reject
+            </button>
             <span class="offer-expiry">Today only</span>
           </div>
         </div>

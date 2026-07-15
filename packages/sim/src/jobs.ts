@@ -9,6 +9,7 @@ import {
   type GameState,
   type Job,
   type PartInstance,
+  type ServiceJob,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 import {
@@ -344,18 +345,61 @@ export function resolveRemovePart(
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {
-    // A customer's car (Sprint 35 decision 2): keep the pulled part in our
-    // inventory tagged with the owning job, not ours to sell/scrap but ours
-    // to recondition until the job closes out.
+    // A customer's car (Sprint 35 decision 2): a pulled part stays in our
+    // inventory tagged with the owning job - not ours to sell or scrap, but
+    // ours to recondition until the job closes out.
+    //
+    // Sprint 68 decision 1 (playtest item 17): the tag now depends on whose
+    // part it actually IS, not on where the car happens to be parked. Before
+    // this, the branch tagged EVERY removed part unconditionally, so a damper
+    // the player bought and fitted became the customer's property the instant
+    // they pulled it back off - and `resolveServiceJob`'s close-out, which
+    // drops every inventory entry carrying the job's id, then confiscated it
+    // outright. The player was robbed of their own part for changing their
+    // mind.
     const serviceJob = state.activeServiceJobs[serviceIndex]!
     const activeServiceJobs = [...state.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
-    const taggedPart: PartInstance = { ...installed, customerJobId: serviceJob.id }
-    const partInventory = [...state.partInventory, taggedPart]
+    const keptPart = isCustomersOwnPart(serviceJob, carPartId, installed)
+      ? { ...installed, customerJobId: serviceJob.id }
+      : installed
+    const partInventory = [...state.partInventory, keptPart]
     return { state: { ...state, activeServiceJobs, partInventory }, log }
   }
 
   return { state, log: [] }
+}
+
+/**
+ * Whether `installed` is the part the CUSTOMER arrived with, rather than one
+ * the player bought and fitted (Sprint 68 decision 1, playtest item 17).
+ *
+ * No new state: Sprint 61's `baselineInstalledPartIds` already records the
+ * exact `PartInstance.id` sitting in each install-task slot at generation time,
+ * precisely so an install task can tell "a different qualifying part is now
+ * fitted" from "the original is still there". It was only ever read by
+ * `isServiceTaskDone`; this is the same record answering the same question one
+ * slot over.
+ *
+ * A pre-Sprint-61 save has no baseline for its in-flight jobs. Those keep the
+ * old tag-everything behaviour rather than silently becoming un-tagged
+ * mid-job: an empty baseline means "we cannot know whose this is", and
+ * assuming it is the customer's is the conservative read that preserves the
+ * meaning the save was written under.
+ */
+function isCustomersOwnPart(
+  job: ServiceJob,
+  carPartId: CarPartId,
+  installed: PartInstance,
+): boolean {
+  const baseline = job.baselineInstalledPartIds
+  if (!baseline || Object.keys(baseline).length === 0) return true
+  const baselineId = baseline[carPartId]
+  // A slot with no recorded baseline was never an install task's slot, so the
+  // customer never had a part there that we know of - anything in it now is
+  // something the player fitted.
+  if (baselineId === undefined) return false
+  return installed.id === baselineId
 }
 
 /**

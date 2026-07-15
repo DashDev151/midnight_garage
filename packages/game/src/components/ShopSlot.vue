@@ -82,6 +82,15 @@ function onCardPointerUp(event: PointerEvent): void {
           {{ car.displayName }}
           <span v-if="car.arrivingTomorrow" class="badge arriving">arriving tomorrow</span>
           <span v-else-if="car.isCustomerCar" class="badge">customer job</span>
+          <!-- Sprint 68 decision 4 (item 22): a live offer is waiting on this
+               car today. Same hardcoded-badge shape as the two above - three
+               is still not enough to justify a generic badge system. -->
+          <span
+            v-if="car.hasOffer"
+            class="badge offer"
+            :data-test="testIdPrefix + 'offer-badge-' + car.carId"
+            >offer today</span
+          >
         </RouterLink>
         <button
           v-if="!car.arrivingTomorrow"
@@ -212,6 +221,12 @@ function onCardPointerUp(event: PointerEvent): void {
 
 .badge.arriving {
   color: var(--mg-text-dim);
+}
+
+/* Money on the table reads in the money colour, not the violet the
+   customer-job badge uses (Sprint 68 item 22). */
+.badge.offer {
+  color: var(--mg-yen);
 }
 
 .grab-handle {

@@ -23,6 +23,7 @@ import { generateAuctionCarInstance } from '../src/auctions'
 import { bandIndex } from '../src/bands'
 import { SERVICE_JOB_ARRIVAL_DELAY_DAYS } from '../src/constants'
 import { buildSimContext } from '../src/context'
+import { resolveRemovePart } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
@@ -914,6 +915,64 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       // Our pulled part left with the customer; the player's part and a
       // different job's part are untouched.
       expect(next.partInventory).toEqual([playerOwned, otherJob])
+    })
+
+    /**
+     * Sprint 68 (playtest item 17), end to end - the loop a player actually
+     * walks, not two resolvers checked apart:
+     *
+     *   buy a part -> fit it to the customer's car -> think better of it and
+     *   pull it back off -> hand the job back
+     *
+     * Before this sprint the part was gone. `resolveRemovePart` tagged it as
+     * the customer's (deciding by where the car was PARKED), and close-out
+     * then dropped everything carrying the job's id. The player was robbed of
+     * a part they had paid for, for changing their mind.
+     */
+    it("a part the player bought and fitted to a customer's car survives close-out - it was never the customer's", () => {
+      const PLAYER_BOUGHT = 'pi-player-bought-ecu'
+      const job = activeJob(twoRepairType, {
+        parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
+      })
+      // The customer arrived with THEIR damper recorded (Sprint 61's
+      // baseline); the player has since fitted a part of their own on top.
+      const jobWithPlayerPart: ServiceJob = {
+        ...job,
+        baselineInstalledPartIds: { dampers: 'pi-customers-damper' },
+        car: {
+          ...job.car,
+          parts: {
+            ...job.car.parts,
+            dampers: {
+              installed: {
+                id: PLAYER_BOUGHT,
+                partId: 'khs-street-ecu',
+                band: 'mint',
+                genuinePeriod: false,
+                pricePaidYen: 40_000,
+              },
+            },
+          },
+        },
+      }
+
+      const removed = resolveRemovePart(
+        stateWith(jobWithPlayerPart, { partInventory: [] }),
+        jobWithPlayerPart.car.id,
+        'dampers',
+        CONTEXT,
+      )
+      // It comes back untagged - still the player's.
+      expect(removed.state.partInventory).toHaveLength(1)
+      expect(removed.state.partInventory[0]!.id).toBe(PLAYER_BOUGHT)
+      expect(removed.state.partInventory[0]).not.toHaveProperty('customerJobId')
+
+      // ...and close-out leaves it exactly where it is.
+      const closed = resolveServiceJob(removed.state, jobWithPlayerPart.id, CONTEXT)
+      expect(closed.state.partInventory.map((p) => p.id)).toContain(PLAYER_BOUGHT)
+      expect(closed.state.partInventory.find((p) => p.id === PLAYER_BOUGHT)!.pricePaidYen).toBe(
+        40_000,
+      )
     })
 
     it('a FAILED (not-paid) job likewise removes its own tagged parts; player-owned survives', () => {

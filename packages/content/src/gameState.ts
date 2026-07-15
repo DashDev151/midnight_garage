@@ -428,6 +428,19 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     buyerId: z.string().min(1),
     priceYen: z.number().int().positive(),
   }),
+  /**
+   * Sprint 68 decision 3 (playtest item 21): the player turned an offer down.
+   * The car stays listed, so tomorrow's draw can bring a better one. No
+   * reputation field, deliberately - turning down a lowball is not a slight,
+   * and there is no delta to record.
+   */
+  z.object({
+    type: z.literal('offer-rejected'),
+    carInstanceId: z.string().min(1),
+    modelId: z.string().min(1),
+    buyerId: z.string().min(1),
+    priceYen: z.number().int().positive(),
+  }),
   z.object({
     type: z.literal('car-sold'),
     carInstanceId: z.string().min(1),

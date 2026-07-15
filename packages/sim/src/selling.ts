@@ -212,6 +212,40 @@ export function resolveSetForSale(
   }
 }
 
+/**
+ * Sprint 68 decision 3 (playtest item 21): turn an offer down explicitly.
+ *
+ * Drops just that car's pending offer and leaves `carsForSale` alone, so the
+ * car stays on the market and tomorrow's `drawDailyOffers` can bring a better
+ * one. The removal itself is the same one `resolveSetForSale`'s un-list branch
+ * already performs, scoped to the offer instead of the listing.
+ *
+ * Deliberately no reputation cost: turning down a lowball is a negotiation,
+ * not a slight. A no-op (unknown car, no live offer) returns the state
+ * untouched with an empty log, like every other resolver here.
+ */
+export function resolveRejectOffer(state: GameState, carInstanceId: string): SetForSaleResult {
+  const offer = state.pendingOffers.find((o) => o.carInstanceId === carInstanceId)
+  if (!offer) return { state, log: [] }
+  const car = state.ownedCars.find((c) => c.id === carInstanceId)
+  if (!car) return { state, log: [] }
+  return {
+    state: {
+      ...state,
+      pendingOffers: state.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+    },
+    log: [
+      {
+        type: 'offer-rejected',
+        carInstanceId,
+        modelId: car.modelId,
+        buyerId: offer.buyerId,
+        priceYen: offer.priceYen,
+      },
+    ],
+  }
+}
+
 export interface DailyOfferDrawResult {
   state: GameState
   log: DayLogEntry[]

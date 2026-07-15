@@ -1104,6 +1104,109 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     ])
   })
 
+  /**
+   * Sprint 68 decision 1 (playtest item 17). The bug: this branch tagged
+   * EVERY part pulled off a customer's car, deciding ownership by where the
+   * car was parked rather than by whose part it was. So a part the player
+   * bought and fitted became the customer's the instant they pulled it back
+   * off - and close-out, which drops everything carrying the job's id, then
+   * confiscated it. Sprint 61's `baselineInstalledPartIds` already recorded
+   * exactly which instance was the customer's; it just was not consulted here.
+   */
+  describe('whose part is it (Sprint 68 decision 1, item 17)', () => {
+    const CUSTOMERS_OWN = 'pi-customers-original'
+    const PLAYER_BOUGHT = 'pi-player-bought'
+
+    /** A job that DOES record a baseline (Sprint 61 onward), with the
+     * customer's own damper recorded as what arrived in the slot. */
+    function jobWithBaseline(installedId: string): { job: ServiceJob; customerCar: CarInstance } {
+      const customerCar: CarInstance = {
+        ...car,
+        parts: {
+          ...car.parts,
+          dampers: {
+            installed: {
+              id: installedId,
+              partId: 'tanuki-street-coilovers',
+              band: 'worn',
+              genuinePeriod: false,
+            },
+          },
+        },
+      }
+      return {
+        customerCar,
+        job: {
+          id: 'svc-baseline',
+          typeId: 'small-bodywork-touchup',
+          customerName: 'Test Customer',
+          description: 'Fit better dampers.',
+          tasks: [{ action: 'install', carPartId: 'dampers', minGrade: 'street', minToolTier: 1 }],
+          car: customerCar,
+          payoutYen: 10_000,
+          baseReputation: 5,
+          deadlineDays: 5,
+          expiresOnDay: 30,
+          arrivesOnDay: null,
+          dueOnDay: 8,
+          baselineInstalledPartIds: { dampers: CUSTOMERS_OWN },
+        },
+      }
+    }
+
+    it('a part the PLAYER bought and fitted comes back untagged - it stays theirs', () => {
+      const { job, customerCar } = jobWithBaseline(PLAYER_BOUGHT)
+      const state = baseState({
+        ownedCars: [],
+        activeServiceJobs: [job],
+        partInventory: [],
+      })
+      const result = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)
+      expect(result.state.partInventory).toHaveLength(1)
+      expect(result.state.partInventory[0]!.id).toBe(PLAYER_BOUGHT)
+      expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
+    })
+
+    it("the CUSTOMER's original still tags, so it still reconciles out at close-out", () => {
+      const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
+      const state = baseState({
+        ownedCars: [],
+        activeServiceJobs: [job],
+        partInventory: [],
+      })
+      const result = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)
+      expect(result.state.partInventory[0]!.customerJobId).toBe(job.id)
+    })
+
+    it("a slot the job has no baseline for was never the customer's, so anything in it is the player's", () => {
+      // The job records a baseline for `dampers` only. `panels` was never an
+      // install-task slot, so whatever sits there now is not something we ever
+      // recorded the customer arriving with.
+      const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
+      const state = baseState({
+        ownedCars: [],
+        activeServiceJobs: [job],
+        partInventory: [],
+      })
+      const result = resolveRemovePart(state, customerCar.id, 'panels', CONTEXT)
+      expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
+    })
+
+    it('a legacy job with NO baseline keeps the old tag-everything behaviour, so an in-flight save never changes meaning mid-job', () => {
+      // `customerServiceJob` above is exactly this shape
+      // (`baselineInstalledPartIds: {}`) and its Sprint 35 test still passes
+      // unchanged - asserted here directly so the intent is explicit rather
+      // than incidental.
+      const state = baseState({
+        ownedCars: [],
+        activeServiceJobs: [customerServiceJob],
+        partInventory: [],
+      })
+      const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+      expect(result.state.partInventory[0]!.customerJobId).toBe(customerServiceJob.id)
+    })
+  })
+
   it('Sprint 35: removing the same part from an OWNED car keeps it UNtagged (player-owned)', () => {
     const originalInstance = car.parts.panels.installed!
     const state = baseState({ partInventory: [] }) // ownedCars: [car] by default

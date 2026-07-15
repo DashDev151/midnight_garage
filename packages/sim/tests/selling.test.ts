@@ -18,6 +18,7 @@ import {
   bestFitBuyer,
   drawDailyOffers,
   offerChanceFor,
+  resolveRejectOffer,
   resolveSellViaWalkIn,
   resolveSetForSale,
   sellViaWalkIn,
@@ -202,6 +203,70 @@ function stateWithOffer(
     ...overrides,
   })
 }
+
+describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
+  const BUYER = BUYERS[0]!.id
+
+  it('drops the offer but LEAVES the car listed, so tomorrow can bring a better one', () => {
+    const state = stateWithOffer(car, 500_000, BUYER)
+    const result = resolveRejectOffer(state, car.id)
+
+    expect(result.state.pendingOffers).toEqual([])
+    // The whole point: rejecting one lowball is not the same as pulling the
+    // car off the market.
+    expect(result.state.carsForSale).toEqual([{ carInstanceId: car.id, sinceDay: 1 }])
+  })
+
+  it('logs what was turned down, and costs no reputation', () => {
+    const state = stateWithOffer(car, 500_000, BUYER)
+    const result = resolveRejectOffer(state, car.id)
+
+    expect(result.log).toEqual([
+      {
+        type: 'offer-rejected',
+        carInstanceId: car.id,
+        modelId: car.modelId,
+        buyerId: BUYER,
+        priceYen: 500_000,
+      },
+    ])
+    // Turning down a lowball is a negotiation, not a slight.
+    expect(result.state.reputationPoints).toBe(state.reputationPoints)
+  })
+
+  it('takes no cash and keeps the car', () => {
+    const state = stateWithOffer(car, 500_000, BUYER)
+    const result = resolveRejectOffer(state, car.id)
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.ownedCars.map((c) => c.id)).toContain(car.id)
+  })
+
+  it('is a no-op with no live offer, or for a car not owned', () => {
+    const listedNoOffer = stateWithCar(car, {
+      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+    })
+    expect(resolveRejectOffer(listedNoOffer, car.id).state).toBe(listedNoOffer)
+    expect(resolveRejectOffer(listedNoOffer, car.id).log).toEqual([])
+
+    const withOffer = stateWithOffer(car, 500_000, BUYER)
+    expect(resolveRejectOffer(withOffer, 'ghost-car').state).toBe(withOffer)
+  })
+
+  it("only drops the named car's offer, never another car's", () => {
+    const other: CarInstance = { ...car, id: 'car-other' }
+    const state = stateWithOffer(car, 500_000, BUYER, {
+      ownedCars: [car, other],
+      pendingOffers: [
+        { carInstanceId: car.id, buyerId: BUYER, priceYen: 500_000 },
+        { carInstanceId: other.id, buyerId: BUYER, priceYen: 400_000 },
+      ],
+    })
+    const result = resolveRejectOffer(state, car.id)
+    expect(result.state.pendingOffers).toEqual([
+      { carInstanceId: other.id, buyerId: BUYER, priceYen: 400_000 },
+    ])
+  })
+})
 
 describe('resolveSetForSale (Sprint 31)', () => {
   it('toggles a car for sale on and off', () => {

@@ -196,6 +196,84 @@ describe('market: selling', () => {
     expect(offer!.copy).toContain('Today only')
   })
 
+  /** Sprint 68 decision 3 (playtest item 21). */
+  it('rejecting an offer drops it but leaves the car listed, so tomorrow can bring a better one', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    const cashBefore = game.cashYen
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+    }
+
+    expect(game.rejectOffer(carId)).toBe(true)
+
+    expect(game.offerFor(carId)).toBeUndefined()
+    expect(game.isForSale(carId)).toBe(true) // still on the market
+    expect(game.ownedCarCount).toBe(1)
+    expect(game.cashYen).toBe(cashBefore)
+    // No modal: a rejection is not a sale.
+    expect(game.lastSaleResult).toBeNull()
+  })
+
+  it('rejecting with no live offer is a no-op', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    expect(game.rejectOffer(carId)).toBe(false)
+  })
+
+  /** Sprint 68 decision 5 (playtest item 23): the receipt. */
+  it('accepting an offer produces a real sale receipt off the Sprint 42 ledger', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    const displayName = game.carDetail(carId)!.displayName
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      carLedgers: { [carId]: { purchaseYen: 300_000, repairYen: 40_000, partsYen: 20_000 } },
+    }
+
+    expect(game.acceptOffer(carId)).toBe(true)
+
+    const receipt = game.lastSaleResult
+    expect(receipt).not.toBeNull()
+    expect(receipt!.displayName).toBe(displayName)
+    expect(receipt!.priceYen).toBe(500_000)
+    expect(receipt!.purchaseYen).toBe(300_000)
+    expect(receipt!.repairYen).toBe(40_000)
+    expect(receipt!.partsYen).toBe(20_000)
+    expect(receipt!.totalSpentYen).toBe(360_000)
+    expect(receipt!.profitYen).toBe(140_000) // 500,000 - 360,000
+
+    game.dismissSaleResult()
+    expect(game.lastSaleResult).toBeNull()
+  })
+
+  it('reports an unknown purchase price as no profit at all, rather than inventing one', () => {
+    // A dev-granted car has no purchaseYen on its ledger, so `car-sold` omits
+    // profitYen. The receipt passes that gap through as null - the modal shows
+    // a dash. Fabricating a number here would be the lie the sim already
+    // refuses to tell.
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      carLedgers: {},
+    }
+
+    expect(game.acceptOffer(carId)).toBe(true)
+    expect(game.lastSaleResult!.profitYen).toBeNull()
+    expect(game.lastSaleResult!.priceYen).toBe(500_000)
+  })
+
   it('accepting a pending offer removes the car and adds cash through the walk-in resolution path', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)

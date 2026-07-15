@@ -125,4 +125,65 @@ bookkeeping.
 
 ## Exit
 
-Not started.
+Implemented and verified. Full gate green: **1154 tests** (up from 1134), coverage
+91.42/81.63/92.81/95.01, typecheck/lint/format/build clean. No balance harness, and the sprint's
+own check holds: **no golden hash moved**, which is the expected result rather than a lucky one -
+the provenance fix only changes a path bots never walk (no bot has ever mis-fitted a part onto a
+customer's car).
+
+**No save-schema change, confirmed rather than assumed** (task 4). `offer-rejected` is a
+`DayLogEntry`, and `dayLog` is a store ref that `saveCodec.ts` never touches - grepped, not
+guessed. `ShopCarView.hasOffer` is derived from `pendingOffers` at read time and persists nothing.
+`SAVE_VERSION` stays at 30 and `packages/game/src/save/` is untouched in the diff.
+
+### Item 17: the bug, fixed at its one line
+
+`resolveRemovePart` decided the `customerJobId` tag by where the car was PARKED
+(`const taggedPart = { ...installed, customerJobId: serviceJob.id }`, unconditional), so a part
+the player bought and fitted became the customer's property the instant they pulled it back off -
+and `resolveServiceJob`'s close-out, which drops every inventory entry carrying the job's id, then
+**confiscated it**. The player was robbed of a part they had paid for, for changing their mind.
+
+Sprint 61's `baselineInstalledPartIds` was already the exact missing signal and needed no new
+state: it records the `PartInstance.id` in each install-task slot at generation, and was only ever
+read by `isServiceTaskDone`. `isCustomersOwnPart` now asks it the same question one slot over.
+A legacy job with an empty baseline (pre-Sprint-61 save) keeps the old tag-everything behaviour -
+an empty baseline means "we cannot know whose this is", and the conservative read preserves the
+meaning the save was written under. That is asserted directly rather than left incidental, and the
+existing Sprint 35 test passes unchanged because its fixture is exactly that shape.
+
+Proved **end to end**, not as two resolvers checked apart: buy a part, fit it to the customer's
+car, pull it off, hand the job back, and the part is still in inventory with its `pricePaidYen`
+intact.
+
+### Found while working
+
+- **The type system caught a real gap I would otherwise have shipped.** Adding `offer-rejected` to
+  `DayLogEntry` broke `dayLogFormat.ts`'s exhaustive switch ("Function lacks ending return
+  statement"), which is the day report telling me it had no idea how to render the new entry.
+  Now: "Turned down Y500,000 for the Civic". Sprint 64's classifier routes it to notable through
+  its existing `default` branch, which is the right bucket.
+- **A vacuous test of my own, caught and fixed.** The "warns about a finished job" case had an
+  `if (!workDone) return` guard. I measured it: the rolled job is `workDone=false`, so the guard
+  always fired and the test asserted **nothing**. It now forces the state deterministically (the
+  task's target band set to the band the part already has, so `isServiceTaskDone` is satisfied
+  through the real rule, not a stubbed flag) and asserts `finishedJobsAwaitingHandback` really
+  contains the job before touching the UI. Same class of miss as Sprint 67's `.part-row` selector;
+  worth naming twice.
+- **`resolveRejectOffer` took a `SimContext` it never used.** Dropped rather than kept for API
+  symmetry - an unused parameter is dead surface, and lint said so.
+
+### Decisions as designed
+
+Reject costs no reputation (turning down a lowball is a negotiation, not a slight) and leaves
+`carsForSale` alone, so the car stays up for tomorrow's draw. The End Day warnings **stack into one
+panel** and keep every Sprint 51 hook name (`end-day-cart-warning`/`-cancel`/`-confirm`), so
+App.vue's Escape handler needed no change; all four pre-existing tests pass untouched. The sale
+receipt reports **null profit as a dash** when the purchase price was never known, never a
+fabricated number - the same honesty `car-sold`'s optional `profitYen` already encodes, now
+asserted.
+
+### Not done
+
+I did not start the dev server to see the receipt, the badge, or the stacked warnings in a browser
+(long-running processes are outside what I run myself). `pnpm dev`, then sell a car for the modal.

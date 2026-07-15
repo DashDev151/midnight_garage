@@ -9,6 +9,7 @@ const car: ShopCarView = {
   displayName: 'Test Civic',
   isCustomerCar: false,
   arrivingTomorrow: false,
+  hasOffer: false,
 }
 
 function baseProps() {
@@ -112,5 +113,25 @@ describe('ShopSlot (Sprint 24 fix 5)', () => {
     expect(
       wrapper.find(`[data-test="slot-${arriving.carId}"]`).attributes('disabled'),
     ).toBeDefined()
+  })
+
+  /** Sprint 68 decision 4 (playtest item 22): money waiting on a car should be
+   * visible from the garage, without opening it. */
+  it('badges a car that has a live offer today', () => {
+    const withOffer: ShopCarView = { ...car, hasOffer: true }
+    const wrapper = mount(ShopSlot, {
+      props: { ...baseProps(), car: withOffer },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    expect(wrapper.find(`[data-test="slot-offer-badge-${car.carId}"]`).exists()).toBe(true)
+    expect(wrapper.text()).toContain('offer today')
+  })
+
+  it('shows no offer badge when there is nothing to answer', () => {
+    const wrapper = mount(ShopSlot, {
+      props: baseProps(),
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    expect(wrapper.find(`[data-test="slot-offer-badge-${car.carId}"]`).exists()).toBe(false)
   })
 })

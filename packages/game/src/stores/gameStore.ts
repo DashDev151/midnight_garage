@@ -99,6 +99,7 @@ import {
   resolveJobLabor,
   resolvePlaceBid,
   resolveReconditionLabor,
+  resolveRejectOffer,
   resolveRemovePart,
   resolveScrapPart,
   resolveSellViaWalkIn,
@@ -300,6 +301,13 @@ export interface ShopCarView {
    * dimmed, undraggable, and un-movable until this clears.
    */
   arrivingTomorrow: boolean
+  /**
+   * Sprint 68 decision 4 (playtest item 22): a live walk-in offer is waiting
+   * on this car right now. Always false for a customer's car (never ours to
+   * sell). The badge is what tells a player their listed car has something to
+   * answer today, without opening it.
+   */
+  hasOffer: boolean
 }
 
 /** One tool line's ladder state, for the Upgrades screen (Sprint 36). */
@@ -509,6 +517,29 @@ export interface ServiceJobView {
 }
 
 /** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
+/**
+ * Sprint 68 decision 5 (playtest item 23): the receipt for a completed sale -
+ * mirrors `ServiceJobResultView`'s shape and its store-ref + global-mount
+ * lifecycle exactly, because a sale closing with nothing to show for it was
+ * the same gap `JobCompleteModal` already closed for a job.
+ *
+ * Everything here is a READ. The Sprint 42 car ledger already tracked purchase,
+ * repairs and parts; `car-sold` already carried the price and a real
+ * `profitYen`. None of it was ever rendered.
+ */
+export interface SaleResultView {
+  displayName: string
+  priceYen: number
+  purchaseYen: number
+  repairYen: number
+  partsYen: number
+  totalSpentYen: number
+  /** Null when the purchase price was never known (e.g. a dev-granted car).
+   * Never fabricated - the same honesty `car-sold`'s optional `profitYen`
+   * already encodes. */
+  profitYen: number | null
+}
+
 export interface ServiceJobResultView {
   outcome: 'paid' | 'failed'
   customerName: string
@@ -720,6 +751,9 @@ export const useGameStore = defineStore('game', () => {
   const reportVisible = ref(false)
   // Immediate feedback shown after a "Complete Job" resolution (paid or failed).
   const lastJobResult = ref<ServiceJobResultView | null>(null)
+  /** Sprint 68 (item 23): mirrors `lastJobResult` - set by `acceptOffer`,
+   * cleared on dismiss, rendered by a globally-mounted modal. */
+  const lastSaleResult = ref<SaleResultView | null>(null)
   /**
    * True once `hydrate()` has resolved AND actually loaded a real save
    * (Sprint 40) - `MenuScreen`'s own flag: Continue shows only when this is
@@ -782,6 +816,24 @@ export const useGameStore = defineStore('game', () => {
   /** Accepted service jobs in the shop, with each car's live work state. */
   const activeServiceJobViews = computed<ServiceJobView[]>(() =>
     gameState.value.activeServiceJobs.map(serviceJobViewFor),
+  )
+
+  /**
+   * Sprint 68 decision 2 (playtest item 11): jobs whose work is finished and
+   * whose car is sitting in the shop, unpaid, because nobody handed it back.
+   * A day ends and that payout just does not arrive.
+   */
+  const finishedJobsAwaitingHandback = computed<ServiceJobView[]>(() =>
+    activeServiceJobViews.value.filter((job) => job.workDone && !job.inTransit),
+  )
+
+  /** Sprint 68 decision 2 (item 11): cars carrying planned work that was never
+   * confirmed - it costs nothing and does nothing until Confirm, so ending the
+   * day on it is pure lost time. */
+  const carsWithUnconfirmedWork = computed<string[]>(() =>
+    Object.entries(gameState.value.stagedCarWork)
+      .filter(([, actions]) => actions.length > 0)
+      .map(([carId]) => carId),
   )
 
   /**
@@ -1694,6 +1746,7 @@ export const useGameStore = defineStore('game', () => {
         displayName: model ? resolveCarDisplayName(model) : owned.modelId,
         isCustomerCar: false,
         arrivingTomorrow: false,
+        hasOffer: gameState.value.pendingOffers.some((o) => o.carInstanceId === carId),
       }
     }
     const serviceCar = gameState.value.activeServiceJobs.find((sj) => sj.car.id === carId)
@@ -1704,6 +1757,7 @@ export const useGameStore = defineStore('game', () => {
         displayName: model ? resolveCarDisplayName(model) : serviceCar.car.modelId,
         isCustomerCar: true,
         arrivingTomorrow: isServiceJobInTransit(serviceCar, gameState.value.day),
+        hasOffer: false, // never ours to sell
       }
     }
     return undefined
@@ -2518,12 +2572,53 @@ export const useGameStore = defineStore('game', () => {
    * offer on this car right now.
    */
   function acceptOffer(carId: string): boolean {
+    // Read the ledger and the name BEFORE resolving - the sale removes the car
+    // and its ledger, so afterwards there is nothing left to build a receipt
+    // from.
+    const detail = carDetail(carId)
+    const ledger = carLedgerFor(gameState.value, carId)
     const result = resolveSellViaWalkIn(gameState.value, carId, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
+
+    // Sprint 68 decision 5 (item 23): the receipt. Everything here already
+    // existed and was simply never shown - the Sprint 42 ledger, and
+    // `car-sold`'s own price/profit.
+    const sold = result.log.find((e) => e.type === 'car-sold')
+    if (sold?.type === 'car-sold' && detail) {
+      const purchaseYen = ledger?.purchaseYen ?? 0
+      const repairYen = ledger?.repairYen ?? 0
+      const partsYen = ledger?.partsYen ?? 0
+      lastSaleResult.value = {
+        displayName: detail.displayName,
+        priceYen: sold.priceYen,
+        purchaseYen,
+        repairYen,
+        partsYen,
+        totalSpentYen: purchaseYen + repairYen + partsYen,
+        // `profitYen` is absent exactly when the purchase price was unknown.
+        // Pass the gap through rather than inventing a number.
+        profitYen: sold.profitYen ?? null,
+      }
+    }
     logSessionEvent('acceptOffer', { carId })
     return true
+  }
+
+  /** Sprint 68 decision 3 (item 21): turn today's offer down. The car stays
+   * listed, so tomorrow's draw can bring a better one. */
+  function rejectOffer(carId: string): boolean {
+    const result = resolveRejectOffer(gameState.value, carId)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('rejectOffer', { carId })
+    return true
+  }
+
+  function dismissSaleResult(): void {
+    lastSaleResult.value = null
   }
 
   /**
@@ -2818,11 +2913,16 @@ export const useGameStore = defineStore('game', () => {
     checkoutCart,
     pendingPartOrders,
     acceptOffer,
+    rejectOffer,
     setForSale,
     acceptServiceJob,
     completeServiceJob,
     lastJobResult,
     dismissJobResult,
+    lastSaleResult,
+    dismissSaleResult,
+    finishedJobsAwaitingHandback,
+    carsWithUnconfirmedWork,
     endDay,
     lastDayReport,
     reportVisible,

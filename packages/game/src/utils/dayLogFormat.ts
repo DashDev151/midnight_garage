@@ -62,6 +62,8 @@ export function describeLogEntry(
         resolveModelName(entry.modelId),
         entry.priceYen,
       )
+    case 'offer-rejected':
+      return `Turned down ${formatYen(entry.priceYen)} for the ${resolveModelName(entry.modelId)}`
     case 'car-sold': {
       // Sprint 42: profit reads before the reputation clause, once, so it
       // shows regardless of which quality branch (or none) fires below.

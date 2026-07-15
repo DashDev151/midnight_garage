@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { pluralise } from '../utils/dayLogFormat'
 
 /**
  * The shared "End Day" control (Sprint 24 fix 4) - five screen templates
@@ -15,8 +16,39 @@ withDefaults(defineProps<{ showCash?: boolean }>(), { showCash: false })
 const game = useGameStore()
 const confirming = ref(false)
 
+/**
+ * Sprint 68 decision 2 (playtest item 11): everything you're about to leave
+ * undone, as one stacked list rather than a modal per condition.
+ *
+ * All three WARN, never block - the Sprint 51/64 rule. A player is allowed to
+ * end the day with a full cart and a finished job on the ramp; they just
+ * shouldn't do it by accident, which is what happened when the day ended
+ * silently.
+ */
+const warnings = computed<string[]>(() => {
+  const list: string[] = []
+
+  const cartCount = game.gameState.cartPartIds.length
+  if (cartCount > 0) {
+    list.push(`${pluralise(cartCount, 'part')} in your cart hasn't been ordered.`)
+  }
+
+  for (const job of game.finishedJobsAwaitingHandback) {
+    list.push(`The ${job.customerName} job is finished - hand the car back before you close up?`)
+  }
+
+  const unconfirmed = game.carsWithUnconfirmedWork.length
+  if (unconfirmed > 0) {
+    list.push(
+      `You've planned work on ${pluralise(unconfirmed, 'car')} but haven't confirmed it - it won't start.`,
+    )
+  }
+
+  return list
+})
+
 function onClick(): void {
-  if (game.gameState.cartPartIds.length > 0) {
+  if (warnings.value.length > 0) {
     confirming.value = true
     return
   }
@@ -45,13 +77,15 @@ defineExpose({ confirming, cancel })
     End Day<template v-if="showCash"> ({{ formatYen(game.cashYen) }})</template>
   </button>
 
+  <!-- `end-day-cart-warning` and its cancel/confirm hooks keep their Sprint
+       51 names: the same modal, now carrying every warning rather than only
+       the cart's, and App.vue's Escape handler still closes it the same way. -->
   <div v-if="confirming" class="overlay" data-test="end-day-cart-warning">
     <div class="modal">
-      <h3>Items still in your cart</h3>
-      <p class="flavor">
-        {{ game.gameState.cartPartIds.length }} part(s) in the cart haven't been ordered - end the
-        day anyway?
-      </p>
+      <h3>Before you close up</h3>
+      <ul class="warnings" data-test="end-day-warnings">
+        <li v-for="(warning, i) in warnings" :key="i">{{ warning }}</li>
+      </ul>
       <div class="actions">
         <button data-test="end-day-cart-cancel" @click="cancel">Cancel</button>
         <button class="primary" data-test="end-day-cart-confirm" @click="confirmEndDay">
@@ -88,9 +122,18 @@ h3 {
   margin-top: 0;
 }
 
-.flavor {
-  color: var(--mg-text-dim);
+.warnings {
+  list-style: none;
   margin: 0 0 var(--mg-space-4);
+  padding: 0;
+  display: grid;
+  gap: var(--mg-space-2);
+  color: var(--mg-text-dim);
+}
+
+.warnings li::before {
+  content: '! ';
+  color: var(--mg-neon-violet);
 }
 
 .actions {
