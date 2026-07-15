@@ -13,7 +13,7 @@ import type {
   Technique,
   ToolTiers,
 } from '@midnight-garage/content'
-import { ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content'
+import { ALL_CAR_PART_IDS, ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content'
 import { generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
@@ -611,14 +611,21 @@ export function generateDailyServiceJobOffers(
     // force every task genuinely outstanding before pricing the job off it,
     // so the payout (and the job itself) never prices in vacuous "work".
     const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng)
-    // Sprint 61: snapshot each install-task slot's original part instance id
-    // (the customer's arrived part) - the job is done only once a DIFFERENT
-    // part is fitted, so re-fitting the customer's own pulled part never
-    // satisfies it.
+    // Sprint 61: snapshot the original part instance id in each slot (the
+    // parts the customer's car arrived with). An install task is done only
+    // once a DIFFERENT part is fitted, so re-fitting the customer's own pulled
+    // part never satisfies it.
+    //
+    // Sprint 68 fix: snapshot EVERY slot, not just install-task slots. This
+    // record is also what `resolveRemovePart` uses to decide whose a pulled
+    // part is, and an install-task-only snapshot could not answer that for any
+    // other slot - so a player could pull the customer's engine off a job that
+    // happened to have an install task, and keep it. The map is now total over
+    // the car, so "is this the part the customer arrived with" is always
+    // decidable rather than inferred from an absence.
     const baselineInstalledPartIds: Record<string, string | null> = {}
-    for (const task of template.tasks) {
-      if (task.action !== 'install') continue
-      baselineInstalledPartIds[task.carPartId] = car.parts[task.carPartId].installed?.id ?? null
+    for (const partId of ALL_CAR_PART_IDS) {
+      baselineInstalledPartIds[partId] = car.parts[partId].installed?.id ?? null
     }
     const inLane =
       singleTaskGroup(template.tasks, context) === topGroup &&

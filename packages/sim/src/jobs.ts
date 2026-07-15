@@ -374,32 +374,22 @@ export function resolveRemovePart(
  * Whether `installed` is the part the CUSTOMER arrived with, rather than one
  * the player bought and fitted (Sprint 68 decision 1, playtest item 17).
  *
- * No new state: Sprint 61's `baselineInstalledPartIds` already records the
- * exact `PartInstance.id` sitting in each install-task slot at generation time,
- * precisely so an install task can tell "a different qualifying part is now
- * fitted" from "the original is still there". It was only ever read by
- * `isServiceTaskDone`; this is the same record answering the same question one
- * slot over.
+ * `baselineInstalledPartIds` (Sprint 61, made total over the car in Sprint 68)
+ * records the exact `PartInstance.id` in every slot at generation, so this is
+ * a direct identity check: the customer's part is the one that was there when
+ * the car arrived, and nothing else is.
  *
- * A pre-Sprint-61 save has no baseline for its in-flight jobs. Those keep the
- * old tag-everything behaviour rather than silently becoming un-tagged
- * mid-job: an empty baseline means "we cannot know whose this is", and
- * assuming it is the customer's is the conservative read that preserves the
- * meaning the save was written under.
+ * The `?? null` matters. A slot the car arrived with EMPTY has a recorded
+ * baseline of `null`, which no real `PartInstance.id` can equal - so a part the
+ * player fits into a genuinely empty slot is theirs, decided by the record
+ * rather than by the absence of one.
  */
 function isCustomersOwnPart(
   job: ServiceJob,
   carPartId: CarPartId,
   installed: PartInstance,
 ): boolean {
-  const baseline = job.baselineInstalledPartIds
-  if (!baseline || Object.keys(baseline).length === 0) return true
-  const baselineId = baseline[carPartId]
-  // A slot with no recorded baseline was never an install task's slot, so the
-  // customer never had a part there that we know of - anything in it now is
-  // something the player fitted.
-  if (baselineId === undefined) return false
-  return installed.id === baselineId
+  return installed.id === job.baselineInstalledPartIds[carPartId]
 }
 
 /**

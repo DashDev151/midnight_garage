@@ -156,6 +156,33 @@ Proved **end to end**, not as two resolvers checked apart: buy a part, fit it to
 car, pull it off, hand the job back, and the part is still in inventory with its `pricePaidYen`
 intact.
 
+### Follow-up: the first pass traded one theft for its mirror image
+
+Found the same day, while the maintainer questioned an unrelated line ("how can a purchase price
+be unknown?") which surfaced directive 19 (no save backwards compatibility before launch), whose
+review then caught this.
+
+**`baselineInstalledPartIds` only recorded INSTALL-task slots** (`if (task.action !== 'install')
+continue`). My ownership check read "no baseline for this slot" as "the player must have fitted
+it". So on a job carrying any install task, the player could pull the customer's **engine** - a
+slot no task touches - and keep it. I fixed the game stealing from the player and shipped the
+player stealing from the customer, with a test asserting the wrong behaviour and confident wrong
+reasoning attached to it ("the customer never had a part there that we know of").
+
+The record was answering a question it was never built to answer. Fixed at the source rather than
+patched at the reader: the baseline is now **total over the car** - every slot snapshots what
+arrived, including `null` for a slot that arrived empty (which no real `PartInstance.id` can equal,
+so a part fitted into an empty slot is decided by the record, not by the absence of one).
+`isCustomersOwnPart` collapses to a single identity check.
+
+Directive 19 paid for itself immediately here: the legacy empty-baseline branch is **deleted**, not
+preserved, and its test with it. That branch was also quietly load-bearing for repair-only jobs
+(whose baseline is empty), which is exactly the "dead semantics alive in live logic" the directive
+names.
+
+No schema change: `z.record(z.string(), z.string().nullable())` already permits any keys, so no
+version bump. No golden hash moved either - the scripted career never accepts a service job.
+
 ### Found while working
 
 - **The type system caught a real gap I would otherwise have shipped.** Adding `offer-rejected` to

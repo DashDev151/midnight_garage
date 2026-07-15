@@ -1,4 +1,5 @@
 import {
+  ALL_CAR_PART_IDS,
   CARS,
   PARTS,
   PARTS_TAXONOMY,
@@ -1074,7 +1075,12 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expiresOnDay: 30,
     arrivesOnDay: null,
     dueOnDay: 8,
-    baselineInstalledPartIds: {},
+    // Sprint 68: the baseline is total over the car - every slot records what
+    // the customer arrived with, which is what makes "whose part is this"
+    // decidable for any slot rather than only an install task's.
+    baselineInstalledPartIds: Object.fromEntries(
+      ALL_CAR_PART_IDS.map((id) => [id, car.parts[id].installed?.id ?? null]),
+    ),
   }
 
   it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it, tagged with the job id', () => {
@@ -1149,7 +1155,17 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
           expiresOnDay: 30,
           arrivesOnDay: null,
           dueOnDay: 8,
-          baselineInstalledPartIds: { dampers: CUSTOMERS_OWN },
+          // Total over the car (Sprint 68 fix): every slot records what the
+          // customer ARRIVED with, so "whose part is this" is decidable for
+          // any slot, not just an install task's. `dampers` is always the
+          // customer's own here - `installedId` is what is fitted NOW, which
+          // is the whole point of the comparison.
+          baselineInstalledPartIds: {
+            ...Object.fromEntries(
+              ALL_CAR_PART_IDS.map((id) => [id, customerCar.parts[id].installed?.id ?? null]),
+            ),
+            dampers: CUSTOMERS_OWN,
+          },
         },
       }
     }
@@ -1178,10 +1194,14 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       expect(result.state.partInventory[0]!.customerJobId).toBe(job.id)
     })
 
-    it("a slot the job has no baseline for was never the customer's, so anything in it is the player's", () => {
-      // The job records a baseline for `dampers` only. `panels` was never an
-      // install-task slot, so whatever sits there now is not something we ever
-      // recorded the customer arriving with.
+    it('a slot with NO install task still belongs to the customer - they arrived with it', () => {
+      // The bug Sprint 68's first pass introduced, and directive 19's review
+      // caught: `baselineInstalledPartIds` recorded only INSTALL-task slots,
+      // and the ownership check read "no baseline for this slot" as "the
+      // player must have fitted it". So on a job with any install task, the
+      // player could pull the customer's PANELS - a slot no task touches - and
+      // keep them. One theft traded for its mirror image. The baseline is now
+      // total over the car, so every slot answers for itself.
       const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
       const state = baseState({
         ownedCars: [],
@@ -1189,21 +1209,39 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
         partInventory: [],
       })
       const result = resolveRemovePart(state, customerCar.id, 'panels', CONTEXT)
-      expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
+      expect(result.state.partInventory[0]!.customerJobId).toBe(job.id)
     })
 
-    it('a legacy job with NO baseline keeps the old tag-everything behaviour, so an in-flight save never changes meaning mid-job', () => {
-      // `customerServiceJob` above is exactly this shape
-      // (`baselineInstalledPartIds: {}`) and its Sprint 35 test still passes
-      // unchanged - asserted here directly so the intent is explicit rather
-      // than incidental.
+    it("a part fitted into a slot the car arrived with EMPTY is the player's", () => {
+      // The baseline records `null` for an empty slot, which no real
+      // PartInstance.id can equal - so this is decided by the record, not by
+      // the absence of one.
+      const { job, customerCar } = jobWithBaseline(CUSTOMERS_OWN)
+      const withPlayerPart: ServiceJob = {
+        ...job,
+        car: {
+          ...customerCar,
+          parts: {
+            ...customerCar.parts,
+            aero: {
+              installed: {
+                id: PLAYER_BOUGHT,
+                partId: 'shitbox-tanuki-street-coilovers',
+                band: 'mint',
+                genuinePeriod: false,
+              },
+            },
+          },
+        },
+        baselineInstalledPartIds: { ...job.baselineInstalledPartIds, aero: null },
+      }
       const state = baseState({
         ownedCars: [],
-        activeServiceJobs: [customerServiceJob],
+        activeServiceJobs: [withPlayerPart],
         partInventory: [],
       })
-      const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
-      expect(result.state.partInventory[0]!.customerJobId).toBe(customerServiceJob.id)
+      const result = resolveRemovePart(state, customerCar.id, 'aero', CONTEXT)
+      expect(result.state.partInventory[0]).not.toHaveProperty('customerJobId')
     })
   })
 
