@@ -51,6 +51,28 @@ watch(
   { immediate: true },
 )
 
+/**
+ * Sprint 71 decision 7: "Scrap the shell" is a two-step commit, mirroring
+ * `AuctionScreen.vue`'s `onBuyoutClick` - irreversible and worth a real
+ * second click, not a stray one. Reset on navigating to a different car so
+ * an armed confirm from a previous car can never carry over and fire here.
+ */
+const scrapConfirming = ref(false)
+watch(carId, () => {
+  scrapConfirming.value = false
+})
+
+function onScrapShellClick(): void {
+  const d = detail.value
+  if (!d) return
+  if (scrapConfirming.value) {
+    scrapConfirming.value = false
+    game.scrapShell(d.car.id)
+  } else {
+    scrapConfirming.value = true
+  }
+}
+
 const COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -447,6 +469,14 @@ function onRemoveClick(carPartId: CarPartId): void {
   game.removePart(d.car.id, carPartId)
 }
 
+/** Sprint 71: why "Take it off" would refuse this slot right now - a
+ * blocker still in the way, or a machine tier not yet owned - or null when
+ * nothing structural blocks it. */
+function removeBlockedReasonFor(carPartId: CarPartId): string | null {
+  const d = detail.value
+  return d ? game.removeBlockedReason(d.car.id, carPartId) : null
+}
+
 /** Confirm - locks in every staged action on this car at once (Sprint 18). */
 function onConfirm(): void {
   const d = detail.value
@@ -513,6 +543,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         {{ detail.car.color }}
       </p>
       <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
+      <div v-if="!inTransit && !detail.serviceJob" class="scrap-shell-row">
+        <button
+          type="button"
+          class="scrap-shell-btn"
+          :class="{ confirming: scrapConfirming }"
+          data-test="scrap-shell"
+          @click="onScrapShellClick"
+        >
+          {{
+            (scrapConfirming ? 'Confirm - scrap the shell (' : 'Scrap the shell (') +
+            formatYen(game.scrapShellValueYen(detail.car.id)) +
+            ')'
+          }}
+        </button>
+      </div>
     </header>
 
     <section v-if="inTransit" class="arriving-banner" data-test="arriving-banner">
@@ -858,15 +903,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                         {{ dropZones[row.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
                       </button>
 
-                      <button
-                        v-if="row.installedPartName"
-                        type="button"
-                        class="remove-btn"
-                        :data-test="'remove-part-' + row.partId"
-                        @click="onRemoveClick(row.partId)"
-                      >
-                        Remove
-                      </button>
+                      <template v-if="row.installedPartName && row.removable">
+                        <button
+                          type="button"
+                          class="remove-btn"
+                          :disabled="!!removeBlockedReasonFor(row.partId)"
+                          :title="
+                            removeBlockedReasonFor(row.partId) ?? 'Pull this part into inventory'
+                          "
+                          :data-test="'remove-part-' + row.partId"
+                          @click="onRemoveClick(row.partId)"
+                        >
+                          Take it off
+                        </button>
+                        <span
+                          v-if="removeBlockedReasonFor(row.partId)"
+                          class="blocked-reason"
+                          :data-test="'remove-blocked-' + row.partId"
+                          >{{ removeBlockedReasonFor(row.partId) }}</span
+                        >
+                      </template>
                     </template>
                   </div>
                 </li>
@@ -1152,6 +1208,26 @@ h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   margin: var(--mg-space-1) 0;
+}
+
+/* Sprint 71 decision 7: the shell-scrap control - a small, deliberately
+   understated ghost button (mirrors AuctionScreen.vue's `.buyout`), so it
+   never reads as the primary action on the screen. */
+.scrap-shell-row {
+  margin: var(--mg-space-2) 0 0;
+}
+
+.scrap-shell-btn {
+  background: transparent;
+  border-color: var(--mg-panel-edge);
+  color: var(--mg-text-dim);
+  padding: 2px var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+}
+
+.scrap-shell-btn.confirming {
+  border-color: var(--mg-neon-pink);
+  color: var(--mg-neon-pink);
 }
 
 .bay-status {
@@ -1576,6 +1652,14 @@ h4 {
 
 .remove-btn {
   color: var(--mg-neon-pink);
+}
+
+/* Sprint 71: "Take it off"'s own refusal caption - a blocker still on, or a
+   machine tier not yet owned. Same dim, factual tone as `.slot-empty`. */
+.blocked-reason {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
 }
 
 .staged-panel {

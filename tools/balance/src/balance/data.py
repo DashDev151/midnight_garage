@@ -56,3 +56,16 @@ def load_coherence_manifest(data_dir: Path) -> dict:
     sourced from the same `economy.json` the export actually ran with
     (Sprint 23's own "validate against the real run" precedent)."""
     return json.loads((data_dir / "coherence.manifest.json").read_text(encoding="utf-8"))
+
+
+def load_donor_coherence(data_dir: Path) -> pl.DataFrame:
+    """Sprint 71 decision 8 (the teardown game's donor economy): one row per
+    roster model, `computeRosterDonorCoherence`'s closed-form whole-vs-parted
+    facts - same one-shot-per-model shape as `load_coherence` above."""
+    return _load(data_dir, "donorCoherence.manifest.json", "donorCoherence.csv")
+
+
+def load_donor_coherence_manifest(data_dir: Path) -> dict:
+    """`donorBreakEvenBillRatio` lives here, sourced from the same
+    `economy.json` the export actually ran with."""
+    return json.loads((data_dir / "donorCoherence.manifest.json").read_text(encoding="utf-8"))

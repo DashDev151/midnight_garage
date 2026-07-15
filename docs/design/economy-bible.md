@@ -225,6 +225,7 @@ fails that test outright, rather than silently drifting).
 | `selling.*` including `offerSpread` | `economy.json` | Walk-in sale offers |
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
+| `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 
@@ -355,3 +356,10 @@ maintainer or CI run can catch a coherence drift before a playtest does.
 
   All eight decision-7 numbers are first-pass tuning bait. Full detail and the measured
   before/after in `docs/sprints/sprint66.md`'s Exit.
+- 2026-07-15: **`teardown.*` added as a new anchor group** (Sprint 71, the teardown game;
+  maintainer pre-approved the whole component-hierarchy arc the same day). Not a new law - the
+  four per-depth-class labour figures, the used-part sale haircut, and the donor break-even
+  measurement threshold are all ordinary content anchors, added to the audit table above. The
+  donor coherence probes (`coherence.ts`'s `computeDonorCoherence`) measure and disclose the
+  whole-vs-parted crossover per roster model rather than hard-gating an exact number. Full detail
+  in `docs/sprints/sprint71.md`'s Exit.

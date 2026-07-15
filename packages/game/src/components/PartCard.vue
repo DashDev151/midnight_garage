@@ -64,6 +64,11 @@ const draggable = useDraggable(() => props.instance.id)
 const isScrap = computed(() => props.instance.band === 'scrap')
 const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
 
+/** Sprint 71 decision 6 (the teardown game's donor economy): the used-part
+ * sale price for a non-scrap instance - "Sell" beside "Scrap it", the other
+ * way to cash out a part still worth more than scrap value. */
+const sellValueYen = computed(() => game.sellValueForPart(props.instance.id))
+
 /**
  * Sprint 35: a part pulled off a customer's car is tracked here but locked
  * from sale/scrap (only reconditioning and refitting are allowed) until the
@@ -106,6 +111,11 @@ function onCardClick(): void {
 function onScrapClick(): void {
   if (isCustomerOwned.value) return
   game.scrapPart(props.instance.id)
+}
+
+function onSellClick(): void {
+  if (isCustomerOwned.value) return
+  game.sellPart(props.instance.id)
 }
 
 function onReconditionClick(): void {
@@ -198,16 +208,29 @@ function onPointerUp(event: PointerEvent): void {
           Scrap it ({{ formatYen(scrapValueYen) }})
         </button>
       </template>
-      <button
-        v-else
-        type="button"
-        class="grab-handle"
-        :aria-pressed="draggable.isPicked.value"
-        :data-test="'pick-part-' + instance.id"
-        @click.stop="draggable.togglePick"
-      >
-        {{ draggable.isPicked.value ? 'cancel' : 'move…' }}
-      </button>
+      <template v-else>
+        <span v-if="isCustomerOwned" class="locked-reason" :data-test="'sell-locked-' + instance.id"
+          >customer's part</span
+        >
+        <button
+          v-else
+          type="button"
+          class="sell-handle"
+          :data-test="'sell-part-' + instance.id"
+          @click.stop="onSellClick"
+        >
+          Sell ({{ formatYen(sellValueYen) }})
+        </button>
+        <button
+          type="button"
+          class="grab-handle"
+          :aria-pressed="draggable.isPicked.value"
+          :data-test="'pick-part-' + instance.id"
+          @click.stop="draggable.togglePick"
+        >
+          {{ draggable.isPicked.value ? 'cancel' : 'move…' }}
+        </button>
+      </template>
     </div>
   </li>
 </template>
@@ -307,6 +330,7 @@ function onPointerUp(event: PointerEvent): void {
 
 .grab-handle,
 .scrap-handle,
+.sell-handle,
 .recondition-handle {
   flex: none;
   background: var(--mg-panel);
@@ -321,6 +345,14 @@ function onPointerUp(event: PointerEvent): void {
 .scrap-handle {
   color: var(--mg-yen);
   border-color: var(--mg-neon-pink);
+}
+
+/* Sprint 71 decision 6: the donor-economy sibling to "Scrap it" - same yen
+   colour (it earns cash too), cyan border to read as the "keeps value"
+   option rather than scrap's pink write-off tone. */
+.sell-handle {
+  color: var(--mg-yen);
+  border-color: var(--mg-neon-cyan);
 }
 
 .recondition-handle {

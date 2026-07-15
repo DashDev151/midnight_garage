@@ -3,6 +3,18 @@ import { CarPartIdSchema, ComponentIdSchema } from './tags'
 import { StatModifierSchema } from './stats'
 
 /**
+ * Sprint 71 (the teardown game): how deep a slot sits in the car - `surface`
+ * (the shell/trim, repaired in place, never bench-only), `bolt-on` (one
+ * removal step), `buried` (behind other parts, the deepest jobs). Drives
+ * which slots are bench-only (`repairJobGate`) and how much labour uninstall/
+ * install cost (`economy.json`'s `teardown.removeSlotsByClass`/
+ * `installSlotsByClass`, keyed by this same value).
+ */
+export const DepthClassSchema = z.enum(['surface', 'bolt-on', 'buried'])
+
+export type DepthClass = z.infer<typeof DepthClassSchema>
+
+/**
  * One entry in the 29-part taxonomy (Sprint 26) - the fixed structural
  * mapping from a real car part to its group, display name, and repair
  * economics. See `docs/sprints/sprint26.md`'s locked taxonomy table for the
@@ -36,6 +48,18 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * other part needs no data change.
    */
   repairable: z.boolean().default(true),
+  /** Sprint 71: `surface` slots (the shell/trim) stay repaired in place;
+   * `bolt-on`/`buried` slots are bench-only - see `DepthClassSchema`. */
+  depthClass: DepthClassSchema.default('bolt-on'),
+  /** Sprint 71: whether this slot can be pulled at all - false for the shell
+   * itself (`chassis`, `paint`, `underbody`), which is repaired in place and
+   * never leaves the car short of scrapping the whole thing. */
+  removable: z.boolean().default(true),
+  /** Sprint 71: every `CarPartId` that must be EMPTY before this slot can be
+   * uninstalled or installed (the symmetric blocker rule) - e.g. `clutch` is
+   * blocked by `gearbox`, so the gearbox must come off first. Defaults to
+   * none: most slots block nothing. */
+  blockedBy: z.array(CarPartIdSchema).default([]),
   statWeights: StatModifierSchema,
 })
 

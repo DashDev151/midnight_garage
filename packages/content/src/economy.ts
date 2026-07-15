@@ -1020,6 +1020,31 @@ export const EconomyConfigSchema = z.object({
   coherence: z.object({
     maxConsumablesShareOfBookValue: z.number().positive().max(1),
   }),
+  /**
+   * Sprint 71 (the teardown game): labour cost by slot depth for the
+   * symmetric uninstall/install verbs (`resolveRemovePart`/`installFitGate`,
+   * jobs.ts) - replaces the old flat `INSTALL_LABOR_SLOTS` constant
+   * everywhere. `usedPartSaleFraction` is `resolveSellPart`'s haircut off a
+   * part's own resolved price (parts.ts); `donorBreakEvenBillRatio` is the
+   * bill-to-clean ratio above which parting out a car's worst-case rolled
+   * condition can beat the sensible-repair route - a disclosed measurement
+   * threshold for the balance report, not a hard-gated invariant (decision 8,
+   * sprint71.md).
+   */
+  teardown: z.object({
+    removeSlotsByClass: z.object({
+      surface: z.number().int().nonnegative(),
+      'bolt-on': z.number().int().nonnegative(),
+      buried: z.number().int().nonnegative(),
+    }),
+    installSlotsByClass: z.object({
+      surface: z.number().int().nonnegative(),
+      'bolt-on': z.number().int().nonnegative(),
+      buried: z.number().int().nonnegative(),
+    }),
+    usedPartSaleFraction: z.number().positive().max(1),
+    donorBreakEvenBillRatio: z.number().positive().max(1),
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

@@ -98,13 +98,17 @@ describe('tool lines in the store (Sprint 36)', () => {
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
 
-    game.repair(car.id, 'wheels')
+    // Sprint 71: 'wheels' (brakePadsDiscs/brakeCalipersLines/rims/tyres) is
+    // entirely bolt-on/buried now - bench-only, refused on-car regardless of
+    // tool tier - so it can no longer prove an ABSENCE of a tier gate. 'body'
+    // stays fully on-car-repairable and exercises the exact same claim.
+    game.repair(car.id, 'body')
     // A single day's labor may be enough to finish the job outright (in
     // which case it's already gone from the in-progress list) - either an
     // open job or a completed repair proves no gate refused it.
     const detail = game.carDetail(car.id)
-    const jobOpened = detail?.jobs.some((j) => j.componentId === 'wheels') ?? false
-    const jobFinished = detail?.groupBands.wheels === 'mint'
+    const jobOpened = detail?.jobs.some((j) => j.componentId === 'body') ?? false
+    const jobFinished = detail?.groupBands.body === 'mint'
     expect(jobOpened || jobFinished).toBe(true)
   })
 })

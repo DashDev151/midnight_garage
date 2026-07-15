@@ -27,6 +27,15 @@ import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
  * instance's own catalog part to price it, and skips anything it can't
  * resolve - an empty parts catalog would silently zero out every part's
  * labor too, not just its cost.
+ *
+ * Sprint 71 (the teardown game) re-scopes this anchor: `planGroupRepair`
+ * excludes every `bolt-on`/`buried` slot from on-car repair now (bench-only),
+ * so this only measures the SURFACE portion of a restoration - panels/paint/
+ * underbody/aero/seats/dashGauges/chassis - not the whole car. The bulk of a
+ * real restoration now runs through the teardown loop (uninstall -> bench
+ * repair -> reinstall) instead, which this file does not measure; a future
+ * sprint's own pacing anchor is the right place for that once the loop is
+ * complete end to end.
  */
 const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
@@ -76,11 +85,13 @@ describe('restoration pacing anchor (Sprint 33 decision 7; tool tiers since Spri
       }),
     })
     const days = daysToRestore(car)
-    // The anchor: a multi-day restoration project, not a single click and not
-    // the old ~20-day war of attrition. Recalibrate this band deliberately if
-    // PLAYER_BASE_LABOR_SLOTS or the tool-tier ladder moves again.
-    expect(days).toBeGreaterThanOrEqual(3)
-    expect(days).toBeLessThanOrEqual(15)
+    // The anchor: a real, multi-day on-car job for the surface portion
+    // alone, not a single click - but deliberately smaller than the old
+    // whole-car band now that most groups moved to the bench (Sprint 71).
+    // Recalibrate this band deliberately if PLAYER_BASE_LABOR_SLOTS, the
+    // tool-tier ladder, or the surface/bolt-on/buried assignment moves again.
+    expect(days).toBeGreaterThanOrEqual(1)
+    expect(days).toBeLessThanOrEqual(8)
   })
 
   it('a genuinely rough (mostly poor) car still restores well under the old ~20-day pace', () => {

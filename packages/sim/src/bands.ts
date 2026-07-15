@@ -458,6 +458,13 @@ export interface GroupRepairPlan {
  * (never happens for real content) is skipped rather than crashing. A
  * non-repairable consumable is excluded from `partIds` exactly like scrap
  * (`canRepair` covers both), so it never enters the plan.
+ *
+ * Sprint 71 (the teardown game): a `bolt-on`/`buried` part is bench-only -
+ * excluded from on-car candidates here, exactly like scrap or a non-
+ * repairable consumable. Bench recondition (`jobs.ts`'s
+ * `resolveReconditionLabor`, via `planPartRepair` directly) is UNAFFECTED -
+ * this exclusion belongs to the on-car path alone, since the whole point of
+ * the teardown game is that a pulled part still repairs, just off the car.
  */
 export function planGroupRepair(
   car: CarInstance,
@@ -483,6 +490,7 @@ export function planGroupRepair(
     const installed = car.parts[partId].installed!
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
+    if (entry.depthClass !== 'surface') continue // bench-only - see doc comment above
     const catalogPart = partsById[installed.partId]
     if (!catalogPart) continue
     const plan = planPartRepair(
@@ -520,6 +528,11 @@ export function planGroupRepair(
  * a repair action could ACTUALLY move, never scrap or a replace-only
  * consumable. Null when nothing in the group is both repairable and below
  * mint - the signal the group repair control should not render at all.
+ *
+ * Sprint 71 (the teardown game): a `bolt-on`/`buried` part is bench-only,
+ * excluded here exactly like scrap or a non-repairable consumable - the same
+ * dead-action reasoning above, now for a slot `planGroupRepair` would refuse
+ * to plan on-car at all rather than one it would merely skip.
  */
 export function worstRepairableBandInGroup(
   car: CarInstance,
@@ -531,7 +544,7 @@ export function worstRepairableBandInGroup(
   for (const partId of presentPartIdsInGroup(car, groupId, partIdsByGroup)) {
     const installed = car.parts[partId].installed!
     const entry = partsTaxonomyById[partId]
-    if (!entry || !canRepair(installed.band, entry)) continue
+    if (!entry || entry.depthClass !== 'surface' || !canRepair(installed.band, entry)) continue
     if (bandIndex(installed.band) >= bandIndex('mint')) continue
     if (worst === null || bandIndex(installed.band) < bandIndex(worst)) worst = installed.band
   }

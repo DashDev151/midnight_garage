@@ -89,6 +89,8 @@ export function describeLogEntry(
       return `Delivery arrived: ${entry.partId}`
     case 'part-scrapped':
       return `Scrapped a part for ${formatYen(entry.priceYen)}`
+    case 'part-sold':
+      return `Sold a part for ${formatYen(entry.priceYen)}`
     case 'part-reconditioned':
       return `Reconditioned a part to ${entry.band}`
     case 'part-removed':
@@ -128,6 +130,13 @@ export function describeLogEntry(
       return `Classifieds: ${
         TOOL_LINES[entry.componentId].tiers[entry.tier - 1]!.displayName
       } listed, ${formatYen(entry.priceYen)}`
+    case 'shell-scrapped': {
+      const withParts =
+        entry.carPartIds.length > 0
+          ? `, along with ${pluralise(entry.carPartIds.length, 'part')}`
+          : ''
+      return `Scrapped the ${resolveModelName(entry.modelId)}'s shell for ${formatYen(entry.priceYen)}${withParts}`
+    }
   }
 }
 
@@ -150,7 +159,8 @@ export interface DayReportWin {
 }
 
 export interface DayReportMoney {
-  /** Money in: sales, service-job payouts, passive bay income, scrap. */
+  /** Money in: sales, service-job payouts, passive bay income, scrapped/sold
+   * parts, and a scrapped shell. */
   earnedYen: number
   /** Money out on acquiring cars: auction wins + buyouts. */
   onCarsYen: number
@@ -223,6 +233,8 @@ export function classifyDayReport(
         rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
       case 'part-scrapped':
+      case 'part-sold':
+      case 'shell-scrapped':
         money.earnedYen += entry.priceYen
         rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break

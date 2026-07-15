@@ -50,6 +50,7 @@ import {
   assignToParking,
   availableLaborSlots,
   advanceDay,
+  bandFactor,
   bandIndex,
   climbBand,
   bestFitBuyer,
@@ -72,6 +73,7 @@ import {
   generateAuctionCarInstance,
   groupCostToMintYen,
   installedPartsValueYen,
+  installLaborSlotsFor,
   hasParkingSpace,
   isCustomerOriginPart,
   isPartMissing,
@@ -82,6 +84,7 @@ import {
   isServiceWorkDone,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
+  removeBlockReason,
   nextBayMinReputationTier,
   nextBayPriceYen,
   nextRaiseYen,
@@ -104,6 +107,8 @@ import {
   resolveRejectOffer,
   resolveRemovePart,
   resolveScrapPart,
+  resolveScrapShell,
+  resolveSellPart,
   resolveSellViaWalkIn,
   resolveServiceJob,
   resolveSetForSale,
@@ -124,7 +129,6 @@ import {
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { INSTALL_LABOR_SLOTS } from '../constants'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 import { offerCopy } from '../utils/offerCopy'
@@ -190,6 +194,10 @@ export interface CarPartRowView {
    * per-part repair row and the bench recondition control both hide
    * themselves when this is false; only Replace ever touches the part. */
   repairable: boolean
+  /** Sprint 71 (the teardown game): false only for chassis/paint/underbody -
+   * the shell itself, repaired in place and never pulled. The car-detail
+   * screen's "Take it off" control only ever renders when this is true. */
+  removable: boolean
 }
 
 /** A car paired with its resolved model, display name, and derived stats. */
@@ -275,9 +283,10 @@ export interface PlannedEstimateView {
   plannedRepairCostYen: number
   /** Sprint 63: the total labour slots the planned work will require at
    * Confirm - the same accounting `confirmStagedWork` uses (a repair action's
-   * `planGroupRepair.laborSlotsRequired`, plus `INSTALL_LABOR_SLOTS` per
-   * planned install). The Confirm button shows THIS, not the remaining-today
-   * figure, so the player knows what a click actually costs. */
+   * `planGroupRepair.laborSlotsRequired`, plus - Sprint 71 - the target
+   * slot's own per-depth-class labour per planned install). The Confirm
+   * button shows THIS, not the remaining-today figure, so the player knows
+   * what a click actually costs. */
   plannedLaborSlots: number
   /** The restoration bill remaining AFTER the plan completes. */
   billYenAfter: number
@@ -1051,6 +1060,7 @@ export const useGameStore = defineStore('game', () => {
         missing,
         legitimatelyAbsent: !installed && !missing,
         repairable: isPartRepairable(partId),
+        removable: context.value.partsTaxonomyById[partId]?.removable ?? true,
       }
     })
   }
@@ -1290,8 +1300,9 @@ export const useGameStore = defineStore('game', () => {
   /** Sprint 63: the total labour slots the currently planned work will
    * require at Confirm - mirrors `confirmStagedWork`'s own accounting exactly
    * (a repair action's `planGroupRepair.laborSlotsRequired` when it has real
-   * work, plus `INSTALL_LABOR_SLOTS` per planned install), so the Confirm
-   * button shows what a click actually spends, not the day's remaining total. */
+   * work, plus - Sprint 71 - the target slot's own per-depth-class labour per
+   * planned install), so the Confirm button shows what a click actually
+   * spends, not the day's remaining total. */
   function plannedLaborSlots(carId: string): number {
     const car = findWorkableCar(carId)
     if (!car) return 0
@@ -1311,7 +1322,12 @@ export const useGameStore = defineStore('game', () => {
         )
         if (plan.partIds.length > 0) total += plan.laborSlotsRequired
       } else {
-        total += INSTALL_LABOR_SLOTS
+        const partInstance = gameState.value.partInventory.find(
+          (p) => p.id === action.partInstanceId,
+        )
+        const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
+        const targetPartId = action.carPartId ?? catalogPart?.carPartId
+        if (targetPartId) total += installLaborSlotsFor(targetPartId, context.value)
       }
     }
     return total
@@ -1691,6 +1707,30 @@ export const useGameStore = defineStore('game', () => {
     const requiredTier = context.value.economy.toolCeilings.naToTurboConversionEngineTier
     const tierName = context.value.toolLines.engine.tiers[requiredTier - 1]!.displayName
     return `Needs ${tierName}`
+  }
+
+  /**
+   * Sprint 71 (the teardown game): the human-readable reason `removePart`
+   * would refuse this slot right now, or `null` when nothing structural
+   * blocks it (it may still refuse for insufficient labor - the labor bar
+   * already shows that separately). Mirrors `installBlockedReason`'s own
+   * reuse shape, over the sim's `removeBlockReason` predicate.
+   */
+  function removeBlockedReason(carId: string, carPartId: CarPartId): string | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    const reason = removeBlockReason(car, carPartId, gameState.value, context.value)
+    if (!reason) return null
+    switch (reason.kind) {
+      case 'not-removable':
+        return "Can't come off the car."
+      case 'blocked-by':
+        return `Take off ${reason.blockedBy.map((id) => carPartLabel(id)).join(', ')} first`
+      case 'tool-tier':
+        return reason.group === 'engine'
+          ? 'You need the engine crane for this.'
+          : 'You need the drivetrain rig for this.'
+    }
   }
 
   // --- facilities (bays) -------------------------------------------------
@@ -2077,13 +2117,20 @@ export const useGameStore = defineStore('game', () => {
     partInstanceId: string,
     carPartId?: CarPartId,
   ): void {
+    // Sprint 71: labour sizes off the TARGET slot's own depth class - the
+    // picked part's own catalog address when `carPartId` (the per-part
+    // drawer) is unset, exactly how `applyJobToCar` resolves the real target
+    // slot at completion.
+    const partInstance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
+    const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
+    const targetPartId = carPartId ?? catalogPart?.carPartId
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'install-part',
       componentId,
       partInstanceId,
       carPartId,
-      laborSlotsRequired: INSTALL_LABOR_SLOTS,
+      laborSlotsRequired: targetPartId ? installLaborSlotsFor(targetPartId, context.value) : 1,
     }
     const result = resolveJobLabor(
       gameState.value,
@@ -2248,15 +2295,23 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Pull whatever occupies `carPartId`'s slot into inventory (Sprint 32
-   * decision 7) - free and instant, no staging step (there is no repair/
-   * install work to schedule; the part just comes out). Removing an
-   * aftermarket part reverts the slot to a fresh stock part (still filled);
-   * removing a stock part leaves the slot genuinely empty (missing). A
-   * no-op (returns false) if the slot is already empty or a job is
-   * currently open on this address.
+   * decision 7) - no staging step, resolves instantly against today's
+   * remaining labor. Removing an aftermarket part reverts the slot to a
+   * fresh stock part (still filled); removing a stock part leaves the slot
+   * genuinely empty (missing). A no-op (returns false) if the slot is
+   * already empty, a job is currently open on this address, the part isn't
+   * removable at all, a `blockedBy` slot is still occupied, the depth
+   * class's own machine tier isn't met, or today's labor doesn't cover it
+   * (Sprint 71 - see `removeBlockReason` for the UI's proactive "why not").
    */
   function removePart(carId: string, carPartId: CarPartId): boolean {
-    const result = resolveRemovePart(gameState.value, carId, carPartId, context.value)
+    const result = resolveRemovePart(
+      gameState.value,
+      carId,
+      carPartId,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -2294,6 +2349,42 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = result.state
     dayLog.value.push(...result.log)
     logSessionEvent('scrapPart', { partInstanceId })
+    return true
+  }
+
+  /**
+   * Sprint 71 decision 6 (the teardown game's donor economy): the yen a
+   * non-scrap `PartInstance` would fetch sold used right now - the "Sell"
+   * button's own price tag, mirroring `resolveSellPart`'s (sim/parts.ts)
+   * internal formula so the UI shows the real number before the player
+   * commits. Returns 0 for an unknown instance or a scrap one (that's
+   * `scrapValueForPart`'s route instead).
+   */
+  function sellValueForPart(partInstanceId: string): number {
+    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
+    if (!instance || instance.band === 'scrap') return 0
+    const part = context.value.partsById[instance.partId]
+    if (!part) return 0
+    return Math.round(
+      part.priceYen *
+        bandFactor(instance.band, context.value.economy) *
+        context.value.economy.teardown.usedPartSaleFraction,
+    )
+  }
+
+  /**
+   * Sell a used, non-scrap `PartInstance` at the donor-economy haircut
+   * (Sprint 71 decision 6) - instant, no labour, the counterpart to
+   * `scrapPart` for a part still worth more than scrap. Refused (returns
+   * false) for a customer-owned part while its job is active - same
+   * ownership lock `scrapPart` enforces.
+   */
+  function sellPart(partInstanceId: string): boolean {
+    const result = resolveSellPart(gameState.value, partInstanceId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('sellPart', { partInstanceId })
     return true
   }
 
@@ -2596,6 +2687,36 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /**
+   * Sprint 71 decision 7 (the teardown game): the yen scrapping this car's
+   * whole shell would pay right now - the "Scrap the shell" control's own
+   * price tag, mirroring `resolveScrapShell`'s (sim/selling.ts) formula so
+   * the two-step confirm shows the real number before the player commits.
+   * Returns 0 for an unknown car.
+   */
+  function scrapShellValueYen(carId: string): number {
+    const car = findWorkableCar(carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!model) return 0
+    return Math.round(model.bookValueYen * context.value.economy.bands.scrapValueFraction)
+  }
+
+  /**
+   * Scrap the whole car at once, shell and all (Sprint 71 decision 7) -
+   * removes the car and every part still on it, frees its bay/grace slot,
+   * and pays the flat scrap-value fraction of book value. Irreversible; the
+   * screen gates this behind a two-step confirm (mirrors `AuctionScreen.vue`'s
+   * `onBuyoutClick`).
+   */
+  function scrapShell(carId: string): boolean {
+    const result = resolveScrapShell(gameState.value, carId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('scrapShell', { carId })
+    return true
+  }
+
   // --- day advance ------------------------------------------------------
 
   /**
@@ -2832,6 +2953,7 @@ export const useGameStore = defineStore('game', () => {
     installablePartsFor,
     installablePartsForPart,
     installBlockedReason,
+    removeBlockedReason,
     serviceBaysView,
     parkingView,
     parkingCapacity,
@@ -2871,6 +2993,8 @@ export const useGameStore = defineStore('game', () => {
     buyPart,
     scrapPart,
     scrapValueForPart,
+    sellPart,
+    sellValueForPart,
     reconditionQuoteFor,
     nextReconditionStep,
     reconditionPart,
@@ -2884,6 +3008,8 @@ export const useGameStore = defineStore('game', () => {
     acceptOffer,
     rejectOffer,
     setForSale,
+    scrapShellValueYen,
+    scrapShell,
     acceptServiceJob,
     completeServiceJob,
     lastJobResult,

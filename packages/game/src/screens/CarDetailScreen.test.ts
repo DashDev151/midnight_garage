@@ -2,6 +2,7 @@ import {
   ALL_CAR_PART_IDS,
   CARS,
   PARTS,
+  PARTS_TAXONOMY,
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
@@ -88,7 +89,13 @@ function untaggedPartFor(carPartId: string) {
  * right now - the same worst-repairable-band-below-mint gate `nextGroupStep`
  * uses internally (Sprint 41/48: a non-repairable consumable, e.g. tyres,
  * never counts - only Replace ever touches it; `fine` DOES count now, since
- * fine -> mint is a valid one-rung climb same as any other). */
+ * fine -> mint is a valid one-rung climb same as any other).
+ *
+ * Sprint 71 (the teardown game): a `bolt-on`/`buried` part is bench-only -
+ * `planGroupRepair` (bands.ts) excludes it from on-car repair entirely, so
+ * this must too, or it would predict a "Repair to…" control that no longer
+ * renders (engine/drivetrain/suspension/wheels are now bench-only whole
+ * groups). */
 function needsRepair(
   game: ReturnType<typeof useGameStore>,
   carId: string,
@@ -97,7 +104,12 @@ function needsRepair(
   return game
     .partsInGroup(carId, componentId)
     .some(
-      (row) => row.band !== null && row.band !== 'mint' && row.band !== 'scrap' && row.repairable,
+      (row) =>
+        row.band !== null &&
+        row.band !== 'mint' &&
+        row.band !== 'scrap' &&
+        row.repairable &&
+        PARTS_TAXONOMY.find((e) => e.id === row.partId)?.depthClass === 'surface',
     )
 }
 
@@ -323,20 +335,22 @@ describe('CarDetailScreen', () => {
 
     it('each per-part click advances that part exactly one band', async () => {
       const game = useGameStore()
-      const id = grantCarNeedingRepair(game, 'suspension')
+      // Sprint 71: 'suspension' is entirely bolt-on now (bench-only), so its
+      // on-car repair stepper never renders - 'body' stays on-car-repairable.
+      const id = grantCarNeedingRepair(game, 'body')
       const row = game
-        .partsInGroup(id, 'suspension')
+        .partsInGroup(id, 'body')
         .find((r) => r.band !== null && r.band !== 'mint' && r.band !== 'scrap' && r.repairable)!
       const { wrapper } = await mountAt(id)
-      await expandGroup(wrapper, 'suspension')
+      await expandGroup(wrapper, 'body')
 
-      const step = game.nextRepairStep(id, 'suspension', row.partId)!
+      const step = game.nextRepairStep(id, 'body', row.partId)!
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
 
       expect(game.stagedActionsFor(id)).toEqual([
         {
           kind: 'repair',
-          componentId: 'suspension',
+          componentId: 'body',
           targetBand: step.targetBand,
           carPartId: row.partId,
         },
@@ -751,16 +765,19 @@ describe('CarDetailScreen', () => {
   describe('per-part drill-down (Sprint 28)', () => {
     it('a group with two non-mint parts lets both be repaired independently, without one displacing the other', async () => {
       const game = useGameStore()
-      const id = grantCarNeedingRepair(game, 'suspension')
+      // Sprint 71: 'suspension' is entirely bolt-on now (bench-only) - 'body'
+      // (chassis/paint/underbody/panels/aero) stays on-car-repairable and
+      // has enough real parts to roll two non-mint ones.
+      const id = grantCarNeedingRepair(game, 'body')
       const rows = game
-        .partsInGroup(id, 'suspension')
+        .partsInGroup(id, 'body')
         .filter((r) => r.band !== null && r.band !== 'mint' && r.band !== 'scrap')
       if (rows.length < 2) return // this particular roll only had one part to work with
 
       const { wrapper } = await mountAt(id)
-      await expandGroup(wrapper, 'suspension')
-      const step0 = game.nextRepairStep(id, 'suspension', rows[0]!.partId)!
-      const step1 = game.nextRepairStep(id, 'suspension', rows[1]!.partId)!
+      await expandGroup(wrapper, 'body')
+      const step0 = game.nextRepairStep(id, 'body', rows[0]!.partId)!
+      const step1 = game.nextRepairStep(id, 'body', rows[1]!.partId)!
       await wrapper.find(`[data-test="stage-repair-part-${rows[0]!.partId}"]`).trigger('click')
       await wrapper.find(`[data-test="stage-repair-part-${rows[1]!.partId}"]`).trigger('click')
 
@@ -769,13 +786,13 @@ describe('CarDetailScreen', () => {
         expect.arrayContaining([
           {
             kind: 'repair',
-            componentId: 'suspension',
+            componentId: 'body',
             targetBand: step0.targetBand,
             carPartId: rows[0]!.partId,
           },
           {
             kind: 'repair',
-            componentId: 'suspension',
+            componentId: 'body',
             targetBand: step1.targetBand,
             carPartId: rows[1]!.partId,
           },
@@ -785,21 +802,23 @@ describe('CarDetailScreen', () => {
 
     it('staging the group convenience displaces an existing per-part stage in the same group', async () => {
       const game = useGameStore()
-      const id = grantCarNeedingRepair(game, 'suspension')
+      // Sprint 71: 'suspension' is entirely bolt-on now (bench-only) - 'body'
+      // stays on-car-repairable.
+      const id = grantCarNeedingRepair(game, 'body')
       const row = game
-        .partsInGroup(id, 'suspension')
+        .partsInGroup(id, 'body')
         .find((r) => r.band !== null && r.band !== 'mint' && r.band !== 'scrap' && r.repairable)!
 
       const { wrapper } = await mountAt(id)
-      await expandGroup(wrapper, 'suspension')
+      await expandGroup(wrapper, 'body')
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
       expect(wrapper.text()).toContain('Planned work (1)')
 
-      const groupStep = game.nextRepairStep(id, 'suspension')!
-      await wrapper.find('[data-test="stage-repair-suspension"]').trigger('click')
+      const groupStep = game.nextRepairStep(id, 'body')!
+      await wrapper.find('[data-test="stage-repair-body"]').trigger('click')
       expect(wrapper.text()).toContain('Planned work (1)')
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'repair', componentId: 'suspension', targetBand: groupStep.targetBand },
+        { kind: 'repair', componentId: 'body', targetBand: groupStep.targetBand },
       ])
     })
 
@@ -848,6 +867,10 @@ describe('CarDetailScreen', () => {
       game.devSetToolTier('engine', 3)
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      // Sprint 71: forcedInduction is blockedBy 'intake' (the symmetric
+      // blocker rule) - the default-filled stock intake must come off first,
+      // or Confirm refuses the fit even though staging it looks fine.
+      game.removePart(id, 'intake')
       // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
       const turboKit = PARTS.find(
         (p) =>

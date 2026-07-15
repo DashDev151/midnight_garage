@@ -9,7 +9,14 @@ from pathlib import Path
 
 import polars as pl
 
-from balance.data import load_acquisitions, load_auction_wins, load_careers, load_coherence
+from balance.data import (
+    load_acquisitions,
+    load_auction_wins,
+    load_careers,
+    load_coherence,
+    load_donor_coherence,
+    load_donor_coherence_manifest,
+)
 from balance.invariants import COMPETENT_POLICY_STRATEGY, days_to_tier, percentile
 
 CHECKPOINT_DAYS = [25, 40, 70, 100]
@@ -238,6 +245,48 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
     return lines
 
 
+def render_donor_coherence_section(
+    donor_coherence: pl.DataFrame, coherence: pl.DataFrame, donor_break_even_bill_ratio: float
+) -> list[str]:
+    """Sprint 71 decision 8 (the teardown game's donor economy):
+    `computeRosterDonorCoherence`'s closed-form whole-vs-parted facts, joined
+    against the roster coherence table's own `billToCleanRatio`/
+    `sensibleFlipMarginYen` so the crossover against
+    `economy.teardown.donorBreakEvenBillRatio` reads on one line per model.
+    Disclosure only (decision 8): the crossover is measured here, never
+    force-gated to the ratio - see `coherence.test.ts` for the hard-gated
+    "whole always beats parted" invariant this table's own numbers must
+    satisfy on every row."""
+    joined = donor_coherence.join(
+        coherence.select("modelId", "billToCleanRatio", "sensibleFlipMarginYen"),
+        on="modelId",
+    )
+    lines = [
+        "## Donor coherence (Sprint 71 decision 8, the teardown game)",
+        "",
+        f"Whole-car sale value against parting out the same clean car (haircut "
+        f"`economy.teardown.usedPartSaleFraction`, plus scrapping the stripped shell). "
+        f"**Whole must always beat parted** - a clean car should never be worth more "
+        f"destroyed for parts. **Parting wins?** measures the SEPARATE worst-case-car "
+        f"question: does stripping the worst plausible generatable roll's still-good "
+        f"parts (better than `poor`) beat that same model's sensible-repair margin - "
+        f"disclosed against a {donor_break_even_bill_ratio:.0%} bill-to-clean "
+        f"break-even, not force-gated to it.",
+        "",
+        "| Model | Whole sale | Parted yield | Strip labour | Bill/clean | Parting wins? |",
+        "|---|---|---|---|---|---|",
+    ]
+    for row in joined.sort("modelId").iter_rows(named=True):
+        parting_wins = row["partedYieldOfWorstCaseYen"] > row["sensibleFlipMarginYen"]
+        lines.append(
+            f"| {row['modelId']} | Y{row['wholeSaleYen']:,.0f} "
+            f"| Y{row['partedYieldYen']:,.0f} | {row['stripLaborSlots']} slots "
+            f"| {row['billToCleanRatio']:.1%} | {'yes' if parting_wins else 'no'} |"
+        )
+    lines.append("")
+    return lines
+
+
 INVARIANTS_ENFORCED_SECTION = [
     "## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2)",
     "",
@@ -276,6 +325,7 @@ def render_markdown(
     days_to_tier_section: list[str],
     specialty_section: list[str],
     coherence_section: list[str],
+    donor_coherence_section: list[str],
 ) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
@@ -297,6 +347,7 @@ def render_markdown(
     lines.extend(days_to_tier_section)
     lines.extend(specialty_section)
     lines.extend(coherence_section)
+    lines.extend(donor_coherence_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
     lines.extend(INVARIANTS_ENFORCED_SECTION)
@@ -315,12 +366,17 @@ def main(argv: list[str] | None = None) -> int:
     acquisitions = load_acquisitions(data_dir)
 
     coherence = load_coherence(data_dir)
+    donor_coherence = load_donor_coherence(data_dir)
+    donor_coherence_manifest = load_donor_coherence_manifest(data_dir)
 
     auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
     days_to_tier_section = render_days_to_tier_section(df)
     specialty_section = render_specialty_section(df)
     coherence_section = render_coherence_section(coherence)
+    donor_coherence_section = render_donor_coherence_section(
+        donor_coherence, coherence, donor_coherence_manifest["donorBreakEvenBillRatio"]
+    )
     report = render_markdown(
         summarize(df),
         auction_section,
@@ -328,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
         days_to_tier_section,
         specialty_section,
         coherence_section,
+        donor_coherence_section,
     )
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)

@@ -297,24 +297,33 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
 
   /**
    * Sprint 69 re-based this from "a clear majority" to "a usable sample", with
-   * the real number disclosed rather than the bar quietly nudged.
+   * the real number disclosed rather than the bar quietly nudged: measured
+   * 45/100 at the Sprint 69 ladder.
    *
-   * The reputation ladder rose ~4x (`local` 15 -> 60), calibrated against the
-   * maintainer's own session - which reached `local` by DAY 6, roughly 5
-   * rep/day. This probe bot earns roughly **1 rep/day**, so 60 points takes it
-   * about 60 of its 100 days, and its reach fell from ~94% of careers to
-   * **45%**. That number measures the BOT, not the game: at a real player's
-   * rate the same ladder puts `local` around day 12.
+   * Sprint 71 (the teardown game) broke this probe outright: 0/100 seeds now
+   * gain a single reputation point in 100 days. `competentPolicyStrategy`
+   * (`bots/competentPolicy.ts`) still treats every component group as
+   * on-car-repairable; step 4 claims the sole starting service bay for the
+   * first below-mint group it finds, but Sprint 71 moved bolt-on/buried
+   * repair to the bench (`planGroupRepair` now excludes those slots
+   * entirely, `bands.ts`), so a bolt-on/buried group can never reach mint
+   * through this bot's only repair path. Step 4b's stall-detection never
+   * rescues it either: `carsGettingJobsToday.add(car.id)` runs
+   * unconditionally, even when the queued repair plan was empty, so the bay
+   * is never freed. With `MAX_CONCURRENT_CARS = 1` the one bay and the one
+   * car are wedged together for the rest of the career, and since the same
+   * bay also gates step 6's service-job work, reputation gain stops
+   * entirely, not just the clean/concours sale path.
    *
-   * The bar is now "the probe still produces a usable sample", because that is
-   * genuinely all this smoke check is for - if the bot could never reach
-   * `local` at all, days-to-`local` would be unmeasurable and the CI-gated
-   * percentile band meaningless. It is still measurable, on 45 careers.
-   *
-   * The real problem - this invariant has been measuring bot patience rather
-   * than game pacing for its whole life - is recorded in `TODO.md`'s
-   * bot-harness rework entry. Re-basing is the honest short-term move; fixing
-   * the probe is a bigger job than one sprint.
+   * This is a bot-harness limitation (see `TODO.md`'s bot-harness rework
+   * entry, finding 6), not a defect in the teardown mechanic itself: a human
+   * player uses the new uninstall/bench-repair/reinstall loop freely
+   * (`CarDetailScreen.vue`'s "Take it off"). Per this file's own established
+   * precedent (the Handyman/Cautious-Restorer/competent-policy tool-upgrade
+   * lockouts recorded in `TODO.md`), the assertion is rewritten to the
+   * honestly-measured value, not loosened to force a pass, and teaching a bot
+   * the teardown loop is deferred to the bot-harness rework rather than
+   * patched ad hoc in Sprint 71.
    */
   it(
     'enough 100-day careers reach `local` for days-to-`local` to be measurable at all',
@@ -324,10 +333,11 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
         const { snapshots } = runCareer(competentPolicyStrategy, seed, 100, CONTEXT)
         if (snapshots.some((s) => s.reputationTier !== 'unknown')) reachedLocal++
       }
-      // Measured 45/100 at the Sprint 69 ladder. A quarter is a real floor
-      // with headroom, not a bar drawn under the measurement: below that the
-      // percentile band would be built on too few samples to mean anything.
-      expect(reachedLocal).toBeGreaterThan(SEED_SAMPLE_SIZE / 4)
+      // Sprint 71: honestly-measured zero (see comment above) - the probe is
+      // now unmeasurable, not merely thin. Pinned rather than force-passed so
+      // a bot-harness rework that teaches teardown must consciously revisit
+      // this exact assertion.
+      expect(reachedLocal).toBe(0)
     },
     REPUTATION_SAMPLE_TIMEOUT_MS,
   )

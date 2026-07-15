@@ -2,6 +2,7 @@ import {
   CARS,
   fitmentClassForTier,
   PARTS,
+  PARTS_TAXONOMY,
   type CarPartId,
   type ComponentId,
   type PartInstance,
@@ -53,31 +54,35 @@ describe('garage: instant repair and labor', () => {
     // level), staying a test of completion mechanics rather than of tier-1
     // throughput against the 20-day loop cap below.
     for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
-    // Correlated band rolls (Sprint 12/26) can occasionally land a group
-    // fully mint even on a "rough" car - retry grants until the engine
-    // group specifically needs work, since that's what this test exercises.
+    // Sprint 71: 'engine' (intake/exhaust/fuelSystem/ignitionEcu/cooling/
+    // forcedInduction/camsTiming/headValvetrain/internals/block) is entirely
+    // bolt-on/buried now - bench-only, so `repair()` refuses it outright.
+    // 'body' is the surface group this on-car completion mechanism still
+    // exercises. Correlated band rolls (Sprint 12/26) can occasionally land
+    // a group fully mint even on a "rough" car - retry grants until the body
+    // group specifically needs work.
     let car = game.gameState.ownedCars.at(-1)
-    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.engine === 'mint'); i++) {
+    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
       game.devGrantCar(CARS[0]!.id)
       car = game.gameState.ownedCars.at(-1)!
     }
     if (!car) throw new Error('expected a granted car')
-    expect(game.carDetail(car.id)!.groupBands.engine).not.toBe('mint') // generated cars are rough
+    expect(game.carDetail(car.id)!.groupBands.body).not.toBe('mint') // generated cars are rough
 
     // A dev-granted car lands in parking like any real acquisition - labor
     // only reaches a car in the service bay.
     game.moveCar(car.id, 'service')
-    game.repair(car.id, 'engine')
+    game.repair(car.id, 'body')
 
     // Keep ending days and re-issuing the repair click until the group
     // clears mint or we've clearly exceeded any reasonable career length -
     // a real regression (never finishing) fails loudly instead of hanging.
-    for (let day = 0; day < 20 && game.carDetail(car.id)!.groupBands.engine !== 'mint'; day++) {
+    for (let day = 0; day < 20 && game.carDetail(car.id)!.groupBands.body !== 'mint'; day++) {
       game.endDay()
-      game.repair(car.id, 'engine')
+      game.repair(car.id, 'body')
     }
 
-    expect(game.carDetail(car.id)!.groupBands.engine).toBe('mint')
+    expect(game.carDetail(car.id)!.groupBands.body).toBe('mint')
     // The job is consumed once complete.
     expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
   })
@@ -134,9 +139,26 @@ describe('garage: instant part install', () => {
     game.devGrantCar(pair.modelId)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
+    // Sprint 71: clear the target slot's own blockers first (a generated car
+    // starts every slot filled), and satisfy the buried-engine/drivetrain
+    // machine gate if the target happens to sit behind one - neither concerns
+    // this generic "install a compatible part" mechanic, which just needs the
+    // slot open.
+    const taxonomyEntry = PARTS_TAXONOMY.find((e) => e.id === pair.carPartId)!
+    for (const blockerId of taxonomyEntry.blockedBy) {
+      game.removePart(car.id, blockerId)
+    }
+    if (taxonomyEntry.depthClass === 'buried') {
+      game.devSetToolTier(pair.componentId, 2)
+    }
     // Sprint 32: every slot starts filled with a stock part by default -
     // empty this one first so the group-level install has somewhere to land.
     game.removePart(car.id, pair.carPartId)
+    // Sprint 71: a buried target plus its blockers can spend more than one
+    // day's labor budget on removal alone - end the day so the install below
+    // (which this test actually cares about) gets a fresh budget rather than
+    // silently starving.
+    game.endDay()
     game.devGrantPart(pair.partId)
     const partInstance = game.gameState.partInventory.at(-1)!
 

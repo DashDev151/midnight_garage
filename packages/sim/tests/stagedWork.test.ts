@@ -27,7 +27,10 @@ const car: CarInstance = buildCarInstance({
   mileageKm: 100_000,
   authenticityPercent: 90,
   parts: {
-    ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn' }),
+    // Sprint 71: 'interior' (surface, still on-car-repairable) joins the
+    // fixture - 'engine' is bench-only now, so the two-staged-actions test
+    // below needs a second on-car-repairable group to spill labor onto.
+    ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn', interior: 'worn' }),
     // Sprint 32: every slot defaults to a filled stock part now, so the
     // staged-install test below needs a genuinely empty target slot (a
     // group-level install into an already-occupied slot is refused by the
@@ -41,7 +44,7 @@ const car: CarInstance = buildCarInstance({
  * `confirmStagedWork` itself does - tests assert against these rather than
  * a hand-guessed number, so a `parts-taxonomy.json`/tool-line retune can't
  * silently desync the fixture from the assertions. */
-function planFor(groupId: 'body' | 'engine' | 'suspension') {
+function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
   return planGroupRepair(
     car,
     groupId,
@@ -147,25 +150,27 @@ describe('confirmStagedWork', () => {
 
   it('shares one labor budget across multiple staged actions, in staged order', () => {
     const bodyPlan = planFor('body')
-    const enginePlan = planFor('engine')
+    const interiorPlan = planFor('interior')
     // Enough for body (staged first) to complete fully, plus exactly 1 slot
-    // spillover for engine (staged second) - a real, continuable partial job.
+    // spillover for interior (staged second) - a real, continuable partial
+    // job. Sprint 71: 'interior' stands in for the old 'engine' fixture -
+    // engine is bench-only now.
     const offeredLabor = bodyPlan.laborSlotsRequired + 1
     const state = baseState({
       stagedCarWork: {
         [car.id]: [
           { kind: 'repair', componentId: 'body', targetBand: 'mint' },
-          { kind: 'repair', componentId: 'engine', targetBand: 'mint' },
+          { kind: 'repair', componentId: 'interior', targetBand: 'mint' },
         ],
       },
     })
     const result = confirmStagedWork(state, car.id, offeredLabor, CONTEXT)
     expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.block.installed?.band).toBe('worn') // not yet repaired
-    const engineJob = result.state.jobs.find((j) => j.componentId === 'engine')
-    expect(engineJob).toBeDefined()
-    expect(engineJob?.laborSlotsSpent).toBe(1)
-    expect(engineJob?.laborSlotsRequired).toBe(enginePlan.laborSlotsRequired)
+    expect(result.state.ownedCars[0]?.parts.seats.installed?.band).toBe('worn') // not yet repaired
+    const interiorJob = result.state.jobs.find((j) => j.componentId === 'interior')
+    expect(interiorJob).toBeDefined()
+    expect(interiorJob?.laborSlotsSpent).toBe(1)
+    expect(interiorJob?.laborSlotsRequired).toBe(interiorPlan.laborSlotsRequired)
   })
 
   it('the affordability gate still refuses a staged repair at confirm time (Sprint 36: the only gate left)', () => {

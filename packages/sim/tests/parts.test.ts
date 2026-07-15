@@ -8,9 +8,15 @@ import {
   type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { bandFactor } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
-import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from '../src/parts'
+import {
+  resolveBuyPart,
+  resolvePartDeliveries,
+  resolveScrapPart,
+  resolveSellPart,
+} from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { buildCarInstance, testSpecialty, testToolTiers } from './testFixtures'
 
@@ -269,6 +275,67 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
     const state = baseState({ partInventory: [customerScrap], activeServiceJobs: [owningJob] })
     const result = resolveScrapPart(state, customerScrap.id, CONTEXT)
     expect(result.state).toBe(state) // untouched: still in inventory, no cash
+    expect(result.log).toEqual([])
+  })
+})
+
+describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy)', () => {
+  const usedInstance: PartInstance = {
+    id: 'pi-used',
+    partId: CHEAPEST.id,
+    band: 'fine',
+    genuinePeriod: false,
+    origin: makeMarketOrigin(1),
+  }
+
+  it('sells a used, non-scrap part at the catalog price scaled by its band factor and the used-part haircut', () => {
+    const state = baseState({ partInventory: [usedInstance] })
+    const result = resolveSellPart(state, usedInstance.id, CONTEXT)
+    const expectedPriceYen = Math.round(
+      CHEAPEST.priceYen *
+        bandFactor('fine', CONTEXT.economy) *
+        CONTEXT.economy.teardown.usedPartSaleFraction,
+    )
+    expect(result.state.partInventory).toHaveLength(0)
+    expect(result.state.cashYen).toBe(state.cashYen + expectedPriceYen)
+    expect(result.log).toEqual([
+      { type: 'part-sold', partInstanceId: usedInstance.id, priceYen: expectedPriceYen },
+    ])
+  })
+
+  it("refuses to sell a scrap-band part - that's resolveScrapPart's route, a no-op here", () => {
+    const scrapVariant: PartInstance = { ...usedInstance, id: 'pi-used-scrap', band: 'scrap' }
+    const state = baseState({ partInventory: [scrapVariant] })
+    const result = resolveSellPart(state, scrapVariant.id, CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it("refuses to sell a part whose origin traces to an active customer job's car - a no-op", () => {
+    const customerCar = buildCarInstance({ id: 'car-customer-sell' })
+    const owningJob: ServiceJob = {
+      id: 'svc-sell-1',
+      typeId: 'small-bodywork-touchup',
+      customerName: 'Test Customer',
+      description: 'Bodywork needs sorting.',
+      tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+      car: customerCar,
+      payoutYen: 10_000,
+      baseReputation: 5,
+      deadlineDays: 5,
+      expiresOnDay: 30,
+      arrivesOnDay: null,
+      dueOnDay: 8,
+      baselineInstalledPartIds: {},
+    }
+    const customerUsed: PartInstance = {
+      ...usedInstance,
+      id: 'pi-used-customer',
+      origin: makeCarOrigin(customerCar.id, 'Customer Car', 0),
+    }
+    const state = baseState({ partInventory: [customerUsed], activeServiceJobs: [owningJob] })
+    const result = resolveSellPart(state, customerUsed.id, CONTEXT)
+    expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
 })

@@ -287,5 +287,19 @@
   },
   "coherence": {
     "maxConsumablesShareOfBookValue": 0.15
+  },
+  "teardown": {
+    "removeSlotsByClass": {
+      "surface": 0,
+      "bolt-on": 1,
+      "buried": 2
+    },
+    "installSlotsByClass": {
+      "surface": 0,
+      "bolt-on": 1,
+      "buried": 2
+    },
+    "usedPartSaleFraction": 0.55,
+    "donorBreakEvenBillRatio": 0.45
   }
 }

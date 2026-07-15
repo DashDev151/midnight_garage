@@ -19,13 +19,13 @@ import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
 import {
   GRADE_REPUTATION_MULTIPLIER,
-  INSTALL_LABOR_SLOTS,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,
   SERVICE_JOB_FAILURE_REP_MULTIPLIER,
   SERVICE_JOB_TIER_MIN_REPUTATION,
 } from './constants'
 import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
+import { installLaborSlotsFor } from './jobs'
 import { gradeAtLeast, partFitsCar } from './parts'
 import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
 import type { Rng } from './rng'
@@ -361,7 +361,11 @@ export function serviceJobCostBreakdown(
     } else {
       const candidates = fittingPartsForInstallTask(task, model, context)
       taskCostYen += medianYen(candidates.map((part) => part.priceYen))
-      laborSlots += INSTALL_LABOR_SLOTS
+      // Sprint 71: labor sizes off the task's own slot depth class, replacing
+      // the old flat constant - not yet the teardown chain itself (decision
+      // 9 defers that to Sprint 72), just the same per-class figure every
+      // other install labor estimate now uses.
+      laborSlots += installLaborSlotsFor(task.carPartId, context)
     }
   }
   return { taskCostYen, laborSlots }

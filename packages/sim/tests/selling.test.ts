@@ -19,6 +19,7 @@ import {
   drawDailyOffers,
   offerChanceFor,
   resolveRejectOffer,
+  resolveScrapShell,
   resolveSellViaWalkIn,
   resolveSetForSale,
   sellViaWalkIn,
@@ -437,6 +438,62 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
       expect(result.state.carLedgers).toEqual({})
     })
+  })
+})
+
+describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the whole car at once)', () => {
+  it("pays the model's book value at the flat scrap fraction, removes the car, frees its bay, and clears its ledger", () => {
+    const state = stateWithCar(car, {
+      cashYen: 100_000,
+      carLedgers: { [car.id]: { purchaseYen: 500_000, repairYen: 0, partsYen: 0 } },
+    })
+    const result = resolveScrapShell(state, car.id, CONTEXT)
+    const expectedPriceYen = Math.round(
+      model.bookValueYen * CONTEXT.economy.bands.scrapValueFraction,
+    )
+
+    expect(result.state.ownedCars).toHaveLength(0)
+    expect(result.state.serviceBayCarIds).toEqual([null]) // slot cleared, not removed
+    expect(result.state.cashYen).toBe(100_000 + expectedPriceYen)
+    expect(result.state.carLedgers).not.toHaveProperty(car.id)
+    expect(result.log).toEqual([
+      {
+        type: 'shell-scrapped',
+        carInstanceId: car.id,
+        modelId: car.modelId,
+        priceYen: expectedPriceYen,
+        carPartIds: expect.arrayContaining(['block']), // still-installed slots
+      },
+    ])
+  })
+
+  it('lists only the parts still actually installed - a stripped-down car logs a smaller manifest', () => {
+    const strippedCar: CarInstance = buildCarInstance({
+      id: 'car-stripped',
+      modelId: car.modelId,
+      parts: mintCarParts({ dampers: null, seats: null }),
+    })
+    const state = stateWithCar(strippedCar)
+    const result = resolveScrapShell(state, strippedCar.id, CONTEXT)
+    const carPartIds = result.log[0]!.type === 'shell-scrapped' ? result.log[0]!.carPartIds : []
+    expect(carPartIds).not.toContain('dampers')
+    expect(carPartIds).not.toContain('seats')
+    expect(carPartIds).toContain('block') // untouched slot, still on the stripped shell
+  })
+
+  it('drops the car’s staged work so it never outlives the scrapped shell', () => {
+    const state = stateWithCar(car, {
+      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
+    })
+    const result = resolveScrapShell(state, car.id, CONTEXT)
+    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
+  })
+
+  it('is a no-op for a car not owned', () => {
+    const state = stateWithCar(car)
+    const result = resolveScrapShell(state, 'ghost-car', CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
   })
 })
 

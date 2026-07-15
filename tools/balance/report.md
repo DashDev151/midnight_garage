@@ -4,42 +4,42 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 
 | Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) | Reputation pts (median) |
 |---|---|---|---|---|---|---|
-| balanced-player | 25 | Y75,470 | Y151,020 | Y267,633 | 1.0 | 0.0 |
-| balanced-player | 40 | Y104,770 | Y182,056 | Y229,359 | 0.0 | 0.0 |
-| balanced-player | 70 | Y64,358 | Y90,878 | Y144,811 | 0.0 | 0.0 |
-| balanced-player | 100 | Y-15,325 | Y11,656 | Y69,244 | 0.0 | 0.0 |
-| cautious-restorer | 25 | Y15,089 | Y86,434 | Y222,988 | 1.0 | 0.0 |
-| cautious-restorer | 40 | Y-18,959 | Y138,716 | Y185,753 | 0.0 | 1.0 |
-| cautious-restorer | 70 | Y-118,959 | Y57,034 | Y98,891 | 0.0 | 0.0 |
-| cautious-restorer | 100 | Y-198,959 | Y-22,858 | Y19,083 | 0.0 | 0.0 |
-| competent-policy | 25 | Y105,929 | Y224,802 | Y351,144 | 1.0 | 16.0 |
-| competent-policy | 40 | Y102,072 | Y227,601 | Y355,618 | 1.0 | 20.0 |
-| competent-policy | 70 | Y50,153 | Y196,540 | Y388,994 | 1.0 | 30.0 |
-| competent-policy | 100 | Y-19,306 | Y199,380 | Y443,145 | 1.0 | 39.0 |
-| flipper | 25 | Y28,818 | Y89,251 | Y218,069 | 1.0 | 0.0 |
-| flipper | 40 | Y6,664 | Y69,368 | Y192,014 | 1.0 | 0.0 |
-| flipper | 70 | Y-92,459 | Y-26,183 | Y91,649 | 1.0 | 0.0 |
-| flipper | 100 | Y-172,459 | Y-106,183 | Y1,004 | 1.0 | 0.0 |
-| handyman | 25 | Y54,346 | Y117,254 | Y240,000 | 1.0 | 0.0 |
-| handyman | 40 | Y62,854 | Y169,714 | Y205,358 | 0.0 | 0.0 |
-| handyman | 70 | Y48,117 | Y80,207 | Y118,768 | 0.0 | 0.0 |
-| handyman | 100 | Y-31,883 | Y258 | Y38,857 | 0.0 | 0.0 |
-| investor | 25 | Y18,882 | Y88,727 | Y146,616 | 1.0 | 0.0 |
-| investor | 40 | Y-21,118 | Y45,620 | Y96,807 | 1.0 | 0.0 |
-| investor | 70 | Y-121,118 | Y-54,380 | Y-3,193 | 1.0 | 0.0 |
-| investor | 100 | Y-201,118 | Y-134,380 | Y-83,193 | 1.0 | 0.0 |
+| balanced-player | 25 | Y51,723 | Y121,220 | Y183,406 | 1.0 | 0.0 |
+| balanced-player | 40 | Y12,495 | Y79,666 | Y130,282 | 1.0 | 0.0 |
+| balanced-player | 70 | Y-87,505 | Y-20,334 | Y30,575 | 1.0 | 0.0 |
+| balanced-player | 100 | Y-167,505 | Y-100,334 | Y-49,425 | 1.0 | 0.0 |
+| cautious-restorer | 25 | Y19,096 | Y88,006 | Y151,347 | 1.0 | 0.0 |
+| cautious-restorer | 40 | Y-20,904 | Y47,886 | Y108,818 | 1.0 | 0.0 |
+| cautious-restorer | 70 | Y-120,904 | Y-52,114 | Y8,818 | 1.0 | 0.0 |
+| cautious-restorer | 100 | Y-200,904 | Y-132,114 | Y-71,182 | 1.0 | 0.0 |
+| competent-policy | 25 | Y67,343 | Y150,713 | Y266,271 | 1.0 | 0.0 |
+| competent-policy | 40 | Y27,494 | Y98,282 | Y200,000 | 1.0 | 0.0 |
+| competent-policy | 70 | Y-72,506 | Y-1,718 | Y77,820 | 1.0 | 0.0 |
+| competent-policy | 100 | Y-152,506 | Y-81,718 | Y2,563 | 1.0 | 0.0 |
+| flipper | 25 | Y36,638 | Y95,911 | Y174,014 | 1.0 | 0.0 |
+| flipper | 40 | Y2,495 | Y63,222 | Y144,300 | 1.0 | 0.0 |
+| flipper | 70 | Y-97,505 | Y-27,920 | Y66,609 | 1.0 | 0.0 |
+| flipper | 100 | Y-177,505 | Y-107,920 | Y3,605 | 1.0 | 0.0 |
+| handyman | 25 | Y45,271 | Y115,360 | Y172,430 | 1.0 | 0.0 |
+| handyman | 40 | Y5,271 | Y72,344 | Y124,529 | 1.0 | 0.0 |
+| handyman | 70 | Y-94,729 | Y-27,656 | Y24,529 | 1.0 | 0.0 |
+| handyman | 100 | Y-174,729 | Y-107,656 | Y-55,471 | 1.0 | 0.0 |
+| investor | 25 | Y19,197 | Y89,786 | Y147,332 | 1.0 | 0.0 |
+| investor | 40 | Y-20,803 | Y46,773 | Y98,338 | 1.0 | 0.0 |
+| investor | 70 | Y-120,803 | Y-53,227 | Y-1,662 | 1.0 | 0.0 |
+| investor | 100 | Y-200,803 | Y-133,227 | Y-81,662 | 1.0 | 0.0 |
 | passive-grinder | 25 | Y240,000 | Y240,000 | Y240,000 | 0.0 | 0.0 |
 | passive-grinder | 40 | Y200,000 | Y200,000 | Y200,000 | 0.0 | 0.0 |
 | passive-grinder | 70 | Y100,000 | Y100,000 | Y100,000 | 0.0 | 0.0 |
 | passive-grinder | 100 | Y20,000 | Y20,000 | Y20,000 | 0.0 | 0.0 |
-| random | 25 | Y52,945 | Y131,383 | Y258,844 | 1.0 | 0.0 |
-| random | 40 | Y58,690 | Y169,604 | Y213,203 | 0.0 | 0.0 |
-| random | 70 | Y48,962 | Y85,905 | Y135,893 | 0.0 | 0.0 |
-| random | 100 | Y-30,886 | Y6,934 | Y62,032 | 0.0 | 0.0 |
-| service-grinder | 25 | Y262,694 | Y330,333 | Y383,165 | 0.0 | 23.0 |
-| service-grinder | 40 | Y270,729 | Y357,126 | Y426,242 | 0.0 | 36.0 |
-| service-grinder | 70 | Y289,532 | Y385,155 | Y471,592 | 0.0 | 64.0 |
-| service-grinder | 100 | Y318,845 | Y438,427 | Y545,246 | 0.0 | 99.0 |
+| random | 25 | Y43,062 | Y106,046 | Y166,360 | 1.0 | 0.0 |
+| random | 40 | Y3,062 | Y65,258 | Y119,985 | 1.0 | 0.0 |
+| random | 70 | Y-96,938 | Y-34,742 | Y19,985 | 1.0 | 0.0 |
+| random | 100 | Y-176,938 | Y-114,742 | Y-60,015 | 1.0 | 0.0 |
+| service-grinder | 25 | Y230,650 | Y256,298 | Y294,487 | 0.0 | 0.0 |
+| service-grinder | 40 | Y193,083 | Y233,732 | Y278,696 | 0.0 | 0.0 |
+| service-grinder | 70 | Y105,840 | Y158,076 | Y220,429 | 0.0 | 0.0 |
+| service-grinder | 100 | Y38,692 | Y109,737 | Y181,511 | 0.0 | 0.0 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
@@ -47,7 +47,7 @@ First day each seeded `competent-policy` career reaches each reputation tier or 
 
 | Tier | Reached | p10 | p50 | p90 |
 |---|---|---|---|---|
-| local | 362/1000 | 43 | 69 | 94 |
+| local | 0/1000 | - | - | - |
 | known | 0/1000 | - | - | - |
 | respected | 0/1000 | - | - | - |
 
@@ -59,13 +59,13 @@ Day-100 top specialty group (most common across seeds) and its median point valu
 |---|---|---|
 | balanced-player | engine | 0.0 |
 | cautious-restorer | engine | 0.0 |
-| competent-policy | engine | 30.0 |
+| competent-policy | engine | 6.0 |
 | flipper | engine | 0.0 |
 | handyman | engine | 0.0 |
 | investor | engine | 0.0 |
 | passive-grinder | engine | 0.0 |
 | random | engine | 0.0 |
-| service-grinder | engine | 51.0 |
+| service-grinder | body | 15.0 |
 
 ## Roster coherence (Sprint 55, economy-bible.md law 4)
 
@@ -77,16 +77,33 @@ Read **Sensible margin** first (Sprint 66). Since Law 1 gained a per-tier expect
 
 | Model | Class | Clean value | Worst bill | Ratio | Sensible margin | Mint flip | Wage | xRent | Consumables share |
 |---|---|---|---|---|---|---|---|---|---|
-| honda-city-e-aa | shitbox | Y135,000 | Y66,840 | 49.5% | Y34,309 (25.4%) | Y3,202 | Y1,180 | 1.10x | 8.1% |
-| honda-civic-sir2-eg6 | common | Y487,500 | Y267,200 | 54.8% | Y92,995 (19.1%) | Y124,348 | Y80,790 | 4.39x | 8.9% |
-| mazda-rx7-fd3s | rare | Y2,400,000 | Y997,000 | 41.5% | Y787,800 (32.8%) | Y860,300 | Y388,857 | 11.47x | 4.5% |
-| mazda-savanna-rx7-fc3s | uncommon | Y1,350,000 | Y638,080 | 47.3% | Y360,723 (26.7%) | Y443,475 | Y156,998 | 7.34x | 5.2% |
-| nissan-180sx-rps13 | uncommon | Y825,000 | Y456,320 | 55.3% | Y79,418 (9.6%) | Y251,651 | Y156,998 | 7.34x | 8.4% |
-| nissan-silvia-ks-s14 | uncommon | Y1,125,000 | Y638,080 | 56.7% | Y270,723 (24.1%) | Y353,475 | Y156,998 | 7.34x | 6.2% |
-| suzuki-wagon-r-ct21s | shitbox | Y165,000 | Y93,010 | 56.4% | Y46,309 (28.1%) | Y22,155 | Y1,180 | 1.10x | 6.6% |
-| toyota-chaser-tourer-v-jzx90 | uncommon | Y1,200,000 | Y638,080 | 53.2% | Y300,723 (25.1%) | Y383,475 | Y156,998 | 7.34x | 5.8% |
-| toyota-sprinter-trueno-ae86 | uncommon | Y1,050,000 | Y594,880 | 56.7% | Y250,515 (23.9%) | Y330,387 | Y143,550 | 7.03x | 6.6% |
-| toyota-supra-rz-jza80 | rare | Y3,150,000 | Y997,000 | 31.7% | Y1,087,800 (34.5%) | Y1,160,300 | Y388,857 | 11.47x | 3.5% |
+| honda-city-e-aa | shitbox | Y135,000 | Y66,840 | 49.5% | Y53,299 (39.5%) | Y3,202 | Y257 | 1.08x | 8.1% |
+| honda-civic-sir2-eg6 | common | Y487,500 | Y267,200 | 54.8% | Y244,795 (50.2%) | Y124,348 | Y22,033 | 4.30x | 8.9% |
+| mazda-rx7-fd3s | rare | Y2,400,000 | Y997,000 | 41.5% | Y1,424,550 (59.4%) | Y860,300 | Y97,625 | 10.76x | 4.5% |
+| mazda-savanna-rx7-fc3s | uncommon | Y1,350,000 | Y638,080 | 47.3% | Y632,403 (46.8%) | Y443,475 | Y39,253 | 6.89x | 5.2% |
+| nissan-180sx-rps13 | uncommon | Y825,000 | Y456,320 | 55.3% | Y351,098 (42.6%) | Y251,651 | Y39,253 | 6.89x | 8.4% |
+| nissan-silvia-ks-s14 | uncommon | Y1,125,000 | Y638,080 | 56.7% | Y542,403 (48.2%) | Y353,475 | Y39,253 | 6.89x | 6.2% |
+| suzuki-wagon-r-ct21s | shitbox | Y165,000 | Y93,010 | 56.4% | Y65,299 (39.6%) | Y22,155 | Y257 | 1.08x | 6.6% |
+| toyota-chaser-tourer-v-jzx90 | uncommon | Y1,200,000 | Y638,080 | 53.2% | Y572,403 (47.7%) | Y383,475 | Y39,253 | 6.89x | 5.8% |
+| toyota-sprinter-trueno-ae86 | uncommon | Y1,050,000 | Y594,880 | 56.7% | Y493,395 (47.0%) | Y330,387 | Y39,253 | 6.89x | 6.6% |
+| toyota-supra-rz-jza80 | rare | Y3,150,000 | Y997,000 | 31.7% | Y1,724,550 (54.7%) | Y1,160,300 | Y97,625 | 10.76x | 3.5% |
+
+## Donor coherence (Sprint 71 decision 8, the teardown game)
+
+Whole-car sale value against parting out the same clean car (haircut `economy.teardown.usedPartSaleFraction`, plus scrapping the stripped shell). **Whole must always beat parted** - a clean car should never be worth more destroyed for parts. **Parting wins?** measures the SEPARATE worst-case-car question: does stripping the worst plausible generatable roll's still-good parts (better than `poor`) beat that same model's sensible-repair margin - disclosed against a 45% bill-to-clean break-even, not force-gated to it.
+
+| Model | Whole sale | Parted yield | Strip labour | Bill/clean | Parting wins? |
+|---|---|---|---|---|---|
+| honda-city-e-aa | Y189,000 | Y134,235 | 27 slots | 49.5% | yes |
+| honda-civic-sir2-eg6 | Y682,500 | Y533,000 | 27 slots | 54.8% | yes |
+| mazda-rx7-fd3s | Y3,360,000 | Y1,535,000 | 28 slots | 41.5% | no |
+| mazda-savanna-rx7-fc3s | Y1,890,000 | Y970,000 | 28 slots | 47.3% | no |
+| nissan-180sx-rps13 | Y1,155,000 | Y935,000 | 28 slots | 55.3% | yes |
+| nissan-silvia-ks-s14 | Y1,575,000 | Y955,000 | 28 slots | 56.7% | no |
+| suzuki-wagon-r-ct21s | Y231,000 | Y136,235 | 27 slots | 56.4% | no |
+| toyota-chaser-tourer-v-jzx90 | Y1,680,000 | Y960,000 | 28 slots | 53.2% | no |
+| toyota-sprinter-trueno-ae86 | Y1,470,000 | Y870,800 | 27 slots | 56.7% | no |
+| toyota-supra-rz-jza80 | Y4,410,000 | Y1,585,000 | 28 slots | 31.7% | no |
 
 ## Auction calibration (Sprint 20, auction rework II)
 
@@ -94,9 +111,9 @@ Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot b
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 3.7% | 10%-25% |
-| mid | 21.4% | 50%-100% |
-| frenzy | 74.8% | 5%-15% |
+| steal | 4.2% | 10%-25% |
+| mid | 20.7% | 50%-100% |
+| frenzy | 75.1% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 

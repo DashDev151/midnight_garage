@@ -275,14 +275,16 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
     const customerCar: CarInstance = buildCarInstance({
       id: 'car-customer-2',
       modelId: model.id,
-      // The customer's own engine block, born on this exact car - unlike the
+      // The customer's own dampers, born on this exact car - unlike the
       // shared fixture's generic default origin, this one must genuinely
       // trace to `customerCar.id` for the close-out reconciliation below to
-      // have anything real to key off.
+      // have anything real to key off. `dampers` is bolt-on with no
+      // blockers - a plain removal, unrelated to what this test is actually
+      // about (origin-based close-out reconciliation).
       parts: mintCarParts({
-        block: {
-          id: 'pi-customers-block',
-          partId: 'shitbox-stock-block',
+        dampers: {
+          id: 'pi-customers-dampers',
+          partId: 'shitbox-stock-dampers',
           band: 'worn',
           genuinePeriod: false,
           origin: carOrigin,
@@ -293,8 +295,8 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       id: 'svc-2',
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
-      description: 'Engine work.',
-      tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'fine', minToolTier: 1 }],
+      description: 'Suspension work.',
+      tasks: [{ action: 'repair', carPartId: 'dampers', targetBand: 'fine', minToolTier: 1 }],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -305,13 +307,13 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       baselineInstalledPartIds: {},
     }
     const state = baseState({ activeServiceJobs: [job], day: 3 })
-    const removed = resolveRemovePart(state, customerCar.id, 'block', CONTEXT)
+    const removed = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)
     expect(removed.state.partInventory).toHaveLength(1)
     const pulled = removed.state.partInventory[0]!
     expect(pulled.origin).toEqual(carOrigin)
 
     const closed = resolveServiceJob(removed.state, job.id, CONTEXT)
-    // The customer's own engine part leaves with them, not kept by the player.
+    // The customer's own dampers leave with them, not kept by the player.
     expect(closed.state.partInventory.map((p) => p.id)).not.toContain(pulled.id)
   })
 })

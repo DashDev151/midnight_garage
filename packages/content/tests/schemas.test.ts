@@ -280,6 +280,20 @@ describe('seed content validates against schemas', () => {
     // Sprint 55 (economy-bible.md law 4): the roster-coherence "brake pads
     // vs car price" cap - a content anchor, not a hardcoded check constant.
     expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)
+    // Sprint 71 (the teardown game): per-depth-class labour, replacing the
+    // old flat INSTALL_LABOR_SLOTS constant everywhere.
+    expect(result.data.teardown.removeSlotsByClass).toEqual({
+      surface: 0,
+      'bolt-on': 1,
+      buried: 2,
+    })
+    expect(result.data.teardown.installSlotsByClass).toEqual({
+      surface: 0,
+      'bolt-on': 1,
+      buried: 2,
+    })
+    expect(result.data.teardown.usedPartSaleFraction).toBe(0.55)
+    expect(result.data.teardown.donorBreakEvenBillRatio).toBe(0.45)
   })
 
   /**
@@ -324,6 +338,7 @@ describe('seed content validates against schemas', () => {
       'specialty',
       'machineListings',
       'coherence',
+      'teardown',
     ].sort()
     expect(Object.keys(economy).sort()).toEqual(expectedTopLevelKeys)
   })

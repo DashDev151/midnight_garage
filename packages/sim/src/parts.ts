@@ -12,7 +12,7 @@ import {
   type PartInstance,
   type PendingPartOrder,
 } from '@midnight-garage/content'
-import { scrapValueYen } from './bands'
+import { bandFactor, scrapValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
@@ -263,5 +263,51 @@ export function resolveScrapPart(
       partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
     },
     log: [{ type: 'part-scrapped', partInstanceId, priceYen }],
+  }
+}
+
+export interface SellPartResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Sprint 71 decision 6 (the teardown game's donor economy): sell a used,
+ * non-scrap loose `PartInstance` for `resolvePartPriceYen`'s catalog price
+ * (baked into `Part.priceYen` already, Sprint 53), scaled by its own
+ * condition band and the used-part haircut
+ * (`economy.teardown.usedPartSaleFraction`). Instant, no labour - the
+ * counterpart to `resolveScrapPart` for a part still worth more than scrap.
+ *
+ * Refused (silent no-op) for a `scrap`-band instance (that's
+ * `resolveScrapPart`'s route) and for a customer-owned tagged part while its
+ * job is still active - it was never ours to sell, same ownership lock
+ * `resolveScrapPart` enforces.
+ */
+export function resolveSellPart(
+  state: GameState,
+  partInstanceId: string,
+  context: SimContext,
+): SellPartResult {
+  const instance = state.partInventory.find((p) => p.id === partInstanceId)
+  if (!instance || instance.band === 'scrap') return { state, log: [] }
+  if (state.activeServiceJobs.some((job) => isCustomerOriginPart(instance, job))) {
+    return { state, log: [] }
+  }
+  const part = context.partsById[instance.partId]
+  if (!part) return { state, log: [] }
+
+  const priceYen = Math.round(
+    part.priceYen *
+      bandFactor(instance.band, context.economy) *
+      context.economy.teardown.usedPartSaleFraction,
+  )
+  return {
+    state: {
+      ...state,
+      cashYen: state.cashYen + priceYen,
+      partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+    },
+    log: [{ type: 'part-sold', partInstanceId, priceYen }],
   }
 }

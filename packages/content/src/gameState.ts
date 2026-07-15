@@ -314,6 +314,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * a different car, including the player's own (closes the close-out
        * escape gap flagged in TODO.md, fixed 2026-07-12). */
       'not-your-part',
+      /** Sprint 71 (the teardown game): a `bolt-on`/`buried` part is bench-
+       * only - an on-car repair-zone job addressed at one exact non-surface
+       * slot is refused (`repairJobGate`); it must come off the car first. */
+      'bench-only',
+      /** Sprint 71: the symmetric blocker rule - a slot with anything still
+       * installed in its `blockedBy` list refuses install just as it refuses
+       * uninstall, reassembly order matters (`installFitGate`). */
+      'blocked-by',
     ]),
   }),
   z.object({
@@ -459,6 +467,17 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * sale (the field didn't exist yet). */
     profitYen: z.number().int().optional(),
   }),
+  /** Sprint 71 (the teardown game): the whole car scrapped at once, shell and
+   * all - `carPartIds` lists every slot that was still installed and went
+   * down with it (an empty array if the car had already been stripped bare).
+   * Removes the car from `ownedCars` entirely, unlike a `car-sold` sale. */
+  z.object({
+    type: z.literal('shell-scrapped'),
+    carInstanceId: z.string().min(1),
+    modelId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+    carPartIds: z.array(CarPartIdSchema),
+  }),
   z.object({
     type: z.literal('part-bought'),
     partId: z.string().min(1),
@@ -482,6 +501,15 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
    * only action available on it, since it can never be reinstalled. */
   z.object({
     type: z.literal('part-scrapped'),
+    partInstanceId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 71 (the teardown game): a used, non-scrap loose `PartInstance`
+   * sold at the donor-economy haircut (`economy.teardown.usedPartSaleFraction`)
+   * - the every-day counterpart to `part-scrapped`, for a part still good
+   * enough to be worth more than scrap value. */
+  z.object({
+    type: z.literal('part-sold'),
     partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
   }),

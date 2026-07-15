@@ -278,26 +278,26 @@ describe('slotsNeededToClimb (Sprint 26 decision 7 worked examples)', () => {
   })
 })
 
-describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price)", () => {
-  // suspension group: dampers worn (2 grades), springs poor (3 grades),
-  // steering scrap (unrepairable - excluded), antiRollBars fine (1 grade),
-  // brakePadsDiscs worn (non-repairable consumable - excluded even though
-  // it's not scrap, Sprint 41 decision 2), brakeCalipersLines stays mint
-  // (nothing to do).
-  const suspensionCar = buildCarInstance({
+describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price; Sprint 71: surface-only)", () => {
+  // body group (Sprint 71: the one all-surface group, so on-car repair still
+  // applies to every member): panels worn (2 grades), paint poor (3 grades),
+  // underbody scrap (unrepairable - excluded), aero fine (1 grade). No
+  // non-repairable consumable lives in this group - that exclusion is
+  // covered directly by `canRepair`'s own tests above, which every planner
+  // (including this one) reuses rather than re-deriving.
+  const bodyCar = buildCarInstance({
     parts: mintCarParts({
-      dampers: 'worn',
-      springs: 'poor',
-      steering: 'scrap',
-      antiRollBars: 'fine',
-      brakePadsDiscs: 'worn',
+      panels: 'worn',
+      paint: 'poor',
+      underbody: 'scrap',
+      aero: 'fine',
     }),
   })
 
-  it('sums labor slots and yen across every non-mint, non-scrap, repairable present part, and excludes mint/scrap/non-repairable parts from partIds', () => {
+  it('sums labor slots and yen across every non-mint, non-scrap, repairable present part, and excludes mint/scrap parts from partIds', () => {
     const plan = planGroupRepair(
-      suspensionCar,
-      'suspension',
+      bodyCar,
+      'body',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
@@ -305,24 +305,20 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsTaxonomyById,
       1, // repairStepFraction = 1 isolates the grades*price arithmetic
     )
-    const dampersPrice = installedPriceYen(suspensionCar, 'dampers')
-    const springsPrice = installedPriceYen(suspensionCar, 'springs')
-    const antiRollBarsPrice = installedPriceYen(suspensionCar, 'antiRollBars')
+    const panelsPrice = installedPriceYen(bodyCar, 'panels')
+    const paintPrice = installedPriceYen(bodyCar, 'paint')
+    const aeroPrice = installedPriceYen(bodyCar, 'aero')
 
-    expect(plan.partIds).toEqual(['dampers', 'springs', 'antiRollBars'])
-    // brakePadsDiscs (non-repairable) never enters the plan despite being
-    // worn, not scrap - replace-only semantics, not just the terminal-scrap
-    // exclusion.
-    expect(plan.partIds).not.toContain('brakePadsDiscs')
-    expect(plan.costYen).toBe(2 * dampersPrice + 3 * springsPrice + 1 * antiRollBarsPrice)
+    expect(plan.partIds).toEqual(['panels', 'paint', 'aero'])
+    expect(plan.costYen).toBe(2 * panelsPrice + 3 * paintPrice + 1 * aeroPrice)
     // Tool line at tier 1 -> repair level 1: exactly 1 grade climbed per slot.
     expect(plan.laborSlotsRequired).toBe(2 + 3 + 1)
   })
 
   it('scales costYen by repairStepFraction, rounded per part, without changing laborSlotsRequired or partIds', () => {
     const unscaled = planGroupRepair(
-      suspensionCar,
-      'suspension',
+      bodyCar,
+      'body',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
@@ -331,8 +327,8 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       1,
     )
     const scaled = planGroupRepair(
-      suspensionCar,
-      'suspension',
+      bodyCar,
+      'body',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
@@ -340,13 +336,13 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsTaxonomyById,
       0.35,
     )
-    const dampersPrice = installedPriceYen(suspensionCar, 'dampers')
-    const springsPrice = installedPriceYen(suspensionCar, 'springs')
-    const antiRollBarsPrice = installedPriceYen(suspensionCar, 'antiRollBars')
+    const panelsPrice = installedPriceYen(bodyCar, 'panels')
+    const paintPrice = installedPriceYen(bodyCar, 'paint')
+    const aeroPrice = installedPriceYen(bodyCar, 'aero')
     const expectedScaledCost =
-      Math.round(2 * dampersPrice * 0.35) +
-      Math.round(3 * springsPrice * 0.35) +
-      Math.round(1 * antiRollBarsPrice * 0.35)
+      Math.round(2 * panelsPrice * 0.35) +
+      Math.round(3 * paintPrice * 0.35) +
+      Math.round(1 * aeroPrice * 0.35)
 
     expect(scaled.costYen).toBe(expectedScaledCost)
     expect(scaled.costYen).toBeLessThan(unscaled.costYen)
@@ -356,8 +352,8 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
 
   it('costs the same yen regardless of repair level - only laborSlotsRequired changes with the tool tier', () => {
     const level1Plan = planGroupRepair(
-      suspensionCar,
-      'suspension',
+      bodyCar,
+      'body',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
@@ -366,10 +362,10 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       1,
     )
     const level3Plan = planGroupRepair(
-      suspensionCar,
-      'suspension',
+      bodyCar,
+      'body',
       'mint',
-      testToolTiers({ suspension: 3 }),
+      testToolTiers({ body: 3 }),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -386,7 +382,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     const mintCar = buildCarInstance()
     const plan = planGroupRepair(
       mintCar,
-      'suspension',
+      'body',
       'mint',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
@@ -397,18 +393,34 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
   })
 
-  it('returns an empty plan when the group has repairable parts but every one is scrap or non-repairable', () => {
+  it('returns an empty plan when the group has repairable parts but every one is scrap', () => {
     const deadGroupCar = buildCarInstance({
       parts: mintCarParts({
-        dampers: 'scrap',
-        springs: 'scrap',
-        antiRollBars: 'scrap',
-        steering: 'scrap',
-        brakePadsDiscs: 'worn', // non-repairable - never counts either
+        panels: 'scrap',
+        paint: 'scrap',
+        underbody: 'scrap',
+        aero: 'scrap',
       }),
     })
     const plan = planGroupRepair(
       deadGroupCar,
+      'body',
+      'mint',
+      testToolTiers(),
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      1,
+    )
+    expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
+  })
+
+  it('returns an empty plan for a bolt-on/buried group - bench-only (Sprint 71)', () => {
+    const suspensionCar = buildCarInstance({
+      parts: mintCarParts({ dampers: 'worn', springs: 'poor' }),
+    })
+    const plan = planGroupRepair(
+      suspensionCar,
       'suspension',
       'mint',
       testToolTiers(),
@@ -421,47 +433,44 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
   })
 })
 
-describe('worstRepairableBandInGroup (Sprint 41 coordinator fix: the group BandPicker floor)', () => {
+describe('worstRepairableBandInGroup (Sprint 41 coordinator fix: the group BandPicker floor; Sprint 71: surface-only)', () => {
   it('is the worst REPAIRABLE band, excluding a scrap part that is actually worse', () => {
     const car = buildCarInstance({
-      parts: mintCarParts({ dampers: 'worn', steering: 'scrap' }),
+      parts: mintCarParts({ panels: 'worn', underbody: 'scrap' }),
     })
     // The group's DISPLAY chip would read scrap (worst overall), but the
     // repair picker's floor must be 'worn' - the worst band a repair action
     // could actually move, since scrap is excluded from repair entirely.
     expect(
-      worstRepairableBandInGroup(
-        car,
-        'suspension',
-        CONTEXT.partIdsByGroup,
-        CONTEXT.partsTaxonomyById,
-      ),
+      worstRepairableBandInGroup(car, 'body', CONTEXT.partIdsByGroup, CONTEXT.partsTaxonomyById),
     ).toBe('worn')
   })
 
-  it('is null when the group is scrap plus non-repairable consumables only - no repair control should render', () => {
+  it('is null when the group is scrap only - no repair control should render', () => {
     const car = buildCarInstance({
       parts: mintCarParts({
-        dampers: 'mint',
-        springs: 'mint',
-        antiRollBars: 'mint',
-        steering: 'scrap',
-        brakePadsDiscs: 'poor', // non-repairable, even though it's badly worn
-        brakeCalipersLines: 'mint',
+        panels: 'mint',
+        paint: 'mint',
+        aero: 'mint',
+        underbody: 'scrap',
       }),
     })
     expect(
-      worstRepairableBandInGroup(
-        car,
-        'suspension',
-        CONTEXT.partIdsByGroup,
-        CONTEXT.partsTaxonomyById,
-      ),
+      worstRepairableBandInGroup(car, 'body', CONTEXT.partIdsByGroup, CONTEXT.partsTaxonomyById),
     ).toBeNull()
   })
 
   it('is null for an all-mint group', () => {
     const car = buildCarInstance()
+    expect(
+      worstRepairableBandInGroup(car, 'body', CONTEXT.partIdsByGroup, CONTEXT.partsTaxonomyById),
+    ).toBeNull()
+  })
+
+  it('is null for a bolt-on/buried group, no matter how worn - bench-only (Sprint 71)', () => {
+    const car = buildCarInstance({
+      parts: mintCarParts({ dampers: 'worn', springs: 'poor' }),
+    })
     expect(
       worstRepairableBandInGroup(
         car,

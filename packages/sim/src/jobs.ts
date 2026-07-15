@@ -29,6 +29,24 @@ import { makeCarOrigin, isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
+ * Sprint 71 (the teardown game): the labor a slot's OWN depth class costs to
+ * remove/install - `economy.teardown.removeSlotsByClass`/
+ * `installSlotsByClass`, replacing the old flat `INSTALL_LABOR_SLOTS`
+ * constant everywhere a spec/plan needs to size install labor. Defaults to
+ * `'bolt-on'` for an unresolvable part (never happens for real content,
+ * matching every other taxonomy lookup's own defensive fallback).
+ */
+export function removeLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
+  const depthClass = context.partsTaxonomyById[carPartId]?.depthClass ?? 'bolt-on'
+  return context.economy.teardown.removeSlotsByClass[depthClass]
+}
+
+export function installLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
+  const depthClass = context.partsTaxonomyById[carPartId]?.depthClass ?? 'bolt-on'
+  return context.economy.teardown.installSlotsByClass[depthClass]
+}
+
+/**
  * A car the player can work on - either an owned car or a customer's car
  * sitting in an active service job. Both are worked through the same job
  * system, so any job/labor/staging resolver resolves either the same way.
@@ -266,13 +284,44 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
 export interface RemovePartResult {
   state: GameState
   log: DayLogEntry[]
+  /** How much of the caller's offered labor was actually spent removing this
+   * part - 0 on any refusal (not removable, blocked, no machine, no car, or
+   * insufficient labor). Mirrors `LaborApplicationResult`'s own field. */
+  laborSlotsUsed: number
+}
+
+/** Sprint 71 (the teardown game): every `blockedBy` slot for `carPartId` that
+ * is still occupied on `car` - empty when nothing blocks. The symmetric rule
+ * (decision 4) that both `resolveRemovePart` and `installFitGate` gate on. */
+export function occupiedBlockers(
+  car: CarInstance,
+  carPartId: CarPartId,
+  context: SimContext,
+): CarPartId[] {
+  const entry = context.partsTaxonomyById[carPartId]
+  if (!entry) return []
+  return entry.blockedBy.filter((blockerId) => car.parts[blockerId].installed !== null)
 }
 
 /**
- * Sprint 32 decision 7: pulls whatever occupies `carPartId`'s slot into
- * inventory - free and instant (no labor cost is specified for pulling a
- * part, only for repairing or installing one, so this mirrors
- * `resolveScrapPart`'s own free-instant shape, parts.ts). Removing an
+ * Sprint 71 decision 3: the tool line (and its tier-2 machine) uninstalling a
+ * BURIED slot in that group requires - `null` for a surface/bolt-on slot, or
+ * any group other than engine/drivetrain (no machine gate exists elsewhere).
+ * Exported so the UI can pre-empt the same refusal `resolveRemovePart`
+ * enforces, one source of truth for both (mirrors `naToTurboConversionBlocked`).
+ */
+export function removeMachineGateGroup(
+  carPartId: CarPartId,
+  context: SimContext,
+): ComponentId | null {
+  const entry = context.partsTaxonomyById[carPartId]
+  if (!entry || entry.depthClass !== 'buried') return null
+  return entry.group === 'engine' || entry.group === 'drivetrain' ? entry.group : null
+}
+
+/**
+ * Sprint 32 decision 7 (Sprint 71: no longer free - see below): pulls
+ * whatever occupies `carPartId`'s slot into inventory. Removing an
  * aftermarket part (any non-`'stock'` grade) reverts the slot to a fresh
  * mint generic stock `PartInstance` - the factory part underneath, assumed
  * present until it's pulled too - and drops the removed instance to
@@ -283,6 +332,20 @@ export interface RemovePartResult {
  * the car/part/its taxonomy group can't be resolved, or a Job is currently
  * open on this exact address (component- or part-level) - a part can't be
  * yanked out from under work already in progress.
+ *
+ * Sprint 71 (the teardown game): three new refusals, all silent no-ops
+ * matching every other can't-do-it gate in this codebase - `removeBlockReason`
+ * below is the single predicate the UI queries to explain them proactively.
+ * `removable: false` (the shell itself - chassis/paint/underbody) never
+ * comes off at all. A slot in another slot's `blockedBy` list refuses while
+ * that other slot is still occupied (decision 4's symmetric rule - reassembly
+ * order matters, e.g. the gearbox before the clutch). A BURIED engine/
+ * drivetrain slot needs that line's tier-2 machine (decision 3). Passing all
+ * three, the removal now costs labor too -
+ * `economy.teardown.removeSlotsByClass[depthClass]`, charged to
+ * `laborSlotsSpentToday` exactly like a repair/install job's labor (surface
+ * slots cost 0, unchanged in practice from the old free-and-instant rule) -
+ * refused (silently, nothing spent) when `laborAvailable` does not cover it.
  *
  * Sprint 35 decision 2 (supersedes Sprint 33 decision 8): a part pulled off a
  * service-job CUSTOMER's car is no longer discarded - it lands in OUR
@@ -303,19 +366,31 @@ export function resolveRemovePart(
   carInstanceId: string,
   carPartId: CarPartId,
   context: SimContext,
+  laborAvailable: number = Infinity,
 ): RemovePartResult {
   const car = findWorkableCar(state, carInstanceId)
-  if (!car) return { state, log: [] }
+  if (!car) return { state, log: [], laborSlotsUsed: 0 }
   const installed = car.parts[carPartId].installed
-  if (!installed) return { state, log: [] }
-  const componentId = context.partsTaxonomyById[carPartId]?.group
-  if (!componentId) return { state, log: [] }
+  if (!installed) return { state, log: [], laborSlotsUsed: 0 }
+  const entry = context.partsTaxonomyById[carPartId]
+  const componentId = entry?.group
+  if (!entry || !componentId) return { state, log: [], laborSlotsUsed: 0 }
   const busy = state.jobs.some(
     (j) =>
       j.carInstanceId === carInstanceId &&
       (j.carPartId ? j.carPartId === carPartId : j.componentId === componentId),
   )
-  if (busy) return { state, log: [] }
+  if (busy) return { state, log: [], laborSlotsUsed: 0 }
+  if (!entry.removable) return { state, log: [], laborSlotsUsed: 0 }
+  if (occupiedBlockers(car, carPartId, context).length > 0) {
+    return { state, log: [], laborSlotsUsed: 0 }
+  }
+  const machineGateGroup = removeMachineGateGroup(carPartId, context)
+  if (machineGateGroup && state.toolTiers[machineGateGroup] < 2) {
+    return { state, log: [], laborSlotsUsed: 0 }
+  }
+  const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
+  if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
   const model = context.modelsById[car.modelId]
   const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
@@ -340,17 +415,21 @@ export function resolveRemovePart(
   const log: DayLogEntry[] = [
     { type: 'part-removed', carInstanceId, carPartId, partInstanceId: installed.id },
   ]
-
-  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
-  if (ownedIndex !== -1) {
-    // An owned car: the removed part is ours, keep it (unchanged from Sprint 32).
-    const ownedCars = [...state.ownedCars]
-    ownedCars[ownedIndex] = updatedCar
-    const partInventory = [...state.partInventory, installed]
-    return { state: { ...state, ownedCars, partInventory }, log }
+  const withLabor: GameState = {
+    ...state,
+    laborSlotsSpentToday: state.laborSlotsSpentToday + laborSlotsUsed,
   }
 
-  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
+  const ownedIndex = withLabor.ownedCars.findIndex((c) => c.id === carInstanceId)
+  if (ownedIndex !== -1) {
+    // An owned car: the removed part is ours, keep it (unchanged from Sprint 32).
+    const ownedCars = [...withLabor.ownedCars]
+    ownedCars[ownedIndex] = updatedCar
+    const partInventory = [...withLabor.partInventory, installed]
+    return { state: { ...withLabor, ownedCars, partInventory }, log, laborSlotsUsed }
+  }
+
+  const serviceIndex = withLabor.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {
     // A customer's car: a pulled part stays in our inventory - not ours to
     // sell or scrap, but ours to recondition until the job closes out. Sprint
@@ -359,14 +438,44 @@ export function resolveRemovePart(
     // or the market if the player bought and fitted it), and that is what
     // every ownership question now reads (`provenance.ts`) - nothing to stamp
     // on the way into inventory.
-    const serviceJob = state.activeServiceJobs[serviceIndex]!
-    const activeServiceJobs = [...state.activeServiceJobs]
+    const serviceJob = withLabor.activeServiceJobs[serviceIndex]!
+    const activeServiceJobs = [...withLabor.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
-    const partInventory = [...state.partInventory, installed]
-    return { state: { ...state, activeServiceJobs, partInventory }, log }
+    const partInventory = [...withLabor.partInventory, installed]
+    return { state: { ...withLabor, activeServiceJobs, partInventory }, log, laborSlotsUsed }
   }
 
-  return { state, log: [] }
+  return { state, log: [], laborSlotsUsed: 0 }
+}
+
+export type RemoveBlockReason =
+  | { kind: 'not-removable' }
+  | { kind: 'blocked-by'; blockedBy: CarPartId[] }
+  | { kind: 'tool-tier'; group: ComponentId }
+
+/**
+ * Sprint 71: the pure "why can't this come off" predicate - what the UI
+ * queries proactively (mirrors `naToTurboConversionBlocked`'s own reuse
+ * shape), independent of today's remaining labor (a separate, dynamic
+ * concern the UI already shows via the labor bar). `null` when nothing
+ * structural blocks it (it may still be refused for insufficient labor, or
+ * simply already removed).
+ */
+export function removeBlockReason(
+  car: CarInstance,
+  carPartId: CarPartId,
+  state: GameState,
+  context: SimContext,
+): RemoveBlockReason | null {
+  const entry = context.partsTaxonomyById[carPartId]
+  if (!entry || !entry.removable) return { kind: 'not-removable' }
+  const blockedBy = occupiedBlockers(car, carPartId, context)
+  if (blockedBy.length > 0) return { kind: 'blocked-by', blockedBy }
+  const machineGateGroup = removeMachineGateGroup(carPartId, context)
+  if (machineGateGroup && state.toolTiers[machineGateGroup] < 2) {
+    return { kind: 'tool-tier', group: machineGateGroup }
+  }
+  return null
 }
 
 /**
@@ -437,6 +546,16 @@ export function repairJobGate(
   if (!car) return { ok: false, log: [] }
   const model = context.modelsById[car.modelId]
   if (!model) return { ok: false, log: [] }
+  // Sprint 71 decision 2: a per-part repair addressed at one exact bolt-on/
+  // buried slot is bench-only - refused explicitly (rather than falling
+  // through to the group plan's own silent empty-plan refusal below) so the
+  // UI has a real reason to show for a deliberate single-part action.
+  if (spec.carPartId && context.partsTaxonomyById[spec.carPartId]?.depthClass !== 'surface') {
+    return {
+      ok: false,
+      log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
+    }
+  }
   const plan = planGroupRepair(
     car,
     spec.componentId,
@@ -579,6 +698,13 @@ export function installFitGate(
   if (naToTurboConversionBlocked(part!.carPartId, model!, state, context)) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'tool-tier' }] }
   }
+  // Sprint 71 decision 4 (the symmetric blocker rule): install requires every
+  // `blockedBy` slot for the TARGET address empty, exactly like uninstall
+  // does (`resolveRemovePart`) - reassembly order matters (e.g. the clutch
+  // can't go back in before the gearbox is on).
+  if (occupiedBlockers(car!, part!.carPartId, context).length > 0) {
+    return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'blocked-by' }] }
+  }
   return { ok: true }
 }
 
@@ -648,7 +774,7 @@ export function applyAvailableLaborToJob(
   context: SimContext,
 ): LaborApplicationResult {
   const job = state.jobs.find((j) => j.id === jobId)
-  if (!job || isJobComplete(job) || laborAvailable <= 0) {
+  if (!job) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
   // Sprint 35: a `recondition-part` job works a loose inventory part on the
@@ -665,8 +791,16 @@ export function applyAvailableLaborToJob(
   }
 
   const need = job.laborSlotsRequired - job.laborSlotsSpent
-  const slotsToApply = Math.min(laborAvailable, need)
-  if (slotsToApply <= 0) return { state, log: [], laborSlotsUsed: 0 }
+  // Sprint 71: a surface-slot job is created needing ZERO labor
+  // (`economy.teardown.*SlotsByClass.surface` is 0) - it must still run
+  // through `completeJob` below on this very call, or it would sit in
+  // `state.jobs` forever, "complete" by `isJobComplete` yet never applied to
+  // the car. Only a job that is BOTH incomplete and starved of labor today is
+  // a genuine no-op.
+  if (need > 0 && laborAvailable <= 0) {
+    return { state, log: [], laborSlotsUsed: 0 }
+  }
+  const slotsToApply = Math.max(0, Math.min(laborAvailable, need))
 
   const updatedJob = applyLaborToJob(job, slotsToApply)
   let next: GameState = {
@@ -674,7 +808,8 @@ export function applyAvailableLaborToJob(
     jobs: state.jobs.map((j) => (j.id === jobId ? updatedJob : j)),
     laborSlotsSpentToday: state.laborSlotsSpentToday + slotsToApply,
   }
-  const log: DayLogEntry[] = [{ type: 'job-progress', jobId, laborSlotsSpent: slotsToApply }]
+  const log: DayLogEntry[] =
+    slotsToApply > 0 ? [{ type: 'job-progress', jobId, laborSlotsSpent: slotsToApply }] : []
 
   if (isJobComplete(updatedJob)) {
     const result = completeJob(next, updatedJob, context)

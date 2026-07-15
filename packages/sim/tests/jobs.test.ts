@@ -16,8 +16,11 @@ import {
   completeJob,
   createJob,
   findOrCreateJob,
+  installLaborSlotsFor,
   naToTurboConversionBlocked,
   reconditionQuote,
+  removeBlockReason,
+  removeLaborSlotsFor,
   repairJobGate,
   isJobComplete,
   resolveJobLabor,
@@ -349,9 +352,11 @@ describe('findOrCreateJob (Sprint 11)', () => {
     const second = findOrCreateJob(
       first.state,
       {
+        // Sprint 71: 'interior' (surface, still on-car-repairable) stands in
+        // for the old 'engine' fixture - engine is now entirely bench-only.
         carInstanceId: car.id,
         kind: 'repair-zone',
-        componentId: 'engine',
+        componentId: 'interior',
         targetBand: 'mint',
         laborSlotsRequired: 2,
       },
@@ -429,8 +434,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const afterFirstRepairYen = first.state.carLedgers[car.id]!.repairYen
       // A different group's own job is independent (one open job per
       // component at a time, not one per car) - both charges land on the
-      // same car's ledger.
-      const secondSpec = { ...spec, componentId: 'engine' as const, laborSlotsRequired: 2 }
+      // same car's ledger. Sprint 71: 'interior' (still on-car-repairable)
+      // stands in for the old 'engine' fixture - engine is bench-only now.
+      const secondSpec = { ...spec, componentId: 'interior' as const, laborSlotsRequired: 2 }
       const second = findOrCreateJob(first.state, secondSpec, CONTEXT)
       expect(second.state.carLedgers[car.id]!.repairYen).toBeGreaterThan(afterFirstRepairYen)
     })
@@ -567,7 +573,11 @@ describe('findOrCreateJob (Sprint 11)', () => {
     it("refuses converting a factory-NA car to forced induction below engine tier 3 (reason 'tool-tier'), allows it at tier 3", () => {
       const naCar: CarInstance = {
         ...car,
-        parts: { ...car.parts, forcedInduction: { installed: null } },
+        // Sprint 71: forcedInduction is blockedBy intake (fitting a turbo
+        // means the intake has to come off first) - emptied here too, so
+        // this test isolates the tool-tier gate it's actually about rather
+        // than tripping the new blocker rule instead.
+        parts: { ...car.parts, forcedInduction: { installed: null }, intake: { installed: null } },
       }
       // Sprint 53: naCar (honda-city-e-aa) is 'shitbox' tier - the turbo kit
       // must be the shitbox-class SKU or the new fitment check refuses it
@@ -772,6 +782,73 @@ describe('findOrCreateJob (Sprint 11)', () => {
       )
       expect(ontoOwningCar.job).not.toBeNull()
     })
+
+    /**
+     * Sprint 71 decision 4 (the symmetric blocker rule): install validates
+     * `blockedBy` exactly like uninstall does - `forcedInduction` is
+     * `blockedBy: ['intake']`, so fitting a turbo kit is refused while the
+     * default-filled stock intake is still on, reason 'blocked-by', and
+     * allowed the moment `intake` is pulled.
+     */
+    it("refuses installing onto a slot whose blockedBy list is still occupied, reason 'blocked-by', allows it once the blocker is cleared", () => {
+      const naCar: CarInstance = {
+        ...car,
+        parts: { ...car.parts, forcedInduction: { installed: null } }, // intake stays occupied
+      }
+      const turboKit = PARTS.find(
+        (p) =>
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      )!
+      const turboInstance: PartInstance = {
+        id: 'pi-turbo-blocked',
+        partId: turboKit.id,
+        band: 'mint',
+        genuinePeriod: false,
+        origin: makeMarketOrigin(1),
+      }
+      const spec = {
+        carInstanceId: naCar.id,
+        kind: 'install-part' as const,
+        componentId: 'engine' as const,
+        partInstanceId: turboInstance.id,
+        carPartId: 'forcedInduction' as const,
+        laborSlotsRequired: 1,
+      }
+      // Tier 3 so this isolates the blocker gate from the NA-to-turbo
+      // conversion gate (already its own test above).
+      const blocked = findOrCreateJob(
+        baseState({
+          ownedCars: [naCar],
+          partInventory: [turboInstance],
+          toolTiers: testToolTiers({ engine: 3 }),
+        }),
+        spec,
+        CONTEXT,
+      )
+      expect(blocked.job).toBeNull()
+      expect(blocked.log).toEqual([
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-install-part-engine-forcedInduction',
+          reason: 'blocked-by',
+        },
+      ])
+
+      const clearedIntakeCar: CarInstance = {
+        ...naCar,
+        parts: { ...naCar.parts, intake: { installed: null } },
+      }
+      const allowed = findOrCreateJob(
+        baseState({
+          ownedCars: [clearedIntakeCar],
+          partInventory: [turboInstance],
+          toolTiers: testToolTiers({ engine: 3 }),
+        }),
+        spec,
+        CONTEXT,
+      )
+      expect(allowed.job).not.toBeNull()
+    })
   })
 })
 
@@ -810,6 +887,46 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
       CONTEXT,
     )
     expect(gate.ok).toBe(false)
+  })
+
+  /**
+   * Sprint 71 decision 2 (the teardown game): a bolt-on/buried slot is
+   * bench-only - an on-car repair-zone job addressed at it (per-part or the
+   * whole group) is refused outright, reason 'bench-only', regardless of
+   * cash or tool tier. `dampers` (bolt-on, on the module-level `car` fixture,
+   * band 'worn' per its suspension-group override) is the exact
+   * `depthClass !== 'surface'` case this decision introduces.
+   */
+  it("refuses an on-car repair-zone job addressed at a bolt-on/buried part, reason 'bench-only'", () => {
+    const dampersCar: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        dampers: { installed: { ...sparePart, id: 'pi-worn-dampers', band: 'worn' } },
+      },
+    }
+    const gate = repairJobGate(
+      baseState({ ownedCars: [dampersCar] }),
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'suspension',
+        carPartId: 'dampers',
+        targetBand: 'mint',
+        laborSlotsRequired: 1,
+      },
+      CONTEXT,
+    )
+    expect(gate).toEqual({
+      ok: false,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-repair-zone-suspension-dampers',
+          reason: 'bench-only',
+        },
+      ],
+    })
   })
 
   it('charges cash for a customer service-job car exactly as before, records NO car ledger entry (never owned), but does update its own job ledger (Sprint 57)', () => {
@@ -1184,6 +1301,129 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     // The pulled instance still carries its own pricePaidYen - not zeroed,
     // not refunded anywhere.
     expect(result.state.partInventory).toEqual([aftermarketInstance])
+  })
+
+  /**
+   * Sprint 71 decision 4 (the symmetric blocker rule) and decision 1's own
+   * framing of the engine-internals chain as "the deepest job in the game" -
+   * the drivetrain side is the same shape at a shallower depth: clutch
+   * blocked by gearbox; gearbox blocked by driveline AND exhaust. The
+   * module-level `car` fixture has every drivetrain part filled (`worn`, via
+   * its `groupCarParts` override), so every blocker starts genuinely
+   * occupied.
+   */
+  it("refuses removing 'clutch' until 'gearbox' is off, and 'gearbox' until 'driveline' + 'exhaust' are both off", () => {
+    const state = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
+
+    expect(removeBlockReason(car, 'clutch', state, CONTEXT)).toEqual({
+      kind: 'blocked-by',
+      blockedBy: ['gearbox'],
+    })
+    const clutchBlocked = resolveRemovePart(state, car.id, 'clutch', CONTEXT)
+    expect(clutchBlocked.state).toBe(state)
+    expect(clutchBlocked.log).toEqual([])
+
+    expect(removeBlockReason(car, 'gearbox', state, CONTEXT)).toEqual({
+      kind: 'blocked-by',
+      blockedBy: ['driveline', 'exhaust'],
+    })
+    const gearboxBlocked = resolveRemovePart(state, car.id, 'gearbox', CONTEXT)
+    expect(gearboxBlocked.state).toBe(state)
+    expect(gearboxBlocked.log).toEqual([])
+
+    // Clear exhaust (bolt-on, no blockers of its own) - gearbox is still
+    // blocked by driveline alone.
+    const afterExhaust = resolveRemovePart(state, car.id, 'exhaust', CONTEXT)
+    expect(afterExhaust.log).toHaveLength(1)
+    const stillBlocked = resolveRemovePart(afterExhaust.state, car.id, 'gearbox', CONTEXT)
+    expect(stillBlocked.log).toEqual([])
+
+    // Clear driveline too - gearbox is now removable.
+    const afterDriveline = resolveRemovePart(afterExhaust.state, car.id, 'driveline', CONTEXT)
+    expect(afterDriveline.log).toHaveLength(1)
+    const gearboxOff = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
+    expect(gearboxOff.log).toHaveLength(1)
+    expect(gearboxOff.state.ownedCars[0]?.parts.gearbox.installed).toBeNull()
+
+    // Reassembly order matters (decision 4): clutch is removable now too.
+    const clutchOff = resolveRemovePart(gearboxOff.state, car.id, 'clutch', CONTEXT)
+    expect(clutchOff.log).toHaveLength(1)
+    expect(clutchOff.state.ownedCars[0]?.parts.clutch.installed).toBeNull()
+  })
+
+  /**
+   * Sprint 71 decision 3: uninstalling a buried ENGINE-group slot
+   * (`camsTiming`/`headValvetrain`/`internals`/`block`) needs
+   * `toolTiers.engine >= 2`. `camsTiming`'s own blocker (`cooling`, bolt-on,
+   * no blockers of its own) is cleared first so this isolates the MACHINE
+   * gate from the symmetric blocker rule tested above.
+   */
+  it("refuses uninstalling a buried ENGINE-group slot below engine tier 2, reason 'tool-tier', allows it at tier 2", () => {
+    const tierOne = baseState({ toolTiers: testToolTiers({ engine: 1 }) })
+    const afterCooling = resolveRemovePart(tierOne, car.id, 'cooling', CONTEXT)
+    expect(afterCooling.log).toHaveLength(1)
+
+    expect(
+      removeBlockReason(
+        afterCooling.state.ownedCars[0]!,
+        'camsTiming',
+        afterCooling.state,
+        CONTEXT,
+      ),
+    ).toEqual({ kind: 'tool-tier', group: 'engine' })
+    const stillGated = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT)
+    expect(stillGated.state).toBe(afterCooling.state)
+    expect(stillGated.log).toEqual([])
+
+    const tierTwo = { ...afterCooling.state, toolTiers: testToolTiers({ engine: 2 }) }
+    const allowed = resolveRemovePart(tierTwo, car.id, 'camsTiming', CONTEXT)
+    expect(allowed.log).toHaveLength(1)
+    expect(allowed.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+  })
+
+  /**
+   * Sprint 71 decision 3's other machine gate: a buried DRIVETRAIN-group
+   * slot (`gearbox`/`clutch`) needs `toolTiers.drivetrain >= 2`, checked here
+   * with `gearbox`'s own blockers (`driveline`, `exhaust`) already clear -
+   * the machine gate is a SEPARATE, additional refusal, not merely what the
+   * blocker chain test above already covers.
+   */
+  it('refuses uninstalling a buried DRIVETRAIN-group slot below drivetrain tier 2 even once its own blockers are clear', () => {
+    const tierOne = baseState({ toolTiers: testToolTiers({ drivetrain: 1 }) })
+    const afterExhaust = resolveRemovePart(tierOne, car.id, 'exhaust', CONTEXT)
+    const afterDriveline = resolveRemovePart(afterExhaust.state, car.id, 'driveline', CONTEXT)
+    expect(afterDriveline.log).toHaveLength(1)
+
+    const stillGated = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
+    expect(stillGated.state).toBe(afterDriveline.state)
+    expect(stillGated.log).toEqual([])
+
+    const tierTwo = { ...afterDriveline.state, toolTiers: testToolTiers({ drivetrain: 2 }) }
+    const allowed = resolveRemovePart(tierTwo, car.id, 'gearbox', CONTEXT)
+    expect(allowed.log).toHaveLength(1)
+  })
+
+  it('replaces the flat INSTALL_LABOR_SLOTS constant with per-depth-class labour: 0 surface, 1 bolt-on, 2 buried, for both remove and install', () => {
+    expect(removeLaborSlotsFor('panels', CONTEXT)).toBe(0)
+    expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(1)
+    expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(2)
+    expect(installLaborSlotsFor('panels', CONTEXT)).toBe(0)
+    expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(1)
+    expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(2)
+  })
+
+  it("refuses a removal when today's remaining labour is less than the slot's own class cost, and succeeds once enough is offered", () => {
+    const tierTwo = baseState({ toolTiers: testToolTiers({ engine: 2 }) })
+    const afterCooling = resolveRemovePart(tierTwo, car.id, 'cooling', CONTEXT)
+
+    // camsTiming is buried - 2 labour slots. Offering only 1 is a no-op.
+    const starved = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 1)
+    expect(starved.state).toBe(afterCooling.state)
+    expect(starved.log).toEqual([])
+
+    const funded = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 2)
+    expect(funded.log).toHaveLength(1)
+    expect(funded.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
   })
 })
 

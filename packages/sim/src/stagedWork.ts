@@ -1,9 +1,8 @@
 import type { CarInstance, DayLogEntry, GameState } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 import { bandIndex, canRepair, planGroupRepair } from './bands'
-import { INSTALL_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
-import { findWorkableCar, resolveJobLabor } from './jobs'
+import { findWorkableCar, installLaborSlotsFor, resolveJobLabor } from './jobs'
 
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
@@ -94,14 +93,23 @@ export function confirmStagedWork(
         }
       }
     } else {
-      spec = {
-        carInstanceId,
-        kind: 'install-part',
-        componentId: action.componentId,
-        partInstanceId: action.partInstanceId,
-        carPartId: action.carPartId,
-        laborSlotsRequired: INSTALL_LABOR_SLOTS,
-      }
+      // Sprint 71: labor sizes off the TARGET slot's own depth class - the
+      // picked part's own catalog address when `action.carPartId` (the
+      // per-part drawer) is unset, exactly how `applyJobToCar` itself
+      // resolves the real target slot at completion.
+      const partInstance = current.partInventory.find((p) => p.id === action.partInstanceId)
+      const catalogPart = partInstance ? context.partsById[partInstance.partId] : undefined
+      const targetPartId = action.carPartId ?? catalogPart?.carPartId
+      spec = targetPartId
+        ? {
+            carInstanceId,
+            kind: 'install-part',
+            componentId: action.componentId,
+            partInstanceId: action.partInstanceId,
+            carPartId: action.carPartId,
+            laborSlotsRequired: installLaborSlotsFor(targetPartId, context),
+          }
+        : null
     }
     if (!spec) continue // nothing left to do for this staged action - skip it
 

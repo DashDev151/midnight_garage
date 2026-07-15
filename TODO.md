@@ -78,6 +78,36 @@ pass."
      +9.6% to +34.5% of clean value on the sensible play. That gap is the clearest measurement of
      this defect yet produced: the economy is fine and the bots cannot play it. **Do not tune the
      economy against these curves** - a rewritten bot must pick a target band per car.
+  6. **Sprint 71's teardown mechanic permanently stalls `competent-policy` after its first car**
+     (found running this sprint's gate). Measured directly (`runCareer.test.ts`, this exact
+     harness): 0/100 seeds ever gain a single reputation point in 100 days (was 45/100 at the
+     Sprint 69 ladder). `competentPolicyStrategy` (`bots/competentPolicy.ts`) still treats every
+     component group as on-car-repairable; step 4 claims the sole starting service bay for the
+     first below-mint group it finds, but Sprint 71 moved bolt-on/buried repair to the bench
+     (`planGroupRepair` now excludes those slots entirely, `bands.ts`), so a bolt-on/buried group
+     can never reach mint through this bot's only repair path. Step 4b's stall-detection never
+     rescues it either: `carsGettingJobsToday.add(car.id)` runs unconditionally, even when the
+     queued repair plan was empty, so the bay is never freed. With `MAX_CONCURRENT_CARS = 1` the
+     one bay and the one car are wedged together for the rest of the career, and since the same
+     bay also gates step 6's service-job work, reputation gain stops entirely, not just the
+     clean/concours sale path. Same shape as finding 5 (a bot cannot make a decision the new
+     mechanic requires - here, when to uninstall/bench-repair/reinstall), not a defect in the
+     teardown mechanic itself: a human player uses the new loop freely (`CarDetailScreen.vue`'s
+     "Take it off"). The `runCareer.test.ts` assertion was rewritten to the honestly-measured
+     value (0), not loosened to force a pass. Deferred to the rework below rather than patched ad
+     hoc in Sprint 71: teaching a bot the teardown loop is exactly the "per-car target-band
+     choice" sophistication finding 5 already says a rewritten bot needs.
+     **CI impact, confirmed by running the real 1000-career harness (`pnpm balance:run` +
+     `python -m balance.cli check`) at the end of Sprint 71:** the same stall reproduces at full
+     scale - 0/1000 seeds, `p50=None` - so `balance.cli check`'s hard-gated "Days-to-`local`"
+     invariant now FAILS (was passing pre-Sprint-71). This was NOT silently patched: `invariants.py`
+     is untouched, and demoting an already-hard-gated CI check to informational is a maintainer
+     call (the file's own precedent for the three checks already informational: "kept
+     informational... since no maintainer has signed off on hard-gating them yet" - the converse,
+     UN-gating one, deserves the same sign-off), not something to decide inside the sprint that
+     exposed the gap. Flagged in `sprint71.md`'s Exit for explicit maintainer attention: `balance`
+     CI will show red on this one line until either the bot-harness rework lands or the maintainer
+     explicitly demotes this specific check.
 
   **What survives the rework, and must not be thrown away.** The distinction matters: the harness
   has two halves and only one is broken.
@@ -236,9 +266,10 @@ pass."
 ## Planned systems (designed, not yet scheduled)
 
 The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
-sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown -> 72 outcome
-jobs -> 73-75 diagnosis -> 76-78 story missions** (`docs/sprints/sprint70.md` through
-`sprint78.md`; sprint70.md's Exit is the permanent record of the provenance rework itself). Each
+sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown (landed) -> 72
+outcome jobs -> 73-75 diagnosis -> 76-78 story missions** (`docs/sprints/sprint70.md` through
+`sprint78.md`; sprint70.md's/sprint71.md's own Exit sections are the permanent record of each
+rework itself). Each
 later system consumes verbs the earlier one builds (provenance answers ownership on every part
 verb; the component arc supplies uninstall-reveals-truth and the shared outcome-predicate module;
 diagnosis makes commissions a gamble instead of a shopping list). Entries below stay until their

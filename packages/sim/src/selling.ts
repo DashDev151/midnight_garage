@@ -1,14 +1,15 @@
-import type {
-  Buyer,
-  CarInstance,
-  CarModel,
-  CarPartId,
-  CarPartTaxonomyEntry,
-  DayLogEntry,
-  EconomyConfig,
-  GameState,
-  Part,
-  PendingSaleOffer,
+import {
+  ALL_CAR_PART_IDS,
+  type Buyer,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+  type DayLogEntry,
+  type EconomyConfig,
+  type GameState,
+  type Part,
+  type PendingSaleOffer,
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
 import { applyReputationDelta } from './calendar'
@@ -390,5 +391,51 @@ export function resolveSellViaWalkIn(
           : {}),
       },
     ],
+  }
+}
+
+export interface ScrapShellResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Sprint 71 decision 7: scrap the whole car at once, shell and all - the
+ * end-of-the-line donor move once a car is stripped down (or not worth
+ * stripping further). Pays `model.bookValueYen * economy.bands.scrapValueFraction`
+ * regardless of what's still installed (the same flat scrap-value fraction
+ * `scrapValueYen` applies to a single part, here applied to the whole car),
+ * removes the car and every part still on it, frees its bay/grace slot
+ * (`releaseCarFromShop`, the same release a sale uses), clears any staged
+ * work, and deletes its ledger entry - a car that no longer exists has
+ * nothing left to account for.
+ */
+export function resolveScrapShell(
+  state: GameState,
+  carInstanceId: string,
+  context: SimContext,
+): ScrapShellResult {
+  const car = state.ownedCars.find((c) => c.id === carInstanceId)
+  if (!car) return { state, log: [] }
+  const model = context.modelsById[car.modelId]
+  if (!model) return { state, log: [] }
+
+  const priceYen = Math.round(model.bookValueYen * context.economy.bands.scrapValueFraction)
+  const carPartIds = ALL_CAR_PART_IDS.filter((id) => car.parts[id].installed !== null)
+
+  const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
+
+  return {
+    state: deleteCarLedger(
+      {
+        ...clearedState,
+        cashYen: clearedState.cashYen + priceYen,
+        ownedCars: clearedState.ownedCars.filter((c) => c.id !== carInstanceId),
+        carsForSale: clearedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+        pendingOffers: clearedState.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+      },
+      carInstanceId,
+    ),
+    log: [{ type: 'shell-scrapped', carInstanceId, modelId: car.modelId, priceYen, carPartIds }],
   }
 }

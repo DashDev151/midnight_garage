@@ -9,7 +9,7 @@ import {
 } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
-import { INSTALL_LABOR_SLOTS } from '../constants'
+import { installLaborSlotsFor } from '../jobs'
 import { availableLaborSlots } from '../laborSlots'
 import { partFitsCar } from '../parts'
 import type { Rng } from '../rng'
@@ -137,9 +137,9 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
         componentId: worstEmpty,
         partInstanceId: ownedFitting.id,
         carPartId: emptyCarPartId,
-        laborSlotsRequired: INSTALL_LABOR_SLOTS,
+        laborSlotsRequired: installLaborSlotsFor(emptyCarPartId, context),
       })
-      const slots = Math.min(INSTALL_LABOR_SLOTS, laborBudget)
+      const slots = Math.min(installLaborSlotsFor(emptyCarPartId, context), laborBudget)
       actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
       laborBudget -= slots
       jobbedCarIds.add(car.id)

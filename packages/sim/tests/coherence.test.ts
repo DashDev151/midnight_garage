@@ -9,7 +9,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
-import { computeRosterCoherence } from '../src/coherence'
+import { computeRosterCoherence, computeRosterDonorCoherence } from '../src/coherence'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -60,5 +60,59 @@ describe('roster coherence invariants (economy-bible.md law 4)', () => {
       .filter((r) => r.consumablesShare > maxConsumablesShareOfBookValue)
       .map((r) => `${r.modelId}: consumables share ${(r.consumablesShare * 100).toFixed(1)}%`)
     expect(failures).toEqual([])
+  })
+})
+
+describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)', () => {
+  const modelRows = computeRosterCoherence(CARS, CONTEXT)
+  const donorRows = computeRosterDonorCoherence(CARS, CONTEXT)
+
+  it('covers every roster model exactly once', () => {
+    expect(donorRows.map((r) => r.modelId).sort()).toEqual(CARS.map((c) => c.id).sort())
+  })
+
+  it('a clean car is never worth more parted out than sold whole, for every model', () => {
+    const failures = donorRows
+      .filter((r) => r.partedYieldYen >= r.wholeSaleYen)
+      .map(
+        (r) =>
+          `${r.modelId}: parted ${r.partedYieldYen} >= whole ${r.wholeSaleYen} (${r.stripLaborSlots} labour slots to strip)`,
+      )
+    expect(failures).toEqual([])
+  })
+
+  it('discloses, per model, where the worst-case car crosses from "repair it" to "part it out" against economy.teardown.donorBreakEvenBillRatio', () => {
+    // Not a gate (decision 8): the crossover is measured here, not
+    // force-asserted at an exact ratio - this pins the CURRENT shape so a
+    // future economy retune can't silently drift it unnoticed.
+    const donorBreakEvenBillRatio = CONTEXT.economy.teardown.donorBreakEvenBillRatio
+    const byModel = new Map(modelRows.map((r) => [r.modelId, r]))
+    const crossings = donorRows.map((r) => {
+      const modelRow = byModel.get(r.modelId)!
+      return {
+        modelId: r.modelId,
+        billToCleanRatio: modelRow.billToCleanRatio,
+        partingWins: r.partedYieldOfWorstCaseYen > modelRow.sensibleFlipMarginYen,
+      }
+    })
+    // The roster's worst-case bill-to-clean ratio never exceeds Law 2's
+    // `maxBillFraction` ceiling (already gated above) - measured here
+    // against `donorBreakEvenBillRatio` specifically to disclose whether
+    // the shipped roster's worst rolls ever actually reach the point where
+    // parting out would win.
+    // Disclosure only (decision 8): the roster's worst-case rolls genuinely
+    // reach both sides of `donorBreakEvenBillRatio`, and both outcomes
+    // (parting out wins, the sensible repair wins) occur somewhere on the
+    // roster - the mechanism is real and exercised, not a threshold that
+    // never actually triggers on the shipped content. It is NOT a clean
+    // single-variable crossover at the ratio itself - several models sit
+    // above the ratio yet still favour repair, because the real yield
+    // depends on the whole model (book value, parts mix, expectation band),
+    // not `billToCleanRatio` alone. That is exactly why this is measured and
+    // disclosed here rather than force-gated to the ratio.
+    expect(crossings).toHaveLength(CARS.length)
+    expect(crossings.some((c) => c.billToCleanRatio > donorBreakEvenBillRatio)).toBe(true)
+    expect(crossings.some((c) => c.partingWins)).toBe(true)
+    expect(crossings.some((c) => !c.partingWins)).toBe(true)
   })
 })

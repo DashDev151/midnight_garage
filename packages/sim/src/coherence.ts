@@ -9,9 +9,16 @@ import {
   type PartFitmentClass,
 } from '@midnight-garage/content'
 import { carOriginLabel, enforceMaxBillFraction, stockInstanceFor } from './auctions'
-import { carCostToMintYen, hasForcedInduction, planGroupRepair } from './bands'
+import {
+  bandFactor,
+  bandIndex,
+  carCostToMintYen,
+  hasForcedInduction,
+  planGroupRepair,
+} from './bands'
 import { PLAYER_BASE_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
+import { removeLaborSlotsFor } from './jobs'
 import { expectationForCar, marketValueYen, mileageFactor } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import { freshToolTiers } from './toolLines'
@@ -277,6 +284,19 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   // band is the repair the economy actually asks for.
   const expectationBand = expectationForCar(model, context.economy).band
   const wageCar = buildWageProbeCar(model, context)
+  // Sprint 71 (the teardown game) narrowed `planGroupRepair` (bands.ts) to
+  // surface-slot candidates only: bolt-on/buried repair moved to the bench,
+  // off the on-car plan this sum reads. `buildWageProbeCar`'s "repaired to
+  // the expectation band" value-side lift below is gated on `repairable`,
+  // not `depthClass`, so it still credits the full car. That leaves
+  // `repairCostYen`/`repairLaborSlots` (and everything derived from them:
+  // `sensibleFlipMarginYen`, `wageMarginYen`, `wageRatio`) undercounted on
+  // any model whose expectation band touches a bolt-on/buried slot: the
+  // wage probe's cost side no longer prices the same lift its value side
+  // assumes. Known, disclosed gap (TODO.md: "teardown labour in Law 1
+  // margins and Law 6 payouts", scoped across Sprints 71-72); Sprint 72
+  // prices the full teardown chain (uninstall + bench repair + reinstall)
+  // into this sum rather than patching it here ad hoc.
   let repairCostYen = 0
   let repairLaborSlots = 0
   for (const groupId of ComponentIdSchema.options) {
@@ -345,4 +365,145 @@ export function computeRosterCoherence(
   context: SimContext,
 ): ModelCoherenceRow[] {
   return models.map((model) => computeModelCoherence(model, context))
+}
+
+export interface ModelDonorCoherenceRow {
+  modelId: string
+  /** A clean, all-mint example of this model (0 km, authenticity 100),
+   * valued whole through the real `marketValueYen` - the "just sell it"
+   * baseline the parted-out route below is measured against. */
+  wholeSaleYen: number
+  /** Selling every REMOVABLE part off that same clean car at the used-part
+   * haircut - the same formula `resolveSellPart` applies (`part.priceYen x
+   * bandFactor('mint') x economy.teardown.usedPartSaleFraction`), called
+   * directly rather than through a throwaway `GameState` since it is a plain
+   * one-line arithmetic reuse, not a re-derivation - plus scrapping the
+   * stripped shell (`model.bookValueYen x economy.bands.scrapValueFraction`).
+   * Decision 8's "whole beats parted" gate compares this against
+   * `wholeSaleYen` above, on every roster model. */
+  partedYieldYen: number
+  /** Total uninstall labour the parted route above actually costs - every
+   * removable part's own `removeLaborSlotsFor`, summed. Not gated; disclosed
+   * alongside the yen figures so a maintainer can read "is this worth the
+   * bench time" at a glance. */
+  stripLaborSlots: number
+  /**
+   * Sprint 71 decision 8's second probe: on the SAME worst-case generatable
+   * car `computeModelCoherence` builds (`buildWorstCaseRawCar` softened by
+   * `enforceMaxBillFraction` - reused here exactly, not rebuilt differently),
+   * the yield of parting out only the parts strictly better than `poor` (the
+   * ones actually worth pulling rather than replacing outright) plus
+   * scrapping the shell. The crossover against that same model's
+   * `sensibleFlipMarginYen` (`ModelCoherenceRow`) - the bill-to-clean ratio
+   * above which parting out beats the sensible repair - is measured and
+   * DISCLOSED per model in `coherence.test.ts`, not force-asserted against
+   * `economy.teardown.donorBreakEvenBillRatio` exactly.
+   */
+  partedYieldOfWorstCaseYen: number
+}
+
+/**
+ * Sprint 71 decision 8 (the teardown game's donor-economy law): is a clean
+ * car ever worth more parted out than sold whole? It must never be - a player
+ * should never be better off destroying a good car for scrap parts, which is
+ * the whole reason `usedPartSaleFraction`/`scrapValueFraction` are haircuts,
+ * not parity prices.
+ */
+export function computeDonorCoherence(
+  model: CarModel,
+  context: SimContext,
+): ModelDonorCoherenceRow {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const carHasForcedInduction = hasForcedInduction(model)
+  const carId = `donor-${model.id}`
+  const cleanOrigin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
+  const cleanParts = Object.fromEntries(
+    ALL_CAR_PART_IDS.map((partId) => {
+      if (partId === 'forcedInduction' && !carHasForcedInduction) {
+        return [partId, { installed: null }]
+      }
+      const installed = stockInstanceFor(
+        partId,
+        'mint',
+        carId,
+        fitmentClass,
+        context.stockPartByCarPartId,
+        cleanOrigin,
+      )
+      return [partId, { installed }]
+    }),
+  ) as CarInstance['parts']
+  const cleanCar: CarInstance = {
+    id: carId,
+    modelId: model.id,
+    year: model.spec.yearFrom,
+    mileageKm: 0,
+    color: 'White',
+    provenanceNote: 'donor probe',
+    authenticityPercent: 100,
+    parts: cleanParts,
+  }
+
+  const wholeSaleYen = Math.round(
+    marketValueYen(
+      model,
+      cleanCar,
+      100,
+      context.partsById,
+      context.partsTaxonomyById,
+      context.economy,
+    ),
+  )
+
+  const shellScrapYen = Math.round(model.bookValueYen * context.economy.bands.scrapValueFraction)
+
+  let partedYieldYen = shellScrapYen
+  let stripLaborSlots = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = cleanCar.parts[partId].installed
+    const taxonomyEntry = context.partsTaxonomyById[partId]
+    if (!installed || !taxonomyEntry?.removable) continue
+    const part = context.partsById[installed.partId]
+    if (!part) continue
+    partedYieldYen += Math.round(
+      part.priceYen *
+        bandFactor('mint', context.economy) *
+        context.economy.teardown.usedPartSaleFraction,
+    )
+    stripLaborSlots += removeLaborSlotsFor(partId, context)
+  }
+
+  const rawWorstCar = buildWorstCaseRawCar(model, context)
+  const worstOrigin = makeCarOrigin(rawWorstCar.id, carOriginLabel(model, rawWorstCar.year), 0)
+  const softenedWorstCar = enforceMaxBillFraction(rawWorstCar, model, context, worstOrigin)
+
+  let partedYieldOfWorstCaseYen = shellScrapYen
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = softenedWorstCar.parts[partId].installed
+    const taxonomyEntry = context.partsTaxonomyById[partId]
+    if (!installed || !taxonomyEntry?.removable) continue
+    if (bandIndex(installed.band) <= bandIndex('poor')) continue // not worth pulling over replacing
+    const part = context.partsById[installed.partId]
+    if (!part) continue
+    partedYieldOfWorstCaseYen += Math.round(
+      part.priceYen *
+        bandFactor(installed.band, context.economy) *
+        context.economy.teardown.usedPartSaleFraction,
+    )
+  }
+
+  return {
+    modelId: model.id,
+    wholeSaleYen,
+    partedYieldYen,
+    stripLaborSlots,
+    partedYieldOfWorstCaseYen,
+  }
+}
+
+export function computeRosterDonorCoherence(
+  models: readonly CarModel[],
+  context: SimContext,
+): ModelDonorCoherenceRow[] {
+  return models.map((model) => computeDonorCoherence(model, context))
 }

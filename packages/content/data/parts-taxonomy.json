@@ -3,6 +3,8 @@
     "id": "block",
     "group": "engine",
     "displayName": "Block",
+    "depthClass": "buried",
+    "blockedBy": ["intake", "exhaust", "cooling"],
     "statWeights": {
       "reliability": 2
     }
@@ -11,6 +13,8 @@
     "id": "internals",
     "group": "engine",
     "displayName": "Internals",
+    "depthClass": "buried",
+    "blockedBy": ["headValvetrain"],
     "statWeights": {
       "power": 2,
       "reliability": 2
@@ -20,6 +24,8 @@
     "id": "headValvetrain",
     "group": "engine",
     "displayName": "Head & Valvetrain",
+    "depthClass": "buried",
+    "blockedBy": ["camsTiming", "intake"],
     "statWeights": {
       "reliability": 2
     }
@@ -28,6 +34,8 @@
     "id": "camsTiming",
     "group": "engine",
     "displayName": "Cams & Timing",
+    "depthClass": "buried",
+    "blockedBy": ["cooling"],
     "statWeights": {
       "power": 2,
       "reliability": 1
@@ -80,6 +88,7 @@
     "id": "forcedInduction",
     "group": "engine",
     "displayName": "Forced Induction",
+    "blockedBy": ["intake"],
     "statWeights": {
       "power": 3,
       "reliability": 1
@@ -89,6 +98,8 @@
     "id": "gearbox",
     "group": "drivetrain",
     "displayName": "Gearbox",
+    "depthClass": "buried",
+    "blockedBy": ["driveline", "exhaust"],
     "statWeights": {
       "reliability": 2
     }
@@ -98,6 +109,8 @@
     "group": "drivetrain",
     "displayName": "Clutch",
     "repairable": false,
+    "depthClass": "buried",
+    "blockedBy": ["gearbox"],
     "statWeights": {
       "reliability": 1
     }
@@ -106,6 +119,7 @@
     "id": "differential",
     "group": "drivetrain",
     "displayName": "Differential",
+    "blockedBy": ["driveline"],
     "statWeights": {
       "reliability": 1
     }
@@ -122,6 +136,8 @@
     "id": "chassis",
     "group": "drivetrain",
     "displayName": "Chassis",
+    "depthClass": "surface",
+    "removable": false,
     "statWeights": {
       "reliability": 2
     }
@@ -188,6 +204,7 @@
     "group": "wheels",
     "displayName": "Tyres",
     "repairable": false,
+    "blockedBy": ["rims"],
     "statWeights": {
       "handling": 3
     }
@@ -196,6 +213,7 @@
     "id": "panels",
     "group": "body",
     "displayName": "Panels",
+    "depthClass": "surface",
     "statWeights": {
       "style": 2
     }
@@ -204,6 +222,8 @@
     "id": "paint",
     "group": "body",
     "displayName": "Paint",
+    "depthClass": "surface",
+    "removable": false,
     "statWeights": {
       "style": 2
     }
@@ -212,6 +232,8 @@
     "id": "underbody",
     "group": "body",
     "displayName": "Underbody",
+    "depthClass": "surface",
+    "removable": false,
     "statWeights": {
       "style": 2
     }
@@ -220,6 +242,7 @@
     "id": "aero",
     "group": "body",
     "displayName": "Aero",
+    "depthClass": "surface",
     "statWeights": {
       "style": 2,
       "handling": 1
@@ -229,6 +252,7 @@
     "id": "seats",
     "group": "interior",
     "displayName": "Seats",
+    "depthClass": "surface",
     "statWeights": {
       "style": 2
     }
@@ -237,6 +261,7 @@
     "id": "dashGauges",
     "group": "interior",
     "displayName": "Dash & Gauges",
+    "depthClass": "surface",
     "statWeights": {
       "style": 1
     }

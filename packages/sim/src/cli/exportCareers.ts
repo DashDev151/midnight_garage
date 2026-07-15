@@ -38,7 +38,7 @@ import { passiveGrinderStrategy } from '../bots/passiveGrinder'
 import { randomStrategy } from '../bots/randomStrategy'
 import { serviceGrinderStrategy } from '../bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../bots/runCareer'
-import { computeRosterCoherence } from '../coherence'
+import { computeRosterCoherence, computeRosterDonorCoherence } from '../coherence'
 import { buildSimContext } from '../context'
 
 const CAREERS_PER_STRATEGY = 1000
@@ -142,6 +142,18 @@ const COHERENCE_COLUMNS = [
   { name: 'rentDuringRepairYen', type: 'int64' },
   { name: 'wageMarginYen', type: 'int64' },
   { name: 'wageRatio', type: 'float64' },
+] as const
+
+/** Sprint 71 decision 8 (the teardown game's donor economy): one row per
+ * roster model, `computeRosterDonorCoherence`'s closed-form whole-vs-parted
+ * facts - same one-shot-per-model shape as `COHERENCE_COLUMNS` above, no
+ * seeded careers needed. */
+const DONOR_COHERENCE_COLUMNS = [
+  { name: 'modelId', type: 'string' },
+  { name: 'wholeSaleYen', type: 'int64' },
+  { name: 'partedYieldYen', type: 'int64' },
+  { name: 'stripLaborSlots', type: 'int64' },
+  { name: 'partedYieldOfWorstCaseYen', type: 'int64' },
 ] as const
 
 function writeCsv(
@@ -305,6 +317,23 @@ function main(): void {
     maxConsumablesShareOfBookValue: ECONOMY.coherence.maxConsumablesShareOfBookValue,
     payoutMarginMin: ECONOMY.serviceJobs.marginMin,
     payoutRequiredCoverage: 1.15,
+  })
+
+  const donorCoherenceRows = computeRosterDonorCoherence(CARS, context).map((row) =>
+    [
+      row.modelId,
+      row.wholeSaleYen,
+      row.partedYieldYen,
+      row.stripLaborSlots,
+      row.partedYieldOfWorstCaseYen,
+    ].join(','),
+  )
+  writeCsv('donorCoherence.csv', DONOR_COHERENCE_COLUMNS, donorCoherenceRows)
+  writeManifest('donorCoherence.manifest.json', {
+    simVersion: SIM_VERSION,
+    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
+    columns: DONOR_COHERENCE_COLUMNS,
+    donorBreakEvenBillRatio: ECONOMY.teardown.donorBreakEvenBillRatio,
   })
 
   const strategyList = STRATEGIES.map((s) => s.name).join(', ')

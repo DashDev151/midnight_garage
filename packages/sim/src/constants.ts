@@ -17,9 +17,6 @@ import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnig
  */
 export const PLAYER_BASE_LABOR_SLOTS = 6
 
-/** A bolt-on install is a single-slot job for now. */
-export const INSTALL_LABOR_SLOTS = 1
-
 /** How long a service-job offer stays on the board before expiring unaccepted
  * (Sprint 29 decision 4: "offers expire as today"). Daily offer COUNT is a
  * content tunable now (economy.json's `serviceJobs.dailyOfferCountWeights`),

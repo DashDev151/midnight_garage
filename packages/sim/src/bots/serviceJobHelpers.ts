@@ -1,8 +1,8 @@
 import type { GameState, Job, ServiceJob, ServiceJobTask } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
 import { planGroupRepair } from '../bands'
-import { INSTALL_LABOR_SLOTS } from '../constants'
 import type { SimContext } from '../context'
+import { installLaborSlotsFor } from '../jobs'
 import { gradeAtLeast, partFitsCar } from '../parts'
 import { isServiceTaskDone, serviceJobCostBreakdown } from '../serviceJobs'
 
@@ -181,9 +181,9 @@ export function queueServiceJobTasks(
         componentId: group,
         partInstanceId: ownedFitting.id,
         carPartId: task.carPartId,
-        laborSlotsRequired: INSTALL_LABOR_SLOTS,
+        laborSlotsRequired: installLaborSlotsFor(task.carPartId, context),
       })
-      const slots = Math.min(INSTALL_LABOR_SLOTS, remainingLabor)
+      const slots = Math.min(installLaborSlotsFor(task.carPartId, context), remainingLabor)
       actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
       remainingLabor -= slots
       continue
