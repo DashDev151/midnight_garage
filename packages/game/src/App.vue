@@ -103,6 +103,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       <RouterLink :to="{ name: 'parts' }">Parts</RouterLink>
       <RouterLink :to="{ name: 'inventory' }">Inventory</RouterLink>
       <RouterLink :to="{ name: 'upgrades' }">Upgrades</RouterLink>
+      <RouterLink :to="{ name: 'standing' }" data-test="nav-standing">Standing</RouterLink>
       <!-- Sprint 65 decision 1: a menu CONTROL (not a tab) - a mouse player's
            way into the full-screen menu, mirroring Escape. -->
       <button class="menu-button" data-test="open-menu" title="Menu (Esc)" @click="openMenu">

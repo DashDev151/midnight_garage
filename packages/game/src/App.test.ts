@@ -63,6 +63,23 @@ describe('App (Sprint 51: chrome)', () => {
     expect(wrapper.findAll('h1').filter((h) => h.text() === 'MIDNIGHT GARAGE')).toHaveLength(1)
   })
 
+  it('the Standing screen is reachable from the nav on a gameplay screen', async () => {
+    // Regression: the route existed from Sprint 62 but the only ways in were
+    // two links styled `color: inherit; text-decoration: none` with a
+    // panel-edge dotted border - invisible on a dark panel. The screen was
+    // effectively unreachable. A real nav entry is the fix.
+    const wrapper = await mountAppAt('garage')
+    const link = wrapper.find('[data-test="nav-standing"]')
+    expect(link.exists()).toBe(true)
+    // Wired to the real route (memory history still resolves an href).
+    expect(link.attributes('href')).toBe('/standing')
+    // And the route genuinely renders the screen.
+    await router.push({ name: 'standing' })
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('standing')
+    expect(wrapper.text()).toContain('Your standing')
+  })
+
   it('the header menu control opens the full-screen menu', async () => {
     const wrapper = await mountAppAt('garage')
     await wrapper.find('[data-test="open-menu"]').trigger('click')

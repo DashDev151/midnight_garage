@@ -162,16 +162,17 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 62: the rep figure links to the Standing screen (the one place the
-   granular numbers live). */
+/* The rep figure links to the Standing screen. It must LOOK like a link - the
+   Sprint 62 styling rendered it invisible on a dark panel (see GarageScreen's
+   matching comment). */
 .standing-link {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px dotted var(--mg-panel-edge);
+  color: var(--mg-neon-cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .standing-link:hover {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-pink);
 }
 
 .empty {

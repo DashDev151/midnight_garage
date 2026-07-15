@@ -257,16 +257,19 @@ h3 {
   color: var(--mg-yen);
 }
 
-/* Sprint 62: the reputation line is the diegetic door to the Standing screen
-   (the shop's own name and record on the wall). */
+/* The reputation line is a door to the Standing screen. It must LOOK like one:
+   the Sprint 62 styling (inherited colour, no underline, a dotted border in
+   the panel-edge colour) rendered an invisible link on a dark panel, so the
+   screen was effectively unreachable. Interactive text is cyan and underlined,
+   like every other link in the app. */
 .standing-link {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px dotted var(--mg-panel-edge);
+  color: var(--mg-neon-cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .standing-link:hover {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-pink);
 }
 
 button {
