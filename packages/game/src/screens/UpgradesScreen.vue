@@ -132,7 +132,7 @@ const selectedInfo = computed(() =>
       <div class="tool-wall">
         <div v-for="line in game.toolLineViews" :key="line.componentId" class="tool-column">
           <h4>{{ line.componentLabel }}</h4>
-          <p v-if="line.maxed" class="maxed">Fully equipped</p>
+          <p class="maxed" :class="{ shown: line.maxed }">Fully equipped</p>
           <ul class="tier-ladder">
             <li
               v-for="rung in [...line.tiers].reverse()"
@@ -335,6 +335,13 @@ h3 {
   margin: 0 0 var(--mg-space-3);
 }
 
+.tool-column {
+  /* The ladder must fill the column so its rows can divide a height every
+     column shares (see `.tier-ladder`). */
+  display: flex;
+  flex-direction: column;
+}
+
 .tool-column h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
@@ -346,19 +353,49 @@ h3 {
   min-height: 2.4em;
 }
 
+.maxed {
+  /* Always occupies its line, hidden when the column isn't maxed - otherwise
+     a maxed column's ladder starts lower than its neighbours' and the whole
+     wall re-staggers. Same reserve-the-space instinct as the h4 above. */
+  min-height: 1.4em;
+  margin: 0 0 var(--mg-space-1);
+  visibility: hidden;
+}
+
+.maxed.shown {
+  visibility: visible;
+}
+
+/*
+ * Rows align across the wall BY CONSTRUCTION, not by hoping every rung's name
+ * happens to be the same length.
+ *
+ * This was a flex column, so each node was only as tall as its own text:
+ * "Engine crane & stand" wraps to two lines, "Two-post lift" doesn't, so the
+ * tier-2 cards had different heights and every rung below them staggered
+ * (Suspension's tier 1 sat ~50px above Engine's). Sprint 65's `min-height` on
+ * the h4 fixed the header and left this untouched one level down.
+ *
+ * Three equal `1fr` rows, in a ladder stretched to the column's full height.
+ * The wall's grid already stretches every column to the tallest, so each
+ * column divides the SAME height into the same three rows - tier 1 is level
+ * with tier 1 everywhere, whatever any label does.
+ */
 .tier-ladder {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
   gap: var(--mg-space-2);
+  flex: 1;
 }
 
 .tier-node {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   background: var(--mg-panel);
   border: var(--mg-border);
