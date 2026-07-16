@@ -1,0 +1,105 @@
+[
+  {
+    "anchor": true,
+    "id": "anchor-long-termer",
+    "name": "The magazine's long-termer",
+    "powerPs": 150,
+    "weightKg": 1000
+  },
+  {
+    "anchor": false,
+    "id": "rental-return-special",
+    "name": "The rental-return special",
+    "powerPs": 95,
+    "weightKg": 1150,
+    "tyreGrade": "stock"
+  },
+  {
+    "anchor": false,
+    "id": "grocery-getter",
+    "name": "Grandma's grocery-getter",
+    "powerPs": 110,
+    "weightKg": 1100,
+    "tyreGrade": "stock"
+  },
+  {
+    "anchor": false,
+    "id": "company-pool-car",
+    "name": "The company pool car",
+    "powerPs": 130,
+    "weightKg": 1050,
+    "tyreGrade": "stock"
+  },
+  {
+    "anchor": false,
+    "id": "shop-demo-car",
+    "name": "The shop's demo car",
+    "powerPs": 140,
+    "weightKg": 1000,
+    "tyreGrade": "street"
+  },
+  {
+    "anchor": false,
+    "id": "night-meet-regular",
+    "name": "The night-meet regular",
+    "powerPs": 160,
+    "weightKg": 980,
+    "tyreGrade": "street"
+  },
+  {
+    "anchor": false,
+    "id": "daily-driven-sleeper",
+    "name": "The daily-driven sleeper",
+    "powerPs": 125,
+    "weightKg": 1080,
+    "tyreGrade": "street"
+  },
+  {
+    "anchor": false,
+    "id": "touge-regulars-build",
+    "name": "The touge regular's build",
+    "powerPs": 175,
+    "weightKg": 1000,
+    "tyreGrade": "sport"
+  },
+  {
+    "anchor": false,
+    "id": "weekend-track-day-car",
+    "name": "The weekend track-day car",
+    "powerPs": 155,
+    "weightKg": 980,
+    "tyreGrade": "sport"
+  },
+  {
+    "anchor": false,
+    "id": "tuner-shops-showcase",
+    "name": "The tuner shop's showcase",
+    "powerPs": 190,
+    "weightKg": 1020,
+    "tyreGrade": "sport"
+  },
+  {
+    "anchor": false,
+    "id": "ex-club-racer",
+    "name": "The ex-club-racer",
+    "powerPs": 170,
+    "weightKg": 1020,
+    "tyreGrade": "race"
+  },
+  {
+    "anchor": false,
+    "id": "time-attack-special",
+    "name": "The time-attack special",
+    "powerPs": 180,
+    "weightKg": 1060,
+    "tyreGrade": "race"
+  },
+  {
+    "anchor": false,
+    "id": "magazine-feature-car",
+    "name": "The magazine feature car",
+    "powerPs": 160,
+    "weightKg": 1000,
+    "tyreGrade": "race"
+  }
+]

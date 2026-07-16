@@ -1,3 +1,4 @@
+import { ALL_CAR_PART_IDS, CARS } from '@midnight-garage/content'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -10,6 +11,53 @@ function mountScreen() {
 
 function warpToOffers(game: ReturnType<typeof useGameStore>) {
   for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
+}
+
+/** Clears the first day-1 gate and accepts placeholder-a (`gateReputationPoints: 0`) - the
+ * standing fixture every deliver-flow test below builds on. */
+function acceptFirstMission(game: ReturnType<typeof useGameStore>): string {
+  game.endDay()
+  const offer = game.storyMissionOfferView
+  if (!offer) throw new Error('expected a story mission offered after the first End Day')
+  game.acceptMission(offer.id)
+  return offer.id
+}
+
+/** Grants a real, schema-valid car (`devGrantCar` - the same dev-grant path
+ * every other game-package test uses to get an owned `CarInstance`) then
+ * bumps every one of its 29 slots to `mint` band, keeping whatever real
+ * catalog part id `devGrantCar` rolled (synthesising a fresh stock instance
+ * for any slot it happened to roll missing) - trivially clears
+ * placeholder-a's `roadworthy` requirement regardless of the RNG draw. */
+function grantRoadworthyCar(game: ReturnType<typeof useGameStore>): string {
+  game.devGrantCar(CARS[0]!.id)
+  const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
+  const mintParts = Object.fromEntries(
+    ALL_CAR_PART_IDS.map((partId) => {
+      const installed = car.parts[partId].installed
+      return [
+        partId,
+        {
+          installed: installed
+            ? { ...installed, band: 'mint' as const }
+            : {
+                id: `test-mint-${partId}`,
+                partId: `stock-${partId}`,
+                band: 'mint' as const,
+                genuinePeriod: false,
+                origin: { kind: 'market' as const, day: 1 },
+              },
+        },
+      ]
+    }),
+  ) as typeof car.parts
+  game.gameState = {
+    ...game.gameState,
+    ownedCars: game.gameState.ownedCars.map((c) =>
+      c.id === car.id ? { ...c, parts: mintParts } : c,
+    ),
+  }
+  return car.id
 }
 
 describe('ServiceJobsScreen', () => {
@@ -207,5 +255,133 @@ describe('ServiceJobsScreen', () => {
     const wrapperAfter = mountScreen()
     expect(wrapperAfter.find('[data-test="mission-accept"]').exists()).toBe(false)
     expect(wrapperAfter.text()).toContain(active.title)
+  })
+
+  describe('the deliver flow (Sprint 77 decision 5)', () => {
+    it('shows the requirement checklist as labels only, with no pass/fail marks, before any car is graded', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      const wrapper = mountScreen()
+      const checklist = wrapper.find('[data-test="mission-requirements"]')
+      expect(checklist.exists()).toBe(true)
+      // No pass/fail marks yet - every line reads as an empty box, and no
+      // "actual" value (only the label + what's required) appears.
+      expect(checklist.text()).not.toContain('[x]')
+      expect(checklist.text()).not.toContain(' (need ')
+      expect(game.activeStoryMissionView!.requirementLines.length).toBeGreaterThan(0)
+      for (const line of game.activeStoryMissionView!.requirementLines) {
+        expect(checklist.text()).toContain(line.label)
+      }
+    })
+
+    it('"Show them the car" reveals the full [ ]/[x] checklist with actual-vs-required, and passes for a roadworthy car', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      const carId = grantRoadworthyCar(game)
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+
+      const checklist = wrapper.find('[data-test="mission-requirements"]')
+      expect(checklist.text()).toContain('[x]')
+      expect(checklist.text()).toContain('need')
+      expect(wrapper.find('[data-test="mission-deliver"]').exists()).toBe(true)
+    })
+
+    it('changing the picked car resets the checklist back to labels-only (grading is never live)', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      const carId = grantRoadworthyCar(game)
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+      expect(wrapper.find('[data-test="mission-requirements"]').text()).toContain('[x]')
+
+      const secondCarId = grantRoadworthyCar(game)
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(secondCarId)
+      expect(wrapper.find('[data-test="mission-requirements"]').text()).not.toContain('[x]')
+      expect(wrapper.find('[data-test="mission-deliver"]').exists()).toBe(false)
+    })
+
+    it('"Hand it over" is absent until every line passes, and never appears for an ungraded car', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      // Freshly dev-granted (not bumped to mint) - real content only ever
+      // rolls 'worn'-or-better bands for a mint-adjacent generation, so
+      // force a genuinely failing slot to prove the gate holds either way.
+      game.devGrantCar(CARS[0]!.id)
+      const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
+      game.gameState = {
+        ...game.gameState,
+        ownedCars: game.gameState.ownedCars.map((c) =>
+          c.id === car.id ? { ...c, parts: { ...c.parts, block: { installed: null } } } : c,
+        ),
+      }
+
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="mission-deliver"]').exists()).toBe(false)
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(car.id)
+      expect(wrapper.find('[data-test="mission-deliver"]').exists()).toBe(false)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+      expect(game.gradeMission(car.id).pass).toBe(false)
+      expect(wrapper.find('[data-test="mission-deliver"]').exists()).toBe(false)
+    })
+
+    it('"Hand it over" requires two clicks (the two-step confirm), and delivering removes the car and pays out', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const missionId = acceptFirstMission(game)
+      const carId = grantRoadworthyCar(game)
+      const cashBefore = game.cashYen
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+
+      const deliverButton = wrapper.find('[data-test="mission-deliver"]')
+      expect(deliverButton.text()).toBe('Hand it over')
+      await deliverButton.trigger('click')
+      // Still owned - the first click only arms the confirm.
+      expect(game.gameState.ownedCars.some((c) => c.id === carId)).toBe(true)
+      expect(wrapper.find('[data-test="mission-deliver"]').text()).toContain('Confirm')
+
+      await wrapper.find('[data-test="mission-deliver"]').trigger('click')
+      expect(game.gameState.ownedCars.some((c) => c.id === carId)).toBe(false)
+      expect(game.activeStoryMissionView).toBeNull()
+      expect(game.gameState.storyMissions.find((r) => r.missionId === missionId)?.status).toBe(
+        'delivered',
+      )
+      expect(game.cashYen).toBeGreaterThan(cashBefore)
+      expect(game.lastMissionResult).not.toBeNull()
+    })
+
+    /**
+     * Sprint 77 decision 4: neither Sprint 76 placeholder mission carries a
+     * `lapTimeCeiling` requirement (real lap-time missions are Sprint 78
+     * content), so this proves the board's `v-if` gate correctly hides it
+     * rather than rendering an empty/broken table. Full reference-board
+     * rendering (correct straddling rows, anchor grouping, and the
+     * candidate's own time never appearing) is proven at the sim level in
+     * `packages/sim/tests/lapModel.test.ts`; true end-to-end coverage
+     * arrives once a real lap-time mission ships.
+     */
+    it('shows no reference-lap board for a mission with no lapTimeCeiling requirement', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      const carId = grantRoadworthyCar(game)
+      expect(game.activeStoryMissionView!.lapTimeCeiling).toBeNull()
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+      expect(wrapper.find('[data-test="mission-lap-board"]').exists()).toBe(false)
+    })
   })
 })

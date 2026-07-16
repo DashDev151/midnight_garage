@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
@@ -9,6 +9,70 @@ import { formatYen } from '../utils/formatYen'
 const game = useGameStore()
 
 const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
+
+/**
+ * Sprint 77 decision 5 (the deliver flow): grading is free and repeatable,
+ * but never LIVE - `hasGraded` gates the checklist from "labels only" to
+ * "full [ ]/[x] lines with actual-vs-required" only once "Show them the
+ * car" is actually clicked, and resets whenever the picked car (or the
+ * active mission itself) changes, so a stale grade can never read as
+ * current.
+ */
+const pickedCarId = ref<string | null>(null)
+const hasGraded = ref(false)
+const deliverConfirming = ref(false)
+
+watch(pickedCarId, () => {
+  hasGraded.value = false
+  deliverConfirming.value = false
+})
+watch(
+  () => game.activeStoryMissionView?.id,
+  () => {
+    pickedCarId.value = null
+    hasGraded.value = false
+    deliverConfirming.value = false
+  },
+)
+
+const missionGrade = computed(() =>
+  pickedCarId.value ? game.gradeMission(pickedCarId.value) : null,
+)
+const missionBoardRows = computed(() => game.lapBoardRowsFor(pickedCarId.value))
+
+/** The checklist the panel actually renders - label-only lines before
+ * grading, `gradeMissionCar`'s own full lines (actual-vs-required, pass)
+ * once graded. `pass: undefined` is the "not graded yet" state the template
+ * reads as an empty `[ ]` with no actual/required shown. */
+const checklistLines = computed(() => {
+  if (hasGraded.value && missionGrade.value) {
+    return missionGrade.value.lines.map((line) => ({
+      ...line,
+      pass: line.pass as boolean | undefined,
+    }))
+  }
+  return (game.activeStoryMissionView?.requirementLines ?? []).map((line) => ({
+    ...line,
+    actual: '',
+    pass: undefined as boolean | undefined,
+  }))
+})
+
+function onShowCar(): void {
+  hasGraded.value = true
+}
+
+function onHandItOver(): void {
+  if (!pickedCarId.value) return
+  if (deliverConfirming.value) {
+    deliverConfirming.value = false
+    game.deliverMission(pickedCarId.value)
+    pickedCarId.value = null
+    hasGraded.value = false
+  } else {
+    deliverConfirming.value = true
+  }
+}
 </script>
 
 <template>
@@ -60,16 +124,85 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
     </section>
 
     <section v-if="game.activeStoryMissionView" class="mission-active">
-      <span class="story-chip">STORY</span>
-      <span class="customer">{{ game.activeStoryMissionView.personaName }}</span>
-      <span class="mission-title">{{ game.activeStoryMissionView.title }}</span>
-      <span v-if="game.activeStoryMissionView.daysLeft !== null" class="days">
-        {{
-          game.activeStoryMissionView.daysLeft <= 0
-            ? 'due today'
-            : game.activeStoryMissionView.daysLeft + 'd left'
-        }}
-      </span>
+      <div class="mission-head">
+        <span class="story-chip">STORY</span>
+        <span class="customer">{{ game.activeStoryMissionView.personaName }}</span>
+        <span class="mission-title">{{ game.activeStoryMissionView.title }}</span>
+        <span v-if="game.activeStoryMissionView.daysLeft !== null" class="days">
+          {{
+            game.activeStoryMissionView.daysLeft <= 0
+              ? 'due today'
+              : game.activeStoryMissionView.daysLeft + 'd left'
+          }}
+        </span>
+      </div>
+
+      <ul class="requirement-checklist" data-test="mission-requirements">
+        <li
+          v-for="(line, i) in checklistLines"
+          :key="i"
+          :class="{ pass: line.pass === true, fail: line.pass === false }"
+        >
+          <span class="check">{{ line.pass ? '[x]' : '[ ]' }}</span>
+          <span class="req-label">{{ line.label }}</span>
+          <span v-if="line.pass !== undefined" class="req-actual">
+            {{ line.actual }} (need {{ line.required }})
+          </span>
+          <span v-else class="req-required">need {{ line.required }}</span>
+        </li>
+      </ul>
+
+      <div class="car-picker">
+        <select v-model="pickedCarId" data-test="mission-pick-car">
+          <option :value="null" disabled>Pick a car</option>
+          <option v-for="c in game.missionCarOptions" :key="c.id" :value="c.id">
+            {{ c.displayName }}
+          </option>
+        </select>
+        <button :disabled="!pickedCarId" data-test="mission-grade" @click="onShowCar">
+          Show them the car
+        </button>
+        <button
+          v-if="hasGraded && missionGrade?.pass"
+          class="primary"
+          :class="{ confirming: deliverConfirming }"
+          data-test="mission-deliver"
+          @click="onHandItOver"
+        >
+          {{ deliverConfirming ? 'Confirm - hand it over' : 'Hand it over' }}
+        </button>
+      </div>
+
+      <table
+        v-if="game.activeStoryMissionView.lapTimeCeiling"
+        class="lap-board"
+        data-test="mission-lap-board"
+      >
+        <caption>
+          Reference laps -
+          {{
+            game.activeStoryMissionView.lapTimeCeiling.courseId
+          }}
+        </caption>
+        <thead>
+          <tr>
+            <th>Car</th>
+            <th>Power</th>
+            <th>Weight</th>
+            <th>Tyres</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in missionBoardRows" :key="row.id" :class="{ anchor: row.isAnchor }">
+            <td>{{ row.name }}</td>
+            <td>{{ row.powerPs }} PS</td>
+            <td>{{ row.weightKg }} kg</td>
+            <td>{{ row.tyreGrade }}</td>
+            <td>{{ row.timeSeconds }}s</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <section class="board">
@@ -303,13 +436,107 @@ h3 {
 
 .mission-active {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--mg-space-2);
   background: var(--mg-panel);
   border: var(--mg-border);
   border-radius: var(--mg-radius);
   padding: var(--mg-space-2) var(--mg-space-3);
   margin-bottom: var(--mg-space-4);
+}
+
+.mission-active .mission-head {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+/* Sprint 77 (story missions II, the deliver flow): the requirement checklist
+   - a plain [ ]/[x] list, never colour-only (accessibility), the label
+   always visible, actual-vs-required appended only once graded. */
+.requirement-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+}
+
+.requirement-checklist li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+  color: var(--mg-text-dim);
+}
+
+.requirement-checklist li.pass {
+  color: var(--mg-success);
+}
+
+.requirement-checklist li.fail {
+  color: var(--mg-neon-pink);
+}
+
+.check {
+  font-family: monospace;
+}
+
+.req-label {
+  color: var(--mg-text);
+}
+
+.car-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  flex-wrap: wrap;
+}
+
+.car-picker select {
+  background: var(--mg-panel);
+  color: var(--mg-text);
+  border: var(--mg-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: var(--mg-fs-sm);
+}
+
+/* The reference-lap board (decision 4) - the anchor rows are visually
+   grouped by a top divider, since they always come last in the returned
+   rows. */
+.lap-board {
+  border-collapse: collapse;
+  font-size: var(--mg-fs-sm);
+  width: 100%;
+}
+
+.lap-board caption {
+  text-align: left;
+  color: var(--mg-text-dim);
+  margin-bottom: var(--mg-space-1);
+}
+
+.lap-board th,
+.lap-board td {
+  text-align: left;
+  padding: 2px var(--mg-space-2);
+}
+
+.lap-board tr.anchor:first-of-type td {
+  border-top: 1px solid var(--mg-panel-edge);
+}
+
+.lap-board tr.anchor {
+  color: var(--mg-text-dim);
+}
+
+/* The armed second-click state (Sprint 71's scrap-shell idiom) - a real
+   commitment reads as a border/colour change, never a relabel alone. */
+button.confirming {
+  border-color: var(--mg-neon-pink);
+  color: var(--mg-neon-pink);
 }
 
 /* Compact disabled state for a tool-tier lock (Sprint 36): a colored border

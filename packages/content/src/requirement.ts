@@ -15,10 +15,11 @@ import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
  * (Sprint 76) add five more to this SAME union - `statThreshold`/
  * `statCeiling` (derived-stat floor/ceiling), `budgetCap` (spend ceiling),
  * `deadline` (day-of-delivery cutoff), `tasteMatch` (a buyer archetype's own
- * taste multiplier floor), and `roadworthy` (every slot at `worn`+) - the
- * shared module the component-hierarchy and story-builds specs both name.
- * `lapTimeCeiling` arrives with the lap model in Sprint 77. A service-job
- * task's own `requirement` field (`serviceJob.ts`) stays pinned to
+ * taste multiplier floor), and `roadworthy` (every slot at `worn`+); Sprint 77
+ * adds `lapTimeCeiling` (a reference-lap time floor) alongside the lap model
+ * - the shared module the component-hierarchy and story-builds specs both
+ * name. A service-job task's own `requirement` field (`serviceJob.ts`) stays
+ * pinned to
  * `SlotConditionRequirementSchema` specifically, not the whole union below -
  * a service job only ever authors that one kind, so its own type stays
  * concrete rather than every existing call site needing a `kind` narrowing
@@ -87,6 +88,15 @@ export const RequirementSpecSchema = z.discriminatedUnion('kind', [
    * has to actually be driveable" floor a build-brief commission implies. */
   z.object({
     kind: z.literal('roadworthy'),
+  }),
+  /** Sprint 77 (story missions II, the lap model): a reference-lap time
+   * ceiling on one named course - passes when `lapTimeSecondsFor(car, model,
+   * context) <= maxSeconds`. Fails with `actual: "no time set"` when the
+   * model returns `null` (no tyres fitted, or a scrap-band set). */
+  z.object({
+    kind: z.literal('lapTimeCeiling'),
+    courseId: z.string().min(1),
+    maxSeconds: z.number().positive(),
   }),
 ])
 

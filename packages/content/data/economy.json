@@ -330,5 +330,17 @@
       "buyerWon": "The buyer had it looked over: <cause>. They did well out of you.",
       "playerWon": "The buyer had it looked over: <cause>. You did well out of them."
     }
+  },
+  "lapModel": {
+    "C": 42.5,
+    "ratioExp": 0.35,
+    "gripMult": {
+      "stock": 1.06,
+      "street": 1.0,
+      "sport": 0.94,
+      "race": 0.88
+    },
+    "courseId": "kirifuri",
+    "courseName": "Kirifuri Pass"
   }
 }

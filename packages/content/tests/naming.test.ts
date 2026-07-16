@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
+import lapReferences from '../data/lapReferences.json'
 import parts from '../data/parts.json'
 import personas from '../data/personas.json'
 import serviceJobs from '../data/serviceJobTemplates.json'
 import storyMissions from '../data/storyMissions.json'
 import {
   CarModelsSchema,
+  LapReferencesSchema,
   PartCatalogEntriesSchema,
   PersonasSchema,
   REAL_BRANDS,
@@ -101,6 +103,23 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
       const text = `${persona.name} ${persona.intro}`.toLowerCase()
       for (const token of realTokens) {
         expect(text.includes(token), `persona "${persona.id}" copy leaks "${token}"`).toBe(false)
+      }
+    }
+  })
+
+  /**
+   * Sprint 77 (story missions II): the reference-lap board's fictional
+   * comparable names (a shop car, a touge regular's build, a magazine
+   * feature car) are diegetic flavour text, so they get the same guard.
+   */
+  it('no lap-reference entry name references a specific car model or brand', () => {
+    const parsedLapReferences = LapReferencesSchema.parse(lapReferences)
+    for (const entry of parsedLapReferences) {
+      const text = entry.name.toLowerCase()
+      for (const token of realTokens) {
+        expect(text.includes(token), `lap reference "${entry.id}" name leaks "${token}"`).toBe(
+          false,
+        )
       }
     }
   })

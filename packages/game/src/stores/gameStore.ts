@@ -30,6 +30,7 @@ import type {
   PartFitmentClass,
   PartInstance,
   ReputationTier,
+  RequirementSpec,
   ServiceJob,
   ServiceJobTask,
   StagedAction,
@@ -75,6 +76,7 @@ import {
   expectationForCar,
   foundationFactor,
   generateAuctionCarInstance,
+  gradeMissionCar,
   groupCostToMintYen,
   installedPartsValueYen,
   installLaborSlotsFor,
@@ -82,6 +84,7 @@ import {
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
   isCustomerOriginPart,
   isPartMissing,
+  lapTimeSecondsFor,
   ownedWorkupGateReason as ownedWorkupGateReasonCore,
   makeMarketOrigin,
   isServiceJobInTransit,
@@ -105,10 +108,12 @@ import {
   reconditionQuote,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
+  requirementLabel,
   resolveAcceptMission,
   resolveAcceptServiceJob,
   resolveBuyoutInstant,
   resolveBuyPart,
+  resolveDeliverMission,
   reserveYen,
   resolveJobLabor,
   resolveOwnedWorkup as resolveOwnedWorkupCore,
@@ -124,6 +129,7 @@ import {
   resolveSetForSale,
   runDiagnosticTest as runDiagnosticTestCore,
   scrapValueYen,
+  selectBoardRows,
   shopTitle,
   swapCars as swapCarsCore,
   toolDeficitSummary,
@@ -135,6 +141,8 @@ import {
   type AuctionGrade,
   type DeliverySpeed,
   type InspectionVisitGateReason,
+  type LapBoardRow,
+  type MissionGradeReport,
   type NewJobSpec,
   type OwnedWorkupGateReason,
   type ServiceJobOutcome,
@@ -577,13 +585,39 @@ export interface StoryMissionOfferView {
   deadlineDays: number
 }
 
-/** The pinned card's active-mission counterpart - a summary row once the
- * player has accepted, no grade/deliver controls yet (Sprint 77). */
+/** The pinned card's active-mission counterpart. `requirementLines` is the
+ * always-visible "labels only, no live pass/fail" checklist (Sprint 77
+ * decision 5) - real requirement text computed WITHOUT a picked car, since
+ * `requirementLabel` never reads the car itself. `lapTimeCeiling` is set
+ * only when the mission has that requirement, telling the screen whether to
+ * render the reference board at all. */
 export interface ActiveStoryMissionView {
   id: string
   personaName: string
   title: string
   daysLeft: number | null
+  requirementLines: { label: string; required: string }[]
+  lapTimeCeiling: { courseId: string; maxSeconds: number } | null
+}
+
+/** One picker option - an owned car the player might hand over. */
+export interface MissionCarOption {
+  id: string
+  displayName: string
+}
+
+/** Sprint 77 (story missions II): the mission-complete modal's own receipt -
+ * the same "everything here is a READ" shape as `SaleResultView`/
+ * `ServiceJobResultView`. `copy` is already the RIGHT template
+ * (`overdeliveredCopy` when a tip landed, `deliveredCopy` otherwise) - the
+ * modal never branches on `tipYen` itself. */
+export interface MissionResultView {
+  personaName: string
+  copy: string
+  payoutYen: number
+  tipYen: number
+  reputationGained: number
+  specialtyGained: Record<ComponentId, number>
 }
 
 /** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
@@ -849,6 +883,9 @@ export const useGameStore = defineStore('game', () => {
   /** Sprint 68 (item 23): mirrors `lastJobResult` - set by `acceptOffer`,
    * cleared on dismiss, rendered by a globally-mounted modal. */
   const lastSaleResult = ref<SaleResultView | null>(null)
+  /** Sprint 77: mirrors `lastSaleResult` - set by `deliverMission`, cleared
+   * on dismiss, rendered by `MissionCompleteModal`. */
+  const lastMissionResult = ref<MissionResultView | null>(null)
   /**
    * True once `hydrate()` has resolved AND actually loaded a real save
    * (Sprint 40) - `MenuScreen`'s own flag: Continue shows only when this is
@@ -942,13 +979,33 @@ export const useGameStore = defineStore('game', () => {
     const mission = context.value.storyMissionsById[record.missionId]
     if (!mission) return null
     const persona = context.value.personasById[mission.personaId]
+    const requirementLines = mission.requirements.map((r) => requirementLabel(r, context.value))
+    if (record.dueOnDay !== null) {
+      requirementLines.push(
+        requirementLabel({ kind: 'deadline', dueOnDay: record.dueOnDay }, context.value),
+      )
+    }
+    const lapRequirement = mission.requirements.find(
+      (r): r is Extract<RequirementSpec, { kind: 'lapTimeCeiling' }> => r.kind === 'lapTimeCeiling',
+    )
     return {
       id: mission.id,
       personaName: persona?.name ?? mission.personaId,
       title: mission.title,
       daysLeft: record.dueOnDay === null ? null : record.dueOnDay - gameState.value.day,
+      requirementLines,
+      lapTimeCeiling: lapRequirement
+        ? { courseId: lapRequirement.courseId, maxSeconds: lapRequirement.maxSeconds }
+        : null,
     }
   })
+
+  /** Sprint 77: the deliver flow's own car picker options - every owned car,
+   * by display name (no filtering; the mission's own requirements are what
+   * decide fit, not this list). */
+  const missionCarOptions = computed<MissionCarOption[]>(() =>
+    carsDetailed.value.map((d) => ({ id: d.car.id, displayName: d.displayName })),
+  )
 
   /**
    * Sprint 68 decision 2 (playtest item 11): jobs whose work is finished and
@@ -2927,6 +2984,102 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /** The active mission's own progress record, or `null` outside one - every
+   * grade/deliver/board action below reads the mission through this, never a
+   * caller-supplied missionId (there is only ever one active mission). */
+  function activeMissionRecord() {
+    return gameState.value.storyMissions.find((r) => r.status === 'active') ?? null
+  }
+
+  /**
+   * Sprint 77 decision 5: "Show them the car" - free, repeatable, no state
+   * change. A no-op shape (`{ pass: false, lines: [] }`) when there is no
+   * active mission at all, matching `gradeMissionCar`'s own contract for an
+   * unresolvable mission/car.
+   */
+  function gradeMission(carInstanceId: string): MissionGradeReport {
+    const record = activeMissionRecord()
+    if (!record) return { pass: false, lines: [] }
+    return gradeMissionCar(gameState.value, record.missionId, carInstanceId, context.value)
+  }
+
+  /**
+   * Sprint 77 decision 5: "Hand it over" - requires `gradeMission` to already
+   * pass (the screen gates the button on it; `resolveDeliverMission` itself
+   * re-grades and refuses regardless). Populates `lastMissionResult` for the
+   * completion modal with whichever copy the tip actually earned.
+   */
+  function deliverMission(carInstanceId: string): boolean {
+    const record = activeMissionRecord()
+    if (!record) return false
+    const mission = context.value.storyMissionsById[record.missionId]
+    const result = resolveDeliverMission(
+      gameState.value,
+      record.missionId,
+      carInstanceId,
+      context.value,
+    )
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+
+    const entry = result.log.find((e) => e.type === 'mission-delivered')
+    if (entry?.type === 'mission-delivered' && mission) {
+      const persona = context.value.personasById[mission.personaId]
+      lastMissionResult.value = {
+        personaName: persona?.name ?? mission.personaId,
+        copy: entry.tipYen > 0 ? mission.overdeliveredCopy : mission.deliveredCopy,
+        payoutYen: entry.payoutYen,
+        tipYen: entry.tipYen,
+        reputationGained: entry.reputationGained,
+        specialtyGained: entry.specialtyGained,
+      }
+    }
+    logSessionEvent('deliverMission', { missionId: record.missionId, carInstanceId })
+    return true
+  }
+
+  function dismissMissionResult(): void {
+    lastMissionResult.value = null
+  }
+
+  /**
+   * Sprint 77 decision 4: the reference-lap board for the active mission's
+   * `lapTimeCeiling` requirement (empty when it has none). `carInstanceId`
+   * null - or a car with no measurable time (no tyres/scrap) - falls back to
+   * decision 4's own "no candidate" selection (nearest to the requirement's
+   * own target, no grade filtering); the player's own predicted time is
+   * never part of the returned rows either way.
+   */
+  function lapBoardRowsFor(carInstanceId: string | null): LapBoardRow[] {
+    const record = activeMissionRecord()
+    if (!record) return []
+    const mission = context.value.storyMissionsById[record.missionId]
+    const lapRequirement = mission?.requirements.find(
+      (r): r is Extract<RequirementSpec, { kind: 'lapTimeCeiling' }> => r.kind === 'lapTimeCeiling',
+    )
+    if (!lapRequirement) return []
+
+    let candidate: { timeSeconds: number; tyreGrade: Grade } | null = null
+    if (carInstanceId) {
+      const car = gameState.value.ownedCars.find((c) => c.id === carInstanceId)
+      const model = car ? context.value.modelsById[car.modelId] : undefined
+      const installed = car?.parts.tyres.installed
+      const tyrePart = installed ? context.value.partsById[installed.partId] : undefined
+      if (car && model && tyrePart) {
+        const timeSeconds = lapTimeSecondsFor(car, model, context.value)
+        if (timeSeconds !== null) candidate = { timeSeconds, tyreGrade: tyrePart.grade }
+      }
+    }
+    return selectBoardRows(
+      context.value.lapReferencePool,
+      context.value.lapReferenceAnchor,
+      candidate,
+      lapRequirement.maxSeconds,
+      context.value.economy,
+    )
+  }
+
   /**
    * "Complete Job" - resolves the service job **immediately** (not on End Day):
    * if the work is done the payout lands and reputation is granted; if not, the
@@ -3297,6 +3450,7 @@ export const useGameStore = defineStore('game', () => {
     activeServiceJobViews,
     storyMissionOfferView,
     activeStoryMissionView,
+    missionCarOptions,
     partsFitVehicleOptions,
     carsDetailed,
     ownedCarNames,
@@ -3394,10 +3548,15 @@ export const useGameStore = defineStore('game', () => {
     acceptServiceJob,
     completeServiceJob,
     acceptMission,
+    gradeMission,
+    deliverMission,
+    lapBoardRowsFor,
     lastJobResult,
     dismissJobResult,
     lastSaleResult,
     dismissSaleResult,
+    lastMissionResult,
+    dismissMissionResult,
     finishedJobsAwaitingHandback,
     carsWithUnconfirmedWork,
     endDay,

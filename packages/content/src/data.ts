@@ -4,6 +4,7 @@ import componentDisplayNamesJson from '../data/componentDisplayNames.json'
 import diagnosticTestsJson from '../data/diagnosticTests.json'
 import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
+import lapReferencesJson from '../data/lapReferences.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
@@ -28,6 +29,7 @@ import { ComponentDisplayNamesSchema } from './componentDisplayName'
 import { DiagnosticTestsSchema } from './diagnosticTest'
 import { EconomyConfigSchema } from './economy'
 import { FacilitiesSchema } from './facilities'
+import { LapReferencesSchema } from './lapReference'
 import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
 import { PartPricingSheetSchema } from './partPricing'
 import type { PartFitmentClass } from './partFitment'
@@ -138,3 +140,10 @@ export const STORY_MISSIONS: StoryMission[] = STORY_MISSIONS_AUTHORED.map((missi
     { kind: 'budgetCap' as const, maxTotalSpendYen: mission.budgetCapYen },
   ],
 }))
+
+/**
+ * Sprint 77 (story missions II): the reference-lap board's fictional
+ * comparable pool + the one grip anchor - see `lapReference.ts`'s own doc
+ * comment for the anchor/pool discriminated shape.
+ */
+export const LAP_REFERENCES = LapReferencesSchema.parse(lapReferencesJson)

@@ -5,6 +5,7 @@ import DayReport from './components/DayReport.vue'
 import EndDayButton from './components/EndDayButton.vue'
 import EventLogDrawer from './components/EventLogDrawer.vue'
 import JobCompleteModal from './components/JobCompleteModal.vue'
+import MissionCompleteModal from './components/MissionCompleteModal.vue'
 import SaleCompleteModal from './components/SaleCompleteModal.vue'
 import { useDragSession } from './composables/useDragAndDrop'
 import { useGameStore } from './stores/gameStore'
@@ -64,9 +65,9 @@ const showEndDay = computed(() => showChrome.value)
  * (1) typing in a field - Escape is left to the field itself; (2) a live
  * pick/drag session - CarDetailScreen's own handler already clears that
  * (existing Sprint 24 behavior), so the global handler defers by doing
- * nothing; (3) any open modal (DayReport, JobComplete, SaleComplete, the
- * event-log drawer, End Day's cart confirm) - Escape closes it instead of navigating away
- * underneath it.
+ * nothing; (3) any open modal (DayReport, JobComplete, SaleComplete,
+ * MissionComplete, the event-log drawer, End Day's cart confirm) - Escape
+ * closes it instead of navigating away underneath it.
  */
 function onGlobalKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
@@ -83,6 +84,10 @@ function onGlobalKeydown(event: KeyboardEvent): void {
   }
   if (game.lastSaleResult) {
     game.dismissSaleResult()
+    return
+  }
+  if (game.lastMissionResult) {
+    game.dismissMissionResult()
     return
   }
   if (logDrawer.value?.open) {
@@ -140,6 +145,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   <DayReport />
   <JobCompleteModal />
   <SaleCompleteModal />
+  <MissionCompleteModal />
   <component :is="DevConsole" v-if="DevConsole" />
 </template>
 

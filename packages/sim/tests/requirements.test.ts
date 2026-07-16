@@ -1,6 +1,7 @@
 import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type CarLedger } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
+import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
 import { evaluateRequirement } from '../src/requirements'
 import { valuateCarForBuyer } from '../src/valuation'
@@ -9,6 +10,12 @@ import { buildCarInstance, uniformCarParts } from './testFixtures'
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const MODEL = CARS[0]!
 const EMPTY_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
+// `buildCarInstance`/`uniformCarParts` (testFixtures.ts) always build
+// 'common'-fitment-class stock parts regardless of the fixture model's real
+// tier, so the tyre override below matches that same class.
+const STREET_TYRES = PARTS.find(
+  (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'common',
+)!
 
 describe('evaluateRequirement', () => {
   describe('slotCondition (Sprint 72, unchanged)', () => {
@@ -323,6 +330,99 @@ describe('evaluateRequirement', () => {
         CONTEXT,
       )
       expect(result.pass).toBe(false)
+    })
+  })
+
+  describe('lapTimeCeiling (Sprint 77)', () => {
+    it('passes when the real lap time is at or under maxSeconds', () => {
+      const car = buildCarInstance({
+        modelId: MODEL.id,
+        parts: { ...uniformCarParts('mint'), tyres: { installed: null } },
+      })
+      const carWithTyres = {
+        ...car,
+        parts: {
+          ...car.parts,
+          tyres: {
+            installed: {
+              id: 'fixture-street-tyres',
+              partId: STREET_TYRES.id,
+              band: 'mint' as const,
+              genuinePeriod: false,
+              origin: { kind: 'market' as const, day: 1 },
+            },
+          },
+        },
+      }
+      const realTime = lapTimeSecondsFor(carWithTyres, MODEL, CONTEXT)!
+      const result = evaluateRequirement(
+        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: realTime },
+        carWithTyres,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+        MODEL,
+      )
+      expect(result.pass).toBe(true)
+      expect(result.actual).toBe(`${realTime}s`)
+    })
+
+    it('fails when the real lap time exceeds maxSeconds', () => {
+      const car = buildCarInstance({
+        modelId: MODEL.id,
+        parts: {
+          ...uniformCarParts('mint'),
+          tyres: {
+            installed: {
+              id: 'fixture-street-tyres',
+              partId: STREET_TYRES.id,
+              band: 'mint' as const,
+              genuinePeriod: false,
+              origin: { kind: 'market' as const, day: 1 },
+            },
+          },
+        },
+      })
+      const realTime = lapTimeSecondsFor(car, MODEL, CONTEXT)!
+      const result = evaluateRequirement(
+        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: realTime - 0.1 },
+        car,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+        MODEL,
+      )
+      expect(result.pass).toBe(false)
+    })
+
+    it('fails with actual "no time set" when the tyres slot is empty', () => {
+      const car = buildCarInstance({
+        modelId: MODEL.id,
+        parts: { ...uniformCarParts('mint'), tyres: { installed: null } },
+      })
+      const result = evaluateRequirement(
+        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: 999 },
+        car,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+        MODEL,
+      )
+      expect(result.pass).toBe(false)
+      expect(result.actual).toBe('no time set')
+    })
+
+    it('fails closed when no model is resolvable', () => {
+      const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('mint') })
+      const result = evaluateRequirement(
+        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: 999 },
+        car,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+      )
+      expect(result.pass).toBe(false)
+      expect(result.actual).toBe('no time set')
     })
   })
 })

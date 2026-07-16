@@ -227,6 +227,7 @@ fails that test outright, rather than silently drifting).
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
 | `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
 | `diagnosis.fearPremium`/`symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The fear-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
+| `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 
@@ -375,3 +376,8 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   (`coherence.ts`'s `computeSymptomCoherence`) measures and discloses the per-symptom expected-
   value spread per tier rather than hard-gating an exact number, same treatment as the donor
   coherence probes above. Full detail in `docs/sprints/sprint73.md`'s Exit.
+- 2026-07-16: **`lapModel.*` added as a new anchor group** (Sprint 77, story missions II; maintainer
+  pre-approved the reference-lap board decision 2026-07-15). Not a new law - one pure, monotonic
+  formula (`C x (curbWeightKg / power) ^ ratioExp x gripMult[tyreGrade]`) over the car's own current
+  derived stats, ordinary content anchors added to the audit table above. Full detail in
+  `docs/sprints/sprint77.md`'s Exit.

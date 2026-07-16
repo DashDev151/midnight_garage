@@ -8,6 +8,7 @@ import {
 } from '@midnight-garage/content'
 import { bandIndex } from './bands'
 import { computeDerivedStats } from './derivedStats'
+import { lapTimeSecondsFor } from './lapModel'
 import { marketValueYen } from './marketValue'
 import { gradeAtLeast } from './parts'
 import { valuateCarForBuyer } from './valuation'
@@ -27,6 +28,65 @@ export interface RequirementResult {
   required: string
 }
 
+/**
+ * Sprint 77 (story missions II, the deliver-flow "labels only, no live
+ * pass/fail" checklist): every requirement kind's `label`/`required` text
+ * depends only on the spec itself and `context` (display names, buyer
+ * names) - never on a specific car - so this is the ONE place that text is
+ * computed, and every `evaluate*` function below calls it rather than
+ * recomputing its own copy. Exported so a caller can render the checklist
+ * before any car is even picked (`gameStore.ts`'s `activeStoryMissionView`).
+ */
+export function requirementLabel(
+  spec: RequirementSpec,
+  context: SimContext,
+): { label: string; required: string } {
+  switch (spec.kind) {
+    case 'slotCondition': {
+      const entry = context.partsTaxonomyById[spec.carPartId]
+      const displayName = entry?.displayName ?? spec.carPartId
+      const required = spec.minGrade
+        ? `${spec.minGrade}+ grade, ${spec.minBand}+ condition`
+        : `${spec.minBand}+ condition`
+      const label = spec.minGrade
+        ? `${displayName}: ${spec.minGrade} or better, fitted and ${spec.minBand}`
+        : `${displayName} must be ${spec.minBand}`
+      return { label, required }
+    }
+    case 'statThreshold':
+    case 'statCeiling': {
+      const statLabel = titleCaseFromSlug(spec.stat)
+      const label =
+        spec.kind === 'statThreshold'
+          ? `${statLabel} at least ${spec.min}`
+          : `${statLabel} no more than ${spec.max}`
+      const required = spec.kind === 'statThreshold' ? `${spec.min}+` : `<= ${spec.max}`
+      return { label, required }
+    }
+    case 'budgetCap':
+      return {
+        label: 'Total spend within budget',
+        required: `<= ${spec.maxTotalSpendYen.toLocaleString('en-US')}`,
+      }
+    case 'deadline':
+      return { label: 'Deliver on time', required: `by day ${spec.dueOnDay}` }
+    case 'tasteMatch': {
+      const buyer = context.buyers.find((b) => b.id === spec.buyerId)
+      return {
+        label: `${buyer?.displayName ?? spec.buyerId} wants this build`,
+        required: `${spec.minMultiplier.toFixed(2)}x+`,
+      }
+    }
+    case 'roadworthy':
+      return { label: 'Every part worn condition or better', required: 'worn+ throughout' }
+    case 'lapTimeCeiling':
+      return {
+        label: `Lap the ${spec.courseId} course in ${spec.maxSeconds}s or less`,
+        required: `<= ${spec.maxSeconds}s`,
+      }
+  }
+}
+
 /** Sprint 72's original primitive: a slot's installed part must be at least
  * `minBand`, and - when present - at least `minGrade`. An empty or scrap-band
  * slot always fails, regardless of `minGrade` - closes the old "or empty"
@@ -37,16 +97,8 @@ function evaluateSlotCondition(
   car: CarInstance,
   context: SimContext,
 ): RequirementResult {
-  const entry = context.partsTaxonomyById[spec.carPartId]
-  const displayName = entry?.displayName ?? spec.carPartId
+  const { label, required } = requirementLabel(spec, context)
   const installed = car.parts[spec.carPartId].installed
-
-  const required = spec.minGrade
-    ? `${spec.minGrade}+ grade, ${spec.minBand}+ condition`
-    : `${spec.minBand}+ condition`
-  const label = spec.minGrade
-    ? `${displayName}: ${spec.minGrade} or better, fitted and ${spec.minBand}`
-    : `${displayName} must be ${spec.minBand}`
 
   if (!installed || installed.band === 'scrap') {
     return { pass: false, label, actual: installed ? 'scrap' : 'empty', required }
@@ -74,12 +126,7 @@ function evaluateStatBound(
   model: CarModel | undefined,
   context: SimContext,
 ): RequirementResult {
-  const statLabel = titleCaseFromSlug(spec.stat)
-  const label =
-    spec.kind === 'statThreshold'
-      ? `${statLabel} at least ${spec.min}`
-      : `${statLabel} no more than ${spec.max}`
-  const required = spec.kind === 'statThreshold' ? `${spec.min}+` : `<= ${spec.max}`
+  const { label, required } = requirementLabel(spec, context)
   if (!model) return { pass: false, label, actual: 'unknown', required }
 
   const stats = computeDerivedStats(
@@ -100,13 +147,15 @@ function evaluateStatBound(
 function evaluateBudgetCap(
   spec: Extract<RequirementSpec, { kind: 'budgetCap' }>,
   ledger: CarLedger,
+  context: SimContext,
 ): RequirementResult {
+  const { label, required } = requirementLabel(spec, context)
   const spend = (ledger.purchaseYen ?? 0) + ledger.repairYen + ledger.partsYen
   return {
     pass: spend <= spec.maxTotalSpendYen,
-    label: 'Total spend within budget',
+    label,
     actual: spend.toLocaleString('en-US'),
-    required: `<= ${spec.maxTotalSpendYen.toLocaleString('en-US')}`,
+    required,
   }
 }
 
@@ -115,13 +164,10 @@ function evaluateBudgetCap(
 function evaluateDeadline(
   spec: Extract<RequirementSpec, { kind: 'deadline' }>,
   day: number,
+  context: SimContext,
 ): RequirementResult {
-  return {
-    pass: day <= spec.dueOnDay,
-    label: 'Deliver on time',
-    actual: `day ${day}`,
-    required: `by day ${spec.dueOnDay}`,
-  }
+  const { label, required } = requirementLabel(spec, context)
+  return { pass: day <= spec.dueOnDay, label, actual: `day ${day}`, required }
 }
 
 /**
@@ -140,9 +186,8 @@ function evaluateTasteMatch(
   model: CarModel | undefined,
   context: SimContext,
 ): RequirementResult {
+  const { label, required } = requirementLabel(spec, context)
   const buyer = context.buyers.find((b) => b.id === spec.buyerId)
-  const label = `${buyer?.displayName ?? spec.buyerId} wants this build`
-  const required = `${spec.minMultiplier.toFixed(2)}x+`
   if (!model || !buyer) return { pass: false, label, actual: 'unknown', required }
 
   const value = marketValueYen(
@@ -169,15 +214,18 @@ function evaluateTasteMatch(
 
 /** Sprint 76: every one of the car's 29 slots holds an installed part at
  * `worn` condition or better - no empty or scrap slot anywhere. */
-function evaluateRoadworthy(car: CarInstance): RequirementResult {
+function evaluateRoadworthy(
+  spec: Extract<RequirementSpec, { kind: 'roadworthy' }>,
+  car: CarInstance,
+  context: SimContext,
+): RequirementResult {
+  const { label, required } = requirementLabel(spec, context)
   const minIndex = bandIndex('worn')
   let failingCount = 0
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
     if (!installed || bandIndex(installed.band) < minIndex) failingCount += 1
   }
-  const label = 'Every part worn condition or better'
-  const required = 'worn+ throughout'
   const actual =
     failingCount === 0
       ? required
@@ -185,14 +233,32 @@ function evaluateRoadworthy(car: CarInstance): RequirementResult {
   return { pass: failingCount === 0, label, actual, required }
 }
 
+/** Sprint 77 decision 2: a reference-lap time ceiling on one named course -
+ * passes when `lapTimeSecondsFor` returns a real time at or under
+ * `maxSeconds`. Fails with `actual: "no time set"` when the model returns
+ * `null` (no tyres fitted, or a scrap-band set - nothing to grip the road
+ * with). `model` missing here (a legacy call site) fails closed the same
+ * way, for the same reason `evaluateStatBound`/`evaluateTasteMatch` do. */
+function evaluateLapTimeCeiling(
+  spec: Extract<RequirementSpec, { kind: 'lapTimeCeiling' }>,
+  car: CarInstance,
+  model: CarModel | undefined,
+  context: SimContext,
+): RequirementResult {
+  const { label, required } = requirementLabel(spec, context)
+  const timeSeconds = model ? lapTimeSecondsFor(car, model, context) : null
+  if (timeSeconds === null) return { pass: false, label, actual: 'no time set', required }
+  return { pass: timeSeconds <= spec.maxSeconds, label, actual: `${timeSeconds}s`, required }
+}
+
 /**
  * The one evaluator every requirement kind runs through. Pure and total over
- * `RequirementSpec` (Sprint 76 extends the dispatch from `slotCondition` alone
- * to six kinds; `lapTimeCeiling` arrives with the lap model in Sprint 77).
+ * `RequirementSpec` (Sprint 76 extended the dispatch from `slotCondition`
+ * alone to six kinds; Sprint 77 adds `lapTimeCeiling` as the seventh).
  * `model` is optional and trailing: every pre-Sprint-76 call site
  * (`isServiceTaskDone`, evaluating `slotCondition` only) keeps compiling
  * unchanged, since none of those kinds ever read it; a story-mission call
- * site always resolves and passes the real `CarModel` the new stat/taste
+ * site always resolves and passes the real `CarModel` the stat/taste/lap
  * kinds need.
  */
 export function evaluateRequirement(
@@ -210,12 +276,14 @@ export function evaluateRequirement(
     case 'statCeiling':
       return evaluateStatBound(spec, car, model, context)
     case 'budgetCap':
-      return evaluateBudgetCap(spec, ledger)
+      return evaluateBudgetCap(spec, ledger, context)
     case 'deadline':
-      return evaluateDeadline(spec, day)
+      return evaluateDeadline(spec, day, context)
     case 'tasteMatch':
       return evaluateTasteMatch(spec, car, model, context)
     case 'roadworthy':
-      return evaluateRoadworthy(car)
+      return evaluateRoadworthy(spec, car, context)
+    case 'lapTimeCeiling':
+      return evaluateLapTimeCeiling(spec, car, model, context)
   }
 }

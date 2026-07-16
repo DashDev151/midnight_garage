@@ -1112,6 +1112,30 @@ export const EconomyConfigSchema = z.object({
       playerWon: z.string().min(1),
     }),
   }),
+  /**
+   * Sprint 77 (story missions II, the lap model - pre-approved 2026-07-15):
+   * one pure, monotonic formula over the car's CURRENT derived stats -
+   * `lapModel.ts`'s `lapTimeSecondsFor` reads every field here, never a
+   * hardcoded constant of its own. `C` and `ratioExp` are the power-to-
+   * weight curve's scale and exponent (`C x (curbWeightKg / power) ^
+   * ratioExp`); `gripMult` is the fitted tyre SKU's own grade multiplying
+   * that base time (worse grip - `stock` - always slower, `race` always
+   * faster - monotonic by construction, never re-ordered by content).
+   * `courseId`/`courseName` name the one v1.0 course; the schema is
+   * course-keyed so a second course is content, not a code change.
+   */
+  lapModel: z.object({
+    C: z.number().positive(),
+    ratioExp: z.number().positive(),
+    gripMult: z.object({
+      stock: z.number().positive(),
+      street: z.number().positive(),
+      sport: z.number().positive(),
+      race: z.number().positive(),
+    }),
+    courseId: z.string().min(1),
+    courseName: z.string().min(1),
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

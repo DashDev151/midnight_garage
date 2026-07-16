@@ -303,9 +303,12 @@ Entries below stay until their sprints land.
   diagnosis. Roadmap: Phase 4, beside the commissions line. **Scoped: Sprints 76-78.**
   **Sprint 76 (the contract machine) landed:** the full lifecycle runs in sim end to end
   (gate -> offer -> accept -> grade -> deliver/lapse -> reoffer) against two placeholder missions,
-  with the pinned Accept card live on `ServiceJobsScreen`. Still open: Sprint 77 (the reference-lap
-  board + full deliver/grade UI) and Sprint 78 (the real campaign content replacing the
-  placeholders).
+  with the pinned Accept card live on `ServiceJobsScreen`.
+  **Sprint 77 (the lap model, the reference board, and the mission flows) landed:** the full
+  deliver/grade UI (car picker, [ ]/[x] checklist with actual-vs-required, the reference-lap board,
+  two-step "Hand it over" confirm, `MissionCompleteModal`) plus the `lapTimeCeiling` requirement and
+  its pure lap-time formula (`economy.lapModel`). Still open: Sprint 78 (the real campaign content
+  replacing both placeholders, including the first real lap-time mission).
 
 - [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing

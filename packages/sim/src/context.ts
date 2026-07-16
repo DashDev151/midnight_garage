@@ -8,6 +8,7 @@ import type {
   EconomyConfig,
   Facilities,
   Grade,
+  LapReferenceEntry,
   Part,
   PartFitmentClass,
   Persona,
@@ -23,6 +24,7 @@ import type {
 import {
   DIAGNOSTIC_TESTS,
   ECONOMY,
+  LAP_REFERENCES,
   PERSONAS,
   PROVENANCE_POOL,
   SPECIALTY_COPY,
@@ -120,6 +122,12 @@ export interface SimContext {
   storyMissionsById: Readonly<Record<string, StoryMission>>
   personas: readonly Persona[]
   personasById: Readonly<Record<string, Persona>>
+  /** Sprint 77 (story missions II, the reference-lap board): the fictional
+   * comparable pool `lapModel.ts`'s `selectBoardRows` straddles, and the one
+   * grip anchor rendered once per tyre grade - pre-split from the raw
+   * `lapReferences.json` list once here, so no caller re-filters it. */
+  lapReferencePool: readonly Extract<LapReferenceEntry, { anchor: false }>[]
+  lapReferenceAnchor: Extract<LapReferenceEntry, { anchor: true }>
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -212,6 +220,8 @@ function indexAftermarketPartsByCarPartId(
  *
  * Sprint 76: `storyMissions`/`personas` are 15th/16th (trailing) parameters,
  * same treatment.
+ *
+ * Sprint 77: `lapReferences` is a 17th (trailing) parameter, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -230,10 +240,20 @@ export function buildSimContext(
   diagnosticTests: readonly DiagnosticTest[] = DIAGNOSTIC_TESTS,
   storyMissions: readonly StoryMission[] = STORY_MISSIONS,
   personas: readonly Persona[] = PERSONAS,
+  lapReferences: readonly LapReferenceEntry[] = LAP_REFERENCES,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
   )
+  const lapReferencePool = lapReferences.filter(
+    (entry): entry is Extract<LapReferenceEntry, { anchor: false }> => !entry.anchor,
+  )
+  const lapReferenceAnchor = lapReferences.find(
+    (entry): entry is Extract<LapReferenceEntry, { anchor: true }> => entry.anchor,
+  )
+  if (!lapReferenceAnchor) {
+    throw new Error('lapReferences content has no anchor: true entry')
+  }
   return {
     models,
     modelsById: indexById(models),
@@ -262,5 +282,7 @@ export function buildSimContext(
     storyMissionsById: indexById(sortedStoryMissions),
     personas,
     personasById: indexById(personas),
+    lapReferencePool,
+    lapReferenceAnchor,
   }
 }

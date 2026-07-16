@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { ECONOMY, PERSONAS, PROVENANCE_POOL, STORY_MISSIONS, SYMPTOMS } from '../src/data'
+import {
+  ECONOMY,
+  LAP_REFERENCES,
+  PERSONAS,
+  PROVENANCE_POOL,
+  STORY_MISSIONS,
+  SYMPTOMS,
+} from '../src/data'
 
 /**
  * Sprint 75 decision 5: extends the game package's own spelling guard
@@ -16,6 +23,7 @@ import { ECONOMY, PERSONAS, PROVENANCE_POOL, STORY_MISSIONS, SYMPTOMS } from '..
  *   decision 2, the organic teacher).
  * - `storyMissions.json`'s title/request/delivered/overdelivered/lapsed
  *   copy and `personas.json`'s name/intro (Sprint 76).
+ * - `lapReferences.json`'s entry names (Sprint 77).
  *
  * Deliberately field-targeted, not a blanket scan of every string in every
  * JSON file (unlike `noEmDash.test.ts`'s repo-wide sweep) - a content id
@@ -93,6 +101,11 @@ function findOffenses(): string[] {
   for (const persona of PERSONAS) {
     offenses.push(...offensesIn(`personas.json:${persona.id}.name`, persona.name))
     offenses.push(...offensesIn(`personas.json:${persona.id}.intro`, persona.intro))
+  }
+
+  // Sprint 77 (story missions II): the reference-lap board's fictional names.
+  for (const entry of LAP_REFERENCES) {
+    offenses.push(...offensesIn(`lapReferences.json:${entry.id}.name`, entry.name))
   }
 
   return offenses
