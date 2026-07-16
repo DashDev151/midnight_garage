@@ -2,6 +2,7 @@ import type { DayLogEntry } from '@midnight-garage/content'
 import { COMPONENT_DISPLAY_NAMES, TOOL_LINES, componentDisplayName } from '@midnight-garage/content'
 import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
+import { titleCaseFromSlug } from './titleCase'
 
 /** `count noun` with an `s` on the noun unless the count is exactly 1 - the
  * one place count copy is pluralised, so "1 lots" can never come back
@@ -93,8 +94,14 @@ export function describeLogEntry(
       return `Sold a part for ${formatYen(entry.priceYen)}`
     case 'part-reconditioned':
       return `Reconditioned a part to ${entry.band}`
-    case 'part-removed':
-      return `Removed ${entry.carPartId} from ${entry.carInstanceId}`
+    case 'part-removed': {
+      const base = `Removed ${entry.carPartId} from ${entry.carInstanceId}`
+      // Sprint 74 decision 4: uninstall reveals truth - this removal
+      // collapsed one of the car's symptoms to exactly one remaining cause.
+      return entry.revealedCauseId
+        ? `${base}. Opened it up: ${titleCaseFromSlug(entry.revealedCauseId)}.`
+        : base
+    }
     case 'service-job-accepted':
       // Sprint 25 task 2: acceptance no longer places the car instantly, so
       // this reads as the customer's own promise, not a status update.
@@ -139,6 +146,10 @@ export function describeLogEntry(
           : ''
       return `Scrapped the ${resolveModelName(entry.modelId)}'s shell for ${formatYen(entry.priceYen)}${withParts}`
     }
+    case 'inspection-visit':
+      return `Inspection visit at the ${entry.tier} yard: ${formatYen(entry.feeYen)}, ${entry.minutesGranted} minutes`
+    case 'car-workup':
+      return `Full workup on ${entry.carInstanceId} - every symptom's cause confirmed`
   }
 }
 

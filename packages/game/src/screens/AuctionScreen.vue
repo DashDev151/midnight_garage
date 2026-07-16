@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import type { AuctionTier } from '@midnight-garage/content'
 import GradeStamp from '../components/GradeStamp.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -9,6 +10,82 @@ const game = useGameStore()
 
 // Per-lot raise input; empty defaults to the minimum next raise.
 const bidInputs = reactive<Record<string, number | undefined>>({})
+
+/** Sprint 74 decision 7: the yard visit panel and per-tier "Inspect here"
+ * button. */
+const GATE_REASON_LABEL: Record<string, string> = {
+  'no-labor-slot': 'No labour slots left today',
+  'no-cash': 'Not enough cash for the travel fee',
+  'no-lots': 'No lots at this tier to inspect',
+}
+
+/** True for the one tier (if any) the active visit is already at - that
+ * tier's own button is redundant with the fixed visit panel, so it hides
+ * rather than offering a pointless same-tier restart. */
+function isActiveVisitTier(tier: AuctionTier): boolean {
+  return game.inspectionVisit?.tier === tier
+}
+
+function inspectButtonTitle(tier: AuctionTier): string {
+  const reason = game.inspectionVisitGateReason(tier)
+  if (reason) return GATE_REASON_LABEL[reason] ?? reason
+  return `Spend 1 labour slot + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
+}
+
+/**
+ * Sprint 74 decision 7: starting a visit at a DIFFERENT tier while one is
+ * still active with minutes left forfeits the remainder - a real cost (a
+ * spent labour slot and fee, gone for nothing) that needs the same two-step
+ * arm-then-confirm the buyout button already uses, not a silent replace.
+ */
+const visitConfirmingTier = ref<AuctionTier | null>(null)
+
+function onInspectClick(tier: AuctionTier): void {
+  const active = game.inspectionVisit
+  const wouldForfeit = active !== null && active.minutesLeft > 0 && active.tier !== tier
+  if (wouldForfeit && visitConfirmingTier.value !== tier) {
+    visitConfirmingTier.value = tier
+    return
+  }
+  visitConfirmingTier.value = null
+  game.beginInspectionVisit(tier)
+}
+
+function inspectButtonLabel(tier: AuctionTier): string {
+  if (visitConfirmingTier.value === tier) return 'Forfeit remaining visit - start here?'
+  return `Inspect here (1 slot + ${formatYen(game.travelFeeYenFor(tier))})`
+}
+
+/**
+ * Sprint 74 decision 2: a run test's own result-copy line, held locally per
+ * lot+symptom for inline display - `runDiagnosticTest` never writes a
+ * day-log entry (the copy IS the record), so nothing else would remember it.
+ */
+const testResults = reactive<Record<string, string>>({})
+
+function resultKey(lotId: string, symptomIndex: number): string {
+  return `${lotId}-${symptomIndex}`
+}
+
+function onRunTest(lotId: string, symptomIndex: number, testId: string): void {
+  const copy = game.runDiagnosticTest(lotId, symptomIndex, testId)
+  if (copy) testResults[resultKey(lotId, symptomIndex)] = copy
+}
+
+/** Why a specific test button is disabled right now, `null` when it isn't -
+ * the yard visit's own proactive "why not" for a single test. */
+function testDisabledReason(
+  lotTier: AuctionTier,
+  test: { minutes: number; alreadyRun: boolean },
+): string | null {
+  const visit = game.inspectionVisit
+  if (!visit) return 'Start a visit at this tier first'
+  if (visit.tier !== lotTier) return 'Your active visit is at a different tier'
+  if (test.alreadyRun) return 'Already run on this symptom'
+  if (visit.minutesLeft < test.minutes)
+    return `Needs ${test.minutes}m - only ${visit.minutesLeft}m left`
+  return null
+}
 
 /**
  * Sprint 64 (item 3): Buy Now is a two-step commit - the first click arms
@@ -250,6 +327,13 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
       </p>
     </header>
 
+    <!-- Sprint 74 decision 7: the active yard visit's own fixed panel - dies
+         at day end (`advanceDay`) or the moment a different tier's visit
+         starts, never lingers past either. -->
+    <p v-if="game.inspectionVisit" class="visit-panel" data-test="visit-panel">
+      At the yard ({{ game.inspectionVisit.tier }}): {{ game.inspectionVisit.minutesLeft }}m left
+    </p>
+
     <p v-if="!hasLots" class="empty">
       No lots listed right now. New lots can arrive any day - End Day (or use the dev console to
       warp) and check back.
@@ -326,7 +410,21 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
     </p>
 
     <div v-for="group in detailedGroups" :key="group.tier" class="tier">
-      <h3>{{ group.tier }}</h3>
+      <div class="tier-head">
+        <h3>{{ group.tier }}</h3>
+        <button
+          v-if="!isActiveVisitTier(group.tier)"
+          type="button"
+          class="inspect-visit"
+          :class="{ confirming: visitConfirmingTier === group.tier }"
+          :disabled="!!game.inspectionVisitGateReason(group.tier)"
+          :title="inspectButtonTitle(group.tier)"
+          :data-test="'inspect-visit-' + group.tier"
+          @click="onInspectClick(group.tier)"
+        >
+          {{ inspectButtonLabel(group.tier) }}
+        </button>
+      </div>
       <ul class="lots">
         <li v-for="d in group.lots" :key="d.lot.id" class="lot">
           <!-- Sprint 56 decision 3: left panel - identity, art, grade stamps. -->
@@ -389,24 +487,60 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               />
             </div>
 
-            <!-- Sprint 73 decision 7: free, public symptom disclosure - the
-                 room shows the symptom and every open cause, never which one
-                 is true. Read-only this sprint (Sprint 74 adds the inspection
-                 verb that narrows the checklist). -->
+            <!-- Sprint 73 decision 7 / Sprint 74 decision 7: free, public
+                 symptom disclosure - the room shows the symptom and every
+                 open cause, never which one is true. A ruled-out cause
+                 strikes through (ServiceTaskList's own done-styling idiom);
+                 test buttons narrow the list during an active visit at this
+                 lot's own tier. -->
             <div
               v-for="symptom in d.symptoms"
-              :key="symptom.line"
+              :key="symptom.symptomIndex"
               class="symptom"
+              :class="{ resolved: symptom.resolved }"
               :data-test="'symptom-' + d.lot.id"
             >
               <p class="symptom-line">{{ symptom.line }}</p>
               <ul class="symptom-causes">
-                <li v-for="cause in symptom.causes" :key="cause.label">
-                  <span class="mark" aria-hidden="true">[ ]</span>
+                <li
+                  v-for="cause in symptom.causes"
+                  :key="cause.causeId"
+                  :class="{ eliminated: cause.eliminated }"
+                >
+                  <span class="mark" aria-hidden="true">{{
+                    cause.eliminated ? '[x]' : '[ ]'
+                  }}</span>
                   <span class="label">{{ cause.label }}</span>
                   <span class="delta">if it's this: about {{ formatYen(cause.deltaYen) }}</span>
                 </li>
               </ul>
+
+              <p
+                v-if="testResults[resultKey(d.lot.id, symptom.symptomIndex)]"
+                class="test-result"
+                :data-test="'test-result-' + d.lot.id + '-' + symptom.symptomIndex"
+              >
+                {{ testResults[resultKey(d.lot.id, symptom.symptomIndex)] }}
+              </p>
+
+              <div v-if="symptom.tests.length > 0" class="symptom-tests">
+                <button
+                  v-for="test in symptom.tests"
+                  :key="test.testId"
+                  type="button"
+                  class="run-test"
+                  :disabled="!!testDisabledReason(d.lot.tier, test)"
+                  :title="
+                    testDisabledReason(d.lot.tier, test) ?? 'Run this test against the visit clock'
+                  "
+                  :data-test="
+                    'run-test-' + d.lot.id + '-' + symptom.symptomIndex + '-' + test.testId
+                  "
+                  @click="onRunTest(d.lot.id, symptom.symptomIndex, test.testId)"
+                >
+                  {{ test.label }} ({{ test.minutes }}m)
+                </button>
+              </div>
             </div>
           </div>
 
@@ -433,6 +567,17 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                 <span>reserve {{ formatYen(d.reserveYen) }}</span>
                 <span>bill {{ formatYen(d.restorationBillYen) }}</span>
               </div>
+              <!-- Sprint 74 decision 6: the player's own honest read, once
+                   any test has run or any symptom has resolved - never the
+                   fear-priced guide above, and never shown before there is
+                   genuinely something to show. -->
+              <p
+                v-if="d.playerEstimateYen !== null"
+                class="player-estimate"
+                :data-test="'player-estimate-' + d.lot.id"
+              >
+                your estimate: {{ formatYen(d.playerEstimateYen) }}
+              </p>
 
               <div class="close-timer">
                 <template v-if="d.closeNightsLeft !== null">
@@ -541,6 +686,30 @@ h3 {
   font-size: var(--mg-fs-md);
   text-transform: capitalize;
   margin: 0 0 var(--mg-space-2);
+}
+
+.tier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+}
+
+.tier-head h3 {
+  margin: 0 0 var(--mg-space-2);
+}
+
+.inspect-visit {
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+  border-color: var(--mg-panel-edge);
+  background: transparent;
+}
+
+.inspect-visit.confirming {
+  border-color: var(--mg-neon-pink);
+  color: var(--mg-neon-pink);
 }
 
 .cash {
@@ -657,6 +826,20 @@ h3 {
 .empty {
   color: var(--mg-text-dim);
   margin: var(--mg-space-3) 0;
+}
+
+/* Sprint 74 decision 7: the active yard visit's own fixed banner - a real
+   clock the player is spending, so it gets the same weight as the
+   parking/double-park warnings below rather than blending into `.cash`. */
+.visit-panel {
+  color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+  margin: var(--mg-space-2) 0;
+  padding: var(--mg-space-1) var(--mg-space-3);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  background: var(--mg-night-deep);
+  width: fit-content;
 }
 
 .parking-warning {
@@ -793,6 +976,48 @@ h3 {
 
 .symptom-causes .delta {
   color: var(--mg-text-dim);
+}
+
+/* Sprint 74 decision 7: a ruled-out cause strikes through - ServiceTaskList's
+   own done-styling idiom (dim + line-through the label, mark goes success-
+   coloured), reused rather than a second convention for the same idea. */
+.symptom-causes li.eliminated .mark {
+  color: var(--mg-success);
+}
+
+.symptom-causes li.eliminated .label {
+  text-decoration: line-through;
+}
+
+.symptom-causes li.eliminated .delta {
+  opacity: 0.6;
+}
+
+.symptom-tests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-1);
+  margin-top: var(--mg-space-1);
+}
+
+.run-test {
+  font-size: var(--mg-fs-xs, 0.7rem);
+  padding: 1px var(--mg-space-2);
+  color: var(--mg-text-dim);
+  border-color: var(--mg-panel-edge);
+  background: transparent;
+}
+
+.test-result {
+  margin: var(--mg-space-1) 0 0;
+  font-size: var(--mg-fs-xs, 0.7rem);
+  color: var(--mg-neon-cyan);
+}
+
+.player-estimate {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 /* Sprint 61 (item 15): a small muted class chip so a bidder knows which

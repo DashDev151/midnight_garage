@@ -1190,4 +1190,117 @@ describe('CarDetailScreen', () => {
       expect(game.isPartStagedAnywhere(partInstanceId)).toBe(false)
     })
   })
+
+  describe('the symptom panel and full workup (Sprint 74 decisions 3/5/8)', () => {
+    /** Overwrites the car with a real, content-backed symptomatic fixture -
+     * `smokes-on-startup`, matching the exact fixture the auction screen's
+     * own Sprint 73/74 symptom tests already use. `valve-seals` (the true
+     * cause) and `head-gasket` both target `headValvetrain`; `tired-rings`
+     * targets `internals`. */
+    function injectSymptom(game: ReturnType<typeof useGameStore>, carId: string) {
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      const withSymptom = {
+        ...car,
+        parts: {
+          ...car.parts,
+          headValvetrain: {
+            installed: { ...car.parts.headValvetrain.installed!, band: 'worn' as const },
+          },
+        },
+        symptoms: [
+          {
+            symptomId: 'smokes-on-startup',
+            trueCauseId: 'valve-seals',
+            remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+            runTestIds: [],
+          },
+        ],
+        apparentBandByPartId: { headValvetrain: 'mint' as const },
+      }
+      game.gameState = {
+        ...game.gameState,
+        ownedCars: game.gameState.ownedCars.map((c) => (c.id === carId ? withSymptom : c)),
+      }
+    }
+
+    it('renders the symptom checklist and a Full workup button on a symptomatic owned car', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      injectSymptom(game, id)
+
+      const { wrapper } = await mountAt(id)
+      const panel = wrapper.find('[data-test="car-symptoms"]')
+      expect(panel.exists()).toBe(true)
+      expect(panel.text()).toContain('Smokes on startup.')
+      expect(panel.text()).toContain('Valve seals')
+      expect(wrapper.find('[data-test="car-workup"]').exists()).toBe(true)
+    })
+
+    it('honest owned cars never render the symptom panel', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+
+      const { wrapper } = await mountAt(id)
+      expect(wrapper.find('[data-test="car-symptoms"]').exists()).toBe(false)
+    })
+
+    it('shows the "?" uncertainty chip on a still-open symptomatic part row, which disappears once Full workup resolves it', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      injectSymptom(game, id)
+
+      const { wrapper } = await mountAt(id)
+      await expandGroup(wrapper, 'engine')
+      expect(wrapper.find('[data-test="uncertain-headValvetrain"]').exists()).toBe(true)
+
+      await wrapper.find('[data-test="car-workup"]').trigger('click')
+
+      const updatedCar = game.gameState.ownedCars.find((c) => c.id === id)!
+      expect(updatedCar.symptoms[0]!.remainingCauseIds).toEqual(['valve-seals'])
+      expect(wrapper.find('[data-test="uncertain-headValvetrain"]').exists()).toBe(false)
+    })
+
+    it('the on-car "+" button never renders for an uncertain BURIED part (Sprint 71\'s bench-only rule already excludes it from on-car repair, symptom or not)', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      injectSymptom(game, id)
+
+      const { wrapper } = await mountAt(id)
+      await expandGroup(wrapper, 'engine')
+      expect(wrapper.find('[data-test="stage-repair-part-headValvetrain"]').exists()).toBe(false)
+    })
+
+    /**
+     * Every Sprint 73 symptom cause targets a bolt-on or buried part (the
+     * mechanical groups), so decision 5's repair-cost-preview RANGE
+     * (`nextPartStepRange`) never actually fires against real content - no
+     * shipped symptom ever produces an uncertain SURFACE part with a live
+     * on-car repair step to preview (see the Sprint 74 Exit's disclosed
+     * items). This only proves the function's main gate: it stays null,
+     * exactly like `displayedBandFor`, once nothing targets the part.
+     */
+    it('nextPartStepRange returns null for a part nothing targets (the ordinary, reachable case)', () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      expect(game.nextPartStepRange(id, 'body', 'panels')).toBeNull()
+    })
+
+    it('Full workup is disabled with a reason once no labour slot remains today', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      injectSymptom(game, id)
+      game.gameState = { ...game.gameState, laborSlotsSpentToday: game.laborSlotsPerDay }
+
+      const { wrapper } = await mountAt(id)
+      const button = wrapper.find('[data-test="car-workup"]')
+      expect((button.element as HTMLButtonElement).disabled).toBe(true)
+      expect(button.attributes('title')).toContain('No labour slots left today')
+    })
+  })
 })

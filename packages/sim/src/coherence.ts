@@ -654,6 +654,7 @@ export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRo
             symptomId: symptom.id,
             trueCauseId: symptom.causes[0]!.id,
             remainingCauseIds: symptom.causes.map((cause) => cause.id),
+            runTestIds: [],
           },
         ],
         apparentBandByPartId: { [carPartId]: apparentBand },

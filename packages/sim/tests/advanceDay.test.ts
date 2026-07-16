@@ -101,6 +101,7 @@ function initialState(): GameState {
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
+    inspectionVisit: null,
   }
 }
 
@@ -250,9 +251,13 @@ describe('advanceDay golden master', () => {
     // for the rest of the run, so the hash moves even though no PRE-EXISTING
     // mechanic's own logic changed; every other assertion in this file still
     // passes unchanged.
+    // Re-pinned again (Sprint 74, was 4570c86a): `GameState` gained
+    // `inspectionVisit` (default `null`) and each car symptom entry gained
+    // `runTestIds` (default `[]`) - a pure state-SHAPE change, not a logic
+    // change; every other assertion in this file still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('4570c86a')
+    expect(hashState(finalState)).toBe('73b3c512')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -464,7 +469,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // clear/hammer/expire and this model's `marketHeat`, a real economy-wide
     // consequence of decision 3's seam going live, not a bug in this specific
     // scenario's own car.
-    expect(hashState(acquisitionCareer().sold)).toBe('404a063c')
+    // Re-pinned again (Sprint 74, was 404a063c): same cause as the 30-day
+    // career hash above - a pure state-SHAPE change (`inspectionVisit`,
+    // `runTestIds`), not a logic change.
+    expect(hashState(acquisitionCareer().sold)).toBe('7bb89325')
   })
 })
 
@@ -510,6 +518,24 @@ describe('advanceDay: no colliding auction lot ids (2026-07-13 regression)', () 
         ).toBe(ids.length)
       }
     }
+  })
+})
+
+describe('advanceDay: inspectionVisit dies at the day boundary (Sprint 74 decision 1)', () => {
+  it('an active visit with real minutes left is unconditionally cleared to null by the next advanceDay call', () => {
+    const state: GameState = {
+      ...createInitialGameState(CONTEXT, 1),
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 45 },
+    }
+    const result = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+    expect(result.state.inspectionVisit).toBeNull()
+  })
+
+  it('stays null across the boundary when no visit was active', () => {
+    const state = createInitialGameState(CONTEXT, 1)
+    expect(state.inspectionVisit).toBeNull()
+    const result = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
+    expect(result.state.inspectionVisit).toBeNull()
   })
 })
 

@@ -44,6 +44,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
+    inspectionVisit: null,
   }
 }
 

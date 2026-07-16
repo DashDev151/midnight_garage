@@ -188,6 +188,7 @@ function applySymptoms(
       symptomId: symptom.id,
       trueCauseId: cause.id,
       remainingCauseIds: symptom.causes.map((c) => c.id),
+      runTestIds: [],
     })
   }
 

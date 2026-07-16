@@ -14,7 +14,7 @@ import {
   useDropZone,
   type DropZoneHandle,
 } from '../composables/useDragAndDrop'
-import { useGameStore } from '../stores/gameStore'
+import { useGameStore, type CarPartRowView, type NextRepairStepView } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { addressesOverlap } from '../utils/partAddress'
 
@@ -71,6 +71,26 @@ function onScrapShellClick(): void {
   } else {
     scrapConfirming.value = true
   }
+}
+
+/** Sprint 74 decision 3: the "Full workup" button's own disabled reason,
+ * mirrored from `detail.workupGateReason`. */
+const WORKUP_GATE_LABEL: Record<string, string> = {
+  'no-labor-slot': 'No labour slots left today',
+  'not-found': 'Car not found',
+  'no-symptoms': 'Nothing to diagnose',
+}
+
+const workupButtonTitle = computed(() => {
+  const reason = detail.value?.workupGateReason
+  if (reason) return WORKUP_GATE_LABEL[reason] ?? reason
+  return 'Collapse every symptom straight to its true cause - 1 labour slot, no fee, no clock'
+})
+
+function onWorkupClick(): void {
+  const d = detail.value
+  if (!d) return
+  game.resolveOwnedWorkup(d.car.id)
 }
 
 const COMPONENTS: readonly ComponentId[] = [
@@ -230,6 +250,42 @@ function repairStepLabel(
   const sign = alreadyPlanned ? '+' : ''
   const prefix = alreadyPlanned ? 'Repair further, to ' : 'Repair to '
   return `${prefix}${step.targetBand} - ${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labour`
+}
+
+/**
+ * Sprint 74 decision 5: an uncertain part's own repair-step preview - a
+ * range, not a single number, so the tooltip never leaks the true band the
+ * way reading a single cost figure straight off it would. A `null` end
+ * ("nothing needed") reads literally, since the apparent or worst-remaining
+ * band can genuinely already be mint even while the other end still needs
+ * work.
+ */
+function uncertainStepLabel(range: {
+  best: NextRepairStepView | null
+  worst: NextRepairStepView | null
+}): string {
+  const describe = (step: NextRepairStepView | null): string =>
+    step
+      ? `to ${step.targetBand} - ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
+      : 'nothing needed'
+  return `Uncertain - if it's as shown: ${describe(range.best)}; if the hidden cause is real: ${describe(range.worst)}`
+}
+
+/**
+ * The per-part `+` button's own tooltip/aria-label - the honest range from
+ * `game.nextPartStepRange` for an uncertain row, the ordinary single-number
+ * `repairStepLabel` for every other row (unchanged from Sprint 48/63).
+ */
+function partStepTitle(componentId: ComponentId, row: CarPartRowView): string {
+  const carId = detail.value?.car.id
+  if (carId && row.uncertain) {
+    const range = game.nextPartStepRange(carId, componentId, row.partId)
+    if (range) return uncertainStepLabel(range)
+  }
+  return repairStepLabel(
+    nextPartStepOrFallback(componentId, row.partId),
+    isStagedRepair(componentId, row.partId),
+  )
 }
 
 /**
@@ -587,6 +643,44 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </button>
       </div>
 
+      <!-- Sprint 74 decision 8: the owned symptomatic car's own symptom
+           checklist - same idiom as the lot card, minus any test buttons
+           (no yard tests reach an owned car; the workup below is its only
+           bench-side route alongside uninstall-reveals-truth). -->
+      <section v-if="detail.symptoms.length > 0" class="symptom-panel" data-test="car-symptoms">
+        <h3>Diagnosis</h3>
+        <div
+          v-for="symptom in detail.symptoms"
+          :key="symptom.symptomIndex"
+          class="symptom"
+          :class="{ resolved: symptom.resolved }"
+          :data-test="'car-symptom-' + symptom.symptomIndex"
+        >
+          <p class="symptom-line">{{ symptom.line }}</p>
+          <ul class="symptom-causes">
+            <li
+              v-for="cause in symptom.causes"
+              :key="cause.causeId"
+              :class="{ eliminated: cause.eliminated }"
+            >
+              <span class="mark" aria-hidden="true">{{ cause.eliminated ? '[x]' : '[ ]' }}</span>
+              <span class="label">{{ cause.label }}</span>
+              <span class="delta">if it's this: about {{ formatYen(cause.deltaYen) }}</span>
+            </li>
+          </ul>
+        </div>
+        <button
+          type="button"
+          class="workup-btn"
+          :disabled="!!detail.workupGateReason"
+          :title="workupButtonTitle"
+          data-test="car-workup"
+          @click="onWorkupClick"
+        >
+          Full workup (1 slot)
+        </button>
+      </section>
+
       <section v-if="detail.serviceJob" class="service-banner">
         <h3>Customer job - {{ detail.serviceJob.customerName }}</h3>
         <p class="svc-desc">"{{ detail.serviceJob.description }}"</p>
@@ -789,6 +883,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   <div class="meter-line sub">
                     <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
                     <BandChip :band="row.band" />
+                    <!-- Sprint 74 decision 5: the band above is the APPARENT
+                         one while a symptom still targets this part and
+                         hasn't narrowed enough to resolve it - this chip is
+                         the only thing on the row saying so. -->
+                    <span
+                      v-if="row.uncertain"
+                      class="uncertain-tag"
+                      :data-test="'uncertain-' + row.partId"
+                      title="An unresolved symptom may have damaged this part - the band shown is its pre-damage condition"
+                      >?</span
+                    >
                     <span
                       v-if="row.missing"
                       class="missing-tag"
@@ -836,18 +941,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                           type="button"
                           class="step-up"
                           :data-test="'stage-repair-part-' + row.partId"
-                          :aria-label="
-                            repairStepLabel(
-                              nextPartStepOrFallback(componentId, row.partId),
-                              isStagedRepair(componentId, row.partId),
-                            )
-                          "
-                          :title="
-                            repairStepLabel(
-                              nextPartStepOrFallback(componentId, row.partId),
-                              isStagedRepair(componentId, row.partId),
-                            )
-                          "
+                          :aria-label="partStepTitle(componentId, row)"
+                          :title="partStepTitle(componentId, row)"
                           @click="advancePartRepair(componentId, row.partId)"
                         >
                           +
@@ -1266,6 +1361,69 @@ h4 {
   margin: var(--mg-space-4) 0;
 }
 
+/* Sprint 74 decision 8: the owned car's own symptom panel - same border
+   treatment as the service/arriving banners above, the checklist idiom
+   itself matching AuctionScreen.vue's lot-card symptom block exactly. */
+.symptom-panel {
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-danger);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  margin: var(--mg-space-4) 0;
+}
+
+.symptom-panel h3 {
+  margin: 0 0 var(--mg-space-2);
+}
+
+.symptom-panel .symptom {
+  margin-top: var(--mg-space-2);
+}
+
+.symptom-panel .symptom-line {
+  margin: 0;
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+}
+
+.symptom-panel .symptom-causes {
+  list-style: none;
+  margin: var(--mg-space-1) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: var(--mg-fs-xs, 0.7rem);
+  color: var(--mg-text-dim);
+}
+
+.symptom-panel .symptom-causes li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+}
+
+.symptom-panel .symptom-causes .mark {
+  color: var(--mg-neon-cyan);
+  flex-shrink: 0;
+}
+
+.symptom-panel .symptom-causes li.eliminated .mark {
+  color: var(--mg-success);
+}
+
+.symptom-panel .symptom-causes li.eliminated .label {
+  text-decoration: line-through;
+}
+
+.symptom-panel .symptom-causes .delta {
+  color: var(--mg-text-dim);
+}
+
+.workup-btn {
+  margin-top: var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+}
+
 .arriving-note {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
@@ -1648,6 +1806,17 @@ h4 {
 .absent-tag {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+/* Sprint 74 decision 5: the "?" chip for a part whose true band is still
+   hidden behind an unresolved symptom - a real question mark, not a
+   decorative icon (CLAUDE.md directive 2), so it reads as a fact the
+   checklist idiom already trained the player to expect. */
+.uncertain-tag {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+  font-weight: bold;
+  cursor: help;
 }
 
 .remove-btn {

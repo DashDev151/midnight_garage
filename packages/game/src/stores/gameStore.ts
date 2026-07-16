@@ -53,6 +53,7 @@ import {
   advanceDay,
   bandFactor,
   bandIndex,
+  beginInspectionVisit as beginInspectionVisitCore,
   climbBand,
   bestFitBuyer,
   buildSimContext,
@@ -68,6 +69,7 @@ import {
   createRng,
   describeOrigin,
   deriveReputationTier,
+  displayedBandFor,
   emptyDayActions,
   expectationForCar,
   foundationFactor,
@@ -76,8 +78,10 @@ import {
   installedPartsValueYen,
   installLaborSlotsFor,
   hasParkingSpace,
+  inspectionVisitGateReason as inspectionVisitGateReasonCore,
   isCustomerOriginPart,
   isPartMissing,
+  ownedWorkupGateReason as ownedWorkupGateReasonCore,
   makeMarketOrigin,
   isServiceJobInTransit,
   isToolTierListed,
@@ -94,6 +98,7 @@ import {
   parkingOccupancy,
   partFitsCar,
   planGroupRepair,
+  playerEstimateYen,
   presentPartIdsInGroup,
   previewPlannedWork,
   reconditionQuote,
@@ -104,6 +109,7 @@ import {
   resolveBuyPart,
   reserveYen,
   resolveJobLabor,
+  resolveOwnedWorkup as resolveOwnedWorkupCore,
   resolvePlaceBid,
   resolveReconditionLabor,
   resolveRejectOffer,
@@ -114,6 +120,7 @@ import {
   resolveSellViaWalkIn,
   resolveServiceJob,
   resolveSetForSale,
+  runDiagnosticTest as runDiagnosticTestCore,
   scrapValueYen,
   shopTitle,
   swapCars as swapCarsCore,
@@ -121,10 +128,13 @@ import {
   unlockedTechniques,
   upgradeHintFor,
   valuateCarForBuyer,
+  worstRemainingBandFor,
   worstRepairableBandInGroup,
   type AuctionGrade,
   type DeliverySpeed,
+  type InspectionVisitGateReason,
   type NewJobSpec,
+  type OwnedWorkupGateReason,
   type ServiceJobOutcome,
   type SimContext,
   type TurnoutBand,
@@ -135,6 +145,7 @@ import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap } from '../utils/partAddress'
+import { titleCaseFromSlug } from '../utils/titleCase'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -200,6 +211,15 @@ export interface CarPartRowView {
    * the shell itself, repaired in place and never pulled. The car-detail
    * screen's "Take it off" control only ever renders when this is true. */
   removable: boolean
+  /**
+   * Sprint 74 decision 5: true when `band` above is the car's APPARENT band
+   * rather than its true one - a still-open symptom targets this part and
+   * hasn't narrowed enough to resolve it yet (`displayedBandFor`,
+   * diagnosis.ts). Always false for a non-symptomatic car/part. The row
+   * renders a "?" chip when true; `band` itself is never fabricated either
+   * way, just chosen honestly between the two real values.
+   */
+  uncertain: boolean
 }
 
 /** A car paired with its resolved model, display name, and derived stats. */
@@ -273,6 +293,18 @@ export interface CarDetail extends DetailedCar {
    * job to label.
    */
   plannedEstimate: PlannedEstimateView | null
+  /**
+   * Sprint 74 decision 8: this owned car's own symptom checklist (`[]` for
+   * an honest car) - same shape as `LotDetail.symptoms`, but the UI never
+   * renders its `tests` entries here (no yard tests on an owned car; the
+   * full workup below supersedes them).
+   */
+  symptoms: LotDetail['symptoms']
+  /**
+   * Sprint 74 decision 3: why the "Full workup (1 slot)" button is disabled
+   * right now, `null` when it isn't (`ownedWorkupGateReason`).
+   */
+  workupGateReason: OwnedWorkupGateReason | null
 }
 
 /** Sprint 48: the Finances panel's pre-Confirm preview - null (via
@@ -667,19 +699,39 @@ export interface LotDetail {
    */
   restorationBillYen: number
   /**
-   * Sprint 73 decision 7: one entry per symptom this lot's car carries
-   * (`[]` for an honest car) - the free, public card line plus its still-
-   * fully-open cause checklist (Sprint 74 wires the verb that actually
-   * narrows it; every cause is "remaining" this sprint). Each cause's
-   * `deltaYen` is `marketValueYen(apparent-with-this-cause-applied) -
-   * marketValueYen(apparent)` - always <= 0, "if it's this: about
-   * `deltaYen` yen" - not the fear-priced sheet gap, a plain honest
-   * true-value comparison per cause.
+   * Sprint 73 decision 7 / Sprint 74 decision 7: one entry per symptom this
+   * lot's car carries (`[]` for an honest car) - the free, public card line,
+   * its cause checklist (each cause's `deltaYen` is
+   * `marketValueYen(apparent-with-this-cause-applied) -
+   * marketValueYen(apparent)`, always <= 0, "if it's this: about `deltaYen`
+   * yen"; `eliminated` is true once a run test has ruled it out -
+   * `remainingCauseIds` no longer includes it), and every test the symptom's
+   * own content offers (`alreadyRun` true once its id is in
+   * `runTestIds` - the UI disables rather than hides those), `[]` once the
+   * symptom is fully resolved (`remainingCauseIds.length <= 1` - nothing is
+   * left to narrow, so no test is worth running even unrun).
+   * `symptomIndex` is what `runDiagnosticTest` addresses this symptom by.
    */
   symptoms: {
+    symptomIndex: number
     line: string
-    causes: { label: string; deltaYen: number }[]
+    resolved: boolean
+    causes: { causeId: string; label: string; deltaYen: number; eliminated: boolean }[]
+    tests: {
+      testId: string
+      label: string
+      minutes: number
+      alreadyRun: boolean
+    }[]
   }[]
+  /**
+   * Sprint 74 decision 6: the player's own honest estimate, once they've
+   * learned something about this lot (any test run, or any symptom
+   * resolved by any other route) - null beforehand, so the UI only shows
+   * "your estimate" once there is genuinely a player-side estimate to show,
+   * never a number identical to the guide before any knowledge exists.
+   */
+  playerEstimateYen: number | null
   /** This lot's backstop close day (the Sprint 19 duration roll) - activity-
    * based closing (quiet-day hammer) usually resolves it sooner than this. */
   expiresOnDay: number
@@ -806,6 +858,9 @@ export const useGameStore = defineStore('game', () => {
   )
   const serviceJobOffers = computed(() => gameState.value.serviceJobOffers)
   const activeServiceJobs = computed(() => gameState.value.activeServiceJobs)
+  /** Sprint 74: the active yard visit, or `null` outside one - the fixed
+   * "At the yard: Xm left" panel's own source. */
+  const inspectionVisit = computed(() => gameState.value.inspectionVisit)
 
   /** Service-job offers on the board, presented for the accept screen. */
   const serviceJobOfferViews = computed<ServiceJobOfferView[]>(() =>
@@ -929,27 +984,25 @@ export const useGameStore = defineStore('game', () => {
     return result
   }
 
-  /** "valve-seals" -> "Valve seals" - a cause has no player-facing name of
-   * its own yet (Sprint 74's inspection-test copy is the natural home for
-   * one); this is the plain, honest fallback for this sprint's read-only
-   * checklist. */
-  function titleCaseFromSlug(slug: string): string {
-    const [first, ...rest] = slug.split('-')
-    if (!first) return slug
-    return [first.charAt(0).toUpperCase() + first.slice(1), ...rest].join(' ')
-  }
-
   /**
-   * Sprint 73 decision 7: one entry per symptom `car` carries, its free
-   * public card line plus its still-fully-open cause checklist (every cause
-   * is "remaining" this sprint - Sprint 74 wires the verb that narrows it).
-   * Each cause's `deltaYen` is a plain, honest value comparison -
-   * `marketValueYen` with that cause's own damage applied to `apparentCar`,
-   * minus `apparentCar`'s own value - never the fear-priced sheet gap
-   * (`sheetGuideValueYen`), which is what the room actually charges, not
-   * what any one specific cause is honestly worth.
+   * Sprint 73 decision 7 / Sprint 74 decisions 7-8: one entry per symptom
+   * `car` carries, its free public card line, its cause checklist, and every
+   * test its own content offers. Shared by a lot's card (`lotDetail`) and an
+   * owned car's page (`carDetail`) - the checklist shape is identical either
+   * way; only the UI decides whether test buttons render (decision 8: never
+   * on an owned car, the workup supersedes them there). Each cause's
+   * `deltaYen` is a plain, honest value comparison - `marketValueYen` with
+   * that cause's own damage applied to `apparentCar`, minus `apparentCar`'s
+   * own value - never the fear-priced sheet gap (`sheetGuideValueYen`),
+   * which is what the room actually charges, not what any one specific cause
+   * is honestly worth. `eliminated` and `resolved` both read
+   * `carSymptom.remainingCauseIds` (Sprint 74's own narrowing state);
+   * `alreadyRun` reads `runTestIds`. Test `label`s are derived the same way
+   * cause labels are - `titleCaseFromSlug` off the id - since
+   * `DiagnosticTestSchema` carries no separate display name
+   * (diagnosticTest.ts).
    */
-  function lotSymptomViews(
+  function symptomChecklistForCar(
     car: CarInstance,
     apparentCar: CarInstance,
     model: CarModel,
@@ -963,12 +1016,15 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsTaxonomyById,
       context.value.economy,
     )
-    return car.symptoms.flatMap((carSymptom) => {
+    return car.symptoms.flatMap((carSymptom, symptomIndex) => {
       const symptom = context.value.symptomsById[carSymptom.symptomId]
       if (!symptom) return []
+      const resolved = carSymptom.remainingCauseIds.length <= 1
       return [
         {
+          symptomIndex,
           line: symptom.cardLine,
+          resolved,
           causes: symptom.causes.map((cause) => {
             const installed = apparentCar.parts[cause.carPartId].installed
             const causeValueYen = installed
@@ -988,10 +1044,20 @@ export const useGameStore = defineStore('game', () => {
                 )
               : apparentValueYen
             return {
+              causeId: cause.id,
               label: titleCaseFromSlug(cause.id),
               deltaYen: Math.round(causeValueYen - apparentValueYen),
+              eliminated: !carSymptom.remainingCauseIds.includes(cause.id),
             }
           }),
+          tests: resolved
+            ? []
+            : symptom.tests.map((test) => ({
+                testId: test.testId,
+                label: titleCaseFromSlug(test.testId),
+                minutes: context.value.diagnosticTestsById[test.testId]?.minutes ?? 0,
+                alreadyRun: carSymptom.runTestIds.includes(test.testId),
+              })),
         },
       ]
     })
@@ -1055,13 +1121,18 @@ export const useGameStore = defineStore('game', () => {
    * Null when there is nothing left to plan (unrepairable, scrap, missing,
    * or already staged/installed at mint).
    */
-  function nextRepairStep(
+  /**
+   * The shared computation behind `nextRepairStep` below - factored out so
+   * `nextPartStepRange` (Sprint 74 decision 5) can price the SAME next-rung
+   * step against a band-overridden copy of `car` rather than always reading
+   * `car`'s own true band, without duplicating the plan-diff arithmetic.
+   */
+  function repairStepFor(
+    car: CarInstance,
     carId: string,
     componentId: ComponentId,
     carPartId?: CarPartId,
   ): NextRepairStepView | null {
-    const car = findWorkableCar(carId)
-    if (!car) return null
     const staged = stagedActionsFor(carId).find(
       (a) => a.kind === 'repair' && a.componentId === componentId && a.carPartId === carPartId,
     )
@@ -1095,6 +1166,53 @@ export const useGameStore = defineStore('game', () => {
       throughNextRung.laborSlotsRequired - alreadyPlanned.laborSlotsRequired
     if (laborSlotsRequired <= 0) return null // nothing repairable left to climb (scrap/non-repairable)
     return { targetBand: nextRung, costYen, laborSlotsRequired }
+  }
+
+  function nextRepairStep(
+    carId: string,
+    componentId: ComponentId,
+    carPartId?: CarPartId,
+  ): NextRepairStepView | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    return repairStepFor(car, carId, componentId, carPartId)
+  }
+
+  /**
+   * Sprint 74 decision 5: the range a repair-cost preview must show instead
+   * of a single number, for a part whose true band is still hidden behind an
+   * unresolved symptom (`displayedBandFor`'s `uncertain` flag) - the ordinary
+   * preview (`nextRepairStep`) reads the car's real, true band directly,
+   * which would silently leak it through the cost number itself. `best`
+   * prices the next step as if the part were at its displayed APPARENT band;
+   * `worst` as if it were at the worst still-live remaining cause's band
+   * (`worstRemainingBandFor` - never better than apparent, since a cause's
+   * `setBand` is always a floor). Either end can be `null` on its own
+   * (apparent already mint, nothing needed there, while the worst case still
+   * has real work) - `null` for the whole range only when the part isn't
+   * uncertain at all, or nothing is repairable from either end.
+   */
+  function nextPartStepRange(
+    carId: string,
+    componentId: ComponentId,
+    carPartId: CarPartId,
+  ): { best: NextRepairStepView | null; worst: NextRepairStepView | null } | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    const displayed = displayedBandFor(car, carPartId, context.value)
+    if (!displayed.uncertain || displayed.band === null) return null
+    const worstBand = worstRemainingBandFor(car, carPartId, context.value)
+    const installed = car.parts[carPartId].installed
+    if (!worstBand || !installed) return null
+
+    const carAt = (band: ConditionBand): CarInstance => ({
+      ...car,
+      parts: { ...car.parts, [carPartId]: { installed: { ...installed, band } } },
+    })
+    const best = repairStepFor(carAt(displayed.band), carId, componentId, carPartId)
+    const worst = repairStepFor(carAt(worstBand), carId, componentId, carPartId)
+    if (!best && !worst) return null
+    return { best, worst }
   }
 
   /** Sprint 48: the bench recondition control's own next-rung step - reuses
@@ -1148,16 +1266,18 @@ export const useGameStore = defineStore('game', () => {
       const installed = car.parts[partId].installed
       const part = installed ? context.value.partsById[installed.partId] : undefined
       const missing = isPartMissing(car, model, partId)
+      const displayed = displayedBandFor(car, partId, context.value)
       return {
         partId,
         displayName: carPartLabel(partId),
-        band: installed ? installed.band : null,
+        band: displayed.band,
         installedPartName: installed ? partName(installed.partId) : null,
         grade: part?.grade ?? null,
         missing,
         legitimatelyAbsent: !installed && !missing,
         repairable: isPartRepairable(partId),
         removable: context.value.partsTaxonomyById[partId]?.removable ?? true,
+        uncertain: displayed.uncertain,
       }
     })
   }
@@ -1368,6 +1488,8 @@ export const useGameStore = defineStore('game', () => {
       foundationWarning: foundationWarningFor(car),
       passionSpendNotice: passionSpendNoticeFor(car, model),
       plannedEstimate: plannedEstimateFor(carId),
+      symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),
+      workupGateReason: ownedWorkupGateReasonCore(gameState.value, carId, context.value),
     }
   }
 
@@ -1666,7 +1788,12 @@ export const useGameStore = defineStore('game', () => {
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),
       closeNightsLeft: auctionNightsLeft(lot),
-      symptoms: lotSymptomViews(lot.car, apparentCar, model),
+      symptoms: symptomChecklistForCar(lot.car, apparentCar, model),
+      playerEstimateYen: lot.car.symptoms.some(
+        (s) => s.runTestIds.length > 0 || s.remainingCauseIds.length <= 1,
+      )
+        ? Math.round(playerEstimateYen(lot.car, model, gameState.value, context.value))
+        : null,
     }
   }
 
@@ -1705,6 +1832,74 @@ export const useGameStore = defineStore('game', () => {
         )
       : 0
     return { buyerId: buyer?.id, offerYen: Math.round(offerYen) }
+  }
+
+  /**
+   * Sprint 74 decision 7: the yard visit's own gate reason for `tier` right
+   * now (`inspectionVisitGateReasonCore`) - the per-tier "Inspect here"
+   * button's proactive "why not" read, `null` when nothing blocks it.
+   */
+  function inspectionVisitGateReason(tier: AuctionTier): InspectionVisitGateReason | null {
+    return inspectionVisitGateReasonCore(gameState.value, tier, context.value)
+  }
+
+  /** The travel fee `beginInspectionVisit` charges for a visit at `tier` -
+   * the "Inspect here" button's own price tag. */
+  function travelFeeYenFor(tier: AuctionTier): number {
+    return context.value.economy.diagnosis.travelFeeYenByTier[tier]
+  }
+
+  /**
+   * Start (or replace) the yard inspection visit at `tier` (Sprint 74
+   * decision 1) - the per-tier "Inspect here" button. Replacing an
+   * already-active visit with minutes left forfeits the remainder; the
+   * two-step confirm before that happens is the caller's own job (decision
+   * 7) - this always commits immediately once called.
+   */
+  function beginInspectionVisit(tier: AuctionTier): boolean {
+    const result = beginInspectionVisitCore(gameState.value, tier, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('beginInspectionVisit', { tier })
+    return true
+  }
+
+  /**
+   * Run `testId` against `lotId`'s `symptomIndex`-th symptom during the
+   * active yard visit (Sprint 74 decision 2). Returns the authored result-
+   * copy line for inline display on a legal run, `null` on any refusal.
+   * No day-log entry either way (`runDiagnosticTestCore`'s own `log` is
+   * always `[]`) - the result copy itself is the player-facing record.
+   */
+  function runDiagnosticTest(lotId: string, symptomIndex: number, testId: string): string | null {
+    const result = runDiagnosticTestCore(
+      gameState.value,
+      lotId,
+      symptomIndex,
+      testId,
+      context.value,
+    )
+    if (result.outcome !== 'ran') return null
+    gameState.value = result.state
+    logSessionEvent('runDiagnosticTest', { lotId, symptomIndex, testId })
+    return result.resultCopy
+  }
+
+  /**
+   * The owned-car full workup (Sprint 74 decision 3) - 1 labour slot, no
+   * fee, no clock, collapses every one of `carInstanceId`'s symptoms
+   * straight to their true cause. The only bench-side route (alongside
+   * uninstall-reveals-truth) that resolves a bench-only ambiguity like
+   * `wont-idle`.
+   */
+  function resolveOwnedWorkup(carInstanceId: string): boolean {
+    const result = resolveOwnedWorkupCore(gameState.value, carInstanceId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('resolveOwnedWorkup', { carInstanceId })
+    return true
   }
 
   /**
@@ -3045,6 +3240,7 @@ export const useGameStore = defineStore('game', () => {
     groupBandsForCar,
     groupRepairFloorBand,
     nextRepairStep,
+    nextPartStepRange,
     plannedStepFor,
     isPartRepairable,
     isCustomerOwnedPart,
@@ -3057,6 +3253,12 @@ export const useGameStore = defineStore('game', () => {
     offerFor,
     pendingOffersView,
     estimatedSaleValue,
+    inspectionVisit,
+    inspectionVisitGateReason,
+    travelFeeYenFor,
+    beginInspectionVisit,
+    runDiagnosticTest,
+    resolveOwnedWorkup,
     installablePartsFor,
     installablePartsForPart,
     installBlockedReason,

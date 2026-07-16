@@ -311,6 +311,7 @@ describe('AuctionScreen', () => {
               symptomId: 'smokes-on-startup',
               trueCauseId: 'valve-seals',
               remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+              runTestIds: [],
             },
           ],
           apparentBandByPartId: { headValvetrain: 'mint' as const },
@@ -362,6 +363,122 @@ describe('AuctionScreen', () => {
       warpToCatalog(game)
       const wrapper = mountScreen()
       expect(wrapper.text()).toContain('guide (as graded)')
+    })
+  })
+
+  describe('the yard visit and diagnostic tests (Sprint 74 decisions 1-2/7)', () => {
+    /** Overwrites `lot`'s car with a real, content-backed symptomatic car -
+     * `smokes-on-startup` (2 tests: `cold-start-watch`, `compression-test`),
+     * matching the exact fixture the Sprint 73 symptom-disclosure test above
+     * already uses. */
+    function makeSymptomaticLot(game: ReturnType<typeof useGameStore>, lotId: string) {
+      const lot = game.gameState.activeAuctionLots.find((l) => l.id === lotId)!
+      const withSymptom = {
+        ...lot,
+        car: {
+          ...lot.car,
+          parts: {
+            ...lot.car.parts,
+            headValvetrain: {
+              installed: { ...lot.car.parts.headValvetrain.installed!, band: 'worn' as const },
+            },
+          },
+          symptoms: [
+            {
+              symptomId: 'smokes-on-startup',
+              trueCauseId: 'valve-seals',
+              remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+              runTestIds: [],
+            },
+          ],
+          apparentBandByPartId: { headValvetrain: 'mint' as const },
+        },
+      }
+      game.gameState = {
+        ...game.gameState,
+        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
+          l.id === lotId ? withSymptom : l,
+        ),
+      }
+      return withSymptom
+    }
+
+    it('offers a per-tier "Inspect here" button that starts a visit: spends cash and a labour slot, and shows the fixed "At the yard" panel', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const tier = game.gameState.activeAuctionLots[0]!.tier
+      const wrapper = mountScreen()
+      const cashBefore = game.cashYen
+      const laborBefore = game.laborSlotsRemainingToday
+
+      const button = wrapper.find(`[data-test="inspect-visit-${tier}"]`)
+      expect(button.exists()).toBe(true)
+      await button.trigger('click')
+
+      expect(game.inspectionVisit?.tier).toBe(tier)
+      expect(game.cashYen).toBeLessThan(cashBefore)
+      expect(game.laborSlotsRemainingToday).toBe(laborBefore - 1)
+      expect(wrapper.text()).toContain('At the yard')
+      // The now-active tier's own button is redundant with the fixed panel.
+      expect(wrapper.find(`[data-test="inspect-visit-${tier}"]`).exists()).toBe(false)
+    })
+
+    it('a disabled Inspect button (short on cash) explains itself in a tooltip', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const tier = game.gameState.activeAuctionLots[0]!.tier
+      game.gameState = { ...game.gameState, cashYen: 0 }
+      const wrapper = mountScreen()
+      const button = wrapper.find(`[data-test="inspect-visit-${tier}"]`)
+      expect((button.element as HTMLButtonElement).disabled).toBe(true)
+      expect(button.attributes('title')).toContain('Not enough cash')
+    })
+
+    it("running a diagnostic test narrows the symptom's cause checklist, strikes through the eliminated cause, and shows the result copy inline", async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      const wrapper = mountScreen()
+
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      const runButton = wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`)
+      expect(runButton.exists()).toBe(true)
+      await runButton.trigger('click')
+
+      // cold-start-watch's partition puts the true cause (valve-seals) with
+      // tired-rings in one group, head-gasket alone in the other - so
+      // head-gasket is eliminated, valve-seals/tired-rings remain.
+      const updatedCar = game.gameState.activeAuctionLots.find((l) => l.id === lot.id)!.car
+      expect(updatedCar.symptoms[0]!.remainingCauseIds.sort()).toEqual(
+        ['tired-rings', 'valve-seals'].sort(),
+      )
+      expect(updatedCar.symptoms[0]!.runTestIds).toEqual(['cold-start-watch'])
+
+      const symptomEl = wrapper.find(`[data-test="symptom-${lot.id}"]`)
+      expect(symptomEl.find(`[data-test="test-result-${lot.id}-0"]`).text()).toContain(
+        'Smoke clears within a few seconds',
+      )
+      // Head gasket is now struck through (ServiceTaskList's own idiom).
+      const causeItems = symptomEl.findAll('.symptom-causes li')
+      const headGasketRow = causeItems.find((li) => li.text().includes('Head gasket'))!
+      expect(headGasketRow.classes()).toContain('eliminated')
+    })
+
+    it('an already-run test button is disabled and explains itself', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      const wrapper = mountScreen()
+
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      const runButton = wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`)
+      await runButton.trigger('click')
+
+      const repeatButton = wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`)
+      expect((repeatButton.element as HTMLButtonElement).disabled).toBe(true)
+      expect(repeatButton.attributes('title')).toContain('Already run')
     })
   })
 

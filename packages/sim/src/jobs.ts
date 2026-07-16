@@ -24,6 +24,7 @@ import {
 } from './bands'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
+import { revealOnRemoval } from './diagnosis'
 import { partFitsCar } from './parts'
 import { makeCarOrigin, isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
@@ -412,9 +413,6 @@ export function resolveRemovePart(
     ...car,
     parts: { ...car.parts, [carPartId]: { installed: isStock ? null : freshStockInstance } },
   }
-  const log: DayLogEntry[] = [
-    { type: 'part-removed', carInstanceId, carPartId, partInstanceId: installed.id },
-  ]
   const withLabor: GameState = {
     ...state,
     laborSlotsSpentToday: state.laborSlotsSpentToday + laborSlotsUsed,
@@ -423,11 +421,26 @@ export function resolveRemovePart(
   const ownedIndex = withLabor.ownedCars.findIndex((c) => c.id === carInstanceId)
   if (ownedIndex !== -1) {
     // An owned car: the removed part is ours, keep it (unchanged from Sprint 32).
+    // Sprint 74 decision 4: uninstall reveals truth - free, no extra labour.
+    const { car: revealedCar, revealedCauseId } = revealOnRemoval(updatedCar, carPartId, context)
     const ownedCars = [...withLabor.ownedCars]
-    ownedCars[ownedIndex] = updatedCar
+    ownedCars[ownedIndex] = revealedCar
     const partInventory = [...withLabor.partInventory, installed]
+    const log: DayLogEntry[] = [
+      {
+        type: 'part-removed',
+        carInstanceId,
+        carPartId,
+        partInstanceId: installed.id,
+        ...(revealedCauseId ? { revealedCauseId } : {}),
+      },
+    ]
     return { state: { ...withLabor, ownedCars, partInventory }, log, laborSlotsUsed }
   }
+
+  const log: DayLogEntry[] = [
+    { type: 'part-removed', carInstanceId, carPartId, partInstanceId: installed.id },
+  ]
 
   const serviceIndex = withLabor.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {

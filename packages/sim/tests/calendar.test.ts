@@ -112,6 +112,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       machineListing: null,
       nextMachineListingDay: null,
       serviceJobLedgers: {},
+      inspectionVisit: null,
     }
   }
 

@@ -65,12 +65,16 @@ const CarPartsSchema = z.object({
  * every cause in the symptom's own cause list and shrinks as Sprint 74's
  * inspection tests eliminate partitions. Economics never read this array -
  * only `apparentBandByPartId` below and the true `parts[..].band` matter to
- * value.
+ * value. `runTestIds` (Sprint 74): which diagnostic tests have already been
+ * run on THIS symptom instance - `runDiagnosticTest` refuses a repeat run,
+ * so re-testing the same thing twice is never a legal way to burn a visit's
+ * minutes.
  */
 const CarSymptomSchema = z.object({
   symptomId: z.string().min(1),
   trueCauseId: z.string().min(1),
   remainingCauseIds: z.array(z.string().min(1)),
+  runTestIds: z.array(z.string().min(1)).default([]),
 })
 
 export const CarInstanceSchema = z.object({

@@ -57,6 +57,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
+    inspectionVisit: null,
     ...overrides,
   }
 }

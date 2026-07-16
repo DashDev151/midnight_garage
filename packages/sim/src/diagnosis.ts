@@ -1,6 +1,20 @@
-import type { CarInstance, CarModel, CarPartId, GameState } from '@midnight-garage/content'
+import type {
+  AuctionLot,
+  AuctionTier,
+  CarInstance,
+  CarModel,
+  CarPartId,
+  Cause,
+  ConditionBand,
+  DayLogEntry,
+  GameState,
+  Symptom,
+} from '@midnight-garage/content'
+import { availableLaborSlots } from './laborSlots'
 import type { SimContext } from './context'
 import { marketValueYen } from './marketValue'
+
+type CarSymptom = CarInstance['symptoms'][number]
 
 /**
  * Sprint 73 (diagnosis I, the fear-priced board - maintainer pricing law
@@ -28,22 +42,34 @@ export function apparentViewOf(car: CarInstance): CarInstance {
   return { ...car, parts }
 }
 
+/** Every one of a symptom's own causes, unfiltered - the default cause set
+ * for `symptomDiscountYen`'s room-side expectation (`expectedTrueValueYen`/
+ * `sheetGuideValueYen`, which know nothing about the player's own narrowing
+ * knowledge). */
+function allCauses(_carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] {
+  return symptom.causes
+}
+
 /**
  * The total expected DISCOUNT off the apparent value across every symptom
  * `car` carries, given `apparent` (`apparentViewOf(car)`) and its own
- * already-computed `apparentValue` - shared by `expectedTrueValueYen` and
- * `sheetGuideValueYen` below so a caller needing BOTH numbers (the hot path,
- * `carGuideValueYen`) never prices the apparent view or walks the cause list
- * twice. For each symptom, `marketValueYen` is computed once per cause (that
- * cause's damage applied to the apparent view) and weight-averaged - the
- * symptom's own expected discount. Symptoms combine by summing each one's
- * own discount in turn (array order, deterministic) - treating each
- * symptom's uncertainty as an independent deduction rather than enumerating
- * the full cross-product of every symptom's causes, which stays exact for
- * the shipped `maxSymptomsPerCar: 2` and any single-symptom car (the
- * overwhelming majority), and is a standard linear approximation for the
- * rare two-symptom case. Zero for an honest car (no symptoms) - the loop is
- * a no-op over an empty list.
+ * already-computed `apparentValue` - shared by `expectedTrueValueYen`,
+ * `sheetGuideValueYen`, and `playerEstimateYen` below so no caller prices the
+ * apparent view or walks a cause list twice. For each symptom,
+ * `causesFor(carSymptom, symptom)` (default: every cause - the room's own
+ * ignorance) picks which causes are still in play; `marketValueYen` is
+ * computed once per cause (that cause's damage applied to the apparent view)
+ * and weight-averaged over just those causes - the symptom's own expected
+ * discount. Symptoms combine by summing each one's own discount in turn
+ * (array order, deterministic) - treating each symptom's uncertainty as an
+ * independent deduction rather than enumerating the full cross-product of
+ * every symptom's causes, which stays exact for the shipped
+ * `maxSymptomsPerCar: 2` and any single-symptom car (the overwhelming
+ * majority), and is a standard linear approximation for the rare
+ * two-symptom case. Zero for an honest car (no symptoms), and zero for any
+ * symptom `causesFor` returns no causes for (Sprint 74:
+ * `playerEstimateYen` uses this to make a fully-resolved symptom - exactly
+ * one remaining cause - contribute its exact true value, no averaging).
  */
 function symptomDiscountYen(
   car: CarInstance,
@@ -52,14 +78,16 @@ function symptomDiscountYen(
   apparentValue: number,
   heatPercent: number,
   context: SimContext,
+  causesFor: (carSymptom: CarSymptom, symptom: Symptom) => readonly Cause[] = allCauses,
 ): number {
   let discount = 0
   for (const carSymptom of car.symptoms) {
     const symptom = context.symptomsById[carSymptom.symptomId]
     if (!symptom) continue
-    const totalWeight = symptom.causes.reduce((sum, cause) => sum + cause.weight, 0)
+    const causes = causesFor(carSymptom, symptom)
+    const totalWeight = causes.reduce((sum, cause) => sum + cause.weight, 0)
     if (totalWeight <= 0) continue
-    const weightedMean = symptom.causes.reduce((sum, cause) => {
+    const weightedMean = causes.reduce((sum, cause) => {
       const installed = apparent.parts[cause.carPartId].installed
       if (!installed) return sum
       const damagedView: CarInstance = {
@@ -144,4 +172,394 @@ export function sheetGuideValueYen(
   )
   const discount = symptomDiscountYen(car, model, apparent, apparentValue, heatPercent, context)
   return apparentValue - context.economy.diagnosis.fearPremium * discount
+}
+
+/**
+ * Sprint 74 decision 6: the PLAYER's own honest estimate, once they've
+ * learned something - each symptom's remaining causes (Sprint 74's
+ * `runDiagnosticTest`/`resolveOwnedWorkup` narrow `remainingCauseIds`),
+ * reweighted (original weights renormalised over just the remaining set,
+ * `symptomDiscountYen`'s `totalWeight` division already does this for
+ * whatever cause list it's handed). A fully-resolved symptom (exactly one
+ * remaining cause) contributes its exact true value with no averaging at
+ * all - `weightedMean` degenerates to that one cause's own value once it's
+ * the only entry, no special case needed. No `fearPremium` anywhere in this
+ * number - this is the player's own honest read, not the room's fear-priced
+ * one.
+ */
+export function playerEstimateYen(
+  car: CarInstance,
+  model: CarModel,
+  state: GameState,
+  context: SimContext,
+): number {
+  const heatPercent = state.marketHeat[model.id] ?? 100
+  const apparent = apparentViewOf(car)
+  const apparentValue = marketValueYen(
+    model,
+    apparent,
+    heatPercent,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
+  const remainingCausesFor = (carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] =>
+    symptom.causes.filter((cause) => carSymptom.remainingCauseIds.includes(cause.id))
+  const discount = symptomDiscountYen(
+    car,
+    model,
+    apparent,
+    apparentValue,
+    heatPercent,
+    context,
+    remainingCausesFor,
+  )
+  return apparentValue - discount
+}
+
+/**
+ * Sprint 74 decision 5: the ONE rule governing every band the player sees.
+ * True when (a) the car is honest, (b) this part has no recorded apparent
+ * band at all (a symptom never damaged it), or (c) every symptom that DOES
+ * target this part has narrowed enough to resolve it - either no remaining
+ * candidate cause still targets this part, or the symptom has narrowed to
+ * exactly one remaining cause overall (so whichever it is, its effect on
+ * this part - damaging it or not - is already known). Otherwise the
+ * APPARENT band, flagged `uncertain` for the UI's "?" chip. `null` band
+ * means genuinely missing (mirrors every other missing-slot convention in
+ * this codebase - never a real `ConditionBand` value).
+ */
+export function displayedBandFor(
+  car: CarInstance,
+  partId: CarPartId,
+  context: SimContext,
+): { band: ConditionBand | null; uncertain: boolean } {
+  const trueBand = car.parts[partId].installed?.band ?? null
+  if (!car.apparentBandByPartId) return { band: trueBand, uncertain: false }
+  const apparentBand = car.apparentBandByPartId[partId]
+  if (apparentBand === undefined) return { band: trueBand, uncertain: false }
+
+  const stillUncertain = car.symptoms.some((carSymptom) => {
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) return false
+    const targetsThisPart = symptom.causes.some((cause) => cause.carPartId === partId)
+    if (!targetsThisPart) return false
+    if (carSymptom.remainingCauseIds.length <= 1) return false // symptom fully resolved
+    return symptom.causes.some(
+      (cause) => cause.carPartId === partId && carSymptom.remainingCauseIds.includes(cause.id),
+    )
+  })
+
+  if (!stillUncertain) return { band: trueBand, uncertain: false }
+  return { band: apparentBand, uncertain: true }
+}
+
+/** Every cause across `car`'s symptoms that still (a) remains a live
+ * candidate and (b) targets `partId` - the "worst remaining cause" repair-
+ * cost-preview range (decision 5) reads this to find its worst-case band. */
+function remainingCausesTargeting(
+  car: CarInstance,
+  partId: CarPartId,
+  context: SimContext,
+): Cause[] {
+  const result: Cause[] = []
+  for (const carSymptom of car.symptoms) {
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) continue
+    for (const cause of symptom.causes) {
+      if (cause.carPartId === partId && carSymptom.remainingCauseIds.includes(cause.id)) {
+        result.push(cause)
+      }
+    }
+  }
+  return result
+}
+
+/**
+ * Sprint 74 decision 5's repair-cost-preview range: the worst (lowest) band
+ * any still-live remaining cause would set `partId` to, or `null` when
+ * nothing remaining targets it (an uncertain-repair-cost preview has
+ * nothing worse to show than the apparent band itself).
+ */
+export function worstRemainingBandFor(
+  car: CarInstance,
+  partId: CarPartId,
+  context: SimContext,
+): ConditionBand | null {
+  const causes = remainingCausesTargeting(car, partId, context)
+  if (causes.length === 0) return null
+  const bandOrder: readonly ConditionBand[] = ['scrap', 'poor', 'worn', 'fine', 'mint']
+  let worst: ConditionBand = 'mint'
+  for (const cause of causes) {
+    if (bandOrder.indexOf(cause.setBand) < bandOrder.indexOf(worst)) worst = cause.setBand
+  }
+  return worst
+}
+
+/**
+ * Sprint 74 decision 4: uninstall reveals truth. Called from `resolveRemovePart`
+ * (jobs.ts) after a successful removal of `carPartId` on an OWNED car - the
+ * removed instance's band was always the true band, so pulling it is free
+ * knowledge, no extra labour beyond what the teardown itself already cost.
+ * For each symptom still open (more than one remaining cause): if its
+ * `trueCauseId` targets `carPartId`, the true cause is now directly known -
+ * collapse `remainingCauseIds` to exactly `[trueCauseId]` and report it as
+ * `revealedCauseId` (the day-log reveal line, "Opened it up: <cause>.",
+ * fires only for this branch - it is the moment the true cause is directly
+ * SEEN, not merely narrowed); otherwise, this part is now proven undamaged
+ * by whichever cause turns out true, so every remaining candidate that
+ * targets `carPartId` is eliminated (silent narrowing, no reveal line, even
+ * if it happens to leave exactly one remaining candidate for some OTHER
+ * part). At most one symptom's own `trueCauseId` can target a given part in
+ * practice (Sprint 73 content), so `revealedCauseId` reports the first (and
+ * only) one found.
+ */
+export function revealOnRemoval(
+  car: CarInstance,
+  carPartId: CarPartId,
+  context: SimContext,
+): { car: CarInstance; revealedCauseId: string | null } {
+  if (car.symptoms.length === 0) return { car, revealedCauseId: null }
+  let revealedCauseId: string | null = null
+  const symptoms = car.symptoms.map((carSymptom) => {
+    if (carSymptom.remainingCauseIds.length <= 1) return carSymptom // already resolved
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) return carSymptom
+    const trueCause = symptom.causes.find((cause) => cause.id === carSymptom.trueCauseId)
+    if (!trueCause || trueCause.carPartId !== carPartId) {
+      const remainingCauseIds = carSymptom.remainingCauseIds.filter((id) => {
+        const cause = symptom.causes.find((c) => c.id === id)
+        return cause ? cause.carPartId !== carPartId : true
+      })
+      return { ...carSymptom, remainingCauseIds }
+    }
+    revealedCauseId ??= carSymptom.trueCauseId
+    return { ...carSymptom, remainingCauseIds: [carSymptom.trueCauseId] }
+  })
+  return { car: { ...car, symptoms }, revealedCauseId }
+}
+
+/** Outcome discriminants shared by the three day-state verbs below - every
+ * refusal is a plain no-op (unchanged `state`, empty `log`), matching every
+ * other instant resolver's own "refuse quietly, let the caller show why"
+ * shape in this codebase. */
+export type BeginInspectionVisitOutcome = 'started' | InspectionVisitGateReason
+
+export interface BeginInspectionVisitResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: BeginInspectionVisitOutcome
+}
+
+export type InspectionVisitGateReason = 'no-labor-slot' | 'no-cash' | 'no-lots'
+
+/**
+ * Sprint 74 decision 1: the pure "why can't I start a visit at `tier` right
+ * now" predicate - what the UI queries proactively for the per-tier button's
+ * disabled reason (mirrors `removeBlockReason`'s own reuse shape, jobs.ts).
+ * `null` when nothing blocks it. Shared with `beginInspectionVisit` below so
+ * there is one gate, not two.
+ */
+export function inspectionVisitGateReason(
+  state: GameState,
+  tier: AuctionTier,
+  context: SimContext,
+): InspectionVisitGateReason | null {
+  const feeYen = context.economy.diagnosis.travelFeeYenByTier[tier]
+  const freeSlots = availableLaborSlots(state) - state.laborSlotsSpentToday
+  if (freeSlots < 1) return 'no-labor-slot'
+  if (state.cashYen < feeYen) return 'no-cash'
+  const hasLiveLot = state.activeAuctionLots.some((lot) => lot.tier === tier)
+  if (!hasLiveLot) return 'no-lots'
+  return null
+}
+
+/**
+ * Sprint 74 decision 1: start (or replace) the yard inspection visit at
+ * `tier` - requires a free labour slot, enough cash for
+ * `economy.diagnosis.travelFeeYenByTier[tier]`, and at least one live lot at
+ * that tier (`inspectionVisitGateReason` above). Spends the slot and the fee,
+ * sets `minutesLeft` to the full `economy.diagnosis.visitMinutes`.
+ * Deliberately does NOT refuse when a different visit is already active with
+ * minutes left - it simply replaces it, forfeiting the remainder; the
+ * two-step confirm before that happens at all is a UI-layer courtesy
+ * (decision 7), not a rule this resolver enforces itself.
+ */
+export function beginInspectionVisit(
+  state: GameState,
+  tier: AuctionTier,
+  context: SimContext,
+): BeginInspectionVisitResult {
+  const gateReason = inspectionVisitGateReason(state, tier, context)
+  if (gateReason) return { state, log: [], outcome: gateReason }
+
+  const feeYen = context.economy.diagnosis.travelFeeYenByTier[tier]
+  const minutesGranted = context.economy.diagnosis.visitMinutes
+  const nextState: GameState = {
+    ...state,
+    cashYen: state.cashYen - feeYen,
+    laborSlotsSpentToday: state.laborSlotsSpentToday + 1,
+    inspectionVisit: { tier, minutesLeft: minutesGranted },
+  }
+  return {
+    state: nextState,
+    log: [{ type: 'inspection-visit', tier, feeYen, minutesGranted }],
+    outcome: 'started',
+  }
+}
+
+export type RunDiagnosticTestOutcome =
+  | 'ran'
+  | 'no-visit'
+  | 'wrong-tier'
+  | 'not-found'
+  | 'test-not-applicable'
+  | 'already-run'
+  | 'not-enough-minutes'
+
+export interface RunDiagnosticTestResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: RunDiagnosticTestOutcome
+  /** The authored result-copy line for the partition group the true cause
+   * fell in, or `null` when the test didn't legally run. */
+  resultCopy: string | null
+}
+
+/**
+ * Sprint 74 decision 2: run `testId` against `lotId`'s `symptomIndex`-th
+ * symptom. Legal only with an active visit at the lot's own tier, enough
+ * `minutesLeft`, a test that actually applies to this symptom, and one that
+ * hasn't already run on this exact symptom instance (`runTestIds`).
+ * Deterministic, no RNG: finds which of the test's two partition groups
+ * contains the (already-rolled, generation-time) `trueCauseId`, and narrows
+ * `remainingCauseIds` to its intersection with that group. Knowledge lives
+ * on the car itself, not the visit, so it survives a purchase and dies with
+ * a lost lot for free - nothing extra to wire.
+ */
+export function runDiagnosticTest(
+  state: GameState,
+  lotId: string,
+  symptomIndex: number,
+  testId: string,
+  context: SimContext,
+): RunDiagnosticTestResult {
+  const visit = state.inspectionVisit
+  if (!visit) return { state, log: [], outcome: 'no-visit', resultCopy: null }
+  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
+  if (!lot) return { state, log: [], outcome: 'not-found', resultCopy: null }
+  if (lot.tier !== visit.tier) return { state, log: [], outcome: 'wrong-tier', resultCopy: null }
+  const carSymptom = lot.car.symptoms[symptomIndex]
+  if (!carSymptom) return { state, log: [], outcome: 'not-found', resultCopy: null }
+  const symptom = context.symptomsById[carSymptom.symptomId]
+  if (!symptom) return { state, log: [], outcome: 'not-found', resultCopy: null }
+  const testApplication = symptom.tests.find((t) => t.testId === testId)
+  if (!testApplication) {
+    return { state, log: [], outcome: 'test-not-applicable', resultCopy: null }
+  }
+  const test = context.diagnosticTestsById[testId]
+  if (!test) return { state, log: [], outcome: 'test-not-applicable', resultCopy: null }
+  if (carSymptom.runTestIds.includes(testId)) {
+    return { state, log: [], outcome: 'already-run', resultCopy: null }
+  }
+  if (visit.minutesLeft < test.minutes) {
+    return { state, log: [], outcome: 'not-enough-minutes', resultCopy: null }
+  }
+
+  const groupIndex = testApplication.partition.findIndex((group) =>
+    group.includes(carSymptom.trueCauseId),
+  )
+  // Content integrity (packages/content/tests/symptom.test.ts) guarantees
+  // every partition covers its symptom's full cause list exactly once, so
+  // trueCauseId (always one of the symptom's own causes) is always found -
+  // this fallback never fires against real content.
+  if (groupIndex === -1) {
+    return { state, log: [], outcome: 'test-not-applicable', resultCopy: null }
+  }
+  const group = testApplication.partition[groupIndex]!
+  const resultCopy = testApplication.resultCopy[groupIndex]!
+  const newRemaining = carSymptom.remainingCauseIds.filter((id) => group.includes(id))
+
+  const updatedSymptom: CarSymptom = {
+    ...carSymptom,
+    remainingCauseIds: newRemaining,
+    runTestIds: [...carSymptom.runTestIds, testId],
+  }
+  const updatedCar: CarInstance = {
+    ...lot.car,
+    symptoms: lot.car.symptoms.map((s, i) => (i === symptomIndex ? updatedSymptom : s)),
+  }
+  const updatedLot: AuctionLot = { ...lot, car: updatedCar }
+  const nextState: GameState = {
+    ...state,
+    activeAuctionLots: state.activeAuctionLots.map((l) => (l.id === lotId ? updatedLot : l)),
+    inspectionVisit: { ...visit, minutesLeft: visit.minutesLeft - test.minutes },
+  }
+  return { state: nextState, log: [], outcome: 'ran', resultCopy }
+}
+
+export type OwnedWorkupGateReason = 'no-labor-slot' | 'not-found' | 'no-symptoms'
+
+export type ResolveOwnedWorkupOutcome = 'done' | OwnedWorkupGateReason
+
+export interface ResolveOwnedWorkupResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: ResolveOwnedWorkupOutcome
+}
+
+/**
+ * Sprint 74 decision 3: the pure "why can't I run a full workup on this car
+ * right now" predicate - the "Full workup" button's own proactive disabled
+ * reason (mirrors `inspectionVisitGateReason`/`removeBlockReason`'s reuse
+ * shape). `null` when nothing blocks it.
+ */
+export function ownedWorkupGateReason(
+  state: GameState,
+  carInstanceId: string,
+  context: SimContext,
+): OwnedWorkupGateReason | null {
+  void context // no content lookup needed - collapsing to trueCauseId is data already on the car
+  const car = state.ownedCars.find((c) => c.id === carInstanceId)
+  if (!car) return 'not-found'
+  if (car.symptoms.length === 0) return 'no-symptoms'
+  const freeSlots = availableLaborSlots(state) - state.laborSlotsSpentToday
+  if (freeSlots < 1) return 'no-labor-slot'
+  return null
+}
+
+/**
+ * Sprint 74 decision 3: the owned-car workup - 1 labour slot, no fee, no
+ * clock, collapses every one of `carInstanceId`'s symptoms straight to
+ * their true cause (`remainingCauseIds = [trueCauseId]`). Owned cars only
+ * (never a lot, never a customer's service-job car); this is also the only
+ * way to resolve `wont-idle`'s deliberate bench-only ambiguity (decision 4
+ * of sprint73.md), alongside uninstall-reveals-truth.
+ */
+export function resolveOwnedWorkup(
+  state: GameState,
+  carInstanceId: string,
+  context: SimContext,
+): ResolveOwnedWorkupResult {
+  const gateReason = ownedWorkupGateReason(state, carInstanceId, context)
+  if (gateReason) return { state, log: [], outcome: gateReason }
+  const carIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
+  const car = state.ownedCars[carIndex]!
+
+  const updatedCar: CarInstance = {
+    ...car,
+    symptoms: car.symptoms.map((s) => ({ ...s, remainingCauseIds: [s.trueCauseId] })),
+  }
+  const ownedCars = [...state.ownedCars]
+  ownedCars[carIndex] = updatedCar
+  const nextState: GameState = {
+    ...state,
+    ownedCars,
+    laborSlotsSpentToday: state.laborSlotsSpentToday + 1,
+  }
+  return {
+    state: nextState,
+    log: [{ type: 'car-workup', carInstanceId }],
+    outcome: 'done',
+  }
 }

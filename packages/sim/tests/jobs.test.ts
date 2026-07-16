@@ -116,6 +116,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
+    inspectionVisit: null,
     ...overrides,
   }
 }
@@ -1439,6 +1440,81 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const funded = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 2)
     expect(funded.log).toHaveLength(1)
     expect(funded.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+  })
+})
+
+describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): the reveal-on-removal rule', () => {
+  /** Two causes on two different real, always-installed parts of the module
+   * `car` fixture (`panels`/`seats`, both surface, both freely removable) -
+   * just enough to prove the owned-car branch of `resolveRemovePart`
+   * actually reaches `revealOnRemoval`, both branches. */
+  const REVEAL_TEST_SYMPTOM = {
+    id: 'reveal-test-symptom',
+    cardLine: 'Reveal test symptom.',
+    causes: [
+      { id: 'cause-panels', carPartId: 'panels' as const, setBand: 'poor' as const, weight: 50 },
+      { id: 'cause-seats', carPartId: 'seats' as const, setBand: 'poor' as const, weight: 50 },
+    ],
+    tests: [],
+  }
+  const CONTEXT_WITH_SYMPTOM = buildSimContext(
+    CARS,
+    PARTS,
+    [],
+    PARTS_TAXONOMY,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    [REVEAL_TEST_SYMPTOM],
+  )
+
+  function carWithRevealSymptom(trueCauseId: string): CarInstance {
+    return {
+      ...car,
+      symptoms: [
+        {
+          symptomId: 'reveal-test-symptom',
+          trueCauseId,
+          remainingCauseIds: ['cause-panels', 'cause-seats'],
+          runTestIds: [],
+        },
+      ],
+    }
+  }
+
+  it('removing the part the true cause targets reveals it: the part-removed log entry gains revealedCauseId, and the symptom collapses to [trueCauseId]', () => {
+    const state = baseState({ ownedCars: [carWithRevealSymptom('cause-panels')] })
+    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT_WITH_SYMPTOM)
+    expect(result.log).toEqual([
+      {
+        type: 'part-removed',
+        carInstanceId: car.id,
+        carPartId: 'panels',
+        partInstanceId: car.parts.panels.installed!.id,
+        revealedCauseId: 'cause-panels',
+      },
+    ])
+    expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-panels'])
+  })
+
+  it('removing a part the true cause does NOT target silently narrows without a reveal line: no revealedCauseId key on the log entry, the other candidate is eliminated', () => {
+    const state = baseState({ ownedCars: [carWithRevealSymptom('cause-panels')] })
+    const result = resolveRemovePart(state, car.id, 'seats', CONTEXT_WITH_SYMPTOM)
+    expect(result.log).toEqual([
+      {
+        type: 'part-removed',
+        carInstanceId: car.id,
+        carPartId: 'seats',
+        partInstanceId: car.parts.seats.installed!.id,
+      },
+    ])
+    expect(result.log[0]).not.toHaveProperty('revealedCauseId')
+    expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-panels'])
   })
 })
 

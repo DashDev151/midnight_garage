@@ -185,6 +185,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
+    inspectionVisit: null,
     ...overrides,
   }
 }

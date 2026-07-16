@@ -444,8 +444,12 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * default), so this needs NO `MIGRATIONS[32]` entry; the version bump alone
  * is still required (Save law) so a pre-v33 client never silently misreads
  * a v33 save that happens to omit these two brand-new keys.
+ * v33 -> v34 (Sprint 74, diagnosis II): `GameState` gained `inspectionVisit`
+ * (default `null`) and each car symptom entry gained `runTestIds` (default
+ * `[]`) - both the pure additive case, no `MIGRATIONS[33]` entry; the
+ * version bump alone is still required (Save law).
  */
-export const SAVE_VERSION = 33
+export const SAVE_VERSION = 34
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

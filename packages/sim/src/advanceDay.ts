@@ -417,8 +417,11 @@ export function advanceDay(
   next = heat.state
   log.push(...heat.log)
 
-  // 10. The day itself passes, and today's labor budget replenishes for the next one.
-  next = { ...next, day: next.day + 1, laborSlotsSpentToday: 0 }
+  // 10. The day itself passes, and today's labor budget replenishes for the
+  // next one. Sprint 74 decision 1: any inspection visit dies with the day
+  // too, unconditionally - minutes spent chasing a lot that sells to
+  // someone else overnight are simply spent, no carry-over negotiation.
+  next = { ...next, day: next.day + 1, laborSlotsSpentToday: 0, inspectionVisit: null }
 
   return { state: next, log }
 }

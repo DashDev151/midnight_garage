@@ -85,6 +85,21 @@ export const MachineListingSchema = z.object({
 
 export type MachineListing = z.infer<typeof MachineListingSchema>
 
+/**
+ * Sprint 74 (diagnosis II): an active yard inspection visit, at one auction
+ * tier - `beginInspectionVisit` (`diagnosis.ts`) stamps this once the 1-slot
+ * cost + tiered `travelFeeYenByTier` fee are both paid; `runDiagnosticTest`
+ * decrements `minutesLeft` per test run. At most one live at a time
+ * (`GameState.inspectionVisit` is a single nullable field, mirroring
+ * `MachineListingSchema`'s own "one live at a time" shape above).
+ */
+export const InspectionVisitSchema = z.object({
+  tier: AuctionTierSchema,
+  minutesLeft: z.number().int().nonnegative(),
+})
+
+export type InspectionVisit = z.infer<typeof InspectionVisitSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -248,6 +263,17 @@ export const GameStateSchema = z.object({
    * Purely additive.
    */
   serviceJobLedgers: z.record(z.string(), ServiceJobLedgerSchema).default({}),
+  /**
+   * Sprint 74 (diagnosis II): the yard inspection visit - one active visit
+   * at a single auction tier, `minutesLeft` ticking down as
+   * `runDiagnosticTest` spends them. `null` when no visit is active (the
+   * common case, and always true at day start). Cleared unconditionally by
+   * advanceDay's day-boundary tick, the same "dies at day end" treatment
+   * `laborSlotsSpentToday`'s reset already gives labour - minutes spent
+   * chasing a lot that sells to someone else overnight are simply spent, no
+   * carry-over negotiation. Purely additive.
+   */
+  inspectionVisit: InspectionVisitSchema.nullable().default(null),
 })
 
 /**
@@ -548,6 +574,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     carInstanceId: z.string().min(1),
     carPartId: CarPartIdSchema,
     partInstanceId: z.string().min(1),
+    /** Sprint 74 decision 4: set when this removal collapsed one of the
+     * car's symptoms down to exactly one remaining cause - the id of the
+     * now-revealed true cause, so `describeLogEntry` can render "Opened it
+     * up: <label>." Absent when this removal revealed nothing (an honest
+     * car, or a symptom this part doesn't target). */
+    revealedCauseId: z.string().min(1).optional(),
   }),
   z.object({
     type: z.literal('car-moved'),
@@ -603,6 +635,19 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     componentId: ComponentIdSchema,
     tier: ToolTierSchema,
     priceYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 74 decision 1: `beginInspectionVisit` started a yard visit. */
+  z.object({
+    type: z.literal('inspection-visit'),
+    tier: AuctionTierSchema,
+    feeYen: z.number().int().nonnegative(),
+    minutesGranted: z.number().int().positive(),
+  }),
+  /** Sprint 74 decision 3: `resolveOwnedWorkup` collapsed every one of this
+   * owned car's symptoms to their true cause. */
+  z.object({
+    type: z.literal('car-workup'),
+    carInstanceId: z.string().min(1),
   }),
 ])
 

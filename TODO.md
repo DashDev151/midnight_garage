@@ -279,11 +279,11 @@ pass."
 
 The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
 sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown (landed) -> 72
-outcome jobs (landed) -> 73 diagnosis I (landed) -> 74-75 diagnosis II/III -> 76-78 story
-missions** (`docs/sprints/sprint70.md` through `sprint78.md`; sprint70.md's/sprint71.md's/
-sprint72.md's/sprint73.md's own Exit sections are the permanent record of each rework itself -
-the component-removal-and-repair-hierarchy entry that used to sit here is fully landed and
-removed, per this file's policy). Each
+outcome jobs (landed) -> 73 diagnosis I (landed) -> 74 diagnosis II (landed) -> 75 diagnosis III
+-> 76-78 story missions** (`docs/sprints/sprint70.md` through `sprint78.md`; sprint70.md's/
+sprint71.md's/sprint72.md's/sprint73.md's/sprint74.md's own Exit sections are the permanent
+record of each rework itself - the component-removal-and-repair-hierarchy entry that used to sit
+here is fully landed and removed, per this file's policy). Each
 later system consumes verbs the earlier one builds (provenance answers ownership on every part
 verb; the component arc supplies uninstall-reveals-truth and the shared outcome-predicate module;
 diagnosis makes commissions a gamble instead of a shopping list). Entries below stay until their
@@ -301,8 +301,15 @@ sprints land.
   coherently - this is that design, and the maintainer directed the sprint planning 2026-07-15).
   Depends on the component hierarchy (uninstall-reveals-truth). **Scoped: Sprints 73-75.**
   **Sprint 73 (diagnosis I) landed the symptom/cause content, generation, the fear-priced
-  `sheetGuideValueYen` seam, the blind-buy guardrail, and the read-only lot-card disclosure - no
-  inspection verb yet (Sprint 74) and `remainingCauseIds` never narrows from its full list yet.**
+  `sheetGuideValueYen` seam, the blind-buy guardrail, and the read-only lot-card disclosure.**
+  **Sprint 74 (diagnosis II) landed the inspection visit (1 slot + tiered fee, an hour budget,
+  per-test minutes, partition-narrowing tests), the owned-car full workup, uninstall-reveals-truth,
+  the one display rule (`displayedBandFor`) with its uncertainty chip, the player's own honest
+  estimate (`playerEstimateYen`, no fear premium), and the full UI on both the auction board and
+  the car page. `SAVE_VERSION` 34. Decision 5's repair-cost-preview RANGE (`nextPartStepRange`,
+  `gameStore.ts`) is implemented and wired but currently unreachable through real content - every
+  Sprint 73 symptom cause targets a bolt-on/buried part, and Sprint 71's bench-only rule already
+  excludes those from any on-car repair preview - see `sprint74.md`'s Exit.**
 
 - [ ] **Story missions - outcome-based build commissions** (`docs/design/story-builds-spec.md`
   v2 with the 2026-07-15 rulings). A customer names an OUTCOME, not a car. **Maintainer rulings: first

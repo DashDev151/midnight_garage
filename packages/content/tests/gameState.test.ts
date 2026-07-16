@@ -331,6 +331,7 @@ describe('GameState / DayLog round-trip', () => {
       machineListing: null,
       nextMachineListingDay: null,
       serviceJobLedgers: {},
+      inspectionVisit: null,
     }
 
     const parsed = GameStateSchema.parse(fixture)
