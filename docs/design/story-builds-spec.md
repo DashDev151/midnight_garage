@@ -5,6 +5,13 @@
 it.** The v1 open questions are resolved below and marked as such. See "Scope status" for the one
 call that remains.*
 
+*Maintainer ruling 2026-07-15 (design discussion): v1.0 ships story builds as a HAND-AUTHORED
+campaign of missions with recurring named characters, gated by reputation tier, each ramping in
+ambition; procedurally generated build commissions are DEFERRED to endgame replayability, after
+the authored campaign. The `Requirement` machinery below serves both unchanged; what the ruling
+changes is that v1 content is authored, not rolled. Hard dependency unchanged: diagnosis ships
+first (see `diagnosis-spec.md`, now v2, the symptom/cause detective model).*
+
 ---
 
 ## The fantasy is the spec
@@ -84,6 +91,10 @@ scope - that is exactly the failure `IDEAS.md`'s parking-lot rule exists to prev
 **Genuinely new:**
 
 1. A composable **`Requirement`** type: constraint primitives plus a pure pass/fail predicate.
+   *Update 2026-07-15: this module is now built EARLIER, by the component-hierarchy arc
+   (`component-hierarchy-spec.md`), whose outcome-based service jobs need the same end-state
+   predicates. Story missions consume the shared module and add only their own primitives
+   (lap-time ceiling, taste match, budget cap, deadline).*
 2. A **cross-phase contract** spanning procurement to delivery (accept -> bind car -> deliver /
    lapse), which no existing system spans.
 3. The **reference-lap board**: a curated comparables UI plus one pure lap-time model.
@@ -100,7 +111,7 @@ predicates. New request types stay *content*, not code.
 Each primitive is a pure `(car, ledger, day) => boolean` plus a human-readable label:
 
 | Primitive | Meaning | Reads |
-|---|---|---|
+| --- | --- | --- |
 | `statThreshold` | derived stat at or above X | `computeDerivedStats` |
 | `statCeiling` | derived stat at or below X | `computeDerivedStats` |
 | `reliabilityFloor` | reliability at or above X | `computeDerivedStats` |

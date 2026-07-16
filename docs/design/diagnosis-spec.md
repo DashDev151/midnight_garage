@@ -1,183 +1,216 @@
-# Diagnosis - the information game
+# Diagnosis - the detective game
 
-*Feature spec, first draft, 2026-07-15. Status: NOT scoped into a sprint. This restores a system
-the GDD already specifies (§3.2, §4.1, §6.5, §7) and that actual-Sprint 26 paused and removed. It
-is therefore a RETURN to canonical scope, not new surface: no GDD amendment needed. It does require
-retiring one law that has been contradicting the GDD since Sprint 27 (see "What this retires").*
+*Feature spec, v2 (2026-07-15). Status: NOT scoped into a sprint. Supersedes v1 (the four-layers
+/ hidden-deviation draft) in full: design discussion 2026-07-15 rejected pay-to-reveal as loot-box
+shaped and rebuilt the mechanic around symptoms, causes, and tests. This remains a return to
+canonical GDD scope (§3.2, §4.1, §6.5, §7): inspection costs 1 labour slot plus a travel fee,
+hidden issues exist, hints exist. What changed is HOW knowing works.*
 
 ---
 
 ## The fantasy is the spec
 
-You are standing in a cold auction yard at 6am with a torch and one hour. There are forty cars.
-You cannot look at forty cars. The sheet says grade 4, the paint looks straight, and the bloke
-next to you says it smokes on startup. Do you spend your morning crawling under this one, or do
-you bid on the paperwork and hope?
+The yard opens at 6. The auction starts at 8. You have the hour, a torch, and a compression
+tester. There are forty cars and three of them are interesting: one smokes, one clunks over bumps,
+one will not start at all. The room has already priced its fear into all three. Your job is to
+find out, car by car, whether the fear is wrong.
 
-That is the game. It does not exist right now.
+That is the game: House MD with cars. Decision-paced throughout, no reflex input anywhere.
 
-## What is actually wrong today
+## Why v1 died (recorded so it stays dead)
 
-The player sees **everything, for free, before bidding**: exact per-part condition bands, the exact
-restoration bill, the exact guide value. Buying is therefore arithmetic - read the guide, pay less
-than it, done. There is no hunt, no risk, no reason to spend a labor slot before bid day, and no
-verb between "hunt" and "build".
+v1 hid a rolled deviation behind a paid reveal. The maintainer killed it with one dichotomy: if
+the value exists whether or not you inspect, the fee is dead weight; if the fee gates the value,
+it is a loot box. Any mechanic shaped "pay to reveal a pre-rolled outcome" fails one horn or the
+other. The fix is structural: **the paid action must be a test that resolves the player's
+hypothesis, never a purchase of an outcome.** Value is converted through the player's bid at a
+contested auction, not through a fee-gate on the car.
 
-This is a real deviation from the canonical doc, not a gap in it. The GDD specifies:
+## The model
 
-| GDD | Says | Built |
-|---|---|---|
-| §3.2 | "Inspect an auction car properly: 1 slot (else you bid on photos alone - risk!)" | no |
-| §4.1 | "**Hidden issues** revealed only by inspection (rust in the rails, blown turbo seals, accident history)" | removed (Sprint 26) |
-| §6.5 | "each lot shows photos, mileage, an auction grade (paperwork), and *hints*" | grade yes, hints no |
-| §6.5 | "**Inspection** (1 labor slot + travel fee) reveals hidden issues before bid day" | no |
-| §6.5 | "**sliding-scale lemons:** hidden-issue variance scales with discount from book value" | no |
-| §7 | staff trait *Auction rat:* free inspections at Local Yard | trait content exists, system does not |
+### Symptoms are free, honest, and public
 
-Half the architecture is already standing. Sprint 50's `computeAuctionGrade` IS the auction sheet
-§6.5 asks for - an overall number grade plus exterior/interior letters, partitioned so nothing is
-scored twice. It was built as a display-only summary of visible truth. It becomes the **free
-information layer**, which is what it was always shaped like.
+A generated car may carry zero or more **symptoms**: diegetic lines on the lot card ("smokes on
+startup", "clunk over bumps", "non starter", "slight tick at idle"). Symptoms are visible to
+everyone, player and rivals alike, for free. Most cars have none and are exactly what they look
+like; the existing sheet (Sprint 50's `computeAuctionGrade`) keeps covering visible condition.
 
-## The model: four layers of knowing
+### Every symptom has an open cause table
 
-Every layer is honest. Nothing lies to the player. The layers differ in **precision**, not
-truthfulness.
+A symptom maps to a small authored set of possible causes (2 to 4), each mapping to concrete part
+damage at a very different repair price. The list itself is public knowledge; the lot card shows
+it with derived repair estimates:
 
-| Layer | Cost | Tells you |
-|---|---|---|
-| **1. The sheet** | free | `computeAuctionGrade` over APPARENT condition: overall grade, ext/int letters, R flag. Plus year, mileage, colour, provenance. |
-| **2. Hints** | free | One diegetic line per hidden issue, naming the GROUP, never the part or the severity: "smokes on startup", "sat a long time", "panel gaps aren't factory". |
-| **3. Inspection** | 1 labor slot + travel fee | The truth for THIS lot: real per-part bands, real bill, real guide value. Permanent for that lot. |
-| **4. Ownership** | - | Reveals nothing by itself. §4.1: "revealed only by inspection". A bought car you never inspected is still a mystery on your own ramp. |
+```text
+'92 Silvia K's        "won't idle"
+  [ ] vacuum leak         ~15,000 yen
+  [ ] tired ECU           ~90,000 yen
+  [ ] worn cam lobes      ~120,000 yen
+```
 
-Layer 4 is the one that makes **diagnosis a real verb in the loop** rather than a pre-bid tax.
-Inspecting a car you already own costs 1 slot and no travel fee. So the loop becomes:
+The car's TRUE cause was rolled at generation and is fixed. Nothing about the risk is hidden; what
+is unknown is which cause this car has. Cause repair costs are never authored: they derive from
+the existing centralised repair pricing (economy bible Law 4) via the part damage each cause
+inflicts.
 
-**hunt → diagnose → build → sell**
+### Inspection is running tests
 
-...which is what the loop has always claimed to be.
+**One labour slot = one inspection visit to one auction house**, plus a per-tier travel fee
+(trivial at the Local Yard, real money at the Collector Network). A visit grants a diegetic time
+budget (the hour) spent across ANY lots at that house. Each test costs minutes and eliminates
+causes:
 
-### Apparent vs true condition
+- Cold start observation (10 min): smoke colour separates oil from coolant from fuel.
+- Compression test (25 min): separates top-end from bottom-end causes.
+- Undercarriage look (15 min): rules visible structural causes in or out.
+- Carb cleaner spray test (10 min): confirms or kills a vacuum leak.
 
-One new field on the rolled car: every part has its real band (as today) and the generation step
-additionally records what the sheet *shows*. The sheet is built from `apparent`; every economic
-function keeps reading `true`.
+Results are diegetic plus a plain interpretation; the game does the bookkeeping (crossing entries
+off the cause list), the player does the choosing. Which cars get the hour, and which tests they
+get, is the whole minigame. **Partial resolution is normal**: killing the worst case and bidding
+with a cushion is a good hour's work.
 
-Generation order (extends the existing Sprint 34 chain, does not replace it):
+- No bulk action, ever. The hour is the scarcity.
+- Tests are reliable. A fallible inspector is RNG resentment; the tension is which tests to run,
+  not whether the tester works.
+- An owned car on the lift: 1 slot, no fee, no clock, full workup. The hour-pressure game lives
+  only at the yard, where the stakes are.
+- Buying unresolved is legitimate: the cause list rides home with the car, and the bench tells the
+  rest. Per `component-hierarchy-spec.md`, uninstalling a part reveals its true condition (it is
+  in your hands), so the reveal happens with the teardown labour already sunk and BEFORE the
+  repair decision: you pulled the box expecting synchros, found a chewed gearset, and now choose
+  repair, replace, or reassemble and sell honest. Fine on a flip, reckless on a deadline
+  commission. Depth prices the information: tests on buried-slot symptoms are worth the most
+  because reaching those slots costs the most teardown.
 
-1. Roll the car exactly as today. This is **apparent** condition.
-2. Compute apparent guide value. `listedDiscount = 1 - apparentGuide / model.bookValueYen`.
-3. **Variance budget** = `f(listedDiscount)` - a content curve. Near book: near zero. Deep
-   discount: wide.
-4. Roll a hidden deviation inside that budget, signed. Negative = lemon. Positive = goldmine.
-5. **True** condition = apparent + deviation. Run the existing `enforceMaxBillFraction` guard on
-   TRUE (see Law 2 below).
+## The pricing law (maintainer ruling 2026-07-15)
 
-This resolves §6.5's apparent circularity ("variance scales with discount" - but discount depends
-on condition) by ordering it: the LISTED discount is knowable before the hidden roll, because it is
-computed off apparent condition against a static `bookValueYen`. A car that already looks rough is
-the one that might be even rougher - or might be hiding a genuine one-owner history.
+**The room prices the symptom; the player prices the cause.**
 
-It also delivers the GDD's promise literally: *"a fair, honest purchase is always safe enough to
-learn on"* falls out of the curve, it is not a special case.
+- The auction house and every rival value a symptomatic lot off the symptom's **face-value fear**:
+  a discount derived from the cause table's expected repair cost (weights times derived costs,
+  through the same market-repair machinery as everything else), optionally times a small fear
+  premium (content dial). Reserve, buyout, and rival bid caps all read this number.
+- **Rivals never see inspection results.** Test outcomes are the player's alone. A rival bids the
+  same pessimistic number before and after the player's hour under the car.
+- The player's inspected estimate recomputes guide and bill from the RESOLVED causes.
 
-## Costs, pros, limitations
+The divergence between fear and truth is two-directional by design, and content wants both shapes
+deliberately:
 
-**Cost.** 1 labor slot + a travel fee (per auction tier - Collector Network is a long way away).
-The slot is the point. With 6 slots/day and a busy board, **you cannot inspect everything**, so
-inspection competes directly with repair work for the day's labor. That is §3.2's "what do we work
-on today?" crunch, applied to the hunt.
+- **Sleeper factory**: high-fear symptoms whose common cause is benign. "Non starter" craters the
+  room's bidding, and it is usually a dead battery; occasionally it is a seized engine, which is
+  the trap inside the sleeper pile.
+- **Trap factory**: low-fear symptoms with a fatal tail. "Slight tick at idle" barely dents the
+  price, and it is usually a lifter; sometimes it is rod knock, which the room walks into and the
+  informed player sidesteps.
 
-**Pro.** You bid on truth instead of paperwork. You learn the real bill before committing. On your
-own car, you learn what to fix.
+**Guardrail (closed-form, coherence table, not a bot test):** blind-buying a symptom class at
+sheet price must be roughly break-even over many lots. The fear discount tracks expected true
+cost; any small fear premium stays small. If scary symptoms were systematically over-discounted,
+buying every non-starter blind would beat inspecting and the mechanic dies. Per symptom:
+`fearDiscountYen` versus `sum(weight * derivedRepairCostYen)` asserted within a tolerance band.
 
-**Limitations, deliberately.**
-- Inspection is **per lot**, and dies with the lot. Inspecting a lot you then lose is spent labor.
-- It reveals, it does not repair. Knowing the block is cracked does not uncrack it.
-- The travel fee makes speculative inspection of cheap lots genuinely marginal - which is exactly
-  the tier where the slot machine lives.
-- **No inspection-all button, ever.** The scarcity IS the mechanic.
+## Where the fun is
 
-**What makes it a decision rather than a tax.** If inspection were strictly +EV and always
-affordable, it would be a mandatory click. Three things stop that: the slot budget (you have 6, the
-board has ~12), the travel fee (real yen on a cheap lot), and hints (a free, partial signal that
-lets you *target* inspection instead of sampling at random). The skill is choosing which cars to
-look at.
+The reveal is never "surprise, +200,000 yen". It is **"I was right."** The player forms a
+hypothesis from the symptom, spends scarce minutes testing it, and beats a room that priced the
+average. Earned goldmines, walked-away traps, and the confident overbid on a car everyone else
+fears. Knowledge compounds: the cause tables are stable, learnable content, so two hundred days in
+the player prices "blue smoke, fades" from memory and spends the hour only where it pays. Veteran
+knowledge lives in the player's head, which is the progression no meter can grant.
 
-## How it fits the economy (the part that must not break)
+## Generation order
 
-- **Law 2, no value traps.** `enforceMaxBillFraction` MUST run on TRUE condition, after the hidden
-  roll. Otherwise a hidden lemon could push a generatable car past the bill ceiling and reopen the
-  value trap Sprint 54 closed. Non-negotiable; the coherence check should assert it.
-- **Sprint 66's expectation bands.** A hidden issue drags a part BELOW the tier's expectation band,
-  which is where `marketRepairDiscount` (1.5) applies - so a lemon is not just a loss, it is
-  *work*, and work below the band pays. A lemon on a shitbox is recoverable; a lemon on a rare car
-  is a real hole. That gradient is free and it is good.
-- **Reserve and buyout** price off the SHEET (the auction house graded it and does not know either).
-  Consistent, and it keeps Sprint 27's hard-won lesson intact: value and reserve stay coupled to
-  the same number, which is what stopped the market seizing.
-- **Rivals bid on the sheet too.** They are not omniscient. If rivals knew the truth, every cheap
-  lot would be a trap they had already avoided and the goldmine tail would not exist. Hidden value
-  is genuinely hidden from the room; inspection is the player's edge, not a catch-up mechanic.
-- **You buy on the sheet, you sell on the truth.** Walk-in buyers price the real car. That
-  asymmetry IS the flip's risk, and it is the thing that has been missing.
-- **Service jobs are unaffected.** The customer TELLS you what they want done. A stated task list
-  needs no diagnosis. (An "upsell what else you found" mechanic is a real idea and explicitly out
-  of scope here - flag it, do not build it.)
+1. Roll the car exactly as today.
+2. Roll symptom presence (chance keyed to tier and condition: rough, discounted cars carry more).
+3. Per symptom, roll the TRUE cause from its weighted table; apply that cause's part damage to the
+   true condition.
+4. The sheet and all room-facing numbers read the pre-damage view plus the symptom's fear
+   discount; every economic function on the sold/repaired car reads truth.
+5. Run `enforceMaxBillFraction` on the TRUE car (economy Law 2). Non-negotiable; a hidden cause
+   must never push a generatable car past the bill ceiling. The coherence table asserts it.
+
+## How it fits everything else
+
+- **Sprint 66 expectation bands**: a nasty cause drags a part below the tier's band, where
+  `marketRepairDiscount` applies, so a lemon is recoverable work on a shitbox and a real hole on a
+  rare car. That gradient is free and good.
+- **Component hierarchy (component-hierarchy-spec.md)**: ships BEFORE diagnosis. It supplies the
+  uninstall-reveals-truth verb this spec's ownership flow relies on, so diagnosis lands on the
+  final repair model instead of being reworked one sprint later.
+- **Story builds (story-builds-spec.md)**: hard interlock, diagnosis ships first. Deadlines and
+  budget caps are what make buying unresolved spicy; without diagnosis a commission is a solved
+  shopping list.
+- **Service jobs**: unaffected now; the customer states tasks. A future sprint can have a customer
+  walk in with a symptom instead of a task list ("it's making a noise"): same machinery,
+  explicitly out of scope here.
+- **Selling**: walk-in buyers price the true car, as today.
+- **Sprint 27's pre-bid transparency law is repealed** (it contradicted GDD §6.5 from the day it
+  landed; Sprint 56 already amended it once). Guide value is not hidden: an anchorless board is
+  how the market seized in Sprint 27. Symptomatic lots show honest estimates off the sheet plus
+  the open cause list.
 
 ## Reuse analysis (directive 16)
 
 **Existing mechanisms to reuse:**
-- `computeAuctionGrade` (Sprint 50) - already the sheet. Point it at apparent condition.
-- The Sprint 34 generation chain - the hidden roll is one more step on the end, not a new pipeline.
-- `enforceMaxBillFraction` (Sprint 54) - runs unchanged, on the true car.
-- Labor slots and the job system - inspection is a 1-slot job, not a new resource.
-- `marketValueYen` / `carCostToMintYen` - untouched; they read the true car. The *estimate* is the
-  same functions over the apparent car.
-- `LotDetail` / the car page - both gain a "sheet vs inspected" state, not a new screen.
-- The Sprint 52 `machineListing` precedent for per-tier travel fees in content.
+
+- `computeAuctionGrade` (Sprint 50): unchanged, still the visible-condition sheet.
+- The Sprint 34 generation chain: symptom and cause rolls are appended steps, not a new pipeline.
+- `enforceMaxBillFraction` (Sprint 54): runs unchanged, on the true car.
+- Centralised repair pricing (economy bible Law 4): cause costs derive through it.
+- Labour slots and the day-action machinery: an inspection visit is a 1-slot action.
+- Rival bidding and reserve pricing: they already price off a lot valuation; the fear discount
+  plugs into that same number.
+- `provenanceNote` and the flavour-pool idiom (`serviceJobTemplates.json` `flavorPool`): the
+  symptom line pools follow the same content shape.
+- The ServiceTaskList checklist idiom (`[ ]`/`[x]`): the cause-list UI reuses the look.
+- The Sprint 52 `machineListing` precedent for per-tier fees in content.
 
 **Genuinely new:**
-1. An `apparent` condition record on a generated car, and the hidden-deviation roll.
-2. The variance curve keyed on listed discount.
-3. A hint pool (content) and its generation.
-4. An `inspect` day-action + `inspectedLotIds` / `inspectedCarIds` state.
-5. The estimate-vs-truth UI state on the lot card and the car page.
 
-## What this retires
+1. Symptom and cause-table content (JSON, Zod schema): symptom line, fear derivation inputs,
+   weighted causes, per-cause part damage, test-result copy.
+2. Test definitions (minute costs, which causes each discriminates) in content.
+3. The inspection-visit day action, its hour budget, and `resolvedCauses` state per car.
+4. The inspection UI: cause checklists on the lot card, the visit screen with tests and the
+   countdown, the mid-repair discovery moment.
+5. The fear-discount hook in lot valuation and the coherence-table guardrail.
 
-**Sprint 27's pre-bid transparency law is repealed.** It has been contradicting GDD §6.5 since it
-landed, and the GDD is canonical for mechanics. Sprint 56 already amended it once (grade stamps
-replaced band chips on the card) - this finishes the job. The lot card keeps its grades, gains
-hints, and its guide/bill figures become clearly-labelled **estimates off the sheet** until
-inspected.
+## Hooks, not scope
 
-Guide value is NOT hidden outright. An anchorless board is how the market seized in Sprint 27, and
-the estimate is an honest number - it is what the car is worth *if the sheet is right*.
+- Tool tiers can unlock better tests later (a leak-down kit separating what compression cannot).
+- The Auction Rat staff trait becomes "extra minutes at the Local Yard" once staff exists (the
+  trait is content-only today; do not grow a staff dependency here).
+- Rare positive provenance windfalls (undisclosed options) can ride as flavour on the sale side;
+  they are seasoning, never a paid layer.
 
-## Decisions needed from the maintainer
+## Dials, decided (defaults set 2026-07-15; tune from play, all live in content)
 
-1. **The variance curve's shape.** How brutal is a deep-discount lot? This is the single dial that
-   decides whether the slot machine is thrilling or infuriating.
-2. **Does a hidden issue ever go the player's way?** The GDD says yes (goldmine: undisclosed rare
-   options, genuine low mileage). Confirm - a signed deviation is more work than a one-sided one.
-3. **Does ownership reveal?** I propose no, per §4.1's literal "revealed only by inspection",
-   because it is what makes diagnosis a loop verb. It is also the harshest reading. Confirm.
-4. **Travel fee scale.** Free at Local Yard (the *Auction rat* trait implies a nonzero baseline
-   there), rising to real money at Collector Network?
+1. **The hour**: 60 minutes per visit; tests cost 10 to 30 minutes each (authored per test), so a
+   visit covers roughly one deep workup plus one quick check, or three quick checks across lots.
+2. **Fear premium**: 1.10. The room over-discounts a symptom by 10% of its expected cost, so
+   engaging with symptomatic lots is gently positive-EV before any testing, and the guardrail
+   band stays tight.
+3. **Symptom frequency** (chance a generated car carries at least one): shitbox 0.45, common
+   0.30, uncommon 0.22, rare 0.12; conditional chance of a second symptom 0.15; hard cap 2 per
+   car.
+4. **Travel fees per visit**: local-yard 2,000 yen, regional 8,000 yen, premium 20,000 yen,
+   collector-network 50,000 yen.
+5. **Bench-only ambiguity**: yes. At least one symptom's cause pair is separable only by the
+   owned-car workup or the bench, so partial information is a real state the yard hour can end in.
 
 ## Definition of done
 
-- A generated car carries apparent and true condition; the sheet, hints, reserve and buyout read
-  apparent; every economic function reads true; `enforceMaxBillFraction` runs on true and the
-  coherence table asserts it.
-- Inspection is a 1-slot job with a per-tier travel fee, per lot, permanent, with no bulk action.
-- An uninspected car - lot or owned - shows grades, hints, and estimates clearly marked as such;
-  inspecting replaces them with truth.
-- The variance curve, hint pool, and travel fees all live in `packages/content`.
-- Probes: a fairly-priced lot's true bill never deviates more than the curve's floor; a
-  deep-discount lot can deviate both ways; Law 2 holds on every generatable TRUE car.
-- Harness: bots inspect (they currently cannot; the harness rework in `TODO.md` is a prerequisite
-  for trusting any figure this produces - disclose, do not paper over).
+- Symptomatic cars generate with fixed true causes; the room's pricing reads fear, the player's
+  resolved estimate reads tests, all economics read truth; Law 2 holds on every generatable TRUE
+  car and the coherence table asserts the blind-buy guardrail per symptom.
+- Inspection visit is a 1-slot, per-house, per-tier-fee action with an in-visit time budget and
+  per-test costs; owned-car workup is 1 slot, complete.
+- Cause lists render on the lot card and the car page; unresolved causes carry to ownership;
+  uninstalling an implicated part reveals its truth on the bench before the repair decision (via
+  the component-hierarchy reveal hook).
+- All symptom, cause, test, fee, and fear numbers live in `packages/content`.
+- Bots do not inspect (harness rework in `TODO.md` still pending); every harness figure touching
+  symptomatic lots is disclosed as such, not force-passed.
 - No em dashes, no decorative Unicode, yen throughout.
