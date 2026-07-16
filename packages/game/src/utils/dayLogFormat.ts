@@ -159,6 +159,17 @@ export function describeLogEntry(
       return `Inspection visit at the ${entry.tier} yard: ${formatYen(entry.feeYen)}, ${entry.minutesGranted} minutes`
     case 'car-workup':
       return `Full workup on ${entry.carInstanceId} - every symptom's cause confirmed`
+    case 'mission-accepted':
+      return `Mission accepted - due day ${entry.dueOnDay}`
+    case 'mission-delivered': {
+      const base = `Mission delivered: ${formatYen(entry.payoutYen)}`
+      const withTip = entry.tipYen > 0 ? `${base} + ${formatYen(entry.tipYen)} tip` : base
+      return `${withTip}, +${entry.reputationGained} rep`
+    }
+    case 'mission-lapsed':
+      return `Mission lapsed (-${entry.reputationLost} rep) - reoffered day ${entry.reofferOnDay}`
+    case 'mission-reoffered':
+      return `Mission back on offer`
   }
 }
 

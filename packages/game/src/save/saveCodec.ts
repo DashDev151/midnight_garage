@@ -448,8 +448,14 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * (default `null`) and each car symptom entry gained `runTestIds` (default
  * `[]`) - both the pure additive case, no `MIGRATIONS[33]` entry; the
  * version bump alone is still required (Save law).
+ * v34 -> v35 (Sprint 76, story missions I): `GameState` gained `storyMissions`
+ * (default `[]`) - the pure additive case, no `MIGRATIONS[34]` entry; a
+ * pre-v35 save never had a campaign mission in progress (the concept did not
+ * exist), so an empty array is exactly correct - the next `advanceDay` call
+ * offers the campaign's first mission fresh, same as a brand-new career. The
+ * version bump alone is still required (Save law).
  */
-export const SAVE_VERSION = 34
+export const SAVE_VERSION = 35
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

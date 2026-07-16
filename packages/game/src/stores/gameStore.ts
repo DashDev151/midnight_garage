@@ -105,6 +105,7 @@ import {
   reconditionQuote,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
+  resolveAcceptMission,
   resolveAcceptServiceJob,
   resolveBuyoutInstant,
   resolveBuyPart,
@@ -561,6 +562,30 @@ export interface ServiceJobView {
   inTransit: boolean
 }
 
+/**
+ * Sprint 76 (story missions I): the campaign's pinned card - the currently
+ * `offered` mission, if any (at most one exists at a time). Grade/deliver UI
+ * is Sprint 77; this sprint's surface is Accept only.
+ */
+export interface StoryMissionOfferView {
+  id: string
+  personaName: string
+  title: string
+  requestCopy: string
+  payoutYen: number
+  budgetCapYen: number
+  deadlineDays: number
+}
+
+/** The pinned card's active-mission counterpart - a summary row once the
+ * player has accepted, no grade/deliver controls yet (Sprint 77). */
+export interface ActiveStoryMissionView {
+  id: string
+  personaName: string
+  title: string
+  daysLeft: number | null
+}
+
 /** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
 /**
  * Sprint 68 decision 5 (playtest item 23): the receipt for a completed sale -
@@ -890,6 +915,40 @@ export const useGameStore = defineStore('game', () => {
   const activeServiceJobViews = computed<ServiceJobView[]>(() =>
     gameState.value.activeServiceJobs.map(serviceJobViewFor),
   )
+
+  /** Sprint 76: the pinned mission card's own content - the one currently
+   * `offered` mission, or `null` (locked, or already active/delivered). */
+  const storyMissionOfferView = computed<StoryMissionOfferView | null>(() => {
+    const record = gameState.value.storyMissions.find((r) => r.status === 'offered')
+    if (!record) return null
+    const mission = context.value.storyMissionsById[record.missionId]
+    if (!mission) return null
+    const persona = context.value.personasById[mission.personaId]
+    return {
+      id: mission.id,
+      personaName: persona?.name ?? mission.personaId,
+      title: mission.title,
+      requestCopy: mission.requestCopy,
+      payoutYen: mission.payoutYen,
+      budgetCapYen: mission.budgetCapYen,
+      deadlineDays: mission.deadlineDays,
+    }
+  })
+
+  /** Sprint 76: the active-mission summary row's own content. */
+  const activeStoryMissionView = computed<ActiveStoryMissionView | null>(() => {
+    const record = gameState.value.storyMissions.find((r) => r.status === 'active')
+    if (!record) return null
+    const mission = context.value.storyMissionsById[record.missionId]
+    if (!mission) return null
+    const persona = context.value.personasById[mission.personaId]
+    return {
+      id: mission.id,
+      personaName: persona?.name ?? mission.personaId,
+      title: mission.title,
+      daysLeft: record.dueOnDay === null ? null : record.dueOnDay - gameState.value.day,
+    }
+  })
 
   /**
    * Sprint 68 decision 2 (playtest item 11): jobs whose work is finished and
@@ -2857,6 +2916,17 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /** Accept the currently offered story mission - instant, offered -> active
+   * (Sprint 76). Grade/deliver actions are Sprint 77. */
+  function acceptMission(missionId: string): boolean {
+    const result = resolveAcceptMission(gameState.value, missionId, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('acceptMission', { missionId })
+    return true
+  }
+
   /**
    * "Complete Job" - resolves the service job **immediately** (not on End Day):
    * if the work is done the payout lands and reputation is granted; if not, the
@@ -3225,6 +3295,8 @@ export const useGameStore = defineStore('game', () => {
     activeServiceJobs,
     serviceJobOfferViews,
     activeServiceJobViews,
+    storyMissionOfferView,
+    activeStoryMissionView,
     partsFitVehicleOptions,
     carsDetailed,
     ownedCarNames,
@@ -3321,6 +3393,7 @@ export const useGameStore = defineStore('game', () => {
     scrapShell,
     acceptServiceJob,
     completeServiceJob,
+    acceptMission,
     lastJobResult,
     dismissJobResult,
     lastSaleResult,

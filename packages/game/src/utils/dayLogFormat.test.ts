@@ -104,6 +104,24 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
   { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
   { type: 'machine-listed', componentId: 'wheels', tier: 2, priceYen: 150_000 },
+  { type: 'mission-accepted', missionId: 'test-mission-a', dueOnDay: 10 },
+  {
+    type: 'mission-delivered',
+    missionId: 'test-mission-a',
+    payoutYen: 200_000,
+    tipYen: 0,
+    reputationGained: 20,
+    specialtyGained: {
+      engine: 20,
+      drivetrain: 0,
+      suspension: 0,
+      wheels: 0,
+      body: 0,
+      interior: 0,
+    },
+  },
+  { type: 'mission-lapsed', missionId: 'test-mission-a', reputationLost: 5, reofferOnDay: 12 },
+  { type: 'mission-reoffered', missionId: 'test-mission-a' },
 ]
 
 describe('describeLogEntry', () => {
@@ -288,5 +306,44 @@ describe('describeLogEntry', () => {
       priceYen: 150_000,
     })
     expect(line).toBe('Classifieds: Tyre machine & balancer listed, ¥150,000')
+  })
+
+  it('Sprint 76: a mission delivered with a tip shows the tip alongside the payout', () => {
+    const line = describeLogEntry({
+      type: 'mission-delivered',
+      missionId: 'test-mission-a',
+      payoutYen: 500_000,
+      tipYen: 100_000,
+      reputationGained: 30,
+      specialtyGained: {
+        engine: 15,
+        drivetrain: 15,
+        suspension: 0,
+        wheels: 0,
+        body: 0,
+        interior: 0,
+      },
+    })
+    expect(line).toBe('Mission delivered: ¥500,000 + ¥100,000 tip, +30 rep')
+  })
+
+  it('Sprint 76: a mission delivered with no tip omits the tip clause entirely', () => {
+    const line = describeLogEntry({
+      type: 'mission-delivered',
+      missionId: 'test-mission-a',
+      payoutYen: 200_000,
+      tipYen: 0,
+      reputationGained: 20,
+      specialtyGained: {
+        engine: 20,
+        drivetrain: 0,
+        suspension: 0,
+        wheels: 0,
+        body: 0,
+        interior: 0,
+      },
+    })
+    expect(line).toBe('Mission delivered: ¥200,000, +20 rep')
+    expect(line).not.toContain('tip')
   })
 })

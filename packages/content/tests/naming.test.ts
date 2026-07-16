@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
 import parts from '../data/parts.json'
+import personas from '../data/personas.json'
 import serviceJobs from '../data/serviceJobTemplates.json'
+import storyMissions from '../data/storyMissions.json'
 import {
   CarModelsSchema,
   PartCatalogEntriesSchema,
+  PersonasSchema,
   REAL_BRANDS,
   REAL_MODEL_TOKENS,
   ServiceJobTypesSchema,
+  StoryMissionsSchema,
   resolveCarBrand,
   resolveCarDisplayName,
 } from '../src'
@@ -62,6 +66,41 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
             false,
           )
         }
+      }
+    }
+  })
+
+  /**
+   * Sprint 76 (story missions I): the hand-authored campaign's own copy
+   * (mission request/delivered/lapsed lines, persona intros) is exactly the
+   * kind of player-facing text the naming layer exists to protect - extends
+   * the same leak guard rather than a second, parallel one.
+   */
+  it('no story-mission copy references a specific car model or brand', () => {
+    const parsedMissions = StoryMissionsSchema.parse(storyMissions)
+    for (const mission of parsedMissions) {
+      const fields = [
+        mission.title,
+        mission.requestCopy,
+        mission.deliveredCopy,
+        mission.overdeliveredCopy,
+        mission.lapsedCopy,
+      ]
+      for (const field of fields) {
+        const text = field.toLowerCase()
+        for (const token of realTokens) {
+          expect(text.includes(token), `mission "${mission.id}" copy leaks "${token}"`).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('no persona copy references a specific car model or brand', () => {
+    const parsedPersonas = PersonasSchema.parse(personas)
+    for (const persona of parsedPersonas) {
+      const text = `${persona.name} ${persona.intro}`.toLowerCase()
+      for (const token of realTokens) {
+        expect(text.includes(token), `persona "${persona.id}" copy leaks "${token}"`).toBe(false)
       }
     }
   })

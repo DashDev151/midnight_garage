@@ -102,6 +102,7 @@ function initialState(): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    storyMissions: [],
   }
 }
 
@@ -261,9 +262,16 @@ describe('advanceDay golden master', () => {
     // majority of slots that don't hit it - a real, intentional generation
     // change (the standing TODO.md item this sprint closes), not a bug;
     // every other assertion in this file still passes unchanged.
+    // Re-pinned again (Sprint 76, was a808b5d7): `GameState` gained
+    // `storyMissions` (default `[]`), and `advanceDay`'s new day-boundary
+    // mission hook actually populates it now - the shipped placeholder
+    // mission's `gateReputationPoints: 0` means it goes from locked to
+    // `offered` on this very career's first day-boundary tick, a real state
+    // change, not a bug; every other assertion in this file still passes
+    // unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('a808b5d7')
+    expect(hashState(finalState)).toBe('8a89c1d6')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -480,7 +488,9 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // `runTestIds`), not a logic change.
     // Re-pinned again (Sprint 75, was 7bb89325): same cause as the 30-day
     // career hash above - the new per-slot aftermarket-at-generation roll.
-    expect(hashState(acquisitionCareer().sold)).toBe('ddaccece')
+    // Re-pinned again (Sprint 76, was ddaccece): same cause as the 30-day
+    // career hash above - `storyMissions` is real, populated state now.
+    expect(hashState(acquisitionCareer().sold)).toBe('9c825103')
   })
 })
 

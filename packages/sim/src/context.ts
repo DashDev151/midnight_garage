@@ -10,9 +10,11 @@ import type {
   Grade,
   Part,
   PartFitmentClass,
+  Persona,
   ProvenancePool,
   ServiceJobType,
   SpecialtyCopy,
+  StoryMission,
   Symptom,
   Technique,
   ToolLine,
@@ -21,8 +23,10 @@ import type {
 import {
   DIAGNOSTIC_TESTS,
   ECONOMY,
+  PERSONAS,
   PROVENANCE_POOL,
   SPECIALTY_COPY,
+  STORY_MISSIONS,
   SYMPTOMS,
   TECHNIQUES,
   TOOL_LINES,
@@ -109,6 +113,13 @@ export interface SimContext {
   symptomsById: Readonly<Record<string, Symptom>>
   diagnosticTests: readonly DiagnosticTest[]
   diagnosticTestsById: Readonly<Record<string, DiagnosticTest>>
+  /** Sprint 76 (story missions I): the hand-authored campaign, sorted by
+   * `gateReputationPoints` (the strictly linear order `missions.ts`'s
+   * `advanceDay` hook walks), and its customers. */
+  storyMissions: readonly StoryMission[]
+  storyMissionsById: Readonly<Record<string, StoryMission>>
+  personas: readonly Persona[]
+  personasById: Readonly<Record<string, Persona>>
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -198,6 +209,9 @@ function indexAftermarketPartsByCarPartId(
  *
  * Sprint 73: `symptoms`/`diagnosticTests` are 13th/14th (trailing)
  * parameters, same treatment.
+ *
+ * Sprint 76: `storyMissions`/`personas` are 15th/16th (trailing) parameters,
+ * same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -214,7 +228,12 @@ export function buildSimContext(
   provenancePool: ProvenancePool = PROVENANCE_POOL,
   symptoms: readonly Symptom[] = SYMPTOMS,
   diagnosticTests: readonly DiagnosticTest[] = DIAGNOSTIC_TESTS,
+  storyMissions: readonly StoryMission[] = STORY_MISSIONS,
+  personas: readonly Persona[] = PERSONAS,
 ): SimContext {
+  const sortedStoryMissions = [...storyMissions].sort(
+    (a, b) => a.gateReputationPoints - b.gateReputationPoints,
+  )
   return {
     models,
     modelsById: indexById(models),
@@ -239,5 +258,9 @@ export function buildSimContext(
     symptomsById: indexById(symptoms),
     diagnosticTests,
     diagnosticTestsById: indexById(diagnosticTests),
+    storyMissions: sortedStoryMissions,
+    storyMissionsById: indexById(sortedStoryMissions),
+    personas,
+    personasById: indexById(personas),
   }
 }

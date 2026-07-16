@@ -1,0 +1,546 @@
+import {
+  BUYERS,
+  CARS,
+  PARTS,
+  PARTS_TAXONOMY,
+  type GameState,
+  type StoryMission,
+  type StoryMissionRecord,
+} from '@midnight-garage/content'
+import { describe, expect, it } from 'vitest'
+import { emptyDayActions } from '../src/actions'
+import { advanceDay } from '../src/advanceDay'
+import { buildSimContext, type SimContext } from '../src/context'
+import { computeDerivedStats } from '../src/derivedStats'
+import {
+  advanceStoryMissions,
+  gradeMissionCar,
+  resolveAcceptMission,
+  resolveDeliverMission,
+} from '../src/missions'
+import { createInitialGameState } from '../src/newGame'
+import { buildCarInstance, testSpecialty, uniformCarParts } from './testFixtures'
+
+const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
+
+/** Measured, not guessed (Sprint 75's own precedent): the mint civic's real
+ * derived power via a plain, mission-free context - so the tip-trigger
+ * thresholds below are picked relative to a number this test actually
+ * measures, never an assumed catalog value that could quietly drift as the
+ * parts catalog is rebalanced. */
+const MEASURING_CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+const MINT_CIVIC_POWER = computeDerivedStats(
+  CIVIC,
+  buildCarInstance({ modelId: CIVIC.id }),
+  MEASURING_CONTEXT.partsById,
+  MEASURING_CONTEXT.partsTaxonomy,
+  MEASURING_CONTEXT.economy,
+).power
+
+/** A minimal, fully-specified test mission - every field a real
+ * `storyMissions.json` entry would carry, with the `budgetCap` requirement
+ * already mirrored in (the same shape `data.ts`'s load-time mirror produces
+ * for real content), so tests never depend on the real placeholder content's
+ * own numbers, which Sprint 78 replaces outright. */
+function buildMission(overrides: Partial<StoryMission> = {}): StoryMission {
+  return {
+    id: 'test-mission-a',
+    personaId: 'test-persona-a',
+    title: 'Test mission A',
+    requestCopy: 'A test request.',
+    gateReputationPoints: 0,
+    requirements: [{ kind: 'roadworthy' }, { kind: 'budgetCap', maxTotalSpendYen: 500_000 }],
+    budgetCapYen: 500_000,
+    deadlineDays: 5,
+    payoutYen: 200_000,
+    tipFraction: 0.1,
+    tipTriggerFraction: 0.15,
+    reputationReward: 20,
+    lapseReputationPenalty: 5,
+    reofferDays: 3,
+    specialtyGroups: ['engine'],
+    deliveredCopy: 'Delivered A.',
+    overdeliveredCopy: 'Overdelivered A.',
+    lapsedCopy: 'Lapsed A.',
+    ...overrides,
+  }
+}
+
+const MISSION_A = buildMission()
+const MISSION_B = buildMission({
+  id: 'test-mission-b',
+  personaId: 'test-persona-b',
+  title: 'Test mission B',
+  gateReputationPoints: 50,
+  requirements: [
+    // Comfortably clears both the base requirement and the tip trigger
+    // (min * 1.15) against the measured mint civic power.
+    { kind: 'statThreshold', stat: 'power', min: Math.floor(MINT_CIVIC_POWER / 2) },
+    { kind: 'budgetCap', maxTotalSpendYen: 900_000 },
+  ],
+  budgetCapYen: 900_000,
+  deadlineDays: 10,
+  payoutYen: 500_000,
+  tipFraction: 0.2,
+  reputationReward: 30,
+  lapseReputationPenalty: 8,
+  reofferDays: 4,
+  specialtyGroups: ['engine', 'drivetrain'],
+})
+
+function contextWithMissions(storyMissions: StoryMission[]): SimContext {
+  return buildSimContext(
+    CARS,
+    PARTS,
+    BUYERS,
+    PARTS_TAXONOMY,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    storyMissions,
+  )
+}
+
+const CONTEXT = contextWithMissions([MISSION_A, MISSION_B])
+
+function baseState(overrides: Partial<GameState> = {}): GameState {
+  return { ...createInitialGameState(CONTEXT, 1), specialty: testSpecialty(), ...overrides }
+}
+
+describe('story missions (Sprint 76)', () => {
+  describe('advanceStoryMissions: gate offering (decision 3)', () => {
+    it('offers the first locked mission once reputation clears its gate', () => {
+      const state = baseState({ reputationPoints: 0, storyMissions: [] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toEqual([
+        {
+          missionId: 'test-mission-a',
+          status: 'offered',
+          acceptedOnDay: null,
+          dueOnDay: null,
+          reofferOnDay: null,
+        },
+      ])
+    })
+
+    it('never offers a later mission while an earlier one is not yet delivered, even if reputation clears the later gate too', () => {
+      const state = baseState({ reputationPoints: 100, storyMissions: [] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toHaveLength(1)
+      expect(result.state.storyMissions[0]!.missionId).toBe('test-mission-a')
+    })
+
+    it('offers the next mission once the earlier one is delivered and reputation clears its gate', () => {
+      const delivered: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'delivered',
+        acceptedOnDay: 1,
+        dueOnDay: null,
+        reofferOnDay: null,
+      }
+      const state = baseState({ reputationPoints: 50, storyMissions: [delivered] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toEqual([
+        delivered,
+        {
+          missionId: 'test-mission-b',
+          status: 'offered',
+          acceptedOnDay: null,
+          dueOnDay: null,
+          reofferOnDay: null,
+        },
+      ])
+    })
+
+    it("offers nothing while reputation is below every eligible mission's gate", () => {
+      const delivered: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'delivered',
+        acceptedOnDay: 1,
+        dueOnDay: null,
+        reofferOnDay: null,
+      }
+      const state = baseState({ reputationPoints: 10, storyMissions: [delivered] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toEqual([delivered])
+    })
+  })
+
+  describe('advanceStoryMissions: lapse and reoffer (decision 4)', () => {
+    it('lapses an active mission past its due day: reputation penalty, dueOnDay cleared, reofferOnDay stamped', () => {
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 5,
+        reofferOnDay: null,
+      }
+      const state = baseState({ day: 6, reputationPoints: 100, storyMissions: [active] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.reputationPoints).toBe(100 - MISSION_A.lapseReputationPenalty)
+      expect(result.state.storyMissions).toEqual([
+        { ...active, status: 'lapsed', dueOnDay: null, reofferOnDay: 6 + MISSION_A.reofferDays },
+      ])
+      expect(result.log).toEqual([
+        {
+          type: 'mission-lapsed',
+          missionId: 'test-mission-a',
+          reputationLost: MISSION_A.lapseReputationPenalty,
+          reofferOnDay: 6 + MISSION_A.reofferDays,
+        },
+      ])
+    })
+
+    it('floors the lapse penalty at zero and logs the real applied loss, same as every other penalty', () => {
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 5,
+        reofferOnDay: null,
+      }
+      const state = baseState({ day: 6, reputationPoints: 2, storyMissions: [active] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.reputationPoints).toBe(0)
+      const entry = result.log.find((e) => e.type === 'mission-lapsed')
+      expect(entry).toMatchObject({ reputationLost: 2 })
+    })
+
+    it('leaves an active mission untouched before its due day', () => {
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 10,
+        reofferOnDay: null,
+      }
+      const state = baseState({ day: 5, reputationPoints: 100, storyMissions: [active] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toEqual([active])
+      expect(result.log).toEqual([])
+    })
+
+    it('returns a lapsed mission to offered once its reoffer day arrives', () => {
+      const lapsed: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'lapsed',
+        acceptedOnDay: 1,
+        dueOnDay: null,
+        reofferOnDay: 6,
+      }
+      const state = baseState({ day: 6, reputationPoints: 100, storyMissions: [lapsed] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toEqual([
+        { ...lapsed, status: 'offered', reofferOnDay: null },
+      ])
+      expect(result.log).toEqual([{ type: 'mission-reoffered', missionId: 'test-mission-a' }])
+    })
+
+    it('leaves a lapsed mission alone before its reoffer day', () => {
+      const lapsed: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'lapsed',
+        acceptedOnDay: 1,
+        dueOnDay: null,
+        reofferOnDay: 10,
+      }
+      const state = baseState({ day: 6, reputationPoints: 100, storyMissions: [lapsed] })
+      const result = advanceStoryMissions(state, CONTEXT)
+      expect(result.state.storyMissions).toEqual([lapsed])
+      expect(result.log).toEqual([])
+    })
+  })
+
+  describe('determinism (task 3)', () => {
+    it('the same seed produces an identical storyMissions state on the same offer day', () => {
+      function runCareer(seed: number, days: number): GameState[] {
+        let state = createInitialGameState(CONTEXT, seed)
+        const snapshots: GameState[] = [state]
+        for (let day = 1; day <= days; day++) {
+          const result = advanceDay(state, emptyDayActions(), seed + day, CONTEXT)
+          state = result.state
+          snapshots.push(state)
+        }
+        return snapshots
+      }
+      const first = runCareer(7, 10)
+      const second = runCareer(7, 10)
+      expect(second.map((s) => s.storyMissions)).toEqual(first.map((s) => s.storyMissions))
+      // The gate (test-mission-a, gateReputationPoints 0) clears on the very
+      // first day-boundary tick - a concrete, non-vacuous offer day to assert.
+      expect(first[1]!.storyMissions).toEqual([
+        {
+          missionId: 'test-mission-a',
+          status: 'offered',
+          acceptedOnDay: null,
+          dueOnDay: null,
+          reofferOnDay: null,
+        },
+      ])
+    })
+  })
+
+  describe('no interaction with offerCountCapByDay (task 3)', () => {
+    it('service-job offer generation is byte-identical whether or not a story mission is active', () => {
+      const withoutMission = createInitialGameState(CONTEXT, 3)
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 30,
+        reofferOnDay: null,
+      }
+      const withMission = { ...withoutMission, storyMissions: [active] }
+
+      const resultA = advanceDay(withoutMission, emptyDayActions(), 999, CONTEXT)
+      const resultB = advanceDay(withMission, emptyDayActions(), 999, CONTEXT)
+      expect(resultB.state.serviceJobOffers).toEqual(resultA.state.serviceJobOffers)
+    })
+  })
+
+  describe('resolveAcceptMission', () => {
+    it('offered -> active, stamping acceptedOnDay/dueOnDay and logging mission-accepted', () => {
+      const offered: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'offered',
+        acceptedOnDay: null,
+        dueOnDay: null,
+        reofferOnDay: null,
+      }
+      const state = baseState({ day: 3, storyMissions: [offered] })
+      const result = resolveAcceptMission(state, 'test-mission-a', CONTEXT)
+      expect(result.state.storyMissions).toEqual([
+        { ...offered, status: 'active', acceptedOnDay: 3, dueOnDay: 3 + MISSION_A.deadlineDays },
+      ])
+      expect(result.log).toEqual([
+        {
+          type: 'mission-accepted',
+          missionId: 'test-mission-a',
+          dueOnDay: 3 + MISSION_A.deadlineDays,
+        },
+      ])
+    })
+
+    it('is a no-op when the mission is not currently offered', () => {
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 6,
+        reofferOnDay: null,
+      }
+      const state = baseState({ storyMissions: [active] })
+      const result = resolveAcceptMission(state, 'test-mission-a', CONTEXT)
+      expect(result.state).toBe(state)
+      expect(result.log).toEqual([])
+    })
+
+    it('is a no-op for an unknown mission id', () => {
+      const state = baseState({ storyMissions: [] })
+      const result = resolveAcceptMission(state, 'no-such-mission', CONTEXT)
+      expect(result.state).toBe(state)
+      expect(result.log).toEqual([])
+    })
+  })
+
+  describe('gradeMissionCar', () => {
+    it('passes when every requirement, including the auto-mirrored budgetCap, is met', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: uniformCarParts('worn'),
+      })
+      const state = baseState({ day: 1, ownedCars: [car] })
+      const report = gradeMissionCar(state, 'test-mission-a', car.id, CONTEXT)
+      expect(report.pass).toBe(true)
+      expect(report.lines.every((l) => l.pass)).toBe(true)
+    })
+
+    it('fails and reports the failing line when roadworthy is not met', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: { ...uniformCarParts('worn'), block: { installed: null } },
+      })
+      const state = baseState({ day: 1, ownedCars: [car] })
+      const report = gradeMissionCar(state, 'test-mission-a', car.id, CONTEXT)
+      expect(report.pass).toBe(false)
+      const roadworthyLine = report.lines.find((l) => l.required === 'worn+ throughout')
+      expect(roadworthyLine?.pass).toBe(false)
+    })
+
+    it("includes and fails a deadline line once the day is past the mission record's own dueOnDay", () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: uniformCarParts('worn'),
+      })
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-a',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 5,
+        reofferOnDay: null,
+      }
+      const state = baseState({ day: 6, ownedCars: [car], storyMissions: [active] })
+      const report = gradeMissionCar(state, 'test-mission-a', car.id, CONTEXT)
+      expect(report.pass).toBe(false)
+      const deadlineLine = report.lines.find((l) => l.label === 'Deliver on time')
+      expect(deadlineLine?.pass).toBe(false)
+    })
+
+    it('is pure and repeatable: calling it twice yields the same report and no state mutation', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: uniformCarParts('worn'),
+      })
+      const state = baseState({ day: 1, ownedCars: [car] })
+      const first = gradeMissionCar(state, 'test-mission-a', car.id, CONTEXT)
+      const second = gradeMissionCar(state, 'test-mission-a', car.id, CONTEXT)
+      expect(second).toEqual(first)
+    })
+  })
+
+  describe('resolveDeliverMission and tip arithmetic (task 4)', () => {
+    function activeStateFor(
+      missionId: string,
+      car: ReturnType<typeof buildCarInstance>,
+    ): GameState {
+      const active: StoryMissionRecord = {
+        missionId,
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 30,
+        reofferOnDay: null,
+      }
+      return baseState({ day: 5, ownedCars: [car], storyMissions: [active] })
+    }
+
+    it('delivers a passing mission: pays out, removes the car, applies reputation + specialty, marks delivered', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: uniformCarParts('worn'),
+      })
+      const state = activeStateFor('test-mission-a', car)
+      const result = resolveDeliverMission(state, 'test-mission-a', car.id, CONTEXT)
+
+      expect(result.state.ownedCars.some((c) => c.id === car.id)).toBe(false)
+      expect(result.state.cashYen).toBe(state.cashYen + MISSION_A.payoutYen)
+      expect(result.state.reputationPoints).toBe(
+        state.reputationPoints + MISSION_A.reputationReward,
+      )
+      expect(result.state.specialty.engine).toBe(
+        state.specialty.engine + MISSION_A.reputationReward,
+      )
+      expect(result.state.storyMissions).toEqual([
+        {
+          missionId: 'test-mission-a',
+          status: 'delivered',
+          acceptedOnDay: 1,
+          dueOnDay: 30,
+          reofferOnDay: null,
+        },
+      ])
+      expect(result.log).toEqual([
+        {
+          type: 'mission-delivered',
+          missionId: 'test-mission-a',
+          payoutYen: MISSION_A.payoutYen,
+          tipYen: 0,
+          reputationGained: MISSION_A.reputationReward,
+          specialtyGained: {
+            engine: MISSION_A.reputationReward,
+            drivetrain: 0,
+            suspension: 0,
+            wheels: 0,
+            body: 0,
+            interior: 0,
+          },
+        },
+      ])
+    })
+
+    it('is a no-op when grading fails', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: { ...uniformCarParts('worn'), block: { installed: null } },
+      })
+      const state = activeStateFor('test-mission-a', car)
+      const result = resolveDeliverMission(state, 'test-mission-a', car.id, CONTEXT)
+      expect(result.state).toBe(state)
+      expect(result.log).toEqual([])
+    })
+
+    it('is a no-op when the mission is not active', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: uniformCarParts('worn'),
+      })
+      const state = baseState({ day: 5, ownedCars: [car], storyMissions: [] })
+      const result = resolveDeliverMission(state, 'test-mission-a', car.id, CONTEXT)
+      expect(result.state).toBe(state)
+      expect(result.log).toEqual([])
+    })
+
+    it('awards a tip when every statThreshold requirement clears the trigger fraction', () => {
+      const car = buildCarInstance({ id: 'car-b', modelId: CIVIC.id })
+      const state = activeStateFor('test-mission-b', car)
+      const result = resolveDeliverMission(state, 'test-mission-b', car.id, CONTEXT)
+      const entry = result.log.find((e) => e.type === 'mission-delivered')
+      expect(entry).toMatchObject({
+        tipYen: Math.round(MISSION_B.payoutYen * MISSION_B.tipFraction),
+      })
+      expect((entry as { tipYen: number }).tipYen).toBeGreaterThan(0)
+    })
+
+    it('withholds the tip when the statThreshold requirement clears the base but not the trigger fraction', () => {
+      const tightMission = buildMission({
+        id: 'test-mission-tight',
+        gateReputationPoints: 0,
+        requirements: [
+          // A floor set exactly at the measured mint power clears the base
+          // requirement (equality passes) but never its own 1.15x trigger.
+          { kind: 'statThreshold', stat: 'power', min: MINT_CIVIC_POWER },
+          { kind: 'budgetCap', maxTotalSpendYen: 900_000 },
+        ],
+        budgetCapYen: 900_000,
+      })
+      const context = contextWithMissions([tightMission])
+      const car = buildCarInstance({ id: 'car-c', modelId: CIVIC.id })
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-tight',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 30,
+        reofferOnDay: null,
+      }
+      const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
+      const result = resolveDeliverMission(state, 'test-mission-tight', car.id, context)
+      const entry = result.log.find((e) => e.type === 'mission-delivered')
+      expect(entry).toMatchObject({ tipYen: 0 })
+    })
+
+    it('never awards a tip (vacuously) when the mission has no statThreshold requirement at all', () => {
+      const car = buildCarInstance({
+        id: 'car-a',
+        modelId: CIVIC.id,
+        parts: uniformCarParts('worn'),
+      })
+      const state = activeStateFor('test-mission-a', car)
+      const result = resolveDeliverMission(state, 'test-mission-a', car.id, CONTEXT)
+      const entry = result.log.find((e) => e.type === 'mission-delivered')
+      expect(entry).toMatchObject({ tipYen: 0 })
+    })
+  })
+})

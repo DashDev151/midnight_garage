@@ -7,10 +7,12 @@ import facilitiesJson from '../data/facilities.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
+import personasJson from '../data/personas.json'
 import provenanceJson from '../data/provenance.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
 import specialtyCopyJson from '../data/specialtyCopy.json'
+import storyMissionsJson from '../data/storyMissions.json'
 import symptomsJson from '../data/symptoms.json'
 import techniquesJson from '../data/techniques.json'
 import toolLinesJson from '../data/toolLines.json'
@@ -30,9 +32,11 @@ import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './pa
 import { PartPricingSheetSchema } from './partPricing'
 import type { PartFitmentClass } from './partFitment'
 import type { CarPartId } from './tags'
+import { PersonasSchema } from './persona'
 import { ProvenancePoolSchema } from './provenance'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
+import { StoryMissionsSchema, type StoryMission } from './storyMission'
 import { SymptomsSchema } from './symptom'
 import { TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
@@ -116,3 +120,21 @@ export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)
  */
 export const SYMPTOMS = SymptomsSchema.parse(symptomsJson)
 export const DIAGNOSTIC_TESTS = DiagnosticTestsSchema.parse(diagnosticTestsJson)
+
+/**
+ * Sprint 76 (story missions I): the hand-authored campaign's customers, and
+ * the missions themselves. `budgetCapYen` is each mission's single authored
+ * spend ceiling - mirrored here into a matching `budgetCap` requirement
+ * appended to `requirements`, so `gradeMissionCar` (sim) never has to read
+ * two different fields to grade one concern, and content never carries the
+ * same number twice (`storyMission.ts`'s own doc comment).
+ */
+export const PERSONAS = PersonasSchema.parse(personasJson)
+const STORY_MISSIONS_AUTHORED = StoryMissionsSchema.parse(storyMissionsJson)
+export const STORY_MISSIONS: StoryMission[] = STORY_MISSIONS_AUTHORED.map((mission) => ({
+  ...mission,
+  requirements: [
+    ...mission.requirements,
+    { kind: 'budgetCap' as const, maxTotalSpendYen: mission.budgetCapYen },
+  ],
+}))

@@ -164,4 +164,48 @@ describe('ServiceJobsScreen', () => {
     expect(chip.text()).toBe(game.fitmentClassLabel(offer.fitmentClass!))
     expect(chip.text()).not.toBe(offer.fitmentClass)
   })
+
+  /**
+   * Sprint 76 (story missions I): day 1 itself never carries a mission -
+   * `createInitialGameState` doesn't seed one (only the day-boundary hook,
+   * `advanceDay`, ever offers the next locked mission) - so the pinned card
+   * is genuinely absent until the first End Day.
+   */
+  it('shows no pinned mission card before any mission has cleared its gate (day 1)', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    expect(game.storyMissionOfferView).toBeNull()
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="mission-accept"]').exists()).toBe(false)
+  })
+
+  it('shows the pinned story-mission card once the first mission clears its gate', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.endDay()
+    const offer = game.storyMissionOfferView
+    if (!offer) throw new Error('expected a story mission offered after the first End Day')
+    const wrapper = mountScreen()
+    expect(wrapper.text()).toContain('STORY')
+    expect(wrapper.text()).toContain(offer.personaName)
+    expect(wrapper.text()).toContain(offer.title)
+    expect(wrapper.find('[data-test="mission-accept"]').exists()).toBe(true)
+  })
+
+  it('accepting the pinned mission moves it from the offer card to the active summary row', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.endDay()
+    const offer = game.storyMissionOfferView
+    if (!offer) throw new Error('expected a story mission offered after the first End Day')
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="mission-accept"]').trigger('click')
+    expect(game.storyMissionOfferView).toBeNull()
+    const active = game.activeStoryMissionView
+    if (!active) throw new Error('expected the mission to be active after accepting')
+    expect(active.id).toBe(offer.id)
+    const wrapperAfter = mountScreen()
+    expect(wrapperAfter.find('[data-test="mission-accept"]').exists()).toBe(false)
+    expect(wrapperAfter.text()).toContain(active.title)
+  })
 })

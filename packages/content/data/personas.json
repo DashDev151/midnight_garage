@@ -1,0 +1,12 @@
+[
+  {
+    "id": "placeholder-persona-a",
+    "name": "Test Customer A",
+    "intro": "A placeholder customer for the story mission test harness, replaced in Sprint 78."
+  },
+  {
+    "id": "placeholder-persona-b",
+    "name": "Test Customer B",
+    "intro": "A placeholder customer for the story mission test harness, replaced in Sprint 78."
+  }
+]

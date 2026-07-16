@@ -301,6 +301,11 @@ Entries below stay until their sprints land.
   campaign with recurring named characters, procedural commissions deferred to endgame
   replayability.** Consumes the shared `Requirement` module from the component arc. Depends on
   diagnosis. Roadmap: Phase 4, beside the commissions line. **Scoped: Sprints 76-78.**
+  **Sprint 76 (the contract machine) landed:** the full lifecycle runs in sim end to end
+  (gate -> offer -> accept -> grade -> deliver/lapse -> reoffer) against two placeholder missions,
+  with the pinned Accept card live on `ServiceJobsScreen`. Still open: Sprint 77 (the reference-lap
+  board + full deliver/grade UI) and Sprint 78 (the real campaign content replacing the
+  placeholders).
 
 - [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing

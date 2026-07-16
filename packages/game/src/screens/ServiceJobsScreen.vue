@@ -37,6 +37,41 @@ const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
       job won't bring the car in until a bay frees up.
     </p>
 
+    <section v-if="game.storyMissionOfferView" class="mission-card">
+      <div class="mission-head">
+        <span class="story-chip">STORY</span>
+        <span class="customer">{{ game.storyMissionOfferView.personaName }}</span>
+        <span class="mission-title">{{ game.storyMissionOfferView.title }}</span>
+      </div>
+      <p class="desc">{{ game.storyMissionOfferView.requestCopy }}</p>
+      <p class="terms">
+        pays {{ formatYen(game.storyMissionOfferView.payoutYen) }} · budget
+        {{ formatYen(game.storyMissionOfferView.budgetCapYen) }} ·
+        {{ game.storyMissionOfferView.deadlineDays }}
+        days once accepted
+      </p>
+      <button
+        class="primary"
+        data-test="mission-accept"
+        @click="game.acceptMission(game.storyMissionOfferView.id)"
+      >
+        Accept
+      </button>
+    </section>
+
+    <section v-if="game.activeStoryMissionView" class="mission-active">
+      <span class="story-chip">STORY</span>
+      <span class="customer">{{ game.activeStoryMissionView.personaName }}</span>
+      <span class="mission-title">{{ game.activeStoryMissionView.title }}</span>
+      <span v-if="game.activeStoryMissionView.daysLeft !== null" class="days">
+        {{
+          game.activeStoryMissionView.daysLeft <= 0
+            ? 'due today'
+            : game.activeStoryMissionView.daysLeft + 'd left'
+        }}
+      </span>
+    </section>
+
     <section class="board">
       <h3>Job board</h3>
       <p v-if="!hasOffers" class="empty">
@@ -231,6 +266,50 @@ h3 {
   display: flex;
   align-items: center;
   gap: var(--mg-space-3);
+}
+
+/* Sprint 76 (story missions I): the pinned campaign card - a distinct
+   neon-violet border marks it as the one non-generic card on this board. */
+.mission-card {
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-neon-violet);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-2);
+  margin-bottom: var(--mg-space-4);
+}
+
+.mission-head {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+.mission-title {
+  color: var(--mg-text);
+}
+
+.story-chip {
+  display: inline-block;
+  padding: 0 var(--mg-space-1);
+  border: 1px solid var(--mg-neon-violet);
+  border-radius: 4px;
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-xs, 0.7rem);
+  letter-spacing: 0.05em;
+}
+
+.mission-active {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  margin-bottom: var(--mg-space-4);
 }
 
 /* Compact disabled state for a tool-tier lock (Sprint 36): a colored border

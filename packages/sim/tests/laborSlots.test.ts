@@ -38,6 +38,7 @@ function baseState(staff: StaffMember[]): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    storyMissions: [],
   }
 }
 

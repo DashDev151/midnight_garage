@@ -11,22 +11,82 @@ import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
  * requirements.ts`, which imports this type - the same content/sim split
  * every other schema-vs-behaviour pair in this codebase already follows.
  *
- * One primitive ships this sprint: `slotCondition`. Story missions
- * (Sprint 76) add their own primitives (lap-time ceiling, taste match, budget
- * cap, deadline) to this SAME union - the shared module the component-
- * hierarchy and story-builds specs both name.
+ * `slotCondition` ships with service jobs (Sprint 72). Story missions
+ * (Sprint 76) add five more to this SAME union - `statThreshold`/
+ * `statCeiling` (derived-stat floor/ceiling), `budgetCap` (spend ceiling),
+ * `deadline` (day-of-delivery cutoff), `tasteMatch` (a buyer archetype's own
+ * taste multiplier floor), and `roadworthy` (every slot at `worn`+) - the
+ * shared module the component-hierarchy and story-builds specs both name.
+ * `lapTimeCeiling` arrives with the lap model in Sprint 77. A service-job
+ * task's own `requirement` field (`serviceJob.ts`) stays pinned to
+ * `SlotConditionRequirementSchema` specifically, not the whole union below -
+ * a service job only ever authors that one kind, so its own type stays
+ * concrete rather than every existing call site needing a `kind` narrowing
+ * check for five sibling kinds it can never actually see.
  */
+export const SlotConditionRequirementSchema = z.object({
+  kind: z.literal('slotCondition'),
+  carPartId: CarPartIdSchema,
+  /** The slot's installed part must be at least this band. An empty or
+   * scrap-band slot always fails, regardless of `minGrade` (decision 1). */
+  minBand: ConditionBandSchema,
+  /** When present, the installed part's own catalog grade must also be at
+   * least this - the former `install` task's requirement. Absent for a
+   * pure band requirement (the former `repair` task). */
+  minGrade: GradeSchema.optional(),
+})
+
+export type SlotConditionRequirement = z.infer<typeof SlotConditionRequirementSchema>
+
+/** The `StatBlock` keys a `statThreshold`/`statCeiling` requirement can grade
+ * against (`stats.ts`'s `StatBlockSchema` fields, restated as an enum since a
+ * discriminated-union field needs a literal set, not an object shape). */
+export const StatKeySchema = z.enum(['power', 'handling', 'style', 'reliability', 'authenticity'])
+
+export type StatKey = z.infer<typeof StatKeySchema>
+
 export const RequirementSpecSchema = z.discriminatedUnion('kind', [
+  SlotConditionRequirementSchema,
+  /** Sprint 76 (story missions I): a derived-stat floor, over
+   * `computeDerivedStats` - "make it at least this fast/tidy/reliable." */
   z.object({
-    kind: z.literal('slotCondition'),
-    carPartId: CarPartIdSchema,
-    /** The slot's installed part must be at least this band. An empty or
-     * scrap-band slot always fails, regardless of `minGrade` (decision 1). */
-    minBand: ConditionBandSchema,
-    /** When present, the installed part's own catalog grade must also be at
-     * least this - the former `install` task's requirement. Absent for a
-     * pure band requirement (the former `repair` task). */
-    minGrade: GradeSchema.optional(),
+    kind: z.literal('statThreshold'),
+    stat: StatKeySchema,
+    min: z.number(),
+  }),
+  /** Sprint 76: the mirror-image ceiling - "keep it under this", e.g. a
+   * sleeper-build brief that caps `style` on purpose. */
+  z.object({
+    kind: z.literal('statCeiling'),
+    stat: StatKeySchema,
+    max: z.number(),
+  }),
+  /** Sprint 76: a spend ceiling over `carLedgerFor` - purchase (0 if
+   * unknown) + repairs + parts must stay at or under `maxTotalSpendYen`. */
+  z.object({
+    kind: z.literal('budgetCap'),
+    maxTotalSpendYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 76: a day-of-delivery cutoff - evaluated against the caller's
+   * `day` at grade/deliver time, not at accept time. */
+  z.object({
+    kind: z.literal('deadline'),
+    dueOnDay: z.number().int().positive(),
+  }),
+  /** Sprint 76: "this buyer archetype has to actually want it" - passes when
+   * `valuateCarForBuyer / marketValueYen >= minMultiplier` (that ratio is a
+   * buyer's own taste multiplier, which cancels heat - see
+   * `requirements.ts`'s `evaluateRequirement`). */
+  z.object({
+    kind: z.literal('tasteMatch'),
+    buyerId: z.string().min(1),
+    minMultiplier: z.number().positive(),
+  }),
+  /** Sprint 76: every one of the car's 29 slots holds an installed part at
+   * `worn` condition or better - no empty or scrap slot anywhere, the "this
+   * has to actually be driveable" floor a build-brief commission implies. */
+  z.object({
+    kind: z.literal('roadworthy'),
   }),
 ])
 

@@ -19,6 +19,7 @@ import {
 } from './jobs'
 import { availableLaborSlots } from './laborSlots'
 import { bumpLotSupply, updateMarketHeat } from './marketHeat'
+import { advanceStoryMissions } from './missions'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
 import { createRng } from './rng'
 import { computeServiceBayIncomeYen } from './serviceBay'
@@ -390,6 +391,16 @@ export function advanceDay(
     next = resolution.state
     log.push(...resolution.log)
   }
+
+  // 7c. Sprint 76 (story missions I): the campaign's own day-boundary tick -
+  // lapse an overdue active mission, reoffer a lapsed one whose wait
+  // elapsed, then offer the next locked mission if reputation clears its
+  // gate. Same `next.day` (not `next.day + 1`) as 7b immediately above: this
+  // reads the day that's ending, not the one about to begin, mirroring the
+  // service-job deadline backstop's own one-day grace window.
+  const missions = advanceStoryMissions(next, context)
+  next = missions.state
+  log.push(...missions.log)
 
   // 8. Daily service-bay income.
   const serviceIncome = computeServiceBayIncomeYen(next.staff, next.reputationTier)

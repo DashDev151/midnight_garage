@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
-import { RequirementSpecSchema } from './requirement'
+import { SlotConditionRequirementSchema } from './requirement'
 import { ToolTierSchema } from './toolLines'
 
 /**
@@ -20,9 +20,18 @@ import { ToolTierSchema } from './toolLines'
  * Defaults to 1 (no ceiling); Sprint 37 authors the real values. Stays on
  * the task wrapper, not inside the requirement - it gates OFFERABILITY
  * (`taskToolDeficit`), not the end state itself.
+ *
+ * `requirement` is pinned to `SlotConditionRequirementSchema` specifically,
+ * not the full `RequirementSpec` union (Sprint 76 widens that union to six
+ * kinds for story missions) - a service-job task only ever authors a
+ * slot/band/grade requirement, so its own type stays concrete rather than
+ * every reader needing a `kind` narrowing check for five sibling kinds it
+ * can never actually see. `evaluateRequirement` (sim) still accepts it
+ * directly - a `SlotConditionRequirement` is one member of `RequirementSpec`,
+ * so it is always assignable where the wider union is expected.
  */
 export const ServiceJobTaskSchema = z.object({
-  requirement: RequirementSpecSchema,
+  requirement: SlotConditionRequirementSchema,
   minToolTier: ToolTierSchema.default(1),
 })
 

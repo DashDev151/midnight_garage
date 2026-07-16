@@ -67,6 +67,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    storyMissions: [],
     ...overrides,
   }
 }

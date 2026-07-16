@@ -57,6 +57,7 @@ function stateOnDay(
     stagedCarWork: {},
     serviceJobLedgers: {},
     inspectionVisit: null,
+    storyMissions: [],
   }
 }
 

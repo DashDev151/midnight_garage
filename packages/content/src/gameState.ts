@@ -100,6 +100,27 @@ export const InspectionVisitSchema = z.object({
 
 export type InspectionVisit = z.infer<typeof InspectionVisitSchema>
 
+/**
+ * Sprint 76 (story missions I): one campaign mission's live progress - the
+ * mission itself (`StoryMission`, content) is static; this is the only part
+ * that changes across a career. Absent from `GameState.storyMissions`
+ * entirely means locked (never yet reached its `gateReputationPoints`, or an
+ * earlier mission in the strictly linear order still isn't `delivered`). At
+ * most one `offered`/`active` record exists at any time (`advanceDay`'s
+ * mission hook, `missions.ts`). `acceptedOnDay`/`dueOnDay` stamp at accept;
+ * `reofferOnDay` stamps at lapse and clears (back to `null`) the moment the
+ * mission returns to `offered`.
+ */
+export const StoryMissionRecordSchema = z.object({
+  missionId: z.string().min(1),
+  status: z.enum(['offered', 'active', 'delivered', 'lapsed']),
+  acceptedOnDay: z.number().int().positive().nullable(),
+  dueOnDay: z.number().int().positive().nullable(),
+  reofferOnDay: z.number().int().positive().nullable(),
+})
+
+export type StoryMissionRecord = z.infer<typeof StoryMissionRecordSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -274,6 +295,12 @@ export const GameStateSchema = z.object({
    * carry-over negotiation. Purely additive.
    */
   inspectionVisit: InspectionVisitSchema.nullable().default(null),
+  /**
+   * Sprint 76 (story missions I): the hand-authored campaign's live progress,
+   * one record per mission that has ever left `locked` - see
+   * `StoryMissionRecordSchema` above. Purely additive.
+   */
+  storyMissions: z.array(StoryMissionRecordSchema).default([]),
 })
 
 /**
@@ -656,6 +683,37 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('car-workup'),
     carInstanceId: z.string().min(1),
+  }),
+  /** Sprint 76 decision 4: `resolveAcceptMission` - offered -> active. */
+  z.object({
+    type: z.literal('mission-accepted'),
+    missionId: z.string().min(1),
+    dueOnDay: z.number().int().positive(),
+  }),
+  /** Sprint 76 decision 4: `resolveDeliverMission` paid out (+ tip, if
+   * earned) and applied the reputation/specialty reward. */
+  z.object({
+    type: z.literal('mission-delivered'),
+    missionId: z.string().min(1),
+    payoutYen: z.number().int().nonnegative(),
+    tipYen: z.number().int().nonnegative(),
+    reputationGained: z.number().int().nonnegative(),
+    specialtyGained: z.record(ComponentIdSchema, z.number().int()),
+  }),
+  /** Sprint 76 decision 4: an active mission passed its `dueOnDay` unbuilt -
+   * the player keeps the car; the reputation penalty and a future
+   * `reofferOnDay` are the only consequence. */
+  z.object({
+    type: z.literal('mission-lapsed'),
+    missionId: z.string().min(1),
+    reputationLost: z.number().int().nonnegative(),
+    reofferOnDay: z.number().int().positive(),
+  }),
+  /** Sprint 76 decision 4: a lapsed mission's `reofferOnDay` arrived -
+   * lapsed -> offered again, the campaign never dead-ends. */
+  z.object({
+    type: z.literal('mission-reoffered'),
+    missionId: z.string().min(1),
   }),
 ])
 

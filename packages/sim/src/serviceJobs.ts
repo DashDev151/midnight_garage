@@ -958,7 +958,7 @@ export interface SpecialtyDeltaResult {
  * task addressed an unknown part - never happens for real content, but this
  * stays a pure, total function regardless).
  */
-function applySpecialtyDelta(
+export function applySpecialtyDelta(
   state: GameState,
   groups: readonly ComponentId[],
   totalDelta: number,

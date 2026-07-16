@@ -1,6 +1,16 @@
-import type { CarInstance, CarLedger, RequirementSpec } from '@midnight-garage/content'
+import {
+  ALL_CAR_PART_IDS,
+  titleCaseFromSlug,
+  type CarInstance,
+  type CarLedger,
+  type CarModel,
+  type RequirementSpec,
+} from '@midnight-garage/content'
 import { bandIndex } from './bands'
+import { computeDerivedStats } from './derivedStats'
+import { marketValueYen } from './marketValue'
 import { gradeAtLeast } from './parts'
+import { valuateCarForBuyer } from './valuation'
 import type { SimContext } from './context'
 
 /**
@@ -17,23 +27,16 @@ export interface RequirementResult {
   required: string
 }
 
-/**
- * The one evaluator every requirement kind runs through. Pure and total over
- * `RequirementSpec` - a future primitive (Sprint 76's lap-time ceiling, taste
- * match, budget cap, deadline) adds its own branch here, never a parallel
- * evaluator. `ledger`/`day` are unused by `slotCondition` (this sprint's only
- * primitive) but are part of the shared signature every future primitive
- * needs, so evaluators are never keyed only on `car`.
- */
-export function evaluateRequirement(
-  spec: RequirementSpec,
+/** Sprint 72's original primitive: a slot's installed part must be at least
+ * `minBand`, and - when present - at least `minGrade`. An empty or scrap-band
+ * slot always fails, regardless of `minGrade` - closes the old "or empty"
+ * hole (`isServiceTaskDone`'s former `if (!installed) return true` for a
+ * repair task). */
+function evaluateSlotCondition(
+  spec: Extract<RequirementSpec, { kind: 'slotCondition' }>,
   car: CarInstance,
-  ledger: CarLedger,
-  day: number,
   context: SimContext,
 ): RequirementResult {
-  void ledger
-  void day
   const entry = context.partsTaxonomyById[spec.carPartId]
   const displayName = entry?.displayName ?? spec.carPartId
   const installed = car.parts[spec.carPartId].installed
@@ -45,9 +48,6 @@ export function evaluateRequirement(
     ? `${displayName}: ${spec.minGrade} or better, fitted and ${spec.minBand}`
     : `${displayName} must be ${spec.minBand}`
 
-  // Decision 1: an empty or scrap-band slot always fails, regardless of
-  // minGrade - closes the old "or empty" hole (`isServiceTaskDone`'s former
-  // `if (!installed) return true` for a repair task).
   if (!installed || installed.band === 'scrap') {
     return { pass: false, label, actual: installed ? 'scrap' : 'empty', required }
   }
@@ -57,4 +57,165 @@ export function evaluateRequirement(
   const bandOk = bandIndex(installed.band) >= bandIndex(spec.minBand)
   const gradeOk = !spec.minGrade || (!!part && gradeAtLeast(part.grade, spec.minGrade))
   return { pass: bandOk && gradeOk, label, actual, required }
+}
+
+/**
+ * Sprint 76 (story missions I): a derived-stat floor/ceiling over
+ * `computeDerivedStats`. `model` is optional and trailing on
+ * `evaluateRequirement` itself (every pre-Sprint-76 call site never had one to
+ * pass); a mission call site always resolves and passes a real `CarModel`, so
+ * `model` missing here only ever means "evaluated from a call site that can't
+ * resolve one" - fails closed rather than throwing, keeping the function
+ * total.
+ */
+function evaluateStatBound(
+  spec: Extract<RequirementSpec, { kind: 'statThreshold' | 'statCeiling' }>,
+  car: CarInstance,
+  model: CarModel | undefined,
+  context: SimContext,
+): RequirementResult {
+  const statLabel = titleCaseFromSlug(spec.stat)
+  const label =
+    spec.kind === 'statThreshold'
+      ? `${statLabel} at least ${spec.min}`
+      : `${statLabel} no more than ${spec.max}`
+  const required = spec.kind === 'statThreshold' ? `${spec.min}+` : `<= ${spec.max}`
+  if (!model) return { pass: false, label, actual: 'unknown', required }
+
+  const stats = computeDerivedStats(
+    model,
+    car,
+    context.partsById,
+    context.partsTaxonomy,
+    context.economy,
+  )
+  const actualValue = stats[spec.stat]
+  const pass = spec.kind === 'statThreshold' ? actualValue >= spec.min : actualValue <= spec.max
+  return { pass, label, actual: `${actualValue}`, required }
+}
+
+/** Sprint 76: a spend ceiling over the caller's own `ledger` - purchase (0
+ * when unknown - only reachable via a dev grant, accepted), repairs, and
+ * installed parts must together stay at or under `maxTotalSpendYen`. */
+function evaluateBudgetCap(
+  spec: Extract<RequirementSpec, { kind: 'budgetCap' }>,
+  ledger: CarLedger,
+): RequirementResult {
+  const spend = (ledger.purchaseYen ?? 0) + ledger.repairYen + ledger.partsYen
+  return {
+    pass: spend <= spec.maxTotalSpendYen,
+    label: 'Total spend within budget',
+    actual: spend.toLocaleString('en-US'),
+    required: `<= ${spec.maxTotalSpendYen.toLocaleString('en-US')}`,
+  }
+}
+
+/** Sprint 76: a day-of-delivery cutoff, evaluated against the caller's own
+ * `day` - delivery day, not accept day. */
+function evaluateDeadline(
+  spec: Extract<RequirementSpec, { kind: 'deadline' }>,
+  day: number,
+): RequirementResult {
+  return {
+    pass: day <= spec.dueOnDay,
+    label: 'Deliver on time',
+    actual: `day ${day}`,
+    required: `by day ${spec.dueOnDay}`,
+  }
+}
+
+/**
+ * Sprint 76: "this buyer archetype has to actually want it." `valuateCarForBuyer
+ * / marketValueYen` is exactly `tasteMultiplier` (`valuation.ts`) regardless
+ * of which heat value is used for both terms, as long as it's the SAME heat
+ * for both - so this reads at a fixed neutral heat rather than needing the
+ * live `GameState.marketHeat` map threaded into `evaluateRequirement`'s
+ * signature at all.
+ */
+const TASTE_MATCH_NEUTRAL_HEAT_PERCENT = 100
+
+function evaluateTasteMatch(
+  spec: Extract<RequirementSpec, { kind: 'tasteMatch' }>,
+  car: CarInstance,
+  model: CarModel | undefined,
+  context: SimContext,
+): RequirementResult {
+  const buyer = context.buyers.find((b) => b.id === spec.buyerId)
+  const label = `${buyer?.displayName ?? spec.buyerId} wants this build`
+  const required = `${spec.minMultiplier.toFixed(2)}x+`
+  if (!model || !buyer) return { pass: false, label, actual: 'unknown', required }
+
+  const value = marketValueYen(
+    model,
+    car,
+    TASTE_MATCH_NEUTRAL_HEAT_PERCENT,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
+  const valuated = valuateCarForBuyer(
+    buyer,
+    model,
+    car,
+    context.partsById,
+    context.partsTaxonomy,
+    context.partsTaxonomyById,
+    TASTE_MATCH_NEUTRAL_HEAT_PERCENT,
+    context.economy,
+  )
+  const ratio = value > 0 ? valuated / value : 0
+  return { pass: ratio >= spec.minMultiplier, label, actual: `${ratio.toFixed(2)}x`, required }
+}
+
+/** Sprint 76: every one of the car's 29 slots holds an installed part at
+ * `worn` condition or better - no empty or scrap slot anywhere. */
+function evaluateRoadworthy(car: CarInstance): RequirementResult {
+  const minIndex = bandIndex('worn')
+  let failingCount = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (!installed || bandIndex(installed.band) < minIndex) failingCount += 1
+  }
+  const label = 'Every part worn condition or better'
+  const required = 'worn+ throughout'
+  const actual =
+    failingCount === 0
+      ? required
+      : `${failingCount} slot${failingCount === 1 ? '' : 's'} below worn`
+  return { pass: failingCount === 0, label, actual, required }
+}
+
+/**
+ * The one evaluator every requirement kind runs through. Pure and total over
+ * `RequirementSpec` (Sprint 76 extends the dispatch from `slotCondition` alone
+ * to six kinds; `lapTimeCeiling` arrives with the lap model in Sprint 77).
+ * `model` is optional and trailing: every pre-Sprint-76 call site
+ * (`isServiceTaskDone`, evaluating `slotCondition` only) keeps compiling
+ * unchanged, since none of those kinds ever read it; a story-mission call
+ * site always resolves and passes the real `CarModel` the new stat/taste
+ * kinds need.
+ */
+export function evaluateRequirement(
+  spec: RequirementSpec,
+  car: CarInstance,
+  ledger: CarLedger,
+  day: number,
+  context: SimContext,
+  model?: CarModel,
+): RequirementResult {
+  switch (spec.kind) {
+    case 'slotCondition':
+      return evaluateSlotCondition(spec, car, context)
+    case 'statThreshold':
+    case 'statCeiling':
+      return evaluateStatBound(spec, car, model, context)
+    case 'budgetCap':
+      return evaluateBudgetCap(spec, ledger)
+    case 'deadline':
+      return evaluateDeadline(spec, day)
+    case 'tasteMatch':
+      return evaluateTasteMatch(spec, car, model, context)
+    case 'roadworthy':
+      return evaluateRoadworthy(car)
+  }
 }

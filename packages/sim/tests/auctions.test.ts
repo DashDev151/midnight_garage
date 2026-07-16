@@ -58,6 +58,7 @@ function stateWithLots(
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    storyMissions: [],
   }
 }
 

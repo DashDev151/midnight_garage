@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ECONOMY, PROVENANCE_POOL, SYMPTOMS } from '../src/data'
+import { ECONOMY, PERSONAS, PROVENANCE_POOL, STORY_MISSIONS, SYMPTOMS } from '../src/data'
 
 /**
  * Sprint 75 decision 5: extends the game package's own spelling guard
@@ -14,6 +14,8 @@ import { ECONOMY, PROVENANCE_POOL, SYMPTOMS } from '../src/data'
  *   guard until now, since it predates this content-side test.
  * - `economy.json`'s `diagnosis.saleRevealCopy` templates (Sprint 75
  *   decision 2, the organic teacher).
+ * - `storyMissions.json`'s title/request/delivered/overdelivered/lapsed
+ *   copy and `personas.json`'s name/intro (Sprint 76).
  *
  * Deliberately field-targeted, not a blanket scan of every string in every
  * JSON file (unlike `noEmDash.test.ts`'s repo-wide sweep) - a content id
@@ -70,6 +72,28 @@ function findOffenses(): string[] {
       ECONOMY.diagnosis.saleRevealCopy.playerWon,
     ),
   )
+
+  // Sprint 76 (story missions I): the campaign's own player-facing copy.
+  for (const mission of STORY_MISSIONS) {
+    offenses.push(...offensesIn(`storyMissions.json:${mission.id}.title`, mission.title))
+    offenses.push(
+      ...offensesIn(`storyMissions.json:${mission.id}.requestCopy`, mission.requestCopy),
+    )
+    offenses.push(
+      ...offensesIn(`storyMissions.json:${mission.id}.deliveredCopy`, mission.deliveredCopy),
+    )
+    offenses.push(
+      ...offensesIn(
+        `storyMissions.json:${mission.id}.overdeliveredCopy`,
+        mission.overdeliveredCopy,
+      ),
+    )
+    offenses.push(...offensesIn(`storyMissions.json:${mission.id}.lapsedCopy`, mission.lapsedCopy))
+  }
+  for (const persona of PERSONAS) {
+    offenses.push(...offensesIn(`personas.json:${persona.id}.name`, persona.name))
+    offenses.push(...offensesIn(`personas.json:${persona.id}.intro`, persona.intro))
+  }
 
   return offenses
 }

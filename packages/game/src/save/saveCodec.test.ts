@@ -1009,7 +1009,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(34)
+    expect(SAVE_VERSION).toBe(35)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1062,7 +1062,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(34)
+    expect(SAVE_VERSION).toBe(35)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1667,8 +1667,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 34 (Sprint 74)', () => {
-    expect(SAVE_VERSION).toBe(34)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 35 (Sprint 76)', () => {
+    expect(SAVE_VERSION).toBe(35)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1770,8 +1770,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 34 (Sprint 74)', () => {
-    expect(SAVE_VERSION).toBe(34)
+  it('SAVE_VERSION has since moved to 35 (Sprint 76)', () => {
+    expect(SAVE_VERSION).toBe(35)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1803,8 +1803,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 34 (Sprint 74)', () => {
-    expect(SAVE_VERSION).toBe(34)
+  it('SAVE_VERSION is 35 (Sprint 76)', () => {
+    expect(SAVE_VERSION).toBe(35)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1850,8 +1850,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 34 (Sprint 74)', () => {
-    expect(SAVE_VERSION).toBe(34)
+  it('SAVE_VERSION is 35 (Sprint 76)', () => {
+    expect(SAVE_VERSION).toBe(35)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -2154,5 +2154,48 @@ describe('saveCodec', () => {
       'valve-seals',
       'tired-rings',
     ])
+  })
+
+  /**
+   * v34 -> v35 (Sprint 76, story missions I): `GameStateSchema` gained
+   * `storyMissions` (default `[]`) - the normal additive case, so it needs
+   * NO `MIGRATIONS[34]` entry, but it DOES bump `SAVE_VERSION` (Save law).
+   * These two tests are its regression coverage: a real pre-v35 (v34
+   * envelope) save with no `storyMissions` field at all still decodes
+   * cleanly under v35 (no campaign progress - exactly right since the
+   * concept did not exist yet), and a v35 state with a real offered and a
+   * real active mission record round-trips both exactly.
+   */
+  it('a real pre-v35 save (a v34 envelope with no storyMissions field) decodes with no campaign progress', () => {
+    const preV35State: Record<string, unknown> = { ...fullState }
+    delete preV35State.storyMissions
+    const preV35 = { version: 34, gameState: preV35State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV35))
+    const decoded = decodeSave(code)
+    expect(decoded.storyMissions).toEqual([])
+  })
+
+  it('a v35 state with real offered and active mission records round-trips storyMissions exactly', () => {
+    const withMissions: GameState = GameStateSchema.parse({
+      ...fullState,
+      storyMissions: [
+        {
+          missionId: 'placeholder-a',
+          status: 'offered',
+          acceptedOnDay: null,
+          dueOnDay: null,
+          reofferOnDay: null,
+        },
+        {
+          missionId: 'placeholder-b',
+          status: 'active',
+          acceptedOnDay: 10,
+          dueOnDay: 24,
+          reofferOnDay: null,
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withMissions))
+    expect(decoded.storyMissions).toEqual(withMissions.storyMissions)
   })
 })

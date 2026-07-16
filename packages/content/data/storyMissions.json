@@ -1,0 +1,42 @@
+[
+  {
+    "id": "placeholder-a",
+    "personaId": "placeholder-persona-a",
+    "title": "Placeholder mission A (scaffolding)",
+    "requestCopy": "Placeholder request copy for mission A - scaffolding only, replaced in Sprint 78.",
+    "gateReputationPoints": 0,
+    "requirements": [{ "kind": "roadworthy" }],
+    "budgetCapYen": 400000,
+    "deadlineDays": 14,
+    "payoutYen": 500000,
+    "tipFraction": 0.1,
+    "tipTriggerFraction": 0.15,
+    "reputationReward": 20,
+    "lapseReputationPenalty": 5,
+    "reofferDays": 3,
+    "specialtyGroups": ["engine"],
+    "deliveredCopy": "Placeholder delivered copy for mission A - scaffolding only.",
+    "overdeliveredCopy": "Placeholder overdelivered copy for mission A - scaffolding only.",
+    "lapsedCopy": "Placeholder lapsed copy for mission A - scaffolding only."
+  },
+  {
+    "id": "placeholder-b",
+    "personaId": "placeholder-persona-b",
+    "title": "Placeholder mission B (scaffolding)",
+    "requestCopy": "Placeholder request copy for mission B - scaffolding only, replaced in Sprint 78.",
+    "gateReputationPoints": 50,
+    "requirements": [{ "kind": "statThreshold", "stat": "power", "min": 80 }],
+    "budgetCapYen": 800000,
+    "deadlineDays": 14,
+    "payoutYen": 1000000,
+    "tipFraction": 0.1,
+    "tipTriggerFraction": 0.15,
+    "reputationReward": 30,
+    "lapseReputationPenalty": 8,
+    "reofferDays": 3,
+    "specialtyGroups": ["engine", "drivetrain"],
+    "deliveredCopy": "Placeholder delivered copy for mission B - scaffolding only.",
+    "overdeliveredCopy": "Placeholder overdelivered copy for mission B - scaffolding only.",
+    "lapsedCopy": "Placeholder lapsed copy for mission B - scaffolding only."
+  }
+]
