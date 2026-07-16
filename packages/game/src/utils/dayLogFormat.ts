@@ -1,8 +1,12 @@
 import type { DayLogEntry } from '@midnight-garage/content'
-import { COMPONENT_DISPLAY_NAMES, TOOL_LINES, componentDisplayName } from '@midnight-garage/content'
+import {
+  COMPONENT_DISPLAY_NAMES,
+  TOOL_LINES,
+  componentDisplayName,
+  titleCaseFromSlug,
+} from '@midnight-garage/content'
 import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
-import { titleCaseFromSlug } from './titleCase'
 
 /** `count noun` with an `s` on the noun unless the count is exactly 1 - the
  * one place count copy is pluralised, so "1 lots" can never come back
@@ -71,16 +75,21 @@ export function describeLogEntry(
       const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
       const withProfit =
         entry.profitYen !== undefined ? `${base}, profit ${formatYenDelta(entry.profitYen)}` : base
-      switch (entry.saleQuality) {
-        case 'concours':
-          return `${withProfit} - sold as a concours example, reputation +${entry.reputationDelta}`
-        case 'clean':
-          return `${withProfit} - sold as a clean example, reputation +${entry.reputationDelta}`
-        case 'lemon':
-          return `${withProfit} - sold as a lemon, reputation ${entry.reputationDelta}`
-        default:
-          return withProfit
-      }
+      const withQuality = (() => {
+        switch (entry.saleQuality) {
+          case 'concours':
+            return `${withProfit} - sold as a concours example, reputation +${entry.reputationDelta}`
+          case 'clean':
+            return `${withProfit} - sold as a clean example, reputation +${entry.reputationDelta}`
+          case 'lemon':
+            return `${withProfit} - sold as a lemon, reputation ${entry.reputationDelta}`
+          default:
+            return withProfit
+        }
+      })()
+      // Sprint 75 decision 2 (the organic teacher): one line, appended, no
+      // popup - set only when the car still carried an unresolved symptom.
+      return entry.saleRevealLine ? `${withQuality} ${entry.saleRevealLine}` : withQuality
     }
     case 'part-bought':
       return `Bought ${entry.partId} for ${formatYen(entry.priceYen)}`

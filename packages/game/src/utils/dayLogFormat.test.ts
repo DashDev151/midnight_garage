@@ -244,6 +244,30 @@ describe('describeLogEntry', () => {
     expect(line).toContain('sold as a clean example, reputation +3')
   })
 
+  it('Sprint 75 decision 2 (the organic teacher): a sale with a saleRevealLine appends it after the quality clause, one line, no popup', () => {
+    const line = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+      reputationDelta: 3,
+      saleQuality: 'clean',
+      saleRevealLine: 'The buyer had it looked over: Valve seals. They did well out of you.',
+    })
+    expect(line).toContain('sold as a clean example, reputation +3')
+    expect(line).toContain('The buyer had it looked over: Valve seals. They did well out of you.')
+  })
+
+  it('Sprint 75 decision 2: a sale with no saleRevealLine renders exactly as before (an honest or fully-resolved car)', () => {
+    const line = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+    })
+    expect(line).not.toContain('had it looked over')
+  })
+
   it('Sprint 36: a tool upgrade reads as the line label and the named tier, never a raw id', () => {
     const line = describeLogEntry({
       type: 'tool-upgraded',

@@ -250,6 +250,28 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
     return lines
 
 
+def render_diagnosis_disclosure() -> list[str]:
+    """Sprint 75 decision 4: the wrapping "Diagnosis" section - the Sprint 73
+    guardrail table and the Sprint 71 donor crossover table (both below, as
+    sub-sections) plus the plain coverage statement neither table can carry
+    on its own. No new hard gates this sprint (`balance.cli check` is
+    unchanged) - this is disclosure, matching both tables' own established
+    treatment."""
+    return [
+        "## Diagnosis",
+        "",
+        "**No bot inspects a lot, tears a car down, or installs a part** (the standing "
+        "harness verdict, `TODO.md`) - every figure in this section is closed-form, not "
+        "bot-derived: `computeSymptomCoherence`/`computeDonorCoherence` call the real sim "
+        "functions directly against a representative probe car, and the three end-to-end "
+        "flows in `packages/sim/tests/diagnosisFlows.test.ts` (Sprint 75 decision 3 - the "
+        "donor flow, the sleeper flow, and the blind-buy flow) exercise the full "
+        "buy/diagnose/repair/sell pipeline deterministically, seed-free. No bot statistic "
+        "anywhere in this report covers diagnosis, teardown, or the donor economy.",
+        "",
+    ]
+
+
 def render_donor_coherence_section(
     donor_coherence: pl.DataFrame, coherence: pl.DataFrame, donor_break_even_bill_ratio: float
 ) -> list[str]:
@@ -267,7 +289,7 @@ def render_donor_coherence_section(
         on="modelId",
     )
     lines = [
-        "## Donor coherence (Sprint 71 decision 8, the teardown game)",
+        "### Donor coherence (Sprint 71 decision 8, the teardown game)",
         "",
         f"Whole-car sale value against parting out the same clean car (haircut "
         f"`economy.teardown.usedPartSaleFraction`, plus scrapping the stripped shell). "
@@ -303,7 +325,7 @@ def render_symptom_coherence_section(
     a sleeper and a trap cause, on every tier, for the real shipped content;
     this table is the human-readable render of the exact same numbers."""
     lines = [
-        "## Symptom coherence (Sprint 73 decision 6, the blind-buy guardrail)",
+        "### Symptom coherence (Sprint 73 decision 6, the blind-buy guardrail)",
         "",
         f"Per symptom x fitment tier, on a clean representative car: the apparent "
         f"(room-shown) value, the honest expected true value, the fear-priced sheet "
@@ -382,6 +404,7 @@ def render_markdown(
     days_to_tier_section: list[str],
     specialty_section: list[str],
     coherence_section: list[str],
+    diagnosis_disclosure_section: list[str],
     donor_coherence_section: list[str],
     symptom_coherence_section: list[str],
 ) -> str:
@@ -405,8 +428,9 @@ def render_markdown(
     lines.extend(days_to_tier_section)
     lines.extend(specialty_section)
     lines.extend(coherence_section)
-    lines.extend(donor_coherence_section)
+    lines.extend(diagnosis_disclosure_section)
     lines.extend(symptom_coherence_section)
+    lines.extend(donor_coherence_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
     lines.extend(INVARIANTS_ENFORCED_SECTION)
@@ -435,6 +459,7 @@ def main(argv: list[str] | None = None) -> int:
     days_to_tier_section = render_days_to_tier_section(df)
     specialty_section = render_specialty_section(df)
     coherence_section = render_coherence_section(coherence)
+    diagnosis_disclosure_section = render_diagnosis_disclosure()
     donor_coherence_section = render_donor_coherence_section(
         donor_coherence, coherence, donor_coherence_manifest["donorBreakEvenBillRatio"]
     )
@@ -448,6 +473,7 @@ def main(argv: list[str] | None = None) -> int:
         days_to_tier_section,
         specialty_section,
         coherence_section,
+        diagnosis_disclosure_section,
         donor_coherence_section,
         symptom_coherence_section,
     )

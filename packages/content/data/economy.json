@@ -222,7 +222,14 @@
       [20000, 0.4],
       [60000, 0.75],
       [120000, 1.0]
-    ]
+    ],
+    "aftermarketChance": 0.06,
+    "maxAftermarketSlots": 3,
+    "aftermarketGradeWeights": {
+      "street": 60,
+      "sport": 30,
+      "race": 10
+    }
   },
   "reputation": {
     "tierThresholds": {
@@ -318,6 +325,10 @@
       "regional": 8000,
       "premium": 20000,
       "collector-network": 50000
+    },
+    "saleRevealCopy": {
+      "buyerWon": "The buyer had it looked over: <cause>. They did well out of you.",
+      "playerWon": "The buyer had it looked over: <cause>. You did well out of them."
     }
   }
 }

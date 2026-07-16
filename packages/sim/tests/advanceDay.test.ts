@@ -255,9 +255,15 @@ describe('advanceDay golden master', () => {
     // `inspectionVisit` (default `null`) and each car symptom entry gained
     // `runTestIds` (default `[]`) - a pure state-SHAPE change, not a logic
     // change; every other assertion in this file still passes unchanged.
+    // Re-pinned again (Sprint 75, was 73b3c512): `generateAuctionCarInstance`
+    // now rolls one extra `rng.next()` per non-forced-induction slot (the
+    // aftermarket-at-generation chance, decision 1) even on the vast
+    // majority of slots that don't hit it - a real, intentional generation
+    // change (the standing TODO.md item this sprint closes), not a bug;
+    // every other assertion in this file still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('73b3c512')
+    expect(hashState(finalState)).toBe('a808b5d7')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -472,7 +478,9 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 74, was 404a063c): same cause as the 30-day
     // career hash above - a pure state-SHAPE change (`inspectionVisit`,
     // `runTestIds`), not a logic change.
-    expect(hashState(acquisitionCareer().sold)).toBe('7bb89325')
+    // Re-pinned again (Sprint 75, was 7bb89325): same cause as the 30-day
+    // career hash above - the new per-slot aftermarket-at-generation roll.
+    expect(hashState(acquisitionCareer().sold)).toBe('ddaccece')
   })
 })
 

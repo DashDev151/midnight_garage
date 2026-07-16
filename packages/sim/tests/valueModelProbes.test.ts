@@ -705,8 +705,31 @@ describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
     expect(wornGuideYen).toBeLessThan(freshGuideYen)
   })
 
-  it('fully restoring any generated car never prices it above its own clean value', () => {
-    for (const lot of independentLots(80, 9000)) {
+  /**
+   * Sprint 75 decision 1 (directive 17 case (a)): this probe used to read
+   * "fully restoring any generated car" and iterate every lot unfiltered,
+   * which held only because pre-Sprint-75 generation never fitted a real
+   * aftermarket part - every generated car WAS a stock-only car. Now that
+   * `generateAuctionCarInstance` can legitimately pre-fit street/sport/race
+   * parts, a modified car's own ceiling is deliberately higher than plain
+   * clean value (Law 5: the aftermarket premium is real, additive value,
+   * gated by foundation/tier-return but never zeroed) - that math has its
+   * own dedicated coverage in `marketValue.test.ts`. This probe's actual,
+   * narrower claim was always Law 1's: an ORDINARY stock restoration never
+   * manufactures value from nothing. Filtered to stock-only cars, that claim
+   * still holds exactly - the sample is widened to keep a real count of
+   * qualifying cars after the filter (aftermarketChance applies per slot, so
+   * most 29-slot cars now carry at least one modified part).
+   */
+  it('fully restoring a STOCK-only generated car never prices it above its own clean value', () => {
+    const stockOnlyLots = independentLots(300, 9000).filter((lot) =>
+      ALL_CAR_PART_IDS.every((partId) => {
+        const installed = lot.car.parts[partId].installed
+        return !installed || PARTS_BY_ID[installed.partId]?.grade === 'stock'
+      }),
+    )
+    expect(stockOnlyLots.length).toBeGreaterThan(10) // guards against a silent empty-set pass
+    for (const lot of stockOnlyLots) {
       const restored = fullyRestored(lot.car, PROBE_MODEL)
       const cleanValueYen = PROBE_MODEL.bookValueYen * mileageFactor(restored.mileageKm, ECONOMY)
       const guideValueYen = marketValueYen(

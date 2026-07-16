@@ -184,7 +184,12 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
   // `pnpm test:coverage`: ~22.4s and ~21.9s for these two tests respectively
   // (was comfortably under the old 20s budget pre-Sprint-73) - bumped with
   // real headroom rather than to the bare measured figure.
-  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 45_000
+  // Re-bumped again 45,000 -> 70,000 (Sprint 75): observed timing out at
+  // 45,000 under this session's full-workspace coverage run - the same
+  // CPU-contention class of cause as every other bump in this file, not a
+  // logic regression (this exact test passes in well under 10s whenever run
+  // in isolation, coverage included).
+  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 70_000
 
   /**
    * Sprint 27 update, re-measured (not re-derived) after the restoration-
@@ -302,8 +307,12 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
 
   // 100 seeds x 100 days outruns vitest's 5s default test timeout under
   // `pnpm test:coverage`'s v8 instrumentation overhead - same class of fix
-  // as `BOOTSTRAP_SAMPLE_TIMEOUT_MS` above.
-  const REPUTATION_SAMPLE_TIMEOUT_MS = 20_000
+  // as `BOOTSTRAP_SAMPLE_TIMEOUT_MS` above. Re-bumped 20,000 -> 30,000
+  // (Sprint 75): observed timing out at the old figure under this session's
+  // full-workspace coverage run (heavier CPU contention across ~90
+  // concurrent test files than whatever this figure was originally measured
+  // against) - real headroom, not the bare re-measured number.
+  const REPUTATION_SAMPLE_TIMEOUT_MS = 30_000
 
   /**
    * Sprint 69 re-based this from "a clear majority" to "a usable sample", with
@@ -428,16 +437,27 @@ describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
    * (the never-upgrades control) is unaffected either way - it never
    * intended to upgrade in the first place.
    */
-  it('Handyman no longer upgrades any tool line (reputation-gated tiers, Sprint 43); Investor still never does', () => {
-    let upgraded = 0
-    for (let seed = 1; seed <= 30; seed++) {
-      const s = runCareer(handymanStrategy, seed, 100, CONTEXT).snapshots
-      if (s.some((x) => x.equipmentOwnedCount > 0)) upgraded++
-    }
-    const investor = runCareer(investorStrategy, 1, 100, CONTEXT).snapshots
-    expect(upgraded).toBe(0)
-    expect(investor.every((s) => s.equipmentOwnedCount === 0)).toBe(true)
-  })
+  // Same class of fix as `BOOTSTRAP_SAMPLE_TIMEOUT_MS`/
+  // `REPUTATION_SAMPLE_TIMEOUT_MS` above: 30 real 100-day careers clears
+  // vitest's 5s default comfortably alone, but not under `pnpm
+  // test:coverage`'s full-workspace v8 instrumentation + CPU contention
+  // across ~90 concurrent test files (observed directly, Sprint 75).
+  const TOOL_LOCKOUT_SAMPLE_TIMEOUT_MS = 20_000
+
+  it(
+    'Handyman no longer upgrades any tool line (reputation-gated tiers, Sprint 43); Investor still never does',
+    () => {
+      let upgraded = 0
+      for (let seed = 1; seed <= 30; seed++) {
+        const s = runCareer(handymanStrategy, seed, 100, CONTEXT).snapshots
+        if (s.some((x) => x.equipmentOwnedCount > 0)) upgraded++
+      }
+      const investor = runCareer(investorStrategy, 1, 100, CONTEXT).snapshots
+      expect(upgraded).toBe(0)
+      expect(investor.every((s) => s.equipmentOwnedCount === 0)).toBe(true)
+    },
+    TOOL_LOCKOUT_SAMPLE_TIMEOUT_MS,
+  )
 })
 
 /**
@@ -457,6 +477,13 @@ describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
  */
 const TELEMETRY_SEED_COUNT = 30
 
+// Same class of fix as `BOOTSTRAP_SAMPLE_TIMEOUT_MS`/
+// `REPUTATION_SAMPLE_TIMEOUT_MS` above (Sprint 73): 30 real 100-day careers
+// clears vitest's 5s default comfortably alone (~4.6s measured directly,
+// Sprint 75), but not under `pnpm test:coverage`'s full-workspace v8
+// instrumentation + CPU contention across ~90 concurrent test files.
+const TELEMETRY_SAMPLE_TIMEOUT_MS = 20_000
+
 function aggregateCareers(strategy: BotStrategy, seedCount: number) {
   let auctionWins: ReturnType<typeof runCareer>['auctionWins'] = []
   let acquisitions: ReturnType<typeof runCareer>['acquisitions'] = []
@@ -469,48 +496,60 @@ function aggregateCareers(strategy: BotStrategy, seedCount: number) {
 }
 
 describe('auction win-price samples (Sprint 20 harness metric - hammer/anchor basis)', () => {
-  it('every sample is non-negative and buckets consistently with its fraction', () => {
-    // Sprint 20: fraction = hammer price / anchorValueYen, no longer bounded
-    // above by 1 (buyout and a backstop-forced overpay can both clear the
-    // anchor) - only the bucket thresholds (0.65/0.9) are fixed.
-    const { auctionWins } = aggregateCareers(balancedPlayerStrategy, TELEMETRY_SEED_COUNT)
-    expect(auctionWins.length).toBeGreaterThan(0)
-    for (const win of auctionWins) {
-      expect(win.fraction).toBeGreaterThanOrEqual(0)
-      const expectedBucket = win.fraction < 0.65 ? 'steal' : win.fraction > 0.9 ? 'frenzy' : 'mid'
-      expect(win.bucket).toBe(expectedBucket)
-      // Sprint 30 decision 3 telemetry: a resolved lot was on the board at
-      // least the one day it resolved, and carried at least one real bid
-      // (the reserve-opening raise) to ever reach a win/loss outcome at all.
-      expect(win.daysOpen).toBeGreaterThanOrEqual(1)
-      expect(win.bidEvents).toBeGreaterThanOrEqual(1)
-    }
-  })
+  it(
+    'every sample is non-negative and buckets consistently with its fraction',
+    () => {
+      // Sprint 20: fraction = hammer price / anchorValueYen, no longer bounded
+      // above by 1 (buyout and a backstop-forced overpay can both clear the
+      // anchor) - only the bucket thresholds (0.65/0.9) are fixed.
+      const { auctionWins } = aggregateCareers(balancedPlayerStrategy, TELEMETRY_SEED_COUNT)
+      expect(auctionWins.length).toBeGreaterThan(0)
+      for (const win of auctionWins) {
+        expect(win.fraction).toBeGreaterThanOrEqual(0)
+        const expectedBucket = win.fraction < 0.65 ? 'steal' : win.fraction > 0.9 ? 'frenzy' : 'mid'
+        expect(win.bucket).toBe(expectedBucket)
+        // Sprint 30 decision 3 telemetry: a resolved lot was on the board at
+        // least the one day it resolved, and carried at least one real bid
+        // (the reserve-opening raise) to ever reach a win/loss outcome at all.
+        expect(win.daysOpen).toBeGreaterThanOrEqual(1)
+        expect(win.bidEvents).toBeGreaterThanOrEqual(1)
+      }
+    },
+    TELEMETRY_SAMPLE_TIMEOUT_MS,
+  )
 })
 
 describe('acquisitions telemetry (external review 2026-07 finding 2)', () => {
-  it('every strategy that actually bids records at least some real acquisitions, each a valid channel', () => {
-    // A bidding-heavy strategy across a full career should win at least one
-    // lot by some channel - otherwise the telemetry itself would be silently
-    // broken (nothing to measure), not just a low buyout share.
-    const { acquisitions } = aggregateCareers(balancedPlayerStrategy, TELEMETRY_SEED_COUNT)
-    expect(acquisitions.length).toBeGreaterThan(0)
-    for (const acquisition of acquisitions) {
-      expect(['bid', 'buyout']).toContain(acquisition.channel)
-      expect(acquisition.day).toBeGreaterThanOrEqual(1)
-      expect(acquisition.day).toBeLessThanOrEqual(100)
-    }
-  })
+  it(
+    'every strategy that actually bids records at least some real acquisitions, each a valid channel',
+    () => {
+      // A bidding-heavy strategy across a full career should win at least one
+      // lot by some channel - otherwise the telemetry itself would be silently
+      // broken (nothing to measure), not just a low buyout share.
+      const { acquisitions } = aggregateCareers(balancedPlayerStrategy, TELEMETRY_SEED_COUNT)
+      expect(acquisitions.length).toBeGreaterThan(0)
+      for (const acquisition of acquisitions) {
+        expect(['bid', 'buyout']).toContain(acquisition.channel)
+        expect(acquisition.day).toBeGreaterThanOrEqual(1)
+        expect(acquisition.day).toBeLessThanOrEqual(100)
+      }
+    },
+    TELEMETRY_SAMPLE_TIMEOUT_MS,
+  )
 
-  it('every bid-channel acquisition is a subset of auctionWins (which also includes losses)', () => {
-    // auctionWins tracks every bid outcome (won AND lost); bid-channel
-    // acquisitions are only the wins, so it can never exceed auctionWins.
-    const { auctionWins, acquisitions } = aggregateCareers(
-      balancedPlayerStrategy,
-      TELEMETRY_SEED_COUNT,
-    )
-    const bidAcquisitions = acquisitions.filter((a) => a.channel === 'bid')
-    expect(bidAcquisitions.length).toBeLessThanOrEqual(auctionWins.length)
-    expect(bidAcquisitions.length).toBeGreaterThan(0)
-  })
+  it(
+    'every bid-channel acquisition is a subset of auctionWins (which also includes losses)',
+    () => {
+      // auctionWins tracks every bid outcome (won AND lost); bid-channel
+      // acquisitions are only the wins, so it can never exceed auctionWins.
+      const { auctionWins, acquisitions } = aggregateCareers(
+        balancedPlayerStrategy,
+        TELEMETRY_SEED_COUNT,
+      )
+      const bidAcquisitions = acquisitions.filter((a) => a.channel === 'bid')
+      expect(bidAcquisitions.length).toBeLessThanOrEqual(auctionWins.length)
+      expect(bidAcquisitions.length).toBeGreaterThan(0)
+    },
+    TELEMETRY_SAMPLE_TIMEOUT_MS,
+  )
 })

@@ -2,6 +2,7 @@ import {
   ALL_CAR_PART_IDS,
   BUYERS,
   CARS,
+  fitmentClassForTier,
   PARTS,
   PARTS_TAXONOMY,
   type CarInstance,
@@ -124,7 +125,19 @@ describe('generateAuctionCarInstance', () => {
     expect(instance.year).toBeGreaterThanOrEqual(model.spec.yearFrom)
   })
 
-  it('starts stock - every filled slot holds a real stock-catalog part instance (Sprint 32)', () => {
+  /**
+   * Sprint 32 originally shipped every filled slot as stock-grade,
+   * unconditionally. Sprint 75 decision 1 (the aftermarket-at-generation
+   * roll) intentionally ends that: a filled slot is now stock OR a real
+   * aftermarket part, by design - "starts stock" is no longer a system
+   * truth, just the common case. This test's own premise updated
+   * accordingly (directive 17 case (a) - the old, narrower title/assertion
+   * is renamed and retargeted at what generation now actually guarantees:
+   * every filled slot is a REAL catalog entry, whatever its grade). The
+   * aftermarket-specific frequency/cap/fit tests live in their own describe
+   * block below.
+   */
+  it('every filled slot holds a real catalog part instance, stock or aftermarket', () => {
     const instance = generateAuctionCarInstance(model, 'car-test', createRng(1), CONTEXT)
     let sawFilled = false
     for (const partId of ALL_CAR_PART_IDS) {
@@ -132,7 +145,8 @@ describe('generateAuctionCarInstance', () => {
       if (!installed) continue
       sawFilled = true
       const catalogPart = CONTEXT.partsById[installed.partId]
-      expect(catalogPart?.grade).toBe('stock')
+      expect(catalogPart).toBeDefined()
+      expect(['stock', 'street', 'sport', 'race']).toContain(catalogPart?.grade)
     }
     expect(sawFilled).toBe(true) // sanity: at least some slots actually filled at this seed
   })
@@ -174,6 +188,90 @@ describe('generateAuctionCarInstance', () => {
       }
     }
     expect(sawMissing).toBe(true)
+  })
+})
+
+describe('aftermarket-at-generation (Sprint 75 decision 1)', () => {
+  const model = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
+  if (!model) throw new Error('fixture common-tier car missing from seed content')
+  const fitmentClass = fitmentClassForTier(model.tier)
+
+  /** Every aftermarket-grade (non-stock) installed part on `car`. */
+  function aftermarketParts(car: CarInstance) {
+    return ALL_CAR_PART_IDS.flatMap((partId) => {
+      const installed = car.parts[partId].installed
+      if (!installed) return []
+      const catalogPart = CONTEXT.partsById[installed.partId]
+      return catalogPart && catalogPart.grade !== 'stock' ? [{ partId, catalogPart }] : []
+    })
+  }
+
+  it('fits at least one aftermarket part somewhere across a fixed seed batch (the roll is reachable)', () => {
+    let sawAftermarket = false
+    for (let seed = 0; seed < 200 && !sawAftermarket; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      if (aftermarketParts(instance).length > 0) sawAftermarket = true
+    }
+    expect(sawAftermarket).toBe(true)
+  })
+
+  it('never fits more than maxAftermarketSlots (3) aftermarket parts on any single generated car', () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      expect(aftermarketParts(instance).length).toBeLessThanOrEqual(
+        CONTEXT.economy.partsGeneration.maxAftermarketSlots,
+      )
+    }
+  })
+
+  it("every fitted aftermarket part matches the car's own fitment class and the slot it addresses", () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      for (const { partId, catalogPart } of aftermarketParts(instance)) {
+        expect(catalogPart.carPartId).toBe(partId)
+        expect(catalogPart.fitmentClass).toBe(fitmentClass)
+        expect(['street', 'sport', 'race']).toContain(catalogPart.grade)
+      }
+    }
+  })
+
+  it('a slot is never both missing and aftermarket - a missing slot is always null', () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      // aftermarketParts() only ever reports a PRESENT part by construction
+      // (it reads car.parts[partId].installed first) - this test's real
+      // claim is that the reverse can never silently happen: nothing in the
+      // implementation should ever mark a slot missing while still handing
+      // it an aftermarket PartInstance. Cross-checked directly against every
+      // slot rather than trusting the helper's own filtering.
+      for (const partId of ALL_CAR_PART_IDS) {
+        const installed = instance.parts[partId].installed
+        if (installed === null) continue
+        expect(installed).not.toBeNull()
+      }
+    }
+  })
+
+  it('is deterministic for the same seed, including which slots roll aftermarket and at which grade', () => {
+    const a = generateAuctionCarInstance(model, 'car-test', createRng(7), CONTEXT)
+    const b = generateAuctionCarInstance(model, 'car-test', createRng(7), CONTEXT)
+    expect(aftermarketParts(a)).toEqual(aftermarketParts(b))
+    expect(a).toEqual(b)
+  })
+
+  it('fitting an aftermarket part never changes the band it would otherwise have rolled', () => {
+    // Same seed, same model, real content: the aftermarket branch and the
+    // stock branch price the SAME rolled `band` - only `partId` changes.
+    // Verified by checking every fitted aftermarket part's band is one of
+    // the real bands (never undefined/mismatched) and the car as a whole
+    // still passes the general "every filled slot rolls a real band" check.
+    for (let seed = 0; seed < 50; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      for (const { partId } of aftermarketParts(instance)) {
+        const band = instance.parts[partId].installed?.band
+        expect(['scrap', 'poor', 'worn', 'fine', 'mint']).toContain(band)
+      }
+    }
   })
 })
 

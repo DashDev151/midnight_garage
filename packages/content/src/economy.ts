@@ -778,6 +778,32 @@ export const EconomyConfigSchema = z.object({
      * Never move one without the other.
      */
     maxBillFraction: z.number().positive().max(1),
+    /**
+     * Sprint 75 decision 1 (the standing TODO.md item: generated cars should
+     * sometimes arrive already modified): per ELIGIBLE, non-missing slot
+     * (eligible = the catalog has a `grade > stock` entry for this
+     * `carPartId` at the car's own fitment class), the chance
+     * `generateAuctionCarInstance` fits that aftermarket part instead of the
+     * default stock one, at the SAME rolled band the stock part would have
+     * had. Runs strictly after the missing-slot roll (a missing slot is
+     * never also aftermarket) and before the symptom roll (Sprint 73), so a
+     * symptom's cause can damage whatever ends up fitted either way.
+     */
+    aftermarketChance: z.number().min(0).max(1),
+    /** The hard cap on how many slots per car this roll can ever fit
+     * (decision 1) - a "someone's old project" car is meaningfully modified,
+     * not entirely rebuilt; `generateAuctionCarInstance` stops rolling
+     * aftermarket once this many slots have already landed one. */
+    maxAftermarketSlots: z.number().int().nonnegative(),
+    /** Which of the three real aftermarket grades a hit rolls, weighted
+     * (decision 1: street the common case, race the rare one) - renormalised
+     * over whichever grades the catalog actually has for this specific
+     * `carPartId`+fitment class (today, always all three). */
+    aftermarketGradeWeights: z.object({
+      street: z.number().nonnegative(),
+      sport: z.number().nonnegative(),
+      race: z.number().nonnegative(),
+    }),
   }),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar
@@ -1072,6 +1098,19 @@ export const EconomyConfigSchema = z.object({
     maxSymptomsPerCar: z.number().int().positive(),
     visitMinutes: z.number().int().positive(),
     travelFeeYenByTier: ByAuctionTierSchema,
+    /**
+     * Sprint 75 decision 2 (the organic teacher): the two one-line reveal
+     * templates `resolveSellViaWalkIn` (sim/selling.ts) picks between when a
+     * sold car still carries an unresolved symptom - each a full sentence
+     * carrying a literal `<cause>` token the sim substitutes with the true
+     * cause's own display label. `buyerWon` fires when the true cause turns
+     * out cheaper (milder) than the player's own estimate at time of sale;
+     * `playerWon` when it turns out dearer.
+     */
+    saleRevealCopy: z.object({
+      buyerWon: z.string().min(1),
+      playerWon: z.string().min(1),
+    }),
   }),
 })
 

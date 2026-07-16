@@ -7,6 +7,7 @@ import type {
   DiagnosticTest,
   EconomyConfig,
   Facilities,
+  Grade,
   Part,
   PartFitmentClass,
   ProvenancePool,
@@ -61,6 +62,18 @@ export interface SimContext {
    * filtered on every generation/removal call.
    */
   stockPartByCarPartId: Readonly<Record<PartFitmentClass, Readonly<Record<CarPartId, Part>>>>
+  /**
+   * Sprint 75 decision 1: the catalog's `street`/`sport`/`race` entry for
+   * each `CarPartId`, per fitment class - what the aftermarket-at-generation
+   * roll (`generateAuctionCarInstance`, auctions.ts) fits instead of the
+   * stock default. Derived once from `parts`, same reasoning as
+   * `stockPartByCarPartId` above; a `Partial` value since a future content
+   * change could ship a part missing one grade (today's catalog always has
+   * all three).
+   */
+  aftermarketPartByCarPartId: Readonly<
+    Record<PartFitmentClass, Readonly<Record<CarPartId, Readonly<Partial<Record<Grade, Part>>>>>>
+  >
   buyers: readonly Buyer[]
   /** The 29-part taxonomy (Sprint 26), indexed by CarPartId - replaces the
    * Sprint 22 hidden-issue catalogs, which are paused and removed. */
@@ -137,6 +150,25 @@ function indexStockPartsByCarPartId(
   return result
 }
 
+/** Sprint 75 decision 1: the catalog's non-stock (`street`/`sport`/`race`)
+ * entry per `CarPartId`, per fitment class - `aftermarketPartByCarPartId`'s
+ * builder, mirroring `indexStockPartsByCarPartId` above exactly. */
+function indexAftermarketPartsByCarPartId(
+  parts: readonly Part[],
+): Record<PartFitmentClass, Record<CarPartId, Partial<Record<Grade, Part>>>> {
+  const result = {} as Record<PartFitmentClass, Record<CarPartId, Partial<Record<Grade, Part>>>>
+  for (const fitmentClass of FITMENT_CLASSES) {
+    const byCarPartId: Record<string, Partial<Record<Grade, Part>>> = {}
+    for (const part of parts) {
+      if (part.grade !== 'stock' && part.fitmentClass === fitmentClass) {
+        ;(byCarPartId[part.carPartId] ??= {})[part.grade] = part
+      }
+    }
+    result[fitmentClass] = byCarPartId as Record<CarPartId, Partial<Record<Grade, Part>>>
+  }
+  return result
+}
+
 /**
  * `economy` (Sprint 20 step 0) is deliberately the LAST parameter, defaulted
  * to the real parsed `economy.json` (content's `ECONOMY`) - every other
@@ -189,6 +221,7 @@ export function buildSimContext(
     parts,
     partsById: indexById(parts),
     stockPartByCarPartId: indexStockPartsByCarPartId(parts),
+    aftermarketPartByCarPartId: indexAftermarketPartsByCarPartId(parts),
     buyers,
     partsTaxonomy,
     partsTaxonomyById: indexById(partsTaxonomy) as Record<CarPartId, CarPartTaxonomyEntry>,

@@ -10,6 +10,7 @@ import type {
   GameState,
   Symptom,
 } from '@midnight-garage/content'
+import { titleCaseFromSlug } from '@midnight-garage/content'
 import { availableLaborSlots } from './laborSlots'
 import type { SimContext } from './context'
 import { marketValueYen } from './marketValue'
@@ -562,4 +563,48 @@ export function resolveOwnedWorkup(
     log: [{ type: 'car-workup', carInstanceId }],
     outcome: 'done',
   }
+}
+
+/**
+ * Sprint 75 decision 2 (the organic teacher): the one-line reveal a sale
+ * gains when the sold car still carries an unresolved symptom
+ * (`remainingCauseIds.length > 1`) - `undefined` for an honest car, or one
+ * already fully resolved by a test/workup/reveal-on-removal (nothing left to
+ * teach). Picks the first such symptom (array order, deterministic) if the
+ * car happens to carry more than one. Compares the car's own TRUE value
+ * (`marketValueYen` on the real, already-damaged car - exactly what the sale
+ * itself paid, per Sprint 73's sale-side blindness) against the player's own
+ * pre-sale estimate (`playerEstimateYen`): the true cause turning out
+ * CHEAPER (true value above the estimate) fires `buyerWon`; DEARER (true
+ * value at or below the estimate) fires `playerWon`. Substitutes the true
+ * cause's own display label for each template's `<cause>` token.
+ */
+export function saleRevealLineFor(
+  car: CarInstance,
+  model: CarModel,
+  state: GameState,
+  context: SimContext,
+): string | undefined {
+  const carSymptom = car.symptoms.find((s) => s.remainingCauseIds.length > 1)
+  if (!carSymptom) return undefined
+  const symptom = context.symptomsById[carSymptom.symptomId]
+  if (!symptom) return undefined
+  const trueCause = symptom.causes.find((cause) => cause.id === carSymptom.trueCauseId)
+  if (!trueCause) return undefined
+
+  const heatPercent = state.marketHeat[model.id] ?? 100
+  const trueValueYen = marketValueYen(
+    model,
+    car,
+    heatPercent,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
+  const estimateYen = playerEstimateYen(car, model, state, context)
+  const template =
+    trueValueYen > estimateYen
+      ? context.economy.diagnosis.saleRevealCopy.buyerWon
+      : context.economy.diagnosis.saleRevealCopy.playerWon
+  return template.replace('<cause>', titleCaseFromSlug(trueCause.id))
 }

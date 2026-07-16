@@ -24,6 +24,7 @@ import {
   resolveOwnedWorkup,
   revealOnRemoval,
   runDiagnosticTest,
+  saleRevealLineFor,
   sheetGuideValueYen,
   worstRemainingBandFor,
 } from '../src/diagnosis'
@@ -702,6 +703,45 @@ describe('playerEstimateYen (Sprint 74 decision 6)', () => {
     const car = carWithSymptom()
     expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).toBeGreaterThan(
       sheetGuideValueYen(car, MODEL, STATE, CONTEXT),
+    )
+  })
+})
+
+describe('saleRevealLineFor (Sprint 75 decision 2): the organic teacher', () => {
+  it('is undefined for an honest car (no symptoms)', () => {
+    const car = buildCarInstance({ modelId: MODEL.id })
+    expect(saleRevealLineFor(car, MODEL, STATE, CONTEXT)).toBeUndefined()
+  })
+
+  it('is undefined once every symptom has narrowed to a single remaining cause (nothing left to teach)', () => {
+    const resolved: CarInstance = {
+      ...carWithSymptom(),
+      symptoms: [{ ...carWithSymptom().symptoms[0]!, remainingCauseIds: ['cause-mild'] }],
+    }
+    expect(saleRevealLineFor(resolved, MODEL, STATE, CONTEXT)).toBeUndefined()
+  })
+
+  it("fires buyerWon when the true cause (cause-mild, the cheaper of the two) prices ABOVE the player's own pre-sale estimate", () => {
+    const car = carWithSymptom() // trueCauseId: 'cause-mild', both causes still remain
+    const line = saleRevealLineFor(car, MODEL, STATE, CONTEXT)
+    expect(line).toBe(
+      CONTEXT.economy.diagnosis.saleRevealCopy.buyerWon.replace('<cause>', 'Cause mild'),
+    )
+  })
+
+  it("fires playerWon when the true cause (cause-severe, the dearer of the two) prices AT OR BELOW the player's own pre-sale estimate", () => {
+    const base = carWithSymptom()
+    const severe: CarInstance = {
+      ...base,
+      parts: {
+        ...base.parts,
+        headValvetrain: { installed: { ...base.parts.headValvetrain.installed!, band: 'poor' } },
+      },
+      symptoms: [{ ...base.symptoms[0]!, trueCauseId: 'cause-severe' }],
+    }
+    const line = saleRevealLineFor(severe, MODEL, STATE, CONTEXT)
+    expect(line).toBe(
+      CONTEXT.economy.diagnosis.saleRevealCopy.playerWon.replace('<cause>', 'Cause severe'),
     )
   })
 })

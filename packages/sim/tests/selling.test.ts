@@ -440,6 +440,51 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       expect(result.state.carLedgers).toEqual({})
     })
   })
+
+  describe('the organic teacher (Sprint 75 decision 2)', () => {
+    const symptomaticCar: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        headValvetrain: { installed: { ...car.parts.headValvetrain.installed!, band: 'worn' } },
+      },
+      symptoms: [
+        {
+          symptomId: 'smokes-on-startup',
+          trueCauseId: 'valve-seals',
+          remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+          runTestIds: [],
+        },
+      ],
+      apparentBandByPartId: { headValvetrain: 'mint' },
+    }
+
+    it('attaches a real saleRevealLine when the sold car still carries an unresolved symptom', () => {
+      const state = stateWithOffer(symptomaticCar, 900_000, 'tuner')
+      const result = resolveSellViaWalkIn(state, symptomaticCar.id, CONTEXT)
+      const entry = result.log[0]
+      expect(entry).toMatchObject({ type: 'car-sold' })
+      expect(entry && 'saleRevealLine' in entry ? entry.saleRevealLine : undefined).toContain(
+        'Valve seals',
+      )
+    })
+
+    it('omits saleRevealLine for an honest car', () => {
+      const state = stateWithOffer(car, 900_000, 'tuner')
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.log[0]).not.toHaveProperty('saleRevealLine')
+    })
+
+    it('omits saleRevealLine once the symptom is already fully resolved (a workup or reveal-on-removal ran first)', () => {
+      const resolvedCar: CarInstance = {
+        ...symptomaticCar,
+        symptoms: [{ ...symptomaticCar.symptoms[0]!, remainingCauseIds: ['valve-seals'] }],
+      }
+      const state = stateWithOffer(resolvedCar, 900_000, 'tuner')
+      const result = resolveSellViaWalkIn(state, resolvedCar.id, CONTEXT)
+      expect(result.log[0]).not.toHaveProperty('saleRevealLine')
+    })
+  })
 })
 
 describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the whole car at once)', () => {

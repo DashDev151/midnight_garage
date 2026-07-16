@@ -296,12 +296,41 @@ describe('AuctionScreen', () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
+      // Every OTHER engine-group part is forced to mint (true band) so the
+      // group's apparent chip below is deterministic regardless of what
+      // generation happened to roll for this specific seed/lot (Sprint 75:
+      // the aftermarket-at-generation roll shifts the RNG sequence, so a
+      // hardcoded "the rest of the engine group happens to be mint"
+      // assumption is no longer safe to rely on incidentally).
+      const ENGINE_GROUP_PART_IDS = [
+        'block',
+        'internals',
+        'headValvetrain',
+        'camsTiming',
+        'intake',
+        'exhaust',
+        'fuelSystem',
+        'ignitionEcu',
+        'cooling',
+        'forcedInduction',
+      ] as const
+      const mintedEngineParts = Object.fromEntries(
+        ENGINE_GROUP_PART_IDS.map((partId) => [
+          partId,
+          {
+            installed: lot.car.parts[partId].installed
+              ? { ...lot.car.parts[partId].installed!, band: 'mint' as const }
+              : null,
+          },
+        ]),
+      )
       const withSymptom = {
         ...lot,
         car: {
           ...lot.car,
           parts: {
             ...lot.car.parts,
+            ...mintedEngineParts,
             headValvetrain: {
               installed: { ...lot.car.parts.headValvetrain.installed!, band: 'worn' as const },
             },

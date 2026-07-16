@@ -16,6 +16,7 @@ import { applyReputationDelta } from './calendar'
 import { carLedgerFor, deleteCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
+import { saleRevealLineFor } from './diagnosis'
 import { releaseCarFromShop } from './facilities'
 import { bumpPlayerSales } from './marketHeat'
 import type { Rng } from './rng'
@@ -362,6 +363,11 @@ export function resolveSellViaWalkIn(
       ? undefined
       : offer.priceYen - (ledger.purchaseYen + ledger.repairYen + ledger.partsYen)
 
+  // Sprint 75 decision 2 (the organic teacher): computed against the
+  // ORIGINAL, pre-sale `state`/`car` - the same snapshot every other figure
+  // above reads from, before this sale's own reputation/heat effects apply.
+  const saleRevealLine = saleRevealLineFor(car, model, state, context)
+
   return {
     state: bumpPlayerSales(
       deleteCarLedger(
@@ -389,6 +395,7 @@ export function resolveSellViaWalkIn(
               saleQuality: saleQualityFor(nominalDelta, context.economy) ?? undefined,
             }
           : {}),
+        ...(saleRevealLine !== undefined ? { saleRevealLine } : {}),
       },
     ],
   }

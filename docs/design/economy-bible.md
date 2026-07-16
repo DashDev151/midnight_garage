@@ -226,7 +226,7 @@ fails that test outright, rather than silently drifting).
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
 | `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
-| `diagnosis.fearPremium`/`symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier` | `economy.json` | The fear-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law) and symptom generation (`auctions.ts`) |
+| `diagnosis.fearPremium`/`symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The fear-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 

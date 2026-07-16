@@ -506,6 +506,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * for an unknown-purchase car (never fabricated) and for any pre-v25
      * sale (the field didn't exist yet). */
     profitYen: z.number().int().optional(),
+    /**
+     * Sprint 75 decision 2 (the organic teacher): a fully-interpolated,
+     * ready-to-render one-line reveal - set only when the sold car still
+     * carried an unresolved symptom (`remainingCauseIds.length > 1` on at
+     * least one). Absent for an honest sale or one already fully resolved
+     * (nothing left to teach).
+     */
+    saleRevealLine: z.string().min(1).optional(),
   }),
   /** Sprint 71 (the teardown game): the whole car scrapped at once, shell and
    * all - `carPartIds` lists every slot that was still installed and went

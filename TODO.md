@@ -207,17 +207,6 @@ pass."
   them, the opposite of what specialty is supposed to mean. Worth revisiting once (or if) the sim
   tracks real per-car work provenance; until then, `resolveServiceJob` stays the only specialty
   source (`serviceJobs.ts`).
-- [ ] **Generated cars (auction lots AND service-job customer cars) should sometimes arrive with
-  AFTERMARKET parts already installed, not only stock + missing/worn (maintainer note, 2026-07-12,
-  for the playtest pass).** e.g. a customer brings in a car that already has street brakes needing
-  repair, or an EG6 shows up at auction with race rims (a Volk TE37 equivalent) already fitted.
-  Today's generation (Sprint 32) only fills slots with generic STOCK parts at a rolled band, plus a
-  small missing-slot chance; it never rolls a pre-installed street/sport/race part. Add a small,
-  content-tunable per-slot chance at generation for an aftermarket grade to be pre-fitted (at a
-  rolled condition band), so the world has genuinely-modified cars to buy and repair, not just
-  stock ones. Composes cleanly with the existing value math (`installedPartsValueYen` already
-  prices aftermarket) and the missing-slot roll (a slot is then one of: stock / aftermarket / worn
-  / missing). **Scheduled: rides in Sprint 75** (`docs/sprints/sprint75.md`, decision 1).
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
   behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
   god-store.
@@ -274,42 +263,37 @@ pass."
   hard-gated, the shitbox tier is measured and disclosed, not silently loosened (same treatment in
   `valueModelProbes.test.ts`). Maintainer call needed: soften the teardown labour premium, raise
   `marketRepairDiscount`, or accept that not every shitbox repair job is worth a player's day.
+- [ ] **Donor-flow (strip everything, sell it all, scrap the shell) does not beat full-car
+  repair-and-flip for an uncommon-tier "corpse," even at worst-case symptom severity (found
+  Sprint 75, decision 3's integration tests, `packages/sim/tests/diagnosisFlows.test.ts`).**
+  Measured directly on `nissan-180sx-rps13` (a rough, uniformly-`worn` car carrying `non-starter`):
+  repairing just the diagnosed defect is profitable for the `flat-battery` sleeper and a genuine
+  loss for the `seized-engine` corpse (even pushed to `scrap`, a worse realisation than the
+  symptom's own average-case `poor` setBand) - the "worth fixing vs not" claim holds cleanly. But
+  stripping every removable part at `economy.teardown.usedPartSaleFraction` (0.55) and scrapping
+  the shell never overtakes repair-and-flip in absolute yen for this model at any severity tested -
+  donor's relative standing improves substantially for the corpse (the gap narrows a lot) without
+  ever crossing over. Root cause, not a bug: haircutting ~28 largely-`worn` (not badly-damaged)
+  parts at 45% off costs more than the single catastrophic repair saves, at this tier's own price
+  scale - the same shape as the Law 6 shitbox finding above, on the OTHER side of the teardown
+  economy. Not silently loosened in the test (it asserts the honestly-measured relative-narrowing
+  claim, not an outright donor win) - see `sprint75.md`'s Exit. Maintainer call needed: is this the
+  intended shape (a "corpse" only ever makes sense to strip on a cheaper tier, or when MULTIPLE
+  parts are genuinely wrecked, not just one), or does `usedPartSaleFraction` want raising for
+  higher tiers specifically.
 
 ## Planned systems (designed, not yet scheduled)
 
 The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
 sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown (landed) -> 72
-outcome jobs (landed) -> 73 diagnosis I (landed) -> 74 diagnosis II (landed) -> 75 diagnosis III
--> 76-78 story missions** (`docs/sprints/sprint70.md` through `sprint78.md`; sprint70.md's/
-sprint71.md's/sprint72.md's/sprint73.md's/sprint74.md's own Exit sections are the permanent
-record of each rework itself - the component-removal-and-repair-hierarchy entry that used to sit
-here is fully landed and removed, per this file's policy). Each
-later system consumes verbs the earlier one builds (provenance answers ownership on every part
-verb; the component arc supplies uninstall-reveals-truth and the shared outcome-predicate module;
-diagnosis makes commissions a gamble instead of a shopping list). Entries below stay until their
-sprints land.
-
-- [ ] **Diagnosis - the detective game** (`docs/design/diagnosis-spec.md`, now v2, 2026-07-15;
-  v1's pay-to-reveal design was rejected as loot-box shaped and is recorded dead in the spec).
-  Symptoms are free and public; every symptom has an open weighted cause table; inspection is a
-  1-slot per-house visit with an hour budget spent running tests that eliminate causes. **The
-  pricing law: the room prices the symptom, the player prices the cause** - rivals never see test
-  results; sleeper and trap factories both authored; a closed-form blind-buy guardrail keeps the
-  edge skill, not arbitrage. Defaults for all dials are decided in the spec. Repeals Sprint 27's
-  pre-bid transparency law; this SUPERSEDES the 2026-07-11 pause on hidden defects (the pause
-  demanded a design that beats transparency by creating real decisions and pricing information
-  coherently - this is that design, and the maintainer directed the sprint planning 2026-07-15).
-  Depends on the component hierarchy (uninstall-reveals-truth). **Scoped: Sprints 73-75.**
-  **Sprint 73 (diagnosis I) landed the symptom/cause content, generation, the fear-priced
-  `sheetGuideValueYen` seam, the blind-buy guardrail, and the read-only lot-card disclosure.**
-  **Sprint 74 (diagnosis II) landed the inspection visit (1 slot + tiered fee, an hour budget,
-  per-test minutes, partition-narrowing tests), the owned-car full workup, uninstall-reveals-truth,
-  the one display rule (`displayedBandFor`) with its uncertainty chip, the player's own honest
-  estimate (`playerEstimateYen`, no fear premium), and the full UI on both the auction board and
-  the car page. `SAVE_VERSION` 34. Decision 5's repair-cost-preview RANGE (`nextPartStepRange`,
-  `gameStore.ts`) is implemented and wired but currently unreachable through real content - every
-  Sprint 73 symptom cause targets a bolt-on/buried part, and Sprint 71's bench-only rule already
-  excludes those from any on-car repair preview - see `sprint74.md`'s Exit.**
+outcome jobs (landed) -> 73-75 diagnosis (landed) -> 76-78 story missions**
+(`docs/sprints/sprint70.md` through `sprint78.md`; each sprint's own Exit section is the
+permanent record of its own rework - the component-removal-and-repair-hierarchy entry and the
+full diagnosis arc entry that used to sit here are both fully landed and removed, per this
+file's policy). Each later system consumes verbs the earlier one builds (provenance answers
+ownership on every part verb; the component arc supplies uninstall-reveals-truth and the shared
+outcome-predicate module; diagnosis makes commissions a gamble instead of a shopping list).
+Entries below stay until their sprints land.
 
 - [ ] **Story missions - outcome-based build commissions** (`docs/design/story-builds-spec.md`
   v2 with the 2026-07-15 rulings). A customer names an OUTCOME, not a car. **Maintainer rulings: first

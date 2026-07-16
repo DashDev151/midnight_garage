@@ -11,6 +11,7 @@ import {
   type Cause,
   type ConditionBand,
   type EconomyConfig,
+  type Grade,
   type PartFitmentClass,
   type PartInstance,
   type PartOrigin,
@@ -379,6 +380,47 @@ export function stockInstanceFor(
   return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
 }
 
+/**
+ * Sprint 75 decision 1: the aftermarket-at-generation roll's own instance
+ * builder - same shape as `stockInstanceFor` above, but picks a random
+ * matching catalog part at a weighted grade (`street`/`sport`/`race`)
+ * instead of the fixed stock one, at the SAME rolled `band` the stock part
+ * would have had. `null` when the catalog has no aftermarket entry at all
+ * for this `carPartId`+fitment class (never happens against today's
+ * catalog, which always ships all three grades - a defensive, honest
+ * fallback for future content rather than an assumed guarantee).
+ */
+function aftermarketInstanceFor(
+  partId: CarPartId,
+  band: ReturnType<typeof bandForMigratedCondition>,
+  idPrefix: string,
+  fitmentClass: PartFitmentClass,
+  aftermarketPartByCarPartId: SimContext['aftermarketPartByCarPartId'],
+  gradeWeights: EconomyConfig['partsGeneration']['aftermarketGradeWeights'],
+  origin: PartOrigin,
+  rng: Rng,
+): PartInstance | null {
+  const byGrade = aftermarketPartByCarPartId[fitmentClass]?.[partId]
+  if (!byGrade) return null
+  const available = (Object.entries(gradeWeights) as [Grade, number][]).filter(
+    ([grade]) => byGrade[grade] !== undefined,
+  )
+  if (available.length === 0) return null
+  const total = available.reduce((sum, [, weight]) => sum + weight, 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  let chosenGrade: Grade = available[available.length - 1]![0]
+  for (const [grade, weight] of available) {
+    cumulative += weight
+    if (roll < cumulative) {
+      chosenGrade = grade
+      break
+    }
+  }
+  const catalogPart = byGrade[chosenGrade]!
+  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
+}
+
 /** The denormalised label a `PartOrigin` carries (Sprint 70 decision 1) -
  * `"'95 Corolla"` style, using the model's display name and the instance
  * year, so it still reads correctly after the donor car is sold or scrapped. */
@@ -460,6 +502,17 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * existing auction-lot caller) lets `serviceJobs.ts`'s customer-car
  * generation pass `false` - symptoms only spawn on auction lots, never on a
  * customer's own car or the dev-granted car.
+ *
+ * Sprint 75 decision 1: after the missing-slot roll (a slot is never both
+ * missing and aftermarket), a non-missing, non-`forcedInduction` slot rolls
+ * `economy.partsGeneration.aftermarketChance` to fit a weighted-grade
+ * aftermarket part (`aftermarketInstanceFor`) instead of the default stock
+ * one, at the SAME rolled band, capped at `maxAftermarketSlots` per car.
+ * Unlike `allowMissingSlots`/`allowSymptoms`, this one has no gating
+ * parameter - it runs for every caller, auction lots and service-job
+ * customer cars alike (the standing TODO.md item this sprint closes asked
+ * for both). Runs strictly before the symptom roll below, so a symptom's
+ * cause can damage whatever ends up fitted either way.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -489,9 +542,13 @@ export function generateAuctionCarInstance(
   const [baselineMin, baselineMax] = conditionBaselineRangeForMileage(mileageKm, economy)
   const rolledBaseline = rng.int(baselineMin, baselineMax)
   const carHasForcedInduction = hasForcedInduction(model)
-  const { missingSlotBaseChance, missingSlotWeightByPart } = economy.partsGeneration
+  const { missingSlotBaseChance, missingSlotWeightByPart, aftermarketChance, maxAftermarketSlots } =
+    economy.partsGeneration
   const { upkeepTierWeights, upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier } =
     economy.partsGeneration
+  // Sprint 75 decision 1: shared across every part in the loop below (not
+  // reset per part) - the cap is per CAR, not per slot.
+  let aftermarketSlotsFitted = 0
   const upkeepTier = rollUpkeepTier(upkeepTierWeights, rng)
   // Sprint 66 (item 6a): upkeep only expresses in proportion to how far the car
   // has actually been driven - see `wearExposure`. At ~0 km the offset and the
@@ -535,16 +592,36 @@ export function generateAuctionCarInstance(
           upkeepMissingMultiplier[upkeepTier]
         : 0
       const rolledMissing = rng.next() < missingChance
+      // Sprint 75 decision 1: rolled unconditionally (even once the cap is
+      // already reached) so the RNG draw sequence per slot stays uniform
+      // regardless of outcome - the same reasoning `missingChance` above
+      // already follows.
+      const rolledAftermarket = rng.next() < aftermarketChance
+      const aftermarket =
+        !rolledMissing && rolledAftermarket && aftermarketSlotsFitted < maxAftermarketSlots
+          ? aftermarketInstanceFor(
+              partId,
+              band,
+              `${id}-part`,
+              fitmentClass,
+              context.aftermarketPartByCarPartId,
+              economy.partsGeneration.aftermarketGradeWeights,
+              carOrigin,
+              rng,
+            )
+          : null
+      if (aftermarket) aftermarketSlotsFitted++
       const installed = rolledMissing
         ? null
-        : stockInstanceFor(
+        : (aftermarket ??
+          stockInstanceFor(
             partId,
             band,
             `${id}-part`,
             fitmentClass,
             stockPartByCarPartId,
             carOrigin,
-          )
+          ))
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']

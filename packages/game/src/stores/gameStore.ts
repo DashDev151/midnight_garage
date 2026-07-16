@@ -41,6 +41,7 @@ import {
   fitmentClassForTier,
   partFitmentClassLabel,
   resolveCarDisplayName,
+  titleCaseFromSlug,
 } from '@midnight-garage/content'
 import {
   anchorValueYen,
@@ -145,7 +146,6 @@ import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap } from '../utils/partAddress'
-import { titleCaseFromSlug } from '../utils/titleCase'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
