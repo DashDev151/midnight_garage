@@ -269,9 +269,15 @@ describe('advanceDay golden master', () => {
     // `offered` on this very career's first day-boundary tick, a real state
     // change, not a bug; every other assertion in this file still passes
     // unchanged.
+    // Re-pinned again (Sprint 78, was 8a89c1d6): the real campaign replaced
+    // the placeholder missions - `four-wheels` (gate 0) is now the mission
+    // that goes from locked to `offered` on this career's first day-boundary
+    // tick, with different content than `placeholder-a` had, a real content
+    // change, not a bug; every other assertion in this file still passes
+    // unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('8a89c1d6')
+    expect(hashState(finalState)).toBe('6dafb76e')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -490,7 +496,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // career hash above - the new per-slot aftermarket-at-generation roll.
     // Re-pinned again (Sprint 76, was ddaccece): same cause as the 30-day
     // career hash above - `storyMissions` is real, populated state now.
-    expect(hashState(acquisitionCareer().sold)).toBe('9c825103')
+    // Re-pinned again (Sprint 78, was 9c825103): same cause as the 30-day
+    // career hash above - the real campaign's `four-wheels` content replaced
+    // `placeholder-a`.
+    expect(hashState(acquisitionCareer().sold)).toBe('486fefeb')
   })
 })
 

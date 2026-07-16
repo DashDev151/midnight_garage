@@ -13,8 +13,9 @@ function warpToOffers(game: ReturnType<typeof useGameStore>) {
   for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
 }
 
-/** Clears the first day-1 gate and accepts placeholder-a (`gateReputationPoints: 0`) - the
- * standing fixture every deliver-flow test below builds on. */
+/** Clears the first day-1 gate and accepts `four-wheels` (`gateReputationPoints: 0`, the
+ * campaign's own opening mission) - the standing fixture every deliver-flow test below builds
+ * on. */
 function acceptFirstMission(game: ReturnType<typeof useGameStore>): string {
   game.endDay()
   const offer = game.storyMissionOfferView
@@ -27,8 +28,8 @@ function acceptFirstMission(game: ReturnType<typeof useGameStore>): string {
  * every other game-package test uses to get an owned `CarInstance`) then
  * bumps every one of its 29 slots to `mint` band, keeping whatever real
  * catalog part id `devGrantCar` rolled (synthesising a fresh stock instance
- * for any slot it happened to roll missing) - trivially clears
- * placeholder-a's `roadworthy` requirement regardless of the RNG draw. */
+ * for any slot it happened to roll missing) - trivially clears `four-wheels`'s
+ * `roadworthy` requirement regardless of the RNG draw. */
 function grantRoadworthyCar(game: ReturnType<typeof useGameStore>): string {
   game.devGrantCar(CARS[0]!.id)
   const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
@@ -382,6 +383,74 @@ describe('ServiceJobsScreen', () => {
       await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
       await wrapper.find('[data-test="mission-grade"]').trigger('click')
       expect(wrapper.find('[data-test="mission-lap-board"]').exists()).toBe(false)
+    })
+  })
+
+  describe('the real campaign (Sprint 78)', () => {
+    it("delivering four-wheels shows Yuki's own deliveredCopy in the completion receipt", async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      const carId = grantRoadworthyCar(game)
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+      await wrapper.find('[data-test="mission-deliver"]').trigger('click')
+      await wrapper.find('[data-test="mission-deliver"]').trigger('click')
+
+      expect(game.lastMissionResult?.personaName).toBe('Yuki')
+      expect(game.lastMissionResult?.copy).toBe(
+        'It starts. You have no idea what that means to me.',
+      )
+    })
+
+    /**
+     * Sprint 78 decision 3/definition-of-done: the campaign never dead-ends
+     * - an active mission past its deadline lapses (reputation penalty) and
+     * returns to `offered` once `reofferDays` elapses. Skips straight to
+     * `the-column-clock` (mission 5, gate 200) by marking the four earlier
+     * missions delivered directly - reaching it by actually playing four
+     * missions end to end belongs in the maintainer's own arc-closing
+     * playtest (this sprint's user-only task), not a unit test.
+     */
+    it('a lapsed mission (the-column-clock) returns to offered after reofferDays, never dead-ending', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const earlierMissionIds = [
+        'four-wheels',
+        'wont-strand-her',
+        'first-proper-car',
+        'make-it-pull',
+      ]
+      game.gameState = {
+        ...game.gameState,
+        reputationPoints: 200,
+        storyMissions: earlierMissionIds.map((missionId) => ({
+          missionId,
+          status: 'delivered' as const,
+          acceptedOnDay: 1,
+          dueOnDay: null,
+          reofferOnDay: null,
+        })),
+      }
+      game.endDay()
+      const offer = game.storyMissionOfferView
+      if (!offer || offer.id !== 'the-column-clock') {
+        throw new Error(`expected the-column-clock offered, got ${offer?.id ?? 'nothing'}`)
+      }
+      game.acceptMission(offer.id)
+      const active = game.gameState.storyMissions.find((r) => r.missionId === 'the-column-clock')!
+      expect(active.dueOnDay).not.toBeNull()
+
+      while (game.gameState.day <= active.dueOnDay!) game.endDay()
+      const lapsed = game.gameState.storyMissions.find((r) => r.missionId === 'the-column-clock')!
+      expect(lapsed.status).toBe('lapsed')
+      expect(lapsed.reofferOnDay).not.toBeNull()
+      expect(game.reputationPoints).toBeLessThan(200)
+
+      while (game.gameState.day <= lapsed.reofferOnDay!) game.endDay()
+      expect(game.storyMissionOfferView?.id).toBe('the-column-clock')
     })
   })
 })

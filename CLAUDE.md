@@ -43,7 +43,7 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-77 implemented and committed.
+**Current state:** Sprints 00-78 implemented and committed.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file
@@ -70,7 +70,8 @@ roster for car scope). Bibles require explicit maintainer approval, recorded in 
   six laws, banned vocabulary.
 - `economy-bible.md` - car value, repair cost, parts pricing law (locked 2026-07-14): six laws,
   the anchor inventory, the centralised pricing formula.
-- `story-builds-spec.md` (not scoped) and `drive-mode-spec.md` (post-launch) - see `TODO.md`.
+- `story-builds-spec.md` (landed Sprints 76-78) and `drive-mode-spec.md` (post-launch) - see
+  `TODO.md`.
 
 ## Locked technical decisions (GDD §13, roadmap §5)
 

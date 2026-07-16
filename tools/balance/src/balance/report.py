@@ -4,6 +4,7 @@ like for a flipper?" with real numbers (Sprint 03 DoD).
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -272,6 +273,64 @@ def render_diagnosis_disclosure() -> list[str]:
     ]
 
 
+def _story_mission_requirement_line(requirement: dict) -> str | None:
+    """One readable line per requirement, excluding `budgetCap` - that one's
+    already its own "Budget" table column (`storyMission.ts`'s own load-time
+    mirror of `budgetCapYen`), so repeating it here would just be noise."""
+    kind = requirement["kind"]
+    if kind == "budgetCap":
+        return None
+    if kind == "roadworthy":
+        return "roadworthy"
+    if kind == "statThreshold":
+        return f"{requirement['stat']} >= {requirement['min']}"
+    if kind == "lapTimeCeiling":
+        return f"{requirement['courseId']} <= {requirement['maxSeconds']}s"
+    if kind == "tasteMatch":
+        return f"{requirement['buyerId']} >= {requirement['minMultiplier']}x"
+    return f"{kind}"
+
+
+def render_story_missions_disclosure(content_root: Path) -> list[str]:
+    """Sprint 78 decision 6: the campaign's own economics, one row per
+    mission - payout, budget, and every derived threshold, read directly
+    from the shipped content (never re-measured here). `content_root` is
+    `packages/content/data`; `storyMissions.json`'s `budgetCapYen` mirror
+    into a `budgetCap` requirement (`data.ts`) hasn't run in this plain JSON
+    read, so the file's own authored `requirements` list already excludes
+    it - nothing to filter twice."""
+    missions = json.loads((content_root / "storyMissions.json").read_text(encoding="utf-8"))
+    personas = {p["id"]: p["name"] for p in json.loads((content_root / "personas.json").read_text(encoding="utf-8"))}
+
+    lines = [
+        "## Story missions",
+        "",
+        "**No bot accepts, grades, or delivers a story mission** - every number below is "
+        "shipped content, proved satisfiable by a real build recipe in "
+        "`packages/sim/tests/storyMissionProbes.test.ts` (Sprint 78 decision 1: every "
+        "threshold/budget/payout is a fixed formula against that recipe's own measured "
+        "stats, locked by the same test so content and probe can never drift). No bot "
+        "statistic anywhere in this report covers the campaign.",
+        "",
+        "| Mission | Persona | Gate (rep) | Deadline (days) | Payout | Budget | Requirements |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for mission in missions:
+        persona_name = personas.get(mission["personaId"], mission["personaId"])
+        requirement_lines = [
+            line
+            for r in mission["requirements"]
+            if (line := _story_mission_requirement_line(r)) is not None
+        ]
+        lines.append(
+            f"| {mission['id']} | {persona_name} | {mission['gateReputationPoints']} "
+            f"| {mission['deadlineDays']} | Y{mission['payoutYen']:,} | Y{mission['budgetCapYen']:,} "
+            f"| {'; '.join(requirement_lines)} |"
+        )
+    lines.append("")
+    return lines
+
+
 def render_donor_coherence_section(
     donor_coherence: pl.DataFrame, coherence: pl.DataFrame, donor_break_even_bill_ratio: float
 ) -> list[str]:
@@ -407,6 +466,7 @@ def render_markdown(
     diagnosis_disclosure_section: list[str],
     donor_coherence_section: list[str],
     symptom_coherence_section: list[str],
+    story_missions_section: list[str],
 ) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
@@ -431,6 +491,7 @@ def render_markdown(
     lines.extend(diagnosis_disclosure_section)
     lines.extend(symptom_coherence_section)
     lines.extend(donor_coherence_section)
+    lines.extend(story_missions_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
     lines.extend(INVARIANTS_ENFORCED_SECTION)
@@ -466,6 +527,8 @@ def main(argv: list[str] | None = None) -> int:
     symptom_coherence_section = render_symptom_coherence_section(
         symptom_coherence, symptom_coherence_manifest["fearPremium"]
     )
+    content_root = Path(__file__).resolve().parents[4] / "packages" / "content" / "data"
+    story_missions_section = render_story_missions_disclosure(content_root)
     report = render_markdown(
         summarize(df),
         auction_section,
@@ -476,6 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         diagnosis_disclosure_section,
         donor_coherence_section,
         symptom_coherence_section,
+        story_missions_section,
     )
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)

@@ -284,32 +284,6 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
-The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
-sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown (landed) -> 72
-outcome jobs (landed) -> 73-75 diagnosis (landed) -> 76-78 story missions**
-(`docs/sprints/sprint70.md` through `sprint78.md`; each sprint's own Exit section is the
-permanent record of its own rework - the component-removal-and-repair-hierarchy entry and the
-full diagnosis arc entry that used to sit here are both fully landed and removed, per this
-file's policy). Each later system consumes verbs the earlier one builds (provenance answers
-ownership on every part verb; the component arc supplies uninstall-reveals-truth and the shared
-outcome-predicate module; diagnosis makes commissions a gamble instead of a shopping list).
-Entries below stay until their sprints land.
-
-- [ ] **Story missions - outcome-based build commissions** (`docs/design/story-builds-spec.md`
-  v2 with the 2026-07-15 rulings). A customer names an OUTCOME, not a car. **Maintainer rulings: first
-  proper progression addition (Hall of Legends deferred behind it); v1.0 is a HAND-AUTHORED
-  campaign with recurring named characters, procedural commissions deferred to endgame
-  replayability.** Consumes the shared `Requirement` module from the component arc. Depends on
-  diagnosis. Roadmap: Phase 4, beside the commissions line. **Scoped: Sprints 76-78.**
-  **Sprint 76 (the contract machine) landed:** the full lifecycle runs in sim end to end
-  (gate -> offer -> accept -> grade -> deliver/lapse -> reoffer) against two placeholder missions,
-  with the pinned Accept card live on `ServiceJobsScreen`.
-  **Sprint 77 (the lap model, the reference board, and the mission flows) landed:** the full
-  deliver/grade UI (car picker, [ ]/[x] checklist with actual-vs-required, the reference-lap board,
-  two-step "Hand it over" confirm, `MissionCompleteModal`) plus the `lapTimeCeiling` requirement and
-  its pure lap-time formula (`economy.lapModel`). Still open: Sprint 78 (the real campaign content
-  replacing both placeholders, including the first real lap-time mission).
-
 - [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing
   2026-07-08 sign-off** (optional, zero gameplay weight - which is what keeps it inside the

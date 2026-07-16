@@ -4,42 +4,42 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 
 | Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) | Reputation pts (median) |
 |---|---|---|---|---|---|---|
-| balanced-player | 25 | Y58,225 | Y125,000 | Y211,791 | 1.0 | 0.0 |
-| balanced-player | 40 | Y18,589 | Y81,788 | Y131,365 | 1.0 | 0.0 |
-| balanced-player | 70 | Y-81,411 | Y-18,068 | Y31,365 | 1.0 | 0.0 |
-| balanced-player | 100 | Y-161,411 | Y-98,068 | Y-48,635 | 1.0 | 0.0 |
-| cautious-restorer | 25 | Y20,046 | Y87,732 | Y151,395 | 1.0 | 0.0 |
-| cautious-restorer | 40 | Y-19,954 | Y47,732 | Y110,960 | 1.0 | 0.0 |
-| cautious-restorer | 70 | Y-119,954 | Y-52,268 | Y10,960 | 1.0 | 0.0 |
-| cautious-restorer | 100 | Y-199,954 | Y-132,268 | Y-69,040 | 1.0 | 0.0 |
-| competent-policy | 25 | Y70,662 | Y154,775 | Y272,005 | 1.0 | 0.0 |
-| competent-policy | 40 | Y30,067 | Y103,535 | Y196,980 | 1.0 | 0.0 |
-| competent-policy | 70 | Y-69,933 | Y4,510 | Y86,733 | 1.0 | 0.0 |
-| competent-policy | 100 | Y-149,933 | Y-75,490 | Y12,073 | 1.0 | 0.0 |
-| flipper | 25 | Y38,277 | Y93,539 | Y180,165 | 1.0 | 0.0 |
-| flipper | 40 | Y3,128 | Y58,861 | Y150,087 | 1.0 | 0.0 |
-| flipper | 70 | Y-96,872 | Y-28,704 | Y66,595 | 1.0 | 0.0 |
-| flipper | 100 | Y-176,872 | Y-108,704 | Y15,016 | 1.0 | 0.0 |
-| handyman | 25 | Y45,614 | Y117,076 | Y180,232 | 1.0 | 0.0 |
-| handyman | 40 | Y5,614 | Y75,706 | Y125,454 | 1.0 | 0.0 |
-| handyman | 70 | Y-94,386 | Y-24,294 | Y25,454 | 1.0 | 0.0 |
-| handyman | 100 | Y-174,386 | Y-104,294 | Y-54,546 | 1.0 | 0.0 |
-| investor | 25 | Y19,988 | Y93,388 | Y156,372 | 1.0 | 0.0 |
-| investor | 40 | Y-20,012 | Y50,844 | Y101,026 | 1.0 | 0.0 |
-| investor | 70 | Y-120,012 | Y-49,156 | Y1,026 | 1.0 | 0.0 |
-| investor | 100 | Y-200,012 | Y-129,156 | Y-78,974 | 1.0 | 0.0 |
+| balanced-player | 25 | Y58,003 | Y120,654 | Y200,520 | 1.0 | 0.0 |
+| balanced-player | 40 | Y18,003 | Y78,284 | Y131,481 | 1.0 | 0.0 |
+| balanced-player | 70 | Y-81,997 | Y-21,716 | Y31,481 | 1.0 | 0.0 |
+| balanced-player | 100 | Y-161,997 | Y-101,716 | Y-48,519 | 1.0 | 0.0 |
+| cautious-restorer | 25 | Y20,232 | Y85,254 | Y147,829 | 1.0 | 0.0 |
+| cautious-restorer | 40 | Y-19,768 | Y45,046 | Y105,433 | 1.0 | 0.0 |
+| cautious-restorer | 70 | Y-119,768 | Y-54,954 | Y5,433 | 1.0 | 0.0 |
+| cautious-restorer | 100 | Y-199,768 | Y-134,954 | Y-74,567 | 1.0 | 0.0 |
+| competent-policy | 25 | Y64,936 | Y148,220 | Y270,988 | 1.0 | 0.0 |
+| competent-policy | 40 | Y24,936 | Y99,456 | Y202,439 | 1.0 | 0.0 |
+| competent-policy | 70 | Y-75,064 | Y-428 | Y94,387 | 1.0 | 0.0 |
+| competent-policy | 100 | Y-155,064 | Y-80,428 | Y16,520 | 1.0 | 0.0 |
+| flipper | 25 | Y36,946 | Y92,681 | Y172,493 | 1.0 | 0.0 |
+| flipper | 40 | Y554 | Y57,986 | Y136,818 | 1.0 | 0.0 |
+| flipper | 70 | Y-99,446 | Y-36,118 | Y55,432 | 1.0 | 0.0 |
+| flipper | 100 | Y-179,446 | Y-116,118 | Y-13,454 | 1.0 | 0.0 |
+| handyman | 25 | Y44,924 | Y113,724 | Y173,654 | 1.0 | 0.0 |
+| handyman | 40 | Y4,924 | Y71,670 | Y120,710 | 1.0 | 0.0 |
+| handyman | 70 | Y-95,076 | Y-28,330 | Y20,710 | 1.0 | 0.0 |
+| handyman | 100 | Y-175,076 | Y-108,330 | Y-59,290 | 1.0 | 0.0 |
+| investor | 25 | Y17,669 | Y88,938 | Y150,499 | 1.0 | 0.0 |
+| investor | 40 | Y-22,331 | Y46,577 | Y95,738 | 1.0 | 0.0 |
+| investor | 70 | Y-122,331 | Y-53,423 | Y-4,262 | 1.0 | 0.0 |
+| investor | 100 | Y-202,331 | Y-133,423 | Y-84,262 | 1.0 | 0.0 |
 | passive-grinder | 25 | Y240,000 | Y240,000 | Y240,000 | 0.0 | 0.0 |
 | passive-grinder | 40 | Y200,000 | Y200,000 | Y200,000 | 0.0 | 0.0 |
 | passive-grinder | 70 | Y100,000 | Y100,000 | Y100,000 | 0.0 | 0.0 |
 | passive-grinder | 100 | Y20,000 | Y20,000 | Y20,000 | 0.0 | 0.0 |
-| random | 25 | Y42,031 | Y108,248 | Y166,039 | 1.0 | 0.0 |
-| random | 40 | Y2,031 | Y67,200 | Y119,303 | 1.0 | 0.0 |
-| random | 70 | Y-97,969 | Y-32,800 | Y19,303 | 1.0 | 0.0 |
-| random | 100 | Y-177,969 | Y-112,800 | Y-60,697 | 1.0 | 0.0 |
-| service-grinder | 25 | Y231,200 | Y265,800 | Y311,231 | 0.0 | 0.0 |
-| service-grinder | 40 | Y200,000 | Y244,845 | Y305,887 | 0.0 | 0.0 |
-| service-grinder | 70 | Y121,364 | Y178,274 | Y255,625 | 0.0 | 0.0 |
-| service-grinder | 100 | Y62,758 | Y134,919 | Y228,339 | 0.0 | 0.0 |
+| random | 25 | Y41,446 | Y108,762 | Y164,307 | 1.0 | 0.0 |
+| random | 40 | Y1,446 | Y68,228 | Y117,988 | 1.0 | 0.0 |
+| random | 70 | Y-98,554 | Y-31,772 | Y17,988 | 1.0 | 0.0 |
+| random | 100 | Y-178,554 | Y-111,772 | Y-62,012 | 1.0 | 0.0 |
+| service-grinder | 25 | Y237,800 | Y265,472 | Y314,824 | 0.0 | 0.0 |
+| service-grinder | 40 | Y200,000 | Y244,034 | Y305,788 | 0.0 | 0.0 |
+| service-grinder | 70 | Y125,597 | Y187,093 | Y262,016 | 0.0 | 0.0 |
+| service-grinder | 100 | Y86,158 | Y148,222 | Y242,445 | 0.0 | 0.0 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
@@ -59,13 +59,13 @@ Day-100 top specialty group (most common across seeds) and its median point valu
 |---|---|---|
 | balanced-player | engine | 0.0 |
 | cautious-restorer | engine | 0.0 |
-| competent-policy | engine | 4.0 |
+| competent-policy | engine | 6.0 |
 | flipper | engine | 0.0 |
 | handyman | engine | 0.0 |
 | investor | engine | 0.0 |
 | passive-grinder | engine | 0.0 |
 | random | engine | 0.0 |
-| service-grinder | body | 16.0 |
+| service-grinder | body | 14.0 |
 
 ## Roster coherence (Sprint 55, economy-bible.md law 4)
 
@@ -88,24 +88,11 @@ Read **Sensible margin** first (Sprint 66). Since Law 1 gained a per-tier expect
 | toyota-sprinter-trueno-ae86 | uncommon | Y1,050,000 | Y594,880 | 56.7% | Y250,515 (23.9%) | Y330,387 | Y121,646 | 3.66x | 6.6% |
 | toyota-supra-rz-jza80 | rare | Y3,150,000 | Y997,000 | 31.7% | Y1,087,800 (34.5%) | Y1,160,300 | Y366,000 | 7.10x | 3.5% |
 
-## Donor coherence (Sprint 71 decision 8, the teardown game)
+## Diagnosis
 
-Whole-car sale value against parting out the same clean car (haircut `economy.teardown.usedPartSaleFraction`, plus scrapping the stripped shell). **Whole must always beat parted** - a clean car should never be worth more destroyed for parts. **Parting wins?** measures the SEPARATE worst-case-car question: does stripping the worst plausible generatable roll's still-good parts (better than `poor`) beat that same model's sensible-repair margin - disclosed against a 45% bill-to-clean break-even, not force-gated to it.
+**No bot inspects a lot, tears a car down, or installs a part** (the standing harness verdict, `TODO.md`) - every figure in this section is closed-form, not bot-derived: `computeSymptomCoherence`/`computeDonorCoherence` call the real sim functions directly against a representative probe car, and the three end-to-end flows in `packages/sim/tests/diagnosisFlows.test.ts` (Sprint 75 decision 3 - the donor flow, the sleeper flow, and the blind-buy flow) exercise the full buy/diagnose/repair/sell pipeline deterministically, seed-free. No bot statistic anywhere in this report covers diagnosis, teardown, or the donor economy.
 
-| Model | Whole sale | Parted yield | Strip labour | Bill/clean | Parting wins? |
-|---|---|---|---|---|---|
-| honda-city-e-aa | Y189,000 | Y134,235 | 27 slots | 49.5% | yes |
-| honda-civic-sir2-eg6 | Y682,500 | Y533,000 | 27 slots | 54.8% | yes |
-| mazda-rx7-fd3s | Y3,360,000 | Y1,535,000 | 28 slots | 41.5% | no |
-| mazda-savanna-rx7-fc3s | Y1,890,000 | Y970,000 | 28 slots | 47.3% | no |
-| nissan-180sx-rps13 | Y1,155,000 | Y935,000 | 28 slots | 55.3% | yes |
-| nissan-silvia-ks-s14 | Y1,575,000 | Y955,000 | 28 slots | 56.7% | no |
-| suzuki-wagon-r-ct21s | Y231,000 | Y136,235 | 27 slots | 56.4% | no |
-| toyota-chaser-tourer-v-jzx90 | Y1,680,000 | Y960,000 | 28 slots | 53.2% | no |
-| toyota-sprinter-trueno-ae86 | Y1,470,000 | Y870,800 | 27 slots | 56.7% | no |
-| toyota-supra-rz-jza80 | Y4,410,000 | Y1,585,000 | 28 slots | 31.7% | no |
-
-## Symptom coherence (Sprint 73 decision 6, the blind-buy guardrail)
+### Symptom coherence (Sprint 73 decision 6, the blind-buy guardrail)
 
 Per symptom x fitment tier, on a clean representative car: the apparent (room-shown) value, the honest expected true value, the fear-priced sheet value the room actually charges (`fearPremium` 1.10), and the blind-buy edge (`expectedTrueValueYen - sheetGuideValueYen`) - buying with no test run at all must never be a losing bet on average, and never a windfall either. **Causes** lists each cause's own edge if it turns out true (positive = the car is worth more than the sheet charged; negative = less) - every symptom must show at least one of each, on every tier.
 
@@ -144,15 +131,47 @@ Per symptom x fitment tier, on a clean representative car: the apparent (room-sh
 | wont-idle | shitbox | Y189,000 | Y188,158 | Y188,074 | Y84 | vacuum-leak +622; tired-ecu -224; worn-cams -799 |
 | wont-idle | uncommon | Y1,470,000 | Y1,458,696 | Y1,457,566 | Y1,130 | vacuum-leak +5,954; tired-ecu -1,006; worn-cams -7,726 |
 
+### Donor coherence (Sprint 71 decision 8, the teardown game)
+
+Whole-car sale value against parting out the same clean car (haircut `economy.teardown.usedPartSaleFraction`, plus scrapping the stripped shell). **Whole must always beat parted** - a clean car should never be worth more destroyed for parts. **Parting wins?** measures the SEPARATE worst-case-car question: does stripping the worst plausible generatable roll's still-good parts (better than `poor`) beat that same model's sensible-repair margin - disclosed against a 45% bill-to-clean break-even, not force-gated to it.
+
+| Model | Whole sale | Parted yield | Strip labour | Bill/clean | Parting wins? |
+|---|---|---|---|---|---|
+| honda-city-e-aa | Y189,000 | Y134,235 | 27 slots | 49.5% | yes |
+| honda-civic-sir2-eg6 | Y682,500 | Y533,000 | 27 slots | 54.8% | yes |
+| mazda-rx7-fd3s | Y3,360,000 | Y1,535,000 | 28 slots | 41.5% | no |
+| mazda-savanna-rx7-fc3s | Y1,890,000 | Y970,000 | 28 slots | 47.3% | no |
+| nissan-180sx-rps13 | Y1,155,000 | Y935,000 | 28 slots | 55.3% | yes |
+| nissan-silvia-ks-s14 | Y1,575,000 | Y955,000 | 28 slots | 56.7% | no |
+| suzuki-wagon-r-ct21s | Y231,000 | Y136,235 | 27 slots | 56.4% | no |
+| toyota-chaser-tourer-v-jzx90 | Y1,680,000 | Y960,000 | 28 slots | 53.2% | no |
+| toyota-sprinter-trueno-ae86 | Y1,470,000 | Y870,800 | 27 slots | 56.7% | no |
+| toyota-supra-rz-jza80 | Y4,410,000 | Y1,585,000 | 28 slots | 31.7% | no |
+
+## Story missions
+
+**No bot accepts, grades, or delivers a story mission** - every number below is shipped content, proved satisfiable by a real build recipe in `packages/sim/tests/storyMissionProbes.test.ts` (Sprint 78 decision 1: every threshold/budget/payout is a fixed formula against that recipe's own measured stats, locked by the same test so content and probe can never drift). No bot statistic anywhere in this report covers the campaign.
+
+| Mission | Persona | Gate (rep) | Deadline (days) | Payout | Budget | Requirements |
+|---|---|---|---|---|---|---|
+| four-wheels | Yuki | 0 | 15 | Y207,000 | Y175,000 | roadworthy |
+| wont-strand-her | Okada-san | 30 | 15 | Y218,000 | Y185,000 | reliability >= 54 |
+| first-proper-car | Yuki | 60 | 15 | Y489,000 | Y414,000 | first-timer >= 0.97x; reliability >= 54 |
+| make-it-pull | Gen | 120 | 20 | Y847,000 | Y717,000 | power >= 191 |
+| the-column-clock | Kaori | 200 | 20 | Y1,485,000 | Y1,257,000 | kirifuri <= 83.1s |
+| low-and-loud | Daisuke | 320 | 20 | Y1,692,000 | Y1,432,000 | stancer >= 1.0x; style >= 55 |
+| street-power-street-manners | Gen | 500 | 25 | Y1,552,000 | Y1,313,000 | power >= 235; reliability >= 48; tuner >= 0.99x |
+| under-one-fifteen | Kaori | 800 | 25 | Y3,496,000 | Y2,958,000 | kirifuri <= 68.9s |
+
 ## Auction calibration (Sprint 20, auction rework II)
 
 Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot bid on and lost or won (see `auctionWins.manifest.json` for the run size). steal < 0.65, mid 0.65-0.9, frenzy > 0.9. Target: steal 10-25% (patient bidding beating buyout most of the time), mid the majority, frenzy 5-15%.
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 3.8% | 10%-25% |
+| steal | 4.4% | 10%-25% |
 | mid | 20.5% | 50%-100% |
-| frenzy | 75.7% | 5%-15% |
+| frenzy | 75.1% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 
