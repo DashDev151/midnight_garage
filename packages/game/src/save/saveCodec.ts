@@ -454,8 +454,16 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * exist), so an empty array is exactly correct - the next `advanceDay` call
  * offers the campaign's first mission fresh, same as a brand-new career. The
  * version bump alone is still required (Save law).
+ * v35 -> v36 (Sprint 79, the equivalence-priced labour model): each car
+ * part slot (`CarPartStateSchema`, content/src/carInstance.ts) gained an
+ * OPTIONAL `vacatedBaseline` field with no default - the pure additive case
+ * (a genuinely optional key, not a defaulted one), so this needs no
+ * `MIGRATIONS[35]` entry. A pre-v36 save simply decodes with every slot's
+ * `vacatedBaseline` absent (`undefined`), which reads identically to "no
+ * baseline yet" - exactly correct, since no pre-v36 save could have recorded
+ * one. The version bump alone is still required (Save law).
  */
-export const SAVE_VERSION = 35
+export const SAVE_VERSION = 36
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -12,10 +12,10 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 | cautious-restorer | 40 | Y-19,768 | Y45,046 | Y105,433 | 1.0 | 0.0 |
 | cautious-restorer | 70 | Y-119,768 | Y-54,954 | Y5,433 | 1.0 | 0.0 |
 | cautious-restorer | 100 | Y-199,768 | Y-134,954 | Y-74,567 | 1.0 | 0.0 |
-| competent-policy | 25 | Y64,936 | Y148,220 | Y270,988 | 1.0 | 0.0 |
-| competent-policy | 40 | Y24,936 | Y99,456 | Y202,439 | 1.0 | 0.0 |
-| competent-policy | 70 | Y-75,064 | Y-428 | Y94,387 | 1.0 | 0.0 |
-| competent-policy | 100 | Y-155,064 | Y-80,428 | Y16,520 | 1.0 | 0.0 |
+| competent-policy | 25 | Y61,607 | Y140,506 | Y261,014 | 1.0 | 0.0 |
+| competent-policy | 40 | Y21,878 | Y92,608 | Y200,000 | 1.0 | 0.0 |
+| competent-policy | 70 | Y-78,122 | Y-7,604 | Y77,179 | 1.0 | 0.0 |
+| competent-policy | 100 | Y-158,122 | Y-87,604 | Y-1,791 | 1.0 | 0.0 |
 | flipper | 25 | Y36,946 | Y92,681 | Y172,493 | 1.0 | 0.0 |
 | flipper | 40 | Y554 | Y57,986 | Y136,818 | 1.0 | 0.0 |
 | flipper | 70 | Y-99,446 | Y-36,118 | Y55,432 | 1.0 | 0.0 |
@@ -36,10 +36,10 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 | random | 40 | Y1,446 | Y68,228 | Y117,988 | 1.0 | 0.0 |
 | random | 70 | Y-98,554 | Y-31,772 | Y17,988 | 1.0 | 0.0 |
 | random | 100 | Y-178,554 | Y-111,772 | Y-62,012 | 1.0 | 0.0 |
-| service-grinder | 25 | Y237,800 | Y265,472 | Y314,824 | 0.0 | 0.0 |
-| service-grinder | 40 | Y200,000 | Y244,034 | Y305,788 | 0.0 | 0.0 |
-| service-grinder | 70 | Y125,597 | Y187,093 | Y262,016 | 0.0 | 0.0 |
-| service-grinder | 100 | Y86,158 | Y148,222 | Y242,445 | 0.0 | 0.0 |
+| service-grinder | 25 | Y240,000 | Y254,898 | Y288,010 | 0.0 | 0.0 |
+| service-grinder | 40 | Y200,000 | Y227,148 | Y268,552 | 0.0 | 0.0 |
+| service-grinder | 70 | Y114,967 | Y157,291 | Y200,313 | 0.0 | 0.0 |
+| service-grinder | 100 | Y62,338 | Y106,226 | Y151,700 | 0.0 | 0.0 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
@@ -59,13 +59,13 @@ Day-100 top specialty group (most common across seeds) and its median point valu
 |---|---|---|
 | balanced-player | engine | 0.0 |
 | cautious-restorer | engine | 0.0 |
-| competent-policy | engine | 6.0 |
+| competent-policy | engine | 4.0 |
 | flipper | engine | 0.0 |
 | handyman | engine | 0.0 |
 | investor | engine | 0.0 |
 | passive-grinder | engine | 0.0 |
 | random | engine | 0.0 |
-| service-grinder | body | 14.0 |
+| service-grinder | body | 12.0 |
 
 ## Roster coherence (Sprint 55, economy-bible.md law 4)
 
@@ -77,16 +77,16 @@ Read **Sensible margin** first (Sprint 66). Since Law 1 gained a per-tier expect
 
 | Model | Class | Clean value | Worst bill | Ratio | Sensible margin | Mint flip | Wage | xRent | Consumables share |
 |---|---|---|---|---|---|---|---|---|---|
-| honda-city-e-aa | shitbox | Y135,000 | Y66,840 | 49.5% | Y34,309 (25.4%) | Y3,202 | Y-20,725 | 0.39x | 8.1% |
-| honda-civic-sir2-eg6 | common | Y487,500 | Y267,200 | 54.8% | Y92,995 (19.1%) | Y124,348 | Y58,886 | 2.29x | 8.9% |
-| mazda-rx7-fd3s | rare | Y2,400,000 | Y997,000 | 41.5% | Y787,800 (32.8%) | Y860,300 | Y366,000 | 7.10x | 4.5% |
-| mazda-savanna-rx7-fc3s | uncommon | Y1,350,000 | Y638,080 | 47.3% | Y360,723 (26.7%) | Y443,475 | Y134,141 | 3.82x | 5.2% |
-| nissan-180sx-rps13 | uncommon | Y825,000 | Y456,320 | 55.3% | Y79,418 (9.6%) | Y251,651 | Y134,141 | 3.82x | 8.4% |
-| nissan-silvia-ks-s14 | uncommon | Y1,125,000 | Y638,080 | 56.7% | Y270,723 (24.1%) | Y353,475 | Y134,141 | 3.82x | 6.2% |
-| suzuki-wagon-r-ct21s | shitbox | Y165,000 | Y93,010 | 56.4% | Y46,309 (28.1%) | Y22,155 | Y-20,725 | 0.39x | 6.6% |
-| toyota-chaser-tourer-v-jzx90 | uncommon | Y1,200,000 | Y638,080 | 53.2% | Y300,723 (25.1%) | Y383,475 | Y134,141 | 3.82x | 5.8% |
-| toyota-sprinter-trueno-ae86 | uncommon | Y1,050,000 | Y594,880 | 56.7% | Y250,515 (23.9%) | Y330,387 | Y121,646 | 3.66x | 6.6% |
-| toyota-supra-rz-jza80 | rare | Y3,150,000 | Y997,000 | 31.7% | Y1,087,800 (34.5%) | Y1,160,300 | Y366,000 | 7.10x | 3.5% |
+| honda-city-e-aa | shitbox | Y135,000 | Y66,840 | 49.5% | Y34,309 (25.4%) | Y3,202 | Y-9,772 | 0.57x | 8.1% |
+| honda-civic-sir2-eg6 | common | Y487,500 | Y267,200 | 54.8% | Y92,995 (19.1%) | Y124,348 | Y69,838 | 3.01x | 8.9% |
+| mazda-rx7-fd3s | rare | Y2,400,000 | Y997,000 | 41.5% | Y787,800 (32.8%) | Y860,300 | Y377,429 | 8.77x | 4.5% |
+| mazda-savanna-rx7-fc3s | uncommon | Y1,350,000 | Y638,080 | 47.3% | Y360,723 (26.7%) | Y443,475 | Y145,570 | 5.02x | 5.2% |
+| nissan-180sx-rps13 | uncommon | Y825,000 | Y456,320 | 55.3% | Y79,418 (9.6%) | Y251,651 | Y145,570 | 5.02x | 8.4% |
+| nissan-silvia-ks-s14 | uncommon | Y1,125,000 | Y638,080 | 56.7% | Y270,723 (24.1%) | Y353,475 | Y145,570 | 5.02x | 6.2% |
+| suzuki-wagon-r-ct21s | shitbox | Y165,000 | Y93,010 | 56.4% | Y46,309 (28.1%) | Y22,155 | Y-9,772 | 0.57x | 6.6% |
+| toyota-chaser-tourer-v-jzx90 | uncommon | Y1,200,000 | Y638,080 | 53.2% | Y300,723 (25.1%) | Y383,475 | Y145,570 | 5.02x | 5.8% |
+| toyota-sprinter-trueno-ae86 | uncommon | Y1,050,000 | Y594,880 | 56.7% | Y250,515 (23.9%) | Y330,387 | Y132,598 | 4.81x | 6.6% |
+| toyota-supra-rz-jza80 | rare | Y3,150,000 | Y997,000 | 31.7% | Y1,087,800 (34.5%) | Y1,160,300 | Y377,429 | 8.77x | 3.5% |
 
 ## Diagnosis
 
@@ -137,16 +137,16 @@ Whole-car sale value against parting out the same clean car (haircut `economy.te
 
 | Model | Whole sale | Parted yield | Strip labour | Bill/clean | Parting wins? |
 |---|---|---|---|---|---|
-| honda-city-e-aa | Y189,000 | Y134,235 | 27 slots | 49.5% | yes |
-| honda-civic-sir2-eg6 | Y682,500 | Y533,000 | 27 slots | 54.8% | yes |
-| mazda-rx7-fd3s | Y3,360,000 | Y1,535,000 | 28 slots | 41.5% | no |
-| mazda-savanna-rx7-fc3s | Y1,890,000 | Y970,000 | 28 slots | 47.3% | no |
-| nissan-180sx-rps13 | Y1,155,000 | Y935,000 | 28 slots | 55.3% | yes |
-| nissan-silvia-ks-s14 | Y1,575,000 | Y955,000 | 28 slots | 56.7% | no |
-| suzuki-wagon-r-ct21s | Y231,000 | Y136,235 | 27 slots | 56.4% | no |
-| toyota-chaser-tourer-v-jzx90 | Y1,680,000 | Y960,000 | 28 slots | 53.2% | no |
-| toyota-sprinter-trueno-ae86 | Y1,470,000 | Y870,800 | 27 slots | 56.7% | no |
-| toyota-supra-rz-jza80 | Y4,410,000 | Y1,585,000 | 28 slots | 31.7% | no |
+| honda-city-e-aa | Y189,000 | Y134,235 | 0 slots | 49.5% | yes |
+| honda-civic-sir2-eg6 | Y682,500 | Y533,000 | 0 slots | 54.8% | yes |
+| mazda-rx7-fd3s | Y3,360,000 | Y1,535,000 | 0 slots | 41.5% | no |
+| mazda-savanna-rx7-fc3s | Y1,890,000 | Y970,000 | 0 slots | 47.3% | no |
+| nissan-180sx-rps13 | Y1,155,000 | Y935,000 | 0 slots | 55.3% | yes |
+| nissan-silvia-ks-s14 | Y1,575,000 | Y955,000 | 0 slots | 56.7% | no |
+| suzuki-wagon-r-ct21s | Y231,000 | Y136,235 | 0 slots | 56.4% | no |
+| toyota-chaser-tourer-v-jzx90 | Y1,680,000 | Y960,000 | 0 slots | 53.2% | no |
+| toyota-sprinter-trueno-ae86 | Y1,470,000 | Y870,800 | 0 slots | 56.7% | no |
+| toyota-supra-rz-jza80 | Y4,410,000 | Y1,585,000 | 0 slots | 31.7% | no |
 
 ## Story missions
 
@@ -159,9 +159,9 @@ Whole-car sale value against parting out the same clean car (haircut `economy.te
 | first-proper-car | Yuki | 60 | 15 | Y489,000 | Y414,000 | first-timer >= 0.97x; reliability >= 54 |
 | make-it-pull | Gen | 120 | 20 | Y847,000 | Y717,000 | power >= 191 |
 | the-column-clock | Kaori | 200 | 20 | Y1,485,000 | Y1,257,000 | kirifuri <= 83.1s |
-| low-and-loud | Daisuke | 320 | 20 | Y1,692,000 | Y1,432,000 | stancer >= 1.0x; style >= 55 |
+| low-and-loud | Daisuke | 320 | 20 | Y1,692,000 | Y1,432,000 | stancer >= 1x; style >= 55 |
 | street-power-street-manners | Gen | 500 | 25 | Y1,552,000 | Y1,313,000 | power >= 235; reliability >= 48; tuner >= 0.99x |
-| under-one-fifteen | Kaori | 800 | 25 | Y3,496,000 | Y2,958,000 | kirifuri <= 68.9s |
+| under-one-fifteen | Kaori | 800 | 25 | Y3,496,000 | Y2,958,000 | kirifuri <= 71.8s |
 
 ## Auction calibration (Sprint 20, auction rework II)
 
@@ -187,6 +187,6 @@ Share of successful auction acquisitions made via instant buyout vs. a won compe
 | investor | 100.0% | 0.0% |
 | random | 100.0% | 0.0% |
 
-## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2)
+## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2, Sprint 79 demotion)
 
-`balance.cli check` hard-gates 11 checks against this data: days-to-`local` p50 in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, the 3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive separation, sanity floor), and 6 roster-coherence checks (economy-bible.md law 4, Sprints 55, 66, and 72): every model's worst-case bill-to-clean ratio <= `maxBillFraction` (law 2), every model's flip margin at the worst roll is positive (law 1), every model's SENSIBLE-play margin is positive (law 1 as amended, Sprint 66), every COMMON/UNCOMMON/RARE model's repair wage beats the rent over the labour it takes (law 6, Sprint 66; the shitbox tier is measured separately below, Sprint 72), every model's full consumable-replacement share of book value <= the content cap (law 3), and the service-job payout margin floor clears the profitability invariant's required coverage (law 4 - the full per-template/per-model proof is `serviceJobPayout.test.ts`, already gated in the standard test suite). 4 more are measured and reported but NOT gated (kept informational rather than promoted, since no maintainer has signed off on hard-gating them yet) - see `invariants.py`'s module docstring for their history. The first 3 currently read BADLY, and deliberately so: as of Sprint 66 most strategies lose money (Flipper is well below its own starting cash) and the auction tail is frenzy-dominant. Do not tune the economy against those figures. They measure BOT behaviour, and the bots restore every car to mint - which economy-bible law 1, as amended in Sprint 66, now correctly punishes on a cheap car. The closed-form coherence table above is bot-free and proves the same cars clear a healthy margin on the play the economy actually asks for. The bots needing a rework to play the real game is a known, recorded defect (`TODO.md`), not an economy failure - see `docs/sprints/sprint66.md`'s Exit. The 4th (Sprint 72): honestly pricing a non-surface repair's full teardown chain surfaces a genuine shitbox-tier law 6 loss (cheap parts return too little repair gain to outearn the rent the teardown labour burns) - measured and disclosed, not silently loosened, pending a maintainer economy-tuning decision (`TODO.md`).
+`balance.cli check` hard-gates 6 checks against this data, all roster-coherence checks (economy-bible.md law 4, Sprints 55, 66, and 72) that read `coherence.csv` - closed-form model arithmetic with no bot in the loop: every model's worst-case bill-to-clean ratio <= `maxBillFraction` (law 2), every model's flip margin at the worst roll is positive (law 1), every model's SENSIBLE-play margin is positive (law 1 as amended, Sprint 66), every COMMON/UNCOMMON/RARE model's repair wage beats the rent over the labour it takes (law 6, Sprint 66; the shitbox tier is measured separately below, Sprint 72), every model's full consumable-replacement share of book value <= the content cap (law 3), and the service-job payout margin floor clears the profitability invariant's required coverage (law 4 - the full per-template/per-model proof is `serviceJobPayout.test.ts`, already gated in the standard test suite). 9 more are measured and reported but NOT gated - see `invariants.py`'s module docstring for their full history. Sprint 79 (maintainer sign-off 2026-07-16) demoted 5 of those 9 (days-to-`local`, the buyout-share ceiling, and the 3 legacy Sprint 03/09 checks): all five read bot-career CSVs (`careers.csv`, `auctionWins.csv`, `acquisitions.csv`), and the bots do not faithfully simulate the post-arc game (no inspection, no teardown, no build-to-spec) - a bot-derived pass or fail is not design evidence either way (`TODO.md`'s bot-harness entry). The remaining 4 were already informational before Sprint 79 and read BADLY, deliberately: as of Sprint 66 most strategies lose money (Flipper is well below its own starting cash) and the auction tail is frenzy-dominant. Do not tune the economy against any of these 9 figures. They measure BOT behaviour, and the bots restore every car to mint - which economy-bible law 1, as amended in Sprint 66, now correctly punishes on a cheap car. The closed-form coherence table above is bot-free and proves the same cars clear a healthy margin on the play the economy actually asks for. The bots needing a rework to play the real game is a known, recorded defect (`TODO.md`), not an economy failure - see `docs/sprints/sprint66.md`'s Exit. The Law 6 shitbox figure (Sprint 72): honestly pricing a non-surface repair's own refit labour surfaces a genuine shitbox-tier loss (cheap parts return too little repair gain to outearn the rent the labour burns) - narrowed but not closed by Sprint 79's free removal, measured and disclosed, not silently loosened, pending a maintainer economy-tuning decision (`TODO.md`).

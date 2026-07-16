@@ -281,11 +281,14 @@ describe('seed content validates against schemas', () => {
     // vs car price" cap - a content anchor, not a hardcoded check constant.
     expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)
     // Sprint 71 (the teardown game): per-depth-class labour, replacing the
-    // old flat INSTALL_LABOR_SLOTS constant everywhere.
+    // old flat INSTALL_LABOR_SLOTS constant everywhere. Sprint 79 (the
+    // equivalence-priced labour model, directive 17 case (a)): removal is
+    // zeroed at every depth - removal and like-for-like reassembly are free,
+    // labour only ever prices the improvement to a slot.
     expect(result.data.teardown.removeSlotsByClass).toEqual({
       surface: 0,
-      'bolt-on': 1,
-      buried: 2,
+      'bolt-on': 0,
+      buried: 0,
     })
     expect(result.data.teardown.installSlotsByClass).toEqual({
       surface: 0,

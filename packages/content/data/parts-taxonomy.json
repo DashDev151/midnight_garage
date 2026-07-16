@@ -179,6 +179,7 @@
     "group": "suspension",
     "displayName": "Brake Pads & Discs",
     "repairable": false,
+    "blockedBy": ["rims"],
     "statWeights": {
       "handling": 1
     }
@@ -187,6 +188,7 @@
     "id": "brakeCalipersLines",
     "group": "suspension",
     "displayName": "Brake Calipers & Lines",
+    "blockedBy": ["rims"],
     "statWeights": {
       "handling": 1
     }

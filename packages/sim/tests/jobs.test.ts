@@ -18,6 +18,7 @@ import {
   installLaborSlotsFor,
   naToTurboConversionBlocked,
   reconditionQuote,
+  refitLaborSlotsFor,
   removeBlockReason,
   removeLaborSlotsFor,
   repairJobGate,
@@ -1420,27 +1421,307 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(allowed.log).toHaveLength(1)
   })
 
-  it('replaces the flat INSTALL_LABOR_SLOTS constant with per-depth-class labour: 0 surface, 1 bolt-on, 2 buried, for both remove and install', () => {
+  /**
+   * Sprint 79 (the equivalence-priced labour model, maintainer directive
+   * 2026-07-16): `removeSlotsByClass` is zeroed at every depth - removal and
+   * like-for-like reassembly are free; only IMPROVING a slot is charged.
+   * Directive 17 case (a): this test used to assert remove costing 0/1/2 by
+   * depth class - that is now intentionally wrong, since removal is always
+   * free regardless of depth.
+   */
+  it('removal costs 0 labour at every depth class; install stays per-depth-class: 0 surface, 1 bolt-on, 2 buried', () => {
     expect(removeLaborSlotsFor('panels', CONTEXT)).toBe(0)
-    expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(1)
-    expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(2)
+    expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(0)
+    expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(0)
     expect(installLaborSlotsFor('panels', CONTEXT)).toBe(0)
     expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(1)
     expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(2)
   })
 
-  it("refuses a removal when today's remaining labour is less than the slot's own class cost, and succeeds once enough is offered", () => {
+  /**
+   * Sprint 79: directive 17 case (a) again - the old test proved a removal
+   * could be labour-starved (camsTiming needed 2 slots, offering 1 refused
+   * it). Removal is now genuinely free, so the same scenario must now
+   * succeed even when NO labour is offered at all - the intentional new
+   * correct behaviour, not a regression.
+   */
+  it('a removal succeeds even when zero labour is offered today, since removal now costs nothing', () => {
     const tierTwo = baseState({ toolTiers: testToolTiers({ engine: 2 }) })
     const afterCooling = resolveRemovePart(tierTwo, car.id, 'cooling', CONTEXT)
 
-    // camsTiming is buried - 2 labour slots. Offering only 1 is a no-op.
-    const starved = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 1)
-    expect(starved.state).toBe(afterCooling.state)
-    expect(starved.log).toEqual([])
-
-    const funded = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 2)
+    const funded = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 0)
+    expect(funded.laborSlotsUsed).toBe(0)
     expect(funded.log).toHaveLength(1)
     expect(funded.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+  })
+})
+
+describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer directive 2026-07-16)', () => {
+  // honda-city-e-aa is 'shitbox' tier (Sprint 53) - `partFitsCar` requires an
+  // exact fitment-class match, so the car's rims/tyres must be real
+  // shitbox-class stock instances, not `testFixtures.ts`'s generic
+  // common-class default (which is fixture convenience only, never checked
+  // against a real model's tier).
+  const stockRims = CONTEXT.stockPartByCarPartId.shitbox!.rims!
+  const stockTyres = CONTEXT.stockPartByCarPartId.shitbox!.tyres!
+  const originalRims: PartInstance = {
+    id: 'pi-original-rims',
+    partId: stockRims.id,
+    band: 'worn',
+    genuinePeriod: false,
+    origin: makeCarOrigin('car-wheels-worn', 'Test Car', 0),
+  }
+  const originalTyres: PartInstance = {
+    id: 'pi-original-tyres',
+    partId: stockTyres.id,
+    band: 'worn',
+    genuinePeriod: false,
+    origin: makeCarOrigin('car-wheels-worn', 'Test Car', 0),
+  }
+  const wheelsWornCar: CarInstance = buildCarInstance({
+    id: 'car-wheels-worn',
+    modelId: 'honda-city-e-aa',
+    parts: mintCarParts({ rims: originalRims, tyres: originalTyres }),
+  })
+  const fittingTyre = PARTS.find(
+    (p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox' && p.grade === 'street',
+  )!
+  const fittingRims = PARTS.find(
+    (p) => p.carPartId === 'rims' && p.fitmentClass === 'shitbox' && p.grade === 'street',
+  )!
+
+  it('contract case 1: pull rims, pull tyres, refit both as they were - 0 labour total', () => {
+    const state = baseState({
+      ownedCars: [wheelsWornCar],
+      partInventory: [],
+      serviceBayCarIds: [wheelsWornCar.id],
+    })
+    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
+    expect(rimsOff.laborSlotsUsed).toBe(0)
+    const tyresOff = resolveRemovePart(rimsOff.state, wheelsWornCar.id, 'tyres', CONTEXT)
+    expect(tyresOff.laborSlotsUsed).toBe(0)
+
+    const carAfterBothOff = tyresOff.state.ownedCars[0]!
+    const tyresRefitSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', originalTyres, CONTEXT)
+    expect(tyresRefitSlots).toBe(0)
+    const tyresRefit = resolveJobLabor(
+      tyresOff.state,
+      {
+        carInstanceId: wheelsWornCar.id,
+        kind: 'install-part',
+        componentId: 'wheels',
+        partInstanceId: originalTyres.id,
+        laborSlotsRequired: tyresRefitSlots,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(tyresRefit.laborSlotsUsed).toBe(0)
+
+    const carAfterTyresRefit = tyresRefit.state.ownedCars[0]!
+    const rimsRefitSlots = refitLaborSlotsFor(carAfterTyresRefit, 'rims', originalRims, CONTEXT)
+    expect(rimsRefitSlots).toBe(0)
+    const rimsRefit = resolveJobLabor(
+      tyresRefit.state,
+      {
+        carInstanceId: wheelsWornCar.id,
+        kind: 'install-part',
+        componentId: 'wheels',
+        partInstanceId: originalRims.id,
+        laborSlotsRequired: rimsRefitSlots,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(rimsRefit.laborSlotsUsed).toBe(0)
+    expect(rimsRefit.state.ownedCars[0]?.parts.rims.installed?.id).toBe(originalRims.id)
+    expect(rimsRefit.state.ownedCars[0]?.parts.tyres.installed?.id).toBe(originalTyres.id)
+  })
+
+  it('contract case 2: pull rims, pull tyres, fit NEW tyres, refit rims - new-tyre install only', () => {
+    const newTyres: PartInstance = {
+      id: 'pi-new-tyres',
+      partId: fittingTyre.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(1),
+    }
+    const state = baseState({
+      ownedCars: [wheelsWornCar],
+      partInventory: [newTyres],
+      serviceBayCarIds: [wheelsWornCar.id],
+    })
+    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
+    const tyresOff = resolveRemovePart(rimsOff.state, wheelsWornCar.id, 'tyres', CONTEXT)
+
+    const carAfterBothOff = tyresOff.state.ownedCars[0]!
+    const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
+    expect(newTyresSlots).toBe(1) // bolt-on, no baseline match - a genuinely different part
+    const newTyresFit = resolveJobLabor(
+      tyresOff.state,
+      {
+        carInstanceId: wheelsWornCar.id,
+        kind: 'install-part',
+        componentId: 'wheels',
+        partInstanceId: newTyres.id,
+        laborSlotsRequired: newTyresSlots,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(newTyresFit.laborSlotsUsed).toBe(1)
+
+    const carAfterNewTyres = newTyresFit.state.ownedCars[0]!
+    const rimsRefitSlots = refitLaborSlotsFor(carAfterNewTyres, 'rims', originalRims, CONTEXT)
+    expect(rimsRefitSlots).toBe(0)
+    const rimsRefit = resolveJobLabor(
+      newTyresFit.state,
+      {
+        carInstanceId: wheelsWornCar.id,
+        kind: 'install-part',
+        componentId: 'wheels',
+        partInstanceId: originalRims.id,
+        laborSlotsRequired: rimsRefitSlots,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(rimsRefit.laborSlotsUsed).toBe(0)
+
+    const totalLabour = newTyresFit.laborSlotsUsed + rimsRefit.laborSlotsUsed
+    expect(totalLabour).toBe(1)
+  })
+
+  it('contract case 3: pull rims, pull tyres, bench-repair rims, fit NEW tyres, refit the repaired rims - rim repair labour + rim refit + new-tyre install (supersedes the loose variant, which would have charged only 2)', () => {
+    const newTyres: PartInstance = {
+      id: 'pi-new-tyres-2',
+      partId: fittingTyre.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(1),
+    }
+    const state = baseState({
+      ownedCars: [wheelsWornCar],
+      partInventory: [newTyres],
+      serviceBayCarIds: [wheelsWornCar.id],
+    })
+    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
+    const tyresOff = resolveRemovePart(rimsOff.state, wheelsWornCar.id, 'tyres', CONTEXT)
+
+    const pulledRims = tyresOff.state.partInventory.find((p) => p.id === originalRims.id)!
+    expect(pulledRims.band).toBe('worn')
+    const repair = resolveReconditionLabor(tyresOff.state, pulledRims.id, 'mint', Infinity, CONTEXT)
+    expect(repair.laborSlotsUsed).toBeGreaterThan(0)
+    const repairedRims = repair.state.partInventory.find((p) => p.id === originalRims.id)!
+    expect(repairedRims.band).toBe('mint') // no longer matches the 'worn' vacated baseline
+
+    const carAfterBothOff = repair.state.ownedCars[0]!
+    const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
+    expect(newTyresSlots).toBe(1)
+    const newTyresFit = resolveJobLabor(
+      repair.state,
+      {
+        carInstanceId: wheelsWornCar.id,
+        kind: 'install-part',
+        componentId: 'wheels',
+        partInstanceId: newTyres.id,
+        laborSlotsRequired: newTyresSlots,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(newTyresFit.laborSlotsUsed).toBe(1)
+
+    const carAfterNewTyres = newTyresFit.state.ownedCars[0]!
+    const repairedRimsRefitSlots = refitLaborSlotsFor(
+      carAfterNewTyres,
+      'rims',
+      repairedRims,
+      CONTEXT,
+    )
+    expect(repairedRimsRefitSlots).toBe(1) // band changed by the repair - equivalence fails
+    const rimsRefit = resolveJobLabor(
+      newTyresFit.state,
+      {
+        carInstanceId: wheelsWornCar.id,
+        kind: 'install-part',
+        componentId: 'wheels',
+        partInstanceId: repairedRims.id,
+        laborSlotsRequired: repairedRimsRefitSlots,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(rimsRefit.laborSlotsUsed).toBe(1)
+
+    // Three distinctly charged components: the rim's own bench-repair labour,
+    // the repaired rim's own refit, and the new tyre's own install - never
+    // the old loose variant's 2 (which took the rim refit for free).
+    expect(rimsRefit.state.ownedCars[0]?.parts.rims.installed?.band).toBe('mint')
+    expect(rimsRefit.state.ownedCars[0]?.parts.tyres.installed?.id).toBe(newTyres.id)
+  })
+
+  it('the equivalence hole: a different-SKU part at the SAME band as the vacated baseline is still charged (partId, band, and genuinePeriod must all match)', () => {
+    const state = baseState({
+      ownedCars: [wheelsWornCar],
+      partInventory: [],
+      serviceBayCarIds: [wheelsWornCar.id],
+    })
+    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
+    const carAfterRimsOff = rimsOff.state.ownedCars[0]!
+
+    // Same band ('worn') as the vacated baseline, but a genuinely different
+    // catalog part (an aftermarket rim, not the stock one that came off).
+    const differentSkuSameBand: PartInstance = {
+      id: 'pi-different-sku',
+      partId: fittingRims.id,
+      band: 'worn',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(1),
+    }
+    expect(differentSkuSameBand.partId).not.toBe(originalRims.partId)
+    expect(differentSkuSameBand.band).toBe(originalRims.band)
+    const slots = refitLaborSlotsFor(carAfterRimsOff, 'rims', differentSkuSameBand, CONTEXT)
+    expect(slots).toBe(1) // charged - matching band alone is not equivalence
+  })
+
+  /**
+   * Sprint 79 decision 1's clutch illustration, verbatim in spirit: blockers
+   * off free, clutch out free, a NEW clutch's refit charged at its buried
+   * class (2 slots). `clutch` is `repairable: false` in the shipped taxonomy
+   * (Sprint 71), so "bench rebuild" is tested here via the only real route a
+   * clutch actually has - buy-new, not bench-repair - which still proves the
+   * doc's point: an improved (here, replaced) slot always costs, deep work
+   * costs exactly the value it adds.
+   */
+  it('the clutch chain: gearbox blockers off free, clutch off free, a NEW clutch refit charged at the buried rate (2 slots)', () => {
+    const drivetrainState = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
+    const exhaustOff = resolveRemovePart(drivetrainState, car.id, 'exhaust', CONTEXT)
+    expect(exhaustOff.laborSlotsUsed).toBe(0)
+    const drivelineOff = resolveRemovePart(exhaustOff.state, car.id, 'driveline', CONTEXT)
+    expect(drivelineOff.laborSlotsUsed).toBe(0)
+    const gearboxOff = resolveRemovePart(drivelineOff.state, car.id, 'gearbox', CONTEXT)
+    expect(gearboxOff.laborSlotsUsed).toBe(0)
+    const clutchOff = resolveRemovePart(gearboxOff.state, car.id, 'clutch', CONTEXT)
+    expect(clutchOff.laborSlotsUsed).toBe(0)
+
+    const fittingClutch = PARTS.find(
+      (p) => p.carPartId === 'clutch' && p.fitmentClass === 'shitbox' && p.grade === 'stock',
+    )!
+    const newClutch: PartInstance = {
+      id: 'pi-new-clutch',
+      partId: fittingClutch.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(1),
+    }
+    const carAfterClutchOff = {
+      ...clutchOff.state,
+      partInventory: [...clutchOff.state.partInventory, newClutch],
+    }
+    const carForRefit = carAfterClutchOff.ownedCars[0]!
+    const clutchRefitSlots = refitLaborSlotsFor(carForRefit, 'clutch', newClutch, CONTEXT)
+    expect(clutchRefitSlots).toBe(2) // buried, no baseline match - deep work costs what it adds
   })
 })
 

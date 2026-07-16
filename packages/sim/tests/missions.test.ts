@@ -12,6 +12,7 @@ import { emptyDayActions } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
 import { buildSimContext, type SimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
+import { lapTimeSecondsFor } from '../src/lapModel'
 import {
   advanceStoryMissions,
   gradeMissionCar,
@@ -37,6 +38,14 @@ const MINT_CIVIC_POWER = computeDerivedStats(
   MEASURING_CONTEXT.economy,
 ).power
 
+/** Same measured-not-guessed precedent, for the Sprint 79 lap-tip tests: the
+ * mint civic's real lap time under the shipped `economy.lapModel`. */
+const MINT_CIVIC_LAP_SECONDS = lapTimeSecondsFor(
+  buildCarInstance({ modelId: CIVIC.id }),
+  CIVIC,
+  MEASURING_CONTEXT,
+)!
+
 /** A minimal, fully-specified test mission - every field a real
  * `storyMissions.json` entry would carry, with the `budgetCap` requirement
  * already mirrored in (the same shape `data.ts`'s load-time mirror produces
@@ -55,6 +64,7 @@ function buildMission(overrides: Partial<StoryMission> = {}): StoryMission {
     payoutYen: 200_000,
     tipFraction: 0.1,
     tipTriggerFraction: 0.15,
+    lapTipTriggerFraction: 0.03,
     reputationReward: 20,
     lapseReputationPenalty: 5,
     reofferDays: 3,
@@ -539,6 +549,92 @@ describe('story missions (Sprint 76)', () => {
       })
       const state = activeStateFor('test-mission-a', car)
       const result = resolveDeliverMission(state, 'test-mission-a', car.id, CONTEXT)
+      const entry = result.log.find((e) => e.type === 'mission-delivered')
+      expect(entry).toMatchObject({ tipYen: 0 })
+    })
+
+    /**
+     * Sprint 79 decision 6: `earnsTip` extends to `lapTimeCeiling`
+     * requirements - a lap mission tips when the delivered car clears
+     * `maxSeconds * (1 - lapTipTriggerFraction)`, the lap-time twin of the
+     * stat-threshold trigger above.
+     */
+    it('awards a tip on a lap-only mission when the delivered time clears the lap trigger fraction', () => {
+      const lapMission = buildMission({
+        id: 'test-mission-lap',
+        requirements: [
+          {
+            kind: 'lapTimeCeiling',
+            courseId: 'kirifuri',
+            maxSeconds: MINT_CIVIC_LAP_SECONDS * 1.5,
+          },
+        ],
+      })
+      const context = contextWithMissions([lapMission])
+      const car = buildCarInstance({ id: 'car-lap', modelId: CIVIC.id })
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-lap',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 30,
+        reofferOnDay: null,
+      }
+      const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
+      const result = resolveDeliverMission(state, 'test-mission-lap', car.id, context)
+      const entry = result.log.find((e) => e.type === 'mission-delivered')
+      expect(entry).toMatchObject({
+        tipYen: Math.round(lapMission.payoutYen * lapMission.tipFraction),
+      })
+      expect((entry as { tipYen: number }).tipYen).toBeGreaterThan(0)
+    })
+
+    it('withholds the tip on a lap-only mission when the delivered time clears the base ceiling but not the lap trigger fraction', () => {
+      const tightLapMission = buildMission({
+        id: 'test-mission-lap-tight',
+        requirements: [
+          // Exactly at the measured mint civic time: clears the base ceiling
+          // (equality passes) but never its own lapTipTriggerFraction margin.
+          { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: MINT_CIVIC_LAP_SECONDS },
+        ],
+      })
+      const context = contextWithMissions([tightLapMission])
+      const car = buildCarInstance({ id: 'car-lap-tight', modelId: CIVIC.id })
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-lap-tight',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 30,
+        reofferOnDay: null,
+      }
+      const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
+      const result = resolveDeliverMission(state, 'test-mission-lap-tight', car.id, context)
+      const entry = result.log.find((e) => e.type === 'mission-delivered')
+      expect(entry).toMatchObject({ tipYen: 0 })
+    })
+
+    it('a mixed mission (statThreshold AND lapTimeCeiling) withholds the tip unless BOTH clear their own trigger fraction', () => {
+      const mixedMission = buildMission({
+        id: 'test-mission-mixed',
+        requirements: [
+          { kind: 'statThreshold', stat: 'power', min: Math.floor(MINT_CIVIC_POWER / 2) },
+          // The lap side is set tight (equals the measured time): clears the
+          // base ceiling but not its own trigger fraction, so the mixed
+          // mission must withhold the tip even though the stat side clears
+          // comfortably.
+          { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: MINT_CIVIC_LAP_SECONDS },
+        ],
+      })
+      const context = contextWithMissions([mixedMission])
+      const car = buildCarInstance({ id: 'car-mixed', modelId: CIVIC.id })
+      const active: StoryMissionRecord = {
+        missionId: 'test-mission-mixed',
+        status: 'active',
+        acceptedOnDay: 1,
+        dueOnDay: 30,
+        reofferOnDay: null,
+      }
+      const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
+      const result = resolveDeliverMission(state, 'test-mission-mixed', car.id, context)
       const entry = result.log.find((e) => e.type === 'mission-delivered')
       expect(entry).toMatchObject({ tipYen: 0 })
     })

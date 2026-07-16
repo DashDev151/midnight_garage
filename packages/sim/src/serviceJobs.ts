@@ -27,7 +27,7 @@ import {
 } from './constants'
 import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
-import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
+import { installLaborSlotsFor } from './jobs'
 import { gradeAtLeast, partFitsCar } from './parts'
 import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
 import { evaluateRequirement } from './requirements'
@@ -305,36 +305,6 @@ function fittingPartsForRequirement(
   return atLeast.length > 0 ? atLeast : allFitting
 }
 
-/**
- * Sprint 71/72 decision 6: the extra uninstall/reinstall labour a non-surface
- * slot's task carries beyond its bench-repair or fresh-install work - the
- * slot itself (`removeLaborSlotsFor` + `installLaborSlotsFor`), plus, when it
- * sits behind a `blockedBy` chain, TWICE the sum of every blocker's own
- * remove+install slots (each blocker is pulled and refitted around the real
- * work - the doubling is a deliberate pricing premium for the hassle of a
- * multi-part teardown, not a literal execution-time labour count; the
- * player's own real labour when THEY do the work is priced entirely
- * separately, by `jobs.ts`'s per-verb helpers at execution time). Zero for a
- * surface slot - repaired in place, never pulled. Per-task, so it does NOT
- * dedupe a blocker shared by two tasks in the same job (real templates never
- * stack overlapping non-surface tasks); `coherence.ts`'s whole-car Law 6 wage
- * probe needs that dedup and keeps its own teardown ledger instead of reusing
- * this function - see the comment on `computeModelCoherence`'s teardown loop.
- */
-function teardownChainLaborSlots(carPartId: CarPartId, context: SimContext): number {
-  const entry = context.partsTaxonomyById[carPartId]
-  if (!entry || entry.depthClass === 'surface') return 0
-  const ownSlots =
-    removeLaborSlotsFor(carPartId, context) + installLaborSlotsFor(carPartId, context)
-  if (entry.blockedBy.length === 0) return ownSlots
-  const chainSlots = entry.blockedBy.reduce(
-    (sum, blockerId) =>
-      sum + removeLaborSlotsFor(blockerId, context) + installLaborSlotsFor(blockerId, context),
-    0,
-  )
-  return ownSlots + 2 * chainSlots
-}
-
 export interface ServiceJobCostBreakdown {
   /** Sum of every task's material cost (Sprint 29 decision 1): a
    * grade-requirement task's median fitting-part price, a band-only task's
@@ -344,10 +314,14 @@ export interface ServiceJobCostBreakdown {
    * "worst case tooling") repair speed - a market rate for the job's wrench
    * time, independent of the shop's own current equipment tier (that only
    * changes how many DAYS the work actually takes the player, never what
-   * the customer is nominally being charged for). Sprint 72 decision 6: a
-   * non-surface slot's labour also carries its teardown-chain overhead
-   * (`teardownChainLaborSlots`), on top of the bench-repair or install
-   * labour below - not a replacement for it.
+   * the customer is nominally being charged for). Sprint 79 (the
+   * equivalence-priced labour model): removal and blocker refits are free
+   * (`economy.teardown.removeSlotsByClass` is zeroed), so the teardown
+   * chain's own former overhead is gone - every task simply adds
+   * `installLaborSlotsFor` for its own target slot, on top of the
+   * bench-repair labour below, since a delivered task always IMPROVES its
+   * slot (a customer's task is never a like-for-like refit) and so is
+   * always charged.
    */
   laborSlots: number
 }
@@ -378,6 +352,13 @@ export interface ServiceJobCostBreakdown {
  * at level 1 (base, "worst case tooling" - a market rate for the customer's
  * own wrench time, independent of the shop's actual current tool tier,
  * unchanged from pre-Sprint-41).
+ *
+ * Sprint 79 (the equivalence-priced labour model): removal and blocker
+ * refits are free, so a task's own teardown-chain overhead (the old
+ * `teardownChainLaborSlots`) is gone - both routes simply add
+ * `installLaborSlotsFor` for the task's own target slot, since a customer
+ * task always improves that slot (never a like-for-like refit) and so is
+ * always charged.
  */
 export function serviceJobCostBreakdown(
   tasks: readonly ServiceJobTask[],
@@ -392,7 +373,6 @@ export function serviceJobCostBreakdown(
     const { carPartId, minBand, minGrade } = task.requirement
     const entry = context.partsTaxonomyById[carPartId]
     if (!entry) continue
-    const teardownSlots = teardownChainLaborSlots(carPartId, context)
 
     const installed = car.parts[carPartId].installed
     const canBenchRepair = !minGrade && installed && installed.band !== 'scrap' && entry.repairable
@@ -408,7 +388,7 @@ export function serviceJobCostBreakdown(
         repairStepFraction,
       )
       taskCostYen += plan.costYen
-      laborSlots += plan.laborSlotsRequired + (plan.laborSlotsRequired > 0 ? teardownSlots : 0)
+      laborSlots += plan.laborSlotsRequired + installLaborSlotsFor(carPartId, context)
       continue
     }
 
@@ -423,7 +403,7 @@ export function serviceJobCostBreakdown(
     const candidates = fittingPartsForRequirement(carPartId, minGrade ?? 'stock', model, context)
     const partCostYen = medianYen(candidates.map((part) => part.priceYen))
     taskCostYen += partCostYen
-    laborSlots += installLaborSlotsFor(carPartId, context) + (partCostYen > 0 ? teardownSlots : 0)
+    laborSlots += installLaborSlotsFor(carPartId, context)
   }
   return { taskCostYen, laborSlots }
 }

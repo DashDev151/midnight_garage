@@ -48,6 +48,38 @@ export function installLaborSlotsFor(carPartId: CarPartId, context: SimContext):
 }
 
 /**
+ * Sprint 79 (the equivalence-priced labour model, maintainer directive
+ * 2026-07-16): the REAL labour a refit costs, once the slot's own vacated
+ * baseline is taken into account - `installLaborSlotsFor` above stays the
+ * unconditional "improving this slot" figure service-job costing and the
+ * coherence probes deliberately keep using (a customer task or a repair
+ * probe always improves the slot, so the fit is always charged there); this
+ * is the one additional site - the player's own real refit of a part from
+ * inventory onto a car - where "putting it back exactly as it was" is free.
+ * `partInstance` matching the slot's `vacatedBaseline` on every field
+ * (`partId`, `band`, `genuinePeriod`) means the car is going back together
+ * unchanged - logistics, not work; anything else (repaired, replaced,
+ * upgraded) fails the match and costs the normal class-based labour.
+ */
+export function refitLaborSlotsFor(
+  car: CarInstance,
+  carPartId: CarPartId,
+  partInstance: PartInstance,
+  context: SimContext,
+): number {
+  const baseline = car.parts[carPartId].vacatedBaseline
+  if (
+    baseline &&
+    baseline.partId === partInstance.partId &&
+    baseline.band === partInstance.band &&
+    baseline.genuinePeriod === partInstance.genuinePeriod
+  ) {
+    return 0
+  }
+  return installLaborSlotsFor(carPartId, context)
+}
+
+/**
  * A car the player can work on - either an owned car or a customer's car
  * sitting in an active service job. Both are worked through the same job
  * system, so any job/labor/staging resolver resolves either the same way.
@@ -341,12 +373,18 @@ export function removeMachineGateGroup(
  * comes off at all. A slot in another slot's `blockedBy` list refuses while
  * that other slot is still occupied (decision 4's symmetric rule - reassembly
  * order matters, e.g. the gearbox before the clutch). A BURIED engine/
- * drivetrain slot needs that line's tier-2 machine (decision 3). Passing all
- * three, the removal now costs labor too -
- * `economy.teardown.removeSlotsByClass[depthClass]`, charged to
- * `laborSlotsSpentToday` exactly like a repair/install job's labor (surface
- * slots cost 0, unchanged in practice from the old free-and-instant rule) -
- * refused (silently, nothing spent) when `laborAvailable` does not cover it.
+ * drivetrain slot needs that line's tier-2 machine (decision 3).
+ *
+ * Sprint 79 (the equivalence-priced labour model, maintainer directive
+ * 2026-07-16): `economy.teardown.removeSlotsByClass` is zeroed at every
+ * depth - removal is always free, access is gated (the machine/blocker
+ * checks above), never charged. The removed instance's own `{partId, band,
+ * genuinePeriod}` is stamped onto the resulting slot as `vacatedBaseline` -
+ * what a later refit is compared against (`refitLaborSlotsFor`) to decide
+ * whether putting the car back together is free logistics or chargeable
+ * work. The `laborAvailable` gate below stays in place (content law - a
+ * future re-tuning of the now-zeroed knob should not need a second code
+ * change) even though it can never fire while every class costs 0.
  *
  * Sprint 35 decision 2 (supersedes Sprint 33 decision 8): a part pulled off a
  * service-job CUSTOMER's car is no longer discarded - it lands in OUR
@@ -409,9 +447,17 @@ export function resolveRemovePart(
       }
     : null
 
+  const vacatedBaseline = {
+    partId: installed.partId,
+    band: installed.band,
+    genuinePeriod: installed.genuinePeriod,
+  }
   const updatedCar: CarInstance = {
     ...car,
-    parts: { ...car.parts, [carPartId]: { installed: isStock ? null : freshStockInstance } },
+    parts: {
+      ...car.parts,
+      [carPartId]: { installed: isStock ? null : freshStockInstance, vacatedBaseline },
+    },
   }
   const withLabor: GameState = {
     ...state,

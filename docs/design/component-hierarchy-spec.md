@@ -60,6 +60,18 @@ Decisions, recorded:
   driveline/exhaust-adjacent slot, so the full clutch-fiction job costs the blocker off, the box
   off, the bench repair, the box on, the blocker on. Deep work is expensive because of the
   teardown, not the part. That is the point.
+
+  **Amendment (Sprint 79, maintainer directive 2026-07-16).** The table's "Remove / install
+  labour" column above (1/1 bolt-on, 2/2 buried) double-charged deep work: reaching `internals`
+  cost 8 remove slots plus 8 install slots before any repair began. This amends the law the
+  paragraph above states: **removal and like-for-like reassembly are now free at every depth
+  class; labour prices only the IMPROVEMENT to a slot** (a repair, a replacement, an upgrade),
+  never the logistics of reaching it. A `CarPartState.vacatedBaseline` (stamped on uninstall,
+  cleared by any install into the slot) is what lets a matching refit skip install labour too -
+  putting the car back together exactly as it was found costs nothing; a repaired, replaced, or
+  upgraded part still costs the full class-based labour. Deep work is now expensive in proportion
+  to the value added on the bench, never the teardown itself. See `docs/sprints/sprint79.md`'s
+  Exit for the full before/after economics.
 - **Machine gate.** Buried-class removal requires the appropriate garage machine (lift or crane)
   if one exists in the machine catalogue; bind to real machine ids at sprint scoping, and add no
   new machine if none fits. This is the "machinery tech tree realignment" from the scoping notes:

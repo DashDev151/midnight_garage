@@ -38,9 +38,18 @@ export const StoryMissionSchema = z.object({
   deadlineDays: z.number().int().positive(),
   payoutYen: z.number().int().positive(),
   /** Fraction of `payoutYen` awarded as a tip when every `statThreshold`
-   * requirement clears its `min` by at least `tipTriggerFraction`. */
+   * requirement clears its `min` by at least `tipTriggerFraction` AND every
+   * `lapTimeCeiling` requirement clears its `maxSeconds` by at least
+   * `lapTipTriggerFraction` (Sprint 79 decision 6 - a mission naming neither
+   * kind never tips, never vacuously). */
   tipFraction: z.number().min(0).max(1).default(0.1),
   tipTriggerFraction: z.number().min(0).max(1).default(0.15),
+  /** Sprint 79: the lap-time twin of `tipTriggerFraction` - how far under a
+   * `lapTimeCeiling` requirement's `maxSeconds` counts as overdelivery, not
+   * just clearing the bar. Kept tighter than the stat-threshold default (3%
+   * vs 15%) so the probe build itself (2% under its own derived ceiling,
+   * Sprint 78's formula) does not tip; beating the reference build does. */
+  lapTipTriggerFraction: z.number().min(0).max(1).default(0.03),
   reputationReward: z.number().int().nonnegative(),
   lapseReputationPenalty: z.number().int().nonnegative(),
   /** Days after lapsing before the same mission returns to `offered` -

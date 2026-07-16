@@ -5,12 +5,17 @@
     "title": "Four wheels",
     "requestCopy": "Anything on four wheels that starts every morning. I have almost no money. Please.",
     "gateReputationPoints": 0,
-    "requirements": [{ "kind": "roadworthy" }],
+    "requirements": [
+      {
+        "kind": "roadworthy"
+      }
+    ],
     "budgetCapYen": 175000,
     "deadlineDays": 15,
     "payoutYen": 207000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 15,
     "lapseReputationPenalty": 7,
     "reofferDays": 10,
@@ -25,12 +30,19 @@
     "title": "Won't strand her",
     "requestCopy": "My daughter drives forty minutes to college. Build me the car that never leaves her on the roadside.",
     "gateReputationPoints": 30,
-    "requirements": [{ "kind": "statThreshold", "stat": "reliability", "min": 54 }],
+    "requirements": [
+      {
+        "kind": "statThreshold",
+        "stat": "reliability",
+        "min": 54
+      }
+    ],
     "budgetCapYen": 185000,
     "deadlineDays": 15,
     "payoutYen": 218000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 20,
     "lapseReputationPenalty": 10,
     "reofferDays": 10,
@@ -46,14 +58,23 @@
     "requestCopy": "I've saved up. I want a PROPER car this time, one I won't be embarrassed by, one that still starts every morning.",
     "gateReputationPoints": 60,
     "requirements": [
-      { "kind": "tasteMatch", "buyerId": "first-timer", "minMultiplier": 0.97 },
-      { "kind": "statThreshold", "stat": "reliability", "min": 54 }
+      {
+        "kind": "tasteMatch",
+        "buyerId": "first-timer",
+        "minMultiplier": 0.97
+      },
+      {
+        "kind": "statThreshold",
+        "stat": "reliability",
+        "min": 54
+      }
     ],
     "budgetCapYen": 414000,
     "deadlineDays": 15,
     "payoutYen": 489000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 25,
     "lapseReputationPenalty": 12,
     "reofferDays": 10,
@@ -68,12 +89,19 @@
     "title": "Make it pull",
     "requestCopy": "Customer of mine wants a warm hatch, nothing silly, but it has to PULL. You find the base, you build it.",
     "gateReputationPoints": 120,
-    "requirements": [{ "kind": "statThreshold", "stat": "power", "min": 191 }],
+    "requirements": [
+      {
+        "kind": "statThreshold",
+        "stat": "power",
+        "min": 191
+      }
+    ],
     "budgetCapYen": 717000,
     "deadlineDays": 20,
     "payoutYen": 847000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 30,
     "lapseReputationPenalty": 15,
     "reofferDays": 10,
@@ -88,12 +116,19 @@
     "title": "The column clock",
     "requestCopy": "I'm writing about the pass again. Bring me something that clocks under the time printed in this column, and I'll put your garage's name in it.",
     "gateReputationPoints": 200,
-    "requirements": [{ "kind": "lapTimeCeiling", "courseId": "kirifuri", "maxSeconds": 83.1 }],
+    "requirements": [
+      {
+        "kind": "lapTimeCeiling",
+        "courseId": "kirifuri",
+        "maxSeconds": 83.1
+      }
+    ],
     "budgetCapYen": 1257000,
     "deadlineDays": 20,
     "payoutYen": 1485000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 35,
     "lapseReputationPenalty": 17,
     "reofferDays": 10,
@@ -109,14 +144,23 @@
     "requestCopy": "It needs to sit RIGHT. Low, wide, loud, and it still has to look like it means it when it's parked.",
     "gateReputationPoints": 320,
     "requirements": [
-      { "kind": "tasteMatch", "buyerId": "stancer", "minMultiplier": 1.0 },
-      { "kind": "statThreshold", "stat": "style", "min": 55 }
+      {
+        "kind": "tasteMatch",
+        "buyerId": "stancer",
+        "minMultiplier": 1
+      },
+      {
+        "kind": "statThreshold",
+        "stat": "style",
+        "min": 55
+      }
     ],
     "budgetCapYen": 1432000,
     "deadlineDays": 20,
     "payoutYen": 1692000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 40,
     "lapseReputationPenalty": 20,
     "reofferDays": 10,
@@ -132,15 +176,28 @@
     "requestCopy": "Real power, but it idles like a street car and my customer drives it to work. Both. No excuses.",
     "gateReputationPoints": 500,
     "requirements": [
-      { "kind": "statThreshold", "stat": "power", "min": 235 },
-      { "kind": "statThreshold", "stat": "reliability", "min": 48 },
-      { "kind": "tasteMatch", "buyerId": "tuner", "minMultiplier": 0.99 }
+      {
+        "kind": "statThreshold",
+        "stat": "power",
+        "min": 235
+      },
+      {
+        "kind": "statThreshold",
+        "stat": "reliability",
+        "min": 48
+      },
+      {
+        "kind": "tasteMatch",
+        "buyerId": "tuner",
+        "minMultiplier": 0.99
+      }
     ],
     "budgetCapYen": 1313000,
     "deadlineDays": 25,
     "payoutYen": 1552000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 50,
     "lapseReputationPenalty": 25,
     "reofferDays": 10,
@@ -155,12 +212,19 @@
     "title": "Under one-fifteen",
     "requestCopy": "Last one. The big column. Under one-fifteen at Kirifuri, whatever it takes, and your garage is the name this town remembers.",
     "gateReputationPoints": 800,
-    "requirements": [{ "kind": "lapTimeCeiling", "courseId": "kirifuri", "maxSeconds": 68.9 }],
+    "requirements": [
+      {
+        "kind": "lapTimeCeiling",
+        "courseId": "kirifuri",
+        "maxSeconds": 71.8
+      }
+    ],
     "budgetCapYen": 2958000,
     "deadlineDays": 25,
     "payoutYen": 3496000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
     "reputationReward": 60,
     "lapseReputationPenalty": 30,
     "reofferDays": 10,

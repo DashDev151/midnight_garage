@@ -10,6 +10,7 @@ import { carLedgerFor, deleteCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { computeDerivedStats } from './derivedStats'
 import { releaseCarFromShop } from './facilities'
+import { lapTimeSecondsFor } from './lapModel'
 import { evaluateRequirement, type RequirementResult } from './requirements'
 import { applySpecialtyDelta } from './serviceJobs'
 import { clearStagedWork } from './stagedWork'
@@ -177,16 +178,40 @@ function isStatThreshold(
   return requirement.kind === 'statThreshold'
 }
 
+function isLapTimeCeiling(
+  requirement: RequirementSpec,
+): requirement is Extract<RequirementSpec, { kind: 'lapTimeCeiling' }> {
+  return requirement.kind === 'lapTimeCeiling'
+}
+
 /**
- * Sprint 76 decision 4: whether every `statThreshold` requirement on
- * `mission` clears its `min` by at least `tipTriggerFraction` - the tip
- * condition. A mission authoring no `statThreshold` at all has nothing to
- * overdeliver against, so it never earns a tip (never vacuously true).
+ * Sprint 76 decision 4, extended Sprint 79 decision 6: whether every
+ * `statThreshold` requirement on `mission` clears its `min` by at least
+ * `tipTriggerFraction` AND every `lapTimeCeiling` requirement clears its
+ * `maxSeconds` by at least `lapTipTriggerFraction` - the tip condition. A
+ * mission authoring neither kind has nothing to overdeliver against, so it
+ * never earns a tip (never vacuously true; `four-wheels`, a `roadworthy`-only
+ * mission, stays tipless by design). A `lapTimeCeiling` mission whose car
+ * cannot even set a time (`lapTimeSeconds === null` - no tyres fitted, or
+ * scrap-band) never tips either.
  */
-function earnsTip(mission: StoryMission, stats: ReturnType<typeof computeDerivedStats>): boolean {
+function earnsTip(
+  mission: StoryMission,
+  stats: ReturnType<typeof computeDerivedStats>,
+  lapTimeSeconds: number | null,
+): boolean {
   const thresholds = mission.requirements.filter(isStatThreshold)
-  if (thresholds.length === 0) return false
-  return thresholds.every((r) => stats[r.stat] >= r.min * (1 + mission.tipTriggerFraction))
+  const lapCeilings = mission.requirements.filter(isLapTimeCeiling)
+  if (thresholds.length === 0 && lapCeilings.length === 0) return false
+  const thresholdsClear = thresholds.every(
+    (r) => stats[r.stat] >= r.min * (1 + mission.tipTriggerFraction),
+  )
+  const lapsClear = lapCeilings.every(
+    (r) =>
+      lapTimeSeconds !== null &&
+      lapTimeSeconds <= r.maxSeconds * (1 - mission.lapTipTriggerFraction),
+  )
+  return thresholdsClear && lapsClear
 }
 
 /**
@@ -223,7 +248,10 @@ export function resolveDeliverMission(
       context.partsTaxonomy,
       context.economy,
     )
-    if (earnsTip(mission, stats)) tipYen = Math.round(mission.payoutYen * mission.tipFraction)
+    const lapTimeSeconds = lapTimeSecondsFor(car, model, context)
+    if (earnsTip(mission, stats, lapTimeSeconds)) {
+      tipYen = Math.round(mission.payoutYen * mission.tipFraction)
+    }
   }
 
   const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)

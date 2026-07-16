@@ -1056,6 +1056,15 @@ export const EconomyConfigSchema = z.object({
    * condition can beat the sensible-repair route - a disclosed measurement
    * threshold for the balance report, not a hard-gated invariant (decision 8,
    * sprint71.md).
+   *
+   * Sprint 79 (the equivalence-priced labour model, maintainer directive
+   * 2026-07-16): `removeSlotsByClass` is zeroed at every depth - removal and
+   * like-for-like reassembly are free; labour only ever prices the
+   * IMPROVEMENT to a slot (a repair, a replacement, an upgrade), never the
+   * logistics of reaching it. The knob stays in content (this is a value
+   * change, not a mechanism removal) - `CarPartState.vacatedBaseline`
+   * (content/src/carInstance.ts) plus `jobs.ts`'s `refitLaborSlotsFor` are
+   * what let a matching refit skip `installSlotsByClass` too.
    */
   teardown: z.object({
     removeSlotsByClass: z.object({
@@ -1123,6 +1132,14 @@ export const EconomyConfigSchema = z.object({
    * faster - monotonic by construction, never re-ordered by content).
    * `courseId`/`courseName` name the one v1.0 course; the schema is
    * course-keyed so a second course is content, not a code change.
+   *
+   * Sprint 79 (grip spread nerf, maintainer directive 2026-07-16): tightened
+   * from `{stock 1.06, street 1.00, sport 0.94, race 0.88}` - race tyres
+   * alone were worth roughly +70% power-equivalent (a solved opening move for
+   * every lap mission) - to `{stock 1.04, street 1.00, sport 0.98,
+   * race 0.96}`, roughly +26% race-vs-stock, about +6% per tyre step. Real
+   * course simulation (torque curve, drive type, brakes, drag) stays
+   * post-launch, tied to drive mode.
    */
   lapModel: z.object({
     C: z.number().positive(),

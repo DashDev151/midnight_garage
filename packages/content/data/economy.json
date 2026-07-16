@@ -298,8 +298,8 @@
   "teardown": {
     "removeSlotsByClass": {
       "surface": 0,
-      "bolt-on": 1,
-      "buried": 2
+      "bolt-on": 0,
+      "buried": 0
     },
     "installSlotsByClass": {
       "surface": 0,
@@ -335,10 +335,10 @@
     "C": 42.5,
     "ratioExp": 0.35,
     "gripMult": {
-      "stock": 1.06,
+      "stock": 1.04,
       "street": 1.0,
-      "sport": 0.94,
-      "race": 0.88
+      "sport": 0.98,
+      "race": 0.96
     },
     "courseId": "kirifuri",
     "courseName": "Kirifuri Pass"

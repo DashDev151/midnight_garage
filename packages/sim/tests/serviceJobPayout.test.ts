@@ -150,15 +150,19 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
   })
 
   /**
-   * Sprint 72 task 7: a template addressing genuinely deep (buried) parts
-   * with real `blockedBy` chains - `internals` (blocked by `headValvetrain`)
-   * and `headValvetrain` (blocked by `camsTiming`, `intake`) - proving
-   * decision 6's teardown-chain premium is actually live for real content,
-   * not just theoretically wired, and that the worst-margin payout still
-   * clears the same Law 4 floor as the blanket sweep above once that premium
-   * is folded in.
+   * Sprint 72 task 7 introduced a deep-slot job (buried parts behind real
+   * `blockedBy` chains - `internals` blocked by `headValvetrain`,
+   * `headValvetrain` blocked by `camsTiming`/`intake`) to prove a teardown-
+   * chain premium was actually live for real content. Sprint 79 (the
+   * equivalence-priced labour model) retires that premium: removal and
+   * blocker refits are free, so a deep task's labour is now exactly its own
+   * target slot's `installLaborSlotsFor` - no chain surcharge on top.
+   * Directive 17 case (a): the old assertion (`toBeGreaterThan` the bare
+   * install baseline) is now intentionally wrong; this still proves the
+   * genuinely load-bearing claim - the worst-margin payout clears the Law 4
+   * floor on a real deep-slot template, not a synthetic one.
    */
-  it('a deep-slot job (engine-internals-rebuild) prices the full teardown chain, and the worst-margin payout still clears the floor', () => {
+  it('a deep-slot job (engine-internals-rebuild) prices exactly its own target slots (no teardown-chain premium, Sprint 79), and the worst-margin payout still clears the floor', () => {
     const template = SERVICE_JOB_TYPES.find((t) => t.id === 'engine-internals-rebuild')
     if (!template) {
       throw new Error(
@@ -174,9 +178,9 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
       (sum, task) => sum + installLaborSlotsFor(task.requirement.carPartId, CONTEXT),
       0,
     )
-    // The chain premium must actually show up - both tasks' parts are buried,
-    // so labour must exceed the bare install-only baseline.
-    expect(breakdown.laborSlots).toBeGreaterThan(bareInstallSlots)
+    // No chain premium: both tasks' parts are buried, but labour is exactly
+    // the bare install-only baseline now that removal/blocker refits are free.
+    expect(breakdown.laborSlots).toBe(bareInstallSlots)
 
     const worstPayout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
     const minCost = playerMinCostYen(template.tasks, car, model)

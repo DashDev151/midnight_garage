@@ -80,6 +80,7 @@ import {
   groupCostToMintYen,
   installedPartsValueYen,
   installLaborSlotsFor,
+  refitLaborSlotsFor,
   hasParkingSpace,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
   isCustomerOriginPart,
@@ -1664,7 +1665,13 @@ export const useGameStore = defineStore('game', () => {
         )
         const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
         const targetPartId = action.carPartId ?? catalogPart?.carPartId
-        if (targetPartId) total += installLaborSlotsFor(targetPartId, context.value)
+        if (targetPartId) {
+          // Sprint 79: a refit matching the slot's own vacated baseline
+          // (putting the car back the way it was found) is free.
+          total += partInstance
+            ? refitLaborSlotsFor(car, targetPartId, partInstance, context.value)
+            : installLaborSlotsFor(targetPartId, context.value)
+        }
       }
     }
     return total
@@ -2532,17 +2539,24 @@ export const useGameStore = defineStore('game', () => {
     // Sprint 71: labour sizes off the TARGET slot's own depth class - the
     // picked part's own catalog address when `carPartId` (the per-part
     // drawer) is unset, exactly how `applyJobToCar` resolves the real target
-    // slot at completion.
+    // slot at completion. Sprint 79: free when it matches the slot's own
+    // vacated baseline (putting the car back the way it was found).
+    const car = findWorkableCar(carId)
     const partInstance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
     const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
     const targetPartId = carPartId ?? catalogPart?.carPartId
+    const laborSlotsRequired = !targetPartId
+      ? 1
+      : car && partInstance
+        ? refitLaborSlotsFor(car, targetPartId, partInstance, context.value)
+        : installLaborSlotsFor(targetPartId, context.value)
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'install-part',
       componentId,
       partInstanceId,
       carPartId,
-      laborSlotsRequired: targetPartId ? installLaborSlotsFor(targetPartId, context.value) : 1,
+      laborSlotsRequired,
     }
     const result = resolveJobLabor(
       gameState.value,

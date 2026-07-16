@@ -83,6 +83,24 @@ stay hard-gated under the original Law 6 check; the shitbox tier is measured
 separately and disclosed, not silently loosened or force-passed, per this
 file's own established precedent above. See sprint72.md's Exit for the real
 before/after numbers and the maintainer direction this followed.
+
+Update (Sprint 79, maintainer sign-off 2026-07-16): invariants 3, 5, and 6
+are demoted from hard-gated to informational. All three read bot-career CSVs
+(`careers.csv`, `auctionWins.csv`, `acquisitions.csv`), and the standing
+TODO.md harness finding (measured repeatedly since Sprint 71's teardown
+mechanic, restated 2026-07-15 by the maintainer verbatim: "the entire Sim
+part with the bots is kinda useless") is that the bots do not faithfully
+simulate the post-arc game - no inspection, no teardown, no build-to-spec -
+so a bot-derived pass or fail here is not design evidence either way. This is
+the converse of the Sprint 71 precedent this file already followed (demoting
+a hard-gated check needs the same explicit sign-off promoting one would): the
+sign-off is recorded, so all three demote together rather than sitting red
+until a full bot-harness rework lands. Invariants 7-10 (Law 2, Law 1 flip and
+sensible margins, Law 6 non-shitbox wage, Law 3 consumables share, Law 4
+payout floor) stay hard-gated - they read `coherence.csv`, closed-form model
+arithmetic with no bot in the loop, and are exactly the guardrails that made
+this same sprint's labour-model retuning safe to ship. See sprint79.md's
+Exit and TODO.md's bot-harness entry for the full context.
 """
 
 import argparse
@@ -208,7 +226,9 @@ def check_invariants(
 
     results: list[tuple[str, bool, str]] = []
 
-    # --- Invariant 3 (hard-gated): days-to-local, competent probe policy ---
+    # --- Invariant 3 ([INFO, not gated - demoted Sprint 79, see module
+    # docstring]): days-to-local, competent probe policy. Bot-derived; the
+    # bots do not faithfully simulate the post-arc game. ---
     if days_local.len() > 0:
         p50_local = percentile(days_local, 0.5)
         band_ok = DAYS_TO_LOCAL_BAND[0] <= p50_local <= DAYS_TO_LOCAL_BAND[1]
@@ -217,48 +237,55 @@ def check_invariants(
         band_ok = False
     results.append(
         (
+            "[INFO, not gated - demoted Sprint 79, see module docstring] "
             "Days-to-`local`, competent probe policy: p50 in "
             f"[{DAYS_TO_LOCAL_BAND[0]}, {DAYS_TO_LOCAL_BAND[1]}]",
-            band_ok,
+            True,
             f"p50={p50_local} days ({days_local.len()}/{total_competent_seeds} seeds reached "
-            "`local` within the career horizon)",
+            f"`local` within the career horizon); band check itself would have "
+            f"{'passed' if band_ok else 'failed'}",
         )
     )
 
-    # --- Invariant 5 (hard-gated): buyout share of acquisitions ---
+    # --- Invariant 5 ([INFO, not gated - demoted Sprint 79]): buyout share of
+    # acquisitions. Bot-derived. ---
     results.append(
         (
+            "[INFO, not gated - demoted Sprint 79, see module docstring] "
             f"Buyout share of acquisitions < {BUYOUT_SHARE_CEILING:.0%}",
-            buyout_share < BUYOUT_SHARE_CEILING,
-            f"buyout share={buyout_share:.1%} ({acquisitions.height} total acquisitions)",
+            True,
+            f"buyout share={buyout_share:.1%} ({acquisitions.height} total acquisitions); "
+            f"ceiling check itself would have "
+            f"{'passed' if buyout_share < BUYOUT_SHARE_CEILING else 'failed'}",
         )
     )
 
-    # --- Invariant 6 (hard-gated): the 3 legacy Sprint 03/09 checks ---
+    # --- Invariant 6 ([INFO, not gated - demoted Sprint 79]): the 3 legacy
+    # Sprint 03/09 checks. Bot-derived. ---
     results.append(
         (
+            "[INFO, not gated - demoted Sprint 79, see module docstring] "
             "Passive Grinder solvency baseline",
-            passive_100 > SANITY_FLOOR_YEN,
+            True,
             f"day100 median cashYen=Y{passive_100:,.0f}",
         )
     )
     results.append(
         (
+            "[INFO, not gated - demoted Sprint 79, see module docstring] "
             "Flipper shows real market participation (day100 cash diverges from "
             "Passive Grinder's, proving trades actually happen)",
-            abs(flipper_100 - passive_100) > SEPARATION_THRESHOLD_YEN,
+            True,
             f"flipper=Y{flipper_100:,.0f} passive=Y{passive_100:,.0f} "
             f"diff=Y{abs(flipper_100 - passive_100):,.0f}",
         )
     )
     results.append(
         (
+            "[INFO, not gated - demoted Sprint 79, see module docstring] "
             "No strategy falls below the sanity floor (catches a runaway/"
             "catastrophic bug, not ordinary economic underperformance)",
-            all(
-                v > SANITY_FLOOR_YEN
-                for v in (passive_100, flipper_100, restorer_100, balanced_100, random_100)
-            ),
+            True,
             f"passive=Y{passive_100:,.0f} flipper=Y{flipper_100:,.0f} "
             f"restorer=Y{restorer_100:,.0f} balanced=Y{balanced_100:,.0f} "
             f"random=Y{random_100:,.0f}",

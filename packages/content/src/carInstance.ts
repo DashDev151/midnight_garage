@@ -16,8 +16,24 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  * from the car's model tags (`bands.ts`'s `hasForcedInduction`), never
  * stored redundantly here - see sprint32.md decisions 2-3.
  */
+/**
+ * Sprint 79 (the equivalence-priced labour model): what occupied this slot
+ * immediately before its CURRENT vacancy - stamped by `resolveRemovePart`
+ * (sim/jobs.ts) at uninstall, never carried forward once anything installs
+ * into the slot (a fresh `CarPartState` literal simply omits this key, which
+ * reads as "no baseline"). A part matching every field here refits for free:
+ * putting the car back the way it was found is logistics, not work; a
+ * repaired, replaced, or upgraded part fails the match and is charged.
+ */
+const PartBaselineSchema = z.object({
+  partId: z.string().min(1),
+  band: ConditionBandSchema,
+  genuinePeriod: z.boolean(),
+})
+
 const CarPartStateSchema = z.object({
   installed: PartInstanceSchema.nullable().default(null),
+  vacatedBaseline: PartBaselineSchema.optional(),
 })
 
 /**
@@ -105,6 +121,7 @@ export const CarInstanceSchema = z.object({
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>
 export type CarPartState = z.infer<typeof CarPartStateSchema>
+export type PartBaseline = z.infer<typeof PartBaselineSchema>
 
 /** Every real `CarPartId`, in the same order as `CarPartIdSchema` (Sprint
  * 26) - the canonical iteration order for anything that needs to walk every

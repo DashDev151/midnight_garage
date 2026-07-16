@@ -2,7 +2,7 @@ import type { CarInstance, DayLogEntry, GameState } from '@midnight-garage/conte
 import type { NewJobSpec } from './actions'
 import { bandIndex, canRepair, planGroupRepair } from './bands'
 import type { SimContext } from './context'
-import { findWorkableCar, installLaborSlotsFor, resolveJobLabor } from './jobs'
+import { findWorkableCar, installLaborSlotsFor, refitLaborSlotsFor, resolveJobLabor } from './jobs'
 
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
@@ -96,7 +96,10 @@ export function confirmStagedWork(
       // Sprint 71: labor sizes off the TARGET slot's own depth class - the
       // picked part's own catalog address when `action.carPartId` (the
       // per-part drawer) is unset, exactly how `applyJobToCar` itself
-      // resolves the real target slot at completion.
+      // resolves the real target slot at completion. Sprint 79: a refit
+      // matching the slot's own `vacatedBaseline` (putting the car back the
+      // way it was found) is free - `refitLaborSlotsFor` falls back to the
+      // plain class-based cost whenever `partInstance` can't be resolved.
       const partInstance = current.partInventory.find((p) => p.id === action.partInstanceId)
       const catalogPart = partInstance ? context.partsById[partInstance.partId] : undefined
       const targetPartId = action.carPartId ?? catalogPart?.carPartId
@@ -107,7 +110,9 @@ export function confirmStagedWork(
             componentId: action.componentId,
             partInstanceId: action.partInstanceId,
             carPartId: action.carPartId,
-            laborSlotsRequired: installLaborSlotsFor(targetPartId, context),
+            laborSlotsRequired: partInstance
+              ? refitLaborSlotsFor(car, targetPartId, partInstance, context)
+              : installLaborSlotsFor(targetPartId, context),
           }
         : null
     }

@@ -109,6 +109,14 @@ pass."
      CI will show red on this one line until either the bot-harness rework lands or the maintainer
      explicitly demotes this specific check.
 
+     **Resolved (Sprint 79, maintainer sign-off 2026-07-16): the demotion this finding asked for has
+     happened.** Days-to-`local` (invariant 3), the buyout-share ceiling (invariant 5), and the 3
+     legacy Sprint 03/09 checks (invariant 6) are all now `[INFO, not gated]` in `invariants.py` -
+     `balance.cli check` exits 0 again. This is explicitly a demotion of bot-DERIVED checks only;
+     the 6 closed-form coherence checks (Law 1/2/3/4/6-non-shitbox) that read `coherence.csv`, not
+     bot careers, stay hard-gated and are unaffected. The bot harness itself is untouched by this -
+     it still does not simulate real gameplay, and the rework below remains exactly as needed.
+
   **What survives the rework, and must not be thrown away.** The distinction matters: the harness
   has two halves and only one is broken.
   - **Bot-derived (unreliable):** every days-to-tier figure, every per-strategy cash curve, the
@@ -252,35 +260,42 @@ pass."
   painful) - open question for the spreadsheet pass. (The parts-pricing-curve question that used to
   sit here moved into Sprint 28's catalog work.)
 - [ ] **Law 6 (the wage law) genuinely fails on the shitbox tier once the full teardown chain is
-  honestly priced (found Sprint 72, decision 6).** Before Sprint 72, `computeModelCoherence`'s wage
-  probe undercounted a bolt-on/buried repair's teardown labour (Sprint 71's disclosed gap); pricing
-  it honestly (deduped once per shared blocker across the whole restoration, not once per part
-  behind it - see `coherence.ts`) drops `honda-city-e-aa`/`suzuki-wagon-r-ct21s` to a real
-  `wageMarginYen` of -Y20,725 (0.39x rent), while common/uncommon/rare all clear a large positive
-  margin. Root cause, not a bug: a shitbox's cheap parts return too little repair gain
-  (`repairGainYen` scales with part price) to outearn the rent the teardown labour burns (labour is
-  value-blind). `invariants.py`'s Law 6 check is split accordingly - common/uncommon/rare stays
-  hard-gated, the shitbox tier is measured and disclosed, not silently loosened (same treatment in
-  `valueModelProbes.test.ts`). Maintainer call needed: soften the teardown labour premium, raise
+  honestly priced (found Sprint 72, decision 6; re-measured Sprint 79).** Before Sprint 72,
+  `computeModelCoherence`'s wage probe undercounted a bolt-on/buried repair's teardown labour
+  (Sprint 71's disclosed gap); pricing it honestly (deduped once per shared blocker across the
+  whole restoration, not once per part behind it - see `coherence.ts`) dropped
+  `honda-city-e-aa`/`suzuki-wagon-r-ct21s` to a real `wageMarginYen` of -Y20,725 (0.39x rent), while
+  common/uncommon/rare all clear a large positive margin. Root cause, not a bug: a shitbox's cheap
+  parts return too little repair gain (`repairGainYen` scales with part price) to outearn the rent
+  the teardown labour burns (labour is value-blind). **Sprint 79 (the equivalence-priced labour
+  model) narrows the gap without closing it**: removal and blocker refits are now free, so the
+  deficit is purely the repaired part's own refit labour - re-measured at -Y9,772 (0.57x rent) for
+  both models, roughly half the prior loss but still negative. `invariants.py`'s Law 6 check stays
+  split accordingly - common/uncommon/rare hard-gated, the shitbox tier measured and disclosed, not
+  silently loosened (same treatment in `valueModelProbes.test.ts`). Maintainer call needed: raise
   `marketRepairDiscount`, or accept that not every shitbox repair job is worth a player's day.
-- [ ] **Donor-flow (strip everything, sell it all, scrap the shell) does not beat full-car
-  repair-and-flip for an uncommon-tier "corpse," even at worst-case symptom severity (found
-  Sprint 75, decision 3's integration tests, `packages/sim/tests/diagnosisFlows.test.ts`).**
-  Measured directly on `nissan-180sx-rps13` (a rough, uniformly-`worn` car carrying `non-starter`):
+- [ ] **Donor-flow (strip everything, sell it all, scrap the shell) versus full-car repair-and-flip
+  (found Sprint 75, decision 3's integration tests; re-measured Sprint 79 after free removal).**
+  Sprint 75 measured `nissan-180sx-rps13` (a rough, uniformly-`worn` car carrying `non-starter`):
   repairing just the diagnosed defect is profitable for the `flat-battery` sleeper and a genuine
-  loss for the `seized-engine` corpse (even pushed to `scrap`, a worse realisation than the
-  symptom's own average-case `poor` setBand) - the "worth fixing vs not" claim holds cleanly. But
-  stripping every removable part at `economy.teardown.usedPartSaleFraction` (0.55) and scrapping
-  the shell never overtakes repair-and-flip in absolute yen for this model at any severity tested -
-  donor's relative standing improves substantially for the corpse (the gap narrows a lot) without
-  ever crossing over. Root cause, not a bug: haircutting ~28 largely-`worn` (not badly-damaged)
-  parts at 45% off costs more than the single catastrophic repair saves, at this tier's own price
-  scale - the same shape as the Law 6 shitbox finding above, on the OTHER side of the teardown
-  economy. Not silently loosened in the test (it asserts the honestly-measured relative-narrowing
-  claim, not an outright donor win) - see `sprint75.md`'s Exit. Maintainer call needed: is this the
-  intended shape (a "corpse" only ever makes sense to strip on a cheaper tier, or when MULTIPLE
-  parts are genuinely wrecked, not just one), or does `usedPartSaleFraction` want raising for
-  higher tiers specifically.
+  loss for the `seized-engine` corpse - the "worth fixing vs not" claim holds cleanly - but stripping
+  never overtook repair-and-flip in absolute yen at any severity tested, because haircutting ~28
+  largely-`worn` parts at 45% off cost more than the single catastrophic repair saved, once teardown
+  labour was honestly priced (the same shape as the Law 6 shitbox finding above, the other side of
+  the teardown economy). **Sprint 79 (the equivalence-priced labour model) removes that labour cost
+  entirely** - `computeDonorCoherence`'s `stripLaborSlots` is now 0 for every roster model, since
+  removal is free. Re-measured on the worst-case rolled car per model (`ModelDonorCoherenceRow.
+  partedYieldOfWorstCaseYen` against that model's own `sensibleFlipMarginYen`): parting now WINS on
+  three roster models' worst-case corpse - `honda-city-e-aa` (49.5% bill/clean), `honda-civic-
+  sir2-eg6` (54.8%), and `nissan-180sx-rps13` itself (55.3%, the exact model Sprint 75 found never
+  crossed over) - while seven others (including both rare-tier RX7s and the Supra, whose bill/clean
+  ratio is only 31.7%) still favour repair. The crossover is not a single ratio (`coherence.test.ts`
+  disclosed this from the start): the lowest ratio at which parting wins (49.5%) sits comfortably
+  above the 0.20 decision gate this sprint's own doc set (`sprint79.md` decision 3) - buy-strip-sell
+  is not threatening moderately-damaged cars, only genuine corpses, so `usedPartSaleFraction` (0.55)
+  is NOT touched. Maintainer call needed: is a three-model donor loop the intended shape for v1.0,
+  or does `usedPartSaleFraction`/the donor mechanic want a deliberate design pass now that it is
+  reachable (rather than remaining a theoretical, never-quite-triggering mechanic).
 
 ## Planned systems (designed, not yet scheduled)
 
