@@ -1,0 +1,188 @@
+[
+  {
+    "id": "smokes-on-startup",
+    "cardLine": "Smokes on startup.",
+    "causes": [
+      { "id": "valve-seals", "carPartId": "headValvetrain", "setBand": "worn", "weight": 55 },
+      { "id": "tired-rings", "carPartId": "internals", "setBand": "poor", "weight": 30 },
+      { "id": "head-gasket", "carPartId": "headValvetrain", "setBand": "poor", "weight": 15 }
+    ],
+    "tests": [
+      {
+        "testId": "cold-start-watch",
+        "partition": [["valve-seals", "tired-rings"], ["head-gasket"]],
+        "resultCopy": [
+          "Smoke clears within a few seconds of firing, an oil-burn smell, not coolant sweet. Points at the valve seals or the rings, not the head gasket.",
+          "Smoke keeps coming well past the first few seconds, faintly sweet. Points at the head gasket, not the seals or rings."
+        ]
+      },
+      {
+        "testId": "compression-test",
+        "partition": [["valve-seals"], ["tired-rings", "head-gasket"]],
+        "resultCopy": [
+          "Compression reads even across every cylinder. The valve seals are the likely culprit, not the rings or the gasket.",
+          "One or more cylinders read low. Points at the rings or the head gasket, not the valve seals."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "non-starter",
+    "cardLine": "Won't start. Turns over, nothing catches.",
+    "causes": [
+      { "id": "flat-battery", "carPartId": "ignitionEcu", "setBand": "worn", "weight": 55 },
+      { "id": "fuel-pump", "carPartId": "fuelSystem", "setBand": "poor", "weight": 30 },
+      { "id": "seized-engine", "carPartId": "block", "setBand": "poor", "weight": 15 }
+    ],
+    "tests": [
+      {
+        "testId": "electrics-check",
+        "partition": [["flat-battery"], ["fuel-pump", "seized-engine"]],
+        "resultCopy": [
+          "Cranking speed sags hard and the lights dim with it. The battery's the problem, not the pump or the engine itself.",
+          "Cranking speed and the lights both hold steady. Not the battery, narrows to the fuel pump or the engine itself."
+        ]
+      },
+      {
+        "testId": "hand-crank",
+        "partition": [["seized-engine"], ["flat-battery", "fuel-pump"]],
+        "resultCopy": [
+          "The crank won't turn over by hand at all. The engine itself is seized, not a battery or fuel-pump fault.",
+          "The crank turns over freely by hand. Not a seized engine, narrows to the battery or the fuel pump."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tick-at-idle",
+    "cardLine": "Faint tick at idle. Probably nothing.",
+    "causes": [
+      { "id": "lifter-tick", "carPartId": "headValvetrain", "setBand": "worn", "weight": 70 },
+      { "id": "rod-knock", "carPartId": "internals", "setBand": "poor", "weight": 30 }
+    ],
+    "tests": [
+      {
+        "testId": "stethoscope",
+        "partition": [["lifter-tick"], ["rod-knock"]],
+        "resultCopy": [
+          "A light, even tick right at the top of the head. Just the lifters, not the bottom end.",
+          "A duller knock lower in the block, worse under load. The bottom end, not the lifters."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wont-idle",
+    "cardLine": "Won't hold an idle. Hunts and dies.",
+    "causes": [
+      { "id": "vacuum-leak", "carPartId": "intake", "setBand": "worn", "weight": 50 },
+      { "id": "tired-ecu", "carPartId": "ignitionEcu", "setBand": "poor", "weight": 30 },
+      { "id": "worn-cams", "carPartId": "camsTiming", "setBand": "poor", "weight": 20 }
+    ],
+    "tests": [
+      {
+        "testId": "spray-test",
+        "partition": [["vacuum-leak"], ["tired-ecu", "worn-cams"]],
+        "resultCopy": [
+          "The idle changes the instant a hose joint gets a squirt. A vacuum leak, not the ECU or the cams.",
+          "Nothing changes anywhere along the manifold. Not a vacuum leak, narrows to the ECU or the cam timing, and this is as far as a yard test gets it."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "crunch-into-second",
+    "cardLine": "Crunches into second when cold.",
+    "causes": [
+      { "id": "worn-synchros", "carPartId": "gearbox", "setBand": "worn", "weight": 60 },
+      { "id": "chewed-gearset", "carPartId": "gearbox", "setBand": "poor", "weight": 40 }
+    ],
+    "tests": [
+      {
+        "testId": "gearbox-oil-check",
+        "partition": [["worn-synchros"], ["chewed-gearset"]],
+        "resultCopy": [
+          "The oil's clean and the right level, just thin. Worn synchros, not a chewed gearset.",
+          "Metal glints in the drained oil. A chewed gearset, not just tired synchros."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "clunk-over-bumps",
+    "cardLine": "Clunks over bumps at the back.",
+    "causes": [
+      { "id": "tired-bushes", "carPartId": "antiRollBars", "setBand": "worn", "weight": 45 },
+      { "id": "blown-dampers", "carPartId": "dampers", "setBand": "poor", "weight": 35 },
+      { "id": "steering-play", "carPartId": "steering", "setBand": "poor", "weight": 20 }
+    ],
+    "tests": [
+      {
+        "testId": "bounce-test",
+        "partition": [["blown-dampers"], ["tired-bushes", "steering-play"]],
+        "resultCopy": [
+          "The corner keeps bouncing after a good push instead of settling. The dampers are blown, not the bushes or the steering.",
+          "The corner settles quickly after a push. Not the dampers, narrows to the bushes or steering play."
+        ]
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [["tired-bushes"], ["blown-dampers", "steering-play"]],
+        "resultCopy": [
+          "Visible play and cracking right at the arm bushes. Tired bushes, not the dampers or the steering.",
+          "The bushes look sound. Not the bushes, narrows to blown dampers or steering play."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "pulls-under-braking",
+    "cardLine": "Pulls left under braking.",
+    "causes": [
+      { "id": "glazed-pads", "carPartId": "brakePadsDiscs", "setBand": "worn", "weight": 55 },
+      {
+        "id": "seized-calliper",
+        "carPartId": "brakeCalipersLines",
+        "setBand": "poor",
+        "weight": 45
+      }
+    ],
+    "tests": [
+      {
+        "testId": "wheel-off-look",
+        "partition": [["glazed-pads"], ["seized-calliper"]],
+        "resultCopy": [
+          "The pads are shiny and glazed, but the calliper slides freely. Just the pads, not a seized calliper.",
+          "The calliper won't slide back freely on its pins. A seized calliper, not just the pads."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "overheats-in-traffic",
+    "cardLine": "Runs hot in traffic. Fine on the move.",
+    "causes": [
+      { "id": "fan-switch", "carPartId": "ignitionEcu", "setBand": "worn", "weight": 40 },
+      { "id": "tired-radiator", "carPartId": "cooling", "setBand": "poor", "weight": 40 },
+      { "id": "early-head-gasket", "carPartId": "headValvetrain", "setBand": "poor", "weight": 20 }
+    ],
+    "tests": [
+      {
+        "testId": "coolant-check",
+        "partition": [["early-head-gasket"], ["fan-switch", "tired-radiator"]],
+        "resultCopy": [
+          "Bubbles rise in the header tank with the engine running. Early head-gasket sign, not the fan or the radiator.",
+          "The coolant's clean, no bubbling. Not the head gasket, narrows to the fan switch or the radiator."
+        ]
+      },
+      {
+        "testId": "warm-idle-watch",
+        "partition": [["fan-switch"], ["tired-radiator", "early-head-gasket"]],
+        "resultCopy": [
+          "The fan never kicks in even once the temp gauge climbs. The fan switch, not the radiator or the gasket.",
+          "The fan kicks in right on cue. Not the fan switch, narrows to a tired radiator or the head gasket."
+        ]
+      }
+    ]
+  }
+]

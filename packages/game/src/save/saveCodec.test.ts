@@ -1009,7 +1009,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(32)
+    expect(SAVE_VERSION).toBe(33)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1062,7 +1062,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(32)
+    expect(SAVE_VERSION).toBe(33)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1667,8 +1667,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 32 (Sprint 72)', () => {
-    expect(SAVE_VERSION).toBe(32)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 33 (Sprint 73)', () => {
+    expect(SAVE_VERSION).toBe(33)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1770,8 +1770,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 32 (Sprint 72)', () => {
-    expect(SAVE_VERSION).toBe(32)
+  it('SAVE_VERSION has since moved to 33 (Sprint 73)', () => {
+    expect(SAVE_VERSION).toBe(33)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1803,8 +1803,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 32 (Sprint 72)', () => {
-    expect(SAVE_VERSION).toBe(32)
+  it('SAVE_VERSION is 33 (Sprint 73)', () => {
+    expect(SAVE_VERSION).toBe(33)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1850,8 +1850,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 32 (Sprint 72)', () => {
-    expect(SAVE_VERSION).toBe(32)
+  it('SAVE_VERSION is 33 (Sprint 73)', () => {
+    expect(SAVE_VERSION).toBe(33)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -2006,4 +2006,74 @@ describe('saveCodec', () => {
    * longer applies (directive 17 case (a): the implementation intentionally
    * changed what is correct), so they are removed rather than converted.
    */
+
+  /**
+   * v32 -> v33 (Sprint 73, diagnosis I): `CarInstanceSchema` gained
+   * `symptoms` (default `[]`) and `apparentBandByPartId` (default `null`) -
+   * the normal additive case, so it needs NO `MIGRATIONS[32]` entry, but it
+   * DOES bump `SAVE_VERSION` (Save law). These two tests are its regression
+   * coverage: a real pre-v33 (v32 envelope) owned car with neither field at
+   * all still decodes cleanly under v33 (an honest car - no symptoms, no
+   * apparent-band record, exactly right since the concept did not exist
+   * yet), and a v33 car with a real generated symptom round-trips it exactly.
+   */
+  it('a real pre-v33 save (a v32 envelope whose owned car has neither field) decodes as an honest car under v33', () => {
+    const preV33State = {
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-honest-0001',
+          modelId: 'honda-city-e-aa',
+          year: 1990,
+          mileageKm: 80_000,
+          color: 'Red',
+          provenanceNote: '',
+          authenticityPercent: 85,
+          parts: mintParts(),
+        },
+      ],
+    }
+    const preV33 = { version: 32, gameState: preV33State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV33))
+    const decoded = decodeSave(code)
+    expect(decoded.ownedCars[0]?.symptoms).toEqual([])
+    expect(decoded.ownedCars[0]?.apparentBandByPartId).toBeNull()
+  })
+
+  it('a v33 car with a real generated symptom round-trips it exactly', () => {
+    const withSymptom: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-symptomatic-0001',
+          modelId: 'honda-city-e-aa',
+          year: 1990,
+          mileageKm: 12_000,
+          color: 'Red',
+          provenanceNote: '',
+          authenticityPercent: 85,
+          parts: mintParts({
+            headValvetrain: stockPartFixture('headValvetrain', 'worn'),
+          }),
+          symptoms: [
+            {
+              symptomId: 'smokes-on-startup',
+              trueCauseId: 'valve-seals',
+              remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+            },
+          ],
+          apparentBandByPartId: { headValvetrain: 'mint' },
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withSymptom))
+    expect(decoded.ownedCars[0]?.symptoms).toEqual([
+      {
+        symptomId: 'smokes-on-startup',
+        trueCauseId: 'valve-seals',
+        remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+      },
+    ])
+    expect(decoded.ownedCars[0]?.apparentBandByPartId).toEqual({ headValvetrain: 'mint' })
+  })
 })

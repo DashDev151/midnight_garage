@@ -16,6 +16,8 @@ from balance.data import (
     load_coherence,
     load_donor_coherence,
     load_donor_coherence_manifest,
+    load_symptom_coherence,
+    load_symptom_coherence_manifest,
 )
 from balance.invariants import COMPETENT_POLICY_STRATEGY, days_to_tier, percentile
 
@@ -290,6 +292,53 @@ def render_donor_coherence_section(
     return lines
 
 
+def render_symptom_coherence_section(
+    symptom_coherence: pl.DataFrame, fear_premium: float
+) -> list[str]:
+    """Sprint 73 decision 6 (diagnosis I, the blind-buy guardrail):
+    `computeSymptomCoherence`'s closed-form edge table, one row per symptom x
+    fitment tier, causes collapsed onto one line each. Disclosure, not a
+    gate here - `coherence.test.ts` hard-gates `blindBuyEvYen` staying in
+    [0, 20% of the apparent-to-expected gap] and every symptom showing both
+    a sleeper and a trap cause, on every tier, for the real shipped content;
+    this table is the human-readable render of the exact same numbers."""
+    lines = [
+        "## Symptom coherence (Sprint 73 decision 6, the blind-buy guardrail)",
+        "",
+        f"Per symptom x fitment tier, on a clean representative car: the apparent "
+        f"(room-shown) value, the honest expected true value, the fear-priced sheet "
+        f"value the room actually charges (`fearPremium` {fear_premium:.2f}), and the "
+        f"blind-buy edge (`expectedTrueValueYen - sheetGuideValueYen`) - buying with no "
+        f"test run at all must never be a losing bet on average, and never a windfall "
+        f"either. **Causes** lists each cause's own edge if it turns out true "
+        f"(positive = the car is worth more than the sheet charged; negative = less) - "
+        f"every symptom must show at least one of each, on every tier.",
+        "",
+        "| Symptom | Tier | Apparent | Expected true | Sheet guide | Blind-buy EV | Causes |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    grouped = symptom_coherence.group_by(["symptomId", "fitmentClass"], maintain_order=True).agg(
+        pl.col("apparentValueYen").first(),
+        pl.col("expectedTrueValueYen").first(),
+        pl.col("sheetGuideValueYen").first(),
+        pl.col("blindBuyEvYen").first(),
+        pl.col("causeId"),
+        pl.col("edgeYen"),
+    )
+    for row in grouped.sort(["symptomId", "fitmentClass"]).iter_rows(named=True):
+        causes = "; ".join(
+            f"{cause_id} {edge:+,.0f}" for cause_id, edge in zip(row["causeId"], row["edgeYen"])
+        )
+        lines.append(
+            f"| {row['symptomId']} | {row['fitmentClass']} "
+            f"| Y{row['apparentValueYen']:,.0f} | Y{row['expectedTrueValueYen']:,.0f} "
+            f"| Y{row['sheetGuideValueYen']:,.0f} | Y{row['blindBuyEvYen']:,.0f} "
+            f"| {causes} |"
+        )
+    lines.append("")
+    return lines
+
+
 INVARIANTS_ENFORCED_SECTION = [
     "## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2)",
     "",
@@ -334,6 +383,7 @@ def render_markdown(
     specialty_section: list[str],
     coherence_section: list[str],
     donor_coherence_section: list[str],
+    symptom_coherence_section: list[str],
 ) -> str:
     lines = [
         "# Midnight Garage - Balance Report",
@@ -356,6 +406,7 @@ def render_markdown(
     lines.extend(specialty_section)
     lines.extend(coherence_section)
     lines.extend(donor_coherence_section)
+    lines.extend(symptom_coherence_section)
     lines.extend(auction_section)
     lines.extend(acquisitions_section)
     lines.extend(INVARIANTS_ENFORCED_SECTION)
@@ -376,6 +427,8 @@ def main(argv: list[str] | None = None) -> int:
     coherence = load_coherence(data_dir)
     donor_coherence = load_donor_coherence(data_dir)
     donor_coherence_manifest = load_donor_coherence_manifest(data_dir)
+    symptom_coherence = load_symptom_coherence(data_dir)
+    symptom_coherence_manifest = load_symptom_coherence_manifest(data_dir)
 
     auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
@@ -385,6 +438,9 @@ def main(argv: list[str] | None = None) -> int:
     donor_coherence_section = render_donor_coherence_section(
         donor_coherence, coherence, donor_coherence_manifest["donorBreakEvenBillRatio"]
     )
+    symptom_coherence_section = render_symptom_coherence_section(
+        symptom_coherence, symptom_coherence_manifest["fearPremium"]
+    )
     report = render_markdown(
         summarize(df),
         auction_section,
@@ -393,6 +449,7 @@ def main(argv: list[str] | None = None) -> int:
         specialty_section,
         coherence_section,
         donor_coherence_section,
+        symptom_coherence_section,
     )
     Path(args.out).write_text(report, encoding="utf-8")
     print(report)

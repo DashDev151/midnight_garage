@@ -388,6 +388,26 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                 :data-test="'grade-stamp-int-' + d.lot.id"
               />
             </div>
+
+            <!-- Sprint 73 decision 7: free, public symptom disclosure - the
+                 room shows the symptom and every open cause, never which one
+                 is true. Read-only this sprint (Sprint 74 adds the inspection
+                 verb that narrows the checklist). -->
+            <div
+              v-for="symptom in d.symptoms"
+              :key="symptom.line"
+              class="symptom"
+              :data-test="'symptom-' + d.lot.id"
+            >
+              <p class="symptom-line">{{ symptom.line }}</p>
+              <ul class="symptom-causes">
+                <li v-for="cause in symptom.causes" :key="cause.label">
+                  <span class="mark" aria-hidden="true">[ ]</span>
+                  <span class="label">{{ cause.label }}</span>
+                  <span class="delta">if it's this: about {{ formatYen(cause.deltaYen) }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <!-- Right panel: current price is the headline, guide/reserve/bill
@@ -404,9 +424,12 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               <!-- The card is still honest (Sprint 30 decision 2): guide
                    value is the same transparent instanceValue everyone
                    prices from - book value is never shown - just no longer
-                   the headline. -->
+                   the headline. Sprint 73 decision 7: "as graded" is the
+                   honest caveat on a symptomatic lot - this number is
+                   fear-priced off the car's apparent (room-visible)
+                   condition, never the true one. -->
               <div class="lot-secondary">
-                <span>guide {{ formatYen(d.guideValueYen) }}</span>
+                <span>guide (as graded) {{ formatYen(d.guideValueYen) }}</span>
                 <span>reserve {{ formatYen(d.reserveYen) }}</span>
                 <span>bill {{ formatYen(d.restorationBillYen) }}</span>
               </div>
@@ -730,6 +753,46 @@ h3 {
 
 .lot-name {
   color: var(--mg-neon-cyan);
+}
+
+/* Sprint 73 decision 7: the free, public symptom disclosure - a real
+   checklist idiom (ASCII `[ ]` marks, CLAUDE.md directive 2 bans decorative
+   icons), matching ServiceTaskList.vue's own look, extended with a per-cause
+   value delta this list also needs to show. */
+.symptom {
+  margin-top: var(--mg-space-1);
+  text-align: left;
+}
+
+.symptom-line {
+  margin: 0;
+  color: var(--mg-danger);
+  font-size: var(--mg-fs-sm);
+}
+
+.symptom-causes {
+  list-style: none;
+  margin: var(--mg-space-1) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: var(--mg-fs-xs, 0.7rem);
+  color: var(--mg-text-dim);
+}
+
+.symptom-causes li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+}
+
+.symptom-causes .mark {
+  color: var(--mg-neon-cyan);
+  flex-shrink: 0;
+}
+
+.symptom-causes .delta {
+  color: var(--mg-text-dim);
 }
 
 /* Sprint 61 (item 15): a small muted class chip so a bidder knows which

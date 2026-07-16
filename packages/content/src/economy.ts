@@ -1045,6 +1045,34 @@ export const EconomyConfigSchema = z.object({
     usedPartSaleFraction: z.number().positive().max(1),
     donorBreakEvenBillRatio: z.number().positive().max(1),
   }),
+  /**
+   * Sprint 73 (diagnosis I, the fear-priced board - maintainer pricing law
+   * 2026-07-15: "the room prices the symptom, the player prices the cause").
+   * `fearPremium` is `sheetGuideValueYen`'s (`diagnosis.ts`, sim) risk
+   * multiplier on the gap between a symptomatic car's apparent value and its
+   * cause-weighted expected true value - always > 1, so the room never prices
+   * a symptomatic car as generously as its apparent condition alone would
+   * suggest. `symptomChanceByTier` is keyed by `PartFitmentClass` (the same
+   * four values `valuation.expectationByTier` uses), rolled per generated car
+   * (`generateAuctionCarInstance`); `secondSymptomChance` is the independent
+   * roll for a SECOND symptom once the first lands, capped at
+   * `maxSymptomsPerCar`. `visitMinutes`/`travelFeeYenByTier` are consumed by
+   * Sprint 74's inspection verb - shipped now per decision 5's own
+   * instruction so the whole key lands in one bump.
+   */
+  diagnosis: z.object({
+    fearPremium: z.number().min(1),
+    symptomChanceByTier: z.object({
+      shitbox: z.number().min(0).max(1),
+      common: z.number().min(0).max(1),
+      uncommon: z.number().min(0).max(1),
+      rare: z.number().min(0).max(1),
+    }),
+    secondSymptomChance: z.number().min(0).max(1),
+    maxSymptomsPerCar: z.number().int().positive(),
+    visitMinutes: z.number().int().positive(),
+    travelFeeYenByTier: ByAuctionTierSchema,
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

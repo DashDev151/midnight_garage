@@ -69,3 +69,18 @@ def load_donor_coherence_manifest(data_dir: Path) -> dict:
     """`donorBreakEvenBillRatio` lives here, sourced from the same
     `economy.json` the export actually ran with."""
     return json.loads((data_dir / "donorCoherence.manifest.json").read_text(encoding="utf-8"))
+
+
+def load_symptom_coherence(data_dir: Path) -> pl.DataFrame:
+    """Sprint 73 decision 6 (diagnosis I, the blind-buy guardrail): one row
+    per symptom x fitment tier x cause, `computeSymptomCoherence`'s
+    closed-form edge table - same one-shot shape as `load_coherence` above,
+    long format (a cause's own edge repeats the shared per-symptom/tier
+    figures rather than embedding a JSON cell)."""
+    return _load(data_dir, "symptomCoherence.manifest.json", "symptomCoherence.csv")
+
+
+def load_symptom_coherence_manifest(data_dir: Path) -> dict:
+    """`fearPremium` lives here, sourced from the same `economy.json` the
+    export actually ran with."""
+    return json.loads((data_dir / "symptomCoherence.manifest.json").read_text(encoding="utf-8"))

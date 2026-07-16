@@ -4,6 +4,7 @@ import type {
   CarPartId,
   CarPartTaxonomyEntry,
   ComponentId,
+  DiagnosticTest,
   EconomyConfig,
   Facilities,
   Part,
@@ -11,14 +12,17 @@ import type {
   ProvenancePool,
   ServiceJobType,
   SpecialtyCopy,
+  Symptom,
   Technique,
   ToolLine,
   ToolLines,
 } from '@midnight-garage/content'
 import {
+  DIAGNOSTIC_TESTS,
   ECONOMY,
   PROVENANCE_POOL,
   SPECIALTY_COPY,
+  SYMPTOMS,
   TECHNIQUES,
   TOOL_LINES,
 } from '@midnight-garage/content'
@@ -85,6 +89,13 @@ export interface SimContext {
    * relocated from `auctions.ts`'s hardcoded `PROVENANCE_POOL` into content -
    * `auctions.ts` reads it from here instead of a local constant. */
   provenancePool: ProvenancePool
+  /** Sprint 73 (diagnosis I): the symptom/cause pool `generateAuctionCarInstance`
+   * rolls from, and the flat diagnostic-test registry a symptom's own `tests`
+   * entries reference by id. */
+  symptoms: readonly Symptom[]
+  symptomsById: Readonly<Record<string, Symptom>>
+  diagnosticTests: readonly DiagnosticTest[]
+  diagnosticTestsById: Readonly<Record<string, DiagnosticTest>>
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -152,6 +163,9 @@ function indexStockPartsByCarPartId(
  * Sprint 39: `techniques` is an 11th (trailing) parameter, same treatment.
  *
  * Sprint 70: `provenancePool` is a 12th (trailing) parameter, same treatment.
+ *
+ * Sprint 73: `symptoms`/`diagnosticTests` are 13th/14th (trailing)
+ * parameters, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -166,6 +180,8 @@ export function buildSimContext(
   specialtyCopy: SpecialtyCopy = SPECIALTY_COPY,
   techniques: readonly Technique[] = TECHNIQUES,
   provenancePool: ProvenancePool = PROVENANCE_POOL,
+  symptoms: readonly Symptom[] = SYMPTOMS,
+  diagnosticTests: readonly DiagnosticTest[] = DIAGNOSTIC_TESTS,
 ): SimContext {
   return {
     models,
@@ -186,5 +202,9 @@ export function buildSimContext(
     specialtyCopy,
     techniques,
     provenancePool,
+    symptoms,
+    symptomsById: indexById(symptoms),
+    diagnosticTests,
+    diagnosticTestsById: indexById(diagnosticTests),
   }
 }

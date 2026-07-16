@@ -20,8 +20,10 @@ import {
 } from './bands'
 import { PLAYER_BASE_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
+import { expectedTrueValueYen, sheetGuideValueYen } from './diagnosis'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { expectationForCar, marketValueYen, mileageFactor } from './marketValue'
+import { createInitialGameState } from './newGame'
 import { makeCarOrigin } from './provenance'
 import { freshToolTiers } from './toolLines'
 
@@ -177,6 +179,8 @@ function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance
     provenanceNote: 'coherence probe',
     authenticityPercent: 70,
     parts,
+    symptoms: [],
+    apparentBandByPartId: null,
   }
 }
 
@@ -235,6 +239,8 @@ function buildWageProbeCar(
     provenanceNote: 'wage probe',
     authenticityPercent: 70,
     parts,
+    symptoms: [],
+    apparentBandByPartId: null,
   }
 }
 
@@ -452,21 +458,25 @@ export interface ModelDonorCoherenceRow {
 }
 
 /**
- * Sprint 71 decision 8 (the teardown game's donor-economy law): is a clean
- * car ever worth more parted out than sold whole? It must never be - a player
- * should never be better off destroying a good car for scrap parts, which is
- * the whole reason `usedPartSaleFraction`/`scrapValueFraction` are haircuts,
- * not parity prices.
+ * A clean (0 km, all-mint stock, authenticity 100), honest example of
+ * `model` - the "what a healthy example of this tier looks like" probe,
+ * shared by `computeDonorCoherence` (the whole-vs-parted question) and
+ * `computeSymptomCoherence` (Sprint 73, the blind-buy guardrail - a
+ * symptom's damage is applied ON TOP of this same clean baseline, never a
+ * worst-case one, since the whole point of a symptom is a surprise on a car
+ * that otherwise looks fine).
  */
-export function computeDonorCoherence(
+function buildCleanProbeCar(
   model: CarModel,
   context: SimContext,
-): ModelDonorCoherenceRow {
+  idPrefix: string,
+  provenanceNote: string,
+): CarInstance {
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
-  const carId = `donor-${model.id}`
+  const carId = `${idPrefix}-${model.id}`
   const cleanOrigin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
-  const cleanParts = Object.fromEntries(
+  const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
       if (partId === 'forcedInduction' && !carHasForcedInduction) {
         return [partId, { installed: null }]
@@ -482,16 +492,32 @@ export function computeDonorCoherence(
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']
-  const cleanCar: CarInstance = {
+  return {
     id: carId,
     modelId: model.id,
     year: model.spec.yearFrom,
     mileageKm: 0,
     color: 'White',
-    provenanceNote: 'donor probe',
+    provenanceNote,
     authenticityPercent: 100,
-    parts: cleanParts,
+    parts,
+    symptoms: [],
+    apparentBandByPartId: null,
   }
+}
+
+/**
+ * Sprint 71 decision 8 (the teardown game's donor-economy law): is a clean
+ * car ever worth more parted out than sold whole? It must never be - a player
+ * should never be better off destroying a good car for scrap parts, which is
+ * the whole reason `usedPartSaleFraction`/`scrapValueFraction` are haircuts,
+ * not parity prices.
+ */
+export function computeDonorCoherence(
+  model: CarModel,
+  context: SimContext,
+): ModelDonorCoherenceRow {
+  const cleanCar = buildCleanProbeCar(model, context, 'donor', 'donor probe')
 
   const wholeSaleYen = Math.round(
     marketValueYen(
@@ -555,4 +581,127 @@ export function computeRosterDonorCoherence(
   context: SimContext,
 ): ModelDonorCoherenceRow[] {
   return models.map((model) => computeDonorCoherence(model, context))
+}
+
+/** One cause's edge (Sprint 73): `marketValueYen` if this cause turns out
+ * true, minus what the room's sheet actually charges - positive means this
+ * cause is a pleasant surprise (the car is worth more than paid), negative
+ * means it costs more than it turned out to be worth. */
+export interface SymptomCauseEdgeRow {
+  causeId: string
+  edgeYen: number
+}
+
+export interface SymptomCoherenceRow {
+  symptomId: string
+  fitmentClass: PartFitmentClass
+  apparentValueYen: number
+  expectedTrueValueYen: number
+  sheetGuideValueYen: number
+  /** `expectedTrueValueYen - sheetGuideValueYen` - the average edge of
+   * buying this symptomatic lot blind, with no test run at all. */
+  blindBuyEvYen: number
+  edgePerCauseYen: SymptomCauseEdgeRow[]
+}
+
+const SYMPTOM_PROBE_FITMENT_CLASSES: readonly PartFitmentClass[] = [
+  'shitbox',
+  'common',
+  'uncommon',
+  'rare',
+]
+
+/**
+ * Sprint 73 decision 6: the diagnosis system's blind-buy guardrail - for
+ * every symptom, on a representative clean car per tier (`buildCleanProbeCar`,
+ * shared with `computeDonorCoherence` above - a symptom is a surprise on an
+ * otherwise-healthy car, not a worst-case wreck), how good a bet is buying
+ * without running a single test?
+ *
+ * `blindBuyEvYen = expectedTrueValueYen - sheetGuideValueYen` must stay >= 0
+ * (the room's fear premium always prices in MORE caution than the honest
+ * average risk, so buying blind is never -EV on average) and <= 0.2 x the
+ * apparent-to-expected gap (a modest edge, not a windfall). Both bounds
+ * follow algebraically from `fearPremium` alone -
+ * `blindBuyEvYen = (fearPremium - 1) x (apparentValueYen - expectedTrueValueYen)`
+ * - so this is really machine-checking `1 <= fearPremium <= 1.2` against the
+ * REAL content pipeline, closed-form, rather than trusting the raw number in
+ * isolation. `edgePerCauseYen` must show at least one cause on each side of
+ * zero for every symptom - some causes worse than the sheet price, some
+ * better - or the symptom's own weight spread isn't creating real
+ * uncertainty. Not bot-derived: every number is a direct call into the real
+ * sim functions (`diagnosis.ts`), the same "closed-form, cheap enough for
+ * every balance run" standing as `computeRosterCoherence` above.
+ */
+export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRow[] {
+  const neutralState = createInitialGameState(context, 0)
+  const rows: SymptomCoherenceRow[] = []
+
+  for (const symptom of context.symptoms) {
+    for (const fitmentClass of SYMPTOM_PROBE_FITMENT_CLASSES) {
+      const model = context.models.find((m) => fitmentClassForTier(m.tier) === fitmentClass)
+      if (!model) continue
+
+      const clean = buildCleanProbeCar(model, context, `symptom-${symptom.id}`, 'symptom probe')
+      // Every cause in a real symptom addresses the same part (decision 4's
+      // content) - any cause's own `carPartId` names the slot to record.
+      const carPartId = symptom.causes[0]!.carPartId
+      const apparentBand = clean.parts[carPartId].installed?.band ?? 'mint'
+      const carWithSymptom: CarInstance = {
+        ...clean,
+        symptoms: [
+          {
+            symptomId: symptom.id,
+            trueCauseId: symptom.causes[0]!.id,
+            remainingCauseIds: symptom.causes.map((cause) => cause.id),
+          },
+        ],
+        apparentBandByPartId: { [carPartId]: apparentBand },
+      }
+
+      const apparentValue = marketValueYen(
+        model,
+        clean,
+        100,
+        context.partsById,
+        context.partsTaxonomyById,
+        context.economy,
+      )
+      const expectedValue = expectedTrueValueYen(carWithSymptom, model, neutralState, context)
+      const sheetValue = sheetGuideValueYen(carWithSymptom, model, neutralState, context)
+
+      const edgePerCauseYen = symptom.causes.map((cause) => {
+        const installed = clean.parts[cause.carPartId].installed
+        const causeValue = installed
+          ? marketValueYen(
+              model,
+              {
+                ...clean,
+                parts: {
+                  ...clean.parts,
+                  [cause.carPartId]: { installed: { ...installed, band: cause.setBand } },
+                },
+              },
+              100,
+              context.partsById,
+              context.partsTaxonomyById,
+              context.economy,
+            )
+          : apparentValue
+        return { causeId: cause.id, edgeYen: Math.round(causeValue - sheetValue) }
+      })
+
+      rows.push({
+        symptomId: symptom.id,
+        fitmentClass,
+        apparentValueYen: Math.round(apparentValue),
+        expectedTrueValueYen: Math.round(expectedValue),
+        sheetGuideValueYen: Math.round(sheetValue),
+        blindBuyEvYen: Math.round(expectedValue - sheetValue),
+        edgePerCauseYen,
+      })
+    }
+  }
+
+  return rows
 }

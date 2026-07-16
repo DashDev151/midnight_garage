@@ -73,8 +73,20 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
    * cannot be worn out. Before this sprint an 11 km car could roll `poor`
    * parts, because `upkeepBaselineOffset` (-22 for neglected) and
    * `upkeepJitterRange` (-30) applied as ABSOLUTE offsets with no age term.
+   *
+   * Sprint 73 (diagnosis I) adds a SEPARATE, deliberate exception to this
+   * invariant: a symptom's cause sets its part to the worse of its current
+   * band and the cause's own `setBand`, regardless of mileage - the entire
+   * point of a symptom is a surprising, otherwise-inexplicable fault on a car
+   * that looks fine everywhere else (a smoking engine on a genuinely
+   * low-mileage example is exactly the scenario symptoms exist to create).
+   * That is a narratively-intended exception to THIS test's wear-model
+   * coherence claim, not a regression in it - cars that rolled a symptom are
+   * excluded from the sample so this keeps checking the age/mileage/upkeep
+   * chain alone, the same mechanism the test was written to cover (directive
+   * 17 case (a): the implementation intentionally changed what's correct).
    */
-  it('a barely-driven car is never rough, at ANY upkeep tier', () => {
+  it('a barely-driven car is never rough from the wear model alone, at ANY upkeep tier', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
     if (!model) throw new Error('fixture car missing from seed content')
 
@@ -88,6 +100,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
         GAME_YEAR,
       )
       if (car.mileageKm > 15_000) continue // only the barely-driven tail
+      if (car.symptoms.length > 0) continue // a symptom is a deliberate exception, not wear
       sampled++
       // `worn` is the floor for a nearly-new car; `poor`/`scrap` are the bug.
       expect(

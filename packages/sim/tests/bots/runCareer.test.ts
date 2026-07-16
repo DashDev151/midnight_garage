@@ -174,7 +174,17 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
   // a looser assertion. Sprint 41's tier-scaled repair-cost math adds a
   // little more per-day work to every simulated career, tipping these two
   // already-borderline loops over the default.
-  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 20_000
+  // Re-measured (Sprint 73, diagnosis I): a symptomatic auction lot now
+  // reprices through `sheetGuideValueYen` (a handful of extra `marketValueYen`
+  // calls per cause) every time `carGuideValueYen` is read - reserve, buyout,
+  // every rival cohort's private valuation, every active night the lot stays
+  // open. Real, deliberate added work, not a bug (`diagnosis.ts`'s
+  // `symptomDiscountYen` already shares one apparent-view computation across
+  // both callers rather than duplicating it). Measured directly under
+  // `pnpm test:coverage`: ~22.4s and ~21.9s for these two tests respectively
+  // (was comfortably under the old 20s budget pre-Sprint-73) - bumped with
+  // real headroom rather than to the bare measured figure.
+  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 45_000
 
   /**
    * Sprint 27 update, re-measured (not re-derived) after the restoration-

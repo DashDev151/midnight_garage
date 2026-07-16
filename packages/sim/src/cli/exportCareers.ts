@@ -38,7 +38,11 @@ import { passiveGrinderStrategy } from '../bots/passiveGrinder'
 import { randomStrategy } from '../bots/randomStrategy'
 import { serviceGrinderStrategy } from '../bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../bots/runCareer'
-import { computeRosterCoherence, computeRosterDonorCoherence } from '../coherence'
+import {
+  computeRosterCoherence,
+  computeRosterDonorCoherence,
+  computeSymptomCoherence,
+} from '../coherence'
 import { buildSimContext } from '../context'
 
 const CAREERS_PER_STRATEGY = 1000
@@ -154,6 +158,24 @@ const DONOR_COHERENCE_COLUMNS = [
   { name: 'partedYieldYen', type: 'int64' },
   { name: 'stripLaborSlots', type: 'int64' },
   { name: 'partedYieldOfWorstCaseYen', type: 'int64' },
+] as const
+
+/** Sprint 73 decision 6 (diagnosis I, the blind-buy guardrail): one row per
+ * symptom x fitment tier x cause - `computeSymptomCoherence`'s closed-form
+ * edge table, long format (a cause's own edge doesn't fit a fixed-width
+ * column set, so the shared per-symptom/tier figures repeat per cause row
+ * rather than embedding a JSON cell polars can't type-check). Same one-shot
+ * shape as `COHERENCE_COLUMNS`/`DONOR_COHERENCE_COLUMNS` above, no seeded
+ * careers needed. */
+const SYMPTOM_COHERENCE_COLUMNS = [
+  { name: 'symptomId', type: 'string' },
+  { name: 'fitmentClass', type: 'string' },
+  { name: 'apparentValueYen', type: 'int64' },
+  { name: 'expectedTrueValueYen', type: 'int64' },
+  { name: 'sheetGuideValueYen', type: 'int64' },
+  { name: 'blindBuyEvYen', type: 'int64' },
+  { name: 'causeId', type: 'string' },
+  { name: 'edgeYen', type: 'int64' },
 ] as const
 
 function writeCsv(
@@ -334,6 +356,28 @@ function main(): void {
     generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
     columns: DONOR_COHERENCE_COLUMNS,
     donorBreakEvenBillRatio: ECONOMY.teardown.donorBreakEvenBillRatio,
+  })
+
+  const symptomCoherenceRows = computeSymptomCoherence(context).flatMap((row) =>
+    row.edgePerCauseYen.map((edge) =>
+      [
+        row.symptomId,
+        row.fitmentClass,
+        row.apparentValueYen,
+        row.expectedTrueValueYen,
+        row.sheetGuideValueYen,
+        row.blindBuyEvYen,
+        edge.causeId,
+        edge.edgeYen,
+      ].join(','),
+    ),
+  )
+  writeCsv('symptomCoherence.csv', SYMPTOM_COHERENCE_COLUMNS, symptomCoherenceRows)
+  writeManifest('symptomCoherence.manifest.json', {
+    simVersion: SIM_VERSION,
+    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
+    columns: SYMPTOM_COHERENCE_COLUMNS,
+    fearPremium: ECONOMY.diagnosis.fearPremium,
   })
 
   const strategyList = STRATEGIES.map((s) => s.name).join(', ')

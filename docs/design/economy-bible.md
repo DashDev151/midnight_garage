@@ -226,6 +226,7 @@ fails that test outright, rather than silently drifting).
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
 | `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
+| `diagnosis.fearPremium`/`symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier` | `economy.json` | The fear-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law) and symptom generation (`auctions.ts`) |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 
@@ -363,3 +364,14 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   donor coherence probes (`coherence.ts`'s `computeDonorCoherence`) measure and disclose the
   whole-vs-parted crossover per roster model rather than hard-gating an exact number. Full detail
   in `docs/sprints/sprint71.md`'s Exit.
+- 2026-07-16: **`diagnosis.*` added as a new anchor group** (Sprint 73, diagnosis I; maintainer
+  pre-approved decision 5 the same day the arc was scoped, 2026-07-15). Not a new law - the
+  fear-priced sheet value (`diagnosis.ts`'s `sheetGuideValueYen = apparentValue - fearPremium x
+  (apparentValue - expectedTrueValue)`) is the maintainer's own pricing law ("the room prices the
+  symptom, the player prices the cause") implemented as a seam on the existing `anchorValueYen`
+  (`bidding.ts`), not a change to Law 1-6's own text. `fearPremium`/`symptomChanceByTier`/
+  `secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier` are ordinary
+  content anchors, added to the audit table above. The blind-buy guardrail
+  (`coherence.ts`'s `computeSymptomCoherence`) measures and discloses the per-symptom expected-
+  value spread per tier rather than hard-gating an exact number, same treatment as the donor
+  coherence probes above. Full detail in `docs/sprints/sprint73.md`'s Exit.

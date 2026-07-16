@@ -58,6 +58,8 @@ function initialState(): GameState {
           // installs the spare coilovers onto.
           dampers: { installed: null },
         },
+        symptoms: [],
+        apparentBandByPartId: null,
       },
     ],
     partInventory: [
@@ -241,9 +243,16 @@ describe('advanceDay golden master', () => {
     // a required `origin` field (parts provenance) - a new field in every
     // hashed state, not a logic change; every other assertion in this file
     // still passes unchanged.
+    // Re-pinned again (Sprint 73, was edd4dc35): `generateAuctionCarInstance`
+    // now rolls a symptom-count check on EVERY car it generates (Sprint 73
+    // decision 2), even one that lands on zero symptoms - that one extra
+    // `rng.next()` call per generated car shifts every subsequent random draw
+    // for the rest of the run, so the hash moves even though no PRE-EXISTING
+    // mechanic's own logic changed; every other assertion in this file still
+    // passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('edd4dc35')
+    expect(hashState(finalState)).toBe('4570c86a')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -443,7 +452,19 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 70, was cfabcf38): same cause as the 30-day
     // career hash above - `PartInstanceSchema` gained a required `origin`
     // field (parts provenance), a new field in every hashed state.
-    expect(hashState(acquisitionCareer().sold)).toBe('79f49596')
+    // Re-pinned again (Sprint 73, was 79f49596): same cause as the 30-day
+    // career hash above - every generated car now rolls one extra
+    // symptom-count check, shifting the whole subsequent random sequence.
+    // Re-pinned again, same sprint (was f1e394b3, after wiring
+    // `carGuideValueYen`'s fear-pricing branch): the car this scenario wins
+    // and sells carries no symptom of its own (confirmed directly), but
+    // OTHER lots in the same active catalog can - `advanceLotOvernight`
+    // reprices every active lot nightly, so a symptomatic lot elsewhere on
+    // the board now fear-prices differently, which can shift which lots
+    // clear/hammer/expire and this model's `marketHeat`, a real economy-wide
+    // consequence of decision 3's seam going live, not a bug in this specific
+    // scenario's own car.
+    expect(hashState(acquisitionCareer().sold)).toBe('404a063c')
   })
 })
 

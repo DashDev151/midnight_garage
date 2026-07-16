@@ -44,6 +44,7 @@ import {
 } from '@midnight-garage/content'
 import {
   anchorValueYen,
+  apparentViewOf,
   applyBayPurchase,
   applyMoves,
   applyToolUpgrade,
@@ -82,6 +83,7 @@ import {
   isToolTierListed,
   isServiceTaskDone,
   isServiceWorkDone,
+  marketValueYen,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
   removeBlockReason,
@@ -637,7 +639,12 @@ export interface LotDetail {
   /**
    * Each of the 6 real groups' worst present-part band (Sprint 26 decision
    * 10) - lots are transparent now, no reveal machinery: this is always
-   * populated, not gated behind an inspection step.
+   * populated, not gated behind an inspection step. Sprint 73: read off the
+   * car's APPARENT view for a symptomatic lot (`groupBands`/`auctionGrade`/
+   * `restorationBillYen` all price consistently off what the room actually
+   * shows - never the true, currently-installed band a symptom's cause set -
+   * so a damaged part's grade never leaks the truth next to the sheet's own
+   * fear-priced guide value).
    */
   groupBands: Record<ComponentId, ConditionBand>
   /**
@@ -645,6 +652,9 @@ export interface LotDetail {
    * number/letter plus exterior/interior letter grades) computed purely
    * from the car's existing band state - replaces the old expandable
    * 29-part condition report as this card's pre-bid condition signal.
+   * Sprint 73 decision 8: stays apparent forever on the lot, even once
+   * Sprint 74 lets the player narrow down (never eliminate) a symptom's true
+   * cause - the sheet is a fixed listing, not a live readout.
    */
   auctionGrade: AuctionGrade
   /**
@@ -652,9 +662,24 @@ export interface LotDetail {
    * at the player's current (equipment-independent, per Sprint 26 decision
    * 7) repair-step costs - the same `restorationBill` `instanceValue`
    * itself deducts (Sprint 27 decision 1), surfaced directly so the player
-   * can see exactly what the price already prices in.
+   * can see exactly what the price already prices in. Sprint 73: apparent-
+   * view sourced, same reasoning as `groupBands` above.
    */
   restorationBillYen: number
+  /**
+   * Sprint 73 decision 7: one entry per symptom this lot's car carries
+   * (`[]` for an honest car) - the free, public card line plus its still-
+   * fully-open cause checklist (Sprint 74 wires the verb that actually
+   * narrows it; every cause is "remaining" this sprint). Each cause's
+   * `deltaYen` is `marketValueYen(apparent-with-this-cause-applied) -
+   * marketValueYen(apparent)` - always <= 0, "if it's this: about
+   * `deltaYen` yen" - not the fear-priced sheet gap, a plain honest
+   * true-value comparison per cause.
+   */
+  symptoms: {
+    line: string
+    causes: { label: string; deltaYen: number }[]
+  }[]
   /** This lot's backstop close day (the Sprint 19 duration roll) - activity-
    * based closing (quiet-day hammer) usually resolves it sooner than this. */
   expiresOnDay: number
@@ -902,6 +927,74 @@ export const useGameStore = defineStore('game', () => {
       result[groupId] = worst
     }
     return result
+  }
+
+  /** "valve-seals" -> "Valve seals" - a cause has no player-facing name of
+   * its own yet (Sprint 74's inspection-test copy is the natural home for
+   * one); this is the plain, honest fallback for this sprint's read-only
+   * checklist. */
+  function titleCaseFromSlug(slug: string): string {
+    const [first, ...rest] = slug.split('-')
+    if (!first) return slug
+    return [first.charAt(0).toUpperCase() + first.slice(1), ...rest].join(' ')
+  }
+
+  /**
+   * Sprint 73 decision 7: one entry per symptom `car` carries, its free
+   * public card line plus its still-fully-open cause checklist (every cause
+   * is "remaining" this sprint - Sprint 74 wires the verb that narrows it).
+   * Each cause's `deltaYen` is a plain, honest value comparison -
+   * `marketValueYen` with that cause's own damage applied to `apparentCar`,
+   * minus `apparentCar`'s own value - never the fear-priced sheet gap
+   * (`sheetGuideValueYen`), which is what the room actually charges, not
+   * what any one specific cause is honestly worth.
+   */
+  function lotSymptomViews(
+    car: CarInstance,
+    apparentCar: CarInstance,
+    model: CarModel,
+  ): LotDetail['symptoms'] {
+    if (car.symptoms.length === 0) return []
+    const apparentValueYen = marketValueYen(
+      model,
+      apparentCar,
+      gameState.value.marketHeat[model.id] ?? 100,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      context.value.economy,
+    )
+    return car.symptoms.flatMap((carSymptom) => {
+      const symptom = context.value.symptomsById[carSymptom.symptomId]
+      if (!symptom) return []
+      return [
+        {
+          line: symptom.cardLine,
+          causes: symptom.causes.map((cause) => {
+            const installed = apparentCar.parts[cause.carPartId].installed
+            const causeValueYen = installed
+              ? marketValueYen(
+                  model,
+                  {
+                    ...apparentCar,
+                    parts: {
+                      ...apparentCar.parts,
+                      [cause.carPartId]: { installed: { ...installed, band: cause.setBand } },
+                    },
+                  },
+                  gameState.value.marketHeat[model.id] ?? 100,
+                  context.value.partsById,
+                  context.value.partsTaxonomyById,
+                  context.value.economy,
+                )
+              : apparentValueYen
+            return {
+              label: titleCaseFromSlug(cause.id),
+              deltaYen: Math.round(causeValueYen - apparentValueYen),
+            }
+          }),
+        },
+      ]
+    })
   }
 
   /**
@@ -1544,6 +1637,7 @@ export const useGameStore = defineStore('game', () => {
     if (!lot) return undefined
     const model = context.value.modelsById[lot.modelId]
     if (!model) return undefined
+    const apparentCar = apparentViewOf(lot.car)
     return {
       lot,
       model,
@@ -1559,10 +1653,10 @@ export const useGameStore = defineStore('game', () => {
       turnout: lot.turnout,
       nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
       playerHasBid: lot.playerHasBid,
-      groupBands: groupBandsForCar(lot.car),
-      auctionGrade: computeAuctionGrade(lot.car, model, context.value.partIdsByGroup),
+      groupBands: groupBandsForCar(apparentCar),
+      auctionGrade: computeAuctionGrade(apparentCar, model, context.value.partIdsByGroup),
       restorationBillYen: carCostToMintYen(
-        lot.car,
+        apparentCar,
         model,
         context.value.partsById,
         context.value.partsTaxonomyById,
@@ -1572,6 +1666,7 @@ export const useGameStore = defineStore('game', () => {
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),
       closeNightsLeft: auctionNightsLeft(lot),
+      symptoms: lotSymptomViews(lot.car, apparentCar, model),
     }
   }
 

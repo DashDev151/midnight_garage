@@ -1,6 +1,7 @@
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
+import diagnosticTestsJson from '../data/diagnosticTests.json'
 import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
 import partPricingJson from '../data/partPricing.json'
@@ -10,6 +11,7 @@ import provenanceJson from '../data/provenance.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
 import specialtyCopyJson from '../data/specialtyCopy.json'
+import symptomsJson from '../data/symptoms.json'
 import techniquesJson from '../data/techniques.json'
 import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
@@ -21,6 +23,7 @@ import {
   type CarPartTaxonomyEntry,
 } from './carPart'
 import { ComponentDisplayNamesSchema } from './componentDisplayName'
+import { DiagnosticTestsSchema } from './diagnosticTest'
 import { EconomyConfigSchema } from './economy'
 import { FacilitiesSchema } from './facilities'
 import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
@@ -30,6 +33,7 @@ import type { CarPartId } from './tags'
 import { ProvenancePoolSchema } from './provenance'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
+import { SymptomsSchema } from './symptom'
 import { TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
@@ -104,3 +108,11 @@ export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)
  * the content law now covers it too.
  */
 export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)
+
+/**
+ * Sprint 73 (diagnosis I): the symptom/cause pool and the flat diagnostic-
+ * test registry (id + minutes) each symptom's own `tests` entries reference
+ * by `testId`.
+ */
+export const SYMPTOMS = SymptomsSchema.parse(symptomsJson)
+export const DIAGNOSTIC_TESTS = DiagnosticTestsSchema.parse(diagnosticTestsJson)

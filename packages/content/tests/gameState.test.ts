@@ -279,6 +279,8 @@ describe('GameState / DayLog round-trip', () => {
               },
             },
           },
+          symptoms: [],
+          apparentBandByPartId: null,
         },
       ],
       partInventory: [

@@ -291,6 +291,80 @@ describe('AuctionScreen', () => {
     })
   })
 
+  describe('symptom disclosure (Sprint 73 decision 7)', () => {
+    it("shows a symptomatic lot's card line and its still-fully-open cause checklist with per-cause value deltas", () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = {
+        ...lot,
+        car: {
+          ...lot.car,
+          parts: {
+            ...lot.car.parts,
+            headValvetrain: {
+              installed: { ...lot.car.parts.headValvetrain.installed!, band: 'worn' as const },
+            },
+          },
+          symptoms: [
+            {
+              symptomId: 'smokes-on-startup',
+              trueCauseId: 'valve-seals',
+              remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+            },
+          ],
+          apparentBandByPartId: { headValvetrain: 'mint' as const },
+        },
+      }
+      game.gameState = {
+        ...game.gameState,
+        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
+          l.id === lot.id ? withSymptom : l,
+        ),
+      }
+      const detail = game.lotDetail(lot.id)!
+      expect(detail.symptoms).toHaveLength(1)
+      expect(detail.symptoms[0]!.line).toBe('Smokes on startup.')
+      expect(detail.symptoms[0]!.causes.map((c) => c.label)).toEqual([
+        'Valve seals',
+        'Tired rings',
+        'Head gasket',
+      ])
+      // Every cause worsens value relative to the apparent view (they're all
+      // real damage, never an improvement).
+      for (const cause of detail.symptoms[0]!.causes) {
+        expect(cause.deltaYen).toBeLessThanOrEqual(0)
+      }
+      // Sprint 73 decision 7: the grade/bands/bill all read the APPARENT
+      // band (mint), never the true one (worn) - the engine group's chip
+      // must not leak the truth next to the sheet's own fear-priced guide.
+      expect(detail.groupBands.engine).toBe('mint')
+
+      const wrapper = mountScreen()
+      const symptomEl = wrapper.find(`[data-test="symptom-${lot.id}"]`)
+      expect(symptomEl.exists()).toBe(true)
+      expect(symptomEl.text()).toContain('Smokes on startup.')
+      expect(symptomEl.text()).toContain('Valve seals')
+      expect(symptomEl.text()).toContain("if it's this: about")
+    })
+
+    it('honest lots (no symptoms) never render a symptom block', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots.find((l) => l.car.symptoms.length === 0)
+      if (!lot) return // every lot happened to roll a symptom this seed - nothing to assert
+      const wrapper = mountScreen()
+      expect(wrapper.find(`[data-test="symptom-${lot.id}"]`).exists()).toBe(false)
+    })
+
+    it('labels the guide value "guide (as graded)" on every lot card', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const wrapper = mountScreen()
+      expect(wrapper.text()).toContain('guide (as graded)')
+    })
+  })
+
   describe('the art placeholder (Sprint 50 decision 1)', () => {
     it('renders one placeholder block per lot card', () => {
       const game = useGameStore()

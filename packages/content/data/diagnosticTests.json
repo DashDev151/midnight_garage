@@ -1,0 +1,14 @@
+[
+  { "id": "cold-start-watch", "minutes": 10 },
+  { "id": "compression-test", "minutes": 25 },
+  { "id": "electrics-check", "minutes": 10 },
+  { "id": "hand-crank", "minutes": 15 },
+  { "id": "stethoscope", "minutes": 15 },
+  { "id": "spray-test", "minutes": 10 },
+  { "id": "gearbox-oil-check", "minutes": 15 },
+  { "id": "bounce-test", "minutes": 10 },
+  { "id": "undercarriage-look", "minutes": 15 },
+  { "id": "wheel-off-look", "minutes": 15 },
+  { "id": "coolant-check", "minutes": 10 },
+  { "id": "warm-idle-watch", "minutes": 20 }
+]

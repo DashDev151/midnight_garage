@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { PartInstanceSchema } from './part'
-import { CarPartIdSchema } from './tags'
+import { CarPartIdSchema, ConditionBandSchema } from './tags'
 
 /**
  * One real car part's condition state (Sprint 32 - replaces the Sprint 26
@@ -58,6 +58,21 @@ const CarPartsSchema = z.object({
   dashGauges: CarPartStateSchema,
 })
 
+/**
+ * One generated symptom on a car (Sprint 73, diagnosis I): `trueCauseId` is
+ * the actual root cause, rolled at generation and never re-rolled;
+ * `remainingCauseIds` is the PLAYER's own narrowing knowledge - starts as
+ * every cause in the symptom's own cause list and shrinks as Sprint 74's
+ * inspection tests eliminate partitions. Economics never read this array -
+ * only `apparentBandByPartId` below and the true `parts[..].band` matter to
+ * value.
+ */
+const CarSymptomSchema = z.object({
+  symptomId: z.string().min(1),
+  trueCauseId: z.string().min(1),
+  remainingCauseIds: z.array(z.string().min(1)),
+})
+
 export const CarInstanceSchema = z.object({
   id: z.string().min(1),
   modelId: z.string().min(1),
@@ -67,6 +82,21 @@ export const CarInstanceSchema = z.object({
   provenanceNote: z.string().default(''),
   authenticityPercent: z.number().min(0).max(100),
   parts: CarPartsSchema,
+  /** Sprint 73: every symptom this car was generated with (default `[]` - an
+   * honest car). */
+  symptoms: z.array(CarSymptomSchema).default([]),
+  /**
+   * Sprint 73: the PRE-damage band for exactly the parts a symptom's cause
+   * damaged, or `null` for an honest car (no symptoms at all). Economics keep
+   * reading `parts[..].band` (the truth) everywhere unchanged; this is
+   * display/pricing-apparatus data only - the sheet-value seam
+   * (`diagnosis.ts`'s `apparentViewOf`) is the one place that reads it to
+   * build the car AS THE ROOM SEES IT.
+   */
+  apparentBandByPartId: z
+    .partialRecord(CarPartIdSchema, ConditionBandSchema)
+    .nullable()
+    .default(null),
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>

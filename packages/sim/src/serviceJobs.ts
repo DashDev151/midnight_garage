@@ -677,7 +677,9 @@ export function generateDailyServiceJobOffers(
     // here with a missing diff?"): a customer's car never rolls a random
     // missing slot (`allowMissingSlots: false`) - `forceTasksOutstanding`
     // below is the only way one of its slots ends up empty, and only when
-    // the job's own install task calls for it.
+    // the job's own install task calls for it. Sprint 73 decision 9:
+    // symptoms only spawn on auction lots, never a customer's own car
+    // (`allowSymptoms: false`).
     const rolledCar = generateAuctionCarInstance(
       model,
       `svc-car-${day}-${i}`,
@@ -686,6 +688,7 @@ export function generateDailyServiceJobOffers(
       currentYear,
       false,
       day,
+      false,
     )
     // Sprint 40: the car and the template rolled fully independently above -
     // force every task genuinely outstanding before pricing the job off it,

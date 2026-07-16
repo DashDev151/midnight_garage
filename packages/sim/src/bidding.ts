@@ -10,6 +10,7 @@ import type {
 } from '@midnight-garage/content'
 import { setCarLedger } from './carLedger'
 import type { SimContext } from './context'
+import { sheetGuideValueYen } from './diagnosis'
 import { assignToShop, hasAcquisitionSpace } from './facilities'
 import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
@@ -54,13 +55,18 @@ export function interestedBuyers(
  * Sprint 26 decision 4: drops the deleted `(1 - modelRiskDiscount)` term -
  * the hidden-issue system it discounted for is paused and removed; the
  * anchor is `marketValueYen` alone now, unadjusted.
- */
-/**
- * The anchor's own math, generalized to any car+model pair - not only a
- * lot's own `.car`/`.modelId` (Sprint 42: powers the owned-car financial
- * panel's "guide value", `gameStore.ts`'s `carDetail`, reusing this EXACT
- * interested-buyers gate + `marketValueYen` call rather than a second
- * valuation formula). `anchorValueYen` below is now a thin wrapper over this.
+ *
+ * Sprint 73 decision 3 (diagnosis I): a symptomatic car (`car.symptoms.length
+ * > 0`) prices through `sheetGuideValueYen` (`diagnosis.ts`) instead - the
+ * fear-priced room read off the car's APPARENT condition, never the true
+ * one. An honest car is completely unaffected; `sheetGuideValueYen` itself
+ * degenerates to `marketValueYen` for one anyway, so this branch exists for
+ * clarity (and to skip the extra per-cause valuation work) rather than
+ * necessity. Every downstream reader (`reserveYen`, `computeBuyoutPriceYen`,
+ * `privateValuationYen`, `advanceLotOvernight`) calls this ONE function, so
+ * the whole room reprices through this single seam - none of them, and no
+ * rival-valuation code anywhere, ever reads `car.symptoms[].trueCauseId` or
+ * `.remainingCauseIds` directly.
  */
 export function carGuideValueYen(
   car: CarInstance,
@@ -70,6 +76,7 @@ export function carGuideValueYen(
 ): number {
   const interested = interestedBuyers(model, context.buyers)
   if (interested.length === 0) return 0
+  if (car.symptoms.length > 0) return sheetGuideValueYen(car, model, state, context)
   const heatPercent = state.marketHeat[model.id] ?? 100
   return marketValueYen(
     model,

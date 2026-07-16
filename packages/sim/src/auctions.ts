@@ -8,11 +8,14 @@ import {
   type CarInstance,
   type CarModel,
   type CarPartId,
+  type Cause,
+  type ConditionBand,
   type EconomyConfig,
   type PartFitmentClass,
   type PartInstance,
   type PartOrigin,
   type RarityTier,
+  type Symptom,
   type TurnoutBand,
   type UpkeepTier,
 } from '@midnight-garage/content'
@@ -70,6 +73,129 @@ function rollUpkeepTier(weights: Readonly<Record<UpkeepTier, number>>, rng: Rng)
     if (roll < cumulative) return tier
   }
   return entries[entries.length - 1]![0]
+}
+
+/** Weighted pick over a symptom's own `causes` list (Sprint 73) - same
+ * cumulative-sum-over-one-`rng.next()`-draw shape as `rollUpkeepTier`/
+ * `pickServiceJobTemplate` (serviceJobs.ts), the established convention for
+ * every weighted roll in this file. */
+function pickWeightedCause(causes: readonly Cause[], rng: Rng): Cause {
+  const total = causes.reduce((sum, cause) => sum + cause.weight, 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (const cause of causes) {
+    cumulative += cause.weight
+    if (roll < cumulative) return cause
+  }
+  return causes[causes.length - 1]!
+}
+
+/** How many symptoms a freshly-generated car attempts (Sprint 73 decision 2):
+ * a first independent roll at the tier's own chance, then, only if that
+ * landed, a second independent roll at the flat `secondSymptomChance`,
+ * capped at `maxSymptomsPerCar`. Not how many SURVIVE - `enforceMaxBillFraction`
+ * may still veto an individual symptom's damage afterward. */
+function rollSymptomCount(
+  fitmentClass: PartFitmentClass,
+  economy: EconomyConfig,
+  rng: Rng,
+): number {
+  const { symptomChanceByTier, secondSymptomChance, maxSymptomsPerCar } = economy.diagnosis
+  if (rng.next() >= symptomChanceByTier[fitmentClass]) return 0
+  if (maxSymptomsPerCar < 2 || rng.next() >= secondSymptomChance) return 1
+  return 2
+}
+
+/** Whether every part on `a` and `b` shares the same installed-or-not state
+ * and, if installed, the same band - the Sprint 73 decision 2 "did the Law 2
+ * guard have to alter anything" check, comparing `enforceMaxBillFraction`'s
+ * output against its own pre-guard input. */
+function bandsMatch(a: CarInstance, b: CarInstance): boolean {
+  return ALL_CAR_PART_IDS.every((partId) => {
+    const partA = a.parts[partId].installed
+    const partB = b.parts[partId].installed
+    if (!partA || !partB) return !partA === !partB
+    return partA.band === partB.band
+  })
+}
+
+/**
+ * Sprint 73 decision 2: rolls this car's symptoms (0-2, per
+ * `rollSymptomCount`) and applies each one's damage in turn, on the ALREADY
+ * Law-2-compliant car `generateAuctionCarInstance` produces before this runs.
+ * Each symptom's cause sets its part to the WORSE of the part's current band
+ * and the cause's own `setBand` - never a milder cause overriding worse
+ * pre-existing damage - then `enforceMaxBillFraction` re-checks the WHOLE
+ * car; if the guard would move ANY band (this symptom pushed the car over
+ * its bill ceiling), the symptom is dropped outright: the part reverts to
+ * its pre-symptom band and nothing is recorded for it (no clamping
+ * negotiation, no partial damage - deterministic keep-or-drop). A symptom
+ * whose cause targets an already-missing slot is dropped the same way (there
+ * is nothing there to damage). `apparentBandByPartId` only ever records a
+ * part's band from BEFORE THE FIRST symptom that damages it - a second kept
+ * symptom targeting the same part must not overwrite the truly original
+ * value with an already-damaged one.
+ */
+function applySymptoms(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  carOrigin: PartOrigin,
+  rng: Rng,
+): {
+  car: CarInstance
+  symptoms: CarInstance['symptoms']
+  apparentBandByPartId: CarInstance['apparentBandByPartId']
+} {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const count = rollSymptomCount(fitmentClass, context.economy, rng)
+  if (count === 0) return { car, symptoms: [], apparentBandByPartId: null }
+
+  const pool = [...context.symptoms]
+  const drawn: Symptom[] = []
+  for (let i = 0; i < count && pool.length > 0; i++) {
+    const symptom = rng.pick(pool)
+    drawn.push(symptom)
+    pool.splice(pool.indexOf(symptom), 1)
+  }
+
+  let working = car
+  const symptoms: CarInstance['symptoms'] = []
+  const apparentBandByPartId: Partial<Record<CarPartId, ConditionBand>> = {}
+
+  for (const symptom of drawn) {
+    const cause = pickWeightedCause(symptom.causes, rng)
+    const installed = working.parts[cause.carPartId].installed
+    if (!installed) continue // nothing to damage - drop
+
+    const beforeBand = installed.band
+    const newBand = bandIndex(cause.setBand) < bandIndex(beforeBand) ? cause.setBand : beforeBand
+    const tentative: CarInstance = {
+      ...working,
+      parts: {
+        ...working.parts,
+        [cause.carPartId]: { installed: { ...installed, band: newBand } },
+      },
+    }
+    const enforced = enforceMaxBillFraction(tentative, model, context, carOrigin)
+    if (!bandsMatch(enforced, tentative)) continue // Law 2 veto - drop entirely
+
+    working = enforced
+    if (!(cause.carPartId in apparentBandByPartId)) {
+      apparentBandByPartId[cause.carPartId] = beforeBand
+    }
+    symptoms.push({
+      symptomId: symptom.id,
+      trueCauseId: cause.id,
+      remainingCauseIds: symptom.causes.map((c) => c.id),
+    })
+  }
+
+  return {
+    car: working,
+    symptoms,
+    apparentBandByPartId: symptoms.length > 0 ? apparentBandByPartId : null,
+  }
 }
 
 /**
@@ -328,6 +454,11 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * stamped onto every part's `origin` (`makeCarOrigin`) alongside this car's
  * own id and denormalised label, built once here and threaded down to every
  * `stockInstanceFor` call this function makes.
+ *
+ * Sprint 73 decision 9: `allowSymptoms` (default `true`, unchanged for every
+ * existing auction-lot caller) lets `serviceJobs.ts`'s customer-car
+ * generation pass `false` - symptoms only spawn on auction lots, never on a
+ * customer's own car or the dev-granted car.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -337,6 +468,7 @@ export function generateAuctionCarInstance(
   currentYear: number = Infinity,
   allowMissingSlots: boolean = true,
   day: number = 0,
+  allowSymptoms: boolean = true,
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
@@ -428,8 +560,18 @@ export function generateAuctionCarInstance(
     provenanceNote: rng.pick(context.provenancePool[ageBandFor(ageYears)][upkeepTier]),
     authenticityPercent: rng.int(60, 95),
     parts,
+    symptoms: [],
+    apparentBandByPartId: null,
   }
-  return enforceMaxBillFraction(rolled, model, context, carOrigin)
+  const softened = enforceMaxBillFraction(rolled, model, context, carOrigin)
+  if (!allowSymptoms) return softened
+
+  const {
+    car: withSymptoms,
+    symptoms,
+    apparentBandByPartId,
+  } = applySymptoms(softened, model, context, carOrigin, rng)
+  return { ...withSymptoms, symptoms, apparentBandByPartId }
 }
 
 /**

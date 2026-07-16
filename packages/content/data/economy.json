@@ -301,5 +301,23 @@
     },
     "usedPartSaleFraction": 0.55,
     "donorBreakEvenBillRatio": 0.45
+  },
+  "diagnosis": {
+    "fearPremium": 1.1,
+    "symptomChanceByTier": {
+      "shitbox": 0.45,
+      "common": 0.3,
+      "uncommon": 0.22,
+      "rare": 0.12
+    },
+    "secondSymptomChance": 0.15,
+    "maxSymptomsPerCar": 2,
+    "visitMinutes": 60,
+    "travelFeeYenByTier": {
+      "local-yard": 2000,
+      "regional": 8000,
+      "premium": 20000,
+      "collector-network": 50000
+    }
   }
 }

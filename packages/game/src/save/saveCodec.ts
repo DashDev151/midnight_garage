@@ -438,8 +438,14 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * save's old-shaped tasks fail `ServiceJobTaskSchema.parse` outright, the
  * same fallback-to-new-game path every other non-additive bump already
  * relies on (see v30 -> v31's own comment above).
+ * v32 -> v33 (Sprint 73, diagnosis I): `CarInstanceSchema` gained two new
+ * fields - `symptoms` (default `[]`) and `apparentBandByPartId` (default
+ * `null`). Both are the pure additive case (a fresh field with a sensible
+ * default), so this needs NO `MIGRATIONS[32]` entry; the version bump alone
+ * is still required (Save law) so a pre-v33 client never silently misreads
+ * a v33 save that happens to omit these two brand-new keys.
  */
-export const SAVE_VERSION = 32
+export const SAVE_VERSION = 33
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

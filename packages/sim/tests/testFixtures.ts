@@ -161,6 +161,8 @@ const BASE_CAR_INSTANCE: Omit<CarInstance, 'parts'> = {
   color: 'White',
   provenanceNote: '',
   authenticityPercent: 80,
+  symptoms: [],
+  apparentBandByPartId: null,
 }
 
 /** A full, valid `CarInstance` with every part a mint stock part - override

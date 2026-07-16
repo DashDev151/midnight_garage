@@ -279,10 +279,11 @@ pass."
 
 The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
 sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown (landed) -> 72
-outcome jobs (landed) -> 73-75 diagnosis -> 76-78 story missions** (`docs/sprints/sprint70.md`
-through `sprint78.md`; sprint70.md's/sprint71.md's/sprint72.md's own Exit sections are the
-permanent record of each rework itself - the component-removal-and-repair-hierarchy entry that used
-to sit here is fully landed and removed, per this file's policy). Each
+outcome jobs (landed) -> 73 diagnosis I (landed) -> 74-75 diagnosis II/III -> 76-78 story
+missions** (`docs/sprints/sprint70.md` through `sprint78.md`; sprint70.md's/sprint71.md's/
+sprint72.md's/sprint73.md's own Exit sections are the permanent record of each rework itself -
+the component-removal-and-repair-hierarchy entry that used to sit here is fully landed and
+removed, per this file's policy). Each
 later system consumes verbs the earlier one builds (provenance answers ownership on every part
 verb; the component arc supplies uninstall-reveals-truth and the shared outcome-predicate module;
 diagnosis makes commissions a gamble instead of a shopping list). Entries below stay until their
@@ -299,6 +300,9 @@ sprints land.
   demanded a design that beats transparency by creating real decisions and pricing information
   coherently - this is that design, and the maintainer directed the sprint planning 2026-07-15).
   Depends on the component hierarchy (uninstall-reveals-truth). **Scoped: Sprints 73-75.**
+  **Sprint 73 (diagnosis I) landed the symptom/cause content, generation, the fear-priced
+  `sheetGuideValueYen` seam, the blind-buy guardrail, and the read-only lot-card disclosure - no
+  inspection verb yet (Sprint 74) and `remainingCauseIds` never narrows from its full list yet.**
 
 - [ ] **Story missions - outcome-based build commissions** (`docs/design/story-builds-spec.md`
   v2 with the 2026-07-15 rulings). A customer names an OUTCOME, not a car. **Maintainer rulings: first

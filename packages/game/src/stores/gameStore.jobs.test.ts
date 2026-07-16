@@ -55,12 +55,24 @@ function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob 
  * `findUnfinishedOffer`, narrowed to a band-only task specifically - Sprint
  * 72 collapsed the old `action: 'repair'|'install'` split into one
  * `requirement`-based shape, so "repair-shaped" now means "no `minGrade`").
+ * Sprint 73: also narrowed to a SURFACE-depth part - `warpToRepairOffer`'s
+ * own work loop only knows the simple on-car group `repair()` verb, which
+ * Sprint 71's bench-only rule refuses for a bolt-on/buried slot (that needs
+ * the separate remove/recondition/reinstall flow instead, out of scope for
+ * this completion-flow test). Before this sprint's own generation change
+ * (an extra symptom-count roll per generated car, shifting every subsequent
+ * random draw) the RNG stream never happened to hand this test a
+ * buried-part template; narrowing the search directly is more robust than
+ * depending on which offer a given seed happens to produce.
  */
 function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find(
     (o) =>
-      o.tasks.some((t) => !t.requirement.minGrade) &&
-      o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
+      o.tasks.some(
+        (t) =>
+          !t.requirement.minGrade &&
+          context.partsTaxonomyById[t.requirement.carPartId]?.depthClass === 'surface',
+      ) && o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
   )
 }
 

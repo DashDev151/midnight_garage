@@ -9,7 +9,11 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
-import { computeRosterCoherence, computeRosterDonorCoherence } from '../src/coherence'
+import {
+  computeRosterCoherence,
+  computeRosterDonorCoherence,
+  computeSymptomCoherence,
+} from '../src/coherence'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -114,5 +118,47 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
     expect(crossings.some((c) => c.billToCleanRatio > donorBreakEvenBillRatio)).toBe(true)
     expect(crossings.some((c) => c.partingWins)).toBe(true)
     expect(crossings.some((c) => !c.partingWins)).toBe(true)
+  })
+})
+
+describe('symptom coherence invariants (Sprint 73 decision 6: the blind-buy guardrail)', () => {
+  const rows = computeSymptomCoherence(CONTEXT)
+
+  it('covers every symptom x every fitment tier exactly once', () => {
+    expect(rows).toHaveLength(CONTEXT.symptoms.length * 4)
+    for (const symptom of CONTEXT.symptoms) {
+      const tiers = rows.filter((r) => r.symptomId === symptom.id).map((r) => r.fitmentClass)
+      expect(new Set(tiers)).toEqual(new Set(['shitbox', 'common', 'uncommon', 'rare']))
+    }
+  })
+
+  it('buying blind is never -EV (blindBuyEvYen >= 0), for every symptom on every tier', () => {
+    const failures = rows
+      .filter((r) => r.blindBuyEvYen < 0)
+      .map((r) => `${r.symptomId} (${r.fitmentClass}): blindBuyEvYen ${r.blindBuyEvYen}`)
+    expect(failures).toEqual([])
+  })
+
+  it('buying blind is never a windfall (blindBuyEvYen <= 20% of the apparent-to-expected gap)', () => {
+    const failures = rows
+      .filter((r) => {
+        const gap = r.apparentValueYen - r.expectedTrueValueYen
+        return r.blindBuyEvYen > 0.2 * gap + 1 // +1 yen: rounding slack, not a real tolerance
+      })
+      .map((r) => `${r.symptomId} (${r.fitmentClass}): blindBuyEvYen ${r.blindBuyEvYen}`)
+    expect(failures).toEqual([])
+  })
+
+  it('every symptom shows both a sleeper and a trap cause (edges on both sides of zero), on every tier', () => {
+    const failures = rows
+      .filter(
+        (r) =>
+          !(
+            r.edgePerCauseYen.some((e) => e.edgeYen > 0) &&
+            r.edgePerCauseYen.some((e) => e.edgeYen < 0)
+          ),
+      )
+      .map((r) => `${r.symptomId} (${r.fitmentClass}): edges ${JSON.stringify(r.edgePerCauseYen)}`)
+    expect(failures).toEqual([])
   })
 })
