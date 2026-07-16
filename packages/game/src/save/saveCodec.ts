@@ -223,13 +223,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   - `activeServiceJobs` (in-flight, already-accepted jobs): KEPT, not
  *     dropped - a player mid-job shouldn't lose it to a version bump. Each
  *     entry's old `work` maps to a ONE-task `tasks` list: `kind: 'repair'`
- *     becomes `{ action: 'repair', carPartId: <representative part for that
- *     group>, targetBand: 'mint' }` (every pre-Sprint-26 repair implicitly
+ *     becomes a band-only requirement on `<representative part for that
+ *     group>` targeting `mint` (every pre-Sprint-26 repair implicitly
  *     targeted mint, same reasoning `migrateJob`/`migrateStagedAction` at
- *     v15->v16 already use); `kind: 'install'` becomes `{ action: 'install',
- *     carPartId: <representative part>, minGrade: 'stock' }` (the most
- *     permissive floor, since the old model had no grade requirement at
- *     all). `GROUP_TO_REPRESENTATIVE_PART` is a hardcoded historical table
+ *     v15->v16 already use); `kind: 'install'` becomes a grade requirement
+ *     on `<representative part>` at `stock` (the most permissive floor,
+ *     since the old model had no grade requirement at all) - originally the
+ *     `{action, carPartId, targetBand/minGrade}` shape this described,
+ *     reshaped by `migrateServiceJobToTasks` itself into Sprint 72's
+ *     `{requirement: {kind: 'slotCondition', ...}}` form so this
+ *     migration's own output still validates under the current schema (see
+ *     the v31 -> v32 entry below). `GROUP_TO_REPRESENTATIVE_PART` is a hardcoded historical table
  *     (mirrors `OLD_GROUP_TO_NEW_PARTS` at v15->v16) picking one real part
  *     per group - a deliberate, documented simplification: the old job
  *     required work across the WHOLE group, the migrated one-task version
@@ -423,8 +427,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * gameStore.ts) and falls back to a new game on any decode failure, same as
  * a corrupted save code. The version bump is what makes a v31 save at least
  * attempt this schema rather than an older one silently misreading it.
+ * v31 -> v32 (Sprint 72, outcome-based service jobs): `ServiceJobTaskSchema`
+ * dropped the `action`/`targetBand`/`minGrade`/`carPartId` shape entirely for
+ * a single `{ requirement: RequirementSpec, minToolTier }` shape, and
+ * `ServiceJobSchema` lost `baselineInstalledPartIds` (its one remaining
+ * consumer, `isServiceTaskDone`'s instance-identity check, is retired - "any
+ * route counts" now). Not the pure additive case, and directive 19 (no
+ * pre-launch save compatibility) is what makes that fine: no
+ * `MIGRATIONS[31]` entry, no backfill, no legacy-compat branch. A pre-v32
+ * save's old-shaped tasks fail `ServiceJobTaskSchema.parse` outright, the
+ * same fallback-to-new-game path every other non-additive bump already
+ * relies on (see v30 -> v31's own comment above).
  */
-export const SAVE_VERSION = 31
+export const SAVE_VERSION = 32
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -817,10 +832,24 @@ function migrateServiceJobToTasks(serviceJob: unknown): unknown {
   const kind = work?.kind === 'install' ? 'install' : 'repair'
   const componentId = typeof work?.componentId === 'string' ? work.componentId : 'engine'
   const carPartId = GROUP_TO_REPRESENTATIVE_PART[componentId] ?? 'block'
+  // Sprint 72 (outcome-based service jobs): this migration's own OUTPUT must
+  // conform to the CURRENT task shape, since no later migration reshapes
+  // `tasks` again - `action`/`targetBand`/`minGrade` collapsed into one
+  // `requirement` (decision 2's exact repair->slotCondition/
+  // install->slotCondition-with-minGrade-and-minBand-'fine' mapping).
   const task =
     kind === 'install'
-      ? { action: 'install' as const, carPartId, minGrade: 'stock' as const }
-      : { action: 'repair' as const, carPartId, targetBand: 'mint' as const }
+      ? {
+          requirement: {
+            kind: 'slotCondition' as const,
+            carPartId,
+            minBand: 'fine' as const,
+            minGrade: 'stock' as const,
+          },
+        }
+      : {
+          requirement: { kind: 'slotCondition' as const, carPartId, minBand: 'mint' as const },
+        }
 
   const arrivesOnDay = typeof sj.arrivesOnDay === 'number' ? sj.arrivesOnDay : null
   const dueOnDay = typeof sj.dueOnDay === 'number' ? sj.dueOnDay : null

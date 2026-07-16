@@ -85,7 +85,9 @@ describe('referential integrity', () => {
     // folded into suspension - see tags.ts's ComponentIdSchema).
     const COMPONENT_WORDS = ['engine', 'drivetrain', 'suspension', 'body', 'interior', 'wheels']
     for (const type of parsedTypes) {
-      const touchedGroups = new Set(type.tasks.map((task) => GROUP_BY_PART_ID.get(task.carPartId)))
+      const touchedGroups = new Set(
+        type.tasks.map((task) => GROUP_BY_PART_ID.get(task.requirement.carPartId)),
+      )
       const foreignWords = COMPONENT_WORDS.filter((word) => !touchedGroups.has(word as never))
       for (const line of type.flavorPool) {
         const text = line.toLowerCase()
@@ -100,21 +102,23 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 26 decision 5 (scrap is unrepairable) + Sprint 29 decision 3: a
-   * repair task's `targetBand` must never be `scrap` - a template whose
-   * premise implies a wrecked part uses an `install` task on it instead, so
-   * the customer pays for a real replacement rather than an impossible
-   * patch job. `deriveServiceJobPayoutYen` (sim) treats a repair task on an
-   * already-scrap part as free/auto-satisfied, which would make this a
-   * content bug (a "job" with nothing to actually do), not a schema error -
-   * this test is what actually catches it.
+   * Sprint 26 decision 5 (scrap is unrepairable), reimplemented over the
+   * outcome shape (Sprint 72 - directive 17 case (a), the old `action`
+   * discriminant this test branched on no longer exists, every task is a
+   * `slotCondition` now): no requirement's `minBand` is ever `scrap` - a
+   * template whose premise implies a wrecked part sets a real `minBand`
+   * (with a `minGrade`, if it's meant to be satisfied by a fresh part)
+   * instead, so the customer pays for actual work rather than a floor
+   * `evaluateRequirement` treats as permanently failing regardless of route.
    */
-  it('no repair task ever targets scrap', () => {
+  it("no requirement's minBand is ever scrap", () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
     for (const type of parsedTypes) {
       for (const task of type.tasks) {
-        if (task.action !== 'repair') continue
-        expect(task.targetBand, `template "${type.id}" repair task targets scrap`).not.toBe('scrap')
+        expect(
+          task.requirement.minBand,
+          `template "${type.id}" requirement on "${task.requirement.carPartId}" targets scrap`,
+        ).not.toBe('scrap')
       }
     }
   })
@@ -297,27 +301,15 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only
-   * (`repairable: false` in the taxonomy) - a repair task addressing one is a
-   * content bug (the job would price/complete through a formula that no
-   * longer applies to that part), not a design choice a template author
-   * should ever reach for. Every existing repair task on these three was
-   * converted to an install task this sprint; this is the permanent guard
-   * against a future template reintroducing one.
+   * Sprint 41 decision 2's guard retired (directive 17 case (a), not simply
+   * deleted without reason): it existed because a pre-Sprint-72 `repair` task
+   * PRESCRIBED an action, and prescribing repair on a non-repairable part
+   * (`repairable: false` - tyres/brakePadsDiscs/clutch) was a content bug -
+   * the job would price/complete through a formula that never applied to
+   * that part. Sprint 72's outcome-based tasks don't prescribe a route at
+   * all (decision 4: "any route counts") - a band-only `slotCondition` on a
+   * non-repairable part is perfectly satisfiable by replacing it, priced
+   * correctly by `serviceJobCostBreakdown`'s fall-through to the install
+   * route. There is no longer a content bug this guard could catch.
    */
-  it('no service-job template contains a repair task addressing a non-repairable part', () => {
-    const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
-    const REPAIRABLE_BY_PART_ID = new Map(
-      PARTS_TAXONOMY.map((entry) => [entry.id, entry.repairable]),
-    )
-    for (const type of parsedTypes) {
-      for (const task of type.tasks) {
-        if (task.action !== 'repair') continue
-        expect(
-          REPAIRABLE_BY_PART_ID.get(task.carPartId),
-          `template "${type.id}" has a repair task addressing non-repairable part "${task.carPartId}"`,
-        ).toBe(true)
-      }
-    }
-  })
 })

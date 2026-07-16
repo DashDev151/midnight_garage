@@ -78,6 +78,10 @@ const flavorLine = computed(() => {
           <dt>Days on the job</dt>
           <dd>{{ result.daysSpent }}</dd>
         </div>
+        <div v-if="result.returnedParts.length" data-test="job-result-returned-parts">
+          <dt>Returned with the car</dt>
+          <dd>{{ result.returnedParts.join(', ') }}</dd>
+        </div>
       </dl>
 
       <button class="primary" data-test="job-result-continue" @click="game.dismissJobResult()">

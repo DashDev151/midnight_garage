@@ -157,7 +157,6 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
         expiresOnDay: 999,
         arrivesOnDay: null,
         dueOnDay: 1,
-        baselineInstalledPartIds: {},
       }
       const tagged: PartInstance = {
         ...instance,

@@ -575,6 +575,10 @@ export interface ServiceJobResultView {
   specialtyGained: Record<ComponentId, number>
   /** Days between acceptance and this resolution. */
   daysSpent?: number
+  /** Sprint 72 decision 5: display strings ("<brand> <name>") for every
+   * customer-origin part that left with the car at close-out - paid or
+   * failed alike. Empty when nothing customer-owned was ever pulled. */
+  returnedParts: string[]
 }
 
 /**
@@ -1128,18 +1132,20 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * A short human label for one service-job task (Sprint 29). Always built
-   * from the real part's display name, never the raw camelCase `CarPartId`
-   * (Sprint 25 task 6's rule, extended to the multi-task job shape - a
-   * job's copy is built from `tasks` now, never a single `work` field).
-   * Band/grade words (`mint`, `street`, ...) are already plain English, not
-   * ids, so they render as-is - same convention `BandChip` uses.
+   * A short human label for one service-job task (Sprint 29; Sprint 72
+   * decision 7: outcome-phrased, since a task no longer prescribes an
+   * action). Always built from the real part's display name, never the raw
+   * camelCase `CarPartId` (Sprint 25 task 6's rule, extended to the
+   * multi-task job shape - a job's copy is built from `tasks` now, never a
+   * single `work` field). Band/grade words (`mint`, `street`, ...) are
+   * already plain English, not ids, so they render as-is - same convention
+   * `BandChip` uses.
    */
   function taskLabel(task: ServiceJobTask): string {
-    const partName = carPartLabel(task.carPartId)
-    return task.action === 'repair'
-      ? `${partName} repair to ${task.targetBand}`
-      : `${partName} install (${task.minGrade} or better)`
+    const partName = carPartLabel(task.requirement.carPartId)
+    return task.requirement.minGrade
+      ? `${partName}: ${task.requirement.minGrade} or better, fitted and ${task.requirement.minBand}`
+      : `${partName} must be ${task.requirement.minBand}`
   }
 
   /** Every task on a service job, paired with whether it's actually done on
@@ -1147,7 +1153,7 @@ export const useGameStore = defineStore('game', () => {
   function serviceJobTaskViews(job: ServiceJob): ServiceJobTaskView[] {
     return job.tasks.map((task) => ({
       label: taskLabel(task),
-      done: isServiceTaskDone(job.car, task, context.value.partsById, job.baselineInstalledPartIds),
+      done: isServiceTaskDone(job.car, task, context.value),
     }))
   }
 
@@ -1948,7 +1954,7 @@ export const useGameStore = defineStore('game', () => {
     const unlocksJobTemplateNames = SERVICE_JOB_TYPES.filter((template) =>
       template.tasks.some(
         (task) =>
-          context.value.partsTaxonomyById[task.carPartId]?.group === componentId &&
+          context.value.partsTaxonomyById[task.requirement.carPartId]?.group === componentId &&
           task.minToolTier === tier,
       ),
     ).map((template) => humanizeTemplateId(template.id))
@@ -2581,6 +2587,10 @@ export const useGameStore = defineStore('game', () => {
     dayLog.value.push(...resolution.log)
 
     const entry = resolution.log[0]
+    // Sprint 72 decision 5: the returned-parts receipt line is appended
+    // after the completed/failed entry, not always at index 0.
+    const returnedParts =
+      resolution.log.find((e) => e.type === 'service-parts-returned')?.parts ?? []
     if (entry?.type === 'service-job-completed') {
       lastJobResult.value = {
         outcome: 'paid',
@@ -2593,6 +2603,7 @@ export const useGameStore = defineStore('game', () => {
         netProfitYen: entry.netProfitYen,
         specialtyGained: entry.specialtyGained,
         daysSpent: entry.daysSpent,
+        returnedParts,
       }
     } else if (entry?.type === 'service-job-failed') {
       lastJobResult.value = {
@@ -2605,6 +2616,7 @@ export const useGameStore = defineStore('game', () => {
         partsCostYen: entry.partsCostYen,
         netProfitYen: entry.netProfitYen,
         specialtyGained: entry.specialtyGained,
+        returnedParts,
       }
     }
     logSessionEvent('completeServiceJob', { jobId, outcome: resolution.outcome })

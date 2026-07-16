@@ -31,6 +31,7 @@ describe('JobCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      returnedParts: [],
     }
     const wrapper = mount(JobCompleteModal)
     expect(wrapper.find('[data-test="job-complete-modal"]').exists()).toBe(true)
@@ -62,6 +63,7 @@ describe('JobCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      returnedParts: [],
     }
     const wrapper = mount(JobCompleteModal)
     expect(wrapper.text()).toContain('Sunk cost')
@@ -88,9 +90,66 @@ describe('JobCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      returnedParts: [],
     }
     const wrapper = mount(JobCompleteModal)
     expect(wrapper.text()).not.toContain('Repair cost')
     expect(wrapper.text()).not.toContain('Parts cost')
+  })
+
+  /** Sprint 72 decision 5: customer-origin parts leave with the car at
+   * close-out - the receipt line names them, and stays absent when nothing
+   * customer-owned was ever pulled (the three fixtures above). */
+  it('shows a "Returned with the car" line naming every customer-origin part released at close-out', () => {
+    const game = useGameStore()
+    game.lastJobResult = {
+      outcome: 'paid',
+      customerName: 'Test Customer',
+      taskLabels: ['Suspension repair to fine'],
+      payoutYen: 50_000,
+      reputationDelta: 6,
+      repairCostYen: 8_000,
+      partsCostYen: 0,
+      netProfitYen: 42_000,
+      specialtyGained: {
+        engine: 0,
+        drivetrain: 0,
+        suspension: 6,
+        wheels: 0,
+        body: 0,
+        interior: 0,
+      },
+      returnedParts: ['Tanuki Street Coilovers', 'KHS Stock ECU'],
+    }
+    const wrapper = mount(JobCompleteModal)
+    const returnedEl = wrapper.find('[data-test="job-result-returned-parts"]')
+    expect(returnedEl.exists()).toBe(true)
+    expect(returnedEl.text()).toContain('Tanuki Street Coilovers')
+    expect(returnedEl.text()).toContain('KHS Stock ECU')
+  })
+
+  it('omits the "Returned with the car" line entirely when nothing customer-owned was pulled', () => {
+    const game = useGameStore()
+    game.lastJobResult = {
+      outcome: 'paid',
+      customerName: 'Test Customer',
+      taskLabels: ['Suspension repair to fine'],
+      payoutYen: 50_000,
+      reputationDelta: 6,
+      repairCostYen: 8_000,
+      partsCostYen: 0,
+      netProfitYen: 42_000,
+      specialtyGained: {
+        engine: 0,
+        drivetrain: 0,
+        suspension: 6,
+        wheels: 0,
+        body: 0,
+        interior: 0,
+      },
+      returnedParts: [],
+    }
+    const wrapper = mount(JobCompleteModal)
+    expect(wrapper.find('[data-test="job-result-returned-parts"]').exists()).toBe(false)
   })
 })

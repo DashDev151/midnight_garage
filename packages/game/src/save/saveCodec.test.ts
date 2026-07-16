@@ -793,7 +793,7 @@ describe('saveCodec', () => {
           typeId: 'repair-engine',
           customerName: 'Tanaka-san',
           description: 'oil change',
-          tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint' }],
+          tasks: [{ requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' } }],
           payoutYen: 15_000,
           baseReputation: 1,
           deadlineDays: 7,
@@ -1009,7 +1009,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(31)
+    expect(SAVE_VERSION).toBe(32)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1062,7 +1062,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(31)
+    expect(SAVE_VERSION).toBe(32)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1199,9 +1199,15 @@ describe('saveCodec', () => {
       const decoded = decodeSave(code)
       const job = decoded.activeServiceJobs[0]
       // `minToolTier: 1` is the Sprint 36 schema default - a legacy task
-      // decodes at the no-ceiling floor.
+      // decodes at the no-ceiling floor. Sprint 72: the migration's own
+      // output is the current outcome-based shape (directive 17 case (a) -
+      // `migrateServiceJobToTasks` was updated so its result still
+      // validates under the schema it now decodes into).
       expect(job?.tasks).toEqual([
-        { action: 'repair', carPartId: 'block', targetBand: 'mint', minToolTier: 1 },
+        {
+          requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
+          minToolTier: 1,
+        },
       ])
       // Already-rolled economics untouched, per the sprint doc's own
       // instruction: never re-derive a live job's payout or deadline.
@@ -1247,7 +1253,15 @@ describe('saveCodec', () => {
       const decoded = decodeSave(code)
       const job = decoded.activeServiceJobs[0]
       expect(job?.tasks).toEqual([
-        { action: 'install', carPartId: 'dampers', minGrade: 'stock', minToolTier: 1 },
+        {
+          requirement: {
+            kind: 'slotCondition',
+            carPartId: 'dampers',
+            minBand: 'fine',
+            minGrade: 'stock',
+          },
+          minToolTier: 1,
+        },
       ])
       // arrivesOnDay was null on the fixture (already arrived), so there's
       // no real gap to reconstruct - falls back to the historical constant.
@@ -1301,8 +1315,15 @@ describe('saveCodec', () => {
             customerName: 'Tanaka-san',
             description: 'wallowy ride',
             tasks: [
-              { action: 'repair', carPartId: 'dampers', targetBand: 'mint' },
-              { action: 'install', carPartId: 'tyres', minGrade: 'street' },
+              { requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'mint' } },
+              {
+                requirement: {
+                  kind: 'slotCondition',
+                  carPartId: 'tyres',
+                  minBand: 'fine',
+                  minGrade: 'street',
+                },
+              },
             ],
             payoutYen: 60_000,
             baseReputation: 12,
@@ -1646,8 +1667,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 31 (Sprint 70)', () => {
-    expect(SAVE_VERSION).toBe(31)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 32 (Sprint 72)', () => {
+    expect(SAVE_VERSION).toBe(32)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1749,8 +1770,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 31 (Sprint 70)', () => {
-    expect(SAVE_VERSION).toBe(31)
+  it('SAVE_VERSION has since moved to 32 (Sprint 72)', () => {
+    expect(SAVE_VERSION).toBe(32)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1782,8 +1803,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 31 (Sprint 70)', () => {
-    expect(SAVE_VERSION).toBe(31)
+  it('SAVE_VERSION is 32 (Sprint 72)', () => {
+    expect(SAVE_VERSION).toBe(32)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1829,8 +1850,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 31 (Sprint 70)', () => {
-    expect(SAVE_VERSION).toBe(31)
+  it('SAVE_VERSION is 32 (Sprint 72)', () => {
+    expect(SAVE_VERSION).toBe(32)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -1891,7 +1912,12 @@ describe('saveCodec', () => {
           typeId: 'test-job',
           customerName: 'Test Customer',
           description: 'test',
-          tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint', minToolTier: 1 }],
+          tasks: [
+            {
+              requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
+              minToolTier: 1,
+            },
+          ],
           car: {
             id: 'car-customer-01',
             modelId: 'toyota-supra-rz-jza80',
@@ -1970,82 +1996,14 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v29 -> v30 (Sprint 61, baseline-tracked installs): `ServiceJobSchema`
-   * gained `baselineInstalledPartIds` (default `{}`) - the normal additive
-   * case, so it needs NO `MIGRATIONS[29]` entry, but it DOES bump
-   * `SAVE_VERSION` (Save law). These two tests are its regression coverage: an
-   * in-flight pre-v30 (v29 envelope) service job with no `baselineInstalledPartIds`
-   * field still decodes cleanly under v30 (empty baseline = the legacy "any
-   * qualifying part present is done" semantics for that job, so a save mid-job
-   * never breaks), and a v30 job with a real captured baseline round-trips it
-   * exactly.
+   * v29 -> v30 (Sprint 61, baseline-tracked installs) added
+   * `baselineInstalledPartIds`; Sprint 72 (decision 4, "any route counts")
+   * retired the mechanism itself - `isServiceTaskDone` no longer checks
+   * instance identity at all, so the field was dropped from `ServiceJobSchema`
+   * outright (see the v31 -> v32 `SAVE_VERSION` doc comment). The two tests
+   * that once lived here exercised `baselineInstalledPartIds` directly; with
+   * the mechanism gone, not just the assertions but their entire premise no
+   * longer applies (directive 17 case (a): the implementation intentionally
+   * changed what is correct), so they are removed rather than converted.
    */
-  it('a real pre-v30 save (a v29 envelope whose service job has no baselineInstalledPartIds) decodes with an empty baseline under v30', () => {
-    const jobWithoutBaseline = {
-      id: 'service-job-legacy',
-      typeId: 'suspension-refresh',
-      customerName: 'Tanaka-san',
-      description: 'wallowy ride',
-      tasks: [{ action: 'install', carPartId: 'tyres', minGrade: 'street' }],
-      payoutYen: 60_000,
-      baseReputation: 12,
-      deadlineDays: 6,
-      expiresOnDay: 60,
-      arrivesOnDay: null,
-      dueOnDay: 50,
-      car: {
-        id: 'service-car',
-        modelId: 'honda-city-e-aa',
-        year: 1984,
-        mileageKm: 120_000,
-        color: 'White',
-        provenanceNote: '',
-        authenticityPercent: 85,
-        parts: mintParts(),
-      },
-    }
-    const preV30 = {
-      version: 29,
-      gameState: { ...fullState, activeServiceJobs: [jobWithoutBaseline] },
-    }
-    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV30))
-    const decoded = decodeSave(code)
-    expect(decoded.activeServiceJobs[0]?.baselineInstalledPartIds).toEqual({})
-  })
-
-  it('a v30 job with a real captured baseline round-trips it exactly', () => {
-    const withBaseline: GameState = GameStateSchema.parse({
-      ...fullState,
-      activeServiceJobs: [
-        {
-          id: 'service-job-1',
-          typeId: 'suspension-refresh',
-          customerName: 'Tanaka-san',
-          description: 'wallowy ride',
-          tasks: [{ action: 'install', carPartId: 'tyres', minGrade: 'street' }],
-          payoutYen: 60_000,
-          baseReputation: 12,
-          deadlineDays: 6,
-          expiresOnDay: 60,
-          arrivesOnDay: null,
-          dueOnDay: 50,
-          baselineInstalledPartIds: { tyres: 'pi-original-tyre' },
-          car: {
-            id: 'service-car',
-            modelId: 'honda-city-e-aa',
-            year: 1984,
-            mileageKm: 120_000,
-            color: 'White',
-            provenanceNote: '',
-            authenticityPercent: 85,
-            parts: mintParts(),
-          },
-        },
-      ],
-    })
-    const decoded = decodeSave(encodeSave(withBaseline))
-    expect(decoded.activeServiceJobs[0]?.baselineInstalledPartIds).toEqual({
-      tyres: 'pi-original-tyre',
-    })
-  })
 })

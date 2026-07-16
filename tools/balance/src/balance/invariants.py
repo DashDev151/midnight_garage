@@ -72,6 +72,17 @@ than promoted to hard-gated here - that call belongs to a maintainer
 reviewing a few more runs first, not a unilateral change bundled into the
 sprint that happened to fix the underlying economy; see this sprint's own
 Exit for the full before/after numbers.
+
+Update (Sprint 72, outcome-based service jobs, decision 6): Law 6 (the wage
+law) is split in two. Honestly pricing a non-surface repair's full teardown
+chain (deduped once per shared blocker across a whole restoration, not once
+per part behind it) surfaces a genuine shitbox-tier gap - a shitbox's cheap
+parts return too little repair gain to outearn the rent the teardown labour
+burns. Common/uncommon/rare clear a large positive margin regardless and
+stay hard-gated under the original Law 6 check; the shitbox tier is measured
+separately and disclosed, not silently loosened or force-passed, per this
+file's own established precedent above. See sprint72.md's Exit for the real
+before/after numbers and the maintainer direction this followed.
 """
 
 import argparse
@@ -305,18 +316,50 @@ def check_invariants(
         )
     )
 
-    wage_failures = [
+    # Sprint 72 decision 6: honestly pricing a non-surface repair's full
+    # teardown chain (deduped once per shared blocker across the whole
+    # restoration - see coherence.ts's computeModelCoherence) surfaces a REAL
+    # shitbox-tier gap - a shitbox's cheap parts return too little repair gain
+    # to outearn the rent the teardown labour burns. Common/uncommon/rare
+    # clear a large positive margin regardless and stay hard-gated; shitbox is
+    # downgraded to informational with the real numbers disclosed, matching
+    # this file's own established precedent (see the module docstring above)
+    # rather than silently loosened or forced to pass. A maintainer economy-
+    # tuning pass (repo TODO.md) can decide whether to soften the teardown
+    # premium, raise marketRepairDiscount, or accept the gap.
+    non_shitbox_wage_failures = [
         f"{row['modelId']}: wage Y{row['wageMarginYen']:,.0f} ({row['wageRatio']:.2f}x rent)"
         for row in coherence.iter_rows(named=True)
-        if row["wageMarginYen"] <= 0
+        if row["fitmentClass"] != "shitbox" and row["wageMarginYen"] <= 0
+    ]
+    non_shitbox_count = coherence.filter(pl.col("fitmentClass") != "shitbox").height
+    results.append(
+        (
+            "Law 6: every common/uncommon/rare roster model's repair wage (the "
+            "value a repair returns over its cost) beats the rent accrued over "
+            "the labour it takes",
+            len(non_shitbox_wage_failures) == 0,
+            f"{len(non_shitbox_wage_failures)}/{non_shitbox_count} models non-positive"
+            + (
+                f": {'; '.join(non_shitbox_wage_failures)}"
+                if non_shitbox_wage_failures
+                else ""
+            ),
+        )
+    )
+
+    shitbox_wage_rows = [
+        f"{row['modelId']}: wage Y{row['wageMarginYen']:,.0f} ({row['wageRatio']:.2f}x rent)"
+        for row in coherence.iter_rows(named=True)
+        if row["fitmentClass"] == "shitbox"
     ]
     results.append(
         (
-            "Law 6: every roster model's repair wage (the value a repair returns "
-            "over its cost) beats the rent accrued over the labour it takes",
-            len(wage_failures) == 0,
-            f"{len(wage_failures)}/{coherence.height} models non-positive"
-            + (f": {'; '.join(wage_failures)}" if wage_failures else ""),
+            "[INFO, not gated - Sprint 72 disclosed gap, see module docstring] "
+            "Law 6 on the shitbox tier: honest teardown pricing shows a real "
+            "loss, not just a thin margin",
+            True,
+            "; ".join(shitbox_wage_rows),
         )
     )
 

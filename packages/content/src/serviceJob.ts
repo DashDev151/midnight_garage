@@ -1,42 +1,30 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
-import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
+import { RequirementSpecSchema } from './requirement'
 import { ToolTierSchema } from './toolLines'
 
 /**
- * One task within a service-job template (Sprint 29 schema v2) - what the
- * player must do to ONE specific real car part (Sprint 26/28 addressing, the
- * same `CarPartId` granularity the repair/replace drill-down already uses,
- * not the old 6-way group) to satisfy this piece of the job:
- *  - `repair`: climb the part's condition band to `targetBand` (labor only -
- *    the existing banded repair system, Sprint 26).
- *  - `install`: fit a catalog part graded at least `minGrade` onto the
- *    part's slot (buy at the market, then fit - Sprint 26/28).
- * A repair task's `targetBand` is never `scrap` (Sprint 26 decision 5: scrap
- * is unrepairable) - a template whose premise implies a wrecked part uses an
- * `install` task on it instead (Sprint 29 decision 3); a content test
- * (`integrity.test.ts`) guards this rather than the schema, matching this
- * codebase's existing convention for content-shape invariants.
+ * One task within a service-job template (Sprint 72: outcome-based). What
+ * the customer's car must end up in, not what the player must DO to it - a
+ * `RequirementSpec` (`requirement.ts`), evaluated fresh every time via
+ * `evaluateRequirement` (sim). Any route that leaves the car in the required
+ * state satisfies it: repair-and-refit, buy-new, or a donor-pulled part all
+ * count equally (decision 4) - closing the old `action`-based split (this
+ * schema no longer distinguishes `repair`/`install` at all; a pure band
+ * requirement and a band-plus-grade requirement are both just a
+ * `slotCondition`).
  *
  * `minToolTier` (Sprint 36): the tool tier this task's group needs before
  * the work can be offered without a hint or accepted at all - the
  * capability ceiling along the bolt-on vs built line (progression bible).
- * Defaults to 1 (no ceiling); Sprint 37 authors the real values.
+ * Defaults to 1 (no ceiling); Sprint 37 authors the real values. Stays on
+ * the task wrapper, not inside the requirement - it gates OFFERABILITY
+ * (`taskToolDeficit`), not the end state itself.
  */
-export const ServiceJobTaskSchema = z.discriminatedUnion('action', [
-  z.object({
-    action: z.literal('repair'),
-    carPartId: CarPartIdSchema,
-    targetBand: ConditionBandSchema,
-    minToolTier: ToolTierSchema.default(1),
-  }),
-  z.object({
-    action: z.literal('install'),
-    carPartId: CarPartIdSchema,
-    minGrade: GradeSchema,
-    minToolTier: ToolTierSchema.default(1),
-  }),
-])
+export const ServiceJobTaskSchema = z.object({
+  requirement: RequirementSpecSchema,
+  minToolTier: ToolTierSchema.default(1),
+})
 
 export const ServiceJobTasksSchema = z.array(ServiceJobTaskSchema).min(1)
 
@@ -125,19 +113,6 @@ export const ServiceJobSchema = z.object({
    * not from acceptance, so the in-transit day never silently shortens it.
    */
   dueOnDay: z.number().int().positive().nullable().default(null),
-  /**
-   * Sprint 61: the `PartInstance.id` present in each of this job's INSTALL-task
-   * slots at generation time (or `null` if that slot was empty). An install
-   * task is done only once its slot holds a DIFFERENT part instance that also
-   * meets `minGrade` - so re-fitting the customer's own pulled-out part
-   * (same id) never counts, and a customer's car keeps its original (worn)
-   * part rather than the Sprint 40 slot-clearing hack manufacturing a missing
-   * one. A partial map, keyed only by the install-task slots; a `carPartId`
-   * absent from it (a legacy pre-Sprint-61 in-flight job, whose default is
-   * `{}`) falls back to the legacy "any qualifying part present is done"
-   * semantics for that task only.
-   */
-  baselineInstalledPartIds: z.record(z.string(), z.string().nullable()).default({}),
 })
 
 export const ServiceJobsSchema = z.array(ServiceJobSchema)

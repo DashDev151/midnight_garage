@@ -49,15 +49,20 @@ export interface ServiceJobWorkResult {
 
 /** An open job matching one specific task (car + kind + exact carPartId) -
  * a multi-task service job can have several tasks in progress at once now,
- * unlike the old single-`work` model's "one job per car." */
+ * unlike the old single-`work` model's "one job per car." A grade-requirement
+ * task (formerly `install`) resolves via the buy/install route; a band-only
+ * task (formerly `repair`) resolves via the bench-repair route. */
 function findExistingTaskJob(
   state: GameState,
   carId: string,
   task: ServiceJobTask,
 ): Job | undefined {
-  const kind = task.action === 'repair' ? 'repair-zone' : 'install-part'
+  const kind = task.requirement.minGrade ? 'install-part' : 'repair-zone'
   return state.jobs.find(
-    (job) => job.carInstanceId === carId && job.kind === kind && job.carPartId === task.carPartId,
+    (job) =>
+      job.carInstanceId === carId &&
+      job.kind === kind &&
+      job.carPartId === task.requirement.carPartId,
   )
 }
 
@@ -99,13 +104,7 @@ export function queueServiceJobTasks(
 
   for (const task of serviceJob.tasks) {
     if (remainingLabor <= 0) break
-    // Sprint 61: pass the job's baseline so an install task is seen as "not
-    // done" until a genuinely new part is fitted - the customer's car now
-    // keeps its (worn) original part rather than an empty slot, so without
-    // the baseline the bot would read a qualifying stock part as already done
-    // and never do the work.
-    if (isServiceTaskDone(car, task, context.partsById, serviceJob.baselineInstalledPartIds))
-      continue
+    if (isServiceTaskDone(car, task, context)) continue
 
     const existing = findExistingTaskJob(state, car.id, task)
     if (existing) {
@@ -117,21 +116,22 @@ export function queueServiceJobTasks(
       continue
     }
 
-    const group = context.partsTaxonomyById[task.carPartId]?.group
+    const { carPartId, minBand, minGrade } = task.requirement
+    const group = context.partsTaxonomyById[carPartId]?.group
     if (!group) continue
     if (!model) continue
 
-    if (task.action === 'repair') {
+    if (!minGrade) {
       const plan = planGroupRepair(
         car,
         group,
-        task.targetBand,
+        minBand,
         state.toolTiers,
         context.partIdsByGroup,
         context.partsById,
         context.partsTaxonomyById,
         context.economy.restoration.repairStepFraction,
-        task.carPartId,
+        carPartId,
       )
       if (plan.partIds.length === 0) continue
       const jobIndex = actions.createJobs.length
@@ -139,8 +139,8 @@ export function queueServiceJobTasks(
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: group,
-        targetBand: task.targetBand,
-        carPartId: task.carPartId,
+        targetBand: minBand,
+        carPartId,
         laborSlotsRequired: plan.laborSlotsRequired,
       })
       const slots = Math.min(plan.laborSlotsRequired, remainingLabor)
@@ -150,15 +150,15 @@ export function queueServiceJobTasks(
     }
 
     // Sprint 32's stock-baseline model fills every real slot by default, so
-    // an install task's target is usually occupied (by the stock part, or
-    // anything else that didn't already satisfy `isServiceTaskDone` above) -
-    // `installFitGate` refuses to install over an occupied slot (by design,
-    // never a silent overwrite), so this queues the same remove-first step
-    // the player's own UI requires (Remove, then Replace) and stops there
-    // for today; the buy/install steps below only ever run once the slot is
-    // genuinely empty.
-    if (car.parts[task.carPartId].installed !== null) {
-      actions.removeParts.push({ carInstanceId: car.id, carPartId: task.carPartId })
+    // a grade-requirement task's target is usually occupied (by the stock
+    // part, or anything else that didn't already satisfy `isServiceTaskDone`
+    // above) - `installFitGate` refuses to install over an occupied slot (by
+    // design, never a silent overwrite), so this queues the same
+    // remove-first step the player's own UI requires (Remove, then Replace)
+    // and stops there for today; the buy/install steps below only ever run
+    // once the slot is genuinely empty.
+    if (car.parts[carPartId].installed !== null) {
+      actions.removeParts.push({ carInstanceId: car.id, carPartId })
       continue
     }
 
@@ -169,8 +169,8 @@ export function queueServiceJobTasks(
       const catalogPart = context.partsById[instance.partId]
       return (
         !!catalogPart &&
-        partFitsCar(catalogPart, model, group, context.partsTaxonomyById, task.carPartId) &&
-        gradeAtLeast(catalogPart.grade, task.minGrade)
+        partFitsCar(catalogPart, model, group, context.partsTaxonomyById, carPartId) &&
+        gradeAtLeast(catalogPart.grade, minGrade)
       )
     })
     if (ownedFitting) {
@@ -180,10 +180,10 @@ export function queueServiceJobTasks(
         kind: 'install-part',
         componentId: group,
         partInstanceId: ownedFitting.id,
-        carPartId: task.carPartId,
-        laborSlotsRequired: installLaborSlotsFor(task.carPartId, context),
+        carPartId,
+        laborSlotsRequired: installLaborSlotsFor(carPartId, context),
       })
-      const slots = Math.min(installLaborSlotsFor(task.carPartId, context), remainingLabor)
+      const slots = Math.min(installLaborSlotsFor(carPartId, context), remainingLabor)
       actions.laborAssignments.push({ jobId: `job-${state.day}-${jobIndex}`, laborSlots: slots })
       remainingLabor -= slots
       continue
@@ -194,8 +194,8 @@ export function queueServiceJobTasks(
     const fitting = context.parts
       .filter(
         (part) =>
-          partFitsCar(part, model, group, context.partsTaxonomyById, task.carPartId) &&
-          gradeAtLeast(part.grade, task.minGrade),
+          partFitsCar(part, model, group, context.partsTaxonomyById, carPartId) &&
+          gradeAtLeast(part.grade, minGrade),
       )
       .sort((a, b) => a.priceYen - b.priceYen)
     const part = fitting[0]

@@ -99,9 +99,11 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
                 ...j,
                 tasks: [
                   {
-                    action: 'repair' as const,
-                    carPartId: 'panels' as const,
-                    targetBand: band,
+                    requirement: {
+                      kind: 'slotCondition' as const,
+                      carPartId: 'panels' as const,
+                      minBand: band,
+                    },
                     minToolTier: 1 as const,
                   },
                 ],

@@ -1,5 +1,4 @@
 import {
-  ALL_CAR_PART_IDS,
   CARS,
   PARTS,
   PARTS_TAXONOMY,
@@ -244,7 +243,17 @@ describe('completeJob', () => {
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
       description: 'Suspension work.',
-      tasks: [{ action: 'install', carPartId: 'dampers', minGrade: 'stock', minToolTier: 1 }],
+      tasks: [
+        {
+          requirement: {
+            kind: 'slotCondition',
+            carPartId: 'dampers',
+            minBand: 'fine',
+            minGrade: 'stock',
+          },
+          minToolTier: 1,
+        },
+      ],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -252,7 +261,6 @@ describe('completeJob', () => {
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
-      baselineInstalledPartIds: {},
     }
     const pricedPart: PartInstance = { ...sparePart, id: 'pi-priced-2', pricePaidYen: 42_000 }
     const job: Job = {
@@ -729,7 +737,12 @@ describe('findOrCreateJob (Sprint 11)', () => {
         typeId: 'small-bodywork-touchup',
         customerName: 'Test Customer',
         description: 'Suspension work.',
-        tasks: [{ action: 'repair', carPartId: 'dampers', targetBand: 'fine', minToolTier: 1 }],
+        tasks: [
+          {
+            requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'fine' },
+            minToolTier: 1,
+          },
+        ],
         car: customerCar,
         payoutYen: 10_000,
         baseReputation: 5,
@@ -737,7 +750,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
         expiresOnDay: 30,
         arrivesOnDay: null,
         dueOnDay: 8,
-        baselineInstalledPartIds: {},
       }
       const taggedInstance: PartInstance = {
         ...sparePart,
@@ -940,7 +952,12 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
       description: 'Bodywork needs sorting.',
-      tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+      tasks: [
+        {
+          requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+          minToolTier: 1,
+        },
+      ],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -948,7 +965,6 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
-      baselineInstalledPartIds: {},
     }
     const state = baseState({ ownedCars: [], activeServiceJobs: [owningJob] })
     const cashBefore = state.cashYen
@@ -1191,7 +1207,12 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     typeId: 'small-bodywork-touchup',
     customerName: 'Test Customer',
     description: 'Bodywork needs sorting.',
-    tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+    tasks: [
+      {
+        requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+        minToolTier: 1,
+      },
+    ],
     car,
     payoutYen: 10_000,
     baseReputation: 5,
@@ -1199,12 +1220,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expiresOnDay: 30,
     arrivesOnDay: null,
     dueOnDay: 8,
-    // Sprint 68: the baseline is total over the car - every slot records what
-    // the customer arrived with, which is what makes "whose part is this"
-    // decidable for any slot rather than only an install task's.
-    baselineInstalledPartIds: Object.fromEntries(
-      ALL_CAR_PART_IDS.map((id) => [id, car.parts[id].installed?.id ?? null]),
-    ),
   }
 
   it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it in inventory, with its origin unchanged', () => {

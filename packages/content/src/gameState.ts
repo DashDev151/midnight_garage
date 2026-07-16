@@ -423,6 +423,20 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     netProfitYen: z.number().int(),
   }),
   /**
+   * Sprint 72 decision 5: customer-origin parts leave with their car at
+   * close-out, paid or failed alike - the receipt line naming what went
+   * with them. `parts` are display strings ("<brand> <name>"), not ids: the
+   * instances themselves leave `partInventory` in this same step and could
+   * never be looked back up afterward. Omitted entirely when nothing
+   * customer-owned was ever pulled.
+   */
+  z.object({
+    type: z.literal('service-parts-returned'),
+    jobId: z.string().min(1),
+    carInstanceId: z.string().min(1),
+    parts: z.array(z.string().min(1)),
+  }),
+  /**
    * Sprint 31: a for-sale car drew a live offer, valid today only - the
    * day-report/offers-panel line ("A tuner is offering ... Today only").
    * `modelId` is a snapshot (mirrors the old `PublicListing.modelId`'s own

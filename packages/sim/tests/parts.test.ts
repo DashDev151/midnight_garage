@@ -258,7 +258,12 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
       description: 'Bodywork needs sorting.',
-      tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+      tasks: [
+        {
+          requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+          minToolTier: 1,
+        },
+      ],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -266,7 +271,6 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
-      baselineInstalledPartIds: {},
     }
     const customerScrap: PartInstance = {
       ...scrapInstance,
@@ -318,7 +322,12 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
       description: 'Bodywork needs sorting.',
-      tasks: [{ action: 'repair', carPartId: 'panels', targetBand: 'fine', minToolTier: 1 }],
+      tasks: [
+        {
+          requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+          minToolTier: 1,
+        },
+      ],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -326,7 +335,6 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
-      baselineInstalledPartIds: {},
     }
     const customerUsed: PartInstance = {
       ...usedInstance,

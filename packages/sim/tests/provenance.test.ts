@@ -212,7 +212,17 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
       description: 'Suspension work.',
-      tasks: [{ action: 'install', carPartId: 'dampers', minGrade: 'stock', minToolTier: 1 }],
+      tasks: [
+        {
+          requirement: {
+            kind: 'slotCondition',
+            carPartId: 'dampers',
+            minBand: 'fine',
+            minGrade: 'stock',
+          },
+          minToolTier: 1,
+        },
+      ],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -220,7 +230,6 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
-      baselineInstalledPartIds: {},
     }
     const bought = resolveBuyPart(
       baseState({ activeServiceJobs: [job], day: 2, cashYen: 10_000_000 }),
@@ -296,7 +305,12 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       typeId: 'small-bodywork-touchup',
       customerName: 'Test Customer',
       description: 'Suspension work.',
-      tasks: [{ action: 'repair', carPartId: 'dampers', targetBand: 'fine', minToolTier: 1 }],
+      tasks: [
+        {
+          requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'fine' },
+          minToolTier: 1,
+        },
+      ],
       car: customerCar,
       payoutYen: 10_000,
       baseReputation: 5,
@@ -304,7 +318,6 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       expiresOnDay: 30,
       arrivesOnDay: null,
       dueOnDay: 8,
-      baselineInstalledPartIds: {},
     }
     const state = baseState({ activeServiceJobs: [job], day: 3 })
     const removed = resolveRemovePart(state, customerCar.id, 'dampers', CONTEXT)

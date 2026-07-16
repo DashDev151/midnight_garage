@@ -221,7 +221,10 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
         "",
         "**Wage** (Law 6) is the value a repair returns over its own cost, less "
         "the rent accrued over the labour it takes, on a rough-but-fixable car "
-        "at a fresh shop's tier-1 tools. It must stay positive. The **xRent** "
+        "at a fresh shop's tier-1 tools. It must stay positive on common/uncommon/"
+        "rare models (gated); on the shitbox tier it is honestly negative once "
+        "the full teardown chain is priced (Sprint 72), a disclosed gap, not a "
+        "gate. The **xRent** "
         "ratio is the tuning dial: it is invariant to the target band (cost and "
         "labour both scale with grade count), and falls down the roster because "
         "repair labour is value-blind while the margin scales with part price.",
@@ -294,18 +297,19 @@ INVARIANTS_ENFORCED_SECTION = [
     "in [10, 35] (competent-policy probe), buyout share of acquisitions < 30%, the "
     "3 legacy Sprint 03/09 checks (Passive Grinder solvency, Flipper-vs-Passive "
     "separation, sanity floor), and 6 roster-coherence checks (economy-bible.md "
-    "law 4, Sprints 55 and 66): every model's worst-case bill-to-clean ratio <= "
+    "law 4, Sprints 55, 66, and 72): every model's worst-case bill-to-clean ratio <= "
     "`maxBillFraction` (law 2), every model's flip margin at the worst roll is positive "
     "(law 1), every model's SENSIBLE-play margin is positive (law 1 as amended, Sprint 66), "
-    "every model's repair wage beats the rent over the labour it takes (law 6, Sprint 66), "
+    "every COMMON/UNCOMMON/RARE model's repair wage beats the rent over the labour it "
+    "takes (law 6, Sprint 66; the shitbox tier is measured separately below, Sprint 72), "
     "every model's full "
     "consumable-replacement share of book value <= the content cap (law 3), and the "
     "service-job payout margin floor clears the profitability invariant's required "
     "coverage (law 4 - the full per-template/per-model proof is `serviceJobPayout.test.ts`, "
-    "already gated in the standard test suite). 3 more are measured and reported but NOT "
+    "already gated in the standard test suite). 4 more are measured and reported but NOT "
     "gated (kept informational rather than promoted, since no maintainer has signed off on "
     "hard-gating them yet) - see `invariants.py`'s module docstring for their history. "
-    "All 3 currently read BADLY, and deliberately so: as of Sprint 66 most strategies "
+    "The first 3 currently read BADLY, and deliberately so: as of Sprint 66 most strategies "
     "lose money (Flipper is well below its own starting cash) and the auction tail is "
     "frenzy-dominant. Do not tune the economy against those figures. They measure BOT "
     "behaviour, and the bots restore every car to mint - which economy-bible law 1, as "
@@ -313,7 +317,11 @@ INVARIANTS_ENFORCED_SECTION = [
     "coherence table above is bot-free and proves the same cars clear a healthy margin "
     "on the play the economy actually asks for. The bots needing a rework to play the "
     "real game is a known, recorded defect (`TODO.md`), not an economy failure - see "
-    "`docs/sprints/sprint66.md`'s Exit.",
+    "`docs/sprints/sprint66.md`'s Exit. The 4th (Sprint 72): honestly pricing a "
+    "non-surface repair's full teardown chain surfaces a genuine shitbox-tier law 6 "
+    "loss (cheap parts return too little repair gain to outearn the rent the teardown "
+    "labour burns) - measured and disclosed, not silently loosened, pending a maintainer "
+    "economy-tuning decision (`TODO.md`).",
     "",
 ]
 

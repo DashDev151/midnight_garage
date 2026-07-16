@@ -3,7 +3,10 @@
     "id": "cooling-system-service",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "cooling", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "cooling", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 4,
@@ -16,7 +19,10 @@
     "id": "electrics-once-over",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "ignitionEcu", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "ignitionEcu", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 5,
@@ -29,7 +35,10 @@
     "id": "timing-refresh",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "camsTiming", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "camsTiming", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 5,
@@ -42,7 +51,10 @@
     "id": "fuel-system-clean",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "fuelSystem", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "fuelSystem", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 3,
     "baseReputation": 4,
@@ -55,8 +67,18 @@
     "id": "top-end-refresh",
     "tier": 2,
     "tasks": [
-      { "action": "repair", "carPartId": "headValvetrain", "targetBand": "fine", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "camsTiming", "targetBand": "fine", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "headValvetrain",
+          "minBand": "fine"
+        },
+        "minToolTier": 2
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "camsTiming", "minBand": "fine" },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 5,
     "baseReputation": 10,
@@ -69,7 +91,14 @@
     "id": "head-rebuild",
     "tier": 3,
     "tasks": [
-      { "action": "repair", "carPartId": "headValvetrain", "targetBand": "mint", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "headValvetrain",
+          "minBand": "mint"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 16,
@@ -82,7 +111,15 @@
     "id": "race-turbo-upgrade",
     "tier": 4,
     "tasks": [
-      { "action": "install", "carPartId": "forcedInduction", "minGrade": "race", "minToolTier": 1 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "forcedInduction",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 32,
@@ -95,7 +132,15 @@
     "id": "forced-induction-conversion",
     "tier": 4,
     "tasks": [
-      { "action": "install", "carPartId": "forcedInduction", "minGrade": "sport", "minToolTier": 3 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "forcedInduction",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 3
+      }
     ],
     "deadlineDays": 8,
     "baseReputation": 30,
@@ -108,8 +153,24 @@
     "id": "engine-internals-rebuild",
     "tier": 4,
     "tasks": [
-      { "action": "install", "carPartId": "internals", "minGrade": "sport", "minToolTier": 3 },
-      { "action": "install", "carPartId": "headValvetrain", "minGrade": "sport", "minToolTier": 3 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "internals",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "headValvetrain",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 3
+      }
     ],
     "deadlineDays": 8,
     "baseReputation": 28,
@@ -122,7 +183,10 @@
     "id": "driveline-service",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "driveline", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "driveline", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 5,
@@ -135,7 +199,15 @@
     "id": "clutch-swap",
     "tier": 2,
     "tasks": [
-      { "action": "install", "carPartId": "clutch", "minGrade": "street", "minToolTier": 1 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "clutch",
+          "minBand": "fine",
+          "minGrade": "street"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 5,
     "baseReputation": 10,
@@ -148,7 +220,15 @@
     "id": "gearbox-rebuild",
     "tier": 3,
     "tasks": [
-      { "action": "install", "carPartId": "gearbox", "minGrade": "sport", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "gearbox",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 18,
@@ -161,7 +241,15 @@
     "id": "differential-upgrade",
     "tier": 3,
     "tasks": [
-      { "action": "install", "carPartId": "differential", "minGrade": "sport", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "differential",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 16,
@@ -174,7 +262,15 @@
     "id": "brake-pads-service",
     "tier": 1,
     "tasks": [
-      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 1 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "brakePadsDiscs",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 3,
     "baseReputation": 4,
@@ -187,7 +283,15 @@
     "id": "coilover-install",
     "tier": 1,
     "tasks": [
-      { "action": "install", "carPartId": "dampers", "minGrade": "street", "minToolTier": 1 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "dampers",
+          "minBand": "fine",
+          "minGrade": "street"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 6,
@@ -201,8 +305,14 @@
     "id": "suspension-refresh",
     "tier": 2,
     "tasks": [
-      { "action": "repair", "carPartId": "dampers", "targetBand": "fine", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "springs", "targetBand": "fine", "minToolTier": 2 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "dampers", "minBand": "fine" },
+        "minToolTier": 2
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "springs", "minBand": "fine" },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 5,
     "baseReputation": 11,
@@ -215,11 +325,21 @@
     "id": "brake-system-overhaul",
     "tier": 2,
     "tasks": [
-      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 2 },
       {
-        "action": "repair",
-        "carPartId": "brakeCalipersLines",
-        "targetBand": "fine",
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "brakePadsDiscs",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 2
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "brakeCalipersLines",
+          "minBand": "fine"
+        },
         "minToolTier": 2
       }
     ],
@@ -234,8 +354,18 @@
     "id": "alignment-and-setup",
     "tier": 3,
     "tasks": [
-      { "action": "repair", "carPartId": "steering", "targetBand": "fine", "minToolTier": 3 },
-      { "action": "repair", "carPartId": "antiRollBars", "targetBand": "fine", "minToolTier": 3 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "steering", "minBand": "fine" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "antiRollBars",
+          "minBand": "fine"
+        },
+        "minToolTier": 3
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 18,
@@ -247,7 +377,17 @@
   {
     "id": "tyre-fit-and-balance",
     "tier": 1,
-    "tasks": [{ "action": "install", "carPartId": "tyres", "minGrade": "stock", "minToolTier": 1 }],
+    "tasks": [
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "tyres",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 1
+      }
+    ],
     "deadlineDays": 3,
     "baseReputation": 4,
     "flavorPool": [
@@ -259,8 +399,24 @@
     "id": "tyres-and-pads-service",
     "tier": 1,
     "tasks": [
-      { "action": "install", "carPartId": "tyres", "minGrade": "stock", "minToolTier": 1 },
-      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 1 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "tyres",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 1
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "brakePadsDiscs",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 6,
@@ -273,7 +429,17 @@
   {
     "id": "fresh-rims-fitment",
     "tier": 2,
-    "tasks": [{ "action": "install", "carPartId": "rims", "minGrade": "street", "minToolTier": 1 }],
+    "tasks": [
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "rims",
+          "minBand": "fine",
+          "minGrade": "street"
+        },
+        "minToolTier": 1
+      }
+    ],
     "deadlineDays": 4,
     "baseReputation": 9,
     "flavorPool": [
@@ -285,8 +451,24 @@
     "id": "staggered-setup",
     "tier": 3,
     "tasks": [
-      { "action": "install", "carPartId": "rims", "minGrade": "sport", "minToolTier": 2 },
-      { "action": "install", "carPartId": "tyres", "minGrade": "sport", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "rims",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 2
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "tyres",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 5,
     "baseReputation": 15,
@@ -299,7 +481,10 @@
     "id": "small-bodywork-touchup",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "panels", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "panels", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 4,
     "baseReputation": 6,
@@ -312,7 +497,10 @@
     "id": "underbody-derust",
     "tier": 2,
     "tasks": [
-      { "action": "repair", "carPartId": "underbody", "targetBand": "fine", "minToolTier": 2 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "underbody", "minBand": "fine" },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 12,
@@ -325,9 +513,23 @@
     "id": "put-her-in-a-ditch",
     "tier": 2,
     "tasks": [
-      { "action": "repair", "carPartId": "panels", "targetBand": "fine", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "dampers", "targetBand": "fine", "minToolTier": 2 },
-      { "action": "install", "carPartId": "tyres", "minGrade": "stock", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "panels", "minBand": "fine" },
+        "minToolTier": 2
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "dampers", "minBand": "fine" },
+        "minToolTier": 2
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "tyres",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 14,
@@ -340,9 +542,23 @@
     "id": "shaken-prep",
     "tier": 2,
     "tasks": [
-      { "action": "repair", "carPartId": "underbody", "targetBand": "fine", "minToolTier": 2 },
-      { "action": "install", "carPartId": "brakePadsDiscs", "minGrade": "stock", "minToolTier": 1 },
-      { "action": "repair", "carPartId": "exhaust", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "underbody", "minBand": "fine" },
+        "minToolTier": 2
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "brakePadsDiscs",
+          "minBand": "fine",
+          "minGrade": "stock"
+        },
+        "minToolTier": 1
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "exhaust", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 12,
@@ -354,7 +570,12 @@
   {
     "id": "full-respray",
     "tier": 3,
-    "tasks": [{ "action": "repair", "carPartId": "paint", "targetBand": "mint", "minToolTier": 3 }],
+    "tasks": [
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "paint", "minBand": "mint" },
+        "minToolTier": 3
+      }
+    ],
     "deadlineDays": 7,
     "baseReputation": 20,
     "flavorPool": [
@@ -365,7 +586,17 @@
   {
     "id": "aero-fitment",
     "tier": 4,
-    "tasks": [{ "action": "install", "carPartId": "aero", "minGrade": "race", "minToolTier": 3 }],
+    "tasks": [
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "aero",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 3
+      }
+    ],
     "deadlineDays": 7,
     "baseReputation": 26,
     "flavorPool": [
@@ -377,7 +608,10 @@
     "id": "cabin-once-over",
     "tier": 1,
     "tasks": [
-      { "action": "repair", "carPartId": "dashGauges", "targetBand": "fine", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "dashGauges", "minBand": "fine" },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 3,
     "baseReputation": 4,
@@ -389,7 +623,12 @@
   {
     "id": "seat-retrim",
     "tier": 2,
-    "tasks": [{ "action": "repair", "carPartId": "seats", "targetBand": "fine", "minToolTier": 2 }],
+    "tasks": [
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "seats", "minBand": "fine" },
+        "minToolTier": 2
+      }
+    ],
     "deadlineDays": 5,
     "baseReputation": 10,
     "flavorPool": [
@@ -401,8 +640,14 @@
     "id": "interior-retrim",
     "tier": 3,
     "tasks": [
-      { "action": "repair", "carPartId": "seats", "targetBand": "mint", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "dashGauges", "targetBand": "mint", "minToolTier": 2 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "seats", "minBand": "mint" },
+        "minToolTier": 2
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "dashGauges", "minBand": "mint" },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 6,
     "baseReputation": 16,
@@ -415,10 +660,27 @@
     "id": "full-restoration",
     "tier": 4,
     "tasks": [
-      { "action": "repair", "carPartId": "block", "targetBand": "fine", "minToolTier": 3 },
-      { "action": "repair", "carPartId": "paint", "targetBand": "mint", "minToolTier": 3 },
-      { "action": "repair", "carPartId": "seats", "targetBand": "mint", "minToolTier": 2 },
-      { "action": "install", "carPartId": "rims", "minGrade": "street", "minToolTier": 1 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "block", "minBand": "fine" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "paint", "minBand": "mint" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "seats", "minBand": "mint" },
+        "minToolTier": 2
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "rims",
+          "minBand": "fine",
+          "minGrade": "street"
+        },
+        "minToolTier": 1
+      }
     ],
     "deadlineDays": 10,
     "baseReputation": 32,
@@ -432,9 +694,27 @@
     "tier": 4,
     "requiresTechnique": "blueprint-building",
     "tasks": [
-      { "action": "repair", "carPartId": "block", "targetBand": "mint", "minToolTier": 3 },
-      { "action": "install", "carPartId": "internals", "minGrade": "race", "minToolTier": 3 },
-      { "action": "repair", "carPartId": "headValvetrain", "targetBand": "mint", "minToolTier": 3 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "block", "minBand": "mint" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "internals",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "headValvetrain",
+          "minBand": "mint"
+        },
+        "minToolTier": 3
+      }
     ],
     "deadlineDays": 10,
     "baseReputation": 34,
@@ -448,8 +728,24 @@
     "tier": 4,
     "requiresTechnique": "dog-box-conversion",
     "tasks": [
-      { "action": "install", "carPartId": "gearbox", "minGrade": "race", "minToolTier": 3 },
-      { "action": "install", "carPartId": "clutch", "minGrade": "race", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "gearbox",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "clutch",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 8,
     "baseReputation": 30,
@@ -463,9 +759,27 @@
     "tier": 4,
     "requiresTechnique": "corner-weighting",
     "tasks": [
-      { "action": "repair", "carPartId": "steering", "targetBand": "mint", "minToolTier": 3 },
-      { "action": "repair", "carPartId": "antiRollBars", "targetBand": "mint", "minToolTier": 3 },
-      { "action": "install", "carPartId": "springs", "minGrade": "sport", "minToolTier": 2 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "steering", "minBand": "mint" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "antiRollBars",
+          "minBand": "mint"
+        },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "springs",
+          "minBand": "fine",
+          "minGrade": "sport"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 8,
     "baseReputation": 28,
@@ -479,8 +793,24 @@
     "tier": 4,
     "requiresTechnique": "show-fitment",
     "tasks": [
-      { "action": "install", "carPartId": "rims", "minGrade": "race", "minToolTier": 2 },
-      { "action": "install", "carPartId": "tyres", "minGrade": "race", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "rims",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 2
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "tyres",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 7,
     "baseReputation": 26,
@@ -494,9 +824,23 @@
     "tier": 4,
     "requiresTechnique": "one-off-fabrication",
     "tasks": [
-      { "action": "repair", "carPartId": "panels", "targetBand": "mint", "minToolTier": 3 },
-      { "action": "install", "carPartId": "aero", "minGrade": "race", "minToolTier": 3 },
-      { "action": "repair", "carPartId": "paint", "targetBand": "mint", "minToolTier": 3 }
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "panels", "minBand": "mint" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "aero",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 3
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "paint", "minBand": "mint" },
+        "minToolTier": 3
+      }
     ],
     "deadlineDays": 10,
     "baseReputation": 34,
@@ -510,8 +854,19 @@
     "tier": 4,
     "requiresTechnique": "bespoke-trim",
     "tasks": [
-      { "action": "install", "carPartId": "seats", "minGrade": "race", "minToolTier": 2 },
-      { "action": "repair", "carPartId": "dashGauges", "targetBand": "mint", "minToolTier": 2 }
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "seats",
+          "minBand": "fine",
+          "minGrade": "race"
+        },
+        "minToolTier": 2
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "dashGauges", "minBand": "mint" },
+        "minToolTier": 2
+      }
     ],
     "deadlineDays": 8,
     "baseReputation": 28,

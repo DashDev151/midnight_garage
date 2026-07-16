@@ -103,6 +103,8 @@ export function describeLogEntry(
       return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep), profit ${formatYenDelta(entry.netProfitYen)}`
     case 'service-job-failed':
       return `Service job failed (-${entry.reputationLost} rep), sunk ${formatYen(entry.repairCostYen + entry.partsCostYen)}`
+    case 'service-parts-returned':
+      return `Returned with the car: ${entry.parts.join(', ')}`
     case 'car-moved':
       return `Moved ${entry.carInstanceId} to ${entry.to}`
     case 'cars-swapped':

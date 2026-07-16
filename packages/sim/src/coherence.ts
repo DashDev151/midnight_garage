@@ -12,13 +12,15 @@ import { carOriginLabel, enforceMaxBillFraction, stockInstanceFor } from './auct
 import {
   bandFactor,
   bandIndex,
+  canRepair,
   carCostToMintYen,
   hasForcedInduction,
   planGroupRepair,
+  planPartRepair,
 } from './bands'
 import { PLAYER_BASE_LABOR_SLOTS } from './constants'
 import type { SimContext } from './context'
-import { removeLaborSlotsFor } from './jobs'
+import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { expectationForCar, marketValueYen, mileageFactor } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import { freshToolTiers } from './toolLines'
@@ -288,15 +290,10 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   // surface-slot candidates only: bolt-on/buried repair moved to the bench,
   // off the on-car plan this sum reads. `buildWageProbeCar`'s "repaired to
   // the expectation band" value-side lift below is gated on `repairable`,
-  // not `depthClass`, so it still credits the full car. That leaves
-  // `repairCostYen`/`repairLaborSlots` (and everything derived from them:
-  // `sensibleFlipMarginYen`, `wageMarginYen`, `wageRatio`) undercounted on
-  // any model whose expectation band touches a bolt-on/buried slot: the
-  // wage probe's cost side no longer prices the same lift its value side
-  // assumes. Known, disclosed gap (TODO.md: "teardown labour in Law 1
-  // margins and Law 6 payouts", scoped across Sprints 71-72); Sprint 72
-  // prices the full teardown chain (uninstall + bench repair + reinstall)
-  // into this sum rather than patching it here ad hoc.
+  // not `depthClass`, so it still credits the full car - so the loop below
+  // separately prices every non-surface repairable part's own bench-repair
+  // cost, closing the gap Sprint 71 disclosed (TODO.md: "teardown labour in
+  // Law 1 margins and Law 6 payouts") per Sprint 72 decision 6.
   let repairCostYen = 0
   let repairLaborSlots = 0
   for (const groupId of ComponentIdSchema.options) {
@@ -312,6 +309,58 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     )
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired
+  }
+  // This probe restores the WHOLE car in one pass, unlike a customer service
+  // job's independently-quoted tasks (`serviceJobCostBreakdown`, decision 6's
+  // per-task teardown premium): a shared `blockedBy` part is really pulled
+  // and refitted only ONCE for the whole restoration, not once per dependent
+  // part behind it. Charging it per-dependent (the naive per-part reuse of
+  // `teardownChainLaborSlots` this replaced) over-counted a heavily-shared
+  // blocker as many times as it has dependents, which starved shitbox-tier
+  // models of a real Law 6 margin purely from double-billed access labour,
+  // not from any real economy change - so this probe tracks its own
+  // per-restoration teardown ledger instead of reusing that per-task helper.
+  const chargedTeardownPartIds = new Set<CarPartId>()
+  const nonSurfacePartsNeedingRepair: CarPartId[] = []
+  for (const partId of ALL_CAR_PART_IDS) {
+    const entry = context.partsTaxonomyById[partId]
+    if (!entry || entry.depthClass === 'surface') continue
+    const installed = wageCar.parts[partId].installed
+    if (!installed || !canRepair(installed.band, entry)) continue
+    const catalogPart = context.partsById[installed.partId]
+    if (!catalogPart) continue
+    // Repair level 1 (worst-case tooling): matches the fresh-shop assumption
+    // `freshToolTiers()` already applies to the surface loop above, and
+    // `planPartRepair`'s `costYen` is repair-level-independent regardless.
+    const plan = planPartRepair(
+      installed.band,
+      expectationBand,
+      1,
+      entry,
+      catalogPart.priceYen,
+      context.economy.restoration.repairStepFraction,
+    )
+    if (plan.laborSlotsRequired === 0) continue
+    repairCostYen += plan.costYen
+    repairLaborSlots +=
+      plan.laborSlotsRequired +
+      removeLaborSlotsFor(partId, context) +
+      installLaborSlotsFor(partId, context)
+    chargedTeardownPartIds.add(partId)
+    nonSurfacePartsNeedingRepair.push(partId)
+  }
+  // A blocker that is not itself among the parts repaired above still needs
+  // pulling clear and refitting - the same 2x hassle premium
+  // `teardownChainLaborSlots` charges a service job - but only once per
+  // distinct blocker across the whole restoration, however many parts it
+  // happens to sit in front of.
+  for (const partId of nonSurfacePartsNeedingRepair) {
+    for (const blockerId of context.partsTaxonomyById[partId]!.blockedBy) {
+      if (chargedTeardownPartIds.has(blockerId)) continue
+      chargedTeardownPartIds.add(blockerId)
+      repairLaborSlots +=
+        2 * (removeLaborSlotsFor(blockerId, context) + installLaborSlotsFor(blockerId, context))
+    }
   }
   const repairGainYen = (context.economy.valuation.marketRepairDiscount - 1) * repairCostYen
   const repairDays = repairLaborSlots / PLAYER_BASE_LABOR_SLOTS

@@ -262,28 +262,31 @@ pass."
 - [ ] Forced-loan interest rate and repayment cadence (GDD 6.6 says "painful," doesn't specify how
   painful) - open question for the spreadsheet pass. (The parts-pricing-curve question that used to
   sit here moved into Sprint 28's catalog work.)
+- [ ] **Law 6 (the wage law) genuinely fails on the shitbox tier once the full teardown chain is
+  honestly priced (found Sprint 72, decision 6).** Before Sprint 72, `computeModelCoherence`'s wage
+  probe undercounted a bolt-on/buried repair's teardown labour (Sprint 71's disclosed gap); pricing
+  it honestly (deduped once per shared blocker across the whole restoration, not once per part
+  behind it - see `coherence.ts`) drops `honda-city-e-aa`/`suzuki-wagon-r-ct21s` to a real
+  `wageMarginYen` of -Y20,725 (0.39x rent), while common/uncommon/rare all clear a large positive
+  margin. Root cause, not a bug: a shitbox's cheap parts return too little repair gain
+  (`repairGainYen` scales with part price) to outearn the rent the teardown labour burns (labour is
+  value-blind). `invariants.py`'s Law 6 check is split accordingly - common/uncommon/rare stays
+  hard-gated, the shitbox tier is measured and disclosed, not silently loosened (same treatment in
+  `valueModelProbes.test.ts`). Maintainer call needed: soften the teardown labour premium, raise
+  `marketRepairDiscount`, or accept that not every shitbox repair job is worth a player's day.
 
 ## Planned systems (designed, not yet scheduled)
 
 The 2026-07-15 design pass fixed the arc order and the same-day delegation scoped it into
 sprint docs end to end. **The arc: Sprint 70 provenance (landed) -> 71 teardown (landed) -> 72
-outcome jobs -> 73-75 diagnosis -> 76-78 story missions** (`docs/sprints/sprint70.md` through
-`sprint78.md`; sprint70.md's/sprint71.md's own Exit sections are the permanent record of each
-rework itself). Each
+outcome jobs (landed) -> 73-75 diagnosis -> 76-78 story missions** (`docs/sprints/sprint70.md`
+through `sprint78.md`; sprint70.md's/sprint71.md's/sprint72.md's own Exit sections are the
+permanent record of each rework itself - the component-removal-and-repair-hierarchy entry that used
+to sit here is fully landed and removed, per this file's policy). Each
 later system consumes verbs the earlier one builds (provenance answers ownership on every part
 verb; the component arc supplies uninstall-reveals-truth and the shared outcome-predicate module;
 diagnosis makes commissions a gamble instead of a shopping list). Entries below stay until their
 sprints land.
-
-- [ ] **Component removal & repair hierarchy - the teardown game**
-  (`docs/design/component-hierarchy-spec.md`, 2026-07-15; expanded from the maintainer's scoping
-  notes the same day). Repair moves to the bench: uninstall (validated by a data-driven
-  `blockedBy` hierarchy at existing slot granularity, three depth classes) -> repair from
-  inventory -> reinstall. Service jobs become OUTCOME-based ("coilovers must be fine", any route
-  counts) via a `Requirement` predicate module shared with story missions; customer parts return
-  at close-out by provenance, retiring `baselineInstalledPartIds` entirely. Economy consequences
-  (teardown labour in Law 1 margins and Law 6 payouts) land in the same arc. Depends on the parts
-  provenance rework. **Scoped: Sprints 71-72.**
 
 - [ ] **Diagnosis - the detective game** (`docs/design/diagnosis-spec.md`, now v2, 2026-07-15;
   v1's pay-to-reveal design was rejected as loot-box shaped and is recorded dead in the spec).

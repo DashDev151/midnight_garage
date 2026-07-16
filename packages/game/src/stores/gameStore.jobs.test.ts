@@ -1,5 +1,18 @@
-import { PARTS, SPECIALTY_COPY, type ServiceJob } from '@midnight-garage/content'
 import {
+  BUYERS,
+  CARS,
+  ECONOMY,
+  FACILITIES,
+  PARTS,
+  PARTS_TAXONOMY,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
+  SPECIALTY_COPY,
+  TOOL_LINES,
+  type ServiceJob,
+} from '@midnight-garage/content'
+import {
+  buildSimContext,
   gradeAtLeast,
   isServiceTaskDone,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,
@@ -8,7 +21,19 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
 
-const PARTS_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
+// Mirrors the store's own SimContext (gameStore.ts) - `isServiceTaskDone`
+// needs the full context, not just a parts lookup.
+const context = buildSimContext(
+  CARS,
+  PARTS,
+  BUYERS,
+  PARTS_TAXONOMY,
+  SERVICE_JOB_TYPES,
+  FACILITIES,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  TOOL_LINES,
+  ECONOMY,
+)
 
 /**
  * A still-genuinely-unfinished offer (Sprint 29: a job's task list can mix
@@ -17,25 +42,25 @@ const PARTS_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
  * occasionally already satisfy an easy repair task by chance - more often
  * still since Sprint 33's age-aware condition curve skews generated cars
  * toward better condition - which "has a repair task" alone doesn't rule
- * out). `isServiceWorkDone` context needs a real `SimContext`, not just the
- * bare `PARTS_BY_ID` map `isServiceTaskDone` takes, so this checks each
- * task directly rather than reaching for that helper here.
+ * out).
  */
 function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find((o) =>
-    o.tasks.some((t) => !isServiceTaskDone(o.car, t, PARTS_BY_ID)),
+    o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
   )
 }
 
 /**
  * A still-genuinely-unfinished repair-touching offer (same caveat as
- * `findUnfinishedOffer`, narrowed to a repair task specifically).
+ * `findUnfinishedOffer`, narrowed to a band-only task specifically - Sprint
+ * 72 collapsed the old `action: 'repair'|'install'` split into one
+ * `requirement`-based shape, so "repair-shaped" now means "no `minGrade`").
  */
 function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find(
     (o) =>
-      o.tasks.some((t) => t.action === 'repair') &&
-      o.tasks.some((t) => !isServiceTaskDone(o.car, t, PARTS_BY_ID)),
+      o.tasks.some((t) => !t.requirement.minGrade) &&
+      o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
   )
 }
 
@@ -106,23 +131,24 @@ describe('service jobs in the store', () => {
       // Work every task instantly: repair via the group-level action,
       // install by buying+installing the cheapest fitting part at grade.
       for (const task of offer.tasks) {
-        const componentId = game.groupForCarPart(task.carPartId)
+        const { carPartId, minGrade } = task.requirement
+        const componentId = game.groupForCarPart(carPartId)
         if (!componentId) continue
-        if (task.action === 'repair') {
+        if (!minGrade) {
           game.repair(carId, componentId)
         } else {
           // At least minGrade, not exactly - the catalog doesn't guarantee
           // an exact-grade option for every part (isServiceTaskDone itself
           // only ever requires "at least", so this mirrors real completion).
           const part = game.partsCatalog.find(
-            (p) => p.carPartId === task.carPartId && gradeAtLeast(p.grade, task.minGrade),
+            (p) => p.carPartId === carPartId && gradeAtLeast(p.grade, minGrade),
           )
           if (part) {
             game.devGrantPart(part.id)
             const granted = game
-              .installablePartsForPart(carId, task.carPartId)
+              .installablePartsForPart(carId, carPartId)
               .find((pi) => pi.partId === part.id)
-            if (granted) game.install(carId, componentId, granted.id, task.carPartId)
+            if (granted) game.install(carId, componentId, granted.id, carPartId)
           }
         }
       }
@@ -224,8 +250,8 @@ describe('service jobs in the store', () => {
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
-    const repairTask = offer.tasks.find((t) => t.action === 'repair')!
-    const componentId = game.groupForCarPart(repairTask.carPartId)!
+    const repairTask = offer.tasks.find((t) => !t.requirement.minGrade)!
+    const componentId = game.groupForCarPart(repairTask.requirement.carPartId)!
     game.acceptServiceJob(offer.id)
 
     const carId = offer.car.id

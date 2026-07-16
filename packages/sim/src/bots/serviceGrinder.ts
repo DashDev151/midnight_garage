@@ -32,7 +32,7 @@ function largestDeficitGroup(
   for (const task of offer.tasks) {
     const deficit = taskToolDeficit(task, state.toolTiers, context)
     if (deficit <= bestDeficit) continue
-    const group = context.partsTaxonomyById[task.carPartId]?.group
+    const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
     if (!group) continue
     best = group
     bestDeficit = deficit

@@ -55,7 +55,12 @@ function serviceCar(id: string): ServiceJob {
     typeId: 'repair-engine',
     customerName: 'Test Customer',
     description: 'test',
-    tasks: [{ action: 'repair', carPartId: 'block', targetBand: 'mint', minToolTier: 1 }],
+    tasks: [
+      {
+        requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
+        minToolTier: 1,
+      },
+    ],
     car: { ...car, id },
     payoutYen: 20_000,
     baseReputation: 1,
@@ -63,7 +68,6 @@ function serviceCar(id: string): ServiceJob {
     expiresOnDay: 30,
     arrivesOnDay: null,
     dueOnDay: 10,
-    baselineInstalledPartIds: {},
   }
 }
 
