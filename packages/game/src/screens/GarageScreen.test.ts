@@ -1,16 +1,23 @@
 import { CARS } from '@midnight-garage/content'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import GarageScreen from './GarageScreen.vue'
 
+// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// wrapper and unmount it after each test, so a component left mounted from a
+// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+const mountedWrappers: VueWrapper[] = []
+
 function mountScreen() {
   // Relies on the active pinia from beforeEach; RouterLink is stubbed since
   // these tests don't exercise navigation, only rendering.
-  return mount(GarageScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  const wrapper = mount(GarageScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
 
 /** Drags an element past the composable's movement threshold - pointerdown
@@ -57,6 +64,9 @@ describe('GarageScreen', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     clearDragSession()
+  })
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
   it('renders the starting day and cash', () => {

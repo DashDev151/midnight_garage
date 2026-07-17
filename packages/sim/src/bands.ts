@@ -11,6 +11,7 @@ import {
   type PartFitmentClass,
   type ToolTiers,
 } from '@midnight-garage/content'
+import { crewSlotsSaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
 
 /**
  * Sprint 26: the banded parts model's core math - band ordering, climbing,
@@ -465,6 +466,13 @@ export interface GroupRepairPlan {
  * `resolveReconditionLabor`, via `planPartRepair` directly) is UNAFFECTED -
  * this exclusion belongs to the on-car path alone, since the whole point of
  * the teardown game is that a pulled part still repairs, just off the car.
+ *
+ * Sprint 82 (staff II): the optional `crew` context applies the benched crew's
+ * live effects to the finished plan - the speed discount cuts
+ * `laborSlotsRequired` (decision 2) and a benched perfectionist trims `costYen`
+ * (decision 5). Omitted, the plan is exactly the raw restoration cost the bots
+ * and coherence probes measure - the crew never touches those. The two effects
+ * apply only when the plan has real work (`partIds` non-empty).
  */
 export function planGroupRepair(
   car: CarInstance,
@@ -476,6 +484,7 @@ export function planGroupRepair(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   repairStepFraction: number,
   onlyPartId?: CarPartId,
+  crew?: CrewSkillContext,
 ): GroupRepairPlan {
   const repairLevel = repairLevelForGroup(toolTiers, groupId)
   let laborSlotsRequired = 0
@@ -509,6 +518,10 @@ export function planGroupRepair(
     laborSlotsRequired += plan.laborSlotsRequired
     costYen += plan.costYen
     partIds.push(partId)
+  }
+  if (crew && partIds.length > 0) {
+    laborSlotsRequired -= crewSlotsSaved(laborSlotsRequired, groupId, crew.staff, crew.economy)
+    costYen = Math.round(costYen * perfectionistCostMultiplier(crew.staff, crew.economy))
   }
   return { laborSlotsRequired, costYen, partIds }
 }

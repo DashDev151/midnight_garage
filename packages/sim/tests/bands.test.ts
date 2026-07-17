@@ -7,6 +7,7 @@ import {
   type CarPartId,
   type CarPartTaxonomyEntry,
   type EconomyConfig,
+  type StaffMember,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
@@ -430,6 +431,70 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       1,
     )
     expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
+  })
+})
+
+describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => {
+  // Same all-surface body group as above: base plan is 6 slots at tool tier 1
+  // (panels worn 2 + paint poor 3 + aero fine 1), a known base cost.
+  const bodyCar = buildCarInstance({
+    parts: mintCarParts({ panels: 'worn', paint: 'poor', underbody: 'scrap', aero: 'fine' }),
+  })
+  const benchedBody = (skill: number, trait: StaffMember['trait'] = 'night-owl'): StaffMember => ({
+    id: 'crew',
+    displayName: 'crew',
+    stats: { engine: 1, chassis: 1, body: skill },
+    laborSlotsPerDay: 2,
+    assignment: 'bench',
+    pendingAssignment: null,
+    weeklyWageYen: 4000,
+    trait,
+  })
+  const planBody = (crew?: { staff: StaffMember[]; economy: EconomyConfig }) =>
+    planGroupRepair(
+      bodyCar,
+      'body',
+      'mint',
+      testToolTiers(),
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      1,
+      undefined,
+      crew,
+    )
+
+  it('cuts the plan labour by the crew speed discount and leaves cost untouched without a perfectionist', () => {
+    const base = planBody()
+    const withCrew = planBody({ staff: [benchedBody(5)], economy: ECONOMY })
+    // Body skill 5 -> curve[5] = 2 saved; base 6 stays >= half, so 6 - 2 = 4.
+    expect(base.laborSlotsRequired).toBe(6)
+    expect(withCrew.laborSlotsRequired).toBe(4)
+    expect(withCrew.costYen).toBe(base.costYen)
+    expect(withCrew.partIds).toEqual(base.partIds)
+  })
+
+  it('applies no speed discount for a low crew skill', () => {
+    const withCrew = planBody({ staff: [benchedBody(2)], economy: ECONOMY })
+    expect(withCrew.laborSlotsRequired).toBe(6)
+  })
+
+  it('a benched perfectionist trims one saved slot and discounts repair cash cost', () => {
+    const base = planBody()
+    const withPerf = planBody({ staff: [benchedBody(5, 'perfectionist')], economy: ECONOMY })
+    // Saved 2 - 1 (perfectionist) = 1, so 6 - 1 = 5 slots.
+    expect(withPerf.laborSlotsRequired).toBe(5)
+    expect(withPerf.costYen).toBe(
+      Math.round(base.costYen * (1 - ECONOMY.staff.perfectionistPartsDiscount)),
+    )
+  })
+
+  it('a contracted crew member has no effect', () => {
+    const base = planBody()
+    const contracted = { ...benchedBody(5), assignment: 'contract' as const }
+    const withCrew = planBody({ staff: [contracted], economy: ECONOMY })
+    expect(withCrew.laborSlotsRequired).toBe(base.laborSlotsRequired)
+    expect(withCrew.costYen).toBe(base.costYen)
   })
 })
 

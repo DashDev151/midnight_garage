@@ -1,8 +1,23 @@
-import { CARS, PARTS } from '@midnight-garage/content'
+import { CARS, ECONOMY, PARTS, type StaffMember } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
+
+/** A benched crew member with a given body skill and trait, for the Sprint 82
+ * crew-effect estimate tests. */
+function benchedBody(id: string, body: number, trait: StaffMember['trait']): StaffMember {
+  return {
+    id,
+    displayName: `Name ${id}`,
+    stats: { engine: 1, chassis: 1, body },
+    laborSlotsPerDay: 2,
+    assignment: 'bench',
+    pendingAssignment: null,
+    weeklyWageYen: 20000,
+    trait,
+  }
+}
 
 /**
  * An aftermarket (non-stock) catalog part for this slot - every part fits
@@ -222,6 +237,61 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
 
     const decoded = decodeSave(encodeSave(game.gameState))
     expect(decoded.stagedCarWork).toEqual(game.gameState.stagedCarWork)
+  })
+})
+
+describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  function stagedBodyToMint() {
+    const game = useGameStore()
+    game.newGame(1)
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    const car = game.gameState.ownedCars[0]!
+    // Deterministic multi-rung body plan: the whole group at poor, climbing to
+    // mint, so the base plan is several slots and a discount genuinely bites.
+    for (const partId of ['panels', 'paint', 'underbody', 'aero'] as const) {
+      const installed = car.parts[partId].installed
+      if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
+    }
+    game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
+    return { game, carId }
+  }
+
+  it('a benched skilled hand shaves labour off the estimate and leaves cost untouched', () => {
+    const { game, carId } = stagedBodyToMint()
+
+    // No crew: no saving, the base figures.
+    const base = game.carDetail(carId)!.plannedEstimate!
+    expect(base.crewLaborSaved).toBe(0)
+    expect(base.perfectionistCostSavedYen).toBe(0)
+    const baseSlots = base.plannedLaborSlots
+    const baseCost = base.plannedRepairCostYen
+    expect(baseSlots).toBeGreaterThanOrEqual(2)
+
+    game.gameState = { ...game.gameState, staff: [benchedBody('h', 5, 'night-owl')] }
+    const withCrew = game.carDetail(carId)!.plannedEstimate!
+    const expectedSaved = Math.min(2, Math.floor(baseSlots / 2), baseSlots - 1)
+    expect(withCrew.crewLaborSaved).toBe(expectedSaved)
+    expect(withCrew.plannedLaborSlots).toBe(baseSlots - expectedSaved)
+    // Speed only: the repair cash cost is unchanged without a perfectionist.
+    expect(withCrew.plannedRepairCostYen).toBe(baseCost)
+    expect(withCrew.perfectionistCostSavedYen).toBe(0)
+  })
+
+  it('a benched perfectionist spends a saved slot and discounts the repair cash cost', () => {
+    const { game, carId } = stagedBodyToMint()
+    const baseCost = game.carDetail(carId)!.plannedEstimate!.plannedRepairCostYen
+    const baseSlots = game.carDetail(carId)!.plannedEstimate!.plannedLaborSlots
+
+    game.gameState = { ...game.gameState, staff: [benchedBody('p', 5, 'perfectionist')] }
+    const withPerf = game.carDetail(carId)!.plannedEstimate!
+    const expectedSaved = Math.min(1, Math.floor(baseSlots / 2), baseSlots - 1)
+    expect(withPerf.crewLaborSaved).toBe(expectedSaved)
+    const expectedCost = Math.round(baseCost * (1 - ECONOMY.staff.perfectionistPartsDiscount))
+    expect(withPerf.plannedRepairCostYen).toBe(expectedCost)
+    expect(withPerf.perfectionistCostSavedYen).toBe(baseCost - expectedCost)
   })
 })
 

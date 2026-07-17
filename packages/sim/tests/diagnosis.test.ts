@@ -8,6 +8,7 @@ import {
   type AuctionLot,
   type CarInstance,
   type GameState,
+  type StaffMember,
   type Symptom,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -385,6 +386,71 @@ describe('beginInspectionVisit / inspectionVisitGateReason (Sprint 74 decision 1
     expect(result.log).toEqual([
       { type: 'inspection-visit', tier: 'local-yard', feeYen, minutesGranted },
     ])
+  })
+
+  it('grants a benched auction-rat extra Local Yard minutes (Sprint 82 decision 4): only that tier, only from the bench, no stacking', () => {
+    const car = carWithSymptom()
+    const base = stateWithLot(car)
+    const rat: StaffMember = {
+      id: 'rat',
+      displayName: 'Kenji',
+      stats: { engine: 1, chassis: 1, body: 1 },
+      laborSlotsPerDay: 1,
+      assignment: 'bench',
+      pendingAssignment: null,
+      weeklyWageYen: 4000,
+      trait: 'auction-rat',
+    }
+    const baseMinutes = CONTEXT.economy.diagnosis.visitMinutes
+    const bonus = CONTEXT.economy.staff.auctionRatExtraMinutes
+    const feeYen = CONTEXT.economy.diagnosis.travelFeeYenByTier['local-yard']
+
+    // Benched rat at the Local Yard: base + bonus, echoed in the log.
+    const withRat = beginInspectionVisit({ ...base, staff: [rat] }, 'local-yard', CONTEXT)
+    expect(withRat.state.inspectionVisit).toEqual({
+      tier: 'local-yard',
+      minutesLeft: baseMinutes + bonus,
+    })
+    expect(withRat.log).toEqual([
+      { type: 'inspection-visit', tier: 'local-yard', feeYen, minutesGranted: baseMinutes + bonus },
+    ])
+
+    // Two benched rats add no more than one (no stacking).
+    const twoRats = beginInspectionVisit(
+      { ...base, staff: [rat, { ...rat, id: 'rat2' }] },
+      'local-yard',
+      CONTEXT,
+    )
+    expect(twoRats.state.inspectionVisit).toEqual({
+      tier: 'local-yard',
+      minutesLeft: baseMinutes + bonus,
+    })
+
+    // A contracted rat is busy elsewhere: no bonus.
+    const contracted = beginInspectionVisit(
+      { ...base, staff: [{ ...rat, assignment: 'contract' as const }] },
+      'local-yard',
+      CONTEXT,
+    )
+    expect(contracted.state.inspectionVisit).toEqual({
+      tier: 'local-yard',
+      minutesLeft: baseMinutes,
+    })
+
+    // A higher tier gets no bonus even with the rat benched.
+    const regional = beginInspectionVisit(
+      {
+        ...base,
+        staff: [rat],
+        activeAuctionLots: [...base.activeAuctionLots, buildLot(car, 'regional')],
+      },
+      'regional',
+      CONTEXT,
+    )
+    expect(regional.state.inspectionVisit).toEqual({
+      tier: 'regional',
+      minutesLeft: baseMinutes,
+    })
   })
 
   it('replaces an already-active visit at a different tier, forfeiting its remaining minutes (decision 1: never refuses this)', () => {

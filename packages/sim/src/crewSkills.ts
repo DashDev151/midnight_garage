@@ -1,0 +1,121 @@
+import type {
+  ComponentId,
+  EconomyConfig,
+  GameState,
+  StaffMember,
+  TraitId,
+} from '@midnight-garage/content'
+
+/**
+ * Sprint 82 (staff II): the crew-skill reads that turn benched members'
+ * `engine`/`chassis`/`body` stats and traits into live effects. Every function
+ * here is a pure derived read of the crew - no new persisted state (decision
+ * 10). The single activity gate throughout is bench assignment: a member on a
+ * fleet contract is busy elsewhere and contributes nothing here, exactly as
+ * they contribute no bench labour (`availableLaborSlots`).
+ */
+
+/** The three crew skills - the keys of a member's `stats`. */
+export type CrewSkillKey = keyof StaffMember['stats']
+
+const CREW_SKILL_KEYS: readonly CrewSkillKey[] = ['engine', 'chassis', 'body']
+
+/** The crew skill that leads work in component group `group`, per the content
+ * `skillGroupMap` (engine leads ENGINE; chassis leads DRIVETRAIN/SUSPENSION/
+ * WHEELS; body leads BODY/INTERIOR). The map partitions every group, so this
+ * always resolves; the `null` return is a defensive guard only. */
+export function skillKeyForGroup(group: ComponentId, economy: EconomyConfig): CrewSkillKey | null {
+  const map = economy.staff.skillGroupMap
+  for (const key of CREW_SKILL_KEYS) {
+    if (map[key].includes(group)) return key
+  }
+  return null
+}
+
+/** True while any benched member carries `trait`. The one activity gate: a
+ * contracted member's trait is dormant, like their hands. */
+export function benchHasTrait(staff: readonly StaffMember[], trait: TraitId): boolean {
+  return staff.some((m) => m.assignment === 'bench' && m.trait === trait)
+}
+
+/** True while any perfectionist is at the bench (decision 5). */
+export function benchHasPerfectionist(staff: readonly StaffMember[]): boolean {
+  return benchHasTrait(staff, 'perfectionist')
+}
+
+/**
+ * Decision 1: the highest mapped skill for `group` among benched members - the
+ * best pair of hands leads the job. 0 when no benched member covers the group
+ * (no crew, or everyone is on contract), which yields no speed effect.
+ */
+export function crewSkillFor(
+  group: ComponentId,
+  staff: readonly StaffMember[],
+  economy: EconomyConfig,
+): number {
+  const key = skillKeyForGroup(group, economy)
+  if (!key) return 0
+  let best = 0
+  for (const member of staff) {
+    if (member.assignment !== 'bench') continue
+    if (member.stats[key] > best) best = member.stats[key]
+  }
+  return best
+}
+
+/**
+ * Decision 2: labour slots a group-G repair plan of `baseSlots` slots saves,
+ * given the benched crew. The `crewSpeedDiscount` curve is read at
+ * `crewSkillFor(group)`; a benched perfectionist spends one of those saved
+ * slots on careful work (decision 5). The saving is then clamped so the plan
+ * keeps at least half its base slots (`floor(base / 2)` is the most it can
+ * lose) and at least one slot - it can never fall to zero work.
+ */
+export function crewSlotsSaved(
+  baseSlots: number,
+  group: ComponentId,
+  staff: readonly StaffMember[],
+  economy: EconomyConfig,
+): number {
+  if (baseSlots <= 0) return 0
+  const curve = economy.staff.crewSpeedDiscount
+  const skill = crewSkillFor(group, staff, economy)
+  let saved = curve[Math.min(skill, curve.length - 1)] ?? 0
+  if (benchHasPerfectionist(staff)) saved = Math.max(0, saved - 1)
+  // Never below half the base cost, and never below one slot.
+  saved = Math.min(saved, Math.floor(baseSlots / 2), baseSlots - 1)
+  return Math.max(0, saved)
+}
+
+/** `baseSlots` less the benched crew's speed saving (decision 2) - what a group
+ * repair plan actually takes with the crew that is on the bench right now. */
+export function crewAdjustedGroupSlots(
+  baseSlots: number,
+  group: ComponentId,
+  staff: readonly StaffMember[],
+  economy: EconomyConfig,
+): number {
+  return baseSlots - crewSlotsSaved(baseSlots, group, staff, economy)
+}
+
+/** Decision 5: the multiplier a benched perfectionist puts on repair cash cost
+ * (1 when none is benched). Applied to the whole repair economy so bench and
+ * on-car work stay one economy. */
+export function perfectionistCostMultiplier(
+  staff: readonly StaffMember[],
+  economy: EconomyConfig,
+): number {
+  return benchHasPerfectionist(staff) ? 1 - economy.staff.perfectionistPartsDiscount : 1
+}
+
+/** The crew context a repair planner needs to apply the speed and cost effects
+ * (decisions 2 and 5) - the current staff roster plus the economy knobs. */
+export interface CrewSkillContext {
+  staff: readonly StaffMember[]
+  economy: EconomyConfig
+}
+
+/** Convenience: build the crew context straight off game state. */
+export function crewContextFor(state: GameState, economy: EconomyConfig): CrewSkillContext {
+  return { staff: state.staff, economy }
+}

@@ -1,6 +1,6 @@
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import EventLogDrawer from './EventLogDrawer.vue'
 
@@ -13,8 +13,15 @@ import EventLogDrawer from './EventLogDrawer.vue'
  * coverage moves with it rather than being deleted along with the section.
  * (Sprint 58 set this precedent when the menu's load panel moved to SaveMenu.)
  */
+// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// wrapper and unmount it after each test, so a component left mounted from a
+// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+const mountedWrappers: VueWrapper[] = []
+
 function mountDrawer() {
-  return mount(EventLogDrawer)
+  const wrapper = mount(EventLogDrawer)
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
 
 async function open(wrapper: ReturnType<typeof mountDrawer>) {
@@ -23,6 +30,9 @@ async function open(wrapper: ReturnType<typeof mountDrawer>) {
 
 describe('EventLogDrawer (Sprint 69 item 20)', () => {
   beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
 
   it('is closed until asked for - the garage is for the bays and the shop', () => {
     const wrapper = mountDrawer()

@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { PartFitmentClassSchema } from './partFitment'
-import { CarPartIdSchema, ConditionBandSchema, ReputationTierSchema } from './tags'
+import {
+  CarPartIdSchema,
+  ComponentIdSchema,
+  ConditionBandSchema,
+  ReputationTierSchema,
+} from './tags'
 import { ToolTierSchema } from './toolLines'
 
 /**
@@ -1229,10 +1234,58 @@ export const EconomyConfigSchema = z.object({
       maxOpenAds: z.number().int().positive(),
       adExpiryDays: z.number().int().positive(),
       maxStaff: z.number().int().positive(),
+      /**
+       * Sprint 82 (staff II): which component groups each crew skill leads
+       * (decision 1). A member's `engine`/`chassis`/`body` stat acts on the
+       * groups listed here while they are at the bench; the three lists
+       * partition all six component groups exactly once. `crewSkillFor(group)`
+       * (sim) reads the highest listed skill among benched members. */
+      skillGroupMap: z.object({
+        engine: z.array(ComponentIdSchema).min(1),
+        chassis: z.array(ComponentIdSchema).min(1),
+        body: z.array(ComponentIdSchema).min(1),
+      }),
+      /**
+       * Sprint 82 decision 2: labour slots a group repair plan saves, indexed
+       * by the leading benched crew skill (index 0..5; index 0 = no crew).
+       * Non-decreasing (a stronger hand never saves fewer slots). The saving is
+       * clamped in code so a plan keeps at least half its base slots and at
+       * least one slot (`crewSlotsSaved`, sim). */
+      crewSpeedDiscount: z
+        .array(z.number().int().nonnegative())
+        .length(6)
+        .refine((c) => c.every((v, i) => i === 0 || v >= c[i - 1]!), {
+          message: 'staff.crewSpeedDiscount must be non-decreasing',
+        }),
+      /**
+       * Sprint 82 decision 4: extra inspection minutes a benched `auction-rat`
+       * adds to a Local Yard visit (`beginInspectionVisit`, sim). No stacking -
+       * one rat's worth of minutes regardless of count. */
+      auctionRatExtraMinutes: z.number().int().nonnegative(),
+      /**
+       * Sprint 82 decision 5: the fraction a benched `perfectionist` takes off
+       * repair cash cost (0.10 = 10% cheaper). The same trait also spends one
+       * of the crew speed slots (careful work is slower) - both applied in
+       * `crewSlotsSaved`/`perfectionistCostMultiplier` (sim). */
+      perfectionistPartsDiscount: z.number().min(0).max(1),
     })
     .refine((s) => ReputationTierSchema.options.every((t) => s.statBudgetByTier[t] !== undefined), {
       message: 'staff.statBudgetByTier must name every reputation tier',
-    }),
+    })
+    .refine(
+      (s) => {
+        const listed = [
+          ...s.skillGroupMap.engine,
+          ...s.skillGroupMap.chassis,
+          ...s.skillGroupMap.body,
+        ]
+        return (
+          listed.length === ComponentIdSchema.options.length &&
+          ComponentIdSchema.options.every((g) => listed.filter((x) => x === g).length === 1)
+        )
+      },
+      { message: 'staff.skillGroupMap must partition every component group exactly once' },
+    ),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

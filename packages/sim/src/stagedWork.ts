@@ -81,6 +81,9 @@ export function confirmStagedWork(
         context.partsTaxonomyById,
         context.economy.restoration.repairStepFraction,
         action.carPartId,
+        // Sprint 82: size staged repair labour with the benched crew's speed
+        // discount (decision 2), matching the store's Confirm-total preview.
+        { staff: current.staff, economy: context.economy },
       )
       if (plan.partIds.length > 0) {
         spec = {

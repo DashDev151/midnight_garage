@@ -1,9 +1,23 @@
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import DayReport from './DayReport.vue'
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ */
+const mountedWrappers: VueWrapper[] = []
+function track<T extends VueWrapper>(wrapper: T): T {
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 describe('DayReport', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -11,7 +25,7 @@ describe('DayReport', () => {
   it('is hidden until a day ends, then shows the day and dismisses', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mount(DayReport)
+    const wrapper = track(mount(DayReport))
     expect(wrapper.find('[data-test="day-report"]').exists()).toBe(false)
 
     game.endDay()
@@ -26,7 +40,7 @@ describe('DayReport', () => {
   it('Sprint 42: renders a profit clause on a car-sold entry, via the shared describeLogEntry formatter', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mount(DayReport)
+    const wrapper = track(mount(DayReport))
 
     game.lastDayReport = {
       day: 1,
@@ -50,7 +64,7 @@ describe('DayReport', () => {
   it('Sprint 64: a won car opens the report as a celebration card, not a red loss', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mount(DayReport)
+    const wrapper = track(mount(DayReport))
 
     game.lastDayReport = {
       day: 3,
@@ -82,7 +96,7 @@ describe('DayReport', () => {
   it('Sprint 64: routine noise is aggregated into quiet, correctly-pluralised lines', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mount(DayReport)
+    const wrapper = track(mount(DayReport))
 
     game.lastDayReport = {
       day: 5,
@@ -115,7 +129,7 @@ describe('DayReport', () => {
   it('Sprint 64: an outbid alert is prominent - first in the notable list', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mount(DayReport)
+    const wrapper = track(mount(DayReport))
 
     game.lastDayReport = {
       day: 6,

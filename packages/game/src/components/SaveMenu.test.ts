@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as saveDb from '../save/saveDb'
@@ -11,6 +11,21 @@ vi.mock('../save/saveDb', async (importOriginal) => {
 })
 
 const loadSessionEvents = vi.mocked(saveDb.loadSessionEvents)
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen). This
+ * module-level afterEach coexists with the per-describe vi.unstubAllGlobals one.
+ */
+const mountedWrappers: VueWrapper[] = []
+function track<T extends VueWrapper>(wrapper: T): T {
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
   beforeEach(() => {
@@ -33,7 +48,7 @@ describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
       { id: 1, day: 1, type: 'endDay', payload: { endedDay: 1 }, timestamp: 123 },
     ])
 
-    const wrapper = mount(SaveMenu)
+    const wrapper = track(mount(SaveMenu))
 
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     await wrapper.find('[data-test="export-session-log"]').trigger('click')
@@ -57,7 +72,7 @@ describe('SaveMenu - loading a save code', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   async function mountOpen() {
-    const wrapper = mount(SaveMenu)
+    const wrapper = track(mount(SaveMenu))
     await wrapper.find('[data-test="reveal-load"]').trigger('click')
     return wrapper
   }

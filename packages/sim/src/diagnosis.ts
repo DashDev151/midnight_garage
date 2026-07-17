@@ -13,6 +13,7 @@ import type {
 import { titleCaseFromSlug } from '@midnight-garage/content'
 import { availableLaborSlots } from './laborSlots'
 import type { SimContext } from './context'
+import { benchHasTrait } from './crewSkills'
 import { marketValueYen } from './marketValue'
 
 type CarSymptom = CarInstance['symptoms'][number]
@@ -385,6 +386,10 @@ export function inspectionVisitGateReason(
  * minutes left - it simply replaces it, forfeiting the remainder; the
  * two-step confirm before that happens at all is a UI-layer courtesy
  * (decision 7), not a rule this resolver enforces itself.
+ *
+ * Sprint 82 decision 4: a benched `auction-rat` knows the Local Yard, so a
+ * local-yard visit grants `economy.staff.auctionRatExtraMinutes` on top of the
+ * base minutes. One tier, no stacking - one rat's worth regardless of count.
  */
 export function beginInspectionVisit(
   state: GameState,
@@ -395,7 +400,11 @@ export function beginInspectionVisit(
   if (gateReason) return { state, log: [], outcome: gateReason }
 
   const feeYen = context.economy.diagnosis.travelFeeYenByTier[tier]
-  const minutesGranted = context.economy.diagnosis.visitMinutes
+  const ratBonus =
+    tier === 'local-yard' && benchHasTrait(state.staff, 'auction-rat')
+      ? context.economy.staff.auctionRatExtraMinutes
+      : 0
+  const minutesGranted = context.economy.diagnosis.visitMinutes + ratBonus
   const nextState: GameState = {
     ...state,
     cashYen: state.cashYen - feeYen,

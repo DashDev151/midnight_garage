@@ -1,16 +1,26 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { ECONOMY } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import StandingScreen from './StandingScreen.vue'
 
+// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// wrapper and unmount it after each test, so a component left mounted from a
+// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+const mountedWrappers: VueWrapper[] = []
+
 function mountScreen() {
-  return mount(StandingScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  const wrapper = mount(StandingScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
 
 describe('StandingScreen (Sprint 62 item 17)', () => {
   beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
 
   it('shows the current reputation tier and exact points, and names the next tier', () => {
     const game = useGameStore()

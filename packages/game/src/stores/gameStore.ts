@@ -9,7 +9,6 @@ import {
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
   TOOL_LINES,
-  TRAITS,
 } from '@midnight-garage/content'
 import type {
   AuctionLot,
@@ -34,8 +33,6 @@ import type {
   RequirementSpec,
   ServiceJob,
   ServiceJobTask,
-  StaffAssignment,
-  StaffMember,
   StagedAction,
   StatBlock,
   ToolTier,
@@ -125,9 +122,6 @@ import {
   resolveReconditionLabor,
   resolveRejectOffer,
   resolveRemovePart,
-  resolveDismissStaff,
-  resolveHireStaff,
-  resolveReassignStaff,
   resolveScrapPart,
   resolveScrapShell,
   resolveSellPart,
@@ -136,7 +130,6 @@ import {
   resolveSetForSale,
   runDiagnosticTest as runDiagnosticTestCore,
   scrapValueYen,
-  introductionFeeYen,
   selectBoardRows,
   shopTitle,
   swapCars as swapCarsCore,
@@ -147,6 +140,7 @@ import {
   worstRemainingBandFor,
   worstRepairableBandInGroup,
   type AuctionGrade,
+  type CrewSkillContext,
   type DeliverySpeed,
   type InspectionVisitGateReason,
   type LapBoardRow,
@@ -339,6 +333,13 @@ export interface PlannedEstimateView {
    * button shows THIS, not the remaining-today figure, so the player knows
    * what a click actually costs. */
   plannedLaborSlots: number
+  /** Sprint 82 decision 2: labour slots the benched crew's speed skills shave
+   * off `plannedLaborSlots` (0 when no crew covers the planned work). Surfaced
+   * so the faster total is honest, not silent. */
+  crewLaborSaved: number
+  /** Sprint 82 decision 5: yen a benched perfectionist takes off the planned
+   * repair cost (0 when none is benched). */
+  perfectionistCostSavedYen: number
   /** The restoration bill remaining AFTER the plan completes. */
   billYenAfter: number
   /** The guide value AFTER the plan completes - the same `marketValueYen`
@@ -516,46 +517,9 @@ export interface StandingView {
   shopTitleName: string | null
 }
 
-/** Sprint 80 (staff I), crew model: one staff member or job-ad candidate card,
- * with the trait copy resolved for display. */
-export interface StaffMemberCardView {
-  id: string
-  displayName: string
-  stats: StaffMember['stats']
-  traitName: string
-  traitDescription: string
-  weeklyWageYen: number
-  /** Crew model R2: the flat labour this member puts in (1 or 2 slots a day),
-   * shown plainly - a pair of hands is a pair of hands. */
-  laborSlotsPerDay: number
-  /** Crew model R3: where the member's labour goes now (`bench` or
-   * `contract`), and any reassignment scheduled to take effect next day
-   * (`null` when none). Candidates on the board are always bench with nothing
-   * pending. */
-  assignment: StaffAssignment
-  pendingAssignment: StaffAssignment | null
-}
-
-/** Sprint 80 (staff I): a job-ad card - a candidate plus its bio, the
- * posted/expiry days, and the one-off introduction fee shown before hiring. */
-export interface StaffAdCardView extends StaffMemberCardView {
-  bio: string
-  postedOnDay: number
-  expiresOnDay: number
-  /** Crew model R6a: the introduction fee (`introductionFeeWeeks` x weekly
-   * wage) charged to cash on hire - shown on the card before the player
-   * commits. */
-  introFeeYen: number
-}
-
-/** Sprint 80 (staff I): the whole Staff Office view - the roster and the ads
- * board, with the hiring cap. */
-export interface StaffOfficeView {
-  roster: StaffMemberCardView[]
-  ads: StaffAdCardView[]
-  maxStaff: number
-  atCap: boolean
-}
+/** Sprint 82 decision 6: the staff card/office view interfaces
+ * (`StaffMemberCardView`, `StaffAdCardView`, `BenchCrewView`, `StaffOfficeView`)
+ * moved to `stores/staffStore.ts` alongside `useStaffStore`. */
 
 /** A service-job offer on the board (accept to bring the car into the shop). */
 export interface ServiceJobOfferView {
@@ -1658,11 +1622,20 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** Sprint 82: the benched crew a repair plan should be priced/sized against
+   * (decisions 2 and 5) - the same context the sim's own repair resolvers use,
+   * so the store preview and the committed job agree. */
+  function crewCtx(): CrewSkillContext {
+    return { staff: gameState.value.staff, economy: context.value.economy }
+  }
+
   /** The total yen every currently planned REPAIR action will charge at
    * Confirm - the exact figure `confirmStagedWork` deducts (Sprint 47: no
    * consumables fee on top). Planned installs charge nothing NEW here - that
-   * cash already left when the part was bought. */
-  function plannedRepairCostYen(carId: string): number {
+   * cash already left when the part was bought. Sprint 82: `applyCrew` prices
+   * against the benched crew (a perfectionist's parts discount); passed `false`
+   * only to recover the pre-crew base for the "saved" display. */
+  function plannedRepairCostYen(carId: string, applyCrew = true): number {
     const car = findWorkableCar(carId)
     if (!car) return 0
     let total = 0
@@ -1678,6 +1651,7 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsTaxonomyById,
         context.value.economy.restoration.repairStepFraction,
         action.carPartId,
+        applyCrew ? crewCtx() : undefined,
       ).costYen
     }
     return total
@@ -1688,8 +1662,10 @@ export const useGameStore = defineStore('game', () => {
    * (a repair action's `planGroupRepair.laborSlotsRequired` when it has real
    * work, plus - Sprint 71 - the target slot's own per-depth-class labour per
    * planned install), so the Confirm button shows what a click actually
-   * spends, not the day's remaining total. */
-  function plannedLaborSlots(carId: string): number {
+   * spends, not the day's remaining total. Sprint 82: `applyCrew` sizes against
+   * the benched crew's speed discount; passed `false` only to recover the base
+   * for the "crew saved N labour" display. */
+  function plannedLaborSlots(carId: string, applyCrew = true): number {
     const car = findWorkableCar(carId)
     if (!car) return 0
     let total = 0
@@ -1705,6 +1681,7 @@ export const useGameStore = defineStore('game', () => {
           context.value.partsTaxonomyById,
           context.value.economy.restoration.repairStepFraction,
           action.carPartId,
+          applyCrew ? crewCtx() : undefined,
         )
         if (plan.partIds.length > 0) total += plan.laborSlotsRequired
       } else {
@@ -1763,6 +1740,9 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsTaxonomyById,
       context.value.economy.restoration.repairStepFraction,
       action.carPartId,
+      // Sprint 82: the row total is the crew-adjusted figure, so the rows still
+      // sum to Confirm's own (crew-adjusted) total by construction.
+      crewCtx(),
     )
     return {
       costYen: plan.costYen,
@@ -1784,6 +1764,11 @@ export const useGameStore = defineStore('game', () => {
     if (!car || !model || !preview) return null
 
     const repairCostYen = plannedRepairCostYen(carId)
+    const laborSlots = plannedLaborSlots(carId)
+    // Sprint 82: the base (pre-crew) totals recover what the crew's speed and
+    // cost effects shaved off, for an honest "the crew did this" line.
+    const crewLaborSaved = plannedLaborSlots(carId, false) - laborSlots
+    const perfectionistCostSavedYen = plannedRepairCostYen(carId, false) - repairCostYen
     const ledger = carLedgerFor(gameState.value, carId)
     const totalSpentYenAfter =
       (ledger.purchaseYen ?? 0) + ledger.repairYen + repairCostYen + ledger.partsYen
@@ -1797,7 +1782,9 @@ export const useGameStore = defineStore('game', () => {
     const guideValueYenAfter = carGuideValueYen(preview, model, gameState.value, context.value)
     return {
       plannedRepairCostYen: repairCostYen,
-      plannedLaborSlots: plannedLaborSlots(carId),
+      plannedLaborSlots: laborSlots,
+      crewLaborSaved,
+      perfectionistCostSavedYen,
       billYenAfter,
       guideValueYenAfter,
       totalSpentYenAfter,
@@ -2551,6 +2538,10 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsTaxonomyById,
       context.value.economy.restoration.repairStepFraction,
       carPartId,
+      // Sprint 82: the instant repair job is sized with the benched crew's
+      // speed discount; `repairJobGate` charges the matching (perfectionist-
+      // adjusted) cost, so the job and its charge stay consistent.
+      crewCtx(),
     )
     if (plan.partIds.length === 0) return
     const spec: NewJobSpec = {
@@ -3105,79 +3096,12 @@ export const useGameStore = defineStore('game', () => {
     lastMissionResult.value = null
   }
 
-  // --- staff (Sprint 80: staff I, the Staff Office) ----------------------
-
-  const TRAIT_BY_ID = new Map(TRAITS.map((trait) => [trait.id, trait]))
-
-  function staffCardFor(member: StaffMember): StaffMemberCardView {
-    const trait = TRAIT_BY_ID.get(member.trait)
-    return {
-      id: member.id,
-      displayName: member.displayName,
-      stats: member.stats,
-      traitName: trait?.displayName ?? member.trait,
-      traitDescription: trait?.description ?? '',
-      weeklyWageYen: member.weeklyWageYen,
-      laborSlotsPerDay: member.laborSlotsPerDay,
-      assignment: member.assignment,
-      pendingAssignment: member.pendingAssignment,
-    }
-  }
-
-  /**
-   * Sprint 80 decision 7: the Staff Office's two panels - the current roster
-   * and the live job-ad board - resolved once from `gameState.staff` /
-   * `gameState.staffAds` with each candidate's trait copy attached. Pure
-   * re-presentation, no new state; the ads carry their own bio and the
-   * posted/expiry days the card shows.
-   */
-  const staffOfficeView = computed<StaffOfficeView>(() => {
-    const { adExpiryDays, maxStaff } = context.value.economy.staff
-    const roster = gameState.value.staff.map(staffCardFor)
-    const ads: StaffAdCardView[] = gameState.value.staffAds.map((ad) => ({
-      ...staffCardFor(ad.candidate),
-      bio: ad.bio,
-      postedOnDay: ad.postedOnDay,
-      expiresOnDay: ad.postedOnDay + adExpiryDays,
-      introFeeYen: introductionFeeYen(ad.candidate.weeklyWageYen, context.value.economy),
-    }))
-    return { roster, ads, maxStaff, atCap: roster.length >= maxStaff }
-  })
-
-  /** Sprint 80 decision 6, crew model R6a: hire the ad candidate - instant, the
-   * introduction fee charged to cash. Refused (returns false) at the staff cap
-   * or for a missing ad. */
-  function hireStaff(candidateId: string): boolean {
-    const result = resolveHireStaff(gameState.value, candidateId, context.value)
-    if (result.log.length === 0) return false
-    gameState.value = result.state
-    dayLog.value.push(...result.log)
-    logSessionEvent('hireStaff', { candidateId })
-    return true
-  }
-
-  /** Sprint 80 decision 6: dismiss a member - instant, no severance. The
-   * two-step confirm lives in the screen. */
-  function dismissStaff(staffId: string): boolean {
-    const result = resolveDismissStaff(gameState.value, staffId)
-    if (result.log.length === 0) return false
-    gameState.value = result.state
-    dayLog.value.push(...result.log)
-    logSessionEvent('dismissStaff', { staffId })
-    return true
-  }
-
-  /** Sprint 80 crew model R3: schedule a member's bench/contract reassignment.
-   * It takes effect on the next day boundary (`advanceDay` commits it), so the
-   * store just records the pending change. A no-op (returns false) when nothing
-   * changed (no such member, or the pending value already matches). */
-  function reassignStaff(staffId: string, to: StaffAssignment): boolean {
-    const result = resolveReassignStaff(gameState.value, staffId, to)
-    if (result.state === gameState.value) return false
-    gameState.value = result.state
-    logSessionEvent('reassignStaff', { staffId, to })
-    return true
-  }
+  // --- staff (Sprint 80: staff I) ----------------------------------------
+  // Sprint 82 decision 6: the Staff Office surface (the roster/ads view and the
+  // hire/dismiss/reassign actions) moved to `useStaffStore` (stores/staffStore.
+  // ts). The persisted staff data stays in `GameState` here; the staff store
+  // reads and writes it through this store's exposed `gameState`, `dayLog`,
+  // `context`, and `logSessionEvent`.
 
   /**
    * Sprint 77 decision 4: the reference-lap board for the active mission's
@@ -3573,6 +3497,11 @@ export const useGameStore = defineStore('game', () => {
   return {
     gameState,
     dayLog,
+    // Sprint 82 decision 6: exposed so `useStaffStore` (stores/staffStore.ts)
+    // can read the sim context and log session events while it owns the staff
+    // surface. The persisted staff data still lives in `gameState` here.
+    context,
+    logSessionEvent,
     day,
     cashYen,
     reputationTier,
@@ -3686,10 +3615,6 @@ export const useGameStore = defineStore('game', () => {
     acceptMission,
     gradeMission,
     deliverMission,
-    staffOfficeView,
-    hireStaff,
-    dismissStaff,
-    reassignStaff,
     lapBoardRowsFor,
     lastJobResult,
     dismissJobResult,

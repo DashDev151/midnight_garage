@@ -715,11 +715,26 @@ export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRo
  *   (`boundCGated`), disclosed elsewhere: the tier's cheapest candidate's
  *   introduction fee stays within `HIRE_BOUND_C_STARTING_CASH_FRACTION` of
  *   `STARTING_CASH_YEN`.
+ * - Bound D (Sprint 82 decision 3: skills worth paying for), hard-gated only at
+ *   the entry tier (`boundDGated`), disclosed elsewhere: the wage premium of a
+ *   max-skill candidate over a min-skill one (identical slots) stays within
+ *   `HIRE_BOUND_D_SAVEABLE_MULTIPLE x` the weekly value of the labour that
+ *   candidate's speed discount can save at full utilisation. Idle skills save
+ *   nothing, and bound A already stops contract income from carrying the
+ *   premium - so a skilled hire is only ever worth it for a shop that works.
  */
 export const HIRE_BOUND_A_MIN_RATIO = 1.05
 export const HIRE_BOUND_A_MAX_RATIO = 1.4
 export const HIRE_BOUND_B_BILLABLE_FRACTION = 0.5
 export const HIRE_BOUND_C_STARTING_CASH_FRACTION = 0.15
+/**
+ * Sprint 82 decision 3 (bound D): the wage premium a shop pays for a max-skill
+ * candidate over a min-skill one (identical slots) must not exceed this
+ * multiple of the weekly value of the labour that candidate's speed discount
+ * can save at full utilisation. Skills must be worth paying for when the shop
+ * is busy; the discount they buy is worth far more than the premium.
+ */
+export const HIRE_BOUND_D_SAVEABLE_MULTIPLE = 2
 
 /** One binding candidate for bound A - a `(stats, laborSlotsPerDay)` corner and
  * the ratio it produces. */
@@ -755,6 +770,19 @@ export interface HireCoherenceRow {
   /** `true` only for the entry (first) reputation tier - the single tier where
    * bound C is hard-gated (a day-one shop starts there). */
   boundCGated: boolean
+  /** Bound D: the wage premium (identical slots) of this tier's max-skill
+   * candidate over its min-skill one. */
+  boundDPremiumYen: number
+  /** Bound D: the weekly value of the labour the tier's best hands can save -
+   * `crewSpeedDiscount[budget.max] x 7 x serviceJobs.laborRateYen`. */
+  boundDSaveableWeeklyYen: number
+  /** Bound D cap: `HIRE_BOUND_D_SAVEABLE_MULTIPLE x boundDSaveableWeeklyYen`. */
+  boundDCapYen: number
+  /** `cap - premium`; `>= 0` means skills are not overpriced for a busy shop. */
+  boundDMarginYen: number
+  /** `true` only for the entry tier - the single tier where bound D is
+   * hard-gated (mirrors bound C). */
+  boundDGated: boolean
 }
 
 function weeklyContractYen(stats: StaffMember['stats'], economy: EconomyConfig): number {
@@ -819,6 +847,22 @@ export function computeHireCoherence(context: SimContext): HireCoherenceRow[] {
     const boundCWageYen = deriveStaffWageYen(cheapestStats, 1, economy)
     const boundCFeeYen = introductionFeeYen(boundCWageYen, economy)
 
+    // Bound D (decision 3): the wage premium of the all-max-skill candidate over
+    // the all-min-skill one at IDENTICAL slots (the slot premium cancels, so 1
+    // slot stands for both), against the weekly value of the labour the tier's
+    // best hands can save at full utilisation.
+    const dearestStats: StaffMember['stats'] = {
+      engine: budget.max,
+      chassis: budget.max,
+      body: budget.max,
+    }
+    const boundDPremiumYen =
+      deriveStaffWageYen(dearestStats, 1, economy) - deriveStaffWageYen(cheapestStats, 1, economy)
+    const curve = economy.staff.crewSpeedDiscount
+    const bestSaved = curve[Math.min(budget.max, curve.length - 1)] ?? 0
+    const boundDSaveableWeeklyYen = bestSaved * 7 * economy.serviceJobs.laborRateYen
+    const boundDCapYen = HIRE_BOUND_D_SAVEABLE_MULTIPLE * boundDSaveableWeeklyYen
+
     rows.push({
       tier,
       boundALow: low!,
@@ -833,6 +877,11 @@ export function computeHireCoherence(context: SimContext): HireCoherenceRow[] {
       boundCCapYen: capC,
       boundCMarginYen: capC - boundCFeeYen,
       boundCGated: tier === entryTier,
+      boundDPremiumYen,
+      boundDSaveableWeeklyYen,
+      boundDCapYen,
+      boundDMarginYen: boundDCapYen - boundDPremiumYen,
+      boundDGated: tier === entryTier,
     })
   }
 

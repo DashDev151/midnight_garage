@@ -1,14 +1,28 @@
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import MissionCompleteModal from './MissionCompleteModal.vue'
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ */
+const mountedWrappers: VueWrapper[] = []
+function track<T extends VueWrapper>(wrapper: T): T {
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 describe('MissionCompleteModal', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('renders nothing when there is no result', () => {
-    const wrapper = mount(MissionCompleteModal)
+    const wrapper = track(mount(MissionCompleteModal))
     expect(wrapper.find('[data-test="mission-complete-modal"]').exists()).toBe(false)
   })
 
@@ -29,7 +43,7 @@ describe('MissionCompleteModal', () => {
         interior: 0,
       },
     }
-    const wrapper = mount(MissionCompleteModal)
+    const wrapper = track(mount(MissionCompleteModal))
     expect(wrapper.find('[data-test="mission-complete-modal"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Test Customer')
     expect(wrapper.text()).toContain('Exactly what I asked for.')
@@ -57,7 +71,7 @@ describe('MissionCompleteModal', () => {
         interior: 0,
       },
     }
-    const wrapper = mount(MissionCompleteModal)
+    const wrapper = track(mount(MissionCompleteModal))
     const tipEl = wrapper.find('[data-test="mission-result-tip"]')
     expect(tipEl.exists()).toBe(true)
     expect(tipEl.text()).toContain('200,000')
@@ -80,7 +94,7 @@ describe('MissionCompleteModal', () => {
         interior: 0,
       },
     }
-    const wrapper = mount(MissionCompleteModal)
+    const wrapper = track(mount(MissionCompleteModal))
     expect(wrapper.text()).not.toContain('Specialty')
   })
 
@@ -101,7 +115,7 @@ describe('MissionCompleteModal', () => {
         interior: 0,
       },
     }
-    const wrapper = mount(MissionCompleteModal)
+    const wrapper = track(mount(MissionCompleteModal))
     await wrapper.find('[data-test="mission-result-continue"]').trigger('click')
     expect(game.lastMissionResult).toBeNull()
   })

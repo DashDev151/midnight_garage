@@ -1082,6 +1082,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   - the rest carries to tomorrow</span
                 >.
               </p>
+              <p
+                v-if="
+                  detail.plannedEstimate &&
+                  (detail.plannedEstimate.crewLaborSaved > 0 ||
+                    detail.plannedEstimate.perfectionistCostSavedYen > 0)
+                "
+                class="crew-saving"
+                data-test="confirm-crew-saving"
+              >
+                <span v-if="detail.plannedEstimate.crewLaborSaved > 0" data-test="crew-labour-saved"
+                  >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour slots.</span
+                >
+                <span
+                  v-if="detail.plannedEstimate.perfectionistCostSavedYen > 0"
+                  data-test="crew-cost-saved"
+                >
+                  A perfectionist saves
+                  {{ formatYen(detail.plannedEstimate.perfectionistCostSavedYen) }}.</span
+                >
+              </p>
             </div>
           </section>
         </div>
@@ -1878,6 +1898,13 @@ h4 {
 
 .confirm-caption.warn {
   color: var(--mg-neon-violet);
+}
+
+.crew-saving {
+  margin: var(--mg-space-1) 0 0;
+  text-align: center;
+  color: var(--mg-success);
+  font-size: var(--mg-fs-sm);
 }
 
 .empty {

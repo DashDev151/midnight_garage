@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import type { StaffMemberCardView } from '../stores/gameStore'
-import { useGameStore } from '../stores/gameStore'
+import type { StaffMemberCardView } from '../stores/staffStore'
+import { useStaffStore } from '../stores/staffStore'
 import { formatYen } from '../utils/formatYen'
 
 /**
@@ -15,9 +15,9 @@ import { formatYen } from '../utils/formatYen'
  * shown honestly but only bite in Staff II; the labour and the assignment are
  * live now - see the sprint doc.
  */
-const game = useGameStore()
+const staff = useStaffStore()
 
-const view = computed(() => game.staffOfficeView)
+const view = computed(() => staff.staffOfficeView)
 
 /** The staff id whose dismissal is mid-confirm (two-step), or null. */
 const confirmingDismissId = ref<string | null>(null)
@@ -31,12 +31,12 @@ function cancelDismiss(): void {
 }
 
 function confirmDismiss(id: string): void {
-  game.dismissStaff(id)
+  staff.dismissStaff(id)
   confirmingDismissId.value = null
 }
 
 function hire(id: string): void {
-  game.hireStaff(id)
+  staff.hireStaff(id)
 }
 
 /** The state the member is heading for (a pending switch, else where they are
@@ -48,7 +48,7 @@ function intendedAssignment(member: StaffMemberCardView): 'bench' | 'contract' {
 
 function toggleAssignment(member: StaffMemberCardView): void {
   const to = intendedAssignment(member) === 'bench' ? 'contract' : 'bench'
-  game.reassignStaff(member.id, to)
+  staff.reassignStaff(member.id, to)
 }
 </script>
 
@@ -62,6 +62,20 @@ function toggleAssignment(member: StaffMemberCardView): void {
       <p class="hint">
         Up to {{ view.maxStaff }} on the books. At the bench their hands are yours; on a fleet
         contract they earn a steady retainer instead. Wages come out weekly.
+      </p>
+      <p v-if="view.benchCrew" class="crew-line" data-test="bench-crew">
+        At the bench: engine {{ view.benchCrew.engine }}, chassis {{ view.benchCrew.chassis }}, body
+        {{ view.benchCrew.body }}. The strongest hand leads each job.<span
+          v-if="view.benchCrew.perfectionist"
+          data-test="bench-perfectionist"
+        >
+          A perfectionist at the bench: work runs slower, wastes less.</span
+        ><span v-if="view.benchCrew.auctionRat" data-test="bench-auction-rat">
+          An auction rat at the bench: extra time at the Local Yard.</span
+        >
+      </p>
+      <p v-else-if="view.roster.length > 0" class="crew-line dim" data-test="bench-crew-empty">
+        Nobody at the bench. Repairs run at the shop's own pace.
       </p>
       <p v-if="view.roster.length === 0" class="empty" data-test="roster-empty">
         Nobody on the books yet. Take someone on from the board below.
@@ -230,6 +244,16 @@ h3 {
 
 .hint.at-cap {
   color: var(--mg-neon-pink);
+}
+
+.crew-line {
+  margin: 0 0 var(--mg-space-3);
+  color: var(--mg-success);
+  font-size: var(--mg-fs-sm);
+}
+
+.crew-line.dim {
+  color: var(--mg-text-dim);
 }
 
 .cards {

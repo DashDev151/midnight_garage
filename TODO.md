@@ -215,9 +215,23 @@ pass."
   them, the opposite of what specialty is supposed to mean. Worth revisiting once (or if) the sim
   tracks real per-car work provenance; until then, `resolveServiceJob` stays the only specialty
   source (`serviceJobs.ts`).
-- [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` / `useStaffStore`
-  behind the current surface) once staff/events land - it's a fine façade now, but trending toward a
-  god-store.
+- [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` behind the current
+  surface) - it's a fine façade now, but trending toward a god-store. `useStaffStore` landed in
+  Sprint 82 (decision 6, `stores/staffStore.ts`): it owns the Staff Office view and the
+  hire/dismiss/reassign actions, reading/writing the persisted staff data through `gameStore`'s
+  exposed `gameState`/`dayLog`/`context`/`logSessionEvent`. The remaining garage/auction slices
+  follow the same delegating-store pattern when they land.
+- [x] **RESOLVED: the main-chunk build warning limit is calibrated, not deferred (orchestrator
+  ruling 2026-07-17, Sprint 82 sweep).** Sprint 82 landed the one clean dynamic-import split it
+  asked for: `save/saveDb.ts` imports Dexie dynamically (`import('dexie')` inside `getDb`), moving
+  Dexie (~95kB) into its own chunk with zero consumer/test changes (`getDb` is a no-op without
+  IndexedDB, so tests never load it). That cut the main chunk 611.65 -> 516.72kB. No clean
+  dynamic-import split can go further: measured empirically, additionally code-splitting the
+  ENTIRE save codec AND all four result modals only reached 500.98kB - the residual is the eager
+  vue+content+sim+framework floor (~500kB), unsplittable without making the content/sim graph lazy
+  (a large refactor). The orchestrator ruled: `build.chunkSizeWarningLimit` set to 600 in
+  `packages/game/vite.config.ts`, calibrated just above the measured ~500kB floor so a real
+  regression still warns. No vendor `manualChunks` split.
 - [ ] **No bot proactively fills a MISSING car-part slot, or weighs one as worse than merely worn
   (Sprint 32, the stock-baseline/missing-slot model).** `isGroupAtLeast` (every bot's "is this
   group good enough" check, `bots/bandHelpers.ts`) silently excludes a missing part from
@@ -228,14 +242,6 @@ pass."
   `sprint32.md`'s Exit), but the gap is real: a bot can genuinely believe a car is sale-ready when
   it isn't. Needs either a bot-side "is anything missing" check before declaring a car restored,
   or an install-focused fill-the-gap step alongside the existing repair step.
-- [ ] **Component tests that `mount()` many times per file without `unmount()`ing between tests risk
-  a Pinia cross-test leak** (found and fixed in `CarDetailScreen.test.ts` during Sprint 28):
-  `getActivePinia()` prefers an injected pinia from the current Vue injection context over the
-  module-level "active" one `setActivePinia` sets, so a component left mounted from a prior test
-  can leak its store's state into the next test (confirmed via direct reference-identity checks,
-  not a guess). Sprint 28 fixed only the one file it broke (tracking every `mountAt`-produced
-  wrapper and unmounting it in `afterEach`); no repo-wide audit of other multi-mount test files was
-  done - worth a sweep if this class of flake ever surfaces elsewhere.
 
 ## Open balance/economy questions
 

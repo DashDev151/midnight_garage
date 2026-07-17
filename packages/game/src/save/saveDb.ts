@@ -1,4 +1,4 @@
-import Dexie, { type Table } from 'dexie'
+import type { Table } from 'dexie'
 
 /**
  * Thin IndexedDB wrapper (via Dexie) for the single autosave slot. It
@@ -6,6 +6,12 @@ import Dexie, { type Table } from 'dexie'
  * codec owns versioning/validation, this owns bytes-on-disk. Every method
  * is a no-op when IndexedDB is unavailable (e.g. the happy-dom test env),
  * so store logic tests run without a fake IndexedDB dependency.
+ *
+ * Sprint 82 decision 8: Dexie is imported dynamically (`import('dexie')`
+ * inside `getDb`), the sprint's one code-split - it is the largest single
+ * dependency reachable only from persistence, none of it needed for first
+ * paint. Every export here is already async, so the split is internal: no
+ * caller (or test) changes, they still `await` the same functions.
  */
 
 interface SaveRow {
@@ -30,26 +36,42 @@ export interface SessionEvent {
   timestamp: number
 }
 
-const SLOT = 'current'
-
-class SaveDatabase extends Dexie {
-  saves!: Table<SaveRow, string>
-  sessionEvents!: Table<SessionEvent, number>
-
-  constructor() {
-    super('midnight-garage')
-    this.version(1).stores({ saves: 'slot' })
-    // IndexedDB versioning, not GameState's SAVE_VERSION - no save migration,
-    // no golden-save changes; this table is independent of save content.
-    this.version(2).stores({ saves: 'slot', sessionEvents: '++id, day, type' })
-  }
+/** The two tables the wrapper drives, the surface the functions below use. */
+interface SaveDb {
+  saves: Table<SaveRow, string>
+  sessionEvents: Table<SessionEvent, number>
 }
 
-let db: SaveDatabase | undefined
-function getDb(): SaveDatabase | undefined {
-  if (typeof indexedDB === 'undefined') return undefined
-  if (!db) db = new SaveDatabase()
-  return db
+const SLOT = 'current'
+
+let dbPromise: Promise<SaveDb | undefined> | undefined
+
+/**
+ * Lazily opens the database, dynamically importing Dexie on first use so it
+ * lands in its own chunk (decision 8). Returns undefined where IndexedDB is
+ * absent (the test env), keeping every method a safe no-op there.
+ */
+function getDb(): Promise<SaveDb | undefined> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(undefined)
+  if (!dbPromise) {
+    dbPromise = import('dexie').then(({ default: Dexie }) => {
+      class SaveDatabase extends Dexie {
+        saves!: Table<SaveRow, string>
+        sessionEvents!: Table<SessionEvent, number>
+
+        constructor() {
+          super('midnight-garage')
+          this.version(1).stores({ saves: 'slot' })
+          // IndexedDB versioning, not GameState's SAVE_VERSION - no save
+          // migration, no golden-save changes; this table is independent of
+          // save content.
+          this.version(2).stores({ saves: 'slot', sessionEvents: '++id, day, type' })
+        }
+      }
+      return new SaveDatabase()
+    })
+  }
+  return dbPromise
 }
 
 let persistRequested = false
@@ -61,7 +83,7 @@ function requestPersistence(): void {
 }
 
 export async function loadSave(): Promise<string | undefined> {
-  const database = getDb()
+  const database = await getDb()
   if (!database) return undefined
   try {
     const row = await database.saves.get(SLOT)
@@ -72,7 +94,7 @@ export async function loadSave(): Promise<string | undefined> {
 }
 
 export async function writeSave(code: string): Promise<void> {
-  const database = getDb()
+  const database = await getDb()
   if (!database) return
   try {
     await database.saves.put({ slot: SLOT, code })
@@ -83,7 +105,7 @@ export async function writeSave(code: string): Promise<void> {
 }
 
 export async function clearSave(): Promise<void> {
-  const database = getDb()
+  const database = await getDb()
   if (!database) return
   try {
     await database.saves.delete(SLOT)
@@ -96,7 +118,7 @@ export async function clearSave(): Promise<void> {
  * path (see `gameStore.ts`'s `logSessionEvent`); a lost telemetry event must
  * never break play, matching `writeSave`'s own best-effort shape. */
 export async function appendSessionEvent(event: SessionEvent): Promise<void> {
-  const database = getDb()
+  const database = await getDb()
   if (!database) return
   try {
     await database.sessionEvents.add(event)
@@ -106,7 +128,7 @@ export async function appendSessionEvent(event: SessionEvent): Promise<void> {
 }
 
 export async function loadSessionEvents(): Promise<SessionEvent[]> {
-  const database = getDb()
+  const database = await getDb()
   if (!database) return []
   try {
     return await database.sessionEvents.toArray()
@@ -116,7 +138,7 @@ export async function loadSessionEvents(): Promise<SessionEvent[]> {
 }
 
 export async function clearSessionEvents(): Promise<void> {
-  const database = getDb()
+  const database = await getDb()
   if (!database) return
   try {
     await database.sessionEvents.clear()

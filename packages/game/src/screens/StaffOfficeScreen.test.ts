@@ -1,12 +1,19 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { ECONOMY, type StaffAd, type StaffMember } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import StaffOfficeScreen from './StaffOfficeScreen.vue'
 
+// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// wrapper and unmount it after each test, so a component left mounted from a
+// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+const mountedWrappers: VueWrapper[] = []
+
 function mountScreen() {
-  return mount(StaffOfficeScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  const wrapper = mount(StaffOfficeScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
 
 function member(
@@ -35,6 +42,9 @@ function seed(game: ReturnType<typeof useGameStore>, staff: StaffMember[], ads: 
 
 describe('StaffOfficeScreen (Sprint 80: staff I, crew model)', () => {
   beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
 
   it('shows empty states with no crew and no ads', () => {
     const game = useGameStore()

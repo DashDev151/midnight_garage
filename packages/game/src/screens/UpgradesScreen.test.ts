@@ -1,15 +1,22 @@
 import type { ComponentId, ToolTier } from '@midnight-garage/content'
 import { FACILITIES, TOOL_LINES } from '@midnight-garage/content'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import UpgradesScreen from './UpgradesScreen.vue'
 
 const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
 
+// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// wrapper and unmount it after each test, so a component left mounted from a
+// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+const mountedWrappers: VueWrapper[] = []
+
 function mountScreen() {
-  return mount(UpgradesScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  const wrapper = mount(UpgradesScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  mountedWrappers.push(wrapper)
+  return wrapper
 }
 
 /** Sprint 52 decision 2: a purchase also needs a live classifieds listing
@@ -34,6 +41,9 @@ function listingFor(
 
 describe('UpgradesScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
 
   it('renders the facilities section and all six tool-line ladders', () => {
     const game = useGameStore()

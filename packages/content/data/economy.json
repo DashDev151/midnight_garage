@@ -360,6 +360,14 @@
     },
     "maxOpenAds": 3,
     "adExpiryDays": 14,
-    "maxStaff": 4
+    "maxStaff": 4,
+    "skillGroupMap": {
+      "engine": ["engine"],
+      "chassis": ["drivetrain", "suspension", "wheels"],
+      "body": ["body", "interior"]
+    },
+    "crewSpeedDiscount": [0, 0, 0, 1, 1, 2],
+    "auctionRatExtraMinutes": 20,
+    "perfectionistPartsDiscount": 0.1
   }
 }

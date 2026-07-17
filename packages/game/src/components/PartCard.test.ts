@@ -7,12 +7,27 @@ import {
   type ServiceJob,
 } from '@midnight-garage/content'
 import { makeCarOrigin, makeMarketOrigin } from '@midnight-garage/sim'
-import { mount } from '@vue/test-utils'
+import { mount, type ComponentMountingOptions, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import PartCard from './PartCard.vue'
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ */
+const mountedWrappers: VueWrapper[] = []
+function mountCard(options: ComponentMountingOptions<typeof PartCard>) {
+  const wrapper = mount(PartCard, options)
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 const part = PARTS.find((p) => p.carPartId === 'dampers')!
 
@@ -31,32 +46,32 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
   })
 
   it('fits=true emits select on a plain click', async () => {
-    const wrapper = mount(PartCard, { props: { instance, part, fits: true } })
+    const wrapper = mountCard({ props: { instance, part, fits: true } })
     await wrapper.find('.part-card').trigger('click')
     expect(wrapper.emitted('select')).toEqual([[instance.id]])
   })
 
   it('fits=false blocks the select emit and applies the disabled style', async () => {
-    const wrapper = mount(PartCard, { props: { instance, part, fits: false } })
+    const wrapper = mountCard({ props: { instance, part, fits: false } })
     expect(wrapper.find('.part-card').classes()).toContain('no-fit')
     await wrapper.find('.part-card').trigger('click')
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 
   it('the grab-handle picks even a non-fitting part (Sprint 24 fix 1 depends on this)', async () => {
-    const wrapper = mount(PartCard, { props: { instance, part, fits: false } })
+    const wrapper = mountCard({ props: { instance, part, fits: false } })
     await wrapper.find(`[data-test="pick-part-${instance.id}"]`).trigger('click')
     expect(wrapper.find('.part-card').classes()).toContain('picked')
   })
 
   it('defaults fits to true when omitted', () => {
-    const wrapper = mount(PartCard, { props: { instance, part } })
+    const wrapper = mountCard({ props: { instance, part } })
     expect(wrapper.find('.part-card').classes()).not.toContain('no-fit')
   })
 
   it('shows the instance’s own condition band (Sprint 33 decision 5)', () => {
     const wornInstance: PartInstance = { ...instance, id: 'pi-worn', band: 'worn' }
-    const wrapper = mount(PartCard, { props: { instance: wornInstance, part } })
+    const wrapper = mountCard({ props: { instance: wornInstance, part } })
     expect(wrapper.find('.band-chip.band-worn').exists()).toBe(true)
   })
 
@@ -71,7 +86,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('shows "Scrap it" instead of the pick/install affordance', () => {
       const { scrapInstance } = grantScrapInstance()
-      const wrapper = mount(PartCard, { props: { instance: scrapInstance, part } })
+      const wrapper = mountCard({ props: { instance: scrapInstance, part } })
 
       expect(wrapper.find('.part-card').classes()).toContain('scrap')
       expect(wrapper.find(`[data-test="pick-part-${scrapInstance.id}"]`).exists()).toBe(false)
@@ -80,7 +95,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('a plain click never emits select (never installable anywhere)', async () => {
       const { scrapInstance } = grantScrapInstance()
-      const wrapper = mount(PartCard, { props: { instance: scrapInstance, part } })
+      const wrapper = mountCard({ props: { instance: scrapInstance, part } })
       await wrapper.find('.part-card').trigger('click')
       expect(wrapper.emitted('select')).toBeUndefined()
     })
@@ -88,7 +103,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     it('clicking "Scrap it" sells it for real cash and removes it from inventory', async () => {
       const { game, scrapInstance } = grantScrapInstance()
       const cashBefore = game.cashYen
-      const wrapper = mount(PartCard, { props: { instance: scrapInstance, part } })
+      const wrapper = mountCard({ props: { instance: scrapInstance, part } })
 
       await wrapper.find(`[data-test="scrap-part-${scrapInstance.id}"]`).trigger('click')
 
@@ -112,12 +127,12 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
         genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
-      const wrapper = mount(PartCard, { props: { instance: rotaryInstance, part: rotaryPart } })
+      const wrapper = mountCard({ props: { instance: rotaryInstance, part: rotaryPart } })
       expect(wrapper.find('.rotary-marker').exists()).toBe(true)
     })
 
     it('is omitted on a part with no Rotary requirement', () => {
-      const wrapper = mount(PartCard, { props: { instance, part } })
+      const wrapper = mountCard({ props: { instance, part } })
       expect(wrapper.find('.rotary-marker').exists()).toBe(false)
     })
   })
@@ -173,23 +188,23 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('shows the customer-owned badge for a tagged part, and none for a player-owned one', () => {
       const { tagged } = grantCustomerOwnedPart('mint')
-      const withBadge = mount(PartCard, { props: { instance: tagged, part } })
+      const withBadge = mountCard({ props: { instance: tagged, part } })
       expect(withBadge.find(`[data-test="customer-owned-${tagged.id}"]`).exists()).toBe(true)
 
-      const noBadge = mount(PartCard, { props: { instance, part } })
+      const noBadge = mountCard({ props: { instance, part } })
       expect(noBadge.find(`[data-test="customer-owned-${instance.id}"]`).exists()).toBe(false)
     })
 
     it('locks scrap for a customer-owned scrap part (disabled reason, no Scrap button)', () => {
       const { tagged: customerScrap } = grantCustomerOwnedPart('scrap')
-      const wrapper = mount(PartCard, { props: { instance: customerScrap, part } })
+      const wrapper = mountCard({ props: { instance: customerScrap, part } })
       expect(wrapper.find(`[data-test="scrap-locked-${customerScrap.id}"]`).exists()).toBe(true)
       expect(wrapper.find(`[data-test="scrap-part-${customerScrap.id}"]`).exists()).toBe(false)
     })
 
     it('offers an enabled recondition control on a below-mint part at tier 1 - no tooling gate exists (Sprint 36)', () => {
       const { instance: worn } = grantInventoryPart('worn') // nothing upgraded
-      const wrapper = mount(PartCard, { props: { instance: worn, part } })
+      const wrapper = mountCard({ props: { instance: worn, part } })
       const button = wrapper.find(`[data-test="recondition-part-${worn.id}"]`)
       expect(button.exists()).toBe(true)
       expect(button.attributes('disabled')).toBeUndefined()
@@ -198,7 +213,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     it("disables the recondition control once today's labor is spent (the labor gate stays)", () => {
       const { game, instance: worn } = grantInventoryPart('worn')
       game.gameState = { ...game.gameState, laborSlotsSpentToday: 99 }
-      const wrapper = mount(PartCard, { props: { instance: worn, part } })
+      const wrapper = mountCard({ props: { instance: worn, part } })
       expect(
         wrapper.find(`[data-test="recondition-part-${worn.id}"]`).attributes('disabled'),
       ).toBeDefined()
@@ -206,13 +221,13 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('omits the recondition control on a mint part (nothing to climb)', () => {
       const { instance: mint } = grantInventoryPart('mint')
-      const wrapper = mount(PartCard, { props: { instance: mint, part } })
+      const wrapper = mountCard({ props: { instance: mint, part } })
       expect(wrapper.find(`[data-test="recondition-part-${mint.id}"]`).exists()).toBe(false)
     })
 
     it('suppresses the recondition control when show-recondition is false (the Replace drawer)', () => {
       const { instance: worn } = grantInventoryPart('worn')
-      const wrapper = mount(PartCard, {
+      const wrapper = mountCard({
         props: { instance: worn, part, showRecondition: false },
       })
       expect(wrapper.find(`[data-test="recondition-part-${worn.id}"]`).exists()).toBe(false)
@@ -225,7 +240,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
      */
     it('clicking Recondition climbs the loose part exactly one band through the store', async () => {
       const { game, instance: worn } = grantInventoryPart('worn')
-      const wrapper = mount(PartCard, { props: { instance: worn, part } })
+      const wrapper = mountCard({ props: { instance: worn, part } })
 
       await wrapper.find(`[data-test="recondition-part-${worn.id}"]`).trigger('click')
 
@@ -234,7 +249,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('clicking Recondition repeatedly climbs one rung at a time until mint', async () => {
       const { game, instance: poor } = grantInventoryPart('poor')
-      const wrapper = mount(PartCard, { props: { instance: poor, part } })
+      const wrapper = mountCard({ props: { instance: poor, part } })
 
       await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
       expect(game.gameState.partInventory[0]?.band).toBe('worn')
@@ -262,7 +277,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       const wornTyres: PartInstance = { ...granted, band: 'worn' }
       game.gameState = { ...game.gameState, partInventory: [wornTyres] }
 
-      const wrapper = mount(PartCard, { props: { instance: wornTyres, part: tyrePart } })
+      const wrapper = mountCard({ props: { instance: wornTyres, part: tyrePart } })
       expect(wrapper.find(`[data-test="recondition-part-${wornTyres.id}"]`).exists()).toBe(false)
     })
   })

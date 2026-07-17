@@ -1,14 +1,28 @@
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import JobCompleteModal from './JobCompleteModal.vue'
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ */
+const mountedWrappers: VueWrapper[] = []
+function track<T extends VueWrapper>(wrapper: T): T {
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 describe('JobCompleteModal', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('renders nothing when there is no result', () => {
-    const wrapper = mount(JobCompleteModal)
+    const wrapper = track(mount(JobCompleteModal))
     expect(wrapper.find('[data-test="job-complete-modal"]').exists()).toBe(false)
   })
 
@@ -33,7 +47,7 @@ describe('JobCompleteModal', () => {
       },
       returnedParts: [],
     }
-    const wrapper = mount(JobCompleteModal)
+    const wrapper = track(mount(JobCompleteModal))
     expect(wrapper.find('[data-test="job-complete-modal"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Repair cost')
     expect(wrapper.text()).toContain('Net profit')
@@ -65,7 +79,7 @@ describe('JobCompleteModal', () => {
       },
       returnedParts: [],
     }
-    const wrapper = mount(JobCompleteModal)
+    const wrapper = track(mount(JobCompleteModal))
     expect(wrapper.text()).toContain('Sunk cost')
     const netProfitEl = wrapper.find('[data-test="job-result-net-profit"]')
     expect(netProfitEl.classes()).toContain('down')
@@ -92,7 +106,7 @@ describe('JobCompleteModal', () => {
       },
       returnedParts: [],
     }
-    const wrapper = mount(JobCompleteModal)
+    const wrapper = track(mount(JobCompleteModal))
     expect(wrapper.text()).not.toContain('Repair cost')
     expect(wrapper.text()).not.toContain('Parts cost')
   })
@@ -121,7 +135,7 @@ describe('JobCompleteModal', () => {
       },
       returnedParts: ['Tanuki Street Coilovers', 'KHS Stock ECU'],
     }
-    const wrapper = mount(JobCompleteModal)
+    const wrapper = track(mount(JobCompleteModal))
     const returnedEl = wrapper.find('[data-test="job-result-returned-parts"]')
     expect(returnedEl.exists()).toBe(true)
     expect(returnedEl.text()).toContain('Tanuki Street Coilovers')
@@ -149,7 +163,7 @@ describe('JobCompleteModal', () => {
       },
       returnedParts: [],
     }
-    const wrapper = mount(JobCompleteModal)
+    const wrapper = track(mount(JobCompleteModal))
     expect(wrapper.find('[data-test="job-result-returned-parts"]').exists()).toBe(false)
   })
 })

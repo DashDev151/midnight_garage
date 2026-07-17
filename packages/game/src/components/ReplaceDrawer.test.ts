@@ -1,9 +1,29 @@
 import { CARS, PARTS } from '@midnight-garage/content'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import {
+  mount,
+  RouterLinkStub,
+  type ComponentMountingOptions,
+  type VueWrapper,
+} from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import ReplaceDrawer from './ReplaceDrawer.vue'
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ */
+const mountedWrappers: VueWrapper[] = []
+function mountDrawer(options: ComponentMountingOptions<typeof ReplaceDrawer>) {
+  const wrapper = mount(ReplaceDrawer, options)
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprint 28)', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -25,7 +45,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     game.devGrantPart(fitting.id)
     game.devGrantPart(wrongAddress.id)
 
-    const wrapper = mount(ReplaceDrawer, {
+    const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
@@ -55,7 +75,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
       ownedCars: [{ ...car, parts: { ...car.parts, dampers: { installed: null } } }],
     }
 
-    const wrapper = mount(ReplaceDrawer, {
+    const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
@@ -78,7 +98,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     )!
     game.devGrantPart(nonFitting.id)
 
-    const wrapper = mount(ReplaceDrawer, {
+    const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
@@ -104,7 +124,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
       partInventory: [{ ...instance, band: 'scrap' }],
     }
 
-    const wrapper = mount(ReplaceDrawer, {
+    const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
@@ -117,7 +137,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
 
-    const wrapper = mount(ReplaceDrawer, {
+    const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })

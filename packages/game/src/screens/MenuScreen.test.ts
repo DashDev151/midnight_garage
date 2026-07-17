@@ -1,6 +1,6 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import MenuScreen from './MenuScreen.vue'
@@ -17,16 +17,25 @@ function makeRouter(): Router {
   })
 }
 
+// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// wrapper and unmount it after each test, so a component left mounted from a
+// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+const mountedWrappers: VueWrapper[] = []
+
 async function mountMenu() {
   const router = makeRouter()
   await router.push({ name: 'menu' })
   await router.isReady()
   const wrapper = mount(MenuScreen, { global: { plugins: [router] } })
+  mountedWrappers.push(wrapper)
   return { wrapper, router }
 }
 
 describe('MenuScreen (Sprint 40 item 1)', () => {
   beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
 
   it('hides Continue and skips the confirm step when there is no existing save', async () => {
     const game = useGameStore()

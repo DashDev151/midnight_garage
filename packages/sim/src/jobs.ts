@@ -24,6 +24,7 @@ import {
 } from './bands'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
+import { crewSlotsSaved, perfectionistCostMultiplier } from './crewSkills'
 import { revealOnRemoval } from './diagnosis'
 import { partFitsCar } from './parts'
 import { makeCarOrigin, isCustomerOriginPart } from './provenance'
@@ -615,6 +616,9 @@ export function repairJobGate(
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
     }
   }
+  // Sprint 82: pass the benched crew so the CHARGE reflects a perfectionist's
+  // parts discount (decision 5); the caller already sized the job's labour with
+  // the same crew, so cost and slots stay consistent for the player.
   const plan = planGroupRepair(
     car,
     spec.componentId,
@@ -625,6 +629,7 @@ export function repairJobGate(
     context.partsTaxonomyById,
     context.economy.restoration.repairStepFraction,
     spec.carPartId,
+    { staff: state.staff, economy: context.economy },
   )
   if (plan.partIds.length === 0) {
     // Nothing repairable is below the target band right now (all mint
@@ -971,7 +976,16 @@ function planReconditionPart(
     context.economy.restoration.repairStepFraction,
   )
   if (plan.laborSlotsRequired === 0) return null // scrap, non-repairable, or nothing to climb
-  return { group, plan }
+  // Sprint 82: bench recondition shares the one repair economy, so the benched
+  // crew's speed discount (decision 2) and a perfectionist's parts discount
+  // (decision 5) apply here exactly as they do to on-car group repair.
+  const adjusted: PartRepairPlan = {
+    laborSlotsRequired:
+      plan.laborSlotsRequired -
+      crewSlotsSaved(plan.laborSlotsRequired, group, state.staff, context.economy),
+    costYen: Math.round(plan.costYen * perfectionistCostMultiplier(state.staff, context.economy)),
+  }
+  return { group, plan: adjusted }
 }
 
 export interface ReconditionQuote {

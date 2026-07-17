@@ -1,9 +1,23 @@
 import { CARS, PARTS } from '@midnight-garage/content'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import EndDayButton from './EndDayButton.vue'
+
+/**
+ * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * and unmounted after its test, so a component left mounted from a prior test
+ * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ */
+const mountedWrappers: VueWrapper[] = []
+function track<T extends VueWrapper>(wrapper: T): T {
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+afterEach(() => {
+  for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+})
 
 describe('EndDayButton (Sprint 24 fix 4)', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -11,7 +25,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
   it('an empty cart ends the day immediately, with no dialog', async () => {
     const game = useGameStore()
     const dayBefore = game.gameState.day
-    const wrapper = mount(EndDayButton)
+    const wrapper = track(mount(EndDayButton))
 
     await wrapper.find('[data-test="end-day"]').trigger('click')
 
@@ -23,7 +37,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     const game = useGameStore()
     const dayBefore = game.gameState.day
     game.addToCart(PARTS[0]!.id)
-    const wrapper = mount(EndDayButton)
+    const wrapper = track(mount(EndDayButton))
 
     await wrapper.find('[data-test="end-day"]').trigger('click')
 
@@ -35,7 +49,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     const game = useGameStore()
     const dayBefore = game.gameState.day
     game.addToCart(PARTS[0]!.id)
-    const wrapper = mount(EndDayButton)
+    const wrapper = track(mount(EndDayButton))
     await wrapper.find('[data-test="end-day"]').trigger('click')
 
     await wrapper.find('[data-test="end-day-cart-cancel"]').trigger('click')
@@ -48,7 +62,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     const game = useGameStore()
     const dayBefore = game.gameState.day
     game.addToCart(PARTS[0]!.id)
-    const wrapper = mount(EndDayButton)
+    const wrapper = track(mount(EndDayButton))
     await wrapper.find('[data-test="end-day"]').trigger('click')
 
     await wrapper.find('[data-test="end-day-cart-confirm"]').trigger('click')
@@ -64,7 +78,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
       const carId = game.gameState.ownedCars[0]!.id
       game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
       const dayBefore = game.gameState.day
-      const wrapper = mount(EndDayButton)
+      const wrapper = track(mount(EndDayButton))
 
       await wrapper.find('[data-test="end-day"]').trigger('click')
 
@@ -114,7 +128,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
       // The state really is "finished, still on the ramp" - asserted, not assumed.
       expect(game.finishedJobsAwaitingHandback.map((j) => j.id)).toContain(offer.id)
 
-      const wrapper = mount(EndDayButton)
+      const wrapper = track(mount(EndDayButton))
       await wrapper.find('[data-test="end-day"]').trigger('click')
       expect(wrapper.find('[data-test="end-day-warnings"]').text()).toContain('hand the car back')
     })
@@ -125,7 +139,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
       const carId = game.gameState.ownedCars[0]!.id
       game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
       game.addToCart(PARTS[0]!.id)
-      const wrapper = mount(EndDayButton)
+      const wrapper = track(mount(EndDayButton))
 
       await wrapper.find('[data-test="end-day"]').trigger('click')
 
@@ -139,7 +153,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
       const carId = game.gameState.ownedCars[0]!.id
       game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
       const dayBefore = game.gameState.day
-      const wrapper = mount(EndDayButton)
+      const wrapper = track(mount(EndDayButton))
 
       await wrapper.find('[data-test="end-day"]').trigger('click')
       await wrapper.find('[data-test="end-day-cart-confirm"]').trigger('click')
@@ -152,6 +166,6 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     // The `showCash` prop is gone, not just unset: cash already lives in the
     // garage tiles and every screen header, so the button repeated a number
     // the player could already see. One word, one job.
-    expect(mount(EndDayButton).find('[data-test="end-day"]').text()).toBe('End Day')
+    expect(track(mount(EndDayButton)).find('[data-test="end-day"]').text()).toBe('End Day')
   })
 })

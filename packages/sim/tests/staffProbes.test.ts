@@ -14,6 +14,7 @@ import {
   HIRE_BOUND_A_MIN_RATIO,
   HIRE_BOUND_B_BILLABLE_FRACTION,
   HIRE_BOUND_C_STARTING_CASH_FRACTION,
+  HIRE_BOUND_D_SAVEABLE_MULTIPLE,
 } from '../src/coherence'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
@@ -194,6 +195,54 @@ describe('hire coherence probe (crew model R5)', () => {
       expect(
         row.boundCMarginYen,
         `${row.tier}: fee ${row.boundCFeeYen} > cap ${row.boundCCapYen}`,
+      ).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('every bound-D row is the closed-form of its budget corners and the speed curve', () => {
+    const { crewSpeedDiscount } = ECONOMY.staff
+    const laborRate = ECONOMY.serviceJobs.laborRateYen
+    for (const row of rows) {
+      const budget = ECONOMY.staff.statBudgetByTier[row.tier]!
+      const minStats = { engine: budget.min, chassis: budget.min, body: budget.min }
+      const maxStats = { engine: budget.max, chassis: budget.max, body: budget.max }
+      // Premium restated independently from the wage formula.
+      const premium =
+        deriveStaffWageYen(maxStats, 1, ECONOMY) - deriveStaffWageYen(minStats, 1, ECONOMY)
+      expect(row.boundDPremiumYen).toBe(premium)
+      // The premium is slot-independent: the second-slot wage cancels, so a
+      // max-skill and a min-skill candidate at the SAME slot count differ only
+      // by their stats. Assert at both slot counts.
+      expect(
+        deriveStaffWageYen(maxStats, 2, ECONOMY) - deriveStaffWageYen(minStats, 2, ECONOMY),
+      ).toBe(premium)
+      // Saveable weekly value restated from the curve at the tier's ceiling skill.
+      const bestSaved = crewSpeedDiscount[Math.min(budget.max, crewSpeedDiscount.length - 1)]!
+      const saveableWeekly = bestSaved * 7 * laborRate
+      expect(row.boundDSaveableWeeklyYen).toBe(saveableWeekly)
+      expect(row.boundDCapYen).toBe(HIRE_BOUND_D_SAVEABLE_MULTIPLE * saveableWeekly)
+      expect(row.boundDMarginYen).toBe(row.boundDCapYen - row.boundDPremiumYen)
+    }
+  })
+
+  it('Bound D (skills worth paying for): the entry tier max-vs-min-skill wage premium stays within HIRE_BOUND_D_SAVEABLE_MULTIPLE x the weekly labour its speed discount can save', () => {
+    const gated = rows.filter((r) => r.boundDGated)
+    expect(gated).toHaveLength(1)
+    const entry = gated[0]!
+    expect(entry.tier).toBe(ReputationTierSchema.options[0])
+    expect(
+      entry.boundDMarginYen,
+      `entry premium ${entry.boundDPremiumYen} > cap ${entry.boundDCapYen}`,
+    ).toBeGreaterThanOrEqual(0)
+  })
+
+  it('DISCLOSURE: no tier overprices its skill premium against the labour that skill can save', () => {
+    // Not the hard gate (entry tier alone) - a pinned observation that skills
+    // stay a bargain against the labour they save at every tier's ceiling.
+    for (const row of rows) {
+      expect(
+        row.boundDMarginYen,
+        `${row.tier}: premium ${row.boundDPremiumYen} > cap ${row.boundDCapYen}`,
       ).toBeGreaterThanOrEqual(0)
     }
   })

@@ -7,7 +7,7 @@
   {
     "id": "auction-rat",
     "displayName": "Auction Rat",
-    "description": "Knows every dealer at the Local Yard by first name. Inspections there are free when he's along."
+    "description": "Knows the Local Yard by row and rust. An hour there goes further."
   },
   {
     "id": "perfectionist",
