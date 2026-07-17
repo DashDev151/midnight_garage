@@ -45,6 +45,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     ownedCars: [],
     partInventory: [],
     staff: [],
+    staffAds: [],
     jobs: [],
     marketHeat: {},
     activeAuctionLots: [],

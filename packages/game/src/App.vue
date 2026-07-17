@@ -120,6 +120,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       <RouterLink :to="{ name: 'parts' }">Parts</RouterLink>
       <RouterLink :to="{ name: 'inventory' }">Inventory</RouterLink>
       <RouterLink :to="{ name: 'upgrades' }">Upgrades</RouterLink>
+      <RouterLink :to="{ name: 'staff' }" data-test="nav-staff">Staff</RouterLink>
       <RouterLink :to="{ name: 'standing' }" data-test="nav-standing">Standing</RouterLink>
       <!-- Sprint 69 item 20: the event log is reference material, not a
            permanent wall under the garage's bays. A control in the chrome,

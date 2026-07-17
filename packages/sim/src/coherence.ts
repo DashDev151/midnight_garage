@@ -1,12 +1,16 @@
 import {
   ALL_CAR_PART_IDS,
   ComponentIdSchema,
+  ReputationTierSchema,
   fitmentClassForTier,
   type CarInstance,
   type CarModel,
   type CarPartId,
   type ConditionBand,
+  type EconomyConfig,
   type PartFitmentClass,
+  type ReputationTier,
+  type StaffMember,
 } from '@midnight-garage/content'
 import { carOriginLabel, enforceMaxBillFraction, stockInstanceFor } from './auctions'
 import {
@@ -19,6 +23,7 @@ import {
   planPartRepair,
 } from './bands'
 import { PLAYER_BASE_LABOR_SLOTS } from './constants'
+import { deriveStaffWageYen, introductionFeeYen, staffSkillSum } from './staff'
 import type { SimContext } from './context'
 import { expectedTrueValueYen, sheetGuideValueYen } from './diagnosis'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
@@ -679,6 +684,156 @@ export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRo
         edgePerCauseYen,
       })
     }
+  }
+
+  return rows
+}
+
+/**
+ * Sprint 80 crew model, R5 (maintainer redesign 2026-07-17): the hire
+ * coherence probe, closed-form, one row per reputation tier. Every figure is a
+ * direct call into the real wage formula (`deriveStaffWageYen`), the contract
+ * coefficients, the introduction-fee rule, and the live content rates, so it
+ * can never drift from what the game does - the same standing as
+ * `computeRosterCoherence` above.
+ *
+ * A contract-assigned member MUST net a profit (that is the point of the
+ * assignment), but a modest one, and the same hands billed out must always beat
+ * the retainer. The three bounds, all HARD-gated, measured here and asserted
+ * (exhaustively across each tier's whole budget cube) in `staffProbes.test.ts`:
+ *
+ * - Bound A (net profit), every candidate every tier: `weeklyContract` in
+ *   `[1.05, 1.40] x weeklyWage`. Each row carries the tier's two binding
+ *   candidates - the lowest ratio (nearest 1.05) and the highest (nearest
+ *   1.40); the probe finds them by walking the cube, so it stays correct if the
+ *   coefficients move.
+ * - Bound B (honest work beats the retainer), every candidate:
+ *   `weeklyContract <= HIRE_BOUND_B_BILLABLE_FRACTION x (laborSlotsPerDay x 7 x
+ *   serviceJobs.laborRateYen)`. The row carries the tier's tightest candidate
+ *   (the largest contract at the fewest slots).
+ * - Bound C (first hire reachable), hard-gated only at the entry tier
+ *   (`boundCGated`), disclosed elsewhere: the tier's cheapest candidate's
+ *   introduction fee stays within `HIRE_BOUND_C_STARTING_CASH_FRACTION` of
+ *   `STARTING_CASH_YEN`.
+ */
+export const HIRE_BOUND_A_MIN_RATIO = 1.05
+export const HIRE_BOUND_A_MAX_RATIO = 1.4
+export const HIRE_BOUND_B_BILLABLE_FRACTION = 0.5
+export const HIRE_BOUND_C_STARTING_CASH_FRACTION = 0.15
+
+/** One binding candidate for bound A - a `(stats, laborSlotsPerDay)` corner and
+ * the ratio it produces. */
+export interface HireBoundACandidate {
+  stats: StaffMember['stats']
+  laborSlotsPerDay: number
+  wageYen: number
+  contractWeeklyYen: number
+  /** `contractWeeklyYen / wageYen` - must sit in [1.05, 1.40]. */
+  ratio: number
+}
+
+export interface HireCoherenceRow {
+  tier: ReputationTier
+  /** Bound A's lowest-ratio candidate in the tier (nearest the 1.05 floor). */
+  boundALow: HireBoundACandidate
+  /** Bound A's highest-ratio candidate in the tier (nearest the 1.40 ceiling). */
+  boundAHigh: HireBoundACandidate
+  /** Bound B's tightest candidate: the largest weekly contract at the fewest
+   * labour slots (the smallest billable ceiling). */
+  boundBStats: StaffMember['stats']
+  boundBSlots: number
+  boundBContractWeeklyYen: number
+  boundBCeilingYen: number
+  /** `ceiling - contract`; `>= 0` means honest work still beats the retainer. */
+  boundBMarginYen: number
+  /** Bound C: this tier's cheapest candidate (min stats, 1 slot). */
+  boundCWageYen: number
+  boundCFeeYen: number
+  boundCCapYen: number
+  /** `cap - fee`; `>= 0` means the first hire is affordable. */
+  boundCMarginYen: number
+  /** `true` only for the entry (first) reputation tier - the single tier where
+   * bound C is hard-gated (a day-one shop starts there). */
+  boundCGated: boolean
+}
+
+function weeklyContractYen(stats: StaffMember['stats'], economy: EconomyConfig): number {
+  const { contractBaseYenPerDay, contractPerSkillPointYenPerDay } = economy.staff
+  return 7 * (contractBaseYenPerDay + contractPerSkillPointYenPerDay * staffSkillSum(stats))
+}
+
+export function computeHireCoherence(context: SimContext): HireCoherenceRow[] {
+  const economy = context.economy
+  const { statBudgetByTier } = economy.staff
+  const entryTier = ReputationTierSchema.options[0]!
+  const capC = Math.round(HIRE_BOUND_C_STARTING_CASH_FRACTION * economy.STARTING_CASH_YEN)
+  const rows: HireCoherenceRow[] = []
+
+  for (const tier of ReputationTierSchema.options) {
+    const budget = statBudgetByTier[tier]!
+
+    let low: HireBoundACandidate | null = null
+    let high: HireBoundACandidate | null = null
+    let tightestB: {
+      stats: StaffMember['stats']
+      slots: number
+      contractWeekly: number
+      ceiling: number
+      margin: number
+    } | null = null
+
+    for (let engine = budget.min; engine <= budget.max; engine++) {
+      for (let chassis = budget.min; chassis <= budget.max; chassis++) {
+        for (let body = budget.min; body <= budget.max; body++) {
+          const stats: StaffMember['stats'] = { engine, chassis, body }
+          const contractWeekly = weeklyContractYen(stats, economy)
+          for (const slots of [1, 2] as const) {
+            const wage = deriveStaffWageYen(stats, slots, economy)
+            const ratio = contractWeekly / wage
+            const candidate: HireBoundACandidate = {
+              stats,
+              laborSlotsPerDay: slots,
+              wageYen: wage,
+              contractWeeklyYen: contractWeekly,
+              ratio,
+            }
+            if (low === null || ratio < low.ratio) low = candidate
+            if (high === null || ratio > high.ratio) high = candidate
+
+            const ceiling =
+              HIRE_BOUND_B_BILLABLE_FRACTION * slots * 7 * economy.serviceJobs.laborRateYen
+            const margin = ceiling - contractWeekly
+            if (tightestB === null || margin < tightestB.margin) {
+              tightestB = { stats, slots, contractWeekly, ceiling, margin }
+            }
+          }
+        }
+      }
+    }
+
+    const cheapestStats: StaffMember['stats'] = {
+      engine: budget.min,
+      chassis: budget.min,
+      body: budget.min,
+    }
+    const boundCWageYen = deriveStaffWageYen(cheapestStats, 1, economy)
+    const boundCFeeYen = introductionFeeYen(boundCWageYen, economy)
+
+    rows.push({
+      tier,
+      boundALow: low!,
+      boundAHigh: high!,
+      boundBStats: tightestB!.stats,
+      boundBSlots: tightestB!.slots,
+      boundBContractWeeklyYen: tightestB!.contractWeekly,
+      boundBCeilingYen: tightestB!.ceiling,
+      boundBMarginYen: tightestB!.margin,
+      boundCWageYen,
+      boundCFeeYen,
+      boundCCapYen: capC,
+      boundCMarginYen: capC - boundCFeeYen,
+      boundCGated: tier === entryTier,
+    })
   }
 
   return rows

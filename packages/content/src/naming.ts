@@ -23,8 +23,18 @@ export function resolveCarBrand(model: CarModel, mode: NamingMode = NAMING_MODE)
  * parody-mode resolution. Deliberately case-insensitive substring
  * matching in the leak test - over-flagging is safe, a miss is not.
  */
-export const REAL_BRANDS = ['Honda', 'Toyota', 'Nissan', 'Mazda', 'Suzuki'] as const
+export const REAL_BRANDS = ['Honda', 'Toyota', 'Nissan', 'Mazda', 'Suzuki', 'Subaru'] as const
 
+/**
+ * Also guards the headline registered sub-marks a parody name must never
+ * carry (WRX, GT-R, VTEC, MR2): the parody strings drop them (VRX, GT-N,
+ * Si-V, MR-II) and this list makes the leak test enforce that. `STI` is
+ * deliberately NOT listed: this is a case-insensitive substring guard, and
+ * `sti` occurs inside ordinary English already present in the guarded copy
+ * surface (`still`, `sticks`), so a bare `STI` token would false-fail
+ * legitimate strings. `WRX` covers the only place STI could realistically
+ * leak - the Impreza's full `WRX STI` badge - which the parody already omits.
+ */
 export const REAL_MODEL_TOKENS = [
   'City',
   'Wagon R',
@@ -36,4 +46,8 @@ export const REAL_MODEL_TOKENS = [
   'Savanna',
   'RX-7',
   'Supra',
+  'WRX',
+  'GT-R',
+  'VTEC',
+  'MR2',
 ] as const

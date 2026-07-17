@@ -12,7 +12,7 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'job-completed', jobId: 'job-1', carInstanceId: 'car-1', kind: 'repair-zone' },
   { type: 'job-blocked', jobId: 'job-1', reason: 'slot-occupied' },
   { type: 'labor-overbooked', requestedSlots: 4, availableSlots: 2 },
-  { type: 'service-bay-income', amountYen: 20_000 },
+  { type: 'contract-income', amountYen: 20_000 },
   { type: 'market-heat-shift', modelId: 'honda-city-e-aa', deltaPercent: -3 },
   { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
   { type: 'auction-bid-placed', lotId: 'lot-1', maxBidYen: 110_000 },
@@ -122,6 +122,22 @@ const SAMPLES: DayLogEntry[] = [
   },
   { type: 'mission-lapsed', missionId: 'test-mission-a', reputationLost: 5, reofferOnDay: 12 },
   { type: 'mission-reoffered', missionId: 'test-mission-a' },
+  { type: 'staff-ads-refreshed', count: 3 },
+  {
+    type: 'staff-hired',
+    staffId: 's1',
+    displayName: 'Mori Kenji',
+    weeklyWageYen: 14_000,
+    introFeeYen: 28_000,
+  },
+  {
+    type: 'staff-hired',
+    staffId: 's2',
+    displayName: 'Sato Rei',
+    weeklyWageYen: 12_000,
+    introFeeYen: 0,
+  },
+  { type: 'staff-dismissed', staffId: 's1', displayName: 'Mori Kenji' },
 ]
 
 describe('describeLogEntry', () => {

@@ -34,6 +34,7 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     ownedCars: [],
     partInventory: [],
     staff: [],
+    staffAds: [],
     jobs: [],
     marketHeat: Object.fromEntries(context.models.map((model) => [model.id, 100])),
     marketLedger: { lotSupply: {}, playerSales: {} },

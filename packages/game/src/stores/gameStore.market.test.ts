@@ -175,6 +175,10 @@ describe('market: bidding', () => {
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')!
     const carsBefore = game.ownedCarCount
+    // Sprint 81's 25-model pool can put a lot at the local yard whose buyout
+    // price exceeds starting cash; affordability is not what this test
+    // exercises, so grant the buyout price outright (the Sprint 59 pattern).
+    game.devGiveCash(game.lotDetail(lot.id)!.buyoutPriceYen)
     game.buyout(lot.id)
     expect(game.ownedCarCount).toBe(carsBefore + 1)
     expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)

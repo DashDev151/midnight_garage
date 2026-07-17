@@ -4,42 +4,42 @@ One row per strategy per checkpoint day, across every seeded career (see `career
 
 | Strategy | Day | Cash (p10) | Cash (median) | Cash (p90) | Cars owned (median) | Reputation pts (median) |
 |---|---|---|---|---|---|---|
-| balanced-player | 25 | Y58,003 | Y120,654 | Y200,520 | 1.0 | 0.0 |
-| balanced-player | 40 | Y18,003 | Y78,284 | Y131,481 | 1.0 | 0.0 |
-| balanced-player | 70 | Y-81,997 | Y-21,716 | Y31,481 | 1.0 | 0.0 |
-| balanced-player | 100 | Y-161,997 | Y-101,716 | Y-48,519 | 1.0 | 0.0 |
-| cautious-restorer | 25 | Y20,232 | Y85,254 | Y147,829 | 1.0 | 0.0 |
-| cautious-restorer | 40 | Y-19,768 | Y45,046 | Y105,433 | 1.0 | 0.0 |
-| cautious-restorer | 70 | Y-119,768 | Y-54,954 | Y5,433 | 1.0 | 0.0 |
-| cautious-restorer | 100 | Y-199,768 | Y-134,954 | Y-74,567 | 1.0 | 0.0 |
-| competent-policy | 25 | Y61,607 | Y140,506 | Y261,014 | 1.0 | 0.0 |
-| competent-policy | 40 | Y21,878 | Y92,608 | Y200,000 | 1.0 | 0.0 |
-| competent-policy | 70 | Y-78,122 | Y-7,604 | Y77,179 | 1.0 | 0.0 |
-| competent-policy | 100 | Y-158,122 | Y-87,604 | Y-1,791 | 1.0 | 0.0 |
-| flipper | 25 | Y36,946 | Y92,681 | Y172,493 | 1.0 | 0.0 |
-| flipper | 40 | Y554 | Y57,986 | Y136,818 | 1.0 | 0.0 |
-| flipper | 70 | Y-99,446 | Y-36,118 | Y55,432 | 1.0 | 0.0 |
-| flipper | 100 | Y-179,446 | Y-116,118 | Y-13,454 | 1.0 | 0.0 |
-| handyman | 25 | Y44,924 | Y113,724 | Y173,654 | 1.0 | 0.0 |
-| handyman | 40 | Y4,924 | Y71,670 | Y120,710 | 1.0 | 0.0 |
-| handyman | 70 | Y-95,076 | Y-28,330 | Y20,710 | 1.0 | 0.0 |
-| handyman | 100 | Y-175,076 | Y-108,330 | Y-59,290 | 1.0 | 0.0 |
-| investor | 25 | Y17,669 | Y88,938 | Y150,499 | 1.0 | 0.0 |
-| investor | 40 | Y-22,331 | Y46,577 | Y95,738 | 1.0 | 0.0 |
-| investor | 70 | Y-122,331 | Y-53,423 | Y-4,262 | 1.0 | 0.0 |
-| investor | 100 | Y-202,331 | Y-133,423 | Y-84,262 | 1.0 | 0.0 |
+| balanced-player | 25 | Y50,446 | Y111,811 | Y240,000 | 1.0 | 0.0 |
+| balanced-player | 40 | Y9,551 | Y67,418 | Y127,057 | 1.0 | 0.0 |
+| balanced-player | 70 | Y-90,449 | Y-32,582 | Y27,057 | 1.0 | 0.0 |
+| balanced-player | 100 | Y-170,449 | Y-112,582 | Y-52,943 | 1.0 | 0.0 |
+| cautious-restorer | 25 | Y26,079 | Y78,848 | Y144,481 | 1.0 | 0.0 |
+| cautious-restorer | 40 | Y-13,921 | Y38,678 | Y102,045 | 1.0 | 0.0 |
+| cautious-restorer | 70 | Y-113,921 | Y-61,322 | Y2,045 | 1.0 | 0.0 |
+| cautious-restorer | 100 | Y-193,921 | Y-141,322 | Y-77,955 | 1.0 | 0.0 |
+| competent-policy | 25 | Y75,820 | Y152,606 | Y267,731 | 1.0 | 0.0 |
+| competent-policy | 40 | Y33,775 | Y97,393 | Y228,118 | 1.0 | 0.0 |
+| competent-policy | 70 | Y-66,225 | Y-4,848 | Y134,177 | 1.0 | 0.0 |
+| competent-policy | 100 | Y-146,225 | Y-84,848 | Y75,899 | 1.0 | 0.0 |
+| flipper | 25 | Y43,191 | Y96,077 | Y175,716 | 1.0 | 0.0 |
+| flipper | 40 | Y5,674 | Y57,965 | Y135,708 | 1.0 | 0.0 |
+| flipper | 70 | Y-94,326 | Y-39,141 | Y45,943 | 1.0 | 0.0 |
+| flipper | 100 | Y-174,326 | Y-119,141 | Y-31,960 | 1.0 | 0.0 |
+| handyman | 25 | Y43,312 | Y105,212 | Y191,732 | 1.0 | 0.0 |
+| handyman | 40 | Y2,815 | Y59,002 | Y113,616 | 1.0 | 0.0 |
+| handyman | 70 | Y-97,185 | Y-40,998 | Y13,616 | 1.0 | 0.0 |
+| handyman | 100 | Y-177,185 | Y-120,998 | Y-66,384 | 1.0 | 0.0 |
+| investor | 25 | Y18,065 | Y80,439 | Y162,713 | 1.0 | 0.0 |
+| investor | 40 | Y-22,249 | Y34,560 | Y89,060 | 1.0 | 0.0 |
+| investor | 70 | Y-122,249 | Y-65,440 | Y-10,940 | 1.0 | 0.0 |
+| investor | 100 | Y-202,249 | Y-145,440 | Y-90,940 | 1.0 | 0.0 |
 | passive-grinder | 25 | Y240,000 | Y240,000 | Y240,000 | 0.0 | 0.0 |
 | passive-grinder | 40 | Y200,000 | Y200,000 | Y200,000 | 0.0 | 0.0 |
 | passive-grinder | 70 | Y100,000 | Y100,000 | Y100,000 | 0.0 | 0.0 |
 | passive-grinder | 100 | Y20,000 | Y20,000 | Y20,000 | 0.0 | 0.0 |
-| random | 25 | Y41,446 | Y108,762 | Y164,307 | 1.0 | 0.0 |
-| random | 40 | Y1,446 | Y68,228 | Y117,988 | 1.0 | 0.0 |
-| random | 70 | Y-98,554 | Y-31,772 | Y17,988 | 1.0 | 0.0 |
-| random | 100 | Y-178,554 | Y-111,772 | Y-62,012 | 1.0 | 0.0 |
-| service-grinder | 25 | Y240,000 | Y254,898 | Y288,010 | 0.0 | 0.0 |
-| service-grinder | 40 | Y200,000 | Y227,148 | Y268,552 | 0.0 | 0.0 |
-| service-grinder | 70 | Y114,967 | Y157,291 | Y200,313 | 0.0 | 0.0 |
-| service-grinder | 100 | Y62,338 | Y106,226 | Y151,700 | 0.0 | 0.0 |
+| random | 25 | Y44,548 | Y100,181 | Y166,546 | 1.0 | 0.0 |
+| random | 40 | Y4,620 | Y56,186 | Y111,199 | 1.0 | 0.0 |
+| random | 70 | Y-95,380 | Y-43,814 | Y11,199 | 1.0 | 0.0 |
+| random | 100 | Y-175,380 | Y-123,814 | Y-68,801 | 1.0 | 0.0 |
+| service-grinder | 25 | Y240,000 | Y254,517 | Y285,259 | 0.0 | 0.0 |
+| service-grinder | 40 | Y200,000 | Y226,474 | Y264,581 | 0.0 | 0.0 |
+| service-grinder | 70 | Y114,180 | Y151,328 | Y195,703 | 0.0 | 0.0 |
+| service-grinder | 100 | Y55,054 | Y99,215 | Y142,030 | 0.0 | 0.0 |
 
 ## Days-to-tier (Sprint 23, competent-policy probe)
 
@@ -59,7 +59,7 @@ Day-100 top specialty group (most common across seeds) and its median point valu
 |---|---|---|
 | balanced-player | engine | 0.0 |
 | cautious-restorer | engine | 0.0 |
-| competent-policy | engine | 4.0 |
+| competent-policy | engine | 6.0 |
 | flipper | engine | 0.0 |
 | handyman | engine | 0.0 |
 | investor | engine | 0.0 |
@@ -77,14 +77,29 @@ Read **Sensible margin** first (Sprint 66). Since Law 1 gained a per-tier expect
 
 | Model | Class | Clean value | Worst bill | Ratio | Sensible margin | Mint flip | Wage | xRent | Consumables share |
 |---|---|---|---|---|---|---|---|---|---|
+| honda-beat-pp1 | shitbox | Y360,000 | Y93,010 | 25.8% | Y124,309 (34.5%) | Y100,155 | Y-9,772 | 0.57x | 3.0% |
 | honda-city-e-aa | shitbox | Y135,000 | Y66,840 | 49.5% | Y34,309 (25.4%) | Y3,202 | Y-9,772 | 0.57x | 8.1% |
+| honda-city-turbo-ii-aa | shitbox | Y315,000 | Y99,760 | 31.7% | Y105,364 (33.4%) | Y78,510 | Y-9,600 | 0.60x | 3.5% |
 | honda-civic-sir2-eg6 | common | Y487,500 | Y267,200 | 54.8% | Y92,995 (19.1%) | Y124,348 | Y69,838 | 3.01x | 8.9% |
+| honda-crx-sir-ef8 | common | Y420,000 | Y104,600 | 24.9% | Y27,520 (6.6%) | Y113,608 | Y69,838 | 3.01x | 10.4% |
+| honda-prelude-si-vtec-bb4 | common | Y600,000 | Y267,200 | 44.5% | Y150,808 (25.1%) | Y169,348 | Y69,838 | 3.01x | 7.2% |
 | mazda-rx7-fd3s | rare | Y2,400,000 | Y997,000 | 41.5% | Y787,800 (32.8%) | Y860,300 | Y377,429 | 8.77x | 4.5% |
 | mazda-savanna-rx7-fc3s | uncommon | Y1,350,000 | Y638,080 | 47.3% | Y360,723 (26.7%) | Y443,475 | Y145,570 | 5.02x | 5.2% |
 | nissan-180sx-rps13 | uncommon | Y825,000 | Y456,320 | 55.3% | Y79,418 (9.6%) | Y251,651 | Y145,570 | 5.02x | 8.4% |
+| nissan-cefiro-a31 | uncommon | Y825,000 | Y456,320 | 55.3% | Y79,418 (9.6%) | Y251,651 | Y145,570 | 5.02x | 8.4% |
+| nissan-fairlady-z-z32 | rare | Y2,175,000 | Y997,000 | 45.8% | Y697,800 (32.1%) | Y770,300 | Y377,429 | 8.77x | 5.0% |
 | nissan-silvia-ks-s14 | uncommon | Y1,125,000 | Y638,080 | 56.7% | Y270,723 (24.1%) | Y353,475 | Y145,570 | 5.02x | 6.2% |
+| nissan-silvia-s13 | uncommon | Y825,000 | Y456,320 | 55.3% | Y79,418 (9.6%) | Y251,651 | Y145,570 | 5.02x | 8.4% |
+| nissan-skyline-gtr-bnr32 | rare | Y2,700,000 | Y997,000 | 36.9% | Y907,800 (33.6%) | Y980,300 | Y377,429 | 8.77x | 4.0% |
+| nissan-sunny-b12 | shitbox | Y135,000 | Y66,840 | 49.5% | Y34,309 (25.4%) | Y3,202 | Y-9,772 | 0.57x | 8.1% |
+| subaru-impreza-wrx-sti-gc8 | uncommon | Y1,350,000 | Y638,080 | 47.3% | Y360,723 (26.7%) | Y443,475 | Y145,570 | 5.02x | 5.2% |
+| suzuki-alto-works-ha21s | shitbox | Y255,000 | Y99,760 | 39.1% | Y81,364 (31.9%) | Y54,510 | Y-9,600 | 0.60x | 4.3% |
 | suzuki-wagon-r-ct21s | shitbox | Y165,000 | Y93,010 | 56.4% | Y46,309 (28.1%) | Y22,155 | Y-9,772 | 0.57x | 6.6% |
+| toyota-aristo-30v-jzs147 | rare | Y2,100,000 | Y997,000 | 47.5% | Y667,800 (31.8%) | Y740,300 | Y377,429 | 8.77x | 5.2% |
+| toyota-carina-at150 | shitbox | Y150,000 | Y66,840 | 44.6% | Y40,309 (26.9%) | Y9,202 | Y-9,772 | 0.57x | 7.2% |
 | toyota-chaser-tourer-v-jzx90 | uncommon | Y1,200,000 | Y638,080 | 53.2% | Y300,723 (25.1%) | Y383,475 | Y145,570 | 5.02x | 5.8% |
+| toyota-mr2-sw20 | uncommon | Y1,050,000 | Y456,320 | 43.5% | Y240,723 (22.9%) | Y341,651 | Y145,570 | 5.02x | 6.6% |
+| toyota-sera-exy10 | shitbox | Y337,500 | Y93,010 | 27.6% | Y115,309 (34.2%) | Y91,155 | Y-9,772 | 0.57x | 3.2% |
 | toyota-sprinter-trueno-ae86 | uncommon | Y1,050,000 | Y594,880 | 56.7% | Y250,515 (23.9%) | Y330,387 | Y132,598 | 4.81x | 6.6% |
 | toyota-supra-rz-jza80 | rare | Y3,150,000 | Y997,000 | 31.7% | Y1,087,800 (34.5%) | Y1,160,300 | Y377,429 | 8.77x | 3.5% |
 
@@ -106,6 +121,18 @@ Per symptom x fitment tier, on a clean representative car: the apparent (room-sh
 | crunch-into-second | rare | Y3,360,000 | Y3,261,000 | Y3,251,100 | Y9,900 | worn-synchros +26,400; chewed-gearset -14,850 |
 | crunch-into-second | shitbox | Y189,000 | Y185,150 | Y184,765 | Y385 | worn-synchros +2,035; chewed-gearset -2,090 |
 | crunch-into-second | uncommon | Y1,470,000 | Y1,411,920 | Y1,406,112 | Y5,808 | worn-synchros +16,368; chewed-gearset -10,032 |
+| damp-passenger-footwell | common | Y682,500 | Y665,426 | Y663,719 | Y1,707 | heater-matrix-weep +15,561; rotten-bulkhead-seam -30,619 |
+| damp-passenger-footwell | rare | Y3,360,000 | Y3,308,775 | Y3,303,653 | Y5,123 | heater-matrix-weep +45,848; rotten-bulkhead-seam -89,902 |
+| damp-passenger-footwell | shitbox | Y189,000 | Y186,562 | Y186,318 | Y244 | heater-matrix-weep +2,402; rotten-bulkhead-seam -4,793 |
+| damp-passenger-footwell | uncommon | Y1,470,000 | Y1,439,558 | Y1,436,514 | Y3,044 | heater-matrix-weep +27,438; rotten-bulkhead-seam -53,874 |
+| diff-whine | common | Y682,500 | Y666,550 | Y664,955 | Y1,595 | worn-diff-bearings +4,895; chewed-ring-pinion -3,355 |
+| diff-whine | rare | Y3,360,000 | Y3,310,500 | Y3,305,550 | Y4,950 | worn-diff-bearings +13,200; chewed-ring-pinion -7,425 |
+| diff-whine | shitbox | Y189,000 | Y187,068 | Y186,875 | Y193 | worn-diff-bearings +1,021; chewed-ring-pinion -1,049 |
+| diff-whine | uncommon | Y1,470,000 | Y1,440,960 | Y1,438,056 | Y2,904 | worn-diff-bearings +8,184; chewed-ring-pinion -5,016 |
+| exhaust-rasp | common | Y682,500 | Y675,250 | Y674,525 | Y725 | blown-flex-joint +2,225; cracked-manifold -1,525 |
+| exhaust-rasp | rare | Y3,360,000 | Y3,337,500 | Y3,335,250 | Y2,250 | blown-flex-joint +6,000; cracked-manifold -3,375 |
+| exhaust-rasp | shitbox | Y189,000 | Y188,118 | Y188,030 | Y88 | blown-flex-joint +466; cracked-manifold -479 |
+| exhaust-rasp | uncommon | Y1,470,000 | Y1,456,800 | Y1,455,480 | Y1,320 | blown-flex-joint +3,720; cracked-manifold -2,280 |
 | non-starter | common | Y682,500 | Y668,798 | Y667,428 | Y1,370 | flat-battery +10,472; fuel-pump +8,232; seized-engine -45,728 |
 | non-starter | rare | Y3,360,000 | Y3,318,675 | Y3,314,543 | Y4,133 | flat-battery +30,458; fuel-pump +25,208; seized-engine -134,542 |
 | non-starter | shitbox | Y189,000 | Y187,090 | Y186,898 | Y191 | flat-battery +1,702; fuel-pump +1,067; seized-engine -7,098 |
@@ -118,6 +145,14 @@ Per symptom x fitment tier, on a clean representative car: the apparent (room-sh
 | pulls-under-braking | rare | Y3,360,000 | Y3,334,388 | Y3,331,826 | Y2,561 | glazed-pads -1,826; seized-calliper +7,924 |
 | pulls-under-braking | shitbox | Y189,000 | Y188,094 | Y188,004 | Y91 | glazed-pads +196; seized-calliper -39 |
 | pulls-under-braking | uncommon | Y1,470,000 | Y1,453,997 | Y1,452,396 | Y1,600 | glazed-pads -1,596; seized-calliper +5,508 |
+| quarter-panel-filler | common | Y682,500 | Y665,320 | Y663,602 | Y1,718 | panel-respray +12,458; structural-rail-repair -30,502 |
+| quarter-panel-filler | rare | Y3,360,000 | Y3,307,688 | Y3,302,456 | Y5,231 | panel-respray +36,544; structural-rail-repair -88,706 |
+| quarter-panel-filler | shitbox | Y189,000 | Y186,711 | Y186,482 | Y229 | panel-respray +1,958; structural-rail-repair -4,957 |
+| quarter-panel-filler | uncommon | Y1,470,000 | Y1,439,088 | Y1,435,997 | Y3,091 | panel-respray +21,907; structural-rail-repair -53,357 |
+| sagging-spring | common | Y682,500 | Y678,650 | Y678,265 | Y385 | sagging-springs +1,015; broken-spring -1,085 |
+| sagging-spring | rare | Y3,360,000 | Y3,347,925 | Y3,346,718 | Y1,208 | sagging-springs +2,783; broken-spring -2,467 |
+| sagging-spring | shitbox | Y189,000 | Y188,563 | Y188,519 | Y44 | sagging-springs +201; broken-spring -324 |
+| sagging-spring | uncommon | Y1,470,000 | Y1,462,944 | Y1,462,238 | Y706 | sagging-springs +1,714; broken-spring -1,646 |
 | smokes-on-startup | common | Y682,500 | Y659,395 | Y657,085 | Y2,311 | valve-seals +9,316; tired-rings -8,784; head-gasket -1,184 |
 | smokes-on-startup | rare | Y3,360,000 | Y3,288,938 | Y3,281,831 | Y7,106 | valve-seals +25,669; tired-rings -23,081; head-gasket -581 |
 | smokes-on-startup | shitbox | Y189,000 | Y186,074 | Y185,781 | Y293 | valve-seals +1,819; tired-rings -1,956; head-gasket -806 |
@@ -126,6 +161,10 @@ Per symptom x fitment tier, on a clean representative car: the apparent (room-sh
 | tick-at-idle | rare | Y3,360,000 | Y3,292,875 | Y3,286,163 | Y6,713 | lifter-tick +21,338; rod-knock -27,412 |
 | tick-at-idle | shitbox | Y189,000 | Y186,468 | Y186,214 | Y253 | lifter-tick +1,386; rod-knock -2,389 |
 | tick-at-idle | uncommon | Y1,470,000 | Y1,430,688 | Y1,426,757 | Y3,931 | lifter-tick +13,003; rod-knock -17,237 |
+| wheel-vibration | common | Y682,500 | Y659,220 | Y656,892 | Y2,328 | worn-tyres -7,392; buckled-rim +14,208; worn-driveshaft +14,208 |
+| wheel-vibration | rare | Y3,360,000 | Y3,299,438 | Y3,293,381 | Y6,056 | worn-tyres -15,881; buckled-rim +32,869; worn-driveshaft +32,869 |
+| wheel-vibration | shitbox | Y189,000 | Y187,014 | Y186,815 | Y199 | worn-tyres -15; buckled-rim +460; worn-driveshaft +460 |
+| wheel-vibration | uncommon | Y1,470,000 | Y1,431,888 | Y1,428,077 | Y3,811 | worn-tyres -10,877; buckled-rim +21,763; worn-driveshaft +21,763 |
 | wont-idle | common | Y682,500 | Y676,215 | Y675,587 | Y629 | vacuum-leak +3,464; tired-ecu -686; worn-cams -4,486 |
 | wont-idle | rare | Y3,360,000 | Y3,340,875 | Y3,338,963 | Y1,913 | vacuum-leak +9,788; tired-ecu -1,462; worn-cams -12,712 |
 | wont-idle | shitbox | Y189,000 | Y188,158 | Y188,074 | Y84 | vacuum-leak +622; tired-ecu -224; worn-cams -799 |
@@ -137,14 +176,29 @@ Whole-car sale value against parting out the same clean car (haircut `economy.te
 
 | Model | Whole sale | Parted yield | Strip labour | Bill/clean | Parting wins? |
 |---|---|---|---|---|---|
+| honda-beat-pp1 | Y504,000 | Y149,235 | 0 slots | 25.8% | no |
 | honda-city-e-aa | Y189,000 | Y134,235 | 0 slots | 49.5% | yes |
+| honda-city-turbo-ii-aa | Y441,000 | Y158,610 | 0 slots | 31.7% | no |
 | honda-civic-sir2-eg6 | Y682,500 | Y533,000 | 0 slots | 54.8% | yes |
+| honda-crx-sir-ef8 | Y588,000 | Y528,500 | 0 slots | 24.9% | yes |
+| honda-prelude-si-vtec-bb4 | Y840,000 | Y540,500 | 0 slots | 44.5% | yes |
 | mazda-rx7-fd3s | Y3,360,000 | Y1,535,000 | 0 slots | 41.5% | no |
 | mazda-savanna-rx7-fc3s | Y1,890,000 | Y970,000 | 0 slots | 47.3% | no |
 | nissan-180sx-rps13 | Y1,155,000 | Y935,000 | 0 slots | 55.3% | yes |
+| nissan-cefiro-a31 | Y1,155,000 | Y935,000 | 0 slots | 55.3% | yes |
+| nissan-fairlady-z-z32 | Y3,045,000 | Y1,520,000 | 0 slots | 45.8% | no |
 | nissan-silvia-ks-s14 | Y1,575,000 | Y955,000 | 0 slots | 56.7% | no |
+| nissan-silvia-s13 | Y1,155,000 | Y935,000 | 0 slots | 55.3% | yes |
+| nissan-skyline-gtr-bnr32 | Y3,780,000 | Y1,555,000 | 0 slots | 36.9% | no |
+| nissan-sunny-b12 | Y189,000 | Y134,235 | 0 slots | 49.5% | yes |
+| subaru-impreza-wrx-sti-gc8 | Y1,890,000 | Y970,000 | 0 slots | 47.3% | no |
+| suzuki-alto-works-ha21s | Y357,000 | Y154,610 | 0 slots | 39.1% | no |
 | suzuki-wagon-r-ct21s | Y231,000 | Y136,235 | 0 slots | 56.4% | no |
+| toyota-aristo-30v-jzs147 | Y2,940,000 | Y1,515,000 | 0 slots | 47.5% | no |
+| toyota-carina-at150 | Y210,000 | Y135,235 | 0 slots | 44.6% | yes |
 | toyota-chaser-tourer-v-jzx90 | Y1,680,000 | Y960,000 | 0 slots | 53.2% | no |
+| toyota-mr2-sw20 | Y1,470,000 | Y950,000 | 0 slots | 43.5% | yes |
+| toyota-sera-exy10 | Y472,500 | Y147,735 | 0 slots | 27.6% | no |
 | toyota-sprinter-trueno-ae86 | Y1,470,000 | Y870,800 | 0 slots | 56.7% | no |
 | toyota-supra-rz-jza80 | Y4,410,000 | Y1,585,000 | 0 slots | 31.7% | no |
 
@@ -169,9 +223,9 @@ Hammer price as a fraction of anchorValueYen, bucketed, across every lot a bot b
 
 | Bucket | Share | Target |
 |---|---|---|
-| steal | 4.4% | 10%-25% |
-| mid | 20.5% | 50%-100% |
-| frenzy | 75.1% | 5%-15% |
+| steal | 3.6% | 10%-25% |
+| mid | 19.4% | 50%-100% |
+| frenzy | 76.9% | 5%-15% |
 
 ## Buyout vs. bid (external review 2026-07, finding 2)
 

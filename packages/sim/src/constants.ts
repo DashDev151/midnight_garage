@@ -64,25 +64,6 @@ export const GRADE_REPUTATION_MULTIPLIER: Readonly<Record<Grade, number>> = {
 }
 
 /**
- * v1 rule (GDD 3.2 "base 2, more with skill"): a staff member with Hustle
- * at or above this threshold grants +1 labor slot/day. Facility-driven
- * bonuses (lift, dyno, ...) are the Sprint 14 equipment-tier system.
- */
-export const STAFF_HUSTLE_BONUS_THRESHOLD = 4
-
-/** Service-bay income scales with reputation (GDD 3.4). First-pass multipliers. */
-export const REPUTATION_INCOME_MULTIPLIER: Readonly<Record<ReputationTier, number>> = {
-  unknown: 1.0,
-  local: 1.1,
-  known: 1.25,
-  respected: 1.5,
-  legend: 2.0,
-}
-
-/** Yen of daily service-bay income per point of a staff member's Hustle stat (v1, GDD 3.4). */
-export const SERVICE_BAY_YEN_PER_HUSTLE = 3_000
-
-/**
  * Sprint 34: generation's `age -> mileage -> condition` chain needs a concrete
  * calendar age (`currentYear - car.year`) to pick the mileage range;
  * `generateAuctionCarInstance`'s `currentYear` defaults to `Infinity` for

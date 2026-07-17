@@ -13,6 +13,7 @@ import provenanceJson from '../data/provenance.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
 import specialtyCopyJson from '../data/specialtyCopy.json'
+import staffCandidatesJson from '../data/staffCandidates.json'
 import storyMissionsJson from '../data/storyMissions.json'
 import symptomsJson from '../data/symptoms.json'
 import techniquesJson from '../data/techniques.json'
@@ -40,7 +41,7 @@ import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJ
 import { SpecialtyCopySchema } from './specialtyCopy'
 import { StoryMissionsSchema, type StoryMission } from './storyMission'
 import { SymptomsSchema } from './symptom'
-import { TraitDefinitionsSchema } from './staff'
+import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
 
@@ -97,6 +98,11 @@ export const PARTS_TAXONOMY: CarPartTaxonomyEntry[] = CarPartTaxonomySchema.pars
 
 export const BUYERS = BuyersSchema.parse(buyersJson)
 export const TRAITS = TraitDefinitionsSchema.parse(traitsJson)
+/**
+ * Sprint 80 (staff I): the job-ad candidate name and bio pools the seeded
+ * candidate roller (`sim/staff.ts`) draws from.
+ */
+export const STAFF_CANDIDATES = StaffCandidatePoolSchema.parse(staffCandidatesJson)
 export const SERVICE_JOB_TYPES = ServiceJobTypesSchema.parse(serviceJobTemplatesJson)
 export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(
   serviceJobCustomerNamesJson,

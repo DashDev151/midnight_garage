@@ -35,8 +35,13 @@ describe('referential integrity', () => {
 
   it('every car book value falls inside its tier range (docs/economy-v0.md)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
+    // A desirable kei (Beat, Alto Works) is Kei-tagged, so it takes the
+    // shitbox fitment class regardless of its market value, and a cult MR kei
+    // roadster clears the old 400k economy-v0.md sanity cap. The ceiling is
+    // widened to 500_000 to hold those cars while still catching a genuinely
+    // mispriced shitbox.
     const ranges: Record<RarityTier, [number, number]> = {
-      shitbox: [80_000, 400_000],
+      shitbox: [80_000, 500_000],
       common: [300_000, 1_200_000],
       uncommon: [800_000, 2_500_000],
       rare: [2_000_000, 6_000_000],

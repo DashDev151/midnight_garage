@@ -36,6 +36,7 @@ function stateOnDay(
     ownedCars: [],
     partInventory: [],
     staff: [],
+    staffAds: [],
     jobs: [],
     marketHeat,
     marketLedger,

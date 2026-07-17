@@ -4,6 +4,7 @@ import {
   LAP_REFERENCES,
   PERSONAS,
   PROVENANCE_POOL,
+  STAFF_CANDIDATES,
   STORY_MISSIONS,
   SYMPTOMS,
 } from '../src/data'
@@ -107,6 +108,14 @@ function findOffenses(): string[] {
   for (const entry of LAP_REFERENCES) {
     offenses.push(...offensesIn(`lapReferences.json:${entry.id}.name`, entry.name))
   }
+
+  // Sprint 80 (staff I): the job-ad candidate name and bio pools.
+  STAFF_CANDIDATES.names.forEach((name, i) => {
+    offenses.push(...offensesIn(`staffCandidates.json:names[${i}]`, name))
+  })
+  STAFF_CANDIDATES.bios.forEach((bio, i) => {
+    offenses.push(...offensesIn(`staffCandidates.json:bios[${i}]`, bio))
+  })
 
   return offenses
 }

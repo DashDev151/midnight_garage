@@ -121,6 +121,25 @@ export const StoryMissionRecordSchema = z.object({
 
 export type StoryMissionRecord = z.infer<typeof StoryMissionRecordSchema>
 
+/**
+ * Sprint 80 (staff I): one live job ad on the Staff Office board. `candidate`
+ * is a fully-rolled `StaffMember` (stats within the hiring tier's budget, wage
+ * derived by formula) - hiring simply moves it into `GameState.staff`
+ * unchanged. `bio` is drawn from `staffCandidates.json` for the ad's own
+ * flavour and is not part of the persisted staff member (the roster shows the
+ * trait copy instead). `postedOnDay` drives expiry (`economy.staff.adExpiryDays`)
+ * and the "posted / expires" line on the ad card. At most
+ * `economy.staff.maxOpenAds` live at once; refreshed on the weekly tick
+ * (`advanceDay`).
+ */
+export const StaffAdSchema = z.object({
+  candidate: StaffMemberSchema,
+  bio: z.string().min(1),
+  postedOnDay: z.number().int().positive(),
+})
+
+export type StaffAd = z.infer<typeof StaffAdSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -150,6 +169,13 @@ export const GameStateSchema = z.object({
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
   staff: z.array(StaffMemberSchema).default([]),
+  /**
+   * Sprint 80 (staff I): the live job-ad board. Refreshed on the weekly tick
+   * (`advanceDay`): expired ads drop, then seeded rolls top the board back up
+   * to `economy.staff.maxOpenAds`. Empty at day 1 (a fresh career sees its
+   * first ads on the first weekly boundary). Purely additive.
+   */
+  staffAds: z.array(StaffAdSchema).default([]),
   jobs: z.array(JobSchema).default([]),
   /** Demand index per CarModel id, base 100 (GDD 6.4). */
   marketHeat: z.record(z.string(), z.number()).default({}),
@@ -382,7 +408,10 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     requestedSlots: z.number().int().positive(),
     availableSlots: z.number().int().nonnegative(),
   }),
-  z.object({ type: z.literal('service-bay-income'), amountYen: z.number().int() }),
+  /** Sprint 80 crew model (R3): the daily fleet-contract retainer earned by
+   * `contract`-assigned staff (`serviceBay.ts`), replacing the removed passive
+   * service-bay income. Folded into the morning report's earned-money split. */
+  z.object({ type: z.literal('contract-income'), amountYen: z.number().int() }),
   z.object({
     type: z.literal('market-heat-shift'),
     modelId: z.string().min(1),
@@ -714,6 +743,31 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('mission-reoffered'),
     missionId: z.string().min(1),
+  }),
+  /** Sprint 80 (staff I): the weekly job-ad refresh posted fresh candidates
+   * to the Staff Office board (`count` new ads). Swallowed by the morning
+   * report like an auction-catalog refresh - the player reads the board
+   * itself. */
+  z.object({
+    type: z.literal('staff-ads-refreshed'),
+    count: z.number().int().positive(),
+  }),
+  /** Sprint 80 (staff I): `resolveHireStaff` took a candidate off the board
+   * and onto the payroll. `introFeeYen` (crew-model R6a) is the one-off
+   * introduction fee charged to cash at hire (0 when disabled). */
+  z.object({
+    type: z.literal('staff-hired'),
+    staffId: z.string().min(1),
+    displayName: z.string().min(1),
+    weeklyWageYen: z.number().int().nonnegative(),
+    introFeeYen: z.number().int().nonnegative(),
+  }),
+  /** Sprint 80 (staff I): `resolveDismissStaff` let a member go - immediate,
+   * no severance (GDD section 7: no morale sim). */
+  z.object({
+    type: z.literal('staff-dismissed'),
+    staffId: z.string().min(1),
+    displayName: z.string().min(1),
   }),
 ])
 

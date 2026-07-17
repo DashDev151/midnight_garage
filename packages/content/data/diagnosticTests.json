@@ -10,5 +10,7 @@
   { "id": "undercarriage-look", "minutes": 15 },
   { "id": "wheel-off-look", "minutes": 15 },
   { "id": "coolant-check", "minutes": 10 },
-  { "id": "warm-idle-watch", "minutes": 20 }
+  { "id": "warm-idle-watch", "minutes": 20 },
+  { "id": "wheel-balance-check", "minutes": 15 },
+  { "id": "ride-height-check", "minutes": 10 }
 ]

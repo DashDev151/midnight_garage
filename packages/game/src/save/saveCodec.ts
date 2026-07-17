@@ -462,8 +462,21 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * `vacatedBaseline` absent (`undefined`), which reads identically to "no
  * baseline yet" - exactly correct, since no pre-v36 save could have recorded
  * one. The version bump alone is still required (Save law).
+ * v36 -> v37 (Sprint 80, staff I): `GameState` gained `staffAds` (default
+ * `[]`) - the pure additive case, no `MIGRATIONS[36]` entry. A pre-v37 save
+ * never had a job-ad board (the concept did not exist), so an empty array is
+ * exactly correct - the next weekly `advanceDay` boundary posts the first
+ * ads fresh. The version bump alone is still required (Save law).
+ * v37 -> v38 (Sprint 80 crew-model rework): `StaffMemberSchema` changed shape -
+ * hustle removed from `stats`, `laborSlotsPerDay`/`assignment`/
+ * `pendingAssignment` added - and the `service-bay-income` day-log entry was
+ * renamed `contract-income`. NOT purely additive, so under the Save law this
+ * would need a migration; suspended by directive 19 (no players, no old saves
+ * pre-launch), a pre-v38 save with staff simply fails `StaffMemberSchema.parse`
+ * and falls back to a new game, no `MIGRATIONS[37]` entry. The version bump
+ * alone is required so a pre-v38 client never silently misreads a v38 save.
  */
-export const SAVE_VERSION = 36
+export const SAVE_VERSION = 38
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

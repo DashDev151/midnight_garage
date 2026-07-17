@@ -6,7 +6,10 @@ import { testSpecialty, testToolTiers } from './testFixtures'
 const staffMember: StaffMember = {
   id: 'staff-0001',
   displayName: 'Test Mechanic',
-  stats: { engine: 1, chassis: 1, body: 1, hustle: 1 },
+  stats: { engine: 1, chassis: 1, body: 1 },
+  laborSlotsPerDay: 1,
+  assignment: 'bench',
+  pendingAssignment: null,
   weeklyWageYen: 45_000,
   trait: 'perfectionist',
 }
@@ -24,6 +27,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     ownedCars: [],
     partInventory: [],
     staff,
+    staffAds: [],
     jobs: [],
     marketHeat: {},
     activeAuctionLots: [],

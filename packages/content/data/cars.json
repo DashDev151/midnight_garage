@@ -168,5 +168,260 @@
     "tier": "rare",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 4200000
+  },
+  {
+    "id": "toyota-carina-at150",
+    "displayName": "Toyota Carina (AT150)",
+    "brand": "Toyota",
+    "parodyName": "Carena (AT150)",
+    "parodyBrand": "Toyoda",
+    "spec": {
+      "chassisCode": "AT150",
+      "engineCode": "3A-U",
+      "yearFrom": 1984,
+      "curbWeightKg": 970,
+      "stockPowerPs": 83
+    },
+    "tier": "shitbox",
+    "tags": ["FF", "NA", "Piston", "80s", "JDM"],
+    "bookValueYen": 200000
+  },
+  {
+    "id": "nissan-sunny-b12",
+    "displayName": "Nissan Sunny (B12)",
+    "brand": "Nissan",
+    "parodyName": "Sunnie (B12)",
+    "parodyBrand": "Nissen",
+    "spec": {
+      "chassisCode": "B12",
+      "engineCode": "GA15S",
+      "yearFrom": 1987,
+      "curbWeightKg": 870,
+      "stockPowerPs": 85
+    },
+    "tier": "shitbox",
+    "tags": ["FF", "NA", "Piston", "80s", "JDM"],
+    "bookValueYen": 180000
+  },
+  {
+    "id": "suzuki-alto-works-ha21s",
+    "displayName": "Suzuki Alto Works (HA21S)",
+    "brand": "Suzuki",
+    "parodyName": "Alta Works (HA21S)",
+    "parodyBrand": "Suzuko",
+    "spec": {
+      "chassisCode": "HA21S",
+      "engineCode": "K6A",
+      "yearFrom": 1994,
+      "curbWeightKg": 700,
+      "stockPowerPs": 64
+    },
+    "tier": "shitbox",
+    "tags": ["FF", "Turbo", "Piston", "Kei", "90s", "JDM"],
+    "bookValueYen": 340000
+  },
+  {
+    "id": "honda-beat-pp1",
+    "displayName": "Honda Beat (PP1)",
+    "brand": "Honda",
+    "parodyName": "Beet (PP1)",
+    "parodyBrand": "Handa",
+    "spec": {
+      "chassisCode": "PP1",
+      "engineCode": "E07A",
+      "yearFrom": 1991,
+      "curbWeightKg": 760,
+      "stockPowerPs": 64
+    },
+    "tier": "shitbox",
+    "tags": ["MR", "NA", "Piston", "Kei", "90s", "JDM"],
+    "bookValueYen": 480000
+  },
+  {
+    "id": "honda-crx-sir-ef8",
+    "displayName": "Honda CR-X SiR (EF8)",
+    "brand": "Honda",
+    "parodyName": "CR-S SiR (EF8)",
+    "parodyBrand": "Handa",
+    "spec": {
+      "chassisCode": "EF8",
+      "engineCode": "B16A",
+      "yearFrom": 1989,
+      "curbWeightKg": 950,
+      "stockPowerPs": 160
+    },
+    "tier": "common",
+    "tags": ["FF", "NA", "Piston", "80s", "JDM"],
+    "bookValueYen": 560000
+  },
+  {
+    "id": "honda-city-turbo-ii-aa",
+    "displayName": "Honda City Turbo II (AA)",
+    "brand": "Honda",
+    "parodyName": "Citee Turbo II (AA)",
+    "parodyBrand": "Handa",
+    "spec": {
+      "chassisCode": "AA",
+      "engineCode": "ER",
+      "yearFrom": 1983,
+      "curbWeightKg": 735,
+      "stockPowerPs": 110
+    },
+    "tier": "shitbox",
+    "tags": ["FF", "Turbo", "Piston", "80s", "JDM"],
+    "bookValueYen": 420000
+  },
+  {
+    "id": "toyota-sera-exy10",
+    "displayName": "Toyota Sera (EXY10)",
+    "brand": "Toyota",
+    "parodyName": "Serra (EXY10)",
+    "parodyBrand": "Toyoda",
+    "spec": {
+      "chassisCode": "EXY10",
+      "engineCode": "5E-FHE",
+      "yearFrom": 1990,
+      "curbWeightKg": 890,
+      "stockPowerPs": 110
+    },
+    "tier": "shitbox",
+    "tags": ["FF", "NA", "Piston", "90s", "JDM"],
+    "bookValueYen": 450000
+  },
+  {
+    "id": "honda-prelude-si-vtec-bb4",
+    "displayName": "Honda Prelude Si VTEC (BB4)",
+    "brand": "Honda",
+    "parodyName": "Prelood Si-V (BB4)",
+    "parodyBrand": "Handa",
+    "spec": {
+      "chassisCode": "BB4",
+      "engineCode": "H22A",
+      "yearFrom": 1991,
+      "curbWeightKg": 1250,
+      "stockPowerPs": 200
+    },
+    "tier": "common",
+    "tags": ["FF", "NA", "Piston", "90s", "JDM"],
+    "bookValueYen": 800000
+  },
+  {
+    "id": "nissan-silvia-s13",
+    "displayName": "Nissan Silvia (S13)",
+    "brand": "Nissan",
+    "parodyName": "Silvea (S13)",
+    "parodyBrand": "Nissen",
+    "spec": {
+      "chassisCode": "S13",
+      "engineCode": "CA18DET",
+      "yearFrom": 1988,
+      "curbWeightKg": 1180,
+      "stockPowerPs": 175
+    },
+    "tier": "uncommon",
+    "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
+    "bookValueYen": 1100000
+  },
+  {
+    "id": "toyota-mr2-sw20",
+    "displayName": "Toyota MR2 (SW20)",
+    "brand": "Toyota",
+    "parodyName": "MR-II (SW20)",
+    "parodyBrand": "Toyoda",
+    "spec": {
+      "chassisCode": "SW20",
+      "engineCode": "3S-GTE",
+      "yearFrom": 1989,
+      "curbWeightKg": 1270,
+      "stockPowerPs": 225
+    },
+    "tier": "uncommon",
+    "tags": ["MR", "Turbo", "Piston", "80s", "JDM"],
+    "bookValueYen": 1400000
+  },
+  {
+    "id": "nissan-cefiro-a31",
+    "displayName": "Nissan Cefiro (A31)",
+    "brand": "Nissan",
+    "parodyName": "Cefyro (A31)",
+    "parodyBrand": "Nissen",
+    "spec": {
+      "chassisCode": "A31",
+      "engineCode": "RB20DET",
+      "yearFrom": 1988,
+      "curbWeightKg": 1290,
+      "stockPowerPs": 215
+    },
+    "tier": "uncommon",
+    "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
+    "bookValueYen": 1100000
+  },
+  {
+    "id": "subaru-impreza-wrx-sti-gc8",
+    "displayName": "Subaru Impreza WRX STI (GC8)",
+    "brand": "Subaru",
+    "parodyName": "Impressa VRX (GC8)",
+    "parodyBrand": "Subaro",
+    "spec": {
+      "chassisCode": "GC8",
+      "engineCode": "EJ20",
+      "yearFrom": 1994,
+      "curbWeightKg": 1200,
+      "stockPowerPs": 250
+    },
+    "tier": "uncommon",
+    "tags": ["AWD", "Turbo", "Piston", "90s", "JDM"],
+    "bookValueYen": 1800000
+  },
+  {
+    "id": "nissan-skyline-gtr-bnr32",
+    "displayName": "Nissan Skyline GT-R (BNR32)",
+    "brand": "Nissan",
+    "parodyName": "Skylene GT-N (BNR32)",
+    "parodyBrand": "Nissen",
+    "spec": {
+      "chassisCode": "BNR32",
+      "engineCode": "RB26DETT",
+      "yearFrom": 1989,
+      "curbWeightKg": 1430,
+      "stockPowerPs": 280
+    },
+    "tier": "rare",
+    "tags": ["AWD", "Turbo", "Piston", "80s", "JDM"],
+    "bookValueYen": 3600000
+  },
+  {
+    "id": "nissan-fairlady-z-z32",
+    "displayName": "Nissan Fairlady Z (Z32)",
+    "brand": "Nissan",
+    "parodyName": "Fairlody Z (Z32)",
+    "parodyBrand": "Nissen",
+    "spec": {
+      "chassisCode": "Z32",
+      "engineCode": "VG30DETT",
+      "yearFrom": 1989,
+      "curbWeightKg": 1560,
+      "stockPowerPs": 280
+    },
+    "tier": "rare",
+    "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
+    "bookValueYen": 2900000
+  },
+  {
+    "id": "toyota-aristo-30v-jzs147",
+    "displayName": "Toyota Aristo 3.0V (JZS147)",
+    "brand": "Toyota",
+    "parodyName": "Aresto 3.0V (JZS147)",
+    "parodyBrand": "Toyoda",
+    "spec": {
+      "chassisCode": "JZS147",
+      "engineCode": "2JZ-GTE",
+      "yearFrom": 1991,
+      "curbWeightKg": 1690,
+      "stockPowerPs": 280
+    },
+    "tier": "rare",
+    "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
+    "bookValueYen": 2800000
   }
 ]

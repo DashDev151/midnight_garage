@@ -344,6 +344,7 @@ describe('seed content validates against schemas', () => {
       'teardown',
       'diagnosis',
       'lapModel',
+      'staff',
     ].sort()
     expect(Object.keys(economy).sort()).toEqual(expectedTopLevelKeys)
   })

@@ -342,5 +342,24 @@
     },
     "courseId": "kirifuri",
     "courseName": "Kirifuri Pass"
+  },
+  "staff": {
+    "wageBaseYen": 4000,
+    "wagePerSkillPointYen": 500,
+    "wagePerLaborSlotYen": 1500,
+    "contractBaseYenPerDay": 1100,
+    "contractPerSkillPointYenPerDay": 80,
+    "laborSlotsPerDayWeights": [0.7, 0.3],
+    "introductionFeeWeeks": 2,
+    "statBudgetByTier": {
+      "unknown": { "min": 1, "max": 3 },
+      "local": { "min": 1, "max": 4 },
+      "known": { "min": 2, "max": 4 },
+      "respected": { "min": 2, "max": 5 },
+      "legend": { "min": 3, "max": 5 }
+    },
+    "maxOpenAds": 3,
+    "adExpiryDays": 14,
+    "maxStaff": 4
   }
 }

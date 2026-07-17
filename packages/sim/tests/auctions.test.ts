@@ -35,6 +35,7 @@ function stateWithLots(
     ownedCars: [],
     partInventory: [],
     staff: [],
+    staffAds: [],
     jobs: [],
     marketHeat: {},
     activeAuctionLots: lots,

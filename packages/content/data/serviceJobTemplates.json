@@ -28,7 +28,7 @@
     "baseReputation": 5,
     "flavorPool": [
       "Hard to start some mornings, and it stutters on the highway. Check the electrics.",
-      "Something's off with the ignition, it hesitates on startup."
+      "Three goes to start it this morning, then it coughed at me on the expressway. Look at the ignition."
     ]
   },
   {
@@ -60,7 +60,7 @@
     "baseReputation": 4,
     "flavorPool": [
       "Hesitates under load and struggles to start cold. Clean out the fuel system.",
-      "Feels starved for fuel on hard acceleration. Give the fuel system a once-over."
+      "Feels starved of fuel on hard acceleration. Give the fuel system a once-over."
     ]
   },
   {
@@ -145,8 +145,8 @@
     "deadlineDays": 8,
     "baseReputation": 30,
     "flavorPool": [
-      "Naturally aspirated isn't cutting it anymore. Get me some boost.",
-      "Time to go forced induction. Build me some real power."
+      "The hill by my house wins every morning. I'd like to start winning.",
+      "My mate's got boost and has become unbearable. Level the field."
     ]
   },
   {
@@ -176,7 +176,8 @@
     "baseReputation": 28,
     "flavorPool": [
       "Want a proper built motor. Internals and head both need the upgrade treatment.",
-      "Stock bottom end and head won't hold the power I'm after. Build it up."
+      "Stock bottom end and head won't hold the power I'm after. Build it up.",
+      "New oil, please. The stuff the last place put in has gone all sparkly in the sunlight. Glitters, honestly. Whatever it is, same again."
     ]
   },
   {
@@ -234,7 +235,7 @@
     "baseReputation": 18,
     "flavorPool": [
       "Stock gearbox can't take the abuse anymore. Build me a proper one.",
-      "Grinding through the gears. Time for a real gearbox upgrade."
+      "Second's gone crunchy and third's thinking about it. Build me a box that takes a beating."
     ]
   },
   {
@@ -275,7 +276,7 @@
     "deadlineDays": 3,
     "baseReputation": 4,
     "flavorPool": [
-      "Pads are down to metal and it's squealing bad. Sort the brakes before my shaken.",
+      "Pads are down to metal and it's squealing badly. Sort the brakes before my shaken.",
       "Pedal's soft and it's grinding on stops. Needs fresh pads."
     ]
   },
@@ -297,8 +298,8 @@
     "baseReputation": 6,
     "flavorPool": [
       "Fit some coilovers for me, I want it lower and sharper.",
-      "Stock ride's too soft for how I drive. Get me something adjustable.",
-      "Want it hunkered down for real. Sort the coilovers."
+      "It leans like a ferry through the interchange. Something adjustable, please.",
+      "Want it properly hunkered down. Sort the coilovers."
     ]
   },
   {
@@ -347,7 +348,7 @@
     "baseReputation": 12,
     "flavorPool": [
       "Brakes are getting spongy and the pads are shot. Give the whole system an overhaul.",
-      "Want the whole braking system sorted properly, pads, calipers, all of it."
+      "Want the whole braking system sorted properly, pads, callipers, all of it."
     ]
   },
   {
@@ -423,7 +424,7 @@
     "flavorPool": [
       "Tyres are bald and the pads are squealing on every stop. Sort both before my shaken.",
       "Feels like I'm driving on ice, and the pedal grinds now too.",
-      "Due a proper tyre and pad refresh, it's overdue."
+      "Tyres and pads are both long overdue a change."
     ]
   },
   {
@@ -443,7 +444,7 @@
     "deadlineDays": 4,
     "baseReputation": 9,
     "flavorPool": [
-      "Want a fresh set of rims fitted, something that actually suits it.",
+      "The rims look like they came free with something. Fit ones that belong.",
       "Stock rims look tired. Fit me something better."
     ]
   },
@@ -490,7 +491,7 @@
     "baseReputation": 6,
     "flavorPool": [
       "Picked up a dent and some scrapes on the panel. Can you tidy it up?",
-      "Bodywork's looking rough. Sort the panel before it gets worse."
+      "The dent's from the supermarket. The scratches I'm not explaining. Tidy the panel."
     ]
   },
   {
@@ -580,7 +581,7 @@
     "baseReputation": 20,
     "flavorPool": [
       "Paint's faded and chipped all over. Give it a proper respray.",
-      "Wants a fresh coat of paint, top to bottom."
+      "The bonnet's gone chalky and the roof's worse. Paint it properly, top to bottom."
     ]
   },
   {
@@ -653,7 +654,7 @@
     "baseReputation": 16,
     "flavorPool": [
       "Seats are falling apart and the gauge cluster's looking tired. Retrim the interior.",
-      "Cabin's seen better days. Sort the seats and the dash."
+      "The foam's given up on my side and the dash rattles over every expressway join. Sort the cabin."
     ]
   },
   {
@@ -751,7 +752,7 @@
     "baseReputation": 30,
     "flavorPool": [
       "Want a proper dog-box in it, quick shifts, no babying the clutch.",
-      "Build me a dog-box gearbox setup, ready for the strip."
+      "Build me a dog-box setup, quick enough for the zero-yon."
     ]
   },
   {
@@ -816,7 +817,7 @@
     "baseReputation": 26,
     "flavorPool": [
       "Want a proper show fitment, flush, no rub, tyres stretched just right.",
-      "Looking for a serious fitment job, the kind that turns heads at a meet."
+      "I want the crouch-and-stare at the next meet. Flush, no rub."
     ]
   },
   {

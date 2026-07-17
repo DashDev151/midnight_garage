@@ -163,6 +163,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     ownedCars: [car],
     partInventory: [],
     staff: [],
+    staffAds: [],
     jobs: [],
     marketHeat: {},
     activeAuctionLots: [],

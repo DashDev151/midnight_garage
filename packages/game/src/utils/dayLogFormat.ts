@@ -45,8 +45,8 @@ export function describeLogEntry(
       return `Job ${entry.jobId} blocked (${entry.reason})`
     case 'labor-overbooked':
       return `Labour overbooked: wanted ${entry.requestedSlots}, had ${entry.availableSlots}`
-    case 'service-bay-income':
-      return `Service bay income: ${formatYen(entry.amountYen)}`
+    case 'contract-income':
+      return `Fleet contract income: ${formatYen(entry.amountYen)}`
     case 'market-heat-shift':
       return `Market heat: ${resolveModelName(entry.modelId)} ${entry.deltaPercent >= 0 ? '+' : ''}${entry.deltaPercent}%`
     case 'auction-catalog-refreshed':
@@ -170,6 +170,14 @@ export function describeLogEntry(
       return `Mission lapsed (-${entry.reputationLost} rep) - reoffered day ${entry.reofferOnDay}`
     case 'mission-reoffered':
       return `Mission back on offer`
+    case 'staff-ads-refreshed':
+      return `New notices on the job board: ${entry.count}`
+    case 'staff-hired':
+      return entry.introFeeYen > 0
+        ? `Took ${entry.displayName} on at ${formatYen(entry.weeklyWageYen)}/week (${formatYen(entry.introFeeYen)} to sign)`
+        : `Took ${entry.displayName} on at ${formatYen(entry.weeklyWageYen)}/week`
+    case 'staff-dismissed':
+      return `Let ${entry.displayName} go`
   }
 }
 
@@ -213,16 +221,15 @@ export interface DayReportView {
 /** Types that become celebration cards, not list lines. */
 const WIN_TYPES = new Set<DayLogEntry['type']>(['auction-bid-won', 'lot-bought-out'])
 /** Types represented in the money split only - no individual list line. */
-const MONEY_ONLY_TYPES = new Set<DayLogEntry['type']>([
-  'rent-paid',
-  'wage-paid',
-  'service-bay-income',
-])
+const MONEY_ONLY_TYPES = new Set<DayLogEntry['type']>(['rent-paid', 'wage-paid', 'contract-income'])
 /** Types folded into aggregated noise lines rather than shown one-per-entry. */
 const NOISE_TYPES = new Set<DayLogEntry['type']>([
   'market-heat-shift',
   'auction-catalog-refreshed',
   'job-progress',
+  // Sprint 80: the weekly job-ad refresh is board churn the player reads on
+  // the Staff Office, same treatment as an auction-catalog refresh.
+  'staff-ads-refreshed',
 ])
 
 export function classifyDayReport(
@@ -271,7 +278,7 @@ export function classifyDayReport(
         money.earnedYen += entry.priceYen
         rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
-      case 'service-bay-income':
+      case 'contract-income':
         money.earnedYen += entry.amountYen
         break
       case 'rent-paid':

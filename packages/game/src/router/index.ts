@@ -55,6 +55,11 @@ export const router = createRouter({
       name: 'standing',
       component: () => import('../screens/StandingScreen.vue'),
     },
+    {
+      path: '/staff',
+      name: 'staff',
+      component: () => import('../screens/StaffOfficeScreen.vue'),
+    },
     ...spikeRoute,
   ],
 })

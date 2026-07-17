@@ -1,19 +1,26 @@
-import type { ReputationTier, StaffMember } from '@midnight-garage/content'
-import { REPUTATION_INCOME_MULTIPLIER, SERVICE_BAY_YEN_PER_HUSTLE } from './constants'
+import type { EconomyConfig, StaffMember } from '@midnight-garage/content'
+import { staffSkillSum } from './staff'
 
 /**
- * Passive daily service-bay income (GDD 3.4), scaled by staff Hustle and
- * shop reputation. Zero with no staff - matches GDD 9.0's Act 1 framing,
- * where service jobs are hand-played until staff exist (hiring is
- * Sprint 13); the formula is wired now so it's already correct then.
+ * Sprint 80 crew model, R3: the daily fleet-contract retainer. Only members
+ * assigned to `contract` earn it (bench-assigned members put their hands on the
+ * shop's own work instead, `laborSlots.ts`); each contract member brings in
+ * `contractBaseYenPerDay + contractPerSkillPointYenPerDay * sum(stats)` a day
+ * (all content, `economy.staff`). Passive income is an assignment you trade
+ * labour for, never a bonus on top - and a busy shop benches while a quiet one
+ * parks (the probe's bound B keeps the retainer below half the same hands'
+ * billable value). Zero with no contract-assigned staff.
  */
-export function computeServiceBayIncomeYen(
+export function computeContractIncomeYen(
   staff: readonly StaffMember[],
-  reputationTier: ReputationTier,
+  economy: EconomyConfig,
 ): number {
-  const base = staff.reduce(
-    (sum, member) => sum + member.stats.hustle * SERVICE_BAY_YEN_PER_HUSTLE,
+  const { contractBaseYenPerDay, contractPerSkillPointYenPerDay } = economy.staff
+  return staff.reduce(
+    (sum, member) =>
+      member.assignment === 'contract'
+        ? sum + contractBaseYenPerDay + contractPerSkillPointYenPerDay * staffSkillSum(member.stats)
+        : sum,
     0,
   )
-  return Math.round(base * REPUTATION_INCOME_MULTIPLIER[reputationTier])
 }

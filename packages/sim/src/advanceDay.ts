@@ -22,7 +22,8 @@ import { bumpLotSupply, updateMarketHeat } from './marketHeat'
 import { advanceStoryMissions } from './missions'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
 import { createRng } from './rng'
-import { computeServiceBayIncomeYen } from './serviceBay'
+import { computeContractIncomeYen } from './serviceBay'
+import { commitPendingStaffAssignments, refreshStaffAds } from './staff'
 import {
   generateDailyServiceJobOffers,
   resolveAcceptServiceJob,
@@ -402,11 +403,28 @@ export function advanceDay(
   next = missions.state
   log.push(...missions.log)
 
-  // 8. Daily service-bay income.
-  const serviceIncome = computeServiceBayIncomeYen(next.staff, next.reputationTier)
-  if (serviceIncome > 0) {
-    next = { ...next, cashYen: next.cashYen + serviceIncome }
-    log.push({ type: 'service-bay-income', amountYen: serviceIncome })
+  // 7d. Sprint 80 (staff I): the weekly job-ad refresh - expired ads drop,
+  // then seeded rolls top the board back up to `economy.staff.maxOpenAds`.
+  // Same 7-day boundary as wages (step 9), read off `next.day` before the
+  // increment, exactly like the mission hook above. Placed AFTER every other
+  // rng consumer this tick so adding candidate rolls leaves the auction /
+  // service-job / offer / machine-listing draws byte-identical - the golden
+  // re-pin is purely the new `staffAds` field and its rolls, nothing else.
+  if (next.day % 7 === 0) {
+    const staffAds = refreshStaffAds(next, context, rng)
+    next = staffAds.state
+    log.push(...staffAds.log)
+  }
+
+  // 8. Sprint 80 crew model (R3): the daily fleet-contract retainer from any
+  // contract-assigned staff (bench-assigned members earn nothing here - their
+  // hands are on the shop's own work). Reads the day's effective assignment;
+  // any reassignment made today is still pending and commits below in step 10,
+  // so tonight's retainer never pays a member the player parked this morning.
+  const contractIncome = computeContractIncomeYen(next.staff, context.economy)
+  if (contractIncome > 0) {
+    next = { ...next, cashYen: next.cashYen + contractIncome }
+    log.push({ type: 'contract-income', amountYen: contractIncome })
   }
 
   // 8a. Sprint 45: the grace/"double parking" overflow slot's own day-
@@ -432,7 +450,16 @@ export function advanceDay(
   // next one. Sprint 74 decision 1: any inspection visit dies with the day
   // too, unconditionally - minutes spent chasing a lot that sells to
   // someone else overnight are simply spent, no carry-over negotiation.
-  next = { ...next, day: next.day + 1, laborSlotsSpentToday: 0, inspectionVisit: null }
+  // Sprint 80 crew model (R3): scheduled staff reassignments commit here, after
+  // tonight's contract income (step 8), so a switch made today takes effect
+  // tomorrow.
+  next = {
+    ...next,
+    day: next.day + 1,
+    laborSlotsSpentToday: 0,
+    inspectionVisit: null,
+    staff: commitPendingStaffAssignments(next.staff),
+  }
 
   return { state: next, log }
 }

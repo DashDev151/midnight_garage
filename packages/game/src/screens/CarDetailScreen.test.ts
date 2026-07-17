@@ -552,6 +552,10 @@ describe('CarDetailScreen', () => {
       for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
       const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
       if (!lot) throw new Error('expected a local-yard lot after the first catalog')
+      // Sprint 81's 25-model pool can put a lot at the local yard whose buyout
+      // price exceeds starting cash; affordability is not what this test
+      // exercises, so grant the buyout price outright (the Sprint 59 pattern).
+      game.devGiveCash(game.lotDetail(lot.id)!.buyoutPriceYen)
       expect(game.buyout(lot.id)).toBe(true)
       return game.gameState.ownedCars.at(-1)!.id
     }

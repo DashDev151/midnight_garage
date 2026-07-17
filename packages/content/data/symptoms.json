@@ -184,5 +184,122 @@
         ]
       }
     ]
+  },
+  {
+    "id": "wheel-vibration",
+    "cardLine": "Vibration through the wheel, builds with road speed.",
+    "causes": [
+      { "id": "worn-tyres", "carPartId": "tyres", "setBand": "worn", "weight": 55 },
+      { "id": "buckled-rim", "carPartId": "rims", "setBand": "poor", "weight": 30 },
+      { "id": "worn-driveshaft", "carPartId": "driveline", "setBand": "poor", "weight": 15 }
+    ],
+    "tests": [
+      {
+        "testId": "wheel-balance-check",
+        "partition": [["worn-tyres"], ["buckled-rim", "worn-driveshaft"]],
+        "resultCopy": [
+          "Spun free of the ground, the tyre shows feathering across the tread and the wheel itself runs true. Worn tyres, not the rim or the driveshaft.",
+          "The tread wears evenly, nothing in the rubber to explain it. Not the tyres, narrows to a buckled rim or the driveshaft."
+        ]
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [["worn-driveshaft"], ["worn-tyres", "buckled-rim"]],
+        "resultCopy": [
+          "A split CV boot, grease flung round the inside of the arch. The driveshaft, not the tyres or the rim.",
+          "The boots are intact, no grease sling anywhere. Not the driveshaft, narrows to the tyres or a buckled rim."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "diff-whine",
+    "cardLine": "Whines on the overrun. Quiet under power.",
+    "causes": [
+      { "id": "worn-diff-bearings", "carPartId": "differential", "setBand": "worn", "weight": 60 },
+      { "id": "chewed-ring-pinion", "carPartId": "differential", "setBand": "poor", "weight": 40 }
+    ],
+    "tests": [
+      {
+        "testId": "gearbox-oil-check",
+        "partition": [["worn-diff-bearings"], ["chewed-ring-pinion"]],
+        "resultCopy": [
+          "Off the filler plug, the diff oil comes away clean, just thin with age. Worn bearings, not a chewed ring and pinion.",
+          "Metal glints on the swab from the diff's filler plug. A chewed ring and pinion, not just tired bearings."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sagging-spring",
+    "cardLine": "Sits lower than it should. Wallows over rough tarmac.",
+    "causes": [
+      { "id": "sagging-springs", "carPartId": "springs", "setBand": "worn", "weight": 70 },
+      { "id": "broken-spring", "carPartId": "springs", "setBand": "poor", "weight": 30 }
+    ],
+    "tests": [
+      {
+        "testId": "ride-height-check",
+        "partition": [["sagging-springs"], ["broken-spring"]],
+        "resultCopy": [
+          "All four corners sit a little low and even, no cracks in the coils. Tired springs all round, not a break.",
+          "One corner sits noticeably lower than the rest, a crack visible in the coil. A broken spring, not just general sag."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "quarter-panel-filler",
+    "cardLine": "Faint filler line along a rear quarter panel.",
+    "causes": [
+      { "id": "panel-respray", "carPartId": "panels", "setBand": "worn", "weight": 75 },
+      { "id": "structural-rail-repair", "carPartId": "chassis", "setBand": "poor", "weight": 25 }
+    ],
+    "tests": [
+      {
+        "testId": "undercarriage-look",
+        "partition": [["panel-respray"], ["structural-rail-repair"]],
+        "resultCopy": [
+          "The rail underneath looks factory: no weld beads, no kinks, jacking points true. A cosmetic respray, not a structural repair.",
+          "A fresh weld bead along the rail and a jacking point that isn't quite square. A structural rail repair, not just cosmetic."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "damp-passenger-footwell",
+    "cardLine": "Carpet's damp on the passenger side.",
+    "causes": [
+      { "id": "heater-matrix-weep", "carPartId": "cooling", "setBand": "worn", "weight": 70 },
+      { "id": "rotten-bulkhead-seam", "carPartId": "chassis", "setBand": "poor", "weight": 30 }
+    ],
+    "tests": [
+      {
+        "testId": "coolant-check",
+        "partition": [["heater-matrix-weep"], ["rotten-bulkhead-seam"]],
+        "resultCopy": [
+          "The header tank is low and the damp smells sweet, like coolant. The heater matrix weeping into the cabin, not rust.",
+          "Coolant level holds and the damp is plain water. It's coming in through the seam, narrows to a rotten bulkhead."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "exhaust-rasp",
+    "cardLine": "Deep rasp under load, quiet at idle.",
+    "causes": [
+      { "id": "blown-flex-joint", "carPartId": "exhaust", "setBand": "worn", "weight": 60 },
+      { "id": "cracked-manifold", "carPartId": "exhaust", "setBand": "poor", "weight": 40 }
+    ],
+    "tests": [
+      {
+        "testId": "stethoscope",
+        "partition": [["blown-flex-joint"], ["cracked-manifold"]],
+        "resultCopy": [
+          "Traced down the pipe, the rasp fades near the manifold and picks up again at a joint further back. A blown flex joint, not the manifold itself.",
+          "Traced down the pipe, the rasp is loudest right at the manifold, a hard metallic edge to it. A cracked manifold, not a joint further back."
+        ]
+      }
+    ]
   }
 ]

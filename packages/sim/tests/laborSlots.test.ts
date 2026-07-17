@@ -17,6 +17,7 @@ function baseState(staff: StaffMember[]): GameState {
     ownedCars: [],
     partInventory: [],
     staff,
+    staffAds: [],
     jobs: [],
     marketHeat: {},
     activeAuctionLots: [],
@@ -42,27 +43,40 @@ function baseState(staff: StaffMember[]): GameState {
   }
 }
 
-const staffMember = (hustle: number): StaffMember => ({
-  id: `staff-${hustle}`,
+const staffMember = (
+  laborSlotsPerDay: 1 | 2,
+  assignment: StaffMember['assignment'] = 'bench',
+): StaffMember => ({
+  id: `staff-${laborSlotsPerDay}-${assignment}`,
   displayName: 'Test Mechanic',
-  stats: { engine: 1, chassis: 1, body: 1, hustle },
+  stats: { engine: 1, chassis: 1, body: 1 },
+  laborSlotsPerDay,
+  assignment,
+  pendingAssignment: null,
   weeklyWageYen: 40_000,
   trait: 'perfectionist',
 })
 
-describe('availableLaborSlots', () => {
+describe('availableLaborSlots (crew model, R3)', () => {
   it('is the player base with no staff', () => {
     expect(availableLaborSlots(baseState([]))).toBe(PLAYER_BASE_LABOR_SLOTS)
   })
 
-  it('grants +1 slot per staff member at or above the Hustle threshold', () => {
-    expect(availableLaborSlots(baseState([staffMember(4)]))).toBe(PLAYER_BASE_LABOR_SLOTS + 1)
-    expect(availableLaborSlots(baseState([staffMember(4), staffMember(5)]))).toBe(
-      PLAYER_BASE_LABOR_SLOTS + 2,
+  it('adds each bench-assigned member their own laborSlotsPerDay (a pair of hands is a pair of hands)', () => {
+    expect(availableLaborSlots(baseState([staffMember(1)]))).toBe(PLAYER_BASE_LABOR_SLOTS + 1)
+    expect(availableLaborSlots(baseState([staffMember(2)]))).toBe(PLAYER_BASE_LABOR_SLOTS + 2)
+    expect(availableLaborSlots(baseState([staffMember(2), staffMember(1)]))).toBe(
+      PLAYER_BASE_LABOR_SLOTS + 3,
     )
   })
 
-  it('grants no bonus for staff below the Hustle threshold', () => {
-    expect(availableLaborSlots(baseState([staffMember(3)]))).toBe(PLAYER_BASE_LABOR_SLOTS)
+  it('adds nothing for a contract-assigned member (their labour is on the fleet)', () => {
+    expect(availableLaborSlots(baseState([staffMember(2, 'contract')]))).toBe(
+      PLAYER_BASE_LABOR_SLOTS,
+    )
+    // Mixed crew: only the benched member counts.
+    expect(
+      availableLaborSlots(baseState([staffMember(2, 'contract'), staffMember(1, 'bench')])),
+    ).toBe(PLAYER_BASE_LABOR_SLOTS + 1)
   })
 })

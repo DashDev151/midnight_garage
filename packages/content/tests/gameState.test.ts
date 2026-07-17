@@ -333,6 +333,7 @@ describe('GameState / DayLog round-trip', () => {
       serviceJobLedgers: {},
       inspectionVisit: null,
       storyMissions: [],
+      staffAds: [],
     }
 
     const parsed = GameStateSchema.parse(fixture)
@@ -349,7 +350,7 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'job-completed', jobId: 'job-0001', carInstanceId: 'car-0001', kind: 'repair-zone' },
       { type: 'job-blocked', jobId: 'job-0002', reason: 'slot-occupied' },
       { type: 'labor-overbooked', requestedSlots: 5, availableSlots: 2 },
-      { type: 'service-bay-income', amountYen: 15_000 },
+      { type: 'contract-income', amountYen: 15_000 },
       { type: 'market-heat-shift', modelId: 'toyota-supra-rz-jza80', deltaPercent: 12.5 },
       { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
       {

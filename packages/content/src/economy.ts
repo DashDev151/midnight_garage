@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { PartFitmentClassSchema } from './partFitment'
-import { CarPartIdSchema, ConditionBandSchema } from './tags'
+import { CarPartIdSchema, ConditionBandSchema, ReputationTierSchema } from './tags'
 import { ToolTierSchema } from './toolLines'
 
 /**
@@ -1153,6 +1153,86 @@ export const EconomyConfigSchema = z.object({
     courseId: z.string().min(1),
     courseName: z.string().min(1),
   }),
+  /**
+   * Sprint 80 (staff I), reworked into the crew model (maintainer redesign
+   * 2026-07-17): every tunable knob behind job-ad acquisition and the crew
+   * economy. Both formulas are fixed in code (`deriveStaffWageYen` and
+   * `computeContractIncomeYen`, sim); these are their coefficients plus the
+   * ad-board and candidate-roll knobs. Content law: a maintainer retunes wage
+   * feel, contract feel, or ad pacing here, never in code.
+   *
+   * The principle: more people means more work, plainly; passive income is an
+   * assignment you trade labour for, never a bonus on top. Hustle is gone (R1).
+   *
+   * WAGE (R4), a pure function of the stat line and the labour slots, never
+   * rolled independently (the drift guard `staffProbes.test.ts` asserts this):
+   *   `weeklyWageYen = round100(wageBaseYen + wagePerSkillPointYen * sum(stats)
+   *                   + wagePerLaborSlotYen * laborSlotsPerDay)`.
+   *
+   * CONTRACT income (R3), the daily fleet retainer a `contract`-assigned member
+   * earns (taxi firms, delivery fleets), accrued in `serviceBay.ts`:
+   *   `contractBaseYenPerDay + contractPerSkillPointYenPerDay * sum(stats)`.
+   *
+   * Coefficients derived by exhaustive search (maximin-centred) so the reworked
+   * hire coherence probe HARD-GATES all three bounds with honest margins - see
+   * decision 5 (R5) in `docs/sprints/sprint80.md`:
+   *   A (net profit): weekly contract in [1.05, 1.40] x weekly wage, every
+   *     candidate every tier - a parked member always profits, modestly.
+   *   B (honest work beats the retainer): weekly contract <= 0.5 x
+   *     (laborSlotsPerDay x 7 x serviceJobs.laborRateYen), every candidate - the
+   *     same hands billed out always out-earn the retainer by at least double.
+   *   C (first hire reachable): the entry tier's cheapest introduction fee stays
+   *     within 15% of STARTING_CASH_YEN.
+   *
+   * `laborSlotsPerDayWeights` is `[weightFor1Slot, weightFor2Slots]` (R2) -
+   * the weighted roll for how many slots a generated candidate puts in (a pair
+   * of hands is a pair of hands, no thresholds).
+   *
+   * `introductionFeeWeeks` (R6a) is the one-off hiring fee, in multiples of the
+   * candidate's weekly wage, charged at hire; 0 disables it. With parking now
+   * net-positive, the fee keeps "hire four on day one" an investment with a
+   * payback period rather than a free annuity.
+   *
+   * `statBudgetByTier` is a PER-STAT inclusive `[min, max]` range applied to
+   * each of the three stats independently (better shops attract people who are
+   * stronger across the board, consistent with the progression bible's
+   * Capability pillar) - `min <= max`, both within the 1..5 stat domain. The
+   * per-tier ladder is deliberately overlapping and monotone, not disjoint.
+   *
+   * `maxOpenAds`/`adExpiryDays` govern the weekly ad refresh; `maxStaff` is the
+   * GDD section 7 hiring cap. First-pass numbers, openly retunable.
+   */
+  staff: z
+    .object({
+      wageBaseYen: z.number().int().nonnegative(),
+      wagePerSkillPointYen: z.number().int().nonnegative(),
+      wagePerLaborSlotYen: z.number().int().nonnegative(),
+      contractBaseYenPerDay: z.number().int().nonnegative(),
+      contractPerSkillPointYenPerDay: z.number().int().nonnegative(),
+      /** `[weightFor1Slot, weightFor2Slots]` - the weighted roll for a
+       * generated candidate's `laborSlotsPerDay` (R2). Need not pre-normalise
+       * to 1 (same convention as the other weight tuples here). */
+      laborSlotsPerDayWeights: z.tuple([z.number().nonnegative(), z.number().nonnegative()]),
+      /** One-off hiring fee, in multiples of the weekly wage (R6a); 0 disables. */
+      introductionFeeWeeks: z.number().int().nonnegative(),
+      statBudgetByTier: z.record(
+        ReputationTierSchema,
+        z
+          .object({
+            min: z.number().int().min(1).max(5),
+            max: z.number().int().min(1).max(5),
+          })
+          .refine((r) => r.min <= r.max, {
+            message: 'staff.statBudgetByTier[*].min must be <= max',
+          }),
+      ),
+      maxOpenAds: z.number().int().positive(),
+      adExpiryDays: z.number().int().positive(),
+      maxStaff: z.number().int().positive(),
+    })
+    .refine((s) => ReputationTierSchema.options.every((t) => s.statBudgetByTier[t] !== undefined), {
+      message: 'staff.statBudgetByTier must name every reputation tier',
+    }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

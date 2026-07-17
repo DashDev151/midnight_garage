@@ -15,6 +15,7 @@ import type {
   ProvenancePool,
   ServiceJobType,
   SpecialtyCopy,
+  StaffCandidatePool,
   StoryMission,
   Symptom,
   Technique,
@@ -28,6 +29,7 @@ import {
   PERSONAS,
   PROVENANCE_POOL,
   SPECIALTY_COPY,
+  STAFF_CANDIDATES,
   STORY_MISSIONS,
   SYMPTOMS,
   TECHNIQUES,
@@ -128,6 +130,9 @@ export interface SimContext {
    * `lapReferences.json` list once here, so no caller re-filters it. */
   lapReferencePool: readonly Extract<LapReferenceEntry, { anchor: false }>[]
   lapReferenceAnchor: Extract<LapReferenceEntry, { anchor: true }>
+  /** Sprint 80 (staff I): the job-ad candidate name/bio pools the seeded
+   * candidate roller (`staff.ts`'s `rollStaffCandidate`) draws from. */
+  staffCandidates: StaffCandidatePool
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -222,6 +227,8 @@ function indexAftermarketPartsByCarPartId(
  * same treatment.
  *
  * Sprint 77: `lapReferences` is a 17th (trailing) parameter, same treatment.
+ *
+ * Sprint 80: `staffCandidates` is an 18th (trailing) parameter, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -241,6 +248,7 @@ export function buildSimContext(
   storyMissions: readonly StoryMission[] = STORY_MISSIONS,
   personas: readonly Persona[] = PERSONAS,
   lapReferences: readonly LapReferenceEntry[] = LAP_REFERENCES,
+  staffCandidates: StaffCandidatePool = STAFF_CANDIDATES,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
@@ -284,5 +292,6 @@ export function buildSimContext(
     personasById: indexById(personas),
     lapReferencePool,
     lapReferenceAnchor,
+    staffCandidates,
   }
 }

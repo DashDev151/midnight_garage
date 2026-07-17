@@ -74,6 +74,7 @@ function initialState(): GameState {
       },
     ],
     staff: [],
+    staffAds: [],
     jobs: [],
     marketHeat: Object.fromEntries(POC_10_MODEL_IDS.map((id) => [id, 100])),
     activeAuctionLots: [],
@@ -275,9 +276,38 @@ describe('advanceDay golden master', () => {
     // tick, with different content than `placeholder-a` had, a real content
     // change, not a bug; every other assertion in this file still passes
     // unchanged.
+    // Re-pinned again (Sprint 80, was 6dafb76e): `GameState` gained `staffAds`
+    // (default `[]`), and `advanceDay`'s new weekly staff-ad refresh actually
+    // populates it on every 7-day boundary this 30-day career crosses (days 7,
+    // 14, 21, 28), each posting seeded candidate rolls - a real state change
+    // (new field plus its own rng draws), directive 17 case (a), not a bug;
+    // every other assertion in this file still passes unchanged.
+    // Re-pinned again (Sprint 80 amendment 2026-07-17, was 8166e5e1): the
+    // orchestrator's ruling re-derived the wage coefficients
+    // (wagePerStatPointYen 1600 -> 1000, hustlePremiumYen 4000 -> 1500), so each
+    // weekly-refreshed job-ad candidate's `weeklyWageYen` (a pure function of
+    // its rolled stats) now differs. This career hires no staff, so passive
+    // service-bay income stays 0 throughout and the rng stream is byte-identical
+    // (wage is derived, not rolled) - only the candidate wage VALUES stored in
+    // `staffAds` moved. Directive 17 case (a), a content retune, not a bug.
+    // Re-pinned again (Sprint 81, was cfcde727): content wave I grew the
+    // generation pick pools (cars.json 10 -> 25 models, symptoms.json 8 -> 14),
+    // so every seeded auction-catalog roll draws different lots and symptom
+    // instances from day 7 onward. Directive 17 case (a): a content change,
+    // not a sim-logic change; determinism itself is re-proven by the
+    // repeat-run test below, which passes unchanged.
+    // Re-pinned again (Sprint 80 crew-model rework, was e1cfd24f): the reworked
+    // candidate shape (hustle removed from `stats`, `laborSlotsPerDay`/
+    // `assignment`/`pendingAssignment` added, wage coefficients re-derived) and
+    // the extra per-candidate labour-slot roll change every weekly-refreshed job
+    // ad on this 30-day career (days 7/14/21/28). This career hires no staff, so
+    // there is no contract income and no assignment commit - only the `staffAds`
+    // candidate contents moved. The refresh is still the last rng consumer of the
+    // tick, so no other system's draws shift. Directive 17 case (a), a content/
+    // schema rework, not a bug; the repeat-run determinism test still passes.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('6dafb76e')
+    expect(hashState(finalState)).toBe('6e62e1c3')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -499,7 +529,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 78, was 9c825103): same cause as the 30-day
     // career hash above - the real campaign's `four-wheels` content replaced
     // `placeholder-a`.
-    expect(hashState(acquisitionCareer().sold)).toBe('486fefeb')
+    // Re-pinned again (Sprint 80, was 486fefeb): same cause as the 30-day
+    // career hash above - `GameState` gained `staffAds` and the new weekly
+    // staff-ad refresh populates it with seeded candidate rolls on every
+    // 7-day boundary this career crosses (directive 17 case (a)).
+    // Re-pinned again (Sprint 81, was 889d6691): same cause as the 30-day
+    // career hash above - the 25-model / 14-symptom pick pools change which
+    // lots each seeded catalog roll produces (directive 17 case (a)).
+    expect(hashState(acquisitionCareer().sold)).toBe('65447382')
   })
 })
 
