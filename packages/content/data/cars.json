@@ -423,5 +423,22 @@
     "tier": "rare",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 2800000
+  },
+  {
+    "id": "toyota-mr2-aw11",
+    "displayName": "Toyota MR2 (AW11)",
+    "brand": "Toyota",
+    "parodyName": "MR-II (AW11)",
+    "parodyBrand": "Toyoda",
+    "spec": {
+      "chassisCode": "AW11",
+      "engineCode": "4A-GZE",
+      "yearFrom": 1986,
+      "curbWeightKg": 1050,
+      "stockPowerPs": 145
+    },
+    "tier": "common",
+    "tags": ["MR", "Supercharged", "Piston", "80s", "JDM"],
+    "bookValueYen": 820000
   }
 ]

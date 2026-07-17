@@ -301,5 +301,59 @@
         ]
       }
     ]
+  },
+  {
+    "id": "oil-pressure-flutter",
+    "cardLine": "Oil light flickers at hot idle. Goes out with revs.",
+    "causes": [
+      { "id": "tired-sender", "carPartId": "dashGauges", "setBand": "worn", "weight": 70 },
+      { "id": "worn-main-bearings", "carPartId": "internals", "setBand": "poor", "weight": 30 }
+    ],
+    "tests": [
+      {
+        "testId": "oil-pressure-check",
+        "partition": [["tired-sender"], ["worn-main-bearings"]],
+        "resultCopy": [
+          "A proper gauge on the sender port reads steady and correct at hot idle, climbing cleanly with revs. The sender is lying, not the oil: a tired sender, not the bearings.",
+          "The gauge agrees with the light: pressure sags low at hot idle and barely lifts off it. Genuine low pressure, not a lying sender. Points at worn bearings."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hesitates-under-load",
+    "cardLine": "Hesitates and flat-spots under hard acceleration. Smooth enough at a steady cruise.",
+    "causes": [
+      { "id": "clogged-fuel-filter", "carPartId": "fuelSystem", "setBand": "worn", "weight": 65 },
+      { "id": "stretched-timing-chain", "carPartId": "camsTiming", "setBand": "poor", "weight": 35 }
+    ],
+    "tests": [
+      {
+        "testId": "fuel-pressure-check",
+        "partition": [["clogged-fuel-filter"], ["stretched-timing-chain"]],
+        "resultCopy": [
+          "A gauge tee'd into the fuel line sags well off spec the moment the throttle's blipped. Fuel starvation: the filter and pump side, not the cam timing.",
+          "The gauge tee'd into the fuel line holds steady through the blip, right on spec. Not fuel starvation: points at the cam timing, not the filter or the pump."
+        ]
+      }
+    ]
+  },
+  {
+    "id": "steering-wander",
+    "cardLine": "Steering feels vague, wants constant small corrections at speed.",
+    "causes": [
+      { "id": "tired-track-rod-ends", "carPartId": "steering", "setBand": "worn", "weight": 60 },
+      { "id": "worn-rack", "carPartId": "steering", "setBand": "poor", "weight": 40 }
+    ],
+    "tests": [
+      {
+        "testId": "steering-linkage-check",
+        "partition": [["tired-track-rod-ends"], ["worn-rack"]],
+        "resultCopy": [
+          "Rocking the wheel at 3 and 9 with the front end up, the play's all out at the track-rod-end ball joints; the rack itself stays tight. Tired track-rod ends, not the rack.",
+          "Rocking the wheel at 3 and 9, the play sits right at the rack itself, not the outer joints. A worn rack, not just tired track-rod ends."
+        ]
+      }
+    ]
   }
 ]

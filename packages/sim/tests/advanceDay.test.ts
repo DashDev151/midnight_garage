@@ -305,9 +305,18 @@ describe('advanceDay golden master', () => {
     // candidate contents moved. The refresh is still the last rng consumer of the
     // tick, so no other system's draws shift. Directive 17 case (a), a content/
     // schema rework, not a bug; the repeat-run determinism test still passes.
+    // Re-pinned again (Sprint 83, was 6e62e1c3): content wave II grew the
+    // generation pick pools again (cars.json 25 -> 26 models, symptoms.json 14
+    // -> 17), so every seeded auction-catalog roll from day 7 onward draws
+    // different lots and symptom instances. Directive 17 case (a): a content
+    // change, not a sim-logic change; determinism itself is re-proven by the
+    // repeat-run test below, which passes unchanged. (This hash was pinned
+    // against the wave's interim 18-symptom pool and held unchanged when the
+    // orchestrator cut `clutch-slip` to reach the final 17 - none of this
+    // career's seeded symptom draws landed on the cut entry.)
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('6e62e1c3')
+    expect(hashState(finalState)).toBe('21512af3')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -536,7 +545,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 81, was 889d6691): same cause as the 30-day
     // career hash above - the 25-model / 14-symptom pick pools change which
     // lots each seeded catalog roll produces (directive 17 case (a)).
-    expect(hashState(acquisitionCareer().sold)).toBe('65447382')
+    // Re-pinned again (Sprint 83, was 65447382): same cause as the 30-day
+    // career hash above - the 26-model / 17-symptom pick pools change which
+    // lots each seeded catalog roll produces (directive 17 case (a)). Pinned
+    // interim at 2ecb0cb9 against the wave's 18-symptom pool, then moved once
+    // more when the orchestrator cut `clutch-slip` (failed the sleeper/trap
+    // coherence gate at common/uncommon) - the 18 -> 17 pool shifts this
+    // career's seeded symptom draws where the 30-day career's hold still.
+    expect(hashState(acquisitionCareer().sold)).toBe('83bc96ab')
   })
 })
 

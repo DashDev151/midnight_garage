@@ -59,7 +59,7 @@
     "deadlineDays": 3,
     "baseReputation": 4,
     "flavorPool": [
-      "Hesitates under load and struggles to start cold. Clean out the fuel system.",
+      "Hesitates under load and struggles to start cold. Ran it dry on the expressway once already this year.",
       "Feels starved of fuel on hard acceleration. Give the fuel system a once-over."
     ]
   },
@@ -84,7 +84,7 @@
     "baseReputation": 10,
     "flavorPool": [
       "Valves are getting noisy and the timing's due. Freshen up the top end.",
-      "Ticking from up top and it's lost some pep. Needs a proper top-end refresh."
+      "Ticking from up top, and it's lost some pep since a run up the pass last month."
     ]
   },
   {
@@ -192,7 +192,7 @@
     "deadlineDays": 4,
     "baseReputation": 5,
     "flavorPool": [
-      "Clunking from underneath on every gear change. Sort out the driveline.",
+      "Clunking from underneath on every gear change, loud enough the neighbour asked about it.",
       "Something's knocking in the drivetrain when I pull away. Give it a look."
     ]
   },
