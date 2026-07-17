@@ -223,18 +223,45 @@ describe('CarDetailScreen', () => {
 
     await wrapper.find('[data-test="expand-suspension"]').trigger('click')
     expect(wrapper.findAll('.sub-part-row')).toHaveLength(visibleByDefault.length)
-    for (const row of visibleByDefault) expect(wrapper.text()).toContain(row.displayName)
+    // Sprint 84: the parts diagram (above the list) now renders every part's
+    // name as a rectangle label, so this must scope to the list itself, not the
+    // whole screen - the condition filter governs the LIST, and that is what the
+    // assertion is about.
+    const list = () => wrapper.get('.components').text()
+    for (const row of visibleByDefault) expect(list()).toContain(row.displayName)
 
     if (hiddenByDefault.length > 0) {
-      for (const row of hiddenByDefault) expect(wrapper.text()).not.toContain(row.displayName)
+      for (const row of hiddenByDefault) expect(list()).not.toContain(row.displayName)
 
       await showAllConditions(wrapper)
       expect(wrapper.findAll('.sub-part-row')).toHaveLength(rows.length)
-      for (const row of hiddenByDefault) expect(wrapper.text()).toContain(row.displayName)
+      for (const row of hiddenByDefault) expect(list()).toContain(row.displayName)
     }
 
     await wrapper.find('[data-test="expand-suspension"]').trigger('click')
     expect(wrapper.find('.part-sublist').exists()).toBe(false)
+  })
+
+  it('clicking a parts-diagram part lands on that part row in the list; a tile click only navigates (Sprint 84 amendment)', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const id = game.gameState.ownedCars[0]!.id
+
+    const { wrapper } = await mountAt(id)
+    // The list row is not shown until the diagram click expands its group.
+    expect(wrapper.find('[data-part-row="block"]').exists()).toBe(false)
+
+    // Level 1 -> level 2: a TILE click never touches the list (amendment).
+    await wrapper.get('[data-test="diagram-tile-engine"]').trigger('click')
+    expect(wrapper.find('[data-part-row="block"]').exists()).toBe(false)
+
+    // A PART click selects the list row, as before.
+    await wrapper.get('[data-test="diagram-slot-block"]').trigger('click')
+    await flushPromises()
+
+    const row = wrapper.find('[data-part-row="block"]')
+    expect(row.exists()).toBe(true)
+    expect(row.classes()).toContain('diagram-selected')
   })
 
   it('staging the group repair click-per-rung, then Confirm, actually creates and labors the job - settling one rung up, not mint', async () => {

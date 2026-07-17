@@ -211,3 +211,28 @@ include cars sold vs. kept, does it show stats or just the story) before any imp
 
 **Status:** idea only, no reuse-analysis, no task breakdown, no sprint attached - parked here per the
 standing rule (frozen v1.0 GDD scope), not a near-term commitment.
+
+---
+
+## Parts diagram: per-model art layouts and the zoomed per-zone view (tier 3)
+
+*Added 2026-07-17 at Sprint 84 close-out (the parts diagram v1). Status: recorded per Sprint 84
+decision 8 as tier-3, out of v1.0 by definition.*
+
+**The idea:** Sprint 84 ships one hand-authored, model-agnostic layout (`partsDiagramLayout.ts`)
+of plain rectangles, shared by every car. Two tier-3 extensions were deliberately deferred:
+(1) **per-model layout variants** - a mid-engine or FR car laid out to its own silhouette rather
+than the single shared side-on schematic; and (2) a **zoomed per-zone view** - clicking the engine
+bay opens a larger, better-spaced drawing of just that cluster, so the buried-slot stack reads
+without the whole-car scale fighting it. The maintainer's glyph-art pass (swapping each rectangle
+interior for a hand-drawn Aseprite part, in the SAME layout) is a separate, already-planned art
+task tracked in `docs/sprints/sprint84.md`, not here.
+
+**Why it's parked, not built:** v1's rectangle diagram already makes the teardown hierarchy legible
+(the occlusion is the mechanic), and the layout-coherence test guarantees it stays honest. Per-model
+variants multiply the hand-authored layout (and its coherence test) by the roster; the zoomed view
+is a whole second interaction surface. Neither is needed for the core "see what comes off first"
+payoff, and both want a real design pass first.
+
+**Status:** idea only, no reuse-analysis, no task breakdown, no sprint attached - parked here per the
+standing rule (frozen v1.0 GDD scope), not a near-term commitment.

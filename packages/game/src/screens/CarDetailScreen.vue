@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { CarPartId, ComponentId, ConditionBand, StagedAction } from '@midnight-garage/content'
 import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
+import PartsDiagram from '../components/PartsDiagram.vue'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
 import StatRadar from '../components/StatRadar.vue'
@@ -191,6 +192,28 @@ function rowCategory(row: ReturnType<typeof rowsFor>[number]): ConditionFilterOp
  * governed by the one global filter above. */
 function visibleRowsFor(componentId: ComponentId) {
   return rowsFor(componentId).filter((row) => visibleConditions.has(rowCategory(row)))
+}
+
+/**
+ * Sprint 84: clicking a rectangle in the parts diagram lands on that part's row
+ * in this list - the diagram is a view, the list is where the actions are
+ * (decision 5). Expand the part's group and make sure the one condition filter
+ * isn't hiding the row (a mint part is hidden by default), then scroll it into
+ * view and mark it, so the click has a visible destination.
+ */
+const selectedPartId = ref<CarPartId | null>(null)
+
+function onDiagramSelect(partId: CarPartId): void {
+  const componentId = game.groupForCarPart(partId)
+  if (!componentId) return
+  expandedGroups.add(componentId)
+  const row = rowsFor(componentId).find((r) => r.partId === partId)
+  if (row) visibleConditions.add(rowCategory(row))
+  selectedPartId.value = partId
+  void nextTick(() => {
+    const el = document.querySelector(`[data-part-row="${partId}"]`)
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+  })
 }
 
 /** Sprint 67 decision 3 (playtest items 18 + 9): bulk filter controls.
@@ -721,6 +744,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
 
         <div class="components-col">
+          <!-- Sprint 84: the parts diagram sits above the list (decision 6),
+               a view only - it selects a row, it never acts. The list below
+               stays the accessibility-complete control surface. -->
+          <PartsDiagram :car-id="detail.car.id" @select="onDiagramSelect" />
+
           <h3>
             Components
             <HelpHint label="Components">
@@ -879,6 +907,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   v-for="row in visibleRowsFor(componentId)"
                   :key="row.partId"
                   class="sub-part-row"
+                  :class="{ 'diagram-selected': selectedPartId === row.partId }"
+                  :data-part-row="row.partId"
                 >
                   <div class="meter-line sub">
                     <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
@@ -1599,6 +1629,13 @@ h4 {
   gap: var(--mg-space-1);
   padding: var(--mg-space-1) 0;
   border-top: var(--mg-border);
+}
+
+/* Sprint 84: the row a parts-diagram click just landed on - a brief marker so
+   the click has a visible destination in the list. */
+.sub-part-row.diagram-selected {
+  outline: 1px solid var(--mg-neon-violet);
+  outline-offset: 2px;
 }
 
 .meter-line.sub {
