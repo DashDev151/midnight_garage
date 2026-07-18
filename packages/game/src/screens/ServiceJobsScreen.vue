@@ -110,9 +110,7 @@ function onHandItOver(): void {
       <p class="desc">{{ game.storyMissionOfferView.requestCopy }}</p>
       <p class="terms">
         pays {{ formatYen(game.storyMissionOfferView.payoutYen) }} · budget
-        {{ formatYen(game.storyMissionOfferView.budgetCapYen) }} ·
-        {{ game.storyMissionOfferView.deadlineDays }}
-        days once accepted
+        {{ formatYen(game.storyMissionOfferView.budgetCapYen) }}
       </p>
       <button
         class="primary"
@@ -128,13 +126,6 @@ function onHandItOver(): void {
         <span class="story-chip">STORY</span>
         <span class="customer">{{ game.activeStoryMissionView.personaName }}</span>
         <span class="mission-title">{{ game.activeStoryMissionView.title }}</span>
-        <span v-if="game.activeStoryMissionView.daysLeft !== null" class="days">
-          {{
-            game.activeStoryMissionView.daysLeft <= 0
-              ? 'due today'
-              : game.activeStoryMissionView.daysLeft + 'd left'
-          }}
-        </span>
       </div>
 
       <ul class="requirement-checklist" data-test="mission-requirements">
@@ -237,6 +228,15 @@ function onHandItOver(): void {
               @click="game.acceptServiceJob(offer.id)"
             >
               Accept
+            </button>
+            <!-- Sprint 85 decision 4: decline clears the offer with zero side
+                 effects. Minimal control this sprint; Sprint 86 restyles both. -->
+            <button
+              class="decline"
+              :data-test="'decline-' + offer.id"
+              @click="game.rejectServiceJobOffer(offer.id)"
+            >
+              Decline
             </button>
           </div>
         </li>
@@ -609,6 +609,12 @@ button {
 button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Sprint 85 decision 4: a muted secondary control, deliberately minimal -
+   the Sprint 86 card face-lift restyles Accept/Decline together. */
+button.decline {
+  color: var(--mg-text-dim);
 }
 
 button.primary {

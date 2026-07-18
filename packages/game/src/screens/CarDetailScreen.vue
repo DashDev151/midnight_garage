@@ -537,10 +537,9 @@ function onReplaceClick(carPartId: CarPartId): void {
 }
 
 /**
- * Pull whatever's occupying this slot into inventory (Sprint 32 decision
- * 7) - free and instant, no staging step. Removing an aftermarket part
- * reverts the slot to a fresh stock part; removing a stock part leaves the
- * slot genuinely empty (missing).
+ * Pull whatever's occupying this slot into inventory - free and instant, no
+ * staging step. Removal always leaves the slot empty (Sprint 85), whatever
+ * grade the removed part was; the removed part lands in inventory.
  */
 function onRemoveClick(carPartId: CarPartId): void {
   const d = detail.value
@@ -548,12 +547,23 @@ function onRemoveClick(carPartId: CarPartId): void {
   game.removePart(d.car.id, carPartId)
 }
 
-/** Sprint 71: why "Take it off" would refuse this slot right now - a
- * blocker still in the way, or a machine tier not yet owned - or null when
- * nothing structural blocks it. */
+/** Sprint 71: why "Take it off" would refuse this slot right now - a blocker
+ * still in the way - or null when nothing structural blocks it. (Sprint 85: a
+ * missing tier-2 machine no longer blocks; it adds the fee caption below.) */
 function removeBlockedReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
   return d ? game.removeBlockedReason(d.car.id, carPartId) : null
+}
+
+/** Sprint 85 decision 6: the `machine shop assist +<fee>` caption for a
+ * buried engine/drivetrain slot the shop can't yet do in-house - shown on both
+ * the remove and install affordances, `null` when the machine is owned or the
+ * slot isn't machine-gated (no fee). */
+function machineAssistCaptionFor(carPartId: CarPartId): string | null {
+  const d = detail.value
+  if (!d) return null
+  const fee = game.machineAssistFee(d.car.id, carPartId)
+  return fee > 0 ? `machine shop assist +${formatYen(fee)}` : null
 }
 
 /** Confirm - locks in every staged action on this car at once (Sprint 18). */
@@ -1014,19 +1024,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                         </button>
                       </template>
 
-                      <button
-                        v-if="!row.installedPartName"
-                        type="button"
-                        class="replace-btn"
-                        :class="{ 'active-target': dropZones[row.partId].isActiveTarget.value }"
-                        :data-test="'replace-part-' + row.partId"
-                        @pointerup="dropZones[row.partId].onPointerUp"
-                        @pointerenter="dropZones[row.partId].onPointerEnter"
-                        @pointerleave="dropZones[row.partId].onPointerLeave"
-                        @click="onReplaceClick(row.partId)"
-                      >
-                        {{ dropZones[row.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
-                      </button>
+                      <template v-if="!row.installedPartName">
+                        <button
+                          type="button"
+                          class="replace-btn"
+                          :class="{ 'active-target': dropZones[row.partId].isActiveTarget.value }"
+                          :data-test="'replace-part-' + row.partId"
+                          @pointerup="dropZones[row.partId].onPointerUp"
+                          @pointerenter="dropZones[row.partId].onPointerEnter"
+                          @pointerleave="dropZones[row.partId].onPointerLeave"
+                          @click="onReplaceClick(row.partId)"
+                        >
+                          {{ dropZones[row.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                        </button>
+                        <span
+                          v-if="machineAssistCaptionFor(row.partId)"
+                          class="assist-caption"
+                          :data-test="'assist-fee-' + row.partId"
+                          >{{ machineAssistCaptionFor(row.partId) }}</span
+                        >
+                      </template>
 
                       <template v-if="row.installedPartName && row.removable">
                         <button
@@ -1046,6 +1063,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                           class="blocked-reason"
                           :data-test="'remove-blocked-' + row.partId"
                           >{{ removeBlockedReasonFor(row.partId) }}</span
+                        >
+                        <span
+                          v-if="machineAssistCaptionFor(row.partId)"
+                          class="assist-caption"
+                          :data-test="'assist-fee-' + row.partId"
+                          >{{ machineAssistCaptionFor(row.partId) }}</span
                         >
                       </template>
                     </template>
@@ -1886,6 +1909,14 @@ h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   font-style: italic;
+}
+
+/* Sprint 85 decision 6: the machine-shop assist fee caption - a muted,
+   informational note that this slot costs extra without the tier-2 machine.
+   Deliberately minimal; the Sprint 88 diagram/action-panel rework restyles it. */
+.assist-caption {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
 }
 
 .staged-panel {

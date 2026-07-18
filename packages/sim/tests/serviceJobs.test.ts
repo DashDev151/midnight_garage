@@ -39,6 +39,7 @@ import {
   reputationForCompletion,
   reputationForFailure,
   resolveAcceptServiceJob,
+  resolveRejectServiceJobOffer,
   resolveServiceJob,
   resolveServiceJobArrivals,
   serviceJobCostBreakdown,
@@ -136,20 +137,47 @@ function stateWith(job: ServiceJob, overrides: Partial<GameState> = {}): GameSta
 
 describe('generateDailyServiceJobOffers', () => {
   it('offers unique ids, a real car, no deadline yet, and a positive derived payout', () => {
-    const result = generateDailyServiceJobOffers(CONTEXT, 7, 10, createRng(1))
+    const result = generateDailyServiceJobOffers(CONTEXT, 7, createRng(1))
     expect(result.length).toBeGreaterThan(0) // sanity: this seed rolls at least one offer
     expect(new Set(result.map((o) => o.id)).size).toBe(result.length)
-    expect(result.every((o) => o.expiresOnDay === 17)).toBe(true)
+    // Sprint 85 decision 3: each offer's lifetime is rolled per offer from
+    // economy.serviceJobs.offerLifetimeDaysRange ([3, 8]), so it expires day
+    // 7 + 3..8 inclusive rather than the old flat day-17 (7 + 10).
+    const [minLife, maxLife] = CONTEXT.economy.serviceJobs.offerLifetimeDaysRange
+    expect(
+      result.every((o) => o.expiresOnDay >= 7 + minLife && o.expiresOnDay <= 7 + maxLife),
+    ).toBe(true)
     expect(result.every((o) => o.dueOnDay === null)).toBe(true) // deadline is stamped on accept
     expect(result.every((o) => o.arrivesOnDay === null)).toBe(true)
     expect(result.every((o) => o.car.id.length > 0)).toBe(true)
     expect(result.every((o) => o.payoutYen > 0)).toBe(true)
   })
 
+  /**
+   * Sprint 85 decision 3 (playtest 6): the per-offer lifetime roll. Every
+   * offer's `expiresOnDay` lands within `day + offerLifetimeDaysRange`
+   * inclusive, and across many offers the roll genuinely varies (it is not a
+   * single flat value stamped on the whole batch, the pre-Sprint-85 behaviour).
+   */
+  it('rolls each offer a lifetime within offerLifetimeDaysRange, and the value varies across offers', () => {
+    const [minLife, maxLife] = CONTEXT.economy.serviceJobs.offerLifetimeDaysRange
+    const lifetimes = new Set<number>()
+    for (let day = 1; day < 200; day++) {
+      for (const offer of generateDailyServiceJobOffers(CONTEXT, day, createRng(day * 31 + 1))) {
+        const lifetime = offer.expiresOnDay - day
+        expect(lifetime).toBeGreaterThanOrEqual(minLife)
+        expect(lifetime).toBeLessThanOrEqual(maxLife)
+        lifetimes.add(lifetime)
+      }
+    }
+    // The roll is real, not a constant: more than one distinct lifetime shows up.
+    expect(lifetimes.size).toBeGreaterThan(1)
+  })
+
   it('every offer composes a real template + flavor line + customer name + its own task list', () => {
     const seen: ServiceJob[] = []
     for (let day = 1; day < 40; day++) {
-      seen.push(...generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day)))
+      seen.push(...generateDailyServiceJobOffers(CONTEXT, day, createRng(day)))
     }
     expect(seen.length).toBeGreaterThan(0)
     for (const offer of seen) {
@@ -173,7 +201,7 @@ describe('generateDailyServiceJobOffers', () => {
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
     )
-    expect(generateDailyServiceJobOffers(noTemplates, 7, 10, createRng(1))).toEqual([])
+    expect(generateDailyServiceJobOffers(noTemplates, 7, createRng(1))).toEqual([])
 
     const noNames = buildSimContext(
       CARS,
@@ -184,7 +212,7 @@ describe('generateDailyServiceJobOffers', () => {
       FACILITIES,
       [],
     )
-    expect(generateDailyServiceJobOffers(noNames, 7, 10, createRng(1))).toEqual([])
+    expect(generateDailyServiceJobOffers(noNames, 7, createRng(1))).toEqual([])
 
     const noModels = buildSimContext(
       [],
@@ -195,7 +223,7 @@ describe('generateDailyServiceJobOffers', () => {
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
     )
-    expect(generateDailyServiceJobOffers(noModels, 7, 10, createRng(1))).toEqual([])
+    expect(generateDailyServiceJobOffers(noModels, 7, createRng(1))).toEqual([])
   })
 
   /**
@@ -207,7 +235,7 @@ describe('generateDailyServiceJobOffers', () => {
     const counts = [0, 0, 0, 0, 0]
     const days = 4000
     for (let day = 1; day <= days; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day))
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day))
       counts[Math.min(result.length, 4)]! += 1
     }
     const weights = CONTEXT.economy.serviceJobs.dailyOfferCountWeights
@@ -231,7 +259,7 @@ describe('generateDailyServiceJobOffers', () => {
     function maxCountOverSeeds(day: number): number {
       let max = 0
       for (let seed = 1; seed <= SEEDS; seed++) {
-        const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(seed))
+        const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(seed))
         max = Math.max(max, result.length)
       }
       return max
@@ -262,7 +290,6 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
       const result = generateDailyServiceJobOffers(
         CONTEXT,
         day,
-        10,
         createRng(day),
         Infinity,
         testToolTiers(),
@@ -283,7 +310,6 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
       const result = generateDailyServiceJobOffers(
         CONTEXT,
         day,
-        10,
         createRng(day),
         Infinity,
         testToolTiers(),
@@ -303,7 +329,6 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
       const result = generateDailyServiceJobOffers(
         CONTEXT,
         day,
-        10,
         createRng(day),
         Infinity,
         testToolTiers(),
@@ -322,7 +347,6 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
       const result = generateDailyServiceJobOffers(
         CONTEXT,
         day,
-        10,
         createRng(day),
         Infinity,
         testToolTiers(),
@@ -337,7 +361,7 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   it('defaults to unrestricted (legend) when the reputation param is omitted', () => {
     let sawTier4 = false
     for (let day = 1; day <= 300 && !sawTier4; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, 10, createRng(day))
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day))
       if (result.some((o) => SERVICE_JOB_TYPES.find((t) => t.id === o.typeId)!.tier === 4))
         sawTier4 = true
     }
@@ -1439,7 +1463,6 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         const zero = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           testToolTiers(),
@@ -1449,7 +1472,6 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         const high = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           testToolTiers(),
@@ -1480,7 +1502,6 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         const zero = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           testToolTiers(),
@@ -1490,7 +1511,6 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         const justUnder = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           testToolTiers(),
@@ -1517,7 +1537,6 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         const zero = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           readyTiers,
@@ -1527,7 +1546,6 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
         const high = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           readyTiers,
@@ -1546,11 +1564,10 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
   describe('zero-specialty regression: byte-identical to pre-Sprint-38 behavior', () => {
     it('generateDailyServiceJobOffers with all-zero specialty produces the identical sequence as omitting the parameter (its default)', () => {
       for (let seed = 1; seed <= 20; seed++) {
-        const withDefault = generateDailyServiceJobOffers(CONTEXT, seed, 10, createRng(seed))
+        const withDefault = generateDailyServiceJobOffers(CONTEXT, seed, createRng(seed))
         const explicitZero = generateDailyServiceJobOffers(
           CONTEXT,
           seed,
-          10,
           createRng(seed),
           Infinity,
           testToolTiers(),
@@ -1593,7 +1610,6 @@ describe('techniques and the derived shop title (Sprint 39)', () => {
         const below = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           READY_TIERS,
@@ -1604,7 +1620,6 @@ describe('techniques and the derived shop title (Sprint 39)', () => {
         const above = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           READY_TIERS,
@@ -1635,7 +1650,6 @@ describe('techniques and the derived shop title (Sprint 39)', () => {
         const offers = generateDailyServiceJobOffers(
           context,
           day,
-          10,
           createRng(day),
           Infinity,
           READY_TIERS,
@@ -1885,6 +1899,33 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     expect(result.log).toEqual([
       { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
     ])
+  })
+})
+
+describe('resolveRejectServiceJobOffer (Sprint 85 decision 4)', () => {
+  it('removes only the declined offer, with no reputation change and no log entry', () => {
+    const offerA = { ...activeJob(twoRepairType), id: 'svc-decline-a', dueOnDay: null }
+    const offerB = { ...activeJob(mixedType), id: 'svc-decline-b', dueOnDay: null }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      serviceJobOffers: [offerA, offerB],
+    }
+    const result = resolveRejectServiceJobOffer(state, 'svc-decline-a')
+
+    expect(result.state.serviceJobOffers).toEqual([offerB])
+    expect(result.state.reputationPoints).toBe(state.reputationPoints)
+    expect(result.log).toEqual([])
+    // Nothing else moved: restoring the offer list makes the whole state
+    // deep-equal to the original - only serviceJobOffers ever changed.
+    expect({ ...result.state, serviceJobOffers: state.serviceJobOffers }).toEqual(state)
+  })
+
+  it('is a no-op (same state reference, empty log) for an unknown offer id', () => {
+    const offer = { ...activeJob(twoRepairType), id: 'svc-decline-x', dueOnDay: null }
+    const state = { ...createInitialGameState(CONTEXT, 1), serviceJobOffers: [offer] }
+    const result = resolveRejectServiceJobOffer(state, 'no-such-offer')
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
   })
 })
 

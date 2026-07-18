@@ -11,9 +11,8 @@ import { formatYen } from '../utils/formatYen'
  * with Escape via App.vue's existing modal priority order). `result.copy` is
  * already the RIGHT template picked in the store (`overdeliveredCopy` when
  * the tip triggered, `deliveredCopy` otherwise) - this component never
- * branches on `tipYen` for that. Lapse surfaces need no modal of their own
- * (decision 6): the day report + `mission-lapsed` log line carry
- * `lapsedCopy` instead.
+ * branches on `tipYen` for that. Story missions are unfailable (Sprint 85
+ * decision 2), so there is no lapse surface at all.
  */
 const game = useGameStore()
 

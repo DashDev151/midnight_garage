@@ -5,6 +5,7 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   STORY_MISSIONS,
+  TOOL_LINES,
   fitmentClassForTier,
   type CarInstance,
   type CarPartId,
@@ -22,7 +23,7 @@ import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
 import { gradeMissionCar } from '../src/missions'
 import { createInitialGameState } from '../src/newGame'
-import { naToTurboConversionBlocked } from '../src/jobs'
+import { machineAssistFeeYen, naToTurboConversionBlocked } from '../src/jobs'
 import { valuateCarForBuyer } from '../src/valuation'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -427,5 +428,84 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       ceil1AtTwoPercentSlower(timeSeconds),
     )
     assertPassesAndBudgetLocked('under-one-fifteen', afterCar, probeCostYen)
+  })
+})
+
+/**
+ * Sprint 85 decision 6 (machine-shop assist v1): the two coherence probes the
+ * sprint doc calls for. Closed-form, no bot careers (directive 21) - pure
+ * arithmetic against the shipped content.
+ */
+describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
+  // A fresh shop: every tool line at tier 1, so every buried engine/drivetrain
+  // slot is machine-gated and the assist fee applies.
+  const TIER1_STATE = createInitialGameState(CONTEXT, 1)
+
+  /**
+   * Probe (a): each assist fee is positive (renting always beats being walled
+   * out) and, over `probeAmortisationOps` operations, never dearer than buying
+   * the tier-2 machine outright (owning beats renting once past that volume).
+   * The engine fee sits EXACTLY at the boundary (15,000 x 40 = 600,000, the
+   * engine crane's own price), so the bound is `<=`, not a strict `<`.
+   */
+  it('each assist fee is positive and amortises within its tier-2 machine price', () => {
+    const { feeYenByGroup, probeAmortisationOps } = CONTEXT.economy.machineShopAssist
+    for (const group of ['engine', 'drivetrain'] as const) {
+      const fee = feeYenByGroup[group]
+      const machinePriceYen = TOOL_LINES[group].tiers[1]!.upgradePriceYen // tier 2
+      expect(fee, `${group} assist fee must be > 0`).toBeGreaterThan(0)
+      expect(
+        fee * probeAmortisationOps,
+        `${group}: renting ${probeAmortisationOps}x must not exceed buying the machine (${machinePriceYen})`,
+      ).toBeLessThanOrEqual(machinePriceYen)
+    }
+  })
+
+  /**
+   * Probe (b): make-it-pull is the only authored mission whose satisfiability
+   * recipe fits an aftermarket part into a machine-gated (buried engine/
+   * drivetrain) slot - the sport camsTiming. Building it means removing the
+   * stock cams (gated) then installing the sport cams (gated): two engine-fee
+   * operations. The mission must stay satisfiable within its authored budget
+   * with those fees included, which the budget's 10% headroom absorbs.
+   */
+  it('make-it-pull stays within budget once the buried camsTiming assist fees are included', () => {
+    const fitmentClass = fitmentClassForTier(
+      CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!.tier,
+    )
+    const aftermarket: AftermarketFit[] = (
+      ['intake', 'exhaust', 'ignitionEcu', 'camsTiming'] as CarPartId[]
+    ).map((carPartId) => ({ carPartId, part: aftermarketPart(carPartId, 'sport', fitmentClass) }))
+    const { probeCostYen } = buildProbe('honda-civic-sir2-eg6', 'mint', aftermarket)
+
+    const camsFee = machineAssistFeeYen('camsTiming', TIER1_STATE, CONTEXT)
+    expect(camsFee, 'camsTiming must be machine-gated at tier 1').toBeGreaterThan(0)
+    const totalAssistYen = 2 * camsFee // remove the stock cams + install the sport cams
+    expect(probeCostYen + totalAssistYen).toBeLessThanOrEqual(mission('make-it-pull').budgetCapYen)
+  })
+
+  /**
+   * The other authored aftermarket slots are all bolt-on, surface, or not an
+   * engine/drivetrain slot, so no machine-shop assist fee ever applies to their
+   * builds - the "where a gated operation appears" qualifier in probe (b) is
+   * genuinely make-it-pull alone among the shipped campaign.
+   */
+  it('no other authored aftermarket slot is machine-gated (fee is 0)', () => {
+    const nonGated: CarPartId[] = [
+      'intake',
+      'exhaust',
+      'ignitionEcu',
+      'forcedInduction',
+      'tyres',
+      'aero',
+      'rims',
+      'seats',
+    ]
+    for (const carPartId of nonGated) {
+      expect(
+        machineAssistFeeYen(carPartId, TIER1_STATE, CONTEXT),
+        `${carPartId} should not be machine-gated`,
+      ).toBe(0)
+    }
   })
 })

@@ -43,7 +43,16 @@ function generateForEligibleTiers(
     }
     const count = countForTier(tier)
     if (count <= 0) continue
-    const lots = generateAuctionCatalog(context.models, tier, day, count, rng, context, year)
+    const lots = generateAuctionCatalog(
+      context.models,
+      tier,
+      day,
+      count,
+      rng,
+      context,
+      year,
+      state.reputationTier,
+    )
     if (lots.length === 0) continue
     freshLots.push(...lots)
     lotsByTier.push({ tier, lotCount: lots.length })

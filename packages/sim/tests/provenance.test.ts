@@ -151,33 +151,12 @@ describe('birth site: generateAuctionCarInstance (auctions.ts) stamps a car orig
   })
 })
 
-describe("birth site: resolveRemovePart (jobs.ts) backfill instance carries the car's own origin", () => {
-  it("a fresh stock instance backfilled after pulling an aftermarket part off a car carries that car's origin", () => {
-    const model = CARS.find((m) => m.id === 'honda-city-e-aa')!
-    const car: CarInstance = buildCarInstance({
-      id: 'car-owned-1',
-      modelId: model.id,
-      parts: mintCarParts({
-        dampers: {
-          id: 'pi-aftermarket',
-          partId: 'shitbox-tanuki-street-coilovers',
-          band: 'worn',
-          genuinePeriod: false,
-          origin: makeMarketOrigin(1),
-        },
-      }),
-    })
-    const state = baseState({ ownedCars: [car], day: 9 })
-    const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
-    const backfilled = result.state.ownedCars[0]!.parts.dampers.installed!
-    expect(backfilled.origin).toEqual({
-      kind: 'car',
-      carInstanceId: car.id,
-      carLabel: carOriginLabel(model, car.year),
-      day: 9,
-    })
-  })
-})
+// Sprint 85 (the phantom-mint fix): the former "backfill instance carries the
+// car's own origin" birth-site test is gone with the mechanism it documented -
+// removal no longer synthesises a stock instance into the vacated slot at all
+// (directive 17 case (a): the branch was intentionally deleted, playtest
+// 15/16/20). A removed part keeps its own origin, covered by the close-out
+// parity tests below.
 
 describe('birth site: resolveBuyPart (parts.ts) stamps a market origin', () => {
   it('an express purchase carries a market origin at the current day', () => {

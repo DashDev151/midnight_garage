@@ -416,15 +416,14 @@ describe('ServiceJobsScreen', () => {
     })
 
     /**
-     * Sprint 78 decision 3/definition-of-done: the campaign never dead-ends
-     * - an active mission past its deadline lapses (reputation penalty) and
-     * returns to `offered` once `reofferDays` elapses. Skips straight to
-     * `the-column-clock` (mission 5, gate 200) by marking the four earlier
-     * missions delivered directly - reaching it by actually playing four
-     * missions end to end belongs in the maintainer's own arc-closing
-     * playtest (this sprint's user-only task), not a unit test.
+     * Sprint 85 decision 2 (playtest 18, directive 17 case (a)): story missions
+     * are unfailable now, so the old "lapses then reoffers after reofferDays"
+     * flow is gone. An accepted mission stays active however many days pass,
+     * with no reputation penalty. Skips straight to `the-column-clock` (mission
+     * 5, gate 200) by marking the four earlier missions delivered directly,
+     * the same setup the removed lapse test used.
      */
-    it('a lapsed mission (the-column-clock) returns to offered after reofferDays, never dead-ending', () => {
+    it('an accepted mission (the-column-clock) never lapses, however many days pass', () => {
       const game = useGameStore()
       game.newGame(1)
       const earlierMissionIds = [
@@ -440,8 +439,6 @@ describe('ServiceJobsScreen', () => {
           missionId,
           status: 'delivered' as const,
           acceptedOnDay: 1,
-          dueOnDay: null,
-          reofferOnDay: null,
         })),
       }
       game.endDay()
@@ -450,17 +447,13 @@ describe('ServiceJobsScreen', () => {
         throw new Error(`expected the-column-clock offered, got ${offer?.id ?? 'nothing'}`)
       }
       game.acceptMission(offer.id)
-      const active = game.gameState.storyMissions.find((r) => r.missionId === 'the-column-clock')!
-      expect(active.dueOnDay).not.toBeNull()
 
-      while (game.gameState.day <= active.dueOnDay!) game.endDay()
-      const lapsed = game.gameState.storyMissions.find((r) => r.missionId === 'the-column-clock')!
-      expect(lapsed.status).toBe('lapsed')
-      expect(lapsed.reofferOnDay).not.toBeNull()
-      expect(game.reputationPoints).toBeLessThan(200)
-
-      while (game.gameState.day <= lapsed.reofferOnDay!) game.endDay()
-      expect(game.storyMissionOfferView?.id).toBe('the-column-clock')
+      // Warp far past any old deadline window - the mission stays active and
+      // reputation is never penalised.
+      for (let i = 0; i < 40; i++) game.endDay()
+      const record = game.gameState.storyMissions.find((r) => r.missionId === 'the-column-clock')!
+      expect(record.status).toBe('active')
+      expect(game.reputationPoints).toBeGreaterThanOrEqual(200)
     })
   })
 })

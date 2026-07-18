@@ -104,7 +104,7 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
   { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
   { type: 'machine-listed', componentId: 'wheels', tier: 2, priceYen: 150_000 },
-  { type: 'mission-accepted', missionId: 'test-mission-a', dueOnDay: 10 },
+  { type: 'mission-accepted', missionId: 'test-mission-a' },
   {
     type: 'mission-delivered',
     missionId: 'test-mission-a',
@@ -120,8 +120,6 @@ const SAMPLES: DayLogEntry[] = [
       interior: 0,
     },
   },
-  { type: 'mission-lapsed', missionId: 'test-mission-a', reputationLost: 5, reofferOnDay: 12 },
-  { type: 'mission-reoffered', missionId: 'test-mission-a' },
   { type: 'staff-ads-refreshed', count: 3 },
   {
     type: 'staff-hired',

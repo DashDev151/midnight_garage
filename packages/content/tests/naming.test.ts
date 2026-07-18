@@ -86,7 +86,6 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
         mission.requestCopy,
         mission.deliveredCopy,
         mission.overdeliveredCopy,
-        mission.lapsedCopy,
       ]
       for (const field of fields) {
         const text = field.toLowerCase()

@@ -109,6 +109,68 @@ describe('generateAuctionCatalog never includes Gaisha', () => {
   })
 })
 
+describe('generateAuctionCatalog reputation-weighted rarity pick (Sprint 85 decision 5)', () => {
+  const localYardModels = CARS.filter((m) => auctionTierForRarity(m.tier) === 'local-yard')
+  const shitboxIds = new Set(localYardModels.filter((m) => m.tier === 'shitbox').map((m) => m.id))
+  const commonIds = new Set(localYardModels.filter((m) => m.tier === 'common').map((m) => m.id))
+
+  it('sanity: the Local Yard pool holds both shitbox and common models', () => {
+    expect(shitboxIds.size).toBeGreaterThan(0)
+    expect(commonIds.size).toBeGreaterThan(0)
+  })
+
+  it('at unknown reputation, draws shitbox models ~3:1 per model over common (content weight)', () => {
+    let shitboxLots = 0
+    let commonLots = 0
+    let totalLots = 0
+    // Aggregate several seeds to average out any single stream's luck; the
+    // draw is fully deterministic per seed regardless.
+    for (const seed of [101, 202, 303]) {
+      const lots = generateAuctionCatalog(
+        CARS,
+        'local-yard',
+        7,
+        1000,
+        createRng(seed),
+        CONTEXT,
+        Infinity,
+        'unknown',
+      )
+      totalLots += lots.length
+      for (const lot of lots) {
+        if (shitboxIds.has(lot.modelId)) shitboxLots += 1
+        else if (commonIds.has(lot.modelId)) commonLots += 1
+      }
+    }
+    // Local Yard is shitbox + common only - every lot classified.
+    expect(shitboxLots + commonLots).toBe(totalLots)
+    const ratioPerModel = shitboxLots / shitboxIds.size / (commonLots / commonIds.size)
+    expect(ratioPerModel).toBeGreaterThan(2.7)
+    expect(ratioPerModel).toBeLessThan(3.3)
+  })
+
+  it('at local reputation (and the default legend), the model draw is the old uniform pick - identical to today', () => {
+    // No rarity weights exist for local or the default legend tier, so both
+    // draw uniformly, and from the same seed produce the identical sequence -
+    // proving the reputation param never disturbs the local+ auction stream.
+    const atLocal = generateAuctionCatalog(
+      CARS,
+      'local-yard',
+      7,
+      200,
+      createRng(999),
+      CONTEXT,
+      Infinity,
+      'local',
+    )
+    const atDefault = generateAuctionCatalog(CARS, 'local-yard', 7, 200, createRng(999), CONTEXT)
+    expect(atLocal.map((l) => l.modelId)).toEqual(atDefault.map((l) => l.modelId))
+    // The uniform draw genuinely surfaces common models too, unlike the
+    // shitbox-biased unknown-rep board above.
+    expect(atLocal.some((l) => commonIds.has(l.modelId))).toBe(true)
+  })
+})
+
 describe('generateAuctionCarInstance', () => {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!model) throw new Error('fixture car missing from seed content')

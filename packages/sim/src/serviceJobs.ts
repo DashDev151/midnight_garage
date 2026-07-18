@@ -578,7 +578,10 @@ export function forceTasksOutstanding(
  * through `forceTasksOutstanding` - Sprint 40 - so the template's tasks are
  * guaranteed genuinely outstanding on it) and a payout derived from the
  * template's own task list against that specific car
- * (`deriveServiceJobPayoutYen`) - never an authored flat range.
+ * (`deriveServiceJobPayoutYen`) - never an authored flat range. Each offer's
+ * board lifetime is rolled uniformly per offer from
+ * `economy.serviceJobs.offerLifetimeDaysRange` (Sprint 85 decision 3,
+ * playtest 6 - replaces the old flat `SERVICE_JOB_EXPIRY_DAYS` constant).
  * `reputationTier` (default `'legend'` = unrestricted) gates which template
  * TIERS are even in the candidate pool (Sprint 29 decision 2); within that
  * pool, `toolTiers` (default: a fresh shop's all-1) drives the Sprint 36
@@ -615,7 +618,6 @@ export function forceTasksOutstanding(
 export function generateDailyServiceJobOffers(
   context: SimContext,
   day: number,
-  expiresInDays: number,
   rng: Rng,
   currentYear: number = Infinity,
   toolTiers: ToolTiers = freshToolTiers(),
@@ -644,6 +646,7 @@ export function generateDailyServiceJobOffers(
 
   const topGroup = topSpecialtyGroup(specialty)
   const titleGroup = titleGroupFor(specialty, context)
+  const [minLifetimeDays, maxLifetimeDays] = context.economy.serviceJobs.offerLifetimeDaysRange
   const rawCount = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
   const count = Math.min(
     rawCount,
@@ -695,7 +698,7 @@ export function generateDailyServiceJobOffers(
       payoutYen,
       baseReputation: template.baseReputation,
       deadlineDays: template.deadlineDays,
-      expiresOnDay: day + expiresInDays,
+      expiresOnDay: day + rng.int(minLifetimeDays, maxLifetimeDays),
       arrivesOnDay: null,
       dueOnDay: null,
     })
@@ -706,6 +709,31 @@ export function generateDailyServiceJobOffers(
 export interface AcceptServiceJobResult {
   state: GameState
   log: DayLogEntry[]
+}
+
+export interface RejectServiceJobResult {
+  state: GameState
+  log: DayLogEntry[]
+}
+
+/**
+ * Sprint 85 decision 4 (playtest 7): decline a radial offer. Removes it from
+ * the board by id and does nothing else - NO reputation effect and NO day-log
+ * entry, so a declined offer leaves no trace at all, exactly as if it had
+ * never been made (offer expiry is already penalty-free, so this is pure
+ * addition). Returns the state UNCHANGED (same reference) when the id doesn't
+ * match a live offer, so a caller can detect the no-op without a log entry to
+ * check. Story missions are untouched - they are never on this board.
+ */
+export function resolveRejectServiceJobOffer(
+  state: GameState,
+  offerId: string,
+): RejectServiceJobResult {
+  if (!state.serviceJobOffers.some((o) => o.id === offerId)) return { state, log: [] }
+  return {
+    state: { ...state, serviceJobOffers: state.serviceJobOffers.filter((o) => o.id !== offerId) },
+    log: [],
+  }
 }
 
 /**

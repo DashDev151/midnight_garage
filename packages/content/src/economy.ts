@@ -4,6 +4,7 @@ import {
   CarPartIdSchema,
   ComponentIdSchema,
   ConditionBandSchema,
+  RarityTierSchema,
   ReputationTierSchema,
 } from './tags'
 import { ToolTierSchema } from './toolLines'
@@ -344,6 +345,24 @@ export const EconomyConfigSchema = z.object({
     .refine((a) => a.valueGapFloor <= a.valueGapCeiling, {
       message: 'auctionInterest.valueGapFloor must be <= valueGapCeiling',
     }),
+  /**
+   * Sprint 85 decision 5 (playtest 14): reputation-conditioned rarity weighting
+   * for auction model selection (`auctions.ts`'s `generateAuctionCatalog`). Each
+   * eligible model's draw weight is
+   * `rarityWeightsByReputation[reputationTier]?.[model.tier] ?? 1`, so any tier
+   * or rarity absent from the map draws at the implicit 1 (uniform). Content
+   * ships one entry - `{unknown: {shitbox: 3}}` - so a fresh (unknown-rep)
+   * career's Local Yard board favours cheap shitboxes 3:1 per model, and from
+   * `local` onward every weight is 1 and selection is exactly the old uniform
+   * pick. Partial by design: both the tier map and each tier's inner rarity map
+   * name only the entries that deviate from the implicit weight of 1.
+   */
+  auction: z.object({
+    rarityWeightsByReputation: z.partialRecord(
+      ReputationTierSchema,
+      z.partialRecord(RarityTierSchema, z.number().positive()),
+    ),
+  }),
   /**
    * Sprint 21 (per-component weights); Sprint 26 decision 4 replaced the old
    * hand-authored `componentValueWeights` with a cost-weighted mean of band
@@ -901,6 +920,16 @@ export const EconomyConfigSchema = z.object({
       laborRateYen: z.number().int().nonnegative(),
       /** Flat callout/booking fee added on top of the margin-applied pool. */
       calloutFeeYen: z.number().int().nonnegative(),
+      /**
+       * Sprint 85 decision 3 (playtest 6): how many days a fresh radial offer
+       * stays on the board before it expires unaccepted - an inclusive
+       * `[min, max]` day range rolled uniformly PER OFFER
+       * (`generateDailyServiceJobOffers`), replacing the old flat
+       * `SERVICE_JOB_EXPIRY_DAYS = 10` constant. Uniform over 3..8 gives a
+       * ~5.5-day mean with real variety (maintainer ask: average ~5, range
+       * 3-8, varied). Story missions are unaffected (they never expire).
+       */
+      offerLifetimeDaysRange: DayRangeSchema,
       /** Bell-shaped weights over how many fresh offers land on the board
        * each day - index 0 is the weight for 0 offers, index 4 for 4; must
        * sum to 1 (`generateDailyServiceJobOffers`'s own sampling reads this
@@ -1084,6 +1113,27 @@ export const EconomyConfigSchema = z.object({
     }),
     usedPartSaleFraction: z.number().positive().max(1),
     donorBreakEvenBillRatio: z.number().positive().max(1),
+  }),
+  /**
+   * Sprint 85 decision 6 (playtest 21, maintainer ruling 2026-07-18): the
+   * machine-shop assist. Until the player owns the relevant tier-2 machine, a
+   * BURIED engine/drivetrain operation (remove OR install, the same
+   * `removeMachineGateGroup` predicate) is still workable at a cash fee instead
+   * of a hard wall - `feeYenByGroup[group]`, posted to the car's ledger through
+   * the existing repair-cost path so service-job billing and mission budget
+   * caps see it. Ownership removes the fee (buys margin), it never gates
+   * capability. `probeAmortisationOps` is the operation count the coherence
+   * probe amortises the machine's own `upgradePriceYen` over: each fee must be
+   * > 0 and strictly cheaper per operation than owning the machine at that
+   * volume (owning must beat renting at scale, renting must beat nothing). The
+   * tier-2/3 purchase gates (price, reputation, listing) are untouched.
+   */
+  machineShopAssist: z.object({
+    feeYenByGroup: z.object({
+      engine: z.number().int().positive(),
+      drivetrain: z.number().int().positive(),
+    }),
+    probeAmortisationOps: z.number().int().positive(),
   }),
   /**
    * Sprint 73 (diagnosis I, the fear-priced board - maintainer pricing law

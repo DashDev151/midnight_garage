@@ -3,7 +3,6 @@ import type { DayActions } from './actions'
 import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
 import { currentGameYear } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
-import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { applyToolUpgrades, rollMachineListings } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
@@ -341,7 +340,6 @@ export function advanceDay(
   const freshServiceJobOffers = generateDailyServiceJobOffers(
     context,
     next.day + 1,
-    SERVICE_JOB_EXPIRY_DAYS,
     rng,
     currentGameYear(next.reputationTier),
     next.toolTiers,

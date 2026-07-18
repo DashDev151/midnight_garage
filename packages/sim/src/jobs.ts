@@ -1,5 +1,4 @@
 import {
-  fitmentClassForTier,
   type CarInstance,
   type CarModel,
   type CarPartId,
@@ -11,7 +10,6 @@ import {
   type PartInstance,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
-import { carOriginLabel } from './auctions'
 import {
   bandIndex,
   canRepair,
@@ -27,7 +25,7 @@ import type { SimContext } from './context'
 import { crewSlotsSaved, perfectionistCostMultiplier } from './crewSkills'
 import { revealOnRemoval } from './diagnosis'
 import { partFitsCar } from './parts'
-import { makeCarOrigin, isCustomerOriginPart } from './provenance'
+import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
@@ -280,12 +278,18 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
       // Sprint 42: the part's own cost lands on the car's ledger the moment
       // it's physically installed (not at purchase - a bought-but-not-yet-
       // installed part sits in inventory, spent but not yet "on" any car).
+      // Sprint 85 decision 6: a buried engine/drivetrain fit also owes the
+      // machine-shop assist fee unless the machine is owned - deducted from
+      // cash and posted to the car's ledger repairYen, the same path removal uses.
       const pricePaidYen =
         state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
+      const assistFeeYen = installMachineAssistFeeYen(state, job, context)
       next = updateCarLedger(next, job.carInstanceId, (ledger) => ({
         ...ledger,
         partsYen: ledger.partsYen + pricePaidYen,
+        repairYen: ledger.repairYen + assistFeeYen,
       }))
+      if (assistFeeYen > 0) next = { ...next, cashYen: next.cashYen - assistFeeYen }
     }
     return { state: next, blockedByOccupiedSlot: false }
   }
@@ -302,12 +306,18 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
       // Sprint 57: the same paid-price accounting as the owned-car branch
       // above, at job scope instead of car scope, so the completion report
       // can show what this specific job actually cost, not a catalog price.
+      // Sprint 85 decision 6: the machine-shop assist fee for a buried
+      // engine/drivetrain fit lands on the job's own ledger too, so the
+      // customer's bill is honest.
       const pricePaidYen =
         state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
+      const assistFeeYen = installMachineAssistFeeYen(state, job, context)
       next = updateServiceJobLedger(next, serviceJob.id, (ledger) => ({
         ...ledger,
         partsYen: ledger.partsYen + pricePaidYen,
+        repairYen: ledger.repairYen + assistFeeYen,
       }))
+      if (assistFeeYen > 0) next = { ...next, cashYen: next.cashYen - assistFeeYen }
     }
     return { state: next, blockedByOccupiedSlot: false }
   }
@@ -338,43 +348,93 @@ export function occupiedBlockers(
 }
 
 /**
- * Sprint 71 decision 3: the tool line (and its tier-2 machine) uninstalling a
- * BURIED slot in that group requires - `null` for a surface/bolt-on slot, or
- * any group other than engine/drivetrain (no machine gate exists elsewhere).
- * Exported so the UI can pre-empt the same refusal `resolveRemovePart`
- * enforces, one source of truth for both (mirrors `naToTurboConversionBlocked`).
+/** The two component groups whose BURIED slots need a tier-2 machine (or, from
+ * Sprint 85, the machine-shop assist fee) - the engine crane and the
+ * transmission bench. */
+export type MachineGateGroup = 'engine' | 'drivetrain'
+
+/**
+ * Sprint 71 decision 3: the tool line (and its tier-2 machine) a BURIED slot in
+ * that group needs - `null` for a surface/bolt-on slot, or any group other than
+ * engine/drivetrain (no machine gate exists elsewhere). Exported so the UI can
+ * pre-empt the same gate `resolveRemovePart`/`completeJob` key off (mirrors
+ * `naToTurboConversionBlocked`). Sprint 85 decision 6: this is no longer a hard
+ * wall - it names which group's machine-shop assist fee applies (`machineAssistFeeYen`).
  */
 export function removeMachineGateGroup(
   carPartId: CarPartId,
   context: SimContext,
-): ComponentId | null {
+): MachineGateGroup | null {
   const entry = context.partsTaxonomyById[carPartId]
   if (!entry || entry.depthClass !== 'buried') return null
   return entry.group === 'engine' || entry.group === 'drivetrain' ? entry.group : null
 }
 
 /**
- * Sprint 32 decision 7 (Sprint 71: no longer free - see below): pulls
- * whatever occupies `carPartId`'s slot into inventory. Removing an
- * aftermarket part (any non-`'stock'` grade) reverts the slot to a fresh
- * mint generic stock `PartInstance` - the factory part underneath, assumed
- * present until it's pulled too - and drops the removed instance to
- * inventory at whatever band it actually carried. Removing a stock part
- * drops that same instance to inventory and leaves the slot genuinely
- * empty (a defect, priced as a full replacement in the restoration bill -
- * `bands.ts`'s `carCostToMintYen`). A no-op when the slot is already empty,
+ * Sprint 85 decision 6 (playtest 21, machine-shop assist v1): the cash fee to
+ * perform a machine-gated operation (remove OR install) on `carPartId` WITHOUT
+ * owning the tier-2 machine - `economy.machineShopAssist.feeYenByGroup[group]`
+ * for a buried engine/drivetrain slot, or 0 when no machine gate applies (any
+ * other slot) or the machine is already owned (`toolTiers[group] >= 2` - no
+ * fee, ownership buys the margin). Keys off the SAME `removeMachineGateGroup`
+ * predicate as the structural checks, so removal and install charge identically.
+ * Exported so the UI can show the fee on the affordance before the click.
+ */
+export function machineAssistFeeYen(
+  carPartId: CarPartId,
+  state: GameState,
+  context: SimContext,
+): number {
+  const group = removeMachineGateGroup(carPartId, context)
+  if (!group || state.toolTiers[group] >= 2) return 0
+  return context.economy.machineShopAssist.feeYenByGroup[group]
+}
+
+/**
+ * Sprint 85 decision 6: the machine-shop assist fee an install-part `job`
+ * owes, or 0 - resolved from the part being installed (its catalog
+ * `carPartId`, still in `state.partInventory` at this point, matching the
+ * `pricePaidYen` lookup beside it in `completeJob`) against the current tool
+ * tiers. The install side of the SAME gate removal charges: fitting a buried
+ * engine/drivetrain part needs the crane/bench too, satisfied by ownership or
+ * this fee (playtest 21's inconsistency fix - the install used to be ungated).
+ */
+function installMachineAssistFeeYen(state: GameState, job: Job, context: SimContext): number {
+  const partId = state.partInventory.find((p) => p.id === job.partInstanceId)?.partId
+  const carPartId = partId ? context.partsById[partId]?.carPartId : undefined
+  return carPartId ? machineAssistFeeYen(carPartId, state, context) : 0
+}
+
+/**
+ * Pulls whatever occupies `carPartId`'s slot into inventory and leaves the
+ * slot genuinely EMPTY (`installed: null`), whatever grade the removed part
+ * was. The removed instance drops to inventory at whatever band it actually
+ * carried; an empty slot is a defect for every part but a legitimately-absent
+ * forced-induction slot, priced as a full replacement in the restoration bill
+ * (`bands.ts`'s `carCostToMintYen`). A no-op when the slot is already empty,
  * the car/part/its taxonomy group can't be resolved, or a Job is currently
  * open on this exact address (component- or part-level) - a part can't be
  * yanked out from under work already in progress.
  *
- * Sprint 71 (the teardown game): three new refusals, all silent no-ops
- * matching every other can't-do-it gate in this codebase - `removeBlockReason`
- * below is the single predicate the UI queries to explain them proactively.
- * `removable: false` (the shell itself - chassis/paint/underbody) never
- * comes off at all. A slot in another slot's `blockedBy` list refuses while
- * that other slot is still occupied (decision 4's symmetric rule - reassembly
- * order matters, e.g. the gearbox before the clutch). A BURIED engine/
- * drivetrain slot needs that line's tier-2 machine (decision 3).
+ * Sprint 85 (the phantom-mint fix, playtest 15/16/20): removal used to
+ * backfill a synthesised MINT OEM stock instance whenever the removed part's
+ * catalogue grade was not `stock`, contradicting the schema contract (an
+ * installed part and a `vacatedBaseline` can never coexist - see
+ * `content/src/carInstance.ts`). That branch is gone: there is no factory
+ * part magically underneath an aftermarket one, and a second removal can no
+ * longer overwrite the baseline with phantom mint-stock fields (which is what
+ * let a genuinely new mint stock part then install as a free equivalence
+ * refit). `refitLaborSlotsFor` itself was always correct and is untouched.
+ *
+ * Sprint 71 (the teardown game): three refusals, all silent no-ops matching
+ * every other can't-do-it gate in this codebase - `removeBlockReason` below is
+ * the single predicate the UI queries to explain them proactively.
+ * `removable: false` (the shell itself - chassis/paint/underbody) never comes
+ * off at all. A slot in another slot's `blockedBy` list refuses while that
+ * other slot is still occupied (decision 4's symmetric rule - reassembly order
+ * matters, e.g. the gearbox before the clutch). A BURIED engine/drivetrain
+ * slot needs that line's tier-2 machine, OR the machine-shop assist fee
+ * (Sprint 85 decision 6) posted to the car's ledger.
  *
  * Sprint 79 (the equivalence-priced labour model, maintainer directive
  * 2026-07-16): `economy.teardown.removeSlotsByClass` is zeroed at every
@@ -396,10 +456,7 @@ export function removeMachineGateGroup(
  * inventory completely unchanged - Sprint 70 retired the old
  * `customerJobId` tag this function used to stamp on: the pulled instance
  * already carries its immutable `origin` from birth, which is what every
- * ownership question (`provenance.ts`) now reads instead. The slot's own
- * replacement (a fresh stock instance, or genuinely empty for a removed
- * stock part) carries the SAME car's origin, since it is materialising onto
- * this exact car.
+ * ownership question (`provenance.ts`) now reads instead.
  */
 export function resolveRemovePart(
   state: GameState,
@@ -425,29 +482,21 @@ export function resolveRemovePart(
   if (occupiedBlockers(car, carPartId, context).length > 0) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
-  const machineGateGroup = removeMachineGateGroup(carPartId, context)
-  if (machineGateGroup && state.toolTiers[machineGateGroup] < 2) {
-    return { state, log: [], laborSlotsUsed: 0 }
-  }
   const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
   if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
-  const model = context.modelsById[car.modelId]
-  const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
-  const removedCatalogPart = context.partsById[installed.partId]
-  const isStock = removedCatalogPart?.grade === 'stock'
-  const stockCatalogPart = context.stockPartByCarPartId[fitmentClass]?.[carPartId]
-  const carLabel = model ? carOriginLabel(model, car.year) : car.modelId
-  const freshStockInstance: PartInstance | null = stockCatalogPart
-    ? {
-        id: `part-removed-${state.day}-${state.partInventory.length}`,
-        partId: stockCatalogPart.id,
-        band: 'mint',
-        genuinePeriod: false,
-        origin: makeCarOrigin(carInstanceId, carLabel, state.day),
-      }
-    : null
+  // Sprint 85 decision 6 (machine-shop assist): a buried engine/drivetrain slot
+  // is no longer a hard wall without the tier-2 machine - the removal proceeds
+  // at a cash fee (0 when the machine is owned or the slot isn't machine-gated),
+  // deducted from cash below and posted to the car's ledger through the existing
+  // repair-cost path so mission budget caps and service-job billing see it.
+  const assistFeeYen = machineAssistFeeYen(carPartId, state, context)
 
+  // Removal always empties the slot and stamps the removed instance's identity
+  // as the slot's `vacatedBaseline` (Sprint 79) - a matching refit later is
+  // free logistics, anything else is charged (`refitLaborSlotsFor`). There is
+  // no synthesised stock backfill: an installed part and a baseline can never
+  // coexist on one slot (`content/src/carInstance.ts`).
   const vacatedBaseline = {
     partId: installed.partId,
     band: installed.band,
@@ -457,12 +506,13 @@ export function resolveRemovePart(
     ...car,
     parts: {
       ...car.parts,
-      [carPartId]: { installed: isStock ? null : freshStockInstance, vacatedBaseline },
+      [carPartId]: { installed: null, vacatedBaseline },
     },
   }
   const withLabor: GameState = {
     ...state,
     laborSlotsSpentToday: state.laborSlotsSpentToday + laborSlotsUsed,
+    cashYen: state.cashYen - assistFeeYen,
   }
 
   const ownedIndex = withLabor.ownedCars.findIndex((c) => c.id === carInstanceId)
@@ -482,7 +532,15 @@ export function resolveRemovePart(
         ...(revealedCauseId ? { revealedCauseId } : {}),
       },
     ]
-    return { state: { ...withLabor, ownedCars, partInventory }, log, laborSlotsUsed }
+    const base: GameState = { ...withLabor, ownedCars, partInventory }
+    const nextState =
+      assistFeeYen > 0
+        ? updateCarLedger(base, carInstanceId, (ledger) => ({
+            ...ledger,
+            repairYen: ledger.repairYen + assistFeeYen,
+          }))
+        : base
+    return { state: nextState, log, laborSlotsUsed }
   }
 
   const log: DayLogEntry[] = [
@@ -502,16 +560,22 @@ export function resolveRemovePart(
     const activeServiceJobs = [...withLabor.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
     const partInventory = [...withLabor.partInventory, installed]
-    return { state: { ...withLabor, activeServiceJobs, partInventory }, log, laborSlotsUsed }
+    const base: GameState = { ...withLabor, activeServiceJobs, partInventory }
+    const nextState =
+      assistFeeYen > 0
+        ? updateServiceJobLedger(base, serviceJob.id, (ledger) => ({
+            ...ledger,
+            repairYen: ledger.repairYen + assistFeeYen,
+          }))
+        : base
+    return { state: nextState, log, laborSlotsUsed }
   }
 
   return { state, log: [], laborSlotsUsed: 0 }
 }
 
 export type RemoveBlockReason =
-  | { kind: 'not-removable' }
-  | { kind: 'blocked-by'; blockedBy: CarPartId[] }
-  | { kind: 'tool-tier'; group: ComponentId }
+  { kind: 'not-removable' } | { kind: 'blocked-by'; blockedBy: CarPartId[] }
 
 /**
  * Sprint 71: the pure "why can't this come off" predicate - what the UI
@@ -520,21 +584,23 @@ export type RemoveBlockReason =
  * concern the UI already shows via the labor bar). `null` when nothing
  * structural blocks it (it may still be refused for insufficient labor, or
  * simply already removed).
+ *
+ * Sprint 85 decision 6: the old `tool-tier` reason is gone - a buried
+ * engine/drivetrain slot without the tier-2 machine is no longer BLOCKED, it
+ * is workable at the machine-shop assist fee (`machineAssistFeeYen`), which the
+ * UI surfaces as a fee caption on the affordance rather than a can't-do-it
+ * reason. Only genuinely structural refusals (the shell itself, an occupied
+ * blocker) remain here.
  */
 export function removeBlockReason(
   car: CarInstance,
   carPartId: CarPartId,
-  state: GameState,
   context: SimContext,
 ): RemoveBlockReason | null {
   const entry = context.partsTaxonomyById[carPartId]
   if (!entry || !entry.removable) return { kind: 'not-removable' }
   const blockedBy = occupiedBlockers(car, carPartId, context)
   if (blockedBy.length > 0) return { kind: 'blocked-by', blockedBy }
-  const machineGateGroup = removeMachineGateGroup(carPartId, context)
-  if (machineGateGroup && state.toolTiers[machineGateGroup] < 2) {
-    return { kind: 'tool-tier', group: machineGateGroup }
-  }
   return null
 }
 

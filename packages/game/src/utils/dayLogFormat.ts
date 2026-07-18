@@ -160,16 +160,12 @@ export function describeLogEntry(
     case 'car-workup':
       return `Full workup on ${entry.carInstanceId} - every symptom's cause confirmed`
     case 'mission-accepted':
-      return `Mission accepted - due day ${entry.dueOnDay}`
+      return `Mission accepted`
     case 'mission-delivered': {
       const base = `Mission delivered: ${formatYen(entry.payoutYen)}`
       const withTip = entry.tipYen > 0 ? `${base} + ${formatYen(entry.tipYen)} tip` : base
       return `${withTip}, +${entry.reputationGained} rep`
     }
-    case 'mission-lapsed':
-      return `Mission lapsed (-${entry.reputationLost} rep) - reoffered day ${entry.reofferOnDay}`
-    case 'mission-reoffered':
-      return `Mission back on offer`
     case 'staff-ads-refreshed':
       return `New notices on the job board: ${entry.count}`
     case 'staff-hired':

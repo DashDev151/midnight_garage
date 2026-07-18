@@ -475,8 +475,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * pre-launch), a pre-v38 save with staff simply fails `StaffMemberSchema.parse`
  * and falls back to a new game, no `MIGRATIONS[37]` entry. The version bump
  * alone is required so a pre-v38 client never silently misreads a v38 save.
+ * v38 -> v39 (Sprint 85, decision 2: story missions unfailable):
+ * `StoryMissionRecordSchema` dropped `dueOnDay`/`reofferOnDay` and the
+ * `lapsed` status, and the `mission-accepted` day-log entry dropped `dueOnDay`
+ * (the `mission-lapsed`/`mission-reoffered` entries are gone entirely). NOT
+ * purely additive (a removed enum member and fields), so under the Save law
+ * this would need a migration; suspended by directive 19 (no players, no old
+ * saves pre-launch), a pre-v39 save carrying a `lapsed` mission record simply
+ * fails to decode and falls back to a new game, no `MIGRATIONS[38]` entry. The
+ * version bump alone is required so a pre-v39 client never silently misreads a
+ * v39 save. (The single bump for the sprint - decisions 3/5/6 add only content
+ * knobs and transactional fees, no new persisted GameState shape.)
  */
-export const SAVE_VERSION = 38
+export const SAVE_VERSION = 39
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

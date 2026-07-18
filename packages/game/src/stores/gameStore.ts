@@ -92,6 +92,7 @@ import {
   isToolTierListed,
   isServiceTaskDone,
   isServiceWorkDone,
+  machineAssistFeeYen,
   marketValueYen,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
@@ -112,6 +113,7 @@ import {
   requirementLabel,
   resolveAcceptMission,
   resolveAcceptServiceJob,
+  resolveRejectServiceJobOffer,
   resolveBuyoutInstant,
   resolveBuyPart,
   resolveDeliverMission,
@@ -595,7 +597,6 @@ export interface StoryMissionOfferView {
   requestCopy: string
   payoutYen: number
   budgetCapYen: number
-  deadlineDays: number
 }
 
 /** The pinned card's active-mission counterpart. `requirementLines` is the
@@ -608,7 +609,6 @@ export interface ActiveStoryMissionView {
   id: string
   personaName: string
   title: string
-  daysLeft: number | null
   requirementLines: { label: string; required: string }[]
   lapTimeCeiling: { courseId: string; maxSeconds: number } | null
 }
@@ -981,7 +981,6 @@ export const useGameStore = defineStore('game', () => {
       requestCopy: mission.requestCopy,
       payoutYen: mission.payoutYen,
       budgetCapYen: mission.budgetCapYen,
-      deadlineDays: mission.deadlineDays,
     }
   })
 
@@ -993,11 +992,6 @@ export const useGameStore = defineStore('game', () => {
     if (!mission) return null
     const persona = context.value.personasById[mission.personaId]
     const requirementLines = mission.requirements.map((r) => requirementLabel(r, context.value))
-    if (record.dueOnDay !== null) {
-      requirementLines.push(
-        requirementLabel({ kind: 'deadline', dueOnDay: record.dueOnDay }, context.value),
-      )
-    }
     const lapRequirement = mission.requirements.find(
       (r): r is Extract<RequirementSpec, { kind: 'lapTimeCeiling' }> => r.kind === 'lapTimeCeiling',
     )
@@ -1005,7 +999,6 @@ export const useGameStore = defineStore('game', () => {
       id: mission.id,
       personaName: persona?.name ?? mission.personaId,
       title: mission.title,
-      daysLeft: record.dueOnDay === null ? null : record.dueOnDay - gameState.value.day,
       requirementLines,
       lapTimeCeiling: lapRequirement
         ? { courseId: lapRequirement.courseId, maxSeconds: lapRequirement.maxSeconds }
@@ -2173,18 +2166,28 @@ export const useGameStore = defineStore('game', () => {
   function removeBlockedReason(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
     if (!car) return null
-    const reason = removeBlockReason(car, carPartId, gameState.value, context.value)
+    const reason = removeBlockReason(car, carPartId, context.value)
     if (!reason) return null
     switch (reason.kind) {
       case 'not-removable':
         return "Can't come off the car."
       case 'blocked-by':
         return `Take off ${reason.blockedBy.map((id) => carPartLabel(id)).join(', ')} first`
-      case 'tool-tier':
-        return reason.group === 'engine'
-          ? 'You need the engine crane for this.'
-          : 'You need the drivetrain rig for this.'
     }
+  }
+
+  /**
+   * Sprint 85 decision 6 (machine-shop assist): the fee, in yen, this
+   * remove/install operation costs because the shop doesn't yet own the tier-2
+   * machine the slot needs - 0 (no caption) when the machine is owned or the
+   * slot isn't machine-gated. The UI shows a `machine shop assist +<fee>`
+   * caption on the affordance whenever this is above 0; the operation itself is
+   * never blocked (ownership buys margin, not capability).
+   */
+  function machineAssistFee(carId: string, carPartId: CarPartId): number {
+    const car = findWorkableCar(carId)
+    if (!car) return 0
+    return machineAssistFeeYen(carPartId, gameState.value, context.value)
   }
 
   // --- facilities (bays) -------------------------------------------------
@@ -2759,15 +2762,15 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Pull whatever occupies `carPartId`'s slot into inventory (Sprint 32
-   * decision 7) - no staging step, resolves instantly against today's
-   * remaining labor. Removing an aftermarket part reverts the slot to a
-   * fresh stock part (still filled); removing a stock part leaves the slot
-   * genuinely empty (missing). A no-op (returns false) if the slot is
-   * already empty, a job is currently open on this address, the part isn't
-   * removable at all, a `blockedBy` slot is still occupied, the depth
-   * class's own machine tier isn't met, or today's labor doesn't cover it
-   * (Sprint 71 - see `removeBlockReason` for the UI's proactive "why not").
+   * Pull whatever occupies `carPartId`'s slot into inventory - no staging
+   * step, resolves instantly against today's remaining labor. Removal always
+   * leaves the slot empty (Sprint 85), whatever grade the removed part was;
+   * the removed part lands in inventory. A no-op (returns false) if the slot
+   * is already empty, a job is currently open on this address, the part isn't
+   * removable at all, a `blockedBy` slot is still occupied, or today's labor
+   * doesn't cover it (Sprint 71 - see `removeBlockReason` for the UI's
+   * proactive "why not"). A buried engine/drivetrain slot needs that line's
+   * tier-2 machine OR the machine-shop assist fee (Sprint 85 decision 6).
    */
   function removePart(carId: string, carPartId: CarPartId): boolean {
     const result = resolveRemovePart(
@@ -3023,6 +3026,20 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = result.state
     dayLog.value.push(...result.log)
     logSessionEvent('acceptServiceJob', { offerId })
+    return true
+  }
+
+  /**
+   * Decline a radial offer (Sprint 85 decision 4) - clears it from the board
+   * with zero side effects. No reputation change and no day-log entry, so the
+   * resolver signals success by returning a new state reference (there is no
+   * log to check); a no-op returns the same state unchanged.
+   */
+  function rejectServiceJobOffer(offerId: string): boolean {
+    const result = resolveRejectServiceJobOffer(gameState.value, offerId)
+    if (result.state === gameState.value) return false
+    gameState.value = result.state
+    logSessionEvent('rejectServiceJobOffer', { offerId })
     return true
   }
 
@@ -3554,6 +3571,7 @@ export const useGameStore = defineStore('game', () => {
     installablePartsForPart,
     installBlockedReason,
     removeBlockedReason,
+    machineAssistFee,
     serviceBaysView,
     parkingView,
     parkingCapacity,
@@ -3611,6 +3629,7 @@ export const useGameStore = defineStore('game', () => {
     scrapShellValueYen,
     scrapShell,
     acceptServiceJob,
+    rejectServiceJobOffer,
     completeServiceJob,
     acceptMission,
     gradeMission,

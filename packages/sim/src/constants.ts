@@ -17,12 +17,6 @@ import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnig
  */
 export const PLAYER_BASE_LABOR_SLOTS = 6
 
-/** How long a service-job offer stays on the board before expiring unaccepted
- * (Sprint 29 decision 4: "offers expire as today"). Daily offer COUNT is a
- * content tunable now (economy.json's `serviceJobs.dailyOfferCountWeights`),
- * replacing the old flat `SERVICE_JOB_OFFERS_PER_REFRESH` weekly dump. */
-export const SERVICE_JOB_EXPIRY_DAYS = 10
-
 /**
  * Days between accepting a service job and the customer's car actually
  * arriving in the shop (Sprint 25 task 2: accepting no longer teleports the

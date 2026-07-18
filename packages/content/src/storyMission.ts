@@ -11,11 +11,12 @@ import { RequirementSpecSchema } from './requirement'
  * the single authored source for the spend ceiling - `data.ts` mirrors it
  * into a matching `budgetCap` entry appended to `requirements` at load, so a
  * mission never carries two numbers that have to be kept in sync by hand.
- * The day-of-delivery `deadline` requirement is NOT authored here at all: it
- * depends on the live per-playthrough `dueOnDay` (`acceptedOnDay +
- * deadlineDays`, stamped on the mission's own progress record at accept
- * time), so `missions.ts`'s `gradeMissionCar` constructs and grades it fresh
- * each call rather than storing a fixed day in content.
+ *
+ * Sprint 85 decision 2 (playtest 18, maintainer ruling): story missions are
+ * unfailable - offered, accepted, delivered at the player's leisure. The
+ * `deadlineDays`/`lapseReputationPenalty`/`reofferDays` fields and the whole
+ * lapse/reoffer state machine are gone; the budget cap and requirements are
+ * the entire challenge. Radial (service) jobs keep their own deadlines.
  *
  * Two placeholder missions (`placeholder-a`/`placeholder-b`) ship this
  * sprint to run the whole machine end to end; the real campaign replaces
@@ -34,8 +35,6 @@ export const StoryMissionSchema = z.object({
   /** The single authored spend ceiling - see the module doc above for how
    * this becomes a `budgetCap` requirement, not a hand-duplicated one. */
   budgetCapYen: z.number().int().positive(),
-  /** Days from acceptance to the delivery deadline. */
-  deadlineDays: z.number().int().positive(),
   payoutYen: z.number().int().positive(),
   /** Fraction of `payoutYen` awarded as a tip when every `statThreshold`
    * requirement clears its `min` by at least `tipTriggerFraction` AND every
@@ -51,16 +50,11 @@ export const StoryMissionSchema = z.object({
    * Sprint 78's formula) does not tip; beating the reference build does. */
   lapTipTriggerFraction: z.number().min(0).max(1).default(0.03),
   reputationReward: z.number().int().nonnegative(),
-  lapseReputationPenalty: z.number().int().nonnegative(),
-  /** Days after lapsing before the same mission returns to `offered` -
-   * the campaign never dead-ends. */
-  reofferDays: z.number().int().positive(),
   /** The specialty groups `reputationReward` splits across on delivery
    * (`applySpecialtyDelta`). */
   specialtyGroups: z.array(ComponentIdSchema).min(1),
   deliveredCopy: z.string().min(1),
   overdeliveredCopy: z.string().min(1),
-  lapsedCopy: z.string().min(1),
 })
 
 export const StoryMissionsSchema = z.array(StoryMissionSchema)

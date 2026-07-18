@@ -73,13 +73,7 @@ describe('story mission/persona content (Sprint 76)', () => {
 
   it('every copy field is non-empty', () => {
     for (const mission of PARSED_MISSIONS) {
-      for (const field of [
-        'title',
-        'requestCopy',
-        'deliveredCopy',
-        'overdeliveredCopy',
-        'lapsedCopy',
-      ] as const) {
+      for (const field of ['title', 'requestCopy', 'deliveredCopy', 'overdeliveredCopy'] as const) {
         expect(mission[field].length, `mission "${mission.id}".${field} is empty`).toBeGreaterThan(
           0,
         )

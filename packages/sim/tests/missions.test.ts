@@ -50,7 +50,8 @@ const MINT_CIVIC_LAP_SECONDS = lapTimeSecondsFor(
  * `storyMissions.json` entry would carry, with the `budgetCap` requirement
  * already mirrored in (the same shape `data.ts`'s load-time mirror produces
  * for real content), so tests never depend on the real placeholder content's
- * own numbers, which Sprint 78 replaces outright. */
+ * own numbers, which Sprint 78 replaces outright. Sprint 85 decision 2: no
+ * deadline/lapse fields - story missions are unfailable. */
 function buildMission(overrides: Partial<StoryMission> = {}): StoryMission {
   return {
     id: 'test-mission-a',
@@ -60,18 +61,14 @@ function buildMission(overrides: Partial<StoryMission> = {}): StoryMission {
     gateReputationPoints: 0,
     requirements: [{ kind: 'roadworthy' }, { kind: 'budgetCap', maxTotalSpendYen: 500_000 }],
     budgetCapYen: 500_000,
-    deadlineDays: 5,
     payoutYen: 200_000,
     tipFraction: 0.1,
     tipTriggerFraction: 0.15,
     lapTipTriggerFraction: 0.03,
     reputationReward: 20,
-    lapseReputationPenalty: 5,
-    reofferDays: 3,
     specialtyGroups: ['engine'],
     deliveredCopy: 'Delivered A.',
     overdeliveredCopy: 'Overdelivered A.',
-    lapsedCopy: 'Lapsed A.',
     ...overrides,
   }
 }
@@ -89,12 +86,9 @@ const MISSION_B = buildMission({
     { kind: 'budgetCap', maxTotalSpendYen: 900_000 },
   ],
   budgetCapYen: 900_000,
-  deadlineDays: 10,
   payoutYen: 500_000,
   tipFraction: 0.2,
   reputationReward: 30,
-  lapseReputationPenalty: 8,
-  reofferDays: 4,
   specialtyGroups: ['engine', 'drivetrain'],
 })
 
@@ -130,14 +124,9 @@ describe('story missions (Sprint 76)', () => {
       const state = baseState({ reputationPoints: 0, storyMissions: [] })
       const result = advanceStoryMissions(state, CONTEXT)
       expect(result.state.storyMissions).toEqual([
-        {
-          missionId: 'test-mission-a',
-          status: 'offered',
-          acceptedOnDay: null,
-          dueOnDay: null,
-          reofferOnDay: null,
-        },
+        { missionId: 'test-mission-a', status: 'offered', acceptedOnDay: null },
       ])
+      expect(result.log).toEqual([])
     })
 
     it('never offers a later mission while an earlier one is not yet delivered, even if reputation clears the later gate too', () => {
@@ -152,20 +141,12 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-a',
         status: 'delivered',
         acceptedOnDay: 1,
-        dueOnDay: null,
-        reofferOnDay: null,
       }
       const state = baseState({ reputationPoints: 50, storyMissions: [delivered] })
       const result = advanceStoryMissions(state, CONTEXT)
       expect(result.state.storyMissions).toEqual([
         delivered,
-        {
-          missionId: 'test-mission-b',
-          status: 'offered',
-          acceptedOnDay: null,
-          dueOnDay: null,
-          reofferOnDay: null,
-        },
+        { missionId: 'test-mission-b', status: 'offered', acceptedOnDay: null },
       ])
     })
 
@@ -174,8 +155,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-a',
         status: 'delivered',
         acceptedOnDay: 1,
-        dueOnDay: null,
-        reofferOnDay: null,
       }
       const state = baseState({ reputationPoints: 10, storyMissions: [delivered] })
       const result = advanceStoryMissions(state, CONTEXT)
@@ -183,87 +162,29 @@ describe('story missions (Sprint 76)', () => {
     })
   })
 
-  describe('advanceStoryMissions: lapse and reoffer (decision 4)', () => {
-    it('lapses an active mission past its due day: reputation penalty, dueOnDay cleared, reofferOnDay stamped', () => {
+  describe('advanceStoryMissions: missions are unfailable (Sprint 85 decision 2)', () => {
+    it('never lapses an active mission, however many days pass - no penalty, no state change', () => {
       const active: StoryMissionRecord = {
         missionId: 'test-mission-a',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 5,
-        reofferOnDay: null,
       }
-      const state = baseState({ day: 6, reputationPoints: 100, storyMissions: [active] })
-      const result = advanceStoryMissions(state, CONTEXT)
-      expect(result.state.reputationPoints).toBe(100 - MISSION_A.lapseReputationPenalty)
-      expect(result.state.storyMissions).toEqual([
-        { ...active, status: 'lapsed', dueOnDay: null, reofferOnDay: 6 + MISSION_A.reofferDays },
-      ])
-      expect(result.log).toEqual([
-        {
-          type: 'mission-lapsed',
-          missionId: 'test-mission-a',
-          reputationLost: MISSION_A.lapseReputationPenalty,
-          reofferOnDay: 6 + MISSION_A.reofferDays,
-        },
-      ])
-    })
-
-    it('floors the lapse penalty at zero and logs the real applied loss, same as every other penalty', () => {
-      const active: StoryMissionRecord = {
-        missionId: 'test-mission-a',
-        status: 'active',
-        acceptedOnDay: 1,
-        dueOnDay: 5,
-        reofferOnDay: null,
-      }
-      const state = baseState({ day: 6, reputationPoints: 2, storyMissions: [active] })
-      const result = advanceStoryMissions(state, CONTEXT)
-      expect(result.state.reputationPoints).toBe(0)
-      const entry = result.log.find((e) => e.type === 'mission-lapsed')
-      expect(entry).toMatchObject({ reputationLost: 2 })
-    })
-
-    it('leaves an active mission untouched before its due day', () => {
-      const active: StoryMissionRecord = {
-        missionId: 'test-mission-a',
-        status: 'active',
-        acceptedOnDay: 1,
-        dueOnDay: 10,
-        reofferOnDay: null,
-      }
-      const state = baseState({ day: 5, reputationPoints: 100, storyMissions: [active] })
+      const state = baseState({ day: 999, reputationPoints: 100, storyMissions: [active] })
       const result = advanceStoryMissions(state, CONTEXT)
       expect(result.state.storyMissions).toEqual([active])
+      expect(result.state.reputationPoints).toBe(100)
       expect(result.log).toEqual([])
     })
 
-    it('returns a lapsed mission to offered once its reoffer day arrives', () => {
-      const lapsed: StoryMissionRecord = {
+    it('does not offer a new mission while one is still active (linear campaign, unchanged)', () => {
+      const active: StoryMissionRecord = {
         missionId: 'test-mission-a',
-        status: 'lapsed',
+        status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: null,
-        reofferOnDay: 6,
       }
-      const state = baseState({ day: 6, reputationPoints: 100, storyMissions: [lapsed] })
+      const state = baseState({ day: 50, reputationPoints: 100, storyMissions: [active] })
       const result = advanceStoryMissions(state, CONTEXT)
-      expect(result.state.storyMissions).toEqual([
-        { ...lapsed, status: 'offered', reofferOnDay: null },
-      ])
-      expect(result.log).toEqual([{ type: 'mission-reoffered', missionId: 'test-mission-a' }])
-    })
-
-    it('leaves a lapsed mission alone before its reoffer day', () => {
-      const lapsed: StoryMissionRecord = {
-        missionId: 'test-mission-a',
-        status: 'lapsed',
-        acceptedOnDay: 1,
-        dueOnDay: null,
-        reofferOnDay: 10,
-      }
-      const state = baseState({ day: 6, reputationPoints: 100, storyMissions: [lapsed] })
-      const result = advanceStoryMissions(state, CONTEXT)
-      expect(result.state.storyMissions).toEqual([lapsed])
+      expect(result.state.storyMissions).toEqual([active])
       expect(result.log).toEqual([])
     })
   })
@@ -286,13 +207,7 @@ describe('story missions (Sprint 76)', () => {
       // The gate (test-mission-a, gateReputationPoints 0) clears on the very
       // first day-boundary tick - a concrete, non-vacuous offer day to assert.
       expect(first[1]!.storyMissions).toEqual([
-        {
-          missionId: 'test-mission-a',
-          status: 'offered',
-          acceptedOnDay: null,
-          dueOnDay: null,
-          reofferOnDay: null,
-        },
+        { missionId: 'test-mission-a', status: 'offered', acceptedOnDay: null },
       ])
     })
   })
@@ -304,8 +219,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-a',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 30,
-        reofferOnDay: null,
       }
       const withMission = { ...withoutMission, storyMissions: [active] }
 
@@ -316,26 +229,18 @@ describe('story missions (Sprint 76)', () => {
   })
 
   describe('resolveAcceptMission', () => {
-    it('offered -> active, stamping acceptedOnDay/dueOnDay and logging mission-accepted', () => {
+    it('offered -> active, stamping acceptedOnDay and logging mission-accepted (no deadline)', () => {
       const offered: StoryMissionRecord = {
         missionId: 'test-mission-a',
         status: 'offered',
         acceptedOnDay: null,
-        dueOnDay: null,
-        reofferOnDay: null,
       }
       const state = baseState({ day: 3, storyMissions: [offered] })
       const result = resolveAcceptMission(state, 'test-mission-a', CONTEXT)
       expect(result.state.storyMissions).toEqual([
-        { ...offered, status: 'active', acceptedOnDay: 3, dueOnDay: 3 + MISSION_A.deadlineDays },
+        { missionId: 'test-mission-a', status: 'active', acceptedOnDay: 3 },
       ])
-      expect(result.log).toEqual([
-        {
-          type: 'mission-accepted',
-          missionId: 'test-mission-a',
-          dueOnDay: 3 + MISSION_A.deadlineDays,
-        },
-      ])
+      expect(result.log).toEqual([{ type: 'mission-accepted', missionId: 'test-mission-a' }])
     })
 
     it('is a no-op when the mission is not currently offered', () => {
@@ -343,8 +248,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-a',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 6,
-        reofferOnDay: null,
       }
       const state = baseState({ storyMissions: [active] })
       const result = resolveAcceptMission(state, 'test-mission-a', CONTEXT)
@@ -386,7 +289,11 @@ describe('story missions (Sprint 76)', () => {
       expect(roadworthyLine?.pass).toBe(false)
     })
 
-    it("includes and fails a deadline line once the day is past the mission record's own dueOnDay", () => {
+    // Sprint 85 decision 2 (directive 17 case (a)): the old test asserted a
+    // graded "Deliver on time" line that fails once the day passes a record's
+    // dueOnDay. Story missions are unfailable now, so grading never adds a
+    // deadline line at all - the day the car is delivered is immaterial.
+    it('never grades a deadline line, however many days have passed since acceptance', () => {
       const car = buildCarInstance({
         id: 'car-a',
         modelId: CIVIC.id,
@@ -396,14 +303,11 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-a',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 5,
-        reofferOnDay: null,
       }
-      const state = baseState({ day: 6, ownedCars: [car], storyMissions: [active] })
+      const state = baseState({ day: 999, ownedCars: [car], storyMissions: [active] })
       const report = gradeMissionCar(state, 'test-mission-a', car.id, CONTEXT)
-      expect(report.pass).toBe(false)
-      const deadlineLine = report.lines.find((l) => l.label === 'Deliver on time')
-      expect(deadlineLine?.pass).toBe(false)
+      expect(report.lines.some((l) => l.label === 'Deliver on time')).toBe(false)
+      expect(report.pass).toBe(true)
     })
 
     it('is pure and repeatable: calling it twice yields the same report and no state mutation', () => {
@@ -428,8 +332,6 @@ describe('story missions (Sprint 76)', () => {
         missionId,
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 30,
-        reofferOnDay: null,
       }
       return baseState({ day: 5, ownedCars: [car], storyMissions: [active] })
     }
@@ -452,13 +354,7 @@ describe('story missions (Sprint 76)', () => {
         state.specialty.engine + MISSION_A.reputationReward,
       )
       expect(result.state.storyMissions).toEqual([
-        {
-          missionId: 'test-mission-a',
-          status: 'delivered',
-          acceptedOnDay: 1,
-          dueOnDay: 30,
-          reofferOnDay: null,
-        },
+        { missionId: 'test-mission-a', status: 'delivered', acceptedOnDay: 1 },
       ])
       expect(result.log).toEqual([
         {
@@ -532,8 +428,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-tight',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 30,
-        reofferOnDay: null,
       }
       const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
       const result = resolveDeliverMission(state, 'test-mission-tight', car.id, context)
@@ -576,8 +470,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-lap',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 30,
-        reofferOnDay: null,
       }
       const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
       const result = resolveDeliverMission(state, 'test-mission-lap', car.id, context)
@@ -603,8 +495,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-lap-tight',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 30,
-        reofferOnDay: null,
       }
       const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
       const result = resolveDeliverMission(state, 'test-mission-lap-tight', car.id, context)
@@ -630,8 +520,6 @@ describe('story missions (Sprint 76)', () => {
         missionId: 'test-mission-mixed',
         status: 'active',
         acceptedOnDay: 1,
-        dueOnDay: 30,
-        reofferOnDay: null,
       }
       const state = { ...baseState({ day: 5, ownedCars: [car] }), storyMissions: [active] }
       const result = resolveDeliverMission(state, 'test-mission-mixed', car.id, context)

@@ -1106,7 +1106,12 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
 })
 
 describe('resolveRemovePart (Sprint 32 decision 7)', () => {
-  it('removing an aftermarket part drops it to inventory and reverts the slot to a fresh mint stock instance', () => {
+  // Directive 17 case (a), sprint85 decision 1: the OLD test asserted removing
+  // an aftermarket part "reverts the slot to a fresh mint stock instance" -
+  // a mechanism Sprint 79 redefined and Sprint 85 deletes outright (the
+  // phantom-mint spawn, playtest 15/16/20). Rewritten to the new contract:
+  // the slot goes genuinely empty, whatever grade the removed part was.
+  it('removing an aftermarket part empties the slot - no phantom mint stock spawns (Sprint 85)', () => {
     const aftermarketInstance: PartInstance = {
       id: 'pi-aftermarket-dampers',
       partId: 'tanuki-street-coilovers', // grade 'street' - aftermarket
@@ -1121,14 +1126,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const state = baseState({ ownedCars: [carWithAftermarket], partInventory: [] })
     const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
 
-    const revertedSlot = result.state.ownedCars[0]?.parts.dampers.installed
-    expect(revertedSlot).not.toBeNull()
-    expect(revertedSlot?.id).not.toBe(aftermarketInstance.id)
-    // Sprint 53: the fresh stock part matches the CAR's own fitment class -
-    // honda-city-e-aa (the module-level `car` fixture) is 'shitbox' tier.
-    expect(revertedSlot?.partId).toBe('shitbox-stock-dampers')
-    expect(revertedSlot?.band).toBe('mint')
-
+    expect(result.state.ownedCars[0]?.parts.dampers.installed).toBeNull()
     expect(result.state.partInventory).toEqual([aftermarketInstance])
     expect(result.log).toEqual([
       {
@@ -1138,6 +1136,95 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
         partInstanceId: aftermarketInstance.id,
       },
     ])
+  })
+
+  // Regression (a), sprint85 decision 1: the emptied slot carries the REMOVED
+  // instance's own identity as its `vacatedBaseline` ({partId, band,
+  // genuinePeriod}), never a synthesised mint-stock baseline. This is exactly
+  // the input `refitLaborSlotsFor` compares against, which the phantom-mint
+  // spawn corrupted on a second removal (playtest 15/20).
+  it("removal stamps the removed aftermarket part's own identity as the vacated baseline (regression)", () => {
+    const aftermarketInstance: PartInstance = {
+      id: 'pi-aftermarket-dampers-baseline',
+      partId: 'tanuki-street-coilovers',
+      band: 'worn',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(2),
+    }
+    const carWithAftermarket: CarInstance = {
+      ...car,
+      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+    }
+    const state = baseState({ ownedCars: [carWithAftermarket], partInventory: [] })
+    const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
+
+    const slot = result.state.ownedCars[0]!.parts.dampers
+    expect(slot.installed).toBeNull()
+    expect(slot.vacatedBaseline).toEqual({
+      partId: 'tanuki-street-coilovers',
+      band: 'worn',
+      genuinePeriod: false,
+    })
+    expect(result.state.partInventory).toEqual([aftermarketInstance])
+  })
+
+  // Regression (b), sprint85 decision 1 (playtest 16): the full chain. With
+  // the phantom-mint spawn gone, the vacated baseline holds the aftermarket
+  // part's identity, so a genuinely NEW mint stock part of the stock SKU
+  // installed into that vacancy fails the equivalence match and is charged
+  // FULL install labour - never the free refit the corrupted baseline used to
+  // grant (which is why item 16's new tyres cost 0). `refitLaborSlotsFor`
+  // itself is correct and untouched.
+  it('a new mint stock part installed into a vacated aftermarket slot is charged full install labour, not a free refit (regression)', () => {
+    const aftermarketInstance: PartInstance = {
+      id: 'pi-aftermarket-dampers-chain',
+      partId: 'tanuki-street-coilovers',
+      band: 'worn',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(3),
+    }
+    const stockDampers = CONTEXT.stockPartByCarPartId.shitbox!.dampers!
+    const newStockInstance: PartInstance = {
+      id: 'pi-new-stock-dampers',
+      partId: stockDampers.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(4),
+    }
+    const carWithAftermarket: CarInstance = {
+      ...car,
+      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+    }
+    const state = baseState({
+      ownedCars: [carWithAftermarket],
+      partInventory: [newStockInstance],
+      serviceBayCarIds: [car.id],
+    })
+
+    const removed = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
+    const carAfterRemove = removed.state.ownedCars[0]!
+    // The equivalence input: the baseline is the aftermarket part, so a mint
+    // stock SKU is a genuinely DIFFERENT part - full install labour, not 0.
+    const fullInstall = installLaborSlotsFor('dampers', CONTEXT)
+    expect(fullInstall).toBeGreaterThan(0)
+    expect(refitLaborSlotsFor(carAfterRemove, 'dampers', newStockInstance, CONTEXT)).toBe(
+      fullInstall,
+    )
+
+    const installed = resolveJobLabor(
+      removed.state,
+      {
+        carInstanceId: car.id,
+        kind: 'install-part',
+        componentId: 'suspension',
+        partInstanceId: newStockInstance.id,
+        laborSlotsRequired: fullInstall,
+      },
+      Infinity,
+      CONTEXT,
+    )
+    expect(installed.laborSlotsUsed).toBe(fullInstall)
+    expect(installed.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(newStockInstance.id)
   })
 
   it('removing a stock part drops it to inventory and leaves the slot genuinely empty', () => {
@@ -1334,7 +1421,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   it("refuses removing 'clutch' until 'gearbox' is off, and 'gearbox' until 'driveline' + 'exhaust' are both off", () => {
     const state = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
 
-    expect(removeBlockReason(car, 'clutch', state, CONTEXT)).toEqual({
+    expect(removeBlockReason(car, 'clutch', CONTEXT)).toEqual({
       kind: 'blocked-by',
       blockedBy: ['gearbox'],
     })
@@ -1342,7 +1429,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(clutchBlocked.state).toBe(state)
     expect(clutchBlocked.log).toEqual([])
 
-    expect(removeBlockReason(car, 'gearbox', state, CONTEXT)).toEqual({
+    expect(removeBlockReason(car, 'gearbox', CONTEXT)).toEqual({
       kind: 'blocked-by',
       blockedBy: ['driveline', 'exhaust'],
     })
@@ -1371,55 +1458,117 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   /**
-   * Sprint 71 decision 3: uninstalling a buried ENGINE-group slot
-   * (`camsTiming`/`headValvetrain`/`internals`/`block`) needs
-   * `toolTiers.engine >= 2`. `camsTiming`'s own blocker (`cooling`, bolt-on,
-   * no blockers of its own) is cleared first so this isolates the MACHINE
-   * gate from the symmetric blocker rule tested above.
+   * Sprint 85 decision 6 (directive 17 case (a)): the buried ENGINE-group
+   * machine gate is no longer a hard wall. Below engine tier 2, uninstalling
+   * `camsTiming` now SUCCEEDS at the machine-shop assist fee (charged to cash
+   * and posted to the car ledger), and `removeBlockReason` no longer reports it
+   * blocked. Owning the tier-2 machine removes the fee. `camsTiming`'s own
+   * blocker (`cooling`) is cleared first so this isolates the machine fee from
+   * the symmetric blocker rule.
    */
-  it("refuses uninstalling a buried ENGINE-group slot below engine tier 2, reason 'tool-tier', allows it at tier 2", () => {
+  it('uninstalling a buried ENGINE-group slot below engine tier 2 succeeds at the machine-shop assist fee, and free at tier 2', () => {
     const tierOne = baseState({ toolTiers: testToolTiers({ engine: 1 }) })
     const afterCooling = resolveRemovePart(tierOne, car.id, 'cooling', CONTEXT)
     expect(afterCooling.log).toHaveLength(1)
 
-    expect(
-      removeBlockReason(
-        afterCooling.state.ownedCars[0]!,
-        'camsTiming',
-        afterCooling.state,
-        CONTEXT,
-      ),
-    ).toEqual({ kind: 'tool-tier', group: 'engine' })
-    const stillGated = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT)
-    expect(stillGated.state).toBe(afterCooling.state)
-    expect(stillGated.log).toEqual([])
+    // No longer a blocked reason - the machine gate became a fee.
+    expect(removeBlockReason(afterCooling.state.ownedCars[0]!, 'camsTiming', CONTEXT)).toBeNull()
 
+    const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
+    expect(engineFee).toBeGreaterThan(0)
+    const cashBefore = afterCooling.state.cashYen
+    const gated = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT)
+    expect(gated.log).toHaveLength(1)
+    expect(gated.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+    // The fee is charged to cash and posted to the car ledger's repairYen.
+    expect(gated.state.cashYen).toBe(cashBefore - engineFee)
+    expect(gated.state.carLedgers[car.id]?.repairYen).toBe(engineFee)
+
+    // Owning the machine (tier 2) removes the fee.
     const tierTwo = { ...afterCooling.state, toolTiers: testToolTiers({ engine: 2 }) }
-    const allowed = resolveRemovePart(tierTwo, car.id, 'camsTiming', CONTEXT)
-    expect(allowed.log).toHaveLength(1)
-    expect(allowed.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+    const free = resolveRemovePart(tierTwo, car.id, 'camsTiming', CONTEXT)
+    expect(free.log).toHaveLength(1)
+    expect(free.state.cashYen).toBe(tierTwo.cashYen)
   })
 
   /**
-   * Sprint 71 decision 3's other machine gate: a buried DRIVETRAIN-group
-   * slot (`gearbox`/`clutch`) needs `toolTiers.drivetrain >= 2`, checked here
-   * with `gearbox`'s own blockers (`driveline`, `exhaust`) already clear -
-   * the machine gate is a SEPARATE, additional refusal, not merely what the
-   * blocker chain test above already covers.
+   * Sprint 85 decision 6: the drivetrain side, with `gearbox`'s own blockers
+   * (`driveline`, `exhaust`) already clear so the machine fee is isolated from
+   * the blocker chain. Below drivetrain tier 2 the removal succeeds at the
+   * drivetrain assist fee; at tier 2 it is free.
    */
-  it('refuses uninstalling a buried DRIVETRAIN-group slot below drivetrain tier 2 even once its own blockers are clear', () => {
+  it('uninstalling a buried DRIVETRAIN-group slot below drivetrain tier 2 succeeds at the machine-shop assist fee once its blockers are clear', () => {
     const tierOne = baseState({ toolTiers: testToolTiers({ drivetrain: 1 }) })
     const afterExhaust = resolveRemovePart(tierOne, car.id, 'exhaust', CONTEXT)
     const afterDriveline = resolveRemovePart(afterExhaust.state, car.id, 'driveline', CONTEXT)
     expect(afterDriveline.log).toHaveLength(1)
 
-    const stillGated = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
-    expect(stillGated.state).toBe(afterDriveline.state)
-    expect(stillGated.log).toEqual([])
+    const drivetrainFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.drivetrain
+    const cashBefore = afterDriveline.state.cashYen
+    const gated = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
+    expect(gated.log).toHaveLength(1)
+    expect(gated.state.ownedCars[0]?.parts.gearbox.installed).toBeNull()
+    expect(gated.state.cashYen).toBe(cashBefore - drivetrainFee)
 
     const tierTwo = { ...afterDriveline.state, toolTiers: testToolTiers({ drivetrain: 2 }) }
-    const allowed = resolveRemovePart(tierTwo, car.id, 'gearbox', CONTEXT)
-    expect(allowed.log).toHaveLength(1)
+    const free = resolveRemovePart(tierTwo, car.id, 'gearbox', CONTEXT)
+    expect(free.log).toHaveLength(1)
+    expect(free.state.cashYen).toBe(tierTwo.cashYen)
+  })
+
+  /**
+   * Sprint 85 decision 6: the install side of the same gate. Fitting a buried
+   * ENGINE-group part below engine tier 2 charges the machine-shop assist fee
+   * at completion (`completeJob`) - the crane is needed to lower it in too -
+   * and owning the machine makes it free. The part price is not cash here (a
+   * dev-granted part was never bought through `resolveBuyPart`), so only the
+   * fee moves cash.
+   */
+  it('installing a buried ENGINE-group part below engine tier 2 charges the assist fee at completion, free at tier 2', () => {
+    const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
+    const stockCams = CONTEXT.stockPartByCarPartId.shitbox!.camsTiming!
+    const newCams: PartInstance = {
+      id: 'pi-new-cams',
+      partId: stockCams.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(1),
+      pricePaidYen: 20_000,
+    }
+    // camsTiming empty and its blocker (cooling) off, so the install is legal.
+    const carReady: CarInstance = {
+      ...car,
+      parts: { ...car.parts, cooling: { installed: null }, camsTiming: { installed: null } },
+    }
+    const spec = {
+      carInstanceId: car.id,
+      kind: 'install-part' as const,
+      componentId: 'engine' as const,
+      partInstanceId: newCams.id,
+      laborSlotsRequired: installLaborSlotsFor('camsTiming', CONTEXT),
+    }
+    const tierOneState = baseState({
+      ownedCars: [carReady],
+      partInventory: [newCams],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ engine: 1 }),
+    })
+    const cashBefore = tierOneState.cashYen
+    const installed = resolveJobLabor(tierOneState, spec, Infinity, CONTEXT)
+    expect(installed.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
+    expect(installed.state.cashYen).toBe(cashBefore - engineFee)
+    expect(installed.state.carLedgers[car.id]?.repairYen).toBe(engineFee)
+
+    // At tier 2 the same install owes no assist fee.
+    const tierTwoState = baseState({
+      ownedCars: [carReady],
+      partInventory: [newCams],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ engine: 2 }),
+    })
+    const freeInstall = resolveJobLabor(tierTwoState, spec, Infinity, CONTEXT)
+    expect(freeInstall.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
+    expect(freeInstall.state.cashYen).toBe(tierTwoState.cashYen)
   })
 
   /**

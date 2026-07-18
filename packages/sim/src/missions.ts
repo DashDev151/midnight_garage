@@ -26,10 +26,9 @@ export interface MissionResolution {
  * (`buildSimContext`), so the first mission with no progress record at all
  * is the campaign's current frontier. Returns `undefined` the instant an
  * EARLIER mission (in gate order) isn't `delivered` yet (including one
- * that's currently `offered`/`active`/`lapsed`) - the strictly linear
- * campaign never lets a later mission jump ahead, and this same check is
- * what keeps "at most one offered/active mission at a time" true without a
- * separate count check.
+ * that's currently `offered`/`active`) - the strictly linear campaign never
+ * lets a later mission jump ahead, and this same check is what keeps "at most
+ * one offered/active mission at a time" true without a separate count check.
  */
 function nextOfferableMission(
   records: readonly StoryMissionRecord[],
@@ -45,65 +44,30 @@ function nextOfferableMission(
 }
 
 /**
- * Sprint 76 decision 3-4: the day-boundary mission tick - lapse an overdue
- * active mission, reoffer a lapsed one whose wait elapsed, then offer the
- * next locked mission if reputation clears its gate. Each step can add at
- * most one log entry (at most one offered/active/lapsed-awaiting-reoffer
- * mission exists at a time), and the three steps run in this order so a
- * mission reoffered today is never also treated as "still locked" by the
- * gate step later in the same tick.
+ * Sprint 76 decision 3 (Sprint 85 decision 2: unfailable): the day-boundary
+ * mission tick - offer the next locked mission if reputation clears its gate,
+ * and nothing else. Story missions can no longer lapse or reoffer (playtest
+ * 18); the budget cap and requirements are the whole challenge. At most one
+ * offered/active mission exists at a time, so this adds at most one `offered`
+ * record. Offering is silent - the player reads the card appearing, no log
+ * entry (unchanged from Sprint 76).
  */
 export function advanceStoryMissions(state: GameState, context: SimContext): MissionResolution {
-  const log: DayLogEntry[] = []
-  let next = state
-  let records = state.storyMissions
-
-  records = records.map((record) => {
-    if (record.status !== 'active' || record.dueOnDay === null || state.day < record.dueOnDay) {
-      return record
-    }
-    const mission = context.storyMissionsById[record.missionId]
-    if (!mission) return record
-    const before = next.reputationPoints
-    next = applyReputationDelta(next, -mission.lapseReputationPenalty, context.economy)
-    const reputationLost = before - next.reputationPoints
-    const reofferOnDay = state.day + mission.reofferDays
-    log.push({ type: 'mission-lapsed', missionId: record.missionId, reputationLost, reofferOnDay })
-    return { ...record, status: 'lapsed' as const, dueOnDay: null, reofferOnDay }
-  })
-
-  records = records.map((record) => {
-    if (
-      record.status !== 'lapsed' ||
-      record.reofferOnDay === null ||
-      state.day < record.reofferOnDay
-    ) {
-      return record
-    }
-    log.push({ type: 'mission-reoffered', missionId: record.missionId })
-    return { ...record, status: 'offered' as const, reofferOnDay: null }
-  })
-
-  const candidate = nextOfferableMission(records, context)
-  if (candidate && next.reputationPoints >= candidate.gateReputationPoints) {
-    records = [
-      ...records,
-      {
-        missionId: candidate.id,
-        status: 'offered' as const,
-        acceptedOnDay: null,
-        dueOnDay: null,
-        reofferOnDay: null,
-      },
-    ]
+  const candidate = nextOfferableMission(state.storyMissions, context)
+  if (!candidate || state.reputationPoints < candidate.gateReputationPoints) {
+    return { state, log: [] }
   }
-
-  return { state: { ...next, storyMissions: records }, log }
+  const storyMissions: StoryMissionRecord[] = [
+    ...state.storyMissions,
+    { missionId: candidate.id, status: 'offered' as const, acceptedOnDay: null },
+  ]
+  return { state: { ...state, storyMissions }, log: [] }
 }
 
-/** Sprint 76 decision 4: offered -> active, stamping `acceptedOnDay`/
- * `dueOnDay`. A no-op (matching every other instant resolver's contract) when
- * the mission isn't actually `offered` or doesn't exist. */
+/** Sprint 76 decision 4 (Sprint 85 decision 2: unfailable): offered -> active,
+ * stamping `acceptedOnDay` only - there is no deadline to count from. A no-op
+ * (matching every other instant resolver's contract) when the mission isn't
+ * actually `offered` or doesn't exist. */
 export function resolveAcceptMission(
   state: GameState,
   missionId: string,
@@ -114,15 +78,12 @@ export function resolveAcceptMission(
   const mission = context.storyMissionsById[missionId]
   if (!mission) return { state, log: [] }
 
-  const dueOnDay = state.day + mission.deadlineDays
   const storyMissions = state.storyMissions.map((r) =>
-    r.missionId === missionId
-      ? { ...r, status: 'active' as const, acceptedOnDay: state.day, dueOnDay }
-      : r,
+    r.missionId === missionId ? { ...r, status: 'active' as const, acceptedOnDay: state.day } : r,
   )
   return {
     state: { ...state, storyMissions },
-    log: [{ type: 'mission-accepted', missionId, dueOnDay }],
+    log: [{ type: 'mission-accepted', missionId }],
   }
 }
 
@@ -132,12 +93,12 @@ export interface MissionGradeReport {
 }
 
 /**
- * Sprint 76 decision 4: pure, free, repeatable - every one of the mission's
- * requirements (already including its mirrored `budgetCap`, decision 2)
- * plus a `deadline` check built fresh from the mission's own live progress
- * record (`dueOnDay` is per-playthrough state, never authored content - see
- * `storyMission.ts`'s module doc). No state change; an unresolvable mission
- * or car reports an outright fail with no lines rather than throwing.
+ * Sprint 76 decision 4 (Sprint 85 decision 2: unfailable): pure, free,
+ * repeatable - every one of the mission's requirements (already including its
+ * mirrored `budgetCap`, decision 2). No deadline check anymore - story
+ * missions cannot lapse, so there is no day-of-delivery cutoff to grade. No
+ * state change; an unresolvable mission or car reports an outright fail with
+ * no lines rather than throwing.
  */
 export function gradeMissionCar(
   state: GameState,
@@ -154,20 +115,6 @@ export function gradeMissionCar(
   const lines = mission.requirements.map((requirement) =>
     evaluateRequirement(requirement, car, ledger, state.day, context, model),
   )
-
-  const record = state.storyMissions.find((r) => r.missionId === missionId)
-  if (record?.dueOnDay != null) {
-    lines.push(
-      evaluateRequirement(
-        { kind: 'deadline', dueOnDay: record.dueOnDay },
-        car,
-        ledger,
-        state.day,
-        context,
-        model,
-      ),
-    )
-  }
 
   return { pass: lines.every((line) => line.pass), lines }
 }

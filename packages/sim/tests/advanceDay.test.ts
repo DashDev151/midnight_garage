@@ -314,9 +314,19 @@ describe('advanceDay golden master', () => {
     // against the wave's interim 18-symptom pool and held unchanged when the
     // orchestrator cut `clutch-slip` to reach the final 17 - none of this
     // career's seeded symptom draws landed on the cut entry.)
+    // Re-pinned again (Sprint 85, was 21512af3): the honesty-fixes arc moves
+    // the seeded stream and the end state in three intended ways (directive 17
+    // case (a)) - decision 3 rolls a per-offer service-job lifetime
+    // (`rng.int`) inside every day's offer generation, shifting every
+    // subsequent draw for the rest of the run; decision 5 replaces the uniform
+    // auction model pick with a reputation-weighted one, so an `unknown`-rep
+    // career draws different (shitbox-biased) Local Yard lots from day 1; and
+    // decision 2 shrank the `storyMissions` record shape (no `dueOnDay`/
+    // `reofferOnDay`, no `lapsed`). Determinism itself is re-proven by the
+    // repeat-run test below, which passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('21512af3')
+    expect(hashState(finalState)).toBe('9a47cf6b')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -552,7 +562,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // more when the orchestrator cut `clutch-slip` (failed the sleeper/trap
     // coherence gate at common/uncommon) - the 18 -> 17 pool shifts this
     // career's seeded symptom draws where the 30-day career's hold still.
-    expect(hashState(acquisitionCareer().sold)).toBe('83bc96ab')
+    // Re-pinned again (Sprint 85, was 83bc96ab): same causes as the 30-day
+    // career hash above - the per-offer service-job lifetime roll (decision 3)
+    // and the reputation-weighted auction pick at unknown rep (decision 5)
+    // shift this acquisition->sale career's seeded stream and its lots from day
+    // 1; directive 17 case (a). The win/sale still resolve (real car won, real
+    // sale, the deterministic repeat still holds).
+    expect(hashState(acquisitionCareer().sold)).toBe('c6ca47a8')
   })
 })
 

@@ -16,6 +16,7 @@ import {
   type PartInstance,
   type PartOrigin,
   type RarityTier,
+  type ReputationTier,
   type Symptom,
   type TurnoutBand,
   type UpkeepTier,
@@ -745,6 +746,35 @@ export function enforceMaxBillFraction(
 }
 
 /**
+ * Sprint 85 decision 5 (playtest 14): a reputation-conditioned weighted model
+ * pick. Each candidate model's weight is
+ * `economy.auction.rarityWeightsByReputation[reputationTier]?.[model.tier] ?? 1`,
+ * so any reputation tier or rarity absent from the content map draws at the
+ * implicit 1 (uniform). Consumes exactly ONE `rng.next()` via a cumulative-
+ * weight draw; with every weight equal to 1 the total is the model count and
+ * the chosen index collapses to `floor(next() * length)`, which is byte-for-
+ * byte what `rng.pick` itself did - so a `local`+ career's auction stream is
+ * unchanged, and only a fresh (`unknown`-rep) board's shitbox bias is new.
+ */
+function pickWeightedModel(
+  models: readonly CarModel[],
+  reputationTier: ReputationTier,
+  economy: EconomyConfig,
+  rng: Rng,
+): CarModel {
+  const weightsByRarity = economy.auction.rarityWeightsByReputation[reputationTier]
+  const weights = models.map((model) => weightsByRarity?.[model.tier] ?? 1)
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (let i = 0; i < models.length; i++) {
+    cumulative += weights[i]!
+    if (roll < cumulative) return models[i]!
+  }
+  return models[models.length - 1]!
+}
+
+/**
  * Weekly catalog for one tier: one lot per eligible model that's in stock
  * this week, up to `count`. `currentYear` (Sprint 10, default Infinity =
  * unrestricted) also excludes any model whose `yearFrom` postdates the
@@ -752,6 +782,13 @@ export function enforceMaxBillFraction(
  * appear at auction (GDD 2.2: "new model years appear at auction over time").
  * Each lot's own duration is rolled independently off its model's rarity
  * (Sprint 19 decision 1).
+ *
+ * `reputationTier` (Sprint 85 decision 5, default `'legend'` = no weighting,
+ * so every existing caller stays byte-identical) conditions the model draw:
+ * `pickWeightedModel` biases toward the rarities `economy.auction.
+ * rarityWeightsByReputation` names for that tier (today, shitboxes at
+ * `unknown` reputation), and is exactly the old uniform pick anywhere the map
+ * is silent.
  */
 export function generateAuctionCatalog(
   models: readonly CarModel[],
@@ -761,6 +798,7 @@ export function generateAuctionCatalog(
   rng: Rng,
   context: SimContext,
   currentYear: number = Infinity,
+  reputationTier: ReputationTier = 'legend',
 ): AuctionLot[] {
   const { economy } = context
   const eligible = models.filter(
@@ -770,7 +808,7 @@ export function generateAuctionCatalog(
 
   const lots: AuctionLot[] = []
   for (let i = 0; i < count; i++) {
-    const model = rng.pick(eligible)
+    const model = pickWeightedModel(eligible, reputationTier, economy, rng)
     const lotId = `lot-${day}-${tier}-${i}`
     const car = generateAuctionCarInstance(
       model,

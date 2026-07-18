@@ -97,7 +97,6 @@ function findOffenses(): string[] {
         mission.overdeliveredCopy,
       ),
     )
-    offenses.push(...offensesIn(`storyMissions.json:${mission.id}.lapsedCopy`, mission.lapsedCopy))
   }
   for (const persona of PERSONAS) {
     offenses.push(...offensesIn(`personas.json:${persona.id}.name`, persona.name))

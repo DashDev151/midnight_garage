@@ -1009,7 +1009,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(38)
+    expect(SAVE_VERSION).toBe(39)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1062,7 +1062,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(38)
+    expect(SAVE_VERSION).toBe(39)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1667,8 +1667,8 @@ describe('saveCodec', () => {
    * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
    * on its own added nothing, remains true.)
    */
-  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 38 (Sprint 80 crew rework)', () => {
-    expect(SAVE_VERSION).toBe(38)
+  it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 39 (Sprint 85 story missions unfailable)', () => {
+    expect(SAVE_VERSION).toBe(39)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1770,8 +1770,8 @@ describe('saveCodec', () => {
    * exactly right since the concept did not exist yet), and a v26 state with
    * a real double-parked car round-trips it exactly.
    */
-  it('SAVE_VERSION has since moved to 38 (Sprint 80 crew rework)', () => {
-    expect(SAVE_VERSION).toBe(38)
+  it('SAVE_VERSION has since moved to 39 (Sprint 85 story missions unfailable)', () => {
+    expect(SAVE_VERSION).toBe(39)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1803,8 +1803,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 38 (Sprint 80 crew rework)', () => {
-    expect(SAVE_VERSION).toBe(38)
+  it('SAVE_VERSION is 39 (Sprint 85 story missions unfailable)', () => {
+    expect(SAVE_VERSION).toBe(39)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1850,8 +1850,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 38 (Sprint 80 crew rework)', () => {
-    expect(SAVE_VERSION).toBe(38)
+  it('SAVE_VERSION is 39 (Sprint 85 story missions unfailable)', () => {
+    expect(SAVE_VERSION).toBe(39)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -2179,20 +2179,8 @@ describe('saveCodec', () => {
     const withMissions: GameState = GameStateSchema.parse({
       ...fullState,
       storyMissions: [
-        {
-          missionId: 'placeholder-a',
-          status: 'offered',
-          acceptedOnDay: null,
-          dueOnDay: null,
-          reofferOnDay: null,
-        },
-        {
-          missionId: 'placeholder-b',
-          status: 'active',
-          acceptedOnDay: 10,
-          dueOnDay: 24,
-          reofferOnDay: null,
-        },
+        { missionId: 'placeholder-a', status: 'offered', acceptedOnDay: null },
+        { missionId: 'placeholder-b', status: 'active', acceptedOnDay: 10 },
       ],
     })
     const decoded = decodeSave(encodeSave(withMissions))

@@ -1,7 +1,6 @@
 import type { GameState } from '@midnight-garage/content'
 import { currentGameYear } from './calendar'
 import { refreshCatalogs } from './catalogs'
-import { SERVICE_JOB_EXPIRY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { createRng } from './rng'
 import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
@@ -68,7 +67,6 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
   const serviceJobOffers = generateDailyServiceJobOffers(
     context,
     base.day,
-    SERVICE_JOB_EXPIRY_DAYS,
     rng,
     currentGameYear(base.reputationTier),
     base.toolTiers,

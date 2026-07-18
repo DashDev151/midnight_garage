@@ -107,16 +107,16 @@ export type InspectionVisit = z.infer<typeof InspectionVisitSchema>
  * entirely means locked (never yet reached its `gateReputationPoints`, or an
  * earlier mission in the strictly linear order still isn't `delivered`). At
  * most one `offered`/`active` record exists at any time (`advanceDay`'s
- * mission hook, `missions.ts`). `acceptedOnDay`/`dueOnDay` stamp at accept;
- * `reofferOnDay` stamps at lapse and clears (back to `null`) the moment the
- * mission returns to `offered`.
+ * mission hook, `missions.ts`). `acceptedOnDay` stamps at accept.
+ *
+ * Sprint 85 decision 2 (playtest 18): story missions are unfailable, so the
+ * `lapsed` status and the `dueOnDay`/`reofferOnDay` deadline fields are gone -
+ * offered, accepted, delivered, nothing else.
  */
 export const StoryMissionRecordSchema = z.object({
   missionId: z.string().min(1),
-  status: z.enum(['offered', 'active', 'delivered', 'lapsed']),
+  status: z.enum(['offered', 'active', 'delivered']),
   acceptedOnDay: z.number().int().positive().nullable(),
-  dueOnDay: z.number().int().positive().nullable(),
-  reofferOnDay: z.number().int().positive().nullable(),
 })
 
 export type StoryMissionRecord = z.infer<typeof StoryMissionRecordSchema>
@@ -713,11 +713,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('car-workup'),
     carInstanceId: z.string().min(1),
   }),
-  /** Sprint 76 decision 4: `resolveAcceptMission` - offered -> active. */
+  /** Sprint 76 decision 4: `resolveAcceptMission` - offered -> active. Sprint
+   * 85 decision 2: no `dueOnDay` - story missions are unfailable. */
   z.object({
     type: z.literal('mission-accepted'),
     missionId: z.string().min(1),
-    dueOnDay: z.number().int().positive(),
   }),
   /** Sprint 76 decision 4: `resolveDeliverMission` paid out (+ tip, if
    * earned) and applied the reputation/specialty reward. */
@@ -728,21 +728,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     tipYen: z.number().int().nonnegative(),
     reputationGained: z.number().int().nonnegative(),
     specialtyGained: z.record(ComponentIdSchema, z.number().int()),
-  }),
-  /** Sprint 76 decision 4: an active mission passed its `dueOnDay` unbuilt -
-   * the player keeps the car; the reputation penalty and a future
-   * `reofferOnDay` are the only consequence. */
-  z.object({
-    type: z.literal('mission-lapsed'),
-    missionId: z.string().min(1),
-    reputationLost: z.number().int().nonnegative(),
-    reofferOnDay: z.number().int().positive(),
-  }),
-  /** Sprint 76 decision 4: a lapsed mission's `reofferOnDay` arrived -
-   * lapsed -> offered again, the campaign never dead-ends. */
-  z.object({
-    type: z.literal('mission-reoffered'),
-    missionId: z.string().min(1),
   }),
   /** Sprint 80 (staff I): the weekly job-ad refresh posted fresh candidates
    * to the Staff Office board (`count` new ads). Swallowed by the morning
