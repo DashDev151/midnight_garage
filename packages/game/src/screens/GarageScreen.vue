@@ -112,7 +112,9 @@ const draggedCarName = computed(() => {
 
     <section class="bays">
       <h3>
-        Service bays ({{ game.serviceBayFreeCount }}/{{ game.serviceBayCount }} free)
+        Service bays ({{ game.serviceBayCount - game.serviceBayFreeCount }}/{{
+          game.serviceBayCount
+        }})
         <HelpHint label="Service bays">
           Labour only reaches a car sitting in a service bay. Moves are free and instant.
         </HelpHint>
@@ -290,7 +292,9 @@ button:disabled {
   padding: 0;
   margin: 0 0 var(--mg-space-4);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  /* Narrower column minimum than the old 220px so a bay sits closer to square
+     against its fixed height, rather than reading as a wide letterbox. */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--mg-space-3);
 }
 

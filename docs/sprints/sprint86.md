@@ -90,19 +90,19 @@ Pure presentation and copy: no sim changes. Depends on Sprint 85 only where it r
 
 ## Definition of done
 
-- [ ] Bays hold one shape empty or occupied; both counters read `(occupied/total)`.
-- [ ] Offer cards show the four-section structure with Accept/Decline styled; countdown
+- [x] Bays hold one shape empty or occupied; both counters read `(occupied/total)`.
+- [x] Offer cards show the four-section structure with Accept/Decline styled; countdown
       reads `{n}d left`.
-- [ ] Tier chips use the amber-intensity family; no tier shares a hex role with
+- [x] Tier chips use the amber-intensity family; no tier shares a hex role with
       condition verdicts.
-- [ ] Auction card shows no bill figure; the stepper row sits centred with no visible
+- [x] Auction card shows no bill figure; the stepper row sits centred with no visible
       label.
-- [ ] Radar labels one step larger.
-- [ ] Every "sort/sorted" flavour line replaced with orchestrator-drafted copy, applied
+- [x] Radar labels one step larger.
+- [x] Every "sort/sorted" flavour line replaced with orchestrator-drafted copy, applied
       verbatim; spelling guard and em-dash guard stay green.
-- [ ] "Ran When Parked" on the title surface, GDD header (amendment recorded), CLAUDE.md
+- [x] "Ran When Parked" on the title surface, GDD header (amendment recorded), CLAUDE.md
       description; internal identifiers untouched.
-- [ ] Narrowest relevant checks run once; pre-push gate is the evidence (directive 20).
+- [x] Narrowest relevant checks run once; pre-push gate is the evidence (directive 20).
 
 ## Task breakdown
 
@@ -113,4 +113,31 @@ work has no automated arbiter).
 
 ## Exit
 
-(Filled at sprint close.)
+All nine decisions landed (implementation by subagent from the orchestrator's swept copy
+sheet; orchestrator-policed). The record:
+
+- **Directive 17:** the `AuctionScreen.test.ts` bill assertion removed as case (a) (the
+  bill line was intentionally removed by decision 6). No other test pinned old behaviour.
+- **Orchestrator rulings on the implementer's flags:** (1) rewards line drops the old
+  trailing "base" ("pays {yen} · +{N} rep"): approved, the word was mechanics jargon
+  leaking into diegetic space. (2) Countdown placed in the footer-left cluster with the
+  active-job urgent colouring: approved, one convention everywhere. (3) Wordmark casing:
+  the old all-caps look came from the string itself; restored via
+  `text-transform: uppercase` on both wordmark `h1`s (App.vue, MenuScreen.vue) so the
+  title renders RAN WHEN PARKED while the string stays the swept title-case form.
+- **Copy family sweep, second round:** the implementer's full-file scan surfaced nine
+  further "sort/sorted" lines beyond the five known targets and correctly reported them
+  without rewriting. All nine drafted by the orchestrator and applied at source
+  (cooling, timing, clutch, diff, coilovers, underbody, ditch, cabin once-over, interior
+  retrim); each keeps its speaker's character, none keeps the slang marker. The archived
+  `content/archive/serviceJobs.json` hits are out of scope (not shipped).
+- **Title:** "Ran When Parked" now on `index.html`, both wordmarks, the GDD title line
+  with the maintainer-approval amendment record, and CLAUDE.md's one-liner. Internal
+  identifiers untouched per decision 9.
+- **Narrow evidence (each once):** touched game files 6 files / 115 tests green; content
+  project 10 files / 85 tests green (re-run once after the orchestrator's nine-line
+  sweep, still green: spelling and em-dash guards included).
+- **Full evidence:** this commit reached origin through the pre-push gate; no separate
+  manual full pass (directive 20).
+- **Open user-only item:** the eyeball pass on bays, cards, chips and the auction card
+  (visual work has no automated arbiter); folded into the arc-closing playtest.

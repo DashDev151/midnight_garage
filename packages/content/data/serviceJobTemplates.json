@@ -11,7 +11,7 @@
     "deadlineDays": 4,
     "baseReputation": 4,
     "flavorPool": [
-      "Running hot in traffic. Sort the cooling before it strands me.",
+      "Running hot in traffic. I need the cooling fixed before it strands me somewhere.",
       "Temp gauge creeps up on every hill. Needs a cooling once-over."
     ]
   },
@@ -44,7 +44,7 @@
     "baseReputation": 5,
     "flavorPool": [
       "Engine's rough at idle and the timing feels off. Give it a proper refresh.",
-      "Runs rough some mornings, like the timing's slipped. Sort it before it gets worse."
+      "Runs rough some mornings, like the timing's slipped. I'd rather catch it before it gets worse."
     ]
   },
   {
@@ -214,7 +214,7 @@
     "baseReputation": 10,
     "flavorPool": [
       "Clutch is slipping under load. Fit me a proper one.",
-      "Pedal feels wrong and it's losing bite. Sort the clutch."
+      "Pedal feels wrong and it's losing bite. It needs a clutch, I think."
     ]
   },
   {
@@ -256,7 +256,7 @@
     "baseReputation": 16,
     "flavorPool": [
       "Power's just spinning one wheel. Fit me a limited-slip differential.",
-      "Need better traction out of corners. Sort the diff."
+      "Need better traction out of corners. A proper diff should do it."
     ]
   },
   {
@@ -276,7 +276,7 @@
     "deadlineDays": 3,
     "baseReputation": 4,
     "flavorPool": [
-      "Pads are down to metal and it's squealing badly. Sort the brakes before my shaken.",
+      "Pads are down to metal and it's squealing badly. Shaken's coming up; I'd like the brakes done before then.",
       "Pedal's soft and it's grinding on stops. Needs fresh pads."
     ]
   },
@@ -299,7 +299,7 @@
     "flavorPool": [
       "Fit some coilovers for me, I want it lower and sharper.",
       "It leans like a ferry through the interchange. Something adjustable, please.",
-      "Want it properly hunkered down. Sort the coilovers."
+      "Want it properly hunkered down. Coilovers, fitted right."
     ]
   },
   {
@@ -348,7 +348,7 @@
     "baseReputation": 12,
     "flavorPool": [
       "Brakes are getting spongy and the pads are shot. Give the whole system an overhaul.",
-      "Want the whole braking system sorted properly, pads, callipers, all of it."
+      "I'd like the whole braking system gone through properly. Pads, callipers, all of it."
     ]
   },
   {
@@ -372,7 +372,7 @@
     "baseReputation": 18,
     "flavorPool": [
       "Want it properly aligned and set up for the touge, sharp turn-in, no wander.",
-      "Steering's vague and it rolls too much through corners. Get it set up properly."
+      "Steering's vague and it rolls too much through corners. I want it set up properly this time."
     ]
   },
   {
@@ -392,7 +392,7 @@
     "deadlineDays": 3,
     "baseReputation": 4,
     "flavorPool": [
-      "Vibration at speed, feels like the tyres need balancing. Sort it out.",
+      "There's a vibration once it's up to speed. Balance, probably. Could you have a look at the tyres?",
       "Tyres are worn unevenly and it pulls a little. Give them a proper fit and balance."
     ]
   },
@@ -422,7 +422,7 @@
     "deadlineDays": 4,
     "baseReputation": 6,
     "flavorPool": [
-      "Tyres are bald and the pads are squealing on every stop. Sort both before my shaken.",
+      "Tyres are bald and the pads squeal on every stop. Shaken's next month; I need both done before then.",
       "Feels like I'm driving on ice, and the pedal grinds now too.",
       "Tyres and pads are both long overdue a change."
     ]
@@ -506,7 +506,7 @@
     "deadlineDays": 6,
     "baseReputation": 12,
     "flavorPool": [
-      "Rust's spreading underneath and it's getting worse each winter. Sort it before it's structural.",
+      "Rust's spreading underneath and it's getting worse each winter. I want it stopped before it goes structural.",
       "Underneath's looking rough, surface rust everywhere. Needs a proper derust."
     ]
   },
@@ -535,7 +535,7 @@
     "deadlineDays": 6,
     "baseReputation": 14,
     "flavorPool": [
-      "Long story. Slid off into a ditch last week, panel's dented, suspension's knocked out of shape, and I shredded a tyre. Sort all of it.",
+      "Long story. Slid off into a ditch last week, panel's dented, suspension's knocked out of shape, and I shredded a tyre. Whatever it needs, please.",
       "Rough night out there. Bent the panel, the ride's all over the place now, and I need a fresh tyre fitted."
     ]
   },
@@ -618,7 +618,7 @@
     "baseReputation": 4,
     "flavorPool": [
       "Gauge cluster's flickering and a couple of lights don't work. Give the cabin a once-over.",
-      "Dash lights are inconsistent and one gauge sticks. Sort it out."
+      "Dash lights are inconsistent and one gauge sticks. Could you go through the cabin?"
     ]
   },
   {
@@ -654,7 +654,7 @@
     "baseReputation": 16,
     "flavorPool": [
       "Seats are falling apart and the gauge cluster's looking tired. Retrim the interior.",
-      "The foam's given up on my side and the dash rattles over every expressway join. Sort the cabin."
+      "The foam's given up on my side and the dash rattles over every expressway join. I'd like the cabin done properly."
     ]
   },
   {

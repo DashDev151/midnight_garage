@@ -128,13 +128,13 @@ const viewBox = computed(
 
 .label {
   fill: var(--mg-text-dim);
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .label .value {
   fill: var(--mg-text);
-  font-size: 10px;
+  font-size: 11px;
 }
 </style>

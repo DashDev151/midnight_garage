@@ -565,7 +565,6 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               <div class="lot-secondary">
                 <span>guide (as graded) {{ formatYen(d.guideValueYen) }}</span>
                 <span>reserve {{ formatYen(d.reserveYen) }}</span>
-                <span>bill {{ formatYen(d.restorationBillYen) }}</span>
               </div>
               <!-- Sprint 74 decision 6: the player's own honest read, once
                    any test has run or any symptom has resolved - never the
@@ -590,7 +589,6 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
 
             <div class="lot-actions">
               <div class="bid-field">
-                <label :for="'bid-input-' + d.lot.id">raise to</label>
                 <span class="stepper-group">
                   <button
                     type="button"
@@ -602,11 +600,11 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                     -
                   </button>
                   <input
-                    :id="'bid-input-' + d.lot.id"
                     v-model.number="bidInputs[d.lot.id]"
                     type="number"
                     :step="stepYenFor(d)"
                     :placeholder="String(d.nextRaiseYen)"
+                    aria-label="raise bid to"
                   />
                   <button
                     type="button"

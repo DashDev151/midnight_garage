@@ -135,10 +135,12 @@ function onCardPointerUp(event: PointerEvent): void {
   display: flex;
   flex-direction: column;
   gap: var(--mg-space-2);
-  /* Every slot - occupied or empty - gets the same minimum footprint, so an
-     empty slot is exactly as easy to aim a drop at as an occupied one; a
-     bare "empty bay" label with no min-height left almost nothing to hit. */
-  min-height: 84px;
+  /* Every slot - occupied or empty - holds one fixed footprint, sized to the
+     occupied state (car card + move button, with room for a status badge), so
+     a bay never changes shape when a car moves in or out and an empty slot is
+     exactly as easy to aim a drop at as an occupied one. The empty label
+     centres in the taller box via `.slot-empty`'s flex fill below. */
+  min-height: 120px;
   background: var(--mg-panel);
   border: var(--mg-border);
   border-radius: var(--mg-radius);

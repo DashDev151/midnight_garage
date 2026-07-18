@@ -292,9 +292,6 @@ describe('AuctionScreen', () => {
       expect(ext.text()).toContain(detail.auctionGrade.exterior)
       expect(int.text()).toContain(detail.auctionGrade.interior)
 
-      // The restoration bill still shows, shortened to "bill" now.
-      expect(wrapper.text()).toContain('bill ¥')
-
       // The old expandable report is gone entirely.
       expect(wrapper.find(`[data-test="toggle-detail-${lot.id}"]`).exists()).toBe(false)
       expect(wrapper.find('.condition-groups').exists()).toBe(false)

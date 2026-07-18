@@ -58,9 +58,9 @@ describe('App (Sprint 51: chrome)', () => {
     expect(wrapper.find('[data-test="end-day"]').exists()).toBe(false)
   })
 
-  it('shows "MIDNIGHT GARAGE" exactly once on the menu screen - the menu\'s own, the chrome one gone', async () => {
+  it('shows "Ran When Parked" exactly once on the menu screen - the menu\'s own, the chrome one gone', async () => {
     const wrapper = await mountAppAt('menu')
-    expect(wrapper.findAll('h1').filter((h) => h.text() === 'MIDNIGHT GARAGE')).toHaveLength(1)
+    expect(wrapper.findAll('h1').filter((h) => h.text() === 'Ran When Parked')).toHaveLength(1)
   })
 
   it('the Standing screen is reachable from the nav on a gameplay screen', async () => {

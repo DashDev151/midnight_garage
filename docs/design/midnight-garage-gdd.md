@@ -1,4 +1,7 @@
-# MIDNIGHT GARAGE
+# Ran When Parked
+
+Title amended to "Ran When Parked" by maintainer approval, 2026-07-18 (previously "Midnight Garage").
+
 ## Game Design Document - v0.6
 
 *v0.6 (2026-07-12): sections 3.2, 6.1, 9.0, and 9.1 amended to match the shipped Progression

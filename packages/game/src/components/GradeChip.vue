@@ -2,8 +2,11 @@
 import type { Grade } from '@midnight-garage/content'
 
 /**
- * Sprint 69 (playtest item 14): a part's grade as a colour-coded chip, not a
- * bare word buried in a meta line.
+ * Sprint 69 (playtest item 14): a part's grade as a chip, not a bare word
+ * buried in a meta line. Sprint 86 decision 5: the ramp reads as one amber
+ * family with intensity rising by tier (stock grey, then amber text, then an
+ * amber border, then a low-alpha amber fill at race), so a tier never borrows
+ * the condition-verdict palette (cyan/magenta) the way street/race used to.
  *
  * Deliberately `BandChip`'s exact shape - same box, same sizing, same
  * capitalisation - so the two chips a player sees side by side on a part row
@@ -34,8 +37,8 @@ defineProps<{ grade: Grade }>()
 }
 
 .grade-street {
-  color: var(--mg-neon-cyan);
-  border-color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
+  border-color: var(--mg-panel-edge);
 }
 
 .grade-sport {
@@ -44,7 +47,10 @@ defineProps<{ grade: Grade }>()
 }
 
 .grade-race {
-  color: var(--mg-neon-pink);
-  border-color: var(--mg-neon-pink);
+  color: var(--mg-neon-violet);
+  border-color: var(--mg-neon-violet);
+  /* A low-alpha amber fill, not a solid block - the rule of glow stays
+     respected while race still reads as the top of the ramp. */
+  background: color-mix(in srgb, var(--mg-neon-violet) 12%, transparent);
 }
 </style>

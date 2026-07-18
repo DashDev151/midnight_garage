@@ -42,7 +42,7 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 
 ## What this repository is
 
-**Midnight Garage** - a browser-based, turn-based garage management sim set in 1995 Japan
+**Ran When Parked** - a browser-based, turn-based garage management sim set in 1995 Japan
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 

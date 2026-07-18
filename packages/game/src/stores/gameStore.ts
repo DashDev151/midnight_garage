@@ -744,8 +744,8 @@ export interface LotDetail {
    * Each of the 6 real groups' worst present-part band (Sprint 26 decision
    * 10) - lots are transparent now, no reveal machinery: this is always
    * populated, not gated behind an inspection step. Sprint 73: read off the
-   * car's APPARENT view for a symptomatic lot (`groupBands`/`auctionGrade`/
-   * `restorationBillYen` all price consistently off what the room actually
+   * car's APPARENT view for a symptomatic lot (`groupBands`/`auctionGrade`
+   * both price consistently off what the room actually
    * shows - never the true, currently-installed band a symptom's cause set -
    * so a damaged part's grade never leaks the truth next to the sheet's own
    * fear-priced guide value).
@@ -761,15 +761,6 @@ export interface LotDetail {
    * cause - the sheet is a fixed listing, not a live readout.
    */
   auctionGrade: AuctionGrade
-  /**
-   * The real cost to bring every present part on this specific car to mint,
-   * at the player's current (equipment-independent, per Sprint 26 decision
-   * 7) repair-step costs - the same `restorationBill` `instanceValue`
-   * itself deducts (Sprint 27 decision 1), surfaced directly so the player
-   * can see exactly what the price already prices in. Sprint 73: apparent-
-   * view sourced, same reasoning as `groupBands` above.
-   */
-  restorationBillYen: number
   /**
    * Sprint 73 decision 7 / Sprint 74 decision 7: one entry per symptom this
    * lot's car carries (`[]` for an honest car) - the free, public card line,
@@ -1928,13 +1919,6 @@ export const useGameStore = defineStore('game', () => {
       playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(apparentCar),
       auctionGrade: computeAuctionGrade(apparentCar, model, context.value.partIdsByGroup),
-      restorationBillYen: carCostToMintYen(
-        apparentCar,
-        model,
-        context.value.partsById,
-        context.value.partsTaxonomyById,
-        context.value.economy,
-      ),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),

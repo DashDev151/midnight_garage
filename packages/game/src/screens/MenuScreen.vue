@@ -41,7 +41,7 @@ function cancelNewGame(): void {
 
 <template>
   <section class="menu">
-    <h1>MIDNIGHT GARAGE</h1>
+    <h1>Ran When Parked</h1>
 
     <div class="actions">
       <button
@@ -85,6 +85,7 @@ h1 {
   color: var(--mg-neon-cyan);
   letter-spacing: 0.3em;
   font-size: var(--mg-fs-xl);
+  text-transform: uppercase;
   text-align: center;
   margin: 0;
 }

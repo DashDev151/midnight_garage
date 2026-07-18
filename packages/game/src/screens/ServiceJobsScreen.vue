@@ -73,6 +73,18 @@ function onHandItOver(): void {
     deliverConfirming.value = true
   }
 }
+
+/** Sprint 86 decision 4: an offer's countdown, in days from today to its
+ * expiry (`expiresOnDay - day`). Offers are filtered out at day rollover, so
+ * there is no "due today" case; the floor renders `last day` instead. */
+function offerDaysLeft(expiresOnDay: number): number {
+  return expiresOnDay - game.day
+}
+
+function offerCountdownLabel(expiresOnDay: number): string {
+  const daysLeft = offerDaysLeft(expiresOnDay)
+  return daysLeft <= 0 ? 'last day' : `${daysLeft}d left`
+}
 </script>
 
 <template>
@@ -203,41 +215,56 @@ function onHandItOver(): void {
       </p>
       <ul v-else class="offers">
         <li v-for="offer in game.serviceJobOfferViews" :key="offer.id" class="offer">
-          <div class="offer-main">
+          <div class="offer-header">
             <span class="customer">{{ offer.customerName }}</span>
             <span class="desc">{{ offer.description }}</span>
-            <ServiceTaskList :tasks="offer.tasks" />
-            <span class="terms">
-              {{ offer.carName
+          </div>
+          <div class="offer-car">
+            <span class="car-name"
+              >{{ offer.carName
               }}<span
                 v-if="offer.fitmentClass"
                 class="class-chip"
                 :data-test="'class-' + offer.id"
                 >{{ game.fitmentClassLabel(offer.fitmentClass) }}</span
-              >
-              · pays {{ formatYen(offer.payoutYen) }} · +{{ offer.baseReputation }} rep base · offer
-              expires day {{ offer.expiresOnDay }}
-            </span>
+              ></span
+            >
+          </div>
+          <div class="offer-tasks">
+            <ServiceTaskList :tasks="offer.tasks" />
           </div>
           <div class="offer-foot">
-            <button
-              :disabled="!offer.canAccept"
-              :class="{ 'needs-upgrade': !offer.canAccept }"
-              :title="!offer.canAccept ? (offer.upgradeHint ?? 'needs a tool upgrade') : undefined"
-              :data-test="'accept-' + offer.id"
-              @click="game.acceptServiceJob(offer.id)"
-            >
-              Accept
-            </button>
-            <!-- Sprint 85 decision 4: decline clears the offer with zero side
-                 effects. Minimal control this sprint; Sprint 86 restyles both. -->
-            <button
-              class="decline"
-              :data-test="'decline-' + offer.id"
-              @click="game.rejectServiceJobOffer(offer.id)"
-            >
-              Decline
-            </button>
+            <div class="offer-rewards">
+              <span class="terms"
+                >pays {{ formatYen(offer.payoutYen) }} · +{{ offer.baseReputation }} rep</span
+              >
+              <span class="days" :class="{ urgent: offerDaysLeft(offer.expiresOnDay) <= 2 }">
+                {{ offerCountdownLabel(offer.expiresOnDay) }}
+              </span>
+            </div>
+            <div class="offer-actions">
+              <button
+                class="primary"
+                :disabled="!offer.canAccept"
+                :class="{ 'needs-upgrade': !offer.canAccept }"
+                :title="
+                  !offer.canAccept ? (offer.upgradeHint ?? 'needs a tool upgrade') : undefined
+                "
+                :data-test="'accept-' + offer.id"
+                @click="game.acceptServiceJob(offer.id)"
+              >
+                Accept
+              </button>
+              <!-- Sprint 85 decision 4: decline clears the offer with zero side
+                   effects. Sprint 86 decision 3: primary Accept, quiet Decline. -->
+              <button
+                class="decline"
+                :data-test="'decline-' + offer.id"
+                @click="game.rejectServiceJobOffer(offer.id)"
+              >
+                Decline
+              </button>
+            </div>
           </div>
         </li>
       </ul>
@@ -364,10 +391,29 @@ h3 {
   background: var(--mg-panel);
   border: var(--mg-border);
   border-radius: var(--mg-radius);
-  padding: var(--mg-space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--mg-space-2);
+}
+
+/* Four visually separated sections (Sprint 86 decision 3): each child carries
+   its own padding and every one after the first is ruled off with a top
+   border - the same panel divider idiom the lap board and buyout row use. */
+.offer > * {
+  padding: var(--mg-space-3);
+}
+
+.offer > * + * {
+  border-top: var(--mg-border);
+}
+
+.offer-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-1);
+}
+
+.car-name {
+  color: var(--mg-text);
 }
 
 .customer {
@@ -398,7 +444,28 @@ h3 {
 .offer-foot {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--mg-space-3);
+  flex-wrap: wrap;
+}
+
+.offer-rewards {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+}
+
+.offer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+/* The footer is a flex row, so the primary Accept must not carry the standalone
+   button's top margin (the mission-accept and complete-job buttons use it). */
+.offer-actions button.primary {
+  margin-top: 0;
 }
 
 /* Sprint 76 (story missions I): the pinned campaign card - a distinct
