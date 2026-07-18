@@ -121,8 +121,12 @@ function offerCountdownLabel(expiresOnDay: number): string {
       </div>
       <p class="desc">{{ game.storyMissionOfferView.requestCopy }}</p>
       <p class="terms">
-        pays {{ formatYen(game.storyMissionOfferView.payoutYen) }} · budget
-        {{ formatYen(game.storyMissionOfferView.budgetCapYen) }}
+        pays {{ formatYen(game.storyMissionOfferView.payoutYen) }} ·
+        <template
+          v-if="game.storyMissionOfferView.budgetCapYen < game.storyMissionOfferView.payoutYen"
+          >budget {{ formatYen(game.storyMissionOfferView.budgetCapYen) }}</template
+        >
+        <template v-else>build within it</template>
       </p>
       <button
         class="primary"

@@ -91,3 +91,24 @@ Landed (implementation by subagent, orchestrator-policed). The record:
   price up, it asks for a good buy. If that feels tight in play, the cap is the knob (the
   payout is what sets profit; the cap is independent forgiveness).
 - **Narrow evidence:** sim 51 files / 956 tests; content 10 / 88; both typechecks exit 0.
+
+### Amendment (2026-07-18, same day): budget = payout, one figure
+
+The maintainer flagged that "pays ¥148,000 · budget ¥160,000" is incoherent - a budget
+ABOVE the payout reads as "you may spend more than she pays you". Correct. A near-break-even
+job has one figure, not two: her money. Fixed:
+
+- `four-wheels` `budgetCapYen` 160,000 to **148,000** (= payout). She has ¥148,000; build
+  roadworthy for less and keep the difference. Profit on the taught build is still ¥7,511;
+  the slack after one mistake is now ¥2,011 (the profit IS the slack on a lean job), so the
+  tutorialProbe's mistake assertion changed from ">= ¥10,000 headroom" to "still completable
+  after one mistake" (spend + mistake <= her money). Directive 17 case (a): the old fat-slack
+  assertion assumed a cap above the pay, which this coherence fix removes.
+- The offer card (`ServiceJobsScreen.vue`) now shows "budget {n}" only when the cap is
+  BELOW the payout (the healthy-margin case); at or above, it reads "pays {n} · build within
+  it" - one figure, no contradiction.
+- Beat-1 copy reframed to the single figure: "Yuki has {payout} saved: that is the budget
+  and the pay both. Build her something roadworthy for less, and the small difference is
+  yours..."
+- Re-verified once: sim probes 15/15, ServiceJobsScreen 19/19, content 88/88, game
+  typecheck exit 0.

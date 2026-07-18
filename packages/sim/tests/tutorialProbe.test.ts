@@ -123,12 +123,13 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
     expect(reserve).toBeLessThanOrEqual(Math.round(honest * 0.65))
   })
 
-  it('the taught build lands comfortably under budget with slack for one mistake, and clears a small deliberate profit', () => {
+  it('the taught build stays completable after one mistake, and clears a small deliberate profit', () => {
+    // Sprint 91 coherence fix: her budget and her pay are one figure (¥148,000);
+    // the mission is not "spend under a cap higher than she pays" - it is "build
+    // within her money and keep what is left". So the guarantee is that a single
+    // wrong-band purchase still completes (spend + mistake within her money), not
+    // that a fat cap absorbs it. profit IS the slack on this lean intro job.
     expect(totalSpendYen + oneMistakeYen).toBeLessThanOrEqual(FOUR_WHEELS.budgetCapYen)
-    // "Comfortably" under: even after the mistake, real headroom remains.
-    expect(FOUR_WHEELS.budgetCapYen - (totalSpendYen + oneMistakeYen)).toBeGreaterThanOrEqual(
-      10_000,
-    )
     // Sprint 91: the intro mission is deliberately NOT a big earner. The payout
     // covers her costs with a modest margin, so the profit must be positive but
     // small - guarded both ways so a future payout bump can't quietly turn

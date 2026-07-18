@@ -6,7 +6,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Her budget caps the build at {budgetCap}: every yen this car's ledger takes counts against it. She pays {payout} on delivery, barely over your costs. This first one is about learning the work, not the money."
+        "text": "Yuki has {payout} saved: that is the budget and the pay both. Build her something roadworthy for less, and the small difference is yours. This first one is about learning the work, not the money."
       },
       {
         "speaker": "instruction",
