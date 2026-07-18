@@ -263,7 +263,7 @@ export function resolveRemoveAssembly(
     if (isOwned) {
       const revealed = revealOnRemoval(nextCar, member, context)
       nextCar = revealed.car
-      revealedCauseId = revealed.revealedCauseId
+      revealedCauseId = revealed.revealedCauseId ?? undefined
     }
     updatedCar = nextCar
     log.push({

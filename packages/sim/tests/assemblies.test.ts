@@ -414,9 +414,10 @@ describe('renting never makes a standard tyre/brake service job loss-making (Spr
   it('worst-margin payout clears parts + the wheels fee, for every shitbox and common roster model', () => {
     const tier1 = baseState() // wheels tier 1 - the wheels fee applies to a tyre op
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
-    const shitboxCommonModels = CARS.filter((m) =>
-      (['shitbox', 'common'] as const).includes(fitmentClassForTier(m.tier)),
-    )
+    const shitboxCommonModels = CARS.filter((m) => {
+      const fitmentClass = fitmentClassForTier(m.tier)
+      return fitmentClass === 'shitbox' || fitmentClass === 'common'
+    })
     const failures: string[] = []
     for (const id of TEMPLATE_IDS) {
       const template = SERVICE_JOB_TYPES.find((t) => t.id === id)!
