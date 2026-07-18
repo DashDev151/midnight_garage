@@ -151,5 +151,15 @@ policed sub-implementer, orchestrator-policed end to end). The record:
 - **Narrow evidence (each once):** sim 50 files / 948 tests green; content 10 / 88
   green; touched game files green after the two case-(a) rewrites (7 + 73 across the
   affected files).
+- **Gate incident, resolved:** the first push attempt failed typecheck twice, exactly as
+  the gate exists to do (the implementer cannot run static checks under directive 20).
+  Round one: two sim-side type errors, fixed by the orchestrator (null-vs-undefined on
+  the reveal id; a rarity-union narrowing in the probe). Round two: the widened
+  `StagedAction` union broke per-part narrowing at ~12 existing store/screen sites;
+  fixed by the implementer under orchestrator rulings (assembly actions never match
+  per-part addresses; assembly labour attribution lives only in the sim's
+  `previewPlannedWork`; staged assembly ops are unstageable via their own kind+id
+  branch), centralised in `partAddress.ts`'s `hasWorkAddress`/`stagedActionsCollide`.
+  Game typecheck clean, 72 tests green across the three touched files after the fix.
 - **Full evidence:** this commit reached origin through the pre-push gate; no separate
   manual full pass (directive 20).

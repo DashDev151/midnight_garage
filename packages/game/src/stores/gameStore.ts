@@ -166,7 +166,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 import { offerCopy } from '../utils/offerCopy'
-import { addressesOverlap } from '../utils/partAddress'
+import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -1720,7 +1720,7 @@ export const useGameStore = defineStore('game', () => {
           applyCrew ? crewCtx() : undefined,
         )
         if (plan.partIds.length > 0) total += plan.laborSlotsRequired
-      } else {
+      } else if (action.kind === 'install') {
         const partInstance = gameState.value.partInventory.find(
           (p) => p.id === action.partInstanceId,
         )
@@ -1734,6 +1734,10 @@ export const useGameStore = defineStore('game', () => {
             : installLaborSlotsFor(targetPartId, context.value)
         }
       }
+      // Sprint 87: a staged assembly op's labour is never recomputed here -
+      // the sim's own resolvers charge it at Confirm and `previewPlannedWork`
+      // carries its projection, so this per-action summation only ever sizes
+      // the kinds it understands (repair/install).
     }
     return total
   }
@@ -2704,9 +2708,13 @@ export const useGameStore = defineStore('game', () => {
     const car = findWorkableCar(carId)
     if (!car) return false
     if (isCarInTransit(carId)) return false
-    const busy = gameState.value.jobs.some(
-      (j) => j.carInstanceId === carId && addressesOverlap(j, action),
-    )
+    // Sprint 87: an assembly action carries no per-part address, so it never
+    // matches a job's address here - member busyness is the assembly
+    // resolvers' own gate at Confirm (`resolveRemoveAssembly`).
+    const perPart = hasWorkAddress(action) ? action : null
+    const busy =
+      perPart !== null &&
+      gameState.value.jobs.some((j) => j.carInstanceId === carId && addressesOverlap(j, perPart))
     if (busy) return false
     if (action.kind === 'install') {
       if (isPartStagedAnywhere(action.partInstanceId)) return false
@@ -2748,7 +2756,10 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    const existing = stagedActionsFor(carId).filter((a) => !addressesOverlap(a, action))
+    // Sprint 87: staged-action collision is kind-aware - per-part actions
+    // displace by address overlap exactly as before; an assembly action
+    // displaces only the same op on the same assembly (`stagedActionsCollide`).
+    const existing = stagedActionsFor(carId).filter((a) => !stagedActionsCollide(a, action))
     gameState.value = {
       ...gameState.value,
       stagedCarWork: { ...gameState.value.stagedCarWork, [carId]: [...existing, action] },
@@ -2767,14 +2778,35 @@ export const useGameStore = defineStore('game', () => {
    * displaces.
    */
   function unstageAction(carId: string, componentId: ComponentId, carPartId?: CarPartId): void {
+    // Sprint 87: an assembly action has no per-part address, so a per-part
+    // unstage never matches (and never sweeps) one - it has its own
+    // `unstageAssemblyAction` below.
     const remaining = stagedActionsFor(carId).filter(
-      (a) => !(a.componentId === componentId && a.carPartId === carPartId),
+      (a) => !hasWorkAddress(a) || !(a.componentId === componentId && a.carPartId === carPartId),
     )
     const stagedCarWork = { ...gameState.value.stagedCarWork }
     if (remaining.length === 0) delete stagedCarWork[carId]
     else stagedCarWork[carId] = remaining
     gameState.value = { ...gameState.value, stagedCarWork }
     logSessionEvent('unstageAction', { carId, componentId })
+  }
+
+  /** Sprint 87: un-stage one staged assembly op - the assembly twin of
+   * `unstageAction`, keyed on kind + assemblyId since an assembly action
+   * carries no per-part address. Free, no-op if nothing matches. */
+  function unstageAssemblyAction(
+    carId: string,
+    kind: 'remove-assembly' | 'refit-assembly',
+    assemblyId: AssemblyId,
+  ): void {
+    const remaining = stagedActionsFor(carId).filter(
+      (a) => hasWorkAddress(a) || a.kind !== kind || a.assemblyId !== assemblyId,
+    )
+    const stagedCarWork = { ...gameState.value.stagedCarWork }
+    if (remaining.length === 0) delete stagedCarWork[carId]
+    else stagedCarWork[carId] = remaining
+    gameState.value = { ...gameState.value, stagedCarWork }
+    logSessionEvent('unstageAssemblyAction', { carId, kind, assemblyId })
   }
 
   /**
@@ -2911,6 +2943,12 @@ export const useGameStore = defineStore('game', () => {
     const def = context.value.assembliesById[assemblyId]
     if (!def) return 0
     return assemblyMachineAssistFeeYen(def, gameState.value, context.value)
+  }
+
+  /** An assembly's player-facing display name ("Wheels & tyres"), from
+   * content - the assembly twin of `carPartLabel`/`componentLabel`. */
+  function assemblyLabel(assemblyId: AssemblyId): string {
+    return context.value.assembliesById[assemblyId]?.displayName ?? assemblyId
   }
 
   /**
@@ -3819,8 +3857,10 @@ export const useGameStore = defineStore('game', () => {
     refitAssembly,
     swapAssemblyMember,
     assemblyMachineFee,
+    assemblyLabel,
     assemblyRowsFor,
     benchContainersFor,
+    unstageAssemblyAction,
     placeBid,
     buyout,
     buyPart,

@@ -1,4 +1,4 @@
-import type { CarPartId, ComponentId } from '@midnight-garage/content'
+import type { CarPartId, ComponentId, StagedAction } from '@midnight-garage/content'
 
 /**
  * A group-level or per-part work address (Sprint 28): every `StagedAction`
@@ -34,4 +34,30 @@ export function addressesOverlap(a: WorkAddress, b: WorkAddress): boolean {
  */
 export function sameAddress(a: WorkAddress, b: WorkAddress): boolean {
   return a.componentId === b.componentId && a.carPartId === b.carPartId
+}
+
+/** The staged kinds that carry a per-part work address. The assembly kinds
+ * (Sprint 87: `remove-assembly`/`refit-assembly`) address a whole assembly by
+ * id instead and never match a per-part address - every address-matching site
+ * narrows through this guard first. */
+export type AddressedStagedAction = Extract<StagedAction, { kind: 'repair' | 'install' }>
+
+export function hasWorkAddress(action: StagedAction): action is AddressedStagedAction {
+  return action.kind === 'repair' || action.kind === 'install'
+}
+
+/**
+ * Sprint 87: whether staging `b` displaces already-staged `a` - the staged-
+ * action generalisation of `addressesOverlap`. Two per-part actions collide by
+ * address overlap exactly as before; an assembly action collides only with the
+ * SAME operation on the SAME assembly (a re-stage replaces it), and never with
+ * a per-part action - an assembly action has no per-part address to overlap.
+ */
+export function stagedActionsCollide(a: StagedAction, b: StagedAction): boolean {
+  if (!hasWorkAddress(a) || !hasWorkAddress(b)) {
+    return (
+      !hasWorkAddress(a) && !hasWorkAddress(b) && a.kind === b.kind && a.assemblyId === b.assemblyId
+    )
+  }
+  return addressesOverlap(a, b)
 }

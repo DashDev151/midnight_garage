@@ -22,7 +22,7 @@ import {
   type NextRepairStepView,
 } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
-import { addressesOverlap } from '../utils/partAddress'
+import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
 
 const game = useGameStore()
 const route = useRoute()
@@ -432,8 +432,10 @@ function toggleForSale(): void {
 // existing single-click flow, never routed through staging (decision 4).
 
 function stagedFor(componentId: ComponentId, carPartId?: CarPartId): StagedAction | undefined {
+  // Sprint 87: an assembly action has no per-part address - a per-part row's
+  // lookup never matches one.
   return detail.value?.stagedActions.find(
-    (a) => a.componentId === componentId && a.carPartId === carPartId,
+    (a) => hasWorkAddress(a) && a.componentId === componentId && a.carPartId === carPartId,
   )
 }
 
@@ -601,20 +603,40 @@ function onConfirm(): void {
   if (d) game.confirmCarWork(d.car.id)
 }
 
-/** A stable per-address key for `v-for`/`data-test`, since more than one
- * staged action can now share a `componentId` (Sprint 28 per-part). */
-function addressKeyFor(action: { componentId: ComponentId; carPartId?: CarPartId }): string {
+/** A stable per-action key for `v-for`/`data-test`, since more than one
+ * staged action can now share a `componentId` (Sprint 28 per-part). Sprint
+ * 87: an assembly action has no per-part address - it keys on its own
+ * kind + assemblyId instead. */
+function stagedKeyFor(action: StagedAction): string {
+  if (!hasWorkAddress(action)) return `${action.kind}:${action.assemblyId}`
   return action.carPartId ? `${action.componentId}:${action.carPartId}` : action.componentId
 }
 
-/** Human-readable summary line for one staged action, group- or part-addressed alike. */
+/** Human-readable summary line for one staged action - group-, part-, or
+ * (Sprint 87) assembly-addressed alike. */
 function stagedActionLabel(action: StagedAction): string {
+  if (!hasWorkAddress(action)) {
+    // Composed from the two swept labels plus the content display name.
+    const name = game.assemblyLabel(action.assemblyId)
+    return action.kind === 'remove-assembly'
+      ? `Remove assembly: ${name}`
+      : `Refit assembly: ${name}`
+  }
   const targetLabel = action.carPartId
     ? game.carPartLabel(action.carPartId)
     : game.componentLabel(action.componentId)
   return action.kind === 'repair'
     ? `Repair ${targetLabel} to ${action.targetBand}`
     : `Install ${partInstanceDisplayName(action.partInstanceId)} → ${targetLabel}`
+}
+
+/** Un-stage one summary-panel row - per-part rows unstage by address, an
+ * assembly row (Sprint 87) by its own kind + assemblyId. */
+function onUnstageSummary(action: StagedAction): void {
+  const d = detail.value
+  if (!d) return
+  if (hasWorkAddress(action)) game.unstageAction(d.car.id, action.componentId, action.carPartId)
+  else game.unstageAssemblyAction(d.car.id, action.kind, action.assemblyId)
 }
 
 // The ghost preview that follows the pointer while dragging a part.
@@ -1257,14 +1279,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <ul v-else class="staged-list">
               <li
                 v-for="action in detail.stagedActions"
-                :key="addressKeyFor(action)"
+                :key="stagedKeyFor(action)"
                 class="staged-row"
               >
                 <span>{{ stagedActionLabel(action) }}</span>
                 <button
                   type="button"
-                  :data-test="'unstage-summary-' + addressKeyFor(action)"
-                  @click="game.unstageAction(detail.car.id, action.componentId, action.carPartId)"
+                  :data-test="'unstage-summary-' + stagedKeyFor(action)"
+                  @click="onUnstageSummary(action)"
                 >
                   remove
                 </button>
