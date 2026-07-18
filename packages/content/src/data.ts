@@ -20,6 +20,8 @@ import symptomsJson from '../data/symptoms.json'
 import techniquesJson from '../data/techniques.json'
 import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
+import tutorialLotJson from '../data/tutorialLot.json'
+import tutorialStepsJson from '../data/tutorialSteps.json'
 import { AssemblyDefsSchema } from './assembly'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
@@ -46,6 +48,7 @@ import { SymptomsSchema } from './symptom'
 import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
+import { TutorialLotRecipeSchema, TutorialStepsSchema } from './tutorial'
 
 /**
  * Parsed, schema-validated seed content - the single source of truth for
@@ -164,3 +167,14 @@ export const STORY_MISSIONS: StoryMission[] = STORY_MISSIONS_AUTHORED.map((missi
  * comment for the anchor/pool discriminated shape.
  */
 export const LAP_REFERENCES = LapReferencesSchema.parse(lapReferencesJson)
+
+/**
+ * Sprint 89 (Yuki teaches you the game): the guided-tutorial script and the
+ * one scripted auction lot recipe. `TUTORIAL_STEPS` is the ordered coach beats
+ * the overlay renders (all copy orchestrator-swept); `TUTORIAL_LOT` is the
+ * fixed shitbox-runabout recipe the sim builds deterministically while the
+ * tutorial is live - the satisfiability probe
+ * (`packages/sim/tests/tutorialProbe.test.ts`) pins its economics.
+ */
+export const TUTORIAL_STEPS = TutorialStepsSchema.parse(tutorialStepsJson)
+export const TUTORIAL_LOT = TutorialLotRecipeSchema.parse(tutorialLotJson)

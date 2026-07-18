@@ -71,6 +71,18 @@ export const AuctionLotSchema = z.object({
    * (never-persisted) turnout roll can't be recovered anyway.
    */
   turnout: TurnoutBandSchema.default('steady'),
+  /**
+   * Sprint 89 (the scripted tutorial lot): true only for the one deterministic
+   * lot the guided tutorial injects while its mission is live. Two effects,
+   * both parameter pins rather than a bypass of the normal auction: telemetry/
+   * probes can exclude it, and its rival cohorts are pinned out of the
+   * overnight step (`bidding.ts`'s `advanceLotOvernight`) so the seller's
+   * floor is also the rivals' ceiling - the player's reserve bid stands and
+   * hammers on the quiet-days rule, a guaranteed win at reserve. Optional
+   * (absent = an ordinary lot), the genuinely-optional-key pattern - no
+   * existing lot literal needs touching.
+   */
+  scripted: z.boolean().optional(),
 })
 
 export const AuctionLotsSchema = z.array(AuctionLotSchema)

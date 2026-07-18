@@ -360,6 +360,19 @@ export const GameStateSchema = z.object({
    * explicitly (`createInitialGameState`).
    */
   assemblyInventory: z.array(AssemblyContainerSchema).optional(),
+  /**
+   * Sprint 89 (Yuki teaches you the game): the guided tutorial's one persisted
+   * bit. Absent (`.optional()`, the genuinely-optional-key pattern) means "not
+   * a tutorial career" - every bot, test fixture, and probe state, plus a save
+   * that predates the field, so the sim's scripted-lot injection and the
+   * overlay both stay inert for them. A real new career installs `'active'`
+   * (`installTutorial`, sim); the player's skip control writes `'skipped'`
+   * (permanent for that career, decision 5) and the sign-off writes `'done'` -
+   * both suppress the overlay and the scripted-lot injection for good. The sim
+   * reads this field but never depends on its value for any economic outcome;
+   * it only gates whether the tutorial lot is kept on the board.
+   */
+  tutorialStatus: z.enum(['active', 'skipped', 'done']).optional(),
 })
 
 /**

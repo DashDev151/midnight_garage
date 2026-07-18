@@ -341,6 +341,17 @@ export function advanceLotOvernight(
   context: SimContext,
   day: number,
 ): OvernightStepResult {
+  // Sprint 89 (the scripted tutorial lot): a scripted lot's rival cohorts are
+  // pinned out of the room - the seller's floor is also the rivals' ceiling, so
+  // the board never moves off whatever the player has bid. Every other step of
+  // resolution (the player's own bid, the quiet-days hammer, the cash/space
+  // checks, the handover) runs unchanged, so this is a parameter pin on the
+  // rival side, not a bypass of the auction. The night is always quiet, so the
+  // lot hammers on the quiet-days rule or its (same-day) backstop with the
+  // player leading - a guaranteed win at reserve.
+  if (lot.scripted) {
+    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [], raised: false }
+  }
   const economy = context.economy
   const guideValueYen = anchorValueYen(lot, state, context)
   if (guideValueYen <= 0) {

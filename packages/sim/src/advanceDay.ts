@@ -23,6 +23,7 @@ import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts
 import { createRng } from './rng'
 import { computeContractIncomeYen } from './serviceBay'
 import { commitPendingStaffAssignments, refreshStaffAds } from './staff'
+import { ensureTutorialLot } from './tutorial'
 import {
   generateDailyServiceJobOffers,
   resolveAcceptServiceJob,
@@ -324,6 +325,14 @@ export function advanceDay(
     { ...next, activeAuctionLots: [...next.activeAuctionLots, ...arrivalsToday.freshLots] },
     arrivalsToday.freshLots.map((lot) => lot.modelId),
   )
+
+  // 7-tut. Sprint 89: keep the scripted tutorial lot on the board while the
+  // tutorial window is open - re-injected here (a no-op unless it resolved this
+  // tick and the mission is still live) for the day about to begin, `next.day +
+  // 1`, matching the arrivals convention just above so it hammers at the next
+  // End Day exactly as its first injection did. Inert for every non-tutorial
+  // career (`tutorialStatus` absent).
+  next = ensureTutorialLot(next, context, next.day + 1)
 
   // 7a. Sprint 29: daily service-job offer generation - a bell-curve draw
   // (0-4, economy.json's `serviceJobs.dailyOfferCountWeights`) EVERY day,

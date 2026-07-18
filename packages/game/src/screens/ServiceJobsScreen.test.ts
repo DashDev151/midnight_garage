@@ -225,17 +225,20 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * Sprint 76 (story missions I): day 1 itself never carries a mission -
-   * `createInitialGameState` doesn't seed one (only the day-boundary hook,
-   * `advanceDay`, ever offers the next locked mission) - so the pinned card
-   * is genuinely absent until the first End Day.
+   * Sprint 89 (Yuki teaches you the game): a fresh career now pins Yuki's
+   * `four-wheels` mission on day 1 - `newGame` runs `installTutorial`, which
+   * offers the gate-0 mission through the ordinary story-mission machine so the
+   * guided tutorial's very first beat has a card to point at. (A raw
+   * `createInitialGameState`, used by bots/probes, still seeds no mission; only
+   * the player-career path installs the tutorial.)
    */
-  it('shows no pinned mission card before any mission has cleared its gate (day 1)', () => {
+  it('pins Yuki’s mission on day 1 for a fresh tutorial career', () => {
     const game = useGameStore()
     game.newGame(1)
-    expect(game.storyMissionOfferView).toBeNull()
+    expect(game.storyMissionOfferView).not.toBeNull()
+    expect(game.storyMissionOfferView!.id).toBe('four-wheels')
     const wrapper = mountScreen()
-    expect(wrapper.find('[data-test="mission-accept"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="mission-accept"]').exists()).toBe(true)
   })
 
   it('shows the pinned story-mission card once the first mission clears its gate', () => {

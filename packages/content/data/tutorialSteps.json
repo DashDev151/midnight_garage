@@ -1,0 +1,119 @@
+[
+  {
+    "id": "accept",
+    "anchorScreen": "jobs",
+    "anchorTestId": "mission-accept",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Her budget caps the build: every yen this car's ledger takes counts against {budgetCap}. The payout is {payout}. The difference is yours if you spend well."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Accept the job when you are ready. There is no deadline; she will wait."
+      }
+    ],
+    "completion": { "kind": "missionActive" }
+  },
+  {
+    "id": "acquire",
+    "anchorScreen": "auctions",
+    "anchorTestId": "bid-{lotId}",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Open the Local Yard. Every career starts in this room."
+      },
+      {
+        "speaker": "instruction",
+        "text": "This {model} lists a fault on its sheet. The room prices what it fears. Pay for an inspection and find out if the fear is earned."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Minor. The discount stays. That gap between what a room fears and what is true is the whole trade.",
+        "showWhen": { "kind": "lotInspected" }
+      },
+      {
+        "speaker": "instruction",
+        "text": "Reserve is the seller's floor. Bid it; the room is quiet today."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Buy-now pays a premium for impatience. Bid instead."
+      }
+    ],
+    "completion": { "kind": "scriptedCarOwned" }
+  },
+  {
+    "id": "wheel",
+    "anchorScreen": "car",
+    "anchorTestId": "remove-assembly-wheelAssembly",
+    "lines": [
+      {
+        "speaker": "yuki",
+        "text": "It has a certain something. Under the dirt."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Open the service diagram. Point at a section of the car to see inside it; the panel underneath holds the controls."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Pull the wheel assembly. Taking things off never costs labour, and putting them back exactly as they were is free."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Her tyres are finished. Buy stock replacements at the parts shop; the budget does not stretch to sport rubber and does not need to."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Fit the tyres at the bench. Without a tyre machine of your own, the fitting shop's fee rides on the work. Machines you buy make fees disappear."
+      }
+    ],
+    "completion": { "kind": "partBandAtLeast", "carPartId": "tyres", "band": "fine" }
+  },
+  {
+    "id": "engine",
+    "anchorScreen": "car",
+    "anchorTestId": "part-action-panel",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "The {part} reads worn. Engine work means the engine comes out; without a crane, the machine shop lends its arm for a fee, out and back in."
+      },
+      {
+        "speaker": "yuki",
+        "text": "My uncle had an engine crane once. He also had a roof. Long story."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Work costs labour slots, and slots are the day. End the day to let the hours pass."
+      }
+    ],
+    "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "fine" }
+  },
+  {
+    "id": "deliver",
+    "anchorScreen": "jobs",
+    "anchorTestId": "mission-deliver",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Requirements green, ledger under the cap. Deliver it."
+      }
+    ],
+    "completion": { "kind": "missionDelivered" }
+  },
+  {
+    "id": "done",
+    "anchorScreen": "garage",
+    "anchorTestId": "day-value",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "The walkthrough ends here. The rest of the town does not know you yet; the job board fixes that."
+      }
+    ],
+    "completion": { "kind": "never" }
+  }
+]

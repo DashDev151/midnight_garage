@@ -73,6 +73,7 @@ import {
   confirmStagedWork,
   createInitialGameState,
   createRng,
+  installTutorial,
   describeOrigin,
   deriveReputationTier,
   displayedBandFor,
@@ -3628,9 +3629,13 @@ export const useGameStore = defineStore('game', () => {
     reportVisible.value = false
   }
 
-  /** Start a fresh career. Defaults to a random seed so players don't all get the same run. */
+  /** Start a fresh career. Defaults to a random seed so players don't all get the same run.
+   * Sprint 89: every new career is a tutorial career - `installTutorial` marks
+   * it active, offers Yuki's mission on day 1, and seeds the scripted Local Yard
+   * lot (a bot/probe career built straight from `createInitialGameState` never
+   * does, so those stay tutorial-free). */
   function newGame(seed: number = randomSeed()): void {
-    gameState.value = createInitialGameState(context.value, seed)
+    gameState.value = installTutorial(createInitialGameState(context.value, seed), context.value)
     dayLog.value = []
     lastDayReport.value = null
     reportVisible.value = false
@@ -3787,11 +3792,37 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  // --- guided tutorial (Sprint 89) --------------------------------------
+
+  /** Whether the guided tutorial overlay is live for this career. Read-only:
+   * the overlay derives its current step from game state, never from a stored
+   * step index. */
+  const tutorialActive = computed<boolean>(() => gameState.value.tutorialStatus === 'active')
+
+  /** Permanently dismiss the walkthrough for this career (decision 5): the
+   * story mission stays, the guidance never returns. `'skipped'` also stops the
+   * scripted-lot injection (`ensureTutorialLot`, sim). */
+  function skipTutorial(): void {
+    if (gameState.value.tutorialStatus !== 'active') return
+    gameState.value = { ...gameState.value, tutorialStatus: 'skipped' }
+  }
+
+  /** Retire the overlay for good once the sign-off has been read after delivery
+   * (decision 5) - distinct from a skip only in intent; both suppress the
+   * overlay and the scripted lot forever. */
+  function finishTutorial(): void {
+    if (gameState.value.tutorialStatus !== 'active') return
+    gameState.value = { ...gameState.value, tutorialStatus: 'done' }
+  }
+
   /** The parts catalog, for the dev grant picker. */
   const partsCatalog = computed<readonly Part[]>(() => context.value.parts)
   const modelsCatalog = computed<readonly CarModel[]>(() => context.value.models)
 
   return {
+    tutorialActive,
+    skipTutorial,
+    finishTutorial,
     gameState,
     dayLog,
     // Sprint 82 decision 6: exposed so `useStaffStore` (stores/staffStore.ts)

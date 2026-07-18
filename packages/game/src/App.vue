@@ -7,6 +7,7 @@ import EventLogDrawer from './components/EventLogDrawer.vue'
 import JobCompleteModal from './components/JobCompleteModal.vue'
 import MissionCompleteModal from './components/MissionCompleteModal.vue'
 import SaleCompleteModal from './components/SaleCompleteModal.vue'
+import TutorialOverlay from './components/TutorialOverlay.vue'
 import { useDragSession } from './composables/useDragAndDrop'
 import { useGameStore } from './stores/gameStore'
 import { useUiStore } from './stores/uiStore'
@@ -147,6 +148,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   <JobCompleteModal />
   <SaleCompleteModal />
   <MissionCompleteModal />
+  <TutorialOverlay v-if="showChrome" />
   <component :is="DevConsole" v-if="DevConsole" />
 </template>
 

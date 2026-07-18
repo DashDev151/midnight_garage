@@ -498,8 +498,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * than silently dropping the field. (The single bump for the sprint - the
  * wheels assist fee is a content knob and the assembly resolvers post to the
  * existing ledgers, so `assemblyInventory` is the one new persisted shape.)
+ * v40 -> v41 (Sprint 89, Yuki teaches you the game): two additive schema
+ * changes for the guided tutorial. `GameStateSchema` gained `tutorialStatus`
+ * (`.optional()`, absent = not a tutorial career) and `AuctionLotSchema` gained
+ * `scripted` (`.optional()`, absent = an ordinary lot). Both are the pure
+ * additive case (like v33/v34/v36/v40, the genuinely-optional-key pattern), so
+ * this needs NO `MIGRATIONS[40]` entry; a pre-v41 save decodes with both simply
+ * absent, which is exactly their default meaning. The version bump alone is
+ * still required (Save law) so an old client rejects a v41 save rather than
+ * silently dropping the fields.
  */
-export const SAVE_VERSION = 40
+export const SAVE_VERSION = 41
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

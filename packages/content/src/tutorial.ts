@@ -1,0 +1,116 @@
+import { z } from 'zod'
+import { AuctionTierSchema } from './auction'
+import { CarPartIdSchema, ConditionBandSchema } from './tags'
+
+/**
+ * Sprint 89 (Yuki teaches you the game): the scripted tutorial that turns the
+ * first story mission (`four-wheels`) into the guided first-run experience.
+ * Every player-facing string here is orchestrator-swept copy applied verbatim
+ * (content law); the overlay component that renders it (`packages/game`) reads
+ * game/store state ONLY and never mutates the sim.
+ */
+
+/**
+ * A declarative completion/visibility predicate over live game state (Sprint
+ * 89 decision 1). The overlay evaluates these against `GameState` (and the
+ * scripted lot/car), never a timer or a reflex input (accessibility law) -
+ * every step advances on a player ACTION that leaves a readable state trace.
+ *
+ * - `missionActive`: the tutorial mission is `active` (the player accepted it).
+ * - `lotInspected`: the scripted car's symptom has been narrowed to one cause
+ *   (a yard inspection ran) - the sleeper-lesson reveal.
+ * - `scriptedCarOwned`: the player owns the scripted car (won it).
+ * - `partBandAtLeast`: the scripted car's `carPartId` slot holds a part at
+ *   `band` or better - the "the wheel/engine work is done" signal.
+ * - `missionDelivered`: the tutorial mission is `delivered`.
+ * - `never`: never satisfied - the terminal sign-off card sits here until the
+ *   player dismisses it.
+ */
+export const TutorialConditionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('missionActive') }),
+  z.object({ kind: z.literal('lotInspected') }),
+  z.object({ kind: z.literal('scriptedCarOwned') }),
+  z.object({
+    kind: z.literal('partBandAtLeast'),
+    carPartId: CarPartIdSchema,
+    band: ConditionBandSchema,
+  }),
+  z.object({ kind: z.literal('missionDelivered') }),
+  z.object({ kind: z.literal('never') }),
+])
+
+export type TutorialCondition = z.infer<typeof TutorialConditionSchema>
+
+/** One coach line: `yuki` speaks in-character; `instruction` is the game's
+ * terse second-person UI voice. `text` is the swept copy verbatim, with
+ * `{budgetCap}`/`{payout}`/`{model}`/`{part}` tokens the overlay interpolates
+ * at render time. `showWhen`, when present, gates the line on a live condition
+ * (the only use today is the post-inspection "Minor" reveal). */
+export const TutorialLineSchema = z.object({
+  speaker: z.enum(['yuki', 'instruction']),
+  text: z.string().min(1),
+  showWhen: TutorialConditionSchema.optional(),
+})
+
+export type TutorialLine = z.infer<typeof TutorialLineSchema>
+
+/** One guided beat. `anchorScreen` is the router route name the step lives on;
+ * `anchorTestId` is the `data-test` control the overlay spotlights (a
+ * `{lotId}` token resolves to the scripted lot at render time). `completion`
+ * is the state predicate that advances past this step. */
+export const TutorialStepSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
+  anchorScreen: z.string().min(1),
+  anchorTestId: z.string().min(1),
+  lines: z.array(TutorialLineSchema).min(1),
+  completion: TutorialConditionSchema,
+})
+
+export type TutorialStep = z.infer<typeof TutorialStepSchema>
+
+export const TutorialStepsSchema = z.array(TutorialStepSchema).min(1)
+
+/** One part-slot band override on the scripted car, layered over `baseBand`. */
+const TutorialPartOverrideSchema = z.object({
+  carPartId: CarPartIdSchema,
+  band: ConditionBandSchema,
+})
+
+/** The scripted symptom (Sprint 89 decision 2): a real generated-shape symptom
+ * whose `trueCauseId` is the MINOR cause, so a yard inspection reveals the
+ * room's fear was unearned. `apparent` records each damaged part's pre-symptom
+ * band exactly as generation's `apparentBandByPartId` would. */
+const TutorialSymptomSchema = z.object({
+  symptomId: z.string().min(1),
+  trueCauseId: z.string().min(1),
+  apparent: z.array(TutorialPartOverrideSchema).min(1),
+})
+
+/**
+ * The scripted auction lot recipe (Sprint 89 decisions 2-3). A fixed
+ * shitbox-class runabout, deterministic under any career seed (no RNG draws) -
+ * the satisfiability probe (`packages/sim/tests/tutorialProbe.test.ts`) derives
+ * the recipe's economics and asserts purchase-at-reserve + parts + fees +
+ * assist ops land comfortably under the mission's `budgetCapYen` with slack for
+ * one player mistake, and that the payout still clears a visible profit.
+ */
+export const TutorialLotRecipeSchema = z.object({
+  /** The story mission this tutorial guides (`storyMissions.json`). */
+  missionId: z.string().min(1),
+  lotId: z.string().min(1),
+  carId: z.string().min(1),
+  tier: AuctionTierSchema,
+  modelId: z.string().min(1),
+  year: z.number().int(),
+  mileageKm: z.number().int().nonnegative(),
+  color: z.string().min(1),
+  /** Reused verbatim from `provenance.json`'s pool - not invented copy. */
+  provenanceNote: z.string().min(1),
+  authenticityPercent: z.number().min(0).max(100),
+  /** The band every slot starts at before `partOverrides` are applied. */
+  baseBand: ConditionBandSchema,
+  partOverrides: z.array(TutorialPartOverrideSchema),
+  symptom: TutorialSymptomSchema,
+})
+
+export type TutorialLotRecipe = z.infer<typeof TutorialLotRecipeSchema>

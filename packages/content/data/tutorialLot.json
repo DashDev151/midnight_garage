@@ -1,0 +1,22 @@
+{
+  "missionId": "four-wheels",
+  "lotId": "tutorial-lot",
+  "carId": "tutorial-lot-car",
+  "tier": "local-yard",
+  "modelId": "suzuki-wagon-r-ct21s",
+  "year": 1994,
+  "mileageKm": 96000,
+  "color": "Silver",
+  "provenanceNote": "daily driver, honest wear",
+  "authenticityPercent": 82,
+  "baseBand": "worn",
+  "partOverrides": [
+    { "carPartId": "tyres", "band": "scrap" },
+    { "carPartId": "internals", "band": "fine" }
+  ],
+  "symptom": {
+    "symptomId": "tick-at-idle",
+    "trueCauseId": "lifter-tick",
+    "apparent": [{ "carPartId": "headValvetrain", "band": "fine" }]
+  }
+}
