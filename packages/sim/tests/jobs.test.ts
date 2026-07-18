@@ -3,6 +3,7 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   type CarInstance,
+  type CarPartId,
   type GameState,
   type Job,
   type PartInstance,
