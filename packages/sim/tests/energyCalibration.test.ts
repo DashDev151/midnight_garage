@@ -138,12 +138,11 @@ describe('Sprint 94 energy-bar calibration (day-1 unchanged; tools + staff loose
     const lateThroughput = lateDaily / EPG[3]
 
     const ratio = lateThroughput / day1Throughput
-    // Disclosure (not a hard pin) - the honest day-1 -> late-game loosening curve.
-    console.info(
-      `[energy calibration] day-1 throughput ${day1Throughput.toFixed(1)} grades/day ` +
-        `(${day1Daily} energy / ${EPG[1]} per grade); late-game ${lateThroughput.toFixed(1)} ` +
-        `grades/day (${lateDaily} energy / ${EPG[3]} per grade); ratio ${ratio.toFixed(2)}x`,
-    )
+    // The honest day-1 -> late-game loosening curve, pinned as assertions (not a
+    // console disclosure - sim has no DOM/node lib). Day-1 is exactly the old 6
+    // grades/day; late game (tier-3 + a full 2-slot bench) is 35.
+    expect(day1Throughput).toBe(6)
+    expect(lateThroughput).toBe(35)
     // The gate: the loosening is real (late game genuinely out-works day 1) but
     // not absurd (an order of magnitude is the sane ceiling for this arc).
     expect(ratio).toBeGreaterThan(1)
