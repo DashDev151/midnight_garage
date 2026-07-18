@@ -215,20 +215,37 @@ function assertPassesAndBudgetLocked(
  * regression).
  */
 describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
-  it('four-wheels: an honest NA wagon-r is roadworthy with its forcedInduction slot legitimately empty (no phantom turbo)', () => {
+  it('four-wheels (off-formula, Sprint 91): an honest NA wagon-r is roadworthy, and the hand-tuned intro economics sit deliberately below the generic 1.1x/1.3x formula', () => {
     const { model, afterCar, probeCostYen } = buildProbe('suzuki-wagon-r-ct21s', 'worn')
     // Sprint 90: the Wagon R is naturally aspirated, so the honest build leaves
-    // its forcedInduction slot empty. Grade THAT car - the mask this sprint
-    // removes pre-filled the slot so roadworthy would pass; roadworthy now
-    // grades the legitimately-absent slot as sound, so no phantom turbo is
-    // needed. The budget/payout pin still rides on the probe recipe's own cost
-    // (`probeCostYen`, unchanged), which the authored content was derived from.
+    // its forcedInduction slot empty (no phantom turbo). Grade THAT car -
+    // roadworthy grades the legitimately-absent slot as sound.
     expect(hasForcedInduction(model)).toBe(false)
     const honestCar: CarInstance = {
       ...afterCar,
       parts: { ...afterCar.parts, forcedInduction: { installed: null } },
     }
-    assertPassesAndBudgetLocked('four-wheels', honestCar, probeCostYen)
+    const state = { ...createInitialGameState(CONTEXT, 1), ownedCars: [honestCar] }
+    const report = gradeMissionCar(state, 'four-wheels', honestCar.id, CONTEXT)
+    expect(report.pass, JSON.stringify(report.lines)).toBe(true)
+
+    // Sprint 91 (directive 17 case (a)): four-wheels comes OFF the generic
+    // 1.1x/1.3x formula pin - the intro mission is redefined from a fat-margin
+    // flip into a near-break-even teacher, so it deliberately does NOT call
+    // assertPassesAndBudgetLocked. The direction is the guard: both its cap and
+    // its payout now sit strictly BELOW what the generic formula would author,
+    // so a bump back toward the old fat formula payout fails here.
+    const target = mission('four-wheels')
+    expect(target.budgetCapYen).toBeLessThan(budgetCapYenFor(probeCostYen))
+    expect(target.payoutYen).toBeLessThan(payoutYenFor(probeCostYen))
+
+    // The near-break-even PROFIT/SLACK guard (profit in (0, 15000], one-mistake
+    // slack >= 10000) lives in tutorialProbe.test.ts, which measures the REAL
+    // taught build: bought at the fear-discounted auction reserve for ~140,489
+    // total spend. This generic probe's cost proxy is instead the worn car's
+    // full marketValueYen (~160,264), which overstates the discounted-reserve
+    // price a player actually pays and so cannot express the intro mission's
+    // break-even economics - only the off-formula direction asserted above.
   })
 
   it('wont-strand-her: a city repaired to fine, all stock, clears the reliability floor', () => {

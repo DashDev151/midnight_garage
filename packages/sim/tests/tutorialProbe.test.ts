@@ -123,14 +123,19 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
     expect(reserve).toBeLessThanOrEqual(Math.round(honest * 0.65))
   })
 
-  it('the taught build lands comfortably under budget with slack for one mistake, and clears a visible profit', () => {
+  it('the taught build lands comfortably under budget with slack for one mistake, and clears a small deliberate profit', () => {
     expect(totalSpendYen + oneMistakeYen).toBeLessThanOrEqual(FOUR_WHEELS.budgetCapYen)
     // "Comfortably" under: even after the mistake, real headroom remains.
     expect(FOUR_WHEELS.budgetCapYen - (totalSpendYen + oneMistakeYen)).toBeGreaterThanOrEqual(
       10_000,
     )
-    // A visible profit against the mission payout after a clean build.
-    expect(FOUR_WHEELS.payoutYen - totalSpendYen).toBeGreaterThanOrEqual(40_000)
+    // Sprint 91: the intro mission is deliberately NOT a big earner. The payout
+    // covers her costs with a modest margin, so the profit must be positive but
+    // small - guarded both ways so a future payout bump can't quietly turn
+    // Yuki's first job back into a fat flip. profit = 148000 - 140489 = 7511.
+    const profitYen = FOUR_WHEELS.payoutYen - totalSpendYen
+    expect(profitYen).toBeGreaterThan(0)
+    expect(profitYen).toBeLessThanOrEqual(15_000)
   })
 
   it('the taught build grades roadworthy AND under the budget cap through the real mission grader', () => {

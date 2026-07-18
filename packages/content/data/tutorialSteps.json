@@ -6,7 +6,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Her budget caps the build: every yen this car's ledger takes counts against {budgetCap}. The payout is {payout}. The difference is yours if you spend well."
+        "text": "Her budget caps the build at {budgetCap}: every yen this car's ledger takes counts against it. She pays {payout} on delivery, barely over your costs. This first one is about learning the work, not the money."
       },
       {
         "speaker": "instruction",

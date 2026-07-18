@@ -206,18 +206,6 @@ pass."
 
 ## Open engineering
 
-- [ ] **Re-derive `four-wheels`'s budget/payout from the honest NA probe recipe (Sprint 90
-  follow-up).** Sprint 90 fixed `evaluateRoadworthy` to exempt a legitimately-absent NA
-  `forcedInduction` slot, and the tutorial/probe cars are now built honestly (empty FI). But the
-  mission's `budgetCapYen`/`payoutYen` (175000/207000) in `storyMissions.json` are still pinned to
-  the OLD filled-FI probe cost in `storyMissionProbes.test.ts` (the four-wheels probe grades a
-  separately-built honest car for satisfiability, but keeps the filled-FI `probeCostYen` for the
-  budget/payout pin to avoid shifting content values by ~1% inside a bug-fix sprint). The current
-  numbers are SAFE (the honest car needs less work, so the cap is slightly generous, never tighter),
-  so this is cosmetic-correctness, not a bug. Fold the clean re-derivation into the next
-  mission-economy pass: re-run the probe against the honest empty-FI recipe and let
-  payout/budget move to whatever the formulas (1.3x / 1.1x, ceil-1000) produce, then update the
-  content. Low priority; player-visible impact is nil today.
 - [ ] **LAUNCH-BLOCKING: replace the placeholder part sprites with commissioned art (Sprint 88,
   decision 4).** The 29 part + 3 assembly service-diagram sprites in
   `packages/game/src/components/partSprites.ts` are development placeholders, explicitly
