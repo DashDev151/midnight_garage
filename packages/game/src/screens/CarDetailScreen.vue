@@ -420,13 +420,31 @@ function removeBlockedReasonFor(carPartId: CarPartId): string | null {
   return d ? game.removeBlockedReason(d.car.id, carPartId) : null
 }
 
-/** Sprint 85 decision 6: the `machine shop assist +<fee>` caption for a buried
- * slot the shop can't yet do in-house, `null` when owned/ungated. */
-function machineAssistCaptionFor(carPartId: CarPartId): string | null {
-  const d = detail.value
-  if (!d) return null
-  const fee = game.machineAssistFee(d.car.id, carPartId)
+/**
+ * Sprint 85 decision 6 / Sprint 92: the `machine shop assist +<fee>` caption,
+ * computed PER OPERATION so the fee shown is exactly the fee `advanceDay` will
+ * charge - `null` when owned, ungated, or free. Removal keeps the
+ * engine/drivetrain buried gate only (Sprint 79: removal is free for the new
+ * suspension/body/interior signature groups); install/replace adds their
+ * signature fee; on-car per-part repair charges the signature fee only for a
+ * surface signature slot (the sim's own bench-only rule for non-surface slots),
+ * so a bolt-on signature slot repaired via the group/bench shows no per-part
+ * repair caption.
+ */
+function assistCaption(fee: number): string | null {
   return fee > 0 ? `machine shop assist +${formatYen(fee)}` : null
+}
+function removeAssistCaptionFor(carPartId: CarPartId): string | null {
+  const d = detail.value
+  return d ? assistCaption(game.machineAssistFee(d.car.id, carPartId)) : null
+}
+function installAssistCaptionFor(carPartId: CarPartId): string | null {
+  const d = detail.value
+  return d ? assistCaption(game.machineAssistInstallFee(d.car.id, carPartId)) : null
+}
+function repairAssistCaptionFor(carPartId: CarPartId): string | null {
+  const d = detail.value
+  return d ? assistCaption(game.machineAssistRepairFee(d.car.id, carPartId)) : null
 }
 
 // --- Bench work (Sprint 87 verbs, Sprint 88 panel) -------------------------
@@ -781,6 +799,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >
                   &times;
                 </button>
+                <span
+                  v-if="repairAssistCaptionFor(selectedRow.partId)"
+                  class="assist-caption"
+                  :data-test="'assist-fee-repair-' + selectedRow.partId"
+                  >{{ repairAssistCaptionFor(selectedRow.partId) }}</span
+                >
               </template>
 
               <template v-if="!selectedRow.installedPartName">
@@ -813,10 +837,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   </button>
                 </template>
                 <span
-                  v-if="machineAssistCaptionFor(selectedRow.partId)"
+                  v-if="installAssistCaptionFor(selectedRow.partId)"
                   class="assist-caption"
                   :data-test="'assist-fee-' + selectedRow.partId"
-                  >{{ machineAssistCaptionFor(selectedRow.partId) }}</span
+                  >{{ installAssistCaptionFor(selectedRow.partId) }}</span
                 >
               </template>
 
@@ -840,10 +864,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   >{{ removeBlockedReasonFor(selectedRow.partId) }}</span
                 >
                 <span
-                  v-if="machineAssistCaptionFor(selectedRow.partId)"
+                  v-if="removeAssistCaptionFor(selectedRow.partId)"
                   class="assist-caption"
                   :data-test="'assist-fee-' + selectedRow.partId"
-                  >{{ machineAssistCaptionFor(selectedRow.partId) }}</span
+                  >{{ removeAssistCaptionFor(selectedRow.partId) }}</span
                 >
               </template>
             </template>

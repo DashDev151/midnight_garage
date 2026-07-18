@@ -332,9 +332,18 @@ describe('advanceDay golden master', () => {
     // serialises into the canonical JSON `hashState` hashes even though this
     // career pulls no assembly. The scripted behaviour and day count are
     // unchanged; only the added key moves the hash.
+    // Re-pinned again (Sprint 92, was 40b24b4b): a pure VALUE change (directive
+    // 17 case (a)), no state-shape change. Uniform tool access (Axis 1) makes the
+    // day-1 body repair a signature op (panels/underbody) that owes the body
+    // machine-shop assist fee (+Y14,000) and the day-3 dampers install a
+    // suspension signature op that owes the suspension fee (+Y5,000), both at
+    // tier 1 - this career owns no tier-2 machine. Only `cashYen` (Y19,000 lower)
+    // and `carLedgers[car-0001].repairYen` (Y19,000 higher) move; every other
+    // assertion in this file (job completion, the panels/dampers slot changes,
+    // determinism via the repeat-run test above) still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('40b24b4b')
+    expect(hashState(finalState)).toBe('7a2e3325')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -370,6 +379,10 @@ describe('advanceDay golden master', () => {
     // repair cost, on top of rent - no consumables fee (Sprint 47 decision 1
     // deleted the old per-job flat charge). Rent charges on days 7/14/21/28
     // within a 30-day career (four times) at economy.json's WEEKLY_RENT_YEN.
+    // Sprint 92 (uniform tool access, Axis 1): the day-1 body repair also owes
+    // the body machine-shop assist fee (panels/underbody are body signature
+    // slots), and the day-3 dampers install owes the suspension fee - both at
+    // tier 1, since this career owns no tier-2 machine.
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
@@ -380,9 +393,15 @@ describe('advanceDay golden master', () => {
       CONTEXT.partsTaxonomyById,
       CONTEXT.economy.restoration.repairStepFraction,
     )
+    const { body: bodyFeeYen, suspension: suspensionFeeYen } =
+      CONTEXT.economy.machineShopAssist.feeYenByGroup
     const rentChargeCount = 4
     expect(finalState.cashYen).toBe(
-      1_200_000 - bodyPlan.costYen - rentChargeCount * CONTEXT.economy.WEEKLY_RENT_YEN,
+      1_200_000 -
+        bodyPlan.costYen -
+        bodyFeeYen -
+        suspensionFeeYen -
+        rentChargeCount * CONTEXT.economy.WEEKLY_RENT_YEN,
     )
   })
 })

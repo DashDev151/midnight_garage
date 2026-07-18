@@ -201,7 +201,7 @@ describe('completeJob', () => {
     expect(result.state.partInventory).toHaveLength(0)
   })
 
-  it("Sprint 42: a completed install-part job on an OWNED car adds the part's pricePaidYen to the car's ledger partsYen", () => {
+  it("Sprint 42: a completed install-part job on an OWNED car adds the part's pricePaidYen to the car's ledger partsYen (Sprint 92: dampers is a suspension signature slot, so the tier-1 install also owes the assist fee as repairYen)", () => {
     const pricedPart: PartInstance = { ...sparePart, id: 'pi-priced', pricePaidYen: 42_000 }
     const job: Job = {
       id: 'job-priced',
@@ -215,12 +215,12 @@ describe('completeJob', () => {
     const result = completeJob(baseState({ partInventory: [pricedPart] }), job, CONTEXT)
     expect(result.state.carLedgers[car.id]).toEqual({
       purchaseYen: null,
-      repairYen: 0,
+      repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
       partsYen: 42_000,
     })
   })
 
-  it('Sprint 42: a completed install-part job with no pricePaidYen (unknown) adds 0, still creating the ledger entry', () => {
+  it('Sprint 42: a completed install-part job with no pricePaidYen (unknown) adds 0 partsYen, still creating the ledger entry (Sprint 92: the suspension signature-slot assist fee still lands on repairYen)', () => {
     const job: Job = {
       id: 'job-unpriced',
       carInstanceId: car.id,
@@ -233,7 +233,7 @@ describe('completeJob', () => {
     const result = completeJob(baseState(), job, CONTEXT)
     expect(result.state.carLedgers[car.id]).toEqual({
       purchaseYen: null,
-      repairYen: 0,
+      repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
       partsYen: 0,
     })
   })
@@ -284,7 +284,12 @@ describe('completeJob', () => {
       CONTEXT,
     )
     expect(result.state.carLedgers).toEqual({})
-    expect(result.state.serviceJobLedgers[owningJob.id]).toEqual({ repairYen: 0, partsYen: 42_000 })
+    // Sprint 92: dampers is a suspension signature slot, so the tier-1 install
+    // owes the assist fee - it lands on the customer's job ledger repairYen.
+    expect(result.state.serviceJobLedgers[owningJob.id]).toEqual({
+      repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
+      partsYen: 42_000,
+    })
   })
 
   it('an install-part job into an occupied slot is blocked, not overwritten', () => {
@@ -396,7 +401,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
     })
 
-    it("charges exactly the group's real (tier-scaled) repair cost, deducted from cash - no consumables fee (Sprint 47)", () => {
+    it("charges exactly the group's real (tier-scaled) repair cost plus the Sprint 92 body signature-slot assist fee, deducted from cash - no consumables fee (Sprint 47)", () => {
       const plan = planGroupRepair(
         car,
         'body',
@@ -407,7 +412,9 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
       )
-      const totalCostYen = plan.costYen
+      // Sprint 92: the body plan climbs panels/underbody (signature slots), so a
+      // tier-1 body repair also owes the one-per-job body machine-shop fee.
+      const totalCostYen = plan.costYen + CONTEXT.economy.machineShopAssist.feeYenByGroup.body
       const cashBefore = baseState().cashYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.job).not.toBeNull()
@@ -423,7 +430,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       ])
     })
 
-    it('Sprint 42: creates the ledger entry and adds the full repair charge as repairYen for an OWNED car', () => {
+    it('Sprint 42: creates the ledger entry and adds the full repair charge (plus the Sprint 92 body assist fee) as repairYen for an OWNED car', () => {
       const plan = planGroupRepair(
         car,
         'body',
@@ -434,7 +441,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
       )
-      const totalCostYen = plan.costYen
+      const totalCostYen = plan.costYen + CONTEXT.economy.machineShopAssist.feeYenByGroup.body
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.state.carLedgers[car.id]).toEqual({
         purchaseYen: null,
@@ -2102,10 +2109,16 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     )
     const carCashSpent = carState.cashYen - carResult.state.cashYen
     const carLaborSpent = carResult.state.laborSlotsSpentToday
+    // Sprint 92: panels is a body signature slot, so the on-car repair also owes
+    // the body machine-shop assist fee on top of the intrinsic repair price. The
+    // fee is a tool-tier charge, NOT a host-car factor, so it never reintroduces
+    // the donor-car arbitrage this test guards - the repair PRICE stays
+    // intrinsic, asserted directly below.
+    const bodyFeeYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.body
     expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
     expect(carCashSpent).toBeGreaterThan(0)
     expect(carLaborSpent).toBeGreaterThan(0)
-    expect(carCashSpent).toBe(onCarPlan.costYen)
+    expect(carCashSpent).toBe(onCarPlan.costYen + bodyFeeYen)
 
     // In-inventory: recondition the identical loose part (same catalog part,
     // same starting band) to mint - the SAME repairStepFraction, priced off
@@ -2130,12 +2143,15 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
     // Same labor either way (tier-independent labor sizing, unchanged).
     expect(invLaborSpent).toBe(carLaborSpent)
-    // Same repair cash too - the arbitrage-death assertion: a Sprint 41-style
-    // car-tier factor would have made these differ (e.g. a shitbox car
-    // repairing far cheaper than the bench); Sprint 44 makes them identical,
-    // since price is intrinsic to the part, not to whether or which car it's
-    // bolted to.
-    expect(carCashSpent).toBe(invCashSpent)
+    // The arbitrage-death assertion, on the intrinsic REPAIR PRICE: a Sprint
+    // 41-style car-tier factor would have made these differ (e.g. a shitbox car
+    // repairing far cheaper than the bench); Sprint 44 makes the repair price
+    // identical, since it is intrinsic to the part, not to whether or which car
+    // it is bolted to. Sprint 92: the bench path pays only that intrinsic price,
+    // while the on-car signature op pays it PLUS the body machine fee - so the
+    // two differ by exactly the fee, never by a host-car factor.
+    expect(onCarPlan.costYen).toBe(benchPlan.costYen)
+    expect(carCashSpent).toBe(invCashSpent + bodyFeeYen)
     // The loose part climbed to mint (and is no longer an open job).
     expect(invResult.state.partInventory[0]?.band).toBe('mint')
     expect(invResult.state.jobs).toHaveLength(0)

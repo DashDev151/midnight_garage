@@ -99,6 +99,7 @@ import {
   isServiceTaskDone,
   isServiceWorkDone,
   machineAssistFeeYen,
+  signatureOpFeeYen,
   marketValueYen,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
@@ -166,6 +167,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
+import { formatYen } from '../utils/formatYen'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
 
@@ -513,6 +515,13 @@ export interface ToolTierInfo {
   /** The speed effect every tier has, in plain words - `ceil(grades /
    * tier)` labor slots per grade climbed (`slotsNeededToClimb`, bands.ts). */
   laborSlotsPerGradeText: string
+  /**
+   * Sprint 92 (rental made legible): the one-line rental notice shown on a
+   * group's tier-2 rung while the shop does not yet own that tier-2 machine -
+   * null once owned, so the line then simply does not render. States the group's
+   * per-job machine-shop fee, closing the "invisible until it disappears" gap.
+   */
+  rentalFeeText: string | null
 }
 
 /** One line of the parts-market cart, aggregated by part (repeats in
@@ -2252,17 +2261,57 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 85 decision 6 (machine-shop assist): the fee, in yen, this
-   * remove/install operation costs because the shop doesn't yet own the tier-2
-   * machine the slot needs - 0 (no caption) when the machine is owned or the
-   * slot isn't machine-gated. The UI shows a `machine shop assist +<fee>`
-   * caption on the affordance whenever this is above 0; the operation itself is
-   * never blocked (ownership buys margin, not capability).
+   * Sprint 85 decision 6 (machine-shop assist): the fee, in yen, a REMOVAL of
+   * `carPartId` costs because the shop doesn't yet own the tier-2 machine the
+   * slot needs - the engine/drivetrain buried-slot gate only (`machineAssistFeeYen`),
+   * 0 (no caption) when the machine is owned or the slot isn't machine-gated. The
+   * UI shows a `machine shop assist +<fee>` caption on the affordance whenever
+   * this is above 0; the operation itself is never blocked (ownership buys
+   * margin, not capability). Sprint 92 keeps removal exactly here: the new
+   * suspension/body/interior signature gates never charge on removal (Sprint 79
+   * removal law), so this getter stays engine/drivetrain-only for the remove
+   * affordance.
    */
   function machineAssistFee(carId: string, carPartId: CarPartId): number {
     const car = findWorkableCar(carId)
     if (!car) return 0
     return machineAssistFeeYen(carPartId, gameState.value, context.value)
+  }
+
+  /**
+   * Sprint 92 (rental made legible): the fee an INSTALL/REPLACE of `carPartId`
+   * costs at the current tiers - the exact figure `completeJob`'s install branch
+   * charges (`installMachineAssistFeeYen` = the engine/drivetrain buried fee OR
+   * the suspension/body/interior signature-slot fee; a carPartId is in one group,
+   * so at most one term is non-zero). Drives the install/replace affordance's
+   * `machine shop assist +<fee>` caption. Engine/drivetrain installs are
+   * byte-identical (their signature term is 0).
+   */
+  function machineAssistInstallFee(carId: string, carPartId: CarPartId): number {
+    const car = findWorkableCar(carId)
+    if (!car) return 0
+    return (
+      machineAssistFeeYen(carPartId, gameState.value, context.value) +
+      signatureOpFeeYen(carPartId, gameState.value, context.value)
+    )
+  }
+
+  /**
+   * Sprint 92 (rental made legible): the fee an on-car per-part REPAIR of
+   * `carPartId` costs - the exact figure `repairJobGate` charges for a per-part
+   * repair. Per-part repair is bench-only for any non-`surface` slot (the sim
+   * refuses it), so a per-part repair charges the signature fee ONLY for a
+   * surface signature slot (panels, underbody, seats, dashGauges); a bolt-on
+   * signature slot (dampers, springs) is repaired via the group or the bench and
+   * carries no per-part on-car charge, so this returns 0 there and no caption
+   * shows. Engine/drivetrain repair is never fee-charged, so this is 0 for them
+   * too - the caption only appears where a fee is actually taken.
+   */
+  function machineAssistRepairFee(carId: string, carPartId: CarPartId): number {
+    const car = findWorkableCar(carId)
+    if (!car) return 0
+    if (context.value.partsTaxonomyById[carPartId]?.depthClass !== 'surface') return 0
+    return signatureOpFeeYen(carPartId, gameState.value, context.value)
   }
 
   // --- facilities (bays) -------------------------------------------------
@@ -2484,12 +2533,21 @@ export const useGameStore = defineStore('game', () => {
           task.minToolTier === tier,
       ),
     ).map((template) => humanizeTemplateId(template.id))
+    // Sprint 92: the tier-2 rung shows its per-job rental fee until the machine
+    // is owned - verbatim from the copy sheet, the group's fee interpolated.
+    const rentalFeeText =
+      tier === 2 && gameState.value.toolTiers[componentId] < 2
+        ? `Until you own this, its heavy jobs go to the machine shop at ${formatYen(
+            context.value.economy.machineShopAssist.feeYenByGroup[componentId],
+          )} a job.`
+        : null
     return {
       unlocksJobTemplateNames,
       unlocksNaToTurboConversion:
         componentId === 'engine' &&
         tier === context.value.economy.toolCeilings.naToTurboConversionEngineTier,
       laborSlotsPerGradeText: `Repair work takes ceil(grades-to-climb / ${tier}) labor slots at this tier`,
+      rentalFeeText,
     }
   }
 
@@ -3884,6 +3942,8 @@ export const useGameStore = defineStore('game', () => {
     installBlockedReason,
     removeBlockedReason,
     machineAssistFee,
+    machineAssistInstallFee,
+    machineAssistRepairFee,
     serviceBaysView,
     parkingView,
     parkingCapacity,

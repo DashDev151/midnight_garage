@@ -58,14 +58,15 @@ legible. No band-model change; that is Sprint 93.
 
 ## Definition of done
 
-- [ ] All six groups have a rental fee; the schema and content carry six keys; the
+- [x] All six groups have a rental fee; the schema and content carry six keys; the
       amortisation probe covers all six.
-- [ ] The three new signature-op gates fire (own-or-fee) on their heavy ops; light bolt-on
-      work in those groups stays free; the three existing gates are unchanged.
-- [ ] Fees post to the car/job ledger; budget caps and job billing see them.
-- [ ] The Upgrades screen shows each group's rental cost and the own-to-stop-paying framing.
-- [ ] `naToTurboConversionBlocked` still a hard refusal.
-- [ ] Three package typechecks clean; narrowest tests once; pre-push gate is the evidence.
+- [x] The three new signature-op gates fire (own-or-fee) on their heavy ops; light bolt-on
+      work in those groups stays free; the three existing gates are byte-identical.
+- [x] Fees post to the car/job ledger; budget caps and job billing see them.
+- [x] The Upgrades screen shows each group's rental cost; the at-action caption previews
+      the fee for all six groups where it is charged.
+- [x] `naToTurboConversionBlocked` still a hard refusal.
+- [x] Three package typechecks clean; narrowest tests once; pre-push gate is the evidence.
 
 ## Task breakdown
 
@@ -74,4 +75,38 @@ orchestrator. **User-only:** eyeball the Upgrades screen's new rental framing.
 
 ## Exit
 
-(Filled at sprint close.)
+Landed (implementation by subagent, orchestrator-policed). The record:
+
+- **Uniform access delivered.** `machineShopAssist.feeYenByGroup` now covers all six groups
+  (suspension 5,000, body 14,000, interior 7,000 added; each below its tier-2 machine
+  amortised over 40 ops). A content-driven `signatureSlotsByGroup` map + `signatureOpFeeYen`
+  gate the three new signature ops (suspension dampers/springs, body panels/underbody,
+  interior seats/dashGauges) on repair and install, own-or-fee, posted to the existing
+  ledger path. Removal stays free (Sprint 79 law). The existing engine/drivetrain buried
+  gate and the wheels tyre-fit gate are BYTE-IDENTICAL (zero edits to
+  `removeMachineGateGroup`/`machineAssistFeeYen`/`assemblies.ts`); a probe proves
+  `signatureOpFeeYen` returns 0 for their slots so there is no leak or double-charge.
+- **Rental made legible, both surfaces.** The Upgrades screen shows each unowned tier-2's
+  rental cost (swept line, verbatim). And the follow-up made the at-action
+  "machine shop assist +{fee}" caption per-operation so the new groups' fee previews on the
+  repair and install affordances exactly where it is charged (not on removal), fee-shown ==
+  fee-charged, engine/drivetrain captions unchanged.
+- **Directive 17, all case (a):** several `jobs.test.ts` ledger tests (dampers install,
+  body repair, customer-job repair) now carry the new fee; the on-car/bench parity test
+  re-expressed (repair PRICE still intrinsic to the part, the machine fee is a separate
+  tool-tier charge); the `advanceDay.ts` rent test's scripted-career cash reflects the fees.
+- **One golden moved, verified not blindly re-pinned:** the 30-day scripted-career golden
+  (`40b24b4b` to `7a2e3325`) shifted because that fixture does gated body+suspension work at
+  tier 1 and now pays the fees. Confirmed a PURE VALUE move: only `cashYen` (-19,000) and
+  `repairYen` (+19,000 = 14,000 body + 5,000 suspension), no state-shape change,
+  determinism re-proven by the still-green repeat-run test. Re-pinned with a full
+  explanation comment. The second golden (acquisition/sale, no signature ops) did not move.
+- **Resolved design question:** bench recondition of a loose signature part does NOT carry
+  the fee (it lands on the eventual install/refit, consistent with engine/drivetrain); left
+  as-is deliberately. No phantom caption was added there.
+- **No band change, no save change** (Sprint 93 does the band ceiling).
+- **Narrow evidence:** sim 3 affected files re-green after fixes (full project run
+  triaged the 3); content 10/88; game toolLines+UpgradesScreen 22, CarDetailScreen 47; all
+  three package typechecks exit 0.
+- **Full evidence:** pushed through the pre-push gate; no separate manual pass
+  (directive 20).

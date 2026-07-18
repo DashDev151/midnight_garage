@@ -1,6 +1,7 @@
-import { CARS, TOOL_LINES } from '@midnight-garage/content'
+import { CARS, ECONOMY, TOOL_LINES } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { formatYen } from '../utils/formatYen'
 import { useGameStore } from './gameStore'
 
 /** The cheapest tier-2 upgrade in the shipped content (Y150,000) - a fresh
@@ -90,6 +91,28 @@ describe('tool lines in the store (Sprint 36)', () => {
     game.devSetToolTier('engine', 3)
     expect(game.cashYen).toBe(cashBefore)
     expect(game.gameState.toolTiers.engine).toBe(3)
+  })
+
+  /**
+   * Sprint 92 (rental made legible): the tier-2 rung of every group carries a
+   * one-line rental notice with the group's per-job fee while the machine is
+   * unowned, and the line drops once it is owned. Tier 1 and tier 3 never carry
+   * it.
+   */
+  it('toolTierInfo surfaces the tier-2 rental fee until owned, then drops the line', () => {
+    const game = useGameStore()
+    // A fresh game owns every line at tier 1, so tier 2 is unowned everywhere.
+    for (const componentId of ['suspension', 'body', 'interior', 'engine'] as const) {
+      const info = game.toolTierInfo(componentId, 2)
+      expect(info.rentalFeeText).toContain(
+        formatYen(ECONOMY.machineShopAssist.feeYenByGroup[componentId]),
+      )
+    }
+    // Owning the machine drops the line; tier 1 and tier 3 never show it.
+    game.devSetToolTier('suspension', 2)
+    expect(game.toolTierInfo('suspension', 2).rentalFeeText).toBeNull()
+    expect(game.toolTierInfo('body', 1).rentalFeeText).toBeNull()
+    expect(game.toolTierInfo('body', 3).rentalFeeText).toBeNull()
   })
 
   it('repair() proceeds at tier 1 with nothing upgraded - no ownership gate exists', () => {

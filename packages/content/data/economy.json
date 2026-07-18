@@ -319,7 +319,15 @@
     "feeYenByGroup": {
       "engine": 15000,
       "drivetrain": 18000,
-      "wheels": 3000
+      "suspension": 5000,
+      "wheels": 3000,
+      "body": 14000,
+      "interior": 7000
+    },
+    "signatureSlotsByGroup": {
+      "suspension": ["dampers", "springs"],
+      "body": ["panels", "underbody"],
+      "interior": ["seats", "dashGauges"]
     },
     "probeAmortisationOps": 40
   },

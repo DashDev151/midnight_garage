@@ -197,6 +197,9 @@ const selectedInfo = computed(() =>
           Unlocks the NA-to-turbo conversion on your own cars.
         </p>
         <p>{{ selectedInfo.laborSlotsPerGradeText }}</p>
+        <p v-if="selectedInfo.rentalFeeText" data-test="rental-fee-line">
+          {{ selectedInfo.rentalFeeText }}
+        </p>
       </div>
     </section>
   </section>

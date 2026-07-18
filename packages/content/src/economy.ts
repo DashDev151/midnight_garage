@@ -1127,11 +1127,23 @@ export const EconomyConfigSchema = z.object({
    * > 0 and strictly cheaper per operation than owning the machine at that
    * volume (owning must beat renting at scale, renting must beat nothing). The
    * tier-2/3 purchase gates (price, reputation, listing) are untouched.
+   *
+   * Sprint 92 (uniform tool access, Axis 1): every one of the six groups now
+   * carries a fee, so tool access is rent-or-own uniformly. The three that
+   * previously gated nothing on the player's own car - suspension, body,
+   * interior - gain a fee AND a `signatureSlotsByGroup` entry naming the slots
+   * whose heavy op (repair or install/replace) needs their tier-2 machine
+   * (`signatureOpFeeYen`, sim/jobs.ts). Engine/drivetrain keep their buried-slot
+   * gate and wheels its tyre-fit gate, unchanged, so those three groups are
+   * deliberately absent from `signatureSlotsByGroup`.
    */
   machineShopAssist: z.object({
     feeYenByGroup: z.object({
       engine: z.number().int().positive(),
       drivetrain: z.number().int().positive(),
+      /** Sprint 92: the two-post lift's per-job fee for the suspension signature
+       * op (fit/repair dampers or springs) without owning it. */
+      suspension: z.number().int().positive(),
       /** Sprint 87 (the assembly model): the per-tyre-operation fitting charge
        * a shop without the tier-2 tyre machine pays to swap a tyre onto (or off)
        * the rims on the bench - a 1995 tyre-shop fitting fee. Unlike the
@@ -1139,7 +1151,26 @@ export const EconomyConfigSchema = z.object({
        * groups' assemblies), this one applies ONLY to a tyre-into-assembly
        * bench op, never to removing or refitting the whole wheel assembly. */
       wheels: z.number().int().positive(),
+      /** Sprint 92: the MIG welder & panel tools' per-job fee for the body
+       * signature op (weld/panel repair or replace of panels or underbody). */
+      body: z.number().int().positive(),
+      /** Sprint 92: the upholstery & trim bench's per-job fee for the interior
+       * signature op (retrim of seats or dash & gauges). */
+      interior: z.number().int().positive(),
     }),
+    /**
+     * Sprint 92 (uniform tool access, Axis 1): per group, the slots whose
+     * signature heavy op needs that group's tier-2 machine - the named-slot gate
+     * for the three groups (suspension, body, interior) that lacked one.
+     * `signatureOpFeeYen` (sim/jobs.ts) charges `feeYenByGroup[group]` on a
+     * repair or install/replace that touches one of these slots unless the
+     * group's tier-2 is owned (removal stays free; a non-listed light bolt-on
+     * slot in the same group is never charged). A PARTIAL map by design:
+     * engine/drivetrain gate on buried depth (`removeMachineGateGroup`) and
+     * wheels on the tyre bench op (`benchSwapFeeYen`), so they name no slots
+     * here - the new predicate must never fire for them.
+     */
+    signatureSlotsByGroup: z.partialRecord(ComponentIdSchema, z.array(CarPartIdSchema).min(1)),
     probeAmortisationOps: z.number().int().positive(),
   }),
   /**

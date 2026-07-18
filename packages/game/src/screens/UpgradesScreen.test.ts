@@ -122,6 +122,24 @@ describe('UpgradesScreen', () => {
       await wrapper.get('[data-test="tier-node-engine-3"]').trigger('click')
       expect(wrapper.find('[data-test="tool-info-box"]').exists()).toBe(false)
     })
+
+    /**
+     * Sprint 92 (rental made legible): selecting an unowned tier-2 rung surfaces
+     * the machine-shop rental notice; owning that tier-2 removes it.
+     */
+    it('a tier-2 rung shows the rental fee line until the machine is owned', async () => {
+      const game = useGameStore()
+      game.newGame(1) // owns every line at tier 1, so tier 2 is unowned
+      const wrapper = mountScreen()
+      await wrapper.get('[data-test="tier-node-suspension-2"]').trigger('click')
+      const line = wrapper.find('[data-test="rental-fee-line"]')
+      expect(line.exists()).toBe(true)
+      expect(line.text()).toContain('machine shop')
+
+      game.devSetToolTier('suspension', 2)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="rental-fee-line"]').exists()).toBe(false)
+    })
   })
 
   it('the service bay purchase button is disabled and hinted at a fresh, unranked game', () => {

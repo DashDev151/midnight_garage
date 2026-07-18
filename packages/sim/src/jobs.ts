@@ -389,6 +389,36 @@ export function machineAssistFeeYen(
 }
 
 /**
+ * Sprint 92 (uniform tool access, Axis 1): the machine-shop assist fee for a
+ * group's SIGNATURE heavy op - a repair or install/replace of one of
+ * `economy.machineShopAssist.signatureSlotsByGroup[group]` - WITHOUT owning that
+ * group's tier-2 machine, or 0 otherwise. The suspension/body/interior analogue
+ * of `machineAssistFeeYen`'s engine/drivetrain buried-slot gate: the two-post
+ * lift, MIG welder and trim bench each gate their group's heavy work
+ * (dampers/springs, panels/underbody, seats/dashGauges), reachable by owning the
+ * machine OR paying the fee. Deliberately SEPARATE from `machineAssistFeeYen`
+ * (engine/drivetrain buried, gated on remove AND install) and `benchSwapFeeYen`
+ * (wheels tyre bench op): those three groups keep their own gates unchanged and
+ * name no slots in `signatureSlotsByGroup`, so this predicate always returns 0
+ * for them - it never double-charges the pre-existing gates. Removal of a
+ * signature slot stays free (Sprint 79 removal law); a light bolt-on slot in the
+ * same group (anti-roll bars, steering, aero) is not a signature slot, so it is
+ * never charged. Exported so the UI/probes read the same value the charge uses.
+ */
+export function signatureOpFeeYen(
+  carPartId: CarPartId,
+  state: GameState,
+  context: SimContext,
+): number {
+  const group = context.partsTaxonomyById[carPartId]?.group
+  if (!group) return 0
+  const signatureSlots = context.economy.machineShopAssist.signatureSlotsByGroup[group]
+  if (!signatureSlots || !signatureSlots.includes(carPartId)) return 0
+  if (state.toolTiers[group] >= 2) return 0
+  return context.economy.machineShopAssist.feeYenByGroup[group]
+}
+
+/**
  * Sprint 85 decision 6: the machine-shop assist fee an install-part `job`
  * owes, or 0 - resolved from the part being installed (its catalog
  * `carPartId`, still in `state.partInventory` at this point, matching the
@@ -396,11 +426,17 @@ export function machineAssistFeeYen(
  * tiers. The install side of the SAME gate removal charges: fitting a buried
  * engine/drivetrain part needs the crane/bench too, satisfied by ownership or
  * this fee (playtest 21's inconsistency fix - the install used to be ungated).
+ * Sprint 92: an install also owes the suspension/body/interior signature-slot
+ * fee (`signatureOpFeeYen`). A carPartId is in exactly one group, so at most one
+ * of the two terms is ever non-zero.
  */
 function installMachineAssistFeeYen(state: GameState, job: Job, context: SimContext): number {
   const partId = state.partInventory.find((p) => p.id === job.partInstanceId)?.partId
   const carPartId = partId ? context.partsById[partId]?.carPartId : undefined
-  return carPartId ? machineAssistFeeYen(carPartId, state, context) : 0
+  if (!carPartId) return 0
+  return (
+    machineAssistFeeYen(carPartId, state, context) + signatureOpFeeYen(carPartId, state, context)
+  )
 }
 
 /**
@@ -708,7 +744,18 @@ export function repairJobGate(
     return { ok: false, log: [] }
   }
 
-  const charged = chargeRepairWork(state, plan.costYen)
+  // Sprint 92 (uniform tool access, Axis 1): a repair that climbs one of the
+  // suspension/body/interior signature slots owes that group's machine-shop
+  // assist fee unless its tier-2 machine is owned - ONE fee per repair operation
+  // (every signature slot in a group shares the one fee, so the max over the
+  // plan is the group fee once), charged with the repair cost and posted to the
+  // same ledger `repairYen`. Engine/drivetrain/wheels name no signature slots,
+  // so their repairs are byte-identical (the fee stays 0).
+  const signatureFeeYen = plan.partIds.reduce(
+    (fee, partId) => Math.max(fee, signatureOpFeeYen(partId, state, context)),
+    0,
+  )
+  const charged = chargeRepairWork(state, plan.costYen + signatureFeeYen)
   // Can't afford the work right now - a silent refusal, matching every
   // other can't-afford-it gate in this codebase.
   if (!charged.ok) return { ok: false, log: [] }

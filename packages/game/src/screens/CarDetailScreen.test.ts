@@ -1,6 +1,7 @@
 import {
   ALL_CAR_PART_IDS,
   CARS,
+  ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
   type CarPartId,
@@ -209,6 +210,53 @@ describe('CarDetailScreen', () => {
     }
 
     expect(wrapper.text().toLowerCase()).not.toContain('staged')
+  })
+
+  /**
+   * Sprint 92 (rental made legible): the `machine shop assist +<fee>` caption is
+   * previewed exactly where a signature-op fee is charged - the install/replace
+   * and on-car per-part repair of a suspension/body/interior signature slot - and
+   * never on a removal (removal is free for these groups). Owning the tier-2
+   * machine removes the preview, matching the fee dropping to 0.
+   */
+  it('previews the signature-op assist fee on repair/install of a signature slot at tier 1, never on removal, and hides it once the tier-2 machine is owned', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, a shitbox at tier-1 tools
+    const id = game.gameState.ownedCars[0]!.id
+    const car = game.gameState.ownedCars.find((c) => c.id === id)!
+    // panels: an installed body signature slot below mint (on-car per-part repair
+    // charges the body fee, and its removal must charge nothing). dampers: an
+    // empty suspension signature slot (installing one charges the suspension fee).
+    car.parts.panels = { installed: { ...car.parts.panels.installed!, band: 'poor' } }
+    car.parts.dampers = { installed: null }
+
+    const suspensionFee = formatYen(ECONOMY.machineShopAssist.feeYenByGroup.suspension)
+    const bodyFee = formatYen(ECONOMY.machineShopAssist.feeYenByGroup.body)
+
+    const { wrapper } = await mountAt(id)
+
+    // Install/replace affordance of a signature slot: caption present at tier 1.
+    await selectPart(wrapper, 'suspension', 'dampers')
+    const installCap = wrapper.find('[data-test="assist-fee-dampers"]')
+    expect(installCap.exists()).toBe(true)
+    expect(installCap.text()).toContain(suspensionFee)
+
+    // On-car per-part repair of a signature slot: caption present; the SAME
+    // installed slot's removal shows no fee (removal is free for these groups).
+    await selectPart(wrapper, 'body', 'panels')
+    const repairCap = wrapper.find('[data-test="assist-fee-repair-panels"]')
+    expect(repairCap.exists()).toBe(true)
+    expect(repairCap.text()).toContain(bodyFee)
+    expect(wrapper.find('[data-test="assist-fee-panels"]').exists()).toBe(false)
+
+    // Owning the tier-2 machines drops both previews (the fee is now 0).
+    game.devSetToolTier('suspension', 2)
+    game.devSetToolTier('body', 2)
+    const owned = await mountAt(id)
+    await selectPart(owned.wrapper, 'suspension', 'dampers')
+    expect(owned.wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
+    await selectPart(owned.wrapper, 'body', 'panels')
+    expect(owned.wrapper.find('[data-test="assist-fee-repair-panels"]').exists()).toBe(false)
   })
 
   it('a tile click only navigates; a block click docks that part in the action panel (Sprint 88 decision 1)', async () => {
