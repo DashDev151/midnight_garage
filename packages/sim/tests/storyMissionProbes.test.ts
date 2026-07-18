@@ -184,12 +184,14 @@ function lapTimeCeilingMaxSeconds(target: ReturnType<typeof mission>): number {
   return requirement.maxSeconds
 }
 
-/** Asserts a probe car passes `gradeMissionCar` and that the mission's own
- * `budgetCapYen`/`payoutYen` are EXACTLY the formula's output against the
- * freshly-measured `probeCostYen` - not just "clears the floor" (Sprint 76's
- * looser check), locked exactly per decision 1's "content and probe can
- * never drift" instruction. */
-function assertPassesAndBudgetLocked(
+/** Asserts a commercial probe car passes `gradeMissionCar` and holds the
+ * Sprint 91 Amendment 2 one-price contract: the client pays a single price
+ * (`budgetCapYen === payoutYen`), that price is still the unchanged 1.3x
+ * formula reward (`payoutYen === payoutYenFor(probeCostYen)`), and a sensible
+ * probe build fits inside it at a positive margin (`probeCostYen < payoutYen`).
+ * The old 1.1x budget-cap pin is gone: budget no longer sits below payout, it
+ * IS the payout. */
+function assertPassesAndPriceLocked(
   missionId: string,
   afterCar: CarInstance,
   probeCostYen: number,
@@ -199,8 +201,16 @@ function assertPassesAndBudgetLocked(
   expect(report.pass, JSON.stringify(report.lines)).toBe(true)
 
   const target = mission(missionId)
-  expect(target.budgetCapYen, `${missionId} budgetCapYen`).toBe(budgetCapYenFor(probeCostYen))
-  expect(target.payoutYen, `${missionId} payoutYen`).toBe(payoutYenFor(probeCostYen))
+  expect(target.budgetCapYen, `${missionId} one-price: budgetCapYen === payoutYen`).toBe(
+    target.payoutYen,
+  )
+  expect(target.payoutYen, `${missionId} payoutYen (unchanged 1.3x reward)`).toBe(
+    payoutYenFor(probeCostYen),
+  )
+  expect(
+    probeCostYen,
+    `${missionId} probe build must leave a positive margin under the price`,
+  ).toBeLessThan(target.payoutYen)
 }
 
 /**
@@ -215,6 +225,16 @@ function assertPassesAndBudgetLocked(
  * regression).
  */
 describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
+  // Sprint 91 Amendment 2 (the one-price model, directive 17 case (a)): every
+  // build job carries ONE contract price, not a spend cap below a separate
+  // reward. The dual budgetCapYenFor (1.1x) / payoutYenFor (1.3x) pin - which
+  // asserted budget < payout - is intentionally replaced by budget === payout.
+  it('every story mission is one-price: budgetCapYen === payoutYen', () => {
+    for (const target of STORY_MISSIONS) {
+      expect(target.budgetCapYen, `${target.id} budgetCapYen === payoutYen`).toBe(target.payoutYen)
+    }
+  })
+
   it('four-wheels (off-formula, Sprint 91): an honest NA wagon-r is roadworthy, and the hand-tuned intro economics sit deliberately below the generic 1.1x/1.3x formula', () => {
     const { model, afterCar, probeCostYen } = buildProbe('suzuki-wagon-r-ct21s', 'worn')
     // Sprint 90: the Wagon R is naturally aspirated, so the honest build leaves
@@ -262,7 +282,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
         { kind: 'statThreshold', stat: 'reliability', min: floor90(stats.reliability) },
       ]),
     )
-    assertPassesAndBudgetLocked('wont-strand-her', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('wont-strand-her', afterCar, probeCostYen)
   })
 
   it('first-proper-car: a civic-eg6 repaired to fine, all stock, clears the reliability floor and the first-timer taste match', () => {
@@ -296,7 +316,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     const target = mission('first-proper-car')
     expect(statThresholdMin(target, 'reliability')).toBe(floor90(stats.reliability))
     expect(tasteMatchMultiplier(target, 'first-timer')).toBe(round2At97Percent(valuated / value))
-    assertPassesAndBudgetLocked('first-proper-car', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('first-proper-car', afterCar, probeCostYen)
   })
 
   it('make-it-pull: a civic-eg6 built to mint with sport intake/exhaust/ignitionEcu/camsTiming clears the power floor', () => {
@@ -319,7 +339,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       CONTEXT.economy,
     )
     expect(statThresholdMin(mission('make-it-pull'), 'power')).toBe(floor90(stats.power))
-    assertPassesAndBudgetLocked('make-it-pull', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('make-it-pull', afterCar, probeCostYen)
   })
 
   it('the-column-clock: an ae86 built to mint with street tyres and sport intake/exhaust clears the lap ceiling', () => {
@@ -341,7 +361,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     expect(lapTimeCeilingMaxSeconds(mission('the-column-clock'))).toBe(
       ceil1AtTwoPercentSlower(timeSeconds),
     )
-    assertPassesAndBudgetLocked('the-column-clock', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('the-column-clock', afterCar, probeCostYen)
   })
 
   it('low-and-loud: a silvia-s14 built to mint with sport aero/rims and street seats clears the style floor and the stancer taste match', () => {
@@ -387,7 +407,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     const target = mission('low-and-loud')
     expect(statThresholdMin(target, 'style')).toBe(floor90(stats.style))
     expect(tasteMatchMultiplier(target, 'stancer')).toBe(round2At97Percent(valuated / value))
-    assertPassesAndBudgetLocked('low-and-loud', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('low-and-loud', afterCar, probeCostYen)
   })
 
   /**
@@ -441,7 +461,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     expect(statThresholdMin(target, 'power')).toBe(floor90(stats.power))
     expect(statThresholdMin(target, 'reliability')).toBe(floor90(stats.reliability))
     expect(tasteMatchMultiplier(target, 'tuner')).toBe(round2At97Percent(valuated / value))
-    assertPassesAndBudgetLocked('street-power-street-manners', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('street-power-street-manners', afterCar, probeCostYen)
   })
 
   it('under-one-fifteen: a rx7-fd3s built to mint with sport tyres/intake/exhaust/ignitionEcu clears the lap ceiling', () => {
@@ -455,7 +475,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     expect(lapTimeCeilingMaxSeconds(mission('under-one-fifteen'))).toBe(
       ceil1AtTwoPercentSlower(timeSeconds),
     )
-    assertPassesAndBudgetLocked('under-one-fifteen', afterCar, probeCostYen)
+    assertPassesAndPriceLocked('under-one-fifteen', afterCar, probeCostYen)
   })
 })
 
@@ -495,7 +515,8 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
    * drivetrain) slot - the sport camsTiming. Building it means removing the
    * stock cams (gated) then installing the sport cams (gated): two engine-fee
    * operations. The mission must stay satisfiable within its authored budget
-   * with those fees included, which the budget's 10% headroom absorbs.
+   * with those fees included, which the one-price budget (== payout, the 1.3x
+   * probe-cost margin) absorbs.
    */
   it('make-it-pull stays within budget once the buried camsTiming assist fees are included', () => {
     const fitmentClass = fitmentClassForTier(

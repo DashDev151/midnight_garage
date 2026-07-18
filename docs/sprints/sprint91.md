@@ -112,3 +112,32 @@ job has one figure, not two: her money. Fixed:
   yours..."
 - Re-verified once: sim probes 15/15, ServiceJobsScreen 19/19, content 88/88, game
   typecheck exit 0.
+
+### Amendment 2 (2026-07-18): the one-price model, ALL story missions
+
+Maintainer ruling: the budget-vs-payout split is the wrong model for every build job, not
+just Yuki. "The client pays one price; what you don't use is the profit." A story mission
+should carry ONE contract price, not a spend cap and a separate reward. Radial service jobs
+already work this way (payout only, no budget cap); this collapses the eight STORY missions
+onto the same model.
+
+- **Content:** for all eight story missions, `budgetCapYen` = `payoutYen` (the one price).
+  Each mission's price stays its CURRENT payout, so rewards do not move and the commercial
+  missions keep their ~30% sensible-build margin; only the model changes (four-wheels is
+  already 148,000/148,000). This is NOT a profit cut for the commercial jobs: profit is
+  `price - your spend`, and a sensible build spends ~the probe cost, keeping the same
+  margin it had. Overspending past the price now costs you the job (you cannot spend more
+  than the client gave you), which replaces the old opaque sub-payout fail cap with a clean
+  "keep what you save" incentive.
+- **Probe:** `storyMissionProbes.test.ts` drops the dual `budgetCapYenFor` (1.1x) /
+  `payoutYenFor` (1.3x) pin and asserts the one-price invariant instead: for every mission
+  `budgetCapYen === payoutYen`; the seven commercial missions keep `payoutYen ===` the 1.3x
+  formula price (reward unchanged); four-wheels stays off-formula (hand-tuned small margin);
+  and each mission's probe build stays satisfiable within the price at positive profit.
+- **UI:** the offer-card fix already generalises (every story mission now reads
+  "pays {price} · build within it"). Verify the active-mission requirements checklist and
+  any mission-complete surface read coherently with budget == payout.
+- **Radial jobs:** confirm they carry no `budgetCapYen` (they should already be one-price);
+  if so, no change there.
+- This is the single "one-price" model for all build jobs; keep the 1.3x price multiplier
+  as the one margin knob going forward.
