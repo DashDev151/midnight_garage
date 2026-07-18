@@ -123,6 +123,11 @@ describe('garage: instant part install', () => {
       | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
+      // Sprint 87: an assembly member (block/internals/... , rims/tyres,
+      // gearbox/clutch) never comes off the car per-part, so the `removePart`
+      // below can no longer open its slot for this generic install mechanic -
+      // pick a per-part-removable (non-member) slot instead.
+      if (game.isAssemblyMember(part.carPartId)) continue
       const model = CARS.find(
         (c) =>
           fitmentClassForTier(c.tier) === part.fitmentClass &&

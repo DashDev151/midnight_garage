@@ -20,6 +20,7 @@ import { saleRevealLineFor } from './diagnosis'
 import { releaseCarFromShop } from './facilities'
 import { bumpPlayerSales } from './marketHeat'
 import type { Rng } from './rng'
+import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
 import { valuateCarForBuyer } from './valuation'
 
@@ -344,7 +345,10 @@ export function resolveSellViaWalkIn(
     context.partsTaxonomyById,
     context.economy,
   )
-  const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
+  const clearedState = dissolveAssembliesForCar(
+    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    carInstanceId,
+  )
   const released = applyReputationDelta(clearedState, nominalDelta, context.economy)
   // Sprint 24 fix 3: log what actually happened, not the nominal delta -
   // `applyReputationDelta` floors `reputationPoints` at 0, so a player at 2
@@ -430,7 +434,10 @@ export function resolveScrapShell(
   const priceYen = Math.round(model.bookValueYen * context.economy.bands.scrapValueFraction)
   const carPartIds = ALL_CAR_PART_IDS.filter((id) => car.parts[id].installed !== null)
 
-  const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
+  const clearedState = dissolveAssembliesForCar(
+    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    carInstanceId,
+  )
 
   return {
     state: deleteCarLedger(

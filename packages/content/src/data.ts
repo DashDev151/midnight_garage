@@ -1,3 +1,4 @@
+import assembliesJson from '../data/assemblies.json'
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
@@ -19,6 +20,7 @@ import symptomsJson from '../data/symptoms.json'
 import techniquesJson from '../data/techniques.json'
 import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
+import { AssemblyDefsSchema } from './assembly'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
 import {
@@ -95,6 +97,15 @@ export const PARTS_TAXONOMY: CarPartTaxonomyEntry[] = CarPartTaxonomySchema.pars
     stockReplacementPriceYenByClass: stockReplacementPricesByClass(entry.id),
   })),
 )
+
+/**
+ * Sprint 87 (the assembly model): the three sub-assemblies (wheels, engine,
+ * gearbox) that come off and go back on as one unit. A pure grouping over the
+ * `PARTS_TAXONOMY` members above - the labour and gate machinery it drives
+ * lives entirely in `packages/sim/src/assemblies.ts`, built over the existing
+ * per-slot resolvers.
+ */
+export const ASSEMBLIES = AssemblyDefsSchema.parse(assembliesJson)
 
 export const BUYERS = BuyersSchema.parse(buyersJson)
 export const TRAITS = TraitDefinitionsSchema.parse(traitsJson)

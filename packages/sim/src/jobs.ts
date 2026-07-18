@@ -236,22 +236,20 @@ function applyJobToCar(
 function completeReconditionJob(state: GameState, job: Job, context: SimContext): GameState {
   const targetBand = job.targetBand
   if (!job.partInstanceId || !targetBand) return state
-  let changed = false
-  const partInventory = state.partInventory.map((instance) => {
-    if (instance.id !== job.partInstanceId) return instance
-    const catalogPart = context.partsById[instance.partId]
-    const entry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
-    if (
-      !entry ||
-      !canRepair(instance.band, entry) ||
-      bandIndex(instance.band) >= bandIndex(targetBand)
-    ) {
-      return instance
-    }
-    changed = true
-    return { ...instance, band: targetBand }
-  })
-  return changed ? { ...state, partInventory } : state
+  // Sprint 87: the part may be a loose bin part OR a member sitting in an open
+  // assembly container (`findLoosePart`) - it climbs its band wherever it lives.
+  const instance = findLoosePart(state, job.partInstanceId)
+  if (!instance) return state
+  const catalogPart = context.partsById[instance.partId]
+  const entry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
+  if (
+    !entry ||
+    !canRepair(instance.band, entry) ||
+    bandIndex(instance.band) >= bandIndex(targetBand)
+  ) {
+    return state
+  }
+  return updateLoosePart(state, job.partInstanceId, (inst) => ({ ...inst, band: targetBand }))
 }
 
 /**
@@ -1002,6 +1000,62 @@ function reconditionJobIdFor(partInstanceId: string): string {
   return `recondition-${partInstanceId}`
 }
 
+/**
+ * Sprint 87 (the assembly model): a loose `PartInstance` the player can
+ * bench-work right now - the parts bin, PLUS every member sitting in an open
+ * assembly container (`state.assemblyInventory`). A benched member reconditions
+ * through the EXACT same recondition path a bin part does (`planReconditionPart`
+ * / `completeReconditionJob` both resolve the instance through here), which is
+ * the reuse the sprint's own analysis calls for: no second bench economy.
+ * Returns `undefined` when the id is nowhere loose (installed on a car, sold,
+ * or never existed).
+ */
+export function findLoosePart(state: GameState, partInstanceId: string): PartInstance | undefined {
+  const inBin = state.partInventory.find((p) => p.id === partInstanceId)
+  if (inBin) return inBin
+  for (const container of state.assemblyInventory ?? []) {
+    for (const member of Object.values(container.members)) {
+      if (member && member.id === partInstanceId) return member
+    }
+  }
+  return undefined
+}
+
+/**
+ * Applies `fn` to whichever loose location holds `partInstanceId` - the parts
+ * bin or an open assembly container's member slot (Sprint 87) - leaving every
+ * other part untouched. A no-op (same state reference) when the id is nowhere
+ * loose. The bin/container split of `findLoosePart` above, on the write side.
+ */
+function updateLoosePart(
+  state: GameState,
+  partInstanceId: string,
+  fn: (instance: PartInstance) => PartInstance,
+): GameState {
+  const binIndex = state.partInventory.findIndex((p) => p.id === partInstanceId)
+  if (binIndex !== -1) {
+    const partInventory = [...state.partInventory]
+    partInventory[binIndex] = fn(partInventory[binIndex]!)
+    return { ...state, partInventory }
+  }
+  const containers = state.assemblyInventory ?? []
+  let changed = false
+  const assemblyInventory = containers.map((container) => {
+    const members = { ...container.members }
+    let memberChanged = false
+    for (const [slot, member] of Object.entries(members) as [CarPartId, PartInstance | null][]) {
+      if (member && member.id === partInstanceId) {
+        members[slot] = fn(member)
+        memberChanged = true
+      }
+    }
+    if (!memberChanged) return container
+    changed = true
+    return { ...container, members }
+  })
+  return changed ? { ...state, assemblyInventory } : state
+}
+
 interface ReconditionPlan {
   group: ComponentId
   plan: PartRepairPlan
@@ -1026,7 +1080,7 @@ function planReconditionPart(
   targetBand: ConditionBand,
   context: SimContext,
 ): ReconditionPlan | null {
-  const instance = state.partInventory.find((p) => p.id === partInstanceId)
+  const instance = findLoosePart(state, partInstanceId)
   if (!instance) return null
   const catalogPart = context.partsById[instance.partId]
   const taxonomyEntry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
@@ -1124,13 +1178,13 @@ export function resolveReconditionLabor(
   // Sprint 42: a bench recondition has no car ledger to charge - the spend
   // lands on the loose PartInstance's own `pricePaidYen` instead (a
   // reconditioned part "cost" its buy price plus this work), charged at job
-  // creation, matching every other repair charge's timing.
-  const partInventory = charged.state.partInventory.map((instance) =>
-    instance.id === partInstanceId
-      ? { ...instance, pricePaidYen: (instance.pricePaidYen ?? 0) + charged.totalCostYen }
-      : instance,
-  )
-  const pricedState: GameState = { ...charged.state, partInventory }
+  // creation, matching every other repair charge's timing. Sprint 87: the
+  // instance may be a benched assembly member, so this routes through the
+  // same bin-or-container writer the band climb does.
+  const pricedState: GameState = updateLoosePart(charged.state, partInstanceId, (instance) => ({
+    ...instance,
+    pricePaidYen: (instance.pricePaidYen ?? 0) + charged.totalCostYen,
+  }))
 
   const job: Job = {
     id: jobId,

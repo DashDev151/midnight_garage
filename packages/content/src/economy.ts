@@ -1132,6 +1132,13 @@ export const EconomyConfigSchema = z.object({
     feeYenByGroup: z.object({
       engine: z.number().int().positive(),
       drivetrain: z.number().int().positive(),
+      /** Sprint 87 (the assembly model): the per-tyre-operation fitting charge
+       * a shop without the tier-2 tyre machine pays to swap a tyre onto (or off)
+       * the rims on the bench - a 1995 tyre-shop fitting fee. Unlike the
+       * engine/drivetrain fees (which gate buried removal AND install of those
+       * groups' assemblies), this one applies ONLY to a tyre-into-assembly
+       * bench op, never to removing or refitting the whole wheel assembly. */
+      wheels: z.number().int().positive(),
     }),
     probeAmortisationOps: z.number().int().positive(),
   }),

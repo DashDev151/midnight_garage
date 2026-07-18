@@ -104,6 +104,9 @@ function initialState(): GameState {
     serviceJobLedgers: {},
     inspectionVisit: null,
     storyMissions: [],
+    // Sprint 87: an empty bench (no assemblies pulled) - matches
+    // `createInitialGameState`'s own seed, so the golden reflects the live shape.
+    assemblyInventory: [],
   }
 }
 
@@ -324,9 +327,14 @@ describe('advanceDay golden master', () => {
     // decision 2 shrank the `storyMissions` record shape (no `dueOnDay`/
     // `reofferOnDay`, no `lapsed`). Determinism itself is re-proven by the
     // repeat-run test below, which passes unchanged.
+    // Re-pinned again (Sprint 87, was 9a47cf6b): a pure state-SHAPE change
+    // (directive 17 case (a)) - `GameState` gained `assemblyInventory: []`, which
+    // serialises into the canonical JSON `hashState` hashes even though this
+    // career pulls no assembly. The scripted behaviour and day count are
+    // unchanged; only the added key moves the hash.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('9a47cf6b')
+    expect(hashState(finalState)).toBe('40b24b4b')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -568,7 +576,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // shift this acquisition->sale career's seeded stream and its lots from day
     // 1; directive 17 case (a). The win/sale still resolve (real car won, real
     // sale, the deterministic repeat still holds).
-    expect(hashState(acquisitionCareer().sold)).toBe('c6ca47a8')
+    // Re-pinned again (Sprint 87, was c6ca47a8): the same pure state-SHAPE change
+    // as the 30-day career hash above - `GameState.assemblyInventory: []` enters
+    // the canonical serialisation; behaviour unchanged (directive 17 case (a)).
+    expect(hashState(acquisitionCareer().sold)).toBe('acc59f28')
   })
 })
 

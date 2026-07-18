@@ -318,7 +318,8 @@
   "machineShopAssist": {
     "feeYenByGroup": {
       "engine": 15000,
-      "drivetrain": 18000
+      "drivetrain": 18000,
+      "wheels": 3000
     },
     "probeAmortisationOps": 40
   },

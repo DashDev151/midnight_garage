@@ -46,12 +46,17 @@ the repair surface itself.
    `machine shop assist +¥15,000` where renting. The confirm bar gains per-action
    attribution (each staged item lists its own yen and slots) above the existing totals.
    Nothing is only-on-hover any more.
-4. **Placeholder pixel art (12).** Each of the 29 parts and 3 assemblies gets a small
-   indexed-template sprite (grille-and-fan for cooling, finned case for the gearbox, drum
-   and disc for brakes...), authored as character-row templates in one module, rasterised
-   at 4x nearest-neighbour, greyscale-plus-one-accent so they sit inside the existing
-   panel palette. Empty slots render the same sprite as a dim ghost outline (the Sprint 84
-   ghost ruling carries over). Diagram blocks show sprite + name; the layout map grows
+4. **Placeholder pixel art (12), to the orchestrator's spec.** Each of the 29 parts and
+   3 assemblies gets an indexed-template sprite authored to
+   `docs/design/part-sprite-placeholders.md` (orchestrator-authored, maintainer bar:
+   "make something nice"): fixed grids (24x16 / 32x22 at 4x nearest-neighbour), the
+   five-colour token palette with amber as garnish only, silhouette-first with
+   per-part identity notes, one light source, closed outlines, consistent projection.
+   The spec's review loop is BLOCKING: contact sheet to the scratchpad after every
+   authoring pass, orchestrator inspects and issues per-sprite corrections, iterate to
+   sign-off; at least one full correction round is expected. Empty slots render the
+   same sprite as a dim ghost via CSS (the Sprint 84 ghost ruling carries over; no
+   baked transparency). Diagram blocks show sprite + name; the layout map grows
    footprints for the sprites and the layout-coherence test still enforces
    blocker-overlaps-blocked (rule A) and no accidental overlap (rule B).
    **Provenance note (art bible law):** these are development placeholders, explicitly
@@ -73,8 +78,9 @@ the repair surface itself.
       with sprite footprints.
 - [ ] Labour and yen visible on every action affordance without hovering; confirm bar
       itemises per action.
-- [ ] All 29 + 3 sprites render legibly at diagram scale; ghosts for vacancies; TODO.md
-      carries the replace-before-launch entry.
+- [ ] All 29 + 3 sprites authored to `part-sprite-placeholders.md`, contact-sheet
+      reviewed and signed off by the orchestrator, legible at diagram scale; ghosts for
+      vacancies; TODO.md carries the replace-before-launch entry.
 - [ ] Narrowest checks once; pre-push gate is the evidence (directive 20).
 
 ## Task breakdown

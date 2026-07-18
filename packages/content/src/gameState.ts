@@ -6,6 +6,7 @@ import {
   ReputationTierSchema,
 } from './tags'
 import { ToolTierSchema, ToolTiersSchema } from './toolLines'
+import { AssemblyIdSchema } from './assembly'
 import { CarInstanceSchema } from './carInstance'
 import { PartInstanceSchema, PendingPartOrderSchema } from './part'
 import { StaffMemberSchema } from './staff'
@@ -139,6 +140,27 @@ export const StaffAdSchema = z.object({
 })
 
 export type StaffAd = z.infer<typeof StaffAdSchema>
+
+/**
+ * Sprint 87 (the assembly model): one sub-assembly sitting on the bench,
+ * pulled off a car as a unit (`assemblyId`, e.g. `engineAssembly`). `members`
+ * holds each member slot's loose `PartInstance`, or `null` for a member slot
+ * that was already empty when the assembly came off (a missing part) or is
+ * not yet fitted on a bench-built assembly. The per-slot `vacatedBaseline`
+ * that decides a refit's equivalence charge is NOT stored here - it stays on
+ * `sourceCarId`'s own car slots exactly as per-slot removal leaves it (Sprint
+ * 79), so refit reuses `refitLaborSlotsFor` verbatim. `sourceCarId` is the car
+ * this came off (refit reassembles onto it and reads those baselines), or
+ * `null` for an assembly built on the bench from loose parts.
+ */
+export const AssemblyContainerSchema = z.object({
+  id: z.string().min(1),
+  assemblyId: AssemblyIdSchema,
+  members: z.partialRecord(CarPartIdSchema, PartInstanceSchema.nullable()),
+  sourceCarId: z.string().min(1).nullable(),
+})
+
+export type AssemblyContainer = z.infer<typeof AssemblyContainerSchema>
 
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
@@ -327,6 +349,17 @@ export const GameStateSchema = z.object({
    * `StoryMissionRecordSchema` above. Purely additive.
    */
   storyMissions: z.array(StoryMissionRecordSchema).default([]),
+  /**
+   * Sprint 87 (the assembly model): sub-assemblies currently on the bench,
+   * pulled off a car as a unit (`AssemblyContainerSchema`). `.optional()`
+   * rather than `.default([])` deliberately - a genuinely optional key, so no
+   * existing `GameState` literal (the ~19 test fixtures, the store) needs
+   * touching to add it, exactly the reasoning Sprint 79's optional
+   * `vacatedBaseline` used; readers treat absent as an empty bench
+   * (`state.assemblyInventory ?? []`). A fresh career seeds it to `[]`
+   * explicitly (`createInitialGameState`).
+   */
+  assemblyInventory: z.array(AssemblyContainerSchema).optional(),
 })
 
 /**

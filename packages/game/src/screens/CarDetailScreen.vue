@@ -15,7 +15,12 @@ import {
   useDropZone,
   type DropZoneHandle,
 } from '../composables/useDragAndDrop'
-import { useGameStore, type CarPartRowView, type NextRepairStepView } from '../stores/gameStore'
+import {
+  useGameStore,
+  type BenchMemberView,
+  type CarPartRowView,
+  type NextRepairStepView,
+} from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { addressesOverlap } from '../utils/partAddress'
 
@@ -566,6 +571,30 @@ function machineAssistCaptionFor(carPartId: CarPartId): string | null {
   return fee > 0 ? `machine shop assist +${formatYen(fee)}` : null
 }
 
+// --- Sprint 87 (the assembly model): the minimal bench surface -----------
+// Car-level assembly remove/refit rows and a per-member bench panel
+// (recondition/swap). Deliberately plain - Sprint 88 replaces this surface.
+
+/**
+ * Bin parts eligible to swap into a bench member slot - reuses the exposed
+ * `stageableParts` (parts not staged elsewhere), narrowed to the slot's own
+ * catalog address and non-scrap, the same fit rule `resolveSwapAssemblyMember`
+ * enforces.
+ */
+function benchSwapCandidates(carPartId: CarPartId) {
+  return game.stageableParts.filter(
+    (sp) => sp.part.carPartId === carPartId && sp.instance.band !== 'scrap',
+  )
+}
+
+/** Recondition a benched member one rung. A component-local handler so the
+ * template never has to null-narrow the member's own instance. */
+function onBenchRecondition(member: BenchMemberView): void {
+  if (member.instance && member.reconditionStep) {
+    game.reconditionPart(member.instance.id, member.reconditionStep.targetBand)
+  }
+}
+
 /** Confirm - locks in every staged action on this car at once (Sprint 18). */
 function onConfirm(): void {
   const d = detail.value
@@ -947,7 +976,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   </div>
 
                   <div class="action-line sub">
-                    <template v-if="addressBusy(componentId, row.partId)">
+                    <!-- Sprint 87 decision 6: an assembly member is worked via
+                         its assembly, never per-part. The row still shows its
+                         band/name above; only its actions are hidden here. -->
+                    <template v-if="game.isAssemblyMember(row.partId)">
+                      <span class="slot-empty" :data-test="'assembly-member-' + row.partId"
+                        >comes off with the assembly</span
+                      >
+                    </template>
+                    <template v-else-if="addressBusy(componentId, row.partId)">
                       <template v-if="jobFor(componentId, row.partId)">
                         <button
                           :disabled="game.laborSlotsRemainingToday <= 0"
@@ -1081,6 +1118,129 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <p class="total-bill-line" data-test="total-bill">
             Total restoration bill: {{ formatYen(detail.totalBillYen) }}
           </p>
+
+          <!-- Sprint 87 (the assembly model): car-level assembly remove/refit.
+               A minimal, plain surface - Sprint 88 restyles it. -->
+          <section
+            v-if="game.assemblyRowsFor(detail.car.id).length > 0"
+            class="assembly-rows"
+            data-test="assembly-rows"
+          >
+            <h3>Assemblies</h3>
+            <ul class="assembly-list">
+              <li
+                v-for="row in game.assemblyRowsFor(detail.car.id)"
+                :key="row.assemblyId"
+                class="assembly-row"
+                :data-test="'assembly-row-' + row.assemblyId"
+              >
+                <span class="component-name" :title="row.displayName">{{ row.displayName }}</span>
+                <button
+                  v-if="row.canRefit"
+                  type="button"
+                  :data-test="'refit-assembly-' + row.assemblyId"
+                  @click="game.refitAssembly(detail.car.id, row.assemblyId)"
+                >
+                  Refit assembly
+                </button>
+                <template v-else>
+                  <button
+                    type="button"
+                    :disabled="!row.canRemove"
+                    :data-test="'remove-assembly-' + row.assemblyId"
+                    @click="game.removeAssembly(detail.car.id, row.assemblyId)"
+                  >
+                    Remove assembly
+                  </button>
+                  <span
+                    v-if="row.blockedReason"
+                    class="blocked-reason"
+                    :data-test="'assembly-blocked-' + row.assemblyId"
+                    >{{ row.blockedReason }}</span
+                  >
+                </template>
+                <span
+                  v-if="row.machineFeeYen > 0"
+                  class="assist-caption"
+                  :data-test="'assembly-assist-' + row.assemblyId"
+                  >machine shop assist +{{ formatYen(row.machineFeeYen) }}</span
+                >
+              </li>
+            </ul>
+          </section>
+
+          <!-- Sprint 87: assemblies currently on the bench, worked member by
+               member (recondition / swap). Plain and minimal; Sprint 88
+               restyles. -->
+          <section
+            v-if="game.benchContainersFor(detail.car.id).length > 0"
+            class="bench-panel"
+            data-test="bench-panel"
+          >
+            <h3>On the bench</h3>
+            <div
+              v-for="container in game.benchContainersFor(detail.car.id)"
+              :key="container.id"
+              class="bench-container"
+              :data-test="'bench-container-' + container.assemblyId"
+            >
+              <h4>{{ container.displayName }}</h4>
+              <ul class="bench-members">
+                <li
+                  v-for="member in container.members"
+                  :key="member.carPartId"
+                  class="bench-member"
+                  :data-test="'bench-member-' + member.carPartId"
+                >
+                  <div class="meter-line sub">
+                    <span class="part-name" :title="member.displayName">{{
+                      member.displayName
+                    }}</span>
+                    <BandChip :band="member.band" />
+                    <span v-if="member.partName" class="installed">{{ member.partName }}</span>
+                  </div>
+                  <div class="action-line sub">
+                    <template v-if="member.repairable && member.reconditionStep">
+                      <button
+                        type="button"
+                        class="step-up"
+                        :disabled="game.laborSlotsRemainingToday <= 0"
+                        :data-test="'bench-recondition-' + member.carPartId"
+                        :aria-label="'Recondition to ' + member.reconditionStep.targetBand"
+                        :title="'Recondition to ' + member.reconditionStep.targetBand"
+                        @click="onBenchRecondition(member)"
+                      >
+                        +
+                      </button>
+                      <span class="step-cost"
+                        >&rarr; {{ member.reconditionStep.targetBand }} &middot;
+                        {{ formatYen(member.reconditionStep.costYen) }} &middot;
+                        {{ member.reconditionStep.laborSlotsRequired }} labour</span
+                      >
+                    </template>
+                    <button
+                      v-for="cand in benchSwapCandidates(member.carPartId)"
+                      :key="cand.instance.id"
+                      type="button"
+                      class="replace-btn"
+                      :data-test="'bench-swap-' + member.carPartId + '-' + cand.instance.id"
+                      @click="
+                        game.swapAssemblyMember(container.id, member.carPartId, cand.instance.id)
+                      "
+                    >
+                      Fit {{ game.partName(cand.instance.partId) }}
+                    </button>
+                    <span
+                      v-if="member.swapFeeYen > 0"
+                      class="assist-caption"
+                      :data-test="'bench-swap-fee-' + member.carPartId"
+                      >machine shop assist +{{ formatYen(member.swapFeeYen) }}</span
+                    >
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
 
           <ReplaceDrawer
             v-if="activeReplacePart"
@@ -1620,6 +1780,38 @@ h4 {
   font-size: var(--mg-fs-sm);
   font-weight: bold;
   margin: var(--mg-space-2) 0 0;
+}
+
+/* Sprint 87 (the assembly model): the minimal assembly + bench surface.
+   Plain layout reusing the existing spacing tokens - Sprint 88 restyles it. */
+.assembly-rows,
+.bench-panel {
+  margin: var(--mg-space-3) 0 0;
+}
+
+.assembly-list,
+.bench-members {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.assembly-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+}
+
+.bench-member {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-1);
+  padding: var(--mg-space-1) 0;
+  border-top: var(--mg-border);
 }
 
 /* Buttons, hints, and installed/staged status - free to wrap onto as many

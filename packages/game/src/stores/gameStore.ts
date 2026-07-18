@@ -11,6 +11,7 @@ import {
   TOOL_LINES,
 } from '@midnight-garage/content'
 import type {
+  AssemblyId,
   AuctionLot,
   AuctionTier,
   BayKind,
@@ -50,11 +51,14 @@ import {
   applyBayPurchase,
   applyMoves,
   applyToolUpgrade,
+  assemblyContainerFor,
+  assemblyMachineAssistFeeYen,
   assignToParking,
   availableLaborSlots,
   advanceDay,
   bandFactor,
   bandIndex,
+  benchSwapFeeYen,
   beginInspectionVisit as beginInspectionVisitCore,
   climbBand,
   bestFitBuyer,
@@ -74,6 +78,7 @@ import {
   displayedBandFor,
   emptyDayActions,
   expectationForCar,
+  externalBlockersFor,
   foundationFactor,
   generateAuctionCarInstance,
   gradeMissionCar,
@@ -122,8 +127,11 @@ import {
   resolveOwnedWorkup as resolveOwnedWorkupCore,
   resolvePlaceBid,
   resolveReconditionLabor,
+  resolveRefitAssembly,
   resolveRejectOffer,
+  resolveRemoveAssembly,
   resolveRemovePart,
+  resolveSwapAssemblyMember,
   resolveScrapPart,
   resolveScrapShell,
   resolveSellPart,
@@ -413,6 +421,50 @@ export interface NextRepairStepView {
   targetBand: ConditionBand
   costYen: number
   laborSlotsRequired: number
+}
+
+/**
+ * Sprint 87 (the assembly model): one assembly's car-level row - remove it as a
+ * unit, or refit it once it is on the bench. `blockedReason` is a plain string
+ * naming the external blockers still in the way (null when nothing blocks it),
+ * phrased the same way `removeBlockedReason` phrases a single-part blocker.
+ * Sprint 88 replaces this minimal surface.
+ */
+export interface AssemblyRowView {
+  assemblyId: AssemblyId
+  displayName: string
+  group: ComponentId
+  onBench: boolean
+  canRemove: boolean
+  canRefit: boolean
+  machineFeeYen: number
+  blockedReason: string | null
+}
+
+/** Sprint 87: one member slot of a benched assembly container - reconditioned
+ * or swapped on the bench (Sprint 88 replaces this surface). */
+export interface BenchMemberView {
+  carPartId: CarPartId
+  displayName: string
+  /** The part currently in this member slot, or null for an empty slot. */
+  instance: PartInstance | null
+  band: ConditionBand | null
+  partName: string | null
+  repairable: boolean
+  /** The next single-rung recondition step for this member, or null when
+   * there is nothing to recondition (empty, mint, scrap, or non-repairable). */
+  reconditionStep: NextRepairStepView | null
+  /** The wheels bench fee a tyre swap owes without the tier-2 machine (0
+   * otherwise) - the `machine shop assist` caption's own figure. */
+  swapFeeYen: number
+}
+
+/** Sprint 87: one assembly container on the bench for a given car. */
+export interface BenchContainerView {
+  id: string
+  assemblyId: AssemblyId
+  displayName: string
+  members: BenchMemberView[]
 }
 
 export interface ToolLineView {
@@ -2757,6 +2809,10 @@ export const useGameStore = defineStore('game', () => {
    * tier-2 machine OR the machine-shop assist fee (Sprint 85 decision 6).
    */
   function removePart(carId: string, carPartId: CarPartId): boolean {
+    // Sprint 87 decision 6: an assembly member never comes off the car
+    // individually; it is worked only via its assembly. This is the
+    // player-facing enforcement; the sim primitive stays unchanged.
+    if (isAssemblyMember(carPartId)) return false
     const result = resolveRemovePart(
       gameState.value,
       carId,
@@ -2769,6 +2825,174 @@ export const useGameStore = defineStore('game', () => {
     dayLog.value.push(...result.log)
     logSessionEvent('removePart', { carId, carPartId })
     return true
+  }
+
+  // --- assemblies (Sprint 87: the assembly model) ------------------------
+
+  /** Whether a car part is a member of one of the three sub-assemblies - a
+   * member is worked only via its assembly, never pulled off the car on its
+   * own (`removePart` above refuses it, and the per-part controls hide). */
+  function isAssemblyMember(carPartId: CarPartId): boolean {
+    return context.value.assemblies.some((a) => a.members.includes(carPartId))
+  }
+
+  /**
+   * Remove a whole assembly to the bench (Sprint 87 operation 1) - 0 labour
+   * plus a machine-shop assist fee for the engine/gearbox assemblies when the
+   * line's tier-2 machine isn't owned. Mirrors `removePart`'s apply pattern; a
+   * no-op (returns false) on any refusal (`resolveRemoveAssembly.ok === false`).
+   */
+  function removeAssembly(carId: string, assemblyId: AssemblyId): boolean {
+    const result = resolveRemoveAssembly(
+      gameState.value,
+      carId,
+      assemblyId,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
+    if (!result.ok) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('removeAssembly', { carId, assemblyId })
+    return true
+  }
+
+  /**
+   * Refit a benched assembly back onto its source car (Sprint 87 operation 3) -
+   * free per member equal to its vacated baseline, charged install labour for a
+   * changed member, plus the same machine assist fee removal owed. A no-op if
+   * the car has no such container on the bench, or the refit itself refuses.
+   */
+  function refitAssembly(carId: string, assemblyId: AssemblyId): boolean {
+    const container = assemblyContainerFor(gameState.value, carId, assemblyId)
+    if (!container) return false
+    const result = resolveRefitAssembly(
+      gameState.value,
+      container.id,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
+    if (!result.ok) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('refitAssembly', { carId, assemblyId })
+    return true
+  }
+
+  /**
+   * Move a bin part into a member slot of an open bench container (Sprint 87
+   * operation 2) - the displaced member returns to the bin. A tyre swap owes
+   * the wheels bench fee without the tier-2 machine. A no-op on any refusal.
+   */
+  function swapAssemblyMember(
+    containerId: string,
+    memberSlot: CarPartId,
+    partInstanceId: string,
+  ): boolean {
+    const result = resolveSwapAssemblyMember(
+      gameState.value,
+      containerId,
+      memberSlot,
+      partInstanceId,
+      context.value,
+    )
+    if (!result.ok) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('swapAssemblyMember', { containerId, memberSlot, partInstanceId })
+    return true
+  }
+
+  /** The machine-shop assist fee an assembly op owes at the current tool tiers
+   * (0 when owned or not machine-gated). `carId` is unused today (the fee is a
+   * function of the assembly and tool tiers, not the car) - kept for symmetry
+   * with `machineAssistFee` and future per-car gating. */
+  function assemblyMachineFee(carId: string, assemblyId: AssemblyId): number {
+    const def = context.value.assembliesById[assemblyId]
+    if (!def) return 0
+    return assemblyMachineAssistFeeYen(def, gameState.value, context.value)
+  }
+
+  /**
+   * Every assembly's car-level row for one workable car - whether it is on the
+   * bench, whether it can be removed or refitted right now, its machine assist
+   * fee, and a plain "why not" when an external blocker is in the way. Empty
+   * for an unknown car.
+   */
+  function assemblyRowsFor(carId: string): AssemblyRowView[] {
+    const car = findWorkableCar(carId)
+    if (!car) return []
+    return context.value.assemblies.map((def) => {
+      const onBench = !!assemblyContainerFor(gameState.value, carId, def.id)
+      const occupiedBlockers = externalBlockersFor(def, context.value).filter(
+        (b) => car.parts[b].installed !== null,
+      )
+      return {
+        assemblyId: def.id,
+        displayName: def.displayName,
+        group: def.group,
+        onBench,
+        canRefit: onBench,
+        canRemove:
+          !onBench &&
+          def.members.some((m) => car.parts[m].installed !== null) &&
+          occupiedBlockers.length === 0,
+        machineFeeYen: assemblyMachineAssistFeeYen(def, gameState.value, context.value),
+        blockedReason:
+          !onBench && occupiedBlockers.length > 0
+            ? `Take off ${occupiedBlockers.map((b) => carPartLabel(b)).join(', ')} first`
+            : null,
+      }
+    })
+  }
+
+  /** The next single-rung recondition step for a benched member - reads the
+   * band off the instance directly (a container member is not in
+   * `partInventory`, so `nextReconditionStep` can't find it) and prices it
+   * through the same `reconditionQuote`, which does find container members. */
+  function benchMemberReconditionStep(instance: PartInstance): NextRepairStepView | null {
+    if (instance.band === 'mint') return null
+    const nextRung = climbBand(instance.band, 1)
+    const quote = reconditionQuoteFor(instance.id, nextRung)
+    if (!quote) return null
+    return {
+      targetBand: nextRung,
+      costYen: quote.costYen,
+      laborSlotsRequired: quote.laborSlotsRequired,
+    }
+  }
+
+  /** Every assembly container currently on the bench for one car, each with its
+   * member slots resolved for display and bench work (recondition/swap). */
+  function benchContainersFor(carId: string): BenchContainerView[] {
+    return (gameState.value.assemblyInventory ?? [])
+      .filter((c) => c.sourceCarId === carId)
+      .map((container) => {
+        const def = context.value.assembliesById[container.assemblyId]
+        const memberSlots = def ? def.members : (Object.keys(container.members) as CarPartId[])
+        return {
+          id: container.id,
+          assemblyId: container.assemblyId,
+          displayName: def?.displayName ?? container.assemblyId,
+          members: memberSlots.map((carPartId) => {
+            const instance = container.members[carPartId] ?? null
+            const taxonomyEntry = context.value.partsTaxonomyById[carPartId]
+            return {
+              carPartId,
+              displayName: taxonomyEntry?.displayName ?? carPartId,
+              instance,
+              band: instance ? instance.band : null,
+              partName: instance ? partName(instance.partId) : null,
+              repairable:
+                instance !== null &&
+                instance.band !== 'scrap' &&
+                (taxonomyEntry?.repairable ?? true),
+              reconditionStep: instance ? benchMemberReconditionStep(instance) : null,
+              swapFeeYen: benchSwapFeeYen(carPartId, gameState.value, context.value),
+            }
+          }),
+        }
+      })
   }
 
   /**
@@ -3590,6 +3814,13 @@ export const useGameStore = defineStore('game', () => {
     unstageAction,
     confirmCarWork,
     removePart,
+    isAssemblyMember,
+    removeAssembly,
+    refitAssembly,
+    swapAssemblyMember,
+    assemblyMachineFee,
+    assemblyRowsFor,
+    benchContainersFor,
     placeBid,
     buyout,
     buyPart,

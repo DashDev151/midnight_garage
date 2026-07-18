@@ -486,8 +486,20 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * version bump alone is required so a pre-v39 client never silently misreads a
  * v39 save. (The single bump for the sprint - decisions 3/5/6 add only content
  * knobs and transactional fees, no new persisted GameState shape.)
+ * v39 -> v40 (Sprint 87, the assembly model): `GameStateSchema` gained
+ * `assemblyInventory` - sub-assemblies currently on the bench
+ * (`AssemblyContainerSchema`). It is `.optional()` (not `.default([])`), the
+ * same genuinely-optional treatment Sprint 79's `vacatedBaseline` used, so a
+ * pre-v40 save decodes with it simply absent - exactly correct, since no
+ * pre-v40 save could have had a benched assembly (the concept did not exist),
+ * and every reader treats absent as an empty bench (`?? []`). The pure additive
+ * case (like v33/v34/v36), no `MIGRATIONS[39]` entry needed; the version bump
+ * alone is still required (Save law) so an old client rejects a v40 save rather
+ * than silently dropping the field. (The single bump for the sprint - the
+ * wheels assist fee is a content knob and the assembly resolvers post to the
+ * existing ledgers, so `assemblyInventory` is the one new persisted shape.)
  */
-export const SAVE_VERSION = 39
+export const SAVE_VERSION = 40
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

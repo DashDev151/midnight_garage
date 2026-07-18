@@ -90,7 +90,11 @@ describe('PartsDiagram (two-level, Sprint 84 amendment)', () => {
 
   it('a pulled visitor blocker reads as cleared, and a pulled member as a ghost in place', async () => {
     const { game, carId } = grantCar()
-    expect(game.removePart(carId, 'rims')).toBe(true)
+    // Sprint 87 decision 6: rims is a wheel-assembly member now, so it never
+    // comes off per-part - pulling the whole assembly vacates the slot instead
+    // (the diagram concern under test, a cleared visitor, is unchanged).
+    expect(game.removePart(carId, 'rims')).toBe(false)
+    expect(game.removeAssembly(carId, 'wheelAssembly')).toBe(true)
     expect(game.removePart(carId, 'dampers')).toBe(true)
     const wrapper = mountFor(carId)
 

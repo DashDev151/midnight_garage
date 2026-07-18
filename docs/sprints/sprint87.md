@@ -98,15 +98,15 @@ maintainer's rental ruling intends.
 
 ## Definition of done
 
-- [ ] Three assemblies removable/refittable as units with the labour law holding
+- [x] Three assemblies removable/refittable as units with the labour law holding
       (worked-example probes pin the totals).
-- [ ] Members of a benched assembly all workable with no internal ordering; tyre ops
+- [x] Members of a benched assembly all workable with no internal ordering; tyre ops
       gated by machine-or-fee.
-- [ ] Renting never makes a standard tyre/brake service job loss-making (probe).
-- [ ] Assembly ops post fees to the ledger; budget caps see them.
-- [ ] Staged-work planner handles assembly actions; existing per-part flows untouched
+- [x] Renting never makes a standard tyre/brake service job loss-making (probe).
+- [x] Assembly ops post fees to the ledger; budget caps see them.
+- [x] Staged-work planner handles assembly actions; existing per-part flows untouched
       elsewhere.
-- [ ] Narrowest checks once; pre-push gate is the evidence (directive 20).
+- [x] Narrowest checks once; pre-push gate is the evidence (directive 20).
 
 ## Task breakdown
 
@@ -114,4 +114,42 @@ maintainer's rental ruling intends.
 
 ## Exit
 
-(Filled at sprint close.)
+All six decisions landed (sim/content by the lead implementation agent, minimal UI by its
+policed sub-implementer, orchestrator-policed end to end). The record:
+
+- **Binding totals proven by the new probes (`assemblies.test.ts`, 14 tests):** tyre
+  change = 1 labour slot end to end (¥3,000 wheels fee at tier 1, ¥0 at tier 2); worn
+  internals = 0-labour removal + normal recondition economics + 2 buried refit slots
+  with block/head/cams free by equivalence, exactly 2 x ¥15,000 assist fees when renting
+  and ¥0 owning, both on the car ledger; the three Sprint 79 contract cases re-pinned at
+  assembly level; renting never makes the tyre/brake templates loss-making across every
+  shitbox and common model.
+- **Directive 17, all case (a):** two golden hashes re-pinned once (`assemblyInventory`
+  enters the canonical state shape); the PartsDiagram visitor-blocker test rewritten to
+  pull the wheel assembly (per-part member removal now refuses by design); one
+  gameStore.garage test's setup switched to a non-member slot (it verified the generic
+  install mechanic, whose assertions are unchanged).
+- **Orchestrator rulings on deviations:** (1) `assemblies.json` as its own content file
+  rather than a taxonomy block: approved, file-per-concept is the content convention and
+  semantics are schema-identical. (2) `assemblyInventory` optional with explicit `[]`
+  seeding: approved, Sprint 79's own precedent. (3) No new day-log entry types (member
+  removals log as `part-removed`, refit/swap/build are quiet like decline): approved.
+- **Deliberately deferred to Sprint 88:** hardening the sim primitive itself
+  (`resolveRemovePart` still accepts a member slot if called directly; only the store
+  and UI refuse today; bots are directive-21-suspended so no live caller exists). The
+  Sprint 88 implementer adds the three-line sim guard plus its test while rebuilding
+  this exact surface.
+- **Copy sweep:** "Assemblies", "Fit {part}", "Recondition to {band}" and the mirrored
+  step-cost caption approved as drafted; "worked via the assembly" revised by the
+  orchestrator to "comes off with the assembly" (a sentence stating the physical truth,
+  lowercase to match the slot idiom). "Remove assembly" / "Refit assembly" /
+  "On the bench" and the three assembly display names shipped exactly as specified.
+- **Process note:** the lead agent stalled once mid-sprint waiting on its UI child whose
+  completion notification went missing; the orchestrator resumed it with orders to
+  verify the tree directly (the Sprint 81 lesson applied). The child's work was present
+  and complete; the lead verified it line-by-line from the diff.
+- **Narrow evidence (each once):** sim 50 files / 948 tests green; content 10 / 88
+  green; touched game files green after the two case-(a) rewrites (7 + 73 across the
+  affected files).
+- **Full evidence:** this commit reached origin through the pre-push gate; no separate
+  manual full pass (directive 20).

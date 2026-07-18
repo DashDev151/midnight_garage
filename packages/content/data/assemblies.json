@@ -1,0 +1,23 @@
+[
+  {
+    "id": "wheelAssembly",
+    "displayName": "Wheels & tyres",
+    "group": "wheels",
+    "members": ["rims", "tyres"],
+    "station": "wheels"
+  },
+  {
+    "id": "engineAssembly",
+    "displayName": "Engine",
+    "group": "engine",
+    "members": ["block", "internals", "headValvetrain", "camsTiming"],
+    "station": "engine"
+  },
+  {
+    "id": "gearboxAssembly",
+    "displayName": "Gearbox & clutch",
+    "group": "drivetrain",
+    "members": ["gearbox", "clutch"],
+    "station": "drivetrain"
+  }
+]

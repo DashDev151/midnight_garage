@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import assembliesJson from '../data/assemblies.json'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
 import economy from '../data/economy.json'
@@ -6,6 +7,8 @@ import partsTaxonomy from '../data/parts-taxonomy.json'
 import parts from '../data/parts.json'
 import serviceJobs from '../data/serviceJobTemplates.json'
 import {
+  AssemblyDefsSchema,
+  ASSEMBLIES,
   BuyersSchema,
   CarModelsSchema,
   CarPartIdSchema,
@@ -317,4 +320,36 @@ describe('referential integrity', () => {
    * correctly by `serviceJobCostBreakdown`'s fall-through to the install
    * route. There is no longer a content bug this guard could catch.
    */
+})
+
+describe('assembly definitions (Sprint 87)', () => {
+  it('every assembly member is a real taxonomy part that shares the assembly group', () => {
+    for (const assembly of ASSEMBLIES) {
+      expect(assembly.members.length, `${assembly.id} has no members`).toBeGreaterThan(0)
+      for (const member of assembly.members) {
+        expect(
+          GROUP_BY_PART_ID.get(member),
+          `${assembly.id} member "${member}" is not a real part`,
+        ).toBeDefined()
+        expect(
+          GROUP_BY_PART_ID.get(member),
+          `${assembly.id} member "${member}" is not in the assembly's own group`,
+        ).toBe(assembly.group)
+      }
+    }
+  })
+
+  it('no part belongs to more than one assembly', () => {
+    const seen = new Set<string>()
+    for (const assembly of ASSEMBLIES) {
+      for (const member of assembly.members) {
+        expect(seen.has(member), `part "${member}" is a member of two assemblies`).toBe(false)
+        seen.add(member)
+      }
+    }
+  })
+
+  it('the assemblies content parses against its own schema', () => {
+    expect(AssemblyDefsSchema.safeParse(assembliesJson).success).toBe(true)
+  })
 })

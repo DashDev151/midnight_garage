@@ -16,6 +16,7 @@ import type {
   ToolTiers,
 } from '@midnight-garage/content'
 import { ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content'
+import { dissolveAssembliesForCar } from './assemblies'
 import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { applyReputationDelta, reputationAtLeast } from './calendar'
@@ -1024,8 +1025,14 @@ export function resolveServiceJob(
   // Sprint 57: read the job's real spend before its ledger is deleted at
   // close-out - the honest report's repair/parts cost lines.
   const ledger = serviceJobLedgerFor(state, job.id)
+  // Sprint 87: dissolve any of this car's assemblies still on the bench first -
+  // each member drops to the parts bin, so the `partsOriginatingFromCar`
+  // reconciliation below returns the customer's benched members with their car.
   const releasedState = deleteServiceJobLedger(
-    clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id),
+    dissolveAssembliesForCar(
+      clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id),
+      job.car.id,
+    ),
     job.id,
   )
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)

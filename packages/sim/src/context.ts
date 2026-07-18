@@ -1,4 +1,6 @@
 import type {
+  AssemblyDef,
+  AssemblyId,
   Buyer,
   CarModel,
   CarPartId,
@@ -23,6 +25,7 @@ import type {
   ToolLines,
 } from '@midnight-garage/content'
 import {
+  ASSEMBLIES,
   DIAGNOSTIC_TESTS,
   ECONOMY,
   LAP_REFERENCES,
@@ -90,6 +93,11 @@ export interface SimContext {
   /** Every CarPartId belonging to each of the 6 groups, derived once from
    * the taxonomy rather than re-filtered on every call. */
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>
+  /** Sprint 87 (the assembly model): the three sub-assemblies (wheels, engine,
+   * gearbox) removed/refitted as a unit - `packages/sim/src/assemblies.ts`'s
+   * resolvers key off these. */
+  assemblies: readonly AssemblyDef[]
+  assembliesById: Readonly<Record<AssemblyId, AssemblyDef>>
   serviceJobTypes: readonly ServiceJobType[]
   serviceJobCustomerNames: readonly string[]
   facilities: Facilities
@@ -229,6 +237,8 @@ function indexAftermarketPartsByCarPartId(
  * Sprint 77: `lapReferences` is a 17th (trailing) parameter, same treatment.
  *
  * Sprint 80: `staffCandidates` is an 18th (trailing) parameter, same treatment.
+ *
+ * Sprint 87: `assemblies` is a 19th (trailing) parameter, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],
@@ -249,6 +259,7 @@ export function buildSimContext(
   personas: readonly Persona[] = PERSONAS,
   lapReferences: readonly LapReferenceEntry[] = LAP_REFERENCES,
   staffCandidates: StaffCandidatePool = STAFF_CANDIDATES,
+  assemblies: readonly AssemblyDef[] = ASSEMBLIES,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
@@ -273,6 +284,8 @@ export function buildSimContext(
     partsTaxonomy,
     partsTaxonomyById: indexById(partsTaxonomy) as Record<CarPartId, CarPartTaxonomyEntry>,
     partIdsByGroup: groupPartIdsByGroup(partsTaxonomy),
+    assemblies,
+    assembliesById: indexById(assemblies) as Record<AssemblyId, AssemblyDef>,
     serviceJobTypes,
     serviceJobCustomerNames,
     facilities,

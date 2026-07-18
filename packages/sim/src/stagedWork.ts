@@ -1,5 +1,11 @@
 import type { CarInstance, DayLogEntry, GameState } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
+import {
+  assemblyContainerFor,
+  assemblyDefById,
+  resolveRefitAssembly,
+  resolveRemoveAssembly,
+} from './assemblies'
 import { bandIndex, canRepair, planGroupRepair } from './bands'
 import type { SimContext } from './context'
 import { findWorkableCar, installLaborSlotsFor, refitLaborSlotsFor, resolveJobLabor } from './jobs'
@@ -68,6 +74,33 @@ export function confirmStagedWork(
   for (const action of staged) {
     const car = findWorkableCar(current, carInstanceId)
     if (!car) break // the car left the shop mid-loop - nothing left to work on
+
+    // Sprint 87: an assembly op is a single atomic resolver, not a NewJobSpec -
+    // it runs against the same shared remaining-labour budget and appends to the
+    // same log, but never touches the repair/install job pipeline below.
+    if (action.kind === 'remove-assembly') {
+      const result = resolveRemoveAssembly(
+        current,
+        carInstanceId,
+        action.assemblyId,
+        context,
+        remainingLabor,
+      )
+      current = result.state
+      log.push(...result.log)
+      remainingLabor -= result.laborSlotsUsed
+      continue
+    }
+    if (action.kind === 'refit-assembly') {
+      const container = assemblyContainerFor(current, carInstanceId, action.assemblyId)
+      if (container) {
+        const result = resolveRefitAssembly(current, container.id, context, remainingLabor)
+        current = result.state
+        log.push(...result.log)
+        remainingLabor -= result.laborSlotsUsed
+      }
+      continue
+    }
 
     let spec: NewJobSpec | null = null
     if (action.kind === 'repair') {
@@ -163,6 +196,20 @@ export function previewPlannedWork(
         if (!entry || !canRepair(installed.band, entry)) continue
         if (bandIndex(installed.band) >= bandIndex(action.targetBand)) continue
         parts = { ...parts, [partId]: { installed: { ...installed, band: action.targetBand } } }
+      }
+    } else if (action.kind === 'remove-assembly') {
+      // Sprint 87: the assembly comes off - every member slot projects empty.
+      const def = assemblyDefById(action.assemblyId, context)
+      if (def) for (const member of def.members) parts = { ...parts, [member]: { installed: null } }
+    } else if (action.kind === 'refit-assembly') {
+      // Sprint 87: the assembly goes back on - fill each member slot from the
+      // container currently on the bench, if any.
+      const container = assemblyContainerFor(state, carInstanceId, action.assemblyId)
+      if (container) {
+        for (const [member, instance] of Object.entries(container.members)) {
+          if (instance)
+            parts = { ...parts, [member as keyof typeof parts]: { installed: instance } }
+        }
       }
     } else {
       const partInstance = state.partInventory.find((p) => p.id === action.partInstanceId)

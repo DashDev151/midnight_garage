@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AssemblyIdSchema } from './assembly'
 import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
 
 /**
@@ -39,6 +40,17 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     partInstanceId: z.string().min(1),
     carPartId: CarPartIdSchema.optional(),
   }),
+  /**
+   * Sprint 87 (the assembly model): pull / put back one sub-assembly as a unit.
+   * Addressed by `assemblyId` rather than a container id so a "remove then
+   * refit" pair stages coherently before the container exists - at Confirm the
+   * remove creates the container and the refit finds it (at most one container
+   * per (car, assembly) is ever on the bench). The confirm/labour pipeline
+   * itself is untouched; `confirmStagedWork` just calls the assembly resolvers
+   * for these two kinds.
+   */
+  z.object({ kind: z.literal('remove-assembly'), assemblyId: AssemblyIdSchema }),
+  z.object({ kind: z.literal('refit-assembly'), assemblyId: AssemblyIdSchema }),
 ])
 
 export const StagedActionsSchema = z.array(StagedActionSchema)

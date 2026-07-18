@@ -13,6 +13,7 @@ import { releaseCarFromShop } from './facilities'
 import { lapTimeSecondsFor } from './lapModel'
 import { evaluateRequirement, type RequirementResult } from './requirements'
 import { applySpecialtyDelta } from './serviceJobs'
+import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
 
 export interface MissionResolution {
@@ -201,7 +202,10 @@ export function resolveDeliverMission(
     }
   }
 
-  const clearedState = clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId)
+  const clearedState = dissolveAssembliesForCar(
+    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    carInstanceId,
+  )
   const withReputation = applyReputationDelta(
     clearedState,
     mission.reputationReward,
