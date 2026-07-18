@@ -11,7 +11,7 @@ import type {
   Symptom,
 } from '@midnight-garage/content'
 import { titleCaseFromSlug } from '@midnight-garage/content'
-import { availableLaborSlots } from './laborSlots'
+import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
 import { benchHasTrait } from './crewSkills'
 import { marketValueYen } from './marketValue'
@@ -368,8 +368,9 @@ export function inspectionVisitGateReason(
   context: SimContext,
 ): InspectionVisitGateReason | null {
   const feeYen = context.economy.diagnosis.travelFeeYenByTier[tier]
-  const freeSlots = availableLaborSlots(state) - state.laborSlotsSpentToday
-  if (freeSlots < 1) return 'no-labor-slot'
+  // Sprint 94: a yard visit costs one labour's worth of energy (`pointsPerLabour`).
+  const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
+  if (freeEnergy < context.economy.energy.pointsPerLabour) return 'no-labor-slot'
   if (state.cashYen < feeYen) return 'no-cash'
   const hasLiveLot = state.activeAuctionLots.some((lot) => lot.tier === tier)
   if (!hasLiveLot) return 'no-lots'
@@ -408,7 +409,7 @@ export function beginInspectionVisit(
   const nextState: GameState = {
     ...state,
     cashYen: state.cashYen - feeYen,
-    laborSlotsSpentToday: state.laborSlotsSpentToday + 1,
+    energySpentToday: state.energySpentToday + context.economy.energy.pointsPerLabour,
     inspectionVisit: { tier, minutesLeft: minutesGranted },
   }
   return {
@@ -529,12 +530,12 @@ export function ownedWorkupGateReason(
   carInstanceId: string,
   context: SimContext,
 ): OwnedWorkupGateReason | null {
-  void context // no content lookup needed - collapsing to trueCauseId is data already on the car
   const car = state.ownedCars.find((c) => c.id === carInstanceId)
   if (!car) return 'not-found'
   if (car.symptoms.length === 0) return 'no-symptoms'
-  const freeSlots = availableLaborSlots(state) - state.laborSlotsSpentToday
-  if (freeSlots < 1) return 'no-labor-slot'
+  // Sprint 94: the workup costs one labour's worth of energy (`pointsPerLabour`).
+  const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
+  if (freeEnergy < context.economy.energy.pointsPerLabour) return 'no-labor-slot'
   return null
 }
 
@@ -565,7 +566,7 @@ export function resolveOwnedWorkup(
   const nextState: GameState = {
     ...state,
     ownedCars,
-    laborSlotsSpentToday: state.laborSlotsSpentToday + 1,
+    energySpentToday: state.energySpentToday + context.economy.energy.pointsPerLabour,
   }
   return {
     state: nextState,

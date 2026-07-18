@@ -97,6 +97,7 @@ export function queueGroupRepair(
     context.partsById,
     context.partsTaxonomyById,
     context.economy.restoration.repairStepFraction,
+    context.economy.energy.energyPerGradeByTier,
   )
   if (plan.partIds.length === 0) return 0
   const jobIndex = actions.createJobs.length

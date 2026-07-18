@@ -72,7 +72,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
@@ -192,9 +192,11 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(swap.ok).toBe(true)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // rims free (equivalence), new tyre charged 1 bolt-on slot.
-    expect(on.laborSlotsUsed).toBe(1)
-    expect(off.laborSlotsUsed + on.laborSlotsUsed).toBe(1)
+    // rims free (equivalence), new tyre charged the bolt-on install energy (Sprint 94).
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
+    expect(off.laborSlotsUsed + on.laborSlotsUsed).toBe(
+      CONTEXT.economy.energy.energyByClass['bolt-on'],
+    )
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
 
@@ -213,8 +215,8 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     const swap = resolveSwapAssemblyMember(repair.state, container.id, 'tyres', tyre.id, CONTEXT)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // Repaired rims no longer match the worn baseline (1) + new tyre (1) = 2.
-    expect(on.laborSlotsUsed).toBe(2)
+    // Repaired rims no longer match the worn baseline (bolt-on) + new tyre (bolt-on).
+    expect(on.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.energyByClass['bolt-on'])
     expect(on.state.ownedCars[0]!.parts.rims.installed!.band).toBe('fine')
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
@@ -257,8 +259,8 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
     const on = resolveRefitAssembly(repair.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // gearbox repaired (mint != worn) charged buried (2); clutch unchanged (0).
-    expect(on.laborSlotsUsed).toBe(2)
+    // gearbox repaired (mint != worn) charged the buried install energy; clutch unchanged (0).
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass.buried)
   })
 })
 
@@ -279,7 +281,7 @@ describe('worked example: the tyre change (binding total, Sprint 87)', () => {
       const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
 
       const totalLabour = off.laborSlotsUsed + on.laborSlotsUsed
-      expect(totalLabour).toBe(1)
+      expect(totalLabour).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
       const feePaid = state.cashYen - on.state.cashYen
       expect(feePaid).toBe(wheelsTier >= 2 ? 0 : WHEELS_FEE)
     }
@@ -319,8 +321,8 @@ describe('worked example: worn internals (binding total, Sprint 87)', () => {
       expect(repair.laborSlotsUsed).toBeGreaterThan(0)
       const on = resolveRefitAssembly(repair.state, container.id, CONTEXT)
       expect(on.ok).toBe(true)
-      // Only internals is charged (2 buried); block/head/cams free by equivalence.
-      expect(on.laborSlotsUsed).toBe(2)
+      // Only internals is charged (buried install energy); block/head/cams free by equivalence.
+      expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass.buried)
 
       // Two engine assist fees end to end when renting, none when owning.
       const removeFee = state.cashYen - off.state.cashYen
@@ -385,8 +387,8 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     expect(container.sourceCarId).toBeNull()
     const on = resolveRefitAssembly(built.state, container.id, CONTEXT, Infinity, car.id)
     expect(on.ok).toBe(true)
-    // No baseline on the car (slots were empty) - both members charge install labour.
-    expect(on.laborSlotsUsed).toBe(2)
+    // No baseline on the car (slots were empty) - both members charge bolt-on install energy.
+    expect(on.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.energyByClass['bolt-on'])
   })
 
   it('dissolving a car assembly drops its members to the parts bin', () => {

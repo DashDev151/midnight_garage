@@ -290,13 +290,27 @@ describe('seed content validates against schemas', () => {
       'bolt-on': 0,
       buried: 0,
     })
-    expect(result.data.teardown.installSlotsByClass).toEqual({
-      surface: 0,
-      'bolt-on': 1,
-      buried: 2,
-    })
     expect(result.data.teardown.usedPartSaleFraction).toBe(0.55)
     expect(result.data.teardown.donorBreakEvenBillRatio).toBe(0.45)
+  })
+
+  it('parses the Sprint 94 energy-bar knobs (the continuous daily labour bar)', () => {
+    const result = EconomyConfigSchema.safeParse(economy)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    // The x10 scale keeps every labour quantity an integer (no floats in sim).
+    expect(result.data.energy.pointsPerLabour).toBe(10)
+    // Day-1 pool = old PLAYER_BASE_LABOR_SLOTS (6) x pointsPerLabour.
+    expect(result.data.energy.basePoolPoints).toBe(60)
+    // Tier reduces a repair's per-grade cost, non-increasing up the tiers; tier 1
+    // is exactly the old one-slot-per-grade (10 = 1 slot x pointsPerLabour).
+    expect(result.data.energy.energyPerGradeByTier).toEqual({ 1: 10, 2: 6, 3: 4 })
+    // Install cost = old teardown.installSlotsByClass {0,1,2} x pointsPerLabour.
+    expect(result.data.energy.energyByClass).toEqual({
+      surface: 0,
+      'bolt-on': 10,
+      buried: 20,
+    })
   })
 
   /**
@@ -344,6 +358,7 @@ describe('seed content validates against schemas', () => {
       'machineListings',
       'coherence',
       'teardown',
+      'energy',
       'machineShopAssist',
       'diagnosis',
       'lapModel',

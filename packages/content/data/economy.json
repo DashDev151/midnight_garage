@@ -312,13 +312,22 @@
       "bolt-on": 0,
       "buried": 0
     },
-    "installSlotsByClass": {
-      "surface": 0,
-      "bolt-on": 1,
-      "buried": 2
-    },
     "usedPartSaleFraction": 0.55,
     "donorBreakEvenBillRatio": 0.45
+  },
+  "energy": {
+    "pointsPerLabour": 10,
+    "basePoolPoints": 60,
+    "energyPerGradeByTier": {
+      "1": 10,
+      "2": 6,
+      "3": 4
+    },
+    "energyByClass": {
+      "surface": 0,
+      "bolt-on": 10,
+      "buried": 20
+    }
   },
   "machineShopAssist": {
     "feeYenByGroup": {

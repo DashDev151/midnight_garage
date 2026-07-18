@@ -11,7 +11,7 @@ import {
   type PartFitmentClass,
   type ToolTiers,
 } from '@midnight-garage/content'
-import { crewSlotsSaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
+import { crewEnergySaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
 
 /**
  * Sprint 26: the banded parts model's core math - band ordering, climbing,
@@ -373,13 +373,24 @@ export function repairLevelForGroup(toolTiers: ToolTiers, groupId: ComponentId):
   return toolTiers[groupId]
 }
 
-/** `ceil(gradesToClimb / repairLevel)` - the worked examples from
- * sprint26.md decision 7: level 1 climbs 1 grade/slot, level 2 climbs 2,
- * level 3 climbs 3 (always enough for poor -> mint, the maximum possible
- * since scrap is unrepairable). */
-export function slotsNeededToClimb(grades: number, repairLevel: 1 | 2 | 3): number {
+/**
+ * Sprint 94 (the energy bar): the labour ENERGY a repair of `grades` grades
+ * costs at `repairLevel` - `grades x energyPerGradeByTier[repairLevel]`, in
+ * integer energy points. Replaces `slotsNeededToClimb`'s `ceil(grades /
+ * repairLevel)`: the ceil is GONE, so a higher tier is a genuine fraction of
+ * the work rather than a rounded-up whole slot (that granularity is exactly why
+ * the unit rescaled to `pointsPerLabour`-per-slot points). Tier 1's per-grade
+ * cost equals `pointsPerLabour`, so a tier-1 repair costs the same labour it did
+ * pre-Sprint-94 (one slot per grade x the scale); tiers 2/3 cost strictly less.
+ * `energyPerGradeByTier` is `economy.energy.energyPerGradeByTier` (content law).
+ */
+export function energyToClimb(
+  grades: number,
+  repairLevel: 1 | 2 | 3,
+  energyPerGradeByTier: EconomyConfig['energy']['energyPerGradeByTier'],
+): number {
   if (grades <= 0) return 0
-  return Math.ceil(grades / repairLevel)
+  return grades * energyPerGradeByTier[repairLevel]
 }
 
 /**
@@ -410,9 +421,12 @@ export function clampRepairTarget(
 }
 
 export interface PartRepairPlan {
-  /** Labor slots to climb this one part from `band` to `targetBand` at the
-   * given repair level - `ceil(grades / repairLevel)`, or 0 when there is
-   * nothing to climb (scrap, or already at/above the target). */
+  /** Labour ENERGY (Sprint 94) to climb this one part from `band` to
+   * `targetBand` at the given repair level - `grades x
+   * energyPerGradeByTier[repairLevel]`, or 0 when there is nothing to climb
+   * (scrap, or already at/above the target). Named `laborSlotsRequired` for
+   * continuity with the `Job` field it sizes; the unit is energy points now,
+   * not integer slots. */
   laborSlotsRequired: number
   /** Yen: `gradesClimbed * repairStepFraction * partPriceYen` - independent
    * of repair level (decision 7), only of the work itself; 0 when nothing
@@ -454,19 +468,21 @@ export function planPartRepair(
   taxonomyEntry: CarPartTaxonomyEntry,
   partPriceYen: number,
   repairStepFraction: number,
+  energyPerGradeByTier: EconomyConfig['energy']['energyPerGradeByTier'],
   repairCeiling?: ConditionBand,
 ): PartRepairPlan {
   if (!canRepair(band, taxonomyEntry)) return { laborSlotsRequired: 0, costYen: 0 }
   const effectiveTarget = repairCeiling ? clampRepairTarget(targetBand, repairCeiling) : targetBand
   const grades = gradesBetween(band, effectiveTarget)
   return {
-    laborSlotsRequired: slotsNeededToClimb(grades, repairLevel),
+    laborSlotsRequired: energyToClimb(grades, repairLevel, energyPerGradeByTier),
     costYen: Math.round(grades * repairStepFraction * partPriceYen),
   }
 }
 
 export interface GroupRepairPlan {
-  /** Total labor slots to climb every eligible part to `targetBand`. */
+  /** Total labour ENERGY (Sprint 94) to climb every eligible part to
+   * `targetBand` - energy points, not integer slots (see `PartRepairPlan`). */
   laborSlotsRequired: number
   /** Total yen: sum of `gradesClimbed * repairStepFraction * partPriceYen`
    * across eligible parts - independent of repair level (decision 7), only
@@ -533,6 +549,7 @@ export function planGroupRepair(
   partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   repairStepFraction: number,
+  energyPerGradeByTier: EconomyConfig['energy']['energyPerGradeByTier'],
   onlyPartId?: CarPartId,
   crew?: CrewSkillContext,
   repairBandCeilingByTier?: EconomyConfig['repairBandCeilingByTier'],
@@ -563,10 +580,11 @@ export function planGroupRepair(
       entry,
       catalogPart.priceYen,
       repairStepFraction,
+      energyPerGradeByTier,
     )
     // `laborSlotsRequired > 0` is exactly "repairable and below the target"
     // (scrap, a non-repairable consumable, and nothing-to-climb all size to 0
-    // slots) - the same inclusion set the pre-Sprint-35 explicit
+    // energy) - the same inclusion set the pre-Sprint-35 explicit
     // `canRepair`/`grades <= 0` guards produced.
     if (plan.laborSlotsRequired === 0) continue
     laborSlotsRequired += plan.laborSlotsRequired
@@ -574,7 +592,7 @@ export function planGroupRepair(
     partIds.push(partId)
   }
   if (crew && partIds.length > 0) {
-    laborSlotsRequired -= crewSlotsSaved(laborSlotsRequired, groupId, crew.staff, crew.economy)
+    laborSlotsRequired -= crewEnergySaved(laborSlotsRequired, groupId, crew.staff, crew.economy)
     costYen = Math.round(costYen * perfectionistCostMultiplier(crew.staff, crew.economy))
   }
   return { laborSlotsRequired, costYen, partIds }

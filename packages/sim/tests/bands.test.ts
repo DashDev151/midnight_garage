@@ -29,7 +29,7 @@ import {
   repairCeilingForLevel,
   repairLevelForGroup,
   scrapValueYen,
-  slotsNeededToClimb,
+  energyToClimb,
   worstRepairableBandInGroup,
 } from '../src/bands'
 import { buildSimContext } from '../src/context'
@@ -91,6 +91,13 @@ const NEUTRAL_ECONOMY: EconomyConfig = {
   ...ECONOMY,
   restoration: { repairStepFraction: 1 },
 }
+
+// Sprint 94 (the energy bar): repair labour is measured in energy points now -
+// `grades x energyPerGradeByTier[tier]`, no ceil. `EPG` is the content per-tier
+// per-grade cost ({1:10, 2:6, 3:4}); `PER` is `pointsPerLabour` (10). Directive
+// 17 case (a): every labour assertion below re-derives off these knobs.
+const EPG = ECONOMY.energy.energyPerGradeByTier
+const PER = ECONOMY.energy.pointsPerLabour
 
 /** The real catalog price of whatever is actually installed at `partId` on
  * `car` - Sprint 44's repair cost derives from this, never a car/model
@@ -259,26 +266,26 @@ describe('repairLevelForGroup (Sprint 26 decision 7; tier-sourced since Sprint 3
   })
 })
 
-describe('slotsNeededToClimb (Sprint 26 decision 7 worked examples)', () => {
-  it('is 1 slot for fine to mint (1 grade) at level 1', () => {
-    expect(slotsNeededToClimb(gradesBetween('fine', 'mint'), 1)).toBe(1)
+describe('energyToClimb (Sprint 94: grades x energyPerGradeByTier[tier], no ceil)', () => {
+  it('is one labour per grade at tier 1 (the day-1-unchanged baseline)', () => {
+    expect(energyToClimb(gradesBetween('fine', 'mint'), 1, EPG)).toBe(1 * EPG[1])
   })
 
-  it('is 1 slot for worn to mint (2 grades) at level 2', () => {
-    expect(slotsNeededToClimb(gradesBetween('worn', 'mint'), 2)).toBe(1)
+  it('costs grades x the tier-2 per-grade rate for worn to mint (2 grades) at level 2', () => {
+    expect(energyToClimb(gradesBetween('worn', 'mint'), 2, EPG)).toBe(2 * EPG[2])
   })
 
-  it('is 1 slot for poor to mint (3 grades) at level 3', () => {
-    expect(slotsNeededToClimb(gradesBetween('poor', 'mint'), 3)).toBe(1)
+  it('costs grades x the tier-3 per-grade rate for poor to mint (3 grades) at level 3', () => {
+    expect(energyToClimb(gradesBetween('poor', 'mint'), 3, EPG)).toBe(3 * EPG[3])
   })
 
-  it('rounds up when grades do not divide evenly by level', () => {
-    expect(slotsNeededToClimb(3, 2)).toBe(2)
+  it('scales linearly with no ceil (the finer granularity that replaces rounding up)', () => {
+    expect(energyToClimb(3, 2, EPG)).toBe(3 * EPG[2])
   })
 
   it('is 0 for zero or negative grades regardless of level', () => {
-    expect(slotsNeededToClimb(0, 1)).toBe(0)
-    expect(slotsNeededToClimb(-1, 3)).toBe(0)
+    expect(energyToClimb(0, 1, EPG)).toBe(0)
+    expect(energyToClimb(-1, 3, EPG)).toBe(0)
   })
 })
 
@@ -308,6 +315,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1, // repairStepFraction = 1 isolates the grades*price arithmetic
+      EPG,
     )
     const panelsPrice = installedPriceYen(bodyCar, 'panels')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
@@ -315,8 +323,8 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
 
     expect(plan.partIds).toEqual(['panels', 'paint', 'aero'])
     expect(plan.costYen).toBe(2 * panelsPrice + 3 * paintPrice + 1 * aeroPrice)
-    // Tool line at tier 1 -> repair level 1: exactly 1 grade climbed per slot.
-    expect(plan.laborSlotsRequired).toBe(2 + 3 + 1)
+    // Tool line at tier 1 -> repair level 1: each grade costs EPG[1] energy.
+    expect(plan.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1])
   })
 
   it('scales costYen by repairStepFraction, rounded per part, without changing laborSlotsRequired or partIds', () => {
@@ -329,6 +337,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     const scaled = planGroupRepair(
       bodyCar,
@@ -339,6 +348,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       0.35,
+      EPG,
     )
     const panelsPrice = installedPriceYen(bodyCar, 'panels')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
@@ -364,6 +374,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     const level3Plan = planGroupRepair(
       bodyCar,
@@ -374,11 +385,14 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
 
     expect(level3Plan.costYen).toBe(level1Plan.costYen)
     expect(level3Plan.partIds).toEqual(level1Plan.partIds)
-    expect(level3Plan.laborSlotsRequired).toBe(1 + 1 + 1)
+    // Tier 3: each grade costs EPG[3] energy - strictly cheaper than tier 1, and
+    // now a genuine fraction (no ceil rounding it up to a whole slot per part).
+    expect(level3Plan.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[3])
     expect(level3Plan.laborSlotsRequired).toBeLessThan(level1Plan.laborSlotsRequired)
   })
 
@@ -393,6 +407,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
   })
@@ -415,6 +430,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
   })
@@ -432,6 +448,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
   })
@@ -463,6 +480,7 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
       undefined,
       crew,
     )
@@ -470,23 +488,24 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
   it('cuts the plan labour by the crew speed discount and leaves cost untouched without a perfectionist', () => {
     const base = planBody()
     const withCrew = planBody({ staff: [benchedBody(5)], economy: ECONOMY })
-    // Body skill 5 -> curve[5] = 2 saved; base 6 stays >= half, so 6 - 2 = 4.
-    expect(base.laborSlotsRequired).toBe(6)
-    expect(withCrew.laborSlotsRequired).toBe(4)
+    // Base plan is (2+3+1) grades at tier 1 = 6 x EPG[1] energy. Body skill 5 ->
+    // curve[5] = 2 labour saved = 2 x PER energy; base stays >= half, so - 2 x PER.
+    expect(base.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1])
+    expect(withCrew.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1] - 2 * PER)
     expect(withCrew.costYen).toBe(base.costYen)
     expect(withCrew.partIds).toEqual(base.partIds)
   })
 
   it('applies no speed discount for a low crew skill', () => {
     const withCrew = planBody({ staff: [benchedBody(2)], economy: ECONOMY })
-    expect(withCrew.laborSlotsRequired).toBe(6)
+    expect(withCrew.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1])
   })
 
-  it('a benched perfectionist trims one saved slot and discounts repair cash cost', () => {
+  it('a benched perfectionist trims one saved labour and discounts repair cash cost', () => {
     const base = planBody()
     const withPerf = planBody({ staff: [benchedBody(5, 'perfectionist')], economy: ECONOMY })
-    // Saved 2 - 1 (perfectionist) = 1, so 6 - 1 = 5 slots.
-    expect(withPerf.laborSlotsRequired).toBe(5)
+    // Saved 2 - 1 (perfectionist) = 1 labour = 1 x PER, so base - 1 x PER.
+    expect(withPerf.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1] - 1 * PER)
     expect(withPerf.costYen).toBe(
       Math.round(base.costYen * (1 - ECONOMY.staff.perfectionistPartsDiscount)),
     )
@@ -531,6 +550,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
       undefined,
       undefined,
       CEILING,
@@ -544,6 +564,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     const panelsPrice = installedPriceYen(bodyCar, 'panels')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
@@ -551,7 +572,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
     // aero is already fine, so it has nothing to climb toward fine and drops out.
     expect(capped.partIds).toEqual(['panels', 'paint'])
     expect(capped.costYen).toBe(1 * panelsPrice + 2 * paintPrice)
-    expect(capped.laborSlotsRequired).toBe(1 + 2)
+    expect(capped.laborSlotsRequired).toBe((1 + 2) * EPG[1])
     // The unbounded band-math (no ceiling passed) still climbs every part one
     // further grade to mint AND lifts the already-fine aero - strictly more work.
     expect(uncapped.partIds).toEqual(['panels', 'paint', 'aero'])
@@ -570,6 +591,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
       undefined,
       undefined,
       CEILING,
@@ -583,6 +605,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
+      EPG,
     )
     expect(withCeiling.partIds).toEqual(withoutCeiling.partIds)
     expect(withCeiling.costYen).toBe(withoutCeiling.costYen)
@@ -591,11 +614,11 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
 
   it('planPartRepair caps the achievable target at repairCeiling (a worn part toward mint reaches only fine under the tier-1 ceiling)', () => {
     const dampers = TAXONOMY_BY_ID.dampers // repairable
-    const toMint = planPartRepair('worn', 'mint', 1, dampers, 100_000, 1)
-    const toFineCeiling = planPartRepair('worn', 'mint', 1, dampers, 100_000, 1, 'fine')
+    const toMint = planPartRepair('worn', 'mint', 1, dampers, 100_000, 1, EPG)
+    const toFineCeiling = planPartRepair('worn', 'mint', 1, dampers, 100_000, 1, EPG, 'fine')
     expect(toMint.costYen).toBe(2 * 100_000) // worn->mint = 2 grades, unbounded
     expect(toFineCeiling.costYen).toBe(1 * 100_000) // clamped to worn->fine = 1 grade
-    expect(toFineCeiling.laborSlotsRequired).toBe(1)
+    expect(toFineCeiling.laborSlotsRequired).toBe(1 * EPG[1]) // worn->fine = 1 grade at tier 1
   })
 })
 

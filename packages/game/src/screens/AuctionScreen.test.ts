@@ -453,7 +453,8 @@ describe('AuctionScreen', () => {
 
       expect(game.inspectionVisit?.tier).toBe(tier)
       expect(game.cashYen).toBeLessThan(cashBefore)
-      expect(game.laborSlotsRemainingToday).toBe(laborBefore - 1)
+      // Sprint 94: a visit spends one labour's worth of the day's energy (pointsPerLabour).
+      expect(game.laborSlotsRemainingToday).toBe(laborBefore - game.pointsPerLabour)
       expect(wrapper.text()).toContain('At the yard')
       // The now-active tier's own button is redundant with the fixed panel.
       expect(wrapper.find(`[data-test="inspect-visit-${tier}"]`).exists()).toBe(false)

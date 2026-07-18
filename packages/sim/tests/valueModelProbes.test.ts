@@ -90,7 +90,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     serviceBayCarIds: [],
     parkingCarIds: [],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
@@ -334,6 +334,7 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         CONTEXT.economy.restoration.repairStepFraction,
+        CONTEXT.economy.energy.energyPerGradeByTier,
       ).costYen
     }
     return total
@@ -480,6 +481,7 @@ function applyGroupRepairToBand(
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
     CONTEXT.economy.restoration.repairStepFraction,
+    CONTEXT.economy.energy.energyPerGradeByTier,
   )
   let parts = car.parts
   for (const partId of plan.partIds) {

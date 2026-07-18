@@ -10,7 +10,7 @@ import {
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
-import { availableLaborSlots } from '../laborSlots'
+import { energyMax } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
 
@@ -55,7 +55,7 @@ export function balancedPlayerStrategy(
 ): DayActions {
   const actions: DayActions = emptyDayActions()
 
-  let laborBudget = availableLaborSlots(state)
+  let laborBudget = energyMax(state, context.economy)
   const bayBudget = serviceBayBudget(state)
   const upgradeBudget = toolUpgradeBudget()
 

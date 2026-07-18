@@ -1141,13 +1141,63 @@ export const EconomyConfigSchema = z.object({
       'bolt-on': z.number().int().nonnegative(),
       buried: z.number().int().nonnegative(),
     }),
-    installSlotsByClass: z.object({
+    usedPartSaleFraction: z.number().positive().max(1),
+    donorBreakEvenBillRatio: z.number().positive().max(1),
+  }),
+  /**
+   * Sprint 94 (the energy bar, maintainer directive 2026-07-18): the continuous
+   * daily labour bar's own knobs. Labour is spent as integer "energy points" so
+   * the sim stays deterministic (no floats per the boundary law) - the x10 scale
+   * (`pointsPerLabour`) gives the finer-than-a-slot granularity the bar needs
+   * while keeping every quantity an integer. The player-facing word stays
+   * "labour" (never "energy"); the value the player reads IS this integer point
+   * value (no decimals - `10 labour`, `60 labour`, the same number the sim holds).
+   *
+   * Calibrated so day-1 throughput matches the pre-Sprint-94 integer-slot model:
+   * `basePoolPoints` = the old `PLAYER_BASE_LABOR_SLOTS` (6) x `pointsPerLabour`,
+   * a tier-1 repair costs `energyPerGradeByTier[1]` (10) per grade = exactly the
+   * old one-slot-per-grade, and an install costs `energyByClass` = the old
+   * `installSlotsByClass` x `pointsPerLabour`. Tools and staff are the loosening
+   * levers: a benched member RAISES the pool (`laborSlotsPerDay x pointsPerLabour`,
+   * `energyMax` in laborSlots.ts), while a higher tool tier REDUCES a repair's
+   * per-grade cost (`energyPerGradeByTier`, dropping the old ceil so a tier is a
+   * genuine fraction of the work, not a rounded-up whole slot).
+   */
+  energy: z.object({
+    /** Energy points one labour slot is worth (the x10 scale). The per-member
+     * pool contribution is `staffMember.laborSlotsPerDay x pointsPerLabour`, and
+     * a single-labour op (a diagnostic test, an owned-car workup) costs exactly
+     * this. Display divides nothing: the point value the sim holds is the number
+     * the player reads. */
+    pointsPerLabour: z.number().int().positive(),
+    /** The solo shop's daily labour pool in points (`energyMax`'s base term) -
+     * the old `PLAYER_BASE_LABOR_SLOTS` x `pointsPerLabour`, so day-1 is
+     * unchanged. Benched staff add on top; the pool refills fully each day. */
+    basePoolPoints: z.number().int().positive(),
+    /** Repair energy per grade climbed, by the group's tool tier (the Sprint 93
+     * speed axis, now on the bar). A repair costs `grades x energyPerGradeByTier
+     * [tier]` points - NO ceil, so a higher tier is a genuine fraction of the
+     * work. Must be positive and non-increasing up the tiers (a better tier never
+     * costs MORE per grade). */
+    energyPerGradeByTier: z
+      .object({
+        1: z.number().int().positive(),
+        2: z.number().int().positive(),
+        3: z.number().int().positive(),
+      })
+      .refine((e) => e[1] >= e[2] && e[2] >= e[3], {
+        message:
+          'energy.energyPerGradeByTier must be non-increasing up the tiers (tier 1 >= tier 2 >= tier 3)',
+      }),
+    /** Install energy by the target slot's depth class (the old
+     * `teardown.installSlotsByClass` x `pointsPerLabour`). Removal and a
+     * like-for-like equivalence refit stay free (0), gated by
+     * `teardown.removeSlotsByClass` and `refitLaborSlotsFor` respectively. */
+    energyByClass: z.object({
       surface: z.number().int().nonnegative(),
       'bolt-on': z.number().int().nonnegative(),
       buried: z.number().int().nonnegative(),
     }),
-    usedPartSaleFraction: z.number().positive().max(1),
-    donorBreakEvenBillRatio: z.number().positive().max(1),
   }),
   /**
    * Sprint 85 decision 6 (playtest 21, maintainer ruling 2026-07-18): the
@@ -1373,7 +1423,7 @@ export const EconomyConfigSchema = z.object({
        * by the leading benched crew skill (index 0..5; index 0 = no crew).
        * Non-decreasing (a stronger hand never saves fewer slots). The saving is
        * clamped in code so a plan keeps at least half its base slots and at
-       * least one slot (`crewSlotsSaved`, sim). */
+       * least one labour's worth (`crewEnergySaved`, sim). */
       crewSpeedDiscount: z
         .array(z.number().int().nonnegative())
         .length(6)
@@ -1389,7 +1439,7 @@ export const EconomyConfigSchema = z.object({
        * Sprint 82 decision 5: the fraction a benched `perfectionist` takes off
        * repair cash cost (0.10 = 10% cheaper). The same trait also spends one
        * of the crew speed slots (careful work is slower) - both applied in
-       * `crewSlotsSaved`/`perfectionistCostMultiplier` (sim). */
+       * `crewEnergySaved`/`perfectionistCostMultiplier` (sim). */
       perfectionistPartsDiscount: z.number().min(0).max(1),
     })
     .refine((s) => ReputationTierSchema.options.every((t) => s.statBudgetByTier[t] !== undefined), {

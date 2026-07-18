@@ -106,7 +106,7 @@ describe('garage: instant repair and labor', () => {
     for (const componentId of ['engine', 'drivetrain', 'suspension', 'body', 'interior'] as const) {
       game.repair(car.id, componentId)
     }
-    expect(game.gameState.laborSlotsSpentToday).toBeLessThanOrEqual(perDay)
+    expect(game.gameState.energySpentToday).toBeLessThanOrEqual(perDay)
     expect(game.laborSlotsRemainingToday).toBeGreaterThanOrEqual(0)
   })
 })

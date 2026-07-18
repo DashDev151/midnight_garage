@@ -1,8 +1,14 @@
-import type { GameState, StaffMember } from '@midnight-garage/content'
+import { ECONOMY, type GameState, type StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { PLAYER_BASE_LABOR_SLOTS } from '../src/constants'
-import { availableLaborSlots } from '../src/laborSlots'
+import { energyMax } from '../src/laborSlots'
 import { testSpecialty, testToolTiers } from './testFixtures'
+
+// Sprint 94 (the energy bar): the daily labour pool is energy POINTS now, not
+// integer slots - `basePoolPoints` for a solo shop, plus each benched member's
+// `laborSlotsPerDay x pointsPerLabour`. Directive 17 case (a): the assertions
+// below re-derive off the same content knobs the sim reads.
+const BASE = ECONOMY.energy.basePoolPoints
+const PER_SLOT = ECONOMY.energy.pointsPerLabour
 
 function baseState(staff: StaffMember[]): GameState {
   return {
@@ -28,7 +34,7 @@ function baseState(staff: StaffMember[]): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
@@ -57,26 +63,24 @@ const staffMember = (
   trait: 'perfectionist',
 })
 
-describe('availableLaborSlots (crew model, R3)', () => {
-  it('is the player base with no staff', () => {
-    expect(availableLaborSlots(baseState([]))).toBe(PLAYER_BASE_LABOR_SLOTS)
+describe('energyMax (crew model, R3; Sprint 94 energy bar)', () => {
+  it('is the content base pool with no staff', () => {
+    expect(energyMax(baseState([]), ECONOMY)).toBe(BASE)
   })
 
-  it('adds each bench-assigned member their own laborSlotsPerDay (a pair of hands is a pair of hands)', () => {
-    expect(availableLaborSlots(baseState([staffMember(1)]))).toBe(PLAYER_BASE_LABOR_SLOTS + 1)
-    expect(availableLaborSlots(baseState([staffMember(2)]))).toBe(PLAYER_BASE_LABOR_SLOTS + 2)
-    expect(availableLaborSlots(baseState([staffMember(2), staffMember(1)]))).toBe(
-      PLAYER_BASE_LABOR_SLOTS + 3,
+  it('adds each bench-assigned member their own laborSlotsPerDay x pointsPerLabour (a pair of hands raises the pool)', () => {
+    expect(energyMax(baseState([staffMember(1)]), ECONOMY)).toBe(BASE + 1 * PER_SLOT)
+    expect(energyMax(baseState([staffMember(2)]), ECONOMY)).toBe(BASE + 2 * PER_SLOT)
+    expect(energyMax(baseState([staffMember(2), staffMember(1)]), ECONOMY)).toBe(
+      BASE + 3 * PER_SLOT,
     )
   })
 
   it('adds nothing for a contract-assigned member (their labour is on the fleet)', () => {
-    expect(availableLaborSlots(baseState([staffMember(2, 'contract')]))).toBe(
-      PLAYER_BASE_LABOR_SLOTS,
-    )
+    expect(energyMax(baseState([staffMember(2, 'contract')]), ECONOMY)).toBe(BASE)
     // Mixed crew: only the benched member counts.
     expect(
-      availableLaborSlots(baseState([staffMember(2, 'contract'), staffMember(1, 'bench')])),
-    ).toBe(PLAYER_BASE_LABOR_SLOTS + 1)
+      energyMax(baseState([staffMember(2, 'contract'), staffMember(1, 'bench')]), ECONOMY),
+    ).toBe(BASE + 1 * PER_SLOT)
   })
 })

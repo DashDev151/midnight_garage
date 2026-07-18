@@ -54,6 +54,7 @@ function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
     CONTEXT.economy.restoration.repairStepFraction,
+    CONTEXT.economy.energy.energyPerGradeByTier,
   )
 }
 
@@ -91,7 +92,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [car.id],
     parkingCarIds: [],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     toolTiers: TOOL_TIERS,
     pendingPartOrders: [],
     cartPartIds: [],
@@ -146,7 +147,8 @@ describe('confirmStagedWork', () => {
         [car.id]: [{ kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id }],
       },
     })
-    const result = confirmStagedWork(state, car.id, 5, CONTEXT)
+    // Sprint 94: offer a full day's energy so the (now energy-sized) install completes.
+    const result = confirmStagedWork(state, car.id, 60, CONTEXT)
     expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
     expect(result.state.partInventory).toHaveLength(0)
   })

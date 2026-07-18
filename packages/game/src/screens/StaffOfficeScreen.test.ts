@@ -67,7 +67,10 @@ describe('StaffOfficeScreen (Sprint 80: staff I, crew model)', () => {
     expect(card.text()).toContain('Body 2')
     // Hustle is gone from the crew model.
     expect(card.text()).not.toContain('Hustle')
-    expect(wrapper.find('[data-test="ad-labour"]').text()).toContain('+1 labour/day')
+    // Sprint 94: a 1-slot candidate adds 1 x pointsPerLabour labour to the day's pool.
+    expect(wrapper.find('[data-test="ad-labour"]').text()).toContain(
+      `+${1 * ECONOMY.energy.pointsPerLabour} labour/day`,
+    )
     // Trait copy resolves from content (Auction Rat), not the raw id.
     expect(card.text()).toContain('Auction Rat')
     expect(card.text()).not.toContain('auction-rat')
@@ -104,7 +107,9 @@ describe('StaffOfficeScreen (Sprint 80: staff I, crew model)', () => {
     game.newGame(1)
     seed(game, [], [ad('grafter', 2)])
     const wrapper = mountScreen()
-    expect(wrapper.find('[data-test="ad-labour"]').text()).toContain('+2 labour/day')
+    expect(wrapper.find('[data-test="ad-labour"]').text()).toContain(
+      `+${2 * ECONOMY.energy.pointsPerLabour} labour/day`,
+    )
   })
 
   it('schedules a bench->contract reassignment, effective next day', async () => {

@@ -10,7 +10,7 @@ import {
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { installLaborSlotsFor } from '../jobs'
-import { availableLaborSlots } from '../laborSlots'
+import { energyMax } from '../laborSlots'
 import { partFitsCar } from '../parts'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
@@ -62,7 +62,7 @@ const ALL_COMPONENTS: readonly ComponentId[] = [
 export function investorStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
   const actions: DayActions = emptyDayActions()
 
-  let laborBudget = availableLaborSlots(state)
+  let laborBudget = energyMax(state, context.economy)
   const bayBudget = serviceBayBudget(state)
   // Tracks cash already committed to a part queued earlier *this same tick*
   // - without it, two cars each independently checking the same undiminished

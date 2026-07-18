@@ -437,7 +437,7 @@ describe('CarDetailScreen', () => {
       const step = game.nextRepairStep(id, 'body', row.partId)!
       const button = wrapper.get(`[data-test="stage-repair-part-${row.partId}"]`)
       expect(button.text()).toBe(
-        `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} slots`,
+        `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`,
       )
     })
 
@@ -452,7 +452,7 @@ describe('CarDetailScreen', () => {
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
       const afterOne = wrapper.get(attrSelector).text()
       const planned = game.plannedStepFor(id, 'body', row.partId)!
-      expect(afterOne).toBe(`${formatYen(planned.costYen)} · ${planned.laborSlots} slots`)
+      expect(afterOne).toBe(`${formatYen(planned.costYen)} · ${planned.laborSlots} labour`)
 
       const second = wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`)
       if (second.exists()) {
@@ -460,7 +460,7 @@ describe('CarDetailScreen', () => {
         const afterTwo = wrapper.get(attrSelector).text()
         expect(afterTwo).not.toBe(afterOne) // the item's own total grew with the plan
         const replanned = game.plannedStepFor(id, 'body', row.partId)!
-        expect(afterTwo).toBe(`${formatYen(replanned.costYen)} · ${replanned.laborSlots} slots`)
+        expect(afterTwo).toBe(`${formatYen(replanned.costYen)} · ${replanned.laborSlots} labour`)
       }
     })
 
@@ -520,7 +520,7 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
-      game.gameState = { ...game.gameState, laborSlotsSpentToday: game.laborSlotsPerDay }
+      game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
       expect(game.laborSlotsRemainingToday).toBe(0)
 
       const { wrapper } = await mountAt(id)
@@ -1257,12 +1257,12 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       injectSymptom(game, id)
-      game.gameState = { ...game.gameState, laborSlotsSpentToday: game.laborSlotsPerDay }
+      game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
 
       const { wrapper } = await mountAt(id)
       const button = wrapper.find('[data-test="car-workup"]')
       expect((button.element as HTMLButtonElement).disabled).toBe(true)
-      expect(button.attributes('title')).toContain('No labour slots left today')
+      expect(button.attributes('title')).toContain('No labour left today')
     })
   })
 })

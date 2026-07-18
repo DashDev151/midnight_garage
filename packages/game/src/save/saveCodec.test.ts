@@ -203,7 +203,7 @@ describe('saveCodec', () => {
     expect(decoded.serviceBayCarIds).toEqual([])
     // v3 -> v4 migration is pure default-fill too: a v1 save never had the
     // Sprint-11 daily labor counter either.
-    expect(decoded.laborSlotsSpentToday).toBe(0)
+    expect(decoded.energySpentToday).toBe(0)
     // v22 -> v23 (Sprint 36): a v1 save never owned any equipment, so every
     // tool line comes back at the tier-1 floor.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
@@ -227,7 +227,7 @@ describe('saveCodec', () => {
     expect(decoded.serviceBayCarIds).toEqual([])
     // v3 -> v4 migration is pure default-fill: a v2 save never had the
     // Sprint-11 daily labor counter either.
-    expect(decoded.laborSlotsSpentToday).toBe(0)
+    expect(decoded.energySpentToday).toBe(0)
     // v22 -> v23 (Sprint 36): no equipment owned -> every line at tier 1.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v2 save never had the
@@ -247,7 +247,7 @@ describe('saveCodec', () => {
     expect(decoded.parkingBayCount).toBe(4)
     // v3 -> v4 migration is pure default-fill: a v3 save never had the
     // Sprint-11 daily labor counter.
-    expect(decoded.laborSlotsSpentToday).toBe(0)
+    expect(decoded.energySpentToday).toBe(0)
     // v22 -> v23 (Sprint 36): no equipment owned -> every line at tier 1.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v3 save never had the
@@ -265,7 +265,11 @@ describe('saveCodec', () => {
     // v5 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.serviceBayCount).toBe(2)
     expect(decoded.parkingBayCount).toBe(5)
-    expect(decoded.laborSlotsSpentToday).toBe(3)
+    // Sprint 94 (the energy bar): the v5 save's `laborSlotsSpentToday: 3` is NOT
+    // migrated to the renamed `energySpentToday` (directive 19 - no pre-launch
+    // save compat), so it default-fills to 0. Harmless: the counter resets every
+    // day boundary anyway.
+    expect(decoded.energySpentToday).toBe(0)
     // v5 -> v6 (Sprint 13) used to default-fill the equipment list a v5 save
     // never had; v22 -> v23 (Sprint 36) now lands that same "never owned
     // anything" state at the tool-tier floor instead.
@@ -285,7 +289,9 @@ describe('saveCodec', () => {
     // v6 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.serviceBayCount).toBe(3)
     expect(decoded.parkingBayCount).toBe(6)
-    expect(decoded.laborSlotsSpentToday).toBe(1)
+    // Sprint 94: the v6 save's `laborSlotsSpentToday: 1` is not migrated to
+    // `energySpentToday` (directive 19), so it default-fills to 0 (resets daily).
+    expect(decoded.energySpentToday).toBe(0)
     // v22 -> v23 (Sprint 36): the code's real owned machines (welder +
     // tire-machine) map through the frozen legacy table - body and wheels
     // land at tier 2, everything else at the tier-1 floor - rather than
@@ -881,7 +887,7 @@ describe('saveCodec', () => {
         serviceBayCount: 1,
         parkingBayCount: 3,
         serviceBayCarIds: [],
-        laborSlotsSpentToday: 0,
+        energySpentToday: 0,
       },
     }
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV5WithCar))
@@ -1009,7 +1015,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(41)
+    expect(SAVE_VERSION).toBe(42)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1062,7 +1068,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(41)
+    expect(SAVE_VERSION).toBe(42)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1668,7 +1674,7 @@ describe('saveCodec', () => {
    * on its own added nothing, remains true.)
    */
   it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(41)
+    expect(SAVE_VERSION).toBe(42)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1771,7 +1777,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(41)
+    expect(SAVE_VERSION).toBe(42)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1804,7 +1810,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(41)
+    expect(SAVE_VERSION).toBe(42)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1851,7 +1857,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(41)
+    expect(SAVE_VERSION).toBe(42)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {

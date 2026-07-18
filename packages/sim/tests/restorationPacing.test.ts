@@ -8,7 +8,6 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
-import { PLAYER_BASE_LABOR_SLOTS } from '../src/constants'
 import { buildSimContext } from '../src/context'
 import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
 
@@ -50,7 +49,8 @@ const ALL_TIER_THREE = testToolTiers({
   interior: 3,
 })
 
-/** Total labor slots to bring every present part in every group to mint. */
+/** Total labour ENERGY (Sprint 94) to bring every present part in every group
+ * to mint. */
 function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): number {
   let total = 0
   for (const group of ALL_GROUPS) {
@@ -63,13 +63,20 @@ function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): num
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1, // labor sizing is repairStepFraction-independent - this anchor is about labor, not cost
+      CONTEXT.economy.energy.energyPerGradeByTier,
     ).laborSlotsRequired
   }
   return total
 }
 
+// Sprint 94: the daily budget is now a solo shop's energy pool
+// (`basePoolPoints`), and the total above is energy - both rescaled x10 from the
+// old integer-slot model, so days-to-restore (and this whole pacing anchor) is
+// invariant.
 function daysToRestore(car: CarInstance, toolTiers: ToolTiers = ALL_TIER_ONE): number {
-  return Math.ceil(totalRestorationLaborSlots(car, toolTiers) / PLAYER_BASE_LABOR_SLOTS)
+  return Math.ceil(
+    totalRestorationLaborSlots(car, toolTiers) / CONTEXT.economy.energy.basePoolPoints,
+  )
 }
 
 describe('restoration pacing anchor (Sprint 33 decision 7; tool tiers since Sprint 36)', () => {

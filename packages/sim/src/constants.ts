@@ -1,23 +1,6 @@
 import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnight-garage/content'
 
 /**
- * GDD 3.2: base labor slots per day before any staff bonus. Sprint 33
- * decision 7 (labor recalibration): raised 2 -> 6 (3x). Playtest finding:
- * against the real 29-part-per-group repair granularity (Sprint 26), base 2
- * slots made a full restoration take ~20 days even on a moderately worn
- * car - a war of attrition, not a fun restoration arc. Left the repair-LEVEL
- * ladder (`bands.ts`'s `repairLevelForGroup` - since Sprint 36, the tool
- * line's tier itself, starting at 1/"1 grade per slot") untouched rather
- * than also raising the base level, so upgrading a tool line still means
- * something - doubling or tripling the BASE throughput instead would flatten
- * most upgrades' relative value to zero. First-pass number, openly retunable
- * (`restorationPacing.test.ts` documents the resulting "days to fully
- * restore a typical car" anchor); further calibrated against the balance
- * harness + playtest, same as every other content-tunable number here.
- */
-export const PLAYER_BASE_LABOR_SLOTS = 6
-
-/**
  * Days between accepting a service job and the customer's car actually
  * arriving in the shop (Sprint 25 task 2: accepting no longer teleports the
  * car in instantly - "I'll drop it off first thing in the morning").

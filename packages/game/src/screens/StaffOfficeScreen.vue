@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { StaffMemberCardView } from '../stores/staffStore'
 import { useStaffStore } from '../stores/staffStore'
+import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 /**
@@ -16,6 +17,9 @@ import { formatYen } from '../utils/formatYen'
  * live now - see the sprint doc.
  */
 const staff = useStaffStore()
+// Sprint 94: the game store carries the labour-point scale so the crew-labour
+// display can show what a member adds to the day's pool (points), not raw slots.
+const game = useGameStore()
 
 const view = computed(() => staff.staffOfficeView)
 
@@ -97,8 +101,11 @@ function toggleAssignment(member: StaffMemberCardView): void {
             Engine {{ member.stats.engine }} &middot; Chassis {{ member.stats.chassis }} &middot;
             Body {{ member.stats.body }}
           </p>
+          <!-- Sprint 94 DRAFT copy (crew line - benched members RAISE the pool,
+               flagged for the orchestrator's sweep): show the labour they add to
+               the day (laborSlotsPerDay x pointsPerLabour), not the raw slot count. -->
           <p class="slot-note" data-test="staff-labour">
-            +{{ member.laborSlotsPerDay }} labour/day
+            +{{ member.laborSlotsPerDay * game.pointsPerLabour }} labour/day
           </p>
           <p class="trait">
             <strong>{{ member.traitName }}.</strong> {{ member.traitDescription }}
@@ -177,7 +184,10 @@ function toggleAssignment(member: StaffMemberCardView): void {
             Engine {{ ad.stats.engine }} &middot; Chassis {{ ad.stats.chassis }} &middot; Body
             {{ ad.stats.body }}
           </p>
-          <p class="slot-note" data-test="ad-labour">+{{ ad.laborSlotsPerDay }} labour/day</p>
+          <!-- Sprint 94 DRAFT copy (crew line, flagged): labour added to the day. -->
+          <p class="slot-note" data-test="ad-labour">
+            +{{ ad.laborSlotsPerDay * game.pointsPerLabour }} labour/day
+          </p>
           <p class="trait">
             <strong>{{ ad.traitName }}.</strong> {{ ad.traitDescription }}
           </p>

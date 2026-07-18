@@ -14,7 +14,8 @@ const bidInputs = reactive<Record<string, number | undefined>>({})
 /** Sprint 74 decision 7: the yard visit panel and per-tier "Inspect here"
  * button. */
 const GATE_REASON_LABEL: Record<string, string> = {
-  'no-labor-slot': 'No labour slots left today',
+  // Sprint 94: labour is a continuous bar now, not integer slots.
+  'no-labor-slot': 'No labour left today',
   'no-cash': 'Not enough cash for the travel fee',
   'no-lots': 'No lots at this tier to inspect',
 }
@@ -29,7 +30,9 @@ function isActiveVisitTier(tier: AuctionTier): boolean {
 function inspectButtonTitle(tier: AuctionTier): string {
   const reason = game.inspectionVisitGateReason(tier)
   if (reason) return GATE_REASON_LABEL[reason] ?? reason
-  return `Spend 1 labour slot + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
+  // Sprint 94 DRAFT copy (flagged for the orchestrator's sweep): a visit spends
+  // one labour's worth of the day's energy, no longer a whole "slot".
+  return `Spend some labour + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
 }
 
 /**
@@ -53,7 +56,8 @@ function onInspectClick(tier: AuctionTier): void {
 
 function inspectButtonLabel(tier: AuctionTier): string {
   if (visitConfirmingTier.value === tier) return 'Forfeit remaining visit - start here?'
-  return `Inspect here (1 slot + ${formatYen(game.travelFeeYenFor(tier))})`
+  // Sprint 94 DRAFT copy (flagged): labour, no longer an integer slot.
+  return `Inspect here (labour + ${formatYen(game.travelFeeYenFor(tier))})`
 }
 
 /**

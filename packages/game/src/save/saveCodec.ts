@@ -507,8 +507,16 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * absent, which is exactly their default meaning. The version bump alone is
  * still required (Save law) so an old client rejects a v41 save rather than
  * silently dropping the fields.
+ * v41 -> v42 (Sprint 94, the energy bar): `GameState.laborSlotsSpentToday`
+ * (integer slots) became `energySpentToday` (fine-grained integer energy points,
+ * `pointsPerLabour` per old slot). Per directive 19 (no pre-launch save
+ * compat), this is a plain Dexie/SAVE_VERSION bump with NO migration: a pre-v42
+ * save's `laborSlotsSpentToday` is simply ignored and `energySpentToday`
+ * default-fills to 0 (a fresh day's labour), which is harmless - the field is
+ * reset every day boundary anyway. Had the save law been in force this would
+ * have earned a rename migration; it is deliberately skipped pre-launch.
  */
-export const SAVE_VERSION = 41
+export const SAVE_VERSION = 42
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

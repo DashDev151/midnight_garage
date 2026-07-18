@@ -261,13 +261,15 @@ export const GameStateSchema = z.object({
    */
   graceParkingCarId: z.string().min(1).nullable().default(null),
   /**
-   * Labor slots already spent today (Sprint 11). Instant actions (repair,
-   * install, inspect) decrement against `availableLaborSlots(state) -
-   * laborSlotsSpentToday` the moment they're clicked, instead of a
-   * client-only queue deciding allocation at End Day. Reset to 0 by
-   * advanceDay's day-boundary tick.
+   * Labour energy points already spent today (Sprint 11; Sprint 94 - the energy
+   * bar - rescaled the unit from integer slots to fine-grained integer points,
+   * `pointsPerLabour` per old slot). Instant actions (repair, install, inspect)
+   * decrement against `energyMax(state, economy) - energySpentToday` the moment
+   * they're clicked, instead of a client-only queue deciding allocation at End
+   * Day. Reset to 0 by advanceDay's day-boundary tick (a full night's rest - the
+   * pool never carries over).
    */
-  laborSlotsSpentToday: z.number().int().nonnegative().default(0),
+  energySpentToday: z.number().int().nonnegative().default(0),
   /**
    * The shop's current tier per tool line (Sprint 36 - replaces the
    * Sprint 13 binary equipment-ownership model). Tier IS the
@@ -338,7 +340,7 @@ export const GameStateSchema = z.object({
    * `runDiagnosticTest` spends them. `null` when no visit is active (the
    * common case, and always true at day start). Cleared unconditionally by
    * advanceDay's day-boundary tick, the same "dies at day end" treatment
-   * `laborSlotsSpentToday`'s reset already gives labour - minutes spent
+   * `energySpentToday`'s reset already gives labour - minutes spent
    * chasing a lot that sells to someone else overnight are simply spent, no
    * carry-over negotiation. Purely additive.
    */

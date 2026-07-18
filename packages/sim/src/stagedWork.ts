@@ -113,6 +113,7 @@ export function confirmStagedWork(
         context.partsById,
         context.partsTaxonomyById,
         context.economy.restoration.repairStepFraction,
+        context.economy.energy.energyPerGradeByTier,
         action.carPartId,
         // Sprint 82: size staged repair labour with the benched crew's speed
         // discount (decision 2), matching the store's Confirm-total preview.

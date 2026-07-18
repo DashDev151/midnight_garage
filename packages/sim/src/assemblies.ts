@@ -285,7 +285,7 @@ export function resolveRemoveAssembly(
   const next: GameState = {
     ...withCar,
     assemblyInventory: [...(withCar.assemblyInventory ?? []), container],
-    laborSlotsSpentToday: withCar.laborSlotsSpentToday + laborSlotsUsed,
+    energySpentToday: withCar.energySpentToday + laborSlotsUsed,
     cashYen: withCar.cashYen - assistFeeYen,
   }
   return { state: addRepairYen(next, carInstanceId, assistFeeYen), log, laborSlotsUsed, ok: true }
@@ -347,7 +347,7 @@ export function resolveRefitAssembly(
   let next: GameState = {
     ...withCar,
     assemblyInventory: (withCar.assemblyInventory ?? []).filter((c) => c.id !== containerId),
-    laborSlotsSpentToday: withCar.laborSlotsSpentToday + laborSlotsRequired,
+    energySpentToday: withCar.energySpentToday + laborSlotsRequired,
     cashYen: withCar.cashYen - assistFeeYen,
   }
   next = addRepairYen(next, carInstanceId, assistFeeYen)

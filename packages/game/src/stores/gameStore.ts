@@ -54,7 +54,7 @@ import {
   assemblyContainerFor,
   assemblyMachineAssistFeeYen,
   assignToParking,
-  availableLaborSlots,
+  energyMax,
   advanceDay,
   bandFactor,
   bandIndex,
@@ -514,8 +514,8 @@ export interface ToolTierInfo {
   /** True only for engine tier 3 - the one real own-car capability ceiling
    * (`toolCeilings.naToTurboConversionEngineTier`). */
   unlocksNaToTurboConversion: boolean
-  /** The speed effect every tier has, in plain words - `ceil(grades /
-   * tier)` labor slots per grade climbed (`slotsNeededToClimb`, bands.ts). */
+  /** The speed effect every tier has, in plain words (Sprint 94: the labour
+   * ENERGY a repair costs per grade at this tier, `energyPerGradeByTier`). */
   laborSlotsPerGradeText: string
   /**
    * Sprint 92 (rental made legible): the one-line rental notice shown on a
@@ -982,10 +982,18 @@ export const useGameStore = defineStore('game', () => {
   const reputationTier = computed(() => gameState.value.reputationTier)
   const reputationPoints = computed(() => gameState.value.reputationPoints)
   const ownedCarCount = computed(() => gameState.value.ownedCars.length)
-  const laborSlotsPerDay = computed(() => availableLaborSlots(gameState.value))
+  // Sprint 94 (the energy bar): the daily labour pool and what's left of it are
+  // energy POINTS now (see sim `energyMax`). The store identifiers keep their
+  // names (code identifiers, directive 18); the player-facing bar reads the
+  // integer point values.
+  const laborSlotsPerDay = computed(() => energyMax(gameState.value, context.value.economy))
   const laborSlotsRemainingToday = computed(() =>
-    Math.max(0, laborSlotsPerDay.value - gameState.value.laborSlotsSpentToday),
+    Math.max(0, laborSlotsPerDay.value - gameState.value.energySpentToday),
   )
+  /** Sprint 94: energy points one labour slot is worth - so a screen can render
+   * a staff member's `laborSlotsPerDay` (1/2) as the labour they actually add to
+   * the day's pool (`laborSlotsPerDay x pointsPerLabour`). */
+  const pointsPerLabour = computed(() => context.value.economy.energy.pointsPerLabour)
   const serviceJobOffers = computed(() => gameState.value.serviceJobOffers)
   const activeServiceJobs = computed(() => gameState.value.activeServiceJobs)
   /** Sprint 74: the active yard visit, or `null` outside one - the fixed
@@ -1344,6 +1352,7 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy.restoration.repairStepFraction,
+        context.value.economy.energy.energyPerGradeByTier,
         carPartId,
       )
     const alreadyPlanned = stagedTarget
@@ -1748,6 +1757,7 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy.restoration.repairStepFraction,
+        context.value.economy.energy.energyPerGradeByTier,
         action.carPartId,
         applyCrew ? crewCtx() : undefined,
       ).costYen
@@ -1788,6 +1798,7 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy.restoration.repairStepFraction,
+        context.value.economy.energy.energyPerGradeByTier,
         action.carPartId,
         applyCrew ? crewCtx() : undefined,
       )
@@ -1875,6 +1886,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsById,
       context.value.partsTaxonomyById,
       context.value.economy.restoration.repairStepFraction,
+      context.value.economy.energy.energyPerGradeByTier,
       action.carPartId,
       // Sprint 82: the row total is the crew-adjusted figure, so the rows still
       // sum to Confirm's own (crew-adjusted) total by construction.
@@ -2598,7 +2610,11 @@ export const useGameStore = defineStore('game', () => {
       unlocksNaToTurboConversion:
         componentId === 'engine' &&
         tier === context.value.economy.toolCeilings.naToTurboConversionEngineTier,
-      laborSlotsPerGradeText: `Repair work takes ceil(grades-to-climb / ${tier}) labor slots at this tier`,
+      // Sprint 94 (the energy bar): DRAFT copy, flagged for the orchestrator's
+      // sweep. The old ceil(grades/tier)-slots formula is gone - a repair now
+      // costs a flat energy per grade by tier (`energyPerGradeByTier`), and the
+      // player reads the integer point value directly.
+      laborSlotsPerGradeText: `Repair work costs ${context.value.economy.energy.energyPerGradeByTier[tier]} labour per grade at this tier`,
       rentalFeeText,
     }
   }
@@ -2725,6 +2741,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsById,
       context.value.partsTaxonomyById,
       context.value.economy.restoration.repairStepFraction,
+      context.value.economy.energy.energyPerGradeByTier,
       carPartId,
       // Sprint 82: the instant repair job is sized with the benched crew's
       // speed discount; `repairJobGate` charges the matching (perfectionist-
@@ -3947,6 +3964,7 @@ export const useGameStore = defineStore('game', () => {
     ownedCarCount,
     laborSlotsPerDay,
     laborSlotsRemainingToday,
+    pointsPerLabour,
     serviceJobOffers,
     activeServiceJobs,
     serviceJobOfferViews,

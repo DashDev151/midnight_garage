@@ -24,19 +24,23 @@ import {
 } from './bands'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
-import { crewSlotsSaved, perfectionistCostMultiplier } from './crewSkills'
+import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { revealOnRemoval } from './diagnosis'
 import { partFitsCar } from './parts'
 import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
- * Sprint 71 (the teardown game): the labor a slot's OWN depth class costs to
- * remove/install - `economy.teardown.removeSlotsByClass`/
- * `installSlotsByClass`, replacing the old flat `INSTALL_LABOR_SLOTS`
- * constant everywhere a spec/plan needs to size install labor. Defaults to
- * `'bolt-on'` for an unresolvable part (never happens for real content,
- * matching every other taxonomy lookup's own defensive fallback).
+ * Sprint 71 (the teardown game): the labour a slot's OWN depth class costs to
+ * remove/install, replacing the old flat `INSTALL_LABOR_SLOTS` constant
+ * everywhere a spec/plan needs to size install labour. Defaults to `'bolt-on'`
+ * for an unresolvable part (never happens for real content, matching every
+ * other taxonomy lookup's own defensive fallback).
+ *
+ * Sprint 94 (the energy bar): the unit is energy points. Removal stays free
+ * (`economy.teardown.removeSlotsByClass`, all zeros - Sprint 79 removal law);
+ * install reads `economy.energy.energyByClass` (the old `installSlotsByClass`
+ * x `pointsPerLabour`).
  */
 export function removeLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
   const depthClass = context.partsTaxonomyById[carPartId]?.depthClass ?? 'bolt-on'
@@ -45,7 +49,7 @@ export function removeLaborSlotsFor(carPartId: CarPartId, context: SimContext): 
 
 export function installLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
   const depthClass = context.partsTaxonomyById[carPartId]?.depthClass ?? 'bolt-on'
-  return context.economy.teardown.installSlotsByClass[depthClass]
+  return context.economy.energy.energyByClass[depthClass]
 }
 
 /**
@@ -554,7 +558,7 @@ export function resolveRemovePart(
   }
   const withLabor: GameState = {
     ...state,
-    laborSlotsSpentToday: state.laborSlotsSpentToday + laborSlotsUsed,
+    energySpentToday: state.energySpentToday + laborSlotsUsed,
     cashYen: state.cashYen - assistFeeYen,
   }
 
@@ -756,6 +760,7 @@ export function repairJobGate(
     context.partsById,
     context.partsTaxonomyById,
     context.economy.restoration.repairStepFraction,
+    context.economy.energy.energyPerGradeByTier,
     spec.carPartId,
     { staff: state.staff, economy: context.economy },
   )
@@ -1009,7 +1014,7 @@ export function applyAvailableLaborToJob(
   let next: GameState = {
     ...state,
     jobs: state.jobs.map((j) => (j.id === jobId ? updatedJob : j)),
-    laborSlotsSpentToday: state.laborSlotsSpentToday + slotsToApply,
+    energySpentToday: state.energySpentToday + slotsToApply,
   }
   const log: DayLogEntry[] =
     slotsToApply > 0 ? [{ type: 'job-progress', jobId, laborSlotsSpent: slotsToApply }] : []
@@ -1184,6 +1189,7 @@ function planReconditionPart(
     taxonomyEntry,
     catalogPart.priceYen,
     context.economy.restoration.repairStepFraction,
+    context.economy.energy.energyPerGradeByTier,
   )
   // Zero when scrap, non-repairable, nothing left to climb, or already at/above
   // the tier ceiling (a tier-1 recondition of an already-fine part toward mint).
@@ -1194,7 +1200,7 @@ function planReconditionPart(
   const adjusted: PartRepairPlan = {
     laborSlotsRequired:
       plan.laborSlotsRequired -
-      crewSlotsSaved(plan.laborSlotsRequired, group, state.staff, context.economy),
+      crewEnergySaved(plan.laborSlotsRequired, group, state.staff, context.economy),
     costYen: Math.round(plan.costYen * perfectionistCostMultiplier(state.staff, context.economy)),
   }
   return { group, plan: adjusted, targetBand: effectiveTarget }

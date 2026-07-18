@@ -88,7 +88,7 @@ function initialState(): GameState {
     // move-to-service action needs a real source slot to move it out of.
     parkingCarIds: ['car-0001', null, null],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     // Sprint 36: every tool line is owned at tier 1 from day one - the
     // scripted day-1 body repair just runs at the tier-1 repair level; the
     // job's caller-sized 3 labor slots below are the fixture's own script,
@@ -342,9 +342,13 @@ describe('advanceDay golden master', () => {
     // assertion in this file (job completion, the panels/dampers slot changes,
     // determinism via the repeat-run test above) still passes unchanged.
     // Re-pinned again (Sprint 93 band ceiling, was 7a2e3325): a pure VALUE change (directive 17 case (a)) - the day-1 body repair now targets fine (tier-1 caps a repair at fine), so it climbs the body group one grade less and charges less; no state-shape change, and the repeat-run determinism test still passes.
+    // Re-pinned again (Sprint 94 energy bar, was d997e784): labour rescaled from
+    // integer slots to x10 energy points (`energySpentToday`, job labour), so the
+    // hashed labour values move x10. A pure VALUE change (directive 17 case (a)):
+    // no state-shape change, and the repeat-run determinism test above still passes.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('d997e784')
+    expect(hashState(finalState)).toBe('7916de2b')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -393,6 +397,7 @@ describe('advanceDay golden master', () => {
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       CONTEXT.economy.restoration.repairStepFraction,
+      CONTEXT.economy.energy.energyPerGradeByTier,
     )
     const { body: bodyFeeYen, suspension: suspensionFeeYen } =
       CONTEXT.economy.machineShopAssist.feeYenByGroup
@@ -599,7 +604,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 87, was c6ca47a8): the same pure state-SHAPE change
     // as the 30-day career hash above - `GameState.assemblyInventory: []` enters
     // the canonical serialisation; behaviour unchanged (directive 17 case (a)).
-    expect(hashState(acquisitionCareer().sold)).toBe('acc59f28')
+    // Re-pinned again (Sprint 94 energy bar, was acc59f28): labour rescaled to x10
+    // energy points, so hashed labour values move x10 - a pure VALUE change
+    // (directive 17 case (a)), determinism intact via the repeat-run test.
+    expect(hashState(acquisitionCareer().sold)).toBe('8bf7a06b')
   })
 })
 

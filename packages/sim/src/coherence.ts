@@ -24,7 +24,6 @@ import {
   planPartRepair,
   repairCeilingForLevel,
 } from './bands'
-import { PLAYER_BASE_LABOR_SLOTS } from './constants'
 import { deriveStaffWageYen, introductionFeeYen, staffSkillSum } from './staff'
 import type { SimContext } from './context'
 import { expectedTrueValueYen, sheetGuideValueYen } from './diagnosis'
@@ -116,7 +115,7 @@ export interface ModelCoherenceRow {
    *   IS the margin. Work below the expectation band is all priced at
    *   `marketRepairDiscount`, which is why this row can use it flat.
    * - `rentDuringRepairYen` = the rent accrued over the days that labour takes
-   *   at `PLAYER_BASE_LABOR_SLOTS`/day.
+   *   at a solo shop's daily energy budget (`energy.basePoolPoints`)/day.
    *
    * `wageMarginYen` is the difference. Law 6 requires it positive for every
    * roster model: repairing a car to the standard its market expects, then
@@ -338,6 +337,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
       context.partsById,
       context.partsTaxonomyById,
       context.economy.restoration.repairStepFraction,
+      context.economy.energy.energyPerGradeByTier,
     )
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired
@@ -366,13 +366,18 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
       entry,
       catalogPart.priceYen,
       context.economy.restoration.repairStepFraction,
+      context.economy.energy.energyPerGradeByTier,
     )
     if (plan.laborSlotsRequired === 0) continue
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired + installLaborSlotsFor(partId, context)
   }
   const repairGainYen = (context.economy.valuation.marketRepairDiscount - 1) * repairCostYen
-  const repairDays = repairLaborSlots / PLAYER_BASE_LABOR_SLOTS
+  // Sprint 94: `repairLaborSlots` is now labour ENERGY, and a solo shop's daily
+  // budget is `energy.basePoolPoints` - both rescaled by the same
+  // `pointsPerLabour`, so days-of-work (and thus the rent this bench time accrues)
+  // is invariant vs the old integer-slot model.
+  const repairDays = repairLaborSlots / context.economy.energy.basePoolPoints
   const rentDuringRepairYen = repairDays * (context.economy.WEEKLY_RENT_YEN / 7)
 
   // The sensible play, end to end through the real value function: buy the

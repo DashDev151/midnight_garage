@@ -312,7 +312,9 @@ export function classifyDayReport(
 
   const noise: string[] = []
   if (heatShifts > 0) noise.push(`Market prices moved on ${pluralise(heatShifts, 'car')}`)
-  if (labourTicked > 0) noise.push(`${pluralise(labourTicked, 'labour slot')} spent in the shop`)
+  // Sprint 94 DRAFT copy (day-report labour line, flagged for the orchestrator's
+  // sweep): labourTicked is an integer labour point value now, not whole slots.
+  if (labourTicked > 0) noise.push(`${labourTicked} labour spent in the shop`)
 
   return { wins, money, notable: [...outbid, ...rest], noise }
 }

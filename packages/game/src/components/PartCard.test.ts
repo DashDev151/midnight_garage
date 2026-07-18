@@ -212,7 +212,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it("disables the recondition control once today's labor is spent (the labor gate stays)", () => {
       const { game, instance: worn } = grantInventoryPart('worn')
-      game.gameState = { ...game.gameState, laborSlotsSpentToday: 99 }
+      game.gameState = { ...game.gameState, energySpentToday: 99 }
       const wrapper = mountCard({ props: { instance: worn, part } })
       expect(
         wrapper.find(`[data-test="recondition-part-${worn.id}"]`).attributes('disabled'),

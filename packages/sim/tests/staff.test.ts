@@ -13,7 +13,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { applyWeeklyRentAndWages } from '../src/finances'
-import { availableLaborSlots } from '../src/laborSlots'
+import { energyMax } from '../src/laborSlots'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
 import {
@@ -152,7 +152,10 @@ describe('hire and dismiss (Sprint 80 decision 6)', () => {
     // Force a two-slot candidate to exercise the crew-model labour contribution.
     ad.candidate.laborSlotsPerDay = 2
     const { state } = resolveHireStaff(baseState({ staffAds: [ad] }), 'grafter', CONTEXT)
-    expect(availableLaborSlots(state)).toBe(availableLaborSlots(baseState()) + 2)
+    // Sprint 94: a bench member raises the energy pool by laborSlotsPerDay x pointsPerLabour.
+    expect(energyMax(state, ECONOMY)).toBe(
+      energyMax(baseState(), ECONOMY) + 2 * ECONOMY.energy.pointsPerLabour,
+    )
   })
 
   it('refuses to hire at the staff cap (no-op, empty log)', () => {

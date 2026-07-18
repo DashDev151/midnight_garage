@@ -16,7 +16,7 @@ import {
   repairJobGate,
   resolveRemovePart,
 } from './jobs'
-import { availableLaborSlots } from './laborSlots'
+import { energyMax } from './laborSlots'
 import { bumpLotSupply, updateMarketHeat } from './marketHeat'
 import { advanceStoryMissions } from './missions'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
@@ -167,8 +167,8 @@ export function advanceDay(
   // budget. `applyAvailableLaborToJob` is the same single-job core the
   // player's instant repair/install click uses - bots just call it once per
   // queued assignment instead of once per click, and it books the spend into
-  // `laborSlotsSpentToday` exactly the same way either path does.
-  let remainingLabor = availableLaborSlots(next) - next.laborSlotsSpentToday
+  // `energySpentToday` exactly the same way either path does.
+  let remainingLabor = energyMax(next, context.economy) - next.energySpentToday
   const requestedJobLabor = queuedActions.laborAssignments.reduce((sum, a) => sum + a.laborSlots, 0)
   if (requestedJobLabor > remainingLabor) {
     log.push({
@@ -463,7 +463,7 @@ export function advanceDay(
   next = {
     ...next,
     day: next.day + 1,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     inspectionVisit: null,
     staff: commitPendingStaffAssignments(next.staff),
   }

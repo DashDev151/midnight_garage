@@ -54,6 +54,15 @@ const plannedLaborOverToday = computed(
   () => (detail.value?.plannedEstimate?.plannedLaborSlots ?? 0) > game.laborSlotsRemainingToday,
 )
 
+/** Sprint 94 (the energy bar): the day's remaining labour as a bar fill (0-100%),
+ * the PRIMARY at-a-glance display. The exact integer point values are on hover
+ * (the bar's `title`), never crowding the glanceable fill. */
+const labourFillPercent = computed(() => {
+  const max = game.laborSlotsPerDay
+  if (max <= 0) return 0
+  return Math.max(0, Math.min(100, (game.laborSlotsRemainingToday / max) * 100))
+})
+
 const inTransit = computed(() => detail.value?.serviceJob?.inTransit ?? false)
 
 // A sold or unknown car has no detail - send the player back to the garage.
@@ -85,7 +94,8 @@ function onScrapShellClick(): void {
 
 /** Sprint 74 decision 3: the "Full workup" button's own disabled reason. */
 const WORKUP_GATE_LABEL: Record<string, string> = {
-  'no-labor-slot': 'No labour slots left today',
+  // Sprint 94: labour is a continuous bar now, not integer slots.
+  'no-labor-slot': 'No labour left today',
   'not-found': 'Car not found',
   'no-symptoms': 'Nothing to diagnose',
 }
@@ -93,7 +103,9 @@ const WORKUP_GATE_LABEL: Record<string, string> = {
 const workupButtonTitle = computed(() => {
   const reason = detail.value?.workupGateReason
   if (reason) return WORKUP_GATE_LABEL[reason] ?? reason
-  return 'Collapse every symptom straight to its true cause - 1 labour slot, no fee, no clock'
+  // Sprint 94 DRAFT copy (flagged for the orchestrator's sweep): the workup
+  // spends one labour's worth of the day's energy, no longer a whole "slot".
+  return 'Collapse every symptom straight to its true cause - some labour, no fee, no clock'
 })
 
 function onWorkupClick(): void {
@@ -232,11 +244,12 @@ function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) 
   )
 }
 
-/** The action button's full inline text (Sprint 88 decision 3, FINAL format):
- * `Repair to fine · ¥9,600 · 2 slots`. British "labour" is implied by "slots";
- * the price and slot count are loud, never hover-only. */
+/** The action button's full inline text (Sprint 88 decision 3; Sprint 94 - the
+ * energy bar - the labour figure is an integer point value now, shown as
+ * `Repair to fine · ¥9,600 · 20 labour`). The price and labour are loud, never
+ * hover-only. */
 function repairStepText(step: NextRepairStepView): string {
-  return `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} slots`
+  return `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
 }
 
 /**
@@ -250,7 +263,7 @@ function uncertainStepLabel(range: {
 }): string {
   const describe = (step: NextRepairStepView | null): string =>
     step
-      ? `to ${step.targetBand} - ${formatYen(step.costYen)} · ${step.laborSlotsRequired} slots`
+      ? `to ${step.targetBand} - ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
       : 'nothing needed'
   return `Uncertain - if it's as shown: ${describe(range.best)}; if the hidden cause is real: ${describe(range.worst)}`
 }
@@ -494,13 +507,14 @@ function stagedActionLabel(action: StagedAction): string {
     : `Install ${partInstanceDisplayName(action.partInstanceId)} → ${targetLabel}`
 }
 
-/** Sprint 88 decision 3: this staged item's own yen and slots. `Refit · free`
- * for an equivalence install (0 labour); a repair its price and slots. */
+/** Sprint 88 decision 3; Sprint 94: this staged item's own yen and labour (an
+ * integer point value now). `Refit · free` for an equivalence install (0
+ * labour); a repair its price and labour. */
 function attributionText(action: StagedAction): string {
   const a = game.plannedActionAttribution(carId.value, action)
-  if (action.kind === 'repair') return `${formatYen(a.costYen)} · ${a.laborSlots} slots`
+  if (action.kind === 'repair') return `${formatYen(a.costYen)} · ${a.laborSlots} labour`
   if (action.kind === 'install')
-    return a.laborSlots === 0 ? 'Refit · free' : `Fit · ${a.laborSlots} slots`
+    return a.laborSlots === 0 ? 'Refit · free' : `Fit · ${a.laborSlots} labour`
   return 'free'
 }
 
@@ -1040,8 +1054,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             class="crew-saving"
             data-test="confirm-crew-saving"
           >
+            <!-- Sprint 94 DRAFT copy (crew line, flagged for the orchestrator's
+                 sweep): crewLaborSaved is an integer labour point value now. -->
             <span v-if="detail.plannedEstimate.crewLaborSaved > 0" data-test="crew-labour-saved"
-              >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour slots.</span
+              >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour.</span
             >
             <span
               v-if="detail.plannedEstimate.perfectionistCostSavedYen > 0"
@@ -1192,10 +1208,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section class="jobs">
         <h3>Work</h3>
-        <p class="labor" data-test="labour-card">
-          Labour left today:
-          <strong>{{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }}</strong> slots
-        </p>
+        <!-- Sprint 94 (the energy bar): the day's labour is a BAR (primary,
+             glanceable), the exact integer point values on hover. -->
+        <div
+          class="labour-bar"
+          data-test="labour-card"
+          :title="`${game.laborSlotsRemainingToday} / ${game.laborSlotsPerDay} labour`"
+        >
+          <span class="labour-bar-caption">Labour</span>
+          <span class="labour-bar-track">
+            <span
+              class="labour-bar-fill"
+              :class="{ empty: game.laborSlotsRemainingToday <= 0 }"
+              :style="{ width: labourFillPercent + '%' }"
+              data-test="labour-bar-fill"
+            ></span>
+          </span>
+        </div>
 
         <div v-if="detail.jobs.length" class="job-group">
           <h4>In progress</h4>
@@ -1210,7 +1239,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   : 'install part'
               }}
               ·
-              {{ job.laborSlotsSpent }}/{{ job.laborSlotsRequired }} slots
+              {{ job.laborSlotsSpent }}/{{ job.laborSlotsRequired }} labour
             </li>
           </ul>
         </div>
@@ -1865,7 +1894,12 @@ h4 {
   margin: var(--mg-space-4) 0;
 }
 
-.labor {
+/* Sprint 94 (the energy bar): the day's labour as a glanceable bar. The exact
+   integer point readout is on hover (the container's title). */
+.labour-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
   margin: 0 0 var(--mg-space-2);
   padding: var(--mg-space-2);
   border: var(--mg-border);
@@ -1873,11 +1907,32 @@ h4 {
   background: var(--mg-panel);
   color: var(--mg-text);
   font-size: var(--mg-fs-sm);
-  text-align: center;
 }
 
-.labor strong {
-  color: var(--mg-neon-cyan);
+.labour-bar-caption {
+  flex: 0 0 auto;
+  color: var(--mg-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.labour-bar-track {
+  flex: 1 1 auto;
+  height: 0.7rem;
+  border-radius: var(--mg-radius);
+  background: var(--mg-bg);
+  overflow: hidden;
+}
+
+.labour-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--mg-neon-cyan);
+  transition: width 120ms ease;
+}
+
+.labour-bar-fill.empty {
+  background: var(--mg-text-dim);
 }
 
 button {

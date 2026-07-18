@@ -131,6 +131,7 @@ export function queueServiceJobTasks(
         context.partsById,
         context.partsTaxonomyById,
         context.economy.restoration.repairStepFraction,
+        context.economy.energy.energyPerGradeByTier,
         carPartId,
       )
       if (plan.partIds.length === 0) continue

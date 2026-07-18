@@ -174,13 +174,16 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
 
     const breakdown = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT)
-    const bareInstallSlots = template.tasks.reduce(
+    // Sprint 94: `installLaborSlotsFor` returns labour ENERGY now, while the
+    // payout breakdown reports slot-equivalents (energy / pointsPerLabour) so the
+    // market labour rate stays per-slot. Compare in the same unit.
+    const bareInstallEnergy = template.tasks.reduce(
       (sum, task) => sum + installLaborSlotsFor(task.requirement.carPartId, CONTEXT),
       0,
     )
     // No chain premium: both tasks' parts are buried, but labour is exactly
     // the bare install-only baseline now that removal/blocker refits are free.
-    expect(breakdown.laborSlots).toBe(bareInstallSlots)
+    expect(breakdown.laborSlots).toBe(bareInstallEnergy / CONTEXT.economy.energy.pointsPerLabour)
 
     const worstPayout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
     const minCost = playerMinCostYen(template.tasks, car, model)

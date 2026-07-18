@@ -110,7 +110,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
@@ -411,6 +411,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
+        CONTEXT.economy.energy.energyPerGradeByTier,
       )
       // Sprint 92: the body plan climbs panels/underbody (signature slots), so a
       // tier-1 body repair also owes the one-per-job body machine-shop fee.
@@ -440,6 +441,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
+        CONTEXT.economy.energy.energyPerGradeByTier,
       )
       const totalCostYen = plan.costYen + CONTEXT.economy.machineShopAssist.feeYenByGroup.body
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
@@ -473,6 +475,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
+        CONTEXT.economy.energy.energyPerGradeByTier,
       )
       const t1Plan = planGroupRepair(
         car,
@@ -483,6 +486,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
+        CONTEXT.economy.energy.energyPerGradeByTier,
       )
       expect(t2Plan.costYen).toBe(t1Plan.costYen)
       expect(t2Plan.laborSlotsRequired).toBeLessThan(t1Plan.laborSlotsRequired)
@@ -514,6 +518,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
+        CONTEXT.economy.energy.energyPerGradeByTier,
       )
       const totalCostYen = plan.costYen
       const broke = baseState({ cashYen: totalCostYen - 1 })
@@ -1020,7 +1025,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
     )
     const result = applyAvailableLaborToJob(created.state, created.job!.id, 2, CONTEXT)
     expect(result.laborSlotsUsed).toBe(2)
-    expect(result.state.laborSlotsSpentToday).toBe(2)
+    expect(result.state.energySpentToday).toBe(2)
     expect(result.state.jobs[0]?.laborSlotsSpent).toBe(2)
   })
 
@@ -1582,13 +1587,14 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
    * depth class - that is now intentionally wrong, since removal is always
    * free regardless of depth.
    */
-  it('removal costs 0 labour at every depth class; install stays per-depth-class: 0 surface, 1 bolt-on, 2 buried', () => {
+  it('removal costs 0 labour at every depth class; install stays per-depth-class energy: 0 surface, 10 bolt-on, 20 buried (Sprint 94 x10)', () => {
+    const byClass = CONTEXT.economy.energy.energyByClass
     expect(removeLaborSlotsFor('panels', CONTEXT)).toBe(0)
     expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(0)
     expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(0)
-    expect(installLaborSlotsFor('panels', CONTEXT)).toBe(0)
-    expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(1)
-    expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(2)
+    expect(installLaborSlotsFor('panels', CONTEXT)).toBe(byClass.surface) // 0
+    expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(byClass['bolt-on']) // 10
+    expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(byClass.buried) // 20
   })
 
   /**
@@ -1748,7 +1754,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
 
     const carAfterBothOff = afterBoth.ownedCars[0]!
     const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
-    expect(newTyresSlots).toBe(1) // bolt-on, no baseline match - a genuinely different part
+    // Sprint 94: bolt-on install energy (no baseline match - a genuinely different part).
+    expect(newTyresSlots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
     const newTyresFit = resolveJobLabor(
       afterBoth,
       {
@@ -1761,7 +1768,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       Infinity,
       CONTEXT,
     )
-    expect(newTyresFit.laborSlotsUsed).toBe(1)
+    expect(newTyresFit.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
 
     const carAfterNewTyres = newTyresFit.state.ownedCars[0]!
     const rimsRefitSlots = refitLaborSlotsFor(carAfterNewTyres, 'rims', originalRims, CONTEXT)
@@ -1781,7 +1788,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(rimsRefit.laborSlotsUsed).toBe(0)
 
     const totalLabour = newTyresFit.laborSlotsUsed + rimsRefit.laborSlotsUsed
-    expect(totalLabour).toBe(1)
+    expect(totalLabour).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
   })
 
   it('contract case 3: pull rims, pull tyres, bench-repair rims, fit NEW tyres, refit the repaired rims - rim repair labour + rim refit + new-tyre install (supersedes the loose variant, which would have charged only 2)', () => {
@@ -1812,7 +1819,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
 
     const carAfterBothOff = repair.state.ownedCars[0]!
     const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
-    expect(newTyresSlots).toBe(1)
+    expect(newTyresSlots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
     const newTyresFit = resolveJobLabor(
       repair.state,
       {
@@ -1825,7 +1832,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       Infinity,
       CONTEXT,
     )
-    expect(newTyresFit.laborSlotsUsed).toBe(1)
+    expect(newTyresFit.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
 
     const carAfterNewTyres = newTyresFit.state.ownedCars[0]!
     const repairedRimsRefitSlots = refitLaborSlotsFor(
@@ -1834,7 +1841,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       repairedRims,
       CONTEXT,
     )
-    expect(repairedRimsRefitSlots).toBe(1) // band changed by the repair - equivalence fails
+    // band changed by the repair - equivalence fails, so bolt-on install energy.
+    expect(repairedRimsRefitSlots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
     const rimsRefit = resolveJobLabor(
       newTyresFit.state,
       {
@@ -1847,7 +1855,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       Infinity,
       CONTEXT,
     )
-    expect(rimsRefit.laborSlotsUsed).toBe(1)
+    expect(rimsRefit.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
 
     // Three distinctly charged components: the rim's own bench-repair labour,
     // the repaired rim's own refit, and the new tyre's own install - never
@@ -1877,7 +1885,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(differentSkuSameBand.partId).not.toBe(originalRims.partId)
     expect(differentSkuSameBand.band).toBe(originalRims.band)
     const slots = refitLaborSlotsFor(carAfterRimsOff, 'rims', differentSkuSameBand, CONTEXT)
-    expect(slots).toBe(1) // charged - matching band alone is not equivalence
+    // charged - matching band alone is not equivalence (bolt-on install energy).
+    expect(slots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
   })
 
   /**
@@ -1921,7 +1930,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     }
     const carForRefit = carAfterClutchOff.ownedCars[0]!
     const clutchRefitSlots = refitLaborSlotsFor(carForRefit, 'clutch', newClutch, CONTEXT)
-    expect(clutchRefitSlots).toBe(2) // buried, no baseline match - deep work costs what it adds
+    // buried, no baseline match - deep work costs what it adds (buried install energy).
+    expect(clutchRefitSlots).toBe(CONTEXT.economy.energy.energyByClass.buried)
   })
 })
 
@@ -2042,6 +2052,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       REPAIR_STEP_FRACTION,
+      CONTEXT.economy.energy.energyPerGradeByTier,
       'panels',
     )
 
@@ -2052,7 +2063,8 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
   it("Sprint 42: a bench recondition adds its full repair charge to the loose instance's pricePaidYen, not any car ledger", () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
     const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
-    const result = resolveReconditionLabor(invState, loosePart.id, 'fine', 10, CONTEXT)
+    // Sprint 94: offer a full day's energy so the (now energy-sized) recondition completes.
+    const result = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
     const reconditioned = result.state.partInventory.find((p) => p.id === loosePart.id)
     expect(reconditioned?.band).toBe('fine')
     expect(reconditioned?.pricePaidYen).toBe(quote.costYen)
@@ -2092,6 +2104,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       REPAIR_STEP_FRACTION,
+      CONTEXT.economy.energy.energyPerGradeByTier,
       'panels',
     )
     const carResult = resolveJobLabor(
@@ -2104,11 +2117,13 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
         carPartId: 'panels',
         laborSlotsRequired: onCarPlan.laborSlotsRequired,
       },
-      6,
+      // Sprint 94: offer a full day's energy so the (now energy-sized) job
+      // completes and panels actually reaches fine.
+      60,
       CONTEXT,
     )
     const carCashSpent = carState.cashYen - carResult.state.cashYen
-    const carLaborSpent = carResult.state.laborSlotsSpentToday
+    const carLaborSpent = carResult.state.energySpentToday
     // Sprint 92: panels is a body signature slot, so the on-car repair also owes
     // the body machine-shop assist fee on top of the intrinsic repair price. The
     // fee is a tool-tier charge, NOT a host-car factor, so it never reintroduces
@@ -2134,11 +2149,12 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       REPAIR_STEP_FRACTION,
+      CONTEXT.economy.energy.energyPerGradeByTier,
       'panels',
     )
-    const invResult = resolveReconditionLabor(invState, loosePart.id, 'fine', 6, CONTEXT)
+    const invResult = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
     const invCashSpent = invState.cashYen - invResult.state.cashYen
-    const invLaborSpent = invResult.state.laborSlotsSpentToday
+    const invLaborSpent = invResult.state.energySpentToday
     expect(invCashSpent).toBe(benchPlan.costYen)
 
     // Same labor either way (tier-independent labor sizing, unchanged).
@@ -2175,8 +2191,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'fine',
       CONTEXT,
     )!
-    expect(t1Quote.laborSlotsRequired).toBe(2)
-    expect(t3Quote.laborSlotsRequired).toBe(1)
+    // Sprint 94: poor -> fine is 2 grades; tier 1 costs 2 x EPG[1], tier 3 the
+    // cheaper 2 x EPG[3] (a genuine fraction now, no ceil).
+    expect(t1Quote.laborSlotsRequired).toBe(2 * CONTEXT.economy.energy.energyPerGradeByTier[1])
+    expect(t3Quote.laborSlotsRequired).toBe(2 * CONTEXT.economy.energy.energyPerGradeByTier[3])
 
     const t3Plan = planGroupRepair(
       carWithPoorPanels(),
@@ -2187,6 +2205,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1, // repairStepFraction is irrelevant to labor sizing - only laborSlotsRequired is checked below
+      CONTEXT.economy.energy.energyPerGradeByTier,
       'panels',
     )
     expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)

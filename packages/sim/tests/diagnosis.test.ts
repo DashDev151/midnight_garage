@@ -365,7 +365,7 @@ describe('beginInspectionVisit / inspectionVisitGateReason (Sprint 74 decision 1
   })
 
   it('refuses no-labor-slot when no free labour slot remains today - the gate reason matches', () => {
-    const state = { ...stateWithLot(carWithSymptom()), laborSlotsSpentToday: 999 }
+    const state = { ...stateWithLot(carWithSymptom()), energySpentToday: 999 }
     expect(inspectionVisitGateReason(state, 'local-yard', CONTEXT)).toBe('no-labor-slot')
     expect(beginInspectionVisit(state, 'local-yard', CONTEXT).outcome).toBe('no-labor-slot')
   })
@@ -378,7 +378,9 @@ describe('beginInspectionVisit / inspectionVisitGateReason (Sprint 74 decision 1
     const result = beginInspectionVisit(state, 'local-yard', CONTEXT)
     expect(result.outcome).toBe('started')
     expect(result.state.cashYen).toBe(state.cashYen - feeYen)
-    expect(result.state.laborSlotsSpentToday).toBe(state.laborSlotsSpentToday + 1)
+    expect(result.state.energySpentToday).toBe(
+      state.energySpentToday + CONTEXT.economy.energy.pointsPerLabour,
+    )
     expect(result.state.inspectionVisit).toEqual({
       tier: 'local-yard',
       minutesLeft: minutesGranted,
@@ -617,7 +619,7 @@ describe('resolveOwnedWorkup / ownedWorkupGateReason (Sprint 74 decision 3)', ()
     const state: GameState = {
       ...createInitialGameState(CONTEXT, 1),
       ownedCars: [car],
-      laborSlotsSpentToday: 999,
+      energySpentToday: 999,
     }
     expect(ownedWorkupGateReason(state, car.id, CONTEXT)).toBe('no-labor-slot')
     expect(resolveOwnedWorkup(state, car.id, CONTEXT).outcome).toBe('no-labor-slot')
@@ -629,7 +631,9 @@ describe('resolveOwnedWorkup / ownedWorkupGateReason (Sprint 74 decision 3)', ()
     const result = resolveOwnedWorkup(state, car.id, CONTEXT)
     expect(result.outcome).toBe('done')
     expect(result.state.cashYen).toBe(state.cashYen)
-    expect(result.state.laborSlotsSpentToday).toBe(state.laborSlotsSpentToday + 1)
+    expect(result.state.energySpentToday).toBe(
+      state.energySpentToday + CONTEXT.economy.energy.pointsPerLabour,
+    )
     expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-mild'])
     expect(result.log).toEqual([{ type: 'car-workup', carInstanceId: car.id }])
   })

@@ -279,7 +279,11 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
 
     game.gameState = { ...game.gameState, staff: [benchedBody('h', 5, 'night-owl')] }
     const withCrew = game.carDetail(carId)!.plannedEstimate!
-    const expectedSaved = Math.min(2, Math.floor(baseSlots / 2), baseSlots - 1)
+    // Sprint 94: the crew speed discount saves labour ENERGY - the curve value
+    // (2 slots at skill 5) scaled by pointsPerLabour, clamped in energy (keep at
+    // least half the base and at least one labour's worth).
+    const PER = ECONOMY.energy.pointsPerLabour
+    const expectedSaved = Math.min(2 * PER, Math.floor(baseSlots / 2), baseSlots - PER)
     expect(withCrew.crewLaborSaved).toBe(expectedSaved)
     expect(withCrew.plannedLaborSlots).toBe(baseSlots - expectedSaved)
     // Speed only: the repair cash cost is unchanged without a perfectionist.
@@ -294,7 +298,10 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
 
     game.gameState = { ...game.gameState, staff: [benchedBody('p', 5, 'perfectionist')] }
     const withPerf = game.carDetail(carId)!.plannedEstimate!
-    const expectedSaved = Math.min(1, Math.floor(baseSlots / 2), baseSlots - 1)
+    // Sprint 94: skill 5 saves 2 labour, the perfectionist trims one, scaled to
+    // energy by pointsPerLabour and clamped as above.
+    const PER = ECONOMY.energy.pointsPerLabour
+    const expectedSaved = Math.min(1 * PER, Math.floor(baseSlots / 2), baseSlots - PER)
     expect(withPerf.crewLaborSaved).toBe(expectedSaved)
     const expectedCost = Math.round(baseCost * (1 - ECONOMY.staff.perfectionistPartsDiscount))
     expect(withPerf.plannedRepairCostYen).toBe(expectedCost)

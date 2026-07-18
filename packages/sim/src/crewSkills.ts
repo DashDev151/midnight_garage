@@ -12,7 +12,7 @@ import type {
  * here is a pure derived read of the crew - no new persisted state (decision
  * 10). The single activity gate throughout is bench assignment: a member on a
  * fleet contract is busy elsewhere and contributes nothing here, exactly as
- * they contribute no bench labour (`availableLaborSlots`).
+ * they contribute no bench labour (`energyMax`).
  */
 
 /** The three crew skills - the keys of a member's `stats`. */
@@ -64,38 +64,48 @@ export function crewSkillFor(
 }
 
 /**
- * Decision 2: labour slots a group-G repair plan of `baseSlots` slots saves,
- * given the benched crew. The `crewSpeedDiscount` curve is read at
- * `crewSkillFor(group)`; a benched perfectionist spends one of those saved
- * slots on careful work (decision 5). The saving is then clamped so the plan
- * keeps at least half its base slots (`floor(base / 2)` is the most it can
- * lose) and at least one slot - it can never fall to zero work.
+ * Decision 2 (Sprint 82; rescaled to energy in Sprint 94): the labour ENERGY a
+ * group-G repair plan of `baseEnergy` points saves, given the benched crew. The
+ * `crewSpeedDiscount` curve stays authored in SLOTS (its natural unit for the
+ * hire-coherence bound D); read at `crewSkillFor(group)`, a benched
+ * perfectionist spends one of those saved slots on careful work (decision 5),
+ * and the surviving slot saving is scaled to energy by `pointsPerLabour`. The
+ * saving is then clamped so the plan keeps at least half its base energy
+ * (`floor(base / 2)` is the most it can lose) and at least one labour's worth
+ * (`pointsPerLabour`) of work - it can never fall to zero, exactly as the
+ * pre-Sprint-94 slot version kept at least one slot.
  */
-export function crewSlotsSaved(
-  baseSlots: number,
+export function crewEnergySaved(
+  baseEnergy: number,
   group: ComponentId,
   staff: readonly StaffMember[],
   economy: EconomyConfig,
 ): number {
-  if (baseSlots <= 0) return 0
+  if (baseEnergy <= 0) return 0
   const curve = economy.staff.crewSpeedDiscount
   const skill = crewSkillFor(group, staff, economy)
-  let saved = curve[Math.min(skill, curve.length - 1)] ?? 0
-  if (benchHasPerfectionist(staff)) saved = Math.max(0, saved - 1)
-  // Never below half the base cost, and never below one slot.
-  saved = Math.min(saved, Math.floor(baseSlots / 2), baseSlots - 1)
+  let savedSlots = curve[Math.min(skill, curve.length - 1)] ?? 0
+  if (benchHasPerfectionist(staff)) savedSlots = Math.max(0, savedSlots - 1)
+  const pointsPerLabour = economy.energy.pointsPerLabour
+  // Never below half the base cost, and never below one labour's worth of work.
+  const saved = Math.min(
+    savedSlots * pointsPerLabour,
+    Math.floor(baseEnergy / 2),
+    baseEnergy - pointsPerLabour,
+  )
   return Math.max(0, saved)
 }
 
-/** `baseSlots` less the benched crew's speed saving (decision 2) - what a group
- * repair plan actually takes with the crew that is on the bench right now. */
-export function crewAdjustedGroupSlots(
-  baseSlots: number,
+/** `baseEnergy` less the benched crew's speed saving (decision 2) - what a group
+ * repair plan actually takes with the crew that is on the bench right now, in
+ * energy points. */
+export function crewAdjustedGroupEnergy(
+  baseEnergy: number,
   group: ComponentId,
   staff: readonly StaffMember[],
   economy: EconomyConfig,
 ): number {
-  return baseSlots - crewSlotsSaved(baseSlots, group, staff, economy)
+  return baseEnergy - crewEnergySaved(baseEnergy, group, staff, economy)
 }
 
 /** Decision 5: the multiplier a benched perfectionist puts on repair cash cost

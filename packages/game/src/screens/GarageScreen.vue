@@ -90,7 +90,7 @@ const draggedCarName = computed(() => {
       <div>
         <dt>Labour left today</dt>
         <dd data-test="labour-value">
-          {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} slots
+          {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} labour
         </dd>
       </div>
       <div>

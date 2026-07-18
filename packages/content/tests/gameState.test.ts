@@ -306,7 +306,7 @@ describe('GameState / DayLog round-trip', () => {
       serviceBayCarIds: ['car-0001'],
       parkingCarIds: [null, null, null],
       graceParkingCarId: null,
-      laborSlotsSpentToday: 0,
+      energySpentToday: 0,
       toolTiers: {
         engine: 1,
         drivetrain: 1,
@@ -505,7 +505,7 @@ describe('GameState / DayLog round-trip', () => {
       parkingBayCount: 3,
       serviceBayCarIds: [],
       parkingCarIds: [],
-      laborSlotsSpentToday: 0,
+      energySpentToday: 0,
       toolTiers: {
         engine: 1,
         drivetrain: 1,

@@ -3,12 +3,18 @@ import { describe, expect, it } from 'vitest'
 import {
   benchHasPerfectionist,
   benchHasTrait,
-  crewAdjustedGroupSlots,
+  crewAdjustedGroupEnergy,
+  crewEnergySaved,
   crewSkillFor,
-  crewSlotsSaved,
   perfectionistCostMultiplier,
   skillKeyForGroup,
 } from '../src/crewSkills'
+
+// Sprint 94 (the energy bar): the crew speed discount is measured in labour
+// ENERGY now. The `crewSpeedDiscount` curve stays authored in slots; the saving
+// is scaled to energy by `pointsPerLabour` and clamped in energy (keep at least
+// half the base, and at least one labour's worth). Directive 17 case (a).
+const PER = ECONOMY.energy.pointsPerLabour
 
 /** A benched member with a given stat line and trait; overrides let a test
  * put them on contract or change the flat labour. */
@@ -79,38 +85,45 @@ describe('crewSkills - benchHasTrait / benchHasPerfectionist (bench gate)', () =
   })
 })
 
-describe('crewSkills - crewSlotsSaved / crewAdjustedGroupSlots (decision 2 curve + floors)', () => {
+describe('crewSkills - crewEnergySaved / crewAdjustedGroupEnergy (decision 2 curve + floors, energy)', () => {
   const engineCrew = (skill: number, trait: StaffMember['trait'] = 'night-owl') => [
     member('a', { engine: skill, chassis: 1, body: 1 }, trait),
   ]
 
-  it('reads the crewSpeedDiscount curve at the leading skill', () => {
-    // Curve is [0,0,0,1,1,2]: skills 1-2 save nothing, 3-4 save one, 5 saves two.
-    expect(crewSlotsSaved(6, 'engine', engineCrew(2), ECONOMY)).toBe(0)
-    expect(crewSlotsSaved(6, 'engine', engineCrew(3), ECONOMY)).toBe(1)
-    expect(crewSlotsSaved(6, 'engine', engineCrew(5), ECONOMY)).toBe(2)
+  it('reads the crewSpeedDiscount curve at the leading skill, scaled to energy', () => {
+    // Curve is [0,0,0,1,1,2]: skills 1-2 save nothing, 3-4 save one labour, 5 two.
+    expect(crewEnergySaved(6 * PER, 'engine', engineCrew(2), ECONOMY)).toBe(0)
+    expect(crewEnergySaved(6 * PER, 'engine', engineCrew(3), ECONOMY)).toBe(1 * PER)
+    expect(crewEnergySaved(6 * PER, 'engine', engineCrew(5), ECONOMY)).toBe(2 * PER)
   })
 
-  it('never saves more than half the base, and never the last slot', () => {
-    // skill 5 wants to save 2, but a 3-slot plan keeps ceil(3/2)=2, so only 1.
-    expect(crewSlotsSaved(3, 'engine', engineCrew(5), ECONOMY)).toBe(1)
-    // a 2-slot plan keeps at least 1: floor(2/2)=1 is also the last-slot cap.
-    expect(crewSlotsSaved(2, 'engine', engineCrew(5), ECONOMY)).toBe(1)
-    // a 1-slot plan can never be discounted.
-    expect(crewSlotsSaved(1, 'engine', engineCrew(5), ECONOMY)).toBe(0)
-    expect(crewSlotsSaved(0, 'engine', engineCrew(5), ECONOMY)).toBe(0)
+  it('never saves more than half the base, and never the last labour', () => {
+    // skill 5 wants to save 2 labour (2 x PER), but a 3-labour plan keeps at
+    // least half: floor(3 x PER / 2) is the cap.
+    expect(crewEnergySaved(3 * PER, 'engine', engineCrew(5), ECONOMY)).toBe(
+      Math.floor((3 * PER) / 2),
+    )
+    // a 2-labour plan keeps at least 1 labour: base - PER is the last-labour cap.
+    expect(crewEnergySaved(2 * PER, 'engine', engineCrew(5), ECONOMY)).toBe(1 * PER)
+    // a 1-labour plan can never be discounted (base - PER = 0).
+    expect(crewEnergySaved(1 * PER, 'engine', engineCrew(5), ECONOMY)).toBe(0)
+    expect(crewEnergySaved(0, 'engine', engineCrew(5), ECONOMY)).toBe(0)
   })
 
-  it('a benched perfectionist spends one of the saved slots (careful work is slower)', () => {
-    // skill 5 saves 2; perfectionist trims it to 1 on a big plan.
-    expect(crewSlotsSaved(6, 'engine', engineCrew(5, 'perfectionist'), ECONOMY)).toBe(1)
-    // skill 3 saves 1; perfectionist takes it to 0.
-    expect(crewSlotsSaved(6, 'engine', engineCrew(3, 'perfectionist'), ECONOMY)).toBe(0)
+  it('a benched perfectionist spends one of the saved labour (careful work is slower)', () => {
+    // skill 5 saves 2 labour; perfectionist trims it to 1 on a big plan.
+    expect(crewEnergySaved(6 * PER, 'engine', engineCrew(5, 'perfectionist'), ECONOMY)).toBe(
+      1 * PER,
+    )
+    // skill 3 saves 1 labour; perfectionist takes it to 0.
+    expect(crewEnergySaved(6 * PER, 'engine', engineCrew(3, 'perfectionist'), ECONOMY)).toBe(0)
   })
 
-  it('crewAdjustedGroupSlots subtracts the saving from the base', () => {
-    expect(crewAdjustedGroupSlots(6, 'engine', engineCrew(5), ECONOMY)).toBe(4)
-    expect(crewAdjustedGroupSlots(6, 'engine', [], ECONOMY)).toBe(6)
+  it('crewAdjustedGroupEnergy subtracts the saving from the base', () => {
+    expect(crewAdjustedGroupEnergy(6 * PER, 'engine', engineCrew(5), ECONOMY)).toBe(
+      6 * PER - 2 * PER,
+    )
+    expect(crewAdjustedGroupEnergy(6 * PER, 'engine', [], ECONOMY)).toBe(6 * PER)
   })
 })
 

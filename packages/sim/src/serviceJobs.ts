@@ -368,8 +368,15 @@ export function serviceJobCostBreakdown(
   context: SimContext,
 ): ServiceJobCostBreakdown {
   const { repairStepFraction } = context.economy.restoration
+  const { energyPerGradeByTier, pointsPerLabour } = context.economy.energy
   let taskCostYen = 0
-  let laborSlots = 0
+  // Sprint 94: the planners now size labour in energy POINTS; the customer
+  // payout, though, prices wrench time at a market rate per SLOT
+  // (`serviceJobs.laborRateYen`, unchanged - energy is the player's own time,
+  // not the customer's bill), so this accumulates energy and divides back to
+  // slot-equivalents at the return. All labour here is priced at tier 1 (a
+  // market baseline), so the conversion is exact and the payout is unchanged.
+  let laborEnergy = 0
   for (const task of tasks) {
     const { carPartId, minBand, minGrade } = task.requirement
     const entry = context.partsTaxonomyById[carPartId]
@@ -387,9 +394,10 @@ export function serviceJobCostBreakdown(
         entry,
         catalogPart.priceYen,
         repairStepFraction,
+        energyPerGradeByTier,
       )
       taskCostYen += plan.costYen
-      laborSlots += plan.laborSlotsRequired + installLaborSlotsFor(carPartId, context)
+      laborEnergy += plan.laborSlotsRequired + installLaborSlotsFor(carPartId, context)
       continue
     }
 
@@ -404,9 +412,9 @@ export function serviceJobCostBreakdown(
     const candidates = fittingPartsForRequirement(carPartId, minGrade ?? 'stock', model, context)
     const partCostYen = medianYen(candidates.map((part) => part.priceYen))
     taskCostYen += partCostYen
-    laborSlots += installLaborSlotsFor(carPartId, context)
+    laborEnergy += installLaborSlotsFor(carPartId, context)
   }
-  return { taskCostYen, laborSlots }
+  return { taskCostYen, laborSlots: laborEnergy / pointsPerLabour }
 }
 
 /**

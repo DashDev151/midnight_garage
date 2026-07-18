@@ -38,7 +38,7 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     serviceBayCarIds: [],
     parkingCarIds: [],
     graceParkingCarId: null,
-    laborSlotsSpentToday: 0,
+    energySpentToday: 0,
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
