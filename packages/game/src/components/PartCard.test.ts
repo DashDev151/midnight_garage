@@ -249,6 +249,11 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('clicking Recondition repeatedly climbs one rung at a time until mint', async () => {
       const { game, instance: poor } = grantInventoryPart('poor')
+      // Sprint 93 (the band ceiling): a bench recondition finishes at fine at
+      // tier 1; reaching mint needs the group's tier-2 machine owned. `dampers`
+      // is a suspension part, so own that line's tier-2 machine to climb the
+      // whole way to mint - the rung-at-a-time behaviour this test asserts.
+      game.devSetToolTier('suspension', 2)
       const wrapper = mountCard({ props: { instance: poor, part } })
 
       await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')

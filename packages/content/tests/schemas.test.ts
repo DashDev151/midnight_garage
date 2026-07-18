@@ -339,6 +339,7 @@ describe('seed content validates against schemas', () => {
       'serviceJobs',
       'selling',
       'toolCeilings',
+      'repairBandCeilingByTier',
       'specialty',
       'machineListings',
       'coherence',

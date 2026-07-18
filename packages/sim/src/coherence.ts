@@ -18,9 +18,11 @@ import {
   bandIndex,
   canRepair,
   carCostToMintYen,
+  clampRepairTarget,
   hasForcedInduction,
   planGroupRepair,
   planPartRepair,
+  repairCeilingForLevel,
 } from './bands'
 import { PLAYER_BASE_LABOR_SLOTS } from './constants'
 import { deriveStaffWageYen, introductionFeeYen, staffSkillSum } from './staff'
@@ -96,7 +98,11 @@ export interface ModelCoherenceRow {
    * Law 6 (the wage law, Sprint 66) - does a day at the bench out-earn a day
    * of standing still? Measured closed-form on the repairable portion of the
    * worst generatable car, at a fresh shop's tier-1 tools, planned to the
-   * car's own EXPECTATION BAND (Law 1 as amended), never to mint:
+   * car's own EXPECTATION BAND (Law 1 as amended), never to mint - and, since
+   * Sprint 93 (the band ceiling), clamped to the tier-1 repair ceiling (`fine`)
+   * so a rare car's mint expectation is measured as a repair to fine, the most a
+   * fresh shop's tools can finish (its mint is reached by owning tier-2, or by
+   * buying mint parts - a replacement, excluded from this bench-wage figure):
    *
    * - `repairCostYen` / `repairLaborSlots` come from the SAME real
    *   `planGroupRepair(... expectationBand)` calls, summed over the six
@@ -296,6 +302,21 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   // perform on a kei, and then reports that it barely pays; the expectation
   // band is the repair the economy actually asks for.
   const expectationBand = expectationForCar(model, context.economy).band
+  // Sprint 93 (the band ceiling): the wage probe measures a FRESH shop's bench,
+  // and a fresh shop's tools are tier-1, which caps a REPAIR at fine. A rare
+  // car's mint expectation is therefore not reachable by repair here - the
+  // sensible tier-1 play repairs the rough car up to the ceiling (fine) and
+  // sells at that band. Reaching the mint expectation needs the tier-2 machine
+  // OWNED (repair fine->mint cheaply) or buying mint parts (a per-part loss on a
+  // rare car - stockReplacementPrice is ~5x the worn->mint repair, so it is NOT
+  // the sensible play, only the always-available satisfiability floor). Owning
+  // tier-2 is exactly what WIDENS this margin, which is the incentive to buy it.
+  // Every tier whose expectation already sits at or below fine (shitbox `worn`,
+  // common/uncommon `fine`) is untouched - the clamp is a no-op there.
+  const effectiveExpectationBand = clampRepairTarget(
+    expectationBand,
+    repairCeilingForLevel(1, context.economy),
+  )
   const wageCar = buildWageProbeCar(model, context)
   // Sprint 71 (the teardown game) narrowed `planGroupRepair` (bands.ts) to
   // surface-slot candidates only: bolt-on/buried repair moved to the bench,
@@ -311,7 +332,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     const plan = planGroupRepair(
       wageCar,
       groupId,
-      expectationBand,
+      effectiveExpectationBand,
       freshToolTiers(),
       context.partIdsByGroup,
       context.partsById,
@@ -340,7 +361,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     // `planPartRepair`'s `costYen` is repair-level-independent regardless.
     const plan = planPartRepair(
       installed.band,
-      expectationBand,
+      effectiveExpectationBand,
       1,
       entry,
       catalogPart.priceYen,
@@ -368,7 +389,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   const wageCarBuyYen = Math.round(wageCarGuideYen * context.economy.AUCTION_RESERVE_PRICE_FRACTION)
   const repairedGuideYen = marketValueYen(
     model,
-    buildWageProbeCar(model, context, expectationBand),
+    buildWageProbeCar(model, context, effectiveExpectationBand),
     100,
     context.partsById,
     context.partsTaxonomyById,

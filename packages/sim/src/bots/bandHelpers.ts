@@ -1,6 +1,13 @@
 import type { CarInstance, ComponentId, ConditionBand, GameState } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
-import { bandIndex, planGroupRepair, presentPartIdsInGroup } from '../bands'
+import {
+  bandIndex,
+  clampRepairTarget,
+  planGroupRepair,
+  presentPartIdsInGroup,
+  repairCeilingForLevel,
+  repairLevelForGroup,
+} from '../bands'
 import type { SimContext } from '../context'
 
 /**
@@ -71,10 +78,20 @@ export function queueGroupRepair(
   context: SimContext,
   laborBudget: number,
 ): number {
+  // Sprint 93 (the band ceiling): repair only climbs to the group's own
+  // tool-tier ceiling, so target the clamped band (fine at tier-1, mint once the
+  // tier-2 machine is owned) rather than an unconditional `mint`. This keeps the
+  // sizing plan, the queued spec, and the eventual `repairJobGate` all agreeing
+  // on the same target - an unclamped `mint` spec would simply be refused
+  // (`tool-tier`) at a tier-1 group and waste the action.
+  const targetBand = clampRepairTarget(
+    'mint',
+    repairCeilingForLevel(repairLevelForGroup(state.toolTiers, groupId), context.economy),
+  )
   const plan = planGroupRepair(
     car,
     groupId,
-    'mint',
+    targetBand,
     state.toolTiers,
     context.partIdsByGroup,
     context.partsById,
@@ -87,7 +104,7 @@ export function queueGroupRepair(
     carInstanceId: carId,
     kind: 'repair-zone',
     componentId: groupId,
-    targetBand: 'mint',
+    targetBand,
     laborSlotsRequired: plan.laborSlotsRequired,
   })
   const slots = Math.min(plan.laborSlotsRequired, laborBudget)

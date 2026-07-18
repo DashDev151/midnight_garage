@@ -58,9 +58,12 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
 
   it('the planned estimate sums the labour the planned work will actually cost (Sprint 63)', () => {
     const game = useGameStore()
-    // A car whose body group genuinely needs repair, so a real plan exists.
+    // A car whose body group has a real tier-1 repair step (below the fine
+    // ceiling), so a genuine plan exists. Sprint 93: a `fine` group has no
+    // further "+" at tier 1, so gate on the step existing, not merely on the
+    // band being non-mint.
     let car = game.gameState.ownedCars.at(-1)
-    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
+    for (let i = 0; i < 30 && (!car || game.nextRepairStep(car.id, 'body') == null); i++) {
       game.devGrantCar(CARS[0]!.id)
       car = game.gameState.ownedCars.at(-1)!
     }
@@ -173,17 +176,21 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
 
   it('confirmCarWork starts a staged repair at tier 1 with nothing upgraded (the Sprint 13 equipment gate is retired)', () => {
     const game = useGameStore()
-    // Correlated band rolls can land a group fully mint even on a rough car -
-    // retry grants until the body group actually needs work.
+    // Correlated band rolls can land a group with no tier-1 repair step even on
+    // a rough car - retry grants until the body group has a real "+" step below
+    // the fine ceiling (Sprint 93: a `fine` group offers none at tier 1).
     let car = game.gameState.ownedCars.at(-1)
-    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
+    for (let i = 0; i < 30 && (!car || game.nextRepairStep(car.id, 'body') == null); i++) {
       game.devGrantCar(CARS[0]!.id)
       car = game.gameState.ownedCars.at(-1)!
     }
     if (!car) throw new Error('expected a granted car')
     game.moveCar(car.id, 'service')
     const cashBefore = game.cashYen
-    game.stageAction(car.id, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
+    // Sprint 93: a tier-1 repair finishes at fine, so stage to the reachable
+    // ceiling. The claim under test is unchanged - the repair really starts and
+    // charges cash, no equipment gate blocks it.
+    game.stageAction(car.id, { kind: 'repair', componentId: 'body', targetBand: 'fine' })
 
     game.confirmCarWork(car.id)
 

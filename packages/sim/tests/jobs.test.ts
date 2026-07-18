@@ -332,7 +332,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 3,
       },
       CONTEXT,
@@ -347,7 +347,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
-      targetBand: 'mint' as const,
+      targetBand: 'fine' as const,
       laborSlotsRequired: 3,
     }
     const first = findOrCreateJob(baseState(), spec, CONTEXT)
@@ -363,7 +363,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 3,
       },
       CONTEXT,
@@ -376,7 +376,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'interior',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 2,
       },
       CONTEXT,
@@ -390,7 +390,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
-      targetBand: 'mint' as const,
+      targetBand: 'fine' as const,
       laborSlotsRequired: 3,
     }
 
@@ -405,7 +405,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const plan = planGroupRepair(
         car,
         'body',
-        'mint',
+        'fine',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
         CONTEXT.partsById,
@@ -434,7 +434,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const plan = planGroupRepair(
         car,
         'body',
-        'mint',
+        'fine',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
         CONTEXT.partsById,
@@ -467,7 +467,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const t2Plan = planGroupRepair(
         car,
         'body',
-        'mint',
+        'fine',
         t2State.toolTiers,
         CONTEXT.partIdsByGroup,
         CONTEXT.partsById,
@@ -477,7 +477,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const t1Plan = planGroupRepair(
         car,
         'body',
-        'mint',
+        'fine',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
         CONTEXT.partsById,
@@ -508,7 +508,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const plan = planGroupRepair(
         car,
         'body',
-        'mint',
+        'fine',
         testToolTiers(),
         CONTEXT.partIdsByGroup,
         CONTEXT.partsById,
@@ -987,7 +987,7 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
         carInstanceId: customerCar.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 3,
       },
       CONTEXT,
@@ -1013,7 +1013,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 3,
       },
       CONTEXT,
@@ -1031,7 +1031,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 2,
       },
       CONTEXT,
@@ -1039,7 +1039,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
     const result = applyAvailableLaborToJob(created.state, created.job!.id, 5, CONTEXT)
     expect(result.laborSlotsUsed).toBe(2) // clamped to what the job needed, not the offer
     expect(result.state.jobs).toHaveLength(0)
-    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
     expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
   })
 
@@ -1050,7 +1050,7 @@ describe('applyAvailableLaborToJob (Sprint 11)', () => {
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 3,
       },
       CONTEXT,
@@ -1075,7 +1075,7 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
-      targetBand: 'mint' as const,
+      targetBand: 'fine' as const,
       laborSlotsRequired: 3,
     }
     const result = resolveJobLabor(state, spec, 2, CONTEXT)
@@ -1089,13 +1089,13 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
-      targetBand: 'mint' as const,
+      targetBand: 'fine' as const,
       laborSlotsRequired: 3,
     }
     const first = resolveJobLabor(state, spec, 1, CONTEXT)
     const second = resolveJobLabor(first.state, spec, 5, CONTEXT)
     expect(second.state.jobs).toHaveLength(0) // completed and removed
-    expect(second.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(second.state.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
   })
 
   it('repair proceeds at tier 1 with nothing upgraded - no refusal path exists (Sprint 36)', () => {
@@ -1104,7 +1104,7 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
       carInstanceId: car.id,
       kind: 'repair-zone' as const,
       componentId: 'body' as const,
-      targetBand: 'mint' as const,
+      targetBand: 'fine' as const,
       laborSlotsRequired: 3,
     }
     const result = resolveJobLabor(state, spec, 2, CONTEXT)
@@ -1805,10 +1805,10 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
 
     const pulledRims = afterBoth.partInventory.find((p) => p.id === originalRims.id)!
     expect(pulledRims.band).toBe('worn')
-    const repair = resolveReconditionLabor(afterBoth, pulledRims.id, 'mint', Infinity, CONTEXT)
+    const repair = resolveReconditionLabor(afterBoth, pulledRims.id, 'fine', Infinity, CONTEXT)
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
     const repairedRims = repair.state.partInventory.find((p) => p.id === originalRims.id)!
-    expect(repairedRims.band).toBe('mint') // no longer matches the 'worn' vacated baseline
+    expect(repairedRims.band).toBe('fine') // no longer matches the 'worn' vacated baseline
 
     const carAfterBothOff = repair.state.ownedCars[0]!
     const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
@@ -1852,7 +1852,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     // Three distinctly charged components: the rim's own bench-repair labour,
     // the repaired rim's own refit, and the new tyre's own install - never
     // the old loose variant's 2 (which took the rim refit for free).
-    expect(rimsRefit.state.ownedCars[0]?.parts.rims.installed?.band).toBe('mint')
+    expect(rimsRefit.state.ownedCars[0]?.parts.rims.installed?.band).toBe('fine')
     expect(rimsRefit.state.ownedCars[0]?.parts.tyres.installed?.id).toBe(newTyres.id)
   })
 
@@ -2026,7 +2026,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
   it('the recondition quote matches the on-car per-part repair plan for the identical part, exactly - Sprint 44: one shared formula, no car-dependent factor to isolate from', () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
-    const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
+    const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
     expect(quote).not.toBeNull()
 
     // The on-car per-part plan for the identical part - Sprint 44: cost
@@ -2036,7 +2036,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     const plan = planGroupRepair(
       carWithPoorPanels(),
       'body',
-      'mint',
+      'fine',
       invState.toolTiers,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
@@ -2051,10 +2051,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
   it("Sprint 42: a bench recondition adds its full repair charge to the loose instance's pricePaidYen, not any car ledger", () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
-    const quote = reconditionQuote(invState, loosePart.id, 'mint', CONTEXT)!
-    const result = resolveReconditionLabor(invState, loosePart.id, 'mint', 10, CONTEXT)
+    const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
+    const result = resolveReconditionLabor(invState, loosePart.id, 'fine', 10, CONTEXT)
     const reconditioned = result.state.partInventory.find((p) => p.id === loosePart.id)
-    expect(reconditioned?.band).toBe('mint')
+    expect(reconditioned?.band).toBe('fine')
     expect(reconditioned?.pricePaidYen).toBe(quote.costYen)
     // No car in play at all - carLedgers is untouched.
     expect(result.state.carLedgers).toEqual({})
@@ -2067,8 +2067,8 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       pricePaidYen: 20_000,
     }
     const invState = baseState({ ownedCars: [], partInventory: [alreadyPriced] })
-    const quote = reconditionQuote(invState, alreadyPriced.id, 'mint', CONTEXT)!
-    const result = resolveReconditionLabor(invState, alreadyPriced.id, 'mint', 10, CONTEXT)
+    const quote = reconditionQuote(invState, alreadyPriced.id, 'fine', CONTEXT)!
+    const result = resolveReconditionLabor(invState, alreadyPriced.id, 'fine', 10, CONTEXT)
     const reconditioned = result.state.partInventory.find((p) => p.id === alreadyPriced.id)
     expect(reconditioned?.pricePaidYen).toBe(20_000 + quote.costYen)
   })
@@ -2086,7 +2086,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     const onCarPlan = planGroupRepair(
       carState.ownedCars[0]!,
       'body',
-      'mint',
+      'fine',
       carState.toolTiers,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
@@ -2100,7 +2100,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
         carInstanceId: 'car-ref',
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        targetBand: 'fine',
         carPartId: 'panels',
         laborSlotsRequired: onCarPlan.laborSlotsRequired,
       },
@@ -2115,7 +2115,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     // the donor-car arbitrage this test guards - the repair PRICE stays
     // intrinsic, asserted directly below.
     const bodyFeeYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.body
-    expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
     expect(carCashSpent).toBeGreaterThan(0)
     expect(carLaborSpent).toBeGreaterThan(0)
     expect(carCashSpent).toBe(onCarPlan.costYen + bodyFeeYen)
@@ -2128,7 +2128,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     const benchPlan = planGroupRepair(
       carWithPoorPanels(),
       'body',
-      'mint',
+      'fine',
       invState.toolTiers,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
@@ -2136,7 +2136,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       REPAIR_STEP_FRACTION,
       'panels',
     )
-    const invResult = resolveReconditionLabor(invState, loosePart.id, 'mint', 6, CONTEXT)
+    const invResult = resolveReconditionLabor(invState, loosePart.id, 'fine', 6, CONTEXT)
     const invCashSpent = invState.cashYen - invResult.state.cashYen
     const invLaborSpent = invResult.state.laborSlotsSpentToday
     expect(invCashSpent).toBe(benchPlan.costYen)
@@ -2153,16 +2153,16 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     expect(onCarPlan.costYen).toBe(benchPlan.costYen)
     expect(carCashSpent).toBe(invCashSpent + bodyFeeYen)
     // The loose part climbed to mint (and is no longer an open job).
-    expect(invResult.state.partInventory[0]?.band).toBe('mint')
+    expect(invResult.state.partInventory[0]?.band).toBe('fine')
     expect(invResult.state.jobs).toHaveLength(0)
   })
 
   it('is sized by the same tool tier as on-car repair (no cheaper or slower bench path) - Sprint 36', () => {
-    // poor -> mint is 3 grades: 3 slots at tier 1, 1 slot at tier 3, both paths.
+    // poor -> fine is 2 grades: 2 slots at tier 1, 1 slot at tier 3, both paths.
     const t1Quote = reconditionQuote(
       baseState({ ownedCars: [], partInventory: [loosePart] }),
       loosePart.id,
-      'mint',
+      'fine',
       CONTEXT,
     )!
     const t3Quote = reconditionQuote(
@@ -2172,16 +2172,16 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
         toolTiers: testToolTiers({ body: 3 }),
       }),
       loosePart.id,
-      'mint',
+      'fine',
       CONTEXT,
     )!
-    expect(t1Quote.laborSlotsRequired).toBe(3)
+    expect(t1Quote.laborSlotsRequired).toBe(2)
     expect(t3Quote.laborSlotsRequired).toBe(1)
 
     const t3Plan = planGroupRepair(
       carWithPoorPanels(),
       'body',
-      'mint',
+      'fine',
       testToolTiers({ body: 3 }),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,

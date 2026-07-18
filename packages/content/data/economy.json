@@ -285,6 +285,11 @@
   "toolCeilings": {
     "naToTurboConversionEngineTier": 3
   },
+  "repairBandCeilingByTier": {
+    "1": "fine",
+    "2": "mint",
+    "3": "mint"
+  },
   "specialty": {
     "biasFactor": 0.5,
     "softcapPoints": 100,

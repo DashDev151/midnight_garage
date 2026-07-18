@@ -18,7 +18,7 @@ const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
 /** Sprint 36: a mixed-tier shop (body at 2, engine at 3) so the plans these
  * tests derive exercise real tier-sized labor, not just the tier-1 floor. */
-const TOOL_TIERS = testToolTiers({ body: 2, engine: 3 })
+const TOOL_TIERS = testToolTiers({ body: 2, engine: 3, interior: 2 })
 
 const car: CarInstance = buildCarInstance({
   id: 'car-0001',
@@ -30,7 +30,7 @@ const car: CarInstance = buildCarInstance({
     // Sprint 71: 'interior' (surface, still on-car-repairable) joins the
     // fixture - 'engine' is bench-only now, so the two-staged-actions test
     // below needs a second on-car-repairable group to spill labor onto.
-    ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn', interior: 'worn' }),
+    ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn', interior: 'poor' }),
     // Sprint 32: every slot defaults to a filled stock part now, so the
     // staged-install test below needs a genuinely empty target slot (a
     // group-level install into an already-occupied slot is refused by the
@@ -169,7 +169,7 @@ describe('confirmStagedWork', () => {
     })
     const result = confirmStagedWork(state, car.id, offeredLabor, CONTEXT)
     expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.seats.installed?.band).toBe('worn') // not yet repaired
+    expect(result.state.ownedCars[0]?.parts.seats.installed?.band).toBe('poor') // not yet repaired
     const interiorJob = result.state.jobs.find((j) => j.componentId === 'interior')
     expect(interiorJob).toBeDefined()
     expect(interiorJob?.laborSlotsSpent).toBe(1)

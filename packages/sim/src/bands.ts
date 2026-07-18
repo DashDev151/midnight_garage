@@ -382,6 +382,33 @@ export function slotsNeededToClimb(grades: number, repairLevel: 1 | 2 | 3): numb
   return Math.ceil(grades / repairLevel)
 }
 
+/**
+ * Sprint 93 (the band ceiling - tools cap the finish): the best band a REPAIR
+ * can climb a part to at `repairLevel` (the group's own tool tier, since the
+ * tier IS the repair level - `repairLevelForGroup`). Tier-1 hand tools cap at
+ * `fine`; the tier-2 machine reaches `mint`. Read straight off the content knob
+ * `economy.repairBandCeilingByTier`, so retuning the ceiling is a one-line
+ * content edit. This gates REPAIR only: buying a mint replacement part and
+ * fitting it is untouched at every tier (a bought part is already mint), so mint
+ * stays reachable by buying - owning tier-2 just lets you REPAIR to mint instead.
+ */
+export function repairCeilingForLevel(
+  repairLevel: 1 | 2 | 3,
+  economy: EconomyConfig,
+): ConditionBand {
+  return economy.repairBandCeilingByTier[repairLevel]
+}
+
+/** Clamps a repair target DOWN to the tier ceiling (never raises it) - the one
+ * clamp every repair planner routes an above-ceiling target through, so "how
+ * far can this tier finish a repair" is decided in exactly one place. */
+export function clampRepairTarget(
+  targetBand: ConditionBand,
+  ceiling: ConditionBand,
+): ConditionBand {
+  return bandIndex(targetBand) <= bandIndex(ceiling) ? targetBand : ceiling
+}
+
 export interface PartRepairPlan {
   /** Labor slots to climb this one part from `band` to `targetBand` at the
    * given repair level - `ceil(grades / repairLevel)`, or 0 when there is
@@ -408,6 +435,17 @@ export interface PartRepairPlan {
  * through the exact same formula, off the exact same part's own price - ONE
  * repair economy, never two, and never a car-dependent discount either way
  * (the arbitrage this sprint exists to close).
+ *
+ * Sprint 93 (the band ceiling): the optional `repairCeiling` caps the
+ * achievable REPAIR target - when set, the effective target is clamped down to
+ * it (`clampRepairTarget`), so a tier-1 repair of a worn part to `mint` plans
+ * only the worn -> `fine` climb and a part already at/above the ceiling yields a
+ * zero plan. Omitted, this is the pre-Sprint-93 unbounded repair - the shape
+ * the market-rate cost accounting (`serviceJobCostBreakdown`) deliberately
+ * keeps, since a customer quote prices the full repair-to-target regardless of
+ * the shop's own tier. Callers that ARE gated by the shop's tools (on-car
+ * `planGroupRepair`, bench `planReconditionPart`, the wage probe) pass their
+ * group's `repairCeilingForLevel`.
  */
 export function planPartRepair(
   band: ConditionBand,
@@ -416,9 +454,11 @@ export function planPartRepair(
   taxonomyEntry: CarPartTaxonomyEntry,
   partPriceYen: number,
   repairStepFraction: number,
+  repairCeiling?: ConditionBand,
 ): PartRepairPlan {
   if (!canRepair(band, taxonomyEntry)) return { laborSlotsRequired: 0, costYen: 0 }
-  const grades = gradesBetween(band, targetBand)
+  const effectiveTarget = repairCeiling ? clampRepairTarget(targetBand, repairCeiling) : targetBand
+  const grades = gradesBetween(band, effectiveTarget)
   return {
     laborSlotsRequired: slotsNeededToClimb(grades, repairLevel),
     costYen: Math.round(grades * repairStepFraction * partPriceYen),
@@ -473,6 +513,16 @@ export interface GroupRepairPlan {
  * (decision 5). Omitted, the plan is exactly the raw restoration cost the bots
  * and coherence probes measure - the crew never touches those. The two effects
  * apply only when the plan has real work (`partIds` non-empty).
+ *
+ * Sprint 93 (the band ceiling): the optional `repairBandCeilingByTier` caps the
+ * achievable REPAIR target at the group's own tool tier - when set, the target
+ * is clamped down to `repairBandCeilingByTier[repairLevel]` once (a tier-1 group
+ * planning to `mint` plans only to `fine`, so a part already at `fine` drops out
+ * of `partIds` with nothing left to climb). Omitted, this is the unbounded
+ * band-math the pure reachability/pacing tests still measure. On-car job
+ * creation (`repairJobGate`) refuses an explicit above-ceiling target outright
+ * (with a `tool-tier` reason) rather than clamping here, so the two never
+ * disagree about what a created job climbs to.
  */
 export function planGroupRepair(
   car: CarInstance,
@@ -485,8 +535,12 @@ export function planGroupRepair(
   repairStepFraction: number,
   onlyPartId?: CarPartId,
   crew?: CrewSkillContext,
+  repairBandCeilingByTier?: EconomyConfig['repairBandCeilingByTier'],
 ): GroupRepairPlan {
   const repairLevel = repairLevelForGroup(toolTiers, groupId)
+  const effectiveTarget = repairBandCeilingByTier
+    ? clampRepairTarget(targetBand, repairBandCeilingByTier[repairLevel])
+    : targetBand
   let laborSlotsRequired = 0
   let costYen = 0
   const partIds: CarPartId[] = []
@@ -504,7 +558,7 @@ export function planGroupRepair(
     if (!catalogPart) continue
     const plan = planPartRepair(
       installed.band,
-      targetBand,
+      effectiveTarget,
       repairLevel,
       entry,
       catalogPart.priceYen,

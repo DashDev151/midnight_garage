@@ -60,6 +60,7 @@ import {
   bandIndex,
   benchSwapFeeYen,
   beginInspectionVisit as beginInspectionVisitCore,
+  canRepair,
   climbBand,
   bestFitBuyer,
   buildSimContext,
@@ -115,6 +116,7 @@ import {
   presentPartIdsInGroup,
   previewPlannedWork,
   reconditionQuote,
+  repairCeilingForLevel,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
   requirementLabel,
@@ -1319,6 +1321,18 @@ export const useGameStore = defineStore('game', () => {
     const effectiveCurrent = stagedTarget ?? realFloor
     if (effectiveCurrent === 'mint') return null
     const nextRung = climbBand(effectiveCurrent, 1)
+    // Sprint 93 (the band ceiling): a REPAIR climbs only to the group's own
+    // tool-tier ceiling (tier-1 caps at fine; mint needs the tier-2 machine
+    // OWNED). Once the next rung would cross that ceiling, there is no further
+    // "+" to offer - the sim's `repairJobGate` would refuse the same target, so
+    // the affordance must not stage a rung Confirm cannot honour. Mint stays
+    // reachable by BUYING and fitting a mint part (Replace), never gated here;
+    // `repairCeilingCaption` names the machine that lifts the ceiling.
+    const repairCeiling = repairCeilingForLevel(
+      gameState.value.toolTiers[componentId],
+      context.value.economy,
+    )
+    if (bandIndex(nextRung) > bandIndex(repairCeiling)) return null
 
     const planTo = (target: ConditionBand) =>
       planGroupRepair(
@@ -1414,6 +1428,44 @@ export const useGameStore = defineStore('game', () => {
    * bench recondition control (`PartCard.vue`) both key off this. */
   function isPartRepairable(carPartId: CarPartId): boolean {
     return context.value.partsTaxonomyById[carPartId]?.repairable ?? true
+  }
+
+  /**
+   * Sprint 93 (the band ceiling): the legibility caption shown at a per-part
+   * repair affordance when the shop's own tools cannot finish this part past
+   * fine - naming the group's tier-2 machine, the purchase that lifts the repair
+   * ceiling to mint (same principle as Sprint 92's fee caption: show the
+   * constraint at the point of the action). Returned only where a REPAIR is the
+   * relevant, genuinely-capped action: the part is actually repairable now
+   * (`canRepair` - not scrap, not a non-repairable consumable), it is below mint,
+   * and the group's CURRENT tool tier caps a repair below mint (tier-1). Null at
+   * tier-2+ (no cap) and for buy-only parts - the mint result there stays
+   * reachable by buying and fitting a mint part, never by this repair route. Uses
+   * the DISPLAYED band so an unresolved symptom's true band is never leaked.
+   */
+  function repairCeilingCaption(
+    carId: string,
+    componentId: ComponentId,
+    carPartId: CarPartId,
+  ): string | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    const entry = context.value.partsTaxonomyById[carPartId]
+    // Surface only: this caption rides the on-car per-part repair "+" affordance,
+    // which exists solely for surface slots (bolt-on/buried parts are bench-only,
+    // never grow an on-car repair button). The bench recondition caps at fine too
+    // but is a separate control, out of this caption's placement.
+    if (!entry || entry.depthClass !== 'surface') return null
+    const { band } = displayedBandFor(car, carPartId, context.value)
+    if (!band || !canRepair(band, entry) || bandIndex(band) >= bandIndex('mint')) return null
+    const ceiling = repairCeilingForLevel(
+      gameState.value.toolTiers[componentId],
+      context.value.economy,
+    )
+    if (bandIndex(ceiling) >= bandIndex('mint')) return null // tier-2+ has no repair cap
+    const tier2 = TOOL_LINES[componentId].tiers[1]
+    if (!tier2) return null
+    return `Your tools finish at fine. The ${tier2.displayName} reaches mint.`
   }
 
   /**
@@ -3918,6 +3970,7 @@ export const useGameStore = defineStore('game', () => {
     groupRepairFloorBand,
     nextRepairStep,
     nextPartStepRange,
+    repairCeilingCaption,
     plannedStepFor,
     plannedActionAttribution,
     isPartRepairable,

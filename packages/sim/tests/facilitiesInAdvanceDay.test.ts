@@ -101,7 +101,7 @@ describe('labor is gated by service-bay membership', () => {
           carInstanceId: car.id,
           kind: 'repair-zone' as const,
           componentId: 'body' as const,
-          targetBand: 'mint' as const,
+          targetBand: 'fine' as const,
           laborSlotsRequired: 1,
         },
       ],
@@ -134,7 +134,7 @@ describe('labor is gated by service-bay membership', () => {
           carInstanceId: car.id,
           kind: 'repair-zone' as const,
           componentId: 'body' as const,
-          targetBand: 'mint' as const,
+          targetBand: 'fine' as const,
           laborSlotsRequired: 1,
         },
       ],
@@ -142,7 +142,7 @@ describe('labor is gated by service-bay membership', () => {
     }
     const { state: next } = advanceDay(won, actions, 2, CONTEXT)
     expect(next.jobs).toHaveLength(0) // completed and removed same day
-    expect(next.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(next.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
   })
 })
 

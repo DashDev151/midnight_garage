@@ -446,6 +446,11 @@ function repairAssistCaptionFor(carPartId: CarPartId): string | null {
   const d = detail.value
   return d ? assistCaption(game.machineAssistRepairFee(d.car.id, carPartId)) : null
 }
+/** Sprint 93: the tier-1 repair-ceiling caption for this part's group, or null. */
+function repairCeilingCaptionFor(componentId: ComponentId, carPartId: CarPartId): string | null {
+  const d = detail.value
+  return d ? game.repairCeilingCaption(d.car.id, componentId, carPartId) : null
+}
 
 // --- Bench work (Sprint 87 verbs, Sprint 88 panel) -------------------------
 
@@ -806,6 +811,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   >{{ repairAssistCaptionFor(selectedRow.partId) }}</span
                 >
               </template>
+
+              <!-- Sprint 93 (the band ceiling): at tier 1 a repair finishes at
+                   fine; this names the tier-2 machine that reaches mint. Sits
+                   outside the "+" block above so it still shows once the part is
+                   at fine and no further "+" rung remains. -->
+              <span
+                v-if="repairCeilingCaptionFor(selectedGroup, selectedRow.partId)"
+                class="ceiling-caption"
+                :data-test="'repair-ceiling-' + selectedRow.partId"
+                >{{ repairCeilingCaptionFor(selectedGroup, selectedRow.partId) }}</span
+              >
 
               <template v-if="!selectedRow.installedPartName">
                 <button
@@ -1766,6 +1782,15 @@ h4 {
 .assist-caption {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
+}
+
+/* Sprint 93 (the band ceiling): the "your tools finish at fine" hint pointing at
+   the tier-2 machine - a buy-the-machine prompt, so it reads as guidance, not a
+   fee. */
+.ceiling-caption {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
 }
 
 .staged-panel {

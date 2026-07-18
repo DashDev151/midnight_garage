@@ -15,6 +15,7 @@ import {
   bandIndex,
   canRepair,
   carCostToMintYen,
+  clampRepairTarget,
   climbBand,
   costToMintYen,
   costWeightedBandFactor,
@@ -23,7 +24,9 @@ import {
   isPartMissing,
   isPartPresent,
   planGroupRepair,
+  planPartRepair,
   presentPartIdsInGroup,
+  repairCeilingForLevel,
   repairLevelForGroup,
   scrapValueYen,
   slotsNeededToClimb,
@@ -495,6 +498,104 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
     const withCrew = planBody({ staff: [contracted], economy: ECONOMY })
     expect(withCrew.laborSlotsRequired).toBe(base.laborSlotsRequired)
     expect(withCrew.costYen).toBe(base.costYen)
+  })
+})
+
+describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
+  const CEILING = ECONOMY.repairBandCeilingByTier
+  // A surface (body) group spread across bands, to show what the tier-1 ceiling
+  // includes and excludes: panels worn, paint poor, aero already fine.
+  const bodyCar = buildCarInstance({
+    parts: mintCarParts({ panels: 'worn', paint: 'poor', aero: 'fine' }),
+  })
+
+  it('repairCeilingForLevel reads the content knob: tier-1 caps at fine, tier-2/3 reach mint', () => {
+    expect(repairCeilingForLevel(1, ECONOMY)).toBe('fine')
+    expect(repairCeilingForLevel(2, ECONOMY)).toBe('mint')
+    expect(repairCeilingForLevel(3, ECONOMY)).toBe('mint')
+  })
+
+  it('clampRepairTarget lowers an above-ceiling target and leaves an at/below one alone', () => {
+    expect(clampRepairTarget('mint', 'fine')).toBe('fine')
+    expect(clampRepairTarget('worn', 'fine')).toBe('worn')
+    expect(clampRepairTarget('mint', 'mint')).toBe('mint')
+  })
+
+  it('a tier-1 group repair toward mint stops at fine: an already-fine part drops out, and the plan sizes to the fine climb not the mint one', () => {
+    const capped = planGroupRepair(
+      bodyCar,
+      'body',
+      'mint',
+      testToolTiers(),
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      1,
+      undefined,
+      undefined,
+      CEILING,
+    )
+    const uncapped = planGroupRepair(
+      bodyCar,
+      'body',
+      'mint',
+      testToolTiers(),
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      1,
+    )
+    const panelsPrice = installedPriceYen(bodyCar, 'panels')
+    const paintPrice = installedPriceYen(bodyCar, 'paint')
+    // Capped to fine: panels worn->fine (1 grade), paint poor->fine (2 grades);
+    // aero is already fine, so it has nothing to climb toward fine and drops out.
+    expect(capped.partIds).toEqual(['panels', 'paint'])
+    expect(capped.costYen).toBe(1 * panelsPrice + 2 * paintPrice)
+    expect(capped.laborSlotsRequired).toBe(1 + 2)
+    // The unbounded band-math (no ceiling passed) still climbs every part one
+    // further grade to mint AND lifts the already-fine aero - strictly more work.
+    expect(uncapped.partIds).toEqual(['panels', 'paint', 'aero'])
+    expect(uncapped.costYen).toBeGreaterThan(capped.costYen)
+    expect(uncapped.laborSlotsRequired).toBeGreaterThan(capped.laborSlotsRequired)
+  })
+
+  it('a tier-2 group repair toward mint is unclamped - the tier-2 ceiling IS mint', () => {
+    const t2 = testToolTiers({ body: 2 })
+    const withCeiling = planGroupRepair(
+      bodyCar,
+      'body',
+      'mint',
+      t2,
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      1,
+      undefined,
+      undefined,
+      CEILING,
+    )
+    const withoutCeiling = planGroupRepair(
+      bodyCar,
+      'body',
+      'mint',
+      t2,
+      CONTEXT.partIdsByGroup,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      1,
+    )
+    expect(withCeiling.partIds).toEqual(withoutCeiling.partIds)
+    expect(withCeiling.costYen).toBe(withoutCeiling.costYen)
+    expect(withCeiling.laborSlotsRequired).toBe(withoutCeiling.laborSlotsRequired)
+  })
+
+  it('planPartRepair caps the achievable target at repairCeiling (a worn part toward mint reaches only fine under the tier-1 ceiling)', () => {
+    const dampers = TAXONOMY_BY_ID.dampers // repairable
+    const toMint = planPartRepair('worn', 'mint', 1, dampers, 100_000, 1)
+    const toFineCeiling = planPartRepair('worn', 'mint', 1, dampers, 100_000, 1, 'fine')
+    expect(toMint.costYen).toBe(2 * 100_000) // worn->mint = 2 grades, unbounded
+    expect(toFineCeiling.costYen).toBe(1 * 100_000) // clamped to worn->fine = 1 grade
+    expect(toFineCeiling.laborSlotsRequired).toBe(1)
   })
 })
 

@@ -51,6 +51,14 @@ the group, exactly as the engine crane gates the engine pull and not every spark
 
 ### Axis 2 - BAND CEILING: tier caps the finish quality
 
+> CORRECTION (maintainer ruling 2026-07-18): the ceiling is a HARD cap on REPAIRING, not the
+> soft rental described below. Tier-1 can REPAIR a part only to fine; repairing to mint needs
+> tier-2 OWNED (no band rental). It gates REPAIR only: buying a mint replacement part and
+> fitting it is always allowed at any tier, so mint is always reachable by buying. Owning
+> tier-2 lets you repair the part to mint instead of buying one (cheaper). Tier-3's advantage
+> is speed + the master contracts, no new perk. See `docs/sprints/sprint93.md` for the
+> authoritative model; the soft-cap text below is superseded.
+
 The tool tier caps how good a repair can get, matching what the content already declares:
 
 | Tier | Repair ceiling |

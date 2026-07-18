@@ -125,13 +125,16 @@ describe('tool lines in the store (Sprint 36)', () => {
     // entirely bolt-on/buried now - bench-only, refused on-car regardless of
     // tool tier - so it can no longer prove an ABSENCE of a tier gate. 'body'
     // stays fully on-car-repairable and exercises the exact same claim.
-    game.repair(car.id, 'body')
+    // Sprint 93 (the band ceiling): a tier-1 repair finishes at fine, so target
+    // fine - the reachable ceiling. The claim under test is unchanged: no
+    // OWNERSHIP gate exists, a fine repair just proceeds at tier 1.
+    game.repair(car.id, 'body', 'fine')
     // A single day's labor may be enough to finish the job outright (in
     // which case it's already gone from the in-progress list) - either an
     // open job or a completed repair proves no gate refused it.
     const detail = game.carDetail(car.id)
     const jobOpened = detail?.jobs.some((j) => j.componentId === 'body') ?? false
-    const jobFinished = detail?.groupBands.body === 'mint'
+    const jobFinished = detail?.groupBands.body === 'fine'
     expect(jobOpened || jobFinished).toBe(true)
   })
 })

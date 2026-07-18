@@ -206,6 +206,16 @@ pass."
 
 ## Open engineering
 
+- [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
+  by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
+  reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
+  gearbox bench). The caption is correct for the grouping; the GROUPING is the wart. Moving
+  chassis to `body` would name the MIG welder (sensible) but ripples through everything that
+  groups by component (marketValue, coherence repair planning, specialty rep, the service
+  diagram layout, the tool line it draws its tier-2 from). A deliberate content-taxonomy pass,
+  not a one-liner; do it when touching component grouping, and re-run the coherence probes.
+  Also revisit the bench-recondition control's analogous (captionless) fine-cap at tier-1
+  (Sprint 93 scoped the caption to the on-car "+" only).
 - [ ] **LAUNCH-BLOCKING: replace the placeholder part sprites with commissioned art (Sprint 88,
   decision 4).** The 29 part + 3 assembly service-diagram sprites in
   `packages/game/src/components/partSprites.ts` are development placeholders, explicitly

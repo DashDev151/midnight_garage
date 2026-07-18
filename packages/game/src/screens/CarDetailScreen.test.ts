@@ -4,6 +4,7 @@ import {
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
+  TOOL_LINES,
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
@@ -115,16 +116,20 @@ function repairableSurfaceRows(
   carId: string,
   componentId: ComponentId,
 ) {
-  return game
-    .partsInGroup(carId, componentId)
-    .filter(
-      (row) =>
-        row.band !== null &&
-        row.band !== 'mint' &&
-        row.band !== 'scrap' &&
-        row.repairable &&
-        PARTS_TAXONOMY.find((e) => e.id === row.partId)?.depthClass === 'surface',
-    )
+  return game.partsInGroup(carId, componentId).filter(
+    (row) =>
+      row.band !== null &&
+      row.band !== 'mint' &&
+      row.band !== 'scrap' &&
+      row.repairable &&
+      // Sprint 93 (the band ceiling): only a row the on-car "+" can act on
+      // right now. At tier 1 a `fine` part has no further rung (mint needs
+      // the group's tier-2 machine owned), so its stage button never renders
+      // - select it and the tests below click a control that is not there.
+      // This gate is tier-aware: at tier 2/3 a below-mint part still steps.
+      game.nextRepairStep(carId, componentId, row.partId) !== null &&
+      PARTS_TAXONOMY.find((e) => e.id === row.partId)?.depthClass === 'surface',
+  )
 }
 
 /** Whether `componentId` has anything an on-car repair control would act on. */
@@ -259,6 +264,35 @@ describe('CarDetailScreen', () => {
     expect(owned.wrapper.find('[data-test="assist-fee-repair-panels"]').exists()).toBe(false)
   })
 
+  /**
+   * Sprint 93 (the band ceiling): the on-car per-part repair affordance shows a
+   * caption at tier 1 naming the group's tier-2 machine - the constraint at the
+   * point of the action (why the repair finishes at fine, and which machine
+   * reaches mint). It is absent once that machine is owned (no cap at tier 2).
+   */
+  it('shows the tier-1 repair-ceiling caption naming the group tier-2 machine, and drops it once the machine is owned', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, a shitbox at tier-1 tools
+    const id = game.gameState.ownedCars[0]!.id
+    const car = game.gameState.ownedCars.find((c) => c.id === id)!
+    // panels: an installed, repairable body SURFACE slot below mint - the on-car
+    // repair "+" (and this ceiling caption) applies.
+    car.parts.panels = { installed: { ...car.parts.panels.installed!, band: 'worn' } }
+    const bodyMachine = TOOL_LINES.body.tiers[1]!.displayName
+
+    const { wrapper } = await mountAt(id)
+    await selectPart(wrapper, 'body', 'panels')
+    const cap = wrapper.find('[data-test="repair-ceiling-panels"]')
+    expect(cap.exists()).toBe(true)
+    expect(cap.text()).toBe(`Your tools finish at fine. The ${bodyMachine} reaches mint.`)
+
+    // Owning the tier-2 machine lifts the ceiling to mint - the caption drops.
+    game.devSetToolTier('body', 2)
+    const owned = await mountAt(id)
+    await selectPart(owned.wrapper, 'body', 'panels')
+    expect(owned.wrapper.find('[data-test="repair-ceiling-panels"]').exists()).toBe(false)
+  })
+
   it('a tile click only navigates; a block click docks that part in the action panel (Sprint 88 decision 1)', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
@@ -376,7 +410,7 @@ describe('CarDetailScreen', () => {
         },
       ])
 
-      if (firstStep.targetBand === 'mint') return // already at the ceiling in one click
+      if (firstStep.targetBand === 'fine') return // already at the tier-1 ceiling in one click
 
       const secondStep = game.nextRepairStep(id, 'body', row.partId)!
       expect(secondStep.targetBand).not.toBe(firstStep.targetBand)

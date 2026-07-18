@@ -114,7 +114,7 @@ const noActions: DayActions = emptyDayActions()
 
 /**
  * Scripted 30-day career: day 1 moves the car into the (sole, starting)
- * service bay and opens a repair-zone job (body group, target mint, 3
+ * service bay and opens a repair-zone job (body group, target fine, 3
  * slots) and works it to completion, then opens an install-part job for the
  * spare coilovers and completes it; the remaining days pass idle so weekly
  * rent (days 7/14/21/28) and market-heat drift exercise on schedule. Seed 42
@@ -132,7 +132,7 @@ function scriptedActionsForDay(day: number): DayActions {
           carInstanceId: 'car-0001',
           kind: 'repair-zone',
           componentId: 'body',
-          targetBand: 'mint',
+          targetBand: 'fine',
           laborSlotsRequired: 3,
         },
       ],
@@ -341,9 +341,10 @@ describe('advanceDay golden master', () => {
     // and `carLedgers[car-0001].repairYen` (Y19,000 higher) move; every other
     // assertion in this file (job completion, the panels/dampers slot changes,
     // determinism via the repeat-run test above) still passes unchanged.
+    // Re-pinned again (Sprint 93 band ceiling, was 7a2e3325): a pure VALUE change (directive 17 case (a)) - the day-1 body repair now targets fine (tier-1 caps a repair at fine), so it climbs the body group one grade less and charges less; no state-shape change, and the repeat-run determinism test still passes.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('7a2e3325')
+    expect(hashState(finalState)).toBe('d997e784')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -352,11 +353,11 @@ describe('advanceDay golden master', () => {
     expect(a).toBe(b)
   })
 
-  it('the repair-zone job completes and restores the body group to mint', () => {
+  it('the repair-zone job completes and restores the body group to fine', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
-    expect(car?.parts.panels.installed?.band).toBe('mint')
-    expect(car?.parts.aero.installed?.band).toBe('mint')
+    expect(car?.parts.panels.installed?.band).toBe('fine')
+    expect(car?.parts.aero.installed?.band).toBe('fine')
   })
 
   it('the install-part job moves the spare coilovers onto the dampers slot', () => {
@@ -386,7 +387,7 @@ describe('advanceDay golden master', () => {
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
-      'mint',
+      'fine',
       testToolTiers(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,

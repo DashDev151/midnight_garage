@@ -13,10 +13,12 @@ import type { NewJobSpec } from './actions'
 import {
   bandIndex,
   canRepair,
+  clampRepairTarget,
   hasForcedInduction,
   planGroupRepair,
   planPartRepair,
   presentPartIdsInGroup,
+  repairCeilingForLevel,
   repairLevelForGroup,
   type PartRepairPlan,
 } from './bands'
@@ -723,6 +725,25 @@ export function repairJobGate(
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
     }
   }
+  // Sprint 93 (the band ceiling): a REPAIR climbs a part only to the group's own
+  // tool-tier ceiling (`economy.repairBandCeilingByTier`) - tier-1 caps at fine;
+  // mint needs the group's tier-2 machine OWNED. An explicit job that targets a
+  // band ABOVE the ceiling is refused with a `tool-tier` reason (the UI already
+  // renders that reason for the NA-to-turbo gate) rather than silently clamped,
+  // so a created job never climbs a part past what was priced and labored. This
+  // gates REPAIR only: a mint result stays reachable at any tier by BUYING a
+  // mint replacement part and fitting it (an install, never gated here) - owning
+  // tier-2 only lets a shop REPAIR the existing part to mint instead (cheaper).
+  const repairCeiling = repairCeilingForLevel(
+    repairLevelForGroup(state.toolTiers, spec.componentId),
+    context.economy,
+  )
+  if (bandIndex(spec.targetBand) > bandIndex(repairCeiling)) {
+    return {
+      ok: false,
+      log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'tool-tier' }],
+    }
+  }
   // Sprint 82: pass the benched crew so the CHARGE reflects a perfectionist's
   // parts discount (decision 5); the caller already sized the job's labour with
   // the same crew, so cost and slots stay consistent for the player.
@@ -1113,6 +1134,11 @@ function updateLoosePart(
 interface ReconditionPlan {
   group: ComponentId
   plan: PartRepairPlan
+  /** Sprint 93: the EFFECTIVE target after the tier ceiling clamp - the band
+   * the bench recondition will actually reach and the band the created job must
+   * carry, so completion (`completeReconditionJob`) never climbs the part past
+   * what the plan priced and labored. */
+  targetBand: ConditionBand
 }
 
 /**
@@ -1141,15 +1167,27 @@ function planReconditionPart(
   const group = taxonomyEntry?.group
   if (!catalogPart || !taxonomyEntry || !group) return null
   const repairLevel = repairLevelForGroup(state.toolTiers, group)
+  // Sprint 93 (the band ceiling): a bench recondition climbs only to the
+  // group's tool-tier ceiling. A "sweep to a band" clamps rather than refuses
+  // (the spec's own split) - a tier-1 recondition of a worn part toward mint
+  // repairs it as far as it can (to fine) and the created job carries that
+  // clamped band, so mint by REPAIR needs the tier-2 machine while mint by
+  // BUYING a replacement part stays available at any tier (unchanged).
+  const effectiveTarget = clampRepairTarget(
+    targetBand,
+    repairCeilingForLevel(repairLevel, context.economy),
+  )
   const plan = planPartRepair(
     instance.band,
-    targetBand,
+    effectiveTarget,
     repairLevel,
     taxonomyEntry,
     catalogPart.priceYen,
     context.economy.restoration.repairStepFraction,
   )
-  if (plan.laborSlotsRequired === 0) return null // scrap, non-repairable, or nothing to climb
+  // Zero when scrap, non-repairable, nothing left to climb, or already at/above
+  // the tier ceiling (a tier-1 recondition of an already-fine part toward mint).
+  if (plan.laborSlotsRequired === 0) return null
   // Sprint 82: bench recondition shares the one repair economy, so the benched
   // crew's speed discount (decision 2) and a perfectionist's parts discount
   // (decision 5) apply here exactly as they do to on-car group repair.
@@ -1159,7 +1197,7 @@ function planReconditionPart(
       crewSlotsSaved(plan.laborSlotsRequired, group, state.staff, context.economy),
     costYen: Math.round(plan.costYen * perfectionistCostMultiplier(state.staff, context.economy)),
   }
-  return { group, plan: adjusted }
+  return { group, plan: adjusted, targetBand: effectiveTarget }
 }
 
 export interface ReconditionQuote {
@@ -1250,7 +1288,9 @@ export function resolveReconditionLabor(
     kind: 'recondition-part',
     componentId: planned.group,
     partInstanceId,
-    targetBand,
+    // Sprint 93: the CLAMPED target the plan actually priced/labored, so
+    // `completeReconditionJob` climbs the loose part to exactly that band.
+    targetBand: planned.targetBand,
     laborSlotsRequired: planned.plan.laborSlotsRequired,
     laborSlotsSpent: 0,
   }

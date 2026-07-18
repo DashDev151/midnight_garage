@@ -1026,6 +1026,41 @@ export const EconomyConfigSchema = z.object({
     naToTurboConversionEngineTier: ToolTierSchema,
   }),
   /**
+   * Sprint 93 (the band ceiling - tools cap the finish): the best condition
+   * band a REPAIR can reach at each tool tier. Tier-1 hand tools climb a part
+   * only to `fine`; owning the tier-2 machine is what lets a repair reach
+   * `mint`. This is a HARD cap on REPAIRING, never a rental and never a gate on
+   * INSTALL: buying a mint replacement part and fitting it is allowed at any
+   * tier (a bought part is already mint via `resolveBuyPart`), so mint is ALWAYS
+   * reachable by buying - owning tier-2 only lets you REPAIR the existing part
+   * to mint instead (cheaper, and it keeps a genuine-period part; that price gap
+   * IS the incentive to own). Read per group's own tool tier by the repair
+   * planners (`planGroupRepair`/`planPartRepair`/`planReconditionPart`/
+   * `repairJobGate`, sim). Deliberately NOT read by value/cost accounting
+   * (`carCostToBandYen`, `serviceJobCostBreakdown`): those price the
+   * mint-referenced restoration bill and the market-rate customer quote, both
+   * tier-independent facts, never the player's own shop capability. Keyed per
+   * tier (1/2/3); per-group overrides are unnecessary in v1 (uniform). Must be
+   * band-monotonic up the ladder - a higher tier never repairs to a WORSE band.
+   */
+  repairBandCeilingByTier: z
+    .object({
+      1: ConditionBandSchema,
+      2: ConditionBandSchema,
+      3: ConditionBandSchema,
+    })
+    .refine(
+      (c) => {
+        const idx = (band: (typeof ConditionBandSchema.options)[number]) =>
+          ConditionBandSchema.options.indexOf(band)
+        return idx(c[1]) <= idx(c[2]) && idx(c[2]) <= idx(c[3])
+      },
+      {
+        message:
+          'repairBandCeilingByTier must be band-monotonic up the tiers (tier 1 <= tier 2 <= tier 3)',
+      },
+    ),
+  /**
    * Sprint 38: the specialty axis's four tunables (progression bible's
    * horizontal axis - per-discipline word of mouth). `biasFactor`/
    * `softcapPoints` shape the offer-selection weight

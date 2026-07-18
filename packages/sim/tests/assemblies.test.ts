@@ -206,16 +206,16 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     const container = off.state.assemblyInventory![0]!
     // Bench-repair the rims MEMBER through the existing recondition path (it now
     // finds container members, so the member reconditions exactly like a bin part).
-    const repair = resolveReconditionLabor(off.state, originalRims.id, 'mint', Infinity, CONTEXT)
+    const repair = resolveReconditionLabor(off.state, originalRims.id, 'fine', Infinity, CONTEXT)
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
-    expect(findLoosePart(repair.state, originalRims.id)!.band).toBe('mint')
+    expect(findLoosePart(repair.state, originalRims.id)!.band).toBe('fine')
 
     const swap = resolveSwapAssemblyMember(repair.state, container.id, 'tyres', tyre.id, CONTEXT)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
     // Repaired rims no longer match the worn baseline (1) + new tyre (1) = 2.
     expect(on.laborSlotsUsed).toBe(2)
-    expect(on.state.ownedCars[0]!.parts.rims.installed!.band).toBe('mint')
+    expect(on.state.ownedCars[0]!.parts.rims.installed!.band).toBe('fine')
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
 

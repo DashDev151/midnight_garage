@@ -16,8 +16,9 @@ import {
   type RequirementSpec,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { carCostToBandYen, hasForcedInduction } from '../src/bands'
+import { carCostToBandYen, hasForcedInduction, repairCeilingForLevel } from '../src/bands'
 import { buildSimContext } from '../src/context'
+import { resolveBuyPart } from '../src/parts'
 import { computeDerivedStats } from '../src/derivedStats'
 import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
@@ -97,6 +98,15 @@ interface AftermarketFit {
  * aftermarket part's own catalog price + the repair-atom cost of every
  * OTHER slot from `worn` to `endBand` (`carCostToBandYen` - a slot getting a
  * brand new part is never ALSO charged to repair the part it's replacing).
+ *
+ * Sprint 93 (the band ceiling): `carCostToBandYen` is the tier-INDEPENDENT
+ * restoration bill (the market's mint-referenced value accounting), so the
+ * probe cost is unchanged by the repair ceiling - a mint `endBand` slot is
+ * always reachable at any tier by BUYING a mint part and fitting it (an install,
+ * never repair-gated), which is precisely the price this bill already carries.
+ * The tier-1 repair cap only changes the COST of the alternative genuine-period
+ * repair route, never whether the required band can be produced - the
+ * satisfiability of that is asserted directly in its own describe below.
  */
 function buildProbe(modelId: string, endBand: ConditionBand, aftermarket: AftermarketFit[] = []) {
   const model = CARS.find((c) => c.id === modelId)!
@@ -476,6 +486,44 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       ceil1AtTwoPercentSlower(timeSeconds),
     )
     assertPassesAndPriceLocked('under-one-fifteen', afterCar, probeCostYen)
+  })
+})
+
+/**
+ * Sprint 93 (the band ceiling): the tool-satisfiability the missions previously
+ * lacked entirely. The five mint-band missions build their car to mint; under
+ * the repair ceiling a fresh (tier-1) shop cannot REPAIR a part above fine, yet
+ * mint stays reachable at any tier by BUYING a mint replacement part and FITTING
+ * it (an install, never gated by the repair ceiling). So no mission is ever
+ * tool-locked: the cap changes the COST of the genuine-period repair route, not
+ * whether the required band can be produced. Owning a group's tier-2 machine is
+ * what lets a shop reach mint by cheaper repair instead of buying.
+ */
+describe('the mint-band missions stay satisfiable at any tier (Sprint 93 band ceiling)', () => {
+  const MINT_MISSIONS = [
+    'make-it-pull',
+    'the-column-clock',
+    'low-and-loud',
+    'street-power-street-manners',
+    'under-one-fifteen',
+  ]
+
+  it('every mint-band mission is authored and builds its car to mint (proven passing by the probes above)', () => {
+    for (const id of MINT_MISSIONS) expect(mission(id)).toBeDefined()
+  })
+
+  it('a fresh tier-1 shop caps a REPAIR at fine, yet still reaches mint by buying and fitting a part - the cap changes cost, not possibility', () => {
+    const tier1 = createInitialGameState(CONTEXT, 1)
+    // A fresh shop lives under the tier-1 repair ceiling: repair alone stops at
+    // fine on every tool line.
+    for (const tier of Object.values(tier1.toolTiers)) {
+      expect(repairCeilingForLevel(tier, CONTEXT.economy)).toBe('fine')
+    }
+    // The always-available mint route, unchanged by the cap: resolveBuyPart yields
+    // a mint instance at any tier, and fitting it is an install (no band gate).
+    const stockPart = PARTS.find((p) => p.grade === 'stock')!
+    const bought = resolveBuyPart(tier1, stockPart.id, CONTEXT)
+    expect(bought.state.partInventory.at(-1)?.band).toBe('mint')
   })
 })
 
