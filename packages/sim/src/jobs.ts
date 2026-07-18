@@ -470,6 +470,13 @@ export function resolveRemovePart(
   const entry = context.partsTaxonomyById[carPartId]
   const componentId = entry?.group
   if (!entry || !componentId) return { state, log: [], laborSlotsUsed: 0 }
+  // Sprint 88: an assembly member is worked only via its assembly, never pulled
+  // off the car on its own. The sim primitive now refuses it outright (the store
+  // and UI already refuse; this closes the direct-caller hole the Sprint 87 Exit
+  // deferred here).
+  if (context.assemblies.some((a) => a.members.includes(carPartId))) {
+    return { state, log: [], laborSlotsUsed: 0 }
+  }
   const busy = state.jobs.some(
     (j) =>
       j.carInstanceId === carInstanceId &&

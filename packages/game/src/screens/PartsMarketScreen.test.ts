@@ -1,7 +1,7 @@
 import { PARTS } from '@midnight-garage/content'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import PartsMarketScreen from './PartsMarketScreen.vue'
 
@@ -19,6 +19,16 @@ function mountScreen() {
 const cheapest = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
 
 describe('PartsMarketScreen', () => {
+  // happy-dom ships no 2D canvas context, so partSprites' rasteriser bails to ''.
+  // A no-op context lets the real module reach toDataURL, which happy-dom returns
+  // as a data: URL - enough to assert the catalogue card wires the sprite in.
+  beforeAll(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      imageSmoothingEnabled: false,
+      fillStyle: '',
+      fillRect: () => {},
+    } as unknown as never)
+  })
   beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
@@ -37,6 +47,16 @@ describe('PartsMarketScreen', () => {
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     expect(wrapper.findAll('.part').length).toBe(PARTS.length)
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
+  })
+
+  it('renders each catalogue card with its slot sprite thumbnail (Sprint 88 decision 7)', async () => {
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="browse-everything"]').trigger('click')
+    const sprite = wrapper.find(`[data-test="part-sprite-${cheapest.id}"]`)
+    expect(sprite.exists()).toBe(true)
+    expect(sprite.attributes('src')).toMatch(/^data:image\/png/)
+    // Decorative: the part name is the accessible label, the sprite is hidden.
+    expect(sprite.attributes('aria-hidden')).toBe('true')
   })
 
   it('the breadcrumb root returns from browse-everything back to the six heroes', async () => {

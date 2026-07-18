@@ -1,10 +1,12 @@
 import {
   ALL_CAR_PART_IDS,
+  ASSEMBLIES,
   PARTS_TAXONOMY,
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { PART_SPRITE_GRID } from './partSprites'
 import {
   DIAGRAM_VIEW_H,
   DIAGRAM_VIEW_W,
@@ -155,6 +157,35 @@ describe('parts diagram group tile map', () => {
           `tiles ${p} and ${q} must not overlap`,
         ).toBe(false)
       }
+    }
+  })
+})
+
+/**
+ * Sprint 88 decision 4: the layout now renders a placeholder sprite in every
+ * block, so the layout is coupled to `partSprites.ts`'s footprints. This keeps
+ * the two in step - every drawn part (and every assembly composite) has exactly
+ * one authored sprite at one of the two grid sizes the spec fixes (24x16 for a
+ * standard part, 32x22 for a large unit). Rules A and B above are untouched.
+ */
+describe('parts diagram sprite footprints', () => {
+  const STANDARD = { w: 24, h: 16 }
+  const LARGE = { w: 32, h: 22 }
+
+  it('has exactly one sprite footprint per car part and per assembly, no extras', () => {
+    const expected = [...ALL_CAR_PART_IDS, ...ASSEMBLIES.map((a) => a.id)].sort()
+    for (const id of expected) {
+      expect(PART_SPRITE_GRID[id], `missing sprite footprint for ${id}`).toBeDefined()
+    }
+    expect(Object.keys(PART_SPRITE_GRID).sort()).toEqual(expected)
+  })
+
+  it('every sprite footprint is one of the two authored grid sizes', () => {
+    for (const [id, grid] of Object.entries(PART_SPRITE_GRID)) {
+      const ok =
+        (grid.w === STANDARD.w && grid.h === STANDARD.h) ||
+        (grid.w === LARGE.w && grid.h === LARGE.h)
+      expect(ok, `${id} footprint ${grid.w}x${grid.h} is neither 24x16 nor 32x22`).toBe(true)
     }
   })
 })

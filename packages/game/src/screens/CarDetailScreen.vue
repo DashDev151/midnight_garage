@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import type { CarPartId, ComponentId, ConditionBand, StagedAction } from '@midnight-garage/content'
-import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import type {
+  AssemblyId,
+  CarPartId,
+  ComponentId,
+  ConditionBand,
+  StagedAction,
+} from '@midnight-garage/content'
+import { ALL_CAR_PART_IDS, ASSEMBLIES, PARTS_TAXONOMY } from '@midnight-garage/content'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
 import PartsDiagram from '../components/PartsDiagram.vue'
+import { partSpriteDataUrl } from '../components/partSprites'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
 import StatRadar from '../components/StatRadar.vue'
@@ -17,6 +24,7 @@ import {
 } from '../composables/useDragAndDrop'
 import {
   useGameStore,
+  type AssemblyRowView,
   type BenchMemberView,
   type CarPartRowView,
   type NextRepairStepView,
@@ -31,21 +39,21 @@ const router = useRouter()
 const carId = computed(() => String(route.params.id))
 const detail = computed(() => game.carDetail(carId.value))
 
-/** Sprint 63: whether the planned work needs more labour than is left today -
- * a caption warning, never a block (queued work already spans days). */
+/** Sprint 88 decision 2/6: the radar rides top-right of the hero header at a
+ * smaller size than the Sprint 86 default. */
+const RADAR_SIZE = 150
+
+/** Each part's blockers, from the live taxonomy - the panel's "Sits under" line
+ * reads the hierarchy, never re-encodes it (directive 16). */
+const BLOCKED_BY: Record<string, readonly CarPartId[]> = Object.fromEntries(
+  PARTS_TAXONOMY.map((entry) => [entry.id, entry.blockedBy]),
+)
+
+/** Sprint 63: whether the planned work needs more labour than is left today. */
 const plannedLaborOverToday = computed(
   () => (detail.value?.plannedEstimate?.plannedLaborSlots ?? 0) > game.laborSlotsRemainingToday,
 )
 
-/**
- * True while this car is an accepted service job's customer car that hasn't
- * arrived yet (Sprint 25 task 2) - nothing to inspect, stage, or sell until
- * it shows up, so the whole interactive body below is replaced by a single
- * "arriving tomorrow" banner. Reads the store's own `inTransit` view field
- * (Sprint 40, `isServiceJobInTransit` under the hood) rather than a local
- * `arrivesOnDay != null` re-derivation - the same check the sim's own
- * completion guard and the job board use, not a second copy of it.
- */
 const inTransit = computed(() => detail.value?.serviceJob?.inTransit ?? false)
 
 // A sold or unknown car has no detail - send the player back to the garage.
@@ -57,12 +65,8 @@ watch(
   { immediate: true },
 )
 
-/**
- * Sprint 71 decision 7: "Scrap the shell" is a two-step commit, mirroring
- * `AuctionScreen.vue`'s `onBuyoutClick` - irreversible and worth a real
- * second click, not a stray one. Reset on navigating to a different car so
- * an armed confirm from a previous car can never carry over and fire here.
- */
+/** Sprint 71 decision 7: "Scrap the shell" is a two-step commit. Reset on
+ * navigating to a different car. */
 const scrapConfirming = ref(false)
 watch(carId, () => {
   scrapConfirming.value = false
@@ -79,8 +83,7 @@ function onScrapShellClick(): void {
   }
 }
 
-/** Sprint 74 decision 3: the "Full workup" button's own disabled reason,
- * mirrored from `detail.workupGateReason`. */
+/** Sprint 74 decision 3: the "Full workup" button's own disabled reason. */
 const WORKUP_GATE_LABEL: Record<string, string> = {
   'no-labor-slot': 'No labour slots left today',
   'not-found': 'Car not found',
@@ -99,162 +102,126 @@ function onWorkupClick(): void {
   game.resolveOwnedWorkup(d.car.id)
 }
 
-const COMPONENTS: readonly ComponentId[] = [
-  'engine',
-  'drivetrain',
-  'suspension',
-  'wheels',
-  'body',
-  'interior',
-]
-
-/**
- * Sprint 67 decision 4 (playtest item 16): ONE constant order - engine,
- * drivetrain, suspension, wheels, body, interior - the same on every car,
- * forever.
- *
- * This explicitly RETIRES Sprint 41 decision 4, which sorted worst-band-first
- * for "condition-panel readability". That rationale was real but loses to
- * muscle memory: a panel that reorders itself as you repair it is a panel you
- * have to re-read every time. The maintainer's instruction is the decision;
- * the reversal is recorded in `sprint67.md`.
- */
-const orderedComponents: readonly ComponentId[] = COMPONENTS
-
-// --- Sprint 28: drill-down (group rows expand to their real part rows) --
-
-const expandedGroups = reactive(new Set<ComponentId>())
-
-function toggleExpanded(componentId: ComponentId): void {
-  if (expandedGroups.has(componentId)) expandedGroups.delete(componentId)
-  else expandedGroups.add(componentId)
-}
-
-/** Sprint 67 decision 3 (playtest item 9): bulk drill-down controls. */
-function expandAllGroups(): void {
-  for (const componentId of COMPONENTS) expandedGroups.add(componentId)
-}
-
-function collapseAllGroups(): void {
-  expandedGroups.clear()
-}
-
-/** Every real part row within a group, for the drill-down. */
+/** Every real part row within a group, for the panel's lookups. */
 function rowsFor(componentId: ComponentId) {
   return detail.value ? game.partsInGroup(detail.value.car.id, componentId) : []
 }
 
-// --- Sprint 48 decision 1: one global condition filter replaces the old
-// per-group "+N parts in good order" toggle - a single dropdown governs
-// every group's drill-down at once. -------------------------------------
+// --- Sprint 88: the diagram is the page. The docked info/action panel replaces
+// the old components list; a diagram block or a bench-strip member is its
+// target. -----------------------------------------------------------------
 
-/**
- * Sprint 67 decision 2 (playtest items 18 + 10): `absent` is a real category,
- * not a null. It has no checkbox of its own - it is simply not in the default
- * `visibleConditions`, so a legitimately-absent slot (forced induction on an
- * NA car) hides by default and `Show all` reveals it.
- */
-const CONDITION_FILTER_OPTIONS = ['mint', 'fine', 'worn', 'poor', 'scrap', 'missing'] as const
-type ConditionFilterOption = (typeof CONDITION_FILTER_OPTIONS)[number] | 'absent'
-/** Every category the filter can hold, including the checkbox-less `absent`. */
-const ALL_FILTER_CATEGORIES: readonly ConditionFilterOption[] = [
-  ...CONDITION_FILTER_OPTIONS,
-  'absent',
-]
+type PanelTarget =
+  { kind: 'part'; partId: CarPartId } | { kind: 'bench'; containerId: string; carPartId: CarPartId }
 
-/** Default preserves the old de-noised view: worn/poor/scrap/missing shown,
- * fine/mint hidden. */
-const visibleConditions = reactive(
-  new Set<ConditionFilterOption>(['worn', 'poor', 'scrap', 'missing']),
+const panelTarget = ref<PanelTarget | null>(null)
+watch(carId, () => {
+  panelTarget.value = null
+})
+
+/** The diagram emits the selected part id (or null when it navigates). */
+function onDiagramSelect(partId: CarPartId | null): void {
+  panelTarget.value = partId ? { kind: 'part', partId } : null
+}
+
+function selectBenchMember(containerId: string, carPartId: CarPartId): void {
+  panelTarget.value = { kind: 'bench', containerId, carPartId }
+}
+
+const selectedPartId = computed<CarPartId | null>(() =>
+  panelTarget.value?.kind === 'part' ? panelTarget.value.partId : null,
 )
 
-function toggleConditionFilter(option: ConditionFilterOption): void {
-  if (visibleConditions.has(option)) visibleConditions.delete(option)
-  else visibleConditions.add(option)
+const selectedGroup = computed<ComponentId | null>(() => {
+  const id = selectedPartId.value
+  return id ? (game.groupForCarPart(id) ?? null) : null
+})
+
+const selectedRow = computed<CarPartRowView | null>(() => {
+  const id = selectedPartId.value
+  const g = selectedGroup.value
+  if (!id || !g) return null
+  return rowsFor(g).find((r) => r.partId === id) ?? null
+})
+
+/** The selected benched container + member, when the panel target is a bench
+ * member. */
+const selectedBench = computed<{ containerId: string; member: BenchMemberView } | null>(() => {
+  const t = panelTarget.value
+  if (t?.kind !== 'bench' || !detail.value) return null
+  const container = game.benchContainersFor(detail.value.car.id).find((c) => c.id === t.containerId)
+  const member = container?.members.find((m) => m.carPartId === t.carPartId) ?? null
+  return container && member ? { containerId: container.id, member } : null
+})
+
+/** The parts that sit on top of the selected part (its taxonomy blockers), for
+ * the panel's "Sits under: {names}" line (Sprint 88 decision 3, FINAL format). */
+const selectedBlockers = computed<string[]>(() => {
+  const id = selectedPartId.value
+  if (!id) return []
+  return (BLOCKED_BY[id] ?? []).map((b) => game.carPartLabel(b))
+})
+
+/** The assembly whose context this panel target belongs to (a member part on
+ * the car, or a benched member), or null. Drives the shared Remove/Refit
+ * action. */
+const selectedAssemblyId = computed<AssemblyId | null>(() => {
+  const t = panelTarget.value
+  if (t?.kind === 'part') return ASSEMBLIES.find((a) => a.members.includes(t.partId))?.id ?? null
+  return selectedBench.value ? findBenchAssemblyId(selectedBench.value.containerId) : null
+})
+
+function findBenchAssemblyId(containerId: string): AssemblyId | null {
+  if (!detail.value) return null
+  return (
+    game.benchContainersFor(detail.value.car.id).find((c) => c.id === containerId)?.assemblyId ??
+    null
+  )
 }
 
-/**
- * A row's filter category. Sprint 67 decision 2 (playtest items 18 + 10):
- * a legitimately-absent slot is `'absent'`, never `null`.
- *
- * The `null` it used to return made the row unfilterable and permanently
- * visible, which was BOTH bugs the maintainer reported: item 18 ("it shows
- * missing slots even if only poor is selected") and item 10 ("an empty FI slot
- * shouldn't appear under Missing"). One category closes both, and the filter's
- * contract becomes total: a row shows if and only if its category is ticked.
- */
-function rowCategory(row: ReturnType<typeof rowsFor>[number]): ConditionFilterOption {
-  if (row.legitimatelyAbsent) return 'absent'
-  if (row.missing) return 'missing'
-  // A slot with no band is an empty one; `absent` is the honest bucket for it.
-  // The two guards above should already cover every real empty slot, but the
-  // filter's contract is that EVERY row has a category - never a null that
-  // slips past the filter, which was the whole bug.
-  return row.band ?? 'absent'
-}
+const panelAssemblyRow = computed<AssemblyRowView | null>(() => {
+  const id = selectedAssemblyId.value
+  if (!id || !detail.value) return null
+  return game.assemblyRowsFor(detail.value.car.id).find((r) => r.assemblyId === id) ?? null
+})
 
-/** The rows actually rendered for `componentId`'s drill-down right now,
- * governed by the one global filter above. */
-function visibleRowsFor(componentId: ComponentId) {
-  return rowsFor(componentId).filter((row) => visibleConditions.has(rowCategory(row)))
-}
+/** A unified header for either a car part or a benched member. */
+const panelHead = computed(() => {
+  const row = selectedRow.value
+  if (row) {
+    return {
+      spriteId: row.partId,
+      name: row.displayName,
+      band: row.band,
+      grade: row.grade,
+      uncertain: row.uncertain,
+      installedPartName: row.installedPartName,
+      missing: row.missing,
+      absent: row.legitimatelyAbsent,
+    }
+  }
+  const b = selectedBench.value
+  if (b) {
+    return {
+      spriteId: b.member.carPartId,
+      name: b.member.displayName,
+      band: b.member.band,
+      grade: null,
+      uncertain: false,
+      installedPartName: b.member.partName,
+      missing: false,
+      absent: false,
+    }
+  }
+  return null
+})
 
-/**
- * Sprint 84: clicking a rectangle in the parts diagram lands on that part's row
- * in this list - the diagram is a view, the list is where the actions are
- * (decision 5). Expand the part's group and make sure the one condition filter
- * isn't hiding the row (a mint part is hidden by default), then scroll it into
- * view and mark it, so the click has a visible destination.
- */
-const selectedPartId = ref<CarPartId | null>(null)
-
-function onDiagramSelect(partId: CarPartId): void {
-  const componentId = game.groupForCarPart(partId)
-  if (!componentId) return
-  expandedGroups.add(componentId)
-  const row = rowsFor(componentId).find((r) => r.partId === partId)
-  if (row) visibleConditions.add(rowCategory(row))
-  selectedPartId.value = partId
-  void nextTick(() => {
-    const el = document.querySelector(`[data-part-row="${partId}"]`)
-    el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
-  })
-}
-
-/** Sprint 67 decision 3 (playtest items 18 + 9): bulk filter controls.
- * `Show all` includes `absent`, which has no checkbox of its own. */
-function showAllConditions(): void {
-  for (const option of ALL_FILTER_CATEGORIES) visibleConditions.add(option)
-}
-
-function hideAllConditions(): void {
-  visibleConditions.clear()
-}
-
-/**
- * Sprint 48 decision 2 (maintainer, 2026-07-13, superseding the BandPicker):
- * one control per repairable row/group, climbing exactly ONE band per click.
- * Sprint 63 made that control a compact `+` button with the cost as a
- * caption, priced/laboured off the real repair plan (`game.nextRepairStep`),
- * never a hardcoded one-click-one-slot assumption.
- */
-function nextGroupStep(componentId: ComponentId) {
-  return detail.value ? game.nextRepairStep(detail.value.car.id, componentId) : null
-}
+// --- Repair steps (Sprint 88 decision 3: labour made loud) -----------------
 
 function nextPartStep(componentId: ComponentId, carPartId: CarPartId) {
   return detail.value ? game.nextRepairStep(detail.value.car.id, componentId, carPartId) : null
 }
 
-/** Template-safe non-null variants of the two functions above - only ever
- * rendered where `v-if="nextGroupStep(...)"`/`nextPartStep(...)` already
- * guards them; the fallback is unreachable, just a type-safe default
- * (`vue-eslint-parser` doesn't parse `!` inside a template expression). */
-function nextGroupStepOrFallback(componentId: ComponentId) {
-  return (
-    nextGroupStep(componentId) ?? { targetBand: 'mint' as const, costYen: 0, laborSlotsRequired: 0 }
-  )
-}
 function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) {
   return (
     nextPartStep(componentId, carPartId) ?? {
@@ -265,28 +232,17 @@ function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) 
   )
 }
 
-/**
- * Sprint 63: the climb-one-band control is now a compact `+` button, not a
- * sentence - this builds the accessible `title` tooltip (the full "Repair to
- * X" phrase), sourced entirely from the real plan, never a hand-derived
- * guess. British "labour" per directive 18.
- */
-function repairStepLabel(
-  step: { targetBand: ConditionBand; costYen: number; laborSlotsRequired: number },
-  alreadyPlanned: boolean,
-): string {
-  const sign = alreadyPlanned ? '+' : ''
-  const prefix = alreadyPlanned ? 'Repair further, to ' : 'Repair to '
-  return `${prefix}${step.targetBand} - ${sign}${formatYen(step.costYen)} · ${sign}${step.laborSlotsRequired} labour`
+/** The action button's full inline text (Sprint 88 decision 3, FINAL format):
+ * `Repair to fine · ¥9,600 · 2 slots`. British "labour" is implied by "slots";
+ * the price and slot count are loud, never hover-only. */
+function repairStepText(step: NextRepairStepView): string {
+  return `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} slots`
 }
 
 /**
- * Sprint 74 decision 5: an uncertain part's own repair-step preview - a
- * range, not a single number, so the tooltip never leaks the true band the
- * way reading a single cost figure straight off it would. A `null` end
- * ("nothing needed") reads literally, since the apparent or worst-remaining
- * band can genuinely already be mint even while the other end still needs
- * work.
+ * Sprint 74 decision 5: an uncertain part's repair-step preview is a range, so
+ * the tooltip never leaks the true band. Ordinary rows get the same loud text
+ * the button already shows.
  */
 function uncertainStepLabel(range: {
   best: NextRepairStepView | null
@@ -294,85 +250,35 @@ function uncertainStepLabel(range: {
 }): string {
   const describe = (step: NextRepairStepView | null): string =>
     step
-      ? `to ${step.targetBand} - ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
+      ? `to ${step.targetBand} - ${formatYen(step.costYen)} · ${step.laborSlotsRequired} slots`
       : 'nothing needed'
   return `Uncertain - if it's as shown: ${describe(range.best)}; if the hidden cause is real: ${describe(range.worst)}`
 }
 
-/**
- * The per-part `+` button's own tooltip/aria-label - the honest range from
- * `game.nextPartStepRange` for an uncertain row, the ordinary single-number
- * `repairStepLabel` for every other row (unchanged from Sprint 48/63).
- */
 function partStepTitle(componentId: ComponentId, row: CarPartRowView): string {
-  const carId = detail.value?.car.id
-  if (carId && row.uncertain) {
-    const range = game.nextPartStepRange(carId, componentId, row.partId)
+  const id = detail.value?.car.id
+  if (id && row.uncertain) {
+    const range = game.nextPartStepRange(id, componentId, row.partId)
     if (range) return uncertainStepLabel(range)
   }
-  return repairStepLabel(
-    nextPartStepOrFallback(componentId, row.partId),
-    isStagedRepair(componentId, row.partId),
-  )
+  return repairStepText(nextPartStepOrFallback(componentId, row.partId))
 }
 
-/**
- * Sprint 67 decision 1 (playtest item 7): the quiet caption beside the `+`
- * button is the ROW'S OWN PLANNED TOTAL - what Confirm will actually charge
- * for this row - and null when nothing is planned here.
- *
- * It used to show the NEXT rung's increment (Sprint 63's `stepCost`), so a
- * `poor -> fine` plan read "+Y4,800 · +1 labour" while Confirm charged
- * "Y9,600 · 2 labour". Both were individually right; the row was answering a
- * question the player wasn't asking. The increment now lives ONLY in the `+`
- * button's tooltip (`repairStepLabel`), where it answers "what does one more
- * click cost" without competing with the total. Every number on screen
- * answers exactly one question.
- */
-function plannedRowCost(componentId: ComponentId, carPartId?: CarPartId): string | null {
-  const carId = detail.value?.car.id
-  if (!carId) return null
-  const step = game.plannedStepFor(carId, componentId, carPartId)
-  if (!step) return null
-  return `${formatYen(step.costYen)} · ${step.laborSlots} labour`
-}
-
-/** Sprint 63: the currently planned target band (a real `ConditionBand`, for
- * the planned `BandChip`), or null when nothing's planned at this address. */
+/** The currently planned target band, for the planned `BandChip`. */
 function stagedTargetBand(componentId: ComponentId, carPartId?: CarPartId): ConditionBand | null {
   const staged = stagedFor(componentId, carPartId)
   return staged?.kind === 'repair' ? staged.targetBand : null
 }
 
-/** The open job at this exact address - group-level when `carPartId` is
- * omitted, per-part otherwise (Sprint 28). Either kind, either busy. */
+/** The open job at this exact address. */
 function jobFor(componentId: ComponentId, carPartId?: CarPartId) {
   return detail.value?.jobs.find((j) => j.componentId === componentId && j.carPartId === carPartId)
 }
 
-/** True while a job overlapping this address is open - a group-level job
- * counts as busy for every part inside it, and vice versa (mirrors
- * `stageAction`'s own busy gate, gameStore.ts). */
 function addressBusy(componentId: ComponentId, carPartId?: CarPartId): boolean {
   return detail.value?.jobs.some((j) => addressesOverlap(j, { componentId, carPartId })) ?? false
 }
 
-function componentBusy(componentId: ComponentId): boolean {
-  return jobFor(componentId) !== undefined
-}
-
-/**
- * Continue whichever kind of job is actually open on this address (either
- * kind, either busy) - Sprint 18 exposes a case the old always-instant
- * install flow never could: an install job (usually a single-slot job that
- * completes the moment Confirm reaches it) can now be left open if Confirm
- * ran out of labour before reaching it in the staged list. Calling
- * `game.repair(...)`/`game.install(...)` unconditionally here would silently
- * create an unrelated *second* job instead of continuing this one; the
- * `targetBand`/`carPartId` arguments passed through are only ever consulted
- * if no job already exists, so they're inert here - this always continues
- * whatever `jobFor` already found.
- */
 function continueJob(componentId: ComponentId, carPartId?: CarPartId): void {
   const d = detail.value
   const job = jobFor(componentId, carPartId)
@@ -388,27 +294,20 @@ function toggleBay(): void {
   game.moveCar(d.car.id, d.inServiceBay ? 'parking' : 'service')
 }
 
-// --- Sprint 31: the for-sale toggle + live offer card, replacing the old
-// walk-in/list-publicly buttons -----------------------------------------
+// --- Sprint 31: the for-sale toggle + live offer card ----------------------
 
 const estimate = computed(() => game.estimatedSaleValue(carId.value))
 const forSale = computed(() => game.isForSale(carId.value))
 const offer = computed(() => game.offerFor(carId.value))
 
-// --- Sprint 42: the flip ledger's financial panel - purchase, repairs,
-// parts, guide value, and a live projected profit, so the buy-repair-
-// upgrade-sell loop is visible with every action, not just at sale time. ---
+// --- Sprint 42: the flip ledger's financial panel -------------------------
 
-/** Purchase (0 when unknown) + repairs + parts - what's actually sunk into
- * this car so far. */
 const totalSpentYen = computed(() => {
   const d = detail.value
   if (!d) return 0
   return (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen
 })
 
-/** Guide value minus total spent - the panel's headline number, colored by
- * sign (`.finance-profit` classes below). */
 const projectedProfitYen = computed(() => {
   const d = detail.value
   if (!d) return 0
@@ -421,19 +320,9 @@ function toggleForSale(): void {
   game.setForSale(d.car.id, !forSale.value)
 }
 
-// --- Sprint 18 (round 2 - real playtest fix); retargeted to per-part rows
-// in Sprint 28 --------------------------------------------------------
-// Every non-busy part row shows up to two controls: Repair (a toggle) and
-// Replace. Replace opens a scoped side drawer (ReplaceDrawer) right here on
-// this screen - not a separate route - so a part is always dragged from
-// somewhere visibly on the same page as its target, or just clicked
-// directly in the drawer to stage it instantly. Continuing an already-open
-// job (componentBusy/addressBusy above) is untouched: that keeps the
-// existing single-click flow, never routed through staging (decision 4).
+// --- Staging, replace, remove (Sprint 18/28; the panel is a new face) ------
 
 function stagedFor(componentId: ComponentId, carPartId?: CarPartId): StagedAction | undefined {
-  // Sprint 87: an assembly action has no per-part address - a per-part row's
-  // lookup never matches one.
   return detail.value?.stagedActions.find(
     (a) => hasWorkAddress(a) && a.componentId === componentId && a.carPartId === carPartId,
   )
@@ -448,26 +337,21 @@ function partInstanceDisplayName(partInstanceId: string): string {
   return pi ? game.partName(pi.partId) : partInstanceId
 }
 
-/** Display name of the part staged for install at this address, if any. */
 function stagedInstallName(componentId: ComponentId, carPartId?: CarPartId): string | undefined {
   const staged = stagedFor(componentId, carPartId)
   return staged?.kind === 'install' ? partInstanceDisplayName(staged.partInstanceId) : undefined
 }
 
-/**
- * Sprint 48: the group's "Repair to…" click-per-rung control - each click
- * plans exactly one more band, re-staging at the new target (`stageAction`
- * already replaces whatever was staged at this address, so a repeat click
- * is just calling it again with the next rung).
- */
-function advanceGroupRepair(componentId: ComponentId): void {
-  const d = detail.value
-  const step = nextGroupStep(componentId)
-  if (!d || !step) return
-  game.stageAction(d.car.id, { kind: 'repair', componentId, targetBand: step.targetBand })
+/** The yen/slots attribution for the install staged at this address, or '' -
+ * a template-safe wrapper (`vue-eslint-parser` rejects a `!` assertion inside a
+ * template expression). */
+function stagedInstallAttribution(componentId: ComponentId, carPartId?: CarPartId): string {
+  const staged = stagedFor(componentId, carPartId)
+  return staged ? attributionText(staged) : ''
 }
 
-/** Sprint 48: the per-part counterpart to `advanceGroupRepair` above. */
+/** Sprint 48: the per-part click-per-rung repair - each click plans one more
+ * band, re-staging at the new target. */
 function advancePartRepair(componentId: ComponentId, carPartId: CarPartId): void {
   const d = detail.value
   const step = nextPartStep(componentId, carPartId)
@@ -480,17 +364,11 @@ function advancePartRepair(componentId: ComponentId, carPartId: CarPartId): void
   })
 }
 
-/** Which part's Replace drawer is open right now, if any - only one at a time. */
+/** Which part's Replace drawer is open right now, if any. */
 const activeReplacePart = ref<CarPartId | null>(null)
 
 const dragSession = useDragSession()
 
-/**
- * Whether `partInstanceId` can land on this exact part slot right now.
- * Gated on the drawer actually being open *for this part* - a live drag can
- * only ever originate from a part card rendered inside that open drawer, so
- * no other row is ever a real drop target regardless of fit.
- */
 function acceptsInstall(carPartId: CarPartId, partInstanceId: string): boolean {
   const d = detail.value
   if (!d) return false
@@ -501,10 +379,8 @@ function acceptsInstall(carPartId: CarPartId, partInstanceId: string): boolean {
   return game.installablePartsForPart(d.car.id, carPartId).some((p) => p.id === partInstanceId)
 }
 
-/** One drop zone per real part (all 29, built once so each keeps its own
- * persistent pointer-tracking state - the same reasoning Sprint 17's
- * ShopSlot.vue was built for, and Sprint 18's original 6-per-group version
- * of this screen used). */
+/** One drop zone per real part, built once so each keeps its own persistent
+ * pointer-tracking state. */
 const dropZones = Object.fromEntries(
   ALL_CAR_PART_IDS.map((carPartId) => [
     carPartId,
@@ -522,17 +398,6 @@ const dropZones = Object.fromEntries(
   ]),
 ) as Record<CarPartId, DropZoneHandle>
 
-/**
- * Clicking "Replace": if a part is currently *picked* (the click-based
- * accessibility fallback - possibly picked from a different row's drawer,
- * or even before this one was ever opened) AND it actually fits this part
- * slot, complete that placement immediately, matching the same
- * `accepts`/`onDrop` a live drag uses. Otherwise, open (or close, on a
- * repeat click of the same row) this part's drawer - including when a pick
- * is active but doesn't fit here (Sprint 24 fix 1): the pick stays alive,
- * since the user may have meant a different row, rather than silently doing
- * nothing.
- */
 function onReplaceClick(carPartId: CarPartId): void {
   const picked = dragSession.value
   const payload = picked?.mode === 'pick' ? picked.payload : null
@@ -543,29 +408,20 @@ function onReplaceClick(carPartId: CarPartId): void {
   activeReplacePart.value = activeReplacePart.value === carPartId ? null : carPartId
 }
 
-/**
- * Pull whatever's occupying this slot into inventory - free and instant, no
- * staging step. Removal always leaves the slot empty (Sprint 85), whatever
- * grade the removed part was; the removed part lands in inventory.
- */
+/** Pull whatever's occupying this slot into inventory - free and instant. */
 function onRemoveClick(carPartId: CarPartId): void {
   const d = detail.value
   if (!d) return
   game.removePart(d.car.id, carPartId)
 }
 
-/** Sprint 71: why "Take it off" would refuse this slot right now - a blocker
- * still in the way - or null when nothing structural blocks it. (Sprint 85: a
- * missing tier-2 machine no longer blocks; it adds the fee caption below.) */
 function removeBlockedReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
   return d ? game.removeBlockedReason(d.car.id, carPartId) : null
 }
 
-/** Sprint 85 decision 6: the `machine shop assist +<fee>` caption for a
- * buried engine/drivetrain slot the shop can't yet do in-house - shown on both
- * the remove and install affordances, `null` when the machine is owned or the
- * slot isn't machine-gated (no fee). */
+/** Sprint 85 decision 6: the `machine shop assist +<fee>` caption for a buried
+ * slot the shop can't yet do in-house, `null` when owned/ungated. */
 function machineAssistCaptionFor(carPartId: CarPartId): string | null {
   const d = detail.value
   if (!d) return null
@@ -573,50 +429,35 @@ function machineAssistCaptionFor(carPartId: CarPartId): string | null {
   return fee > 0 ? `machine shop assist +${formatYen(fee)}` : null
 }
 
-// --- Sprint 87 (the assembly model): the minimal bench surface -----------
-// Car-level assembly remove/refit rows and a per-member bench panel
-// (recondition/swap). Deliberately plain - Sprint 88 replaces this surface.
+// --- Bench work (Sprint 87 verbs, Sprint 88 panel) -------------------------
 
-/**
- * Bin parts eligible to swap into a bench member slot - reuses the exposed
- * `stageableParts` (parts not staged elsewhere), narrowed to the slot's own
- * catalog address and non-scrap, the same fit rule `resolveSwapAssemblyMember`
- * enforces.
- */
 function benchSwapCandidates(carPartId: CarPartId) {
   return game.stageableParts.filter(
     (sp) => sp.part.carPartId === carPartId && sp.instance.band !== 'scrap',
   )
 }
 
-/** Recondition a benched member one rung. A component-local handler so the
- * template never has to null-narrow the member's own instance. */
 function onBenchRecondition(member: BenchMemberView): void {
   if (member.instance && member.reconditionStep) {
     game.reconditionPart(member.instance.id, member.reconditionStep.targetBand)
   }
 }
 
-/** Confirm - locks in every staged action on this car at once (Sprint 18). */
+// --- Confirm + the per-action attribution (Sprint 88 decision 3) -----------
+
 function onConfirm(): void {
   const d = detail.value
   if (d) game.confirmCarWork(d.car.id)
 }
 
-/** A stable per-action key for `v-for`/`data-test`, since more than one
- * staged action can now share a `componentId` (Sprint 28 per-part). Sprint
- * 87: an assembly action has no per-part address - it keys on its own
- * kind + assemblyId instead. */
+/** A stable per-action key for `v-for`/`data-test`. */
 function stagedKeyFor(action: StagedAction): string {
   if (!hasWorkAddress(action)) return `${action.kind}:${action.assemblyId}`
   return action.carPartId ? `${action.componentId}:${action.carPartId}` : action.componentId
 }
 
-/** Human-readable summary line for one staged action - group-, part-, or
- * (Sprint 87) assembly-addressed alike. */
 function stagedActionLabel(action: StagedAction): string {
   if (!hasWorkAddress(action)) {
-    // Composed from the two swept labels plus the content display name.
     const name = game.assemblyLabel(action.assemblyId)
     return action.kind === 'remove-assembly'
       ? `Remove assembly: ${name}`
@@ -630,8 +471,16 @@ function stagedActionLabel(action: StagedAction): string {
     : `Install ${partInstanceDisplayName(action.partInstanceId)} → ${targetLabel}`
 }
 
-/** Un-stage one summary-panel row - per-part rows unstage by address, an
- * assembly row (Sprint 87) by its own kind + assemblyId. */
+/** Sprint 88 decision 3: this staged item's own yen and slots. `Refit · free`
+ * for an equivalence install (0 labour); a repair its price and slots. */
+function attributionText(action: StagedAction): string {
+  const a = game.plannedActionAttribution(carId.value, action)
+  if (action.kind === 'repair') return `${formatYen(a.costYen)} · ${a.laborSlots} slots`
+  if (action.kind === 'install')
+    return a.laborSlots === 0 ? 'Refit · free' : `Fit · ${a.laborSlots} slots`
+  return 'free'
+}
+
 function onUnstageSummary(action: StagedAction): void {
   const d = detail.value
   if (!d) return
@@ -639,7 +488,6 @@ function onUnstageSummary(action: StagedAction): void {
   else game.unstageAssemblyAction(d.car.id, action.kind, action.assemblyId)
 }
 
-// The ghost preview that follows the pointer while dragging a part.
 const draggedPartName = computed(() => {
   const payload = dragSession.value?.payload
   if (typeof payload !== 'string' || !payload) return null
@@ -647,22 +495,14 @@ const draggedPartName = computed(() => {
   return pi ? game.partName(pi.partId) : null
 })
 
-/**
- * Sprint 24 fix 1: the accessibility-fallback counterpart to the drag ghost
- * above - a picked part (via `togglePick`, no pointer drag involved) is
- * otherwise invisible outside the drawer it was picked from, so a player who
- * navigates within the screen or just forgets what they picked has no way
- * to tell a pick is still live. Shown whenever a pick is active, anywhere on
- * this screen - not gated to the currently-open drawer, since the whole
- * point of "pick, then click a different Replace slot" is picking from one
- * row and completing on another.
- */
 const pickedPartName = computed(() => {
   const s = dragSession.value
   if (s?.mode !== 'pick' || typeof s.payload !== 'string') return null
   const pi = game.gameState.partInventory.find((p) => p.id === s.payload)
   return pi ? game.partName(pi.partId) : null
 })
+
+const spriteFor = (id: CarPartId): string => partSpriteDataUrl(id)
 
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape' && dragSession.value?.mode === 'pick') clearDragSession()
@@ -675,39 +515,37 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   <section v-if="detail" class="detail">
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
 
-    <header class="head">
-      <h2>{{ detail.displayName }}</h2>
-      <p class="sub">
-        {{ detail.model.tier }} · {{ detail.car.year }} ·
-        {{ detail.car.mileageKm.toLocaleString() }} km ·
-        {{ detail.car.color }}
-      </p>
-      <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
-      <div v-if="!inTransit && !detail.serviceJob" class="scrap-shell-row">
-        <button
-          type="button"
-          class="scrap-shell-btn"
-          :class="{ confirming: scrapConfirming }"
-          data-test="scrap-shell"
-          @click="onScrapShellClick"
-        >
-          {{
-            (scrapConfirming ? 'Confirm - scrap the shell (' : 'Scrap the shell (') +
-            formatYen(game.scrapShellValueYen(detail.car.id)) +
-            ')'
-          }}
-        </button>
+    <div class="detail-hero">
+      <div class="hero-info">
+        <h2>{{ detail.displayName }}</h2>
+        <p class="sub">
+          {{ detail.model.tier }} · {{ detail.car.year }} ·
+          {{ detail.car.mileageKm.toLocaleString() }} km ·
+          {{ detail.car.color }}
+        </p>
+        <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
+        <div v-if="!inTransit && !detail.serviceJob" class="scrap-shell-row">
+          <button
+            type="button"
+            class="scrap-shell-btn"
+            :class="{ confirming: scrapConfirming }"
+            data-test="scrap-shell"
+            @click="onScrapShellClick"
+          >
+            {{
+              (scrapConfirming ? 'Confirm - scrap the shell (' : 'Scrap the shell (') +
+              formatYen(game.scrapShellValueYen(detail.car.id)) +
+              ')'
+            }}
+          </button>
+        </div>
       </div>
-    </header>
+      <StatRadar v-if="!inTransit" class="hero-radar" :stats="detail.stats" :size="RADAR_SIZE" />
+    </div>
 
     <section v-if="inTransit" class="arriving-banner" data-test="arriving-banner">
       <h3>Customer job - {{ detail.serviceJob?.customerName }}</h3>
       <p class="svc-desc">"{{ detail.serviceJob?.description }}"</p>
-      <!-- Sprint 67 decision 7 (item 12): the task list shows here too. The
-           work cannot start until the car arrives, but knowing what the
-           customer asked for is exactly what lets a player go and buy the
-           parts today (Sprint 61 already put inbound cars in the parts-market
-           fit filter - this is the half that was missing). -->
       <ServiceTaskList v-if="detail.serviceJob" :tasks="detail.serviceJob.tasks" />
       <p class="arriving-note">Arriving tomorrow - nothing to do until it's dropped off.</p>
     </section>
@@ -727,10 +565,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </button>
       </div>
 
-      <!-- Sprint 74 decision 8: the owned symptomatic car's own symptom
-           checklist - same idiom as the lot card, minus any test buttons
-           (no yard tests reach an owned car; the workup below is its only
-           bench-side route alongside uninstall-reveals-truth). -->
       <section v-if="detail.symptoms.length > 0" class="symptom-panel" data-test="car-symptoms">
         <h3>Diagnosis</h3>
         <div
@@ -799,548 +633,386 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </section>
 
-      <div class="cols">
-        <div class="radar-col">
-          <StatRadar :stats="detail.stats" />
+      <!-- Sprint 88: the diagram is the page. Full-width diagram, then the
+           bench strip (if any), then the docked info/action panel. -->
+      <PartsDiagram
+        :car-id="detail.car.id"
+        :selected-part-id="selectedPartId"
+        @select="onDiagramSelect"
+      />
+
+      <section
+        v-if="game.benchContainersFor(detail.car.id).length > 0"
+        class="bench-strip"
+        data-test="bench-panel"
+      >
+        <h4>On the bench</h4>
+        <div
+          v-for="container in game.benchContainersFor(detail.car.id)"
+          :key="container.id"
+          class="bench-container"
+          :data-test="'bench-container-' + container.assemblyId"
+        >
+          <span class="bench-name">{{ container.displayName }}</span>
+          <button
+            v-for="member in container.members"
+            :key="member.carPartId"
+            type="button"
+            class="bench-block"
+            :class="{
+              selected:
+                selectedBench?.containerId === container.id &&
+                selectedBench?.member.carPartId === member.carPartId,
+            }"
+            :data-test="'bench-member-' + member.carPartId"
+            @click="selectBenchMember(container.id, member.carPartId)"
+          >
+            <img
+              class="bench-sprite"
+              :src="spriteFor(member.carPartId)"
+              alt=""
+              aria-hidden="true"
+            />
+            <span class="bench-block-name">{{ member.displayName }}</span>
+            <BandChip :band="member.band" />
+          </button>
         </div>
+      </section>
 
-        <div class="components-col">
-          <!-- Sprint 84: the parts diagram sits above the list (decision 6),
-               a view only - it selects a row, it never acts. The list below
-               stays the accessibility-complete control surface. -->
-          <PartsDiagram :car-id="detail.car.id" @select="onDiagramSelect" />
+      <section class="action-panel" data-test="part-action-panel">
+        <p v-if="!panelHead" class="panel-empty" data-test="panel-empty">
+          Pick a part in the diagram to work on it.
+        </p>
 
-          <h3>
-            Components
-            <HelpHint label="Components">
-              Expand a group to repair or replace its real parts one at a time, or use the group's
-              own button - each click plans one more band, priced and laboured for real. Use the
-              filter to choose which conditions show. Nothing happens until you Confirm.
-            </HelpHint>
-          </h3>
-
-          <div class="panel-controls">
-            <details class="condition-filter" data-test="condition-filter">
-              <summary>
-                Show: {{ visibleConditions.size }}/{{ ALL_FILTER_CATEGORIES.length }} conditions
-              </summary>
-              <label v-for="option in CONDITION_FILTER_OPTIONS" :key="option" class="filter-option">
-                <input
-                  type="checkbox"
-                  :data-test="'filter-' + option"
-                  :checked="visibleConditions.has(option)"
-                  @change="toggleConditionFilter(option)"
-                />
-                {{ option }}
-              </label>
-            </details>
-
-            <button type="button" data-test="filter-show-all" @click="showAllConditions()">
-              Show all
-            </button>
-            <button type="button" data-test="filter-hide-all" @click="hideAllConditions()">
-              Hide all
-            </button>
-            <button type="button" data-test="expand-all" @click="expandAllGroups()">
-              Expand all
-            </button>
-            <button type="button" data-test="collapse-all" @click="collapseAllGroups()">
-              Collapse all
-            </button>
+        <template v-if="panelHead">
+          <div class="panel-head">
+            <img
+              class="panel-sprite"
+              :src="spriteFor(panelHead.spriteId)"
+              alt=""
+              aria-hidden="true"
+            />
+            <span class="panel-name" data-test="panel-name">{{ panelHead.name }}</span>
+            <BandChip :band="panelHead.band" />
+            <span v-if="panelHead.grade" class="panel-grade">{{ panelHead.grade }}</span>
+            <span
+              v-if="panelHead.uncertain"
+              class="uncertain-tag"
+              data-test="panel-uncertain"
+              title="An unresolved symptom may have damaged this part - the band shown is its pre-damage condition"
+              >?</span
+            >
+            <span v-if="panelHead.missing" class="missing-tag" data-test="panel-missing"
+              >MISSING</span
+            >
+            <span v-else-if="panelHead.absent" class="absent-tag">no turbo (NA)</span>
+            <span v-if="panelHead.installedPartName" class="installed">{{
+              panelHead.installedPartName
+            }}</span>
           </div>
 
-          <ul class="components">
-            <li v-for="componentId in orderedComponents" :key="componentId" class="component-row">
-              <div class="meter-line">
-                <span class="component-name" :title="game.componentLabel(componentId)">{{
-                  game.componentLabel(componentId)
-                }}</span>
-                <BandChip :band="detail.groupBands[componentId]" />
-                <span class="group-bill" :data-test="'group-bill-' + componentId">{{
-                  formatYen(detail.groupBillYen[componentId])
-                }}</span>
+          <p v-if="selectedBlockers.length > 0" class="panel-blockers" data-test="panel-sits-under">
+            Sits under: {{ selectedBlockers.join(', ') }}
+          </p>
+
+          <!-- A car part's own actions (repair / replace / remove). -->
+          <div v-if="selectedRow && selectedGroup" class="panel-actions">
+            <template v-if="game.isAssemblyMember(selectedRow.partId)">
+              <span class="slot-empty" data-test="panel-assembly-note"
+                >comes off with the assembly</span
+              >
+            </template>
+
+            <template v-else-if="addressBusy(selectedGroup, selectedRow.partId)">
+              <template v-if="jobFor(selectedGroup, selectedRow.partId)">
                 <button
-                  type="button"
-                  class="expand-toggle"
-                  :data-test="'expand-' + componentId"
-                  @click="toggleExpanded(componentId)"
+                  :disabled="game.laborSlotsRemainingToday <= 0"
+                  :data-test="'repair-part-' + selectedRow.partId"
+                  @click="continueJob(selectedGroup, selectedRow.partId)"
                 >
                   {{
-                    expandedGroups.has(componentId)
-                      ? 'Hide parts'
-                      : 'Show parts (' + rowsFor(componentId).length + ')'
+                    jobFor(selectedGroup, selectedRow.partId)?.kind === 'repair-zone'
+                      ? 'Continue repair'
+                      : 'Continue install'
                   }}
                 </button>
-              </div>
+                <span class="slot-empty">working…</span>
+              </template>
+              <span v-else class="slot-empty">working (group job)…</span>
+            </template>
 
-              <div class="action-line">
-                <template v-if="componentBusy(componentId)">
+            <template v-else>
+              <!-- The plan preview and clear control persist whenever a repair
+                   is staged, even once the plan has reached the mint ceiling
+                   and no further rung remains to stage. -->
+              <template
+                v-if="
+                  nextPartStep(selectedGroup, selectedRow.partId) ||
+                  isStagedRepair(selectedGroup, selectedRow.partId)
+                "
+              >
+                <span
+                  v-if="isStagedRepair(selectedGroup, selectedRow.partId)"
+                  class="plan-preview"
+                  data-test="panel-plan-preview"
+                >
+                  <BandChip :band="selectedRow.band" />
+                  <span class="plan-arrow" aria-hidden="true">&rarr;</span>
+                  <BandChip :band="stagedTargetBand(selectedGroup, selectedRow.partId)" />
+                </span>
+                <button
+                  v-if="nextPartStep(selectedGroup, selectedRow.partId)"
+                  type="button"
+                  class="step-up loud"
+                  :data-test="'stage-repair-part-' + selectedRow.partId"
+                  :title="partStepTitle(selectedGroup, selectedRow)"
+                  @click="advancePartRepair(selectedGroup, selectedRow.partId)"
+                >
+                  {{ repairStepText(nextPartStepOrFallback(selectedGroup, selectedRow.partId)) }}
+                </button>
+                <button
+                  v-if="isStagedRepair(selectedGroup, selectedRow.partId)"
+                  type="button"
+                  class="clear-plan"
+                  :data-test="'unstage-repair-part-' + selectedRow.partId"
+                  aria-label="Clear planned repair"
+                  title="Clear planned repair"
+                  @click="game.unstageAction(detail.car.id, selectedGroup, selectedRow.partId)"
+                >
+                  &times;
+                </button>
+              </template>
+
+              <template v-if="!selectedRow.installedPartName">
+                <button
+                  type="button"
+                  class="replace-btn"
+                  :class="{ 'active-target': dropZones[selectedRow.partId].isActiveTarget.value }"
+                  :data-test="'replace-part-' + selectedRow.partId"
+                  @pointerup="dropZones[selectedRow.partId].onPointerUp"
+                  @pointerenter="dropZones[selectedRow.partId].onPointerEnter"
+                  @pointerleave="dropZones[selectedRow.partId].onPointerLeave"
+                  @click="onReplaceClick(selectedRow.partId)"
+                >
+                  {{ dropZones[selectedRow.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                </button>
+                <template v-if="stagedInstallName(selectedGroup, selectedRow.partId)">
+                  <span class="planned-install" data-test="panel-planned-install"
+                    >planned: {{ stagedInstallName(selectedGroup, selectedRow.partId) }} ·
+                    {{ stagedInstallAttribution(selectedGroup, selectedRow.partId) }}</span
+                  >
                   <button
-                    :disabled="game.laborSlotsRemainingToday <= 0"
-                    :data-test="'repair-' + componentId"
-                    @click="continueJob(componentId)"
-                  >
-                    {{
-                      jobFor(componentId)?.kind === 'repair-zone'
-                        ? 'Continue repair'
-                        : 'Continue install'
-                    }}
-                  </button>
-                  <span class="slot-empty">working…</span>
-                </template>
-
-                <template v-else>
-                  <span
-                    v-if="isStagedRepair(componentId)"
-                    class="plan-preview"
-                    :data-test="'plan-preview-' + componentId"
-                  >
-                    <BandChip :band="detail.groupBands[componentId]" />
-                    <span class="plan-arrow" aria-hidden="true">&rarr;</span>
-                    <BandChip :band="stagedTargetBand(componentId)" />
-                  </span>
-
-                  <template v-if="nextGroupStep(componentId)">
-                    <button
-                      type="button"
-                      class="step-up"
-                      :data-test="'stage-repair-' + componentId"
-                      :aria-label="
-                        repairStepLabel(
-                          nextGroupStepOrFallback(componentId),
-                          isStagedRepair(componentId),
-                        )
-                      "
-                      :title="
-                        repairStepLabel(
-                          nextGroupStepOrFallback(componentId),
-                          isStagedRepair(componentId),
-                        )
-                      "
-                      @click="advanceGroupRepair(componentId)"
-                    >
-                      +
-                    </button>
-                  </template>
-
-                  <!-- Outside the `+` guard on purpose: a row planned all the
-                       way to mint has no next step but still has a total to
-                       show. -->
-                  <span
-                    v-if="plannedRowCost(componentId)"
-                    class="step-cost"
-                    :data-test="'planned-cost-' + componentId"
-                    >{{ plannedRowCost(componentId) }}</span
-                  >
-
-                  <button
-                    v-if="isStagedRepair(componentId)"
                     type="button"
                     class="clear-plan"
-                    :data-test="'unstage-repair-' + componentId"
-                    aria-label="Clear planned repair"
-                    title="Clear planned repair"
-                    @click="game.unstageAction(detail.car.id, componentId)"
+                    :data-test="'unstage-part-' + selectedRow.partId"
+                    aria-label="Clear planned install"
+                    title="Clear planned install"
+                    @click="game.unstageAction(detail.car.id, selectedGroup, selectedRow.partId)"
                   >
                     &times;
                   </button>
-
-                  <template v-if="stagedInstallName(componentId)">
-                    <span class="planned-install"
-                      >planned: {{ stagedInstallName(componentId) }}</span
-                    >
-                    <button
-                      type="button"
-                      class="clear-plan"
-                      :data-test="'unstage-' + componentId"
-                      aria-label="Clear planned install"
-                      title="Clear planned install"
-                      @click="game.unstageAction(detail.car.id, componentId)"
-                    >
-                      &times;
-                    </button>
-                  </template>
-                </template>
-              </div>
-
-              <ul v-if="expandedGroups.has(componentId)" class="part-sublist">
-                <li
-                  v-for="row in visibleRowsFor(componentId)"
-                  :key="row.partId"
-                  class="sub-part-row"
-                  :class="{ 'diagram-selected': selectedPartId === row.partId }"
-                  :data-part-row="row.partId"
-                >
-                  <div class="meter-line sub">
-                    <span class="part-name" :title="row.displayName">{{ row.displayName }}</span>
-                    <BandChip :band="row.band" />
-                    <!-- Sprint 74 decision 5: the band above is the APPARENT
-                         one while a symptom still targets this part and
-                         hasn't narrowed enough to resolve it - this chip is
-                         the only thing on the row saying so. -->
-                    <span
-                      v-if="row.uncertain"
-                      class="uncertain-tag"
-                      :data-test="'uncertain-' + row.partId"
-                      title="An unresolved symptom may have damaged this part - the band shown is its pre-damage condition"
-                      >?</span
-                    >
-                    <span
-                      v-if="row.missing"
-                      class="missing-tag"
-                      :data-test="'missing-' + row.partId"
-                      >MISSING</span
-                    >
-                    <span v-else-if="row.legitimatelyAbsent" class="absent-tag">no turbo (NA)</span>
-                    <span v-if="row.installedPartName" class="installed">{{
-                      row.installedPartName
-                    }}</span>
-                  </div>
-
-                  <div class="action-line sub">
-                    <!-- Sprint 87 decision 6: an assembly member is worked via
-                         its assembly, never per-part. The row still shows its
-                         band/name above; only its actions are hidden here. -->
-                    <template v-if="game.isAssemblyMember(row.partId)">
-                      <span class="slot-empty" :data-test="'assembly-member-' + row.partId"
-                        >comes off with the assembly</span
-                      >
-                    </template>
-                    <template v-else-if="addressBusy(componentId, row.partId)">
-                      <template v-if="jobFor(componentId, row.partId)">
-                        <button
-                          :disabled="game.laborSlotsRemainingToday <= 0"
-                          :data-test="'repair-part-' + row.partId"
-                          @click="continueJob(componentId, row.partId)"
-                        >
-                          {{
-                            jobFor(componentId, row.partId)?.kind === 'repair-zone'
-                              ? 'Continue repair'
-                              : 'Continue install'
-                          }}
-                        </button>
-                        <span class="slot-empty">working…</span>
-                      </template>
-                      <span v-else class="slot-empty">working (group job)…</span>
-                    </template>
-
-                    <template v-else>
-                      <span
-                        v-if="isStagedRepair(componentId, row.partId)"
-                        class="plan-preview"
-                        :data-test="'plan-preview-part-' + row.partId"
-                      >
-                        <BandChip :band="row.band" />
-                        <span class="plan-arrow" aria-hidden="true">&rarr;</span>
-                        <BandChip :band="stagedTargetBand(componentId, row.partId)" />
-                      </span>
-
-                      <template v-if="nextPartStep(componentId, row.partId)">
-                        <button
-                          type="button"
-                          class="step-up"
-                          :data-test="'stage-repair-part-' + row.partId"
-                          :aria-label="partStepTitle(componentId, row)"
-                          :title="partStepTitle(componentId, row)"
-                          @click="advancePartRepair(componentId, row.partId)"
-                        >
-                          +
-                        </button>
-                      </template>
-
-                      <span
-                        v-if="plannedRowCost(componentId, row.partId)"
-                        class="step-cost"
-                        :data-test="'planned-cost-part-' + row.partId"
-                        >{{ plannedRowCost(componentId, row.partId) }}</span
-                      >
-
-                      <button
-                        v-if="isStagedRepair(componentId, row.partId)"
-                        type="button"
-                        class="clear-plan"
-                        :data-test="'unstage-repair-part-' + row.partId"
-                        aria-label="Clear planned repair"
-                        title="Clear planned repair"
-                        @click="game.unstageAction(detail.car.id, componentId, row.partId)"
-                      >
-                        &times;
-                      </button>
-
-                      <template v-if="stagedInstallName(componentId, row.partId)">
-                        <span class="planned-install"
-                          >planned: {{ stagedInstallName(componentId, row.partId) }}</span
-                        >
-                        <button
-                          type="button"
-                          class="clear-plan"
-                          :data-test="'unstage-part-' + row.partId"
-                          aria-label="Clear planned install"
-                          title="Clear planned install"
-                          @click="game.unstageAction(detail.car.id, componentId, row.partId)"
-                        >
-                          &times;
-                        </button>
-                      </template>
-
-                      <template v-if="!row.installedPartName">
-                        <button
-                          type="button"
-                          class="replace-btn"
-                          :class="{ 'active-target': dropZones[row.partId].isActiveTarget.value }"
-                          :data-test="'replace-part-' + row.partId"
-                          @pointerup="dropZones[row.partId].onPointerUp"
-                          @pointerenter="dropZones[row.partId].onPointerEnter"
-                          @pointerleave="dropZones[row.partId].onPointerLeave"
-                          @click="onReplaceClick(row.partId)"
-                        >
-                          {{ dropZones[row.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
-                        </button>
-                        <span
-                          v-if="machineAssistCaptionFor(row.partId)"
-                          class="assist-caption"
-                          :data-test="'assist-fee-' + row.partId"
-                          >{{ machineAssistCaptionFor(row.partId) }}</span
-                        >
-                      </template>
-
-                      <template v-if="row.installedPartName && row.removable">
-                        <button
-                          type="button"
-                          class="remove-btn"
-                          :disabled="!!removeBlockedReasonFor(row.partId)"
-                          :title="
-                            removeBlockedReasonFor(row.partId) ?? 'Pull this part into inventory'
-                          "
-                          :data-test="'remove-part-' + row.partId"
-                          @click="onRemoveClick(row.partId)"
-                        >
-                          Take it off
-                        </button>
-                        <span
-                          v-if="removeBlockedReasonFor(row.partId)"
-                          class="blocked-reason"
-                          :data-test="'remove-blocked-' + row.partId"
-                          >{{ removeBlockedReasonFor(row.partId) }}</span
-                        >
-                        <span
-                          v-if="machineAssistCaptionFor(row.partId)"
-                          class="assist-caption"
-                          :data-test="'assist-fee-' + row.partId"
-                          >{{ machineAssistCaptionFor(row.partId) }}</span
-                        >
-                      </template>
-                    </template>
-                  </div>
-                </li>
-              </ul>
-            </li>
-          </ul>
-
-          <p class="total-bill-line" data-test="total-bill">
-            Total restoration bill: {{ formatYen(detail.totalBillYen) }}
-          </p>
-
-          <!-- Sprint 87 (the assembly model): car-level assembly remove/refit.
-               A minimal, plain surface - Sprint 88 restyles it. -->
-          <section
-            v-if="game.assemblyRowsFor(detail.car.id).length > 0"
-            class="assembly-rows"
-            data-test="assembly-rows"
-          >
-            <h3>Assemblies</h3>
-            <ul class="assembly-list">
-              <li
-                v-for="row in game.assemblyRowsFor(detail.car.id)"
-                :key="row.assemblyId"
-                class="assembly-row"
-                :data-test="'assembly-row-' + row.assemblyId"
-              >
-                <span class="component-name" :title="row.displayName">{{ row.displayName }}</span>
-                <button
-                  v-if="row.canRefit"
-                  type="button"
-                  :data-test="'refit-assembly-' + row.assemblyId"
-                  @click="game.refitAssembly(detail.car.id, row.assemblyId)"
-                >
-                  Refit assembly
-                </button>
-                <template v-else>
-                  <button
-                    type="button"
-                    :disabled="!row.canRemove"
-                    :data-test="'remove-assembly-' + row.assemblyId"
-                    @click="game.removeAssembly(detail.car.id, row.assemblyId)"
-                  >
-                    Remove assembly
-                  </button>
-                  <span
-                    v-if="row.blockedReason"
-                    class="blocked-reason"
-                    :data-test="'assembly-blocked-' + row.assemblyId"
-                    >{{ row.blockedReason }}</span
-                  >
                 </template>
                 <span
-                  v-if="row.machineFeeYen > 0"
+                  v-if="machineAssistCaptionFor(selectedRow.partId)"
                   class="assist-caption"
-                  :data-test="'assembly-assist-' + row.assemblyId"
-                  >machine shop assist +{{ formatYen(row.machineFeeYen) }}</span
+                  :data-test="'assist-fee-' + selectedRow.partId"
+                  >{{ machineAssistCaptionFor(selectedRow.partId) }}</span
                 >
-              </li>
-            </ul>
-          </section>
+              </template>
 
-          <!-- Sprint 87: assemblies currently on the bench, worked member by
-               member (recondition / swap). Plain and minimal; Sprint 88
-               restyles. -->
-          <section
-            v-if="game.benchContainersFor(detail.car.id).length > 0"
-            class="bench-panel"
-            data-test="bench-panel"
-          >
-            <h3>On the bench</h3>
-            <div
-              v-for="container in game.benchContainersFor(detail.car.id)"
-              :key="container.id"
-              class="bench-container"
-              :data-test="'bench-container-' + container.assemblyId"
-            >
-              <h4>{{ container.displayName }}</h4>
-              <ul class="bench-members">
-                <li
-                  v-for="member in container.members"
-                  :key="member.carPartId"
-                  class="bench-member"
-                  :data-test="'bench-member-' + member.carPartId"
-                >
-                  <div class="meter-line sub">
-                    <span class="part-name" :title="member.displayName">{{
-                      member.displayName
-                    }}</span>
-                    <BandChip :band="member.band" />
-                    <span v-if="member.partName" class="installed">{{ member.partName }}</span>
-                  </div>
-                  <div class="action-line sub">
-                    <template v-if="member.repairable && member.reconditionStep">
-                      <button
-                        type="button"
-                        class="step-up"
-                        :disabled="game.laborSlotsRemainingToday <= 0"
-                        :data-test="'bench-recondition-' + member.carPartId"
-                        :aria-label="'Recondition to ' + member.reconditionStep.targetBand"
-                        :title="'Recondition to ' + member.reconditionStep.targetBand"
-                        @click="onBenchRecondition(member)"
-                      >
-                        +
-                      </button>
-                      <span class="step-cost"
-                        >&rarr; {{ member.reconditionStep.targetBand }} &middot;
-                        {{ formatYen(member.reconditionStep.costYen) }} &middot;
-                        {{ member.reconditionStep.laborSlotsRequired }} labour</span
-                      >
-                    </template>
-                    <button
-                      v-for="cand in benchSwapCandidates(member.carPartId)"
-                      :key="cand.instance.id"
-                      type="button"
-                      class="replace-btn"
-                      :data-test="'bench-swap-' + member.carPartId + '-' + cand.instance.id"
-                      @click="
-                        game.swapAssemblyMember(container.id, member.carPartId, cand.instance.id)
-                      "
-                    >
-                      Fit {{ game.partName(cand.instance.partId) }}
-                    </button>
-                    <span
-                      v-if="member.swapFeeYen > 0"
-                      class="assist-caption"
-                      :data-test="'bench-swap-fee-' + member.carPartId"
-                      >machine shop assist +{{ formatYen(member.swapFeeYen) }}</span
-                    >
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          <ReplaceDrawer
-            v-if="activeReplacePart"
-            :car-id="detail.car.id"
-            :car-part-id="activeReplacePart"
-            @close="activeReplacePart = null"
-          />
-
-          <section class="staged-panel">
-            <h4>Planned work ({{ detail.stagedActions.length }})</h4>
-            <p v-if="detail.stagedActions.length === 0" class="empty">
-              Nothing planned yet - free to add and remove until you Confirm.
-            </p>
-            <ul v-else class="staged-list">
-              <li
-                v-for="action in detail.stagedActions"
-                :key="stagedKeyFor(action)"
-                class="staged-row"
-              >
-                <span>{{ stagedActionLabel(action) }}</span>
+              <template v-if="selectedRow.installedPartName && selectedRow.removable">
                 <button
                   type="button"
-                  :data-test="'unstage-summary-' + stagedKeyFor(action)"
-                  @click="onUnstageSummary(action)"
+                  class="remove-btn"
+                  :disabled="!!removeBlockedReasonFor(selectedRow.partId)"
+                  :title="
+                    removeBlockedReasonFor(selectedRow.partId) ?? 'Pull this part into inventory'
+                  "
+                  :data-test="'remove-part-' + selectedRow.partId"
+                  @click="onRemoveClick(selectedRow.partId)"
                 >
-                  remove
+                  Take it off
                 </button>
-              </li>
-            </ul>
-            <div class="confirm-block">
-              <button
-                class="primary confirm-lever"
-                data-test="confirm-work"
-                :disabled="detail.stagedActions.length === 0"
-                @click="onConfirm"
-              >
-                Confirm
-                <span v-if="detail.plannedEstimate" class="confirm-cost" data-test="confirm-cost"
-                  >{{ formatYen(detail.plannedEstimate.plannedRepairCostYen) }} ·
-                  {{ detail.plannedEstimate.plannedLaborSlots }} labour</span
-                >
-              </button>
-              <p
-                v-if="detail.plannedEstimate"
-                class="confirm-caption"
-                :class="{ warn: plannedLaborOverToday }"
-                data-test="confirm-labour-caption"
-              >
-                {{ game.laborSlotsRemainingToday }} labour left today<span
-                  v-if="plannedLaborOverToday"
-                >
-                  - the rest carries to tomorrow</span
-                >.
-              </p>
-              <p
-                v-if="
-                  detail.plannedEstimate &&
-                  (detail.plannedEstimate.crewLaborSaved > 0 ||
-                    detail.plannedEstimate.perfectionistCostSavedYen > 0)
-                "
-                class="crew-saving"
-                data-test="confirm-crew-saving"
-              >
-                <span v-if="detail.plannedEstimate.crewLaborSaved > 0" data-test="crew-labour-saved"
-                  >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour slots.</span
+                <span
+                  v-if="removeBlockedReasonFor(selectedRow.partId)"
+                  class="blocked-reason"
+                  :data-test="'remove-blocked-' + selectedRow.partId"
+                  >{{ removeBlockedReasonFor(selectedRow.partId) }}</span
                 >
                 <span
-                  v-if="detail.plannedEstimate.perfectionistCostSavedYen > 0"
-                  data-test="crew-cost-saved"
+                  v-if="machineAssistCaptionFor(selectedRow.partId)"
+                  class="assist-caption"
+                  :data-test="'assist-fee-' + selectedRow.partId"
+                  >{{ machineAssistCaptionFor(selectedRow.partId) }}</span
                 >
-                  A perfectionist saves
-                  {{ formatYen(detail.plannedEstimate.perfectionistCostSavedYen) }}.</span
-                >
-              </p>
-            </div>
-          </section>
+              </template>
+            </template>
+          </div>
+
+          <!-- A benched member's own actions (recondition / swap). -->
+          <div v-else-if="selectedBench" class="panel-actions">
+            <template
+              v-if="selectedBench.member.repairable && selectedBench.member.reconditionStep"
+            >
+              <button
+                type="button"
+                class="step-up loud"
+                :disabled="game.laborSlotsRemainingToday <= 0"
+                :data-test="'bench-recondition-' + selectedBench.member.carPartId"
+                :title="repairStepText(selectedBench.member.reconditionStep)"
+                @click="onBenchRecondition(selectedBench.member)"
+              >
+                {{ repairStepText(selectedBench.member.reconditionStep) }}
+              </button>
+            </template>
+            <button
+              v-for="cand in benchSwapCandidates(selectedBench.member.carPartId)"
+              :key="cand.instance.id"
+              type="button"
+              class="replace-btn"
+              :data-test="'bench-swap-' + selectedBench.member.carPartId + '-' + cand.instance.id"
+              @click="
+                game.swapAssemblyMember(
+                  selectedBench.containerId,
+                  selectedBench.member.carPartId,
+                  cand.instance.id,
+                )
+              "
+            >
+              Fit {{ game.partName(cand.instance.partId) }}
+            </button>
+            <span
+              v-if="selectedBench.member.swapFeeYen > 0"
+              class="assist-caption"
+              :data-test="'bench-swap-fee-' + selectedBench.member.carPartId"
+              >machine shop assist +{{ formatYen(selectedBench.member.swapFeeYen) }}</span
+            >
+          </div>
+
+          <!-- The shared assembly Remove/Refit action, when the target belongs
+               to an assembly (a member on the car, or a benched member). -->
+          <div v-if="panelAssemblyRow" class="panel-actions assembly-action">
+            <button
+              v-if="panelAssemblyRow.canRefit"
+              type="button"
+              :data-test="'refit-assembly-' + panelAssemblyRow.assemblyId"
+              @click="game.refitAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
+            >
+              Refit assembly
+            </button>
+            <template v-else>
+              <button
+                type="button"
+                :disabled="!panelAssemblyRow.canRemove"
+                :data-test="'remove-assembly-' + panelAssemblyRow.assemblyId"
+                @click="game.removeAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
+              >
+                Remove assembly
+              </button>
+              <span
+                v-if="panelAssemblyRow.blockedReason"
+                class="blocked-reason"
+                :data-test="'assembly-blocked-' + panelAssemblyRow.assemblyId"
+                >{{ panelAssemblyRow.blockedReason }}</span
+              >
+            </template>
+            <span
+              v-if="panelAssemblyRow.machineFeeYen > 0"
+              class="assist-caption"
+              :data-test="'assembly-assist-' + panelAssemblyRow.assemblyId"
+              >machine shop assist +{{ formatYen(panelAssemblyRow.machineFeeYen) }}</span
+            >
+          </div>
+        </template>
+      </section>
+
+      <ReplaceDrawer
+        v-if="activeReplacePart"
+        :car-id="detail.car.id"
+        :car-part-id="activeReplacePart"
+        @close="activeReplacePart = null"
+      />
+
+      <p class="total-bill-line" data-test="total-bill">
+        Total restoration bill: {{ formatYen(detail.totalBillYen) }}
+      </p>
+
+      <section class="staged-panel">
+        <h4>
+          Planned work ({{ detail.stagedActions.length }})
+          <HelpHint label="Planned work">
+            Everything you stage from the diagram lands here, free to add and remove, until you
+            Confirm. Each line shows its own price and labour; the bar totals them.
+          </HelpHint>
+        </h4>
+        <p v-if="detail.stagedActions.length === 0" class="empty">
+          Nothing planned yet - free to add and remove until you Confirm.
+        </p>
+        <ul v-else class="staged-list">
+          <li
+            v-for="action in detail.stagedActions"
+            :key="stagedKeyFor(action)"
+            class="staged-row"
+            :data-test="'staged-row-' + stagedKeyFor(action)"
+          >
+            <span class="staged-label">{{ stagedActionLabel(action) }}</span>
+            <span class="staged-attr" :data-test="'staged-attr-' + stagedKeyFor(action)">{{
+              attributionText(action)
+            }}</span>
+            <button
+              type="button"
+              :data-test="'unstage-summary-' + stagedKeyFor(action)"
+              @click="onUnstageSummary(action)"
+            >
+              remove
+            </button>
+          </li>
+        </ul>
+        <div class="confirm-block">
+          <button
+            class="primary confirm-lever"
+            data-test="confirm-work"
+            :disabled="detail.stagedActions.length === 0"
+            @click="onConfirm"
+          >
+            Confirm
+            <span v-if="detail.plannedEstimate" class="confirm-cost" data-test="confirm-cost"
+              >{{ formatYen(detail.plannedEstimate.plannedRepairCostYen) }} ·
+              {{ detail.plannedEstimate.plannedLaborSlots }} labour</span
+            >
+          </button>
+          <p
+            v-if="detail.plannedEstimate"
+            class="confirm-caption"
+            :class="{ warn: plannedLaborOverToday }"
+            data-test="confirm-labour-caption"
+          >
+            {{ game.laborSlotsRemainingToday }} labour left today<span v-if="plannedLaborOverToday">
+              - the rest carries to tomorrow</span
+            >.
+          </p>
+          <p
+            v-if="
+              detail.plannedEstimate &&
+              (detail.plannedEstimate.crewLaborSaved > 0 ||
+                detail.plannedEstimate.perfectionistCostSavedYen > 0)
+            "
+            class="crew-saving"
+            data-test="confirm-crew-saving"
+          >
+            <span v-if="detail.plannedEstimate.crewLaborSaved > 0" data-test="crew-labour-saved"
+              >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour slots.</span
+            >
+            <span
+              v-if="detail.plannedEstimate.perfectionistCostSavedYen > 0"
+              data-test="crew-cost-saved"
+            >
+              A perfectionist saves
+              {{ formatYen(detail.plannedEstimate.perfectionistCostSavedYen) }}.</span
+            >
+          </p>
         </div>
-      </div>
+      </section>
 
       <section v-if="!detail.serviceJob" class="finances" data-test="finance-panel">
         <h3>
@@ -1457,9 +1129,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Accept
             </button>
-            <!-- Sprint 68 decision 3 (item 21): turning a lowball down is a
-                 real move, not "do nothing and hope". The car stays listed,
-                 so tomorrow's draw can bring a better one. -->
             <button
               data-test="reject-offer"
               title="Turn this offer down. The car stays up for sale."
@@ -1548,6 +1217,8 @@ h3 {
 }
 
 h4 {
+  display: flex;
+  align-items: center;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   margin: var(--mg-space-2) 0 var(--mg-space-1);
@@ -1560,9 +1231,26 @@ h4 {
   margin: var(--mg-space-1) 0;
 }
 
-/* Sprint 71 decision 7: the shell-scrap control - a small, deliberately
-   understated ghost button (mirrors AuctionScreen.vue's `.buyout`), so it
-   never reads as the primary action on the screen. */
+/* Sprint 88 decision 2: the hero header - title/info on the left, the radar
+   pinned top-right at a smaller size. The diagram, panel, and the rest of the
+   page stack full-width below (the old two-column .cols grid is dissolved). */
+.detail-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mg-space-4);
+  margin: var(--mg-space-2) 0 var(--mg-space-3);
+}
+
+.hero-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hero-radar {
+  flex: 0 0 auto;
+}
+
 .scrap-shell-row {
   margin: var(--mg-space-2) 0 0;
 }
@@ -1616,9 +1304,6 @@ h4 {
   margin: var(--mg-space-4) 0;
 }
 
-/* Sprint 74 decision 8: the owned car's own symptom panel - same border
-   treatment as the service/arriving banners above, the checklist idiom
-   itself matching AuctionScreen.vue's lot-card symptom block exactly. */
 .symptom-panel {
   background: var(--mg-panel);
   border: 1px solid var(--mg-danger);
@@ -1689,8 +1374,6 @@ h4 {
   margin: var(--mg-space-1) 0;
 }
 
-/* One line per service-job task (Sprint 29 - a job's work is a themed list
-   now, not a single required-work label). */
 .svc-req {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
@@ -1723,174 +1406,124 @@ h4 {
   color: var(--mg-neon-pink);
 }
 
-.cols {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) 2fr;
-  gap: var(--mg-space-4);
-  margin: var(--mg-space-4) 0;
+/* Sprint 88: the bench strip under the diagram - benched assembly members as
+   the same sprite block components, each selecting the docked panel. */
+.bench-strip {
+  margin: var(--mg-space-2) 0 0;
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  background: var(--mg-panel);
+  padding: var(--mg-space-2) var(--mg-space-3);
 }
 
-.components {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.component-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-1);
-  margin-bottom: var(--mg-space-2);
-  padding-bottom: var(--mg-space-2);
-  border-bottom: var(--mg-border);
-}
-
-/* Name, the group's headline band chip, and the drill-down toggle stay on
-   one crisp line. */
-.meter-line {
+.bench-container {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--mg-space-2);
+  margin-top: var(--mg-space-1);
 }
 
-/* Widened from the pre-Sprint-25 96px (sized for a short raw id like
-   "brakes") to fit the longest real display name, "Forced Induction",
-   without wrapping. Truncates with an ellipsis (title attribute carries the
-   full name) rather than wrapping. */
-.component-name {
-  width: 140px;
-  flex-shrink: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: var(--mg-fs-sm);
-}
-
-.group-bill {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-  white-space: nowrap;
-}
-
-.expand-toggle {
-  margin-left: auto;
+.bench-name {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+  margin-right: var(--mg-space-2);
 }
 
-/* Sprint 48 decision 1: one global filter replaces the old per-group
-   "+N parts in good order" toggle. */
-.condition-filter {
-  margin: var(--mg-space-1) 0 var(--mg-space-2);
-  font-size: var(--mg-fs-sm);
-  color: var(--mg-text-dim);
-}
-
-.condition-filter summary {
+.bench-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 70px;
+  padding: var(--mg-space-1);
+  background: var(--mg-night-deep);
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: 3px;
   cursor: pointer;
 }
 
-.filter-option {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mg-space-1);
-  margin: var(--mg-space-1) var(--mg-space-2) 0 0;
+.bench-block.selected {
+  border-color: var(--mg-neon-cyan);
 }
 
-.total-bill-line {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-  font-weight: bold;
-  margin: var(--mg-space-2) 0 0;
+.bench-sprite {
+  width: 100%;
+  height: 34px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
-/* Sprint 87 (the assembly model): the minimal assembly + bench surface.
-   Plain layout reusing the existing spacing tokens - Sprint 88 restyles it. */
-.assembly-rows,
-.bench-panel {
-  margin: var(--mg-space-3) 0 0;
-}
-
-.assembly-list,
-.bench-members {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--mg-space-2);
-}
-
-.assembly-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--mg-space-2);
-  font-size: var(--mg-fs-sm);
-}
-
-.bench-member {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-1);
-  padding: var(--mg-space-1) 0;
-  border-top: var(--mg-border);
-}
-
-/* Buttons, hints, and installed/staged status - free to wrap onto as many
-   lines as they need without ever disturbing the meter line above. Indented
-   to sit under the bar rather than the name, so it reads as detail on the
-   meter, not a second, unrelated row. */
-.action-line {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--mg-space-2);
-  padding-left: calc(140px + var(--mg-space-2));
-  font-size: var(--mg-fs-sm);
-}
-
-/* Per-part drill-down (Sprint 28) - one indent level deeper than the group's
-   own meter/action lines, the same `.meter-line`/`.action-line` pattern
-   just narrower (the sub-part name column is shorter than the group's). */
-.part-sublist {
-  list-style: none;
-  padding: 0;
-  margin: var(--mg-space-1) 0 0 calc(140px + var(--mg-space-2));
-  display: grid;
-  gap: var(--mg-space-2);
-}
-
-.sub-part-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-1);
-  padding: var(--mg-space-1) 0;
-  border-top: var(--mg-border);
-}
-
-/* Sprint 84: the row a parts-diagram click just landed on - a brief marker so
-   the click has a visible destination in the list. */
-.sub-part-row.diagram-selected {
-  outline: 1px solid var(--mg-neon-violet);
-  outline-offset: 2px;
-}
-
-.meter-line.sub {
-  gap: var(--mg-space-2);
-}
-
-.part-name {
-  width: 120px;
-  flex-shrink: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: var(--mg-fs-sm);
+.bench-block-name {
+  font-size: 0.55rem;
+  line-height: 1;
   color: var(--mg-text-dim);
+  text-align: center;
+  pointer-events: none;
 }
 
-.action-line.sub {
-  padding-left: calc(120px + var(--mg-space-2));
+/* Sprint 88 decision 1: the docked info/action panel - the diagram's single
+   companion, showing the selected block's identity and every action the old
+   list row offered. */
+.action-panel {
+  margin: var(--mg-space-2) 0 0;
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  background: var(--mg-panel);
+  padding: var(--mg-space-3);
+  min-height: 4.5rem;
+}
+
+.panel-empty {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+}
+
+.panel-sprite {
+  width: 40px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.panel-name {
+  color: var(--mg-text);
+  font-size: var(--mg-fs-md);
+}
+
+.panel-grade {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  text-transform: capitalize;
+}
+
+.panel-blockers {
+  margin: var(--mg-space-1) 0 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  margin-top: var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+}
+
+.panel-actions.assembly-action {
+  border-top: var(--mg-border);
+  padding-top: var(--mg-space-2);
 }
 
 .replace-btn.active-target {
@@ -1903,9 +1536,6 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 63 (item 7): the repair row's own anatomy - a current -> planned
-   band preview, a compact `+` climb-one-band button with the cost as a quiet
-   caption beside it, and an `x` to clear the plan. No sentence in any button. */
 .plan-preview {
   display: inline-flex;
   align-items: center;
@@ -1916,27 +1546,30 @@ h4 {
   color: var(--mg-text-dim);
 }
 
-.step-up,
+/* Sprint 88 decision 3: the repair-step button carries its full price inline,
+   never on hover. */
+.step-up.loud {
+  padding: 2px 10px;
+  font-size: var(--mg-fs-sm);
+  line-height: 1.2;
+}
+
 .clear-plan {
   min-width: 28px;
   padding: 2px 8px;
   font-size: var(--mg-fs-md);
   line-height: 1;
-}
-
-.clear-plan {
   color: var(--mg-neon-pink);
   border-color: var(--mg-panel-edge);
 }
 
-.step-cost {
-  color: var(--mg-text-dim);
+.total-bill-line {
+  color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
+  font-weight: bold;
+  margin: var(--mg-space-3) 0 0;
 }
 
-/* Sprint 42: the flip ledger's financial panel - a compact label/value grid,
-   the same shape a receipt reads in, with the profit line singled out by
-   weight + sign color rather than a separate box. */
 .finances {
   margin: var(--mg-space-4) 0;
 }
@@ -1985,8 +1618,6 @@ h4 {
   color: var(--mg-danger);
 }
 
-/* Sprint 60 (law 5): the foundation-law notice - the aftermarket premium is
-   being withheld until the basics are sound. Warning-toned, not an error. */
 .foundation-warning {
   margin: var(--mg-space-2) 0 0;
   padding: var(--mg-space-2);
@@ -1996,10 +1627,6 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Deliberately NOT the danger styling above: a bad foundation is a fault, but
- * taking a car past what its market pays for is a legitimate choice the player
- * is entitled to make with their eyes open (economy-bible law 1's legibility
- * clause). Muted and factual, never an alarm. */
 .passion-notice {
   margin: var(--mg-space-2) 0 0;
   padding: var(--mg-space-2);
@@ -2009,8 +1636,6 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 48: the pre-Confirm estimate - visually distinct (dimmed/italic)
-   from the confirmed figures above it, since it's a projection, not fact. */
 .estimate-grid {
   margin-top: var(--mg-space-1);
   opacity: 0.75;
@@ -2086,26 +1711,17 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-/* A genuinely missing slot (Sprint 32 decision 3) - a real defect, styled
-   with the same urgency color as the pink "blocked" states elsewhere on
-   this screen. */
 .missing-tag {
   color: var(--mg-neon-pink);
   font-size: var(--mg-fs-sm);
   font-weight: bold;
 }
 
-/* The one legitimately-empty slot (forced induction on an NA car) - dim,
-   informational, deliberately NOT the missing-tag's alarm color. */
 .absent-tag {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 74 decision 5: the "?" chip for a part whose true band is still
-   hidden behind an unresolved symptom - a real question mark, not a
-   decorative icon (CLAUDE.md directive 2), so it reads as a fact the
-   checklist idiom already trained the player to expect. */
 .uncertain-tag {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
@@ -2117,17 +1733,12 @@ h4 {
   color: var(--mg-neon-pink);
 }
 
-/* Sprint 71: "Take it off"'s own refusal caption - a blocker still on, or a
-   machine tier not yet owned. Same dim, factual tone as `.slot-empty`. */
 .blocked-reason {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   font-style: italic;
 }
 
-/* Sprint 85 decision 6: the machine-shop assist fee caption - a muted,
-   informational note that this slot costs extra without the tier-2 machine.
-   Deliberately minimal; the Sprint 88 diagram/action-panel rework restyles it. */
 .assist-caption {
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
@@ -2150,9 +1761,19 @@ h4 {
 .staged-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--mg-space-2);
   font-size: var(--mg-fs-sm);
+}
+
+.staged-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Sprint 88 decision 3: each staged item lists its own yen and slots. */
+.staged-attr {
+  color: var(--mg-yen);
+  white-space: nowrap;
 }
 
 .confirm-lever {
@@ -2163,9 +1784,6 @@ h4 {
   gap: var(--mg-space-2);
 }
 
-/* Sprint 63 (item 8): the planned cost/labour rides on the Confirm button
-   itself; the remaining-today figure is a quiet caption below, warning (not
-   blocking) when the plan overruns today's labour. */
 .confirm-cost {
   font-size: var(--mg-fs-sm);
   opacity: 0.85;
@@ -2198,9 +1816,6 @@ h4 {
   margin: var(--mg-space-4) 0;
 }
 
-/* Sprint 67 decision 6 (playtest item 13): promoted from a dim caption to the
- * same weight as the garage's own Labour tile - it is the resource the day is
- * budgeted against, not an afterthought. One number, two places, one source. */
 .labor {
   margin: 0 0 var(--mg-space-2);
   padding: var(--mg-space-2);

@@ -14,6 +14,7 @@ import {
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import GradeChip from '../components/GradeChip.vue'
+import { partSpriteDataUrl } from '../components/partSprites'
 import RotaryMarker from '../components/RotaryMarker.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -310,26 +311,35 @@ function onCheckout(): void {
 
           <ul class="catalog">
             <li v-for="part in visibleParts" :key="part.id" class="part">
-              <div class="part-main">
-                <span class="part-name"
-                  >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
-                  }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
-                /></span>
-                <span class="part-meta">
-                  {{ game.carPartLabel(part.carPartId) }}
-                  <GradeChip :grade="part.grade" />
-                  · {{ statSummary(part) || 'no stat change' }}
-                </span>
-                <span
-                  v-if="game.carsDetailed.length > 0"
-                  class="part-fit"
-                  :class="{ fit: fitsAnyOwnedCar(part) }"
-                  :title="
-                    part.requiredTags.length ? 'Requires: ' + part.requiredTags.join(', ') : ''
-                  "
-                >
-                  {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
-                </span>
+              <div class="part-info">
+                <img
+                  class="part-sprite"
+                  :src="partSpriteDataUrl(part.carPartId)"
+                  :data-test="'part-sprite-' + part.id"
+                  alt=""
+                  aria-hidden="true"
+                />
+                <div class="part-main">
+                  <span class="part-name"
+                    >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name
+                    }}<RotaryMarker v-if="part.requiredTags.includes('Rotary')"
+                  /></span>
+                  <span class="part-meta">
+                    {{ game.carPartLabel(part.carPartId) }}
+                    <GradeChip :grade="part.grade" />
+                    · {{ statSummary(part) || 'no stat change' }}
+                  </span>
+                  <span
+                    v-if="game.carsDetailed.length > 0"
+                    class="part-fit"
+                    :class="{ fit: fitsAnyOwnedCar(part) }"
+                    :title="
+                      part.requiredTags.length ? 'Requires: ' + part.requiredTags.join(', ') : ''
+                    "
+                  >
+                    {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
+                  </span>
+                </div>
               </div>
               <div class="part-buy">
                 <span class="price">{{ formatYen(part.priceYen) }}</span>
@@ -629,6 +639,24 @@ h3 {
    it's fully buyable (parts don't have to fit a current car to be bought),
    and dimming read as "disabled". Fit status is carried by the `.part-fit`
    tag below (recoloured), not by greying out a clickable row. */
+
+.part-info {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  min-width: 0;
+}
+
+/* The part's slot sprite (Sprint 88 decision 7): a decorative thumbnail reusing
+   the diagram's crisp nearest-neighbour treatment (.pd-sprite). Placeholder art
+   only, per the sprite module's provenance note. */
+.part-sprite {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 30px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 
 .part-main {
   display: flex;

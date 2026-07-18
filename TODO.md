@@ -206,6 +206,14 @@ pass."
 
 ## Open engineering
 
+- [ ] **LAUNCH-BLOCKING: replace the placeholder part sprites with commissioned art (Sprint 88,
+  decision 4).** The 29 part + 3 assembly service-diagram sprites in
+  `packages/game/src/components/partSprites.ts` are development placeholders, explicitly
+  commissioned as such by the maintainer (playtest item 12) and authored to
+  `docs/design/part-sprite-placeholders.md`. Under the art bible's no-AI-assets law they must NOT
+  appear in any public build, screenshot, devlog or marketing material; commissioned pixel art
+  replaces them before launch. The template + rasteriser API (`PART_SPRITE_TEMPLATES`,
+  `PART_SPRITE_GRID`, `partSpriteDataUrl`) stays; only the template pixel data is swapped.
 - [ ] **Specialty (Sprint 38, the progression bible's horizontal axis) earns from service-job work
   only, never from sales.** A deliberate scope line, not an oversight: attributing a SALE'S
   reputation-quality delta to "the disciplines the player actually improved on that car" would

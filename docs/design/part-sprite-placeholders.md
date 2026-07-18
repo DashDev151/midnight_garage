@@ -50,7 +50,7 @@ with three crossmembers (large grid).
 **Suspension and brakes:** dampers = strut body with piston rod and a spring seat;
 springs = four clean coil turns, slight barrel; antiRollBars = wide U-bar with end
 links; steering = rack tube with bellows and two tie-rod ends; brakePadsDiscs = face-on
-vented disc with a calliper clamped at ten o'clock (amber on the disc face); 
+vented disc with a calliper clamped at ten o'clock (amber on the disc face);
 brakeCalipersLines = calliper block with a braided line looping to a banjo fitting.
 
 **Wheels:** rims = face-on five-spoke with a centre cap; tyres = face-on tread ring,
@@ -65,7 +65,7 @@ profile wing on two stands.
 hole; dashGauges = binnacle arc with two round dials, amber needle on one.
 
 **Assemblies (composites, large grid):** wheelAssembly = tyre ring seated over the rim
-face; engineAssembly = block + cam cover + intake silhouette as one unit; 
+face; engineAssembly = block + cam cover + intake silhouette as one unit;
 gearboxAssembly = bellhousing/tail with the clutch disc peeking at the bell face.
 Composites are drawn, not programmatically stacked: they must read as one object.
 
@@ -76,7 +76,10 @@ CSS; no separate ghost art. Do not bake transparency into the templates.
 
 Templates live in one module as indexed character rows (the art-spike technique,
 Pixi-free rasteriser, data-URL output for the DOM diagram). The implementer renders a
-CONTACT SHEET (all sprites at 4x on a panel-dark background, labelled) to a PNG in the
-session scratchpad after every authoring pass. The orchestrator reviews the sheet
+CONTACT SHEET (all sprites at 4x, labelled) to a PNG in the session scratchpad after
+every authoring pass. The sheet background MUST be the night-deep `#101113` the in-game
+diagram stage actually uses, never panel `#26272b`: token `1` fills are invisible
+against panel-dark, and art must be reviewed on the background it ships on (spec
+correction 2026-07-18, after exactly that false-negative in the round-two review). The orchestrator reviews the sheet
 visually and issues per-sprite corrections; iterate until the orchestrator signs off.
 No sprite ships unreviewed. Expected: at least one full correction round.

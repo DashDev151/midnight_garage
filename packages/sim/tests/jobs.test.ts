@@ -16,6 +16,7 @@ import {
   createJob,
   findOrCreateJob,
   installLaborSlotsFor,
+  machineAssistFeeYen,
   naToTurboConversionBlocked,
   reconditionQuote,
   refitLaborSlotsFor,
@@ -1106,6 +1107,24 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
 })
 
 describe('resolveRemovePart (Sprint 32 decision 7)', () => {
+  // Sprint 88 (the deferred sim-primitive hardening from the Sprint 87 Exit):
+  // an assembly member comes off the car ONLY via its assembly, so the primitive
+  // refuses it outright. rims is the cleanest witness for the refusal REASON: it
+  // is a wheelAssembly member with no blockers and is removable, so nothing but
+  // the new membership guard can stop its removal - a true no-op, not a
+  // blocker/busy/tier refusal.
+  it('Sprint 88: refuses to pull an assembly member off the car directly (it comes off with its assembly)', () => {
+    const state = baseState()
+    const before = state.ownedCars[0]!.parts.rims.installed
+    expect(before).not.toBeNull()
+    const result = resolveRemovePart(state, car.id, 'rims', CONTEXT)
+    expect(result.laborSlotsUsed).toBe(0)
+    expect(result.log).toHaveLength(0)
+    expect(result.state).toBe(state) // same reference - a genuine no-op
+    expect(result.state.ownedCars[0]!.parts.rims.installed).toBe(before)
+    expect(result.state.partInventory.some((p) => p.id === before!.id)).toBe(false)
+  })
+
   // Directive 17 case (a), sprint85 decision 1: the OLD test asserted removing
   // an aftermarket part "reverts the slot to a fresh mint stock instance" -
   // a mechanism Sprint 79 redefined and Sprint 85 deletes outright (the
@@ -1444,76 +1463,52 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const stillBlocked = resolveRemovePart(afterExhaust.state, car.id, 'gearbox', CONTEXT)
     expect(stillBlocked.log).toEqual([])
 
-    // Clear driveline too - gearbox is now removable.
+    // Sprint 88 (directive 17 case a): the physical blocker relationship above is
+    // unchanged, but gearbox and clutch are gearboxAssembly members - they never
+    // come off the car per-part (the assembly does), so the primitive refuses them
+    // even once every external blocker is clear. The assembly-level removal and its
+    // reassembly ordering are re-pinned in `assemblies.test.ts`.
     const afterDriveline = resolveRemovePart(afterExhaust.state, car.id, 'driveline', CONTEXT)
     expect(afterDriveline.log).toHaveLength(1)
-    const gearboxOff = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
-    expect(gearboxOff.log).toHaveLength(1)
-    expect(gearboxOff.state.ownedCars[0]?.parts.gearbox.installed).toBeNull()
-
-    // Reassembly order matters (decision 4): clutch is removable now too.
-    const clutchOff = resolveRemovePart(gearboxOff.state, car.id, 'clutch', CONTEXT)
-    expect(clutchOff.log).toHaveLength(1)
-    expect(clutchOff.state.ownedCars[0]?.parts.clutch.installed).toBeNull()
+    const gearboxRefused = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
+    expect(gearboxRefused.state).toBe(afterDriveline.state)
+    expect(gearboxRefused.log).toEqual([])
+    expect(afterDriveline.state.ownedCars[0]?.parts.gearbox.installed).not.toBeNull()
+    const clutchRefused = resolveRemovePart(afterDriveline.state, car.id, 'clutch', CONTEXT)
+    expect(clutchRefused.state).toBe(afterDriveline.state)
+    expect(clutchRefused.log).toEqual([])
   })
 
   /**
-   * Sprint 85 decision 6 (directive 17 case (a)): the buried ENGINE-group
-   * machine gate is no longer a hard wall. Below engine tier 2, uninstalling
-   * `camsTiming` now SUCCEEDS at the machine-shop assist fee (charged to cash
-   * and posted to the car ledger), and `removeBlockReason` no longer reports it
-   * blocked. Owning the tier-2 machine removes the fee. `camsTiming`'s own
-   * blocker (`cooling`) is cleared first so this isolates the machine fee from
-   * the symmetric blocker rule.
+   * Sprint 85 decision 6, re-targeted for Sprint 88 (directive 17 case (a)): the
+   * buried ENGINE-group machine gate is a fee below engine tier 2, free at tier 2.
+   * `camsTiming` is an engineAssembly member, so per-part removal now refuses it
+   * (it comes off with the engine assembly, whose fee POSTING to cash and the
+   * ledger is pinned in `assemblies.test.ts`); the fee it owes and its being free
+   * at tier 2 are asserted here through the fee function itself.
    */
-  it('uninstalling a buried ENGINE-group slot below engine tier 2 succeeds at the machine-shop assist fee, and free at tier 2', () => {
-    const tierOne = baseState({ toolTiers: testToolTiers({ engine: 1 }) })
-    const afterCooling = resolveRemovePart(tierOne, car.id, 'cooling', CONTEXT)
-    expect(afterCooling.log).toHaveLength(1)
-
-    // No longer a blocked reason - the machine gate became a fee.
-    expect(removeBlockReason(afterCooling.state.ownedCars[0]!, 'camsTiming', CONTEXT)).toBeNull()
-
+  it('a buried ENGINE-group member owes the machine-shop assist fee below engine tier 2, free at tier 2', () => {
     const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
     expect(engineFee).toBeGreaterThan(0)
-    const cashBefore = afterCooling.state.cashYen
-    const gated = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT)
-    expect(gated.log).toHaveLength(1)
-    expect(gated.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
-    // The fee is charged to cash and posted to the car ledger's repairYen.
-    expect(gated.state.cashYen).toBe(cashBefore - engineFee)
-    expect(gated.state.carLedgers[car.id]?.repairYen).toBe(engineFee)
-
-    // Owning the machine (tier 2) removes the fee.
-    const tierTwo = { ...afterCooling.state, toolTiers: testToolTiers({ engine: 2 }) }
-    const free = resolveRemovePart(tierTwo, car.id, 'camsTiming', CONTEXT)
-    expect(free.log).toHaveLength(1)
-    expect(free.state.cashYen).toBe(tierTwo.cashYen)
+    const tierOne = baseState({ toolTiers: testToolTiers({ engine: 1 }) })
+    expect(machineAssistFeeYen('camsTiming', tierOne, CONTEXT)).toBe(engineFee)
+    const tierTwo = baseState({ toolTiers: testToolTiers({ engine: 2 }) })
+    expect(machineAssistFeeYen('camsTiming', tierTwo, CONTEXT)).toBe(0)
   })
 
   /**
-   * Sprint 85 decision 6: the drivetrain side, with `gearbox`'s own blockers
-   * (`driveline`, `exhaust`) already clear so the machine fee is isolated from
-   * the blocker chain. Below drivetrain tier 2 the removal succeeds at the
-   * drivetrain assist fee; at tier 2 it is free.
+   * Sprint 85 decision 6, re-targeted for Sprint 88: the drivetrain side. `gearbox`
+   * is a gearboxAssembly member (per-part removal refuses it now), so its machine
+   * fee below drivetrain tier 2 - and its being free at tier 2 - is asserted
+   * through the fee function, the assembly fee posting living in `assemblies.test.ts`.
    */
-  it('uninstalling a buried DRIVETRAIN-group slot below drivetrain tier 2 succeeds at the machine-shop assist fee once its blockers are clear', () => {
-    const tierOne = baseState({ toolTiers: testToolTiers({ drivetrain: 1 }) })
-    const afterExhaust = resolveRemovePart(tierOne, car.id, 'exhaust', CONTEXT)
-    const afterDriveline = resolveRemovePart(afterExhaust.state, car.id, 'driveline', CONTEXT)
-    expect(afterDriveline.log).toHaveLength(1)
-
+  it('a buried DRIVETRAIN-group member owes the machine-shop assist fee below drivetrain tier 2, free at tier 2', () => {
     const drivetrainFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.drivetrain
-    const cashBefore = afterDriveline.state.cashYen
-    const gated = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
-    expect(gated.log).toHaveLength(1)
-    expect(gated.state.ownedCars[0]?.parts.gearbox.installed).toBeNull()
-    expect(gated.state.cashYen).toBe(cashBefore - drivetrainFee)
-
-    const tierTwo = { ...afterDriveline.state, toolTiers: testToolTiers({ drivetrain: 2 }) }
-    const free = resolveRemovePart(tierTwo, car.id, 'gearbox', CONTEXT)
-    expect(free.log).toHaveLength(1)
-    expect(free.state.cashYen).toBe(tierTwo.cashYen)
+    expect(drivetrainFee).toBeGreaterThan(0)
+    const tierOne = baseState({ toolTiers: testToolTiers({ drivetrain: 1 }) })
+    expect(machineAssistFeeYen('gearbox', tierOne, CONTEXT)).toBe(drivetrainFee)
+    const tierTwo = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
+    expect(machineAssistFeeYen('gearbox', tierTwo, CONTEXT)).toBe(0)
   })
 
   /**
@@ -1596,15 +1591,50 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
    * correct behaviour, not a regression.
    */
   it('a removal succeeds even when zero labour is offered today, since removal now costs nothing', () => {
-    const tierTwo = baseState({ toolTiers: testToolTiers({ engine: 2 }) })
-    const afterCooling = resolveRemovePart(tierTwo, car.id, 'cooling', CONTEXT)
-
-    const funded = resolveRemovePart(afterCooling.state, car.id, 'camsTiming', CONTEXT, 0)
+    const state = baseState()
+    // Sprint 88: assembly members come off only via the assembly, so this uses a
+    // loose bolt-on (exhaust). Removal is free at every depth (Sprint 79), so it
+    // succeeds even when NO labour is offered.
+    const funded = resolveRemovePart(state, car.id, 'exhaust', CONTEXT, 0)
     expect(funded.laborSlotsUsed).toBe(0)
     expect(funded.log).toHaveLength(1)
-    expect(funded.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+    expect(funded.state.ownedCars[0]?.parts.exhaust.installed).toBeNull()
   })
 })
+
+/**
+ * Sprint 88: assembly members (rims, tyres, gearbox, clutch, the engine
+ * internals) no longer come off the car per-part - `resolveRemovePart` refuses
+ * them; the wheel/engine/gearbox assembly is the only way off. These
+ * equivalence-labour cases build the vacated slot directly instead - the exact
+ * state a per-part pull used to leave: the slot empty with its `vacatedBaseline`
+ * stamped and the pulled instance in the bin - so the DOWNSTREAM refit and
+ * recondition economics they exist to pin stay unchanged. The removal-is-free
+ * half is re-pinned at the assembly level in `assemblies.test.ts`.
+ */
+function vacateSlot(state: GameState, carInstanceId: string, carPartId: CarPartId): GameState {
+  const carIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
+  if (carIndex === -1) return state
+  const carAt = state.ownedCars[carIndex]!
+  const installed = carAt.parts[carPartId].installed
+  if (!installed) return state
+  const ownedCars = [...state.ownedCars]
+  ownedCars[carIndex] = {
+    ...carAt,
+    parts: {
+      ...carAt.parts,
+      [carPartId]: {
+        installed: null,
+        vacatedBaseline: {
+          partId: installed.partId,
+          band: installed.band,
+          genuinePeriod: installed.genuinePeriod,
+        },
+      },
+    },
+  }
+  return { ...state, ownedCars, partInventory: [...state.partInventory, installed] }
+}
 
 describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer directive 2026-07-16)', () => {
   // honda-city-e-aa is 'shitbox' tier (Sprint 53) - `partFitsCar` requires an
@@ -1646,16 +1676,17 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       partInventory: [],
       serviceBayCarIds: [wheelsWornCar.id],
     })
-    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
-    expect(rimsOff.laborSlotsUsed).toBe(0)
-    const tyresOff = resolveRemovePart(rimsOff.state, wheelsWornCar.id, 'tyres', CONTEXT)
-    expect(tyresOff.laborSlotsUsed).toBe(0)
+    const afterBoth = vacateSlot(
+      vacateSlot(state, wheelsWornCar.id, 'rims'),
+      wheelsWornCar.id,
+      'tyres',
+    )
 
-    const carAfterBothOff = tyresOff.state.ownedCars[0]!
+    const carAfterBothOff = afterBoth.ownedCars[0]!
     const tyresRefitSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', originalTyres, CONTEXT)
     expect(tyresRefitSlots).toBe(0)
     const tyresRefit = resolveJobLabor(
-      tyresOff.state,
+      afterBoth,
       {
         carInstanceId: wheelsWornCar.id,
         kind: 'install-part',
@@ -1701,14 +1732,17 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       partInventory: [newTyres],
       serviceBayCarIds: [wheelsWornCar.id],
     })
-    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
-    const tyresOff = resolveRemovePart(rimsOff.state, wheelsWornCar.id, 'tyres', CONTEXT)
+    const afterBoth = vacateSlot(
+      vacateSlot(state, wheelsWornCar.id, 'rims'),
+      wheelsWornCar.id,
+      'tyres',
+    )
 
-    const carAfterBothOff = tyresOff.state.ownedCars[0]!
+    const carAfterBothOff = afterBoth.ownedCars[0]!
     const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
     expect(newTyresSlots).toBe(1) // bolt-on, no baseline match - a genuinely different part
     const newTyresFit = resolveJobLabor(
-      tyresOff.state,
+      afterBoth,
       {
         carInstanceId: wheelsWornCar.id,
         kind: 'install-part',
@@ -1755,12 +1789,15 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       partInventory: [newTyres],
       serviceBayCarIds: [wheelsWornCar.id],
     })
-    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
-    const tyresOff = resolveRemovePart(rimsOff.state, wheelsWornCar.id, 'tyres', CONTEXT)
+    const afterBoth = vacateSlot(
+      vacateSlot(state, wheelsWornCar.id, 'rims'),
+      wheelsWornCar.id,
+      'tyres',
+    )
 
-    const pulledRims = tyresOff.state.partInventory.find((p) => p.id === originalRims.id)!
+    const pulledRims = afterBoth.partInventory.find((p) => p.id === originalRims.id)!
     expect(pulledRims.band).toBe('worn')
-    const repair = resolveReconditionLabor(tyresOff.state, pulledRims.id, 'mint', Infinity, CONTEXT)
+    const repair = resolveReconditionLabor(afterBoth, pulledRims.id, 'mint', Infinity, CONTEXT)
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
     const repairedRims = repair.state.partInventory.find((p) => p.id === originalRims.id)!
     expect(repairedRims.band).toBe('mint') // no longer matches the 'worn' vacated baseline
@@ -1817,8 +1854,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       partInventory: [],
       serviceBayCarIds: [wheelsWornCar.id],
     })
-    const rimsOff = resolveRemovePart(state, wheelsWornCar.id, 'rims', CONTEXT)
-    const carAfterRimsOff = rimsOff.state.ownedCars[0]!
+    const afterRims = vacateSlot(state, wheelsWornCar.id, 'rims')
+    const carAfterRimsOff = afterRims.ownedCars[0]!
 
     // Same band ('worn') as the vacated baseline, but a genuinely different
     // catalog part (an aftermarket rim, not the stock one that came off).
@@ -1850,10 +1887,15 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(exhaustOff.laborSlotsUsed).toBe(0)
     const drivelineOff = resolveRemovePart(exhaustOff.state, car.id, 'driveline', CONTEXT)
     expect(drivelineOff.laborSlotsUsed).toBe(0)
-    const gearboxOff = resolveRemovePart(drivelineOff.state, car.id, 'gearbox', CONTEXT)
-    expect(gearboxOff.laborSlotsUsed).toBe(0)
-    const clutchOff = resolveRemovePart(gearboxOff.state, car.id, 'clutch', CONTEXT)
-    expect(clutchOff.laborSlotsUsed).toBe(0)
+    // Sprint 88: gearbox and clutch are gearboxAssembly members - vacated via the
+    // assembly, not per-part. The vacated state is built directly here so the NEW
+    // clutch's buried-rate refit charge (the point of this case) stays pinned; the
+    // free member removal itself is re-pinned in `assemblies.test.ts`.
+    const clutchVacated = vacateSlot(
+      vacateSlot(drivelineOff.state, car.id, 'gearbox'),
+      car.id,
+      'clutch',
+    )
 
     const fittingClutch = PARTS.find(
       (p) => p.carPartId === 'clutch' && p.fitmentClass === 'shitbox' && p.grade === 'stock',
@@ -1866,8 +1908,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       origin: makeMarketOrigin(1),
     }
     const carAfterClutchOff = {
-      ...clutchOff.state,
-      partInventory: [...clutchOff.state.partInventory, newClutch],
+      ...clutchVacated,
+      partInventory: [...clutchVacated.partInventory, newClutch],
     }
     const carForRefit = carAfterClutchOff.ownedCars[0]!
     const clutchRefitSlots = refitLaborSlotsFor(carForRefit, 'clutch', newClutch, CONTEXT)

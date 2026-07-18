@@ -1701,45 +1701,79 @@ export const useGameStore = defineStore('game', () => {
    * spends, not the day's remaining total. Sprint 82: `applyCrew` sizes against
    * the benched crew's speed discount; passed `false` only to recover the base
    * for the "crew saved N labour" display. */
+  /**
+   * The labour one staged action will cost at Confirm - a repair action's
+   * `planGroupRepair.laborSlotsRequired` (when it has real work), or an
+   * install's per-depth-class fit, free when it matches the slot's vacated
+   * baseline (Sprint 79). A staged assembly op is never sized here (the sim's
+   * resolvers charge it at Confirm; `previewPlannedWork` carries its
+   * projection), so it returns 0. Shared by `plannedLaborSlots` (summed) and
+   * the per-action confirm-bar attribution (Sprint 88 decision 3), so the item
+   * rows sum to Confirm's own figure by construction.
+   */
+  function stagedActionLaborSlots(
+    car: CarInstance,
+    action: StagedAction,
+    applyCrew: boolean,
+  ): number {
+    if (action.kind === 'repair') {
+      const plan = planGroupRepair(
+        car,
+        action.componentId,
+        action.targetBand,
+        gameState.value.toolTiers,
+        context.value.partIdsByGroup,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy.restoration.repairStepFraction,
+        action.carPartId,
+        applyCrew ? crewCtx() : undefined,
+      )
+      return plan.partIds.length > 0 ? plan.laborSlotsRequired : 0
+    }
+    if (action.kind === 'install') {
+      const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
+      const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
+      const targetPartId = action.carPartId ?? catalogPart?.carPartId
+      if (!targetPartId) return 0
+      // Sprint 79: a refit matching the slot's own vacated baseline (putting
+      // the car back the way it was found) is free.
+      return partInstance
+        ? refitLaborSlotsFor(car, targetPartId, partInstance, context.value)
+        : installLaborSlotsFor(targetPartId, context.value)
+    }
+    return 0
+  }
+
   function plannedLaborSlots(carId: string, applyCrew = true): number {
     const car = findWorkableCar(carId)
     if (!car) return 0
     let total = 0
     for (const action of stagedActionsFor(carId)) {
-      if (action.kind === 'repair') {
-        const plan = planGroupRepair(
-          car,
-          action.componentId,
-          action.targetBand,
-          gameState.value.toolTiers,
-          context.value.partIdsByGroup,
-          context.value.partsById,
-          context.value.partsTaxonomyById,
-          context.value.economy.restoration.repairStepFraction,
-          action.carPartId,
-          applyCrew ? crewCtx() : undefined,
-        )
-        if (plan.partIds.length > 0) total += plan.laborSlotsRequired
-      } else if (action.kind === 'install') {
-        const partInstance = gameState.value.partInventory.find(
-          (p) => p.id === action.partInstanceId,
-        )
-        const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
-        const targetPartId = action.carPartId ?? catalogPart?.carPartId
-        if (targetPartId) {
-          // Sprint 79: a refit matching the slot's own vacated baseline
-          // (putting the car back the way it was found) is free.
-          total += partInstance
-            ? refitLaborSlotsFor(car, targetPartId, partInstance, context.value)
-            : installLaborSlotsFor(targetPartId, context.value)
-        }
-      }
-      // Sprint 87: a staged assembly op's labour is never recomputed here -
-      // the sim's own resolvers charge it at Confirm and `previewPlannedWork`
-      // carries its projection, so this per-action summation only ever sizes
-      // the kinds it understands (repair/install).
+      total += stagedActionLaborSlots(car, action, applyCrew)
     }
     return total
+  }
+
+  /**
+   * Sprint 88 decision 3 (labour made loud): what ONE staged action costs in
+   * yen and labour, for the confirm bar's per-item attribution. Read-only, and
+   * built from the same `plannedStepFor`/`stagedActionLaborSlots` the totals
+   * use - never a parallel estimator. An install's cash already left when the
+   * part was bought (0 new yen here); its labour is 0 for a free equivalence
+   * refit, its fit class otherwise.
+   */
+  function plannedActionAttribution(
+    carId: string,
+    action: StagedAction,
+  ): { costYen: number; laborSlots: number } {
+    if (action.kind === 'repair') {
+      return (
+        plannedStepFor(carId, action.componentId, action.carPartId) ?? { costYen: 0, laborSlots: 0 }
+      )
+    }
+    const car = findWorkableCar(carId)
+    return { costYen: 0, laborSlots: car ? stagedActionLaborSlots(car, action, true) : 0 }
   }
 
   /**
@@ -3796,6 +3830,7 @@ export const useGameStore = defineStore('game', () => {
     nextRepairStep,
     nextPartStepRange,
     plannedStepFor,
+    plannedActionAttribution,
     isPartRepairable,
     isCustomerOwnedPart,
     describePartOrigin,

@@ -69,19 +69,30 @@ the repair surface itself.
    engine", with the assist caption when renting). A benched assembly shows in a bench
    strip under the diagram with its members as the same block components, same panel.
 6. Radar/label sizing from Sprint 86 carries; no further type changes here.
+7. **The sprites earn a second home: the parts shop (maintainer add, 2026-07-18).** The
+   same `partSpriteDataUrl` module renders in the parts-shop catalogue card
+   (`PartsMarketScreen.vue`), keyed off each catalogue part's existing `carPartId`, so a
+   product shows its slot's placeholder sprite (a tyre product shows the tyre sprite, an
+   ECU the ignition sprite; all grade variants of a slot share one sprite, correct for
+   placeholders). Pure reuse: no new sprite art, no new store method, the same provenance
+   TODO already covers it. Minimal styling consistent with the diagram sprite; the
+   catalogue list card only (the cart line stays text).
 
 ## Definition of done
 
-- [ ] The components list is gone; every repair action reachable through diagram + panel;
+- [x] The components list is gone; every repair action reachable through diagram + panel;
       no store mutation was added or altered.
-- [ ] Full-width diagram, radar top right, panel docked; layout-coherence tests green
+- [x] Full-width diagram, radar top right, panel docked; layout-coherence tests green
       with sprite footprints.
-- [ ] Labour and yen visible on every action affordance without hovering; confirm bar
+- [x] Labour and yen visible on every action affordance without hovering; confirm bar
       itemises per action.
-- [ ] All 29 + 3 sprites authored to `part-sprite-placeholders.md`, contact-sheet
-      reviewed and signed off by the orchestrator, legible at diagram scale; ghosts for
-      vacancies; TODO.md carries the replace-before-launch entry.
-- [ ] Narrowest checks once; pre-push gate is the evidence (directive 20).
+- [x] All 29 + 3 sprites authored to `part-sprite-placeholders.md`, contact-sheet
+      reviewed and signed off by the orchestrator (v3, on the night-deep stage
+      background), legible at diagram scale; ghosts for vacancies; TODO.md carries the
+      replace-before-launch entry.
+- [x] The parts-shop catalogue card renders each product's slot sprite via the same
+      module (decision 7).
+- [x] Narrowest checks once; pre-push gate is the evidence (directive 20).
 
 ## Task breakdown
 
@@ -91,4 +102,48 @@ REVIEWED VISUALLY by the orchestrator before sign-off (rendered sheet to scratch
 
 ## Exit
 
-(Filled at sprint close.)
+All seven decisions landed (implementation across several subagents, orchestrator-policed
+and orchestrator-designed for the sprites). The record:
+
+- **The diagram is the page.** The Components list, its filters and group drill-down are
+  gone; `PartsDiagram.vue`'s level-2 blocks are the interactive items, each rendering its
+  placeholder sprite, and a docked info/action panel carries every verb (repair step,
+  replace, remove, assembly remove/refit, bench work) through existing store methods with
+  no new mutations. Hero layout: title/info left, radar top right, full-width diagram,
+  panel below. Labour and yen are inline on every affordance; the confirm bar itemises
+  per staged action.
+- **The sprites, to spec.** All 29 part + 3 assembly sprites authored to
+  `docs/design/part-sprite-placeholders.md` (orchestrator-authored), reviewed over three
+  contact-sheet rounds and signed off. Rendered in the diagram blocks (ghosted via CSS
+  for vacancies) AND, per decision 7, in the parts-shop catalogue card, both through the
+  one `partSpriteDataUrl` module keyed on `carPartId`. Launch-blocking replacement TODO
+  recorded.
+- **Sprint 87 deferral closed:** `resolveRemovePart` now refuses an assembly-member slot
+  at the sim primitive, not just the store/UI (Part F), with its regression test; sim
+  green at 949.
+- **Directive 17, all case (a):** the two CarDetailScreen panel tests
+  (`panel-plan-preview` and the per-action attribution) failed because the preview and its
+  clear-x were nested under a guard that collapsed when a repair reached the ceiling band;
+  the markup guard was widened so the clear control survives (the test asserted the
+  correct decision-3 behaviour, the code was wrong). The old-list CarDetailScreen tests
+  were re-targeted to the diagram+panel surface, every behavioural assertion preserved.
+- **Two process incidents, both the standing lesson:** (1) the lead stalled twice
+  claiming to wait on children that were not live; resumed each time with orders to verify
+  the tree directly (Sprints 81/87 lesson). (2) The round-two sprite review produced a
+  FALSE NEGATIVE: seven corrections read as "unapplied" because the contact sheet was
+  rendered on panel `#26272b`, the exact hex of the dark fill token, so new mass drawn in
+  that token was invisible on the sheet while correct in-game. The sprite spec now
+  mandates night-deep `#101113` sheets; v3 on that background vindicated all seven. (3)
+  The lead finally died on an API limit during its own final checks; the orchestrator
+  verified the tree, ran the checks, and dispatched a scoped agent to finish the test
+  reconciliation and (separately) decision 7.
+- **Copy:** the swept decision-3 formats ("Repair to {band} · {¥X} · {n} slots",
+  "{¥X} · {n} slots" attribution, "Sits under: {names}") and reused strings only; no new
+  player-facing copy. Decision 7's sprite is decorative (`aria-hidden`), no caption.
+- **Narrow evidence (each once):** sim 50 files / 949 tests; game typecheck exit 0;
+  CarDetailScreen 46/46; PartsMarketScreen 15/15; partsDiagramLayout + sprite-footprint
+  tests green.
+- **Full evidence:** this commit reached origin through the pre-push gate; no separate
+  manual full pass (directive 20).
+- **Open user-only item:** the eyeball pass on the new repair page and the parts shop,
+  folded into the arc-closing playtest.
