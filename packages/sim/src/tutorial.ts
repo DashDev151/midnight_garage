@@ -9,6 +9,7 @@ import {
   type GameState,
 } from '@midnight-garage/content'
 import { carOriginLabel, stockInstanceFor } from './auctions'
+import { hasForcedInduction } from './bands'
 import type { SimContext } from './context'
 import { advanceStoryMissions } from './missions'
 import { makeCarOrigin } from './provenance'
@@ -49,14 +50,18 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
     recipe.partOverrides.map((o) => [o.carPartId, o.band]),
   )
 
-  // Every slot is filled (including `forcedInduction`) so the car is roadworthy
-  // once the taught faults are fixed: `roadworthy` requires all 29 slots filled
-  // at worn+ with no NA carve-out, and the mission's own satisfiability build
-  // (Sprint 78 probe) fills the slot the same way. A tutorial car must never
-  // carry an untaught defect, so this is deliberately fuller than a real NA
-  // lot (whose forced-induction slot generates empty).
+  // The scripted Wagon R is naturally aspirated, so its `forcedInduction` slot
+  // is legitimately empty - built exactly as a real NA lot is
+  // (`generateAuctionCarInstance`), never a phantom turbo. `roadworthy` (Sprint
+  // 90) grades that absent slot as sound, so the car is roadworthy the moment
+  // the two taught faults (scrap tyres, the buried head tick) are cleared, with
+  // no untaught defect anywhere else.
+  const carHasForcedInduction = hasForcedInduction(model)
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
+      if (partId === 'forcedInduction' && !carHasForcedInduction) {
+        return [partId, { installed: null }]
+      }
       const band = overrideBands.get(partId) ?? recipe.baseBand
       const installed = stockInstanceFor(
         partId,

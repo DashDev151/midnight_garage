@@ -6,7 +6,7 @@ import {
   type CarModel,
   type RequirementSpec,
 } from '@midnight-garage/content'
-import { bandIndex } from './bands'
+import { bandIndex, isPartMissing } from './bands'
 import { computeDerivedStats } from './derivedStats'
 import { lapTimeSecondsFor } from './lapModel'
 import { marketValueYen } from './marketValue'
@@ -212,19 +212,32 @@ function evaluateTasteMatch(
   return { pass: ratio >= spec.minMultiplier, label, actual: `${ratio.toFixed(2)}x`, required }
 }
 
-/** Sprint 76: every one of the car's 29 slots holds an installed part at
- * `worn` condition or better - no empty or scrap slot anywhere. */
+/**
+ * Sprint 76, corrected Sprint 90: every slot a real defect could touch holds
+ * an installed part at `worn` condition or better. A filled slot fails when it
+ * is below `worn`; an empty slot fails only when it is genuinely missing
+ * (`isPartMissing`) - a legitimately-absent `forcedInduction` slot on an NA car
+ * is not a defect and never counts, exactly as every other consumer (auction
+ * grading, the cost/condition/stat helpers) already treats it. An unresolvable
+ * model fails closed (an empty slot counts), matching how the sibling
+ * stat/taste/lap evaluators degrade.
+ */
 function evaluateRoadworthy(
   spec: Extract<RequirementSpec, { kind: 'roadworthy' }>,
   car: CarInstance,
   context: SimContext,
 ): RequirementResult {
   const { label, required } = requirementLabel(spec, context)
+  const model = context.modelsById[car.modelId]
   const minIndex = bandIndex('worn')
   let failingCount = 0
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
-    if (!installed || bandIndex(installed.band) < minIndex) failingCount += 1
+    if (installed) {
+      if (bandIndex(installed.band) < minIndex) failingCount += 1
+    } else if (!model || isPartMissing(car, model, partId)) {
+      failingCount += 1
+    }
   }
   const actual =
     failingCount === 0

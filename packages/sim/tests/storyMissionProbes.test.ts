@@ -16,7 +16,7 @@ import {
   type RequirementSpec,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { carCostToBandYen } from '../src/bands'
+import { carCostToBandYen, hasForcedInduction } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
 import { lapTimeSecondsFor } from '../src/lapModel'
@@ -215,9 +215,20 @@ function assertPassesAndBudgetLocked(
  * regression).
  */
 describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
-  it('four-wheels: a worn, all-stock wagon-r is already roadworthy', () => {
-    const { afterCar, probeCostYen } = buildProbe('suzuki-wagon-r-ct21s', 'worn')
-    assertPassesAndBudgetLocked('four-wheels', afterCar, probeCostYen)
+  it('four-wheels: an honest NA wagon-r is roadworthy with its forcedInduction slot legitimately empty (no phantom turbo)', () => {
+    const { model, afterCar, probeCostYen } = buildProbe('suzuki-wagon-r-ct21s', 'worn')
+    // Sprint 90: the Wagon R is naturally aspirated, so the honest build leaves
+    // its forcedInduction slot empty. Grade THAT car - the mask this sprint
+    // removes pre-filled the slot so roadworthy would pass; roadworthy now
+    // grades the legitimately-absent slot as sound, so no phantom turbo is
+    // needed. The budget/payout pin still rides on the probe recipe's own cost
+    // (`probeCostYen`, unchanged), which the authored content was derived from.
+    expect(hasForcedInduction(model)).toBe(false)
+    const honestCar: CarInstance = {
+      ...afterCar,
+      parts: { ...afterCar.parts, forcedInduction: { installed: null } },
+    }
+    assertPassesAndBudgetLocked('four-wheels', honestCar, probeCostYen)
   })
 
   it('wont-strand-her: a city repaired to fine, all stock, clears the reliability floor', () => {

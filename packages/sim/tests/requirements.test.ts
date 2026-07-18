@@ -1,5 +1,6 @@
 import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type CarLedger } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { hasForcedInduction } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
@@ -329,6 +330,50 @@ describe('evaluateRequirement', () => {
         1,
         CONTEXT,
       )
+      expect(result.pass).toBe(false)
+    })
+  })
+
+  describe('roadworthy NA forced-induction carve-out (Sprint 90)', () => {
+    // A genuinely naturally-aspirated model: its forcedInduction slot is
+    // legitimately empty forever, never a defect.
+    const naModel = CARS.find((c) => !hasForcedInduction(c))!
+    // A factory forced-induction model: an empty forcedInduction slot here IS a
+    // genuine missing part.
+    const turboModel = CARS.find((c) => hasForcedInduction(c))!
+
+    it('an NA car with every real slot worn+ and a legitimately-empty forcedInduction slot is roadworthy', () => {
+      const car = buildCarInstance({
+        modelId: naModel.id,
+        parts: { ...uniformCarParts('worn'), forcedInduction: { installed: null } },
+      })
+      const result = evaluateRequirement({ kind: 'roadworthy' }, car, EMPTY_LEDGER, 1, CONTEXT)
+      expect(result.pass).toBe(true)
+    })
+
+    it('the same NA car fails once any real slot drops below worn', () => {
+      const base = uniformCarParts('worn')
+      const car = buildCarInstance({
+        modelId: naModel.id,
+        parts: {
+          ...base,
+          forcedInduction: { installed: null },
+          internals: {
+            ...base.internals,
+            installed: { ...base.internals.installed!, band: 'scrap' as const },
+          },
+        },
+      })
+      const result = evaluateRequirement({ kind: 'roadworthy' }, car, EMPTY_LEDGER, 1, CONTEXT)
+      expect(result.pass).toBe(false)
+    })
+
+    it('a factory forced-induction car with an empty forcedInduction slot is not roadworthy (the turbo is genuinely missing)', () => {
+      const car = buildCarInstance({
+        modelId: turboModel.id,
+        parts: { ...uniformCarParts('worn'), forcedInduction: { installed: null } },
+      })
+      const result = evaluateRequirement({ kind: 'roadworthy' }, car, EMPTY_LEDGER, 1, CONTEXT)
       expect(result.pass).toBe(false)
     })
   })

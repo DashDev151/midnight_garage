@@ -13,7 +13,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { assemblyMachineAssistFeeYen, benchSwapFeeYen } from '../src/assemblies'
-import { carCostToBandYen } from '../src/bands'
+import { carCostToBandYen, hasForcedInduction } from '../src/bands'
 import { reserveYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
 import { buildSimContext } from '../src/context'
 import { expectedTrueValueYen, sheetGuideValueYen } from '../src/diagnosis'
@@ -28,15 +28,22 @@ const RECIPE = TUTORIAL_LOT
 const MODEL = CARS.find((c) => c.id === RECIPE.modelId)!
 const FITMENT: PartFitmentClass = fitmentClassForTier(MODEL.tier)
 
-/** A full 29-slot stock parts map at `band`, with per-slot overrides - the
- * same shape `stockCarPartsAt` in `storyMissionProbes.test.ts` uses, kept local
- * so this probe is self-contained. */
+/** A full stock parts map at `band`, with per-slot overrides - the same shape
+ * `stockCarPartsAt` in `storyMissionProbes.test.ts` uses, kept local so this
+ * probe is self-contained. The Wagon R is naturally aspirated (Sprint 90), so
+ * its forcedInduction slot is left legitimately empty - the honest NA build the
+ * tutorial car itself now uses (`buildTutorialLot`), no phantom turbo, which
+ * `roadworthy` grades as sound. */
 function stockPartsAt(
   band: ConditionBand,
   overrides: Partial<Record<string, ConditionBand>> = {},
 ): CarInstance['parts'] {
   const result = {} as CarInstance['parts']
   for (const partId of ALL_CAR_PART_IDS) {
+    if (partId === 'forcedInduction' && !hasForcedInduction(MODEL)) {
+      result[partId] = { installed: null }
+      continue
+    }
     const stockPart = CONTEXT.stockPartByCarPartId[FITMENT][partId]
     result[partId] = {
       installed: {
