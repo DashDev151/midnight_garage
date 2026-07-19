@@ -7,8 +7,8 @@ import { StatModifierSchema } from './stats'
  * (the shell/trim, repaired in place, never bench-only), `bolt-on` (one
  * removal step), `buried` (behind other parts, the deepest jobs). Drives
  * which slots are bench-only (`repairJobGate`) and how much labour uninstall/
- * install cost (`economy.json`'s `teardown.removeSlotsByClass`/
- * `installSlotsByClass`, keyed by this same value).
+ * install cost (`economy.json`'s `teardown.removeSlotsByClass` and
+ * `energy.energyByClass`, keyed by this same value).
  */
 export const DepthClassSchema = z.enum(['surface', 'bolt-on', 'buried'])
 

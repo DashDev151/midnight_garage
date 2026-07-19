@@ -327,7 +327,7 @@ export interface CarDetail extends DetailedCar {
    */
   symptoms: LotDetail['symptoms']
   /**
-   * Sprint 74 decision 3: why the "Full workup (1 slot)" button is disabled
+   * Sprint 74 decision 3: why the "Full workup" button is disabled
    * right now, `null` when it isn't (`ownedWorkupGateReason`).
    */
   workupGateReason: OwnedWorkupGateReason | null
@@ -2186,11 +2186,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * The owned-car full workup (Sprint 74 decision 3) - 1 labour slot, no
-   * fee, no clock, collapses every one of `carInstanceId`'s symptoms
-   * straight to their true cause. The only bench-side route (alongside
-   * uninstall-reveals-truth) that resolves a bench-only ambiguity like
-   * `wont-idle`.
+   * The owned-car full workup (Sprint 74 decision 3) - spends `pointsPerLabour`
+   * of the day's energy, no fee, no clock, collapses every one of
+   * `carInstanceId`'s symptoms straight to their true cause. The only
+   * bench-side route (alongside uninstall-reveals-truth) that resolves a
+   * bench-only ambiguity like `wont-idle`.
    */
   function resolveOwnedWorkup(carInstanceId: string): boolean {
     const result = resolveOwnedWorkupCore(gameState.value, carInstanceId, context.value)

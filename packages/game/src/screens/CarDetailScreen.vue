@@ -103,9 +103,9 @@ const WORKUP_GATE_LABEL: Record<string, string> = {
 const workupButtonTitle = computed(() => {
   const reason = detail.value?.workupGateReason
   if (reason) return WORKUP_GATE_LABEL[reason] ?? reason
-  // Sprint 94 DRAFT copy (flagged for the orchestrator's sweep): the workup
-  // spends one labour's worth of the day's energy, no longer a whole "slot".
-  return 'Collapse every symptom straight to its true cause - some labour, no fee, no clock'
+  // Sprint 94: the workup spends `pointsPerLabour` of the day's energy, no
+  // longer a whole "slot".
+  return `Collapse every symptom straight to its true cause - ${game.pointsPerLabour} labour, no fee, no clock`
 })
 
 function onWorkupClick(): void {
@@ -632,7 +632,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           data-test="car-workup"
           @click="onWorkupClick"
         >
-          Full workup (1 slot)
+          Full workup ({{ game.pointsPerLabour }} labour)
         </button>
       </section>
 

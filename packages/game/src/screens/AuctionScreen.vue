@@ -30,9 +30,9 @@ function isActiveVisitTier(tier: AuctionTier): boolean {
 function inspectButtonTitle(tier: AuctionTier): string {
   const reason = game.inspectionVisitGateReason(tier)
   if (reason) return GATE_REASON_LABEL[reason] ?? reason
-  // Sprint 94 DRAFT copy (flagged for the orchestrator's sweep): a visit spends
-  // one labour's worth of the day's energy, no longer a whole "slot".
-  return `Spend some labour + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
+  // Sprint 94: a visit spends `pointsPerLabour` of the day's energy, no longer
+  // a whole "slot".
+  return `Spend ${game.pointsPerLabour} labour + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
 }
 
 /**
@@ -56,8 +56,8 @@ function onInspectClick(tier: AuctionTier): void {
 
 function inspectButtonLabel(tier: AuctionTier): string {
   if (visitConfirmingTier.value === tier) return 'Forfeit remaining visit - start here?'
-  // Sprint 94 DRAFT copy (flagged): labour, no longer an integer slot.
-  return `Inspect here (labour + ${formatYen(game.travelFeeYenFor(tier))})`
+  // Sprint 94: labour points, no longer an integer slot.
+  return `Inspect here (${game.pointsPerLabour} labour + ${formatYen(game.travelFeeYenFor(tier))})`
 }
 
 /**

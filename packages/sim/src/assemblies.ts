@@ -295,7 +295,8 @@ export function resolveRemoveAssembly(
  * Refit an assembly as a unit (car-level, Sprint 87 operation 3). 0 labour for
  * the operation itself PLUS per-member charging: a member equal to the slot's
  * `vacatedBaseline` refits free (`refitLaborSlotsFor` returns 0), a changed
- * member charges its normal `installSlotsByClass`. The machine gate applies as
+ * member charges its normal install labour (`installLaborSlotsFor`, reading
+ * `economy.energy.energyByClass`). The machine gate applies as
  * on removal (so a full round trip is two fees when renting). Each changed
  * member's `pricePaidYen` lands on the bill. The container dissolves back into
  * the car's slots. `overrideCarId` refits a bench-BUILT assembly (no

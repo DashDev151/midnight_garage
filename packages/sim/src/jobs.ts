@@ -972,7 +972,7 @@ export interface LaborApplicationResult {
  * Applies up to `laborAvailable` labor to one job (by id), completing it
  * immediately if that's enough - the single-job core shared by the player's
  * instant repair/install click and advanceDay's bot batch loop (Sprint 11).
- * Bumps `laborSlotsSpentToday` by exactly what was used, so the caller never
+ * Bumps `energySpentToday` by exactly what was used, so the caller never
  * has to track the daily budget separately from the state transition itself.
  */
 export function applyAvailableLaborToJob(
@@ -1247,7 +1247,7 @@ export function reconditionQuote(
  * (`chargeRepairWork`), the same tool-tier-sized labor (`planPartRepair`).
  * Then it spends today's remaining labor via the SAME
  * `applyAvailableLaborToJob` the on-car click uses (which books the spend
- * into `laborSlotsSpentToday` identically and completes by climbing the
+ * into `energySpentToday` identically and completes by climbing the
  * part's band). There is no second bench cost, no second labor pool - one
  * repair economy, targeting a loose part instead of a car slot. Works on ANY
  * inventory part, not only customer-owned ones. Sprint 36: no tooling gate -

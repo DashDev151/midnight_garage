@@ -10,12 +10,12 @@ import {
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
+import { energyMax } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
 
 const MAX_CONCURRENT_CARS = 3
 const MAX_BIDS_PER_DAY = 2
-const PLAYER_LABOR_SLOTS = 2 // flipper never hires staff
 /**
  * Bid book value itself, not a lowball fraction of it. Empirically (Sprint
  * 03's balance harness), lowballing toward the reserve floor never wins
@@ -62,7 +62,7 @@ const MAX_HOLDING_DAYS = 0
 export function flipperStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
   const actions: DayActions = emptyDayActions()
 
-  let laborBudget = PLAYER_LABOR_SLOTS
+  let laborBudget = energyMax(state, context.economy)
   const bayBudget = serviceBayBudget(state)
   const upgradeBudget = toolUpgradeBudget()
 

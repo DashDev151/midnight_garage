@@ -400,12 +400,10 @@ export function advanceDay(
     log.push(...resolution.log)
   }
 
-  // 7c. Sprint 76 (story missions I): the campaign's own day-boundary tick -
-  // lapse an overdue active mission, reoffer a lapsed one whose wait
-  // elapsed, then offer the next locked mission if reputation clears its
-  // gate. Same `next.day` (not `next.day + 1`) as 7b immediately above: this
-  // reads the day that's ending, not the one about to begin, mirroring the
-  // service-job deadline backstop's own one-day grace window.
+  // 7c. Sprint 76 (story missions I; Sprint 85: unfailable): the campaign's
+  // day-boundary tick. `advanceStoryMissions` offers the next locked mission
+  // once reputation clears its gate, and nothing else - missions cannot lapse
+  // or be reoffered, so there is no deadline or wait window to check here.
   const missions = advanceStoryMissions(next, context)
   next = missions.state
   log.push(...missions.log)
