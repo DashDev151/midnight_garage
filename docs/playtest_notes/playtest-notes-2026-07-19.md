@@ -138,7 +138,30 @@ accepting is booking the drop-off on the call (which is exactly the existing
 arrives-tomorrow mechanic); story customers are walk-ins standing in the shop. Fleet work
 arriving by fax is noted as a period-true future hook. Sprint 97.
 
-### 16. Process ruling: no delegated tutorial sign-off (PROCESS)
+### 16. Engine step glossed the blockers and lied about labour (COPY + BUG-class, live rage)
+
+Two accusations, both verified true in the resolvers. (a) "click the engine and press
+Remove assembly" glossed that `resolveRemoveAssembly` REFUSES while the Intake, Exhaust
+or Cooling are on the car; worse, the step completed the moment the head was refitted,
+while those three parts still sat in inventory, so the machine would march a part-missing
+(roadworthy-failing) car to delivery. (b) "All of this drains the labour bar" is false:
+removal is always 0 labour (Sprint 79 law); the labour is the repair and the repaired
+part's own refit. Fixed same day: the engine step teaches the true path (three Take it
+offs, Remove assembly, bench repair, Refit assembly), a new `reassemble` step
+(completion: the scripted car has no missing part) guides the button-up, and the labour
+line now attributes correctly. The trace lesson: verify each button's REFUSAL conditions
+and each claim's cost attribution, not just triggers and anchors.
+
+### 17. Scrap the bench "Shop for tyres" deep link; teach the shop (SYSTEM reversal)
+
+"fuck that once off shop for tyres button. Thats stupid scrap it. GUIDE THE PLAYER
+FUCKING PROPERLY ON HOW TO NAVIGATE THE PARTS SHOP." Maintainer reversal of Sprint 96
+decisions 1-3, same day: the one-off deep-link button (and the ?slot query plumbing) is
+removed; the bench empty state keeps only the informative text; the walkthrough's wheel
+step now teaches the real trip (Parts tab, Wheels & tyres, Tyres, Add to cart, Checkout)
+with a spotlight chain that lights the deepest shop control currently on screen.
+
+### 18. Process ruling: no delegated tutorial sign-off (PROCESS)
 
 The previous tutorial was drafted by an agent and signed off without a genuine
 step-by-step trace. Ruling: the orchestrator personally authors the walkthrough copy and

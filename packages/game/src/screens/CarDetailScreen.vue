@@ -488,13 +488,6 @@ function benchShopLabel(carPartId: CarPartId): string {
     .join(' ')
 }
 
-/** Sprint 96 decision 1: the bench panel never dead-ends - with nothing to
- * recondition and nothing on hand to fit, the panel hands the player the
- * parts market, prefiltered to this exact slot (decision 3's deep link). */
-function shopForBenchPart(carPartId: CarPartId): void {
-  void router.push({ name: 'parts', query: { slot: carPartId } })
-}
-
 // --- Confirm + the per-action attribution (Sprint 88 decision 3) -----------
 
 function onConfirm(): void {
@@ -951,26 +944,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Fit {{ game.partName(cand.instance.partId) }}
             </button>
-            <!-- Sprint 96 decision 1: never a dead end - nothing to
-                 recondition and nothing on hand to fit hands the player the
-                 next click instead of a silent panel. -->
-            <template
+            <!-- Sprint 96 decision 1 (amended same day): never a SILENT dead
+                 end - nothing to recondition and nothing on hand to fit states
+                 the situation and where the shop is; the player navigates the
+                 parts market themselves (maintainer ruling: no one-off
+                 deep-link button). -->
+            <span
               v-if="
                 !benchOffersRecondition(selectedBench.member) &&
                 benchSwapCandidates(selectedBench.member.carPartId).length === 0
               "
+              class="slot-empty"
+              :data-test="'bench-empty-' + selectedBench.member.carPartId"
+              >No replacement {{ benchShopLabel(selectedBench.member.carPartId) }} on hand - the
+              parts shop sells them.</span
             >
-              <span class="slot-empty"
-                >No replacement {{ benchShopLabel(selectedBench.member.carPartId) }} on hand.</span
-              >
-              <button
-                type="button"
-                :data-test="'bench-shop-' + selectedBench.member.carPartId"
-                @click="shopForBenchPart(selectedBench.member.carPartId)"
-              >
-                Shop for {{ benchShopLabel(selectedBench.member.carPartId) }}
-              </button>
-            </template>
             <!-- The swap-fee caption prices the Fit action, so it renders only
                  while a Fit button is actually on screen (Sprint 96
                  decision 1: no dangling fee for an absent control). -->

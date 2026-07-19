@@ -144,9 +144,9 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
 
     expect(wrapper.find('.part-card').exists()).toBe(false)
     expect(wrapper.text()).toContain('No parts on hand')
-    // The link carries the ?slot deep link, landing on the market already
-    // filtered to this exact slot rather than the market root.
+    // A plain link to the market: the player navigates the shop themselves
+    // (the slot deep link was scrapped the day it landed).
     const link = wrapper.findComponent(RouterLinkStub)
-    expect(link.props('to')).toEqual({ name: 'parts', query: { slot: 'dampers' } })
+    expect(link.props('to')).toEqual({ name: 'parts' })
   })
 })

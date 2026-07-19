@@ -1,5 +1,13 @@
 # Sprint 96: The car screen answers back (playtest 2026-07-19, items 12-13)
 
+> **Same-day amendment (playtest item 17):** the maintainer scrapped the "Shop for
+> {slot}" deep-link button and the `?slot` query plumbing hours after they landed - the
+> player learns to navigate the parts market, guided by the walkthrough, not teleported.
+> Decisions 1-3 below stand only in their signage half: the bench empty state keeps the
+> informative text (`bench-empty-{carPartId}`) and the fee-caption gating; the Shop
+> button, the market's query handling, and the drawer's query are removed. The
+> ReplaceDrawer link reverts to the plain market link it had before this sprint.
+
 **Date:** 2026-07-19
 **Source:** `docs/playtest_notes/playtest-notes-2026-07-19.md` items 12 (diagram condition
 unreadable at a glance) and 13 (tyre-change dead end, live rage). Lands together with

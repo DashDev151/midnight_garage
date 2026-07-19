@@ -11,9 +11,10 @@ import PartsMarketScreen from './PartsMarketScreen.vue'
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
-/** A minimal real router so useRoute/useRouter resolve - the screen reads the
- * ?slot deep link from the live route on setup (Sprint 96 decision 3). Route
- * components are stubs; the screen itself is mounted directly. */
+/** A minimal real router so RouterLink resolves against real routes. Route
+ * components are stubs; the screen itself is mounted directly. (The ?slot
+ * deep link this harness once served was scrapped the day it landed - the
+ * walkthrough teaches the shop trip instead.) */
 function makeRouter(): Router {
   return createRouter({
     history: createMemoryHistory(),
@@ -111,32 +112,6 @@ describe('PartsMarketScreen', () => {
     // back to the six heroes, not a flat "all parts" tile inside the catalog.
     await wrapper.find('[data-test="breadcrumb-root"]').trigger('click')
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
-  })
-
-  describe('the ?slot deep link (Sprint 96 decisions 2-3)', () => {
-    it('preselects the department and slot filter, then drops the query from the route', async () => {
-      const game = useGameStore()
-      const { wrapper, router } = await mountScreen({ slot: 'tyres' })
-
-      // Landed straight on the tyres slot inside its own department: the
-      // breadcrumb shows group > slot and the catalogue lists only tyre
-      // products - the exact state a hero click plus a slot-card click sets.
-      const groupCrumb = wrapper.find('[data-test="breadcrumb-group"]')
-      expect(groupCrumb.exists()).toBe(true)
-      expect(groupCrumb.text()).toBe(game.componentLabel('wheels'))
-      expect(wrapper.find('.breadcrumb-current').text()).toBe(game.carPartLabel('tyres'))
-      const tyresOnly = PARTS.filter((p) => p.carPartId === 'tyres')
-      expect(wrapper.findAll('.part').length).toBe(tyresOnly.length)
-
-      // The query is an entry hint, not persistent state.
-      expect(router.currentRoute.value.query).toEqual({})
-    })
-
-    it('ignores an unknown slot id: the market opens on the six heroes as usual', async () => {
-      const { wrapper } = await mountScreen({ slot: 'flux-capacitor' })
-      expect(wrapper.findAll('.hero-card')).toHaveLength(6)
-      expect(wrapper.findAll('.part')).toHaveLength(0)
-    })
   })
 
   it('grade/sort filters persist while browsing a slot within a department', async () => {

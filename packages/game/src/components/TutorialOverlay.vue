@@ -13,6 +13,7 @@
 import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  ALL_CAR_PART_IDS,
   CARS,
   PARTS,
   PARTS_TAXONOMY,
@@ -26,7 +27,7 @@ import {
   type TutorialCondition,
   type TutorialStep,
 } from '@midnight-garage/content'
-import { bandIndex } from '@midnight-garage/sim'
+import { bandIndex, isPartMissing } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatYen } from '../utils/formatYen'
@@ -125,6 +126,14 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
       return game.gameState.pendingPartOrders.some(
         (order) => carPartIdByPartId.get(order.partId) === cond.carPartId,
       )
+    case 'scriptedCarWhole': {
+      // No slot missing (installed, or legitimately absent like the NA turbo
+      // slot) - the reassembly gate, so the machine can never march a
+      // part-missing car to delivery.
+      const owned = game.gameState.ownedCars.find((c) => c.id === recipe.carId)
+      if (!owned || !model) return false
+      return ALL_CAR_PART_IDS.every((partId) => !isPartMissing(owned, model, partId))
+    }
     case 'never':
       return false
   }
@@ -182,18 +191,21 @@ const stepTotal = TUTORIAL_STEPS.length
 
 // --- best-effort spotlight of the current step's real control ---------------
 
-/** The spotlight's chosen `data-test` id: the LAST visible line carrying its
- * own `anchorTestId` wins (Sprint 95 decision 9 - the spotlight follows the
- * sub-state through a step), else the step's own anchor. A `{lotId}` token
- * resolves to the scripted lot either way. */
-const anchorTestId = computed<string | null>(() => {
+/** The spotlight's chosen `data-test` chain: the LAST visible line carrying
+ * its own `anchorTestId` wins (Sprint 95 decision 9 - the spotlight follows
+ * the sub-state through a step), else the step's own anchor. A line anchor
+ * may be a chain tried in DOM order (a multi-screen errand spotlights the
+ * deepest control that exists right now). A `{lotId}` token resolves to the
+ * scripted lot either way. */
+const anchorTestIds = computed<string[]>(() => {
   const step = currentStep.value
-  if (!step || isTerminal.value) return null
-  let anchor = step.anchorTestId
+  if (!step || isTerminal.value) return []
+  let anchor: string | readonly string[] = step.anchorTestId
   for (const line of visibleLines.value) {
     if (line.anchorTestId) anchor = line.anchorTestId
   }
-  return anchor.replace('{lotId}', recipe.lotId)
+  const chain = Array.isArray(anchor) ? anchor : [anchor as string]
+  return chain.map((testId) => testId.replace('{lotId}', recipe.lotId))
 })
 
 /** Fallback anchors for when the chosen control is not in the DOM (usually the
@@ -216,9 +228,9 @@ watchEffect((onCleanup) => {
     spotlit = null
   }
   const step = currentStep.value
-  const primary = anchorTestId.value
-  if (step && primary && typeof document !== 'undefined') {
-    for (const testId of [primary, ...fallbackTestIds(step.anchorScreen)]) {
+  const primary = anchorTestIds.value
+  if (step && primary.length > 0 && typeof document !== 'undefined') {
+    for (const testId of [...primary, ...fallbackTestIds(step.anchorScreen)]) {
       const el = document.querySelector(`[data-test="${testId}"]`)
       if (el) {
         el.classList.add('tutorial-spotlight')

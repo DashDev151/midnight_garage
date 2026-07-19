@@ -93,8 +93,7 @@ function onSelect(partInstanceId: string): void {
     <!-- Sprint 96 decision 2: the link lands on the market already filtered
          to this exact slot (the ?slot deep link), not the market root. -->
     <p v-if="entries.length === 0" class="empty">
-      No parts on hand - visit the
-      <RouterLink :to="{ name: 'parts', query: { slot: carPartId } }">parts market</RouterLink>.
+      No parts on hand - visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>
     <ul v-else class="parts-list">
       <PartCard

@@ -12,7 +12,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { h } from 'vue'
-import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -29,7 +29,7 @@ import CarDetailScreen from './CarDetailScreen.vue'
 
 // A minimal router so useRoute/useRouter resolve; garage/parts are stub
 // targets (ReplaceDrawer's "visit the parts market" link needs 'parts' to
-// exist). Render-function stubs, not templates - the RouterView-host test
+// exist). Render-function stubs, not templates - a host-rendered stub
 // below actually renders them and this environment has no runtime compiler.
 function makeRouter(): Router {
   return createRouter({
@@ -956,52 +956,26 @@ describe('CarDetailScreen', () => {
       return { id, wrapper, router }
     }
 
-    it('with nothing to recondition and nothing to fit, the panel names the gap and offers the Shop control, with no dangling fee caption', async () => {
+    it('with nothing to recondition and nothing to fit, the panel names the gap and where the shop is, with no dangling fee caption', async () => {
       const game = useGameStore()
       const { wrapper } = await benchTyres(game)
 
       // Scrap-or-not, tyres are never reconditionable and the inventory holds
       // no replacement - previously this panel offered only Refit assembly.
-      expect(wrapper.text()).toContain('No replacement tyres on hand.')
-      const shop = wrapper.find('[data-test="bench-shop-tyres"]')
-      expect(shop.exists()).toBe(true)
-      expect(shop.text()).toBe('Shop for tyres')
+      // The maintainer scrapped the one-off Shop deep-link button the same
+      // day it landed: the panel states the situation, the player navigates
+      // the parts market themselves (the walkthrough teaches that trip).
+      const empty = wrapper.find('[data-test="bench-empty-tyres"]')
+      expect(empty.exists()).toBe(true)
+      expect(empty.text()).toContain('No replacement tyres on hand')
+      expect(empty.text()).toContain('parts shop')
+      expect(wrapper.find('[data-test="bench-shop-tyres"]').exists()).toBe(false)
       // The swap-fee caption prices a Fit button that is not on screen - it
       // must never dangle alone.
       expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(false)
     })
 
-    it('the Shop control deep links to the parts market prefiltered to the slot', async () => {
-      const game = useGameStore()
-      game.devGrantCar(CARS[0]!.id)
-      const id = game.gameState.ownedCars[0]!.id
-
-      // Mounted through a RouterView host, because this click navigates: the
-      // real app unmounts the screen on route change (retiring its not-found
-      // redirect watcher), while the direct-mount harness would leave that
-      // watcher alive to clobber the navigation with a garage redirect.
-      const router = makeRouter()
-      router.push({ name: 'car', params: { id } })
-      await router.isReady()
-      const wrapper = mount({ render: () => h(RouterView) }, { global: { plugins: [router] } })
-      mountedWrappers.push(wrapper)
-      await flushPromises()
-
-      await wrapper.get('[data-test="diagram-tile-wheels"]').trigger('click')
-      await wrapper.get('[data-test="diagram-slot-rims"]').trigger('click')
-      await flushPromises()
-      await wrapper.get('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
-      await flushPromises()
-      await wrapper.get('[data-test="bench-member-tyres"]').trigger('click')
-      await flushPromises()
-
-      await wrapper.get('[data-test="bench-shop-tyres"]').trigger('click')
-      await flushPromises()
-      expect(router.currentRoute.value.name).toBe('parts')
-      expect(router.currentRoute.value.query.slot).toBe('tyres')
-    })
-
-    it('with a replacement on hand, the Fit button and its fee caption render and the Shop control does not', async () => {
+    it('with a replacement on hand, the Fit button and its fee caption render and the empty-state does not', async () => {
       const game = useGameStore()
       const tyresPart = PARTS.find((p) => p.carPartId === 'tyres')!
       game.devGrantPart(tyresPart.id)
@@ -1011,11 +985,10 @@ describe('CarDetailScreen', () => {
       // At tier-1 wheels tooling the tyre swap owes the fitting-shop fee, and
       // with a Fit button present the caption is back in its actionable context.
       expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(true)
-      expect(wrapper.find('[data-test="bench-shop-tyres"]').exists()).toBe(false)
-      expect(wrapper.text()).not.toContain('No replacement tyres on hand.')
+      expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(false)
     })
 
-    it('a member with a recondition step never shows the Shop control, even with nothing to fit', async () => {
+    it('a member with a recondition step never shows the empty-state, even with nothing to fit', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
@@ -1032,7 +1005,7 @@ describe('CarDetailScreen', () => {
       await flushPromises()
 
       expect(wrapper.find('[data-test="bench-recondition-rims"]').exists()).toBe(true)
-      expect(wrapper.find('[data-test="bench-shop-rims"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-empty-rims"]').exists()).toBe(false)
     })
   })
 

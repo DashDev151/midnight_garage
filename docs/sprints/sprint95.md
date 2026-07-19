@@ -1,5 +1,23 @@
 # Sprint 95: The tutorial actually guides (playtest 2026-07-19, items 1-4, 6-11)
 
+> **Same-day corrections (playtest items 16-17), superseding the script blocks below
+> where they differ:** the maintainer caught the engine step glossing the removal
+> blockers and a false labour claim, both verified against the resolvers. (a) The engine
+> step now teaches the true path: Take it off on the Intake, Exhaust and Cooling (free,
+> `resolveRemoveAssembly` refuses while any is on the car), then Remove assembly, the
+> bench repair, Refit assembly; its labour line attributes correctly (removal is always 0
+> labour, Sprint 79; the repair and the repaired head's own refit are the drain). (b) A
+> new step 9 `reassemble` (completion: new condition `scriptedCarWhole`, no missing part
+> via `isPartMissing`) guides the button-up, so the machine can never march a
+> part-missing car to delivery - the probe never caught this because it grades a
+> fabricated complete car. (c) Per item 17 the wheel step's shop line teaches the full
+> market trip (Parts tab, department, slot, Add to cart, Checkout) with a spotlight
+> CHAIN (line anchors may be a list tried in DOM order: slot card, department card, nav
+> tab) instead of the scrapped deep-link button. The walkthrough is 11 steps. The
+> shipped `tutorialSteps.json` is canonical for the final copy.
+> Trace-method lesson recorded: verify each button's refusal conditions and each claim's
+> cost attribution, not just triggers and anchors.
+
 **Date:** 2026-07-19
 **Source:** `docs/playtest_notes/playtest-notes-2026-07-19.md` (items 1, 2, 3, 4, 6, 7, 8, 9, 10, 11; item 13 is the method rule this sprint is executed under). Item 5 (overworld map) is deliberately out of scope: it goes to `TODO.md` for its own design pass. Item 12 (diagram condition visibility) is Sprint 96.
 

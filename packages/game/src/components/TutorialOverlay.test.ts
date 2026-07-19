@@ -95,7 +95,7 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 11')
     expect(wrapper.text()).toContain('your own garage')
     expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(true)
   })
@@ -110,7 +110,7 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(game.gameState.tutorialAcknowledgedSteps).toContain('welcome')
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 2 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 2 of 11')
     const text = wrapper.text()
     expect(text).toContain(formatYen(FOUR_WHEELS.payoutYen))
     expect(text).toContain('Accept the job when you are ready')
@@ -126,7 +126,7 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 11')
     expect(wrapper.text()).toContain('Local Yard')
     expect(wrapper.text()).not.toContain('Put the stethoscope')
 
@@ -144,7 +144,7 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 11')
     expect(wrapper.text()).toContain('auction rooms settle overnight')
   })
 
@@ -157,13 +157,13 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 6 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 6 of 11')
     expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('certain something')
     expect(wrapper.text()).toContain('drag her across')
 
     game.gameState = scriptedCarIntoBay(game.gameState)
     await nextTick()
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 7 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 7 of 11')
   })
 
   it('walks wheel then engine then deliver as the work lands, revealing bench sub-state lines', async () => {
@@ -177,7 +177,7 @@ describe('TutorialOverlay', () => {
 
     // Wheel beat: base lines only until the wheels are on the bench.
     expect(wrapper.text()).toContain('Her tyres are scrap')
-    expect(wrapper.text()).not.toContain('Shop for tyres')
+    expect(wrapper.text()).not.toContain('Add to cart')
     expect(wrapper.text()).not.toContain('Tyres ordered')
     expect(wrapper.text()).not.toContain('your tyres are in')
 
@@ -188,7 +188,7 @@ describe('TutorialOverlay', () => {
       ],
     }
     await nextTick()
-    expect(wrapper.text()).toContain('Shop for tyres')
+    expect(wrapper.text()).toContain('Add to cart')
 
     // A pending standard-delivery order addressed to tyres reveals the
     // "press End Day" waiting line.
@@ -235,14 +235,43 @@ describe('TutorialOverlay', () => {
     expect(engineText).toContain('Head')
     expect(engineText).not.toContain('{part}')
 
-    // Head/valvetrain repaired -> deliver beat.
+    // Head/valvetrain repaired on a whole car -> reassemble auto-completes,
+    // so the machine lands on the deliver beat.
     game.gameState = ownScriptedCarWithBands(game.gameState, {
       tyres: 'mint',
       headValvetrain: 'fine',
     })
     await nextTick()
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 10')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 10 of 11')
     expect(wrapper.text()).toContain('press Show them the car')
+  })
+
+  it('holds on the reassemble step while a part is missing, and releases once the car is whole', async () => {
+    const game = useGameStore()
+    game.newGame(12)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
+    const whole = scriptedCarIntoBay(
+      ownScriptedCarWithBands(game.gameState, { tyres: 'mint', headValvetrain: 'fine' }),
+    )
+    // The engine blockers are off the car (in inventory) - the head reads fine
+    // but the car is not whole, so delivery must NOT be offered yet.
+    game.gameState = {
+      ...whole,
+      ownedCars: whole.ownedCars.map((c) =>
+        c.id === LOT.carId ? { ...c, parts: { ...c.parts, cooling: { installed: null } } } : c,
+      ),
+    }
+    const wrapper = render()
+    await nextTick()
+
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 11')
+    expect(wrapper.text()).toContain('still on your shelf')
+    expect(wrapper.text()).not.toContain('press Show them the car')
+
+    game.gameState = whole
+    await nextTick()
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 10 of 11')
   })
 
   it('spotlights the last visible anchored line, following the wheel beat onto the bench', async () => {
@@ -252,15 +281,20 @@ describe('TutorialOverlay', () => {
     game.acceptMission(LOT.missionId)
     game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, {}))
     const stepAnchor = addAnchor('remove-assembly-wheelAssembly')
-    const lineAnchor = addAnchor('bench-member-tyres')
+    const heroWheels = addAnchor('hero-wheels')
+    const navParts = addAnchor('nav-parts')
     const endDayAnchor = addAnchor('end-day')
     render()
     await nextTick()
 
     // No bench sub-state yet: the step's own anchor holds the spotlight.
     expect(stepAnchor.classList.contains('tutorial-spotlight')).toBe(true)
-    expect(lineAnchor.classList.contains('tutorial-spotlight')).toBe(false)
+    expect(heroWheels.classList.contains('tutorial-spotlight')).toBe(false)
 
+    // Benching the wheels reveals the shop-trip line, whose anchor is a CHAIN
+    // (slot card, department card, nav tab) - the deepest present wins: the
+    // slot card is absent here, so the department card takes the spotlight
+    // over the also-present nav tab.
     game.gameState = {
       ...game.gameState,
       assemblyInventory: [
@@ -268,7 +302,8 @@ describe('TutorialOverlay', () => {
       ],
     }
     await nextTick()
-    expect(lineAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(heroWheels.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(navParts.classList.contains('tutorial-spotlight')).toBe(false)
     expect(stepAnchor.classList.contains('tutorial-spotlight')).toBe(false)
 
     // A pending tyre order reveals the "press End Day" line, whose anchor
@@ -288,7 +323,7 @@ describe('TutorialOverlay', () => {
     }
     await nextTick()
     expect(endDayAnchor.classList.contains('tutorial-spotlight')).toBe(true)
-    expect(lineAnchor.classList.contains('tutorial-spotlight')).toBe(false)
+    expect(heroWheels.classList.contains('tutorial-spotlight')).toBe(false)
   })
 
   it('falls back to the nav tab when the step control is absent from the DOM', async () => {

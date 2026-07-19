@@ -41,6 +41,9 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  *   exists - mirrors the bench swap-candidate rule (`showWhen` only).
  * - `partOnOrder`: a pending part order addressed to `carPartId` exists - the
  *   "your tyres are coming, End Day" waiting moment (`showWhen` only).
+ * - `scriptedCarWhole`: the owned scripted car has no missing part (every slot
+ *   installed or legitimately absent, `isPartMissing`) - the reassembly step's
+ *   completion, so the machine can never march a part-missing car to delivery.
  */
 const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('missionActive') }),
@@ -60,6 +63,7 @@ const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('assemblyOnBench'), assemblyId: AssemblyIdSchema }),
   z.object({ kind: z.literal('partInInventory'), carPartId: CarPartIdSchema }),
   z.object({ kind: z.literal('partOnOrder'), carPartId: CarPartIdSchema }),
+  z.object({ kind: z.literal('scriptedCarWhole') }),
 ])
 
 export type TutorialBaseCondition = z.infer<typeof TutorialBaseConditionSchema>
@@ -83,12 +87,16 @@ export type TutorialCondition = z.infer<typeof TutorialConditionSchema>
  * at render time. `showWhen`, when present, gates the line on a live
  * condition. `anchorTestId`, when present, overrides the step's spotlight
  * while this is the last visible anchored line (Sprint 95: the spotlight
- * follows the sub-state through a step). */
+ * follows the sub-state through a step). A line's anchor may be a CHAIN of
+ * test ids tried in DOM order - a multi-screen errand (the shop trip) then
+ * spotlights the deepest control that exists right now (the slot card inside
+ * the department, the department card on the shop's home, the nav tab from
+ * anywhere else). */
 export const TutorialLineSchema = z.object({
   speaker: z.enum(['yuki', 'instruction']),
   text: z.string().min(1),
   showWhen: TutorialConditionSchema.optional(),
-  anchorTestId: z.string().min(1).optional(),
+  anchorTestId: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]).optional(),
 })
 
 export type TutorialLine = z.infer<typeof TutorialLineSchema>

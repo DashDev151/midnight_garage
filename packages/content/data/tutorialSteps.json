@@ -130,9 +130,9 @@
       },
       {
         "speaker": "instruction",
-        "text": "Click the Tyres block on the bench; if the shelf is empty, press Shop for tyres. In the shop, press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout: standard delivery lands tomorrow morning.",
+        "text": "She needs fresh tyres, and the shop is the Parts tab. It sorts by department: open Wheels & tyres, then Tyres, and press Add to cart on the plain stock ones (sport rubber is lovely, and entirely not in her budget). Then press Checkout; standard delivery lands tomorrow morning.",
         "showWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" },
-        "anchorTestId": "bench-member-tyres"
+        "anchorTestId": ["catalog-part-tyres", "hero-wheels", "nav-parts"]
       },
       {
         "speaker": "instruction",
@@ -156,7 +156,11 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now for that tick. It lives in the {part}, deep in the engine: click the engine on the diagram and press Remove assembly. No crane of your own yet, so the machine shop next door lends its arm for a fee, out and back in."
+        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three on the diagram and press Take it off; taking parts off costs nothing, and they wait safely in your inventory."
+      },
+      {
+        "speaker": "instruction",
+        "text": "With those three off, click the engine and press Remove assembly. No crane of your own yet, so the machine shop next door lends its arm for a fee, out and back in."
       },
       {
         "speaker": "yuki",
@@ -164,16 +168,28 @@
       },
       {
         "speaker": "instruction",
-        "text": "Click the Head on the bench and press the Repair button; its price and labour are written on it. When the work is done, press Refit assembly and she goes back together.",
+        "text": "Engine out. Click the Head on the bench and press the Repair button; its price and labour are written on it. When it reads fine, press Refit assembly: the shop's arm again for the way back in.",
         "showWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" },
         "anchorTestId": "bench-member-headValvetrain"
       },
       {
         "speaker": "instruction",
-        "text": "All of this drains the labour bar, because good work takes hours. If it runs dry before you are done, no matter: press End Day, and the morning brings a fresh one."
+        "text": "The repair and the refit are where the labour goes; taking things off never costs any. If the bar runs dry before you are done, no matter: press End Day, and the morning brings a fresh one."
       }
     ],
     "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "fine" }
+  },
+  {
+    "id": "reassemble",
+    "anchorScreen": "car",
+    "anchorTestId": "confirm-work",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Nearly home; the Intake, the Exhaust and the Cooling are still on your shelf. Click each empty slot on the diagram, press Replace and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
+      }
+    ],
+    "completion": { "kind": "scriptedCarWhole" }
   },
   {
     "id": "deliver",
