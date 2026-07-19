@@ -4,7 +4,7 @@ import { ASSEMBLIES, PARTS_TAXONOMY } from '@midnight-garage/content'
 import { computed, ref, watch } from 'vue'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
 import BandChip from './BandChip.vue'
-import { partSpriteDataUrl } from './partSprites'
+import { groupSpriteId, partSpriteDataUrl } from './partSprites'
 import {
   DIAGRAM_VIEW_H,
   DIAGRAM_VIEW_W,
@@ -116,6 +116,9 @@ function isFitted(partId: CarPartId): boolean {
 }
 
 const spriteFor = (partId: CarPartId): string => partSpriteDataUrl(partId)
+
+/** The live condition band of a fitted slot, for its corner condition dot. */
+const bandFor = (partId: CarPartId): string | null => rowsById.value[partId]?.band ?? null
 
 // --- Level 1: the six group tiles ----------------------------------------
 
@@ -255,16 +258,13 @@ function slotStyle(slot: DiagramSlot): Record<string, string> {
 }
 
 function slotClasses(partId: CarPartId, visitor: boolean): Record<string, boolean> {
-  const row = rowsById.value[partId]
   const fitted = isFitted(partId)
-  const band = row?.band ?? null
   const hovered = hoveredId.value
   const isBlockerOfHovered = hovered != null && BLOCKED_BY[hovered]?.includes(partId)
   return {
     fitted,
     ghost: !fitted,
     visitor,
-    [`fill-${band ?? 'empty'}`]: true,
     hovered: hovered === partId,
     selected: props.selectedPartId === partId && !visitor,
     'blocker-fitted': !!isBlockerOfHovered && fitted,
@@ -399,7 +399,6 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
           :key="tile.componentId"
           type="button"
           class="pd-tile"
-          :class="[`fill-${tile.band ?? 'empty'}`]"
           :style="tileStyle(tile.rect)"
           :title="tileTitle(tile)"
           :aria-label="tileTitle(tile)"
@@ -410,8 +409,20 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
           @blur="onTileLeave(tile.componentId)"
           @click="openGroup(tile.componentId)"
         >
+          <img
+            class="pd-tile-sprite"
+            :src="partSpriteDataUrl(groupSpriteId(tile.componentId))"
+            alt=""
+            aria-hidden="true"
+          />
           <span class="pd-tile-name">{{ tile.name }}</span>
           <span class="pd-tile-count">{{ tile.partCount }} parts</span>
+          <span
+            v-if="tile.band"
+            class="pd-cond-dot"
+            :class="`fill-${tile.band}`"
+            aria-hidden="true"
+          ></span>
           <span
             v-if="tile.uncertain"
             class="pd-uncertain"
@@ -460,6 +471,12 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
         >
           <img class="pd-sprite" :src="spriteFor(partId)" alt="" aria-hidden="true" />
           <span class="pd-label">{{ game.carPartLabel(partId) }}</span>
+          <span
+            v-if="isFitted(partId)"
+            class="pd-cond-dot"
+            :class="`fill-${bandFor(partId) ?? 'empty'}`"
+            aria-hidden="true"
+          ></span>
           <span v-if="visitor" class="pd-visitor-tag">{{ visitorHomeLabel(partId) }}</span>
         </button>
       </template>
@@ -517,7 +534,10 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   gap: 1px;
   padding: 0 2px;
   margin: 0;
-  border: 1px solid var(--mg-panel-edge);
+  /* The block is just its sprite on the dark stage: no boxed fill, and a
+     transparent border that only the hover/selected/blocker/ghost states paint,
+     so the click target and layout rect survive without a visible box. */
+  border: 1px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--mg-text);
@@ -526,9 +546,11 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
 }
 
 /* The placeholder pixel-art sprite - crisp nearest-neighbour, aspect kept by
-   `contain`. Ghost slots dim the same sprite (decision 4; no baked
-   transparency). */
-.pd-sprite {
+   `contain`, as the block's sole fill. Level-1 tiles show the group's assembly
+   sprite, level-2 slots their part sprite; ghost slots dim the same sprite
+   (decision 4; no baked transparency). */
+.pd-sprite,
+.pd-tile-sprite {
   flex: 1 1 auto;
   min-height: 0;
   max-width: 100%;
@@ -571,35 +593,45 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   pointer-events: none;
 }
 
-/* Condition-band fills - the SAME palette tokens BandChip authors. */
-.fill-mint {
-  border-color: var(--mg-success);
-  background: color-mix(in srgb, var(--mg-success) 18%, transparent);
+/* Condition dot: a small band-coloured corner marker keeping a block's
+   condition scannable now the block itself is just its sprite, not a coloured
+   fill. The SAME band palette tokens BandChip authors, on the dot alone. */
+.pd-cond-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
-.fill-fine {
-  border-color: var(--mg-neon-cyan);
-  background: color-mix(in srgb, var(--mg-neon-cyan) 18%, transparent);
+.pd-cond-dot.fill-mint {
+  background: var(--mg-success);
 }
 
-.fill-worn {
-  border-color: var(--mg-text-dim);
-  background: color-mix(in srgb, var(--mg-text-dim) 20%, transparent);
+.pd-cond-dot.fill-fine {
+  background: var(--mg-neon-cyan);
 }
 
-.fill-poor,
-.fill-scrap {
-  border-color: var(--mg-neon-pink);
-  background: color-mix(in srgb, var(--mg-neon-pink) 20%, transparent);
+.pd-cond-dot.fill-worn {
+  background: var(--mg-text-dim);
+}
+
+.pd-cond-dot.fill-poor,
+.pd-cond-dot.fill-scrap {
+  background: var(--mg-neon-pink);
+}
+
+.pd-cond-dot.fill-empty {
+  background: var(--mg-panel-edge);
 }
 
 /* Ghost placeholder for an empty slot: the sprite still renders (decision 4)
    but dimmed, with a dashed edge saying "something belongs here". */
-.pd-slot.ghost,
-.fill-empty {
+.pd-slot.ghost {
   border-style: dashed;
   border-color: var(--mg-panel-edge);
-  background: color-mix(in srgb, var(--mg-text-dim) 6%, transparent);
 }
 
 .pd-slot.ghost .pd-sprite {

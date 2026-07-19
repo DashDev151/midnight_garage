@@ -1,4 +1,4 @@
-import type { CarPartId, AssemblyId } from '@midnight-garage/content'
+import type { CarPartId, AssemblyId, ComponentId } from '@midnight-garage/content'
 
 /**
  * Placeholder part sprites for the service diagram (Sprint 88, decision 4).
@@ -676,6 +676,25 @@ export const PART_SPRITE_GRID: Readonly<Record<PartSpriteId, { w: number; h: num
       return [id, { w: rows[0]?.length ?? 0, h: rows.length }]
     }),
   ) as Record<PartSpriteId, { w: number; h: number }>
+
+/**
+ * The sprite that stands for a whole component group on a group-level surface
+ * (the diagram's level-1 tiles, the parts market's department hero cards): the
+ * group's large assembly composite where one exists, else its most iconic
+ * member part. One mapping, shared by both surfaces (directive 16).
+ */
+const GROUP_SPRITE_ID: Readonly<Record<ComponentId, PartSpriteId>> = {
+  engine: 'engineAssembly',
+  drivetrain: 'gearboxAssembly',
+  wheels: 'wheelAssembly',
+  suspension: 'dampers',
+  body: 'panels',
+  interior: 'seats',
+}
+
+export function groupSpriteId(componentId: ComponentId): PartSpriteId {
+  return GROUP_SPRITE_ID[componentId]
+}
 
 const dataUrlCache = new Map<string, string>()
 

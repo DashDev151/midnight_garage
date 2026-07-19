@@ -14,7 +14,7 @@ import {
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import GradeChip from '../components/GradeChip.vue'
-import { partSpriteDataUrl } from '../components/partSprites'
+import { groupSpriteId, partSpriteDataUrl } from '../components/partSprites'
 import RotaryMarker from '../components/RotaryMarker.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -234,7 +234,14 @@ function onCheckout(): void {
                 :data-test="'hero-' + group.groupId"
                 @click="enterDepartment(group.groupId)"
               >
-                <div class="hero-art" aria-hidden="true"></div>
+                <div class="hero-art" aria-hidden="true">
+                  <img
+                    class="hero-sprite"
+                    :src="partSpriteDataUrl(groupSpriteId(group.groupId))"
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </div>
                 <span class="hero-label">{{ group.label }}</span>
                 <span class="hero-count">{{ group.parts.length }} slots</span>
               </button>
@@ -485,14 +492,27 @@ h3 {
   border-color: var(--mg-neon-cyan);
 }
 
-/* Blank placeholder region (Sprint 50's placeholder discipline) - a future
-   sprite drops in edge to edge; nothing renders here today. */
+/* The department's sprite frame (Sprint 88 UI fix): the group's representative
+   assembly sprite fills this box. Placeholder art only, per the sprite module's
+   provenance note. */
 .hero-art {
   width: 100%;
   aspect-ratio: 2 / 1;
   border: var(--mg-border);
   border-radius: var(--mg-radius);
   background: var(--mg-night-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mg-space-2);
+  overflow: hidden;
+}
+
+.hero-sprite {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .hero-label {
