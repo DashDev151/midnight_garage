@@ -135,6 +135,7 @@ import {
   resolveRejectOffer,
   resolveRemoveAssembly,
   resolveRemovePart,
+  resolveRemoveAssemblyMember,
   resolveSwapAssemblyMember,
   resolveScrapPart,
   resolveScrapShell,
@@ -3104,6 +3105,18 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /** Pull a mounted member out of a benched assembly into the parts bin -
+   * free and ungated (playtest 2026-07-19 item 25: old tyres come off before
+   * new ones go on). A no-op on any refusal. */
+  function removeAssemblyMember(containerId: string, memberSlot: CarPartId): boolean {
+    const result = resolveRemoveAssemblyMember(gameState.value, containerId, memberSlot)
+    if (!result.ok) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('removeAssemblyMember', { containerId, memberSlot })
+    return true
+  }
+
   /** The machine-shop assist fee an assembly op owes at the current tool tiers
    * (0 when owned or not machine-gated). `carId` is unused today (the fee is a
    * function of the assembly and tool tiers, not the car) - kept for symmetry
@@ -4082,6 +4095,7 @@ export const useGameStore = defineStore('game', () => {
     removeAssembly,
     refitAssembly,
     swapAssemblyMember,
+    removeAssemblyMember,
     assemblyMachineFee,
     assemblyLabel,
     assemblyRowsFor,

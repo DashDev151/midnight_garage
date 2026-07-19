@@ -961,6 +961,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Fit {{ game.partName(cand.instance.partId) }}
             </button>
+            <!-- Playtest 2026-07-19 item 25: a mounted member comes OFF the
+                 assembly before its successor goes on - dead rubber never has
+                 to stay on the rims waiting for the shop. Free, into the bin. -->
+            <button
+              v-if="selectedBench.member.instance"
+              type="button"
+              class="remove-btn"
+              :data-test="'bench-remove-' + selectedBench.member.carPartId"
+              title="Pull this part off the assembly into your inventory - free"
+              @click="
+                game.removeAssemblyMember(selectedBench.containerId, selectedBench.member.carPartId)
+              "
+            >
+              Take it off
+            </button>
             <!-- Sprint 96 decision 1 (amended same day): never a SILENT dead
                  end - nothing to recondition and nothing on hand to fit states
                  the situation and where the shop is; the player navigates the

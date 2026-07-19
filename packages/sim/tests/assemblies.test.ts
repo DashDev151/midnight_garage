@@ -22,6 +22,7 @@ import {
   resolveBuildAssembly,
   resolveRefitAssembly,
   resolveRemoveAssembly,
+  resolveRemoveAssemblyMember,
   resolveSwapAssemblyMember,
 } from '../src/assemblies'
 import { buildSimContext } from '../src/context'
@@ -389,6 +390,26 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     expect(on.ok).toBe(true)
     // No baseline on the car (slots were empty) - both members charge bolt-on install energy.
     expect(on.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.energyByClass['bolt-on'])
+  })
+
+  it('a mounted member pulls out of the container into the bin, free, and the slot reads empty (playtest 2026-07-19 item 25)', () => {
+    const car = wheelsWornCar()
+    const state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id] })
+    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres')
+    expect(pulled.ok).toBe(true)
+    expect(pulled.state.partInventory.some((p) => p.id === originalTyres.id)).toBe(true)
+    expect(pulled.state.assemblyInventory![0]!.members.tyres).toBeNull()
+    // Dismounting is free and ungated: cash and energy untouched (the wheels
+    // fee is for fitting a tyre, never for pulling one off).
+    expect(pulled.state.cashYen).toBe(off.state.cashYen)
+    expect(pulled.state.energySpentToday).toBe(off.state.energySpentToday)
+
+    // Refusals: an already-empty slot, and a missing container.
+    expect(resolveRemoveAssemblyMember(pulled.state, container.id, 'tyres').ok).toBe(false)
+    expect(resolveRemoveAssemblyMember(pulled.state, 'no-such-container', 'tyres').ok).toBe(false)
   })
 
   it('dissolving a car assembly drops its members to the parts bin', () => {

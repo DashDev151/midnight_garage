@@ -992,6 +992,21 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(false)
     })
 
+    it('Take it off pulls the mounted member into the bin and the slot reads empty (playtest item 25)', async () => {
+      const game = useGameStore()
+      const { wrapper } = await benchTyres(game)
+
+      await wrapper.find('[data-test="bench-remove-tyres"]').trigger('click')
+      await flushPromises()
+
+      expect(game.gameState.partInventory.some((p) => p.band === 'scrap')).toBe(true)
+      expect(game.gameState.assemblyInventory![0]!.members.tyres).toBeNull()
+      // Nothing mounted any more: no second Take it off, and the empty-state
+      // guidance stays until stock arrives.
+      expect(wrapper.find('[data-test="bench-remove-tyres"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(true)
+    })
+
     it('a freshly fitted member shows neither the empty-state nor a dangling fee (playtest item 19)', async () => {
       const game = useGameStore()
       const tyresPart = PARTS.find((p) => p.carPartId === 'tyres')!

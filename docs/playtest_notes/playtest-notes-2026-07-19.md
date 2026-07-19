@@ -203,7 +203,17 @@ internal. Fixes: the day report's part-bought/ordered/delivered lines render the
 brand and name; the car page's raw `model.tier` now renders the fitment-class label
 ("Kei & Compact" etc.). Internal identifiers are unchanged (directive 18's rename rule).
 
-### 24. Process ruling: no delegated tutorial sign-off (PROCESS)
+### 25. No way to pull a member off a benched assembly (SYSTEM gap, maintainer order)
+
+"what the fuck do you think you should do with old tyres before you fit new tyres??
+Fucking remove them." Not a regression: Sprint 87's bench op-set only ever had
+swap-in-place and recondition, so dead rubber had to stay mounted until a replacement
+existed. Fixed: `resolveRemoveAssemblyMember` (free, ungated, instance to the parts bin,
+member slot reads empty - the container format always supported empty members and refit
+skips them) plus a "Take it off" button on any mounted bench member. On-car "Take it
+off" for ordinary parts was always there and is unchanged.
+
+### 26. Process ruling: no delegated tutorial sign-off (PROCESS)
 
 The previous tutorial was drafted by an agent and signed off without a genuine
 step-by-step trace. Ruling: the orchestrator personally authors the walkthrough copy and

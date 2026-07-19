@@ -409,6 +409,46 @@ export function resolveSwapAssemblyMember(
 }
 
 /**
+ * Pull a mounted member OUT of an open assembly on the bench (playtest
+ * 2026-07-19 item 25: dead tyres come off the rims and go in the bin BEFORE
+ * fresh ones go on - the swap-only bench forced scrap rubber to stay mounted
+ * until its replacement existed). The instance moves to the parts bin and the
+ * member slot reads empty; refit already skips empty members, and
+ * `resolveSwapAssemblyMember` fits into an empty slot exactly as it displaces
+ * a full one. Free and ungated, like every removal (Sprint 79 law - the
+ * wheels-group fee is for FITTING a tyre, never for dismounting one).
+ * Refuses if the container, member slot, or mounted instance is missing.
+ */
+export function resolveRemoveAssemblyMember(
+  state: GameState,
+  containerId: string,
+  memberSlot: CarPartId,
+): AssemblyMemberMoveResult {
+  const fail: AssemblyMemberMoveResult = { state, log: [], ok: false }
+  const allContainers = containers(state)
+  const containerIndex = allContainers.findIndex((c) => c.id === containerId)
+  if (containerIndex === -1) return fail
+  const container = allContainers[containerIndex]!
+  const mounted = container.members[memberSlot]
+  if (!mounted) return fail
+
+  const nextContainers = [...allContainers]
+  nextContainers[containerIndex] = {
+    ...container,
+    members: { ...container.members, [memberSlot]: null },
+  }
+  return {
+    state: {
+      ...state,
+      assemblyInventory: nextContainers,
+      partInventory: [...state.partInventory, mounted],
+    },
+    log: [],
+    ok: true,
+  }
+}
+
+/**
  * Build an assembly on the bench from loose bin parts (Sprint 87 operation 4) -
  * a container with `sourceCarId: null` holding the named members. Installing it
  * onto a car (`resolveRefitAssembly` with `overrideCarId`) then charges install
