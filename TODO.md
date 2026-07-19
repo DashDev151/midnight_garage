@@ -206,6 +206,19 @@ pass."
 
 ## Open engineering
 
+- [ ] **CRITICAL: full-codebase comment sweep - directive 10 is violated wholesale
+  (maintainer, 2026-07-19).** Comments across every package carry process narrative:
+  sprint numbers, decision numbers, playtest item numbers, dates, "amended same day",
+  ruling attributions. Directive 10 explicitly forbids this, and the volume of comments
+  is itself a violation: most code should carry none. The sweep's contract: every comment
+  either states a real present-tense constraint or non-obvious behaviour with all
+  provenance stripped, or is deleted; history lives in `git log` and `docs/sprints/`
+  only. Scope is large (sim, game, content, tests) - orchestrator sets the style
+  contract and spot-audits, agents execute file-by-file. Strongly consider landing a
+  guard test alongside (mirroring the em-dash guard) that fails on `Sprint \d`,
+  `playtest`, `decision \d`, or ISO dates inside comments under `packages/`, so the
+  pattern cannot creep back.
+
 - [ ] **The bench swap path bypasses the fitment law (found 2026-07-19, answering "what if
   the player buys the wrong-class tyres").** `partFitsCar` (economy-bible law 3: "a
   kei-class part physically cannot go on a sports car") is enforced on the on-car install
