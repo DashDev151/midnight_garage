@@ -121,6 +121,8 @@ const draggedCarName = computed(() => {
         </HelpHint>
       </h3>
       <ul class="bay-slots">
+        <!-- data-test falls through to ShopSlot's root <li> - the tutorial
+             walkthrough spotlights the first bay (Sprint 95 decision 9). -->
         <ShopSlot
           v-for="(slot, i) in game.serviceBaysView"
           :key="slot?.carId ?? 'empty-' + i"
@@ -130,6 +132,7 @@ const draggedCarName = computed(() => {
           :move-disabled="game.parkingFull"
           test-id-prefix="move-parking-"
           :empty-slot-id="'empty-' + i"
+          :data-test="'service-slot-' + i"
           @move="game.moveCar($event, 'parking')"
           @drop="onDropOnBaySlot(i, $event)"
         />

@@ -1,7 +1,8 @@
 import { PARTS } from '@midnight-garage/content'
-import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import PartsMarketScreen from './PartsMarketScreen.vue'
 
@@ -10,10 +11,27 @@ import PartsMarketScreen from './PartsMarketScreen.vue'
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
-function mountScreen() {
-  const wrapper = mount(PartsMarketScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+/** A minimal real router so useRoute/useRouter resolve - the screen reads the
+ * ?slot deep link from the live route on setup (Sprint 96 decision 3). Route
+ * components are stubs; the screen itself is mounted directly. */
+function makeRouter(): Router {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'garage', component: { template: '<div />' } },
+      { path: '/parts', name: 'parts', component: { template: '<div />' } },
+    ],
+  })
+}
+
+async function mountScreen(query: Record<string, string> = {}) {
+  const router = makeRouter()
+  router.push({ name: 'parts', query })
+  await router.isReady()
+  const wrapper = mount(PartsMarketScreen, { global: { plugins: [router] } })
   mountedWrappers.push(wrapper)
-  return wrapper
+  await flushPromises()
+  return { wrapper, router }
 }
 
 const cheapest = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
@@ -34,8 +52,8 @@ describe('PartsMarketScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('shows six department hero cards and no parts list by default (Sprint 49 decision 1)', () => {
-    const wrapper = mountScreen()
+  it('shows six department hero cards and no parts list by default (Sprint 49 decision 1)', async () => {
+    const { wrapper } = await mountScreen()
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
     expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(true)
     expect(wrapper.findAll('.part')).toHaveLength(0)
@@ -43,14 +61,14 @@ describe('PartsMarketScreen', () => {
   })
 
   it('"Browse everything" shows the full flat catalog', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     expect(wrapper.findAll('.part').length).toBe(PARTS.length)
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
   })
 
   it('each slot card renders its sprite (Sprint 88 decision 7, moved to the slot level)', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
     const sprite = wrapper.find('[data-test="catalog-part-block"] .hero-sprite')
     expect(sprite.exists()).toBe(true)
@@ -58,7 +76,7 @@ describe('PartsMarketScreen', () => {
   })
 
   it('the breadcrumb root returns from browse-everything back to the six heroes', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     expect(wrapper.findAll('.hero-card')).toHaveLength(0)
 
@@ -68,7 +86,7 @@ describe('PartsMarketScreen', () => {
   })
 
   it('clicking a hero enters that department: breadcrumb, slot cards, and the home heroes gone', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
 
     expect(wrapper.find('[data-test="breadcrumb-root"]').exists()).toBe(true)
@@ -82,7 +100,7 @@ describe('PartsMarketScreen', () => {
   })
 
   it('drills down group -> sub-part to filter the catalog (Sprint 33 decision 3), then leaves the department via the breadcrumb', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     const ignitionEcuOnly = PARTS.filter((p) => p.carPartId === 'ignitionEcu')
 
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
@@ -95,8 +113,34 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
   })
 
+  describe('the ?slot deep link (Sprint 96 decisions 2-3)', () => {
+    it('preselects the department and slot filter, then drops the query from the route', async () => {
+      const game = useGameStore()
+      const { wrapper, router } = await mountScreen({ slot: 'tyres' })
+
+      // Landed straight on the tyres slot inside its own department: the
+      // breadcrumb shows group > slot and the catalogue lists only tyre
+      // products - the exact state a hero click plus a slot-card click sets.
+      const groupCrumb = wrapper.find('[data-test="breadcrumb-group"]')
+      expect(groupCrumb.exists()).toBe(true)
+      expect(groupCrumb.text()).toBe(game.componentLabel('wheels'))
+      expect(wrapper.find('.breadcrumb-current').text()).toBe(game.carPartLabel('tyres'))
+      const tyresOnly = PARTS.filter((p) => p.carPartId === 'tyres')
+      expect(wrapper.findAll('.part').length).toBe(tyresOnly.length)
+
+      // The query is an entry hint, not persistent state.
+      expect(router.currentRoute.value.query).toEqual({})
+    })
+
+    it('ignores an unknown slot id: the market opens on the six heroes as usual', async () => {
+      const { wrapper } = await mountScreen({ slot: 'flux-capacitor' })
+      expect(wrapper.findAll('.hero-card')).toHaveLength(6)
+      expect(wrapper.findAll('.part')).toHaveLength(0)
+    })
+  })
+
   it('grade/sort filters persist while browsing a slot within a department', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
     await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
     await wrapper.find('[data-test="filter-grade"]').setValue('race')
@@ -109,7 +153,7 @@ describe('PartsMarketScreen', () => {
   it('adding to cart spends nothing (Sprint 14 misclick safeguard)', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     expect(game.cashYen).toBe(cashBefore)
@@ -121,7 +165,7 @@ describe('PartsMarketScreen', () => {
   it('checkout at standard delivery deducts sticker price and orders, not buys, the part', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     await wrapper.find('[data-test="delivery-standard"]').setValue(true)
@@ -136,7 +180,7 @@ describe('PartsMarketScreen', () => {
   it('checkout at express delivery buys instantly at the surcharged price', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     await wrapper.find('[data-test="delivery-express"]').setValue(true)
@@ -150,7 +194,7 @@ describe('PartsMarketScreen', () => {
   it('removing a cart item costs nothing and clears it from the cart', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     await wrapper.find(`[data-test="remove-from-cart-${cheapest.id}"]`).trigger('click')
@@ -160,7 +204,7 @@ describe('PartsMarketScreen', () => {
 
   it('the cart rail (and On order, once populated) render beside the list, not gated behind entering a department first for cart contents to survive navigation', async () => {
     const game = useGameStore()
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     await wrapper.find(`[data-test="add-to-cart-${cheapest.id}"]`).trigger('click')
     expect(game.cartItems).toHaveLength(1)
@@ -174,7 +218,7 @@ describe('PartsMarketScreen', () => {
 
   it('the cart rail is visible on the home view too, not only inside a department (Sprint 58 decision 3)', async () => {
     const game = useGameStore()
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     expect(wrapper.findAll('.hero-card')).toHaveLength(6) // still the home view
     expect(wrapper.find('[data-test="cart-panel"]').exists()).toBe(true)
 
@@ -188,7 +232,7 @@ describe('PartsMarketScreen', () => {
   })
 
   it('a Back button exits a department without hunting the breadcrumb (Sprint 58 decision 5)', async () => {
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
     expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(false)
 
@@ -199,8 +243,15 @@ describe('PartsMarketScreen', () => {
   it('the "fits this vehicle" filter lists an accepted (inbound) customer service-job car (Sprint 61 item 10)', async () => {
     const game = useGameStore()
     game.newGame(1)
+    // Sprint 95 (directive 17 case (a)): the radial-offer gate keeps a fresh
+    // tutorial career's board Yuki-only, so this no longer assumes a day-1
+    // offer - it skips the walkthrough and advances to the next generation
+    // point instead. The accept below still happens the same day the offer is
+    // read, so the car is inbound (arrives tomorrow) exactly as before.
+    game.skipTutorial()
+    for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
     const offer = game.serviceJobOffers[0]
-    if (!offer) throw new Error('expected a service job offer on day 1')
+    if (!offer) throw new Error('expected an offer once the tutorial gate lifted')
     expect(game.acceptServiceJob(offer.id)).toBe(true)
     // The car is still inbound (arrives tomorrow), yet must already be a
     // fit-filter option so the player can order parts for it today.
@@ -211,7 +262,7 @@ describe('PartsMarketScreen', () => {
     expect(option!.fitmentClass).not.toBeNull()
 
     // Selecting it in the DOM sets the class filter to the car's own class.
-    const wrapper = mountScreen()
+    const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
     const select = wrapper.find('[data-test="filter-vehicle"]')
     expect(select.findAll('option').some((o) => o.element.value === customerCarId)).toBe(true)

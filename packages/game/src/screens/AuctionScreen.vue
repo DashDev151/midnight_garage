@@ -5,6 +5,7 @@ import type { AuctionTier } from '@midnight-garage/content'
 import GradeStamp from '../components/GradeStamp.vue'
 import LabourBar from '../components/LabourBar.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
+import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -340,7 +341,8 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
          at day end (`advanceDay`) or the moment a different tier's visit
          starts, never lingers past either. -->
     <p v-if="game.inspectionVisit" class="visit-panel" data-test="visit-panel">
-      At the yard ({{ game.inspectionVisit.tier }}): {{ game.inspectionVisit.minutesLeft }}m left
+      At the yard ({{ AUCTION_TIER_LABELS[game.inspectionVisit.tier] }}):
+      {{ game.inspectionVisit.minutesLeft }}m left
     </p>
 
     <p v-if="!hasLots" class="empty">
@@ -420,7 +422,7 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
 
     <div v-for="group in detailedGroups" :key="group.tier" class="tier">
       <div class="tier-head">
-        <h3>{{ group.tier }}</h3>
+        <h3>{{ AUCTION_TIER_LABELS[group.tier] }}</h3>
         <button
           v-if="!isActiveVisitTier(group.tier)"
           type="button"
@@ -691,7 +693,6 @@ h2 {
 h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
-  text-transform: capitalize;
   margin: 0 0 var(--mg-space-2);
 }
 
@@ -707,11 +708,14 @@ h3 {
   margin: 0 0 var(--mg-space-2);
 }
 
+/* Sprint 95 decision 7 (playtest item 8): a visible secondary control, not a
+   ghost chip - amber text and border on the panel colour, kept small so it
+   never competes with the violet bid CTA. */
 .inspect-visit {
   font-size: var(--mg-fs-sm);
-  color: var(--mg-text-dim);
-  border-color: var(--mg-panel-edge);
-  background: transparent;
+  color: var(--mg-neon-violet);
+  border-color: var(--mg-neon-violet);
+  background: var(--mg-panel);
 }
 
 .inspect-visit.confirming {

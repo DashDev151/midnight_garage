@@ -3760,9 +3760,16 @@ export const useGameStore = defineStore('game', () => {
    * Sprint 89: every new career is a tutorial career - `installTutorial` marks
    * it active, offers Yuki's mission on day 1, and seeds the scripted Local Yard
    * lot (a bot/probe career built straight from `createInitialGameState` never
-   * does, so those stay tutorial-free). */
+   * does, so those stay tutorial-free). Sprint 95: the tutorial intent is
+   * passed to `createInitialGameState` itself, because the day-1 board is
+   * generated inside it - the Yuki-only job board and the tutorial-model
+   * auction exclusion are generation gates, and the flag has to exist before
+   * that generation runs, not after (`installTutorial` runs too late for it). */
   function newGame(seed: number = randomSeed()): void {
-    gameState.value = installTutorial(createInitialGameState(context.value, seed), context.value)
+    gameState.value = installTutorial(
+      createInitialGameState(context.value, seed, { tutorial: true }),
+      context.value,
+    )
     dayLog.value = []
     lastDayReport.value = null
     reportVisible.value = false
@@ -3942,6 +3949,20 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = { ...gameState.value, tutorialStatus: 'done' }
   }
 
+  /** Record a "Got it" press on an `acknowledged`-completion walkthrough step
+   * (Sprint 95): appends the step id to `tutorialAcknowledgedSteps` (created on
+   * first use, never duplicated). The overlay's state-derived step machine
+   * reads the array to advance past the step; the sim never reads it. */
+  function acknowledgeTutorialStep(stepId: string): void {
+    const acknowledged = gameState.value.tutorialAcknowledgedSteps ?? []
+    if (acknowledged.includes(stepId)) return
+    gameState.value = {
+      ...gameState.value,
+      tutorialAcknowledgedSteps: [...acknowledged, stepId],
+    }
+    logSessionEvent('acknowledgeTutorialStep', { stepId })
+  }
+
   /** The parts catalog, for the dev grant picker. */
   const partsCatalog = computed<readonly Part[]>(() => context.value.parts)
   const modelsCatalog = computed<readonly CarModel[]>(() => context.value.models)
@@ -3950,6 +3971,7 @@ export const useGameStore = defineStore('game', () => {
     tutorialActive,
     skipTutorial,
     finishTutorial,
+    acknowledgeTutorialStep,
     gameState,
     dayLog,
     // Sprint 82 decision 6: exposed so `useStaffStore` (stores/staffStore.ts)

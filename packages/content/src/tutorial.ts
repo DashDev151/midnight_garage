@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AssemblyIdSchema } from './assembly'
 import { AuctionTierSchema } from './auction'
 import { CarPartIdSchema, ConditionBandSchema } from './tags'
 
@@ -25,8 +26,23 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  * - `missionDelivered`: the tutorial mission is `delivered`.
  * - `never`: never satisfied - the terminal sign-off card sits here until the
  *   player dismisses it.
+ *
+ * Sprint 95 (the tutorial actually guides) additions:
+ * - `acknowledged`: the step's own id is in `gameState.tutorialAcknowledgedSteps`
+ *   (the overlay's "Got it" button records it) - for purely informational steps.
+ * - `lotBidPlaced`: the player leads the scripted lot (`playerHasBid`), or
+ *   already owns the scripted car (monotonic once the lot leaves the board).
+ * - `scriptedCarInServiceBay`: the scripted car sits in a service bay.
+ * - `inspectionVisitActive`: an inspection visit is live at the scripted lot's
+ *   tier (`showWhen` only - it honestly regresses at End Day).
+ * - `assemblyOnBench`: the named assembly is on the bench for the scripted car
+ *   (`showWhen` only).
+ * - `partInInventory`: a non-scrap inventory part addressed to `carPartId`
+ *   exists - mirrors the bench swap-candidate rule (`showWhen` only).
+ * - `partOnOrder`: a pending part order addressed to `carPartId` exists - the
+ *   "your tyres are coming, End Day" waiting moment (`showWhen` only).
  */
-export const TutorialConditionSchema = z.discriminatedUnion('kind', [
+const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('missionActive') }),
   z.object({ kind: z.literal('lotInspected') }),
   z.object({ kind: z.literal('scriptedCarOwned') }),
@@ -37,19 +53,42 @@ export const TutorialConditionSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('missionDelivered') }),
   z.object({ kind: z.literal('never') }),
+  z.object({ kind: z.literal('acknowledged') }),
+  z.object({ kind: z.literal('lotBidPlaced') }),
+  z.object({ kind: z.literal('scriptedCarInServiceBay') }),
+  z.object({ kind: z.literal('inspectionVisitActive') }),
+  z.object({ kind: z.literal('assemblyOnBench'), assemblyId: AssemblyIdSchema }),
+  z.object({ kind: z.literal('partInInventory'), carPartId: CarPartIdSchema }),
+  z.object({ kind: z.literal('partOnOrder'), carPartId: CarPartIdSchema }),
 ])
+
+export type TutorialBaseCondition = z.infer<typeof TutorialBaseConditionSchema>
+
+/** `anyOf` is deliberately one level deep (members are base conditions, never
+ * nested compositions): its whole job is the completion monotonicity law
+ * (Sprint 95 decision 2) - a step a player skipped past must read complete via
+ * a later stage's condition - and one OR layer expresses that exactly. */
+const TutorialAnyOfSchema = z.object({
+  kind: z.literal('anyOf'),
+  of: z.array(TutorialBaseConditionSchema).min(1),
+})
+
+export const TutorialConditionSchema = z.union([TutorialBaseConditionSchema, TutorialAnyOfSchema])
 
 export type TutorialCondition = z.infer<typeof TutorialConditionSchema>
 
 /** One coach line: `yuki` speaks in-character; `instruction` is the game's
- * terse second-person UI voice. `text` is the swept copy verbatim, with
+ * second-person coach voice. `text` is the swept copy verbatim, with
  * `{budgetCap}`/`{payout}`/`{model}`/`{part}` tokens the overlay interpolates
- * at render time. `showWhen`, when present, gates the line on a live condition
- * (the only use today is the post-inspection "Minor" reveal). */
+ * at render time. `showWhen`, when present, gates the line on a live
+ * condition. `anchorTestId`, when present, overrides the step's spotlight
+ * while this is the last visible anchored line (Sprint 95: the spotlight
+ * follows the sub-state through a step). */
 export const TutorialLineSchema = z.object({
   speaker: z.enum(['yuki', 'instruction']),
   text: z.string().min(1),
   showWhen: TutorialConditionSchema.optional(),
+  anchorTestId: z.string().min(1).optional(),
 })
 
 export type TutorialLine = z.infer<typeof TutorialLineSchema>

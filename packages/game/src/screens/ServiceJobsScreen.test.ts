@@ -16,7 +16,13 @@ function mountScreen() {
   return wrapper
 }
 
+/** Sprint 95 (the radial-offer gate): a fresh career's board is Yuki-only
+ * while the tutorial runs, so every test exercising the radial board skips
+ * the walkthrough first - the gate lifts at the next generation point, hence
+ * the bounded End Day loop. Yuki's mission itself survives a skip, so the
+ * mission tests below are unaffected. */
 function warpToOffers(game: ReturnType<typeof useGameStore>) {
+  game.skipTutorial()
   for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
 }
 
@@ -74,9 +80,17 @@ describe('ServiceJobsScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('shows the job board with offers already on it on day 1 (Sprint 10)', () => {
+  /**
+   * Sprint 95 (directive 17 case (a)): this used to pin day-1 offers (Sprint
+   * 10's "no empty first day"). A fresh tutorial career now deliberately
+   * opens Yuki-only, so the correct behaviour is offers rendering once the
+   * gate lifts - the offers themselves are obtained legitimately post-skip.
+   */
+  it('shows the job board with offers on it once the tutorial gate lifts (Sprint 95)', () => {
     const game = useGameStore()
     game.newGame(1)
+    warpToOffers(game)
+    expect(game.serviceJobOffers.length).toBeGreaterThan(0)
     const wrapper = mountScreen()
     expect(wrapper.text()).not.toContain('No jobs on the board')
     expect(wrapper.findAll('.offer').length).toBe(game.serviceJobOffers.length)
@@ -213,6 +227,9 @@ describe('ServiceJobsScreen', () => {
   it('shows a fitment-class chip on each offer card (Sprint 61 item 15)', () => {
     const game = useGameStore()
     game.newGame(1)
+    // Sprint 95 (directive 17 case (a)): day-1 offers are gated on a tutorial
+    // career now, so the offer is obtained post-skip instead.
+    warpToOffers(game)
     const offer = game.serviceJobOfferViews[0]
     if (!offer) throw new Error('expected an offer on the board')
     expect(offer.fitmentClass).not.toBeNull()

@@ -7,12 +7,13 @@ import type {
   PartFitmentClass,
 } from '@midnight-garage/content'
 import {
+  ALL_CAR_PART_IDS,
   fitmentClassForTier,
   PART_FITMENT_CLASS_DISPLAY_NAMES,
   PartFitmentClassSchema,
 } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import GradeChip from '../components/GradeChip.vue'
 import { groupSpriteId, partSpriteDataUrl } from '../components/partSprites'
 import RotaryMarker from '../components/RotaryMarker.vue'
@@ -163,6 +164,26 @@ function selectPart(partId: CarPartId): void {
 function goBack(): void {
   if (componentFilter.value) componentFilter.value = ''
   else returnHome()
+}
+
+/**
+ * Sprint 96 decisions 2-3: the /parts?slot={carPartId} deep link. The bench
+ * dead-end control and ReplaceDrawer's empty state land here already pointed
+ * at the right department with the slot filter applied - the same state a
+ * hero click plus a slot-card click sets. The query is an entry hint, not
+ * persistent state, so it is dropped from the route straight away.
+ */
+const route = useRoute()
+const router = useRouter()
+const slotQuery = route.query.slot
+if (typeof slotQuery === 'string' && (ALL_CAR_PART_IDS as readonly string[]).includes(slotQuery)) {
+  const slotId = slotQuery as CarPartId
+  const group = game.groupForCarPart(slotId)
+  if (group) {
+    enterDepartment(group)
+    selectPart(slotId)
+  }
+  void router.replace({ query: {} })
 }
 
 /** How many products a slot has - the count shown on its card. */

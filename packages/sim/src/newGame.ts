@@ -5,6 +5,23 @@ import type { SimContext } from './context'
 import { createRng } from './rng'
 import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
 import { freshToolTiers } from './toolLines'
+import { radialOffersGated } from './tutorial'
+
+export interface NewGameOptions {
+  /**
+   * Sprint 95: build this career as a guided-tutorial career, stamping
+   * `tutorialStatus: 'active'` BEFORE the day-1 board generation below. The
+   * intent has to enter here rather than in `installTutorial` (which the
+   * game layer runs afterwards): both day-1 isolation rules - the Yuki-only
+   * job board (decision 4) and the no-second-Wagon-R auction exclusion
+   * (decision 5) - are predicates applied AT generation time, and a post-hoc
+   * cleanup could empty the job board but could not un-generate a
+   * tutorial-model lot without visibly thinning the opening auction board.
+   * Passing the intent in routes the day-1 batch through the exact gates
+   * every later day's generation uses: one mechanism, no cleanup path.
+   */
+  tutorial?: boolean
+}
 
 /**
  * The canonical day-1 GameState for a new career - used by both the
@@ -22,7 +39,11 @@ import { freshToolTiers } from './toolLines'
  * `seed` alone (day 1 has no prior day to fold in), so a given seed still
  * produces a fully reproducible opening board.
  */
-export function createInitialGameState(context: SimContext, seed: number): GameState {
+export function createInitialGameState(
+  context: SimContext,
+  seed: number,
+  options: NewGameOptions = {},
+): GameState {
   const base: GameState = {
     day: 1,
     seed,
@@ -59,21 +80,32 @@ export function createInitialGameState(context: SimContext, seed: number): GameS
     inspectionVisit: null,
     storyMissions: [],
     assemblyInventory: [],
+    // Genuinely-optional-key pattern (content gameState.ts): the key exists
+    // only on a tutorial career, so bots/probes/tests stay untouched by any
+    // tutorial machinery.
+    ...(options.tutorial ? { tutorialStatus: 'active' as const } : {}),
   }
 
   // One rng stream for both, in sequence - the same "one rng per day, drawn
-  // from for whichever concerns run" shape advanceDay itself uses.
+  // from for whichever concerns run" shape advanceDay itself uses. `base`
+  // already carries the tutorial flag when asked for, so the catalog refresh
+  // applies the Sprint 95 tutorial-model exclusion to the day-1 batch.
   const rng = createRng(seed)
   const refresh = refreshCatalogs(base, context, base.day, rng)
-  const serviceJobOffers = generateDailyServiceJobOffers(
-    context,
-    base.day,
-    rng,
-    currentGameYear(base.reputationTier),
-    base.toolTiers,
-    base.reputationTier,
-    base.specialty,
-  )
+  // Sprint 95 decision 4: a tutorial career's day-1 job board is Yuki-only -
+  // the same radial-offer gate advanceDay applies at its daily generation
+  // point, applied to the seed batch here.
+  const serviceJobOffers = radialOffersGated(base)
+    ? []
+    : generateDailyServiceJobOffers(
+        context,
+        base.day,
+        rng,
+        currentGameYear(base.reputationTier),
+        base.toolTiers,
+        base.reputationTier,
+        base.specialty,
+      )
   return {
     ...base,
     activeAuctionLots: refresh.freshLots,

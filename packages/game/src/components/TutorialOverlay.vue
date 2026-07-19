@@ -5,13 +5,16 @@
  * A strict VIEW. It reads game/store state and static tutorial content only,
  * derives the current step from live state (never a stored step index, never a
  * timer), and highlights the real controls the player operates. It NEVER
- * mutates the sim - the only state it writes is the tutorial's own skip/finish
- * bit, through the store's `skipTutorial`/`finishTutorial` actions.
+ * mutates the sim - the only state it writes is the tutorial's own
+ * skip/finish/acknowledge bits, through the store's `skipTutorial`/
+ * `finishTutorial`/`acknowledgeTutorialStep` actions, and its own session-only
+ * drag position in the ui store (Sprint 95).
  */
-import { computed, ref, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   CARS,
+  PARTS,
   PARTS_TAXONOMY,
   STORY_MISSIONS,
   SYMPTOMS,
@@ -19,14 +22,17 @@ import {
   TUTORIAL_STEPS,
   resolveCarDisplayName,
   type CarInstance,
+  type TutorialBaseCondition,
   type TutorialCondition,
   type TutorialStep,
 } from '@midnight-garage/content'
 import { bandIndex } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
+import { useUiStore } from '../stores/uiStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+const ui = useUiStore()
 const route = useRoute()
 
 const recipe = TUTORIAL_LOT
@@ -37,6 +43,10 @@ const truePartId = symptom?.causes.find((c) => c.id === recipe.symptom.trueCause
 const truePartName = truePartId
   ? (PARTS_TAXONOMY.find((p) => p.id === truePartId)?.displayName ?? truePartId)
   : ''
+
+/** Catalogue part id -> the slot it addresses, for the `partInInventory`
+ * condition (a `PartInstance` carries only its catalogue `partId`). */
+const carPartIdByPartId = new Map(PARTS.map((p) => [p.id, p.carPartId]))
 
 /** Token substitutions for the swept copy. Resolved once from static content -
  * the swept sheet's `{budgetCap}`/`{payout}`/`{model}`/`{part}` placeholders. */
@@ -64,7 +74,12 @@ const scriptedCar = computed<CarInstance | undefined>(() => {
   return game.gameState.activeAuctionLots.find((l) => l.car.id === recipe.carId)?.car
 })
 
-function conditionMet(cond: TutorialCondition): boolean {
+/**
+ * One base predicate against live state. `stepId` is the OWNING step's id -
+ * the `acknowledged` kind reads whether that step itself has been
+ * "Got it"-pressed (`gameState.tutorialAcknowledgedSteps`).
+ */
+function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean {
   switch (cond.kind) {
     case 'missionActive':
       return missionRecord.value?.status === 'active'
@@ -81,9 +96,45 @@ function conditionMet(cond: TutorialCondition): boolean {
       const installed = owned?.parts[cond.carPartId]?.installed
       return !!installed && bandIndex(installed.band) >= bandIndex(cond.band)
     }
+    case 'acknowledged':
+      return (game.gameState.tutorialAcknowledgedSteps ?? []).includes(stepId)
+    case 'lotBidPlaced': {
+      // Monotonic once the lot leaves the board: owning the car counts too.
+      const lot = game.gameState.activeAuctionLots.find((l) => l.id === recipe.lotId)
+      return (
+        lot?.playerHasBid === true || game.gameState.ownedCars.some((c) => c.id === recipe.carId)
+      )
+    }
+    case 'scriptedCarInServiceBay':
+      return game.gameState.serviceBayCarIds.includes(recipe.carId)
+    case 'inspectionVisitActive':
+      return game.gameState.inspectionVisit?.tier === recipe.tier
+    case 'assemblyOnBench':
+      return (game.gameState.assemblyInventory ?? []).some(
+        (a) => a.assemblyId === cond.assemblyId && a.sourceCarId === recipe.carId,
+      )
+    case 'partInInventory':
+      // Mirrors the bench swap-candidate rule (CarDetailScreen): any
+      // non-scrap inventory part addressed to this slot counts.
+      return game.gameState.partInventory.some(
+        (pi) => pi.band !== 'scrap' && carPartIdByPartId.get(pi.partId) === cond.carPartId,
+      )
+    case 'partOnOrder':
+      // A standard-delivery order in transit addressed to this slot - the
+      // "your tyres are coming, End Day" waiting moment.
+      return game.gameState.pendingPartOrders.some(
+        (order) => carPartIdByPartId.get(order.partId) === cond.carPartId,
+      )
     case 'never':
       return false
   }
+}
+
+/** `anyOf` is one level deep by schema (the completion monotonicity law):
+ * met when any member is. */
+function conditionMet(cond: TutorialCondition, stepId: string): boolean {
+  if (cond.kind === 'anyOf') return cond.of.some((member) => baseConditionMet(member, stepId))
+  return baseConditionMet(cond, stepId)
 }
 
 const isDelivered = computed(() => missionRecord.value?.status === 'delivered')
@@ -100,16 +151,27 @@ const currentStep = computed<TutorialStep | undefined>(() => {
   if (isDelivered.value) return doneStep.value
   for (const step of TUTORIAL_STEPS) {
     if (step.completion.kind === 'never') continue
-    if (!conditionMet(step.completion)) return step
+    if (!conditionMet(step.completion, step.id)) return step
   }
   return doneStep.value
 })
 
 const isTerminal = computed(() => currentStep.value?.completion.kind === 'never')
 
-const visibleLines = computed(() =>
-  (currentStep.value?.lines ?? []).filter((line) => !line.showWhen || conditionMet(line.showWhen)),
-)
+/** The "Got it" button renders only on a step whose completion IS the
+ * acknowledgement (Sprint 95 decision 3). */
+const isAcknowledgedStep = computed(() => currentStep.value?.completion.kind === 'acknowledged')
+
+function acknowledgeCurrentStep(): void {
+  const step = currentStep.value
+  if (step) game.acknowledgeTutorialStep(step.id)
+}
+
+const visibleLines = computed(() => {
+  const step = currentStep.value
+  if (!step) return []
+  return step.lines.filter((line) => !line.showWhen || conditionMet(line.showWhen, step.id))
+})
 
 const stepNumber = computed(() => {
   const id = currentStep.value?.id
@@ -119,29 +181,50 @@ const stepNumber = computed(() => {
 const stepTotal = TUTORIAL_STEPS.length
 
 // --- best-effort spotlight of the current step's real control ---------------
-const anchorSelector = computed(() => {
+
+/** The spotlight's chosen `data-test` id: the LAST visible line carrying its
+ * own `anchorTestId` wins (Sprint 95 decision 9 - the spotlight follows the
+ * sub-state through a step), else the step's own anchor. A `{lotId}` token
+ * resolves to the scripted lot either way. */
+const anchorTestId = computed<string | null>(() => {
   const step = currentStep.value
   if (!step || isTerminal.value) return null
-  const testId = step.anchorTestId.replace('{lotId}', recipe.lotId)
-  return `[data-test="${testId}"]`
+  let anchor = step.anchorTestId
+  for (const line of visibleLines.value) {
+    if (line.anchorTestId) anchor = line.anchorTestId
+  }
+  return anchor.replace('{lotId}', recipe.lotId)
 })
+
+/** Fallback anchors for when the chosen control is not in the DOM (usually the
+ * wrong screen): the nav tab that leads to the step's `anchorScreen`, so the
+ * walkthrough always spotlights something clickable. The car screen has no nav
+ * tab of its own - fall back to the first service bay slot, then the Garage
+ * tab. */
+function fallbackTestIds(anchorScreen: string): string[] {
+  if (anchorScreen === 'car') return ['service-slot-0', 'nav-garage']
+  return [`nav-${anchorScreen}`]
+}
 
 let spotlit: Element | null = null
 watchEffect((onCleanup) => {
-  // Re-run when the step, route, or a state tick changes.
-  void currentStep.value
+  // Re-run when the step, its visible lines (via anchorTestId), or the route
+  // changes - the route swap is what mounts/unmounts the real controls.
   void route.name
   if (spotlit) {
     spotlit.classList.remove('tutorial-spotlight')
     spotlit = null
   }
-  const selector = anchorSelector.value
-  const onAnchorScreen = route.name === currentStep.value?.anchorScreen
-  if (selector && onAnchorScreen && typeof document !== 'undefined') {
-    const el = document.querySelector(selector)
-    if (el) {
-      el.classList.add('tutorial-spotlight')
-      spotlit = el
+  const step = currentStep.value
+  const primary = anchorTestId.value
+  if (step && primary && typeof document !== 'undefined') {
+    for (const testId of [primary, ...fallbackTestIds(step.anchorScreen)]) {
+      const el = document.querySelector(`[data-test="${testId}"]`)
+      if (el) {
+        el.classList.add('tutorial-spotlight')
+        spotlit = el
+        break
+      }
     }
   }
   onCleanup(() => {
@@ -152,18 +235,71 @@ watchEffect((onCleanup) => {
   })
 })
 
+// --- draggable overlay (Sprint 95 decision 8) --------------------------------
+
+const overlayEl = ref<HTMLElement | null>(null)
+
+/** While a drag is live: the pointer's offset from the overlay's top-left
+ * corner, so the box tracks the grab point rather than snapping. */
+let dragOffset: { dx: number; dy: number } | null = null
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+function onDragMove(event: PointerEvent): void {
+  const el = overlayEl.value
+  if (!dragOffset || !el) return
+  // Clamp so the box stays fully inside the viewport.
+  const x = clamp(event.clientX - dragOffset.dx, 0, Math.max(0, window.innerWidth - el.offsetWidth))
+  const y = clamp(
+    event.clientY - dragOffset.dy,
+    0,
+    Math.max(0, window.innerHeight - el.offsetHeight),
+  )
+  ui.setTutorialOverlayPos({ x, y })
+}
+
+function onDragEnd(): void {
+  dragOffset = null
+  window.removeEventListener('pointermove', onDragMove)
+  window.removeEventListener('pointerup', onDragEnd)
+}
+
+function onHeaderPointerDown(event: PointerEvent): void {
+  const el = overlayEl.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  dragOffset = { dx: event.clientX - rect.left, dy: event.clientY - rect.top }
+  window.addEventListener('pointermove', onDragMove)
+  window.addEventListener('pointerup', onDragEnd)
+  event.preventDefault()
+}
+
+onUnmounted(onDragEnd)
+
+/** Dragged position (session-only, ui store) overrides the default
+ * bottom-left CSS; unset means the stylesheet position applies untouched. */
+const overlayStyle = computed(() => {
+  const pos = ui.tutorialOverlayPos
+  if (!pos) return undefined
+  return { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto' }
+})
+
 const confirmingSkip = ref(false)
 </script>
 
 <template>
   <aside
     v-if="game.tutorialActive && currentStep"
+    ref="overlayEl"
     class="tutorial-overlay"
     data-test="tutorial-overlay"
     role="complementary"
     aria-label="Walkthrough"
+    :style="overlayStyle"
   >
-    <header class="tutorial-head">
+    <header class="tutorial-head" @pointerdown="onHeaderPointerDown">
       <span class="tutorial-label">Walkthrough</span>
       <span v-if="!isTerminal" class="tutorial-progress" data-test="tutorial-progress"
         >Step {{ stepNumber }} of {{ stepTotal }}</span
@@ -194,15 +330,25 @@ const confirmingSkip = ref(false)
       </button>
 
       <template v-else>
-        <button
-          v-if="!confirmingSkip"
-          type="button"
-          class="tutorial-skip"
-          data-test="tutorial-skip"
-          @click="confirmingSkip = true"
-        >
-          Skip the walkthrough
-        </button>
+        <template v-if="!confirmingSkip">
+          <button
+            type="button"
+            class="tutorial-skip"
+            data-test="tutorial-skip"
+            @click="confirmingSkip = true"
+          >
+            Skip the walkthrough
+          </button>
+          <button
+            v-if="isAcknowledgedStep"
+            type="button"
+            class="tutorial-got-it"
+            data-test="tutorial-got-it"
+            @click="acknowledgeCurrentStep()"
+          >
+            Got it
+          </button>
+        </template>
         <div v-else class="tutorial-skip-confirm" data-test="tutorial-skip-confirm">
           <p class="tutorial-skip-copy">
             Skip for good? Yuki's job stays; the guidance does not come back.
@@ -257,6 +403,13 @@ const confirmingSkip = ref(false)
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
+  /* The drag handle: grab-drag the header to reposition the whole box. */
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.tutorial-head:active {
+  cursor: grabbing;
 }
 .tutorial-label {
   font-weight: 700;
@@ -304,6 +457,8 @@ const confirmingSkip = ref(false)
 .tutorial-foot {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
 }
 .tutorial-skip,
 .tutorial-skip-no {
@@ -318,6 +473,20 @@ const confirmingSkip = ref(false)
 .tutorial-skip:hover,
 .tutorial-skip-no:hover {
   color: #dfe6ff;
+}
+/* The acknowledged-step primary: amber, so it never competes with the violet
+ * screen CTAs the spotlight points at. */
+.tutorial-got-it {
+  background: rgba(255, 187, 92, 0.14);
+  border: 1px solid rgba(255, 187, 92, 0.6);
+  color: #ffd9a0;
+  font-size: 0.78rem;
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.tutorial-got-it:hover {
+  background: rgba(255, 187, 92, 0.24);
 }
 .tutorial-skip-confirm {
   width: 100%;

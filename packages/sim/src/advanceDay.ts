@@ -23,7 +23,7 @@ import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts
 import { createRng } from './rng'
 import { computeContractIncomeYen } from './serviceBay'
 import { commitPendingStaffAssignments, refreshStaffAds } from './staff'
-import { ensureTutorialLot } from './tutorial'
+import { ensureTutorialLot, radialOffersGated } from './tutorial'
 import {
   generateDailyServiceJobOffers,
   resolveAcceptServiceJob,
@@ -346,19 +346,26 @@ export function advanceDay(
   // id scheme would otherwise collide with `createInitialGameState`'s day-1
   // seed batch (both would generate `svc-1-*` ids on the very first
   // advanceDay call, silently duplicating offer ids with different content).
-  const freshServiceJobOffers = generateDailyServiceJobOffers(
-    context,
-    next.day + 1,
-    rng,
-    currentGameYear(next.reputationTier),
-    next.toolTiers,
-    next.reputationTier,
-    next.specialty,
-  )
-  if (freshServiceJobOffers.length > 0) {
-    next = {
-      ...next,
-      serviceJobOffers: [...next.serviceJobOffers, ...freshServiceJobOffers],
+  // Sprint 95 decision 4 (the radial-offer gate): while the tutorial is
+  // active and Yuki's mission is undelivered, the board stays deliberately
+  // Yuki-only - generation is skipped at this call site, never forked inside
+  // the generator. A delivery or a skip lifts the gate here, at the next End
+  // Day; a non-tutorial career is never gated.
+  if (!radialOffersGated(next)) {
+    const freshServiceJobOffers = generateDailyServiceJobOffers(
+      context,
+      next.day + 1,
+      rng,
+      currentGameYear(next.reputationTier),
+      next.toolTiers,
+      next.reputationTier,
+      next.specialty,
+    )
+    if (freshServiceJobOffers.length > 0) {
+      next = {
+        ...next,
+        serviceJobOffers: [...next.serviceJobOffers, ...freshServiceJobOffers],
+      }
     }
   }
 

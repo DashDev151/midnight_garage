@@ -11,7 +11,8 @@ import {
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import { h } from 'vue'
+import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -26,14 +27,16 @@ import CarDetailScreen from './CarDetailScreen.vue'
  * flow, remove gating, and the confirm totals.
  */
 
-// A minimal router so useRoute/useRouter resolve; garage/parts are stub targets
-// (ReplaceDrawer's "visit the parts market" link needs 'parts' to exist).
+// A minimal router so useRoute/useRouter resolve; garage/parts are stub
+// targets (ReplaceDrawer's "visit the parts market" link needs 'parts' to
+// exist). Render-function stubs, not templates - the RouterView-host test
+// below actually renders them and this environment has no runtime compiler.
 function makeRouter(): Router {
   return createRouter({
     history: createMemoryHistory(),
     routes: [
-      { path: '/', name: 'garage', component: { template: '<div>garage</div>' } },
-      { path: '/parts', name: 'parts', component: { template: '<div>parts</div>' } },
+      { path: '/', name: 'garage', component: { render: () => h('div') } },
+      { path: '/parts', name: 'parts', component: { render: () => h('div') } },
       { path: '/car/:id', name: 'car', component: CarDetailScreen },
     ],
   })
@@ -617,8 +620,13 @@ describe('CarDetailScreen', () => {
     it('is not shown for a customer service-job car (never owned, never ledgered)', async () => {
       const game = useGameStore()
       game.newGame(1)
+      // Sprint 95 (directive 17 case (a)): the radial-offer gate keeps a fresh
+      // tutorial career's board Yuki-only, so the offer is obtained post-skip
+      // at the next generation point rather than assumed on day 1.
+      game.skipTutorial()
+      for (let i = 0; i < 20 && game.gameState.serviceJobOffers.length === 0; i++) game.endDay()
       const offer = game.gameState.serviceJobOffers[0]
-      if (!offer) throw new Error('expected a service job offer on day 1')
+      if (!offer) throw new Error('expected an offer once the tutorial gate lifted')
       expect(game.acceptServiceJob(offer.id)).toBe(true)
       game.endDay() // the customer's car arrives the following morning
       const carId = offer.car.id
@@ -731,8 +739,12 @@ describe('CarDetailScreen', () => {
     it('shows the work status but not the Complete/Give Up button - that moved to the jobs screen', async () => {
       const game = useGameStore()
       game.newGame(1)
+      // Sprint 95 (directive 17 case (a)): same post-skip offer setup as the
+      // finance-panel customer-car test above - day-1 offers are gated now.
+      game.skipTutorial()
+      for (let i = 0; i < 20 && game.gameState.serviceJobOffers.length === 0; i++) game.endDay()
       const offer = game.gameState.serviceJobOffers[0]
-      if (!offer) throw new Error('expected a service job offer on day 1')
+      if (!offer) throw new Error('expected an offer once the tutorial gate lifted')
       expect(game.acceptServiceJob(offer.id)).toBe(true)
       game.endDay()
       const carId = offer.car.id
@@ -926,6 +938,101 @@ describe('CarDetailScreen', () => {
       await flushPromises()
       expect(game.gameState.assemblyInventory).toHaveLength(0)
       expect(game.gameState.ownedCars[0]!.parts.rims.installed).not.toBeNull()
+    })
+  })
+
+  describe('the bench dead end (Sprint 96 decision 1)', () => {
+    /** Benches the wheel assembly and docks the panel on its tyres member -
+     * the exact click path of the measured playtest defect (item 13). */
+    async function benchTyres(game: ReturnType<typeof useGameStore>) {
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper, router } = await mountAt(id)
+      await selectPart(wrapper, 'wheels', 'rims')
+      await wrapper.find('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-test="bench-member-tyres"]').trigger('click')
+      await flushPromises()
+      return { id, wrapper, router }
+    }
+
+    it('with nothing to recondition and nothing to fit, the panel names the gap and offers the Shop control, with no dangling fee caption', async () => {
+      const game = useGameStore()
+      const { wrapper } = await benchTyres(game)
+
+      // Scrap-or-not, tyres are never reconditionable and the inventory holds
+      // no replacement - previously this panel offered only Refit assembly.
+      expect(wrapper.text()).toContain('No replacement tyres on hand.')
+      const shop = wrapper.find('[data-test="bench-shop-tyres"]')
+      expect(shop.exists()).toBe(true)
+      expect(shop.text()).toBe('Shop for tyres')
+      // The swap-fee caption prices a Fit button that is not on screen - it
+      // must never dangle alone.
+      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(false)
+    })
+
+    it('the Shop control deep links to the parts market prefiltered to the slot', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+
+      // Mounted through a RouterView host, because this click navigates: the
+      // real app unmounts the screen on route change (retiring its not-found
+      // redirect watcher), while the direct-mount harness would leave that
+      // watcher alive to clobber the navigation with a garage redirect.
+      const router = makeRouter()
+      router.push({ name: 'car', params: { id } })
+      await router.isReady()
+      const wrapper = mount({ render: () => h(RouterView) }, { global: { plugins: [router] } })
+      mountedWrappers.push(wrapper)
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-tile-wheels"]').trigger('click')
+      await wrapper.get('[data-test="diagram-slot-rims"]').trigger('click')
+      await flushPromises()
+      await wrapper.get('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
+      await flushPromises()
+      await wrapper.get('[data-test="bench-member-tyres"]').trigger('click')
+      await flushPromises()
+
+      await wrapper.get('[data-test="bench-shop-tyres"]').trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.name).toBe('parts')
+      expect(router.currentRoute.value.query.slot).toBe('tyres')
+    })
+
+    it('with a replacement on hand, the Fit button and its fee caption render and the Shop control does not', async () => {
+      const game = useGameStore()
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres')!
+      game.devGrantPart(tyresPart.id)
+      const { wrapper } = await benchTyres(game)
+
+      expect(wrapper.find('[data-test^="bench-swap-tyres-"]').exists()).toBe(true)
+      // At tier-1 wheels tooling the tyre swap owes the fitting-shop fee, and
+      // with a Fit button present the caption is back in its actionable context.
+      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="bench-shop-tyres"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('No replacement tyres on hand.')
+    })
+
+    it('a member with a recondition step never shows the Shop control, even with nothing to fit', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      // Pin rims below mint so the benched member offers a recondition step;
+      // the inventory holds no replacement rims either way.
+      const car = game.gameState.ownedCars[0]!
+      car.parts.rims = { installed: { ...car.parts.rims.installed!, band: 'worn' } }
+
+      const { wrapper } = await mountAt(id)
+      await selectPart(wrapper, 'wheels', 'rims')
+      await wrapper.find('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-test="bench-member-rims"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="bench-recondition-rims"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="bench-shop-rims"]').exists()).toBe(false)
     })
   })
 

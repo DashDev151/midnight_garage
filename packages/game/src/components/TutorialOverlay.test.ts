@@ -1,4 +1,4 @@
-import { STORY_MISSIONS, TUTORIAL_LOT, type GameState } from '@midnight-garage/content'
+import { PARTS, STORY_MISSIONS, TUTORIAL_LOT, type GameState } from '@midnight-garage/content'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +7,8 @@ import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import TutorialOverlay from './TutorialOverlay.vue'
 
-// The overlay only reads `route.name` (best-effort spotlight); a plain stub is
+// The overlay reads `route.name` only to re-run the spotlight effect when the
+// screen changes (anchoring itself is DOM-presence based now); a plain stub is
 // enough and keeps the test off a full router install.
 vi.mock('vue-router', () => ({ useRoute: () => ({ name: 'jobs' }) }))
 
@@ -34,6 +35,29 @@ function ownScriptedCarWithBands(
   }
 }
 
+/** Puts the scripted (already-owned) car into the first service bay slot. */
+function scriptedCarIntoBay(state: GameState): GameState {
+  const serviceBayCarIds = [...state.serviceBayCarIds]
+  serviceBayCarIds[0] = LOT.carId
+  return {
+    ...state,
+    serviceBayCarIds,
+    parkingCarIds: state.parkingCarIds.map((id) => (id === LOT.carId ? null : id)),
+  }
+}
+
+/** Marks the scripted lot as led by a player bid, without inspecting. */
+function bidOnScriptedLot(state: GameState): GameState {
+  return {
+    ...state,
+    activeAuctionLots: state.activeAuctionLots.map((l) =>
+      l.id === LOT.lotId
+        ? { ...l, playerHasBid: true, currentBidYen: 100_000, leadingBidder: 'player' as const }
+        : l,
+    ),
+  }
+}
+
 describe('TutorialOverlay', () => {
   const wrappers: ReturnType<typeof mount>[] = []
   function render() {
@@ -42,9 +66,20 @@ describe('TutorialOverlay', () => {
     return wrapper
   }
 
+  // Real DOM elements the spotlight effect can find via document.querySelector.
+  const anchors: HTMLElement[] = []
+  function addAnchor(testId: string): HTMLElement {
+    const el = document.createElement('button')
+    el.setAttribute('data-test', testId)
+    document.body.appendChild(el)
+    anchors.push(el)
+    return el
+  }
+
   beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => {
     for (const w of wrappers.splice(0)) w.unmount()
+    for (const el of anchors.splice(0)) el.remove()
   })
 
   it('stays hidden for a non-tutorial career', () => {
@@ -53,69 +88,150 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(false)
   })
 
-  it('opens on the accept beat for a fresh tutorial career, with the mission economics interpolated', async () => {
+  it('opens on step 1 of 10 (welcome) with the Got it button for a fresh tutorial career', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = render()
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 6')
-    const text = wrapper.text()
-    expect(text).toContain(formatYen(FOUR_WHEELS.budgetCapYen))
-    expect(text).toContain(formatYen(FOUR_WHEELS.payoutYen))
-    expect(text).toContain('Accept the job when you are ready')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 10')
+    expect(wrapper.text()).toContain('your own garage')
+    expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(true)
   })
 
-  it('advances to the acquire beat once the mission is accepted, revealing the Minor line only after inspection', async () => {
+  it('Got it advances to accept, persists the acknowledgement, and interpolates the payout', async () => {
     const game = useGameStore()
     game.newGame(2)
+    const wrapper = render()
+    await nextTick()
+
+    await wrapper.find('[data-test="tutorial-got-it"]').trigger('click')
+    await nextTick()
+
+    expect(game.gameState.tutorialAcknowledgedSteps).toContain('welcome')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 2 of 10')
+    const text = wrapper.text()
+    expect(text).toContain(formatYen(FOUR_WHEELS.payoutYen))
+    expect(text).toContain('Accept the job when you are ready')
+    // The Got it button belongs to acknowledged steps only.
+    expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(false)
+  })
+
+  it('accept completes on mission accept; the stethoscope line reveals only during a live yard visit', async () => {
+    const game = useGameStore()
+    game.newGame(3)
+    game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.text()).toContain('Open the Local Yard')
-    expect(wrapper.text()).toContain('Reserve is the seller')
-    // Not yet inspected: the reveal line is hidden.
-    expect(wrapper.text()).not.toContain('Minor. The discount stays')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 10')
+    expect(wrapper.text()).toContain('Local Yard')
+    expect(wrapper.text()).not.toContain('Put the stethoscope')
 
-    // Narrow the scripted lot's symptom to one cause (an inspection ran).
-    const s = game.gameState
-    const lots = s.activeAuctionLots.map((l) =>
-      l.id === LOT.lotId
-        ? {
-            ...l,
-            car: {
-              ...l.car,
-              symptoms: [
-                { ...l.car.symptoms[0]!, remainingCauseIds: [l.car.symptoms[0]!.trueCauseId] },
-              ],
-            },
-          }
-        : l,
-    )
-    game.gameState = { ...s, activeAuctionLots: lots }
+    game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }
     await nextTick()
-    expect(wrapper.text()).toContain('Minor. The discount stays')
+    expect(wrapper.text()).toContain('Put the stethoscope')
   })
 
-  it('walks the wheel then engine beats as the car is fixed, interpolating the buried part name', async () => {
+  it('anyOf skip-ahead: a bid placed without inspecting lands the machine on close, not find or bid', async () => {
     const game = useGameStore()
-    game.newGame(3)
+    game.newGame(4)
+    game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
-    // Win the car (still scrap tyres, worn head/valvetrain).
+    game.gameState = bidOnScriptedLot(game.gameState)
+    const wrapper = render()
+    await nextTick()
+
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 10')
+    expect(wrapper.text()).toContain('auction rooms settle overnight')
+  })
+
+  it('close completes once the car is owned; bay completes once it reaches a service slot', async () => {
+    const game = useGameStore()
+    game.newGame(5)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
     game.gameState = ownScriptedCarWithBands(game.gameState, {})
     const wrapper = render()
     await nextTick()
-    expect(wrapper.text()).toContain('Pull the wheel assembly')
-    expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('certain something')
 
-    // Fresh tyres fitted -> engine beat.
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 6 of 10')
+    expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('certain something')
+    expect(wrapper.text()).toContain('drag her across')
+
+    game.gameState = scriptedCarIntoBay(game.gameState)
+    await nextTick()
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 7 of 10')
+  })
+
+  it('walks wheel then engine then deliver as the work lands, revealing bench sub-state lines', async () => {
+    const game = useGameStore()
+    game.newGame(6)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
+    game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, {}))
+    const wrapper = render()
+    await nextTick()
+
+    // Wheel beat: base lines only until the wheels are on the bench.
+    expect(wrapper.text()).toContain('Her tyres are scrap')
+    expect(wrapper.text()).not.toContain('Shop for tyres')
+    expect(wrapper.text()).not.toContain('Tyres ordered')
+    expect(wrapper.text()).not.toContain('your tyres are in')
+
+    game.gameState = {
+      ...game.gameState,
+      assemblyInventory: [
+        { id: 'bench-1', assemblyId: 'wheelAssembly', members: {}, sourceCarId: LOT.carId },
+      ],
+    }
+    await nextTick()
+    expect(wrapper.text()).toContain('Shop for tyres')
+
+    // A pending standard-delivery order addressed to tyres reveals the
+    // "press End Day" waiting line.
+    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres')!
+    game.gameState = {
+      ...game.gameState,
+      pendingPartOrders: [
+        {
+          id: 'order-1',
+          partId: tyrePart.id,
+          priceYen: tyrePart.priceYen,
+          purchasedOnDay: 1,
+          arrivesOnDay: 2,
+        },
+      ],
+    }
+    await nextTick()
+    expect(wrapper.text()).toContain('Tyres ordered')
+
+    // Delivery: the order clears, a non-scrap inventory part addressed to
+    // tyres reveals the fit line and retires the waiting line.
+    game.gameState = {
+      ...game.gameState,
+      pendingPartOrders: [],
+      partInventory: [
+        {
+          id: 'test-tyres-1',
+          partId: tyrePart.id,
+          band: 'fine',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+      ],
+    }
+    await nextTick()
+    expect(wrapper.text()).not.toContain('Tyres ordered')
+    expect(wrapper.text()).toContain('your tyres are in')
+
+    // Fresh tyres fitted -> engine beat, with {part} resolved.
     game.gameState = ownScriptedCarWithBands(game.gameState, { tyres: 'mint' })
     await nextTick()
     const engineText = wrapper.text()
-    expect(engineText).toContain('Engine work means the engine comes out')
-    // {part} resolved to the buried part's display name (head/valvetrain).
+    expect(engineText).toContain('Now for that tick')
     expect(engineText).toContain('Head')
     expect(engineText).not.toContain('{part}')
 
@@ -125,12 +241,71 @@ describe('TutorialOverlay', () => {
       headValvetrain: 'fine',
     })
     await nextTick()
-    expect(wrapper.text()).toContain('Deliver it')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 10')
+    expect(wrapper.text()).toContain('press Show them the car')
+  })
+
+  it('spotlights the last visible anchored line, following the wheel beat onto the bench', async () => {
+    const game = useGameStore()
+    game.newGame(7)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
+    game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, {}))
+    const stepAnchor = addAnchor('remove-assembly-wheelAssembly')
+    const lineAnchor = addAnchor('bench-member-tyres')
+    const endDayAnchor = addAnchor('end-day')
+    render()
+    await nextTick()
+
+    // No bench sub-state yet: the step's own anchor holds the spotlight.
+    expect(stepAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(lineAnchor.classList.contains('tutorial-spotlight')).toBe(false)
+
+    game.gameState = {
+      ...game.gameState,
+      assemblyInventory: [
+        { id: 'bench-1', assemblyId: 'wheelAssembly', members: {}, sourceCarId: LOT.carId },
+      ],
+    }
+    await nextTick()
+    expect(lineAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(stepAnchor.classList.contains('tutorial-spotlight')).toBe(false)
+
+    // A pending tyre order reveals the "press End Day" line, whose anchor
+    // (being the last visible anchored line) takes the spotlight over.
+    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres')!
+    game.gameState = {
+      ...game.gameState,
+      pendingPartOrders: [
+        {
+          id: 'order-1',
+          partId: tyrePart.id,
+          priceYen: tyrePart.priceYen,
+          purchasedOnDay: 1,
+          arrivesOnDay: 2,
+        },
+      ],
+    }
+    await nextTick()
+    expect(endDayAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(lineAnchor.classList.contains('tutorial-spotlight')).toBe(false)
+  })
+
+  it('falls back to the nav tab when the step control is absent from the DOM', async () => {
+    const game = useGameStore()
+    game.newGame(8)
+    // Welcome step anchors `day-value` (garage) - not in the DOM here, so the
+    // spotlight lands on the garage tab instead.
+    const navGarage = addAnchor('nav-garage')
+    render()
+    await nextTick()
+
+    expect(navGarage.classList.contains('tutorial-spotlight')).toBe(true)
   })
 
   it('shows the terminal sign-off after delivery and finishes cleanly', async () => {
     const game = useGameStore()
-    game.newGame(4)
+    game.newGame(9)
     game.acceptMission(LOT.missionId)
     // Mark the mission delivered and clear the (now-handed-over) car.
     const s = game.gameState
@@ -145,7 +320,7 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.text()).toContain('The walkthrough ends here')
+    expect(wrapper.text()).toContain('That is the walkthrough done')
     expect(wrapper.find('[data-test="tutorial-progress"]').exists()).toBe(false)
 
     await wrapper.find('[data-test="tutorial-finish"]').trigger('click')
@@ -156,7 +331,7 @@ describe('TutorialOverlay', () => {
 
   it('skips permanently on confirm, leaving the mission in place', async () => {
     const game = useGameStore()
-    game.newGame(5)
+    game.newGame(10)
     const wrapper = render()
     await nextTick()
 
@@ -169,5 +344,27 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(false)
     // The mission is untouched by the skip - it demotes to a normal mission.
     expect(game.gameState.storyMissions.some((r) => r.missionId === LOT.missionId)).toBe(true)
+  })
+
+  it('drags by the header and pins the box at the dragged viewport position', async () => {
+    const game = useGameStore()
+    game.newGame(11)
+    const wrapper = render()
+    await nextTick()
+
+    await wrapper.find('.tutorial-head').trigger('pointerdown', { clientX: 40, clientY: 30 })
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 140, clientY: 90 }))
+    await nextTick()
+
+    const overlay = wrapper.find('[data-test="tutorial-overlay"]').element as HTMLElement
+    expect(overlay.style.left).toBe('100px')
+    expect(overlay.style.top).toBe('60px')
+
+    // After pointerup the box stays put; further moves change nothing.
+    window.dispatchEvent(new MouseEvent('pointerup'))
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 500, clientY: 400 }))
+    await nextTick()
+    expect(overlay.style.left).toBe('100px')
+    expect(overlay.style.top).toBe('60px')
   })
 })

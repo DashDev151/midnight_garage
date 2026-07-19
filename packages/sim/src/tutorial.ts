@@ -29,6 +29,38 @@ export function tutorialActive(state: GameState): boolean {
 }
 
 /**
+ * Sprint 95 decision 4, the radial-offer gate: while the tutorial is active
+ * and Yuki's mission is not yet delivered, the service-job board is
+ * deliberately Yuki-only. `generateDailyServiceJobOffers` is gated at its two
+ * call sites (advanceDay's daily step and createInitialGameState's day-1
+ * seed batch), never forked. Delivering the mission, or ending the tutorial
+ * ('skipped' or 'done'), lifts the gate at the next generation point (the
+ * following End Day). A non-tutorial career (`tutorialStatus` absent) is
+ * never gated. A missing mission record counts as undelivered: a fresh
+ * tutorial career is gated from the moment it is created, before
+ * `advanceStoryMissions` has even offered the mission.
+ */
+export function radialOffersGated(state: GameState): boolean {
+  if (!tutorialActive(state)) return false
+  const record = state.storyMissions.find((r) => r.missionId === TUTORIAL_LOT.missionId)
+  return record?.status !== 'delivered'
+}
+
+/**
+ * Sprint 95 decision 5, the no-second-Wagon-R rule: while the tutorial is
+ * active, random auction generation must never roll the tutorial model - the
+ * shitbox rarity weighs heavily at `unknown` reputation and there is no lot
+ * dedupe, so an un-scripted twin beside the scripted lot is a real day-1
+ * risk. Consumed by `catalogs.ts`'s shared generation loop, which threads it
+ * into `generateAuctionCatalog`'s eligible-pool filter for both the day-1
+ * batch and the daily arrivals. Empty once the tutorial ends ('done' or
+ * 'skipped'), so the model spawns freely afterwards.
+ */
+export function excludedAuctionModelIds(state: GameState): readonly string[] {
+  return tutorialActive(state) ? [TUTORIAL_LOT.modelId] : []
+}
+
+/**
  * Builds the scripted tutorial lot from the `TUTORIAL_LOT` content recipe
  * (Sprint 89 decision 2) - a fixed shitbox runabout with one visible symptom
  * whose true cause is the MINOR one, so a yard inspection reveals the room's
@@ -151,6 +183,14 @@ export function ensureTutorialLot(state: GameState, context: SimContext, day: nu
  * so the Local Yard already holds it. The game layer calls this on every new
  * career; a bot/probe career built straight from `createInitialGameState`
  * never does, so its state stays free of any tutorial scaffolding.
+ *
+ * Sprint 95: the day-1 isolation gates (the Yuki-only job board and the
+ * tutorial-model auction exclusion) do NOT live here - they are generation
+ * predicates, so the tutorial intent has to exist before the day-1 board is
+ * rolled. The game layer builds the state with
+ * `createInitialGameState(context, seed, { tutorial: true })` and only then
+ * calls this; the status stamp below is idempotent for that path, and this
+ * function's own job stays what it was: mission offer + scripted lot.
  */
 export function installTutorial(state: GameState, context: SimContext): GameState {
   const active: GameState = { ...state, tutorialStatus: 'active' }

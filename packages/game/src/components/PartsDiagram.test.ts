@@ -122,6 +122,84 @@ describe('PartsDiagram (two-level, Sprint 84 amendment)', () => {
     expect(wrapper.emitted('select')?.[0]).toEqual(['block'])
   })
 
+  describe('the condition wash (Sprint 96 decision 4)', () => {
+    it('the corner dot is gone at both levels - the wash replaced it', async () => {
+      const { carId } = grantCar()
+      const wrapper = mountFor(carId)
+      expect(wrapper.find('.pd-cond-dot').exists()).toBe(false)
+      await wrapper.get('[data-test="diagram-tile-suspension"]').trigger('click')
+      expect(wrapper.find('.pd-cond-dot').exists()).toBe(false)
+    })
+
+    it('a fitted slot carries its band wash class, always on', async () => {
+      const { game, carId } = grantCar()
+      const car = game.gameState.ownedCars.at(-1)!
+      car.parts.dampers = { installed: { ...car.parts.dampers.installed!, band: 'poor' } }
+      const wrapper = mountFor(carId)
+
+      await wrapper.get('[data-test="diagram-tile-suspension"]').trigger('click')
+      const slot = wrapper.get('[data-test="diagram-slot-dampers"]')
+      expect(slot.classes()).toContain('pd-washed')
+      expect(slot.classes()).toContain('pd-wash-poor')
+    })
+
+    it('an empty slot stays an unwashed ghost - no condition, no tint', async () => {
+      const { game, carId } = grantCar()
+      expect(game.removePart(carId, 'dampers')).toBe(true)
+      const wrapper = mountFor(carId)
+
+      await wrapper.get('[data-test="diagram-tile-suspension"]').trigger('click')
+      const slot = wrapper.get('[data-test="diagram-slot-dampers"]')
+      expect(slot.classes()).toContain('ghost')
+      expect(slot.classes()).not.toContain('pd-washed')
+    })
+
+    it('an uncertain part keeps a neutral wash - never the band the player cannot trust yet', async () => {
+      const { game, carId } = grantCar()
+      // The same content-backed symptomatic fixture the car-detail tests use:
+      // the true band is worn, the apparent band mint, and the open symptom
+      // makes the row uncertain.
+      game.gameState = {
+        ...game.gameState,
+        ownedCars: game.gameState.ownedCars.map((c) =>
+          c.id === carId
+            ? {
+                ...c,
+                parts: {
+                  ...c.parts,
+                  headValvetrain: {
+                    installed: { ...c.parts.headValvetrain.installed!, band: 'worn' as const },
+                  },
+                },
+                symptoms: [
+                  {
+                    symptomId: 'smokes-on-startup',
+                    trueCauseId: 'valve-seals',
+                    remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+                    runTestIds: [],
+                  },
+                ],
+                apparentBandByPartId: { headValvetrain: 'mint' as const },
+              }
+            : c,
+        ),
+      }
+      const wrapper = mountFor(carId)
+
+      await wrapper.get('[data-test="diagram-tile-engine"]').trigger('click')
+      const slot = wrapper.get('[data-test="diagram-slot-headValvetrain"]')
+      expect(slot.classes()).toContain('pd-wash-neutral')
+      expect(slot.classes()).not.toContain('pd-wash-mint')
+      expect(slot.classes()).not.toContain('pd-wash-worn')
+    })
+
+    it('a level-1 group tile carries the wash too, for glanceability before drilling in', () => {
+      const { carId } = grantCar()
+      const wrapper = mountFor(carId)
+      expect(wrapper.get('[data-test="diagram-tile-suspension"]').classes()).toContain('pd-washed')
+    })
+  })
+
   it('resets to level 1 when shown a different car', async () => {
     const { carId } = grantCar()
     const { carId: otherCarId } = grantCar()

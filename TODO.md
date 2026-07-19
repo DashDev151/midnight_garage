@@ -323,6 +323,17 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Overworld town map as navigation (maintainer-proposed, 2026-07-19 playtest item 5;
+  needs its own design pass before any sprint).** Standing maintainer want ("I still think we
+  need a kind of overworld map"): instead of, or alongside, the top tabs, a representational
+  map of the town - your garage, the auction houses, the parts shop, the staff centre - as
+  the way you go places. Presentation/navigation rework, not a new mechanic, so arguably
+  outside the GDD v1.0 feature freeze, but it touches the art bible's diegetic-UI law and
+  needs asset decisions (hand-made pixel art only; no AI assets ever). Scope questions for
+  the design pass: is the map the home screen or a layer over the tabs; does End Day live on
+  it; how do locked venues/buildings read before unlock. The Sprint 95 tutorial rebuild
+  deliberately teaches "the tabs are the rest of town", which a map would later make literal.
+
 - [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing
   2026-07-08 sign-off** (optional, zero gameplay weight - which is what keeps it inside the

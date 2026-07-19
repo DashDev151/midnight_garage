@@ -515,8 +515,16 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * default-fills to 0 (a fresh day's labour), which is harmless - the field is
  * reset every day boundary anyway. Had the save law been in force this would
  * have earned a rename migration; it is deliberately skipped pre-launch.
+ * v42 -> v43 (Sprint 95, the tutorial actually guides): `GameStateSchema`
+ * gained `tutorialAcknowledgedSteps` (`.optional()`, the genuinely-optional-key
+ * pattern, like `tutorialStatus` at v41) - the tutorial step ids the player has
+ * pressed "Got it" on. The pure additive case, no `MIGRATIONS[42]` entry; a
+ * pre-v43 save decodes with it simply absent, which reads as "nothing
+ * acknowledged yet", exactly correct. The version bump alone is still required
+ * (Save law) so an old client rejects a v43 save rather than silently dropping
+ * the field.
  */
-export const SAVE_VERSION = 42
+export const SAVE_VERSION = 43
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

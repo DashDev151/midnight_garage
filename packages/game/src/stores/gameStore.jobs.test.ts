@@ -76,22 +76,38 @@ function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): Servi
   )
 }
 
-/** End days until `findUnfinishedOffer` finds something, bounded. */
+/** End days until `findUnfinishedOffer` finds something, bounded. Sprint 95
+ * (the radial-offer gate): a fresh career's board is Yuki-only while the
+ * tutorial runs, so both warps skip the walkthrough first - the gate lifts at
+ * the next generation point, which the End Day loop then reaches. */
 function warpToUnfinishedOffer(game: ReturnType<typeof useGameStore>) {
+  game.skipTutorial()
   for (let i = 0; i < 20 && !findUnfinishedOffer(game); i++) game.endDay()
 }
 
 /** End days until `findUnfinishedRepairOffer` finds something, bounded. */
 function warpToRepairOffer(game: ReturnType<typeof useGameStore>) {
+  game.skipTutorial()
   for (let i = 0; i < 60 && !findUnfinishedRepairOffer(game); i++) game.endDay()
 }
 
 describe('service jobs in the store', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('offers are already on the board on day 1 (Sprint 10: no empty first day)', () => {
+  /**
+   * Sprint 95 (directive 17 case (a)): this used to pin day-1 offers (Sprint
+   * 10's "no empty first day"). A fresh tutorial career now deliberately
+   * opens Yuki-only, so the correct behaviour is a gated day 1 and offers
+   * resuming once the walkthrough is skipped. Sprint 10's original guarantee
+   * lives on for non-tutorial careers in the sim's own tests
+   * (`packages/sim/tests/tutorialIsolation.test.ts`).
+   */
+  it('the board is Yuki-only on day 1 of a tutorial career; skipping brings offers back', () => {
     const game = useGameStore()
     game.newGame(1)
+    expect(game.serviceJobOffers.length).toBe(0)
+    game.skipTutorial()
+    for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
     expect(game.serviceJobOffers.length).toBeGreaterThan(0)
   })
 
@@ -292,6 +308,9 @@ describe('service jobs in the store', () => {
   it('a fresh offer generated while a specialty dominates and clears the threshold draws its flavor from the word-of-mouth copy pool', () => {
     const game = useGameStore()
     game.newGame(1)
+    // Sprint 95 (directive 17 case (a)): the radial-offer gate would keep the
+    // End Day loop below offerless forever on a tutorial career - skip first.
+    game.skipTutorial()
     game.gameState = {
       ...game.gameState,
       specialty: { engine: 100, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },

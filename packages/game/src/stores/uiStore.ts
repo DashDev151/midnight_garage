@@ -28,5 +28,25 @@ export const useUiStore = defineStore('ui', () => {
     lastGameplayRoute.value = routeName
   }
 
-  return { devConsoleOpen, toggleDevConsole, lastGameplayRoute, rememberGameplayRoute }
+  /**
+   * Sprint 95 decision 8: where the player has dragged the walkthrough overlay
+   * this session, in viewport pixels (top-left corner). `null` means never
+   * dragged - the overlay keeps its default bottom-left CSS position. Session
+   * state only, never persisted to the save: a reload snaps the overlay back
+   * to the default, which is fine.
+   */
+  const tutorialOverlayPos = ref<{ x: number; y: number } | null>(null)
+
+  function setTutorialOverlayPos(pos: { x: number; y: number }): void {
+    tutorialOverlayPos.value = pos
+  }
+
+  return {
+    devConsoleOpen,
+    toggleDevConsole,
+    lastGameplayRoute,
+    rememberGameplayRoute,
+    tutorialOverlayPos,
+    setTutorialOverlayPos,
+  }
 })

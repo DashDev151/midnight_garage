@@ -789,6 +789,13 @@ function pickWeightedModel(
  * rarityWeightsByReputation` names for that tier (today, shitboxes at
  * `unknown` reputation), and is exactly the old uniform pick anywhere the map
  * is silent.
+ *
+ * `excludedModelIds` (Sprint 95 decision 5, default none) drops the named
+ * models from the eligible pool before any draw - one more predicate on the
+ * same filter, never a forked generator. Its one current use is the
+ * tutorial-model exclusion (`excludedAuctionModelIds`, tutorial.ts), threaded
+ * down from `catalogs.ts` so the scripted Wagon R never gains a random twin
+ * while the tutorial is active.
  */
 export function generateAuctionCatalog(
   models: readonly CarModel[],
@@ -799,10 +806,14 @@ export function generateAuctionCatalog(
   context: SimContext,
   currentYear: number = Infinity,
   reputationTier: ReputationTier = 'legend',
+  excludedModelIds: readonly string[] = [],
 ): AuctionLot[] {
   const { economy } = context
   const eligible = models.filter(
-    (model) => auctionTierForRarity(model.tier) === tier && model.spec.yearFrom <= currentYear,
+    (model) =>
+      auctionTierForRarity(model.tier) === tier &&
+      model.spec.yearFrom <= currentYear &&
+      !excludedModelIds.includes(model.id),
   )
   if (eligible.length === 0) return []
 

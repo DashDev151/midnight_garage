@@ -1,53 +1,108 @@
 [
   {
+    "id": "welcome",
+    "anchorScreen": "garage",
+    "anchorTestId": "day-value",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Here it is: your own garage. One service bay for working on cars, parking for keeping them, a little cash in the till, and the labour bar up top: your working day. Spanner work drains it; a night's sleep (press End Day) refills it."
+      },
+      {
+        "speaker": "instruction",
+        "text": "The tabs along the top are the rest of town: the job board, the auction rooms, the parts shop. We will visit each one when it matters."
+      }
+    ],
+    "completion": { "kind": "acknowledged" }
+  },
+  {
     "id": "accept",
     "anchorScreen": "jobs",
     "anchorTestId": "mission-accept",
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Yuki has {payout} saved: that is the budget and the pay both. Build her something roadworthy for less, and the small difference is yours. This first one is about learning the work, not the money."
+        "text": "Start on the Jobs tab: the job board. Your first customer is already waiting there. Yuki, a student who has been saving all year: {payout}, and she needs four wheels that will pass inspection."
       },
       {
         "speaker": "instruction",
-        "text": "Accept the job when you are ready. There is no deadline; she will wait."
+        "text": "She will hand you the whole envelope and trust you with it. Build her something roadworthy for less, and whatever is left over is your pay: every job in this trade works like that."
+      },
+      {
+        "speaker": "instruction",
+        "text": "Accept the job when you are ready. There is no deadline; she is happy to wait."
       }
     ],
     "completion": { "kind": "missionActive" }
   },
   {
-    "id": "acquire",
+    "id": "find",
     "anchorScreen": "auctions",
-    "anchorTestId": "bid-{lotId}",
+    "anchorTestId": "inspect-visit-local-yard",
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Open the Local Yard. Every career starts in this room."
+        "text": "Now the Auctions tab. There are several auction rooms in town, but a young garage starts in one: the Local Yard. Cheap cars and quick hammers, and exactly the right hunting ground for Yuki's budget."
       },
       {
         "speaker": "instruction",
-        "text": "This {model} lists a fault on its sheet. The room prices what it fears. Pay for an inspection and find out if the fear is earned."
+        "text": "There is a {model} on the block that could be just right for her. Nothing glamorous, but read its sheet: it lists an engine tick, and the room has priced that noise as if it were the worst thing it could be. If the tick is minor, that is a bargain wearing a scary label."
       },
       {
         "speaker": "instruction",
-        "text": "Minor. The discount stays. That gap between what a room fears and what is true is the whole trade.",
-        "showWhen": { "kind": "lotInspected" }
+        "text": "Only one way to find out. Press Inspect here: a small fee and a little labour buys us an hour in the yard with the cars. Grab a coffee from the vending machine on the way in; the truth is worth more than the fee."
       },
       {
         "speaker": "instruction",
-        "text": "Reserve is the seller's floor. Bid it; the room is quiet today."
+        "text": "You have the hour. Put the stethoscope on that tick; fifteen minutes tells us whether it lives at the top of the engine, which is cheap to put right, or the bottom, in which case we tip our hat and walk away.",
+        "showWhen": { "kind": "inspectionVisitActive" },
+        "anchorTestId": "run-test-tutorial-lot-0-stethoscope"
+      }
+    ],
+    "completion": {
+      "kind": "anyOf",
+      "of": [{ "kind": "lotInspected" }, { "kind": "lotBidPlaced" }, { "kind": "scriptedCarOwned" }]
+    }
+  },
+  {
+    "id": "bid",
+    "anchorScreen": "auctions",
+    "anchorTestId": "bid-tutorial-lot",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Just lifters: the cheap kind of tick, the kind a quiet afternoon and a set of shims can cure. The room is still scared of it, and their fear is our discount."
       },
       {
         "speaker": "instruction",
-        "text": "Buy-now pays a premium for impatience. Bid instead."
+        "text": "Bid the reserve, the least the seller will take. Nobody else is chasing this car today, so there is no need for the buy-now; that button is for people in a hurry, and we are not in a hurry."
+      }
+    ],
+    "completion": {
+      "kind": "anyOf",
+      "of": [{ "kind": "lotBidPlaced" }, { "kind": "scriptedCarOwned" }]
+    }
+  },
+  {
+    "id": "close",
+    "anchorScreen": "garage",
+    "anchorTestId": "end-day",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Your bid is in, and auction rooms settle overnight. Press End Day and get some rest; if nobody outbids you by close, she hammers to you at your price."
+      },
+      {
+        "speaker": "instruction",
+        "text": "The morning report will tell you how it went. Fingers crossed."
       }
     ],
     "completion": { "kind": "scriptedCarOwned" }
   },
   {
-    "id": "wheel",
-    "anchorScreen": "car",
-    "anchorTestId": "remove-assembly-wheelAssembly",
+    "id": "bay",
+    "anchorScreen": "garage",
+    "anchorTestId": "service-slot-0",
     "lines": [
       {
         "speaker": "yuki",
@@ -55,19 +110,41 @@
       },
       {
         "speaker": "instruction",
-        "text": "Open the service diagram. Point at a section of the car to see inside it; the panel underneath holds the controls."
+        "text": "The {model} is yours, and she is sitting in parking looking sorry for herself. Tools only reach a car in the service bay: drag her across (or open her and press Move to service bay) and let us get a proper look."
+      }
+    ],
+    "completion": { "kind": "scriptedCarInServiceBay" }
+  },
+  {
+    "id": "wheel",
+    "anchorScreen": "car",
+    "anchorTestId": "remove-assembly-wheelAssembly",
+    "lines": [
+      {
+        "speaker": "instruction",
+        "text": "Open her from the bay. The big picture of the car is the service diagram: point at the wheels and click, and the panel underneath shows what you can do there."
       },
       {
         "speaker": "instruction",
-        "text": "Pull the wheel assembly. Taking things off never costs labour, and putting them back exactly as they were is free."
+        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (taking things apart is free, and quietly one of life's pleasures), and the wheels land on the bench below."
       },
       {
         "speaker": "instruction",
-        "text": "Her tyres are finished. Buy stock replacements at the parts shop; the budget does not stretch to sport rubber and does not need to."
+        "text": "Click the Tyres block on the bench; if the shelf is empty, press Shop for tyres. In the shop, press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout: standard delivery lands tomorrow morning.",
+        "showWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" },
+        "anchorTestId": "bench-member-tyres"
       },
       {
         "speaker": "instruction",
-        "text": "Fit the tyres at the bench. Without a tyre machine of your own, the fitting shop's fee rides on the work. Machines you buy make fees disappear."
+        "text": "Tyres ordered. Nothing more we can do tonight, and that is fine: press End Day, and they will be on the shelf with the morning.",
+        "showWhen": { "kind": "partOnOrder", "carPartId": "tyres" },
+        "anchorTestId": "end-day"
+      },
+      {
+        "speaker": "instruction",
+        "text": "Morning: your tyres are in. Click the Tyres block on the bench and press Fit; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears). Then press Refit assembly and the wheels go back on, better than she has had in years.",
+        "showWhen": { "kind": "partInInventory", "carPartId": "tyres" },
+        "anchorTestId": "bench-member-tyres"
       }
     ],
     "completion": { "kind": "partBandAtLeast", "carPartId": "tyres", "band": "fine" }
@@ -79,7 +156,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "The {part} reads worn. Engine work means the engine comes out; without a crane, the machine shop lends its arm for a fee, out and back in."
+        "text": "Now for that tick. It lives in the {part}, deep in the engine: click the engine on the diagram and press Remove assembly. No crane of your own yet, so the machine shop next door lends its arm for a fee, out and back in."
       },
       {
         "speaker": "yuki",
@@ -87,7 +164,13 @@
       },
       {
         "speaker": "instruction",
-        "text": "Work costs labour slots, and slots are the day. End the day to let the hours pass."
+        "text": "Click the Head on the bench and press the Repair button; its price and labour are written on it. When the work is done, press Refit assembly and she goes back together.",
+        "showWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" },
+        "anchorTestId": "bench-member-headValvetrain"
+      },
+      {
+        "speaker": "instruction",
+        "text": "All of this drains the labour bar, because good work takes hours. If it runs dry before you are done, no matter: press End Day, and the morning brings a fresh one."
       }
     ],
     "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "fine" }
@@ -99,7 +182,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Requirements green, ledger under the cap. Deliver it."
+        "text": "Back to the Jobs tab. Pick the {model} on her card; when every requirement reads green and the spend sits inside her envelope, press Show them the car. Go on: she has waited long enough."
       }
     ],
     "completion": { "kind": "missionDelivered" }
@@ -111,7 +194,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "The walkthrough ends here. The rest of the town does not know you yet; the job board fixes that."
+        "text": "That is the walkthrough done, and your first happy customer on the road. From tomorrow the job board starts filling; do good work and the town will find its way to your door."
       }
     ],
     "completion": { "kind": "never" }

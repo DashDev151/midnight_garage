@@ -471,6 +471,30 @@ function onBenchRecondition(member: BenchMemberView): void {
   }
 }
 
+/** Whether the bench recondition button renders for this member - mirrors the
+ * button's own inline `v-if` (kept literal there so the template narrows
+ * `reconditionStep` to non-null); the dead-end branch inverts this. */
+function benchOffersRecondition(member: BenchMemberView): boolean {
+  return member.repairable && member.reconditionStep !== null
+}
+
+/** The slot label sentence-cased for inline copy ("Tyres" reads as "tyres" in
+ * "Shop for tyres"), leaving all-caps acronyms ("ECU") intact. */
+function benchShopLabel(carPartId: CarPartId): string {
+  return game
+    .carPartLabel(carPartId)
+    .split(' ')
+    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase()))
+    .join(' ')
+}
+
+/** Sprint 96 decision 1: the bench panel never dead-ends - with nothing to
+ * recondition and nothing on hand to fit, the panel hands the player the
+ * parts market, prefiltered to this exact slot (decision 3's deep link). */
+function shopForBenchPart(carPartId: CarPartId): void {
+  void router.push({ name: 'parts', query: { slot: carPartId } })
+}
+
 // --- Confirm + the per-action attribution (Sprint 88 decision 3) -----------
 
 function onConfirm(): void {
@@ -927,8 +951,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Fit {{ game.partName(cand.instance.partId) }}
             </button>
+            <!-- Sprint 96 decision 1: never a dead end - nothing to
+                 recondition and nothing on hand to fit hands the player the
+                 next click instead of a silent panel. -->
+            <template
+              v-if="
+                !benchOffersRecondition(selectedBench.member) &&
+                benchSwapCandidates(selectedBench.member.carPartId).length === 0
+              "
+            >
+              <span class="slot-empty"
+                >No replacement {{ benchShopLabel(selectedBench.member.carPartId) }} on hand.</span
+              >
+              <button
+                type="button"
+                :data-test="'bench-shop-' + selectedBench.member.carPartId"
+                @click="shopForBenchPart(selectedBench.member.carPartId)"
+              >
+                Shop for {{ benchShopLabel(selectedBench.member.carPartId) }}
+              </button>
+            </template>
+            <!-- The swap-fee caption prices the Fit action, so it renders only
+                 while a Fit button is actually on screen (Sprint 96
+                 decision 1: no dangling fee for an absent control). -->
             <span
-              v-if="selectedBench.member.swapFeeYen > 0"
+              v-if="
+                selectedBench.member.swapFeeYen > 0 &&
+                benchSwapCandidates(selectedBench.member.carPartId).length > 0
+              "
               class="assist-caption"
               :data-test="'bench-swap-fee-' + selectedBench.member.carPartId"
               >machine shop assist +{{ formatYen(selectedBench.member.swapFeeYen) }}</span

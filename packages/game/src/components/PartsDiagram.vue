@@ -117,8 +117,26 @@ function isFitted(partId: CarPartId): boolean {
 
 const spriteFor = (partId: CarPartId): string => partSpriteDataUrl(partId)
 
-/** The live condition band of a fitted slot, for its corner condition dot. */
-const bandFor = (partId: CarPartId): string | null => rowsById.value[partId]?.band ?? null
+/**
+ * Sprint 96 decision 4: the always-on condition wash. A block's whole face
+ * carries a low-alpha tint of the same band palette tokens BandChip (and the
+ * retired corner dot) authors, so condition reads at a glance without hover.
+ * An uncertain band keeps a neutral wash rather than asserting a condition
+ * the player cannot trust yet; a block with no band gets no wash at all.
+ */
+const WASH_CLASS_BY_BAND: Record<string, string> = {
+  mint: 'pd-wash-mint',
+  fine: 'pd-wash-fine',
+  worn: 'pd-wash-worn',
+  poor: 'pd-wash-poor',
+  scrap: 'pd-wash-scrap',
+}
+
+function washClasses(band: string | null, uncertain: boolean): string[] {
+  if (uncertain) return ['pd-washed', 'pd-wash-neutral']
+  if (!band) return []
+  return ['pd-washed', WASH_CLASS_BY_BAND[band] ?? 'pd-wash-neutral']
+}
 
 // --- Level 1: the six group tiles ----------------------------------------
 
@@ -259,9 +277,10 @@ function slotStyle(slot: DiagramSlot): Record<string, string> {
 
 function slotClasses(partId: CarPartId, visitor: boolean): Record<string, boolean> {
   const fitted = isFitted(partId)
+  const row = rowsById.value[partId]
   const hovered = hoveredId.value
   const isBlockerOfHovered = hovered != null && BLOCKED_BY[hovered]?.includes(partId)
-  return {
+  const classes: Record<string, boolean> = {
     fitted,
     ghost: !fitted,
     visitor,
@@ -270,6 +289,12 @@ function slotClasses(partId: CarPartId, visitor: boolean): Record<string, boolea
     'blocker-fitted': !!isBlockerOfHovered && fitted,
     'blocker-clear': !!isBlockerOfHovered && !fitted,
   }
+  // Only a fitted slot has a condition to show; ghosts keep the dashed
+  // empty-slot idiom unwashed.
+  if (fitted) {
+    for (const cls of washClasses(row?.band ?? null, row?.uncertain ?? false)) classes[cls] = true
+  }
+  return classes
 }
 
 function slotTitle(partId: CarPartId): string {
@@ -399,6 +424,7 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
           :key="tile.componentId"
           type="button"
           class="pd-tile"
+          :class="washClasses(tile.band, tile.uncertain)"
           :style="tileStyle(tile.rect)"
           :title="tileTitle(tile)"
           :aria-label="tileTitle(tile)"
@@ -417,12 +443,6 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
           />
           <span class="pd-tile-name">{{ tile.name }}</span>
           <span class="pd-tile-count">{{ tile.partCount }} parts</span>
-          <span
-            v-if="tile.band"
-            class="pd-cond-dot"
-            :class="`fill-${tile.band}`"
-            aria-hidden="true"
-          ></span>
           <span
             v-if="tile.uncertain"
             class="pd-uncertain"
@@ -471,12 +491,6 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
         >
           <img class="pd-sprite" :src="spriteFor(partId)" alt="" aria-hidden="true" />
           <span class="pd-label">{{ game.carPartLabel(partId) }}</span>
-          <span
-            v-if="isFitted(partId)"
-            class="pd-cond-dot"
-            :class="`fill-${bandFor(partId) ?? 'empty'}`"
-            aria-hidden="true"
-          ></span>
           <span v-if="visitor" class="pd-visitor-tag">{{ visitorHomeLabel(partId) }}</span>
         </button>
       </template>
@@ -534,9 +548,10 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   gap: 1px;
   padding: 0 2px;
   margin: 0;
-  /* The block is just its sprite on the dark stage: no boxed fill, and a
-     transparent border that only the hover/selected/blocker/ghost states paint,
-     so the click target and layout rect survive without a visible box. */
+  /* The block is its sprite on the dark stage over the condition wash (the
+     `.pd-washed` rules below), with a transparent border that only the
+     hover/selected/blocker/ghost states paint, so the click target and layout
+     rect survive without a visible box. */
   border: 1px solid transparent;
   border-radius: 0;
   background: transparent;
@@ -593,38 +608,41 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   pointer-events: none;
 }
 
-/* Condition dot: a small band-coloured corner marker keeping a block's
-   condition scannable now the block itself is just its sprite, not a coloured
-   fill. The SAME band palette tokens BandChip authors, on the dot alone. */
-.pd-cond-dot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  pointer-events: none;
+/* Condition wash (Sprint 96 decision 4, replaces the corner dot): the block's
+   whole face carries a low-alpha tint of its band colour - the SAME band
+   palette tokens BandChip authors - always on so condition reads at a glance,
+   slightly stronger while hovered. Functional colour, not neon accent: the
+   alpha stays low enough that the sprite and label read first. */
+.pd-wash-mint {
+  --pd-wash: var(--mg-success);
 }
 
-.pd-cond-dot.fill-mint {
-  background: var(--mg-success);
+.pd-wash-fine {
+  --pd-wash: var(--mg-neon-cyan);
 }
 
-.pd-cond-dot.fill-fine {
-  background: var(--mg-neon-cyan);
+.pd-wash-worn {
+  --pd-wash: var(--mg-text-dim);
 }
 
-.pd-cond-dot.fill-worn {
-  background: var(--mg-text-dim);
+.pd-wash-poor,
+.pd-wash-scrap {
+  --pd-wash: var(--mg-neon-pink);
 }
 
-.pd-cond-dot.fill-poor,
-.pd-cond-dot.fill-scrap {
-  background: var(--mg-neon-pink);
+.pd-wash-neutral {
+  --pd-wash: var(--mg-panel-edge);
 }
 
-.pd-cond-dot.fill-empty {
-  background: var(--mg-panel-edge);
+.pd-washed {
+  background-color: color-mix(in srgb, var(--pd-wash) 18%, transparent);
+}
+
+.pd-tile.pd-washed:hover,
+.pd-tile.pd-washed:focus-visible,
+.pd-slot.pd-washed.hovered,
+.pd-slot.pd-washed:focus-visible {
+  background-color: color-mix(in srgb, var(--pd-wash) 28%, transparent);
 }
 
 /* Ghost placeholder for an empty slot: the sprite still renders (decision 4)

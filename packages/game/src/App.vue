@@ -115,12 +115,12 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
   <header v-if="showChrome" class="chrome">
     <h1>Ran When Parked</h1>
     <nav>
-      <RouterLink :to="{ name: 'garage' }">Garage</RouterLink>
-      <RouterLink :to="{ name: 'jobs' }">Jobs</RouterLink>
-      <RouterLink :to="{ name: 'auctions' }">Auctions</RouterLink>
-      <RouterLink :to="{ name: 'parts' }">Parts</RouterLink>
-      <RouterLink :to="{ name: 'inventory' }">Inventory</RouterLink>
-      <RouterLink :to="{ name: 'upgrades' }">Upgrades</RouterLink>
+      <RouterLink :to="{ name: 'garage' }" data-test="nav-garage">Garage</RouterLink>
+      <RouterLink :to="{ name: 'jobs' }" data-test="nav-jobs">Jobs</RouterLink>
+      <RouterLink :to="{ name: 'auctions' }" data-test="nav-auctions">Auctions</RouterLink>
+      <RouterLink :to="{ name: 'parts' }" data-test="nav-parts">Parts</RouterLink>
+      <RouterLink :to="{ name: 'inventory' }" data-test="nav-inventory">Inventory</RouterLink>
+      <RouterLink :to="{ name: 'upgrades' }" data-test="nav-upgrades">Upgrades</RouterLink>
       <RouterLink :to="{ name: 'staff' }" data-test="nav-staff">Staff</RouterLink>
       <RouterLink :to="{ name: 'standing' }" data-test="nav-standing">Standing</RouterLink>
       <!-- Sprint 69 item 20: the event log is reference material, not a

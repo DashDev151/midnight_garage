@@ -2,6 +2,7 @@ import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
+import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
 import AuctionScreen from './AuctionScreen.vue'
 
 // Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
@@ -516,6 +517,36 @@ describe('AuctionScreen', () => {
       const repeatButton = wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`)
       expect((repeatButton.element as HTMLButtonElement).disabled).toBe(true)
       expect(repeatButton.attributes('title')).toContain('Already run')
+    })
+  })
+
+  describe('tier display labels and the inspect control (Sprint 95 decisions 6-7)', () => {
+    it('tier headings and the visit panel show the display label, never the raw enum slug', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const tiers = new Set(game.gameState.activeAuctionLots.map((l) => l.tier))
+      const wrapper = mountScreen()
+
+      const headings = wrapper.findAll('.tier-head h3').map((h) => h.text())
+      for (const tier of tiers) expect(headings).toContain(AUCTION_TIER_LABELS[tier])
+      // Slugs live in data-test attributes only - never in rendered text.
+      expect(wrapper.text()).not.toContain('local-yard')
+      expect(wrapper.text()).not.toContain('collector-network')
+
+      // The active-visit panel names the yard through the same map.
+      const tier = game.gameState.activeAuctionLots[0]!.tier
+      await wrapper.find(`[data-test="inspect-visit-${tier}"]`).trigger('click')
+      expect(wrapper.text()).toContain(`At the yard (${AUCTION_TIER_LABELS[tier]})`)
+    })
+
+    it('the inspect control carries its per-tier data-test anchor for the tutorial spotlight', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const tier = game.gameState.activeAuctionLots[0]!.tier
+      const wrapper = mountScreen()
+      const button = wrapper.find(`[data-test="inspect-visit-${tier}"]`)
+      expect(button.exists()).toBe(true)
+      expect(button.classes()).toContain('inspect-visit')
     })
   })
 

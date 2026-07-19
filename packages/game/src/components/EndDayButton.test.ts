@@ -91,6 +91,10 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     it('warns about a finished job nobody handed back', async () => {
       const game = useGameStore()
       game.newGame(1)
+      // Sprint 95 (directive 17 case (a)): the radial-offer gate keeps a
+      // tutorial career's board Yuki-only, so the offer is obtained
+      // legitimately post-skip - the gate lifts at the next generation point.
+      game.skipTutorial()
       for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
       const offer = game.serviceJobOffers[0]
       if (!offer) throw new Error('expected an offer on the board')

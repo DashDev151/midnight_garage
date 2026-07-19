@@ -375,6 +375,14 @@ export const GameStateSchema = z.object({
    * it only gates whether the tutorial lot is kept on the board.
    */
   tutorialStatus: z.enum(['active', 'skipped', 'done']).optional(),
+  /**
+   * Sprint 95 (the tutorial actually guides): the tutorial step ids the player
+   * has pressed "Got it" on - what the `acknowledged` completion kind reads.
+   * Present only on tutorial careers (the genuinely-optional-key pattern,
+   * matching `tutorialStatus` above); the store's `acknowledgeTutorialStep`
+   * action appends to it, and the sim never reads it.
+   */
+  tutorialAcknowledgedSteps: z.array(z.string().min(1)).optional(),
 })
 
 /**

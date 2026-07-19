@@ -4,6 +4,7 @@ import { currentGameYear, reputationAtLeast } from './calendar'
 import { AUCTION_TIER_MIN_REPUTATION } from './constants'
 import type { SimContext } from './context'
 import type { Rng } from './rng'
+import { excludedAuctionModelIds } from './tutorial'
 
 const AUCTION_TIERS: readonly AuctionTier[] = [
   'local-yard',
@@ -34,6 +35,11 @@ function generateForEligibleTiers(
   countForTier: (tier: AuctionTier) => number,
 ): CatalogRefresh {
   const year = currentGameYear(state.reputationTier)
+  // Sprint 95 decision 5: while the tutorial is active the tutorial model is
+  // excluded from every random roll. Computed here because BOTH callers (the
+  // day-1 batch and the daily arrivals) flow through this loop, so the
+  // scripted lot can never gain an un-scripted twin on any day.
+  const excludedModelIds = excludedAuctionModelIds(state)
 
   const freshLots: AuctionLot[] = []
   const lotsByTier: { tier: AuctionTier; lotCount: number }[] = []
@@ -52,6 +58,7 @@ function generateForEligibleTiers(
       context,
       year,
       state.reputationTier,
+      excludedModelIds,
     )
     if (lots.length === 0) continue
     freshLots.push(...lots)
