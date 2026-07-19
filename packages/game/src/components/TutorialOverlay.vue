@@ -21,6 +21,7 @@ import {
   SYMPTOMS,
   TUTORIAL_LOT,
   TUTORIAL_STEPS,
+  fitmentClassForTier,
   resolveCarDisplayName,
   type CarInstance,
   type TutorialBaseCondition,
@@ -48,6 +49,15 @@ const truePartName = truePartId
 /** Catalogue part id -> the slot it addresses, for the `partInInventory`
  * condition (a `PartInstance` carries only its catalogue `partId`). */
 const carPartIdByPartId = new Map(PARTS.map((p) => [p.id, p.carPartId]))
+
+const partById = new Map(PARTS.map((p) => [p.id, p]))
+
+/** The class half of `partFitsCar` against the scripted car - enough here
+ * because the caller has already matched the slot address. */
+function fitsScriptedCar(partId: string): boolean {
+  if (!model) return false
+  return partById.get(partId)?.fitmentClass === fitmentClassForTier(model.tier)
+}
 
 /** Token substitutions for the swept copy. Resolved once from static content -
  * the swept sheet's `{budgetCap}`/`{payout}`/`{model}`/`{part}` placeholders. */
@@ -115,16 +125,22 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
         (a) => a.assemblyId === cond.assemblyId && a.sourceCarId === recipe.carId,
       )
     case 'partInInventory':
-      // Mirrors the bench swap-candidate rule (CarDetailScreen): any
-      // non-scrap inventory part addressed to this slot counts.
+      // Non-scrap, addressed to this slot, AND actually fitting the scripted
+      // car's class - "your tyres are in" must never fire on tyres that
+      // cannot go on her.
       return game.gameState.partInventory.some(
-        (pi) => pi.band !== 'scrap' && carPartIdByPartId.get(pi.partId) === cond.carPartId,
+        (pi) =>
+          pi.band !== 'scrap' &&
+          carPartIdByPartId.get(pi.partId) === cond.carPartId &&
+          fitsScriptedCar(pi.partId),
       )
     case 'partOnOrder':
-      // A standard-delivery order in transit addressed to this slot - the
-      // "your tyres are coming, End Day" waiting moment.
+      // A standard-delivery order in transit addressed to this slot (and
+      // fitting the scripted car) - the "your tyres are coming, End Day"
+      // waiting moment.
       return game.gameState.pendingPartOrders.some(
-        (order) => carPartIdByPartId.get(order.partId) === cond.carPartId,
+        (order) =>
+          carPartIdByPartId.get(order.partId) === cond.carPartId && fitsScriptedCar(order.partId),
       )
     case 'scriptedCarWhole': {
       // No slot missing (installed, or legitimately absent like the NA turbo

@@ -88,7 +88,7 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(false)
   })
 
-  it('opens on step 1 of 10 (welcome) with the Got it button for a fresh tutorial career', async () => {
+  it('opens on step 1 of 11 (welcome) with the Got it button for a fresh tutorial career', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = render()
@@ -192,7 +192,7 @@ describe('TutorialOverlay', () => {
 
     // A pending standard-delivery order addressed to tyres reveals the
     // "press End Day" waiting line.
-    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres')!
+    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
     game.gameState = {
       ...game.gameState,
       pendingPartOrders: [
@@ -308,7 +308,7 @@ describe('TutorialOverlay', () => {
 
     // A pending tyre order reveals the "press End Day" line, whose anchor
     // (being the last visible anchored line) takes the spotlight over.
-    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres')!
+    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
     game.gameState = {
       ...game.gameState,
       pendingPartOrders: [

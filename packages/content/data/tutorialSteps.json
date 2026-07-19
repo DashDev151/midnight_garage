@@ -130,7 +130,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "She needs fresh tyres, and the shop is the Parts tab. It sorts by department: open Wheels & tyres, then Tyres, and press Add to cart on the plain stock ones (sport rubber is lovely, and entirely not in her budget). Then press Checkout; standard delivery lands tomorrow morning.",
+        "text": "She needs fresh tyres, and the shop is the Parts tab. Open Wheels & tyres, then Tyres, and set the fits filter to her {model}; the shop then only shows what actually fits her. Press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout; standard delivery lands tomorrow morning.",
         "showWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" },
         "anchorTestId": ["catalog-part-tyres", "hero-wheels", "nav-parts"]
       },

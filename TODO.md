@@ -206,6 +206,18 @@ pass."
 
 ## Open engineering
 
+- [ ] **The bench swap path bypasses the fitment law (found 2026-07-19, answering "what if
+  the player buys the wrong-class tyres").** `partFitsCar` (economy-bible law 3: "a
+  kei-class part physically cannot go on a sports car") is enforced on the on-car install
+  path (`installablePartsForPart`, ReplaceDrawer dims non-fitting parts) but neither
+  `benchSwapCandidates` (CarDetailScreen) nor `resolveSwapAssemblyMember` /
+  `resolveRefitAssembly` (sim/assemblies.ts) checks it - a wrong-class part gets a live
+  Fit button at the bench and rides the refit onto the car. The tutorial no longer steers
+  anyone near it (the walkthrough teaches the fits-this-vehicle filter, and its own
+  conditions are fitment-checked), but the law hole is real for free play. Fix when next
+  in the assembly code: the swap resolver refuses (and the candidate list dims) exactly
+  as the on-car path does.
+
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
