@@ -346,8 +346,7 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
     </p>
 
     <p v-if="!hasLots" class="empty">
-      No lots listed right now. New lots can arrive any day - End Day (or use the dev console to
-      warp) and check back.
+      No lots listed right now. New cars roll in most days; press End Day and check back.
     </p>
 
     <div v-if="hasLots" class="filters" data-test="auction-filters">

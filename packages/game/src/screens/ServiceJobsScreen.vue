@@ -221,7 +221,7 @@ function offerCountdownLabel(expiresOnDay: number): string {
     <section class="board">
       <h3>Calls</h3>
       <p v-if="!hasOffers" class="empty">
-        Quiet line today. The phone rings most days - End Day (or warp).
+        Quiet line today. The phone rings most days; press End Day and see.
       </p>
       <ul v-else class="offers">
         <li v-for="offer in game.serviceJobOfferViews" :key="offer.id" class="offer">
