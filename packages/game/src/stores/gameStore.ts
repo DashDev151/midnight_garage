@@ -66,7 +66,6 @@ import {
   buildSimContext,
   carCostToBandYen,
   carCostToMintYen,
-  costToBandYen,
   carGuideValueYen,
   carLedgerFor,
   computeAuctionGrade,
@@ -101,6 +100,7 @@ import {
   isServiceTaskDone,
   isServiceWorkDone,
   machineAssistFeeYen,
+  marketValueYen,
   signatureOpFeeYen,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
@@ -143,6 +143,7 @@ import {
   resolveSellViaWalkIn,
   resolveServiceJob,
   resolveSetForSale,
+  roomLedgerFor,
   runDiagnosticTest as runDiagnosticTestCore,
   scrapValueYen,
   selectBoardRows,
@@ -152,6 +153,7 @@ import {
   unlockedTechniques,
   upgradeHintFor,
   valuateCarForBuyer,
+  valueLedgerFor,
   worstRemainingBandFor,
   worstRepairableBandInGroup,
   type AuctionGrade,
@@ -165,6 +167,7 @@ import {
   type ServiceJobOutcome,
   type SimContext,
   type TurnoutBand,
+  type ValueLedger,
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
@@ -296,10 +299,30 @@ export interface CarDetail extends DetailedCar {
   /**
    * Sprint 42: the same guide value the auction house shows
    * (`bidding.ts`'s `anchorValueYen`, generalized to any car+model via
-   * `carGuideValueYen` - zero new valuation math). The financial panel's
-   * "projected profit" is this minus total spent.
+   * `carGuideValueYen` - zero new valuation math).
    */
   guideValueYen: number
+  /**
+   * Your number - the Finances panel's "You say" row and its
+   * projected-profit input: the remaining-cause estimate
+   * (`playerEstimateYen`) while the car carries a symptom, the plain guide
+   * value otherwise (the two are identical for an honest car). Moves only
+   * when the player learns something.
+   */
+  yourNumberYen: number
+  /**
+   * The owner's honest receipt: the value-ledger decomposition of this
+   * car's true market value (`valueLedgerFor` on the true bands - never a
+   * fear line). Line ids only; screens map display labels via
+   * `utils/ledgerLabels.ts` and never compute a yen figure of their own.
+   */
+  valueLedger: ValueLedger
+  /**
+   * What a sale can actually land at: the true market value spread across
+   * the buyer taste band (`economy.valuation.tasteSpread`) - the Sell
+   * section's "Expect A to B, depending who bites." line.
+   */
+  saleRangeYen: { lowYen: number; highYen: number }
   /**
    * Sprint 60 (economy-bible.md law 5, the foundation law): non-null only
    * when a bad foundational part is withholding real aftermarket-premium
@@ -767,15 +790,19 @@ export interface LotDetail {
    * buying parts for. */
   fitmentClass: PartFitmentClass
   /**
-   * The card's headline number (Sprint 30 decision 2's UI half): the same
-   * transparent `instanceValue` every price in the game reads from
-   * (`bidding.ts`'s `anchorValueYen`, now age/mileage-aware per decision 1).
-   * No `bookValueYen` field on purpose (Sprint 25 task 5, maintainer
-   * decision): it's a static per-model constant unrelated to this specific
-   * rolled car's actual condition, so showing it next to a condition-derived
-   * guide value only invited "why doesn't this match" confusion.
+   * The room's number - the card's headline value ("the room says"): the
+   * same `anchorValueYen` every auction price derives from, the apparent
+   * car priced with every doubt at the odds. Never moves with the player's
+   * knowledge; `playerEstimateYen` below is what moves.
    */
   guideValueYen: number
+  /**
+   * The room's receipt: the ledger lines summing exactly to `guideValueYen`
+   * (`roomLedgerFor`), the fear line last on a symptomatic lot. Line ids
+   * only; the screen maps display labels via `utils/ledgerLabels.ts` and
+   * never computes a yen figure of its own.
+   */
+  ledger: ValueLedger
   /**
    * Sprint 27 (Sprint 30 decision 2 pulled forward) rebased `reserveYen`
    * itself onto the per-instance guide value above, so reserve and buyout
@@ -828,23 +855,23 @@ export interface LotDetail {
   auctionGrade: AuctionGrade
   /**
    * One entry per symptom this lot's car carries (`[]` for an honest car) -
-   * the free, public card line and its cause checklist. Each cause's `fixYen`
-   * is the mechanic's all-in estimate to make that fault good at the current
-   * tools: the banded repair from the cause's damage back to the band the
-   * sheet shows, plus the access the job forces (a crane round trip for a
-   * buried engine/drivetrain part, the tyre bench for tyres) - "fix about
-   * `fixYen`". `eliminated` is true once a run test has ruled a cause out
-   * (`remainingCauseIds` no longer includes it). `tests` carries every test
-   * the symptom's own content offers (`alreadyRun` ones are disabled, not
-   * hidden), `[]` once the symptom is fully resolved
-   * (`remainingCauseIds.length <= 1` - nothing left to narrow).
-   * `symptomIndex` is what `runDiagnosticTest` addresses this symptom by.
+   * the free, public card line and its cause checklist. Each cause's
+   * `dealDeltaYen` is the honest per-cause deal impact: the apparent car's
+   * market value with that cause's damage applied, minus the apparent car's
+   * value as shown - what the price honestly moves if this cause is the
+   * true one ("-¥15,000 if true"), always <= 0. `eliminated` is true once a
+   * run test has ruled a cause out (`remainingCauseIds` no longer includes
+   * it). `tests` carries every test the symptom's own content offers
+   * (`alreadyRun` ones are disabled, not hidden), `[]` once the symptom is
+   * fully resolved (`remainingCauseIds.length <= 1` - nothing left to
+   * narrow). `symptomIndex` is what `runDiagnosticTest` addresses this
+   * symptom by.
    */
   symptoms: {
     symptomIndex: number
     line: string
     resolved: boolean
-    causes: { causeId: string; label: string; fixYen: number; eliminated: boolean }[]
+    causes: { causeId: string; label: string; dealDeltaYen: number; eliminated: boolean }[]
     tests: {
       testId: string
       label: string
@@ -1176,9 +1203,11 @@ export const useGameStore = defineStore('game', () => {
    * lot's card (`lotDetail`) and an owned car's page (`carDetail`) - the
    * checklist shape is identical either way; only the UI decides whether
    * test buttons render (never on an owned car, where the workup supersedes
-   * them). Each cause's `fixYen` is the mechanic's all-in estimate to make
-   * that fault good at the current tools, so the figure the player weighs a
-   * bid against is the same kind of figure the repair controls later charge.
+   * them). Each cause's `dealDeltaYen` is a plain, honest value comparison -
+   * `marketValueYen` with that cause's own damage applied to `apparentCar`,
+   * minus `apparentCar`'s own value - the deal impact if that cause is the
+   * true one, never the fear-priced sheet gap (that is what the room
+   * charges across the whole cause set, not what any one cause is worth).
    * `eliminated` and `resolved` both read `carSymptom.remainingCauseIds`;
    * `alreadyRun` reads `runTestIds`. Test `label`s derive from
    * `titleCaseFromSlug` off the id, the same way cause labels do.
@@ -1186,8 +1215,18 @@ export const useGameStore = defineStore('game', () => {
   function symptomChecklistForCar(
     car: CarInstance,
     apparentCar: CarInstance,
+    model: CarModel,
   ): LotDetail['symptoms'] {
     if (car.symptoms.length === 0) return []
+    const heatPercent = gameState.value.marketHeat[model.id] ?? 100
+    const apparentValueYen = marketValueYen(
+      model,
+      apparentCar,
+      heatPercent,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      context.value.economy,
+    )
     return car.symptoms.flatMap((carSymptom, symptomIndex) => {
       const symptom = context.value.symptomsById[carSymptom.symptomId]
       if (!symptom) return []
@@ -1199,31 +1238,26 @@ export const useGameStore = defineStore('game', () => {
           resolved,
           causes: symptom.causes.map((cause) => {
             const installed = apparentCar.parts[cause.carPartId].installed
-            const taxonomyEntry = context.value.partsTaxonomyById[cause.carPartId]
-            const catalogPart = installed ? context.value.partsById[installed.partId] : undefined
-            // The mechanic's gut estimate: what making this fault good costs
-            // all-in at the current tools - the banded repair from the
-            // cause's damage back to the band the sheet shows, plus the
-            // access the job forces (a crane round trip for a buried
-            // engine/drivetrain part, the tyre-fitting bench for tyres).
-            let fixYen = 0
-            if (installed && taxonomyEntry && catalogPart) {
-              fixYen =
-                costToBandYen(
-                  cause.setBand,
-                  installed.band,
-                  taxonomyEntry,
-                  catalogPart.priceYen,
-                  context.value.economy.restoration.repairStepFraction,
-                  catalogPart.fitmentClass,
-                ) +
-                2 * machineAssistFeeYen(cause.carPartId, gameState.value, context.value) +
-                benchSwapFeeYen(cause.carPartId, gameState.value, context.value)
-            }
+            const causeValueYen = installed
+              ? marketValueYen(
+                  model,
+                  {
+                    ...apparentCar,
+                    parts: {
+                      ...apparentCar.parts,
+                      [cause.carPartId]: { installed: { ...installed, band: cause.setBand } },
+                    },
+                  },
+                  heatPercent,
+                  context.value.partsById,
+                  context.value.partsTaxonomyById,
+                  context.value.economy,
+                )
+              : apparentValueYen
             return {
               causeId: cause.id,
               label: titleCaseFromSlug(cause.id),
-              fixYen,
+              dealDeltaYen: causeValueYen - apparentValueYen,
               eliminated: !carSymptom.remainingCauseIds.includes(cause.id),
             }
           }),
@@ -1696,6 +1730,19 @@ export const useGameStore = defineStore('game', () => {
     const model = context.value.modelsById[car.modelId]
     if (!model) return undefined
     const serviceJob = gameState.value.activeServiceJobs.find((sj) => sj.car.id === carId)
+    const heatPercent = gameState.value.marketHeat[car.modelId] ?? 100
+    // The true car's own market value - what a sale actually pays; the taste
+    // band around it is the honest "expect A to B" sale range.
+    const trueValueYen = marketValueYen(
+      model,
+      car,
+      heatPercent,
+      context.value.partsById,
+      context.value.partsTaxonomyById,
+      context.value.economy,
+    )
+    const tasteSpread = context.value.economy.valuation.tasteSpread
+    const guideValueYen = carGuideValueYen(car, model, gameState.value, context.value)
     return {
       ...detailFor(car),
       jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
@@ -1712,11 +1759,30 @@ export const useGameStore = defineStore('game', () => {
         context.value.economy,
       ),
       ledger: carLedgerFor(gameState.value, carId),
-      guideValueYen: carGuideValueYen(car, model, gameState.value, context.value),
+      guideValueYen,
+      // A symptomatic car's "you say" is the remaining-cause estimate (a
+      // fully-resolved symptom prices at its exact true value); an honest
+      // car's is the guide value itself - the same number by construction.
+      yourNumberYen:
+        car.symptoms.length > 0
+          ? Math.round(playerEstimateYen(car, model, gameState.value, context.value))
+          : guideValueYen,
+      valueLedger: valueLedgerFor(
+        car,
+        model,
+        heatPercent,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy,
+      ),
+      saleRangeYen: {
+        lowYen: Math.round(trueValueYen * (1 - tasteSpread)),
+        highYen: Math.round(trueValueYen * (1 + tasteSpread)),
+      },
       foundationWarning: foundationWarningFor(car),
       passionSpendNotice: passionSpendNoticeFor(car, model),
       plannedEstimate: plannedEstimateFor(carId),
-      symptoms: symptomChecklistForCar(car, apparentViewOf(car)),
+      symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),
       workupGateReason: ownedWorkupGateReasonCore(gameState.value, carId, context.value),
     }
   }
@@ -2071,6 +2137,7 @@ export const useGameStore = defineStore('game', () => {
       displayName: resolveCarDisplayName(model),
       fitmentClass: fitmentClassForTier(model.tier),
       guideValueYen: anchorValueYen(lot, gameState.value, context.value),
+      ledger: roomLedgerFor(lot.car, model, gameState.value, context.value),
       reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       currentBidYen: lot.currentBidYen,
@@ -2086,7 +2153,7 @@ export const useGameStore = defineStore('game', () => {
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),
       closeNightsLeft: auctionNightsLeft(lot),
-      symptoms: symptomChecklistForCar(lot.car, apparentCar),
+      symptoms: symptomChecklistForCar(lot.car, apparentCar, model),
       playerEstimateYen: lot.car.symptoms.some(
         (s) => s.runTestIds.length > 0 || s.remainingCauseIds.length <= 1,
       )

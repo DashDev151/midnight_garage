@@ -555,7 +555,7 @@ describe('CarDetailScreen', () => {
       return game.gameState.ownedCars.at(-1)!.id
     }
 
-    it('shows purchase, repairs, parts, total spent, guide value, restoration bill, and a projected profit right after a buyout', async () => {
+    it('shows purchase, repairs, parts, total spent, the value ledger, You say, restoration bill, a projected profit off your number, and the sale range right after a buyout', async () => {
       const game = useGameStore()
       const id = buyoutACar(game)
       const detail = game.carDetail(id)!
@@ -572,14 +572,26 @@ describe('CarDetailScreen', () => {
       expect(panel.find('[data-test="finance-total-spent"]').text()).toBe(
         formatYen(detail.ledger.purchaseYen!),
       )
-      expect(panel.find('[data-test="finance-guide-value"]').text()).toBe(
-        formatYen(detail.guideValueYen),
-      )
+      // The value ledger renders line by line above the money-in rows, its
+      // labels mapped from the sim's own ids.
+      const bookLine = panel.find('[data-test="ledger-line-book"]')
+      expect(bookLine.exists()).toBe(true)
+      expect(bookLine.text()).toContain('Book')
+      expect(bookLine.text()).toContain(formatYen(detail.valueLedger.lines[0]!.yen))
+      expect(panel.find('[data-test="ledger-line-wear"]').exists()).toBe(true)
+      // An owned car's receipt is honest - never a fear line.
+      expect(panel.find('[data-test="ledger-line-fear"]').exists()).toBe(false)
+      expect(panel.find('[data-test="you-say"]').text()).toBe(formatYen(detail.yourNumberYen))
       expect(panel.find('[data-test="finance-bill-remaining"]').text()).toBe(
         formatYen(detail.totalBillYen),
       )
-      const expectedProfit = detail.guideValueYen - detail.ledger.purchaseYen!
+      const expectedProfit = detail.yourNumberYen - detail.ledger.purchaseYen!
       expect(panel.find('[data-test="finance-profit"]').text()).toBe(formatYenDelta(expectedProfit))
+
+      const range = wrapper.find('[data-test="sale-range"]')
+      expect(range.text().replace(/\s+/g, ' ')).toBe(
+        `Expect ${formatYen(detail.saleRangeYen.lowYen)} to ${formatYen(detail.saleRangeYen.highYen)}, depending who bites.`,
+      )
     })
 
     it('shows "-" for purchase on a dev-granted (unknown-purchase) car, with repairs/parts/total still numeric', async () => {

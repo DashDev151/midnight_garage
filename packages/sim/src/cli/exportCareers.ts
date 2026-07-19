@@ -377,7 +377,6 @@ function main(): void {
     simVersion: SIM_VERSION,
     generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
     columns: SYMPTOM_COHERENCE_COLUMNS,
-    fearPremium: ECONOMY.diagnosis.fearPremium,
   })
 
   const strategyList = STRATEGIES.map((s) => s.name).join(', ')

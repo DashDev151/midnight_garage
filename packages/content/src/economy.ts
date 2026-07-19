@@ -1259,22 +1259,18 @@ export const EconomyConfigSchema = z.object({
     probeAmortisationOps: z.number().int().positive(),
   }),
   /**
-   * Sprint 73 (diagnosis I, the fear-priced board - maintainer pricing law
-   * 2026-07-15: "the room prices the symptom, the player prices the cause").
-   * `fearPremium` is `sheetGuideValueYen`'s (`diagnosis.ts`, sim) risk
-   * multiplier on the gap between a symptomatic car's apparent value and its
-   * cause-weighted expected true value - always > 1, so the room never prices
-   * a symptomatic car as generously as its apparent condition alone would
-   * suggest. `symptomChanceByTier` is keyed by `PartFitmentClass` (the same
-   * four values `valuation.expectationByTier` uses), rolled per generated car
-   * (`generateAuctionCarInstance`); `secondSymptomChance` is the independent
-   * roll for a SECOND symptom once the first lands, capped at
-   * `maxSymptomsPerCar`. `visitMinutes`/`travelFeeYenByTier` are consumed by
-   * Sprint 74's inspection verb - shipped now per decision 5's own
-   * instruction so the whole key lands in one bump.
+   * The diagnosis knobs. The room prices the symptom, the player prices the
+   * cause: a symptomatic car's sheet value is the cause-weighted expectation
+   * over every authored cause (`sheetGuideValueYen`, sim/diagnosis.ts) with
+   * no premium on top - knowledge, not a multiplier, is what separates the
+   * player's number from the room's. `symptomChanceByTier` is keyed by
+   * `PartFitmentClass` (the same four values `valuation.expectationByTier`
+   * uses), rolled per generated car (`generateAuctionCarInstance`);
+   * `secondSymptomChance` is the independent roll for a SECOND symptom once
+   * the first lands, capped at `maxSymptomsPerCar`.
+   * `visitMinutes`/`travelFeeYenByTier` govern the yard inspection verb.
    */
   diagnosis: z.object({
-    fearPremium: z.number().min(1),
     symptomChanceByTier: z.object({
       shitbox: z.number().min(0).max(1),
       common: z.number().min(0).max(1),

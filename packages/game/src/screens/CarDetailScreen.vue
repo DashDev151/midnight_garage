@@ -36,6 +36,7 @@ import {
   type NextRepairStepView,
 } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
 
 const game = useGameStore()
@@ -306,7 +307,6 @@ function toggleBay(): void {
 
 // --- Sprint 31: the for-sale toggle + live offer card ----------------------
 
-const estimate = computed(() => game.estimatedSaleValue(carId.value))
 const forSale = computed(() => game.isForSale(carId.value))
 const offer = computed(() => game.offerFor(carId.value))
 
@@ -318,10 +318,12 @@ const totalSpentYen = computed(() => {
   return (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen
 })
 
+/** Your number minus everything spent so far - the same two sources the
+ * panel already itemises, never a parallel estimator. */
 const projectedProfitYen = computed(() => {
   const d = detail.value
   if (!d) return 0
-  return d.guideValueYen - totalSpentYen.value
+  return d.yourNumberYen - totalSpentYen.value
 })
 
 function toggleForSale(): void {
@@ -664,7 +666,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               <span class="mark" aria-hidden="true">{{ cause.eliminated ? '[x]' : '[ ]' }}</span>
               <span class="label">{{ cause.label }}</span>
-              <span class="delta">fix about {{ formatYen(cause.fixYen) }}</span>
+              <span class="delta">{{ formatYenDelta(cause.dealDeltaYen) }} if true</span>
             </li>
           </ul>
         </div>
@@ -1149,6 +1151,27 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             or installing a part updates this immediately.
           </HelpHint>
         </h3>
+        <h4 class="ledger-head">
+          The ledger
+          <HelpHint label="The ledger">
+            Every price is the same short receipt: the book price, minus the work still outstanding
+            (buyers knock off one and a half times that bill, which is exactly the margin you earn
+            by doing the work yourself), minus polish it is missing, plus any upgrades that count.
+            On a listed car, the last line prices its doubts at the odds; prove the cause and your
+            own number replaces the doubt.
+          </HelpHint>
+        </h4>
+        <dl class="finance-grid ledger-grid">
+          <div
+            v-for="line in detail.valueLedger.lines"
+            :key="line.id"
+            class="finance-row"
+            :data-test="'ledger-line-' + line.id"
+          >
+            <dt>{{ LEDGER_LINE_LABELS[line.id] }}</dt>
+            <dd>{{ formatLedgerLineYen(line) }}</dd>
+          </div>
+        </dl>
         <dl class="finance-grid">
           <div class="finance-row">
             <dt>Purchase</dt>
@@ -1169,8 +1192,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <dd data-test="finance-total-spent">{{ formatYen(totalSpentYen) }}</dd>
           </div>
           <div class="finance-row">
-            <dt>Guide value</dt>
-            <dd data-test="finance-guide-value">{{ formatYen(detail.guideValueYen) }}</dd>
+            <dt>You say</dt>
+            <dd data-test="you-say">{{ formatYen(detail.yourNumberYen) }}</dd>
           </div>
           <div class="finance-row">
             <dt>Restoration bill remaining</dt>
@@ -1244,7 +1267,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section v-if="!detail.serviceJob" class="sell">
         <h3>Sell</h3>
-        <p class="sell-est">Ballpark value: ~{{ formatYen(estimate.offerYen) }}</p>
+        <p class="sell-est" data-test="sale-range">
+          Expect {{ formatYen(detail.saleRangeYen.lowYen) }} to
+          {{ formatYen(detail.saleRangeYen.highYen) }}, depending who bites.
+        </p>
 
         <div v-if="offer" class="offer-card" data-test="pending-offer">
           <p class="offer-copy">{{ offer.copy }}</p>
@@ -1703,6 +1729,18 @@ h4 {
 
 .finances {
   margin: var(--mg-space-4) 0;
+}
+
+.ledger-head {
+  margin: 0 0 var(--mg-space-1);
+}
+
+/* The value ledger sits above the money-in rows, ruled off so the receipt
+   reads as one block and the spend history as another. */
+.ledger-grid {
+  margin-bottom: var(--mg-space-2);
+  padding-bottom: var(--mg-space-2);
+  border-bottom: var(--mg-border);
 }
 
 .finance-grid {

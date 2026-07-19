@@ -3,10 +3,12 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { AuctionTier } from '@midnight-garage/content'
 import GradeStamp from '../components/GradeStamp.vue'
+import HelpHint from '../components/HelpHint.vue'
 import LabourBar from '../components/LabourBar.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
-import { formatYen } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 
 const game = useGameStore()
 
@@ -521,7 +523,7 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                     cause.eliminated ? '[x]' : '[ ]'
                   }}</span>
                   <span class="label">{{ cause.label }}</span>
-                  <span class="delta">fix about {{ formatYen(cause.fixYen) }}</span>
+                  <span class="delta">{{ formatYenDelta(cause.dealDeltaYen) }} if true</span>
                 </li>
               </ul>
 
@@ -565,27 +567,39 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                 {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
               </p>
 
-              <!-- The card is still honest (Sprint 30 decision 2): guide
-                   value is the same transparent instanceValue everyone
-                   prices from - book value is never shown - just no longer
-                   the headline. Sprint 73 decision 7: "as graded" is the
-                   honest caveat on a symptomatic lot - this number is
-                   fear-priced off the car's apparent (room-visible)
-                   condition, never the true one. -->
+              <!-- The room's number is the card's value headline; the
+                   ledger beneath it is the exact decomposition the sheet
+                   sums to, the fear line last on a symptomatic lot. -->
+              <p class="room-says" data-test="room-says">
+                the room says {{ formatYen(d.guideValueYen) }}
+                <HelpHint label="The ledger">
+                  Every price is the same short receipt: the book price, minus the work still
+                  outstanding (buyers knock off one and a half times that bill, which is exactly the
+                  margin you earn by doing the work yourself), minus polish it is missing, plus any
+                  upgrades that count. On a listed car, the last line prices its doubts at the odds;
+                  prove the cause and your own number replaces the doubt.
+                </HelpHint>
+              </p>
+              <ul class="ledger">
+                <li
+                  v-for="line in d.ledger.lines"
+                  :key="line.id"
+                  class="ledger-line"
+                  :data-test="'ledger-line-' + line.id"
+                >
+                  <span class="ledger-label">{{ LEDGER_LINE_LABELS[line.id] }}</span>
+                  <span class="ledger-yen">{{ formatLedgerLineYen(line) }}</span>
+                </li>
+              </ul>
               <div class="lot-secondary">
-                <span>guide (as graded) {{ formatYen(d.guideValueYen) }}</span>
                 <span>reserve {{ formatYen(d.reserveYen) }}</span>
               </div>
-              <!-- Sprint 74 decision 6: the player's own honest read, once
-                   any test has run or any symptom has resolved - never the
-                   fear-priced guide above, and never shown before there is
-                   genuinely something to show. -->
-              <p
-                v-if="d.playerEstimateYen !== null"
-                class="player-estimate"
-                :data-test="'player-estimate-' + d.lot.id"
-              >
-                your estimate: {{ formatYen(d.playerEstimateYen) }}
+              <!-- The player's own number, once any test has run or any
+                   symptom has resolved - hidden while it could only equal
+                   the room's number, so the moment it appears is the
+                   moment of divergence. -->
+              <p v-if="d.playerEstimateYen !== null" class="player-estimate" data-test="you-say">
+                you say {{ formatYen(d.playerEstimateYen) }}
               </p>
 
               <div class="close-timer">
@@ -1069,6 +1083,34 @@ h3 {
   justify-content: center;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+/* The room's number - the card's value headline, above its ledger. */
+.room-says {
+  margin: 0;
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-md);
+  font-weight: bold;
+}
+
+/* The compact receipt under the room's number: one small line per entry,
+   label left, signed yen right. */
+.ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  max-width: 240px;
+  font-size: var(--mg-fs-xs, 0.7rem);
+  color: var(--mg-text-dim);
+}
+
+.ledger-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
 }
 
 /* Day count as a real countdown, not a line buried in prose; falls back to

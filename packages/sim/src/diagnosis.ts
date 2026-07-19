@@ -19,11 +19,10 @@ import { marketValueYen } from './marketValue'
 type CarSymptom = CarInstance['symptoms'][number]
 
 /**
- * Sprint 73 (diagnosis I, the fear-priced board - maintainer pricing law
- * 2026-07-15: "the room prices the symptom, the player prices the cause").
- * The room only ever shows a symptomatic car's APPARENT condition (the
- * pre-damage band recorded at generation, `CarInstance.apparentBandByPartId`)
- * - never the true, currently-installed band a damaged part actually holds.
+ * The room prices the symptom, the player prices the cause. The room only
+ * ever shows a symptomatic car's APPARENT condition (the pre-damage band
+ * recorded at generation, `CarInstance.apparentBandByPartId`), never the
+ * true, currently-installed band a damaged part actually holds.
  * `apparentViewOf` is the one place that builds "the car as the room sees
  * it"; every valuation on the auction side of a symptomatic lot goes through
  * a view built here, never the true `car` directly.
@@ -44,10 +43,8 @@ export function apparentViewOf(car: CarInstance): CarInstance {
   return { ...car, parts }
 }
 
-/** Every one of a symptom's own causes, unfiltered - the default cause set
- * for `symptomDiscountYen`'s room-side expectation (`expectedTrueValueYen`/
- * `sheetGuideValueYen`, which know nothing about the player's own narrowing
- * knowledge). */
+/** Every one of a symptom's own causes, unfiltered - the room's cause set,
+ * which knows nothing about the player's own narrowing knowledge. */
 function allCauses(_carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] {
   return symptom.causes
 }
@@ -55,23 +52,21 @@ function allCauses(_carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] 
 /**
  * The total expected DISCOUNT off the apparent value across every symptom
  * `car` carries, given `apparent` (`apparentViewOf(car)`) and its own
- * already-computed `apparentValue` - shared by `expectedTrueValueYen`,
- * `sheetGuideValueYen`, and `playerEstimateYen` below so no caller prices the
- * apparent view or walks a cause list twice. For each symptom,
- * `causesFor(carSymptom, symptom)` (default: every cause - the room's own
- * ignorance) picks which causes are still in play; `marketValueYen` is
- * computed once per cause (that cause's damage applied to the apparent view)
- * and weight-averaged over just those causes - the symptom's own expected
- * discount. Symptoms combine by summing each one's own discount in turn
- * (array order, deterministic) - treating each symptom's uncertainty as an
- * independent deduction rather than enumerating the full cross-product of
- * every symptom's causes, which stays exact for the shipped
- * `maxSymptomsPerCar: 2` and any single-symptom car (the overwhelming
- * majority), and is a standard linear approximation for the rare
- * two-symptom case. Zero for an honest car (no symptoms), and zero for any
- * symptom `causesFor` returns no causes for (Sprint 74:
- * `playerEstimateYen` uses this to make a fully-resolved symptom - exactly
- * one remaining cause - contribute its exact true value, no averaging).
+ * already-computed `apparentValue` - the one body behind every estimator
+ * below, so no caller prices the apparent view or walks a cause list twice.
+ * For each symptom, `causesFor(carSymptom, symptom)` picks which causes are
+ * still in play; `marketValueYen` is computed once per cause (that cause's
+ * damage applied to the apparent view) and weight-averaged over just those
+ * causes - the symptom's own expected discount. Symptoms combine by summing
+ * each one's own discount in turn (array order, deterministic) - treating
+ * each symptom's uncertainty as an independent deduction rather than
+ * enumerating the full cross-product of every symptom's causes, which stays
+ * exact for the shipped `maxSymptomsPerCar: 2` and any single-symptom car
+ * (the overwhelming majority), and is a standard linear approximation for
+ * the rare two-symptom case. Zero for an honest car (no symptoms), and zero
+ * for any symptom `causesFor` returns no causes for - a fully-resolved
+ * symptom (exactly one remaining cause) contributes its exact true value,
+ * no averaging.
  */
 function symptomDiscountYen(
   car: CarInstance,
@@ -115,17 +110,20 @@ function symptomDiscountYen(
 }
 
 /**
- * The player's own private knowledge, priced as an expectation: what this
- * car is ACTUALLY worth on average, given every symptom's own weighted cause
- * table (`symptomDiscountYen` above), starting from the apparent view (the
- * room's own read). An honest car (no symptoms) returns exactly
- * `marketValueYen(car)` - `symptomDiscountYen` is 0 over an empty list.
+ * The one estimator behind every diagnosis-side price: the apparent view's
+ * market value minus the expected symptom discount over `causesFor`'s cause
+ * set (`symptomDiscountYen` above). The cause set is the ONLY lever - the
+ * room averages over every authored cause, the player over the causes their
+ * own knowledge still leaves standing - so knowledge is the only thing that
+ * separates the player's number from the room's. An honest car (no
+ * symptoms) prices at exactly `marketValueYen(car)`.
  */
-export function expectedTrueValueYen(
+function estimateValueYen(
   car: CarInstance,
   model: CarModel,
   state: GameState,
   context: SimContext,
+  causesFor: (carSymptom: CarSymptom, symptom: Symptom) => readonly Cause[] = allCauses,
 ): number {
   const heatPercent = state.marketHeat[model.id] ?? 100
   const apparent = apparentViewOf(car)
@@ -138,23 +136,33 @@ export function expectedTrueValueYen(
     context.economy,
   )
   return (
-    apparentValue - symptomDiscountYen(car, model, apparent, apparentValue, heatPercent, context)
+    apparentValue -
+    symptomDiscountYen(car, model, apparent, apparentValue, heatPercent, context, causesFor)
   )
 }
 
 /**
- * The fear-priced room value (Sprint 73 decision 3) - the number the whole
- * auction room actually reads (`bidding.ts`'s `carGuideValueYen`): the
- * apparent value, discounted by `fearPremium` times the gap between the
- * apparent value and the honest expectation. `fearPremium > 1` (schema-
- * enforced) means the room ALWAYS prices a symptomatic car more harshly than
- * the pure expectation would - real risk aversion, not a fair-odds bet.
- * Degenerates to exactly the apparent value (= `marketValueYen(car)`) for an
- * honest car, since `symptomDiscountYen` is 0 then too. Computes the
- * apparent view/value and walks the cause list only ONCE (shares
- * `symptomDiscountYen` with `expectedTrueValueYen` rather than calling it),
- * since this is the seam every active auction lot reprices through on every
- * overnight step - `carGuideValueYen`'s own hot path.
+ * The all-cause expectation: what this car is worth on average given every
+ * symptom's own full weighted cause table - `estimateValueYen` over the
+ * unfiltered cause set. Identical to `sheetGuideValueYen` by construction;
+ * both names are kept because they answer different questions at the call
+ * site (the honest average vs the number printed on the auction sheet).
+ */
+export function expectedTrueValueYen(
+  car: CarInstance,
+  model: CarModel,
+  state: GameState,
+  context: SimContext,
+): number {
+  return estimateValueYen(car, model, state, context)
+}
+
+/**
+ * The room's number - what the auction sheet prints and every room price
+ * derives from (`bidding.ts`'s `carGuideValueYen`): `estimateValueYen` over
+ * the unfiltered cause set. The room prices the odds, nothing more, so this
+ * equals `expectedTrueValueYen` and the two only ever diverge from the
+ * PLAYER's read (`playerEstimateYen`) once narrowing has happened.
  */
 export function sheetGuideValueYen(
   car: CarInstance,
@@ -162,32 +170,17 @@ export function sheetGuideValueYen(
   state: GameState,
   context: SimContext,
 ): number {
-  const heatPercent = state.marketHeat[model.id] ?? 100
-  const apparent = apparentViewOf(car)
-  const apparentValue = marketValueYen(
-    model,
-    apparent,
-    heatPercent,
-    context.partsById,
-    context.partsTaxonomyById,
-    context.economy,
-  )
-  const discount = symptomDiscountYen(car, model, apparent, apparentValue, heatPercent, context)
-  return apparentValue - context.economy.diagnosis.fearPremium * discount
+  return estimateValueYen(car, model, state, context)
 }
 
 /**
- * Sprint 74 decision 6: the PLAYER's own honest estimate, once they've
- * learned something - each symptom's remaining causes (Sprint 74's
- * `runDiagnosticTest`/`resolveOwnedWorkup` narrow `remainingCauseIds`),
- * reweighted (original weights renormalised over just the remaining set,
- * `symptomDiscountYen`'s `totalWeight` division already does this for
- * whatever cause list it's handed). A fully-resolved symptom (exactly one
- * remaining cause) contributes its exact true value with no averaging at
- * all - `weightedMean` degenerates to that one cause's own value once it's
- * the only entry, no special case needed. No `fearPremium` anywhere in this
- * number - this is the player's own honest read, not the room's fear-priced
- * one.
+ * The player's number: `estimateValueYen` over each symptom's REMAINING
+ * causes (`remainingCauseIds`, narrowed by tests, workups, and
+ * reveal-on-removal), reweighted - the original weights renormalised over
+ * just the remaining set by `symptomDiscountYen`'s `totalWeight` division.
+ * Equals the room's number while nothing has narrowed; a fully-resolved
+ * symptom (exactly one remaining cause) contributes its exact true value
+ * with no averaging at all.
  */
 export function playerEstimateYen(
   car: CarInstance,
@@ -195,28 +188,9 @@ export function playerEstimateYen(
   state: GameState,
   context: SimContext,
 ): number {
-  const heatPercent = state.marketHeat[model.id] ?? 100
-  const apparent = apparentViewOf(car)
-  const apparentValue = marketValueYen(
-    model,
-    apparent,
-    heatPercent,
-    context.partsById,
-    context.partsTaxonomyById,
-    context.economy,
-  )
   const remainingCausesFor = (carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] =>
     symptom.causes.filter((cause) => carSymptom.remainingCauseIds.includes(cause.id))
-  const discount = symptomDiscountYen(
-    car,
-    model,
-    apparent,
-    apparentValue,
-    heatPercent,
-    context,
-    remainingCausesFor,
-  )
-  return apparentValue - discount
+  return estimateValueYen(car, model, state, context, remainingCausesFor)
 }
 
 /**

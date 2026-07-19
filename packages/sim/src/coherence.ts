@@ -158,7 +158,7 @@ function worstCaseMileageKm(context: SimContext): number {
  * softer than a genuine generation roll, so a pass here proves the guard
  * holds for this model at its absolute worst, not merely on average.
  */
-function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance {
+export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance {
   const mileageKm = worstCaseMileageKm(context)
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
@@ -607,7 +607,9 @@ export interface SymptomCoherenceRow {
   expectedTrueValueYen: number
   sheetGuideValueYen: number
   /** `expectedTrueValueYen - sheetGuideValueYen` - the average edge of
-   * buying this symptomatic lot blind, with no test run at all. */
+   * buying this symptomatic lot blind, with no test run at all. Zero by
+   * construction (the sheet IS the all-cause expectation); a nonzero value
+   * means the two estimators have drifted apart. */
   blindBuyEvYen: number
   edgePerCauseYen: SymptomCauseEdgeRow[]
 }
@@ -620,26 +622,24 @@ const SYMPTOM_PROBE_FITMENT_CLASSES: readonly PartFitmentClass[] = [
 ]
 
 /**
- * Sprint 73 decision 6: the diagnosis system's blind-buy guardrail - for
- * every symptom, on a representative clean car per tier (`buildCleanProbeCar`,
- * shared with `computeDonorCoherence` above - a symptom is a surprise on an
+ * The diagnosis system's blind-buy guardrail - for every symptom, on a
+ * representative clean car per tier (`buildCleanProbeCar`, shared with
+ * `computeDonorCoherence` above - a symptom is a surprise on an
  * otherwise-healthy car, not a worst-case wreck), how good a bet is buying
  * without running a single test?
  *
- * `blindBuyEvYen = expectedTrueValueYen - sheetGuideValueYen` must stay >= 0
- * (the room's fear premium always prices in MORE caution than the honest
- * average risk, so buying blind is never -EV on average) and <= 0.2 x the
- * apparent-to-expected gap (a modest edge, not a windfall). Both bounds
- * follow algebraically from `fearPremium` alone -
- * `blindBuyEvYen = (fearPremium - 1) x (apparentValueYen - expectedTrueValueYen)`
- * - so this is really machine-checking `1 <= fearPremium <= 1.2` against the
- * REAL content pipeline, closed-form, rather than trusting the raw number in
- * isolation. `edgePerCauseYen` must show at least one cause on each side of
- * zero for every symptom - some causes worse than the sheet price, some
- * better - or the symptom's own weight spread isn't creating real
- * uncertainty. Not bot-derived: every number is a direct call into the real
- * sim functions (`diagnosis.ts`), the same "closed-form, cheap enough for
- * every balance run" standing as `computeRosterCoherence` above.
+ * The sheet IS the all-cause expectation (the room prices the odds, with no
+ * premium on top), so `blindBuyEvYen = expectedTrueValueYen -
+ * sheetGuideValueYen` is 0 by construction: buying blind is a fair-odds bet,
+ * never -EV and never a windfall. Both figures are still measured through
+ * the real estimator calls so any drift between the two entry points fails
+ * the probe instead of passing silently. `edgePerCauseYen` must show at
+ * least one cause on each side of zero for every symptom - some causes worse
+ * than the sheet price, some better - or the symptom's own weight spread
+ * isn't creating real uncertainty. Not bot-derived: every number is a direct
+ * call into the real sim functions (`diagnosis.ts`), the same "closed-form,
+ * cheap enough for every balance run" standing as `computeRosterCoherence`
+ * above.
  */
 export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRow[] {
   const neutralState = createInitialGameState(context, 0)

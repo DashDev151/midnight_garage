@@ -249,7 +249,7 @@ describe('expectedTrueValueYen / sheetGuideValueYen (Sprint 73 decision 3)', () 
     expect(expectedTrueValueYen(car, MODEL, STATE, CONTEXT)).toBe(manualWeightedMean)
   })
 
-  it('sheetGuideValueYen applies the fear premium arithmetic exactly: apparentValue - fearPremium x (apparentValue - expectedTrueValue)', () => {
+  it('sheetGuideValueYen equals expectedTrueValueYen exactly - the room prices the odds, with no premium on top', () => {
     const car = carWithSymptom()
     const apparent = apparentViewOf(car)
     const apparentValue = marketValueYen(
@@ -261,13 +261,12 @@ describe('expectedTrueValueYen / sheetGuideValueYen (Sprint 73 decision 3)', () 
       CONTEXT.economy,
     )
     const expectedTrueValue = expectedTrueValueYen(car, MODEL, STATE, CONTEXT)
-    const expectedSheetValue =
-      apparentValue - CONTEXT.economy.diagnosis.fearPremium * (apparentValue - expectedTrueValue)
 
-    expect(sheetGuideValueYen(car, MODEL, STATE, CONTEXT)).toBe(expectedSheetValue)
-    // fearPremium > 1 (schema-enforced) means the room prices a symptomatic
-    // car strictly below the pure expectation whenever there's a real gap.
-    expect(expectedSheetValue).toBeLessThan(expectedTrueValue)
+    expect(sheetGuideValueYen(car, MODEL, STATE, CONTEXT)).toBe(expectedTrueValue)
+    // The cause-weighted expectation itself carries the fear: while any
+    // cause claims real damage, the sheet sits strictly below the
+    // apparent-condition value.
+    expect(expectedTrueValue).toBeLessThan(apparentValue)
   })
 })
 
@@ -302,7 +301,7 @@ describe('rival blindness (Sprint 73 decision 3): rivals never read trueCauseId 
 })
 
 describe('sale-side blindness (Sprint 73 decision 8): a sale always prices the true car, never the apparent one', () => {
-  it("valuateCarForBuyer reads the car's own true marketValueYen directly - no apparentViewOf, no fear premium, even on a car carrying a symptom", () => {
+  it("valuateCarForBuyer reads the car's own true marketValueYen directly - no apparentViewOf, no fear discount, even on a car carrying a symptom", () => {
     const car = carWithSymptom()
     const buyer = CONTEXT.buyers[0]!
     const expectedValue = marketValueYen(
@@ -769,10 +768,19 @@ describe('playerEstimateYen (Sprint 74 decision 6)', () => {
     expect(playerEstimateYen(narrowed, MODEL, STATE, CONTEXT)).toBe(severeValue)
   })
 
-  it('never applies the fear premium - strictly greater than sheetGuideValueYen for the same symptomatic car', () => {
+  it('equals sheetGuideValueYen while nothing has narrowed, and moves off it the moment knowledge does', () => {
     const car = carWithSymptom()
-    expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).toBeGreaterThan(
+    expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).toBe(
       sheetGuideValueYen(car, MODEL, STATE, CONTEXT),
+    )
+    // Eliminating the severe cause lifts the player's number above the
+    // room's, which keeps averaging over both causes.
+    const narrowed: CarInstance = {
+      ...car,
+      symptoms: [{ ...car.symptoms[0]!, remainingCauseIds: ['cause-mild'] }],
+    }
+    expect(playerEstimateYen(narrowed, MODEL, STATE, CONTEXT)).toBeGreaterThan(
+      sheetGuideValueYen(narrowed, MODEL, STATE, CONTEXT),
     )
   })
 })

@@ -346,7 +346,6 @@
     "probeAmortisationOps": 40
   },
   "diagnosis": {
-    "fearPremium": 1.1,
     "symptomChanceByTier": {
       "shitbox": 0.45,
       "common": 0.3,

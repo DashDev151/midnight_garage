@@ -226,7 +226,7 @@ fails that test outright, rather than silently drifting).
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
 | `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
-| `diagnosis.fearPremium`/`symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The fear-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
+| `diagnosis.symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The odds-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law; `fearPremium` retired 2026-07-19, see the Amendment log), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
 | `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
@@ -381,3 +381,16 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   formula (`C x (curbWeightKg / power) ^ ratioExp x gripMult[tyreGrade]`) over the car's own current
   derived stats, ordinary content anchors added to the audit table above. Full detail in
   `docs/sprints/sprint77.md`'s Exit.
+- 2026-07-19: **`diagnosis.fearPremium` RETIRED, and the ledger/two-number presentation law
+  added** (Sprint 98, economy legibility stage 1; maintainer approval 2026-07-19: "agreed...
+  this looks like a very good foundation. go ahead", full design in
+  `docs/design/economy-legibility.md`). The sheet value is now exactly the cause-weighted
+  expectation (`sheetGuideValueYen === expectedTrueValueYen` before any narrowing) - the
+  weighted odds ARE the fear, and the premium multiplier added a constant with no behaviour
+  of its own. Consequence, asserted in `packages/sim/tests/valueLedger.test.ts`: the room's
+  number and the player's estimate are equal until knowledge diverges them, which states the
+  room-vs-player pricing law in its cleanest form. Presentation law, new: every player-facing
+  price derives from the shared value ledger (`packages/sim/src/valueLedger.ts`), whose line
+  items provably sum to the engine's totals; surfaces show at most two prices, the room's
+  number and the player's. `fearPremium` leaves the audit table with this entry. Full detail
+  in `docs/sprints/sprint98.md`'s Exit.

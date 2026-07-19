@@ -81,16 +81,25 @@ until the player learns something; per-cause figures stated in deal terms.
 
 **Claude-implementable:**
 
-- [ ] Sim: remove `fearPremium` (schema + `economy.json` + maths); merge the two
-      estimators; `valueLedgerFor` decomposition + sum-equality probe.
-- [ ] Store: ledger + two-number view models replacing the five value getters' surface
-      roles (the underlying getters survive where other systems consume them).
-- [ ] Screens: auction card and car page render the ledger and the two numbers; cause
-      lines show deal deltas; sale range replaces ballpark.
-- [ ] Copy: all new labels + the walkthrough find-step line (orchestrator-authored).
-- [ ] Tests: ledger sum probe; two-number divergence (equal pre-test, diverges
-      post-test); fixYen pins replaced (case (a)); probe/golden re-pins disclosed.
-- [ ] economy-bible.md amendment paragraph (approval 2026-07-19).
+- [x] Sim: `fearPremium` removed (schema + `economy.json` + `sheetGuideValueYen`); one
+      estimator body behind the three exported names; `valueLedgerFor`/`roomLedgerFor`
+      built from the engine's own cumulative checkpoints (exact by construction, no
+      tolerance); `packages/sim/tests/valueLedger.test.ts`.
+- [x] Store: `lotDetail.ledger` (room variant), `carDetail.yourNumberYen` (the player's
+      estimate while a symptom is live, the honest value otherwise), `carDetail.
+      valueLedger`, `carDetail.saleRangeYen` from the taste spread; `dealDeltaYen`
+      restored on cause lines, the fix-fee plumbing removed.
+- [x] Screens: "the room says" + compact ledger on every lot card; "you say" at the
+      divergence moment; the car page's ledger block, "You say" row, sale range
+      ("Expect A to B, depending who bites"), and deal-delta cause lines.
+- [x] Copy: ledger labels (`utils/ledgerLabels.ts`), the ledger HelpHint, and the
+      walkthrough find step re-anchored to odds-truth ("the room can only price that
+      noise at the odds") - all orchestrator-authored and swept in situ.
+- [x] Tests: ledger sums exact for every roster worst-case and generated lots across
+      heats; sheet === expected === estimate pre-knowledge asserted; you-say absent
+      before a test and present after; fixYen pins replaced (case (a)).
+- [x] economy-bible.md: audit-table row updated and the 2026-07-19 amendment logged
+      with the maintainer's approval.
 
 **User-only:**
 
@@ -98,9 +107,18 @@ until the player learns something; per-cause figures stated in deal terms.
 
 ## Exit
 
-- [ ] Ledger sums proven equal to the engine's totals by probe, for the anchor
-      inventory.
-- [ ] Pre-knowledge equality: room's number === your number on an uninspected lot,
-      asserted.
-- [ ] Narrow test evidence once per file; the pre-push gate is the full check.
-- [ ] Any mission retune forced by decision 7, stated here with before/after numbers.
+- [x] Ledger sums proven equal to the engine's totals: per roster model worst-case and
+      guard-softened cars at heats 100/83, plus five generated lots at heats
+      100/91/117, all exact; the tutorial lot's room ledger sums to its guide with one
+      negative fear line last.
+- [x] Pre-knowledge equality asserted on the untested tutorial lot.
+- [x] No mission retune was needed: with the premium gone the reserve rose, and the
+      tutorial probe's bounds all held unchanged (spend + one mistake within the
+      envelope; profit small-positive; reserve a genuine bargain against honest value).
+- [x] Value re-pins, disclosed: advanceDay golden hashes 7916de2b -> f3260a34 and
+      8bf7a06b -> 9d907164 (symptomatic lots reprice premium-free); three
+      premium-arithmetic test pins rewritten to the new truth (equality pre-knowledge,
+      divergence after narrowing).
+- [x] Narrow evidence once per file: sim slice 177 + 74 + 15, surface slice 91, guards
+      14 + copy guard 1 - all green. The pre-push hook on this sprint's push is the
+      full gate. NOT yet committed: awaiting maintainer review per the sprint workflow.

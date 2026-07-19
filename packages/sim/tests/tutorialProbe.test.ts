@@ -113,13 +113,14 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
 
   it('the scripted lot is flagged excludable and priced through the fear-discounted reserve', () => {
     expect(lot.scripted).toBe(true)
-    // The sleeper lesson, quantified: the room fears the worst cause, so its
-    // sheet value sits BELOW the honest expectation - the feared rod-knock
-    // (internals poor) is a real avoided trap, not the minor lifter tick
-    // (head/valvetrain worn) the inspection reveals.
+    // The sleeper lesson, quantified: the room prices the tick at the odds,
+    // so pre-knowledge its sheet value IS the honest expectation - the
+    // cause-weighted average over the feared rod-knock (internals poor) and
+    // the minor lifter tick (head/valvetrain worn). Certainty about which is
+    // what the inspection buys.
     const sheet = sheetGuideValueYen(lot.car, MODEL, state, CONTEXT)
     const honest = expectedTrueValueYen(lot.car, MODEL, state, CONTEXT)
-    expect(sheet).toBeLessThan(honest)
+    expect(sheet).toBe(honest)
     // And the reserve is a genuine bargain: bought at ~0.6x the honest value.
     expect(reserve).toBeGreaterThan(0)
     expect(reserve).toBeLessThanOrEqual(Math.round(honest * 0.65))

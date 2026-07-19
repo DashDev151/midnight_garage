@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
+import { formatYen } from '../utils/formatYen'
 import AuctionScreen from './AuctionScreen.vue'
 
 // Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
@@ -18,6 +19,41 @@ function mountScreen() {
 
 function warpToCatalog(game: ReturnType<typeof useGameStore>) {
   for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
+}
+
+/** Overwrites `lotId`'s car with a real, content-backed symptomatic fixture -
+ * `smokes-on-startup` (tests: `cold-start-watch`, `compression-test`), a worn
+ * head behind a mint apparent band, every cause still open. */
+function makeSymptomaticLot(game: ReturnType<typeof useGameStore>, lotId: string) {
+  const lot = game.gameState.activeAuctionLots.find((l) => l.id === lotId)!
+  const withSymptom = {
+    ...lot,
+    car: {
+      ...lot.car,
+      parts: {
+        ...lot.car.parts,
+        headValvetrain: {
+          installed: { ...lot.car.parts.headValvetrain.installed!, band: 'worn' as const },
+        },
+      },
+      symptoms: [
+        {
+          symptomId: 'smokes-on-startup',
+          trueCauseId: 'valve-seals',
+          remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+          runTestIds: [],
+        },
+      ],
+      apparentBandByPartId: { headValvetrain: 'mint' as const },
+    },
+  }
+  game.gameState = {
+    ...game.gameState,
+    activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
+      l.id === lotId ? withSymptom : l,
+    ),
+  }
+  return withSymptom
 }
 
 describe('AuctionScreen', () => {
@@ -368,11 +404,11 @@ describe('AuctionScreen', () => {
         'Tired rings',
         'Head gasket',
       ])
-      // Every cause carries a positive all-in fix estimate (they are all real
-      // damage below the band the sheet shows, so making them good costs
-      // something).
+      // Every cause prices real damage below the band the sheet shows, so
+      // its honest deal impact - what the value moves if it turns out true -
+      // is negative.
       for (const cause of detail.symptoms[0]!.causes) {
-        expect(cause.fixYen).toBeGreaterThan(0)
+        expect(cause.dealDeltaYen).toBeLessThan(0)
       }
       // Sprint 73 decision 7: the grade/bands/bill all read the APPARENT
       // band (mint), never the true one (worn) - the engine group's chip
@@ -384,7 +420,7 @@ describe('AuctionScreen', () => {
       expect(symptomEl.exists()).toBe(true)
       expect(symptomEl.text()).toContain('Smokes on startup.')
       expect(symptomEl.text()).toContain('Valve seals')
-      expect(symptomEl.text()).toContain('fix about')
+      expect(symptomEl.text()).toContain('if true')
     })
 
     it('honest lots (no symptoms) never render a symptom block', () => {
@@ -396,51 +432,62 @@ describe('AuctionScreen', () => {
       expect(wrapper.find(`[data-test="symptom-${lot.id}"]`).exists()).toBe(false)
     })
 
-    it('labels the guide value "guide (as graded)" on every lot card', () => {
+    it('shows "the room says" as every card\'s value headline', () => {
       const game = useGameStore()
       warpToCatalog(game)
       const wrapper = mountScreen()
-      expect(wrapper.text()).toContain('guide (as graded)')
+      const roomSays = wrapper.findAll('[data-test="room-says"]')
+      expect(roomSays.length).toBe(game.gameState.activeAuctionLots.length)
+      for (const el of roomSays) expect(el.text()).toContain('the room says')
+      expect(wrapper.text()).not.toContain('guide (as graded)')
+    })
+  })
+
+  describe('the two numbers and the ledger', () => {
+    it('renders the compact ledger on every card, the fear line last on a symptomatic lot', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      makeSymptomaticLot(game, lot.id)
+
+      const detail = game.lotDetail(lot.id)!
+      const fearLine = detail.ledger.lines.at(-1)!
+      expect(fearLine.id).toBe('fear')
+      expect(fearLine.yen).toBeLessThan(0)
+
+      const wrapper = mountScreen()
+      expect(wrapper.findAll('[data-test="ledger-line-book"]').length).toBe(
+        game.gameState.activeAuctionLots.length,
+      )
+      const fearEls = wrapper.findAll('[data-test="ledger-line-fear"]')
+      expect(fearEls.length).toBeGreaterThanOrEqual(1)
+      expect(fearEls[0]!.text()).toContain('Doubts, at the odds')
+    })
+
+    it('shows "you say" only once a test has narrowed something - absent on an untested lot, present after', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      // The one symptomatic lot is the whole board, so the absent-everywhere
+      // assertion below is exactly the absent-on-this-card assertion.
+      game.gameState = { ...game.gameState, activeAuctionLots: [withSymptom] }
+      expect(game.lotDetail(lot.id)!.playerEstimateYen).toBeNull()
+
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="you-say"]').exists()).toBe(false)
+
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      await wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).trigger('click')
+
+      const youSay = wrapper.find('[data-test="you-say"]')
+      expect(youSay.exists()).toBe(true)
+      expect(youSay.text()).toContain('you say')
+      expect(youSay.text()).toContain(formatYen(game.lotDetail(lot.id)!.playerEstimateYen!))
     })
   })
 
   describe('the yard visit and diagnostic tests (Sprint 74 decisions 1-2/7)', () => {
-    /** Overwrites `lot`'s car with a real, content-backed symptomatic car -
-     * `smokes-on-startup` (2 tests: `cold-start-watch`, `compression-test`),
-     * matching the exact fixture the Sprint 73 symptom-disclosure test above
-     * already uses. */
-    function makeSymptomaticLot(game: ReturnType<typeof useGameStore>, lotId: string) {
-      const lot = game.gameState.activeAuctionLots.find((l) => l.id === lotId)!
-      const withSymptom = {
-        ...lot,
-        car: {
-          ...lot.car,
-          parts: {
-            ...lot.car.parts,
-            headValvetrain: {
-              installed: { ...lot.car.parts.headValvetrain.installed!, band: 'worn' as const },
-            },
-          },
-          symptoms: [
-            {
-              symptomId: 'smokes-on-startup',
-              trueCauseId: 'valve-seals',
-              remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
-              runTestIds: [],
-            },
-          ],
-          apparentBandByPartId: { headValvetrain: 'mint' as const },
-        },
-      }
-      game.gameState = {
-        ...game.gameState,
-        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
-          l.id === lotId ? withSymptom : l,
-        ),
-      }
-      return withSymptom
-    }
-
     it('offers a per-tier "Inspect here" button that starts a visit: spends cash and a labour slot, and shows the fixed "At the yard" panel', async () => {
       const game = useGameStore()
       warpToCatalog(game)
