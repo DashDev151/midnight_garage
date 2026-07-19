@@ -8,7 +8,7 @@ import { formatYen } from '../utils/formatYen'
 
 /**
  * Sprint 80 (staff I, the Staff Office), crew model: the shop's two staff
- * panels - the current crew and the job board of candidates the weekly refresh
+ * panels - the current crew and the ad-reply candidates the weekly refresh
  * posts. Pure renderer over `game.staffOfficeView`; hiring, dismissal, and the
  * bench/contract reassignment are instant store actions (reassignment lands on
  * the next day boundary). Diegetic framing (art bible): the board reads as
@@ -165,7 +165,7 @@ function toggleAssignment(member: StaffMemberCardView): void {
     </section>
 
     <section class="panel" data-test="ads-panel">
-      <h3>The job board</h3>
+      <h3>Answered the ad</h3>
       <p v-if="view.atCap" class="hint at-cap" data-test="staff-cap">
         The shop's full. Let someone go before you take on anyone new.
       </p>

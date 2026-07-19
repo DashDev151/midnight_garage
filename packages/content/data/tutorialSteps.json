@@ -198,7 +198,8 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Back to the Phone tab. Pick the {model} on her card; when every requirement reads green and the spend sits inside her envelope, press Show them the car. Go on: she has waited long enough."
+        "text": "Back to the Phone tab. Pick the {model} on her card and press Show them the car; she will look it over, and when every line reads green, press Hand it over. Go on: she has waited long enough.",
+        "anchorTestId": ["mission-deliver", "mission-grade"]
       }
     ],
     "completion": { "kind": "missionDelivered" }
