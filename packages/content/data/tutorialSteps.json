@@ -10,7 +10,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "The tabs along the top are the rest of town: the job board, the auction rooms, the parts shop. We will visit each one when it matters."
+        "text": "The tabs along the top are your world: the office phone where work finds you, the auction rooms, the parts shop. We will visit each one when it matters."
       }
     ],
     "completion": { "kind": "acknowledged" }
@@ -22,7 +22,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Start on the Jobs tab: the job board. Your first customer is already waiting there. Yuki, a student who has been saving all year: {payout}, and she needs four wheels that will pass inspection."
+        "text": "Start on the Phone tab: the shop's office phone. Customers ring, the machine takes their messages, and the odd one walks straight in. Yuki is the walk-in kind: a student who has been saving all year and needs four wheels that will pass inspection. She has {payout}."
       },
       {
         "speaker": "instruction",
@@ -182,7 +182,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Back to the Jobs tab. Pick the {model} on her card; when every requirement reads green and the spend sits inside her envelope, press Show them the car. Go on: she has waited long enough."
+        "text": "Back to the Phone tab. Pick the {model} on her card; when every requirement reads green and the spend sits inside her envelope, press Show them the car. Go on: she has waited long enough."
       }
     ],
     "completion": { "kind": "missionDelivered" }
@@ -194,7 +194,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "That is the walkthrough done, and your first happy customer on the road. From tomorrow the job board starts filling; do good work and the town will find its way to your door."
+        "text": "That is the walkthrough done, and your first happy customer on the road. From tomorrow the phone starts ringing; do good work and the town will find its way to your door."
       }
     ],
     "completion": { "kind": "never" }

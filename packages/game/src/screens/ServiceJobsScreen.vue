@@ -93,10 +93,11 @@ function offerCountdownLabel(expiresOnDay: number): string {
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
     <header class="head">
       <h2>
-        Service jobs
-        <HelpHint label="Service jobs">
-          Accept a job and the customer's car comes into your shop. Do the work it needs - buy
-          parts, assign labour - then hand it back from the car's page to get paid.
+        The phone
+        <HelpHint label="The phone">
+          The machine takes messages while you are under a car; each one is a customer wanting work
+          done. Book one in and the car is dropped off next morning. Do the work it needs - buy
+          parts, assign labour - then hand it back from this page to get paid.
         </HelpHint>
       </h2>
       <p class="rep">
@@ -218,9 +219,9 @@ function offerCountdownLabel(expiresOnDay: number): string {
     </section>
 
     <section class="board">
-      <h3>Job board</h3>
+      <h3>Messages</h3>
       <p v-if="!hasOffers" class="empty">
-        No jobs on the board. Fresh ones land most days - End Day (or warp).
+        Nothing on the machine this morning. The phone rings most days - End Day (or warp).
       </p>
       <ul v-else class="offers">
         <li v-for="offer in game.serviceJobOfferViews" :key="offer.id" class="offer">
@@ -262,7 +263,7 @@ function offerCountdownLabel(expiresOnDay: number): string {
                 :data-test="'accept-' + offer.id"
                 @click="game.acceptServiceJob(offer.id)"
               >
-                Accept
+                Book it in
               </button>
               <!-- Sprint 85 decision 4: decline clears the offer with zero side
                    effects. Sprint 86 decision 3: primary Accept, quiet Decline. -->

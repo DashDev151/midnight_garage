@@ -128,7 +128,16 @@ game with cosy elements. Use the tutorial's voice to build this vibe." Applied a
 warm pass over the Sprint 95 script (the sprint doc carries the voice contract), and
 standing law for all future player-facing copy.
 
-### 15. Process ruling: no delegated tutorial sign-off (PROCESS)
+### 15. "Job board" is the wrong fiction (COPY + SYSTEM framing, maintainer ruling)
+
+"This isnt a medieval fantasy village that posts jobs in the middle of town for a witcher.
+Its just a mechanics shop. Clients Will Call, or just walk in." Maintainer chose the
+reframe (from three options): **the office phone**. Radial offers are calls and
+answering-machine messages; accepting is ringing back and booking the drop-off (which is
+exactly the existing arrives-tomorrow mechanic); story customers are walk-ins standing in
+the shop. Fleet work arriving by fax is noted as a period-true future hook. Sprint 97.
+
+### 16. Process ruling: no delegated tutorial sign-off (PROCESS)
 
 The previous tutorial was drafted by an agent and signed off without a genuine
 step-by-step trace. Ruling: the orchestrator personally authors the walkthrough copy and

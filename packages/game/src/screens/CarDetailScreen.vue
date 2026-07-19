@@ -677,10 +677,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <span class="svc-status" :class="{ done: detail.serviceJob.workDone }">
             {{
               detail.serviceJob.workDone
-                ? 'Work done - hand it back from the job board to get paid.'
+                ? 'Work done - hand it back from the Phone tab to get paid.'
                 : 'Work unfinished - completing now forfeits the job (−' +
                   detail.serviceJob.failureReputationPenalty +
-                  ' rep). Complete or Give Up from the job board.'
+                  ' rep). Complete or Give Up from the Phone tab.'
             }}
           </span>
         </div>

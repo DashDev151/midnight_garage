@@ -167,7 +167,7 @@ export function describeLogEntry(
       return `${withTip}, +${entry.reputationGained} rep`
     }
     case 'staff-ads-refreshed':
-      return `New notices on the job board: ${entry.count}`
+      return `Messages on the machine: ${entry.count}`
     case 'staff-hired':
       return entry.introFeeYen > 0
         ? `Took ${entry.displayName} on at ${formatYen(entry.weeklyWageYen)}/week (${formatYen(entry.introFeeYen)} to sign)`
