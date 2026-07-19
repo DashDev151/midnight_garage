@@ -158,6 +158,18 @@ function selectPart(partId: CarPartId): void {
   componentFilter.value = componentFilter.value === partId ? '' : partId
 }
 
+/** Back one level: an open slot's part list steps up to the slot cards; the
+ * slot cards step up to the department heroes. */
+function goBack(): void {
+  if (componentFilter.value) componentFilter.value = ''
+  else returnHome()
+}
+
+/** How many products a slot has - the count shown on its card. */
+function slotPartCount(slotId: CarPartId): number {
+  return game.partsCatalog.filter((p) => p.carPartId === slotId).length
+}
+
 /** The drilled-into group's own sub-parts, or empty when no group is
  * selected - avoids pairing `v-for`/`v-show` on the same element in the
  * template (this codebase's ESLint config flags `v-for` alongside a
@@ -259,7 +271,7 @@ function onCheckout(): void {
 
         <template v-else>
           <nav class="breadcrumb" aria-label="Parts market breadcrumb">
-            <button type="button" class="market-back" data-test="market-back" @click="returnHome">
+            <button type="button" class="market-back" data-test="market-back" @click="goBack">
               &lt; Back
             </button>
             <button
@@ -271,26 +283,44 @@ function onCheckout(): void {
               Parts market
             </button>
             <span class="breadcrumb-sep">&gt;</span>
-            <span class="breadcrumb-current">{{
+            <button
+              v-if="selectedGroup && componentFilter"
+              type="button"
+              class="breadcrumb-root"
+              data-test="breadcrumb-group"
+              @click="componentFilter = ''"
+            >
+              {{ game.componentLabel(selectedGroup) }}
+            </button>
+            <span v-else class="breadcrumb-current">{{
               selectedGroup ? game.componentLabel(selectedGroup) : 'All parts'
             }}</span>
+            <template v-if="selectedGroup && componentFilter">
+              <span class="breadcrumb-sep">&gt;</span>
+              <span class="breadcrumb-current">{{ game.carPartLabel(componentFilter) }}</span>
+            </template>
           </nav>
 
-          <ul v-if="selectedGroup" class="part-chips">
+          <!-- Level 2: the group's slots as cards with sprites, mirroring the
+               home department heroes. Clicking one opens its part list. -->
+          <ul v-if="view === 'department' && !componentFilter" class="hero-grid">
             <li v-for="partId in selectedGroupParts" :key="partId">
               <button
                 type="button"
-                class="chip"
-                :class="{ active: componentFilter === partId }"
+                class="hero-card"
                 :data-test="'catalog-part-' + partId"
                 @click="selectPart(partId)"
               >
-                {{ game.carPartLabel(partId) }}
+                <div class="hero-art" aria-hidden="true">
+                  <img class="hero-sprite" :src="partSpriteDataUrl(partId)" alt="" />
+                </div>
+                <span class="hero-label">{{ game.carPartLabel(partId) }}</span>
+                <span class="hero-count">{{ slotPartCount(partId) }} parts</span>
               </button>
             </li>
           </ul>
 
-          <div class="filters">
+          <div v-if="componentFilter || view === 'browse-everything'" class="filters">
             <select v-model="gradeFilter" data-test="filter-grade">
               <option value="">all grades</option>
               <option v-for="g in GRADE_OPTIONS" :key="g" :value="g">{{ g }}</option>
@@ -316,16 +346,9 @@ function onCheckout(): void {
             </select>
           </div>
 
-          <ul class="catalog">
+          <ul v-if="componentFilter || view === 'browse-everything'" class="catalog">
             <li v-for="part in visibleParts" :key="part.id" class="part">
               <div class="part-info">
-                <img
-                  class="part-sprite"
-                  :src="partSpriteDataUrl(part.carPartId)"
-                  :data-test="'part-sprite-' + part.id"
-                  alt=""
-                  aria-hidden="true"
-                />
                 <div class="part-main">
                   <span class="part-name"
                     >{{ fitmentClassLabel(part.fitmentClass) }} {{ part.brand }} {{ part.name

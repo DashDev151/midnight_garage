@@ -49,14 +49,12 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
   })
 
-  it('renders each catalogue card with its slot sprite thumbnail (Sprint 88 decision 7)', async () => {
+  it('each slot card renders its sprite (Sprint 88 decision 7, moved to the slot level)', async () => {
     const wrapper = mountScreen()
-    await wrapper.find('[data-test="browse-everything"]').trigger('click')
-    const sprite = wrapper.find(`[data-test="part-sprite-${cheapest.id}"]`)
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+    const sprite = wrapper.find('[data-test="catalog-part-block"] .hero-sprite')
     expect(sprite.exists()).toBe(true)
     expect(sprite.attributes('src')).toMatch(/^data:image\/png/)
-    // Decorative: the part name is the accessible label, the sprite is hidden.
-    expect(sprite.attributes('aria-hidden')).toBe('true')
   })
 
   it('the breadcrumb root returns from browse-everything back to the six heroes', async () => {
@@ -69,14 +67,15 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.findAll('.part')).toHaveLength(0)
   })
 
-  it('clicking a hero enters that department: breadcrumb, chips, and a scoped list, no other hero visible', async () => {
+  it('clicking a hero enters that department: breadcrumb, slot cards, and the home heroes gone', async () => {
     const wrapper = mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
 
     expect(wrapper.find('[data-test="breadcrumb-root"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Engine')
     expect(wrapper.find('[data-test="catalog-part-ignitionEcu"]').exists()).toBe(true)
-    expect(wrapper.findAll('.hero-card')).toHaveLength(0)
+    // The home department heroes are gone; the engine's slot cards are shown.
+    expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(false)
 
     const suspensionPart = PARTS.find((p) => p.carPartId === 'dampers')!
     expect(wrapper.text()).not.toContain(`${suspensionPart.brand} ${suspensionPart.name}`)
@@ -96,11 +95,11 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
   })
 
-  it('grade/sort filters persist while browsing within a department', async () => {
+  it('grade/sort filters persist while browsing a slot within a department', async () => {
     const wrapper = mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
-    await wrapper.find('[data-test="filter-grade"]').setValue('race')
     await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
+    await wrapper.find('[data-test="filter-grade"]').setValue('race')
 
     expect((wrapper.find('[data-test="filter-grade"]').element as HTMLSelectElement).value).toBe(
       'race',
@@ -191,7 +190,7 @@ describe('PartsMarketScreen', () => {
   it('a Back button exits a department without hunting the breadcrumb (Sprint 58 decision 5)', async () => {
     const wrapper = mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
-    expect(wrapper.findAll('.hero-card')).toHaveLength(0)
+    expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(false)
 
     await wrapper.find('[data-test="market-back"]').trigger('click')
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
