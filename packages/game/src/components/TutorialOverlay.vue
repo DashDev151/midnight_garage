@@ -10,7 +10,7 @@
  * `finishTutorial`/`acknowledgeTutorialStep` actions, and its own session-only
  * drag position in the ui store (Sprint 95).
  */
-import { computed, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   ALL_CAR_PART_IDS,
@@ -200,17 +200,61 @@ function acknowledgeCurrentStep(): void {
   if (step) game.acknowledgeTutorialStep(step.id)
 }
 
-const visibleLines = computed(() => {
+/** Each visible line with its stable index in the step's own line array -
+ * the index keys the render AND the seen-text bookkeeping below. A line
+ * renders when shown and not yet retired (`hideWhen`, playtest item 19): the
+ * box must never end on an errand the player has already run. */
+const visibleEntries = computed(() => {
   const step = currentStep.value
   if (!step) return []
-  // A line renders when shown and not yet retired (`hideWhen`, playtest item
-  // 19): the box must never end on an errand the player has already run.
-  return step.lines.filter(
-    (line) =>
-      (!line.showWhen || conditionMet(line.showWhen, step.id)) &&
-      (!line.hideWhen || !conditionMet(line.hideWhen, step.id)),
-  )
+  return step.lines
+    .map((line, idx) => ({ line, idx }))
+    .filter(
+      ({ line }) =>
+        (!line.showWhen || conditionMet(line.showWhen, step.id)) &&
+        (!line.hideWhen || !conditionMet(line.hideWhen, step.id)),
+    )
 })
+
+// --- seen-text dimming (playtest item 20, corrected same day) ---------------
+// Dim ONLY text that was already on screen when NEWER text arrived. A freshly
+// opened step shows every line at full strength; when a reveal lands at the
+// bottom, everything the player has already read drops to lower contrast.
+// The machine itself is stateless, so this is deliberately view-local memory:
+// which line indices have rendered for the current step, and which arrived in
+// the newest batch.
+let dimStepId = ''
+const seenLineIdx = new Set<number>()
+const latestBatch = ref<ReadonlySet<number>>(new Set())
+
+watch(
+  () => [currentStep.value?.id ?? '', visibleEntries.value.map((e) => e.idx).join('.')] as const,
+  ([stepId]) => {
+    const visibleIdx = visibleEntries.value.map((e) => e.idx)
+    if (stepId !== dimStepId) {
+      // A new step: everything on it is fresh, nothing dims.
+      dimStepId = stepId
+      seenLineIdx.clear()
+      for (const idx of visibleIdx) seenLineIdx.add(idx)
+      latestBatch.value = new Set(visibleIdx)
+      return
+    }
+    const added = visibleIdx.filter((idx) => !seenLineIdx.has(idx))
+    if (added.length > 0) {
+      latestBatch.value = new Set(added)
+      for (const idx of added) seenLineIdx.add(idx)
+    }
+  },
+  { immediate: true },
+)
+
+/** Dim a line only when a newer batch is actually on screen - if the newest
+ * lines have themselves retired (nothing "newer" visible), everything returns
+ * to full strength rather than the whole box reading as an afterthought. */
+function isDimmed(idx: number): boolean {
+  if (latestBatch.value.has(idx)) return false
+  return visibleEntries.value.some((e) => latestBatch.value.has(e.idx))
+}
 
 const stepNumber = computed(() => {
   const id = currentStep.value?.id
@@ -231,7 +275,7 @@ const anchorTestIds = computed<string[]>(() => {
   const step = currentStep.value
   if (!step || isTerminal.value) return []
   let anchor: string | readonly string[] = step.anchorTestId
-  for (const line of visibleLines.value) {
+  for (const { line } of visibleEntries.value) {
     if (line.anchorTestId) anchor = line.anchorTestId
   }
   const chain = Array.isArray(anchor) ? anchor : [anchor as string]
@@ -350,9 +394,13 @@ const confirmingSkip = ref(false)
 
     <ol class="tutorial-lines">
       <li
-        v-for="(line, i) in visibleLines"
-        :key="i"
-        :class="['tutorial-line', line.speaker === 'yuki' ? 'is-yuki' : 'is-instruction']"
+        v-for="{ line, idx } in visibleEntries"
+        :key="idx"
+        :class="[
+          'tutorial-line',
+          line.speaker === 'yuki' ? 'is-yuki' : 'is-instruction',
+          { 'is-dim': isDimmed(idx) },
+        ]"
         :data-test="line.speaker === 'yuki' ? 'tutorial-yuki' : 'tutorial-instruction'"
       >
         <span v-if="line.speaker === 'yuki'" class="tutorial-speaker">Yuki</span>
@@ -475,10 +523,11 @@ const confirmingSkip = ref(false)
 .tutorial-line {
   display: block;
 }
-/* Playtest item 20: once new guidance lands at the bottom, everything above
- * it drops to a lower contrast - already-read context, not a re-read demand.
- * The last visible line is always the current instruction at full strength. */
-.tutorial-line:not(:last-child) {
+/* Playtest item 20 (corrected): only text the player has ALREADY seen dims,
+ * and only once newer guidance has actually landed below it - a freshly
+ * opened step renders every line at full strength. The class is driven by
+ * the seen-line bookkeeping in the script, never by position alone. */
+.tutorial-line.is-dim {
   opacity: 0.62;
 }
 .tutorial-line.is-yuki {

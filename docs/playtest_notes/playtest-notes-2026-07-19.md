@@ -175,12 +175,16 @@ beside fresh rubber) - now gated off mint. Trace-method lesson (third of the day
 verifying triggers, refusals and costs, RE-READ the visible line set at every sub-state
 AFTER each action completes.
 
-### 20. De-emphasise already-seen walkthrough text (UI)
+### 20. De-emphasise already-seen walkthrough text (UI; corrected after live catch)
 
 When new guidance lands at the bottom of the box, everything above it drops to slightly
 lower contrast so the player never thinks a re-read is demanded; the bottom paragraph
-stays full strength. Implemented as: every visible line except the last renders at
-reduced opacity.
+stays full strength. First implementation (dim all but the last visible line) was WRONG
+and the maintainer caught it on the new-game screen: a fresh step opened with its first
+paragraph already dimmed. Corrected: the overlay keeps view-local memory of which lines
+have rendered per step; dimming applies only to already-seen lines and only once a newer
+line has actually arrived. A fresh step always renders at full strength; if the newest
+lines themselves retire, nothing stays dimmed.
 
 ### 21. Scripted Wagon R spawns at the bottom of the auction list (UI)
 

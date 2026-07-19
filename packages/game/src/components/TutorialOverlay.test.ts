@@ -98,6 +98,8 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 11')
     expect(wrapper.text()).toContain('your own garage')
     expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(true)
+    // A freshly opened step is all new text: nothing dims (item 20, corrected).
+    expect(wrapper.findAll('.tutorial-line.is-dim')).toHaveLength(0)
   })
 
   it('Got it advances to accept, persists the acknowledgement, and interpolates the payout', async () => {
@@ -175,11 +177,13 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    // Wheel beat: base lines only until the wheels are on the bench.
+    // Wheel beat: base lines only until the wheels are on the bench, and a
+    // freshly opened step dims nothing (item 20, corrected).
     expect(wrapper.text()).toContain('Her tyres are scrap')
     expect(wrapper.text()).not.toContain('Add to cart')
     expect(wrapper.text()).not.toContain('Tyres ordered')
     expect(wrapper.text()).not.toContain('your tyres are in')
+    expect(wrapper.findAll('.tutorial-line.is-dim')).toHaveLength(0)
 
     game.gameState = {
       ...game.gameState,
@@ -189,6 +193,12 @@ describe('TutorialOverlay', () => {
     }
     await nextTick()
     expect(wrapper.text()).toContain('Add to cart')
+    // The newly revealed shop line is full strength; only the already-read
+    // opener dims (item 20, corrected: dimming needs newer text below).
+    const dimmed = wrapper.findAll('.tutorial-line.is-dim')
+    expect(dimmed).toHaveLength(1)
+    expect(dimmed[0]!.text()).toContain('Open her from the bay')
+    expect(dimmed[0]!.text()).not.toContain('Add to cart')
 
     // A pending standard-delivery order addressed to tyres reveals the
     // "press End Day" waiting line.
