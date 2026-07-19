@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
+import LabourBar from '../components/LabourBar.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
@@ -90,7 +91,7 @@ const draggedCarName = computed(() => {
       <div>
         <dt>Labour left today</dt>
         <dd data-test="labour-value">
-          {{ game.laborSlotsRemainingToday }}/{{ game.laborSlotsPerDay }} labour
+          <LabourBar :remaining="game.laborSlotsRemainingToday" :max="game.laborSlotsPerDay" />
         </dd>
       </div>
       <div>

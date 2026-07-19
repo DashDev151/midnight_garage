@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { AuctionTier } from '@midnight-garage/content'
 import GradeStamp from '../components/GradeStamp.vue'
+import LabourBar from '../components/LabourBar.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
@@ -325,9 +326,13 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
     <header class="head">
       <h2>Auctions</h2>
       <p class="cash">
-        {{ formatYen(game.cashYen) }} · labour {{ game.laborSlotsRemainingToday }}/{{
-          game.laborSlotsPerDay
-        }}
+        {{ formatYen(game.cashYen) }} ·
+        <LabourBar
+          compact
+          caption="labour"
+          :remaining="game.laborSlotsRemainingToday"
+          :max="game.laborSlotsPerDay"
+        />
       </p>
     </header>
 

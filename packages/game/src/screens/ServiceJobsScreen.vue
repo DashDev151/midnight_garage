@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
+import LabourBar from '../components/LabourBar.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -102,9 +103,13 @@ function offerCountdownLabel(expiresOnDay: number): string {
         <RouterLink :to="{ name: 'standing' }" class="standing-link" data-test="standing-link"
           >{{ game.reputationPoints }} rep</RouterLink
         >
-        · {{ formatYen(game.cashYen) }} · labour {{ game.laborSlotsRemainingToday }}/{{
-          game.laborSlotsPerDay
-        }}
+        · {{ formatYen(game.cashYen) }} ·
+        <LabourBar
+          compact
+          caption="labour"
+          :remaining="game.laborSlotsRemainingToday"
+          :max="game.laborSlotsPerDay"
+        />
       </p>
     </header>
 

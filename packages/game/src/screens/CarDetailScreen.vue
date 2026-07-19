@@ -11,6 +11,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
+import LabourBar from '../components/LabourBar.vue'
 import PartsDiagram from '../components/PartsDiagram.vue'
 import { partSpriteDataUrl } from '../components/partSprites'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
@@ -53,15 +54,6 @@ const BLOCKED_BY: Record<string, readonly CarPartId[]> = Object.fromEntries(
 const plannedLaborOverToday = computed(
   () => (detail.value?.plannedEstimate?.plannedLaborSlots ?? 0) > game.laborSlotsRemainingToday,
 )
-
-/** Sprint 94 (the energy bar): the day's remaining labour as a bar fill (0-100%),
- * the PRIMARY at-a-glance display. The exact integer point values are on hover
- * (the bar's `title`), never crowding the glanceable fill. */
-const labourFillPercent = computed(() => {
-  const max = game.laborSlotsPerDay
-  if (max <= 0) return 0
-  return Math.max(0, Math.min(100, (game.laborSlotsRemainingToday / max) * 100))
-})
 
 const inTransit = computed(() => detail.value?.serviceJob?.inTransit ?? false)
 
@@ -1210,21 +1202,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <h3>Work</h3>
         <!-- Sprint 94 (the energy bar): the day's labour is a BAR (primary,
              glanceable), the exact integer point values on hover. -->
-        <div
-          class="labour-bar"
+        <LabourBar
+          :remaining="game.laborSlotsRemainingToday"
+          :max="game.laborSlotsPerDay"
+          caption="Labour"
           data-test="labour-card"
-          :title="`${game.laborSlotsRemainingToday} / ${game.laborSlotsPerDay} labour`"
-        >
-          <span class="labour-bar-caption">Labour</span>
-          <span class="labour-bar-track">
-            <span
-              class="labour-bar-fill"
-              :class="{ empty: game.laborSlotsRemainingToday <= 0 }"
-              :style="{ width: labourFillPercent + '%' }"
-              data-test="labour-bar-fill"
-            ></span>
-          </span>
-        </div>
+        />
 
         <div v-if="detail.jobs.length" class="job-group">
           <h4>In progress</h4>
@@ -1892,47 +1875,6 @@ h4 {
 
 .jobs {
   margin: var(--mg-space-4) 0;
-}
-
-/* Sprint 94 (the energy bar): the day's labour as a glanceable bar. The exact
-   integer point readout is on hover (the container's title). */
-.labour-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-  margin: 0 0 var(--mg-space-2);
-  padding: var(--mg-space-2);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  background: var(--mg-panel);
-  color: var(--mg-text);
-  font-size: var(--mg-fs-sm);
-}
-
-.labour-bar-caption {
-  flex: 0 0 auto;
-  color: var(--mg-text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.labour-bar-track {
-  flex: 1 1 auto;
-  height: 0.7rem;
-  border-radius: var(--mg-radius);
-  background: var(--mg-bg);
-  overflow: hidden;
-}
-
-.labour-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--mg-neon-cyan);
-  transition: width 120ms ease;
-}
-
-.labour-bar-fill.empty {
-  background: var(--mg-text-dim);
 }
 
 button {
