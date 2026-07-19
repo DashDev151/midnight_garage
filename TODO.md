@@ -354,6 +354,13 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Auction Guarantors** (`docs/design/auction-guarantors.md`, maintainer-authored,
+  filed 2026-07-19): story-mission guarantors replace the passive rep gate on
+  regional/premium/collector-network. Maintainer ruling: implement AFTER the economy
+  legibility arc (Sprints 98-101) completes. Needs three personas and three missions
+  written (orchestrator-personal copy under the tone/content bars), the
+  `unlocksAuctionTier` reward field, and the stocked-on-unlock check in `catalogs.ts`.
+
 - [ ] **Overworld town map as navigation (maintainer-proposed, 2026-07-19 playtest item 5;
   needs its own design pass before any sprint).** Standing maintainer want ("I still think we
   need a kind of overworld map"): instead of, or alongside, the top tabs, a representational
