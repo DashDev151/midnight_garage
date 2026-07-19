@@ -150,6 +150,14 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
       if (!owned || !model) return false
       return ALL_CAR_PART_IDS.every((partId) => !isPartMissing(owned, model, partId))
     }
+    case 'benchMemberBandAtLeast':
+      // The scripted car's benched member holds an instance at band or better
+      // - the "fresh rubber is on the bench, refit it" beat.
+      return (game.gameState.assemblyInventory ?? []).some((container) => {
+        if (container.sourceCarId !== recipe.carId) return false
+        const member = container.members[cond.carPartId]
+        return !!member && bandIndex(member.band) >= bandIndex(cond.band)
+      })
     case 'never':
       return false
   }
@@ -195,7 +203,13 @@ function acknowledgeCurrentStep(): void {
 const visibleLines = computed(() => {
   const step = currentStep.value
   if (!step) return []
-  return step.lines.filter((line) => !line.showWhen || conditionMet(line.showWhen, step.id))
+  // A line renders when shown and not yet retired (`hideWhen`, playtest item
+  // 19): the box must never end on an errand the player has already run.
+  return step.lines.filter(
+    (line) =>
+      (!line.showWhen || conditionMet(line.showWhen, step.id)) &&
+      (!line.hideWhen || !conditionMet(line.hideWhen, step.id)),
+  )
 })
 
 const stepNumber = computed(() => {
@@ -460,6 +474,12 @@ const confirmingSkip = ref(false)
 }
 .tutorial-line {
   display: block;
+}
+/* Playtest item 20: once new guidance lands at the bottom, everything above
+ * it drops to a lower contrast - already-read context, not a re-read demand.
+ * The last visible line is always the current instruction at full strength. */
+.tutorial-line:not(:last-child) {
+  opacity: 0.62;
 }
 .tutorial-line.is-yuki {
   padding: 0.45rem 0.6rem;

@@ -44,6 +44,9 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  * - `scriptedCarWhole`: the owned scripted car has no missing part (every slot
  *   installed or legitimately absent, `isPartMissing`) - the reassembly step's
  *   completion, so the machine can never march a part-missing car to delivery.
+ * - `benchMemberBandAtLeast`: the scripted car's benched assembly member at
+ *   `carPartId` holds an instance at `band` or better - the "fresh rubber is
+ *   on the bench, refit it" beat (`showWhen`/`hideWhen` only).
  */
 const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('missionActive') }),
@@ -64,6 +67,11 @@ const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('partInInventory'), carPartId: CarPartIdSchema }),
   z.object({ kind: z.literal('partOnOrder'), carPartId: CarPartIdSchema }),
   z.object({ kind: z.literal('scriptedCarWhole') }),
+  z.object({
+    kind: z.literal('benchMemberBandAtLeast'),
+    carPartId: CarPartIdSchema,
+    band: ConditionBandSchema,
+  }),
 ])
 
 export type TutorialBaseCondition = z.infer<typeof TutorialBaseConditionSchema>
@@ -96,6 +104,11 @@ export const TutorialLineSchema = z.object({
   speaker: z.enum(['yuki', 'instruction']),
   text: z.string().min(1),
   showWhen: TutorialConditionSchema.optional(),
+  /** Retires a line whose instruction has been carried out (playtest
+   * 2026-07-19 item 19: the box must never end on an errand already run) -
+   * the line hides while this condition is MET. Composable with `showWhen`:
+   * a line renders when shown and not yet retired. */
+  hideWhen: TutorialConditionSchema.optional(),
   anchorTestId: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]).optional(),
 })
 

@@ -1,4 +1,5 @@
 import type { DayLogEntry } from '@midnight-garage/content'
+import { PARTS } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { describeLogEntry } from './dayLogFormat'
 
@@ -359,5 +360,21 @@ describe('describeLogEntry', () => {
     })
     expect(line).toBe('Mission delivered: ¥200,000, +20 rep')
     expect(line).not.toContain('tip')
+  })
+
+  it('part lines carry the player-facing brand and name, never the raw catalogue id (playtest item 23)', () => {
+    const part = PARTS[0]!
+    const delivered = describeLogEntry({ type: 'part-delivered', partId: part.id } as DayLogEntry)
+    expect(delivered).toContain(part.name)
+    expect(delivered).not.toContain(part.id)
+
+    const bought = describeLogEntry({
+      type: 'part-bought',
+      partId: part.id,
+      partInstanceId: 'part-1-0',
+      priceYen: 10_000,
+    } as DayLogEntry)
+    expect(bought).toContain(part.brand)
+    expect(bought).not.toContain(part.id)
   })
 })

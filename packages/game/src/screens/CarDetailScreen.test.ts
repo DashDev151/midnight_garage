@@ -947,6 +947,10 @@ describe('CarDetailScreen', () => {
     async function benchTyres(game: ReturnType<typeof useGameStore>) {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      // The tutorial scenario exactly: scrap tyres (never reconditionable),
+      // so the empty-state's below-serviceable gate is genuinely met.
+      const car = game.gameState.ownedCars[0]!
+      car.parts.tyres = { installed: { ...car.parts.tyres.installed!, band: 'scrap' } }
       const { wrapper, router } = await mountAt(id)
       await selectPart(wrapper, 'wheels', 'rims')
       await wrapper.find('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
@@ -986,6 +990,18 @@ describe('CarDetailScreen', () => {
       // with a Fit button present the caption is back in its actionable context.
       expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(false)
+    })
+
+    it('a freshly fitted member shows neither the empty-state nor a dangling fee (playtest item 19)', async () => {
+      const game = useGameStore()
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres')!
+      game.devGrantPart(tyresPart.id)
+      const { wrapper } = await benchTyres(game)
+
+      await wrapper.find('[data-test^="bench-swap-tyres-"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(false)
     })
 
     it('a member with a recondition step never shows the empty-state, even with nothing to fit', async () => {

@@ -126,12 +126,21 @@
       },
       {
         "speaker": "instruction",
-        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (taking things apart is free, and quietly one of life's pleasures), and the wheels land on the bench below."
+        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (taking things apart is free, and quietly one of life's pleasures), and the wheels land on the bench below.",
+        "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" }
       },
       {
         "speaker": "instruction",
-        "text": "She needs fresh tyres, and the shop is the Parts tab. Open Wheels & tyres, then Tyres, and set the fits filter to her {model}; the shop then only shows what actually fits her. Press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout; standard delivery lands tomorrow morning.",
+        "text": "Fresh tyres, then. In the Parts tab, open Wheels & tyres and pick Tyres, and set the fits filter to her {model}: the shop will only show what fits her. Press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout; standard delivery lands tomorrow morning.",
         "showWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" },
+        "hideWhen": {
+          "kind": "anyOf",
+          "of": [
+            { "kind": "partOnOrder", "carPartId": "tyres" },
+            { "kind": "partInInventory", "carPartId": "tyres" },
+            { "kind": "benchMemberBandAtLeast", "carPartId": "tyres", "band": "fine" }
+          ]
+        },
         "anchorTestId": ["catalog-part-tyres", "hero-wheels", "nav-parts"]
       },
       {
@@ -142,9 +151,15 @@
       },
       {
         "speaker": "instruction",
-        "text": "Morning: your tyres are in. Click the Tyres block on the bench and press Fit; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears). Then press Refit assembly and the wheels go back on, better than she has had in years.",
+        "text": "Morning: your tyres are in. Click the Tyres block on the bench and press Fit; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears).",
         "showWhen": { "kind": "partInInventory", "carPartId": "tyres" },
         "anchorTestId": "bench-member-tyres"
+      },
+      {
+        "speaker": "instruction",
+        "text": "Fresh rubber on. Press Refit assembly and the wheels go back on, better than she has had in years.",
+        "showWhen": { "kind": "benchMemberBandAtLeast", "carPartId": "tyres", "band": "fine" },
+        "anchorTestId": "refit-assembly-wheelAssembly"
       }
     ],
     "completion": { "kind": "partBandAtLeast", "carPartId": "tyres", "band": "fine" }
@@ -156,11 +171,13 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three on the diagram and press Take it off; taking parts off costs nothing, and they wait safely in your inventory."
+        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three on the diagram and press Take it off; taking parts off costs nothing, and they wait safely in your inventory.",
+        "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" }
       },
       {
         "speaker": "instruction",
-        "text": "With those three off, click the engine and press Remove assembly. No crane of your own yet, so the machine shop next door lends its arm for a fee, out and back in."
+        "text": "With those three off, click the engine and press Remove assembly. No crane of your own yet, so the machine shop next door lends its arm for a fee, out and back in.",
+        "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" }
       },
       {
         "speaker": "yuki",

@@ -6,7 +6,12 @@ import type {
   ConditionBand,
   StagedAction,
 } from '@midnight-garage/content'
-import { ALL_CAR_PART_IDS, ASSEMBLIES, PARTS_TAXONOMY } from '@midnight-garage/content'
+import {
+  ALL_CAR_PART_IDS,
+  ASSEMBLIES,
+  PARTS_TAXONOMY,
+  fitmentClassForTier,
+} from '@midnight-garage/content'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
@@ -478,6 +483,18 @@ function benchOffersRecondition(member: BenchMemberView): boolean {
   return member.repairable && member.reconditionStep !== null
 }
 
+/** Whether a benched member is below serviceable (worn or worse, or the slot
+ * is empty) - the bench empty-state renders only then, never beside fresh
+ * rubber (playtest 2026-07-19 item 19: a mint member needs nothing). */
+function benchMemberBelowFine(member: BenchMemberView): boolean {
+  return (
+    member.band === null ||
+    member.band === 'scrap' ||
+    member.band === 'poor' ||
+    member.band === 'worn'
+  )
+}
+
 /** The slot label sentence-cased for inline copy ("Tyres" reads as "tyres" in
  * "Shop for tyres"), leaving all-caps acronyms ("ECU") intact. */
 function benchShopLabel(carPartId: CarPartId): string {
@@ -565,8 +582,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <div class="hero-info">
         <h2>{{ detail.displayName }}</h2>
         <p class="sub">
-          {{ detail.model.tier }} · {{ detail.car.year }} ·
-          {{ detail.car.mileageKm.toLocaleString() }} km ·
+          {{ game.fitmentClassLabel(fitmentClassForTier(detail.model.tier)) }} ·
+          {{ detail.car.year }} · {{ detail.car.mileageKm.toLocaleString() }} km ·
           {{ detail.car.color }}
         </p>
         <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
@@ -952,7 +969,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <span
               v-if="
                 !benchOffersRecondition(selectedBench.member) &&
-                benchSwapCandidates(selectedBench.member.carPartId).length === 0
+                benchSwapCandidates(selectedBench.member.carPartId).length === 0 &&
+                benchMemberBelowFine(selectedBench.member)
               "
               class="slot-empty"
               :data-test="'bench-empty-' + selectedBench.member.carPartId"

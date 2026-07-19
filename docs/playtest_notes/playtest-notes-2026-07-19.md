@@ -161,7 +161,45 @@ removed; the bench empty state keeps only the informative text; the walkthrough'
 step now teaches the real trip (Parts tab, Wheels & tyres, Tyres, Add to cart, Checkout)
 with a spotlight chain that lights the deepest shop control currently on screen.
 
-### 18. Process ruling: no delegated tutorial sign-off (PROCESS)
+### 19. CRITICAL: step 7 kept commanding a finished errand (BUG, live playtest)
+
+With new tyres already fitted on the bench, the box still read "She needs fresh tyres...
+press Add to cart", and the Fit line's disappearance had taken "press Refit assembly"
+with it - the walkthrough ended on a shopping trip already run and never named the
+actual next click. Root cause: the machine had show-conditions but no way to RETIRE a
+line whose instruction is done. Fixed same day: lines gain `hideWhen` (the shop line
+retires on order/stock/fitted; the remove-assembly and engine-blocker lines retire once
+benched), and a dedicated "Fresh rubber on. Press Refit assembly" line closes the beat.
+The bench empty-state also showed on a MINT member ("No replacement tyres on hand"
+beside fresh rubber) - now gated off mint. Trace-method lesson (third of the day): after
+verifying triggers, refusals and costs, RE-READ the visible line set at every sub-state
+AFTER each action completes.
+
+### 20. De-emphasise already-seen walkthrough text (UI)
+
+When new guidance lands at the bottom of the box, everything above it drops to slightly
+lower contrast so the player never thinks a re-read is demanded; the bottom paragraph
+stays full strength. Implemented as: every visible line except the last renders at
+reduced opacity.
+
+### 21. Scripted Wagon R spawns at the bottom of the auction list (UI)
+
+The tutorial lot is injected after the day-1 random batch, so it rendered last. The
+auction view now sorts scripted lots to the top of their tier.
+
+### 22. "She needs fresh tyres, and the shop is the Parts tab" reads awkwardly (COPY)
+
+Rewritten in the same pass as item 19's line rework.
+
+### 23. "shitbox" must never reach the player (COPY ruling)
+
+"Delivery arrived: shitbox-stock-tyres" appeared in the day report - a raw catalogue id.
+Maintainer decision, confirmed: the word "shitbox" (and every internal id) stays
+internal. Fixes: the day report's part-bought/ordered/delivered lines render the part's
+brand and name; the car page's raw `model.tier` now renders the fitment-class label
+("Kei & Compact" etc.). Internal identifiers are unchanged (directive 18's rename rule).
+
+### 24. Process ruling: no delegated tutorial sign-off (PROCESS)
 
 The previous tutorial was drafted by an agent and signed off without a genuine
 step-by-step trace. Ruling: the orchestrator personally authors the walkthrough copy and

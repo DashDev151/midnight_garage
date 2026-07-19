@@ -1,12 +1,22 @@
 import type { DayLogEntry } from '@midnight-garage/content'
 import {
   COMPONENT_DISPLAY_NAMES,
+  PARTS,
   TOOL_LINES,
   componentDisplayName,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
+
+/** Catalogue part id -> its player-facing "Brand Name" label; internal ids
+ * (e.g. `shitbox-stock-tyres`) never reach the day report (playtest
+ * 2026-07-19 item 23: internal tier words stay internal). */
+const PART_LABELS = new Map(PARTS.map((p) => [p.id, `${p.brand} ${p.name}`]))
+
+function partLabel(partId: string): string {
+  return PART_LABELS.get(partId) ?? partId
+}
 
 /** `count noun` with an `s` on the noun unless the count is exactly 1 - the
  * one place count copy is pluralised, so "1 lots" can never come back
@@ -92,11 +102,11 @@ export function describeLogEntry(
       return entry.saleRevealLine ? `${withQuality} ${entry.saleRevealLine}` : withQuality
     }
     case 'part-bought':
-      return `Bought ${entry.partId} for ${formatYen(entry.priceYen)}`
+      return `Bought ${partLabel(entry.partId)} for ${formatYen(entry.priceYen)}`
     case 'part-ordered':
-      return `Ordered ${entry.partId} for ${formatYen(entry.priceYen)} (arrives day ${entry.arrivesOnDay})`
+      return `Ordered ${partLabel(entry.partId)} for ${formatYen(entry.priceYen)} (arrives day ${entry.arrivesOnDay})`
     case 'part-delivered':
-      return `Delivery arrived: ${entry.partId}`
+      return `Delivery arrived: ${partLabel(entry.partId)}`
     case 'part-scrapped':
       return `Scrapped a part for ${formatYen(entry.priceYen)}`
     case 'part-sold':

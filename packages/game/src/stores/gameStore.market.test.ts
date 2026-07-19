@@ -21,6 +21,17 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('market: bidding', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
+  it('the scripted tutorial lot sorts to the top of its tier (playtest 2026-07-19 item 21)', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const local = game.auctionLotsByTier.find((g) => g.tier === 'local-yard')
+    expect(local, 'day 1 always stocks the local yard').toBeDefined()
+    // The scripted lot is injected AFTER the day-1 random batch, so raw state
+    // order has it last - the view must put the walkthrough's subject first.
+    expect(local!.lots[0]!.id).toBe('tutorial-lot')
+    expect(local!.lots.length).toBeGreaterThan(1)
+  })
+
   it('a high max bid on a local-yard lot eventually wins it into the garage (Sprint 19: multi-day)', () => {
     const game = useGameStore()
     warpToCatalog(game)

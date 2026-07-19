@@ -2007,7 +2007,11 @@ export const useGameStore = defineStore('game', () => {
     }),
   )
 
-  /** Current auction catalog grouped by tier (only tiers with lots present). */
+  /** Current auction catalog grouped by tier (only tiers with lots present).
+   * A scripted lot (the tutorial car) sorts to the top of its tier so the
+   * walkthrough's subject is the first card, not buried under the day's
+   * random stock (playtest 2026-07-19 item 21); the stable sort keeps the
+   * remaining lots in state order. */
   const auctionLotsByTier = computed<{ tier: AuctionTier; lots: AuctionLot[] }[]>(() => {
     const byTier = new Map<AuctionTier, AuctionLot[]>()
     for (const lot of gameState.value.activeAuctionLots) {
@@ -2015,7 +2019,10 @@ export const useGameStore = defineStore('game', () => {
       list.push(lot)
       byTier.set(lot.tier, list)
     }
-    return [...byTier.entries()].map(([tier, lots]) => ({ tier, lots }))
+    return [...byTier.entries()].map(([tier, lots]) => ({
+      tier,
+      lots: [...lots].sort((a, b) => Number(b.scripted ?? false) - Number(a.scripted ?? false)),
+    }))
   })
 
   /** Derived numbers + the 6 real group bands for one lot (Sprint 26 decision

@@ -207,6 +207,9 @@ describe('TutorialOverlay', () => {
     }
     await nextTick()
     expect(wrapper.text()).toContain('Tyres ordered')
+    // The shop-trip line retires the moment the order exists (hideWhen,
+    // playtest item 19) - the box never ends on an errand already run.
+    expect(wrapper.text()).not.toContain('Add to cart')
 
     // Delivery: the order clears, a non-scrap inventory part addressed to
     // tyres reveals the fit line and retires the waiting line.
@@ -226,6 +229,34 @@ describe('TutorialOverlay', () => {
     await nextTick()
     expect(wrapper.text()).not.toContain('Tyres ordered')
     expect(wrapper.text()).toContain('your tyres are in')
+
+    // Fitted into the benched assembly: the fit line retires with the
+    // emptied shelf, and the refit beat takes over (playtest item 19 - this
+    // exact state previously read "go shopping").
+    game.gameState = {
+      ...game.gameState,
+      partInventory: [],
+      assemblyInventory: [
+        {
+          id: 'bench-1',
+          assemblyId: 'wheelAssembly',
+          members: {
+            tyres: {
+              id: 'fitted-tyres',
+              partId: tyrePart.id,
+              band: 'mint',
+              genuinePeriod: false,
+              origin: { kind: 'market', day: 1 },
+            },
+          },
+          sourceCarId: LOT.carId,
+        },
+      ],
+    }
+    await nextTick()
+    expect(wrapper.text()).toContain('Fresh rubber on')
+    expect(wrapper.text()).not.toContain('your tyres are in')
+    expect(wrapper.text()).not.toContain('Add to cart')
 
     // Fresh tyres fitted -> engine beat, with {part} resolved.
     game.gameState = ownScriptedCarWithBands(game.gameState, { tyres: 'mint' })
