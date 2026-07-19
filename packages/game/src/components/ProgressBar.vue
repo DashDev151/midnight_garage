@@ -75,7 +75,7 @@ const readout = computed(() =>
 
 .fill {
   height: 100%;
-  background: var(--mg-neon-cyan);
+  background: var(--mg-neon-violet);
 }
 
 .rail.complete .fill {

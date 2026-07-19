@@ -82,7 +82,7 @@ function cancelNewGame(): void {
 }
 
 h1 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   letter-spacing: 0.3em;
   font-size: var(--mg-fs-xl);
   text-transform: uppercase;
@@ -113,9 +113,9 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--mg-neon-pink);
+  background: var(--mg-neon-violet);
   color: var(--mg-night-deep);
-  border-color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-violet);
 }
 
 .confirm {

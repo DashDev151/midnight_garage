@@ -205,7 +205,7 @@ function onCardPointerUp(event: PointerEvent): void {
   display: flex;
   flex-direction: column;
   gap: var(--mg-space-1);
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   text-decoration: none;
   font-size: var(--mg-fs-sm);
   /* Belt-and-suspenders alongside the `draggable="false"` attribute - some

@@ -165,7 +165,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
 }
 
 h1 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   letter-spacing: 0.3em;
   font-size: var(--mg-fs-xl);
   text-transform: uppercase;
@@ -186,7 +186,7 @@ nav a {
 }
 
 nav a.router-link-active {
-  color: var(--mg-neon-pink);
+  color: var(--mg-neon-violet);
 }
 
 /* Sprint 65 decision 1: the menu control - a button styled like the dev

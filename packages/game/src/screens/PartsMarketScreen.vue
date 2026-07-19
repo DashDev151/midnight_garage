@@ -469,7 +469,7 @@ function onCheckout(): void {
 }
 
 h2 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-lg);
   margin: 0;
 }
@@ -578,7 +578,7 @@ h3 {
 }
 
 .breadcrumb-root {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   background: none;
   border: none;
   text-decoration: underline;
@@ -828,9 +828,9 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--mg-neon-pink);
+  background: var(--mg-neon-violet);
   color: var(--mg-night-deep);
-  border-color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-violet);
   padding: var(--mg-space-2) var(--mg-space-4);
   font-size: var(--mg-fs-md);
 }

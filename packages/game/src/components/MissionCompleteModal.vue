@@ -89,7 +89,7 @@ const specialtyLines = computed(() => {
 
 h3 {
   margin: 0 0 var(--mg-space-2);
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-lg);
 }
 
@@ -128,14 +128,14 @@ h3 {
 button.primary {
   width: 100%;
   background: var(--mg-panel);
-  border: 1px solid var(--mg-neon-cyan);
+  border: 1px solid var(--mg-neon-violet);
   border-radius: var(--mg-radius);
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   padding: var(--mg-space-2);
   cursor: pointer;
 }
 
 button.primary:hover {
-  background: color-mix(in srgb, var(--mg-neon-cyan) 15%, transparent);
+  background: color-mix(in srgb, var(--mg-neon-violet) 15%, transparent);
 }
 </style>

@@ -109,7 +109,7 @@ const standing = computed(() => game.standingView)
 }
 
 h2 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-lg);
   margin: var(--mg-space-2) 0 var(--mg-space-3);
 }

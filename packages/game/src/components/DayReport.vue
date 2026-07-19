@@ -116,7 +116,7 @@ const isQuietDay = computed(
 }
 
 h3 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   margin-top: 0;
 }
 
@@ -235,9 +235,9 @@ h3 {
 }
 
 .primary {
-  background: var(--mg-neon-pink);
+  background: var(--mg-neon-violet);
   color: var(--mg-night-deep);
-  border: 1px solid var(--mg-neon-pink);
+  border: 1px solid var(--mg-neon-violet);
   border-radius: var(--mg-radius);
   padding: var(--mg-space-2) var(--mg-space-4);
   font-family: inherit;

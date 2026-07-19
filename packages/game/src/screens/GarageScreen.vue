@@ -207,7 +207,7 @@ h3 {
 }
 
 h2 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-lg);
   margin: 0 0 var(--mg-space-2);
 }
@@ -254,7 +254,7 @@ h3 {
    screen was effectively unreachable. Interactive text is cyan and underlined,
    like every other link in the app. */
 .standing-link {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -273,9 +273,9 @@ button {
 }
 
 button.primary {
-  background: var(--mg-neon-pink);
+  background: var(--mg-neon-violet);
   color: var(--mg-night-deep);
-  border-color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-violet);
 }
 
 button:disabled {
@@ -317,7 +317,7 @@ button:disabled {
 }
 
 .grace-car {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   text-decoration: none;
   font-size: var(--mg-fs-sm);
 }

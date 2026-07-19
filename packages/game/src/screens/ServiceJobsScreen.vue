@@ -348,7 +348,7 @@ h3 {
 }
 
 h2 {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-lg);
   margin: 0;
 }
@@ -368,7 +368,7 @@ h3 {
    Sprint 62 styling rendered it invisible on a dark panel (see GarageScreen's
    matching comment). */
 .standing-link {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -667,7 +667,7 @@ button.needs-upgrade {
 }
 
 .work-link {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
   text-decoration: none;
 }
@@ -694,9 +694,9 @@ button.decline {
 }
 
 button.primary {
-  background: var(--mg-neon-pink);
+  background: var(--mg-neon-violet);
   color: var(--mg-night-deep);
-  border-color: var(--mg-neon-pink);
+  border-color: var(--mg-neon-violet);
   padding: var(--mg-space-2) var(--mg-space-4);
   font-size: var(--mg-fs-md);
   margin-top: var(--mg-space-3);
