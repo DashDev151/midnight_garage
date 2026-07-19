@@ -225,11 +225,13 @@ pass."
   path (`installablePartsForPart`, ReplaceDrawer dims non-fitting parts) but neither
   `benchSwapCandidates` (CarDetailScreen) nor `resolveSwapAssemblyMember` /
   `resolveRefitAssembly` (sim/assemblies.ts) checks it - a wrong-class part gets a live
-  Fit button at the bench and rides the refit onto the car. The tutorial no longer steers
-  anyone near it (the walkthrough teaches the fits-this-vehicle filter, and its own
-  conditions are fitment-checked), but the law hole is real for free play. Fix when next
-  in the assembly code: the swap resolver refuses (and the candidate list dims) exactly
-  as the on-car path does.
+  Fit button at the bench and rides the refit onto the car. Largely mitigated since: the
+  bench now fits through the Replace drawer, whose fit-check dims non-fitting parts and
+  makes them click-inert, and the walkthrough teaches the fits-this-vehicle filter with
+  fitment-checked conditions. What remains open is the RESOLVER:
+  `resolveSwapAssemblyMember` itself still accepts a wrong-class part, so only the UI
+  stands between a mod/dev path and a law violation. Fix when next in the assembly code:
+  the swap resolver refuses exactly as the on-car path does.
 
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
@@ -288,7 +290,11 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
+- [ ] **SCHEDULED: live in-room auction bidding is now Sprints 99-100** (the economy
+  legibility arc, `docs/design/economy-legibility.md`, approved 2026-07-19) - the
+  stripped-demo-first plan below is honoured verbatim as Sprint 99's gate. Original
+  entry kept for the reasoning:
+  **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
   The maintainer took the targeted Option B fix (above) for now but is not sold on the current
   async, overnight-resolved auction model even debugged: bidding is inherently slow (one
   bid-exchange per in-game day, dragged over days). The proposed alternative is a live, on-screen

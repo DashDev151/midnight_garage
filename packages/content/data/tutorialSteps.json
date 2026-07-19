@@ -151,7 +151,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Morning: your tyres are in. Click the Tyres block on the bench and press Fit; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears).",
+        "text": "Morning: your tyres are in. Click the Tyres block on the bench, press Replace, and pick the fresh stock tyres from your parts; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears).",
         "showWhen": { "kind": "partInInventory", "carPartId": "tyres" },
         "anchorTestId": "bench-member-tyres"
       },
@@ -185,7 +185,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Engine out. Click the Head on the bench and press the Repair button; its price and labour are written on it. When it reads fine, press Refit assembly: the shop's arm again for the way back in.",
+        "text": "Engine out. Click the Head on the bench and press the Repair button; one rung, poor to worn, is all her inspection asks, and the price and labour are written on it. Then press Refit assembly: the shop's arm again for the way back in.",
         "showWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" },
         "anchorTestId": "bench-member-headValvetrain"
       },
@@ -194,7 +194,7 @@
         "text": "The repair and the refit are where the labour goes; taking things off never costs any. If the bar runs dry before you are done, no matter: press End Day, and the morning brings a fresh one."
       }
     ],
-    "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "fine" }
+    "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "worn" }
   },
   {
     "id": "reassemble",

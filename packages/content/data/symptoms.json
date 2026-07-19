@@ -3,9 +3,24 @@
     "id": "smokes-on-startup",
     "cardLine": "Smokes on startup.",
     "causes": [
-      { "id": "valve-seals", "carPartId": "headValvetrain", "setBand": "worn", "weight": 55 },
-      { "id": "tired-rings", "carPartId": "internals", "setBand": "poor", "weight": 30 },
-      { "id": "head-gasket", "carPartId": "headValvetrain", "setBand": "poor", "weight": 15 }
+      {
+        "id": "valve-seals",
+        "carPartId": "headValvetrain",
+        "setBand": "worn",
+        "weight": 55
+      },
+      {
+        "id": "tired-rings",
+        "carPartId": "internals",
+        "setBand": "poor",
+        "weight": 30
+      },
+      {
+        "id": "head-gasket",
+        "carPartId": "headValvetrain",
+        "setBand": "poor",
+        "weight": 15
+      }
     ],
     "tests": [
       {
@@ -30,9 +45,24 @@
     "id": "non-starter",
     "cardLine": "Won't start. Turns over, nothing catches.",
     "causes": [
-      { "id": "flat-battery", "carPartId": "ignitionEcu", "setBand": "worn", "weight": 55 },
-      { "id": "fuel-pump", "carPartId": "fuelSystem", "setBand": "poor", "weight": 30 },
-      { "id": "seized-engine", "carPartId": "block", "setBand": "poor", "weight": 15 }
+      {
+        "id": "flat-battery",
+        "carPartId": "ignitionEcu",
+        "setBand": "worn",
+        "weight": 55
+      },
+      {
+        "id": "fuel-pump",
+        "carPartId": "fuelSystem",
+        "setBand": "poor",
+        "weight": 30
+      },
+      {
+        "id": "seized-engine",
+        "carPartId": "block",
+        "setBand": "poor",
+        "weight": 15
+      }
     ],
     "tests": [
       {
@@ -57,8 +87,18 @@
     "id": "tick-at-idle",
     "cardLine": "Faint tick at idle. Probably nothing.",
     "causes": [
-      { "id": "lifter-tick", "carPartId": "headValvetrain", "setBand": "worn", "weight": 70 },
-      { "id": "rod-knock", "carPartId": "internals", "setBand": "poor", "weight": 30 }
+      {
+        "id": "lifter-tick",
+        "carPartId": "headValvetrain",
+        "setBand": "poor",
+        "weight": 70
+      },
+      {
+        "id": "rod-knock",
+        "carPartId": "internals",
+        "setBand": "poor",
+        "weight": 30
+      }
     ],
     "tests": [
       {
@@ -75,9 +115,24 @@
     "id": "wont-idle",
     "cardLine": "Won't hold an idle. Hunts and dies.",
     "causes": [
-      { "id": "vacuum-leak", "carPartId": "intake", "setBand": "worn", "weight": 50 },
-      { "id": "tired-ecu", "carPartId": "ignitionEcu", "setBand": "poor", "weight": 30 },
-      { "id": "worn-cams", "carPartId": "camsTiming", "setBand": "poor", "weight": 20 }
+      {
+        "id": "vacuum-leak",
+        "carPartId": "intake",
+        "setBand": "worn",
+        "weight": 50
+      },
+      {
+        "id": "tired-ecu",
+        "carPartId": "ignitionEcu",
+        "setBand": "poor",
+        "weight": 30
+      },
+      {
+        "id": "worn-cams",
+        "carPartId": "camsTiming",
+        "setBand": "poor",
+        "weight": 20
+      }
     ],
     "tests": [
       {
@@ -94,8 +149,18 @@
     "id": "crunch-into-second",
     "cardLine": "Crunches into second when cold.",
     "causes": [
-      { "id": "worn-synchros", "carPartId": "gearbox", "setBand": "worn", "weight": 60 },
-      { "id": "chewed-gearset", "carPartId": "gearbox", "setBand": "poor", "weight": 40 }
+      {
+        "id": "worn-synchros",
+        "carPartId": "gearbox",
+        "setBand": "worn",
+        "weight": 60
+      },
+      {
+        "id": "chewed-gearset",
+        "carPartId": "gearbox",
+        "setBand": "poor",
+        "weight": 40
+      }
     ],
     "tests": [
       {
@@ -112,9 +177,24 @@
     "id": "clunk-over-bumps",
     "cardLine": "Clunks over bumps at the back.",
     "causes": [
-      { "id": "tired-bushes", "carPartId": "antiRollBars", "setBand": "worn", "weight": 45 },
-      { "id": "blown-dampers", "carPartId": "dampers", "setBand": "poor", "weight": 35 },
-      { "id": "steering-play", "carPartId": "steering", "setBand": "poor", "weight": 20 }
+      {
+        "id": "tired-bushes",
+        "carPartId": "antiRollBars",
+        "setBand": "worn",
+        "weight": 45
+      },
+      {
+        "id": "blown-dampers",
+        "carPartId": "dampers",
+        "setBand": "poor",
+        "weight": 35
+      },
+      {
+        "id": "steering-play",
+        "carPartId": "steering",
+        "setBand": "poor",
+        "weight": 20
+      }
     ],
     "tests": [
       {
@@ -139,7 +219,12 @@
     "id": "pulls-under-braking",
     "cardLine": "Pulls left under braking.",
     "causes": [
-      { "id": "glazed-pads", "carPartId": "brakePadsDiscs", "setBand": "worn", "weight": 55 },
+      {
+        "id": "glazed-pads",
+        "carPartId": "brakePadsDiscs",
+        "setBand": "worn",
+        "weight": 55
+      },
       {
         "id": "seized-calliper",
         "carPartId": "brakeCalipersLines",
@@ -162,9 +247,24 @@
     "id": "overheats-in-traffic",
     "cardLine": "Runs hot in traffic. Fine on the move.",
     "causes": [
-      { "id": "fan-switch", "carPartId": "ignitionEcu", "setBand": "worn", "weight": 40 },
-      { "id": "tired-radiator", "carPartId": "cooling", "setBand": "poor", "weight": 40 },
-      { "id": "early-head-gasket", "carPartId": "headValvetrain", "setBand": "poor", "weight": 20 }
+      {
+        "id": "fan-switch",
+        "carPartId": "ignitionEcu",
+        "setBand": "worn",
+        "weight": 40
+      },
+      {
+        "id": "tired-radiator",
+        "carPartId": "cooling",
+        "setBand": "poor",
+        "weight": 40
+      },
+      {
+        "id": "early-head-gasket",
+        "carPartId": "headValvetrain",
+        "setBand": "poor",
+        "weight": 20
+      }
     ],
     "tests": [
       {
@@ -189,9 +289,24 @@
     "id": "wheel-vibration",
     "cardLine": "Vibration through the wheel, builds with road speed.",
     "causes": [
-      { "id": "worn-tyres", "carPartId": "tyres", "setBand": "worn", "weight": 55 },
-      { "id": "buckled-rim", "carPartId": "rims", "setBand": "poor", "weight": 30 },
-      { "id": "worn-driveshaft", "carPartId": "driveline", "setBand": "poor", "weight": 15 }
+      {
+        "id": "worn-tyres",
+        "carPartId": "tyres",
+        "setBand": "worn",
+        "weight": 55
+      },
+      {
+        "id": "buckled-rim",
+        "carPartId": "rims",
+        "setBand": "poor",
+        "weight": 30
+      },
+      {
+        "id": "worn-driveshaft",
+        "carPartId": "driveline",
+        "setBand": "poor",
+        "weight": 15
+      }
     ],
     "tests": [
       {
@@ -216,8 +331,18 @@
     "id": "diff-whine",
     "cardLine": "Whines on the overrun. Quiet under power.",
     "causes": [
-      { "id": "worn-diff-bearings", "carPartId": "differential", "setBand": "worn", "weight": 60 },
-      { "id": "chewed-ring-pinion", "carPartId": "differential", "setBand": "poor", "weight": 40 }
+      {
+        "id": "worn-diff-bearings",
+        "carPartId": "differential",
+        "setBand": "worn",
+        "weight": 60
+      },
+      {
+        "id": "chewed-ring-pinion",
+        "carPartId": "differential",
+        "setBand": "poor",
+        "weight": 40
+      }
     ],
     "tests": [
       {
@@ -234,8 +359,18 @@
     "id": "sagging-spring",
     "cardLine": "Sits lower than it should. Wallows over rough tarmac.",
     "causes": [
-      { "id": "sagging-springs", "carPartId": "springs", "setBand": "worn", "weight": 70 },
-      { "id": "broken-spring", "carPartId": "springs", "setBand": "poor", "weight": 30 }
+      {
+        "id": "sagging-springs",
+        "carPartId": "springs",
+        "setBand": "worn",
+        "weight": 70
+      },
+      {
+        "id": "broken-spring",
+        "carPartId": "springs",
+        "setBand": "poor",
+        "weight": 30
+      }
     ],
     "tests": [
       {
@@ -252,8 +387,18 @@
     "id": "quarter-panel-filler",
     "cardLine": "Faint filler line along a rear quarter panel.",
     "causes": [
-      { "id": "panel-respray", "carPartId": "panels", "setBand": "worn", "weight": 75 },
-      { "id": "structural-rail-repair", "carPartId": "chassis", "setBand": "poor", "weight": 25 }
+      {
+        "id": "panel-respray",
+        "carPartId": "panels",
+        "setBand": "worn",
+        "weight": 75
+      },
+      {
+        "id": "structural-rail-repair",
+        "carPartId": "chassis",
+        "setBand": "poor",
+        "weight": 25
+      }
     ],
     "tests": [
       {
@@ -270,8 +415,18 @@
     "id": "damp-passenger-footwell",
     "cardLine": "Carpet's damp on the passenger side.",
     "causes": [
-      { "id": "heater-matrix-weep", "carPartId": "cooling", "setBand": "worn", "weight": 70 },
-      { "id": "rotten-bulkhead-seam", "carPartId": "chassis", "setBand": "poor", "weight": 30 }
+      {
+        "id": "heater-matrix-weep",
+        "carPartId": "cooling",
+        "setBand": "worn",
+        "weight": 70
+      },
+      {
+        "id": "rotten-bulkhead-seam",
+        "carPartId": "chassis",
+        "setBand": "poor",
+        "weight": 30
+      }
     ],
     "tests": [
       {
@@ -288,8 +443,18 @@
     "id": "exhaust-rasp",
     "cardLine": "Deep rasp under load, quiet at idle.",
     "causes": [
-      { "id": "blown-flex-joint", "carPartId": "exhaust", "setBand": "worn", "weight": 60 },
-      { "id": "cracked-manifold", "carPartId": "exhaust", "setBand": "poor", "weight": 40 }
+      {
+        "id": "blown-flex-joint",
+        "carPartId": "exhaust",
+        "setBand": "worn",
+        "weight": 60
+      },
+      {
+        "id": "cracked-manifold",
+        "carPartId": "exhaust",
+        "setBand": "poor",
+        "weight": 40
+      }
     ],
     "tests": [
       {
@@ -306,8 +471,18 @@
     "id": "oil-pressure-flutter",
     "cardLine": "Oil light flickers at hot idle. Goes out with revs.",
     "causes": [
-      { "id": "tired-sender", "carPartId": "dashGauges", "setBand": "worn", "weight": 70 },
-      { "id": "worn-main-bearings", "carPartId": "internals", "setBand": "poor", "weight": 30 }
+      {
+        "id": "tired-sender",
+        "carPartId": "dashGauges",
+        "setBand": "worn",
+        "weight": 70
+      },
+      {
+        "id": "worn-main-bearings",
+        "carPartId": "internals",
+        "setBand": "poor",
+        "weight": 30
+      }
     ],
     "tests": [
       {
@@ -324,8 +499,18 @@
     "id": "hesitates-under-load",
     "cardLine": "Hesitates and flat-spots under hard acceleration. Smooth enough at a steady cruise.",
     "causes": [
-      { "id": "clogged-fuel-filter", "carPartId": "fuelSystem", "setBand": "worn", "weight": 65 },
-      { "id": "stretched-timing-chain", "carPartId": "camsTiming", "setBand": "poor", "weight": 35 }
+      {
+        "id": "clogged-fuel-filter",
+        "carPartId": "fuelSystem",
+        "setBand": "worn",
+        "weight": 65
+      },
+      {
+        "id": "stretched-timing-chain",
+        "carPartId": "camsTiming",
+        "setBand": "poor",
+        "weight": 35
+      }
     ],
     "tests": [
       {
@@ -342,8 +527,18 @@
     "id": "steering-wander",
     "cardLine": "Steering feels vague, wants constant small corrections at speed.",
     "causes": [
-      { "id": "tired-track-rod-ends", "carPartId": "steering", "setBand": "worn", "weight": 60 },
-      { "id": "worn-rack", "carPartId": "steering", "setBand": "poor", "weight": 40 }
+      {
+        "id": "tired-track-rod-ends",
+        "carPartId": "steering",
+        "setBand": "worn",
+        "weight": 60
+      },
+      {
+        "id": "worn-rack",
+        "carPartId": "steering",
+        "setBand": "poor",
+        "weight": 40
+      }
     ],
     "tests": [
       {

@@ -377,6 +377,23 @@ function advancePartRepair(componentId: ComponentId, carPartId: CarPartId): void
 /** Which part's Replace drawer is open right now, if any. */
 const activeReplacePart = ref<CarPartId | null>(null)
 
+/** When the open drawer picks for a benched assembly member, the container it
+ * fits into; null while the drawer targets an on-car slot. */
+const activeBenchReplaceContainerId = ref<string | null>(null)
+
+/** Open the inventory drawer scoped to a benched member's slot - the same
+ * pick-from-your-parts flow an on-car Replace uses; selection fits straight
+ * into the container. */
+function openBenchReplace(containerId: string, carPartId: CarPartId): void {
+  activeBenchReplaceContainerId.value = containerId
+  activeReplacePart.value = carPartId
+}
+
+function closeReplaceDrawer(): void {
+  activeReplacePart.value = null
+  activeBenchReplaceContainerId.value = null
+}
+
 const dragSession = useDragSession()
 
 function acceptsInstall(carPartId: CarPartId, partInstanceId: string): boolean {
@@ -415,6 +432,7 @@ function onReplaceClick(carPartId: CarPartId): void {
     dropZones[carPartId].onClick()
     return
   }
+  activeBenchReplaceContainerId.value = null
   activeReplacePart.value = activeReplacePart.value === carPartId ? null : carPartId
 }
 
@@ -646,7 +664,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               <span class="mark" aria-hidden="true">{{ cause.eliminated ? '[x]' : '[ ]' }}</span>
               <span class="label">{{ cause.label }}</span>
-              <span class="delta">if it's this: about {{ formatYen(cause.deltaYen) }}</span>
+              <span class="delta">fix about {{ formatYen(cause.fixYen) }}</span>
             </li>
           </ul>
         </div>
@@ -945,21 +963,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 {{ repairStepText(selectedBench.member.reconditionStep) }}
               </button>
             </template>
+            <!-- Fitting goes through the same pick-from-your-parts drawer an
+                 on-car Replace uses; selection lands in this member slot. -->
             <button
-              v-for="cand in benchSwapCandidates(selectedBench.member.carPartId)"
-              :key="cand.instance.id"
               type="button"
               class="replace-btn"
-              :data-test="'bench-swap-' + selectedBench.member.carPartId + '-' + cand.instance.id"
-              @click="
-                game.swapAssemblyMember(
-                  selectedBench.containerId,
-                  selectedBench.member.carPartId,
-                  cand.instance.id,
-                )
-              "
+              :data-test="'bench-replace-' + selectedBench.member.carPartId"
+              @click="openBenchReplace(selectedBench.containerId, selectedBench.member.carPartId)"
             >
-              Fit {{ game.partName(cand.instance.partId) }}
+              Replace
             </button>
             <!-- Playtest 2026-07-19 item 25: a mounted member comes OFF the
                  assembly before its successor goes on - dead rubber never has
@@ -992,14 +1004,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               >No replacement {{ benchShopLabel(selectedBench.member.carPartId) }} on hand - the
               parts shop sells them.</span
             >
-            <!-- The swap-fee caption prices the Fit action, so it renders only
-                 while a Fit button is actually on screen (Sprint 96
-                 decision 1: no dangling fee for an absent control). -->
+            <!-- Prices the fit the Replace flow leads to. -->
             <span
-              v-if="
-                selectedBench.member.swapFeeYen > 0 &&
-                benchSwapCandidates(selectedBench.member.carPartId).length > 0
-              "
+              v-if="selectedBench.member.swapFeeYen > 0"
               class="assist-caption"
               :data-test="'bench-swap-fee-' + selectedBench.member.carPartId"
               >machine shop assist +{{ formatYen(selectedBench.member.swapFeeYen) }}</span
@@ -1047,7 +1054,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         v-if="activeReplacePart"
         :car-id="detail.car.id"
         :car-part-id="activeReplacePart"
-        @close="activeReplacePart = null"
+        :bench-container-id="activeBenchReplaceContainerId ?? undefined"
+        @close="closeReplaceDrawer"
       />
 
       <p class="total-bill-line" data-test="total-bill">

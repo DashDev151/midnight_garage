@@ -25,6 +25,12 @@ import { useGameStore } from '../stores/gameStore'
 const props = defineProps<{
   carId: string
   carPartId: CarPartId
+  /** When set, the drawer picks for a benched assembly member instead of an
+   * on-car slot: selecting fits the part straight into this container's
+   * member (displacing whatever was mounted back to the bin) rather than
+   * staging an on-car install. The fit-check is identical either way - the
+   * member's car slot is vacant while its assembly is on the bench. */
+  benchContainerId?: string
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -59,6 +65,11 @@ const entries = computed(() => {
 })
 
 function onSelect(partInstanceId: string): void {
+  if (props.benchContainerId) {
+    game.swapAssemblyMember(props.benchContainerId, props.carPartId, partInstanceId)
+    emit('close')
+    return
+  }
   if (!componentId.value) return
   game.stageAction(props.carId, {
     kind: 'install',

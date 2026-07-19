@@ -368,10 +368,11 @@ describe('AuctionScreen', () => {
         'Tired rings',
         'Head gasket',
       ])
-      // Every cause worsens value relative to the apparent view (they're all
-      // real damage, never an improvement).
+      // Every cause carries a positive all-in fix estimate (they are all real
+      // damage below the band the sheet shows, so making them good costs
+      // something).
       for (const cause of detail.symptoms[0]!.causes) {
-        expect(cause.deltaYen).toBeLessThanOrEqual(0)
+        expect(cause.fixYen).toBeGreaterThan(0)
       }
       // Sprint 73 decision 7: the grade/bands/bill all read the APPARENT
       // band (mint), never the true one (worn) - the engine group's chip
@@ -383,7 +384,7 @@ describe('AuctionScreen', () => {
       expect(symptomEl.exists()).toBe(true)
       expect(symptomEl.text()).toContain('Smokes on startup.')
       expect(symptomEl.text()).toContain('Valve seals')
-      expect(symptomEl.text()).toContain("if it's this: about")
+      expect(symptomEl.text()).toContain('fix about')
     })
 
     it('honest lots (no symptoms) never render a symptom block', () => {

@@ -521,7 +521,7 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                     cause.eliminated ? '[x]' : '[ ]'
                   }}</span>
                   <span class="label">{{ cause.label }}</span>
-                  <span class="delta">if it's this: about {{ formatYen(cause.deltaYen) }}</span>
+                  <span class="delta">fix about {{ formatYen(cause.fixYen) }}</span>
                 </li>
               </ul>
 

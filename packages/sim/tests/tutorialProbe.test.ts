@@ -84,7 +84,9 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
   const tyreFitYen = benchSwapFeeYen('tyres', state, CONTEXT)
 
   // Engine beat: pull + refit the engine assembly (two engine assist fees) plus
-  // the banded repair of the buried head/valvetrain from worn to fine.
+  // the banded repair of the buried head/valvetrain one rung, poor to worn -
+  // exactly the roadworthy bar, the taught lesson being "repair to what the
+  // job needs".
   const engineAssist = assemblyMachineAssistFeeYen(
     CONTEXT.assembliesById.engineAssembly,
     state,
@@ -92,12 +94,12 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
   )
   const engineRoundTripYen = engineAssist * 2
   const hvRepairYen = carCostToBandYen(
-    { ...lot.car, parts: stockPartsAt('fine', { headValvetrain: 'worn' }) },
+    { ...lot.car, parts: stockPartsAt('worn', { headValvetrain: 'poor' }) },
     MODEL,
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
     CONTEXT.economy,
-    'fine',
+    'worn',
   )
 
   const partsYen = stockTyreYen
@@ -130,10 +132,9 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
     // wrong-band purchase still completes (spend + mistake within her money), not
     // that a fat cap absorbs it. profit IS the slack on this lean intro job.
     expect(totalSpendYen + oneMistakeYen).toBeLessThanOrEqual(FOUR_WHEELS.budgetCapYen)
-    // Sprint 91: the intro mission is deliberately NOT a big earner. The payout
-    // covers her costs with a modest margin, so the profit must be positive but
-    // small - guarded both ways so a future payout bump can't quietly turn
-    // Yuki's first job back into a fat flip. profit = 148000 - 140489 = 7511.
+    // The intro mission is deliberately not a big earner: the payout covers
+    // her costs with a modest margin, guarded both ways so a payout bump can
+    // never quietly turn Yuki's first job into a fat flip.
     const profitYen = FOUR_WHEELS.payoutYen - totalSpendYen
     expect(profitYen).toBeGreaterThan(0)
     expect(profitYen).toBeLessThanOrEqual(15_000)
@@ -145,7 +146,7 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
       id: 'tutorial-after-car',
       symptoms: [],
       apparentBandByPartId: null,
-      parts: stockPartsAt('worn', { tyres: 'mint', headValvetrain: 'fine' }),
+      parts: stockPartsAt('worn', { tyres: 'mint', headValvetrain: 'worn' }),
     }
     const graded = {
       ...state,

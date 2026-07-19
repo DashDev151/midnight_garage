@@ -66,6 +66,7 @@ import {
   buildSimContext,
   carCostToBandYen,
   carCostToMintYen,
+  costToBandYen,
   carGuideValueYen,
   carLedgerFor,
   computeAuctionGrade,
@@ -101,7 +102,6 @@ import {
   isServiceWorkDone,
   machineAssistFeeYen,
   signatureOpFeeYen,
-  marketValueYen,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
   removeBlockReason,
@@ -827,24 +827,24 @@ export interface LotDetail {
    */
   auctionGrade: AuctionGrade
   /**
-   * Sprint 73 decision 7 / Sprint 74 decision 7: one entry per symptom this
-   * lot's car carries (`[]` for an honest car) - the free, public card line,
-   * its cause checklist (each cause's `deltaYen` is
-   * `marketValueYen(apparent-with-this-cause-applied) -
-   * marketValueYen(apparent)`, always <= 0, "if it's this: about `deltaYen`
-   * yen"; `eliminated` is true once a run test has ruled it out -
-   * `remainingCauseIds` no longer includes it), and every test the symptom's
-   * own content offers (`alreadyRun` true once its id is in
-   * `runTestIds` - the UI disables rather than hides those), `[]` once the
-   * symptom is fully resolved (`remainingCauseIds.length <= 1` - nothing is
-   * left to narrow, so no test is worth running even unrun).
+   * One entry per symptom this lot's car carries (`[]` for an honest car) -
+   * the free, public card line and its cause checklist. Each cause's `fixYen`
+   * is the mechanic's all-in estimate to make that fault good at the current
+   * tools: the banded repair from the cause's damage back to the band the
+   * sheet shows, plus the access the job forces (a crane round trip for a
+   * buried engine/drivetrain part, the tyre bench for tyres) - "fix about
+   * `fixYen`". `eliminated` is true once a run test has ruled a cause out
+   * (`remainingCauseIds` no longer includes it). `tests` carries every test
+   * the symptom's own content offers (`alreadyRun` ones are disabled, not
+   * hidden), `[]` once the symptom is fully resolved
+   * (`remainingCauseIds.length <= 1` - nothing left to narrow).
    * `symptomIndex` is what `runDiagnosticTest` addresses this symptom by.
    */
   symptoms: {
     symptomIndex: number
     line: string
     resolved: boolean
-    causes: { causeId: string; label: string; deltaYen: number; eliminated: boolean }[]
+    causes: { causeId: string; label: string; fixYen: number; eliminated: boolean }[]
     tests: {
       testId: string
       label: string
@@ -1171,37 +1171,23 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 73 decision 7 / Sprint 74 decisions 7-8: one entry per symptom
-   * `car` carries, its free public card line, its cause checklist, and every
-   * test its own content offers. Shared by a lot's card (`lotDetail`) and an
-   * owned car's page (`carDetail`) - the checklist shape is identical either
-   * way; only the UI decides whether test buttons render (decision 8: never
-   * on an owned car, the workup supersedes them there). Each cause's
-   * `deltaYen` is a plain, honest value comparison - `marketValueYen` with
-   * that cause's own damage applied to `apparentCar`, minus `apparentCar`'s
-   * own value - never the fear-priced sheet gap (`sheetGuideValueYen`),
-   * which is what the room actually charges, not what any one specific cause
-   * is honestly worth. `eliminated` and `resolved` both read
-   * `carSymptom.remainingCauseIds` (Sprint 74's own narrowing state);
-   * `alreadyRun` reads `runTestIds`. Test `label`s are derived the same way
-   * cause labels are - `titleCaseFromSlug` off the id - since
-   * `DiagnosticTestSchema` carries no separate display name
-   * (diagnosticTest.ts).
+   * One entry per symptom `car` carries, its free public card line, its
+   * cause checklist, and every test its own content offers. Shared by a
+   * lot's card (`lotDetail`) and an owned car's page (`carDetail`) - the
+   * checklist shape is identical either way; only the UI decides whether
+   * test buttons render (never on an owned car, where the workup supersedes
+   * them). Each cause's `fixYen` is the mechanic's all-in estimate to make
+   * that fault good at the current tools, so the figure the player weighs a
+   * bid against is the same kind of figure the repair controls later charge.
+   * `eliminated` and `resolved` both read `carSymptom.remainingCauseIds`;
+   * `alreadyRun` reads `runTestIds`. Test `label`s derive from
+   * `titleCaseFromSlug` off the id, the same way cause labels do.
    */
   function symptomChecklistForCar(
     car: CarInstance,
     apparentCar: CarInstance,
-    model: CarModel,
   ): LotDetail['symptoms'] {
     if (car.symptoms.length === 0) return []
-    const apparentValueYen = marketValueYen(
-      model,
-      apparentCar,
-      gameState.value.marketHeat[model.id] ?? 100,
-      context.value.partsById,
-      context.value.partsTaxonomyById,
-      context.value.economy,
-    )
     return car.symptoms.flatMap((carSymptom, symptomIndex) => {
       const symptom = context.value.symptomsById[carSymptom.symptomId]
       if (!symptom) return []
@@ -1213,26 +1199,31 @@ export const useGameStore = defineStore('game', () => {
           resolved,
           causes: symptom.causes.map((cause) => {
             const installed = apparentCar.parts[cause.carPartId].installed
-            const causeValueYen = installed
-              ? marketValueYen(
-                  model,
-                  {
-                    ...apparentCar,
-                    parts: {
-                      ...apparentCar.parts,
-                      [cause.carPartId]: { installed: { ...installed, band: cause.setBand } },
-                    },
-                  },
-                  gameState.value.marketHeat[model.id] ?? 100,
-                  context.value.partsById,
-                  context.value.partsTaxonomyById,
-                  context.value.economy,
-                )
-              : apparentValueYen
+            const taxonomyEntry = context.value.partsTaxonomyById[cause.carPartId]
+            const catalogPart = installed ? context.value.partsById[installed.partId] : undefined
+            // The mechanic's gut estimate: what making this fault good costs
+            // all-in at the current tools - the banded repair from the
+            // cause's damage back to the band the sheet shows, plus the
+            // access the job forces (a crane round trip for a buried
+            // engine/drivetrain part, the tyre-fitting bench for tyres).
+            let fixYen = 0
+            if (installed && taxonomyEntry && catalogPart) {
+              fixYen =
+                costToBandYen(
+                  cause.setBand,
+                  installed.band,
+                  taxonomyEntry,
+                  catalogPart.priceYen,
+                  context.value.economy.restoration.repairStepFraction,
+                  catalogPart.fitmentClass,
+                ) +
+                2 * machineAssistFeeYen(cause.carPartId, gameState.value, context.value) +
+                benchSwapFeeYen(cause.carPartId, gameState.value, context.value)
+            }
             return {
               causeId: cause.id,
               label: titleCaseFromSlug(cause.id),
-              deltaYen: Math.round(causeValueYen - apparentValueYen),
+              fixYen,
               eliminated: !carSymptom.remainingCauseIds.includes(cause.id),
             }
           }),
@@ -1725,7 +1716,7 @@ export const useGameStore = defineStore('game', () => {
       foundationWarning: foundationWarningFor(car),
       passionSpendNotice: passionSpendNoticeFor(car, model),
       plannedEstimate: plannedEstimateFor(carId),
-      symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),
+      symptoms: symptomChecklistForCar(car, apparentViewOf(car)),
       workupGateReason: ownedWorkupGateReasonCore(gameState.value, carId, context.value),
     }
   }
@@ -2095,7 +2086,7 @@ export const useGameStore = defineStore('game', () => {
       daysLeft: lot.expiresOnDay - gameState.value.day,
       closeLabel: auctionCloseLabel(lot),
       closeNightsLeft: auctionNightsLeft(lot),
-      symptoms: symptomChecklistForCar(lot.car, apparentCar, model),
+      symptoms: symptomChecklistForCar(lot.car, apparentCar),
       playerEstimateYen: lot.car.symptoms.some(
         (s) => s.runTestIds.length > 0 || s.remainingCauseIds.length <= 1,
       )

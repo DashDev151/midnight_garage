@@ -280,7 +280,7 @@ describe('TutorialOverlay', () => {
     // so the machine lands on the deliver beat.
     game.gameState = ownScriptedCarWithBands(game.gameState, {
       tyres: 'mint',
-      headValvetrain: 'fine',
+      headValvetrain: 'worn',
     })
     await nextTick()
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 10 of 11')
@@ -293,7 +293,7 @@ describe('TutorialOverlay', () => {
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     const whole = scriptedCarIntoBay(
-      ownScriptedCarWithBands(game.gameState, { tyres: 'mint', headValvetrain: 'fine' }),
+      ownScriptedCarWithBands(game.gameState, { tyres: 'mint', headValvetrain: 'worn' }),
     )
     // The engine blockers are off the car (in inventory) - the head reads fine
     // but the car is not whole, so delivery must NOT be offered yet.

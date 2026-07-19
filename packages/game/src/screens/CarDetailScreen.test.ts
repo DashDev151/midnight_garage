@@ -960,35 +960,37 @@ describe('CarDetailScreen', () => {
       return { id, wrapper, router }
     }
 
-    it('with nothing to recondition and nothing to fit, the panel names the gap and where the shop is, with no dangling fee caption', async () => {
+    it('a stuck member names the gap, and Replace with its fee stands ready beside it', async () => {
       const game = useGameStore()
       const { wrapper } = await benchTyres(game)
 
-      // Scrap-or-not, tyres are never reconditionable and the inventory holds
-      // no replacement - previously this panel offered only Refit assembly.
-      // The maintainer scrapped the one-off Shop deep-link button the same
-      // day it landed: the panel states the situation, the player navigates
-      // the parts market themselves (the walkthrough teaches that trip).
+      // Scrap tyres cannot be reconditioned and the bin holds no replacement:
+      // the panel says so and where the shop is, while Replace (the
+      // pick-from-your-parts drawer) and the fee it leads to stay available.
       const empty = wrapper.find('[data-test="bench-empty-tyres"]')
       expect(empty.exists()).toBe(true)
       expect(empty.text()).toContain('No replacement tyres on hand')
       expect(empty.text()).toContain('parts shop')
-      expect(wrapper.find('[data-test="bench-shop-tyres"]').exists()).toBe(false)
-      // The swap-fee caption prices a Fit button that is not on screen - it
-      // must never dangle alone.
-      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-replace-tyres"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(true)
     })
 
-    it('with a replacement on hand, the Fit button and its fee caption render and the empty-state does not', async () => {
+    it('Replace opens the inventory drawer scoped to the slot; picking a part fits it into the member', async () => {
       const game = useGameStore()
-      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres')!
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
       game.devGrantPart(tyresPart.id)
       const { wrapper } = await benchTyres(game)
 
-      expect(wrapper.find('[data-test^="bench-swap-tyres-"]').exists()).toBe(true)
-      // At tier-1 wheels tooling the tyre swap owes the fitting-shop fee, and
-      // with a Fit button present the caption is back in its actionable context.
-      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(true)
+      await wrapper.find('[data-test="bench-replace-tyres"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
+
+      await wrapper.find('.part-card').trigger('click')
+      await flushPromises()
+      expect(game.gameState.assemblyInventory![0]!.members.tyres?.partId).toBe(tyresPart.id)
+      // The displaced scrap tyres land in the bin; the drawer closes.
+      expect(game.gameState.partInventory.some((p) => p.band === 'scrap')).toBe(true)
+      expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(false)
     })
 
@@ -1007,16 +1009,18 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(true)
     })
 
-    it('a freshly fitted member shows neither the empty-state nor a dangling fee (playtest item 19)', async () => {
+    it('a freshly fitted member shows no empty-state, and Take it off returns', async () => {
       const game = useGameStore()
-      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres')!
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
       game.devGrantPart(tyresPart.id)
       const { wrapper } = await benchTyres(game)
 
-      await wrapper.find('[data-test^="bench-swap-tyres-"]').trigger('click')
+      await wrapper.find('[data-test="bench-replace-tyres"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('.part-card').trigger('click')
       await flushPromises()
       expect(wrapper.find('[data-test="bench-empty-tyres"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-remove-tyres"]').exists()).toBe(true)
     })
 
     it('a member with a recondition step never shows the empty-state, even with nothing to fit', async () => {

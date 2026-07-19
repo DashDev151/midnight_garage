@@ -12,7 +12,8 @@
   "baseBand": "worn",
   "partOverrides": [
     { "carPartId": "tyres", "band": "scrap" },
-    { "carPartId": "internals", "band": "fine" }
+    { "carPartId": "internals", "band": "fine" },
+    { "carPartId": "headValvetrain", "band": "poor" }
   ],
   "symptom": {
     "symptomId": "tick-at-idle",

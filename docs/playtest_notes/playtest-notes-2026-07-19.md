@@ -213,7 +213,30 @@ member slot reads empty - the container format always supported empty members an
 skips them) plus a "Take it off" button on any mounted bench member. On-car "Take it
 off" for ordinary parts was always there and is unchanged.
 
-### 26. Process ruling: no delegated tutorial sign-off (PROCESS)
+### 26. Cause deltas do not connect to anything the player later touches (DESIGN, open)
+
+"1750 to repair. What does that have to do with the original estimates at the start of
+the diagnosis process?" Verified: the "(about ¥X)" beside each candidate cause is a pure
+VALUE delta - `marketValueYen(apparent with the cause applied) - marketValueYen(apparent)`
+- i.e. how much less the car is worth if the cause is true. It is bid-side arithmetic
+(the same maths as the room's fear pricing), but it is unlabelled, never reappears after
+purchase, and the actual clearing cost is dominated by ACCESS (two ¥15,000 crane fees
+around a ¥1,750 repair), so the number reads as a repair quote and then matches nothing.
+Maintainer ruling: ONE simple metric, not two ("this is overcomplicated... think about
+what SIMPLE metric we can show the player"). Resolved: the value delta is gone; each
+cause now shows "fix about ¥X" - the mechanic's all-in estimate to make the fault good
+at the current tools (banded repair from the cause's damage back to the band the sheet
+shows, via the same `costToBandYen` atom the bills use, plus the crane round trip for
+buried engine/drivetrain parts and the tyre bench for tyres). The number the player
+weighs a bid against is now the same kind of number the repair buttons later charge,
+and owning tier-2 machines visibly shrinks it.
+
+### 27. Milestone: tutorial playable end to end (STATUS)
+
+First time in the project's history. Remaining: "a lot of tiny bugs and stuff I want to
+change" - to be dumped and triaged as the playtest continues.
+
+### 28. Process ruling: no delegated tutorial sign-off (PROCESS)
 
 The previous tutorial was drafted by an agent and signed off without a genuine
 step-by-step trace. Ruling: the orchestrator personally authors the walkthrough copy and
