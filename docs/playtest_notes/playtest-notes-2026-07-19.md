@@ -132,10 +132,11 @@ standing law for all future player-facing copy.
 
 "This isnt a medieval fantasy village that posts jobs in the middle of town for a witcher.
 Its just a mechanics shop. Clients Will Call, or just walk in." Maintainer chose the
-reframe (from three options): **the office phone**. Radial offers are calls and
-answering-machine messages; accepting is ringing back and booking the drop-off (which is
-exactly the existing arrives-tomorrow mechanic); story customers are walk-ins standing in
-the shop. Fleet work arriving by fax is noted as a period-true future hook. Sprint 97.
+reframe (from three options): **the office phone**, refined mid-sprint to LIVE calls
+rather than answering-machine messages. Radial offers are customers ringing the shop;
+accepting is booking the drop-off on the call (which is exactly the existing
+arrives-tomorrow mechanic); story customers are walk-ins standing in the shop. Fleet work
+arriving by fax is noted as a period-true future hook. Sprint 97.
 
 ### 16. Process ruling: no delegated tutorial sign-off (PROCESS)
 

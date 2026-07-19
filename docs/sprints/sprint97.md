@@ -18,12 +18,13 @@ schema, or sim change of any kind.
 
 ## Decisions
 
-1. **The fiction:** radial offers are calls the machine took while you were under a car;
-   accepting = ringing back and booking the drop-off; declining = ringing back and
-   politely turning the work down (still zero-penalty); story customers are walk-ins,
-   present in person (the tutorial introduces Yuki exactly that way).
+1. **The fiction (maintainer refinement mid-sprint):** radial offers are LIVE calls, not
+   answering-machine messages - customers ring the shop through the day; accepting =
+   booking the drop-off on the call; declining = politely turning the work down (still
+   zero-penalty); story customers are walk-ins, present in person (the tutorial
+   introduces Yuki exactly that way).
 2. **Labels:** nav tab "Jobs" -> "Phone"; screen title "Service jobs" -> "The phone";
-   board heading "Job board" -> "Messages"; Accept -> "Book it in" (Decline stays: it is
+   board heading "Job board" -> "Calls"; Accept -> "Book it in" (Decline stays: it is
    the honest verb for turning down work, and its zero-penalty semantics are established).
 3. **Internal names do not move:** the `jobs` route name, `nav-jobs` and every other
    data-test, store/sim identifiers, and code comments keep their current spelling -
