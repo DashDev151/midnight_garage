@@ -146,10 +146,6 @@ export function buildDemoState(
     car,
     bookValueYen: model.bookValueYen,
     expiresOnDay: DEMO_EXPIRES_ON_DAY,
-    currentBidYen: 0,
-    leadingBidder: null,
-    quietDays: 0,
-    playerHasBid: false,
     turnout: 'steady',
   }
   return {

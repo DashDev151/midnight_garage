@@ -22,9 +22,6 @@
   },
   "AUCTION_BUYOUT_PREMIUM": 1.25,
   "AUCTION_WHOLESALE_FRACTION": 0.97,
-  "AUCTION_QUIET_DAYS_TO_HAMMER": 3,
-  "AUCTION_BID_INCREMENT_FRACTION": 0.025,
-  "AUCTION_BID_INCREMENT_STEP_YEN": 5000,
   "AUCTION_DAILY_SPAWN_RATE": {
     "local-yard": 1.3,
     "regional": 1.1,
@@ -32,35 +29,13 @@
     "collector-network": 0.35
   },
   "AUCTION_MIN_AGE_YEARS": 3,
-  "auctionInterest": {
-    "perCohortBidChance": {
-      "local-yard": 0.55,
-      "regional": 0.5,
-      "premium": 0.45,
-      "collector-network": 0.4
-    },
-    "cohortValuationSpreadByTurnout": {
-      "thin": 0.3,
-      "steady": 0.16,
-      "packed": 0.08
-    },
-    "valueGapEagerBonus": 0.6,
-    "valueGapFloor": 0.3,
-    "valueGapCeiling": 1.6,
-    "turnoutBidderCounts": {
-      "thin": [1, 2],
-      "steady": [3, 4],
-      "packed": [5, 7]
-    },
-    "turnoutBandWeights": [0.2, 0.45, 0.35],
-    "maxIncrementsPerNight": 3
-  },
   "auction": {
     "rarityWeightsByReputation": {
       "unknown": {
         "shitbox": 3
       }
-    }
+    },
+    "turnoutBandWeights": [0.2, 0.45, 0.35]
   },
   "restoration": {
     "repairStepFraction": 0.1
@@ -394,6 +369,38 @@
     "saleRevealCopy": {
       "buyerWon": "The buyer had it looked over: <cause>. They did well out of you.",
       "playerWon": "The buyer had it looked over: <cause>. You did well out of them."
+    }
+  },
+  "auctionRoom": {
+    "clockMs": 5000,
+    "reserveFraction": 0.55,
+    "bidDelayMs": { "min": 800, "max": 4600 },
+    "bargainChance": 0.05,
+    "stepThresholdYen": 500000,
+    "stepBelowYen": 5000,
+    "stepAboveYen": 10000,
+    "playerRaiseOptionsRungs": [1, 4, 8],
+    "turnout": {
+      "thin": { "dealers": 2, "clearMin": 0.7, "clearMax": 0.85 },
+      "steady": { "dealers": 4, "clearMin": 0.72, "clearMax": 0.9 },
+      "packed": { "dealers": 6, "clearMin": 0.75, "clearMax": 0.95 }
+    },
+    "reactions": {
+      "jumpRungs": 4,
+      "scareChance": 0.15,
+      "scareLeftRungs": 2,
+      "callChance": 0.12,
+      "callRungs": 3,
+      "goadChance": 0.03,
+      "goadMaxLift": 1.06,
+      "snipeWindowMs": 800,
+      "snipesBeforeTax": 2,
+      "snipeTaxChance": 0.15,
+      "snipeTaxRungs": 2,
+      "feudChance": 0.08,
+      "feudMinGapRungs": 6,
+      "feudRungs": 4,
+      "feudDelayMs": { "min": 400, "max": 1100 }
     }
   },
   "lapModel": {

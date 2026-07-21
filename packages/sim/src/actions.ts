@@ -37,11 +37,6 @@ const LaborAssignmentSchema = z.object({
   laborSlots: z.number().int().positive(),
 })
 
-const BidOnLotSchema = z.object({
-  lotId: z.string().min(1),
-  maxBidYen: z.number().int().positive(),
-})
-
 /** Sprint 31: accept today's live pending offer on this car, resolving
  * through `resolveSellViaWalkIn`'s reputation/heat/event-log plumbing. */
 const AcceptOfferActionSchema = z.object({ carInstanceId: z.string().min(1) })
@@ -99,7 +94,6 @@ const UpgradeToolLineActionSchema = z.object({ componentId: ComponentIdSchema })
 export const DayActionsSchema = z.object({
   createJobs: z.array(NewJobSpecSchema).default([]),
   laborAssignments: z.array(LaborAssignmentSchema).default([]),
-  bidsOnLots: z.array(BidOnLotSchema).default([]),
   buyoutLots: z.array(BuyoutLotActionSchema).default([]),
   acceptOffers: z.array(AcceptOfferActionSchema).default([]),
   setForSale: z.array(SetForSaleActionSchema).default([]),
@@ -122,7 +116,6 @@ export const DayActionsSchema = z.object({
 
 export type NewJobSpec = z.infer<typeof NewJobSpecSchema>
 export type LaborAssignment = z.infer<typeof LaborAssignmentSchema>
-export type BidOnLotAction = z.infer<typeof BidOnLotSchema>
 export type AcceptOfferAction = z.infer<typeof AcceptOfferActionSchema>
 export type SetForSaleAction = z.infer<typeof SetForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>

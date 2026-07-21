@@ -8,8 +8,6 @@ export type AuctionLotCardView = Pick<
   | 'displayName'
   | 'fitmentClass'
   | 'turnout'
-  | 'playerHasBid'
-  | 'leadingBidder'
   | 'auctionGrade'
   | 'symptoms'
   | 'guideValueYen'
@@ -28,15 +26,15 @@ import SymptomChecklist from './SymptomChecklist.vue'
 /**
  * The production presentation of one auction lot, shared by the auction board
  * and the dev auction-room demo: the left identity panel (display name and
- * class chip, the year/km/colour line, the turnout badge and outbid state, the
- * art placeholder, the three condition grades, and the public symptom
- * checklist) plus the right-hand value block (the room's number and its
- * ledger). Purely presentational: the parent owns every decision. The bid stack
- * (leading bid, raise controls, buyout, reserve, close line) lives in each
- * parent and drops into the `headline`, `info`, and `actions` slots, so this
- * card never touches bidding and the demo can swap that region for the live
- * room. The SymptomChecklist callbacks (`disabledReasonFor`, the `run-test`
- * emit) pass straight through, keeping the test logic in the parent.
+ * class chip, the year/km/colour line, the turnout badge, the art
+ * placeholder, the three condition grades, and the public symptom checklist)
+ * plus the right-hand value block (the room's number and its ledger). Purely
+ * presentational: the parent owns every decision. The buy stack (buyout,
+ * reserve, close line) lives in each parent and drops into the `headline`,
+ * `info`, and `actions` slots, so this card never touches acquisition and the
+ * demo can swap that region for the live room. The SymptomChecklist callbacks
+ * (`disabledReasonFor`, the `run-test` emit) pass straight through, keeping
+ * the test logic in the parent.
  */
 
 withDefaults(
@@ -90,12 +88,6 @@ const TURNOUT_LABEL: Record<string, string> = {
       <div class="lot-turnout">
         <span class="turnout-badge" :class="'turnout-' + d.turnout">
           {{ TURNOUT_LABEL[d.turnout] }}
-        </span>
-        <!-- The headline reads a neutral "leading bid" when a rival is ahead, so
-             this badge is the only place the card says that the player bid and is
-             losing. -->
-        <span v-if="d.playerHasBid && d.leadingBidder !== 'player'" class="winning-state outbid">
-          outbid
         </span>
       </div>
 
@@ -320,15 +312,5 @@ const TURNOUT_LABEL: Record<string, string> = {
 
 .turnout-packed {
   color: var(--mg-yen);
-}
-
-.winning-state {
-  font-size: var(--mg-fs-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.winning-state.outbid {
-  color: var(--mg-danger);
 }
 </style>

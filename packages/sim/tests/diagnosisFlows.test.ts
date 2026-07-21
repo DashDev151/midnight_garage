@@ -298,10 +298,6 @@ function buildLot(car: CarInstance): AuctionLot {
     car,
     bookValueYen: MODEL!.bookValueYen,
     expiresOnDay: 8,
-    currentBidYen: 0,
-    leadingBidder: null,
-    quietDays: 0,
-    playerHasBid: false,
     turnout: 'steady',
   }
 }

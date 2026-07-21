@@ -49,6 +49,11 @@ export const router = createRouter({
       name: 'auctions',
       component: () => import('../screens/AuctionScreen.vue'),
     },
+    {
+      path: '/auctions/:lotId/room',
+      name: 'auction-room',
+      component: () => import('../screens/AuctionRoomScreen.vue'),
+    },
     { path: '/parts', name: 'parts', component: () => import('../screens/PartsMarketScreen.vue') },
     {
       path: '/inventory',

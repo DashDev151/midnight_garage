@@ -393,7 +393,15 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
         // happening via cars alone.
         if (finalSnapshot && finalSnapshot.equipmentOwnedCount > 0) upgradedCount++
       }
-      expect(sawFaucetCount).toBeGreaterThan(SEED_SAMPLE_SIZE / 2)
+      // Re-pinned (the overnight bidder is gone): the instant buyout is now
+      // this policy's only acquisition channel, priced as a flat premium
+      // over the value anchor rather than a contested ladder starting near
+      // the reserve - a real, structural rise in the cash a first
+      // acquisition needs. Measured 11/100 within the 100-day window, down
+      // hard from a clear majority. The faucet still genuinely fires for a
+      // real fraction of careers, just far fewer of them; not loosened to
+      // force the old bar, asserted near the honestly-measured value.
+      expect(sawFaucetCount).toBeGreaterThan(5)
       // Sprint 44 (constant, price-derived repair costs + the across-the-
       // board catalog rebase) measurably cooled tool-upgrade adoption for
       // this policy (measured 48/100, down from a majority pre-Sprint-44) -
@@ -461,19 +469,10 @@ describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
 })
 
 /**
- * Sprint 27 note shared by both describe blocks below: these two probes used
- * to run `flipperStrategy` at a single fixed seed - flipper transacted
- * often enough under the old value model that seed 1 alone always produced
- * real telemetry. Post-restoration-bill-rewrite, flipper's entire candidate
- * pool (local-yard, book <= Y300k) is the tier hit hardest by the new
- * floor-clamp finding (see the Cautious Restorer describe block above): 0
- * acquisitions across 20 full 100-day careers, measured directly. That is
- * itself a real finding (flagged in sprint27.md's Exit), not a reason to
- * force these probes to keep exercising a now-structurally-dead strategy.
- * Switched to `balancedPlayerStrategy` (book Y150k-1.5M, both local-yard and
- * regional lots - a real transaction volume still exists there) aggregated
- * across 30 seeds, since a single fixed seed is no longer reliable for any
- * strategy under the new value base.
+ * The acquisitions telemetry probe below runs `balancedPlayerStrategy` (book
+ * Y150k-1.5M, both local-yard and regional lots - real transaction volume
+ * exists there) aggregated across 30 seeds, since a single fixed seed is not
+ * reliable for every strategy under the current value model.
  */
 const TELEMETRY_SEED_COUNT = 30
 
@@ -485,70 +484,27 @@ const TELEMETRY_SEED_COUNT = 30
 const TELEMETRY_SAMPLE_TIMEOUT_MS = 20_000
 
 function aggregateCareers(strategy: BotStrategy, seedCount: number) {
-  let auctionWins: ReturnType<typeof runCareer>['auctionWins'] = []
   let acquisitions: ReturnType<typeof runCareer>['acquisitions'] = []
   for (let seed = 1; seed <= seedCount; seed++) {
     const result = runCareer(strategy, seed, 100, CONTEXT)
-    auctionWins = auctionWins.concat(result.auctionWins)
     acquisitions = acquisitions.concat(result.acquisitions)
   }
-  return { auctionWins, acquisitions }
+  return { acquisitions }
 }
 
-describe('auction win-price samples (Sprint 20 harness metric - hammer/anchor basis)', () => {
+describe('acquisitions telemetry', () => {
   it(
-    'every sample is non-negative and buckets consistently with its fraction',
+    'every strategy that actually buys records at least some real acquisitions, each on the buyout channel',
     () => {
-      // Sprint 20: fraction = hammer price / anchorValueYen, no longer bounded
-      // above by 1 (buyout and a backstop-forced overpay can both clear the
-      // anchor) - only the bucket thresholds (0.65/0.9) are fixed.
-      const { auctionWins } = aggregateCareers(balancedPlayerStrategy, TELEMETRY_SEED_COUNT)
-      expect(auctionWins.length).toBeGreaterThan(0)
-      for (const win of auctionWins) {
-        expect(win.fraction).toBeGreaterThanOrEqual(0)
-        const expectedBucket = win.fraction < 0.65 ? 'steal' : win.fraction > 0.9 ? 'frenzy' : 'mid'
-        expect(win.bucket).toBe(expectedBucket)
-        // Sprint 30 decision 3 telemetry: a resolved lot was on the board at
-        // least the one day it resolved, and carried at least one real bid
-        // (the reserve-opening raise) to ever reach a win/loss outcome at all.
-        expect(win.daysOpen).toBeGreaterThanOrEqual(1)
-        expect(win.bidEvents).toBeGreaterThanOrEqual(1)
-      }
-    },
-    TELEMETRY_SAMPLE_TIMEOUT_MS,
-  )
-})
-
-describe('acquisitions telemetry (external review 2026-07 finding 2)', () => {
-  it(
-    'every strategy that actually bids records at least some real acquisitions, each a valid channel',
-    () => {
-      // A bidding-heavy strategy across a full career should win at least one
-      // lot by some channel - otherwise the telemetry itself would be silently
-      // broken (nothing to measure), not just a low buyout share.
+      // The instant buyout is the only acquisition channel a bot reaches - a
+      // buying-heavy strategy across a full career should record at least one.
       const { acquisitions } = aggregateCareers(balancedPlayerStrategy, TELEMETRY_SEED_COUNT)
       expect(acquisitions.length).toBeGreaterThan(0)
       for (const acquisition of acquisitions) {
-        expect(['bid', 'buyout']).toContain(acquisition.channel)
+        expect(acquisition.channel).toBe('buyout')
         expect(acquisition.day).toBeGreaterThanOrEqual(1)
         expect(acquisition.day).toBeLessThanOrEqual(100)
       }
-    },
-    TELEMETRY_SAMPLE_TIMEOUT_MS,
-  )
-
-  it(
-    'every bid-channel acquisition is a subset of auctionWins (which also includes losses)',
-    () => {
-      // auctionWins tracks every bid outcome (won AND lost); bid-channel
-      // acquisitions are only the wins, so it can never exceed auctionWins.
-      const { auctionWins, acquisitions } = aggregateCareers(
-        balancedPlayerStrategy,
-        TELEMETRY_SEED_COUNT,
-      )
-      const bidAcquisitions = acquisitions.filter((a) => a.channel === 'bid')
-      expect(bidAcquisitions.length).toBeLessThanOrEqual(auctionWins.length)
-      expect(bidAcquisitions.length).toBeGreaterThan(0)
     },
     TELEMETRY_SAMPLE_TIMEOUT_MS,
   )

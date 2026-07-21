@@ -15,7 +15,7 @@ import {
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { anchorValueYen, nextRaiseYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
+import { anchorValueYen, computeBuyoutPriceYen, resolveBuyoutInstant } from '../src/bidding'
 import {
   auctionTierForRarity,
   generateAuctionCarInstance,
@@ -219,52 +219,23 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
   })
 })
 
-describe('full-flip probe (acceptance, sprint21.md)', () => {
-  it('acquire (scripted patient bidder) -> full restoration -> best-channel sale nets a positive margin most of the time', () => {
-    // Rent is 0 (Sprint 20 decision, restored in Sprint 23) - this measures
-    // the acquisition-restoration-sale loop itself, not the cost treadmill.
-    // "Best-channel" sale price is the best-fit buyer's own un-spread
-    // valuation (Sprint 31 removed the separate list-publicly channel that
-    // used to serve this role) - still deterministic, unlike an actual
-    // offer's rolled spread, so the probe measures the value model, not
-    // channel RNG.
+describe('full-flip probe (acceptance)', () => {
+  it('acquire (instant buyout, the acquisition channel a scripted probe can reach) -> full restoration -> best-channel sale nets a positive margin most of the time', () => {
+    // Rent is 0 - this measures the acquisition-restoration-sale loop
+    // itself, not the cost treadmill. "Best-channel" sale price is the
+    // best-fit buyer's own un-spread valuation - still deterministic, unlike
+    // an actual offer's rolled spread, so the probe measures the value
+    // model, not channel RNG.
     const marginFractions: number[] = []
 
     for (const initial of independentLots(200, 3000)) {
-      let state = stateWithLots([initial])
+      const state = stateWithLots([initial])
       const anchor = anchorValueYen(initial, state, CONTEXT)
       if (anchor <= 0) continue
-      const targetYen = anchor // never pay more than the car is genuinely worth
-      if (nextRaiseYen(initial, state, CONTEXT) > targetYen) continue // wouldn't even open at a price it likes
 
-      let lot = initial
-      let wonPriceYen: number | null = null
-      for (let day = 1; day <= 40 && wonPriceYen === null; day++) {
-        if (lot.leadingBidder !== 'player') {
-          const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
-          if (raiseToYen <= targetYen) {
-            const bidResult = resolvePlaceBid(state, lot.id, raiseToYen, CONTEXT)
-            state = bidResult.state
-            const updated = state.activeAuctionLots.find((l) => l.id === lot.id)
-            if (updated) lot = updated
-          }
-        }
-        const dayResult = resolveLotForDay(state, lot, CONTEXT, day)
-        state = dayResult.state
-        const stillActive = state.activeAuctionLots.find((l) => l.id === lot.id)
-        if (stillActive) {
-          lot = stillActive
-          continue
-        }
-        const wonEntry = dayResult.log.find((e) => e.type === 'auction-bid-won')
-        if (wonEntry && wonEntry.type === 'auction-bid-won') {
-          wonPriceYen = wonEntry.finalPriceYen
-        }
-        break
-      }
-
-      if (wonPriceYen === null) continue
-      const boughtCar = state.ownedCars.find((c) => c.id === initial.car.id)
+      const wonPriceYen = computeBuyoutPriceYen(initial, state, CONTEXT)
+      const result = resolveBuyoutInstant(state, initial.id, CONTEXT)
+      const boughtCar = result.state.ownedCars.find((c) => c.id === initial.car.id)
       if (!boughtCar) continue
 
       const restoredCar = fullyRestored(boughtCar, PROBE_MODEL)
@@ -781,9 +752,9 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
  * real walk-in channel (`sellViaWalkIn`, one seeded draw per lot) - the
  * literal "buy and flip immediately" play the playtest hit.
  */
-describe('unimproved-flip probe (Sprint 59 decision 1, playtest item 19)', () => {
+describe('unimproved-flip probe (the instant-flip guard)', () => {
   it.each(['shitbox', 'common', 'uncommon', 'rare'] as const)(
-    'the median unimproved flip on a %s-tier car nets within a tight band of the purchase price',
+    'the median unimproved flip on a %s-tier car reliably loses money through the instant buyout',
     (tier) => {
       const models = CARS.filter((c) => c.tier === tier)
       expect(models.length, `no ${tier}-tier car in the roster to probe`).toBeGreaterThan(0)
@@ -806,40 +777,13 @@ describe('unimproved-flip probe (Sprint 59 decision 1, playtest item 19)', () =>
           const state = stateWithLots([lot])
           const anchor = anchorValueYen(lot, state, CONTEXT)
           if (anchor <= 0) continue
-          const targetYen = anchor // never pay more than the car is genuinely worth
 
-          let workingState = state
-          let current = lot
-          let wonPriceYen: number | null = null
-          for (let day = 1; day <= 40 && wonPriceYen === null; day++) {
-            if (current.leadingBidder !== 'player') {
-              const raiseToYen = nextRaiseYen(current, workingState, CONTEXT)
-              if (raiseToYen <= targetYen) {
-                const bidResult = resolvePlaceBid(workingState, current.id, raiseToYen, CONTEXT)
-                workingState = bidResult.state
-                const updated = workingState.activeAuctionLots.find((l) => l.id === lot.id)
-                if (updated) current = updated
-              }
-            }
-            const dayResult = resolveLotForDay(workingState, current, CONTEXT, day)
-            workingState = dayResult.state
-            const stillActive = workingState.activeAuctionLots.find((l) => l.id === lot.id)
-            if (stillActive) {
-              current = stillActive
-              continue
-            }
-            const wonEntry = dayResult.log.find((e) => e.type === 'auction-bid-won')
-            if (wonEntry && wonEntry.type === 'auction-bid-won') {
-              wonPriceYen = wonEntry.finalPriceYen
-            }
-            break
-          }
-          if (wonPriceYen === null) continue // lost the bidding war - not a flip to measure
-
-          const boughtCar = workingState.ownedCars.find((c) => c.id === lot.car.id)
+          const wonPriceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+          const result = resolveBuyoutInstant(state, lot.id, CONTEXT)
+          const boughtCar = result.state.ownedCars.find((c) => c.id === lot.car.id)
           if (!boughtCar) continue
 
-          // Sell AS ROLLED - no repair, no parts bought, exactly item 19's play.
+          // Sell AS ROLLED - no repair, no parts bought: the instant-flip play.
           const sellRng = createRng(hashStringToSeed(`flip-probe-sell:${lot.id}`))
           const offer = sellViaWalkIn(
             boughtCar,
@@ -858,27 +802,13 @@ describe('unimproved-flip probe (Sprint 59 decision 1, playtest item 19)', () =>
 
       expect(marginFractions.length).toBeGreaterThan(10)
       const marginMedian = median(marginFractions)
-      // Re-measured against Sprint 66's population (the band, not the law,
-      // is population-relative - and Sprint 66 deliberately rebuilt the
-      // population it is measured over: `wearExposure` stops rolling worn
-      // parts onto barely-driven cars, `maxBillFraction` 0.7 -> 0.6 caps how
-      // rough a lot can be, and `marketRepairDiscount` 1.2 -> 1.5 re-slopes
-      // damaged-car value). Now: shitbox +7.3%, common +5.9%, uncommon
-      // +5.1%, rare +5.2%, against Sprint 59's +5.5/+2.8/+2.5/+5.7. All four
-      // drifted UP a few points and all stay on the profit side - disclosed
-      // rather than tuned away, since this is still an order of magnitude
-      // below the ~49% structural giveaway item 19 reported, and a
-      // disciplined bidder winning a modest discount is the intended shape.
-      // The fault-ladder catastrophe and moderate causes reshape the generated
-      // population and lift the rare tier's median as-is flip to ~8.1%; 9% is
-      // headroom above every measured tier, and the shape stays a modest
-      // discount, disclosed rather than tuned away.
-      //
-      // This band does NOT gate the wage law: both the as-is flip and the
-      // repair flip start from the same won price, so the bidding discount
-      // is common to both and cancels. Repair's advantage is
-      // `(D - 1) x bill` ON TOP of it - see the wage probe below.
-      expect(Math.abs(marginMedian)).toBeLessThanOrEqual(0.09)
+      // The instant buyout is a flat premium over the value anchor
+      // (AUCTION_BUYOUT_PREMIUM), never a contested price - buying outright
+      // and reselling untouched the same day is not free money: the margin
+      // sits reliably negative, on the order of the premium itself, not
+      // within a tight band of zero.
+      expect(marginMedian).toBeLessThan(-0.1)
+      expect(marginMedian).toBeGreaterThan(-0.35)
     },
   )
 })

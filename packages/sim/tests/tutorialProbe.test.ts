@@ -14,7 +14,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { assemblyMachineAssistFeeYen, benchSwapFeeYen } from '../src/assemblies'
 import { carCostToBandYen, hasForcedInduction } from '../src/bands'
-import { reserveYen, resolveLotForDay, resolvePlaceBid } from '../src/bidding'
+import { reserveYen, settleAuctionHammer } from '../src/bidding'
 import { buildSimContext } from '../src/context'
 import { expectedTrueValueYen, sheetGuideValueYen } from '../src/diagnosis'
 import { gradeMissionCar } from '../src/missions'
@@ -160,21 +160,13 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
     expect(report.pass, JSON.stringify(report.lines)).toBe(true)
   })
 
-  it('resolves through the normal bidding sim to a guaranteed win at reserve', () => {
-    let s = installTutorial(state, CONTEXT)
+  it('settles through the live-room hammer seam at reserve', () => {
+    const s = installTutorial(state, CONTEXT)
     expect(s.activeAuctionLots.some((l) => l.id === RECIPE.lotId)).toBe(true)
 
-    const bid = resolvePlaceBid(s, RECIPE.lotId, reserve, CONTEXT)
-    s = bid.state
-    const live = s.activeAuctionLots.find((l) => l.id === RECIPE.lotId)!
-    expect(live.leadingBidder).toBe('player')
-
-    // expiresOnDay === day 1, so the first End-Day resolution hammers it, and a
-    // scripted lot never receives a rival raise, so the player leads at reserve.
-    const resolved = resolveLotForDay(s, live, CONTEXT, s.day)
-    s = resolved.state
-    expect(s.activeAuctionLots.some((l) => l.id === RECIPE.lotId)).toBe(false)
-    expect(s.ownedCars.some((c) => c.id === RECIPE.carId)).toBe(true)
-    expect(s.carLedgers[RECIPE.carId]?.purchaseYen).toBe(reserve)
+    const settled = settleAuctionHammer(s, RECIPE.lotId, reserve, CONTEXT)
+    expect(settled.state.activeAuctionLots.some((l) => l.id === RECIPE.lotId)).toBe(false)
+    expect(settled.state.ownedCars.some((c) => c.id === RECIPE.carId)).toBe(true)
+    expect(settled.state.carLedgers[RECIPE.carId]?.purchaseYen).toBe(reserve)
   })
 })

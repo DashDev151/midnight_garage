@@ -61,14 +61,8 @@ export function describeLogEntry(
       return `Market heat: ${resolveModelName(entry.modelId)} ${entry.deltaPercent >= 0 ? '+' : ''}${entry.deltaPercent}%`
     case 'auction-catalog-refreshed':
       return `New ${entry.tier} auction catalog: ${pluralise(entry.lotCount, 'lot')}`
-    case 'auction-bid-placed':
-      return `Bid ${formatYen(entry.maxBidYen)} on lot ${entry.lotId}`
-    case 'auction-outbid':
-      return `Outbid overnight on the ${entry.year} ${resolveModelName(entry.modelId)} - now ${formatYen(entry.newBidYen)}`
-    case 'auction-bid-won':
-      return `Won the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.finalPriceYen)}`
-    case 'auction-bid-lost':
-      return `Lost the ${entry.year} ${resolveModelName(entry.modelId)} (went for ${formatYen(entry.winningPriceYen)})`
+    case 'auction-hammer-won':
+      return `Won the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.priceYen)}`
     case 'lot-bought-out':
       return `Bought the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.priceYen)}`
     case 'offer-received':
@@ -141,11 +135,9 @@ export function describeLogEntry(
       const reasonText =
         entry.reason === 'no-space'
           ? 'no room anywhere - parking, every bay, and the double-parking spot are all full'
-          : entry.reason === 'no-cash'
-            ? 'not enough cash'
-            : entry.reason === 'technique'
-              ? 'needs a technique not yet unlocked'
-              : 'needs a tool upgrade'
+          : entry.reason === 'technique'
+            ? 'needs a technique not yet unlocked'
+            : 'needs a tool upgrade'
       return `${entry.kind} blocked - ${reasonText}`
     }
     case 'equipment-purchased':
@@ -191,11 +183,9 @@ export function describeLogEntry(
  * Sprint 64 (playtest pass-2 item 13): the morning report's structured view,
  * derived entirely in the game layer from a day's `DayLogEntry[]` (the sim is
  * untouched). Winning a car opens the report as a celebration, not a red
- * number; the recurring money is summed into one honest line; the meaningful
- * shop/market lines are ordered (outbid alerts first, they're actionable);
- * and the pure noise (heat drift, catalogue refreshes, per-tick labour) is
- * aggregated into a couple of quiet, correctly-pluralised lines instead of
- * flooding the list.
+ * number; the recurring money is summed into one honest line; and the pure
+ * noise (heat drift, catalogue refreshes, per-tick labour) is aggregated into
+ * a couple of quiet, correctly-pluralised lines instead of flooding the list.
  */
 export interface DayReportWin {
   modelName: string
@@ -218,14 +208,14 @@ export interface DayReportMoney {
 export interface DayReportView {
   wins: DayReportWin[]
   money: DayReportMoney
-  /** The meaningful, individually-worth-reading lines, outbid alerts first. */
+  /** The meaningful, individually-worth-reading lines. */
   notable: string[]
   /** Aggregated quiet lines - grammar-correct, low decision value. */
   noise: string[]
 }
 
 /** Types that become celebration cards, not list lines. */
-const WIN_TYPES = new Set<DayLogEntry['type']>(['auction-bid-won', 'lot-bought-out'])
+const WIN_TYPES = new Set<DayLogEntry['type']>(['auction-hammer-won', 'lot-bought-out'])
 /** Types represented in the money split only - no individual list line. */
 const MONEY_ONLY_TYPES = new Set<DayLogEntry['type']>(['rent-paid', 'wage-paid', 'contract-income'])
 /** Types folded into aggregated noise lines rather than shown one-per-entry. */
@@ -245,21 +235,20 @@ export function classifyDayReport(
 ): DayReportView {
   const wins: DayReportWin[] = []
   const money: DayReportMoney = { earnedYen: 0, onCarsYen: 0, billsYen: 0 }
-  const outbid: string[] = []
   const rest: string[] = []
   let heatShifts = 0
   let labourTicked = 0
 
   for (const entry of entries) {
     switch (entry.type) {
-      case 'auction-bid-won':
+      case 'auction-hammer-won':
         wins.push({
           modelName: resolveModelName(entry.modelId),
           year: entry.year,
-          priceYen: entry.finalPriceYen,
+          priceYen: entry.priceYen,
           kind: 'won',
         })
-        money.onCarsYen += entry.finalPriceYen
+        money.onCarsYen += entry.priceYen
         break
       case 'lot-bought-out':
         wins.push({
@@ -295,9 +284,6 @@ export function classifyDayReport(
         money.billsYen += Math.abs(entry.amountYen)
         rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
-      case 'auction-outbid':
-        outbid.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
-        break
       // Sprint 69 item 5: swallowed on purpose. The sim still logs the entry
       // (the day log and the harness both read it); the morning report simply
       // stops narrating inventory churn the player can go and look at.
@@ -326,5 +312,5 @@ export function classifyDayReport(
   // sweep): labourTicked is an integer labour point value now, not whole slots.
   if (labourTicked > 0) noise.push(`${labourTicked} labour spent in the shop`)
 
-  return { wins, money, notable: [...outbid, ...rest], noise }
+  return { wins, money, notable: rest, noise }
 }

@@ -256,10 +256,6 @@ function buildLot(car: CarInstance, tier: AuctionLot['tier'] = 'local-yard'): Au
     car,
     bookValueYen: MODEL.bookValueYen,
     expiresOnDay: 8,
-    currentBidYen: 0,
-    leadingBidder: null,
-    quietDays: 0,
-    playerHasBid: false,
     turnout: 'steady',
   }
 }
@@ -391,18 +387,14 @@ describe('rival blindness (Sprint 73 decision 3): rivals never read trueCauseId 
       car,
       bookValueYen: MODEL.bookValueYen,
       expiresOnDay: 8,
-      currentBidYen: 0,
-      leadingBidder: null,
-      quietDays: 0,
-      playerHasBid: false,
       turnout: 'steady' as const,
     })
 
     expect(anchorValueYen(lotFor(narrowed), STATE, CONTEXT)).toBe(
       anchorValueYen(lotFor(wide), STATE, CONTEXT),
     )
-    expect(privateValuationYen(lotFor(narrowed), STATE, CONTEXT, 1, 'cohort-1')).toBe(
-      privateValuationYen(lotFor(wide), STATE, CONTEXT, 1, 'cohort-1'),
+    expect(privateValuationYen(lotFor(narrowed), STATE, CONTEXT, 1)).toBe(
+      privateValuationYen(lotFor(wide), STATE, CONTEXT, 1),
     )
   })
 })

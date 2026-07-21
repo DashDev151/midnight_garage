@@ -256,13 +256,12 @@ const TURNOUT_BANDS: readonly TurnoutBand[] = ['thin', 'steady', 'packed']
 
 /**
  * Rolls a lot's rival-turnout band (Sprint 30 decision 3), weighted by
- * `economy.auctionInterest.turnoutBandWeights` - fixed for the lot's whole
- * life (see `TurnoutBandSchema`'s own doc comment, content/auction.ts).
- * `bidding.ts`'s `turnoutBidderCount` turns this into an actual rival-cohort
- * count.
+ * `economy.auction.turnoutBandWeights` - fixed for the lot's whole life (see
+ * `TurnoutBandSchema`'s own doc comment, content/auction.ts). Feeds the live
+ * auction room's own turnout tuning (`economy.auctionRoom.turnout`).
  */
 function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
-  const weights = economy.auctionInterest.turnoutBandWeights
+  const weights = economy.auction.turnoutBandWeights
   const total = weights.reduce((sum, w) => sum + w, 0)
   if (total <= 0) return 'steady'
   let roll = rng.next() * total
@@ -837,10 +836,6 @@ export function generateAuctionCatalog(
       car,
       bookValueYen: model.bookValueYen,
       expiresOnDay: day + rollAuctionDurationDays(model.tier, rng, economy),
-      currentBidYen: 0,
-      leadingBidder: null,
-      quietDays: 0,
-      playerHasBid: false,
       turnout: rollTurnoutBand(rng, economy),
     })
   }

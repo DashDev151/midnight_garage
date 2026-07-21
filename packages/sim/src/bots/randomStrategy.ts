@@ -1,12 +1,7 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
-import {
-  acquireLot,
-  activeBidCount,
-  auctionAcquisitionBudget,
-  walkAwayTargetYen,
-} from './buyoutHelpers'
+import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
@@ -30,19 +25,17 @@ type Archetype = 'flip' | 'restore' | 'mid'
 const ARCHETYPES: readonly Archetype[] = ['flip', 'restore', 'mid']
 
 /**
- * Bid size deliberately does NOT vary by archetype. Cautious Restorer's
- * real 1.1x premium is earned - it always inspects before it bids, so it's
- * paying for genuine information an uninspected AI bidder doesn't have.
+ * The walk-away ceiling deliberately does NOT vary by archetype - set above
+ * the instant buyout's own flat premium (`AUCTION_BUYOUT_PREMIUM`) so this
+ * bot can actually clear a real buyout. Cautious Restorer's real extra
+ * margin above this baseline is earned - it always inspects before it buys,
+ * so it's paying for genuine information an uninspected bot doesn't have.
  * Random's archetype is assigned to a car independently of whether that
  * specific lot was ever inspected (see step 4/5 below - inspection and
- * bidding target different, unrelated random picks), so a "restore"-typed
- * bid has no informational edge to justify paying more. Bidding higher
- * with no edge doesn't express a preference, it just wins more auctions
- * it should be losing - a real, earlier version of this bot did exactly
- * that (see sprint03.md finding 8's follow-up) and the resulting 78%
- * restore-trade share was pure winner's-curse, not a playstyle mix.
+ * buying target different, unrelated random picks), so a "restore"-typed
+ * pick has no informational edge to justify paying more than the baseline.
  */
-const BID_MULTIPLIER = 1.0
+const BID_MULTIPLIER = 1.3
 
 interface ArchetypeProfile {
   /** How many zones get repaired before the car is considered sellable. */
@@ -166,19 +159,14 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
     })
   }
 
-  // 4. Join or continue a war on one affordable lot if there's room for
-  // another car - the same target multiplier regardless of which archetype
-  // the car will turn out to be played as (see BID_MULTIPLIER's comment: no
-  // archetype has an informational edge at this stage, so none should pay a
-  // premium). Sprint 20: open bidding - `leadingBidder !== 'player'` covers
-  // both a fresh lot and one this bot was outbid on but is still willing to
-  // chase under its walk-away target.
-  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
+  // 4. Buy out one affordable lot if there's room for another car - the
+  // same target multiplier regardless of which archetype the car will turn
+  // out to be played as (see BID_MULTIPLIER's comment: no archetype has an
+  // informational edge at this stage, so none should pay a premium).
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
   if (roomForMoreCars > 0) {
     const affordable = state.activeAuctionLots.filter(
-      (lot) =>
-        lot.leadingBidder !== 'player' &&
-        state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
+      (lot) => state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (affordable.length > 0) {
       const lot = rng.pick(affordable)
@@ -189,7 +177,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
         targetYen,
         actions,
         context,
-        auctionAcquisitionBudget(state),
+        auctionAcquisitionBudget(),
         CASH_BUFFER_MULTIPLIER,
       )
     }

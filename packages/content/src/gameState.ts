@@ -101,6 +101,27 @@ export const InspectionVisitSchema = z.object({
 
 export type InspectionVisit = z.infer<typeof InspectionVisitSchema>
 
+/** The live auction room's fuse-length accessibility preset: standard runs the
+ * config's own `clockMs`; relaxed and unhurried scale it longer. The room
+ * machine itself never reads this - the caller building a room scales the
+ * config object it hands in and the machine stays ignorant of the setting. */
+export const FusePresetSchema = z.enum(['standard', 'relaxed', 'unhurried'])
+
+export type FusePreset = z.infer<typeof FusePresetSchema>
+
+/**
+ * A small persisted player-preference slice, separate from any sim-economic
+ * state - currently just the fuse-length preset. Genuinely optional (not
+ * defaulted): a save that predates this reads as absent, which every caller
+ * treats as the standard preset, so no existing `GameState` literal needs a
+ * new field.
+ */
+export const UiSettingsSchema = z.object({
+  fusePreset: FusePresetSchema,
+})
+
+export type UiSettings = z.infer<typeof UiSettingsSchema>
+
 /**
  * Sprint 76 (story missions I): one campaign mission's live progress - the
  * mission itself (`StoryMission`, content) is static; this is the only part
@@ -383,6 +404,14 @@ export const GameStateSchema = z.object({
    * action appends to it, and the sim never reads it.
    */
   tutorialAcknowledgedSteps: z.array(z.string().min(1)).optional(),
+  /**
+   * A small persisted player-preference slice (the live auction room's
+   * fuse-length preset) - absent on a career that predates it, reading as the
+   * standard preset everywhere it's consumed. The genuinely-optional-key
+   * pattern (like `tutorialStatus` above), so no existing `GameState` literal
+   * needs touching.
+   */
+  uiSettings: UiSettingsSchema.optional(),
 })
 
 /**
@@ -478,38 +507,17 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     tier: AuctionTierSchema,
     lotCount: z.number().int().nonnegative(),
   }),
-  z.object({
-    type: z.literal('auction-bid-placed'),
-    lotId: z.string().min(1),
-    maxBidYen: z.number().int().positive(),
-  }),
   /**
-   * Sprint 20 (auction rework II): the overnight-step "you were outbid"
-   * beat - fires only when the dealers' raise displaces the player as
-   * `leadingBidder` (never on a dealer-vs-dealer raise, which logs nothing).
-   * `modelId`/`year` (Sprint 46) let the log name the car - the lot itself
-   * is gone from state by the time this renders, so both are snapshotted
-   * from `lot.car`/`model` at the point the entry is created, not resolved
-   * later.
+   * The live auction room's hammer win (`settleAuctionHammer`, sim/
+   * bidding.ts): a contested win at whatever price the room actually closed
+   * at, as opposed to `lot-bought-out`'s flat instant-buyout premium. Same
+   * shape as `lot-bought-out` - the two channels resolve through the same
+   * pure purchase path and differ only in how `priceYen` was arrived at.
    */
   z.object({
-    type: z.literal('auction-outbid'),
+    type: z.literal('auction-hammer-won'),
     lotId: z.string().min(1),
-    newBidYen: z.number().int().nonnegative(),
-    modelId: z.string().min(1),
-    year: z.number().int(),
-  }),
-  z.object({
-    type: z.literal('auction-bid-won'),
-    lotId: z.string().min(1),
-    finalPriceYen: z.number().int().nonnegative(),
-    modelId: z.string().min(1),
-    year: z.number().int(),
-  }),
-  z.object({
-    type: z.literal('auction-bid-lost'),
-    lotId: z.string().min(1),
-    winningPriceYen: z.number().int().nonnegative(),
+    priceYen: z.number().int().nonnegative(),
     modelId: z.string().min(1),
     year: z.number().int(),
   }),
@@ -718,21 +726,22 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('acquisition-blocked'),
+    /** `auction-win` (repurposed for the live auction room's hammer settlement,
+     * `settleAuctionHammer`): a room win with genuinely nowhere to put the car.
+     * `buyout`: an instant-buyout purchase with nowhere to put the car. Both
+     * resolve instantly against the current state - cash is checked at the same
+     * moment and refuses quietly (no log entry) rather than forfeiting, so
+     * neither channel can ever produce a `no-cash` reason here. */
     kind: z.enum(['auction-win', 'buyout', 'service-accept']),
     /** `no-space` (renamed from `no-parking` in Sprint 45): parking, every service bay, AND the
      * one grace/"double parking" overflow slot are all full - genuinely nowhere to put the car.
      * No money spent, the win is forfeited rather than the purchase failing loudly.
-     * `no-cash` (Sprint 19): a winning bid can no longer be covered on the lot's resolution
-     * day - cash was reserved at bid time under the old instant-resolve model, but multi-day
-     * bidding has no escrow, so affordability is only checked again when the lot actually
-     * resolves. Mirrors `no-space`'s existing forfeit shape exactly: no money spent, the win
-     * is forfeited rather than the purchase failing loudly.
      * `tool-tier` (Sprint 36): a service-job accept refused because at least one task's
      * `minToolTier` exceeds the line's current tier - replaces the old `no-equipment` refusal.
      * `technique` (Sprint 39): a signature template's `requiresTechnique` is no longer unlocked
      * at accept time (specialty dropped, or the offer is stale) - the technique-gated twin of
      * `tool-tier`. */
-    reason: z.enum(['no-space', 'no-cash', 'tool-tier', 'technique']),
+    reason: z.enum(['no-space', 'tool-tier', 'technique']),
   }),
   /** Kept for old-log decode compatibility (Sprint 36 retired the buy-equipment
    * action itself; `tool-upgraded` below is its replacement). */

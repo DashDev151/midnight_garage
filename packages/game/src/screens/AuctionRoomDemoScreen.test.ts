@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import { ROOM_TUNING } from './auctionRoomDemo'
+import { DEMO_BANKROLL_YEN } from './auctionRoomDemo'
 import AuctionRoomDemoScreen from './AuctionRoomDemoScreen.vue'
 
 // Track every mounted wrapper and unmount it after each test, so a component
@@ -104,7 +104,7 @@ describe('AuctionRoomDemoScreen', () => {
     expect(inspectBtn.text()).toContain(formatYen(game.travelFeeYenFor('local-yard')))
     expect(wrapper.find('[data-test="visit-panel"]').exists()).toBe(false)
     const hud = wrapper.find('[data-test="demo-hud"]')
-    expect(hud.text()).toContain(`Cash ${formatYen(ROOM_TUNING.bankrollYen)}`)
+    expect(hud.text()).toContain(`Cash ${formatYen(DEMO_BANKROLL_YEN)}`)
     expect(hud.text()).toContain('Labour used 0')
 
     // Before any visit, a test button is locked with the visit-first reason.
@@ -130,7 +130,7 @@ describe('AuctionRoomDemoScreen', () => {
 
     // The HUD reflects the real deduction: cash down by the fee, labour spent.
     const hud = wrapper.find('[data-test="demo-hud"]')
-    expect(hud.text()).toContain(`Cash ${formatYen(ROOM_TUNING.bankrollYen - feeYen)}`)
+    expect(hud.text()).toContain(`Cash ${formatYen(DEMO_BANKROLL_YEN - feeYen)}`)
     expect(hud.text()).toContain(`Labour used ${labour}`)
   })
 

@@ -70,9 +70,9 @@ describe('DayReport', () => {
       day: 3,
       entries: [
         {
-          type: 'auction-bid-won',
+          type: 'auction-hammer-won',
           lotId: 'lot-1',
-          finalPriceYen: 156_030,
+          priceYen: 156_030,
           modelId: 'honda-city-e-aa',
           year: 1987,
         },
@@ -124,36 +124,5 @@ describe('DayReport', () => {
     expect(noise.text()).not.toContain('1 lots') // the pluralisation bug is dead
     // The four noisy entries collapse to at most two quiet lines now.
     expect(noise.findAll('li').length).toBeLessThanOrEqual(2)
-  })
-
-  it('Sprint 64: an outbid alert is prominent - first in the notable list', async () => {
-    const game = useGameStore()
-    game.newGame(1)
-    const wrapper = track(mount(DayReport))
-
-    game.lastDayReport = {
-      day: 6,
-      entries: [
-        {
-          type: 'part-delivered',
-          orderId: 'order-1',
-          partId: 'stock-block',
-          partInstanceId: 'pi-1',
-        },
-        {
-          type: 'auction-outbid',
-          lotId: 'lot-1',
-          newBidYen: 200_000,
-          modelId: 'honda-city-e-aa',
-          year: 1987,
-        },
-      ],
-      cashDeltaYen: 0,
-    }
-    game.reportVisible = true
-    await wrapper.vm.$nextTick()
-
-    const items = wrapper.find('[data-test="report-notable"]').findAll('li')
-    expect(items[0]!.text()).toContain('Outbid')
   })
 })

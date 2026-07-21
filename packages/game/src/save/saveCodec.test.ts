@@ -467,26 +467,25 @@ describe('saveCodec', () => {
     const decoded = decodeSave(code)
     expect(decoded.day).toBe(90)
     expect(decoded.activeAuctionLots).toHaveLength(1)
-    // v10 -> v11 migration is pure default-fill: a v10 save's lots never had
-    // a bid in progress (bidding always resolved the instant it was placed).
-    // v11 -> v12 (Sprint 20) then converts that "no bid at all" state into
-    // the new open-bidding shape: nobody has raised, so the lot hasn't even
-    // opened yet.
-    expect(decoded.activeAuctionLots[0]?.currentBidYen).toBe(0)
-    expect(decoded.activeAuctionLots[0]?.leadingBidder).toBeNull()
-    expect(decoded.activeAuctionLots[0]?.quietDays).toBe(0)
-    expect(decoded.activeAuctionLots[0]?.playerHasBid).toBe(false)
+    // The overnight bidder (and the v11 -> v12 migration step that used to
+    // reconstruct its open-bidding shape from this save's pre-v11 fields) is
+    // gone - the lot simply decodes with today's plain shape, an ordinary
+    // unsettled lot ready for a buyout or the live room.
+    expect(decoded.activeAuctionLots[0]?.id).toBe('lot-90-honda-city-e-aa')
+    expect(decoded.activeAuctionLots[0]).not.toHaveProperty('currentBidYen')
+    expect(decoded.activeAuctionLots[0]).not.toHaveProperty('leadingBidder')
   })
 
   /**
-   * v11 -> v12 (Sprint 20, auction rework II): a real save with an in-flight
-   * bid - the player leading over a rival's escalated position, and a
-   * second lot where a rival leads instead - must migrate to the new open-
-   * bidding shape without losing that live standing (see the SAVE_VERSION
-   * doc comment: this is the one genuinely non-additive step in this
-   * migration, same category as v9's bay/parking reconstruction).
+   * v11 -> v12 (historical): the migration step that used to reconstruct a
+   * pre-v12 save's open-bidding shape still runs unchanged (see
+   * `migrateV11ToV12`), but the fields it reconstructs no longer exist in
+   * the current schema - the overnight bidder is gone, so
+   * `GameStateSchema.parse` simply strips them at the end of the chain. This
+   * proves the old, non-additive migration step still decodes cleanly
+   * (rather than throwing) once combined with every later schema change.
    */
-  it('decodes a pre-v12 save with in-flight bids, reconstructing open-bidding state (Sprint 20 migration)', () => {
+  it('decodes a pre-v12 save with in-flight bids without throwing, the removed bid fields simply gone', () => {
     const lotCar = (id: string) => ({
       id,
       modelId: 'honda-city-e-aa',
@@ -541,50 +540,14 @@ describe('saveCodec', () => {
     expect(decoded.activeAuctionLots).toHaveLength(2)
 
     const playerLeads = decoded.activeAuctionLots.find((l) => l.id === 'lot-100-player-leads')
-    expect(playerLeads?.currentBidYen).toBe(220_000)
-    expect(playerLeads?.leadingBidder).toBe('player')
-    expect(playerLeads?.quietDays).toBe(0)
-    expect(playerLeads?.playerHasBid).toBe(true)
+    expect(playerLeads?.car.id).toBe('lot-car-a')
+    expect(playerLeads).not.toHaveProperty('currentBidYen')
+    expect(playerLeads).not.toHaveProperty('leadingBidder')
 
     const rivalLeads = decoded.activeAuctionLots.find((l) => l.id === 'lot-100-rival-leads')
-    expect(rivalLeads?.currentBidYen).toBe(210_000)
-    expect(rivalLeads?.leadingBidder).toBe('rival')
-    expect(rivalLeads?.quietDays).toBe(0)
-    // playerHasBid stays true even though a rival currently leads - it never
-    // resets once set (the "My Active Bids" panel deliberately keeps
-    // showing a lot the player is currently losing).
-    expect(rivalLeads?.playerHasBid).toBe(true)
-  })
-
-  it('round-trips a v12 state with real open-bidding state on a lot', () => {
-    const withActiveBid: GameState = GameStateSchema.parse({
-      ...fullState,
-      activeAuctionLots: [
-        {
-          id: 'lot-42-honda-city-e-aa',
-          tier: 'local-yard',
-          modelId: 'honda-city-e-aa',
-          bookValueYen: 200_000,
-          expiresOnDay: 45,
-          currentBidYen: 220_000,
-          leadingBidder: 'player',
-          quietDays: 1,
-          playerHasBid: true,
-          car: {
-            id: 'lot-car-2',
-            modelId: 'honda-city-e-aa',
-            year: 1984,
-            mileageKm: 120_000,
-            color: 'White',
-            provenanceNote: '',
-            authenticityPercent: 85,
-            parts: mintParts(),
-          },
-        },
-      ],
-    })
-    const decoded = decodeSave(encodeSave(withActiveBid))
-    expect(decoded).toEqual(withActiveBid)
+    expect(rivalLeads?.car.id).toBe('lot-car-b')
+    expect(rivalLeads).not.toHaveProperty('currentBidYen')
+    expect(rivalLeads).not.toHaveProperty('leadingBidder')
   })
 
   it('round-trips a v9 state preserving real, index-addressable bay/parking slots (empty slots included)', () => {
@@ -1015,7 +978,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(43)
+    expect(SAVE_VERSION).toBe(44)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1068,7 +1031,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(43)
+    expect(SAVE_VERSION).toBe(44)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1674,7 +1637,7 @@ describe('saveCodec', () => {
    * on its own added nothing, remains true.)
    */
   it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(43)
+    expect(SAVE_VERSION).toBe(44)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1777,7 +1740,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(43)
+    expect(SAVE_VERSION).toBe(44)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1810,7 +1773,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(43)
+    expect(SAVE_VERSION).toBe(44)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1857,7 +1820,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(43)
+    expect(SAVE_VERSION).toBe(44)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {

@@ -325,10 +325,6 @@ describe('every action gates on the labour bar and spends its own figure when ra
       car: buildCarInstance({ id: 'lot-ap-car', modelId: model.id }),
       bookValueYen: model.bookValueYen,
       expiresOnDay: 8,
-      currentBidYen: 0,
-      leadingBidder: null,
-      quietDays: 0,
-      playerHasBid: false,
       turnout: 'steady',
     }
     const ctx = ctxWith('inspectionVisit')

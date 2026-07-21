@@ -523,8 +523,18 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * acknowledged yet", exactly correct. The version bump alone is still required
  * (Save law) so an old client rejects a v43 save rather than silently dropping
  * the field.
+ * v43 -> v44 (Sprint 110, the live room): the overnight auction bidder is
+ * gone - `AuctionLotSchema` dropped `currentBidYen`/`leadingBidder`/
+ * `quietDays`/`playerHasBid`, and `acquisition-blocked`'s `reason` enum
+ * dropped `no-cash` (both producers of it are gone with the overnight
+ * hammer). Per directive 19, a plain SAVE_VERSION bump with NO migration: a
+ * pre-v44 save's lots simply have the removed keys stripped by
+ * `GameStateSchema.parse`, which is harmless - a lot mid-bid under the old
+ * model just re-enters the board as an ordinary, unsettled lot. The version
+ * bump alone is still required (Save law) so an old client rejects a v44
+ * save rather than silently misreading it.
  */
-export const SAVE_VERSION = 43
+export const SAVE_VERSION = 44
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

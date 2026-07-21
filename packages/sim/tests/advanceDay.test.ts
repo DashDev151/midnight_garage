@@ -356,9 +356,17 @@ describe('advanceDay golden master', () => {
     // symptom and cause draw from day 1. A pure content change (directive 17
     // case (a)), not a sim-logic change: no state-shape change, and the
     // repeat-run determinism test below still passes unchanged.
+    // Re-pinned again (was 39def365): the overnight auction bidder is gone -
+    // expiring a lot no longer draws from the day's rng stream (the old
+    // per-lot overnight step did, for every active lot, every day, whether or
+    // not this career ever touches it), so every rng draw made later in the
+    // same tick (service-job offers, walk-in offers, machine listings) shifts
+    // for the whole run. Directive 17 case (a), not a sim-logic bug: no
+    // state-shape change, and the repeat-run determinism test below still
+    // passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('39def365')
+    expect(hashState(finalState)).toBe('8ae0637c')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -444,21 +452,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     }
     const lot = state.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot to appear')
-    // An over-market bid - well above any realistic demand ceiling - takes
-    // the lead immediately and stays there (the overnight step's
-    // at-or-above-ceiling branch is silence, not a counter-raise), so this
-    // hammers to the player once quietDays or the backstop resolves it
-    // (Sprint 20: bidding no longer resolves the instant it's placed).
+    // The instant buyout is the acquisition channel a queued action reaches -
+    // it resolves the same tick it is queued, no overnight step involved.
     state = advanceDay(
       state,
-      { ...noActions, bidsOnLots: [{ lotId: lot.id, maxBidYen: lot.bookValueYen * 3 }] },
+      { ...noActions, buyoutLots: [{ lotId: lot.id }] },
       state.seed + state.day,
       CONTEXT,
     ).state
-    guard = 0
-    while (state.activeAuctionLots.some((l) => l.id === lot.id) && guard++ < 30) {
-      state = advanceDay(state, noActions, state.seed + state.day, CONTEXT).state
-    }
     const won = state
     const car = won.ownedCars[0]
     if (!car) throw new Error('expected to win the lot')
@@ -627,7 +628,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // this acquisition->sale career's seeded stream from day 1 (directive 17 case
     // (a)); the win/sale still resolve, and the repeat-run determinism test above
     // still passes unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('55414088')
+    // Re-pinned again (was 55414088): the overnight bidder is gone, so this career
+    // now wins its lot through an instant buyout queued the moment the lot appears,
+    // never waiting on a quiet-days or backstop hammer; directive 17 case (a), the
+    // win/sale still resolve exactly as the test above asserts, and the repeat-run
+    // determinism test still passes unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('6e332deb')
   })
 })
 

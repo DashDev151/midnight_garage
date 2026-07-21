@@ -290,32 +290,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **SCHEDULED: live in-room auction bidding is now Sprints 99-100** (the economy
-  legibility arc, `docs/design/economy-legibility.md`, approved 2026-07-19) - the
-  stripped-demo-first plan below is honoured verbatim as Sprint 99's gate.
-  **Status update (maintainer, 2026-07-21): Sprint 100 was scoped but NEVER implemented -
-  the solution changed too much under it (the demo became the drawn-clearing live room of
-  Sprints 103-105, then the routed-diagnosis/reactions arc, Sprints 106-108).**
-  `sprint100.md` as written is stale; the promotion must be REDESIGNED against the final
-  demo, not implemented from the old doc. It happens only after Sprints 106-108 land and
-  the maintainer signs the demo off as 100%. Big blast radius, handle with care: the
-  tutorial's guided auction steps, the overnight bidder resolution in `advanceDay`, the
-  auction board flows, lot shape, retuning, and migrating `ROOM_TUNING` (including the
-  reactions block) out of demo code into `packages/content` JSON per the content law.
-  Original entry kept for the reasoning:
-  **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
-  The maintainer took the targeted Option B fix (above) for now but is not sold on the current
-  async, overnight-resolved auction model even debugged: bidding is inherently slow (one
-  bid-exchange per in-game day, dragged over days). The proposed alternative is a live, on-screen
-  bidding round entered on demand per lot: price opens at reserve, the player and the rolled
-  dealer cohorts alternate raising with every bid VISIBLE, the player chooses Raise (increment or
-  jump) or Pass after each dealer counter, and it resolves win/lose in ONE sitting - transparent,
-  fast, no black box, no snipe (the round only ends on the player's Pass or the room going quiet),
-  still turn-based/no-reflex. To test whether it feels right BEFORE committing to the full rework
-  (which would rip out the overnight bidder process, change the lot shape + a save migration,
-  resolve skipped lots offscreen, retune, etc.), build a STRIPPED throwaway demo first: one live
-  bidding-round screen on a sample lot, coexisting with the current system, no saves/board/tuning
-  touched. Decide from the demo. See the 2026-07-12 chat design write-up.
 - [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
   sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
   behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not
@@ -363,16 +337,12 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **Auto-bid, and a wider accessibility suite (maintainer-proposed 2026-07-21; auto-bid is
-  REQUIRED for the live-auction promotion, not optional).** The live room's per-bid fuse is the
-  one sanctioned exception to the no-reflex-input law; auto-bid is what squares that exception
-  with the law for players who struggle with click speed. Shape: the player sets a ceiling
-  (default: their own estimated value, i.e. "your number" from inspection) and the room places
-  their rung-one bids automatically up to it - the existing machine already supports this
-  (playerBid on a timer against a ceiling), and it deliberately never jumps, so reactions stay
-  reader-triggered. The wider suite to scope with it: fuse-length setting (clockMs is already
-  central), reduced motion, and colour-independent severity cues (band chips currently lean on
-  colour). Lands with the Sprint 100 promotion redesign.
+- [ ] **Accessibility suite v2: reduced motion and colour-independent severity cues.** V1 has
+  landed with the live room's promotion: an in-room auto-bid toggle places rung-one bids up to
+  a player-set ceiling (defaulting to their own estimated value) without ever jumping, so
+  reactions stay reader-triggered; a persisted fuse-length preset (standard/relaxed/unhurried)
+  scales the per-bid clock. Still open and unscoped: reduced motion, and colour-independent
+  severity cues (band chips currently lean on colour alone).
 - [ ] **The Master Inspector staff trait - the diagnosis opt-out as an economy choice
   (maintainer-proposed 2026-07-21).** A hireable character who "can find any issue and has no
   interest in fixing any of them" (final copy at the content bar): while employed, the player

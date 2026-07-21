@@ -109,13 +109,6 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
     }
     case 'acknowledged':
       return (game.gameState.tutorialAcknowledgedSteps ?? []).includes(stepId)
-    case 'lotBidPlaced': {
-      // Monotonic once the lot leaves the board: owning the car counts too.
-      const lot = game.gameState.activeAuctionLots.find((l) => l.id === recipe.lotId)
-      return (
-        lot?.playerHasBid === true || game.gameState.ownedCars.some((c) => c.id === recipe.carId)
-      )
-    }
     case 'scriptedCarInServiceBay':
       return game.gameState.serviceBayCarIds.includes(recipe.carId)
     case 'inspectionVisitActive':

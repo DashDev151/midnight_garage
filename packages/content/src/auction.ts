@@ -10,11 +10,10 @@ export const AuctionTierSchema = z.enum(['local-yard', 'regional', 'premium', 'c
 
 /**
  * Sprint 30 decision 3: a real bidder-count band, rolled once per lot at
- * creation (`auctions.ts`'s `generateAuctionCatalog`) and persisted -
- * replaces the old per-day-recomputed ratio read (`bidding.ts`'s deleted
- * `turnoutBand` function, and its Sprint 25 badge-honesty clamp, superseded
- * by this model). `bidding.ts`'s `turnoutBidderCount` turns the band into an
- * actual rival-cohort count via `economy.auctionInterest.turnoutBidderCounts`.
+ * creation (`auctions.ts`'s `generateAuctionCatalog`) and persisted. Feeds
+ * the live auction room's own turnout tuning (`economy.auctionRoom.turnout`,
+ * `packages/game/src/screens/auctionRoom.ts`) - dealer count and clearing
+ * band - so a lot's crowd is fixed for its whole life, not recomputed daily.
  */
 export const TurnoutBandSchema = z.enum(['thin', 'steady', 'packed'])
 export type TurnoutBand = z.infer<typeof TurnoutBandSchema>
@@ -29,16 +28,11 @@ export type TurnoutBand = z.infer<typeof TurnoutBandSchema>
  * this sprint only removes the flag that no longer means anything.
  *
  * `expiresOnDay` is the backstop close (Sprint 19 decision 1's flash/
- * standard/long duration roll, kept per Sprint 20 maintainer decision 4):
- * "this lot leaves the board no later than day N." Sprint 20 (auction
- * rework II) usually closes a lot earlier than that, via activity-based
- * closing instead - open, visible bidding replaces the old sealed player-max
- * + hidden-rival-escalation model. `currentBidYen` + `leadingBidder` are
- * literally "the price on the board and who holds it"; `quietDays` counts
- * consecutive overnight steps with no raise and drives "going once, going
- * twice" - a lot hammers, to whoever currently leads, after
- * `AUCTION_QUIET_DAYS_TO_HAMMER` quiet steps in a row, or at the
- * `expiresOnDay` backstop, whichever comes first.
+ * standard/long duration roll): "this lot leaves the board no later than day
+ * N." A lot is settled before that day arrives by winning it in the live
+ * auction room (a pure sim purchase at the room's hammer price,
+ * `settleAuctionHammer`) or by an instant buyout; a lot nobody has settled by
+ * its backstop day simply expires unsold.
  */
 export const AuctionLotSchema = z.object({
   id: z.string().min(1),
@@ -47,21 +41,6 @@ export const AuctionLotSchema = z.object({
   car: CarInstanceSchema,
   bookValueYen: z.number().int().positive(),
   expiresOnDay: z.number().int().positive(),
-  /** The literal price on the board - 0 means bidding hasn't opened yet.
-   * First-price: whoever leads pays exactly this at the hammer. */
-  currentBidYen: z.number().int().nonnegative().default(0),
-  /** Who holds `currentBidYen` - null only while `currentBidYen` is 0 (the
-   * lot hasn't opened). */
-  leadingBidder: z.enum(['player', 'rival']).nullable().default(null),
-  /** Consecutive overnight steps with no raise on this lot. Resets to 0 on
-   * any raise (player or dealer); hammers at `AUCTION_QUIET_DAYS_TO_HAMMER`. */
-  quietDays: z.number().int().nonnegative().default(0),
-  /** Set true on the player's first raise, never reset (even if later
-   * outbid) - load-bearing, not bookkeeping: gates the "My Active Bids"
-   * panel (which deliberately keeps showing a lot the player is currently
-   * LOSING), the `auction-outbid` log entry, and the only-log-a-loss-if-the-
-   * player-had-skin rule at the hammer. */
-  playerHasBid: z.boolean().default(false),
   /**
    * Sprint 30 decision 3: this lot's rolled bidder-count band, fixed for its
    * whole life (see `TurnoutBandSchema`'s own doc comment). Defaults to
@@ -73,14 +52,11 @@ export const AuctionLotSchema = z.object({
   turnout: TurnoutBandSchema.default('steady'),
   /**
    * Sprint 89 (the scripted tutorial lot): true only for the one deterministic
-   * lot the guided tutorial injects while its mission is live. Two effects,
-   * both parameter pins rather than a bypass of the normal auction: telemetry/
-   * probes can exclude it, and its rival cohorts are pinned out of the
-   * overnight step (`bidding.ts`'s `advanceLotOvernight`) so the seller's
-   * floor is also the rivals' ceiling - the player's reserve bid stands and
-   * hammers on the quiet-days rule, a guaranteed win at reserve. Optional
-   * (absent = an ordinary lot), the genuinely-optional-key pattern - no
-   * existing lot literal needs touching.
+   * lot the guided tutorial injects while its mission is live - telemetry/
+   * probes can exclude it, and the auction board sorts it to the top of its
+   * tier so the walkthrough's subject is never buried under the day's random
+   * stock. Optional (absent = an ordinary lot), the genuinely-optional-key
+   * pattern - no existing lot literal needs touching.
    */
   scripted: z.boolean().optional(),
 })

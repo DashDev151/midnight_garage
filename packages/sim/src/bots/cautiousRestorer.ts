@@ -7,12 +7,7 @@ import {
 import { emptyDayActions, type DayActions } from '../actions'
 import { carCostToMintYen } from '../bands'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
-import {
-  acquireLot,
-  activeBidCount,
-  auctionAcquisitionBudget,
-  walkAwayTargetYen,
-} from './buyoutHelpers'
+import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import { reputationAtLeast } from '../calendar'
 import type { SimContext } from '../context'
@@ -29,15 +24,15 @@ const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
 
 const MAX_CONCURRENT_CARS = 2
 /**
- * Never lowballs, pays a modest premium over book - avoiding the
- * lemon-gamble entirely (inspection removes the uncertainty a lowball
- * bid would be compensating for) and, empirically, bidding exactly book
- * value lost almost every contested regional-tier auction by a small
- * margin (valuations can exceed book for a good-condition, well-matched
- * car since Sprint 03's valuation fix). This bot has genuine information
- * (it inspected) that an uninspected AI bidder doesn't get to price in.
+ * The walk-away ceiling for a buyout, as a multiple of the lot's value
+ * anchor - a real premium above the instant buyout's own flat markup
+ * (`AUCTION_BUYOUT_PREMIUM`), the only acquisition channel left, so this
+ * bot clears a real buyout more reliably than the baseline bots. This bot
+ * has genuine information (it inspected) that an uninspected bot doesn't
+ * get to price in, so paying a bit more for the same lot is earned, not a
+ * lowball gamble.
  */
-const FAIR_BID_MULTIPLIER = 1.1
+const FAIR_BID_MULTIPLIER = 1.35
 /**
  * Empirically (this sprint's balance harness): at 1.4x, even the
  * cheapest regional-tier lot's book value (Y1.1M) needed Y1.54M in cash
@@ -141,19 +136,16 @@ export function cautiousRestorerStrategy(
     laborBudget -= slots
   }
 
-  // 2/3. Join or continue a war on a lot of the current target tier, if
-  // there's room for another car (Sprint 26 decision 10/12: lots are
-  // transparent now - no separate inspect step, every lot is immediately
-  // biddable). Sprint 20: open bidding - `leadingBidder !== 'player'` covers
-  // both a fresh lot and one this bot was outbid on but is still willing to
-  // chase under its walk-away target. Sprint 27: once targeting regional
-  // tier, also skips any lot whose restoration bill isn't small relative to
-  // its clean value (see `MAX_RESTORATION_TO_CLEAN_VALUE_RATIO`'s own doc
-  // comment for why the bootstrap-phase local-yard fallback is exempt).
-  if (state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS) {
+  // 2/3. Buy out a lot of the current target tier, if there's room for
+  // another car (Sprint 26 decision 10/12: lots are transparent now - no
+  // separate inspect step, every lot is immediately buyable). Once targeting
+  // regional tier, also skips any lot whose restoration bill isn't small
+  // relative to its clean value (see `MAX_RESTORATION_TO_CLEAN_VALUE_RATIO`'s
+  // own doc comment for why the bootstrap-phase local-yard fallback is
+  // exempt).
+  if (state.ownedCars.length < MAX_CONCURRENT_CARS) {
     const candidates = state.activeAuctionLots.filter((lot) => {
       if (lot.tier !== targetTier) return false
-      if (lot.leadingBidder === 'player') return false
       if (state.cashYen < lot.bookValueYen * CASH_BUFFER_MULTIPLIER) return false
       if (targetTier !== 'regional') return true
       const model = context.modelsById[lot.modelId]
@@ -179,7 +171,7 @@ export function cautiousRestorerStrategy(
         targetYen,
         actions,
         context,
-        auctionAcquisitionBudget(state),
+        auctionAcquisitionBudget(),
         CASH_BUFFER_MULTIPLIER,
       )
     }

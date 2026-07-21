@@ -1,12 +1,7 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
-import {
-  acquireLot,
-  activeBidCount,
-  auctionAcquisitionBudget,
-  walkAwayTargetYen,
-} from './buyoutHelpers'
+import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
@@ -17,16 +12,14 @@ import { decideSale } from './sellingHelpers'
 const MAX_CONCURRENT_CARS = 3
 const MAX_BIDS_PER_DAY = 2
 /**
- * Bid book value itself, not a lowball fraction of it. Empirically (Sprint
- * 03's balance harness), lowballing toward the reserve floor never wins
- * against the AI bidder pool - a bid needs to be competitive to win at all;
- * the flip's margin comes from the repair value-add (below), not from
- * buying at a discount. Under Sprint 19b's first-price rework, winning at
- * this bid now costs exactly book value (no more automatic second-price
- * discount when it wins) - a real tightening of this bot's margin, not yet
- * re-verified against the balance harness (tracked in `TODO.md`).
+ * The walk-away ceiling for a buyout, as a multiple of the lot's value
+ * anchor. The instant buyout itself is a flat premium over that same anchor
+ * (`AUCTION_BUYOUT_PREMIUM`, no cheaper contested path left to win one for
+ * less) - a ceiling anchored below the premium would never clear a real
+ * buyout, so this sits comfortably above it; the flip's margin still comes
+ * from the repair value-add (below), not from buying at a discount.
  */
-const BID_FRACTION_OF_BOOK = 1.0
+const BID_FRACTION_OF_BOOK = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.3
 /** Sprint 36: even a fast flipper only invests in tools at double cover. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
@@ -121,24 +114,14 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     })
   }
 
-  // 4. Join or continue a war on fresh, cheap local-yard lots if there's
-  // room for another car (Sprint 20: open bidding - `leadingBidder !==
-  // 'player'` covers both a fresh lot and one this bot was outbid on but is
-  // still willing to chase under its walk-away target). Room already spoken
-  // for by a still-unresolved bid counts the same as an owned car, so this
-  // doesn't overcommit across several pending wars at once.
-  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
+  // 4. Buy out fresh, cheap local-yard lots if there's room for another car.
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
   if (roomForMoreCars > 0) {
     const candidates = [...state.activeAuctionLots]
-      .filter(
-        (lot) =>
-          lot.tier === 'local-yard' &&
-          lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
-          lot.leadingBidder !== 'player',
-      )
+      .filter((lot) => lot.tier === 'local-yard' && lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN)
       .sort(() => rng.next() - 0.5)
 
-    const acquisitionBudget = auctionAcquisitionBudget(state)
+    const acquisitionBudget = auctionAcquisitionBudget()
     const bidCap = Math.min(MAX_BIDS_PER_DAY, roomForMoreCars)
     let acquisitionsQueued = 0
     for (const lot of candidates) {

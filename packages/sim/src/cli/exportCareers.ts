@@ -82,24 +82,9 @@ const COLUMNS = [
   { name: 'specialtyTopPoints', type: 'int64' },
 ] as const
 
-/** win price as a fraction of [reserve, buyout], bucketed - the Sprint 10
- * decision 4f calibration target, checked against real bot play.
- * `bidEvents`/`daysOpen` (Sprint 30 decision 3) are the daily
- * bidder-interest process's own telemetry: how contested a lot was and how
- * long it stayed on the board before resolving. */
-const AUCTION_WINS_COLUMNS = [
-  { name: 'strategy', type: 'string' },
-  { name: 'seed', type: 'int64' },
-  { name: 'day', type: 'int64' },
-  { name: 'tier', type: 'string' },
-  { name: 'fraction', type: 'float64' },
-  { name: 'bucket', type: 'string' },
-  { name: 'bidEvents', type: 'int64' },
-  { name: 'daysOpen', type: 'int64' },
-] as const
-
-/** One successful auction acquisition, by channel - external review 2026-07
- * finding 2's buyout-vs-bid telemetry. */
+/** One successful auction acquisition, by channel - every bot career's
+ * channel is `buyout`, the bot's only acquisition path (the live auction
+ * room is a player-only interaction). */
 const ACQUISITIONS_COLUMNS = [
   { name: 'strategy', type: 'string' },
   { name: 'seed', type: 'int64' },
@@ -204,13 +189,12 @@ function main(): void {
     ECONOMY,
   )
   const rows: string[] = []
-  const auctionWinRows: string[] = []
   const acquisitionRows: string[] = []
   const offerRows: string[] = []
 
   for (const { name, strategy } of STRATEGIES) {
     for (let seed = 1; seed <= CAREERS_PER_STRATEGY; seed++) {
-      const { snapshots, auctionWins, acquisitions, offers } = runCareer(
+      const { snapshots, acquisitions, offers } = runCareer(
         strategy,
         seed,
         DAYS_PER_CAREER,
@@ -230,20 +214,6 @@ function main(): void {
             snapshot.equipmentOwnedCount,
             snapshot.specialtyTopGroup,
             snapshot.specialtyTopPoints,
-          ].join(','),
-        )
-      }
-      for (const win of auctionWins) {
-        auctionWinRows.push(
-          [
-            name,
-            seed,
-            win.day,
-            win.tier,
-            win.fraction.toFixed(4),
-            win.bucket,
-            win.bidEvents,
-            win.daysOpen,
           ].join(','),
         )
       }
@@ -283,13 +253,6 @@ function main(): void {
     // actually ran this export, not a second, drift-prone copy in Python.
     startingCashYen: ECONOMY.STARTING_CASH_YEN,
     weeklyRentYen: ECONOMY.WEEKLY_RENT_YEN,
-  })
-
-  writeCsv('auctionWins.csv', AUCTION_WINS_COLUMNS, auctionWinRows)
-  writeManifest('auctionWins.manifest.json', {
-    simVersion: SIM_VERSION,
-    generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
-    columns: AUCTION_WINS_COLUMNS,
   })
 
   writeCsv('acquisitions.csv', ACQUISITIONS_COLUMNS, acquisitionRows)
@@ -384,7 +347,7 @@ function main(): void {
     `Wrote ${rows.length} rows (${STRATEGIES.length} strategies [${strategyList}] x ${CAREERS_PER_STRATEGY} careers x ${DAYS_PER_CAREER} days) to ${OUTPUT_DIR}`,
   )
   console.log(
-    `Wrote ${auctionWinRows.length} auction-win rows, ${acquisitionRows.length} acquisition rows, and ${offerRows.length} offer rows to ${OUTPUT_DIR}`,
+    `Wrote ${acquisitionRows.length} acquisition rows and ${offerRows.length} offer rows to ${OUTPUT_DIR}`,
   )
   console.log(`Wrote ${coherenceRows.length} coherence rows to ${OUTPUT_DIR}`)
 }

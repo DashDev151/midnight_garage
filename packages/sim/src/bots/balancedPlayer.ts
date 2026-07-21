@@ -1,12 +1,7 @@
 import type { ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair, worstGroup } from './bandHelpers'
-import {
-  acquireLot,
-  activeBidCount,
-  auctionAcquisitionBudget,
-  walkAwayTargetYen,
-} from './buyoutHelpers'
+import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
@@ -18,7 +13,12 @@ const MAX_CONCURRENT_CARS = 2
 /** Mid-range only - not the cheapest shitboxes, not the priciest rares. */
 const MIN_TARGET_BOOK_VALUE_YEN = 150_000
 const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
-const FAIR_BID_MULTIPLIER = 1.0
+/** The walk-away ceiling for a buyout, as a multiple of the lot's value
+ * anchor - set above the instant buyout's own flat premium
+ * (`AUCTION_BUYOUT_PREMIUM`), the only acquisition channel left, so this
+ * bot can actually clear a real buyout rather than walking away from every
+ * lot on principle. */
+const FAIR_BID_MULTIPLIER = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.2
 /** Sprint 36: an average player's double-cover buffer on tool upgrades. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
@@ -119,17 +119,13 @@ export function balancedPlayerStrategy(
     })
   }
 
-  // 4. Join or continue a bidding war on a mid-priced lot if there's room
-  // for another car (Sprint 20: open bidding - `leadingBidder !== 'player'`
-  // covers both a fresh lot and one this bot was outbid on but is still
-  // willing to chase under its walk-away target).
-  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length - activeBidCount(state)
+  // 4. Buy out a mid-priced lot if there's room for another car.
+  const roomForMoreCars = MAX_CONCURRENT_CARS - state.ownedCars.length
   if (roomForMoreCars > 0) {
     const candidates = state.activeAuctionLots.filter(
       (lot) =>
         lot.bookValueYen >= MIN_TARGET_BOOK_VALUE_YEN &&
         lot.bookValueYen <= MAX_TARGET_BOOK_VALUE_YEN &&
-        lot.leadingBidder !== 'player' &&
         state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (candidates.length > 0) {
@@ -141,7 +137,7 @@ export function balancedPlayerStrategy(
         targetYen,
         actions,
         context,
-        auctionAcquisitionBudget(state),
+        auctionAcquisitionBudget(),
         CASH_BUFFER_MULTIPLIER,
       )
     }

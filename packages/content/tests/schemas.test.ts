@@ -179,23 +179,16 @@ describe('seed content validates against schemas', () => {
     // instant-flip bug): rivals now price near guide value instead of
     // wholesale, so a contested close converges on fair value.
     expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.97)
-    expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(3)
-    expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.025)
-    expect(result.data.AUCTION_BID_INCREMENT_STEP_YEN).toBe(5000)
-    // Sprint 30 (living auctions): daily arrivals + the bidder-interest
-    // process knobs replacing the Sprint 20/25 demand-ceiling family above.
+    // Sprint 30 (living auctions): daily arrivals knobs.
     // Sprint 66 (playtest item 15): the board turns over roughly twice as
     // fast - rates above 1 mean a guaranteed lot plus a fractional chance.
     expect(result.data.AUCTION_DAILY_SPAWN_RATE['local-yard']).toBe(1.3)
     // Sprint 66 (item 6a): no current-model-year car at a backyard auction.
     expect(result.data.AUCTION_MIN_AGE_YEARS).toBe(3)
-    expect(result.data.auctionInterest.perCohortBidChance['local-yard']).toBe(0.55)
-    expect(result.data.auctionInterest.turnoutBidderCounts.packed).toEqual([5, 7])
-    expect(result.data.auctionInterest.turnoutBandWeights).toEqual([0.2, 0.45, 0.35])
-    expect(result.data.auctionInterest.maxIncrementsPerNight).toBe(3)
-    expect(result.data.auctionInterest.cohortValuationSpreadByTurnout.thin).toBeGreaterThan(
-      result.data.auctionInterest.cohortValuationSpreadByTurnout.packed,
-    )
+    // Sprint 110 (the live room): the overnight bidder-interest process is
+    // gone; the lot-generation turnout roll weights live directly under
+    // `auction` now.
+    expect(result.data.auction.turnoutBandWeights).toEqual([0.2, 0.45, 0.35])
     // Sprint 21 (value model): new valuation/marketPressure/statFormulas
     // blocks, born in JSON from day one.
     expect(result.data.valuation.tasteSpread).toBe(0.12)
@@ -353,12 +346,8 @@ describe('seed content validates against schemas', () => {
       'AUCTION_TRAVEL_FEE_YEN',
       'AUCTION_BUYOUT_PREMIUM',
       'AUCTION_WHOLESALE_FRACTION',
-      'AUCTION_QUIET_DAYS_TO_HAMMER',
-      'AUCTION_BID_INCREMENT_FRACTION',
-      'AUCTION_BID_INCREMENT_STEP_YEN',
       'AUCTION_DAILY_SPAWN_RATE',
       'AUCTION_MIN_AGE_YEARS',
-      'auctionInterest',
       'auction',
       'restoration',
       'valuation',
@@ -378,10 +367,65 @@ describe('seed content validates against schemas', () => {
       'energy',
       'machineShopAssist',
       'diagnosis',
+      'auctionRoom',
       'lapModel',
       'staff',
     ].sort()
     expect(Object.keys(economy).sort()).toEqual(expectedTopLevelKeys)
+  })
+
+  /**
+   * The live auction room's tuning (`packages/game/src/screens/
+   * auctionRoom.ts`), generalised out of the auction room demo - every value
+   * mirrors the demo's own former ROOM_TUNING constant exactly, so the
+   * demo's pinned test values hold unmoved. `steady` is the one genuinely new
+   * band, sized between `thin` and `packed` for the real board's three
+   * turnouts.
+   */
+  it('parses the auctionRoom block (the live room tuning, generalised out of the demo)', () => {
+    const result = EconomyConfigSchema.safeParse(economy)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.auctionRoom.clockMs).toBe(5000)
+    expect(result.data.auctionRoom.reserveFraction).toBe(0.55)
+    expect(result.data.auctionRoom.bidDelayMs).toEqual({ min: 800, max: 4600 })
+    expect(result.data.auctionRoom.bargainChance).toBe(0.05)
+    expect(result.data.auctionRoom.stepThresholdYen).toBe(500_000)
+    expect(result.data.auctionRoom.stepBelowYen).toBe(5_000)
+    expect(result.data.auctionRoom.stepAboveYen).toBe(10_000)
+    expect(result.data.auctionRoom.playerRaiseOptionsRungs).toEqual([1, 4, 8])
+    expect(result.data.auctionRoom.turnout.thin).toEqual({
+      dealers: 2,
+      clearMin: 0.7,
+      clearMax: 0.85,
+    })
+    expect(result.data.auctionRoom.turnout.steady).toEqual({
+      dealers: 4,
+      clearMin: 0.72,
+      clearMax: 0.9,
+    })
+    expect(result.data.auctionRoom.turnout.packed).toEqual({
+      dealers: 6,
+      clearMin: 0.75,
+      clearMax: 0.95,
+    })
+    expect(result.data.auctionRoom.reactions).toEqual({
+      jumpRungs: 4,
+      scareChance: 0.15,
+      scareLeftRungs: 2,
+      callChance: 0.12,
+      callRungs: 3,
+      goadChance: 0.03,
+      goadMaxLift: 1.06,
+      snipeWindowMs: 800,
+      snipesBeforeTax: 2,
+      snipeTaxChance: 0.15,
+      snipeTaxRungs: 2,
+      feudChance: 0.08,
+      feudMinGapRungs: 6,
+      feudRungs: 4,
+      feudDelayMs: { min: 400, max: 1100 },
+    })
   })
 })
 

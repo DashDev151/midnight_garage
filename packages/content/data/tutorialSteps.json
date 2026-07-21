@@ -68,13 +68,13 @@
     ],
     "completion": {
       "kind": "anyOf",
-      "of": [{ "kind": "lotInspected" }, { "kind": "lotBidPlaced" }, { "kind": "scriptedCarOwned" }]
+      "of": [{ "kind": "lotInspected" }, { "kind": "scriptedCarOwned" }]
     }
   },
   {
     "id": "bid",
     "anchorScreen": "auctions",
-    "anchorTestId": "bid-tutorial-lot",
+    "anchorTestId": "take-seat-tutorial-lot",
     "lines": [
       {
         "speaker": "instruction",
@@ -82,26 +82,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Bid the reserve, the least the seller will take. Nobody else is chasing this car today, so there is no need for the buy-now; that button is for people in a hurry, and we are not in a hurry."
-      }
-    ],
-    "completion": {
-      "kind": "anyOf",
-      "of": [{ "kind": "lotBidPlaced" }, { "kind": "scriptedCarOwned" }]
-    }
-  },
-  {
-    "id": "close",
-    "anchorScreen": "garage",
-    "anchorTestId": "end-day",
-    "lines": [
-      {
-        "speaker": "instruction",
-        "text": "Your bid is in, and auction rooms settle overnight. Press End Day and get some rest; if nobody outbids you by close, she hammers to you at your price."
-      },
-      {
-        "speaker": "instruction",
-        "text": "The morning report will tell you how it went. Fingers crossed."
+        "text": "Take a seat. It's a quiet morning and nobody else came for her: bid the reserve, the least the seller will take, and let the clock run out. Winning slowly still counts as winning."
       }
     ],
     "completion": { "kind": "scriptedCarOwned" }

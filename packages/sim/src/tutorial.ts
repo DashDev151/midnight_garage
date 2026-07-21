@@ -66,9 +66,8 @@ export function excludedAuctionModelIds(state: GameState): readonly string[] {
  * whose true cause is the MINOR one, so a yard inspection reveals the room's
  * fear was unearned. Pure and RNG-free: the car is fully determined by the
  * recipe, so it is byte-identical under any career seed. `expiresOnDay` is the
- * day it is live for, so it resolves at that day's End Day (a scripted lot
- * never receives a rival raise, so it only ever closes on the quiet-days /
- * backstop rule - see `advanceLotOvernight`).
+ * day it is live for, so it expires unsold at that day's End Day unless it is
+ * settled first, same as any other lot.
  */
 export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
   const recipe = TUTORIAL_LOT
@@ -143,10 +142,6 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
     car,
     bookValueYen: model.bookValueYen,
     expiresOnDay: day,
-    currentBidYen: 0,
-    leadingBidder: null,
-    quietDays: 0,
-    playerHasBid: false,
     turnout: 'thin',
     scripted: true,
   }
@@ -157,8 +152,8 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
  * (Sprint 89 decision 2). Injects the lot when the tutorial is active, its
  * mission is still live (offered or active, never delivered), the scripted car
  * is not already owned, and the lot is not already on the board - a no-op
- * otherwise, so a lot the player has already bid on is never reset, and a won
- * or delivered car ends the injection for good. Injecting while the mission is
+ * otherwise, so a lot already settled is never reset, and a won or delivered
+ * car ends the injection for good. Injecting while the mission is
  * merely OFFERED (not strictly accepted) is deliberate: the yard lot has to be
  * ready the moment the player reaches it on day 1, before End Day ever runs.
  */

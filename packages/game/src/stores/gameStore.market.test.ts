@@ -1,12 +1,10 @@
 import {
   CARS,
-  ECONOMY,
   fitmentClassForTier,
   PARTS,
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
-import { bidIncrementYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -18,7 +16,7 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
   for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
 }
 
-describe('market: bidding', () => {
+describe('market: auctions', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('the scripted tutorial lot sorts to the top of its tier (playtest 2026-07-19 item 21)', () => {
@@ -30,120 +28,6 @@ describe('market: bidding', () => {
     // order has it last - the view must put the walkthrough's subject first.
     expect(local!.lots[0]!.id).toBe('tutorial-lot')
     expect(local!.lots.length).toBeGreaterThan(1)
-  })
-
-  it('a high max bid on a local-yard lot eventually wins it into the garage (Sprint 19: multi-day)', () => {
-    const game = useGameStore()
-    warpToCatalog(game)
-    const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
-    if (!lot) throw new Error('expected a local-yard lot after the first catalog')
-
-    const carsBefore = game.ownedCarCount
-    // Sprint 59 retuned STARTING_CASH_YEN down (1,500,000 -> 300,000) - the
-    // scripted "well over market" bid below exists to guarantee a win
-    // regardless of rival bidding, not to exercise real cash affordability,
-    // so it needs headroom the new lower starting cash no longer gives it.
-    game.devGiveCash(lot.bookValueYen * 3)
-    // Well over market -> should win once the lot's own rolled duration
-    // elapses - bidding no longer resolves instantly.
-    expect(game.placeBid(lot.id, lot.bookValueYen * 3)).toBe(true)
-    let guard = 0
-    while (game.gameState.activeAuctionLots.some((l) => l.id === lot.id) && guard++ < 20) {
-      game.endDay()
-    }
-
-    expect(game.ownedCarCount).toBe(carsBefore + 1)
-    expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
-  })
-
-  it('placeBid opens the board and lotDetail reflects the new leader (Sprint 20: open bidding)', () => {
-    const game = useGameStore()
-    warpToCatalog(game)
-    const lot = game.gameState.activeAuctionLots[0]!
-    const before = game.lotDetail(lot.id)!
-    expect(before.currentBidYen).toBe(0)
-    expect(before.leadingBidder).toBeNull()
-    expect(before.playerHasBid).toBe(false)
-
-    const openingBidYen = before.nextRaiseYen // reserve, since bidding hasn't opened
-    expect(game.placeBid(lot.id, openingBidYen)).toBe(true)
-
-    const after = game.lotDetail(lot.id)!
-    expect(after.currentBidYen).toBe(openingBidYen)
-    expect(after.leadingBidder).toBe('player')
-    expect(after.playerHasBid).toBe(true)
-  })
-
-  it('placeBid refuses any raise below the minimum next-raise ladder (Sprint 20, mirrors the sim rule)', () => {
-    const game = useGameStore()
-    warpToCatalog(game)
-    const lot = game.gameState.activeAuctionLots[0]!
-    const openingBidYen = game.lotDetail(lot.id)!.nextRaiseYen
-    expect(game.placeBid(lot.id, openingBidYen)).toBe(true)
-
-    const afterOpening = game.lotDetail(lot.id)!
-    expect(game.placeBid(lot.id, 1)).toBe(false) // far below the ladder -> refused
-    expect(game.placeBid(lot.id, afterOpening.currentBidYen)).toBe(false) // a tie is not a raise
-    expect(game.lotDetail(lot.id)?.currentBidYen).toBe(afterOpening.currentBidYen)
-
-    const minRaiseYen = afterOpening.nextRaiseYen
-    expect(game.placeBid(lot.id, minRaiseYen)).toBe(true)
-    expect(game.lotDetail(lot.id)?.currentBidYen).toBe(minRaiseYen)
-  })
-
-  it("myActiveBids keeps showing a lot after the player is outbid - that view is the panel's whole point (Sprint 20)", () => {
-    const game = useGameStore()
-    // Sprint 27: unlocks premium tier before the catalog rolls. Under the
-    // restoration-bill value model a fixed per-part repair cost is a much
-    // smaller fraction of a premium car's own book value, so premium lots
-    // reliably clear reserve and draw real dealer interest (measured:
-    // 600/600 rolled premium lots vs local-yard's ~2%) - this is a test-
-    // fixture choice to reach a tier where the rival counter-raise this test
-    // actually exercises fires reliably; the mechanic itself is identical at
-    // every tier.
-    game.devSetReputationTier('known')
-    // `createInitialGameState` already rolls day-1's catalog before this
-    // test ever runs (so a new career isn't empty for a week), at
-    // reputation 'unknown' - `warpToCatalog` sees that stale, local-yard-
-    // only board immediately and returns without advancing. Keep ending
-    // days until a premium lot actually appears (the next weekly refresh,
-    // now unlocked) rather than trusting the pre-existing board.
-    for (
-      let i = 0;
-      i < 20 && !game.gameState.activeAuctionLots.some((l) => l.tier === 'premium');
-      i++
-    ) {
-      game.endDay()
-    }
-
-    // Open the minimum bid on every lot on today's board, then run the
-    // overnight counter step for a while: with dealers answering most
-    // overnight steps, at least one lot should come back over the player.
-    for (const lot of game.gameState.activeAuctionLots) {
-      game.placeBid(lot.id, game.lotDetail(lot.id)!.nextRaiseYen)
-    }
-
-    // Read through `lotDetail`, the one view the board itself renders from
-    // (the `myActiveBids` getter this used to use was a second lens on the
-    // same lots, deleted with the My Active Bids table it fed).
-    const myLots = () =>
-      game.auctionLotsByTier
-        .flatMap((g) => g.lots)
-        .map((l) => game.lotDetail(l.id)!)
-        .filter((d) => d.playerHasBid)
-
-    let outbidLotId: string | undefined
-    for (let i = 0; i < 15 && !outbidLotId; i++) {
-      game.endDay()
-      outbidLotId = myLots().find((d) => d.leadingBidder === 'rival')?.lot.id
-    }
-
-    expect(outbidLotId).toBeDefined()
-    const outbid = game.lotDetail(outbidLotId!)!
-    expect(outbid.leadingBidder).toBe('rival')
-    // The lot is still fully addressable - the player can raise again, and it
-    // still counts as one of theirs (which is what the new filter shows).
-    expect(outbid.playerHasBid).toBe(true)
   })
 
   it('lotDetail always carries the real group bands - lots are transparent now (Sprint 26 decision 10)', () => {
@@ -164,21 +48,13 @@ describe('market: bidding', () => {
     }
   })
 
-  it('lotDetail carries a turnout read and a buyout price floored above the current bid by at least an increment (Sprint 20)', () => {
+  it('lotDetail carries a turnout read and a positive buyout price', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const detail = game.lotDetail(lot.id)!
     expect(['thin', 'steady', 'packed']).toContain(detail.turnout)
-    const increment = bidIncrementYen(lot, ECONOMY)
-    expect(detail.buyoutPriceYen).toBeGreaterThanOrEqual(detail.currentBidYen + increment)
-
-    // Still true once the lot is actually contested, not just pre-bid.
-    game.placeBid(lot.id, detail.nextRaiseYen)
-    const afterBid = game.lotDetail(lot.id)!
-    expect(afterBid.buyoutPriceYen).toBeGreaterThanOrEqual(
-      afterBid.currentBidYen + bidIncrementYen(lot, ECONOMY),
-    )
+    expect(detail.buyoutPriceYen).toBeGreaterThan(0)
   })
 
   it('a buyout is guaranteed and instant: the lot becomes an owned car immediately', () => {

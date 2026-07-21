@@ -4,7 +4,6 @@ import type {
   CarInstance,
   CarModel,
   DayLogEntry,
-  EconomyConfig,
   GameState,
   TurnoutBand,
 } from '@midnight-garage/content'
@@ -63,7 +62,7 @@ export function interestedBuyers(
  * degenerates to `marketValueYen` for one anyway, so this branch exists for
  * clarity (and to skip the extra per-cause valuation work) rather than
  * necessity. Every downstream reader (`reserveYen`, `computeBuyoutPriceYen`,
- * `privateValuationYen`, `advanceLotOvernight`) calls this ONE function, so
+ * `privateValuationYen`) calls this ONE function, so
  * the whole room reprices through this single seam - none of them, and no
  * rival-valuation code anywhere, ever reads `car.symptoms[].trueCauseId` or
  * `.remainingCauseIds` directly.
@@ -120,111 +119,29 @@ export function reserveYen(lot: AuctionLot, state: GameState, context: SimContex
 }
 
 /**
- * A private rival valuation of this lot (Sprint 27 decision 4, generalized
- * Sprint 30 decision 3): bell-shaped around `anchorValueYen * multiplier`,
- * seeded so it's a fixed, reproducible read for a given `(lot, cohortId)`
- * pair, not a per-day reroll - every bidder reads the same transparent
- * bands, but no two private valuations of the same car land exactly on the
- * shared anchor. `cohortId` distinguishes independent bidders pricing the
- * SAME lot: a bot's own single walk-away decision
- * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) defaults to the empty
- * string, preserving its pre-Sprint-30 seed exactly; the overnight
- * bidder-interest process below seeds one distinct value per rival cohort,
- * with its own (turnout-dependent) `spreadSD` override - see
- * `economy.auctionInterest.cohortValuationSpreadByTurnout`'s own doc comment
- * for why a rival dealer cohort's spread is turnout-dependent and (mostly)
- * wider than a bot's own tight `walkAwaySpread`.
+ * A private rival valuation of this lot (Sprint 27 decision 4): bell-shaped
+ * around `anchorValueYen * multiplier`, seeded so it's a fixed, reproducible
+ * read for a given lot, not a per-day reroll. A bot's own walk-away decision
+ * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) is this file's one
+ * remaining caller.
  */
 export function privateValuationYen(
   lot: AuctionLot,
   state: GameState,
   context: SimContext,
   multiplier: number,
-  cohortId = '',
-  spreadSD = context.economy.valuation.walkAwaySpread,
 ): number {
   const anchor = anchorValueYen(lot, state, context)
-  const rng = createRng(hashStringToSeed(`walk-away:${lot.id}${cohortId}`))
-  const spreadMultiplier = bellNormal(1, spreadSD, rng)
+  const rng = createRng(hashStringToSeed(`walk-away:${lot.id}`))
+  const spreadMultiplier = bellNormal(1, context.economy.valuation.walkAwaySpread, rng)
   return Math.round(anchor * multiplier * spreadMultiplier)
 }
 
 /**
- * How many rival cohorts a lot's rolled `TurnoutBand` (`auctions.ts`'s
- * `generateAuctionCatalog`, persisted on the lot) represents (Sprint 30
- * decision 3) - an integer rolled once from
- * `economy.auctionInterest.turnoutBidderCounts[lot.turnout]`, seeded on the
- * lot id alone so it's stable for the lot's whole life, matching
- * `privateValuationYen`'s own "fixed per lot, not a daily reroll" contract.
- */
-export function turnoutBidderCount(lot: AuctionLot, economy: EconomyConfig): number {
-  const [min, max] = economy.auctionInterest.turnoutBidderCounts[lot.turnout]
-  const rng = createRng(hashStringToSeed(`turnout-count:${lot.id}`))
-  return rng.int(min, max)
-}
-
-/**
- * How much a lot's current price (relative to its guide value) sharpens or
- * dulls a rival cohort's nightly eagerness to bid (Sprint 30 decision 3):
- * `1 + valueGapEagerBonus * (1 - currentBid/guideValue)`, clamped to
- * `[valueGapFloor, valueGapCeiling]`. An unopened or cheap lot (price well
- * under guide value) multiplies UP toward the ceiling; a lot already at or
- * above guide value multiplies DOWN toward the floor, but never to zero -
- * a cohort still eligible (its own private walk-away hasn't been cleared)
- * can always still show up, just less often.
- */
-function valueGapFactor(
-  currentBidYen: number,
-  guideValueYen: number,
-  economy: EconomyConfig,
-): number {
-  if (guideValueYen <= 0) return 0
-  const { valueGapEagerBonus, valueGapFloor, valueGapCeiling } = economy.auctionInterest
-  const priceRatio = currentBidYen / guideValueYen
-  const raw = 1 + valueGapEagerBonus * (1 - priceRatio)
-  return Math.max(valueGapFloor, Math.min(valueGapCeiling, raw))
-}
-
-/**
- * The bid ladder: a fixed fraction of the lot's book value, rounded to the
- * step and never below it - one increment size for the player, the dealers,
- * and every bidding bot alike. Keyed off book value, not the current bid,
- * so the ladder does not compress as a lot's price climbs; a cheap car's
- * ladder runs at exactly the step figure.
- */
-export function bidIncrementYen(lot: AuctionLot, economy: EconomyConfig): number {
-  const step = economy.AUCTION_BID_INCREMENT_STEP_YEN
-  const raw = lot.bookValueYen * economy.AUCTION_BID_INCREMENT_FRACTION
-  return Math.max(step, Math.round(raw / step) * step)
-}
-
-/**
- * The smallest valid raise right now: the reserve price if bidding hasn't
- * opened yet, otherwise one increment above the current board price.
- * Exported so bots (the war helper, `bots/buyoutHelpers.ts`) and the game
- * UI (the raise control, pre-filled to this) share the exact same ladder
- * math `resolvePlaceBid` itself validates against, rather than each
- * re-deriving reserve-or-increment logic independently.
- *
- * Sprint 27: takes `state`/`context` (was `economy`) so the reserve branch
- * can reach the new guide-value-based `reserveYen`. The increment branch is
- * unchanged - `bidIncrementYen` is still a fixed fraction of book value (a
- * ladder step, not a value floor), so it doesn't move with condition.
- */
-export function nextRaiseYen(lot: AuctionLot, state: GameState, context: SimContext): number {
-  if (lot.currentBidYen === 0) return reserveYen(lot, state, context)
-  return lot.currentBidYen + bidIncrementYen(lot, context.economy)
-}
-
-/**
- * The real, chargeable instant-buyout price (Sprint 20): `max(anchorValueYen
- * * AUCTION_BUYOUT_PREMIUM, currentBidYen + one increment)` - the same
- * exported anchor every rival cohort's private valuation centers on, floored
- * above whatever's currently on the board so a buyout always ends the
- * auction outright, never undercuts it (maintainer decision 2: buyout is
- * available on every lot, priced rather than forbidden - with wholesale
- * clearing around 0.6-0.8x value and buyout at ~1.25x value, it's always
- * available and almost never rational).
+ * The real, chargeable instant-buyout price (Sprint 20): `anchorValueYen *
+ * AUCTION_BUYOUT_PREMIUM` - the same exported anchor every private valuation
+ * centers on (maintainer decision 2: buyout is available on every lot,
+ * priced rather than forbidden).
  */
 export function computeBuyoutPriceYen(
   lot: AuctionLot,
@@ -232,177 +149,7 @@ export function computeBuyoutPriceYen(
   context: SimContext,
 ): number {
   const anchor = anchorValueYen(lot, state, context)
-  const anchoredFloor = Math.round(anchor * context.economy.AUCTION_BUYOUT_PREMIUM)
-  const bidFloor = lot.currentBidYen + bidIncrementYen(lot, context.economy)
-  return Math.max(anchoredFloor, bidFloor)
-}
-
-export interface OvernightStepResult {
-  lot: AuctionLot
-  log: DayLogEntry[]
-  /**
-   * Did a rival actually raise the board this step? The anti-snipe rule
-   * (`resolveLotForDay`) forbids a lot from hammering on any step where a
-   * rival just raised - a raise always buys the player at least one more day
-   * to respond, even past the backstop, so "leading, then outbid, then
-   * instantly lost in the same overnight" can never happen.
-   */
-  raised: boolean
-}
-
-/**
- * How many of a lot's rolled rival cohorts (`bidderCount`, from
- * `turnoutBidderCount`) still have room to place `atOrAboveYen` - i.e. their
- * own private valuation (`privateValuationYen`, seeded
- * `${lot.id}:cohort:${i}`, wholesale-centered per `AUCTION_WHOLESALE_FRACTION`)
- * is at least that much. A cohort whose private ceiling has already been
- * cleared by the current price has walked away for good - `privateValuationYen`
- * is seeded on the lot alone, so this is a stable, monotonically-shrinking
- * pool as the price climbs, never a daily reroll.
- */
-function eligibleCohortCount(
-  lot: AuctionLot,
-  state: GameState,
-  context: SimContext,
-  atOrAboveYen: number,
-  bidderCount: number,
-): number {
-  const spreadSD = context.economy.auctionInterest.cohortValuationSpreadByTurnout[lot.turnout]
-  let eligible = 0
-  for (let i = 0; i < bidderCount; i++) {
-    const cohortWalkAwayYen = privateValuationYen(
-      lot,
-      state,
-      context,
-      context.economy.AUCTION_WHOLESALE_FRACTION,
-      `:cohort:${i}`,
-      spreadSD,
-    )
-    if (cohortWalkAwayYen >= atOrAboveYen) eligible++
-  }
-  return eligible
-}
-
-/**
- * The competing pressure behind tonight's bid roll (behavioral proof (c)):
- * `eligible^2 / bidderCount`, not the raw `eligible` count. A THIN lot's
- * sole cohort (`bidderCount` 1-2) IS its whole field - `eligible` stays
- * equal to `bidderCount` right up until that lone cohort's own true ceiling,
- * so it keeps trying reliably all the way there, occasionally a genuinely
- * high private valuation. A PACKED lot's last straggler (`eligible` 1 out of
- * a `bidderCount` of 5-7) is a shrunken remnant of a crowd that mostly
- * already dropped out - the crowd's own exit is the signal the price has
- * left "what most dealers think this is worth," so that lone survivor's
- * pressure is damped toward zero rather than treated as a full cohort. The
- * net effect: a packed field's winning price clusters near its own
- * wholesale-centered crowd, rarely reaching a single outlier's tail value;
- * a thin field's winning price IS that outlier's value, tail and all.
- */
-function competitivePressure(eligible: number, bidderCount: number): number {
-  return bidderCount > 0 ? (eligible * eligible) / bidderCount : 0
-}
-
-/**
- * One lot's overnight step (Sprint 20 - the core new daily mechanic; Sprint
- * 30 decision 3 replaces the one-shot demand ceiling with this daily
- * bidder-interest process). Seeded on `lot.id:day` so each day's roll is
- * independent but fully reproducible. Applies up to
- * `auctionInterest.maxIncrementsPerNight` (2) raises in a loop, each one
- * gated the same way:
- *
- * - `nextRaiseYen` (reserve to open, one increment above the board
- *   otherwise) is the price a raise tonight would land at.
- * - `eligibleCohortCount` counts how many of the lot's rolled rival cohorts
- *   would still pay at least that much - zero means nobody's left who wants
- *   it at this price, so the loop (and the night) stops here.
- * - Otherwise, `1 - (1 - p)^competitivePressure` is the odds AT LEAST ONE
- *   of those cohorts actually bids tonight, where `p` is `auctionInterest
- *   .perCohortBidChance[tier]` scaled by `valueGapFactor` (cheap-relative-
- *   to-guide-value lots are more eagerly contested) and `competitivePressure`
- *   (below) weights the raw eligible count by how much of the lot's ORIGINAL
- *   field is still in play. A packed lot (many eligible cohorts, most of its
- *   field still active) makes this near-certain while the lot is genuinely
- *   underpriced; a thin lot (as few as one cohort, but that IS its whole
- *   field) can go quiet for real stretches even when technically still "in
- *   play," but persists reliably once it's the only game in town.
- * - A successful roll applies exactly that one raise and loops again (a
- *   second increment needs its own independent roll, capped by
- *   `maxIncrementsPerNight`); a failed roll stops the night, silent, at
- *   whatever's been raised so far (0 or more).
- *
- * The "you were outbid overnight" beat (`auction-outbid`) fires once if any
- * raise this step displaced the player as leader. Silence (zero increments
- * applied) increments `quietDays`; any real raise resets it to 0 -
- * `AUCTION_QUIET_DAYS_TO_HAMMER` consecutive silent steps is what "going
- * once, going twice" means mechanically.
- */
-export function advanceLotOvernight(
-  lot: AuctionLot,
-  state: GameState,
-  context: SimContext,
-  day: number,
-): OvernightStepResult {
-  // Sprint 89 (the scripted tutorial lot): a scripted lot's rival cohorts are
-  // pinned out of the room - the seller's floor is also the rivals' ceiling, so
-  // the board never moves off whatever the player has bid. Every other step of
-  // resolution (the player's own bid, the quiet-days hammer, the cash/space
-  // checks, the handover) runs unchanged, so this is a parameter pin on the
-  // rival side, not a bypass of the auction. The night is always quiet, so the
-  // lot hammers on the quiet-days rule or its (same-day) backstop with the
-  // player leading - a guaranteed win at reserve.
-  if (lot.scripted) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [], raised: false }
-  }
-  const economy = context.economy
-  const guideValueYen = anchorValueYen(lot, state, context)
-  if (guideValueYen <= 0) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [], raised: false } // nobody's interested in this tier at all
-  }
-
-  const rng = createRng(hashStringToSeed(`${lot.id}:${day}`))
-  const bidderCount = turnoutBidderCount(lot, economy)
-  let workingLot = lot
-  let displacedPlayer = false
-  let incrementsApplied = 0
-
-  while (incrementsApplied < economy.auctionInterest.maxIncrementsPerNight) {
-    const raiseToYen = nextRaiseYen(workingLot, state, context)
-    if (raiseToYen <= 0) break // no seller floor (shouldn't happen once guideValueYen > 0, kept defensive)
-
-    const eligible = eligibleCohortCount(workingLot, state, context, raiseToYen, bidderCount)
-    if (eligible === 0) break // nobody left who'd still pay this much tonight
-
-    const perCohortChance =
-      economy.auctionInterest.perCohortBidChance[lot.tier] *
-      valueGapFactor(workingLot.currentBidYen, guideValueYen, economy)
-    const clampedChance = Math.max(0, Math.min(1, perCohortChance))
-    const probabilityOfAnyBid =
-      1 - Math.pow(1 - clampedChance, competitivePressure(eligible, bidderCount))
-    if (rng.next() >= probabilityOfAnyBid) break // nobody actually stepped up tonight
-
-    if (workingLot.leadingBidder === 'player') displacedPlayer = true
-    workingLot = { ...workingLot, currentBidYen: raiseToYen, leadingBidder: 'rival', quietDays: 0 }
-    incrementsApplied++
-  }
-
-  if (incrementsApplied === 0) {
-    return { lot: { ...lot, quietDays: lot.quietDays + 1 }, log: [], raised: false }
-  }
-  return {
-    lot: workingLot,
-    log: displacedPlayer
-      ? [
-          {
-            type: 'auction-outbid',
-            lotId: lot.id,
-            newBidYen: workingLot.currentBidYen,
-            modelId: lot.car.modelId,
-            year: lot.car.year,
-          },
-        ]
-      : [],
-    raised: true,
-  }
+  return Math.round(anchor * context.economy.AUCTION_BUYOUT_PREMIUM)
 }
 
 export interface AcquisitionResult {
@@ -411,169 +158,41 @@ export interface AcquisitionResult {
 }
 
 /**
- * Places or raises a bid (Sprint 20 - open-raise semantics replace sealed
- * proxy bidding): the amount passed is the literal number that lands on the
- * board, not a hidden max. Must clear `minRaiseYen` (reserve to open an
- * unopened lot, one increment above the current board price otherwise) -
- * anything less is a no-op, same as before. Sets `leadingBidder: 'player'`,
- * `playerHasBid: true` (never reset once true), and resets `quietDays` to 0
- * - a player raise is exactly as much a "real raise" as a dealer's for
- * activity-based closing purposes. Shared by the player's instant click and
- * advanceDay's bot batch loop.
+ * The shared instant-purchase core (spends `priceYen`, checks space, moves
+ * the lot's car into the shop, removes the lot): the one settlement path
+ * `resolveBuyoutInstant` and `settleAuctionHammer` both resolve through -
+ * a buyout and a live-room hammer win are the same mechanical event, cash
+ * out and car in the same day, differing only in how `priceYen` was priced.
+ * Insufficient cash refuses quietly (no log entry, matching this file's
+ * established no-escrow refusal shape); a full garage forfeits loudly via
+ * `acquisition-blocked` under the caller's own `blockedKind`.
  */
-export function resolvePlaceBid(
-  state: GameState,
-  lotId: string,
-  bidYen: number,
-  context: SimContext,
-): AcquisitionResult {
-  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
-  if (!lot || bidYen <= 0) return { state, log: [] }
-  if (bidYen < nextRaiseYen(lot, state, context)) return { state, log: [] }
-
-  const updatedLot: AuctionLot = {
-    ...lot,
-    currentBidYen: bidYen,
-    leadingBidder: 'player',
-    quietDays: 0,
-    playerHasBid: true,
-  }
-  return {
-    state: {
-      ...state,
-      activeAuctionLots: state.activeAuctionLots.map((l) => (l.id === lotId ? updatedLot : l)),
-    },
-    log: [{ type: 'auction-bid-placed', lotId, maxBidYen: bidYen }],
-  }
-}
-
-/**
- * Resolves one lot for today (Sprint 20 - replaces `resolveDueAuctionLot`):
- * runs the overnight step, then hammers it - `quietDays >=
- * AUCTION_QUIET_DAYS_TO_HAMMER`, or `day >= expiresOnDay` (the duration-roll
- * backstop, preserving flash/standard/long velocity variation) - if either
- * condition is now met, otherwise the lot simply stays active with its
- * updated board state. Called once per still-active lot from `advanceDay`'s
- * day-boundary step, every day, not just on some fixed "due day" - activity-
- * based closing means there's no schedule to filter on anymore.
- *
- * At the hammer: no leader resolves silently (kept behavior, matching the
- * old "expired unsold" case); a dealer win logs the loss only when
- * `playerHasBid` (today's only-log-if-the-player-had-skin rule); a player
- * win runs the existing no-cash/no-space forfeit checks (decision 7: no
- * escrow, cash and space are only checked now; Sprint 45: "space" covers
- * real capacity plus the grace overflow slot, not parking alone) before the
- * handover.
- */
-export function resolveLotForDay(
+function settleLotPurchase(
   state: GameState,
   lot: AuctionLot,
-  context: SimContext,
-  day: number,
+  priceYen: number,
+  blockedKind: 'buyout' | 'auction-win',
+  buildLogEntry: (priceYen: number) => DayLogEntry,
 ): AcquisitionResult {
-  const step = advanceLotOvernight(lot, state, context, day)
-  const updatedLot = step.lot
-  const log: DayLogEntry[] = [...step.log]
-
-  // Anti-snipe (the "leading, then outbid, then instantly lost" fix): a lot
-  // NEVER hammers on a step where a rival just raised it. A raise always
-  // extends the lot one more day so the player gets to respond to being
-  // outbid, even past the `expiresOnDay` backstop (a soft backstop now). A
-  // lot therefore only ever closes on a QUIET step - either the quiet-days
-  // rule ("going once, going twice, sold", `AUCTION_QUIET_DAYS_TO_HAMMER`
-  // consecutive silent nights) or the backstop reached on a silent night.
-  // Consequence: whoever leads at the hammer is whoever led at the START of
-  // this quiet step, which the player has always already seen and had a
-  // full day to answer.
-  const shouldHammer =
-    !step.raised &&
-    (updatedLot.quietDays >= context.economy.AUCTION_QUIET_DAYS_TO_HAMMER ||
-      day >= updatedLot.expiresOnDay)
-
-  const removeLot = (s: GameState): GameState => ({
-    ...s,
-    activeAuctionLots: s.activeAuctionLots.filter((l) => l.id !== lot.id),
-  })
-
-  if (!shouldHammer) {
-    return {
-      state: {
-        ...state,
-        activeAuctionLots: state.activeAuctionLots.map((l) => (l.id === lot.id ? updatedLot : l)),
-      },
-      log,
-    }
-  }
-
-  if (updatedLot.leadingBidder === null) {
-    return { state: removeLot(state), log } // nobody ever bid - silent no-sale
-  }
-
-  if (updatedLot.leadingBidder === 'rival') {
-    if (updatedLot.playerHasBid) {
-      log.push({
-        type: 'auction-bid-lost',
-        lotId: lot.id,
-        winningPriceYen: updatedLot.currentBidYen,
-        modelId: lot.car.modelId,
-        year: lot.car.year,
-      })
-    }
-    return { state: removeLot(state), log }
-  }
-
-  // The player leads - wins at currentBidYen, the literal board number
-  // (first-price). No escrow: cash and space are only checked now. Sprint
-  // 45: "space" means real capacity (parking or a service bay) OR the one
-  // grace/"double parking" overflow slot - only genuinely nowhere to put the
-  // car forfeits the win.
+  if (state.cashYen < priceYen) return { state, log: [] }
   if (!hasAcquisitionSpace(state)) {
-    log.push(
-      { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-space' },
-      {
-        type: 'auction-bid-lost',
-        lotId: lot.id,
-        winningPriceYen: updatedLot.currentBidYen,
-        modelId: lot.car.modelId,
-        year: lot.car.year,
-      },
-    )
-    return { state: removeLot(state), log }
-  }
-  if (state.cashYen < updatedLot.currentBidYen) {
-    log.push(
-      { type: 'acquisition-blocked', kind: 'auction-win', reason: 'no-cash' },
-      {
-        type: 'auction-bid-lost',
-        lotId: lot.id,
-        winningPriceYen: updatedLot.currentBidYen,
-        modelId: lot.car.modelId,
-        year: lot.car.year,
-      },
-    )
-    return { state: removeLot(state), log }
+    return { state, log: [{ type: 'acquisition-blocked', kind: blockedKind, reason: 'no-space' }] }
   }
 
   const withCar = assignToShop(
     setCarLedger(
       {
-        ...removeLot(state),
-        cashYen: state.cashYen - updatedLot.currentBidYen,
-        ownedCars: [...state.ownedCars, updatedLot.car],
+        ...state,
+        cashYen: state.cashYen - priceYen,
+        ownedCars: [...state.ownedCars, lot.car],
+        activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lot.id),
       },
-      updatedLot.car.id,
-      { purchaseYen: updatedLot.currentBidYen, repairYen: 0, partsYen: 0 },
+      lot.car.id,
+      { purchaseYen: priceYen, repairYen: 0, partsYen: 0 },
     ),
-    updatedLot.car.id,
+    lot.car.id,
   )
-  log.push({
-    type: 'auction-bid-won',
-    lotId: lot.id,
-    finalPriceYen: updatedLot.currentBidYen,
-    modelId: lot.car.modelId,
-    year: lot.car.year,
-  })
-  return { state: withCar, log }
+  return { state: withCar, log: [buildLogEntry(priceYen)] }
 }
 
 /**
@@ -591,31 +210,60 @@ export function resolveBuyoutInstant(
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
   if (!lot) return { state, log: [] }
   const priceYen = computeBuyoutPriceYen(lot, state, context)
-  if (state.cashYen < priceYen) return { state, log: [] }
-  if (!hasAcquisitionSpace(state)) {
-    return {
-      state,
-      log: [{ type: 'acquisition-blocked', kind: 'buyout', reason: 'no-space' }],
-    }
-  }
+  return settleLotPurchase(state, lot, priceYen, 'buyout', (settledYen) => ({
+    type: 'lot-bought-out',
+    lotId,
+    priceYen: settledYen,
+    modelId: lot.car.modelId,
+    year: lot.car.year,
+  }))
+}
 
-  const withCar = assignToShop(
-    setCarLedger(
-      {
-        ...state,
-        cashYen: state.cashYen - priceYen,
-        ownedCars: [...state.ownedCars, lot.car],
-        activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
-      },
-      lot.car.id,
-      { purchaseYen: priceYen, repairYen: 0, partsYen: 0 },
-    ),
-    lot.car.id,
-  )
+/**
+ * Settles a live auction room's hammer: the room (`packages/game/src/
+ * screens/auctionRoom.ts`) negotiates its own price entirely off-sim (the
+ * seeded clearing draw, the raise pacing, the reactions), then this is the
+ * one pure call that makes a win real - spends `priceYen`, transfers the
+ * car, removes the lot, same day. Reuses `resolveBuyoutInstant`'s exact
+ * settlement core (`settleLotPurchase`): a room win and an instant buyout
+ * are the same purchase, only priced differently. Refuses the same way
+ * `resolveBuyoutInstant` does if the lot is gone, cash is short, or the shop
+ * is genuinely full. `context` guards against a lot whose model has since
+ * dropped out of the loaded catalog (defensive, mirrors `anchorValueYen`'s
+ * own guard) rather than pricing anything itself - the room already priced
+ * the hammer.
+ */
+export function settleAuctionHammer(
+  state: GameState,
+  lotId: string,
+  priceYen: number,
+  context: SimContext,
+): AcquisitionResult {
+  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
+  if (!lot) return { state, log: [] }
+  if (!context.modelsById[lot.modelId]) return { state, log: [] }
+  return settleLotPurchase(state, lot, priceYen, 'auction-win', (settledYen) => ({
+    type: 'auction-hammer-won',
+    lotId,
+    priceYen: settledYen,
+    modelId: lot.car.modelId,
+    year: lot.car.year,
+  }))
+}
+
+/**
+ * Settles a live room's hammer to a RIVAL dealer: the lot leaves the board
+ * with no cash or car movement on the player's side - a room loss carries no
+ * economic effect beyond the lot's absence. Mirrors the plain removal
+ * `settleLotPurchase` performs on a win, without a purchase to go with it. No
+ * day-log entry: the room's own log already narrates the loss, and there is
+ * no new information for the day report to add. A missing lot is a quiet
+ * no-op, matching every other resolver in this file.
+ */
+export function settleAuctionLotLost(state: GameState, lotId: string): GameState {
+  if (!state.activeAuctionLots.some((l) => l.id === lotId)) return state
   return {
-    state: withCar,
-    log: [
-      { type: 'lot-bought-out', lotId, priceYen, modelId: lot.car.modelId, year: lot.car.year },
-    ],
+    ...state,
+    activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
   }
 }

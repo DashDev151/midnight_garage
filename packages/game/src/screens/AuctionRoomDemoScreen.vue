@@ -12,23 +12,18 @@ import {
 } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import AuctionRoomFloor from '../components/AuctionRoomFloor.vue'
 import AuctionLotCard, { type AuctionLotCardView } from '../components/AuctionLotCard.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { armReaction, enterRoom, letGo, playerBid, tick, type Room } from './auctionRoom'
 import {
-  ROOM_TUNING,
-  armReaction,
+  DEMO_BANKROLL_YEN,
   buildDemoLobby,
-  enterRoom,
-  letGo,
-  nextRungYen,
-  playerBid,
-  tick,
+  demoRoomSeed,
   verdictFor,
   type DemoLearned,
   type DemoLobbyEntry,
-  type DemoRoom,
-  type DemoRoomStatus,
 } from './auctionRoomDemo'
 
 const game = useGameStore()
@@ -36,8 +31,9 @@ const game = useGameStore()
 // Rolled once per mount, view-local: leaving the screen forgets everything.
 const lobby = buildDemoLobby(game.gameState, game.context)
 
-// lobby -> room (the timed floor). Inspection happens in the lobby now, over a
-// shared paid yard visit; there is no separate inspect phase.
+// lobby -> room (the timed floor, shared with the production room via
+// AuctionRoomFloor.vue). Inspection happens in the lobby now, over a shared
+// paid yard visit; there is no separate inspect phase.
 type Phase = 'lobby' | 'room'
 const phase = ref<Phase>('lobby')
 
@@ -47,13 +43,13 @@ const phase = ref<Phase>('lobby')
 // or writes saves, the auction board, or any live sim state.
 const demoState = ref<GameState>({
   ...game.gameState,
-  cashYen: ROOM_TUNING.bankrollYen,
+  cashYen: DEMO_BANKROLL_YEN,
   energySpentToday: 0,
   activeAuctionLots: lobby.map((e) => e.lot),
   inspectionVisit: null,
 })
 
-const room = ref<DemoRoom | null>(null)
+const room = ref<Room | null>(null)
 const currentEntry = ref<DemoLobbyEntry | null>(null)
 const currentLearned = ref<DemoLearned | null>(null)
 const runIndex = ref(0)
@@ -61,8 +57,6 @@ const runIndex = ref(0)
 // The demo clock: a plain accumulator advanced only by the interval below,
 // handed to the machine on every fire. No wall-clock reads anywhere.
 const TICK_INTERVAL_MS = 50
-const FUSE_RED_MS = 1500
-const FLASH_MS = 600
 const demoNowMs = ref(0)
 let intervalId: ReturnType<typeof setInterval> | undefined
 
@@ -99,8 +93,6 @@ function cardViewFor(
     displayName: resolveCarDisplayName(model),
     fitmentClass: fitmentClassForTier(model.tier),
     turnout,
-    playerHasBid: lot.playerHasBid,
-    leadingBidder: lot.leadingBidder,
     auctionGrade: computeAuctionGrade(apparentCar, model, game.context.partIdsByGroup),
     symptoms: game.symptomChecklistForCar(lot.car, apparentCar, model),
     guideValueYen,
@@ -191,7 +183,15 @@ function takeSeat(entry: DemoLobbyEntry): void {
   currentEntry.value = entry
   currentLearned.value = learned
   runIndex.value = 0
-  room.value = reactive(enterRoom(entry, runIndex.value, demoNowMs.value, learned))
+  room.value = reactive(
+    enterRoom(
+      entry,
+      demoRoomSeed(entry.key, runIndex.value),
+      demoNowMs.value,
+      learned,
+      game.context.economy.auctionRoom,
+    ),
+  )
   phase.value = 'room'
 }
 
@@ -199,7 +199,13 @@ function runItBack(): void {
   if (!currentEntry.value || !currentLearned.value) return
   runIndex.value += 1
   room.value = reactive(
-    enterRoom(currentEntry.value, runIndex.value, demoNowMs.value, currentLearned.value),
+    enterRoom(
+      currentEntry.value,
+      demoRoomSeed(currentEntry.value.key, runIndex.value),
+      demoNowMs.value,
+      currentLearned.value,
+      game.context.economy.auctionRoom,
+    ),
   )
 }
 
@@ -213,62 +219,22 @@ function backToLobby(): void {
   phase.value = 'lobby'
 }
 
-// --- Room phase ---
+// --- Room phase: the floor's own bid/letgo emits drive the real machine ---
 
-function fuseRemainingMs(live: DemoRoom): number {
-  return Math.max(0, live.clockEndsAtMs - demoNowMs.value)
+function onBid(rungs: number): void {
+  if (!room.value) return
+  playerBid(room.value, demoNowMs.value, rungs)
 }
 
-function seatFlash(live: DemoRoom, by: string): boolean {
-  return (
-    live.lastBid !== null &&
-    live.lastBid.by === by &&
-    demoNowMs.value - live.lastBid.atMs < FLASH_MS
-  )
-}
-
-// The bid control turns once the next rung would exceed the player's own number
-// (their estimated value from looking closely, or the room read if they never
-// ran a test). This always reads the cheapest raise option (one rung), so the
-// marker fires from the same landing price whichever raise the player ends up
-// taking.
-function pastNumber(live: DemoRoom): boolean {
-  return nextRungYen(live) > live.playerNumberYen
-}
-
-interface RaiseOption {
-  rungs: number
-  dataTest: string
-  label: string
-  danger: boolean
-}
-
-// The player's raise choices once the room is open past its opener: one entry
-// per rung count in ROOM_TUNING.playerRaiseOptionsRungs, each labelled with
-// the yen it lands on and turned to danger styling on its own landing price,
-// same rule as pastNumber generalised per option.
-function raiseOptionsFor(live: DemoRoom): RaiseOption[] {
-  return ROOM_TUNING.playerRaiseOptionsRungs.map((rungs, i) => {
-    const landingYen = live.boardYen + rungs * live.incrementYen
-    return {
-      rungs,
-      dataTest: i === 0 ? 'bid' : `bid-jump-${rungs}`,
-      label: `Raise to ${formatYen(landingYen)}`,
-      danger: landingYen > live.playerNumberYen,
-    }
-  })
-}
-
-function outcomeText(status: DemoRoomStatus): string {
-  if (status === 'won') return 'Yours.'
-  if (status === 'lost') return 'Gone.'
-  return 'Rolled back.'
+function onLetGo(): void {
+  if (!room.value) return
+  letGo(room.value)
 }
 
 // --- Dev-only: force the room's next reaction ---
 
 interface ForceReactionOption {
-  kind: DemoRoom['armedReaction'] & string
+  kind: Room['armedReaction'] & string
   dataTest: string
   label: string
 }
@@ -284,8 +250,8 @@ const FORCE_REACTION_OPTIONS: ForceReactionOption[] = [
 ]
 
 // Arms the live room so its next natural trigger for `kind` fires
-// deterministically; see armReaction in auctionRoomDemo.ts.
-function forceReaction(kind: DemoRoom['armedReaction'] & string): void {
+// deterministically; see armReaction in auctionRoom.ts.
+function forceReaction(kind: Room['armedReaction'] & string): void {
   if (!room.value) return
   armReaction(room.value, kind)
 }
@@ -366,107 +332,32 @@ function forceReaction(kind: DemoRoom['armedReaction'] & string): void {
         <p class="headline">Estimated market value: {{ formatYen(room.playerNumberYen) }}</p>
       </header>
 
-      <div class="seats">
-        <div class="seat" data-test="seat-you" :class="{ flash: seatFlash(room, 'player') }">
-          <span v-if="room.leader === 'player'" class="chip" data-test="leader-chip">
-            {{ formatYen(room.boardYen) }}
-          </span>
-          <span class="figure" aria-hidden="true">
-            <span class="head"></span>
-            <span class="shoulders"></span>
-          </span>
-          <span class="seat-name">You</span>
-        </div>
-        <div
-          v-for="(dealer, i) in room.dealers"
-          :key="dealer.name"
-          class="seat"
-          :data-test="'seat-' + i"
-          :class="{ flash: seatFlash(room, dealer.name), dropped: !dealer.active }"
-        >
-          <span v-if="room.leaderName === dealer.name" class="chip" data-test="leader-chip">
-            {{ formatYen(room.boardYen) }}
-          </span>
-          <span class="figure" aria-hidden="true">
-            <span class="head"></span>
-            <span class="shoulders"></span>
-          </span>
-          <span class="seat-name">{{ dealer.name }}</span>
-          <span v-if="!dealer.active" class="out-tag">out</span>
-        </div>
-      </div>
+      <AuctionRoomFloor :room="room" :now-ms="demoNowMs" @bid="onBid" @letgo="onLetGo">
+        <template #extra>
+          <div v-if="room.status !== 'open'" class="room-actions">
+            <button class="primary" data-test="run-back" @click="runItBack">Run it back</button>
+            <button data-test="lobby-back" @click="backToLobby">Back to the lobby</button>
+          </div>
 
-      <p class="board" data-test="board">{{ formatYen(room.boardYen) }}</p>
-      <div class="fuse-track">
-        <div
-          class="fuse"
-          data-test="fuse"
-          :class="{ dying: fuseRemainingMs(room) < FUSE_RED_MS }"
-          :style="{ width: (fuseRemainingMs(room) / ROOM_TUNING.clockMs) * 100 + '%' }"
-        ></div>
-      </div>
-
-      <ul class="room-log" data-test="log">
-        <li v-for="(line, i) in room.log" :key="i">{{ line }}</li>
-      </ul>
-
-      <div v-if="room.status === 'open' && room.leader !== 'player'" class="room-actions">
-        <template v-if="room.leader === null">
-          <button
-            :class="pastNumber(room) ? 'danger' : 'primary'"
-            data-test="bid"
-            @click="playerBid(room, demoNowMs)"
-          >
-            Bid the reserve
-          </button>
+          <!-- Dev-only: force-arms one of the five bidding reactions at its next
+               natural trigger, for exercising each without waiting on its own
+               chance draw. Dim chrome, tucked below the log and the actions. -->
+          <div class="dev-force" data-test="dev-force">
+            <span class="dev-force-label">dev: force next</span>
+            <button
+              v-for="option in FORCE_REACTION_OPTIONS"
+              :key="option.kind"
+              type="button"
+              class="dev-force-btn"
+              :class="{ active: room.armedReaction === option.kind }"
+              :data-test="option.dataTest"
+              @click="forceReaction(option.kind)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </template>
-        <template v-else>
-          <button
-            v-for="option in raiseOptionsFor(room)"
-            :key="option.rungs"
-            :class="option.danger ? 'danger' : 'primary'"
-            :data-test="option.dataTest"
-            @click="playerBid(room, demoNowMs, option.rungs)"
-          >
-            {{ option.label }}
-          </button>
-        </template>
-        <button data-test="letgo" @click="letGo(room)">Let it go</button>
-      </div>
-      <p
-        v-if="room.status === 'open' && room.leader !== 'player' && pastNumber(room)"
-        class="past-number"
-        data-test="past-number"
-      >
-        Past your number.
-      </p>
-
-      <div v-if="room.status !== 'open'" class="outcome-strip">
-        <p class="outcome" data-test="outcome">{{ outcomeText(room.status) }}</p>
-        <p v-if="room.epilogue" class="epilogue" data-test="epilogue">{{ room.epilogue }}</p>
-        <div class="room-actions">
-          <button class="primary" data-test="run-back" @click="runItBack">Run it back</button>
-          <button data-test="lobby-back" @click="backToLobby">Back to the lobby</button>
-        </div>
-      </div>
-
-      <!-- Dev-only: force-arms one of the five bidding reactions at its next
-           natural trigger, for exercising each without waiting on its own
-           chance draw. Dim chrome, tucked below the log and the actions. -->
-      <div class="dev-force" data-test="dev-force">
-        <span class="dev-force-label">dev: force next</span>
-        <button
-          v-for="option in FORCE_REACTION_OPTIONS"
-          :key="option.kind"
-          type="button"
-          class="dev-force-btn"
-          :class="{ active: room.armedReaction === option.kind }"
-          :data-test="option.dataTest"
-          @click="forceReaction(option.kind)"
-        >
-          {{ option.label }}
-        </button>
-      </div>
+      </AuctionRoomFloor>
     </div>
   </section>
 </template>
@@ -598,158 +489,6 @@ function forceReaction(kind: DemoRoom['armedReaction'] & string): void {
 .est-value .down {
   color: var(--mg-danger);
   margin-left: 0.35em;
-}
-
-/* The silhouette row: the player seated with the dealers. */
-.seats {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--mg-space-3);
-  flex-wrap: wrap;
-  padding-top: var(--mg-space-2);
-}
-
-.seat {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  min-width: 64px;
-  padding-top: 26px;
-}
-
-.seat.dropped {
-  opacity: 0.35;
-}
-
-/* Pure CSS head-and-shoulders: a circle over a rounded block. */
-.figure {
-  display: grid;
-  justify-items: center;
-}
-
-.head {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--mg-night-deep);
-  border: var(--mg-border);
-}
-
-.shoulders {
-  width: 34px;
-  height: 16px;
-  margin-top: 2px;
-  border-radius: 10px 10px 4px 4px;
-  background: var(--mg-night-deep);
-  border: var(--mg-border);
-}
-
-.seat.flash .head,
-.seat.flash .shoulders {
-  background: var(--mg-text-dim);
-}
-
-.seat-name {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  text-align: center;
-  max-width: 8em;
-}
-
-.out-tag {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: 0 var(--mg-space-1);
-}
-
-/* The winning chip: the board price in green, above the leader's head. */
-.chip {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  color: var(--mg-success);
-  background: var(--mg-night-deep);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: 0 var(--mg-space-1);
-  font-size: var(--mg-fs-sm);
-  white-space: nowrap;
-}
-
-/* The board price: the loudest number in the room, in amber. */
-.board {
-  margin: 0;
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-lg);
-  font-weight: bold;
-}
-
-/* The fuse: drains with the bid clock, dying red near the hammer. */
-.fuse-track {
-  height: 6px;
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  background: var(--mg-night-deep);
-  overflow: hidden;
-}
-
-.fuse {
-  height: 100%;
-  background: var(--mg-yen);
-}
-
-.fuse.dying {
-  background: var(--mg-danger);
-}
-
-/* The room log: monospace, like the day report's line lists. */
-.room-log {
-  list-style: none;
-  margin: 0;
-  padding: var(--mg-space-2);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  background: var(--mg-night-deep);
-  font-family: var(--mg-font-body);
-  font-size: var(--mg-fs-sm);
-}
-
-.room-log li {
-  padding: 2px 0;
-  color: var(--mg-text-dim);
-}
-
-.room-log li:last-child {
-  color: var(--mg-text);
-}
-
-/* Past the player's number: the moment chasing stops paying. */
-.past-number {
-  margin: 0;
-  color: var(--mg-danger);
-  font-size: var(--mg-fs-sm);
-}
-
-.outcome-strip {
-  display: grid;
-  gap: var(--mg-space-2);
-}
-
-.outcome {
-  margin: 0;
-  color: var(--mg-text);
-  font-size: var(--mg-fs-md);
-  font-weight: bold;
-}
-
-.epilogue {
-  margin: 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
 }
 
 .room-actions {

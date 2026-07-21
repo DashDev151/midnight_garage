@@ -6,12 +6,7 @@ import {
 } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
-import {
-  acquireLot,
-  activeBidCount,
-  auctionAcquisitionBudget,
-  walkAwayTargetYen,
-} from './buyoutHelpers'
+import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
 import { reputationAtLeast } from '../calendar'
 import { AUCTION_TIER_MIN_REPUTATION } from '../constants'
@@ -41,9 +36,12 @@ const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
  * finish, sell, then buy the next one.
  */
 const MAX_CONCURRENT_CARS = 1
-/** Never pays more than the car is genuinely worth (decision 4's own framing) - the
- * walk-away target is the value anchor itself, no premium, no discount. */
-const FAIR_BID_MULTIPLIER = 1.0
+/** The walk-away ceiling for a buyout, as a multiple of the lot's value
+ * anchor - set above the instant buyout's own flat premium
+ * (`AUCTION_BUYOUT_PREMIUM`), the only acquisition channel left, so this
+ * policy can actually clear a real buyout instead of walking away from
+ * every lot on principle. */
+const FAIR_BID_MULTIPLIER = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.15
 /**
  * Sprint 31 decision 4: this policy's own sell accept-threshold - the
@@ -84,10 +82,11 @@ function highestAccessibleTier(state: GameState): AuctionTier {
  * through `runCareer`/`exportCareers.ts`, not because it belongs in the
  * balance harness's roster of playstyle comparisons.
  *
- * The policy, in order: (1) continue open jobs; (2/3) join/continue a war at
- * the value anchor itself (never overpay) on a lot of the current
- * highest-accessible tier - lots are transparent (Sprint 26), so there is no
- * separate inspect step anymore; (4) fully restore every group to mint,
+ * The policy, in order: (1) continue open jobs; (2/3) buy out a lot of the
+ * current highest-accessible tier, capped at a fixed multiple of the value
+ * anchor (never an unbounded chase) - lots are transparent (Sprint 26), so
+ * there is no separate inspect step anymore; (4) fully restore every group
+ * to mint,
  * cheapest-to-unlock first (Sprint 23 decision 6's fix); (5) sell restored
  * cars for a clean/concours reputation gain (decision 1's faucet); (6) work
  * a service job on whatever labor restoration doesn't use that day - car
@@ -118,16 +117,14 @@ export function competentPolicyStrategy(
   }
 
   // 2/3. Only shop for a car when there's actually room for one (patient -
-  // see MAX_CONCURRENT_CARS's own doc comment): join or continue a war on a
-  // lot of the current highest-accessible tier (Sprint 26: lots are
-  // transparent now, no separate inspect step).
-  const hasRoomToBuy = state.ownedCars.length + activeBidCount(state) < MAX_CONCURRENT_CARS
+  // see MAX_CONCURRENT_CARS's own doc comment): buy out a lot of the current
+  // highest-accessible tier (Sprint 26: lots are transparent now, no
+  // separate inspect step).
+  const hasRoomToBuy = state.ownedCars.length < MAX_CONCURRENT_CARS
   if (hasRoomToBuy) {
     const candidates = state.activeAuctionLots.filter(
       (lot) =>
-        lot.tier === targetTier &&
-        lot.leadingBidder !== 'player' &&
-        state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
+        lot.tier === targetTier && state.cashYen >= lot.bookValueYen * CASH_BUFFER_MULTIPLIER,
     )
     if (candidates.length > 0) {
       const chosen = rng.pick(candidates)
@@ -138,7 +135,7 @@ export function competentPolicyStrategy(
         targetYen,
         actions,
         context,
-        auctionAcquisitionBudget(state),
+        auctionAcquisitionBudget(),
         CASH_BUFFER_MULTIPLIER,
       )
     }

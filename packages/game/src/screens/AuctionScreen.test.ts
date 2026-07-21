@@ -62,46 +62,27 @@ describe('AuctionScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders lots already on day 1 (Sprint 10: no empty first week), with bid controls', () => {
+  it('renders lots already on day 1 (Sprint 10: no empty first week), with a buyout control', () => {
     const game = useGameStore()
     const wrapper = mountScreen()
     expect(wrapper.text()).not.toContain('No lots listed')
     expect(wrapper.findAll('.lot').length).toBe(game.gameState.activeAuctionLots.length)
-    // Every lot offers a bid control.
+    // Every lot offers an instant buyout.
     const lot = game.gameState.activeAuctionLots[0]!
-    expect(wrapper.find(`[data-test="bid-${lot.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('placing a bid opens (or raises) it and never resolves the lot instantly (Sprint 20)', async () => {
+  it('offers a "Take a seat" link into the live room for every lot', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    // The bid lands on the board - it doesn't resolve the lot outright; the
-    // lot stays active until it hammers (quiet-day close or backstop).
-    expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(true)
-    expect(game.lotDetail(lot.id)?.playerHasBid).toBe(true)
-    expect(game.lotDetail(lot.id)?.leadingBidder).toBe('player')
-    // The catalog card's own control switches from "bid" to "raise" once
-    // the player already holds a position on this lot.
-    expect(wrapper.find(`[data-test="raise-${lot.id}"]`).exists()).toBe(true)
-  })
-
-  it('always shows the real current bid and who holds it (Sprint 20 open bidding) - "no bids yet" before anyone has bid, "you lead" once the player has', async () => {
-    const game = useGameStore()
-    warpToCatalog(game)
-    const lot = game.gameState.activeAuctionLots[0]!
-    const wrapper = mountScreen()
-    // Every fresh lot starts with no real bid recorded yet.
-    expect(wrapper.text()).toContain('no bids yet')
-
-    const openingBidYen = game.lotDetail(lot.id)!.nextRaiseYen
-    await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-    // The real number (never an obfuscated bucket) shows up immediately,
-    // along with who's holding it.
-    expect(wrapper.text()).toContain('you lead')
-    expect(game.lotDetail(lot.id)?.currentBidYen).toBe(openingBidYen)
+    const link = wrapper
+      .findAllComponents(RouterLinkStub)
+      .find((c) => c.attributes('data-test') === 'take-seat-' + lot.id)
+    expect(link).toBeDefined()
+    expect(link!.text()).toBe('Take a seat')
+    expect(link!.props('to')).toEqual({ name: 'auction-room', params: { lotId: lot.id } })
   })
 
   it('shows a turnout read per lot and offers an always-visible instant buyout', async () => {
@@ -150,15 +131,11 @@ describe('AuctionScreen', () => {
       expect(game.gameState.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false)
     })
 
-    it("Buy Now no longer sits in the same button block as Place/Raise (can't be hit by a stray click)", () => {
+    it('Buy Now lives in its own separated row', () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
       const wrapper = mountScreen()
-      // The bid action block holds only the bid button; Buy Now lives in its
-      // own separated row.
-      const bidBlock = wrapper.find('.lot-action-buttons')
-      expect(bidBlock.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(false)
       expect(wrapper.find('.buyout-row').find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
     })
 
@@ -187,91 +164,6 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="grade-stamp-overall-${lot.id}"]`).exists()).toBe(true)
     expect(wrapper.find(`[data-test="grade-stamp-ext-${lot.id}"]`).exists()).toBe(true)
     expect(wrapper.find(`[data-test="grade-stamp-int-${lot.id}"]`).exists()).toBe(true)
-  })
-
-  describe('the close-label backstop fix (Sprint 46 - playtest 2026-07-13 regression)', () => {
-    /**
-     * Real repro: a lot's expiry backstop hammers when `day >= expiresOnDay`
-     * (bidding.ts), but the badge used to compute `expiresOnDay - day` (no
-     * +1), so it showed "final call" a full day before the backstop could
-     * actually close the lot - a led lot would survive a quiet night despite
-     * the promise, closing only the following day.
-     */
-    it('does NOT show final call one day before the backstop can fire, but DOES show it the day it fires', () => {
-      const game = useGameStore()
-      warpToCatalog(game)
-      const lot = game.gameState.activeAuctionLots[0]!
-      // Give the lot breathing room on the quiet-days arm so only the
-      // backstop arm is under test.
-      const withBid = {
-        ...lot,
-        currentBidYen: lot.currentBidYen || 1,
-        leadingBidder: 'player' as const,
-        playerHasBid: true,
-        quietDays: 0,
-        expiresOnDay: game.gameState.day + 1,
-      }
-      game.gameState = {
-        ...game.gameState,
-        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
-          l.id === lot.id ? withBid : l,
-        ),
-      }
-      // Today is expiresOnDay - 1: the backstop cannot fire tonight.
-      expect(game.lotDetail(lot.id)!.closeLabel).not.toContain('final call')
-
-      game.gameState = { ...game.gameState, day: withBid.expiresOnDay }
-      // Today is expiresOnDay: the backstop fires tonight - the badge must say so.
-      expect(game.lotDetail(lot.id)!.closeLabel).toContain('final call')
-    })
-
-    it('no longer shows the "(any bid resets the clock)" parenthetical (Sprint 56 decision 5)', () => {
-      const game = useGameStore()
-      warpToCatalog(game)
-      const lot = game.gameState.activeAuctionLots[0]!
-      // Force the plain "closes in N days" branch: a real bid on the board,
-      // plenty of quiet-day and backstop headroom so it's neither "no bids
-      // yet" nor "final call".
-      const withBid = {
-        ...lot,
-        currentBidYen: lot.currentBidYen || 1,
-        leadingBidder: 'player' as const,
-        playerHasBid: true,
-        quietDays: 0,
-        expiresOnDay: game.gameState.day + 10,
-      }
-      game.gameState = {
-        ...game.gameState,
-        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
-          l.id === lot.id ? withBid : l,
-        ),
-      }
-      const detail = game.lotDetail(lot.id)!
-      expect(detail.closeLabel).toContain('closes in')
-      expect(detail.closeLabel).toContain('unless bid on')
-      expect(detail.closeLabel).not.toContain('resets the clock')
-      // Bounded by the quiet-days arm (3), tighter here than the 10-day
-      // backstop headroom.
-      expect(detail.closeNightsLeft).toBe(3)
-    })
-
-    it('closeNightsLeft is null when there is no meaningful count to show (no bid yet, or final call)', () => {
-      const game = useGameStore()
-      warpToCatalog(game)
-      const lot = game.gameState.activeAuctionLots[0]!
-      // Fresh lot: no bid yet.
-      expect(game.lotDetail(lot.id)!.closeNightsLeft).toBeNull()
-
-      const finalCall = { ...lot, currentBidYen: 1, quietDays: 0, expiresOnDay: game.gameState.day }
-      game.gameState = {
-        ...game.gameState,
-        activeAuctionLots: game.gameState.activeAuctionLots.map((l) =>
-          l.id === lot.id ? finalCall : l,
-        ),
-      }
-      expect(game.lotDetail(lot.id)!.closeLabel).toContain('final call')
-      expect(game.lotDetail(lot.id)!.closeNightsLeft).toBeNull()
-    })
   })
 
   describe('the capacity cascade warning (Sprint 45)', () => {
@@ -609,194 +501,6 @@ describe('AuctionScreen', () => {
       warpToCatalog(game)
       const wrapper = mountScreen()
       expect(wrapper.findAll('.lot-art').length).toBe(game.gameState.activeAuctionLots.length)
-    })
-  })
-
-  describe('board filters', () => {
-    /** Every lot's entry price - what `matchesFilters` actually filters on. */
-    function entryPrices(game: ReturnType<typeof useGameStore>): number[] {
-      return game.auctionLotsByTier
-        .flatMap((g) => g.lots)
-        .map((l) => game.lotDetail(l.id)!.nextRaiseYen)
-    }
-
-    /**
-     * Drives a slider and returns the value it ACTUALLY holds afterwards.
-     *
-     * A `type=range` snaps to its `step` and clamps to its bounds in a real
-     * browser; happy-dom does not. Asserting against the value we asked for
-     * would pass here and describe something that cannot happen on screen, so
-     * every assertion below reads the applied value back instead.
-     */
-    async function setSlider(
-      wrapper: ReturnType<typeof mountScreen>,
-      test: string,
-      value: number,
-    ): Promise<number> {
-      const input = wrapper.find(`[data-test="${test}"]`)
-      await input.setValue(value)
-      return Number((input.element as HTMLInputElement).value)
-    }
-
-    it('My active lots shows only lots the player has bid on - winning or not', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-      const total = wrapper.findAll('.lot').length
-      expect(total).toBeGreaterThan(1)
-
-      const lot = game.gameState.activeAuctionLots[0]!
-      await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-      await wrapper.find('[data-test="filter-my-lots"]').setValue(true)
-
-      expect(wrapper.findAll('.lot').length).toBe(1)
-      expect(wrapper.text()).toContain(game.lotDetail(lot.id)!.displayName)
-    })
-
-    it('keeps a lot in My active lots after a rival takes the lead - skin in it, not leading', async () => {
-      // The old My Active Bids table listed outbid lots too; the filter has to
-      // as well, or being outbid would make the lot vanish from the one view
-      // you would go looking for it in.
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const lot = game.gameState.activeAuctionLots[0]!
-      game.placeBid(lot.id, game.lotDetail(lot.id)!.nextRaiseYen)
-
-      let guard = 0
-      while (game.lotDetail(lot.id)?.leadingBidder === 'player' && guard++ < 15) game.endDay()
-      const detail = game.lotDetail(lot.id)
-      if (!detail || detail.leadingBidder !== 'rival') return // never contested; nothing to assert
-
-      const wrapper = mountScreen()
-      await wrapper.find('[data-test="filter-my-lots"]').setValue(true)
-      expect(wrapper.text()).toContain(detail.displayName)
-    })
-
-    it('badges how many lots the player has money riding on', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-      expect(wrapper.find('.filter-badge').exists()).toBe(false)
-
-      const lot = game.gameState.activeAuctionLots[0]!
-      await wrapper.find(`[data-test="bid-${lot.id}"]`).trigger('click')
-      expect(wrapper.find('.filter-badge').text()).toBe('1')
-    })
-
-    it('Affordable hides every lot the player cannot afford to bid on', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const prices = entryPrices(game)
-      expect(prices.length).toBeGreaterThan(1)
-
-      // Set cash so SOME lots are affordable and some are not - a filter that
-      // hides everything (or nothing) proves nothing.
-      const sorted = [...prices].sort((a, b) => a - b)
-      game.gameState = { ...game.gameState, cashYen: sorted[0]! }
-
-      const wrapper = mountScreen()
-      const before = wrapper.findAll('.lot').length
-      await wrapper.find('[data-test="filter-affordable"]').setValue(true)
-      const after = wrapper.findAll('.lot').length
-
-      expect(after).toBeLessThan(before)
-      expect(after).toBe(prices.filter((p) => p <= game.cashYen).length)
-    })
-
-    it('the price range shows only lots between min and max', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const prices = entryPrices(game)
-      const sorted = [...prices].sort((a, b) => a - b)
-      const min = sorted[0]!
-      const max = sorted[Math.floor(sorted.length / 2)]!
-
-      const wrapper = mountScreen()
-      await wrapper.find('[data-test="filter-min-price"]').setValue(min)
-      await wrapper.find('[data-test="filter-max-price"]').setValue(max)
-
-      expect(wrapper.findAll('.lot').length).toBe(prices.filter((p) => p >= min && p <= max).length)
-    })
-
-    it('says the filters hid everything, rather than pretending the board is empty', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-
-      await setSlider(wrapper, 'filter-max-price', 0)
-
-      expect(wrapper.findAll('.lot').length).toBe(0)
-      // The board is NOT empty - that is a different fact and a different fix.
-      const filtered = wrapper.find('[data-test="all-filtered"]')
-      expect(filtered.exists()).toBe(true)
-      expect(filtered.text()).toContain('none matching your filters')
-    })
-
-    it('the handles cannot cross - dragging min past max pins it, and vice versa', async () => {
-      // The one thing a two-handle range can actually get wrong: an inverted
-      // range silently matches nothing and looks like a broken board.
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-
-      const ceiling = Number(
-        (wrapper.find('[data-test="filter-max-price"]').element as HTMLInputElement).max,
-      )
-      await setSlider(wrapper, 'filter-max-price', ceiling / 2)
-      // Shove min far past max.
-      const appliedMin = await setSlider(wrapper, 'filter-min-price', ceiling)
-      expect(appliedMin).toBeLessThanOrEqual(ceiling / 2)
-
-      // ...and max back below min.
-      await setSlider(wrapper, 'filter-min-price', ceiling / 2)
-      const appliedMax = await setSlider(wrapper, 'filter-max-price', 0)
-      expect(appliedMax).toBeGreaterThanOrEqual(ceiling / 2)
-    })
-
-    it('reads out the live range in yen', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-
-      const readout = () => wrapper.find('[data-test="filter-price-readout"]').text()
-      expect(readout()).toContain('¥0')
-      await setSlider(wrapper, 'filter-min-price', 10_000)
-      expect(readout()).toContain('¥10,000')
-    })
-
-    it('Clear restores the whole board', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-      const before = wrapper.findAll('.lot').length
-
-      await setSlider(wrapper, 'filter-max-price', 0)
-      expect(wrapper.findAll('.lot').length).toBe(0)
-      await wrapper.find('[data-test="filter-clear"]').trigger('click')
-
-      expect(wrapper.findAll('.lot').length).toBe(before)
-      expect(wrapper.find('[data-test="filter-clear"]').exists()).toBe(false)
-    })
-
-    it('counts what is shown against what exists', async () => {
-      const game = useGameStore()
-      game.newGame(1)
-      warpToCatalog(game)
-      const total = entryPrices(game).length
-      const wrapper = mountScreen()
-
-      expect(wrapper.find('[data-test="filter-count"]').text()).toBe(`${total}/${total} lots`)
-      await setSlider(wrapper, 'filter-max-price', 0)
-      expect(wrapper.find('[data-test="filter-count"]').text()).toBe(`0/${total} lots`)
     })
   })
 })

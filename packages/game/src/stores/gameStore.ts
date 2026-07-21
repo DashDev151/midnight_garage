@@ -23,6 +23,7 @@ import type {
   ComponentId,
   ConditionBand,
   DayLogEntry,
+  FusePreset,
   GameState,
   Grade,
   Job,
@@ -108,7 +109,6 @@ import {
   removeBlockReason,
   nextBayMinReputationTier,
   nextBayPriceYen,
-  nextRaiseYen,
   nextToolTierRepGate,
   parkingOccupancy,
   partFitsCar,
@@ -130,7 +130,6 @@ import {
   reserveYen,
   resolveJobLabor,
   resolveOwnedWorkup as resolveOwnedWorkupCore,
-  resolvePlaceBid,
   resolveReconditionLabor,
   resolveRefitAssembly,
   resolveRejectOffer,
@@ -148,6 +147,8 @@ import {
   runDiagnosticTest as runDiagnosticTestCore,
   scrapValueYen,
   selectBoardRows,
+  settleAuctionHammer as settleAuctionHammerCore,
+  settleAuctionLotLost as settleAuctionLotLostCore,
   shopTitle,
   swapCars as swapCarsCore,
   toolDeficitSummary,
@@ -777,10 +778,11 @@ export interface ServiceJobResultView {
 }
 
 /**
- * An auction lot with the derived numbers the auction screen shows (Sprint
- * 20: the open-bidding board replaces the old sealed-bid headroom/interest
- * gauges - the state itself is now visible, so there's nothing left to
- * fuzz).
+ * An auction lot with the derived numbers the auction screen shows. The
+ * hammer itself is settled by the live auction room
+ * (`packages/game/src/screens/auctionRoom.ts`), seated straight off this
+ * same `guideValueYen`/`ledger`/`turnout` - this view has nothing left to
+ * fuzz.
  */
 export interface LotDetail {
   lot: AuctionLot
@@ -813,26 +815,13 @@ export interface LotDetail {
   reserveYen: number
   /** Always visible, on every lot (maintainer decision 2). */
   buyoutPriceYen: number
-  /** The literal price on the board - 0 before bidding opens. */
-  currentBidYen: number
-  /** Who holds `currentBidYen` - null only while it's still 0. */
-  leadingBidder: 'player' | 'rival' | null
-  /** Consecutive quiet overnight steps with no raise; hammers at `hammerThreshold`. */
-  quietDays: number
-  /** `AUCTION_QUIET_DAYS_TO_HAMMER` - lets the UI say "hammer at 2". */
-  hammerThreshold: number
   /**
-   * The lot's rolled bidder-count band (Sprint 30 decision 3: thin/steady/
-   * packed now means a real number of rival cohorts, `bidding.ts`'s
-   * `turnoutBidderCount`), read straight off `lot.turnout` - fixed for the
-   * lot's whole life, not recomputed daily. Still shown as a word only, no
-   * numeric gauge (maintainer decision 3: price is king).
+   * The lot's rolled bidder-count band (Sprint 30 decision 3), read straight
+   * off `lot.turnout` - fixed for the lot's whole life, not recomputed
+   * daily. Feeds the live auction room's own turnout tuning. Still shown as
+   * a word only, no numeric gauge (maintainer decision 3: price is king).
    */
   turnout: TurnoutBand
-  /** The smallest valid raise right now - pre-fills the raise input. */
-  nextRaiseYen: number
-  /** Set true on the player's first raise on this lot, never reset. */
-  playerHasBid: boolean
   /**
    * Each of the 6 real groups' worst present-part band (Sprint 26 decision
    * 10) - lots are transparent now, no reveal machinery: this is always
@@ -894,25 +883,12 @@ export interface LotDetail {
    * never a number identical to the guide before any knowledge exists.
    */
   playerEstimateYen: number | null
-  /** This lot's backstop close day (the Sprint 19 duration roll) - activity-
-   * based closing (quiet-day hammer) usually resolves it sooner than this. */
+  /** This lot's backstop close day (the Sprint 19 duration roll) - a lot
+   * settled sooner, via the live auction room or an instant buyout, never
+   * reaches it. */
   expiresOnDay: number
   /** Days remaining until the backstop, for the countdown label. */
   daysLeft: number
-  /**
-   * A plain-language close prediction (the anti-black-box fix): exactly how
-   * soon this lot hammers if no one bids further, and the reassurance that a
-   * bid resets it. The auction never closes silently or by surprise; a rival
-   * raise always extends the lot a day so the player gets to respond (the
-   * anti-snipe rule, `bidding.ts`'s `resolveLotForDay`).
-   */
-  closeLabel: string
-  /**
-   * The same countdown `closeLabel` carries, as a raw number the UI can
-   * size up - null when there's no meaningful count (no bid yet, or
-   * already down to "final call").
-   */
-  closeNightsLeft: number | null
 }
 
 /**
@@ -2127,46 +2103,6 @@ export const useGameStore = defineStore('game', () => {
 
   /** Derived numbers + the 6 real group bands for one lot (Sprint 26 decision
    * 10: lots are transparent now, no inspection gate). */
-  /**
-   * The plain-language close prediction shown on lots and active bids (the
-   * anti-black-box fix). A lot hammers after `AUCTION_QUIET_DAYS_TO_HAMMER`
-   * consecutive silent nights or at its backstop day, whichever comes first
-   * on a QUIET night - any bid resets the quiet count and (per the anti-snipe
-   * rule) extends the lot a day, so this is genuinely "soonest it can close
-   * if nobody bids again," never a surprise.
-   */
-  /**
-   * Nights left until this lot could next close (min of the quiet-day and
-   * backstop arms) - null when there's nothing meaningful to show: nobody
-   * has bid, or it's already down to the final night ("final call", not a
-   * number). Shared by `auctionCloseLabel` and `LotDetail.closeNightsLeft`
-   * so the two can never disagree.
-   */
-  function auctionNightsLeft(lot: AuctionLot): number | null {
-    if (lot.currentBidYen === 0) return null
-    const threshold = context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER
-    const quietNightsLeft = Math.max(1, threshold - lot.quietDays)
-    // Sprint 46 fix: the real backstop hammer fires when `day >= expiresOnDay`
-    // (bidding.ts's resolveLotForDay), where `day` here is still today's
-    // pre-increment value - so the backstop CANNOT fire tonight when
-    // `day === expiresOnDay - 1`. The `+ 1` mirrors the quiet-days arm's own
-    // implicit offset; without it this showed "final call" one full day
-    // before the backstop could actually close the lot (playtest 2026-07-13).
-    const backstopNightsLeft = Math.max(1, lot.expiresOnDay - gameState.value.day + 1)
-    const nightsLeft = Math.min(quietNightsLeft, backstopNightsLeft)
-    return nightsLeft > 1 ? nightsLeft : null
-  }
-
-  function auctionCloseLabel(lot: AuctionLot): string {
-    if (lot.currentBidYen === 0) return 'no bids yet - open to bid'
-    const nightsLeft = auctionNightsLeft(lot)
-    if (nightsLeft === null) return 'final call: closes at End Day unless a new bid comes in'
-    // Sprint 56 decision 5: the "(any bid resets the clock)" parenthetical
-    // is gone (playtest 2026-07-14 item 8) - the "closes in N days unless
-    // bid on" lead-in already carries the mechanic on its own.
-    return `closes in ${nightsLeft} days unless bid on`
-  }
-
   function lotDetail(lotId: string): LotDetail | undefined {
     const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
     if (!lot) return undefined
@@ -2182,19 +2118,11 @@ export const useGameStore = defineStore('game', () => {
       ledger: roomLedgerFor(lot.car, model, gameState.value, context.value),
       reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
-      currentBidYen: lot.currentBidYen,
-      leadingBidder: lot.leadingBidder,
-      quietDays: lot.quietDays,
-      hammerThreshold: context.value.economy.AUCTION_QUIET_DAYS_TO_HAMMER,
       turnout: lot.turnout,
-      nextRaiseYen: nextRaiseYen(lot, gameState.value, context.value),
-      playerHasBid: lot.playerHasBid,
       groupBands: groupBandsForCar(apparentCar),
       auctionGrade: computeAuctionGrade(apparentCar, model, context.value.partIdsByGroup),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
-      closeLabel: auctionCloseLabel(lot),
-      closeNightsLeft: auctionNightsLeft(lot),
       symptoms: symptomChecklistForCar(lot.car, apparentCar, model),
       playerEstimateYen: lot.car.symptoms.some(
         (s) => s.runTestIds.length > 0 || s.remainingCauseIds.length <= 1,
@@ -2254,6 +2182,19 @@ export const useGameStore = defineStore('game', () => {
    * the "Inspect here" button's own price tag. */
   function travelFeeYenFor(tier: AuctionTier): number {
     return context.value.economy.diagnosis.travelFeeYenByTier[tier]
+  }
+
+  /** The live auction room's fuse-length preset, persisted across careers -
+   * `standard` for any save that predates the setting (the genuinely-
+   * optional-key `uiSettings` field). */
+  const fusePreset = computed<FusePreset>(
+    () => gameState.value.uiSettings?.fusePreset ?? 'standard',
+  )
+
+  /** Sets the fuse-length preset - takes effect the next time a room is
+   * built; the room machine itself never reads this. */
+  function setFusePreset(preset: FusePreset): void {
+    gameState.value = { ...gameState.value, uiSettings: { fusePreset: preset } }
   }
 
   /**
@@ -3448,31 +3389,6 @@ export const useGameStore = defineStore('game', () => {
     logSessionEvent('reconditionPart', { partInstanceId, targetBand })
   }
 
-  /**
-   * Place or raise a bid on an auction lot (Sprint 20: open-raise semantics
-   * - the amount is the literal number that lands on the board, not a
-   * hidden max). The lot resolves via the overnight/hammer step in
-   * `endDay`; the win/loss outcome shows up in that day's report like any
-   * other day-boundary event, not as inline per-lot feedback. Validates the
-   * increment ladder at the store level (`bidYen >= nextRaiseYen`) before
-   * ever calling the resolver - mirrors, rather than replaces, the sim's own
-   * identical check in `resolvePlaceBid`, so a UI misclick is refused here
-   * without a round trip through the resolver's no-op path. Returns false if
-   * the lot doesn't exist or the amount doesn't clear the ladder.
-   */
-  function placeBid(lotId: string, bidYen: number): boolean {
-    if (bidYen <= 0) return false
-    const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
-    if (!lot) return false
-    if (bidYen < nextRaiseYen(lot, gameState.value, context.value)) return false
-    const result = resolvePlaceBid(gameState.value, lotId, bidYen, context.value)
-    if (result.log.length === 0) return false
-    gameState.value = result.state
-    dayLog.value.push(...result.log)
-    logSessionEvent('placeBid', { lotId, bidYen })
-    return true
-  }
-
   /** Buy out a lot instantly - guaranteed purchase at a premium, no rival contest. */
   function buyout(lotId: string): boolean {
     const result = resolveBuyoutInstant(gameState.value, lotId, context.value)
@@ -3481,6 +3397,28 @@ export const useGameStore = defineStore('game', () => {
     dayLog.value.push(...result.log)
     logSessionEvent('buyout', { lotId })
     return true
+  }
+
+  /**
+   * Settles the live auction room's hammer win: the sim's own purchase path
+   * at whatever price the room actually closed at - cash out, car in, the
+   * same day. The room (`screens/auctionRoom.ts`) negotiates entirely off
+   * the sim; this is the one call that makes a win real.
+   */
+  function settleAuctionHammer(lotId: string, priceYen: number): boolean {
+    const result = settleAuctionHammerCore(gameState.value, lotId, priceYen, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('settleAuctionHammer', { lotId, priceYen })
+    return true
+  }
+
+  /** The live room's hammer to a rival dealer: the lot leaves the board, no
+   * cash or car movement on the player's side. */
+  function loseAuctionLot(lotId: string): void {
+    gameState.value = settleAuctionLotLostCore(gameState.value, lotId)
+    logSessionEvent('loseAuctionLot', { lotId })
   }
 
   /**
@@ -4185,6 +4123,8 @@ export const useGameStore = defineStore('game', () => {
     inspectionVisit,
     inspectionVisitGateReason,
     travelFeeYenFor,
+    fusePreset,
+    setFusePreset,
     beginInspectionVisit,
     runDiagnosticTest,
     resolveOwnedWorkup,
@@ -4239,8 +4179,9 @@ export const useGameStore = defineStore('game', () => {
     assemblyRowsFor,
     benchContainersFor,
     unstageAssemblyAction,
-    placeBid,
     buyout,
+    settleAuctionHammer,
+    loseAuctionLot,
     buyPart,
     scrapPart,
     scrapValueForPart,

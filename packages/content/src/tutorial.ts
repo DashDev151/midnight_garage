@@ -30,8 +30,6 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  * Sprint 95 (the tutorial actually guides) additions:
  * - `acknowledged`: the step's own id is in `gameState.tutorialAcknowledgedSteps`
  *   (the overlay's "Got it" button records it) - for purely informational steps.
- * - `lotBidPlaced`: the player leads the scripted lot (`playerHasBid`), or
- *   already owns the scripted car (monotonic once the lot leaves the board).
  * - `scriptedCarInServiceBay`: the scripted car sits in a service bay.
  * - `inspectionVisitActive`: an inspection visit is live at the scripted lot's
  *   tier (`showWhen` only - it honestly regresses at End Day).
@@ -63,7 +61,6 @@ const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('missionDelivered') }),
   z.object({ kind: z.literal('never') }),
   z.object({ kind: z.literal('acknowledged') }),
-  z.object({ kind: z.literal('lotBidPlaced') }),
   z.object({ kind: z.literal('scriptedCarInServiceBay') }),
   z.object({ kind: z.literal('inspectionVisitActive') }),
   z.object({ kind: z.literal('assemblyOnBench'), assemblyId: AssemblyIdSchema }),

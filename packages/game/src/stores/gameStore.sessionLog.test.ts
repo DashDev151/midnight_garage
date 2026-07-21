@@ -58,21 +58,20 @@ describe('session log v0 (Sprint 24)', () => {
     expect(appendSessionEvent).not.toHaveBeenCalled()
   })
 
-  it('placeBid appends an event with the lot and bid amount', () => {
+  it('buyout appends an event with the lot', () => {
     const game = useGameStore()
     game.newGame(1)
     for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
     const lot = game.gameState.activeAuctionLots[0]
-    if (!lot) return // no lot rolled in this seed's first 20 days - nothing to bid on
+    if (!lot) return // no lot rolled in this seed's first 20 days - nothing to buy
+    game.devGiveCash(game.lotDetail(lot.id)!.buyoutPriceYen)
     appendSessionEvent.mockClear()
-    // Well above any realistic ladder minimum - clears the raise check reliably.
-    const bidYen = lot.bookValueYen * 3
 
-    const placed = game.placeBid(lot.id, bidYen)
+    const bought = game.buyout(lot.id)
 
-    expect(placed).toBe(true)
+    expect(bought).toBe(true)
     expect(appendSessionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'placeBid', payload: { lotId: lot.id, bidYen } }),
+      expect.objectContaining({ type: 'buyout', payload: { lotId: lot.id } }),
     )
   })
 })

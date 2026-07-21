@@ -1,6 +1,6 @@
 import type { DayLog, DayLogEntry, GameState, Job } from '@midnight-garage/content'
 import type { DayActions } from './actions'
-import { resolveBuyoutInstant, resolveLotForDay, resolvePlaceBid } from './bidding'
+import { resolveBuyoutInstant } from './bidding'
 import { currentGameYear } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import type { SimContext } from './context'
@@ -236,21 +236,14 @@ export function advanceDay(
   // resolveServiceJob). The only day-boundary involvement is the deadline
   // backstop below.
 
-  // 4. Bots' queued auction actions - buyouts first (guaranteed, no
-  // contest), then bids on what's left. The player resolves both instantly
-  // via resolveBuyoutInstant/resolvePlaceBid directly from the store; these
-  // are the exact same functions, called in a loop. Sprint 19: a bid no
-  // longer resolves anything by itself - it just places/raises the bot's
-  // own committed max, same as the player's click. Real resolution happens
-  // in step 7 below, on whichever day each lot's duration elapses.
+  // 4. Bots' queued auction actions - buyouts, the only auction-acquisition
+  // channel a bot (or a headless queued action) can reach: a guaranteed
+  // purchase at `computeBuyoutPriceYen`, no rival contest. The player has
+  // this same instant click, plus the live auction room (its own hammer
+  // settles through `settleAuctionHammer`, called directly from the store
+  // the moment the room closes - never queued here).
   for (const { lotId } of queuedActions.buyoutLots) {
     const result = resolveBuyoutInstant(next, lotId, context)
-    next = result.state
-    log.push(...result.log)
-  }
-
-  for (const bid of queuedActions.bidsOnLots) {
-    const result = resolvePlaceBid(next, bid.lotId, bid.maxBidYen, context)
     next = result.state
     log.push(...result.log)
   }
@@ -295,26 +288,21 @@ export function advanceDay(
   next = arrivals.state
   log.push(...arrivals.log)
 
-  // 7. Resolve every active auction lot for today (Sprint 20: activity-based
-  // closing replaces the old fixed-due-day filter + separate escalation
-  // pass) - one call per lot runs its overnight step (dealers may raise,
-  // stay silent, or open a not-yet-bid lot) and then hammers it if either
-  // `quietDays` has reached the threshold or today is its `expiresOnDay`
-  // backstop; otherwise the lot simply carries its updated board state into
-  // tomorrow. Processes lots sequentially against the accumulating state so
-  // two lots hammering the same day see each other's cash/parking effects,
-  // exactly like every other per-item loop in this function. Stale
+  // 7. Expire every active auction lot whose backstop day (Sprint 19
+  // decision 1's flash/standard/long duration roll) has arrived. A lot no
+  // longer resolves overnight - it is settled, same day, by an instant
+  // buyout (`resolveBuyoutInstant`, step 4 above) or by winning it in the
+  // live auction room (`settleAuctionHammer`, called directly from the store
+  // the moment the room closes) - so anything still on the board once
+  // `expiresOnDay` arrives has genuinely gone unsold. Silent: an unsold lot
+  // was already the quiet, no-log case before this sprint. Stale
   // service-job offers expire the same way they always have. Then roll
   // today's staggered arrivals (Sprint 30 decision 4: `catalogs.ts`'s
   // `generateDailyAuctionArrivals`, EVERY day, not just a day-7 boundary -
   // day 1's own full opening board still comes from `createInitialGameState`
   // via `refreshCatalogs`, a separate, fixed-batch generation path).
-  const lotsToday = next.activeAuctionLots
-  for (const lot of lotsToday) {
-    const resolution = resolveLotForDay(next, lot, context, next.day)
-    next = resolution.state
-    log.push(...resolution.log)
-  }
+  const unexpiredLots = next.activeAuctionLots.filter((lot) => next.day < lot.expiresOnDay)
+  next = { ...next, activeAuctionLots: unexpiredLots }
   const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
   next = { ...next, serviceJobOffers: unexpiredOffers }
 

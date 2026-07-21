@@ -4,7 +4,6 @@ import { DayActionsSchema } from '../src/actions'
 const EMPTY_ACTIONS = {
   createJobs: [],
   laborAssignments: [],
-  bidsOnLots: [],
   buyoutLots: [],
   acceptOffers: [],
   setForSale: [],
@@ -36,7 +35,7 @@ describe('DayActionsSchema', () => {
         },
       ],
       laborAssignments: [{ jobId: 'job-1', laborSlots: 2 }],
-      bidsOnLots: [{ lotId: 'lot-1', maxBidYen: 500_000 }],
+      buyoutLots: [{ lotId: 'lot-1' }],
       scrapParts: [{ partInstanceId: 'pi-0004' }],
       removeParts: [{ carInstanceId: 'car-0001', carPartId: 'dampers' }],
       acceptOffers: [{ carInstanceId: 'car-0002' }],

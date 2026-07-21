@@ -67,14 +67,90 @@ const DayRangeSchema = z
   .tuple([z.number().int().positive(), z.number().int().positive()])
   .refine(([min, max]) => min <= max, { message: 'range min must be <= max' })
 
-/** Per-tier fraction in [0, 1] - the probability-shaped sibling of
- * `ByAuctionTierSchema` (which is int counts/yen), reused for Sprint 30's
- * per-tier nightly bid-cohort chance. */
-const ByAuctionTierFractionSchema = z.object({
-  'local-yard': z.number().min(0).max(1),
-  regional: z.number().min(0).max(1),
-  premium: z.number().min(0).max(1),
-  'collector-network': z.number().min(0).max(1),
+/** A [min, max] millisecond delay band, min <= max - the auction room's raise
+ * pacing, reused for both the ordinary and the feud delay bands. */
+const AuctionRoomDelayRangeSchema = z
+  .object({ min: z.number().int().nonnegative(), max: z.number().int().positive() })
+  .refine((d) => d.min <= d.max, { message: 'auctionRoom delay range min must be <= max' })
+
+/** One auction room turnout band's crowd size and the fraction of the room's
+ * read it clears within, clearMin <= clearMax. */
+const AuctionRoomTurnoutBandSchema = z
+  .object({
+    dealers: z.number().int().positive(),
+    clearMin: z.number().min(0).max(1),
+    clearMax: z.number().min(0).max(1),
+  })
+  .refine((t) => t.clearMin <= t.clearMax, {
+    message: 'auctionRoom turnout band clearMin must be <= clearMax',
+  })
+
+/**
+ * The live auction room's own tuning (`packages/game/src/screens/
+ * auctionRoom.ts`), generalised out of the auction room demo so a shared,
+ * config-driven machine seats both the demo and the production room off one
+ * source of truth. Every field mirrors the demo's own former `ROOM_TUNING`
+ * constant exactly; `turnout` grew a third band (`steady`, between `thin`
+ * and `packed`) for the real board's three turnouts, where the demo only
+ * ever needed two.
+ */
+export const AuctionRoomConfigSchema = z.object({
+  /** Per-bid fuse, in milliseconds. */
+  clockMs: z.number().int().positive(),
+  /** Opening bid, as a fraction of the room's read value. */
+  reserveFraction: z.number().min(0).max(1),
+  /** Delay band before each ordinary room raise; always shorter than clockMs. */
+  bidDelayMs: AuctionRoomDelayRangeSchema,
+  /** Chance the room is cold and clears below the turnout floor. */
+  bargainChance: z.number().min(0).max(1),
+  /** A read at or above this bids on the coarse step, below it the fine one. */
+  stepThresholdYen: z.number().int().positive(),
+  /** Bid step for a read under stepThresholdYen. */
+  stepBelowYen: z.number().int().positive(),
+  /** Bid step for a read at or above stepThresholdYen. */
+  stepAboveYen: z.number().int().positive(),
+  /** The bidder's raise choices, in rungs. */
+  playerRaiseOptionsRungs: z.array(z.number().int().positive()).min(1),
+  /** Per turnout, the crowd size and the band the room clears in as a
+   * fraction of the read. */
+  turnout: z.object({
+    thin: AuctionRoomTurnoutBandSchema,
+    steady: AuctionRoomTurnoutBandSchema,
+    packed: AuctionRoomTurnoutBandSchema,
+  }),
+  reactions: z.object({
+    /** A raise this many rungs up reads as a jump. */
+    jumpRungs: z.number().int().positive(),
+    /** Jump: the chance the room loses its stomach. */
+    scareChance: z.number().min(0).max(1),
+    /** ...and has at most this many rungs left in it. */
+    scareLeftRungs: z.number().int().positive(),
+    /** Jump: the chance a rival answers with a jump of their own. */
+    callChance: z.number().min(0).max(1),
+    /** ...this many rungs on top. */
+    callRungs: z.number().int().positive(),
+    /** RARE: the chance an inspected bidder's jump convinces the room it is
+     * missing something. */
+    goadChance: z.number().min(0).max(1),
+    /** The goaded ceiling, as a fraction of the room read; once per room. */
+    goadMaxLift: z.number().min(1),
+    /** A bid this late in the fuse reads as a snipe. */
+    snipeWindowMs: z.number().int().positive(),
+    /** Snipes tolerated before the room gets irritated. */
+    snipesBeforeTax: z.number().int().nonnegative(),
+    /** Each later room response may then take snipeTaxRungs at once. */
+    snipeTaxChance: z.number().min(0).max(1),
+    /** ...rungs taken at once, still capped by the clearing price. */
+    snipeTaxRungs: z.number().int().positive(),
+    /** A wide board-to-clearing gap may play out as a dealer feud. */
+    feudChance: z.number().min(0).max(1),
+    /** ...at least this many rungs between board and clearing. */
+    feudMinGapRungs: z.number().int().positive(),
+    /** Raises exchanged in the burst. */
+    feudRungs: z.number().int().positive(),
+    /** The short, urgent delay band the feud paces on. */
+    feudDelayMs: AuctionRoomDelayRangeSchema,
+  }),
 })
 
 /** Per-tier non-negative rate (Sprint 30 decision 4: expected new lots/day,
@@ -243,15 +319,6 @@ export const EconomyConfigSchema = z.object({
    * bidding into a dead sliver and kill the auction as a game.
    */
   AUCTION_WHOLESALE_FRACTION: z.number().positive().max(1),
-  /** Consecutive quiet overnight steps (no raise) before a lot hammers to
-   * whoever currently leads (maintainer decision 1). */
-  AUCTION_QUIET_DAYS_TO_HAMMER: z.number().int().positive(),
-  /** Bid increment as a fraction of book value, floored/rounded to Y10,000 -
-   * one ladder for the player, dealers, and bots alike. */
-  AUCTION_BID_INCREMENT_FRACTION: z.number().positive(),
-  /** The bid ladder's floor AND rounding granularity in yen - a cheap car's
-   * ladder steps at exactly this figure. */
-  AUCTION_BID_INCREMENT_STEP_YEN: z.number().int().positive(),
   /**
    * Sprint 30 decision 4: expected new lots per day per tier, replacing the
    * old `day % 7` weekly dump for every day AFTER day 1 (day 1 itself still
@@ -276,79 +343,6 @@ export const EconomyConfigSchema = z.object({
    */
   AUCTION_MIN_AGE_YEARS: z.number().int().nonnegative(),
   /**
-   * Sprint 30 decision 3: the daily bidder-interest process replacing the
-   * old one-shot demand ceiling (Sprint 20) and its Sprint 25 interim patches
-   * (both deleted, decision 5). Turnout is rolled once per lot at creation
-   * (`auctions.ts`'s `generateAuctionCatalog`) as a `TurnoutBand`; everything
-   * below turns that band, plus tonight's price-vs-guide-value gap, into how
-   * many bid increments (0-2) land overnight (`bidding.ts`'s
-   * `advanceLotOvernight`).
-   */
-  auctionInterest: z
-    .object({
-      /** Base nightly odds a single active rival cohort places a bid, before
-       * the value-gap adjustment below - first-pass, openly tunable. */
-      perCohortBidChance: ByAuctionTierFractionSchema,
-      /**
-       * Each rival cohort's private-valuation spread (`bidding.ts`'s
-       * `privateValuationYen`, passed as its `spreadSD` override), BY the
-       * lot's own rolled `TurnoutBand` - deliberately wider than a bot's own
-       * tight `valuation.walkAwaySpread` (0.05, models one bidder's own
-       * confident read of a car's value) and deliberately narrower for a
-       * packed field than a thin one (behavioral proof (c): a packed
-       * field's cohorts read as more of a consensus crowd - individually
-       * more tightly clustered around the wholesale center - so its winning
-       * price rarely reaches a single outlier's tail value; a thin field's
-       * one or two active bidders are comparatively idiosyncratic, wide
-       * enough that their true valuation occasionally clears guide value
-       * outright). A flat spread measured as too tight (nobody, at any
-       * turnout, could ever cross guide value) or, flattened wide, produced
-       * the OPPOSITE of proof (c) (more cohorts meant MORE above-guide wins,
-       * pure order-statistics on the tail) - hence turnout-dependent, not a
-       * single number.
-       */
-      cohortValuationSpreadByTurnout: z.object({
-        thin: z.number().nonnegative(),
-        steady: z.number().nonnegative(),
-        packed: z.number().nonnegative(),
-      }),
-      /** How much a cheap-relative-to-guide-value lot boosts eagerness: the
-       * value-gap multiplier is `1 + valueGapEagerBonus * (1 -
-       * currentBid/guideValue)`, clamped to
-       * `[valueGapFloor, valueGapCeiling]`. */
-      valueGapEagerBonus: z.number().nonnegative(),
-      /** Floor on the value-gap multiplier - competition never fully dies
-       * while cohorts remain eligible, even once price clears guide value. */
-      valueGapFloor: z.number().min(0),
-      /** Ceiling on the value-gap multiplier - an unopened (0-bid) lot
-       * doesn't become a guaranteed bid just from being cheap. */
-      valueGapCeiling: z.number().positive(),
-      /** How many rival cohorts a lot's rolled `TurnoutBand` represents -
-       * `bidding.ts`'s `turnoutBidderCount` rolls an integer in this
-       * (inclusive) range per lot, stable for the lot's whole life. Reuses
-       * `DayRangeSchema`'s ascending-positive-int-pair shape (not really
-       * about days here, just the same tuple contract). */
-      turnoutBidderCounts: z.object({
-        thin: DayRangeSchema,
-        steady: DayRangeSchema,
-        packed: DayRangeSchema,
-      }),
-      /** Weights (need not be pre-normalized to exactly 1, but should sum to
-       * ~1 - same convention as `serviceJobs.dailyOfferCountWeights` below)
-       * over which `TurnoutBand` a fresh lot rolls: [thin, steady, packed]. */
-      turnoutBandWeights: z.tuple([
-        z.number().nonnegative(),
-        z.number().nonnegative(),
-        z.number().nonnegative(),
-      ]),
-      /** Hard cap on how many bid increments one overnight step can apply
-       * (decision 3: "0-2 increments applied per overnight"). */
-      maxIncrementsPerNight: z.number().int().positive(),
-    })
-    .refine((a) => a.valueGapFloor <= a.valueGapCeiling, {
-      message: 'auctionInterest.valueGapFloor must be <= valueGapCeiling',
-    }),
-  /**
    * Sprint 85 decision 5 (playtest 14): reputation-conditioned rarity weighting
    * for auction model selection (`auctions.ts`'s `generateAuctionCatalog`). Each
    * eligible model's draw weight is
@@ -365,6 +359,20 @@ export const EconomyConfigSchema = z.object({
       ReputationTierSchema,
       z.partialRecord(RarityTierSchema, z.number().positive()),
     ),
+    /**
+     * Sprint 30 decision 3: weights (need not be pre-normalized to exactly 1,
+     * but should sum to ~1 - same convention as
+     * `serviceJobs.dailyOfferCountWeights` below) over which `TurnoutBand` a
+     * fresh lot rolls: [thin, steady, packed] (`auctions.ts`'s
+     * `rollTurnoutBand`). The rolled band is fixed for the lot's whole life
+     * and feeds the live auction room's own turnout tuning
+     * (`economy.auctionRoom.turnout`).
+     */
+    turnoutBandWeights: z.tuple([
+      z.number().nonnegative(),
+      z.number().nonnegative(),
+      z.number().nonnegative(),
+    ]),
   }),
   /**
    * Sprint 21 (per-component weights); Sprint 26 decision 4 replaced the old
@@ -1323,6 +1331,15 @@ export const EconomyConfigSchema = z.object({
     }),
   }),
   /**
+   * The live auction room's tuning: the seeded clearing draw, the raise
+   * pacing, and the five bidding reactions, all read by the shared room
+   * machine (`packages/game/src/screens/auctionRoom.ts`) rather than a
+   * hardcoded constant, so every room the game seats (the tuning demo, the
+   * tutorial's quiet room, and the production floor alike) rides one source
+   * of truth.
+   */
+  auctionRoom: AuctionRoomConfigSchema,
+  /**
    * Sprint 77 (story missions II, the lap model - pre-approved 2026-07-15):
    * one pure, monotonic formula over the car's CURRENT derived stats -
    * `lapModel.ts`'s `lapTimeSecondsFor` reads every field here, never a
@@ -1485,3 +1502,4 @@ export const EconomyConfigSchema = z.object({
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>
+export type AuctionRoomConfig = z.infer<typeof AuctionRoomConfigSchema>

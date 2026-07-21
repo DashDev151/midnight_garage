@@ -46,18 +46,6 @@ function scriptedCarIntoBay(state: GameState): GameState {
   }
 }
 
-/** Marks the scripted lot as led by a player bid, without inspecting. */
-function bidOnScriptedLot(state: GameState): GameState {
-  return {
-    ...state,
-    activeAuctionLots: state.activeAuctionLots.map((l) =>
-      l.id === LOT.lotId
-        ? { ...l, playerHasBid: true, currentBidYen: 100_000, leadingBidder: 'player' as const }
-        : l,
-    ),
-  }
-}
-
 /** Marks the scripted lot's first symptom as having had `testId` run - the
  * fixture for the `testRun` condition kind. */
 function runTestOnScriptedLot(state: GameState, testId: string): GameState {
@@ -109,14 +97,14 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(false)
   })
 
-  it('opens on step 1 of 11 (welcome) with the Got it button for a fresh tutorial career', async () => {
+  it('opens on step 1 of 10 (welcome) with the Got it button for a fresh tutorial career', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = render()
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-overlay"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 1 of 10')
     expect(wrapper.text()).toContain('your own garage')
     expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(true)
     // A freshly opened step is all new text: nothing dims (item 20, corrected).
@@ -133,7 +121,7 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(game.gameState.tutorialAcknowledgedSteps).toContain('welcome')
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 2 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 2 of 10')
     const text = wrapper.text()
     expect(text).toContain(formatYen(FOUR_WHEELS.payoutYen))
     expect(text).toContain('Accept the job when you are ready')
@@ -149,7 +137,7 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 10')
     expect(wrapper.text()).toContain('Local Yard')
     expect(wrapper.text()).not.toContain('Ears first, tools second')
 
@@ -166,20 +154,7 @@ describe('TutorialOverlay', () => {
     expect(wrapper.text()).not.toContain('Ears first, tools second')
   })
 
-  it('anyOf skip-ahead: a bid placed without inspecting lands the machine on close, not find or bid', async () => {
-    const game = useGameStore()
-    game.newGame(4)
-    game.acknowledgeTutorialStep('welcome')
-    game.acceptMission(LOT.missionId)
-    game.gameState = bidOnScriptedLot(game.gameState)
-    const wrapper = render()
-    await nextTick()
-
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 11')
-    expect(wrapper.text()).toContain('auction rooms settle overnight')
-  })
-
-  it('close completes once the car is owned; bay completes once it reaches a service slot', async () => {
+  it('bid completes once the car is owned; bay completes once it reaches a service slot', async () => {
     const game = useGameStore()
     game.newGame(5)
     game.acknowledgeTutorialStep('welcome')
@@ -188,13 +163,13 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 6 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 10')
     expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('certain something')
     expect(wrapper.text()).toContain('drag her across')
 
     game.gameState = scriptedCarIntoBay(game.gameState)
     await nextTick()
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 7 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 6 of 10')
   })
 
   it('walks wheel then engine then deliver as the work lands, revealing bench sub-state lines', async () => {
@@ -312,7 +287,7 @@ describe('TutorialOverlay', () => {
       headValvetrain: 'worn',
     })
     await nextTick()
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 10 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 10')
     expect(wrapper.text()).toContain('press Show them the car')
   })
 
@@ -335,13 +310,13 @@ describe('TutorialOverlay', () => {
     const wrapper = render()
     await nextTick()
 
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 8 of 10')
     expect(wrapper.text()).toContain('still on your shelf')
     expect(wrapper.text()).not.toContain('press Show them the car')
 
     game.gameState = whole
     await nextTick()
-    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 10 of 11')
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 10')
   })
 
   it('spotlights the last visible anchored line, following the wheel beat onto the bench', async () => {

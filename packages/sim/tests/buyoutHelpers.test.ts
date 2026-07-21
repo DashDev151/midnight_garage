@@ -1,22 +1,10 @@
-import {
-  BUYERS,
-  CARS,
-  PARTS,
-  PARTS_TAXONOMY,
-  type AuctionLot,
-  type GameState,
-} from '@midnight-garage/content'
+import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { emptyDayActions } from '../src/actions'
-import { anchorValueYen, nextRaiseYen } from '../src/bidding'
+import { anchorValueYen, computeBuyoutPriceYen } from '../src/bidding'
 import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
-import {
-  acquireLot,
-  activeBidCount,
-  auctionAcquisitionBudget,
-  walkAwayTargetYen,
-} from '../src/bots/buyoutHelpers'
+import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from '../src/bots/buyoutHelpers'
 import { bellNormal, createRng, hashStringToSeed } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
@@ -74,7 +62,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-describe('walkAwayTargetYen (Sprint 27: instanceValue x multiplier x private spread)', () => {
+describe('walkAwayTargetYen (instanceValue x multiplier x private spread)', () => {
   /** Mirrors `walkAwayTargetYen`'s own seeded spread exactly, so the test
    * proves the wiring (anchor x multiplier x spread) rather than re-deriving
    * a competing formula. */
@@ -114,141 +102,67 @@ describe('walkAwayTargetYen (Sprint 27: instanceValue x multiplier x private spr
   })
 })
 
-describe('acquireLot (Sprint 20 - join/continue a war under a target)', () => {
-  it('queues a raise when the next valid raise is within the walk-away target', () => {
+describe('acquireLot (buy this lot outright, under a walk-away target)', () => {
+  it('queues a buyout when its price is within the walk-away target', () => {
     const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 200)
     const state = baseState()
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
-    const acted = acquireLot(state, lot, raiseToYen, actions, CONTEXT, budget, 1.2)
+    const budget = auctionAcquisitionBudget()
+    const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+    const acted = acquireLot(state, lot, priceYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(true)
-    expect(actions.bidsOnLots).toEqual([{ lotId: lot.id, maxBidYen: raiseToYen }])
-    expect(budget.cashCommitted).toBe(raiseToYen)
+    expect(actions.buyoutLots).toEqual([{ lotId: lot.id }])
+    expect(budget.cashCommitted).toBe(priceYen)
   })
 
-  it('walks away (queues nothing) when the next raise would exceed the target', () => {
+  it('walks away (queues nothing) when the buyout price would exceed the target', () => {
     const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 201)
     const state = baseState()
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
-    const acted = acquireLot(state, lot, raiseToYen - 1, actions, CONTEXT, budget, 1.2)
+    const budget = auctionAcquisitionBudget()
+    const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+    const acted = acquireLot(state, lot, priceYen - 1, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(false)
-    expect(actions.bidsOnLots).toEqual([])
-    expect(budget.cashCommitted).toBe(0)
-  })
-
-  it('holds (queues nothing) when this bot already leads the lot', () => {
-    const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 202)
-    const leading: AuctionLot = { ...lot, currentBidYen: 500_000, leadingBidder: 'player' }
-    const state = baseState()
-    const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    const acted = acquireLot(state, leading, 10_000_000, actions, CONTEXT, budget, 1.2)
-    expect(acted).toBe(false)
-    expect(actions.bidsOnLots).toEqual([])
-  })
-
-  it('never buys out - buyoutLots is never populated regardless of target size', () => {
-    const { lot } = sampleLot('toyota-supra-rz-jza80', 'premium', 300)
-    const state = baseState()
-    const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    acquireLot(state, lot, 999_999_999, actions, CONTEXT, budget, 1.2)
     expect(actions.buyoutLots).toEqual([])
+    expect(budget.cashCommitted).toBe(0)
   })
 
   it('returns false and queues nothing when unaffordable under the cash buffer', () => {
     const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 203)
     const state = baseState({ cashYen: 1 })
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(lot, state, CONTEXT)
-    const acted = acquireLot(state, lot, raiseToYen, actions, CONTEXT, budget, 1.2)
+    const budget = auctionAcquisitionBudget()
+    const priceYen = computeBuyoutPriceYen(lot, state, CONTEXT)
+    const acted = acquireLot(state, lot, priceYen, actions, CONTEXT, budget, 1.2)
     expect(acted).toBe(false)
-    expect(actions.bidsOnLots).toEqual([])
+    expect(actions.buyoutLots).toEqual([])
     expect(budget.cashCommitted).toBe(0)
   })
 
   it('accumulates cashCommitted across repeated calls sharing one budget, never overcommitting', () => {
     const { lot: lot1 } = sampleLot('honda-city-e-aa', 'local-yard', 204)
     const { lot: lot2 } = sampleLot('honda-city-e-aa', 'local-yard', 205)
-    // Sprint 27: reserve (hence the unopened-lot nextRaise) is guide-value-
-    // based, not cash-dependent, so computing the raises against a probe state
-    // and then funding the real state off them is safe - reserveYen never
-    // reads cashYen.
     const probeState = baseState()
-    const raise1 = nextRaiseYen(lot1, probeState, CONTEXT)
-    const raise2 = nextRaiseYen(lot2, probeState, CONTEXT)
+    const price1 = computeBuyoutPriceYen(lot1, probeState, CONTEXT)
+    const price2 = computeBuyoutPriceYen(lot2, probeState, CONTEXT)
     // Math.ceil, not Math.round: acquireLot's own gate is `cashYen >=
-    // (committed + raise) * cashBufferMultiplier` - a plain round can land
+    // (committed + price) * cashBufferMultiplier` - a plain round can land
     // fractionally under that exact product and fail the boundary by a
     // rounding artifact unrelated to what this test actually exercises
-    // (that both raises fit together under one shared budget).
-    const state = baseState({ cashYen: Math.ceil((raise1 + raise2) * 1.2) })
+    // (that both buyouts fit together under one shared budget).
+    const state = baseState({ cashYen: Math.ceil((price1 + price2) * 1.2) })
     const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    const first = acquireLot(state, lot1, raise1, actions, CONTEXT, budget, 1.2)
-    const second = acquireLot(state, lot2, raise2, actions, CONTEXT, budget, 1.2)
+    const budget = auctionAcquisitionBudget()
+    const first = acquireLot(state, lot1, price1, actions, CONTEXT, budget, 1.2)
+    const second = acquireLot(state, lot2, price2, actions, CONTEXT, budget, 1.2)
     expect(first).toBe(true)
     expect(second).toBe(true)
-    expect(budget.cashCommitted).toBe(raise1 + raise2)
-  })
-
-  it('raises again on a lot it was outbid on, as long as still under target', () => {
-    const { lot } = sampleLot('honda-city-e-aa', 'local-yard', 206)
-    const outbid: AuctionLot = {
-      ...lot,
-      currentBidYen: 300_000,
-      leadingBidder: 'rival',
-      playerHasBid: true,
-      quietDays: 0,
-    }
-    const state = baseState()
-    const actions = emptyDayActions()
-    const budget = auctionAcquisitionBudget(state)
-    const raiseToYen = nextRaiseYen(outbid, state, CONTEXT)
-    const acted = acquireLot(state, outbid, raiseToYen, actions, CONTEXT, budget, 1.2)
-    expect(acted).toBe(true)
-    expect(actions.bidsOnLots).toEqual([{ lotId: outbid.id, maxBidYen: raiseToYen }])
+    expect(budget.cashCommitted).toBe(price1 + price2)
   })
 })
 
 describe('auctionAcquisitionBudget', () => {
-  it('only counts lots the bot currently leads, not every lot it has ever bid on', () => {
-    const leading: AuctionLot = {
-      ...sampleLot('honda-city-e-aa', 'local-yard', 207).lot,
-      currentBidYen: 300_000,
-      leadingBidder: 'player',
-    }
-    const losing: AuctionLot = {
-      ...sampleLot('honda-city-e-aa', 'local-yard', 208).lot,
-      currentBidYen: 400_000,
-      leadingBidder: 'rival',
-      playerHasBid: true,
-    }
-    const state = baseState({ activeAuctionLots: [leading, losing] })
-    expect(auctionAcquisitionBudget(state).cashCommitted).toBe(300_000)
-  })
-})
-
-describe('activeBidCount', () => {
-  it('counts every lot with playerHasBid, including ones currently being lost', () => {
-    const leading: AuctionLot = {
-      ...sampleLot('honda-city-e-aa', 'local-yard', 209).lot,
-      currentBidYen: 300_000,
-      leadingBidder: 'player',
-      playerHasBid: true,
-    }
-    const losing: AuctionLot = {
-      ...sampleLot('honda-city-e-aa', 'local-yard', 210).lot,
-      currentBidYen: 400_000,
-      leadingBidder: 'rival',
-      playerHasBid: true,
-    }
-    const untouched: AuctionLot = sampleLot('honda-city-e-aa', 'local-yard', 211).lot
-    const state = baseState({ activeAuctionLots: [leading, losing, untouched] })
-    expect(activeBidCount(state)).toBe(2)
+  it('starts empty every call - buyout resolves the same day, nothing persists across ticks', () => {
+    expect(auctionAcquisitionBudget()).toEqual({ cashCommitted: 0 })
   })
 })

@@ -177,55 +177,6 @@ describe('acquisitions require a free parking space at delivery, never at biddin
     expect(log.some((e) => e.type === 'acquisition-blocked')).toBe(false)
   })
 
-  it('a won bid is forfeited to the rivals only once parking, every service bay, AND the grace slot are all full - bid never blocked', () => {
-    const { state, lot } = stateWithLot(1, {
-      parkingBayCount: 0,
-      serviceBayCount: 0,
-      graceParkingCarId: 'someone-elses-car',
-    })
-    // An over-market bid - well above the buyout cap every rival is capped
-    // at - guarantees a win once the lot's own duration elapses (Sprint 19:
-    // bidding no longer resolves same-day, so this places the bid, then
-    // advances until the lot actually resolves, accumulating every day's
-    // log). A parallel no-bid control run over the same number of days
-    // proves the bid itself spent nothing, regardless of how many weekly
-    // rent boundaries the wait happens to cross (rent moves cash too, for
-    // reasons unrelated to the auction) - both runs consume the exact same
-    // shared day-tick RNG stream either way, since placing a bid and the
-    // per-lot escalation pass both draw from their own separate RNGs.
-    const actions = DayActionsSchema.parse({
-      bidsOnLots: [{ lotId: lot.id, maxBidYen: lot.bookValueYen * 3 }],
-    })
-    let current = advanceDay(state, actions, 1, CONTEXT)
-    let control = advanceDay(state, DayActionsSchema.parse({}), 1, CONTEXT).state
-    let allLog = current.log
-    let guard = 0
-    while (current.state.activeAuctionLots.some((l) => l.id === lot.id) && guard++ < 30) {
-      current = advanceDay(
-        current.state,
-        DayActionsSchema.parse({}),
-        current.state.seed + current.state.day,
-        CONTEXT,
-      )
-      allLog = [...allLog, ...current.log]
-      control = advanceDay(
-        control,
-        DayActionsSchema.parse({}),
-        control.seed + control.day,
-        CONTEXT,
-      ).state
-    }
-    const next = current.state
-    expect(next.ownedCars).toHaveLength(0) // forfeited, not won
-    expect(next.cashYen).toBe(control.cashYen) // nothing spent by the auction itself
-    expect(next.activeAuctionLots.some((l) => l.id === lot.id)).toBe(false) // lot is gone either way
-    expect(allLog.find((e) => e.type === 'acquisition-blocked')).toMatchObject({
-      kind: 'auction-win',
-      reason: 'no-space',
-    })
-    expect(allLog.find((e) => e.type === 'auction-bid-lost')).toBeDefined()
-  })
-
   it('accepting a service job is skipped (offer stays) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
     const base = createInitialGameState(CONTEXT, 1)
     // Sprint 36: no equipment/tool gate can interfere here - every line is

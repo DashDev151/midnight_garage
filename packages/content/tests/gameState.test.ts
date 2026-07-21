@@ -354,16 +354,9 @@ describe('GameState / DayLog round-trip', () => {
       { type: 'market-heat-shift', modelId: 'toyota-supra-rz-jza80', deltaPercent: 12.5 },
       { type: 'auction-catalog-refreshed', tier: 'local-yard', lotCount: 3 },
       {
-        type: 'auction-bid-won',
+        type: 'auction-hammer-won',
         lotId: 'lot-0001',
-        finalPriceYen: 150_000,
-        modelId: 'honda-city-e-aa',
-        year: 1984,
-      },
-      {
-        type: 'auction-bid-lost',
-        lotId: 'lot-0002',
-        winningPriceYen: 200_000,
+        priceYen: 150_000,
         modelId: 'honda-city-e-aa',
         year: 1984,
       },
