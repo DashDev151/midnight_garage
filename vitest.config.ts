@@ -18,6 +18,9 @@ export default defineConfig({
         // Sprint 00 art-spike / dev sandbox screens, never real game UI.
         'packages/game/src/screens/SpikeScreen.vue',
         'packages/game/src/components/PixiCarSandbox.vue',
+        // Dev-route auction-room demo screen (dev console only), not real
+        // game UI; its turn-loop module stays covered.
+        'packages/game/src/screens/AuctionRoomDemoScreen.vue',
         // Dev-only console, tree-shaken out of the production bundle.
         'packages/game/src/components/DevConsole.vue',
         // Deliberately a thin, minimal Dexie wrapper (Sprint 07) so tests

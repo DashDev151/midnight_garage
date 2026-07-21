@@ -213,7 +213,8 @@ fails that test outright, rather than silently drifting).
 | `bookValueYen` per model | `cars.json` | Clean value, and therefore every price in the game |
 | `baseCostYen` / `classFactors` / `gradeFactors` / `globalFactor` / `overrides` | `partPricing.json` | Every catalog SKU's `priceYen`, every taxonomy entry's per-class stock-replacement price |
 | `STARTING_CASH_YEN`, `WEEKLY_RENT_YEN`, `DOUBLE_PARKING_FINE_YEN` | `economy.json` | Career solvency pacing |
-| `AUCTION_RESERVE_PRICE_FRACTION`, `AUCTION_BUYOUT_PREMIUM`, `AUCTION_WHOLESALE_FRACTION`, `AUCTION_BID_INCREMENT_FRACTION`, `AUCTION_QUIET_DAYS_TO_HAMMER`, `AUCTION_LOTS_PER_TIER`, `AUCTION_DURATION_*`, `AUCTION_FLASH_CHANCE`, `AUCTION_LONG_CHANCE_UNCOMMON_RARE`, `AUCTION_TRAVEL_FEE_YEN`, `AUCTION_DAILY_SPAWN_RATE`, `auctionInterest.*` | `economy.json` | The whole auction reserve/buyout/contestation model (`bidding.ts`, `auctions.ts`) |
+| `energy.*` (`pointsPerLabour`, `basePoolPoints`, `energyPerGradeByTier`, `energyByClass`, `actionPoints.*`) | `economy.json` | The whole labour economy: the day's pool, repair/install labour, and every physical action's own labour figure (`actionPoints`, one key per action, zero = free at current tuning) - the single tuning location for labour costs |
+| `AUCTION_RESERVE_PRICE_FRACTION`, `AUCTION_BUYOUT_PREMIUM`, `AUCTION_WHOLESALE_FRACTION`, `AUCTION_BID_INCREMENT_FRACTION`, `AUCTION_BID_INCREMENT_STEP_YEN`, `AUCTION_QUIET_DAYS_TO_HAMMER`, `AUCTION_LOTS_PER_TIER`, `AUCTION_DURATION_*`, `AUCTION_FLASH_CHANCE`, `AUCTION_LONG_CHANCE_UNCOMMON_RARE`, `AUCTION_TRAVEL_FEE_YEN`, `AUCTION_DAILY_SPAWN_RATE`, `auctionInterest.*` | `economy.json` | The whole auction reserve/buyout/contestation model (`bidding.ts`, `auctions.ts`) |
 | `restoration.repairStepFraction` | `economy.json` | Every repair-cost formula (`bands.ts`'s `costToMintYen` family) |
 | `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread`, `valuation.foundation` (Law 5) | `economy.json` | `marketValue.ts`'s guide-value formula (`valuation.foundation` scales the aftermarket premium by the worst foundational part) |
 | `marketPressure.*` | `economy.json` | Weekly market-heat drift (`marketHeat.ts`) |
@@ -355,6 +356,27 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   because it is the whole design: it is not financially worth building a shitbox kei into a mint
   show car "though it might still be fun", while on a sports car it genuinely is - the point of
   diminishing return is higher on a better car.
+- 2026-07-20: **Repair reward toned down, the lemon penalty moved into content and sharpened, and
+  the fault-ladder catastrophe principle established** (Sprint 105, the stakes economy).
+  `valuation.marketRepairDiscount` 1.5 -> 1.3: fixing a below-expectation fault still returns more
+  than it costs (Law 1's >= 1 guarantee is untouched, and 1.3 x `partsGeneration.maxBillFraction`
+  0.6 = 0.78 keeps the (D, F) interlock comfortably under 1), just less, so repair profit no longer
+  drowns out the buying spread and the reputation reward. The interlock ceiling forced one coupled
+  edit: `valuation.expectationByTier.rare.beyondDiscount` 1.5 -> 1.3, since the schema requires
+  `beyondDiscount <= marketRepairDiscount`; the rare tier's expectation band is already `mint`, so
+  there is no above-band work to discount and the change is economically inert. The lemon
+  reputation penalty leaves `sim/constants.ts` for `economy.json`'s `reputation` block (closing a
+  content-law gap alongside the clean/concours bonuses already there) and sharpens from 5 to 8, so
+  one lemon sale now undoes about four clean sales; its trigger bar `lemonMaxAverageBandFactor`
+  (0.45) moves into the config with it. Fault ladders gain a catastrophe rung: eight symptoms now
+  carry a rare, low-weight worst cause that sets an expensive or foundational part (block,
+  internals, gearbox, differential, chassis) to the terminal `scrap` band instead of `poor`, so a
+  doubt can hide a genuine write-off whose true worth collapses toward the `scrapValueFraction`
+  floor. Catastrophes stay rare (weights ~12 to 18 per cent) and severity-blind (one card line per
+  symptom), so inspection is the only way to tell a steal from a grenade. Golden masters and the
+  formula-locked story-mission payout probes moved as intended (case (a)); the value-model, wage,
+  and coherence probes were re-run and assessed. First-pass numbers, to settle in playtesting.
+  Full detail in `docs/sprints/sprint105.md`'s Exit.
 
   All eight decision-7 numbers are first-pass tuning bait. Full detail and the measured
   before/after in `docs/sprints/sprint66.md`'s Exit.
@@ -394,3 +416,18 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   items provably sum to the engine's totals; surfaces show at most two prices, the room's
   number and the player's. `fearPremium` leaves the audit table with this entry. Full detail
   in `docs/sprints/sprint98.md`'s Exit.
+- 2026-07-19: **the bid ladder halves** (maintainer tuning order ahead of the Sprint 99
+  room-demo sitting: "our intervals are too large... drop it to like 5000Y, especially
+  for the cheaper cars"). `AUCTION_BID_INCREMENT_FRACTION` 0.05 -> 0.025, and the
+  ladder's floor/rounding granularity moves out of code into a new ordinary anchor,
+  `AUCTION_BID_INCREMENT_STEP_YEN` (5000) - a kei's ladder now steps at exactly Y5,000.
+  Not a law change; audit table updated.
+- 2026-07-20: **every physical action's labour cost becomes a named anchor**
+  (`energy.actionPoints.*`, maintainer order 2026-07-20: "EVERY action that the player
+  can do has a potential labour cost... centralized in a single location... fully
+  configurable"). Twelve keys, one per physical action; shipped defaults reproduce the
+  prior behaviour exactly (workup 10, inspection visit 10, everything else 0), proven by
+  the golden masters not moving. The free-removal rule becomes the shipped default of a
+  knob rather than a structural fact; tuning any removal-family key above zero requires
+  a tutorial-copy re-sweep in the same sitting (the walkthrough currently states that
+  taking things apart is free). Not a law change; audit table updated.

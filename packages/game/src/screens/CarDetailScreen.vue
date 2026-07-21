@@ -101,10 +101,14 @@ const WORKUP_GATE_LABEL: Record<string, string> = {
 const workupButtonTitle = computed(() => {
   const reason = detail.value?.workupGateReason
   if (reason) return WORKUP_GATE_LABEL[reason] ?? reason
-  // Sprint 94: the workup spends `pointsPerLabour` of the day's energy, no
-  // longer a whole "slot".
-  return `Collapse every symptom straight to its true cause - ${game.pointsPerLabour} labour, no fee, no clock`
+  return `Collapse every symptom straight to its true cause - ${game.actionPoints.workup} labour, no fee, no clock`
 })
+
+/** A "· N labour" suffix for an action's control - empty while the action's
+ * own `actionPoints` figure is 0, so free actions stay visually quiet. */
+function labourSuffix(points: number): string {
+  return points > 0 ? ` · ${points} labour` : ''
+}
 
 function onWorkupClick(): void {
   const d = detail.value
@@ -618,7 +622,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             {{
               (scrapConfirming ? 'Confirm - scrap the shell (' : 'Scrap the shell (') +
               formatYen(game.scrapShellValueYen(detail.car.id)) +
-              ')'
+              ')' +
+              labourSuffix(game.actionPoints.scrapShell)
             }}
           </button>
         </div>
@@ -644,7 +649,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           data-test="toggle-bay"
           @click="toggleBay"
         >
-          {{ detail.inServiceBay ? 'Move to parking' : 'Move to service bay' }}
+          {{
+            (detail.inServiceBay ? 'Move to parking' : 'Move to service bay') +
+            labourSuffix(game.actionPoints.moveCar)
+          }}
         </button>
       </div>
 
@@ -678,7 +686,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           data-test="car-workup"
           @click="onWorkupClick"
         >
-          Full workup ({{ game.pointsPerLabour }} labour)
+          Full workup ({{ game.actionPoints.workup }} labour)
         </button>
       </section>
 
@@ -931,7 +939,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   :data-test="'remove-part-' + selectedRow.partId"
                   @click="onRemoveClick(selectedRow.partId)"
                 >
-                  Take it off
+                  Take it off{{ labourSuffix(game.actionPoints.removePart) }}
                 </button>
                 <span
                   v-if="removeBlockedReasonFor(selectedRow.partId)"
@@ -973,7 +981,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'bench-replace-' + selectedBench.member.carPartId"
               @click="openBenchReplace(selectedBench.containerId, selectedBench.member.carPartId)"
             >
-              Replace
+              Replace{{ labourSuffix(game.actionPoints.benchFitMember) }}
             </button>
             <!-- Playtest 2026-07-19 item 25: a mounted member comes OFF the
                  assembly before its successor goes on - dead rubber never has
@@ -988,7 +996,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 game.removeAssemblyMember(selectedBench.containerId, selectedBench.member.carPartId)
               "
             >
-              Take it off
+              Take it off{{ labourSuffix(game.actionPoints.benchRemoveMember) }}
             </button>
             <!-- Sprint 96 decision 1 (amended same day): never a SILENT dead
                  end - nothing to recondition and nothing on hand to fit states
@@ -1024,7 +1032,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'refit-assembly-' + panelAssemblyRow.assemblyId"
               @click="game.refitAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
             >
-              Refit assembly
+              Refit assembly{{ labourSuffix(game.actionPoints.refitAssembly) }}
             </button>
             <template v-else>
               <button
@@ -1033,7 +1041,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 :data-test="'remove-assembly-' + panelAssemblyRow.assemblyId"
                 @click="game.removeAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
               >
-                Remove assembly
+                Remove assembly{{ labourSuffix(game.actionPoints.removeAssembly) }}
               </button>
               <span
                 v-if="panelAssemblyRow.blockedReason"

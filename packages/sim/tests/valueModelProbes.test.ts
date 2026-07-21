@@ -869,13 +869,16 @@ describe('unimproved-flip probe (Sprint 59 decision 1, playtest item 19)', () =>
       // rather than tuned away, since this is still an order of magnitude
       // below the ~49% structural giveaway item 19 reported, and a
       // disciplined bidder winning a modest discount is the intended shape.
-      // 8% is headroom above every measured tier.
+      // The fault-ladder catastrophe and moderate causes reshape the generated
+      // population and lift the rare tier's median as-is flip to ~8.1%; 9% is
+      // headroom above every measured tier, and the shape stays a modest
+      // discount, disclosed rather than tuned away.
       //
       // This band does NOT gate the wage law: both the as-is flip and the
       // repair flip start from the same won price, so the bidding discount
       // is common to both and cancels. Repair's advantage is
       // `(D - 1) x bill` ON TOP of it - see the wage probe below.
-      expect(Math.abs(marginMedian)).toBeLessThanOrEqual(0.08)
+      expect(Math.abs(marginMedian)).toBeLessThanOrEqual(0.09)
     },
   )
 })

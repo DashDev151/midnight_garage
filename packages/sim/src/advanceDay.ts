@@ -82,7 +82,12 @@ export function advanceDay(
   next = bayPurchases.state
   log.push(...bayPurchases.log)
 
-  const moves = applyMoves(next, queuedActions.moveCars)
+  const moves = applyMoves(
+    next,
+    queuedActions.moveCars,
+    context.economy,
+    Math.max(0, energyMax(next, context.economy) - next.energySpentToday),
+  )
   next = moves.state
   log.push(...moves.log)
 
@@ -93,7 +98,13 @@ export function advanceDay(
   // same "resolve the precondition before what depends on it" ordering
   // step 0's equipment-before-jobs comment already establishes.
   for (const { carInstanceId, carPartId } of queuedActions.removeParts) {
-    const result = resolveRemovePart(next, carInstanceId, carPartId, context)
+    const result = resolveRemovePart(
+      next,
+      carInstanceId,
+      carPartId,
+      context,
+      Math.max(0, energyMax(next, context.economy) - next.energySpentToday),
+    )
     next = result.state
     log.push(...result.log)
   }
@@ -158,7 +169,12 @@ export function advanceDay(
   // 1d. Bots' queued scrap-part sells (Sprint 26 decision 6) - the player
   // sells instantly via resolveScrapPart directly from the store.
   for (const { partInstanceId } of queuedActions.scrapParts) {
-    const result = resolveScrapPart(next, partInstanceId, context)
+    const result = resolveScrapPart(
+      next,
+      partInstanceId,
+      context,
+      Math.max(0, energyMax(next, context.economy) - next.energySpentToday),
+    )
     next = result.state
     log.push(...result.log)
   }

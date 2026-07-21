@@ -64,6 +64,12 @@ const draggable = useDraggable(() => props.instance.id)
 const isScrap = computed(() => props.instance.band === 'scrap')
 const scrapValueYen = computed(() => game.scrapValueForPart(props.instance.id))
 
+/** A "· N labour" suffix on the scrap control - empty while scrapping a part
+ * is free (its `actionPoints` figure is 0). */
+const scrapLabourSuffix = computed(() =>
+  game.actionPoints.scrapPart > 0 ? ` · ${game.actionPoints.scrapPart} labour` : '',
+)
+
 /** Sprint 71 decision 6 (the teardown game's donor economy): the used-part
  * sale price for a non-scrap instance - "Sell" beside "Scrap it", the other
  * way to cash out a part still worth more than scrap value. */
@@ -205,7 +211,7 @@ function onPointerUp(event: PointerEvent): void {
           :data-test="'scrap-part-' + instance.id"
           @click.stop="onScrapClick"
         >
-          Scrap it ({{ formatYen(scrapValueYen) }})
+          Scrap it ({{ formatYen(scrapValueYen) }}){{ scrapLabourSuffix }}
         </button>
       </template>
       <template v-else>

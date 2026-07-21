@@ -8,7 +8,6 @@ import {
 import { describe, expect, it } from 'vitest'
 import { isPartMissing } from '../src/bands'
 import { saleQualityFor, saleReputationDeltaFor } from '../src/carCondition'
-import { LEMON_SALE_REPUTATION_PENALTY } from '../src/constants'
 import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
@@ -76,21 +75,21 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
   it('penalizes a lemon by low cost-weighted average band factor - everything poor', () => {
     const car = buildCarInstance({ parts: uniformCarParts('poor') })
     expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -LEMON_SALE_REPUTATION_PENALTY,
+      -ECONOMY.reputation.lemonSalePenalty,
     )
   })
 
   it('penalizes a lemon by a single scrap part, even with every other part mint', () => {
     const car = mintWithOneOverride('tyres', 'scrap')
     expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -LEMON_SALE_REPUTATION_PENALTY,
+      -ECONOMY.reputation.lemonSalePenalty,
     )
   })
 
   it('lemon (scrap) takes precedence over concours even when authenticity clears its bar', () => {
     const car = mintWithOneOverride('tyres', 'scrap', 95)
     expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -LEMON_SALE_REPUTATION_PENALTY,
+      -ECONOMY.reputation.lemonSalePenalty,
     )
   })
 
@@ -102,7 +101,7 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
   it('penalizes a lemon by a single missing (non-FI) part, even with every other part mint', () => {
     const car = mintWithOneOverride('tyres', null)
     expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -LEMON_SALE_REPUTATION_PENALTY,
+      -ECONOMY.reputation.lemonSalePenalty,
     )
   })
 
@@ -125,7 +124,7 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
       authenticityPercent: 90,
     })
     expect(saleReputationDeltaFor(turboCarMissingFi, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -LEMON_SALE_REPUTATION_PENALTY,
+      -ECONOMY.reputation.lemonSalePenalty,
     )
 
     const naCarMissingFi = buildCarInstance({
@@ -140,7 +139,7 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
 
 describe('saleQualityFor', () => {
   it('maps each of the four possible deltas to its named outcome', () => {
-    expect(saleQualityFor(-LEMON_SALE_REPUTATION_PENALTY, ECONOMY)).toBe('lemon')
+    expect(saleQualityFor(-ECONOMY.reputation.lemonSalePenalty, ECONOMY)).toBe('lemon')
     expect(saleQualityFor(0, ECONOMY)).toBeNull()
     expect(saleQualityFor(ECONOMY.reputation.cleanSaleBonus, ECONOMY)).toBe('clean')
     expect(saleQualityFor(ECONOMY.reputation.concoursSaleBonus, ECONOMY)).toBe('concours')

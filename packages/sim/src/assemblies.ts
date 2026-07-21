@@ -198,9 +198,10 @@ function anyMemberBusy(
 
 /**
  * Remove an assembly as a unit (car-level, Sprint 87 operation 1). Legal when
- * every external blocker is vacant and no member has an open job; 0 labour
- * (Sprint 79 removal law); the machine gate is satisfied by ownership or the
- * assist fee (posted to the car/job ledger). Each installed member moves into
+ * every external blocker is vacant and no member has an open job; labour is
+ * `energy.actionPoints.removeAssembly` (0 in shipped content), gated on
+ * `laborAvailable` when raised; the machine gate is satisfied by ownership or
+ * the assist fee (posted to the car/job ledger). Each installed member moves into
  * one container in `assemblyInventory`, and each vacated member slot stamps its
  * `vacatedBaseline` exactly as per-slot removal does - so refit later reads
  * those baselines back for the equivalence charge. An already-empty member slot
@@ -226,9 +227,7 @@ export function resolveRemoveAssembly(
   if (anyMemberBusy(state, carInstanceId, def, context)) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
 
-  // Sprint 79: removal is always free labour; the gate below (content law)
-  // cannot fire while every class costs 0, but stays for a future re-tune.
-  const laborSlotsUsed = 0
+  const laborSlotsUsed = context.economy.energy.actionPoints.removeAssembly
   if (laborSlotsUsed > laborAvailable) return fail
 
   const assistFeeYen = assemblyMachineAssistFeeYen(def, state, context)
@@ -292,10 +291,12 @@ export function resolveRemoveAssembly(
 }
 
 /**
- * Refit an assembly as a unit (car-level, Sprint 87 operation 3). 0 labour for
- * the operation itself PLUS per-member charging: a member equal to the slot's
- * `vacatedBaseline` refits free (`refitLaborSlotsFor` returns 0), a changed
- * member charges its normal install labour (`installLaborSlotsFor`, reading
+ * Refit an assembly as a unit (car-level, Sprint 87 operation 3). The
+ * operation itself costs `energy.actionPoints.refitAssembly` (0 in shipped
+ * content) PLUS per-member charging: a member equal to the slot's
+ * `vacatedBaseline` refits at `energy.actionPoints.refitUnchangedMember`
+ * (also 0 today, via `refitLaborSlotsFor`), a changed member charges its
+ * normal install labour (`installLaborSlotsFor`, reading
  * `economy.energy.energyByClass`). The machine gate applies as
  * on removal (so a full round trip is two fees when renting). Each changed
  * member's `pricePaidYen` lands on the bill. The container dissolves back into
@@ -326,7 +327,7 @@ export function resolveRefitAssembly(
     if (car.parts[member].installed !== null) return fail // a target slot is still occupied
   }
 
-  let laborSlotsRequired = 0
+  let laborSlotsRequired = context.economy.energy.actionPoints.refitAssembly
   for (const member of def.members) {
     const instance = container.members[member]
     if (!instance) continue
@@ -365,10 +366,12 @@ export interface AssemblyMemberMoveResult {
 /**
  * Swap a member of an open assembly on the bench (Sprint 87 operation 2): move
  * `newPartInstanceId` from the parts bin into the member slot, and the displaced
- * member (if any) back to the bin. A tyre-into-assembly op costs the wheels
- * bench fee unless the tier-2 tyre machine is owned (`benchSwapFeeYen`), posted
- * to the source car's ledger. Refuses if the container/part is missing, the
- * part does not address this member slot, or the part is scrap.
+ * member (if any) back to the bin. Labour is `energy.actionPoints.benchFitMember`
+ * (0 in shipped content), gated on `laborAvailable` when raised. A
+ * tyre-into-assembly op costs the wheels bench fee unless the tier-2 tyre
+ * machine is owned (`benchSwapFeeYen`), posted to the source car's ledger.
+ * Refuses if the container/part is missing, the part does not address this
+ * member slot, or the part is scrap.
  */
 export function resolveSwapAssemblyMember(
   state: GameState,
@@ -376,6 +379,7 @@ export function resolveSwapAssemblyMember(
   memberSlot: CarPartId,
   newPartInstanceId: string,
   context: SimContext,
+  laborAvailable: number = Infinity,
 ): AssemblyMemberMoveResult {
   const fail: AssemblyMemberMoveResult = { state, log: [], ok: false }
   const containers = state.assemblyInventory ?? []
@@ -388,6 +392,8 @@ export function resolveSwapAssemblyMember(
   if (!newPart || newPart.band === 'scrap') return fail
   const catalogPart = context.partsById[newPart.partId]
   if (!catalogPart || catalogPart.carPartId !== memberSlot) return fail
+  const laborSlotsUsed = context.economy.energy.actionPoints.benchFitMember
+  if (laborSlotsUsed > laborAvailable) return fail
 
   const feeYen = benchSwapFeeYen(memberSlot, state, context)
   const displaced = container.members[memberSlot] ?? null
@@ -402,6 +408,7 @@ export function resolveSwapAssemblyMember(
     ...state,
     assemblyInventory: nextContainers,
     partInventory,
+    energySpentToday: state.energySpentToday + laborSlotsUsed,
     cashYen: state.cashYen - feeYen,
   }
   if (container.sourceCarId) next = addRepairYen(next, container.sourceCarId, feeYen)
@@ -409,20 +416,21 @@ export function resolveSwapAssemblyMember(
 }
 
 /**
- * Pull a mounted member OUT of an open assembly on the bench (playtest
- * 2026-07-19 item 25: dead tyres come off the rims and go in the bin BEFORE
- * fresh ones go on - the swap-only bench forced scrap rubber to stay mounted
- * until its replacement existed). The instance moves to the parts bin and the
- * member slot reads empty; refit already skips empty members, and
- * `resolveSwapAssemblyMember` fits into an empty slot exactly as it displaces
- * a full one. Free and ungated, like every removal (Sprint 79 law - the
- * wheels-group fee is for FITTING a tyre, never for dismounting one).
+ * Pull a mounted member OUT of an open assembly on the bench: dead tyres come
+ * off the rims and go in the bin BEFORE fresh ones go on. The instance moves
+ * to the parts bin and the member slot reads empty; refit already skips empty
+ * members, and `resolveSwapAssemblyMember` fits into an empty slot exactly as
+ * it displaces a full one. Labour is `energy.actionPoints.benchRemoveMember`
+ * (0 in shipped content), gated on `laborAvailable` when raised; the
+ * wheels-group fee is for FITTING a tyre, never for dismounting one.
  * Refuses if the container, member slot, or mounted instance is missing.
  */
 export function resolveRemoveAssemblyMember(
   state: GameState,
   containerId: string,
   memberSlot: CarPartId,
+  context: SimContext,
+  laborAvailable: number = Infinity,
 ): AssemblyMemberMoveResult {
   const fail: AssemblyMemberMoveResult = { state, log: [], ok: false }
   const allContainers = containers(state)
@@ -431,6 +439,8 @@ export function resolveRemoveAssemblyMember(
   const container = allContainers[containerIndex]!
   const mounted = container.members[memberSlot]
   if (!mounted) return fail
+  const laborSlotsUsed = context.economy.energy.actionPoints.benchRemoveMember
+  if (laborSlotsUsed > laborAvailable) return fail
 
   const nextContainers = [...allContainers]
   nextContainers[containerIndex] = {
@@ -442,6 +452,7 @@ export function resolveRemoveAssemblyMember(
       ...state,
       assemblyInventory: nextContainers,
       partInventory: [...state.partInventory, mounted],
+      energySpentToday: state.energySpentToday + laborSlotsUsed,
     },
     log: [],
     ok: true,
@@ -450,9 +461,11 @@ export function resolveRemoveAssemblyMember(
 
 /**
  * Build an assembly on the bench from loose bin parts (Sprint 87 operation 4) -
- * a container with `sourceCarId: null` holding the named members. Installing it
- * onto a car (`resolveRefitAssembly` with `overrideCarId`) then charges install
- * labour for every member, as new-to-car parts do. Refuses if a named part is
+ * a container with `sourceCarId: null` holding the named members. Labour is
+ * `energy.actionPoints.benchBuildAssembly` (0 in shipped content), gated on
+ * `laborAvailable` when raised. Installing it onto a car
+ * (`resolveRefitAssembly` with `overrideCarId`) then charges install labour
+ * for every member, as new-to-car parts do. Refuses if a named part is
  * missing, scrap, or does not address its member slot.
  */
 export function resolveBuildAssembly(
@@ -460,10 +473,13 @@ export function resolveBuildAssembly(
   assemblyId: AssemblyId,
   memberInstanceIds: Partial<Record<CarPartId, string>>,
   context: SimContext,
+  laborAvailable: number = Infinity,
 ): AssemblyMemberMoveResult {
   const fail: AssemblyMemberMoveResult = { state, log: [], ok: false }
   const def = assemblyDefById(assemblyId, context)
   if (!def) return fail
+  const laborSlotsUsed = context.economy.energy.actionPoints.benchBuildAssembly
+  if (laborSlotsUsed > laborAvailable) return fail
   const members: AssemblyContainer['members'] = {}
   const takenIds: string[] = []
   for (const member of def.members) {
@@ -486,7 +502,12 @@ export function resolveBuildAssembly(
   const partInventory = state.partInventory.filter((p) => !takenIds.includes(p.id))
   const container: AssemblyContainer = { id: containerId, assemblyId, members, sourceCarId: null }
   return {
-    state: { ...state, partInventory, assemblyInventory: [...containers(state), container] },
+    state: {
+      ...state,
+      partInventory,
+      assemblyInventory: [...containers(state), container],
+      energySpentToday: state.energySpentToday + laborSlotsUsed,
+    },
     log: [],
     ok: true,
   }

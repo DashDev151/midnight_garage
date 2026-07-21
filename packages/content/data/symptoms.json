@@ -7,19 +7,19 @@
         "id": "valve-seals",
         "carPartId": "headValvetrain",
         "setBand": "worn",
-        "weight": 55
+        "weight": 57
       },
       {
         "id": "tired-rings",
         "carPartId": "internals",
-        "setBand": "poor",
-        "weight": 30
+        "setBand": "scrap",
+        "weight": 13
       },
       {
         "id": "head-gasket",
         "carPartId": "headValvetrain",
         "setBand": "poor",
-        "weight": 15
+        "weight": 30
       }
     ],
     "tests": [
@@ -49,19 +49,19 @@
         "id": "flat-battery",
         "carPartId": "ignitionEcu",
         "setBand": "worn",
-        "weight": 55
+        "weight": 57
       },
       {
         "id": "fuel-pump",
         "carPartId": "fuelSystem",
         "setBand": "poor",
-        "weight": 30
+        "weight": 31
       },
       {
         "id": "seized-engine",
         "carPartId": "block",
-        "setBand": "poor",
-        "weight": 15
+        "setBand": "scrap",
+        "weight": 12
       }
     ],
     "tests": [
@@ -91,22 +91,36 @@
         "id": "lifter-tick",
         "carPartId": "headValvetrain",
         "setBand": "poor",
-        "weight": 70
+        "weight": 62
+      },
+      {
+        "id": "blowing-manifold",
+        "carPartId": "exhaust",
+        "setBand": "poor",
+        "weight": 25
       },
       {
         "id": "rod-knock",
         "carPartId": "internals",
-        "setBand": "poor",
-        "weight": 30
+        "setBand": "scrap",
+        "weight": 13
       }
     ],
     "tests": [
       {
         "testId": "stethoscope",
-        "partition": [["lifter-tick"], ["rod-knock"]],
+        "partition": [["lifter-tick"], ["blowing-manifold", "rod-knock"]],
         "resultCopy": [
-          "A light, even tick right at the top of the head. Just the lifters, not the bottom end.",
-          "A duller knock lower in the block, worse under load. The bottom end, not the lifters."
+          "A light, even tick right at the top of the head, in time with the valves. Just the lifters, not the bottom end or the exhaust.",
+          "The tick sources lower and further out than the valve gear. Not the lifters, narrows to the bottom end or a blowing manifold."
+        ]
+      },
+      {
+        "testId": "oil-pressure-check",
+        "partition": [["rod-knock"], ["lifter-tick", "blowing-manifold"]],
+        "resultCopy": [
+          "A gauge on the sender port shows oil pressure sagging low at hot idle, the knock deepening under load as it drops. Genuine bearing clearance in the bottom end, not the valve gear or the exhaust.",
+          "Hot-idle oil pressure holds steady and correct with the tick still there. The bottom end is sound, narrows to a worn lifter or a blowing manifold gasket."
         ]
       }
     ]
@@ -119,28 +133,42 @@
         "id": "vacuum-leak",
         "carPartId": "intake",
         "setBand": "worn",
-        "weight": 50
+        "weight": 48
       },
       {
         "id": "tired-ecu",
         "carPartId": "ignitionEcu",
         "setBand": "poor",
-        "weight": 30
+        "weight": 27
       },
       {
         "id": "worn-cams",
         "carPartId": "camsTiming",
         "setBand": "poor",
-        "weight": 20
+        "weight": 15
+      },
+      {
+        "id": "burnt-valve",
+        "carPartId": "headValvetrain",
+        "setBand": "scrap",
+        "weight": 10
       }
     ],
     "tests": [
       {
         "testId": "spray-test",
-        "partition": [["vacuum-leak"], ["tired-ecu", "worn-cams"]],
+        "partition": [["vacuum-leak"], ["tired-ecu", "worn-cams", "burnt-valve"]],
         "resultCopy": [
-          "The idle changes the instant a hose joint gets a squirt. A vacuum leak, not the ECU or the cams.",
-          "Nothing changes anywhere along the manifold. Not a vacuum leak, narrows to the ECU or the cam timing, and this is as far as a yard test gets it."
+          "The idle changes the instant a hose joint gets a squirt. A vacuum leak, not the ECU, the cams or a cylinder gone down.",
+          "Nothing changes anywhere along the manifold. Not a vacuum leak, narrows to the ECU, the cam timing or a cylinder down on compression."
+        ]
+      },
+      {
+        "testId": "compression-test",
+        "partition": [["burnt-valve"], ["vacuum-leak", "tired-ecu", "worn-cams"]],
+        "resultCopy": [
+          "One cylinder reads badly down and won't hold pressure, the hiss carrying straight out of the exhaust. A burnt exhaust valve, not a vacuum leak or a tired ECU.",
+          "Compression reads even and healthy across every cylinder, every valve sealing. No burnt valve, and a squirt test aside, a yard gauge can take the ECU-versus-cams question no further."
         ]
       }
     ]
@@ -156,19 +184,33 @@
         "weight": 60
       },
       {
+        "id": "dragging-clutch",
+        "carPartId": "clutch",
+        "setBand": "poor",
+        "weight": 22
+      },
+      {
         "id": "chewed-gearset",
         "carPartId": "gearbox",
-        "setBand": "poor",
-        "weight": 40
+        "setBand": "scrap",
+        "weight": 18
       }
     ],
     "tests": [
       {
         "testId": "gearbox-oil-check",
-        "partition": [["worn-synchros"], ["chewed-gearset"]],
+        "partition": [["chewed-gearset"], ["worn-synchros", "dragging-clutch"]],
         "resultCopy": [
-          "The oil's clean and the right level, just thin. Worn synchros, not a chewed gearset.",
-          "Metal glints in the drained oil. A chewed gearset, not just tired synchros."
+          "Metal glints in the drained gearbox oil. A chewed gearset, not tired synchros or a clutch that won't let go.",
+          "The oil drains clean, just thin with age, nothing bright in it. Not a chewed gearset, narrows to worn synchros or a dragging clutch."
+        ]
+      },
+      {
+        "testId": "clutch-drag-check",
+        "partition": [["dragging-clutch"], ["worn-synchros", "chewed-gearset"]],
+        "resultCopy": [
+          "Engine running, pedal flat to the floor, and first still baulks and grates going in from a standstill. The clutch isn't fully releasing, dragging the input shaft, not a fault in the gears themselves.",
+          "Pedal flat to the floor, it drops into gear clean and silent from a standstill; the crunch only comes on the move. The clutch releases fully, narrows to worn synchros or a chewed gearset."
         ]
       }
     ]
@@ -181,36 +223,59 @@
         "id": "tired-bushes",
         "carPartId": "antiRollBars",
         "setBand": "worn",
-        "weight": 45
+        "weight": 42
       },
       {
         "id": "blown-dampers",
         "carPartId": "dampers",
         "setBand": "poor",
-        "weight": 35
+        "weight": 33
       },
       {
         "id": "steering-play",
         "carPartId": "steering",
         "setBand": "poor",
-        "weight": 20
+        "weight": 15
+      },
+      {
+        "id": "rotted-subframe-mount",
+        "carPartId": "underbody",
+        "setBand": "scrap",
+        "weight": 10
       }
     ],
     "tests": [
       {
         "testId": "bounce-test",
-        "partition": [["blown-dampers"], ["tired-bushes", "steering-play"]],
+        "partition": [
+          ["blown-dampers"],
+          ["tired-bushes", "steering-play", "rotted-subframe-mount"]
+        ],
         "resultCopy": [
-          "The corner keeps bouncing after a good push instead of settling. The dampers are blown, not the bushes or the steering.",
-          "The corner settles quickly after a push. Not the dampers, narrows to the bushes or steering play."
+          "The corner keeps bouncing after a good shove instead of settling in one. The dampers are blown, not the bushes, the steering or anything structural.",
+          "The corner settles in a single rebound after a shove. Not the dampers, narrows to the bushes, the steering or a mounting point."
         ]
       },
       {
         "testId": "undercarriage-look",
-        "partition": [["tired-bushes"], ["blown-dampers", "steering-play"]],
+        "partition": [
+          ["rotted-subframe-mount"],
+          ["tired-bushes", "blown-dampers", "steering-play"]
+        ],
         "resultCopy": [
-          "Visible play and cracking right at the arm bushes. Tired bushes, not the dampers or the steering.",
-          "The bushes look sound. Not the bushes, narrows to blown dampers or steering play."
+          "A screwdriver goes clean through the rear subframe mounting point, the metal round it laced with rust and flaking away. A rotted structural mount, not worn suspension parts.",
+          "The subframe mounts and rails are solid, sound metal all round when probed. Nothing structural, narrows to the dampers, the bushes or the steering."
+        ]
+      },
+      {
+        "testId": "steering-linkage-check",
+        "partition": [
+          ["steering-play"],
+          ["tired-bushes", "blown-dampers", "rotted-subframe-mount"]
+        ],
+        "resultCopy": [
+          "Rocking the wheel at 3 and 9 with the front end up, there's a knock and lash back through the steering joints. Play in the steering, not the dampers or a mounting point.",
+          "Rocking the wheel at 3 and 9, the steering stays tight, no lash at the joints. Not the steering, narrows to the dampers, the bushes or a rotted mount."
         ]
       }
     ]
@@ -251,36 +316,53 @@
         "id": "fan-switch",
         "carPartId": "ignitionEcu",
         "setBand": "worn",
-        "weight": 40
+        "weight": 38
       },
       {
         "id": "tired-radiator",
         "carPartId": "cooling",
         "setBand": "poor",
-        "weight": 40
+        "weight": 35
       },
       {
         "id": "early-head-gasket",
         "carPartId": "headValvetrain",
         "setBand": "poor",
-        "weight": 20
+        "weight": 17
+      },
+      {
+        "id": "cracked-block",
+        "carPartId": "block",
+        "setBand": "scrap",
+        "weight": 10
       }
     ],
     "tests": [
       {
         "testId": "coolant-check",
-        "partition": [["early-head-gasket"], ["fan-switch", "tired-radiator"]],
+        "partition": [
+          ["early-head-gasket", "cracked-block"],
+          ["fan-switch", "tired-radiator"]
+        ],
         "resultCopy": [
-          "Bubbles rise in the header tank with the engine running. Early head-gasket sign, not the fan or the radiator.",
-          "The coolant's clean, no bubbling. Not the head gasket, narrows to the fan switch or the radiator."
+          "Bubbles rise steadily in the header tank with the engine running, combustion gas pushing into the coolant. A breach between cylinder and water jacket, not the fan or the radiator.",
+          "The coolant stays clean, no bubbling as it warms. Not a combustion breach, narrows to the fan switch or a tired radiator."
         ]
       },
       {
         "testId": "warm-idle-watch",
-        "partition": [["fan-switch"], ["tired-radiator", "early-head-gasket"]],
+        "partition": [["fan-switch"], ["tired-radiator", "early-head-gasket", "cracked-block"]],
         "resultCopy": [
-          "The fan never kicks in even once the temp gauge climbs. The fan switch, not the radiator or the gasket.",
-          "The fan kicks in right on cue. Not the fan switch, narrows to a tired radiator or the head gasket."
+          "The fan never kicks in even once the temp gauge climbs into the red. The fan switch, not the radiator or anything deeper.",
+          "The fan kicks in right on cue and still the heat builds in traffic. Not the fan switch, narrows to a tired radiator or a breach into the cooling system."
+        ]
+      },
+      {
+        "testId": "compression-test",
+        "partition": [["cracked-block"], ["fan-switch", "tired-radiator", "early-head-gasket"]],
+        "resultCopy": [
+          "A cylinder reads badly down and holds no pressure, air hissing back through the coolant, the oil gone the colour of weak tea. The block itself is cracked or the head warped past the gasket, not a fault a service puts right.",
+          "Compression reads even and healthy across every cylinder, the oil clean on the stick. No cracked block, narrows to the fan, the radiator or an early gasket weep."
         ]
       }
     ]
@@ -338,19 +420,33 @@
         "weight": 60
       },
       {
+        "id": "worn-propshaft-uj",
+        "carPartId": "driveline",
+        "setBand": "poor",
+        "weight": 22
+      },
+      {
         "id": "chewed-ring-pinion",
         "carPartId": "differential",
-        "setBand": "poor",
-        "weight": 40
+        "setBand": "scrap",
+        "weight": 18
       }
     ],
     "tests": [
       {
-        "testId": "gearbox-oil-check",
-        "partition": [["worn-diff-bearings"], ["chewed-ring-pinion"]],
+        "testId": "undercarriage-look",
+        "partition": [["worn-propshaft-uj"], ["worn-diff-bearings", "chewed-ring-pinion"]],
         "resultCopy": [
-          "Off the filler plug, the diff oil comes away clean, just thin with age. Worn bearings, not a chewed ring and pinion.",
-          "Metal glints on the swab from the diff's filler plug. A chewed ring and pinion, not just tired bearings."
+          "Rock the propshaft by hand and there's play in a universal joint, fine rust-brown dust worked out round its cap. A worn prop UJ, not anything inside the diff.",
+          "The prop joints are tight, no rust dust at the caps, no play anywhere in the shaft. Not the propshaft, narrows to the diff's own bearings or its ring and pinion."
+        ]
+      },
+      {
+        "testId": "gearbox-oil-check",
+        "partition": [["chewed-ring-pinion"], ["worn-diff-bearings", "worn-propshaft-uj"]],
+        "resultCopy": [
+          "Metal glints on the swab off the diff's filler plug. A chewed ring and pinion, not tired bearings or a prop joint.",
+          "Off the filler plug the diff oil comes away clean, just thin with age. Not a chewed ring and pinion, narrows to worn diff bearings or a prop UJ."
         ]
       }
     ]
@@ -363,22 +459,36 @@
         "id": "sagging-springs",
         "carPartId": "springs",
         "setBand": "worn",
-        "weight": 70
+        "weight": 62
       },
       {
         "id": "broken-spring",
         "carPartId": "springs",
         "setBand": "poor",
-        "weight": 30
+        "weight": 25
+      },
+      {
+        "id": "rotted-strut-turret",
+        "carPartId": "chassis",
+        "setBand": "scrap",
+        "weight": 13
       }
     ],
     "tests": [
       {
         "testId": "ride-height-check",
-        "partition": [["sagging-springs"], ["broken-spring"]],
+        "partition": [["sagging-springs"], ["broken-spring", "rotted-strut-turret"]],
         "resultCopy": [
-          "All four corners sit a little low and even, no cracks in the coils. Tired springs all round, not a break.",
-          "One corner sits noticeably lower than the rest, a crack visible in the coil. A broken spring, not just general sag."
+          "All four corners sit a little low and even, the coils sound and no corner out of line. Tired springs all round, not a break or a rotted mount.",
+          "One corner sits noticeably lower than the rest. Not even sag, narrows to a broken spring or a rotted strut top."
+        ]
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [["rotted-strut-turret"], ["sagging-springs", "broken-spring"]],
+        "resultCopy": [
+          "Up under the bonnet the strut top mount has rusted through, the turret flaking and the mount lifting under load. A rotted strut top, structural, not a spring fault.",
+          "The strut tops are solid, sound metal round every mount. Nothing structural, narrows to tired springs or a cracked coil."
         ]
       }
     ]
@@ -391,22 +501,36 @@
         "id": "panel-respray",
         "carPartId": "panels",
         "setBand": "worn",
-        "weight": 75
+        "weight": 60
+      },
+      {
+        "id": "rust-patch",
+        "carPartId": "panels",
+        "setBand": "poor",
+        "weight": 25
       },
       {
         "id": "structural-rail-repair",
         "carPartId": "chassis",
-        "setBand": "poor",
-        "weight": 25
+        "setBand": "scrap",
+        "weight": 15
       }
     ],
     "tests": [
       {
         "testId": "undercarriage-look",
-        "partition": [["panel-respray"], ["structural-rail-repair"]],
+        "partition": [["structural-rail-repair"], ["panel-respray", "rust-patch"]],
         "resultCopy": [
-          "The rail underneath looks factory: no weld beads, no kinks, jacking points true. A cosmetic respray, not a structural repair.",
-          "A fresh weld bead along the rail and a jacking point that isn't quite square. A structural rail repair, not just cosmetic."
+          "A fresh weld bead runs along the rail and a jacking point sits not quite square. A structural rail repair, not just skin-deep panel work.",
+          "The rail underneath looks factory: no weld beads, no kinks, jacking points true. Whatever's been done is skin-deep, narrows to a respray or a filled rust patch."
+        ]
+      },
+      {
+        "testId": "magnet-check",
+        "partition": [["rust-patch"], ["panel-respray", "structural-rail-repair"]],
+        "resultCopy": [
+          "Run a magnet along the quarter and it drops off over one patch where it holds firm everywhere else, filler packed too thick for steel to be behind it. A filled rust hole in the panel, not just paint.",
+          "The magnet holds firm the length of the quarter, sound steel under the paint the whole way. No rust hole in the skin, narrows to a plain respray or a repair down in the structure."
         ]
       }
     ]
@@ -419,22 +543,36 @@
         "id": "heater-matrix-weep",
         "carPartId": "cooling",
         "setBand": "worn",
-        "weight": 70
+        "weight": 62
+      },
+      {
+        "id": "perished-grommet",
+        "carPartId": "chassis",
+        "setBand": "poor",
+        "weight": 20
       },
       {
         "id": "rotten-bulkhead-seam",
         "carPartId": "chassis",
-        "setBand": "poor",
-        "weight": 30
+        "setBand": "scrap",
+        "weight": 18
       }
     ],
     "tests": [
       {
         "testId": "coolant-check",
-        "partition": [["heater-matrix-weep"], ["rotten-bulkhead-seam"]],
+        "partition": [["heater-matrix-weep"], ["perished-grommet", "rotten-bulkhead-seam"]],
         "resultCopy": [
-          "The header tank is low and the damp smells sweet, like coolant. The heater matrix weeping into the cabin, not rust.",
-          "Coolant level holds and the damp is plain water. It's coming in through the seam, narrows to a rotten bulkhead."
+          "The header tank is low and the damp smells sweet, a greasy film misting the inside of the screen. The heater matrix weeping into the cabin, not rainwater getting in.",
+          "Coolant level holds and the damp is plain rainwater, no sweetness to it. Not the matrix, narrows to water finding a way in through the bulkhead."
+        ]
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [["rotten-bulkhead-seam"], ["heater-matrix-weep", "perished-grommet"]],
+        "resultCopy": [
+          "A probe pushed at the bulkhead seam goes through flaking, laminated rust, the metal gone soft along the join. A rotten structural seam, not a tired grommet or a wet carpet from above.",
+          "The bulkhead and floor take a probe firm and solid, only light surface bloom where the damp sits. The structure's sound, narrows to the heater matrix or water past a perished grommet."
         ]
       }
     ]
@@ -475,22 +613,36 @@
         "id": "tired-sender",
         "carPartId": "dashGauges",
         "setBand": "worn",
-        "weight": 70
+        "weight": 65
+      },
+      {
+        "id": "worn-oil-pump",
+        "carPartId": "internals",
+        "setBand": "poor",
+        "weight": 20
       },
       {
         "id": "worn-main-bearings",
         "carPartId": "internals",
-        "setBand": "poor",
-        "weight": 30
+        "setBand": "scrap",
+        "weight": 15
       }
     ],
     "tests": [
       {
         "testId": "oil-pressure-check",
-        "partition": [["tired-sender"], ["worn-main-bearings"]],
+        "partition": [["tired-sender"], ["worn-oil-pump", "worn-main-bearings"]],
         "resultCopy": [
-          "A proper gauge on the sender port reads steady and correct at hot idle, climbing cleanly with revs. The sender is lying, not the oil: a tired sender, not the bearings.",
-          "The gauge agrees with the light: pressure sags low at hot idle and barely lifts off it. Genuine low pressure, not a lying sender. Points at worn bearings."
+          "A proper gauge on the sender port reads steady and correct at hot idle, climbing cleanly with revs. The sender is lying, not the oil: a tired sender, not a real pressure loss.",
+          "The gauge agrees with the light: pressure genuinely sags low at hot idle and barely lifts with revs. Real low pressure, not a lying sender, narrows to the pump or the bearings."
+        ]
+      },
+      {
+        "testId": "stethoscope",
+        "partition": [["worn-main-bearings"], ["tired-sender", "worn-oil-pump"]],
+        "resultCopy": [
+          "On the stethoscope the bottom end has a deep knock that loudens under load, and there's bearing swarf caught on the sump-plug magnet. Worn mains, not the oil pump or a lying sender.",
+          "The bottom end stays quiet and even under load, the sump plug clean of swarf. No bearing knock, narrows to a worn oil pump or a sender telling tales."
         ]
       }
     ]
@@ -503,22 +655,36 @@
         "id": "clogged-fuel-filter",
         "carPartId": "fuelSystem",
         "setBand": "worn",
-        "weight": 65
+        "weight": 62
       },
       {
         "id": "stretched-timing-chain",
         "carPartId": "camsTiming",
         "setBand": "poor",
-        "weight": 35
+        "weight": 26
+      },
+      {
+        "id": "jumped-timing-chain",
+        "carPartId": "headValvetrain",
+        "setBand": "scrap",
+        "weight": 12
       }
     ],
     "tests": [
       {
         "testId": "fuel-pressure-check",
-        "partition": [["clogged-fuel-filter"], ["stretched-timing-chain"]],
+        "partition": [["clogged-fuel-filter"], ["stretched-timing-chain", "jumped-timing-chain"]],
         "resultCopy": [
-          "A gauge tee'd into the fuel line sags well off spec the moment the throttle's blipped. Fuel starvation: the filter and pump side, not the cam timing.",
-          "The gauge tee'd into the fuel line holds steady through the blip, right on spec. Not fuel starvation: points at the cam timing, not the filter or the pump."
+          "A gauge tee'd into the fuel line sags well off spec the moment the throttle's blipped. Fuel starvation on the filter and pump side, not the cam timing.",
+          "The gauge tee'd into the fuel line holds steady through the blip, right on spec. Not fuel starvation, narrows to the cam timing, slack or skipped."
+        ]
+      },
+      {
+        "testId": "compression-test",
+        "partition": [["jumped-timing-chain"], ["clogged-fuel-filter", "stretched-timing-chain"]],
+        "resultCopy": [
+          "A cylinder reads flat, next to no compression, the chain jumped a tooth and the valves met the pistons. Bent valves, not a slack chain or a starved fuel line.",
+          "Compression reads even and healthy across every cylinder, the valves all sealing. No bent valves, narrows to a starved fuel line or a chain merely stretched."
         ]
       }
     ]

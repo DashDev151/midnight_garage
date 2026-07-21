@@ -243,16 +243,20 @@ describe('turnoutBidderCount (Sprint 30 decision 3: turnout is a real bidder-cou
 })
 
 describe('bidIncrementYen / nextRaiseYen', () => {
-  it('is 5% of book, rounded to the nearest Y10,000', () => {
+  it('is the book-scaled fraction, rounded to the nearest step', () => {
     const { lot } = sampleLot(5)
-    const expected = Math.max(10_000, Math.round((lot.bookValueYen * 0.05) / 10_000) * 10_000)
+    const step = ECONOMY.AUCTION_BID_INCREMENT_STEP_YEN
+    const expected = Math.max(
+      step,
+      Math.round((lot.bookValueYen * ECONOMY.AUCTION_BID_INCREMENT_FRACTION) / step) * step,
+    )
     expect(bidIncrementYen(lot, ECONOMY)).toBe(expected)
   })
 
-  it('floors at Y10,000 even for a very cheap lot', () => {
+  it('floors at the step even for a very cheap lot', () => {
     const { lot } = sampleLot(6)
     const cheapLot: AuctionLot = { ...lot, bookValueYen: 50_000 }
-    expect(bidIncrementYen(cheapLot, ECONOMY)).toBe(10_000)
+    expect(bidIncrementYen(cheapLot, ECONOMY)).toBe(ECONOMY.AUCTION_BID_INCREMENT_STEP_YEN)
   })
 
   it('nextRaiseYen is the reserve price when unopened, current + increment once open', () => {

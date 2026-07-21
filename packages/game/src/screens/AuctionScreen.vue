@@ -5,9 +5,10 @@ import type { AuctionTier } from '@midnight-garage/content'
 import GradeStamp from '../components/GradeStamp.vue'
 import HelpHint from '../components/HelpHint.vue'
 import LabourBar from '../components/LabourBar.vue'
+import SymptomChecklist from '../components/SymptomChecklist.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
-import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { formatYen } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 
 const game = useGameStore()
@@ -34,9 +35,7 @@ function isActiveVisitTier(tier: AuctionTier): boolean {
 function inspectButtonTitle(tier: AuctionTier): string {
   const reason = game.inspectionVisitGateReason(tier)
   if (reason) return GATE_REASON_LABEL[reason] ?? reason
-  // Sprint 94: a visit spends `pointsPerLabour` of the day's energy, no longer
-  // a whole "slot".
-  return `Spend ${game.pointsPerLabour} labour + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
+  return `Spend ${game.actionPoints.inspectionVisit} labour + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
 }
 
 /**
@@ -60,8 +59,7 @@ function onInspectClick(tier: AuctionTier): void {
 
 function inspectButtonLabel(tier: AuctionTier): string {
   if (visitConfirmingTier.value === tier) return 'Forfeit remaining visit - start here?'
-  // Sprint 94: labour points, no longer an integer slot.
-  return `Inspect here (${game.pointsPerLabour} labour + ${formatYen(game.travelFeeYenFor(tier))})`
+  return `Inspect here (${game.actionPoints.inspectionVisit} labour + ${formatYen(game.travelFeeYenFor(tier))})`
 }
 
 /**
@@ -499,61 +497,19 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
               />
             </div>
 
-            <!-- Sprint 73 decision 7 / Sprint 74 decision 7: free, public
-                 symptom disclosure - the room shows the symptom and every
-                 open cause, never which one is true. A ruled-out cause
-                 strikes through (ServiceTaskList's own done-styling idiom);
-                 test buttons narrow the list during an active visit at this
-                 lot's own tier. -->
-            <div
-              v-for="symptom in d.symptoms"
-              :key="symptom.symptomIndex"
-              class="symptom"
-              :class="{ resolved: symptom.resolved }"
-              :data-test="'symptom-' + d.lot.id"
-            >
-              <p class="symptom-line">{{ symptom.line }}</p>
-              <ul class="symptom-causes">
-                <li
-                  v-for="cause in symptom.causes"
-                  :key="cause.causeId"
-                  :class="{ eliminated: cause.eliminated }"
-                >
-                  <span class="mark" aria-hidden="true">{{
-                    cause.eliminated ? '[x]' : '[ ]'
-                  }}</span>
-                  <span class="label">{{ cause.label }}</span>
-                  <span class="delta">{{ formatYenDelta(cause.dealDeltaYen) }} if true</span>
-                </li>
-              </ul>
-
-              <p
-                v-if="testResults[resultKey(d.lot.id, symptom.symptomIndex)]"
-                class="test-result"
-                :data-test="'test-result-' + d.lot.id + '-' + symptom.symptomIndex"
-              >
-                {{ testResults[resultKey(d.lot.id, symptom.symptomIndex)] }}
-              </p>
-
-              <div v-if="symptom.tests.length > 0" class="symptom-tests">
-                <button
-                  v-for="test in symptom.tests"
-                  :key="test.testId"
-                  type="button"
-                  class="run-test"
-                  :disabled="!!testDisabledReason(d.lot.tier, test)"
-                  :title="
-                    testDisabledReason(d.lot.tier, test) ?? 'Run this test against the visit clock'
-                  "
-                  :data-test="
-                    'run-test-' + d.lot.id + '-' + symptom.symptomIndex + '-' + test.testId
-                  "
-                  @click="onRunTest(d.lot.id, symptom.symptomIndex, test.testId)"
-                >
-                  {{ test.label }} ({{ test.minutes }}m)
-                </button>
-              </div>
-            </div>
+            <!-- Free, public symptom disclosure: the room shows the symptom
+                 and every open cause, never which one is true; test buttons
+                 narrow it during an active visit at this lot's own tier. The
+                 parent keeps all the logic; the shared checklist only draws. -->
+            <SymptomChecklist
+              :symptoms="d.symptoms"
+              :lot-id="d.lot.id"
+              :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
+              :result-copy-for="(i) => testResults[resultKey(d.lot.id, i)]"
+              @run-test="
+                ({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)
+              "
+            />
           </div>
 
           <!-- Right panel: current price is the headline, guide/reserve/bill
@@ -959,82 +915,6 @@ h3 {
 }
 
 .lot-name {
-  color: var(--mg-neon-cyan);
-}
-
-/* Sprint 73 decision 7: the free, public symptom disclosure - a real
-   checklist idiom (ASCII `[ ]` marks, CLAUDE.md directive 2 bans decorative
-   icons), matching ServiceTaskList.vue's own look, extended with a per-cause
-   value delta this list also needs to show. */
-.symptom {
-  margin-top: var(--mg-space-1);
-  text-align: left;
-}
-
-.symptom-line {
-  margin: 0;
-  color: var(--mg-danger);
-  font-size: var(--mg-fs-sm);
-}
-
-.symptom-causes {
-  list-style: none;
-  margin: var(--mg-space-1) 0 0;
-  padding: 0;
-  display: grid;
-  gap: 3px;
-  font-size: var(--mg-fs-xs, 0.7rem);
-  color: var(--mg-text-dim);
-}
-
-.symptom-causes li {
-  display: flex;
-  align-items: baseline;
-  gap: var(--mg-space-2);
-}
-
-.symptom-causes .mark {
-  color: var(--mg-neon-cyan);
-  flex-shrink: 0;
-}
-
-.symptom-causes .delta {
-  color: var(--mg-text-dim);
-}
-
-/* Sprint 74 decision 7: a ruled-out cause strikes through - ServiceTaskList's
-   own done-styling idiom (dim + line-through the label, mark goes success-
-   coloured), reused rather than a second convention for the same idea. */
-.symptom-causes li.eliminated .mark {
-  color: var(--mg-success);
-}
-
-.symptom-causes li.eliminated .label {
-  text-decoration: line-through;
-}
-
-.symptom-causes li.eliminated .delta {
-  opacity: 0.6;
-}
-
-.symptom-tests {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--mg-space-1);
-  margin-top: var(--mg-space-1);
-}
-
-.run-test {
-  font-size: var(--mg-fs-xs, 0.7rem);
-  padding: 1px var(--mg-space-2);
-  color: var(--mg-text-dim);
-  border-color: var(--mg-panel-edge);
-  background: transparent;
-}
-
-.test-result {
-  margin: var(--mg-space-1) 0 0;
-  font-size: var(--mg-fs-xs, 0.7rem);
   color: var(--mg-neon-cyan);
 }
 

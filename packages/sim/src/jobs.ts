@@ -31,22 +31,21 @@ import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
- * Sprint 71 (the teardown game): the labour a slot's OWN depth class costs to
- * remove/install, replacing the old flat `INSTALL_LABOR_SLOTS` constant
- * everywhere a spec/plan needs to size install labour. Defaults to `'bolt-on'`
- * for an unresolvable part (never happens for real content, matching every
- * other taxonomy lookup's own defensive fallback).
- *
- * Sprint 94 (the energy bar): the unit is energy points. Removal stays free
- * (`economy.teardown.removeSlotsByClass`, all zeros - Sprint 79 removal law);
- * install reads `economy.energy.energyByClass` (the old `installSlotsByClass`
- * x `pointsPerLabour`).
+ * Labour (energy points) to pull one slot's part off a car: one flat figure,
+ * `energy.actionPoints.removePart`, whatever the slot's depth class - free at
+ * the shipped default of 0. The `carPartId` parameter stays for signature
+ * stability with `installLaborSlotsFor` below.
  */
 export function removeLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
-  const depthClass = context.partsTaxonomyById[carPartId]?.depthClass ?? 'bolt-on'
-  return context.economy.teardown.removeSlotsByClass[depthClass]
+  return context.economy.energy.actionPoints.removePart
 }
 
+/**
+ * Install labour (energy points) by the target slot's own depth class
+ * (`energy.energyByClass`). Defaults to `'bolt-on'` for an unresolvable part
+ * (never happens for real content, matching every other taxonomy lookup's own
+ * defensive fallback).
+ */
 export function installLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
   const depthClass = context.partsTaxonomyById[carPartId]?.depthClass ?? 'bolt-on'
   return context.economy.energy.energyByClass[depthClass]
@@ -79,7 +78,8 @@ export function refitLaborSlotsFor(
     baseline.band === partInstance.band &&
     baseline.genuinePeriod === partInstance.genuinePeriod
   ) {
-    return 0
+    // An unchanged member's refit labour - free at the shipped default of 0.
+    return context.economy.energy.actionPoints.refitUnchangedMember
   }
   return installLaborSlotsFor(carPartId, context)
 }
@@ -476,16 +476,14 @@ function installMachineAssistFeeYen(state: GameState, job: Job, context: SimCont
  * slot needs that line's tier-2 machine, OR the machine-shop assist fee
  * (Sprint 85 decision 6) posted to the car's ledger.
  *
- * Sprint 79 (the equivalence-priced labour model, maintainer directive
- * 2026-07-16): `economy.teardown.removeSlotsByClass` is zeroed at every
- * depth - removal is always free, access is gated (the machine/blocker
- * checks above), never charged. The removed instance's own `{partId, band,
- * genuinePeriod}` is stamped onto the resulting slot as `vacatedBaseline` -
- * what a later refit is compared against (`refitLaborSlotsFor`) to decide
- * whether putting the car back together is free logistics or chargeable
- * work. The `laborAvailable` gate below stays in place (content law - a
- * future re-tuning of the now-zeroed knob should not need a second code
- * change) even though it can never fire while every class costs 0.
+ * Removal labour reads `energy.actionPoints.removePart` (0 in shipped
+ * content, so removal is free today); a figure above zero gates on
+ * `laborAvailable` and spends into `energySpentToday`. Access is gated
+ * separately (the machine/blocker checks above). The removed instance's own
+ * `{partId, band, genuinePeriod}` is stamped onto the resulting slot as
+ * `vacatedBaseline` - what a later refit is compared against
+ * (`refitLaborSlotsFor`) to decide whether putting the car back together is
+ * free logistics or chargeable work.
  *
  * Sprint 35 decision 2 (supersedes Sprint 33 decision 8): a part pulled off a
  * service-job CUSTOMER's car is no longer discarded - it lands in OUR

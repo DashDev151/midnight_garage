@@ -398,7 +398,7 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
 
-    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres')
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', CONTEXT)
     expect(pulled.ok).toBe(true)
     expect(pulled.state.partInventory.some((p) => p.id === originalTyres.id)).toBe(true)
     expect(pulled.state.assemblyInventory![0]!.members.tyres).toBeNull()
@@ -408,8 +408,10 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     expect(pulled.state.energySpentToday).toBe(off.state.energySpentToday)
 
     // Refusals: an already-empty slot, and a missing container.
-    expect(resolveRemoveAssemblyMember(pulled.state, container.id, 'tyres').ok).toBe(false)
-    expect(resolveRemoveAssemblyMember(pulled.state, 'no-such-container', 'tyres').ok).toBe(false)
+    expect(resolveRemoveAssemblyMember(pulled.state, container.id, 'tyres', CONTEXT).ok).toBe(false)
+    expect(
+      resolveRemoveAssemblyMember(pulled.state, 'no-such-container', 'tyres', CONTEXT).ok,
+    ).toBe(false)
   })
 
   it('dissolving a car assembly drops its members to the parts bin', () => {

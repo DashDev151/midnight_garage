@@ -249,6 +249,9 @@ export const EconomyConfigSchema = z.object({
   /** Bid increment as a fraction of book value, floored/rounded to Y10,000 -
    * one ladder for the player, dealers, and bots alike. */
   AUCTION_BID_INCREMENT_FRACTION: z.number().positive(),
+  /** The bid ladder's floor AND rounding granularity in yen - a cheap car's
+   * ladder steps at exactly this figure. */
+  AUCTION_BID_INCREMENT_STEP_YEN: z.number().int().positive(),
   /**
    * Sprint 30 decision 4: expected new lots per day per tier, replacing the
    * old `day % 7` weekly dump for every day AFTER day 1 (day 1 itself still
@@ -894,6 +897,19 @@ export const EconomyConfigSchema = z.object({
     concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
     /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
     concoursSaleBonus: z.number().int().nonnegative(),
+    /** Reputation docked for selling a lemon - a mechanically unsound car,
+     * caught either by a single present part at `scrap`/missing or by the
+     * car's cost-weighted band factor sitting at or below
+     * `lemonMaxAverageBandFactor` below. A positive number; the delta applied
+     * is its negation, so selling a lemon is a real setback worth several
+     * clean sales. */
+    lemonSalePenalty: z.number().positive(),
+    /** The cost-weighted band-factor bar (a 0-1 fraction) at or below which a
+     * sale counts as a lemon regardless of any single part - set above
+     * `bands.bandFactors.poor` so "every part poor" reliably reads as a lemon,
+     * yet below `worn` so an otherwise-sound car with one worn part stays
+     * neutral. */
+    lemonMaxAverageBandFactor: z.number().min(0).max(1),
   }),
   /**
    * Sprint 29: the service-job framework v2's own tunables - derived-payout
@@ -1126,21 +1142,12 @@ export const EconomyConfigSchema = z.object({
    * threshold for the balance report, not a hard-gated invariant (decision 8,
    * sprint71.md).
    *
-   * Sprint 79 (the equivalence-priced labour model, maintainer directive
-   * 2026-07-16): `removeSlotsByClass` is zeroed at every depth - removal and
-   * like-for-like reassembly are free; labour only ever prices the
-   * IMPROVEMENT to a slot (a repair, a replacement, an upgrade), never the
-   * logistics of reaching it. The knob stays in content (this is a value
-   * change, not a mechanism removal) - `CarPartState.vacatedBaseline`
-   * (content/src/carInstance.ts) plus `jobs.ts`'s `refitLaborSlotsFor` are
-   * what let a matching refit skip `installSlotsByClass` too.
+   * everywhere. Removal labour is priced by `energy.actionPoints.removePart`
+   * (one flat figure, not per depth class); like-for-like reassembly prices
+   * through `energy.actionPoints.refitUnchangedMember` via `jobs.ts`'s
+   * `refitLaborSlotsFor` and `CarPartState.vacatedBaseline`.
    */
   teardown: z.object({
-    removeSlotsByClass: z.object({
-      surface: z.number().int().nonnegative(),
-      'bolt-on': z.number().int().nonnegative(),
-      buried: z.number().int().nonnegative(),
-    }),
     usedPartSaleFraction: z.number().positive().max(1),
     donorBreakEvenBillRatio: z.number().positive().max(1),
   }),
@@ -1189,15 +1196,35 @@ export const EconomyConfigSchema = z.object({
         message:
           'energy.energyPerGradeByTier must be non-increasing up the tiers (tier 1 >= tier 2 >= tier 3)',
       }),
-    /** Install energy by the target slot's depth class (the old
-     * `teardown.installSlotsByClass` x `pointsPerLabour`). Removal and a
-     * like-for-like equivalence refit stay free (0), gated by
-     * `teardown.removeSlotsByClass` and `refitLaborSlotsFor` respectively. */
+    /** Install energy by the target slot's depth class. Removal and a
+     * like-for-like equivalence refit price through `actionPoints.removePart`
+     * and `actionPoints.refitUnchangedMember` respectively. */
     energyByClass: z.object({
       surface: z.number().int().nonnegative(),
       'bolt-on': z.number().int().nonnegative(),
       buried: z.number().int().nonnegative(),
     }),
+    /** Every physical player action's labour figure, in energy points, in one
+     * map - the sim reads each action's cost from here and nowhere else. Zero
+     * means the action is free today; any key raised above zero makes that
+     * action gate on the remaining labour bar and spend its figure into
+     * `energySpentToday`. */
+    actionPoints: z
+      .object({
+        removePart: z.number().int().nonnegative(),
+        removeAssembly: z.number().int().nonnegative(),
+        refitAssembly: z.number().int().nonnegative(),
+        refitUnchangedMember: z.number().int().nonnegative(),
+        benchFitMember: z.number().int().nonnegative(),
+        benchRemoveMember: z.number().int().nonnegative(),
+        benchBuildAssembly: z.number().int().nonnegative(),
+        moveCar: z.number().int().nonnegative(),
+        scrapShell: z.number().int().nonnegative(),
+        scrapPart: z.number().int().nonnegative(),
+        workup: z.number().int().nonnegative(),
+        inspectionVisit: z.number().int().nonnegative(),
+      })
+      .strict(),
   }),
   /**
    * Sprint 85 decision 6 (playtest 21, maintainer ruling 2026-07-18): the

@@ -252,12 +252,20 @@ function locate(state: GameState, carInstanceId: string): { from: BayKind; index
  * bay 4, not wherever the array used to happen to render a car. `slotIndex`
  * is checked against the bay *count*, not the array's current length -
  * see `slotAt`/`withSlot`.
+ *
+ * A move's labour is `energy.actionPoints.moveCar` (0 in shipped content,
+ * so moves are free today): when `economy` is passed and the figure is
+ * above zero, the move gates on `laborAvailable` and spends into
+ * `energySpentToday`. Every game-facing caller passes `economy`; omitting
+ * it exercises the pure slot mechanics only.
  */
 export function moveCarToSlot(
   state: GameState,
   carInstanceId: string,
   to: BayKind,
   slotIndex: number,
+  economy?: EconomyConfig,
+  laborAvailable: number = Infinity,
 ): MoveResult {
   const inShop =
     state.ownedCars.some((c) => c.id === carInstanceId) ||
@@ -271,6 +279,10 @@ export function moveCarToSlot(
   if (slotIndex < 0 || slotIndex >= destCount) return { state, changed: false }
   if (source.from === to && source.index === slotIndex) return { state, changed: false }
 
+  const laborSlotsUsed = economy?.energy.actionPoints.moveCar ?? 0
+  if (laborSlotsUsed > laborAvailable) return { state, changed: false }
+  const energySpentToday = state.energySpentToday + laborSlotsUsed
+
   const destArray = to === 'service' ? state.serviceBayCarIds : state.parkingCarIds
   const occupant = slotAt(destArray, slotIndex)
 
@@ -279,7 +291,9 @@ export function moveCarToSlot(
     const arr = withSlot(withSlot(destArray, source.index, occupant), slotIndex, carInstanceId)
     return {
       state:
-        to === 'service' ? { ...state, serviceBayCarIds: arr } : { ...state, parkingCarIds: arr },
+        to === 'service'
+          ? { ...state, serviceBayCarIds: arr, energySpentToday }
+          : { ...state, parkingCarIds: arr, energySpentToday },
       changed: true,
     }
   }
@@ -293,8 +307,8 @@ export function moveCarToSlot(
 
   const next: GameState =
     to === 'service'
-      ? { ...state, serviceBayCarIds: newDest, parkingCarIds: newSource }
-      : { ...state, serviceBayCarIds: newSource, parkingCarIds: newDest }
+      ? { ...state, serviceBayCarIds: newDest, parkingCarIds: newSource, energySpentToday }
+      : { ...state, serviceBayCarIds: newSource, parkingCarIds: newDest, energySpentToday }
 
   return { state: next, changed: true }
 }
@@ -305,11 +319,19 @@ export function moveCarToSlot(
  * "→ service bay" buttons that don't require a drag gesture). A thin
  * wrapper over `moveCarToSlot` so there's exactly one resolution path.
  */
-export function moveCar(state: GameState, carInstanceId: string, to: BayKind): MoveResult {
+export function moveCar(
+  state: GameState,
+  carInstanceId: string,
+  to: BayKind,
+  economy?: EconomyConfig,
+  laborAvailable: number = Infinity,
+): MoveResult {
   const destArray = to === 'service' ? state.serviceBayCarIds : state.parkingCarIds
   const destCount = to === 'service' ? state.serviceBayCount : state.parkingBayCount
   for (let i = 0; i < destCount; i++) {
-    if (slotAt(destArray, i) === null) return moveCarToSlot(state, carInstanceId, to, i)
+    if (slotAt(destArray, i) === null) {
+      return moveCarToSlot(state, carInstanceId, to, i, economy, laborAvailable)
+    }
   }
   return { state, changed: false }
 }
@@ -325,24 +347,36 @@ export function moveCar(state: GameState, carInstanceId: string, to: BayKind): M
  * different car - is exactly a swap. No-op (not an error) if either car
  * isn't where the caller claims.
  */
-export function swapCars(state: GameState, serviceCarId: string, parkingCarId: string): MoveResult {
+export function swapCars(
+  state: GameState,
+  serviceCarId: string,
+  parkingCarId: string,
+  economy?: EconomyConfig,
+  laborAvailable: number = Infinity,
+): MoveResult {
   if (!state.serviceBayCarIds.includes(serviceCarId)) return { state, changed: false }
   const parkingIndex = state.parkingCarIds.indexOf(parkingCarId)
   if (parkingIndex === -1) return { state, changed: false }
-  return moveCarToSlot(state, serviceCarId, 'parking', parkingIndex)
+  return moveCarToSlot(state, serviceCarId, 'parking', parkingIndex, economy, laborAvailable)
 }
 
-/** Applies a batch of moves in order, logging only the ones that actually changed something. */
+/** Applies a batch of moves in order, logging only the ones that actually
+ * changed something. Each applied move spends `energy.actionPoints.moveCar`
+ * out of the shared `laborAvailable` budget when `economy` is passed. */
 export function applyMoves(
   state: GameState,
   moves: readonly MoveCarAction[],
+  economy?: EconomyConfig,
+  laborAvailable: number = Infinity,
 ): { state: GameState; log: DayLogEntry[] } {
   let next = state
+  let remainingLabor = laborAvailable
   const log: DayLogEntry[] = []
   for (const move of moves) {
-    const result = moveCar(next, move.carInstanceId, move.to)
+    const result = moveCar(next, move.carInstanceId, move.to, economy, remainingLabor)
     next = result.state
     if (result.changed) {
+      remainingLabor -= economy?.energy.actionPoints.moveCar ?? 0
       log.push({ type: 'car-moved', carInstanceId: move.carInstanceId, to: move.to })
     }
   }

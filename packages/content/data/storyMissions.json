@@ -61,8 +61,8 @@
         "min": 54
       }
     ],
-    "budgetCapYen": 489000,
-    "payoutYen": 489000,
+    "budgetCapYen": 534000,
+    "payoutYen": 534000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -84,8 +84,8 @@
         "min": 191
       }
     ],
-    "budgetCapYen": 847000,
-    "payoutYen": 847000,
+    "budgetCapYen": 892000,
+    "payoutYen": 892000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -107,8 +107,8 @@
         "maxSeconds": 83.1
       }
     ],
-    "budgetCapYen": 1485000,
-    "payoutYen": 1485000,
+    "budgetCapYen": 1557000,
+    "payoutYen": 1557000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -135,8 +135,8 @@
         "min": 55
       }
     ],
-    "budgetCapYen": 1692000,
-    "payoutYen": 1692000,
+    "budgetCapYen": 1763000,
+    "payoutYen": 1763000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -168,8 +168,8 @@
         "minMultiplier": 0.99
       }
     ],
-    "budgetCapYen": 1552000,
-    "payoutYen": 1552000,
+    "budgetCapYen": 1623000,
+    "payoutYen": 1623000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -191,8 +191,8 @@
         "maxSeconds": 71.8
       }
     ],
-    "budgetCapYen": 3496000,
-    "payoutYen": 3496000,
+    "budgetCapYen": 3681000,
+    "payoutYen": 3681000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,

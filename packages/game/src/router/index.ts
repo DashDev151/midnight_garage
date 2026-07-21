@@ -2,14 +2,20 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 import { clearDragSession } from '../composables/useDragAndDrop'
 
 /**
- * Sprint 51 decision 4: the art-spike sandbox route registers only in dev
- * builds - `import.meta.env.DEV` folds to a literal `false` in production,
- * so this route (and the nav link that used to point at it, now removed)
- * never reaches a shipped build. The code itself stays, per the maintainer's
- * instruction - only the reachability is gated.
+ * Dev-only routes (the art-spike sandbox and the auction-room demo) register
+ * only in dev builds - `import.meta.env.DEV` folds to a literal `false` in
+ * production, so these routes never reach a shipped build. The screens
+ * themselves stay in the tree; only the reachability is gated.
  */
-const spikeRoute: RouteRecordRaw[] = import.meta.env.DEV
-  ? [{ path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') }]
+const devRoutes: RouteRecordRaw[] = import.meta.env.DEV
+  ? [
+      { path: '/spike', name: 'spike', component: () => import('../screens/SpikeScreen.vue') },
+      {
+        path: '/auction-room-demo',
+        name: 'auction-room-demo',
+        component: () => import('../screens/AuctionRoomDemoScreen.vue'),
+      },
+    ]
   : []
 
 /**
@@ -60,7 +66,7 @@ export const router = createRouter({
       name: 'staff',
       component: () => import('../screens/StaffOfficeScreen.vue'),
     },
-    ...spikeRoute,
+    ...devRoutes,
   ],
 })
 

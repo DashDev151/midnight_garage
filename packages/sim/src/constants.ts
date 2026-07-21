@@ -74,24 +74,3 @@ export const AUCTION_TIER_MIN_REPUTATION: Readonly<Record<AuctionTier, Reputatio
  */
 export const PARTS_EXPRESS_SURCHARGE_FRACTION = 0.1
 export const PARTS_STANDARD_DELIVERY_DAYS = 1
-
-/**
- * Selling a "lemon" costs reputation instead (Sprint 15; re-based on bands,
- * Sprint 26 decision 9): the car's cost-weighted band factor
- * (`costWeightedBandFactor`, bands.ts) at or below `LEMON_MAX_AVERAGE_BAND_FACTOR`,
- * **or** any single present part at `scrap` regardless of the average (the
- * maintainer's own framing - a car can look great overall and still hide one
- * dead part; scrap being both unrepairable and an automatic lemon trigger is
- * intentional, the game's honest "this needs real money" state). Set above
- * `poor`'s own band factor (economy.json's `bands.bandFactors.poor`, 0.4) -
- * not exactly at it - so "every part poor" reliably reads as a lemon
- * without depending on which side of an exact floating-point tie the
- * weighted average happens to land on; still comfortably below `worn`
- * (0.65), so an otherwise-fine car with one worn part stays neutral, not a
- * lemon. `saleReputationDeltaFor` (carCondition.ts) checks lemon first, so a
- * car with a dead part is never scored as a quality sale. Deliberately does
- * not apply to plain lowball/cheap-but-not-broken sales - only genuinely bad
- * condition, so normal flipping stays reputation-neutral.
- */
-export const LEMON_MAX_AVERAGE_BAND_FACTOR = 0.45
-export const LEMON_SALE_REPUTATION_PENALTY = 5

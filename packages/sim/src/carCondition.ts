@@ -7,7 +7,6 @@ import {
   type EconomyConfig,
 } from '@midnight-garage/content'
 import { bandIndex, costWeightedBandFactor, isPartMissing } from './bands'
-import { LEMON_MAX_AVERAGE_BAND_FACTOR, LEMON_SALE_REPUTATION_PENALTY } from './constants'
 
 /**
  * The reputation effect of selling this car (Sprint 15), shared by both sale
@@ -22,7 +21,7 @@ import { LEMON_MAX_AVERAGE_BAND_FACTOR, LEMON_SALE_REPUTATION_PENALTY } from './
  *   uninstallable elsewhere - the game's honest "this needs real money
  *   before it's sellable" state), OR the car's cost-weighted band factor
  *   (`costWeightedBandFactor`, the same figure that feeds valuation) at or
- *   below `LEMON_MAX_AVERAGE_BAND_FACTOR`.
+ *   below the reputation config's `lemonMaxAverageBandFactor`.
  * - **Clean**: every present part at or above `cleanSaleMinBand` - a floor
  *   per part (Sprint 23's fix for "seven great parts can't hide one
  *   neglected one"), reachable by player effort alone.
@@ -48,8 +47,8 @@ export function saleReputationDeltaFor(
     return installed ? installed.band === 'scrap' : isPartMissing(car, model, id)
   })
   const weightedFactor = costWeightedBandFactor(car, model, partsTaxonomyById, economy)
-  if (hasScrapOrMissingPart || weightedFactor <= LEMON_MAX_AVERAGE_BAND_FACTOR) {
-    return -LEMON_SALE_REPUTATION_PENALTY
+  if (hasScrapOrMissingPart || weightedFactor <= economy.reputation.lemonMaxAverageBandFactor) {
+    return -economy.reputation.lemonSalePenalty
   }
 
   const minCleanIndex = bandIndex(economy.reputation.cleanSaleMinBand)
@@ -73,13 +72,13 @@ export type SaleQuality = 'lemon' | 'clean' | 'concours'
 /**
  * Derives which of `saleReputationDeltaFor`'s bonuses/penalty actually fired
  * from its numeric return value, for the day-report copy (Sprint 23) - the
- * four outcomes (-5/0/+2/+4 by default config) are mutually exclusive by
+ * four outcomes (-8/0/+2/+4 by default config) are mutually exclusive by
  * construction, so comparing against the same economy thresholds that
  * produced the delta identifies the tier without a second, parallel
  * computation.
  */
 export function saleQualityFor(deltaPoints: number, economy: EconomyConfig): SaleQuality | null {
-  if (deltaPoints <= -LEMON_SALE_REPUTATION_PENALTY) return 'lemon'
+  if (deltaPoints <= -economy.reputation.lemonSalePenalty) return 'lemon'
   if (deltaPoints >= economy.reputation.concoursSaleBonus) return 'concours'
   if (deltaPoints >= economy.reputation.cleanSaleBonus) return 'clean'
   return null

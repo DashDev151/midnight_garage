@@ -240,11 +240,15 @@ export interface ScrapPartResult {
  * (`resolveServiceJob`), never our hands. Sprint 70: ownership is read from
  * the instance's own `origin` against every active service job
  * (`provenance.ts`), not a mutable tag.
+ *
+ * Labour is `energy.actionPoints.scrapPart` (0 in shipped content), gated on
+ * `laborAvailable` when raised and spent into `energySpentToday`.
  */
 export function resolveScrapPart(
   state: GameState,
   partInstanceId: string,
   context: SimContext,
+  laborAvailable: number = Infinity,
 ): ScrapPartResult {
   const instance = state.partInventory.find((p) => p.id === partInstanceId)
   if (!instance || instance.band !== 'scrap') return { state, log: [] }
@@ -254,6 +258,8 @@ export function resolveScrapPart(
   const part = context.partsById[instance.partId]
   const taxonomyEntry = part ? context.partsTaxonomyById[part.carPartId] : undefined
   if (!part || !taxonomyEntry) return { state, log: [] }
+  const laborSlotsUsed = context.economy.energy.actionPoints.scrapPart
+  if (laborSlotsUsed > laborAvailable) return { state, log: [] }
 
   const priceYen = scrapValueYen(taxonomyEntry, context.economy, part.fitmentClass)
   return {
@@ -261,6 +267,7 @@ export function resolveScrapPart(
       ...state,
       cashYen: state.cashYen + priceYen,
       partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+      energySpentToday: state.energySpentToday + laborSlotsUsed,
     },
     log: [{ type: 'part-scrapped', partInstanceId, priceYen }],
   }

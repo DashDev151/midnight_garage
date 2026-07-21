@@ -1022,6 +1022,9 @@ export const useGameStore = defineStore('game', () => {
    * a staff member's `laborSlotsPerDay` (1/2) as the labour they actually add to
    * the day's pool (`laborSlotsPerDay x pointsPerLabour`). */
   const pointsPerLabour = computed(() => context.value.economy.energy.pointsPerLabour)
+  /** Every physical action's labour figure (`energy.actionPoints`) - screens
+   * read a control's own figure here, showing it only when above zero. */
+  const actionPoints = computed(() => context.value.economy.energy.actionPoints)
   const serviceJobOffers = computed(() => gameState.value.serviceJobOffers)
   const activeServiceJobs = computed(() => gameState.value.activeServiceJobs)
   /** Sprint 74: the active yard visit, or `null` outside one - the fixed
@@ -2533,15 +2536,21 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Move a car between parking and a service bay - instant and free, no
-   * limit on how many times a day (a pure sim core the store calls
-   * directly). Returns whether the move actually happened (false if the car
-   * isn't in the shop, is already there, or the destination has no room -
-   * see `swapCars` for that last case).
+   * Move a car between parking and a service bay - instant, no limit on how
+   * many times a day (a pure sim core the store calls directly). Labour is
+   * the `moveCar` action figure, free at the shipped default of 0. Returns
+   * whether the move actually happened (false if the car isn't in the shop,
+   * is already there, or the destination has no room - see `swapCars` for
+   * that last case).
    */
   function moveCar(carId: string, to: BayKind): boolean {
     if (isCarInTransit(carId)) return false
-    const result = applyMoves(gameState.value, [{ carInstanceId: carId, to }])
+    const result = applyMoves(
+      gameState.value,
+      [{ carInstanceId: carId, to }],
+      context.value.economy,
+      laborSlotsRemainingToday.value,
+    )
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -2558,7 +2567,13 @@ export const useGameStore = defineStore('game', () => {
    */
   function swapCars(serviceCarId: string, parkingCarId: string): boolean {
     if (isCarInTransit(serviceCarId) || isCarInTransit(parkingCarId)) return false
-    const result = swapCarsCore(gameState.value, serviceCarId, parkingCarId)
+    const result = swapCarsCore(
+      gameState.value,
+      serviceCarId,
+      parkingCarId,
+      context.value.economy,
+      laborSlotsRemainingToday.value,
+    )
     if (!result.changed) return false
     gameState.value = result.state
     dayLog.value.push({ type: 'cars-swapped', serviceCarId, parkingCarId })
@@ -2578,7 +2593,14 @@ export const useGameStore = defineStore('game', () => {
    */
   function moveCarToSlot(carId: string, to: BayKind, slotIndex: number): boolean {
     if (isCarInTransit(carId)) return false
-    const result = moveCarToSlotCore(gameState.value, carId, to, slotIndex)
+    const result = moveCarToSlotCore(
+      gameState.value,
+      carId,
+      to,
+      slotIndex,
+      context.value.economy,
+      laborSlotsRemainingToday.value,
+    )
     if (!result.changed) return false
     gameState.value = result.state
     dayLog.value.push({ type: 'car-moved', carInstanceId: carId, to })
@@ -3155,6 +3177,7 @@ export const useGameStore = defineStore('game', () => {
       memberSlot,
       partInstanceId,
       context.value,
+      laborSlotsRemainingToday.value,
     )
     if (!result.ok) return false
     gameState.value = result.state
@@ -3163,11 +3186,17 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** Pull a mounted member out of a benched assembly into the parts bin -
-   * free and ungated (playtest 2026-07-19 item 25: old tyres come off before
-   * new ones go on). A no-op on any refusal. */
+  /** Pull a mounted member out of a benched assembly into the parts bin (old
+   * tyres come off before new ones go on) - labour is the `benchRemoveMember`
+   * action figure, free at the shipped default of 0. A no-op on any refusal. */
   function removeAssemblyMember(containerId: string, memberSlot: CarPartId): boolean {
-    const result = resolveRemoveAssemblyMember(gameState.value, containerId, memberSlot)
+    const result = resolveRemoveAssemblyMember(
+      gameState.value,
+      containerId,
+      memberSlot,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
     if (!result.ok) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -3298,7 +3327,12 @@ export const useGameStore = defineStore('game', () => {
    * rather than relying on the silent refusal alone.
    */
   function scrapPart(partInstanceId: string): boolean {
-    const result = resolveScrapPart(gameState.value, partInstanceId, context.value)
+    const result = resolveScrapPart(
+      gameState.value,
+      partInstanceId,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -3797,7 +3831,12 @@ export const useGameStore = defineStore('game', () => {
    * `onBuyoutClick`).
    */
   function scrapShell(carId: string): boolean {
-    const result = resolveScrapShell(gameState.value, carId, context.value)
+    const result = resolveScrapShell(
+      gameState.value,
+      carId,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
     if (result.log.length === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -4065,6 +4104,7 @@ export const useGameStore = defineStore('game', () => {
     laborSlotsPerDay,
     laborSlotsRemainingToday,
     pointsPerLabour,
+    actionPoints,
     serviceJobOffers,
     activeServiceJobs,
     serviceJobOfferViews,
@@ -4098,6 +4138,7 @@ export const useGameStore = defineStore('game', () => {
     carPartLabel,
     groupForCarPart,
     lotDetail,
+    symptomChecklistForCar,
     isForSale,
     offerFor,
     pendingOffersView,

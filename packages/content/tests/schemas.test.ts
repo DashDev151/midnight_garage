@@ -180,7 +180,8 @@ describe('seed content validates against schemas', () => {
     // wholesale, so a contested close converges on fair value.
     expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.97)
     expect(result.data.AUCTION_QUIET_DAYS_TO_HAMMER).toBe(3)
-    expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.05)
+    expect(result.data.AUCTION_BID_INCREMENT_FRACTION).toBe(0.025)
+    expect(result.data.AUCTION_BID_INCREMENT_STEP_YEN).toBe(5000)
     // Sprint 30 (living auctions): daily arrivals + the bidder-interest
     // process knobs replacing the Sprint 20/25 demand-ceiling family above.
     // Sprint 66 (playtest item 15): the board turns over roughly twice as
@@ -210,7 +211,7 @@ describe('seed content validates against schemas', () => {
     // repair (cost and bill reduction are the same product), and it is
     // jointly constrained with maxBillFraction below - their product must
     // stay under 1 or the scrap floor binds. Asserted together, deliberately.
-    expect(result.data.valuation.marketRepairDiscount).toBe(1.5)
+    expect(result.data.valuation.marketRepairDiscount).toBe(1.3)
     expect(
       result.data.valuation.marketRepairDiscount * result.data.partsGeneration.maxBillFraction,
     ).toBeLessThan(1)
@@ -254,6 +255,12 @@ describe('seed content validates against schemas', () => {
     expect(result.data.reputation.cleanSaleBonus).toBe(2)
     expect(result.data.reputation.concoursSaleMinAuthenticityPercent).toBe(85)
     expect(result.data.reputation.concoursSaleBonus).toBe(4)
+    // The lemon penalty and its cost-weighted trigger bar live in content
+    // (not sim constants). The penalty is sharp enough that one lemon sale
+    // undoes several clean ones; the band-factor bar sits above poor's own
+    // factor so an all-poor car reliably reads as a lemon.
+    expect(result.data.reputation.lemonSalePenalty).toBe(8)
+    expect(result.data.reputation.lemonMaxAverageBandFactor).toBe(0.45)
 
     // Sprint 26: the banded parts model's own tunables, born in JSON.
     expect(result.data.bands.bandFactors.mint).toBe(1.0)
@@ -282,14 +289,6 @@ describe('seed content validates against schemas', () => {
     expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)
     // Sprint 71 (the teardown game): per-depth-class labour, replacing the
     // old flat INSTALL_LABOR_SLOTS constant everywhere. Sprint 79 (the
-    // equivalence-priced labour model, directive 17 case (a)): removal is
-    // zeroed at every depth - removal and like-for-like reassembly are free,
-    // labour only ever prices the improvement to a slot.
-    expect(result.data.teardown.removeSlotsByClass).toEqual({
-      surface: 0,
-      'bolt-on': 0,
-      buried: 0,
-    })
     expect(result.data.teardown.usedPartSaleFraction).toBe(0.55)
     expect(result.data.teardown.donorBreakEvenBillRatio).toBe(0.45)
   })
@@ -310,6 +309,23 @@ describe('seed content validates against schemas', () => {
       surface: 0,
       'bolt-on': 10,
       buried: 20,
+    })
+    // Every physical action's labour figure lives in this one map; zero means
+    // the action is free, a raised figure gates and spends. The two knowledge
+    // actions carry the old one-labour cost (10) on their own keys.
+    expect(result.data.energy.actionPoints).toEqual({
+      removePart: 0,
+      removeAssembly: 0,
+      refitAssembly: 0,
+      refitUnchangedMember: 0,
+      benchFitMember: 0,
+      benchRemoveMember: 0,
+      benchBuildAssembly: 0,
+      moveCar: 0,
+      scrapShell: 0,
+      scrapPart: 0,
+      workup: 10,
+      inspectionVisit: 10,
     })
   })
 
@@ -339,6 +355,7 @@ describe('seed content validates against schemas', () => {
       'AUCTION_WHOLESALE_FRACTION',
       'AUCTION_QUIET_DAYS_TO_HAMMER',
       'AUCTION_BID_INCREMENT_FRACTION',
+      'AUCTION_BID_INCREMENT_STEP_YEN',
       'AUCTION_DAILY_SPAWN_RATE',
       'AUCTION_MIN_AGE_YEARS',
       'auctionInterest',

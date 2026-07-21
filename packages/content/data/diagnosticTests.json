@@ -15,5 +15,7 @@
   { "id": "ride-height-check", "minutes": 10 },
   { "id": "oil-pressure-check", "minutes": 20 },
   { "id": "fuel-pressure-check", "minutes": 15 },
-  { "id": "steering-linkage-check", "minutes": 10 }
+  { "id": "steering-linkage-check", "minutes": 10 },
+  { "id": "clutch-drag-check", "minutes": 10 },
+  { "id": "magnet-check", "minutes": 10 }
 ]

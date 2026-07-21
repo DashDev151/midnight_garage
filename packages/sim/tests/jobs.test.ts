@@ -1580,14 +1580,11 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   /**
-   * Sprint 79 (the equivalence-priced labour model, maintainer directive
-   * 2026-07-16): `removeSlotsByClass` is zeroed at every depth - removal and
-   * like-for-like reassembly are free; only IMPROVING a slot is charged.
-   * Directive 17 case (a): this test used to assert remove costing 0/1/2 by
-   * depth class - that is now intentionally wrong, since removal is always
-   * free regardless of depth.
+   * Removal labour is the flat `energy.actionPoints.removePart` figure (zero
+   * at shipped tuning) regardless of depth class; only improving a slot is
+   * charged, per depth class.
    */
-  it('removal costs 0 labour at every depth class; install stays per-depth-class energy: 0 surface, 10 bolt-on, 20 buried (Sprint 94 x10)', () => {
+  it('removal costs the flat removePart figure (0 at shipped tuning) at every depth; install stays per-depth-class energy', () => {
     const byClass = CONTEXT.economy.energy.energyByClass
     expect(removeLaborSlotsFor('panels', CONTEXT)).toBe(0)
     expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(0)

@@ -348,7 +348,7 @@ describe('advanceDay golden master', () => {
     // no state-shape change, and the repeat-run determinism test above still passes.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('f3260a34')
+    expect(hashState(finalState)).toBe('8be9ace1')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -607,7 +607,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 94 energy bar, was acc59f28): labour rescaled to x10
     // energy points, so hashed labour values move x10 - a pure VALUE change
     // (directive 17 case (a)), determinism intact via the repeat-run test.
-    expect(hashState(acquisitionCareer().sold)).toBe('9d907164')
+    expect(hashState(acquisitionCareer().sold)).toBe('241e896b')
   })
 })
 

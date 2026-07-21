@@ -186,15 +186,16 @@ function valueGapFactor(
 }
 
 /**
- * The bid ladder (Sprint 20): `max(Y10,000, 5% of book rounded to the
- * nearest Y10,000)` - one increment size for the player, the dealers, and
- * every bidding bot alike. Fixed off the lot's own book value, not the
- * current bid, so the ladder doesn't compress as a lot's price climbs.
+ * The bid ladder: a fixed fraction of the lot's book value, rounded to the
+ * step and never below it - one increment size for the player, the dealers,
+ * and every bidding bot alike. Keyed off book value, not the current bid,
+ * so the ladder does not compress as a lot's price climbs; a cheap car's
+ * ladder runs at exactly the step figure.
  */
 export function bidIncrementYen(lot: AuctionLot, economy: EconomyConfig): number {
+  const step = economy.AUCTION_BID_INCREMENT_STEP_YEN
   const raw = lot.bookValueYen * economy.AUCTION_BID_INCREMENT_FRACTION
-  const roundedTo10k = Math.round(raw / 10_000) * 10_000
-  return Math.max(10_000, roundedTo10k)
+  return Math.max(step, Math.round(raw / step) * step)
 }
 
 /**

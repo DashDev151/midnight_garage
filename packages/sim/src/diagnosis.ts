@@ -86,7 +86,8 @@ function symptomDiscountYen(
     if (totalWeight <= 0) continue
     const weightedMean = causes.reduce((sum, cause) => {
       const installed = apparent.parts[cause.carPartId].installed
-      if (!installed) return sum
+      // A cause on an unfitted part cannot damage what is not there, so it implies no value change.
+      if (!installed) return sum + (cause.weight / totalWeight) * apparentValue
       const damagedView: CarInstance = {
         ...apparent,
         parts: {
@@ -342,9 +343,8 @@ export function inspectionVisitGateReason(
   context: SimContext,
 ): InspectionVisitGateReason | null {
   const feeYen = context.economy.diagnosis.travelFeeYenByTier[tier]
-  // Sprint 94: a yard visit costs one labour's worth of energy (`pointsPerLabour`).
   const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
-  if (freeEnergy < context.economy.energy.pointsPerLabour) return 'no-labor-slot'
+  if (freeEnergy < context.economy.energy.actionPoints.inspectionVisit) return 'no-labor-slot'
   if (state.cashYen < feeYen) return 'no-cash'
   const hasLiveLot = state.activeAuctionLots.some((lot) => lot.tier === tier)
   if (!hasLiveLot) return 'no-lots'
@@ -383,7 +383,7 @@ export function beginInspectionVisit(
   const nextState: GameState = {
     ...state,
     cashYen: state.cashYen - feeYen,
-    energySpentToday: state.energySpentToday + context.economy.energy.pointsPerLabour,
+    energySpentToday: state.energySpentToday + context.economy.energy.actionPoints.inspectionVisit,
     inspectionVisit: { tier, minutesLeft: minutesGranted },
   }
   return {
@@ -507,14 +507,13 @@ export function ownedWorkupGateReason(
   const car = state.ownedCars.find((c) => c.id === carInstanceId)
   if (!car) return 'not-found'
   if (car.symptoms.length === 0) return 'no-symptoms'
-  // Sprint 94: the workup costs one labour's worth of energy (`pointsPerLabour`).
   const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
-  if (freeEnergy < context.economy.energy.pointsPerLabour) return 'no-labor-slot'
+  if (freeEnergy < context.economy.energy.actionPoints.workup) return 'no-labor-slot'
   return null
 }
 
 /**
- * Sprint 74 decision 3: the owned-car workup - 1 labour slot, no fee, no
+ * The owned-car workup - costs `energy.actionPoints.workup`, no fee, no
  * clock, collapses every one of `carInstanceId`'s symptoms straight to
  * their true cause (`remainingCauseIds = [trueCauseId]`). Owned cars only
  * (never a lot, never a customer's service-job car); this is also the only
@@ -540,7 +539,7 @@ export function resolveOwnedWorkup(
   const nextState: GameState = {
     ...state,
     ownedCars,
-    energySpentToday: state.energySpentToday + context.economy.energy.pointsPerLabour,
+    energySpentToday: state.energySpentToday + context.economy.energy.actionPoints.workup,
   }
   return {
     state: nextState,

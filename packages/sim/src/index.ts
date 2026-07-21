@@ -1,4 +1,4 @@
-export { createRng } from './rng'
+export { bellNormal, createRng, hashStringToSeed } from './rng'
 export type { Rng } from './rng'
 export * from './constants'
 export * from './calendar'

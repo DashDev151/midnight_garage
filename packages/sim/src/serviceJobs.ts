@@ -315,10 +315,9 @@ export interface ServiceJobCostBreakdown {
    * "worst case tooling") repair speed - a market rate for the job's wrench
    * time, independent of the shop's own current equipment tier (that only
    * changes how many DAYS the work actually takes the player, never what
-   * the customer is nominally being charged for). Sprint 79 (the
-   * equivalence-priced labour model): removal and blocker refits are free
-   * (`economy.teardown.removeSlotsByClass` is zeroed), so the teardown
-   * chain's own former overhead is gone - every task simply adds
+   * the customer is nominally being charged for). Removal and blocker
+   * refits price through `energy.actionPoints` (zero at shipped tuning), so
+   * the teardown chain carries no overhead here - every task simply adds
    * `installLaborSlotsFor` for its own target slot, on top of the
    * bench-repair labour below, since a delivered task always IMPROVES its
    * slot (a customer's task is never a like-for-like refit) and so is

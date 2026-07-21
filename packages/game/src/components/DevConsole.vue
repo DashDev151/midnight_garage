@@ -7,12 +7,14 @@ import {
   type ToolTier,
 } from '@midnight-garage/content'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 const ui = useUiStore()
+const router = useRouter()
 
 const giveAmount = ref(100_000)
 const warpDays = ref(7)
@@ -120,6 +122,10 @@ function warp(): void {
         <option v-for="t in reputationTiers" :key="t" :value="t">{{ t }}</option>
       </select>
       <button @click="game.devSetReputationTier(setReputationTier)">set reputation</button>
+    </div>
+
+    <div class="row">
+      <button @click="router.push({ name: 'auction-room-demo' })">auction room demo</button>
     </div>
   </aside>
 </template>

@@ -6,9 +6,9 @@ import { StatModifierSchema } from './stats'
  * Sprint 71 (the teardown game): how deep a slot sits in the car - `surface`
  * (the shell/trim, repaired in place, never bench-only), `bolt-on` (one
  * removal step), `buried` (behind other parts, the deepest jobs). Drives
- * which slots are bench-only (`repairJobGate`) and how much labour uninstall/
- * install cost (`economy.json`'s `teardown.removeSlotsByClass` and
- * `energy.energyByClass`, keyed by this same value).
+ * which slots are bench-only (`repairJobGate`) and how much labour an
+ * install costs (`economy.json`'s `energy.energyByClass`, keyed by this same
+ * value; removal prices through `energy.actionPoints.removePart`).
  */
 export const DepthClassSchema = z.enum(['surface', 'bolt-on', 'buried'])
 

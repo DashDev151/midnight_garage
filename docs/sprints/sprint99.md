@@ -33,11 +33,38 @@ the demo exists to answer one question: does this feel right for the game.
 
 ## Tasks
 
-- [ ] Demo screen + turn resolver + two canned lots (a quiet thin-turnout kei, a packed
-      contested one).
-- [ ] Copy for the room beats (orchestrator-authored, tone law).
+- [x] Demo screen (`AuctionRoomDemoScreen.vue` + `auctionRoomDemo.ts` turn resolver, dev
+      route + DevConsole entry, coverage-excluded screen with the resolver module still
+      covered) + two canned deterministic rooms: thin (Toyota Carina, 2 dealers, wide
+      wobble) and packed (Honda City, 6 dealers, tight wobble). The maintainer halved
+      the bid ladder before the verdict sitting: `AUCTION_BID_INCREMENT_FRACTION` 0.025
+      plus the new `AUCTION_BID_INCREMENT_STEP_YEN` (5000) anchor, so a kei's ladder
+      steps at exactly ¥5,000 (bible amendment logged; two advanceDay golden hashes
+      re-derived; `bidding.test.ts`'s two `bidIncrementYen` pins were missed here and
+      later re-pinned to the new ladder, referencing the config constants so they
+      cannot go stale again). Fresh-game outcomes, raising to the end: thin WON at ¥198,774
+      against room-says ¥181,290 (¥5,000 rungs; Mrs. Sakaki folds, Endo fights to
+      ¥193,774); packed WON at ¥180,730 against room-says ¥167,884 (its book still
+      rounds the ladder to ¥10,000; Toyoshima does all the countering, four dealers
+      priced out at the ¥170,730 rung). Six smoke tests pin the beats.
+- [x] Copy for the room beats (orchestrator-authored, tone law; verified verbatim in
+      situ).
 
 ## Exit
 
-- [ ] Maintainer has played both rooms and issued a verdict; the verdict and its
-      reasoning recorded here.
+- [x] First maintainer sitting, 2026-07-20: "confusing and shitty. But I think it has
+      potential" - iterate the demo (option 2 of decision 3). Orders: real call and
+      response, rival silhouettes with a winning chip and the price in green, a ~6
+      second per-bid clock (leading at fuse-out wins, trailing loses; a sanctioned
+      demo-only exception to the reflex rule), and rivals that hesitate rather than
+      counter instantly. The rebuilt room is Sprint 103's, then extended by Sprint 104
+      (fair-odds read, wholesale ceiling, inspection verdict); the final verdict (proceed
+      to Sprint 100 / iterate again / keep the overnight model) now sits on the Sprint 104
+      version.
+
+**Feel observations from this version** (carried forward to the Sprint 103 sitting):
+both rooms, fought to the end, hammer ABOVE the room's number - the wobble's upside
+means the strongest dealer can chase past the sheet, so walking away at the right rung
+is the skill being tested, and the turnout premium is real. The instant-counter flow
+also made a contested room read as one duel with an audience; Sprint 103's any-eligible
+responder pick addresses exactly that.
