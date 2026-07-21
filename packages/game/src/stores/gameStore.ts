@@ -54,6 +54,7 @@ import {
   assemblyContainerFor,
   assemblyMachineAssistFeeYen,
   assignToParking,
+  availableTestIdsFor,
   energyMax,
   advanceDay,
   bandFactor,
@@ -861,17 +862,23 @@ export interface LotDetail {
    * value as shown - what the price honestly moves if this cause is the
    * true one ("-¥15,000 if true"), always <= 0. `eliminated` is true once a
    * run test has ruled a cause out (`remainingCauseIds` no longer includes
-   * it). `tests` carries every test the symptom's own content offers
-   * (`alreadyRun` ones are disabled, not hidden), `[]` once the symptom is
-   * fully resolved (`remainingCauseIds.length <= 1` - nothing left to
-   * narrow). `symptomIndex` is what `runDiagnosticTest` addresses this
-   * symptom by.
+   * it).
+   *
+   * `trail` is the run tests, in the order they ran, each carrying the
+   * earned `resultLine` - the case file the player has already read. `tests`
+   * is the FORK: only tests the routed tree currently offers
+   * (`availableTestIdsFor`) that haven't run yet - a locked test is
+   * invisible, not disabled, until its parent unlocks it. Both are `[]` once
+   * the symptom is fully resolved (`remainingCauseIds.length <= 1` -
+   * nothing left to narrow). `symptomIndex` is what `runDiagnosticTest`
+   * addresses this symptom by.
    */
   symptoms: {
     symptomIndex: number
     line: string
     resolved: boolean
     causes: { causeId: string; label: string; dealDeltaYen: number; eliminated: boolean }[]
+    trail: { testId: string; label: string; minutes: number; resultLine: string }[]
     tests: {
       testId: string
       label: string
@@ -1202,18 +1209,26 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * One entry per symptom `car` carries, its free public card line, its
-   * cause checklist, and every test its own content offers. Shared by a
-   * lot's card (`lotDetail`) and an owned car's page (`carDetail`) - the
-   * checklist shape is identical either way; only the UI decides whether
-   * test buttons render (never on an owned car, where the workup supersedes
-   * them). Each cause's `dealDeltaYen` is a plain, honest value comparison -
-   * `marketValueYen` with that cause's own damage applied to `apparentCar`,
-   * minus `apparentCar`'s own value - the deal impact if that cause is the
-   * true one, never the fear-priced sheet gap (that is what the room
-   * charges across the whole cause set, not what any one cause is worth).
-   * `eliminated` and `resolved` both read `carSymptom.remainingCauseIds`;
-   * `alreadyRun` reads `runTestIds`. Test `label`s derive from
-   * `titleCaseFromSlug` off the id, the same way cause labels do.
+   * cause checklist, its run-test trail, and its currently offered fork.
+   * Shared by a lot's card (`lotDetail`) and an owned car's page
+   * (`carDetail`) - the checklist shape is identical either way; only the UI
+   * decides whether test buttons render (never on an owned car, where the
+   * workup supersedes them). Each cause's `dealDeltaYen` is a plain, honest
+   * value comparison - `marketValueYen` with that cause's own damage applied
+   * to `apparentCar`, minus `apparentCar`'s own value - the deal impact if
+   * that cause is the true one, never the fear-priced sheet gap (that is
+   * what the room charges across the whole cause set, not what any one
+   * cause is worth). `eliminated` and `resolved` both read
+   * `carSymptom.remainingCauseIds`.
+   *
+   * `trail` walks `runTestIds` in run order; each entry's `resultLine` is
+   * the same partition-group lookup `runDiagnosticTest` itself uses to pick
+   * the copy it returns when the test runs (the group containing
+   * `trueCauseId`), derived here rather than cached by any caller. `tests`
+   * (the fork) is `availableTestIdsFor`'s offer, minus whatever's already in
+   * `runTestIds` - a locked test is simply absent, never a disabled button.
+   * Test `label`s derive from `titleCaseFromSlug` off the id, the same way
+   * cause labels do.
    */
   function symptomChecklistForCar(
     car: CarInstance,
@@ -1234,6 +1249,23 @@ export const useGameStore = defineStore('game', () => {
       const symptom = context.value.symptomsById[carSymptom.symptomId]
       if (!symptom) return []
       const resolved = carSymptom.remainingCauseIds.length <= 1
+      const availableTestIds = new Set(availableTestIdsFor(carSymptom, symptom))
+      const trail = carSymptom.runTestIds.flatMap((testId) => {
+        const testApplication = symptom.tests.find((test) => test.testId === testId)
+        if (!testApplication) return []
+        const groupIndex = testApplication.partition.findIndex((group) =>
+          group.includes(carSymptom.trueCauseId),
+        )
+        if (groupIndex === -1) return []
+        return [
+          {
+            testId,
+            label: titleCaseFromSlug(testId),
+            minutes: context.value.diagnosticTestsById[testId]?.minutes ?? 0,
+            resultLine: testApplication.resultCopy[groupIndex]!,
+          },
+        ]
+      })
       return [
         {
           symptomIndex,
@@ -1264,14 +1296,21 @@ export const useGameStore = defineStore('game', () => {
               eliminated: !carSymptom.remainingCauseIds.includes(cause.id),
             }
           }),
+          trail,
           tests: resolved
             ? []
-            : symptom.tests.map((test) => ({
-                testId: test.testId,
-                label: titleCaseFromSlug(test.testId),
-                minutes: context.value.diagnosticTestsById[test.testId]?.minutes ?? 0,
-                alreadyRun: carSymptom.runTestIds.includes(test.testId),
-              })),
+            : symptom.tests
+                .filter(
+                  (test) =>
+                    availableTestIds.has(test.testId) &&
+                    !carSymptom.runTestIds.includes(test.testId),
+                )
+                .map((test) => ({
+                  testId: test.testId,
+                  label: titleCaseFromSlug(test.testId),
+                  minutes: context.value.diagnosticTestsById[test.testId]?.minutes ?? 0,
+                  alreadyRun: carSymptom.runTestIds.includes(test.testId),
+                })),
         },
       ]
     })

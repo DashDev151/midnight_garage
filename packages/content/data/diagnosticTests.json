@@ -17,5 +17,14 @@
   { "id": "fuel-pressure-check", "minutes": 15 },
   { "id": "steering-linkage-check", "minutes": 10 },
   { "id": "clutch-drag-check", "minutes": 10 },
-  { "id": "magnet-check", "minutes": 10 }
+  { "id": "magnet-check", "minutes": 10 },
+  { "id": "carpet-lift", "minutes": 5 },
+  { "id": "pull-a-plug", "minutes": 5 },
+  { "id": "try-it-warm", "minutes": 15 },
+  { "id": "trace-the-wet", "minutes": 5 },
+  { "id": "scuttle-drain-poke", "minutes": 10 },
+  { "id": "hose-the-roof", "minutes": 10 },
+  { "id": "breather-check", "minutes": 10 },
+  { "id": "overrun-smoke-watch", "minutes": 10 },
+  { "id": "linkage-check", "minutes": 10 }
 ]

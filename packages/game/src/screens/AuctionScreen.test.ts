@@ -383,7 +383,7 @@ describe('AuctionScreen', () => {
             {
               symptomId: 'smokes-on-startup',
               trueCauseId: 'valve-seals',
-              remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+              remainingCauseIds: ['valve-seals', 'gunked-breather', 'head-gasket', 'tired-rings'],
               runTestIds: [],
             },
           ],
@@ -401,8 +401,9 @@ describe('AuctionScreen', () => {
       expect(detail.symptoms[0]!.line).toBe('Smokes on startup.')
       expect(detail.symptoms[0]!.causes.map((c) => c.label)).toEqual([
         'Valve seals',
-        'Tired rings',
+        'Gunked breather',
         'Head gasket',
+        'Tired rings',
       ])
       // Every cause prices real damage below the band the sheet shows, so
       // its honest deal impact - what the value moves if it turns out true -
@@ -542,8 +543,8 @@ describe('AuctionScreen', () => {
       expect(updatedCar.symptoms[0]!.runTestIds).toEqual(['cold-start-watch'])
 
       const symptomEl = wrapper.find(`[data-test="symptom-${lot.id}"]`)
-      expect(symptomEl.find(`[data-test="test-result-${lot.id}-0"]`).text()).toContain(
-        'Smoke clears within a few seconds',
+      expect(symptomEl.find('[data-test="breadcrumb-cold-start-watch"]').text()).toContain(
+        'Blue puff on the first start',
       )
       // Head gasket is now struck through (ServiceTaskList's own idiom).
       const causeItems = symptomEl.findAll('.symptom-causes li')
@@ -551,7 +552,7 @@ describe('AuctionScreen', () => {
       expect(headGasketRow.classes()).toContain('eliminated')
     })
 
-    it('an already-run test button is disabled and explains itself', async () => {
+    it('a run test drops out of the fork into the trail, with no re-run button left behind', async () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
@@ -562,9 +563,13 @@ describe('AuctionScreen', () => {
       const runButton = wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`)
       await runButton.trigger('click')
 
-      const repeatButton = wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`)
-      expect((repeatButton.element as HTMLButtonElement).disabled).toBe(true)
-      expect(repeatButton.attributes('title')).toContain('Already run')
+      // The store pre-filters the fork to tests not yet run, so a run test's
+      // own button disappears entirely rather than sitting there disabled.
+      expect(wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).exists()).toBe(
+        false,
+      )
+      // It moves into the trail instead, carrying the result line it earned.
+      expect(wrapper.find('[data-test="breadcrumb-cold-start-watch"]').exists()).toBe(true)
     })
   })
 

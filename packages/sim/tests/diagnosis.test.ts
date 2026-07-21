@@ -10,12 +10,14 @@ import {
   type GameState,
   type StaffMember,
   type Symptom,
+  type TestApplication,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { anchorValueYen, privateValuationYen } from '../src/bidding'
 import { buildSimContext } from '../src/context'
 import {
   apparentViewOf,
+  availableTestIdsFor,
   beginInspectionVisit,
   displayedBandFor,
   expectedTrueValueYen,
@@ -84,6 +86,60 @@ const MULTI_PART_SYMPTOM: Symptom = {
   tests: [],
 }
 
+/** Sprint 106 (routed diagnosis): a two-test symptom exercising the
+ * `unlockedBy` chain - `routed-locked-test` is offered only once
+ * `routed-root-test` has run AND resolved to partition group 0
+ * (`routed-cause-a`); it stays locked forever against a car whose true
+ * cause resolves the root to group 1. */
+const ROUTED_SYMPTOM: Symptom = {
+  id: 'routed-symptom',
+  cardLine: 'Routed test symptom.',
+  causes: [
+    { id: 'routed-cause-a', carPartId: 'headValvetrain', setBand: 'worn', weight: 50 },
+    { id: 'routed-cause-b', carPartId: 'headValvetrain', setBand: 'poor', weight: 50 },
+  ],
+  tests: [
+    {
+      testId: 'routed-root-test',
+      partition: [['routed-cause-a'], ['routed-cause-b']],
+      resultCopy: ['Points at cause A.', 'Points at cause B.'],
+    },
+    {
+      testId: 'routed-locked-test',
+      partition: [['routed-cause-a'], ['routed-cause-b']],
+      resultCopy: ['Confirms cause A.', 'Confirms cause B.'],
+      unlockedBy: { testId: 'routed-root-test', group: 0 },
+    },
+  ],
+}
+
+/** Sprint 106 addendum: a symptom whose `unlockedBy` carries no `group` -
+ * `groupless-child-test` is offered once `groupless-root-test` has run at
+ * all, whichever partition group it resolved to (this is how a whole board
+ * of follow-up tests opens after a first look, rather than one branch of
+ * it). */
+const ROUTED_GROUPLESS_SYMPTOM: Symptom = {
+  id: 'routed-groupless-symptom',
+  cardLine: 'Routed groupless test symptom.',
+  causes: [
+    { id: 'groupless-cause-a', carPartId: 'headValvetrain', setBand: 'worn', weight: 50 },
+    { id: 'groupless-cause-b', carPartId: 'headValvetrain', setBand: 'poor', weight: 50 },
+  ],
+  tests: [
+    {
+      testId: 'groupless-root-test',
+      partition: [['groupless-cause-a'], ['groupless-cause-b']],
+      resultCopy: ['Points at cause A.', 'Points at cause B.'],
+    },
+    {
+      testId: 'groupless-child-test',
+      partition: [['groupless-cause-a'], ['groupless-cause-b']],
+      resultCopy: ['Confirms cause A.', 'Confirms cause B.'],
+      unlockedBy: { testId: 'groupless-root-test' },
+    },
+  ],
+}
+
 const CONTEXT = buildSimContext(
   CARS,
   PARTS,
@@ -97,8 +153,14 @@ const CONTEXT = buildSimContext(
   undefined,
   undefined,
   undefined,
-  [TEST_SYMPTOM, MULTI_PART_SYMPTOM],
-  [{ id: 'test-diagnostic', minutes: 15 }],
+  [TEST_SYMPTOM, MULTI_PART_SYMPTOM, ROUTED_SYMPTOM, ROUTED_GROUPLESS_SYMPTOM],
+  [
+    { id: 'test-diagnostic', minutes: 15 },
+    { id: 'routed-root-test', minutes: 10 },
+    { id: 'routed-locked-test', minutes: 10 },
+    { id: 'groupless-root-test', minutes: 10 },
+    { id: 'groupless-child-test', minutes: 10 },
+  ],
 )
 
 const STATE = createInitialGameState(CONTEXT, 1)
@@ -136,6 +198,51 @@ function carWithMultiPartSymptom(trueCauseId: string, remainingCauseIds: string[
     }),
     symptoms: [{ symptomId: 'multi-part-symptom', trueCauseId, remainingCauseIds, runTestIds: [] }],
     apparentBandByPartId: { headValvetrain: 'mint', internals: 'mint', intake: 'mint' },
+  }
+}
+
+/** A car carrying `ROUTED_SYMPTOM` (Sprint 106) - `trueCauseId` and
+ * `runTestIds` vary per test to exercise `availableTestIdsFor`'s and
+ * `runDiagnosticTest`'s own locked/unlocked gating. */
+function carWithRoutedSymptom(trueCauseId: string, runTestIds: string[] = []): CarInstance {
+  return {
+    ...buildCarInstance({
+      modelId: MODEL.id,
+      parts: mintCarParts({ headValvetrain: 'worn' }),
+    }),
+    symptoms: [
+      {
+        symptomId: 'routed-symptom',
+        trueCauseId,
+        remainingCauseIds: ['routed-cause-a', 'routed-cause-b'],
+        runTestIds,
+      },
+    ],
+    apparentBandByPartId: { headValvetrain: 'mint' },
+  }
+}
+
+/** A car carrying `ROUTED_GROUPLESS_SYMPTOM` - `trueCauseId` and
+ * `runTestIds` vary per test to exercise `availableTestIdsFor`'s and
+ * `runDiagnosticTest`'s own group-less unlock gating. */
+function carWithGrouplessRoutedSymptom(
+  trueCauseId: string,
+  runTestIds: string[] = [],
+): CarInstance {
+  return {
+    ...buildCarInstance({
+      modelId: MODEL.id,
+      parts: mintCarParts({ headValvetrain: 'worn' }),
+    }),
+    symptoms: [
+      {
+        symptomId: 'routed-groupless-symptom',
+        trueCauseId,
+        remainingCauseIds: ['groupless-cause-a', 'groupless-cause-b'],
+        runTestIds,
+      },
+    ],
+    apparentBandByPartId: { headValvetrain: 'mint' },
   }
 }
 
@@ -556,6 +663,180 @@ describe('runDiagnosticTest (Sprint 74 decision 2): gating and minutes accountin
   })
 })
 
+describe('availableTestIdsFor (Sprint 106, routed diagnosis)', () => {
+  it('a symptom with only root tests offers every test from the start, exactly as before the routing rework', () => {
+    const carSymptom = carWithSymptom().symptoms[0]!
+    expect(availableTestIdsFor(carSymptom, TEST_SYMPTOM)).toEqual(['test-diagnostic'])
+  })
+
+  it('a locked test is unavailable before its parent has run, even though the root is always offered', () => {
+    const carSymptom = carWithRoutedSymptom('routed-cause-a').symptoms[0]!
+    expect(availableTestIdsFor(carSymptom, ROUTED_SYMPTOM)).toEqual(['routed-root-test'])
+  })
+
+  it('the locked test becomes available once the root has run AND resolved to its own unlockedBy group', () => {
+    // trueCauseId 'routed-cause-a' sits in partition group 0, matching
+    // routed-locked-test's own unlockedBy: { testId: 'routed-root-test', group: 0 }.
+    const carSymptom = carWithRoutedSymptom('routed-cause-a', ['routed-root-test']).symptoms[0]!
+    expect(availableTestIdsFor(carSymptom, ROUTED_SYMPTOM)).toEqual([
+      'routed-root-test',
+      'routed-locked-test',
+    ])
+  })
+
+  it('the locked test stays unavailable when the root resolved to the OTHER partition group', () => {
+    // trueCauseId 'routed-cause-b' sits in partition group 1, which does not
+    // match routed-locked-test's own unlockedBy group (0).
+    const carSymptom = carWithRoutedSymptom('routed-cause-b', ['routed-root-test']).symptoms[0]!
+    expect(availableTestIdsFor(carSymptom, ROUTED_SYMPTOM)).toEqual(['routed-root-test'])
+  })
+
+  it("an already-run test still counts as available - separating offered from already-run is the caller's job", () => {
+    const carSymptom = carWithRoutedSymptom('routed-cause-a', [
+      'routed-root-test',
+      'routed-locked-test',
+    ]).symptoms[0]!
+    expect(availableTestIdsFor(carSymptom, ROUTED_SYMPTOM)).toEqual([
+      'routed-root-test',
+      'routed-locked-test',
+    ])
+  })
+
+  it('a group-less locked test is unavailable before its parent has run', () => {
+    const carSymptom = carWithGrouplessRoutedSymptom('groupless-cause-a').symptoms[0]!
+    expect(availableTestIdsFor(carSymptom, ROUTED_GROUPLESS_SYMPTOM)).toEqual([
+      'groupless-root-test',
+    ])
+  })
+
+  it('a group-less locked test becomes available once the parent has run, regardless of which partition group it resolved to', () => {
+    const resolvedA = carWithGrouplessRoutedSymptom('groupless-cause-a', ['groupless-root-test'])
+      .symptoms[0]!
+    expect(availableTestIdsFor(resolvedA, ROUTED_GROUPLESS_SYMPTOM)).toEqual([
+      'groupless-root-test',
+      'groupless-child-test',
+    ])
+
+    const resolvedB = carWithGrouplessRoutedSymptom('groupless-cause-b', ['groupless-root-test'])
+      .symptoms[0]!
+    expect(availableTestIdsFor(resolvedB, ROUTED_GROUPLESS_SYMPTOM)).toEqual([
+      'groupless-root-test',
+      'groupless-child-test',
+    ])
+  })
+})
+
+describe('runDiagnosticTest locked gate (Sprint 106, routed diagnosis)', () => {
+  it('refuses locked for a test whose unlockedBy parent has not run yet, spending no minutes and leaving state unchanged', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithRoutedSymptom('routed-cause-a')),
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    const result = runDiagnosticTest(state, 'lot-diag-test', 0, 'routed-locked-test', CONTEXT)
+    expect(result.outcome).toBe('locked')
+    expect(result.resultCopy).toBeNull()
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('refuses locked for a test whose parent resolved to the OTHER partition group, even after the parent has run', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithRoutedSymptom('routed-cause-b', ['routed-root-test'])),
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    const result = runDiagnosticTest(state, 'lot-diag-test', 0, 'routed-locked-test', CONTEXT)
+    expect(result.outcome).toBe('locked')
+    expect(result.state).toBe(state)
+  })
+
+  it('runs cleanly once the parent has resolved to the matching group - the tree unlocks in sequence', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithRoutedSymptom('routed-cause-a')),
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    const rootResult = runDiagnosticTest(state, 'lot-diag-test', 0, 'routed-root-test', CONTEXT)
+    expect(rootResult.outcome).toBe('ran')
+    const rootSymptom = rootResult.state.activeAuctionLots[0]!.car.symptoms[0]!
+    expect(availableTestIdsFor(rootSymptom, ROUTED_SYMPTOM)).toEqual([
+      'routed-root-test',
+      'routed-locked-test',
+    ])
+
+    const childResult = runDiagnosticTest(
+      rootResult.state,
+      'lot-diag-test',
+      0,
+      'routed-locked-test',
+      CONTEXT,
+    )
+    expect(childResult.outcome).toBe('ran')
+    expect(childResult.resultCopy).toBe('Confirms cause A.')
+    expect(childResult.state.inspectionVisit?.minutesLeft).toBe(60 - 10 - 10)
+  })
+
+  it('refuses locked for a group-less child test whose parent has not run yet, spending no minutes and leaving state unchanged', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithGrouplessRoutedSymptom('groupless-cause-a')),
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    const result = runDiagnosticTest(state, 'lot-diag-test', 0, 'groupless-child-test', CONTEXT)
+    expect(result.outcome).toBe('locked')
+    expect(result.resultCopy).toBeNull()
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('runs a group-less child test cleanly once the parent has run, regardless of which partition group it resolved to', () => {
+    // trueCauseId 'groupless-cause-b' resolves the root to partition group 1
+    // - a group-specific unlockedBy would stay locked against this cause,
+    // but a group-less one only cares that the parent ran at all.
+    const state: GameState = {
+      ...stateWithLot(carWithGrouplessRoutedSymptom('groupless-cause-b')),
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    const rootResult = runDiagnosticTest(state, 'lot-diag-test', 0, 'groupless-root-test', CONTEXT)
+    expect(rootResult.outcome).toBe('ran')
+    expect(rootResult.resultCopy).toBe('Points at cause B.')
+
+    const childResult = runDiagnosticTest(
+      rootResult.state,
+      'lot-diag-test',
+      0,
+      'groupless-child-test',
+      CONTEXT,
+    )
+    expect(childResult.outcome).toBe('ran')
+    expect(childResult.resultCopy).toBe('Confirms cause B.')
+    expect(childResult.state.inspectionVisit?.minutesLeft).toBe(60 - 10 - 10)
+  })
+})
+
+/**
+ * The ordered chain of ancestor testIds (root-first) that must legally run
+ * before `testApp` is offered to a real car whose true cause is
+ * `trueCauseId` - empty for a root test itself. `null` when the chain is
+ * inconsistent for this particular cause (some ancestor's own group never
+ * matches its child's own `unlockedBy.group`), meaning a car with this true
+ * cause can never unlock `testApp` at all - the cause resolved that ancestor
+ * to its OTHER, short-branch group instead. A child whose own `unlockedBy`
+ * carries no `group` unlocks once its parent has run at all, so the group
+ * check is skipped entirely for it.
+ */
+function unlockChainFor(
+  symptom: Symptom,
+  testApp: TestApplication,
+  trueCauseId: string,
+): string[] | null {
+  if (!testApp.unlockedBy) return []
+  const parent = symptom.tests.find((t) => t.testId === testApp.unlockedBy!.testId)!
+  if (testApp.unlockedBy.group !== undefined) {
+    const parentGroupIndex = parent.partition.findIndex((group) => group.includes(trueCauseId))
+    if (parentGroupIndex !== testApp.unlockedBy.group) return null
+  }
+  const parentChain = unlockChainFor(symptom, parent, trueCauseId)
+  return parentChain === null ? null : [...parentChain, parent.testId]
+}
+
 describe('runDiagnosticTest partition narrowing against real content (Sprint 74 task 6): every symptom-test-cause triple', () => {
   const REAL_CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -564,34 +845,72 @@ describe('runDiagnosticTest partition narrowing against real content (Sprint 74 
     expect(DIAGNOSTIC_TESTS.length).toBeGreaterThan(0)
   })
 
+  function freshState(symptom: Symptom, trueCauseId: string): GameState {
+    const car: CarInstance = {
+      ...buildCarInstance({ modelId: MODEL.id }),
+      symptoms: [
+        {
+          symptomId: symptom.id,
+          trueCauseId,
+          remainingCauseIds: symptom.causes.map((c) => c.id),
+          runTestIds: [],
+        },
+      ],
+    }
+    return {
+      ...stateWithLot(car, REAL_CONTEXT),
+      inspectionVisit: {
+        tier: 'local-yard',
+        minutesLeft: REAL_CONTEXT.economy.diagnosis.visitMinutes,
+      },
+    }
+  }
+
   for (const symptom of SYMPTOMS) {
     for (const testApp of symptom.tests) {
       for (const trueCause of symptom.causes) {
+        const chain = unlockChainFor(symptom, testApp, trueCause.id)
+
+        if (chain === null) {
+          it(`${symptom.id} / ${testApp.testId}: trueCause=${trueCause.id} never unlocks this test, so running it directly reports locked`, () => {
+            const state = freshState(symptom, trueCause.id)
+            const result = runDiagnosticTest(
+              state,
+              'lot-diag-test',
+              0,
+              testApp.testId,
+              REAL_CONTEXT,
+            )
+            expect(result.outcome).toBe('locked')
+            expect(result.state).toBe(state)
+          })
+          continue
+        }
+
         it(`${symptom.id} / ${testApp.testId}: trueCause=${trueCause.id} narrows to its own partition group and returns the matching result copy`, () => {
-          const car: CarInstance = {
-            ...buildCarInstance({ modelId: MODEL.id }),
-            symptoms: [
-              {
-                symptomId: symptom.id,
-                trueCauseId: trueCause.id,
-                remainingCauseIds: symptom.causes.map((c) => c.id),
-                runTestIds: [],
-              },
-            ],
+          let state = freshState(symptom, trueCause.id)
+          for (const ancestorId of chain) {
+            const stepResult = runDiagnosticTest(
+              state,
+              'lot-diag-test',
+              0,
+              ancestorId,
+              REAL_CONTEXT,
+            )
+            expect(stepResult.outcome).toBe('ran')
+            state = stepResult.state
           }
-          const state: GameState = {
-            ...stateWithLot(car, REAL_CONTEXT),
-            inspectionVisit: {
-              tier: 'local-yard',
-              minutesLeft: REAL_CONTEXT.economy.diagnosis.visitMinutes,
-            },
-          }
+          const priorRemaining = state.activeAuctionLots[0]!.car.symptoms[0]!.remainingCauseIds
+
           const result = runDiagnosticTest(state, 'lot-diag-test', 0, testApp.testId, REAL_CONTEXT)
           expect(result.outcome).toBe('ran')
           const groupIndex = testApp.partition.findIndex((group) => group.includes(trueCause.id))
           const expectedGroup = testApp.partition[groupIndex]!
+          const expectedRemaining = priorRemaining.filter((id) => expectedGroup.includes(id))
           const updatedSymptom = result.state.activeAuctionLots[0]!.car.symptoms[0]!
-          expect([...updatedSymptom.remainingCauseIds].sort()).toEqual([...expectedGroup].sort())
+          expect([...updatedSymptom.remainingCauseIds].sort()).toEqual(
+            [...expectedRemaining].sort(),
+          )
           expect(result.resultCopy).toBe(testApp.resultCopy[groupIndex])
         })
       }

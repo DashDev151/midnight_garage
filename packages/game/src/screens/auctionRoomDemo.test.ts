@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import {
   ROOM_TUNING,
+  armReaction,
   buildDemoLobby,
   clearingFractionFor,
   dealersInRoom,
@@ -53,6 +54,12 @@ function bareRoom(
     pendingRoomBid: null,
     lastBid: null,
     rng: () => 0.5,
+    inspected: false,
+    goadFired: false,
+    snipeCount: 0,
+    pendingCallRungs: null,
+    feud: null,
+    armedReaction: null,
   }
 }
 
@@ -62,6 +69,18 @@ function queueStream(values: number[]): { next: () => number } {
   return { next: () => values[i++]! }
 }
 
+/** A stub `room.rng` that hands out queued values in order, for reaction and
+ * scheduling draws. Pad with a few extra values past what a test expects to
+ * consume: reading past the end throws rather than silently returning
+ * `undefined` as a number. */
+function sequence(values: number[]): () => number {
+  let i = 0
+  return () => {
+    if (i >= values.length) throw new Error('sequence exhausted: stub ran out of rng values')
+    return values[i++]!
+  }
+}
+
 describe('auctionRoomDemo machine', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
@@ -69,25 +88,25 @@ describe('auctionRoomDemo machine', () => {
     const [thin, packed] = buildLobby()
 
     expect(thin!.key).toBe('thin')
-    expect(thin!.displayName).toBe('Honda CR-X SiR (EF8)')
-    expect(thin!.roomReadYen).toBe(366_988)
-    expect(thin!.trueValueYen).toBe(385_126)
+    expect(thin!.displayName).toBe('Honda Civic SiR-II (EG6)')
+    expect(thin!.roomReadYen).toBe(194_534)
+    expect(thin!.trueValueYen).toBe(223_201)
     expect(thin!.incrementYen).toBe(5_000)
     expect(thin!.dealerCount).toBe(2)
-    expect(thin!.verdict).toBe('fair')
-    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.0494, 4)
+    expect(thin!.verdict).toBe('better')
+    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.14736, 4)
 
     expect(packed!.key).toBe('packed')
-    expect(packed!.displayName).toBe('Honda CR-X SiR (EF8)')
-    expect(packed!.roomReadYen).toBe(252_041)
-    expect(packed!.trueValueYen).toBe(224_415)
+    expect(packed!.displayName).toBe('Nissan Sunny (B12)')
+    expect(packed!.roomReadYen).toBe(124_809)
+    expect(packed!.trueValueYen).toBe(101_428)
     expect(packed!.incrementYen).toBe(5_000)
     expect(packed!.dealerCount).toBe(6)
     expect(packed!.verdict).toBe('worse')
-    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.8904, 4)
+    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.81267, 4)
 
-    // The thin lot edges just above the read (a slim, fair margin); the trap
-    // sits below the trap band of the read.
+    // The thin lot beats the read (a clear steal); the trap sits below the trap
+    // band of the read.
     expect(thin!.trueValueYen).toBeGreaterThan(thin!.roomReadYen)
     expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * 0.9)
     expect(thin!.lot.id).not.toBe(packed!.lot.id)
@@ -118,8 +137,8 @@ describe('auctionRoomDemo machine', () => {
     const [thin, packed] = buildLobby()
 
     const thinRoom = enterRoom(thin!, 0, 0)
-    expect(thinRoom.reserveYen).toBe(201_843)
-    expect(thinRoom.clearingYen).toBe(282_876)
+    expect(thinRoom.reserveYen).toBe(106_994)
+    expect(thinRoom.clearingYen).toBe(149_948)
     // The clearing price is one seeded fraction of the read; recompute it off a
     // fresh stream at the same seed to pin the draw exactly.
     const thinFraction = clearingFractionFor(
@@ -134,8 +153,8 @@ describe('auctionRoomDemo machine', () => {
     expect(thinRatio).toBeLessThanOrEqual(ROOM_TUNING.turnout.thin.clearMax)
 
     const packedRoom = enterRoom(packed!, 0, 0)
-    expect(packedRoom.reserveYen).toBe(138_623)
-    expect(packedRoom.clearingYen).toBe(225_152)
+    expect(packedRoom.reserveYen).toBe(68_645)
+    expect(packedRoom.clearingYen).toBe(111_494)
     const packedFraction = clearingFractionFor(
       createRng(hashStringToSeed('auction-room-demo:packed:run0')),
       'packed',
@@ -167,21 +186,21 @@ describe('auctionRoomDemo machine', () => {
       { name: 'Endo', active: true },
       { name: 'Mrs. Sakaki', active: true },
     ])
-    expect(room.reserveYen).toBe(201_843)
-    expect(room.boardYen).toBe(201_843)
-    expect(room.clearingYen).toBe(282_876)
+    expect(room.reserveYen).toBe(106_994)
+    expect(room.boardYen).toBe(106_994)
+    expect(room.clearingYen).toBe(149_948)
     expect(room.leader).toBeNull()
     expect(room.leaderName).toBeNull()
     expect(room.status).toBe('open')
     expect(room.clockEndsAtMs).toBe(ROOM_TUNING.clockMs)
-    expect(room.log).toEqual(['The clerk looks over the room. Reserve is ¥201,843.'])
+    expect(room.log).toEqual(['The clerk looks over the room. Reserve is ¥106,994.'])
     expect(room.pendingRoomBid).toEqual({ atMs: 2265 })
-    expect(nextRungYen(room)).toBe(201_843)
+    expect(nextRungYen(room)).toBe(106_994)
 
-    expect(room.roomReadYen).toBe(366_988)
-    expect(room.trueValueYen).toBe(385_126)
-    expect(room.playerNumberYen).toBe(385_126)
-    expect(room.verdict).toBe('fair')
+    expect(room.roomReadYen).toBe(194_534)
+    expect(room.trueValueYen).toBe(223_201)
+    expect(room.playerNumberYen).toBe(223_201)
+    expect(room.verdict).toBe('better')
     expect(room.epilogue).toBeNull()
   })
 
@@ -196,11 +215,11 @@ describe('auctionRoomDemo machine', () => {
       'a quiet man in a good coat',
     ])
     expect(room.dealers.every((dealer) => dealer.active)).toBe(true)
-    expect(room.reserveYen).toBe(138_623)
-    expect(room.boardYen).toBe(138_623)
-    expect(room.clearingYen).toBe(225_152)
+    expect(room.reserveYen).toBe(68_645)
+    expect(room.boardYen).toBe(68_645)
+    expect(room.clearingYen).toBe(111_494)
     expect(room.pendingRoomBid).toEqual({ atMs: 2645 })
-    expect(room.playerNumberYen).toBe(224_415)
+    expect(room.playerNumberYen).toBe(101_428)
   })
 
   it('lands the opener at its scheduled instant and resets the fuse from it', () => {
@@ -209,12 +228,15 @@ describe('auctionRoomDemo machine', () => {
 
     expect(room.leader).toBe('room')
     expect(room.leaderName).toBe('Endo')
-    expect(room.boardYen).toBe(201_843)
+    expect(room.boardYen).toBe(106_994)
     expect(room.lastBid).toEqual({ by: 'Endo', atMs: 2265 })
-    expect(room.log).toContain('Endo opens: ¥201,843.')
+    expect(room.log).toContain('Endo opens: ¥106,994.')
     expect(room.clockEndsAtMs).toBe(2265 + ROOM_TUNING.clockMs)
-    expect(room.pendingRoomBid).toEqual({ atMs: 4522 })
-    expect(nextRungYen(room)).toBe(206_843)
+    // The wide gap on the thin room draws feud eligibility before the delay
+    // draw on this scheduled raise; it fails at this seed, so the delay draw
+    // lands on the ordinary band.
+    expect(room.pendingRoomBid).toEqual({ atMs: 5665 })
+    expect(nextRungYen(room)).toBe(111_994)
   })
 
   it('climbs the thin room dealer against dealer to the clearing price and hammers there', () => {
@@ -222,26 +244,31 @@ describe('auctionRoomDemo machine', () => {
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(281_843)
+    expect(room.boardYen).toBe(146_994)
     // The board settles on the last rung at or under the clearing price.
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
     expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥281,843.')
+    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥146,994.')
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
 
-  it('plays the packed war to its clearing price, thinning the room as it climbs', () => {
+  it('plays the packed war to its clearing price, thinning the room as it climbs, with a feud breaking out along the way', () => {
     const room = enterRoom(buildLobby()[1]!, 0, 0)
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(223_623)
+    expect(room.boardYen).toBe(108_645)
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥223,623.')
+    // The wide board-to-clearing gap on the packed room's own unprompted climb
+    // draws feud eligibility on every scheduled raise, no player bid needed;
+    // this seeded run ignites one between Endo and Mrs. Sakaki, which leaves
+    // Mrs. Sakaki, not Endo, as the final leader at the hammer.
+    expect(room.log).toContain('Endo and Mrs. Sakaki have history. This just became personal.')
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥108,645.')
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
@@ -250,8 +277,8 @@ describe('auctionRoomDemo machine', () => {
       'a quiet man in a good coat closes the folder.',
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
-      'Mrs. Sakaki checks the time and is done.',
-      'Ogata closes the folder.',
+      'Ogata checks the time and is done.',
+      'Endo closes the folder.',
     ]
     let lastIndex = -1
     for (const drop of drops) {
@@ -400,13 +427,15 @@ describe('auctionRoomDemo machine', () => {
     playerBid(room, 100)
     expect(room.leader).toBe('player')
     expect(room.leaderName).toBeNull()
-    expect(room.boardYen).toBe(201_843)
+    expect(room.boardYen).toBe(106_994)
     expect(room.lastBid).toEqual({ by: 'player', atMs: 100 })
-    expect(room.log).toContain('You open: ¥201,843.')
+    expect(room.log).toContain('You open: ¥106,994.')
     expect(room.clockEndsAtMs).toBe(100 + ROOM_TUNING.clockMs)
     // The next rung is still under the clearing price, so the room counters:
-    // the pending raise is rescheduled off the player's bid, not cleared.
-    expect(room.pendingRoomBid).toEqual({ atMs: 2357 })
+    // the pending raise is rescheduled off the player's bid, not cleared. The
+    // wide gap draws feud eligibility ahead of the delay draw; it fails at
+    // this seed.
+    expect(room.pendingRoomBid).toEqual({ atMs: 3500 })
   })
 
   it('no-ops a player bid while the player already leads', () => {
@@ -415,7 +444,7 @@ describe('auctionRoomDemo machine', () => {
     const logLength = room.log.length
 
     playerBid(room, 200)
-    expect(room.boardYen).toBe(201_843)
+    expect(room.boardYen).toBe(106_994)
     expect(room.lastBid).toEqual({ by: 'player', atMs: 100 })
     expect(room.log).toHaveLength(logLength)
   })
@@ -426,7 +455,7 @@ describe('auctionRoomDemo machine', () => {
     expect(room.leaderName).toBe('Endo')
     letGo(room)
     expect(room.status).toBe('lost')
-    expect(room.log.at(-1)).toBe('You let it go. Endo takes it at ¥201,843.')
+    expect(room.log.at(-1)).toBe('You let it go. Endo takes it at ¥106,994.')
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
 
@@ -435,7 +464,420 @@ describe('auctionRoomDemo machine', () => {
     const run0 = enterRoom(thin, 0, 0)
     const run1 = enterRoom(thin, 1, 0)
 
-    expect(run1.clearingYen).toBe(264_670)
+    expect(run1.clearingYen).toBe(140_297)
     expect(run1.clearingYen).not.toBe(run0.clearingYen)
+  })
+
+  it('exposes the reaction tuning and the player raise options at the conservative starting values', () => {
+    expect(ROOM_TUNING.playerRaiseOptionsRungs).toEqual([1, 4, 8])
+    expect(ROOM_TUNING.reactions).toEqual({
+      jumpRungs: 4,
+      scareChance: 0.15,
+      scareLeftRungs: 2,
+      callChance: 0.12,
+      callRungs: 3,
+      goadChance: 0.03,
+      goadMaxLift: 1.06,
+      snipeWindowMs: 800,
+      snipesBeforeTax: 2,
+      snipeTaxChance: 0.15,
+      snipeTaxRungs: 2,
+      feudChance: 0.08,
+      feudMinGapRungs: 6,
+      feudRungs: 4,
+      feudDelayMs: { min: 400, max: 1100 },
+    })
+  })
+
+  it('lands a non-opening raise at rungs increments above the board; the opening ignores rungs', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+
+    // The opening lands on the reserve no matter what rungs asks for.
+    playerBid(room, 0, 4)
+    expect(room.boardYen).toBe(100_000)
+    expect(room.leader).toBe('player')
+
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    playerBid(room, 1_000, 4)
+    expect(room.boardYen).toBe(100_000 + 4 * 10_000)
+  })
+
+  it('fires the scare on a jump, collapsing the clearing price to board + scareLeftRungs increments', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    // Not inspected, so the first draw is the scare's; well under scareChance.
+    room.rng = sequence([0.01, 0.5, 0.5, 0.5])
+
+    playerBid(room, 0, 4)
+
+    expect(room.boardYen).toBe(140_000)
+    expect(room.clearingYen).toBe(
+      room.boardYen + ROOM_TUNING.reactions.scareLeftRungs * room.incrementYen,
+    )
+    expect(room.log).toContain('The jump lands. Paddles settle into laps down the row.')
+  })
+
+  it('answers a jump with a call: the next room response lands callRungs up with the call line', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    // Scare fails (>= scareChance), call succeeds (< callChance), then the
+    // delay draw for the call response and the delay draw for the raise
+    // scheduled after it lands.
+    room.rng = sequence([0.9, 0.01, 0.5, 0.5])
+
+    playerBid(room, 0, 4)
+    expect(room.pendingCallRungs).toBe(ROOM_TUNING.reactions.callRungs)
+    const boardAfterJump = room.boardYen
+
+    tick(room, room.pendingRoomBid!.atMs)
+
+    expect(room.pendingCallRungs).toBeNull()
+    expect(room.boardYen).toBe(boardAfterJump + ROOM_TUNING.reactions.callRungs * room.incrementYen)
+    expect(room.log.at(-1)).toBe(`Endo doesn't blink: ¥170,000.`)
+  })
+
+  it('fires the goad only for a room entered inspected, lifting the clearing price above the read but never past goadMaxLift x the read, and only once', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 150_000)
+    room.roomReadYen = 200_000
+    room.inspected = true
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    // Goad succeeds (< goadChance), lift draws mid-band, then the delay draw
+    // for the raise scheduled after it.
+    room.rng = sequence([0.0, 0.5, 0.5])
+
+    playerBid(room, 0, 4)
+
+    expect(room.goadFired).toBe(true)
+    expect(room.clearingYen).toBeGreaterThan(room.roomReadYen)
+    expect(room.clearingYen).toBeLessThanOrEqual(
+      Math.round(room.roomReadYen * ROOM_TUNING.reactions.goadMaxLift),
+    )
+    const goadLine = 'Somebody saw you under that car earlier. The room sits up.'
+    expect(room.log.at(-1)).toBe(goadLine)
+
+    // A second jump, with a stub that would satisfy the goad chance again if
+    // the goad were still eligible: the latch means it never fires twice.
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.rng = sequence([0.0, 0.9])
+    playerBid(room, 1_000, 4)
+    expect(room.log.filter((line) => line === goadLine)).toHaveLength(1)
+  })
+
+  it('never fires the goad for a room entered uninspected, even with a stub that would satisfy it as a goad draw', () => {
+    const room = bareRoom(
+      [
+        { name: 'Endo', active: true },
+        { name: 'Mrs. Sakaki', active: true },
+      ],
+      100_000,
+      10_000,
+      150_000,
+    )
+    room.roomReadYen = 200_000
+    room.inspected = false
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    room.rng = sequence([0.0, 0.5])
+
+    playerBid(room, 0, 4)
+
+    expect(room.goadFired).toBe(false)
+    expect(room.clearingYen).toBeLessThanOrEqual(room.roomReadYen)
+    expect(room.log).not.toContain('Somebody saw you under that car earlier. The room sits up.')
+  })
+
+  it('CAP LAW: without the goad, no room-attributed bid ever lands above the room read, across many seeded rooms and assorted player jumps', () => {
+    const entries = buildLobby()
+    for (const entry of entries) {
+      for (let run = 0; run < 25; run++) {
+        const learned = {
+          playerNumberYen: entry.trueValueYen,
+          verdict: entry.verdict,
+          trueValueYen: entry.trueValueYen,
+          inspected: false,
+        }
+        const room = enterRoom(entry, run, 0, learned)
+        let nowMs = 0
+        let guard = 0
+        while (room.status === 'open' && guard < 100) {
+          guard++
+          if (room.leader === 'player') {
+            nowMs = room.pendingRoomBid ? room.pendingRoomBid.atMs : room.clockEndsAtMs
+            tick(room, nowMs)
+          } else {
+            nowMs += 50
+            playerBid(room, nowMs, 8)
+          }
+          if (room.leader === 'room') {
+            expect(room.boardYen).toBeLessThanOrEqual(room.roomReadYen)
+          }
+        }
+      }
+    }
+  })
+
+  it('taxes a room response once the snipe tolerance is spent, without touching the delay band', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    room.clockEndsAtMs = 5_000
+    // Two scheduling delays (one per snipe), the tax draw, then the delay for
+    // the raise scheduled once the tax lands.
+    room.rng = sequence([0.5, 0.5, 0.05, 0.5])
+
+    playerBid(room, 4_900, 1) // inside the 800ms snipe window
+    expect(room.snipeCount).toBe(1)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+
+    playerBid(room, 9_800, 1) // second snipe: tolerance now spent
+    expect(room.snipeCount).toBe(2)
+
+    const pending = room.pendingRoomBid!
+    const delayUsed = pending.atMs - 9_800
+    expect(delayUsed).toBeGreaterThanOrEqual(ROOM_TUNING.bidDelayMs.min)
+    expect(delayUsed).toBeLessThanOrEqual(ROOM_TUNING.bidDelayMs.max)
+
+    const boardBeforeTax = room.boardYen
+    tick(room, pending.atMs)
+
+    expect(room.boardYen).toBe(
+      boardBeforeTax + ROOM_TUNING.reactions.snipeTaxRungs * room.incrementYen,
+    )
+    expect(room.log.at(-1)).toBe(`Endo is done waiting on the clock: straight to ¥140,000.`)
+  })
+
+  it('starts a feud on a jump, alternating single-rung raises between the two named dealers on the feud delay band, ending when the burst is spent', () => {
+    const dealers: DemoDealer[] = [
+      { name: 'Endo', active: true },
+      { name: 'Mrs. Sakaki', active: true },
+    ]
+    const room = bareRoom(dealers, 100_000, 10_000, 200_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    // Scare fails, call fails, feud succeeds, then five delay draws (four
+    // feud raises plus the ordinary raise scheduled once the burst ends).
+    room.rng = sequence([0.9, 0.9, 0.01, 0.5, 0.5, 0.5, 0.5, 0.5])
+
+    playerBid(room, 0, 4)
+
+    expect(room.feud).toEqual({ names: ['Endo', 'Mrs. Sakaki'], remaining: 4 })
+    expect(room.log.at(-1)).toBe('Endo and Mrs. Sakaki have history. This just became personal.')
+
+    const seenNames: string[] = []
+    let fromMs = 0
+    for (let i = 0; i < 4; i++) {
+      const pending = room.pendingRoomBid!
+      const delay = pending.atMs - fromMs
+      expect(delay).toBeGreaterThanOrEqual(ROOM_TUNING.reactions.feudDelayMs.min)
+      expect(delay).toBeLessThanOrEqual(ROOM_TUNING.reactions.feudDelayMs.max)
+      const boardBefore = room.boardYen
+      tick(room, pending.atMs)
+      expect(room.boardYen).toBe(boardBefore + room.incrementYen)
+      seenNames.push(room.leaderName!)
+      fromMs = pending.atMs
+    }
+
+    expect(seenNames).toEqual(['Endo', 'Mrs. Sakaki', 'Endo', 'Mrs. Sakaki'])
+    expect(room.feud).toBeNull()
+  })
+
+  it('armReaction sets the arm and overwrites any previous arm, but no-ops once the room is resolved', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    expect(room.armedReaction).toBeNull()
+
+    armReaction(room, 'scare')
+    expect(room.armedReaction).toBe('scare')
+
+    armReaction(room, 'feud')
+    expect(room.armedReaction).toBe('feud')
+
+    room.status = 'won'
+    armReaction(room, 'tax')
+    expect(room.armedReaction).toBe('feud')
+  })
+
+  it('force-arms the scare: the next jump fires it with no chance draw, and a second jump does not re-fire it', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    armReaction(room, 'scare')
+    // No chance draw for the forced scare; just the delay draw for the raise
+    // scheduled after it.
+    room.rng = sequence([0.5])
+
+    playerBid(room, 0, 4)
+
+    expect(room.armedReaction).toBeNull()
+    expect(room.clearingYen).toBe(
+      room.boardYen + ROOM_TUNING.reactions.scareLeftRungs * room.incrementYen,
+    )
+    const scareLine = 'The jump lands. Paddles settle into laps down the row.'
+    expect(room.log.at(-1)).toBe(scareLine)
+
+    // A second jump, with armedReaction cleared: the ordinary draws run and
+    // this seed fails both, so the scare does not fire again.
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.rng = sequence([0.99, 0.99, 0.5])
+    playerBid(room, 1_000, 4)
+    expect(room.log.filter((line) => line === scareLine)).toHaveLength(1)
+  })
+
+  it('force-arms the call: the next jump sets the pending call, which lands with its log line, and a second jump does not re-arm it', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    armReaction(room, 'call')
+    // No chance draw for the forced call; the delay draw scheduling the
+    // room's response, then the delay draw for the raise scheduled once it
+    // lands.
+    room.rng = sequence([0.5, 0.5])
+
+    playerBid(room, 0, 4)
+    expect(room.pendingCallRungs).toBe(ROOM_TUNING.reactions.callRungs)
+    expect(room.armedReaction).toBeNull()
+    const boardAfterJump = room.boardYen
+
+    tick(room, room.pendingRoomBid!.atMs)
+
+    expect(room.pendingCallRungs).toBeNull()
+    expect(room.boardYen).toBe(boardAfterJump + ROOM_TUNING.reactions.callRungs * room.incrementYen)
+    expect(room.log.at(-1)).toBe(`Endo doesn't blink: ¥170,000.`)
+
+    // A second jump, with armedReaction cleared: the ordinary draws run and
+    // this seed fails both, so no call is queued.
+    room.rng = sequence([0.99, 0.99, 0.5])
+    playerBid(room, 1_000, 4)
+    expect(room.pendingCallRungs).toBeNull()
+  })
+
+  it('force-arms the goad on an uninspected room: it lifts the clearing above the read (bounded by goadMaxLift), and firing it twice in a row fires twice since the latch never consumes', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 150_000)
+    room.roomReadYen = 200_000
+    room.inspected = false
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    armReaction(room, 'goad')
+    // No chance draw for the forced goad; only the lift magnitude draw, then
+    // the delay draw for the raise scheduled after it.
+    room.rng = sequence([0.5, 0.5])
+
+    playerBid(room, 0, 4)
+
+    expect(room.armedReaction).toBeNull()
+    expect(room.goadFired).toBe(false) // a forced goad never sets the latch
+    expect(room.clearingYen).toBeGreaterThan(room.roomReadYen)
+    expect(room.clearingYen).toBeLessThanOrEqual(
+      Math.round(room.roomReadYen * ROOM_TUNING.reactions.goadMaxLift),
+    )
+    const goadLine = 'Somebody saw you under that car earlier. The room sits up.'
+    expect(room.log.at(-1)).toBe(goadLine)
+
+    // Forced again: fires a second time even on an uninspected room, since
+    // the latch was never consumed by the first forced fire.
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    armReaction(room, 'goad')
+    room.rng = sequence([0.5, 0.5])
+    playerBid(room, 1_000, 4)
+
+    expect(room.goadFired).toBe(false)
+    expect(room.log.filter((line) => line === goadLine)).toHaveLength(2)
+  })
+
+  it('force-arms the tax: the next room response lands taxed regardless of snipeCount, and a second response does not retax', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 500_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    room.snipeCount = 0
+    armReaction(room, 'tax')
+    room.pendingRoomBid = { atMs: 100 }
+    // No chance draw for the forced tax; the delay draw for the raise
+    // scheduled after it lands, then the delay draw for the raise after that.
+    room.rng = sequence([0.5, 0.5])
+
+    tick(room, room.pendingRoomBid.atMs)
+
+    expect(room.armedReaction).toBeNull()
+    expect(room.boardYen).toBe(100_000 + ROOM_TUNING.reactions.snipeTaxRungs * room.incrementYen)
+    expect(room.log.at(-1)).toBe(`Endo is done waiting on the clock: straight to ¥120,000.`)
+
+    // A second room response with the arm already spent: an ordinary
+    // rung-one raise, not a tax.
+    const boardBeforeSecond = room.boardYen
+    tick(room, room.pendingRoomBid!.atMs)
+    expect(room.boardYen).toBe(boardBeforeSecond + room.incrementYen)
+    expect(room.log.at(-1)).toBe('Endo raises: ¥130,000.')
+  })
+
+  it('force-arms the feud: the next scheduled raise starts it even though the board-to-clearing gap sits far under feudMinGapRungs, and a further scheduled raise does not restart it once the arm is spent', () => {
+    const dealers: DemoDealer[] = [
+      { name: 'Endo', active: true },
+      { name: 'Mrs. Sakaki', active: true },
+    ]
+    const room = bareRoom(dealers, 100_000, 10_000, 130_000)
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    armReaction(room, 'feud')
+    // No gap check and no chance draw for the forced feud; just the feud-band
+    // delay draw for the raise it schedules.
+    room.rng = sequence([0.5])
+
+    playerBid(room, 0, 1) // a plain rung-one raise still schedules a raise
+
+    expect(room.armedReaction).toBeNull()
+    expect(room.feud).toEqual({
+      names: ['Endo', 'Mrs. Sakaki'],
+      remaining: ROOM_TUNING.reactions.feudRungs,
+    })
+    const feudLine = 'Endo and Mrs. Sakaki have history. This just became personal.'
+    expect(room.log).toContain(feudLine)
+
+    // The burst is over (simulated directly) and the arm is spent: a further
+    // scheduled raise, with the gap still far under feudMinGapRungs, does not
+    // start a second feud.
+    room.feud = null
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.pendingRoomBid = null
+    room.rng = sequence([0.5])
+    playerBid(room, 1_000, 1)
+
+    expect(room.feud).toBeNull()
+    expect(room.log.filter((line) => line === feudLine)).toHaveLength(1)
+  })
+
+  it('determinism guard: the full unarmed thin-room replay is bit-identical to the existing pinned flow, proving the arm machinery costs no draws when unarmed', () => {
+    const room = enterRoom(buildLobby()[0]!, 0, 0)
+    expect(room.armedReaction).toBeNull()
+
+    tick(room, 3_600_000)
+
+    expect(room.status).toBe('lost')
+    expect(room.boardYen).toBe(146_994)
+    expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
+    expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥146,994.')
+    expect(dealersInRoom(room)).toBe(1)
+    expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
+    expect(room.armedReaction).toBeNull()
   })
 })

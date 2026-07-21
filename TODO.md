@@ -292,8 +292,17 @@ pass."
 
 - [ ] **SCHEDULED: live in-room auction bidding is now Sprints 99-100** (the economy
   legibility arc, `docs/design/economy-legibility.md`, approved 2026-07-19) - the
-  stripped-demo-first plan below is honoured verbatim as Sprint 99's gate. Original
-  entry kept for the reasoning:
+  stripped-demo-first plan below is honoured verbatim as Sprint 99's gate.
+  **Status update (maintainer, 2026-07-21): Sprint 100 was scoped but NEVER implemented -
+  the solution changed too much under it (the demo became the drawn-clearing live room of
+  Sprints 103-105, then the routed-diagnosis/reactions arc, Sprints 106-108).**
+  `sprint100.md` as written is stale; the promotion must be REDESIGNED against the final
+  demo, not implemented from the old doc. It happens only after Sprints 106-108 land and
+  the maintainer signs the demo off as 100%. Big blast radius, handle with care: the
+  tutorial's guided auction steps, the overnight bidder resolution in `advanceDay`, the
+  auction board flows, lot shape, retuning, and migrating `ROOM_TUNING` (including the
+  reactions block) out of demo code into `packages/content` JSON per the content law.
+  Original entry kept for the reasoning:
   **INVESTIGATION: live in-room auction bidding (the "Option A" redesign, deferred 2026-07-12).**
   The maintainer took the targeted Option B fix (above) for now but is not sold on the current
   async, overnight-resolved auction model even debugged: bidding is inherently slow (one

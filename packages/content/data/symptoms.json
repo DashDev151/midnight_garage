@@ -7,37 +7,74 @@
         "id": "valve-seals",
         "carPartId": "headValvetrain",
         "setBand": "worn",
-        "weight": 57
+        "weight": 45
+      },
+      {
+        "id": "gunked-breather",
+        "carPartId": "intake",
+        "setBand": "worn",
+        "weight": 20
+      },
+      {
+        "id": "head-gasket",
+        "carPartId": "headValvetrain",
+        "setBand": "poor",
+        "weight": 22
       },
       {
         "id": "tired-rings",
         "carPartId": "internals",
         "setBand": "scrap",
         "weight": 13
-      },
-      {
-        "id": "head-gasket",
-        "carPartId": "headValvetrain",
-        "setBand": "poor",
-        "weight": 30
       }
     ],
     "tests": [
       {
         "testId": "cold-start-watch",
-        "partition": [["valve-seals", "tired-rings"], ["head-gasket"]],
+        "partition": [["valve-seals", "gunked-breather", "tired-rings"], ["head-gasket"]],
         "resultCopy": [
-          "Smoke clears within a few seconds of firing, an oil-burn smell, not coolant sweet. Points at the valve seals or the rings, not the head gasket.",
-          "Smoke keeps coming well past the first few seconds, faintly sweet. Points at the head gasket, not the seals or rings."
+          "Blue puff on the first start, clears once it's running. It's breathing oil from somewhere: the guides, the breather, or the bores.",
+          "White smoke, sweet smell, and it doesn't clear. That's coolant: head gasket's letting go."
         ]
       },
       {
         "testId": "compression-test",
-        "partition": [["valve-seals"], ["tired-rings", "head-gasket"]],
+        "partition": [
+          ["valve-seals", "gunked-breather"],
+          ["tired-rings", "head-gasket"]
+        ],
         "resultCopy": [
-          "Compression reads even across every cylinder. The valve seals are the likely culprit, not the rings or the gasket.",
-          "One or more cylinders read low. Points at the rings or the head gasket, not the valve seals."
-        ]
+          "Compression's even and healthy on all four. The bores are fine: it's the seals weeping down the guides, or the breather pushing oil where it shouldn't go.",
+          "Down hard on two cylinders and the numbers don't lie. The bores are worn: that's the bottom end, and that's real money."
+        ],
+        "unlockedBy": { "testId": "cold-start-watch" }
+      },
+      {
+        "testId": "breather-check",
+        "partition": [["gunked-breather"], ["valve-seals", "head-gasket", "tired-rings"]],
+        "resultCopy": [
+          "The breather hose comes off full of mayonnaise and gunk. The crankcase can't breathe, so it's pushing oil up the intake: clean the system out and the smoke goes with it.",
+          "Breather's clean and clear. The oil's getting in lower down: guides or bores."
+        ],
+        "unlockedBy": { "testId": "cold-start-watch" }
+      },
+      {
+        "testId": "pull-a-plug",
+        "partition": [["valve-seals", "gunked-breather", "tired-rings"], ["head-gasket"]],
+        "resultCopy": [
+          "Oily crust on the tips. It's burning oil, which the blue smoke already told you. Top or bottom end, a plug can't say.",
+          "Tips washed clean like they've been steamed."
+        ],
+        "unlockedBy": { "testId": "cold-start-watch" }
+      },
+      {
+        "testId": "overrun-smoke-watch",
+        "partition": [["valve-seals"], ["gunked-breather", "tired-rings", "head-gasket"]],
+        "resultCopy": [
+          "Hold it at revs and lift off: a big blue puff on the overrun. That's the guides sucking oil down: valve stem seals, nothing worse.",
+          "Steady at revs, clean on the lift-off. Whatever's smoking, it isn't the guides."
+        ],
+        "unlockedBy": { "testId": "cold-start-watch" }
       }
     ]
   },
@@ -181,13 +218,19 @@
         "id": "worn-synchros",
         "carPartId": "gearbox",
         "setBand": "worn",
-        "weight": 60
+        "weight": 48
+      },
+      {
+        "id": "low-thin-oil",
+        "carPartId": "gearbox",
+        "setBand": "fine",
+        "weight": 14
       },
       {
         "id": "dragging-clutch",
         "carPartId": "clutch",
         "setBand": "poor",
-        "weight": 22
+        "weight": 20
       },
       {
         "id": "chewed-gearset",
@@ -199,19 +242,56 @@
     "tests": [
       {
         "testId": "gearbox-oil-check",
-        "partition": [["chewed-gearset"], ["worn-synchros", "dragging-clutch"]],
+        "partition": [
+          ["low-thin-oil", "chewed-gearset"],
+          ["worn-synchros", "dragging-clutch"]
+        ],
         "resultCopy": [
-          "Metal glints in the drained gearbox oil. A chewed gearset, not tired synchros or a clutch that won't let go.",
-          "The oil drains clean, just thin with age, nothing bright in it. Not a chewed gearset, narrows to worn synchros or a dragging clutch."
+          "The oil's low, thin, and dark. Either the box has been run dry and hates it, or something in there is wearing itself to bits.",
+          "Oil's full and clean. The box isn't starving: the crunch is in the shift itself, synchros or a clutch that isn't clearing."
         ]
       },
       {
-        "testId": "clutch-drag-check",
-        "partition": [["dragging-clutch"], ["worn-synchros", "chewed-gearset"]],
+        "testId": "magnet-check",
+        "partition": [["chewed-gearset"], ["worn-synchros", "low-thin-oil", "dragging-clutch"]],
         "resultCopy": [
-          "Engine running, pedal flat to the floor, and first still baulks and grates going in from a standstill. The clutch isn't fully releasing, dragging the input shaft, not a fault in the gears themselves.",
-          "Pedal flat to the floor, it drops into gear clean and silent from a standstill; the crunch only comes on the move. The clutch releases fully, narrows to worn synchros or a chewed gearset."
-        ]
+          "The magnet comes out furred with metal. That's gear teeth, not wear dust: the box is chewing itself.",
+          "The magnet comes out clean: nothing's shedding metal in there."
+        ],
+        "unlockedBy": { "testId": "gearbox-oil-check" }
+      },
+      {
+        "testId": "clutch-drag-check",
+        "partition": [["dragging-clutch"], ["worn-synchros", "low-thin-oil", "chewed-gearset"]],
+        "resultCopy": [
+          "Clutch pedal down, and it still creeps at the line. The clutch isn't clearing: it's dragging the box along.",
+          "Clutch clears clean: it's not dragging the box."
+        ],
+        "unlockedBy": { "testId": "gearbox-oil-check" }
+      },
+      {
+        "testId": "try-it-warm",
+        "partition": [
+          ["low-thin-oil", "chewed-gearset"],
+          ["worn-synchros", "dragging-clutch"]
+        ],
+        "resultCopy": [
+          "Even warm it graunches, and there's a grind under it.",
+          "Warmed through, it slips into second sweet as you like. It did for the seller too: the crunch is a cold-morning problem, and you've learnt nothing new."
+        ],
+        "unlockedBy": { "testId": "gearbox-oil-check" }
+      },
+      {
+        "testId": "linkage-check",
+        "partition": [
+          ["low-thin-oil", "chewed-gearset"],
+          ["worn-synchros", "dragging-clutch"]
+        ],
+        "resultCopy": [
+          "Linkage bushes are tight, gate's clean. Whatever's crunching, the lever isn't it.",
+          "Linkage bushes are tight, gate's clean. Whatever's crunching, the lever isn't it."
+        ],
+        "unlockedBy": { "testId": "gearbox-oil-check" }
       }
     ]
   },
@@ -543,13 +623,25 @@
         "id": "heater-matrix-weep",
         "carPartId": "cooling",
         "setBand": "worn",
-        "weight": 62
+        "weight": 38
+      },
+      {
+        "id": "blocked-scuttle-drain",
+        "carPartId": "underbody",
+        "setBand": "worn",
+        "weight": 20
       },
       {
         "id": "perished-grommet",
         "carPartId": "chassis",
         "setBand": "poor",
-        "weight": 20
+        "weight": 14
+      },
+      {
+        "id": "split-sunroof-drain",
+        "carPartId": "dashGauges",
+        "setBand": "poor",
+        "weight": 10
       },
       {
         "id": "rotten-bulkhead-seam",
@@ -560,20 +652,85 @@
     ],
     "tests": [
       {
-        "testId": "coolant-check",
-        "partition": [["heater-matrix-weep"], ["perished-grommet", "rotten-bulkhead-seam"]],
+        "testId": "trace-the-wet",
+        "partition": [
+          ["heater-matrix-weep", "perished-grommet", "split-sunroof-drain"],
+          ["blocked-scuttle-drain", "rotten-bulkhead-seam"]
+        ],
         "resultCopy": [
-          "The header tank is low and the damp smells sweet, a greasy film misting the inside of the screen. The heater matrix weeping into the cabin, not rainwater getting in.",
-          "Coolant level holds and the damp is plain rainwater, no sweetness to it. Not the matrix, narrows to water finding a way in through the bulkhead."
+          "The damp starts high and tracks down the bulkhead carpet. It's getting in up top: under the dash or down a pillar, not from below.",
+          "The wet sits low, pooled along the floor. That's water finding its own way in from below: a blocked drain backing up, or the seam itself."
         ]
       },
       {
-        "testId": "undercarriage-look",
-        "partition": [["rotten-bulkhead-seam"], ["heater-matrix-weep", "perished-grommet"]],
+        "testId": "coolant-check",
+        "partition": [
+          ["heater-matrix-weep"],
+          [
+            "perished-grommet",
+            "blocked-scuttle-drain",
+            "split-sunroof-drain",
+            "rotten-bulkhead-seam"
+          ]
+        ],
         "resultCopy": [
-          "A probe pushed at the bulkhead seam goes through flaking, laminated rust, the metal gone soft along the join. A rotten structural seam, not a tired grommet or a wet carpet from above.",
-          "The bulkhead and floor take a probe firm and solid, only light surface bloom where the damp sits. The structure's sound, narrows to the heater matrix or water past a perished grommet."
-        ]
+          "Sweet smell, and the wet's got a green tinge. That's coolant: the heater matrix is weeping under the dash.",
+          "Plain water, no smell. The matrix is fine: this is rainwater getting in somewhere it shouldn't."
+        ],
+        "unlockedBy": { "testId": "trace-the-wet" }
+      },
+      {
+        "testId": "scuttle-drain-poke",
+        "partition": [
+          ["blocked-scuttle-drain"],
+          ["heater-matrix-weep", "perished-grommet", "split-sunroof-drain", "rotten-bulkhead-seam"]
+        ],
+        "resultCopy": [
+          "Poke the drain and a cupful of stinking leaf water gushes out. There's the culprit: the scuttle's been overflowing into the cabin. Clear it and it's fixed.",
+          "The drain runs clear. Nothing backing up under the scuttle: whatever's letting water in, it isn't this."
+        ],
+        "unlockedBy": { "testId": "trace-the-wet" }
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [
+          ["rotten-bulkhead-seam"],
+          ["heater-matrix-weep", "perished-grommet", "blocked-scuttle-drain", "split-sunroof-drain"]
+        ],
+        "resultCopy": [
+          "There it is. The bulkhead seam's gone crumbly right where it meets the floor: proper rot, not a patch job.",
+          "The seam's solid all the way across. The water's finding another way in."
+        ],
+        "unlockedBy": { "testId": "trace-the-wet" }
+      },
+      {
+        "testId": "carpet-lift",
+        "partition": [
+          ["heater-matrix-weep", "perished-grommet", "split-sunroof-drain"],
+          ["blocked-scuttle-drain", "rotten-bulkhead-seam"]
+        ],
+        "resultCopy": [
+          "Underlay's soaked through, right enough. It's coming in from somewhere up top: you knew that before you lifted it.",
+          "Underlay's wet clear to the floor seam: soaked from below, which the trace already showed you."
+        ],
+        "unlockedBy": { "testId": "trace-the-wet" }
+      },
+      {
+        "testId": "hose-the-roof",
+        "partition": [
+          ["split-sunroof-drain"],
+          [
+            "heater-matrix-weep",
+            "perished-grommet",
+            "blocked-scuttle-drain",
+            "rotten-bulkhead-seam"
+          ]
+        ],
+        "resultCopy": [
+          "Water over the shut sunroof, and a minute later the A-pillar trim's running. The drain tube's split inside the pillar: rain's been shortcutting into the footwell.",
+          "The roof drains swallow everything you pour at them. Dry pillars: the rain's not coming in up here."
+        ],
+        "unlockedBy": { "testId": "coolant-check", "group": 1 }
       }
     ]
   },

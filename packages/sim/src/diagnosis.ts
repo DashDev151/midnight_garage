@@ -393,12 +393,48 @@ export function beginInspectionVisit(
   }
 }
 
+/**
+ * Sprint 106 (routed diagnosis): which of `symptom`'s own test applications
+ * are currently offerable to `carSymptom` - a test qualifies iff it has no
+ * `unlockedBy` (a root, offered from the start), or its `unlockedBy.testId`
+ * is already in `carSymptom.runTestIds` AND (`unlockedBy.group` is absent, or
+ * that parent test's own outcome fell in partition group `unlockedBy.group`).
+ * An absent `group` means the sibling having run at all is enough, whichever
+ * way it resolved - this is how a whole board of follow-up tests opens after
+ * a first look. A parent's outcome group is the index of its `partition`
+ * entry containing `carSymptom.trueCauseId` - the sim itself may read the
+ * true cause to route the tree; the player only ever sees the result copy
+ * the room already showed them. Availability is always DERIVED from
+ * `runTestIds` + `trueCauseId` + content, never stored, so it needs no
+ * save-state of its own. An already-run test still counts as available here
+ * - separating "offered" from "already run" is the caller's job
+ * (`runDiagnosticTest`'s own `already-run` gate, the UI's breadcrumb trail),
+ * not this function's.
+ */
+export function availableTestIdsFor(carSymptom: CarSymptom, symptom: Symptom): string[] {
+  return symptom.tests
+    .filter((testApplication) => {
+      if (!testApplication.unlockedBy) return true
+      const { testId: parentId, group } = testApplication.unlockedBy
+      if (!carSymptom.runTestIds.includes(parentId)) return false
+      if (group === undefined) return true
+      const parent = symptom.tests.find((t) => t.testId === parentId)
+      if (!parent) return false
+      const parentGroupIndex = parent.partition.findIndex((causeIds) =>
+        causeIds.includes(carSymptom.trueCauseId),
+      )
+      return parentGroupIndex === group
+    })
+    .map((testApplication) => testApplication.testId)
+}
+
 export type RunDiagnosticTestOutcome =
   | 'ran'
   | 'no-visit'
   | 'wrong-tier'
   | 'not-found'
   | 'test-not-applicable'
+  | 'locked'
   | 'already-run'
   | 'not-enough-minutes'
 
@@ -413,14 +449,17 @@ export interface RunDiagnosticTestResult {
 
 /**
  * Sprint 74 decision 2: run `testId` against `lotId`'s `symptomIndex`-th
- * symptom. Legal only with an active visit at the lot's own tier, enough
- * `minutesLeft`, a test that actually applies to this symptom, and one that
- * hasn't already run on this exact symptom instance (`runTestIds`).
- * Deterministic, no RNG: finds which of the test's two partition groups
- * contains the (already-rolled, generation-time) `trueCauseId`, and narrows
- * `remainingCauseIds` to its intersection with that group. Knowledge lives
- * on the car itself, not the visit, so it survives a purchase and dies with
- * a lost lot for free - nothing extra to wire.
+ * symptom. Legal only with an active visit at the lot's own tier, a test
+ * that actually applies to this symptom and is registered, one currently
+ * OFFERED by the routed tree (`availableTestIdsFor`, Sprint 106 - checked
+ * before the already-run refusal, so a locked test reports `locked` even on
+ * a repeat call), one that hasn't already run on this exact symptom instance
+ * (`runTestIds`), and enough `minutesLeft`. Deterministic, no RNG: finds
+ * which of the test's two partition groups contains the (already-rolled,
+ * generation-time) `trueCauseId`, and narrows `remainingCauseIds` to its
+ * intersection with that group. Knowledge lives on the car itself, not the
+ * visit, so it survives a purchase and dies with a lost lot for free -
+ * nothing extra to wire.
  */
 export function runDiagnosticTest(
   state: GameState,
@@ -444,6 +483,9 @@ export function runDiagnosticTest(
   }
   const test = context.diagnosticTestsById[testId]
   if (!test) return { state, log: [], outcome: 'test-not-applicable', resultCopy: null }
+  if (!availableTestIdsFor(carSymptom, symptom).includes(testId)) {
+    return { state, log: [], outcome: 'locked', resultCopy: null }
+  }
   if (carSymptom.runTestIds.includes(testId)) {
     return { state, log: [], outcome: 'already-run', resultCopy: null }
   }

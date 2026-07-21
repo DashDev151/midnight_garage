@@ -2,14 +2,11 @@
 import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { AuctionTier } from '@midnight-garage/content'
-import GradeStamp from '../components/GradeStamp.vue'
-import HelpHint from '../components/HelpHint.vue'
+import AuctionLotCard from '../components/AuctionLotCard.vue'
 import LabourBar from '../components/LabourBar.vue'
-import SymptomChecklist from '../components/SymptomChecklist.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
-import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 
 const game = useGameStore()
 
@@ -62,20 +59,10 @@ function inspectButtonLabel(tier: AuctionTier): string {
   return `Inspect here (${game.actionPoints.inspectionVisit} labour + ${formatYen(game.travelFeeYenFor(tier))})`
 }
 
-/**
- * Sprint 74 decision 2: a run test's own result-copy line, held locally per
- * lot+symptom for inline display - `runDiagnosticTest` never writes a
- * day-log entry (the copy IS the record), so nothing else would remember it.
- */
-const testResults = reactive<Record<string, string>>({})
-
-function resultKey(lotId: string, symptomIndex: number): string {
-  return `${lotId}-${symptomIndex}`
-}
-
+/** Runs a diagnostic test against the visit clock - the store derives the
+ * trail's own result line, so nothing here needs to remember what it returns. */
 function onRunTest(lotId: string, symptomIndex: number, testId: string): void {
-  const copy = game.runDiagnosticTest(lotId, symptomIndex, testId)
-  if (copy) testResults[resultKey(lotId, symptomIndex)] = copy
+  game.runDiagnosticTest(lotId, symptomIndex, testId)
 }
 
 /** Why a specific test button is disabled right now, `null` when it isn't -
@@ -300,15 +287,6 @@ function decrementBid(d: LotDetail): void {
   bidInputs[d.lot.id] = Math.max(d.nextRaiseYen, currentBidInput(d) - stepYenFor(d))
 }
 
-/** Turnout badge text (Sprint 30 decision 3: a real bidder-count band now,
- * rolled once per lot at creation) - still one word of texture, never a
- * numeric gauge. Price is king. */
-const TURNOUT_LABEL: Record<string, string> = {
-  thin: 'Thin turnout',
-  steady: 'Steady turnout',
-  packed: 'Packed turnout',
-}
-
 /** "current bid + who holds it" (Sprint 20) - the board's headline number,
  * always the real figure, never obfuscated. Sprint 46: "dealer" implied a
  * real, named rival that doesn't exist (`leadingBidder` is just
@@ -437,116 +415,24 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
       </div>
       <ul class="lots">
         <li v-for="d in group.lots" :key="d.lot.id" class="lot">
-          <!-- Sprint 56 decision 3: left panel - identity, art, grade stamps. -->
-          <div class="lot-left">
-            <div class="lot-head">
-              <span class="lot-name"
-                >{{ d.displayName
-                }}<span class="class-chip" :data-test="'lot-class-' + d.lot.id">{{
-                  game.fitmentClassLabel(d.fitmentClass)
-                }}</span></span
-              >
-              <span class="lot-meta">
-                {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
-                {{ d.lot.car.color }}
-              </span>
-            </div>
-
-            <div class="lot-turnout">
-              <span class="turnout-badge" :class="'turnout-' + d.turnout">
-                {{ TURNOUT_LABEL[d.turnout] }}
-              </span>
-              <!-- Sprint 69 item 3: one lead indicator per card. The badge's
-                   "you lead" duplicated the current-price headline's
-                   "you lead at Y-X" on the same card, which is what read as
-                   "YOU LEAD" everywhere.
-
-                   "outbid" STAYS, deliberately against the letter of decision
-                   8: the headline reads a neutral "leading bid Y-X" when a
-                   rival is ahead, so nothing else on the card would tell you
-                   that YOU bid and are losing. That is a different fact, not a
-                   duplicate one. -->
-              <span
-                v-if="d.playerHasBid && d.leadingBidder !== 'player'"
-                class="winning-state outbid"
-              >
-                outbid
-              </span>
-            </div>
-
-            <div class="lot-art" aria-hidden="true"></div>
-
-            <!-- Sprint 56 decision 2: the grade stamps replace the old
-                 per-group BandChip row entirely - full per-part truth stays
-                 on the car detail screen after acquisition. -->
-            <div class="grade-stamps">
-              <GradeStamp
-                label="Overall"
-                :grade="d.auctionGrade.overall"
-                :data-test="'grade-stamp-overall-' + d.lot.id"
-              />
-              <GradeStamp
-                label="Ext"
-                :grade="d.auctionGrade.exterior"
-                :data-test="'grade-stamp-ext-' + d.lot.id"
-              />
-              <GradeStamp
-                label="Int"
-                :grade="d.auctionGrade.interior"
-                :data-test="'grade-stamp-int-' + d.lot.id"
-              />
-            </div>
-
-            <!-- Free, public symptom disclosure: the room shows the symptom
-                 and every open cause, never which one is true; test buttons
-                 narrow it during an active visit at this lot's own tier. The
-                 parent keeps all the logic; the shared checklist only draws. -->
-            <SymptomChecklist
-              :symptoms="d.symptoms"
-              :lot-id="d.lot.id"
-              :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
-              :result-copy-for="(i) => testResults[resultKey(d.lot.id, i)]"
-              @run-test="
-                ({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)
-              "
-            />
-          </div>
-
-          <!-- Right panel: current price is the headline, guide/reserve/bill
-               are secondary, then the bid stack. -->
-          <div class="lot-right">
-            <div class="lot-info">
+          <!-- The shared production card draws the identity panel, grades, the
+               public symptom checklist, and the room's number and ledger. The
+               bid stack drops into its slots so all bidding logic stays here. -->
+          <AuctionLotCard
+            :d="d"
+            :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
+            @run-test="({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)"
+          >
+            <template #headline>
               <p
                 class="current-price"
                 :class="{ 'current-price-mine': d.leadingBidder === 'player' }"
               >
                 {{ bidStateLabel(d.currentBidYen, d.leadingBidder) }}
               </p>
+            </template>
 
-              <!-- The room's number is the card's value headline; the
-                   ledger beneath it is the exact decomposition the sheet
-                   sums to, the fear line last on a symptomatic lot. -->
-              <p class="room-says" data-test="room-says">
-                the room says {{ formatYen(d.guideValueYen) }}
-                <HelpHint label="The ledger">
-                  Every price is the same short receipt: the book price, minus the work still
-                  outstanding (buyers knock off one and a half times that bill, which is exactly the
-                  margin you earn by doing the work yourself), minus polish it is missing, plus any
-                  upgrades that count. On a listed car, the last line prices its doubts at the odds;
-                  prove the cause and your own number replaces the doubt.
-                </HelpHint>
-              </p>
-              <ul class="ledger">
-                <li
-                  v-for="line in d.ledger.lines"
-                  :key="line.id"
-                  class="ledger-line"
-                  :data-test="'ledger-line-' + line.id"
-                >
-                  <span class="ledger-label">{{ LEDGER_LINE_LABELS[line.id] }}</span>
-                  <span class="ledger-yen">{{ formatLedgerLineYen(line) }}</span>
-                </li>
-              </ul>
+            <template #info>
               <div class="lot-secondary">
                 <span>reserve {{ formatYen(d.reserveYen) }}</span>
               </div>
@@ -565,73 +451,75 @@ function bidStateLabel(currentBidYen: number, leadingBidder: 'player' | 'rival' 
                 </template>
                 <span v-else class="close-caption">{{ d.closeLabel }}</span>
               </div>
-            </div>
+            </template>
 
-            <div class="lot-actions">
-              <div class="bid-field">
-                <span class="stepper-group">
+            <template #actions>
+              <div class="lot-actions">
+                <div class="bid-field">
+                  <span class="stepper-group">
+                    <button
+                      type="button"
+                      class="stepper stepper-down"
+                      :data-test="'bid-down-' + d.lot.id"
+                      aria-label="Lower bid amount"
+                      @click="decrementBid(d)"
+                    >
+                      -
+                    </button>
+                    <input
+                      v-model.number="bidInputs[d.lot.id]"
+                      type="number"
+                      :step="stepYenFor(d)"
+                      :placeholder="String(d.nextRaiseYen)"
+                      aria-label="raise bid to"
+                    />
+                    <button
+                      type="button"
+                      class="stepper stepper-up"
+                      :data-test="'bid-up-' + d.lot.id"
+                      aria-label="Raise bid amount"
+                      @click="incrementBid(d)"
+                    >
+                      +
+                    </button>
+                  </span>
+                </div>
+                <div class="lot-action-buttons">
                   <button
-                    type="button"
-                    class="stepper stepper-down"
-                    :data-test="'bid-down-' + d.lot.id"
-                    aria-label="Lower bid amount"
-                    @click="decrementBid(d)"
+                    class="primary"
+                    :data-test="(d.playerHasBid ? 'raise-' : 'bid-') + d.lot.id"
+                    @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.nextRaiseYen)"
                   >
-                    -
+                    {{ d.playerHasBid ? 'Raise bid' : 'Place bid' }}
                   </button>
-                  <input
-                    v-model.number="bidInputs[d.lot.id]"
-                    type="number"
-                    :step="stepYenFor(d)"
-                    :placeholder="String(d.nextRaiseYen)"
-                    aria-label="raise bid to"
-                  />
-                  <button
-                    type="button"
-                    class="stepper stepper-up"
-                    :data-test="'bid-up-' + d.lot.id"
-                    aria-label="Raise bid amount"
-                    @click="incrementBid(d)"
-                  >
-                    +
-                  </button>
-                </span>
+                </div>
               </div>
-              <div class="lot-action-buttons">
+
+              <!-- Buy Now is a small, separated ghost control below the bid
+                   stack, and takes two clicks - it can never fire on a stray
+                   press against the Raise button. -->
+              <div class="buyout-row">
                 <button
-                  class="primary"
-                  :data-test="(d.playerHasBid ? 'raise-' : 'bid-') + d.lot.id"
-                  @click="game.placeBid(d.lot.id, bidInputs[d.lot.id] ?? d.nextRaiseYen)"
+                  class="buyout"
+                  :class="{ confirming: buyoutConfirming[d.lot.id] }"
+                  :disabled="game.cashYen < d.buyoutPriceYen"
+                  :title="
+                    game.cashYen < d.buyoutPriceYen
+                      ? 'Not enough cash - Buy Now costs ' + formatYen(d.buyoutPriceYen)
+                      : 'Skip the bidding and buy this lot outright'
+                  "
+                  :data-test="'buyout-' + d.lot.id"
+                  @click="onBuyoutClick(d.lot.id)"
                 >
-                  {{ d.playerHasBid ? 'Raise bid' : 'Place bid' }}
+                  {{
+                    buyoutConfirming[d.lot.id]
+                      ? 'Confirm buyout (' + formatYen(d.buyoutPriceYen) + ')'
+                      : 'Buy now (' + formatYen(d.buyoutPriceYen) + ')'
+                  }}
                 </button>
               </div>
-            </div>
-
-            <!-- Sprint 64 (item 3): Buy Now is demoted to a small, separated
-                 ghost control below the bid stack, and takes two clicks - it
-                 can never fire on a stray press against the Raise button. -->
-            <div class="buyout-row">
-              <button
-                class="buyout"
-                :class="{ confirming: buyoutConfirming[d.lot.id] }"
-                :disabled="game.cashYen < d.buyoutPriceYen"
-                :title="
-                  game.cashYen < d.buyoutPriceYen
-                    ? 'Not enough cash - Buy Now costs ' + formatYen(d.buyoutPriceYen)
-                    : 'Skip the bidding and buy this lot outright'
-                "
-                :data-test="'buyout-' + d.lot.id"
-                @click="onBuyoutClick(d.lot.id)"
-              >
-                {{
-                  buyoutConfirming[d.lot.id]
-                    ? 'Confirm buyout (' + formatYen(d.buyoutPriceYen) + ')'
-                    : 'Buy now (' + formatYen(d.buyoutPriceYen) + ')'
-                }}
-              </button>
-            </div>
-          </div>
+            </template>
+          </AuctionLotCard>
         </li>
       </ul>
     </div>
@@ -855,53 +743,11 @@ h3 {
   gap: var(--mg-space-3);
 }
 
-.lot-left {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mg-space-2);
-  min-width: 0;
-}
-
-.lot-right {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  align-items: center;
-  gap: var(--mg-space-3);
-  min-width: 0;
-  text-align: center;
-}
-
-.lot-info,
 .lot-actions {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--mg-space-2);
-}
-
-.lot-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* The 2:1 (96x48-proportioned) art placeholder, doubled to a 320x160 box
-   (Sprint 56 decision 3, was 160x80) - empty and bordered until real
-   sprites exist; a future 96x48 master renders inside at integer 3x
-   (288x144) with padding, preserving integer-only scaling. */
-.lot-art {
-  width: 100%;
-  aspect-ratio: 2 / 1;
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  background: var(--mg-night-deep);
-}
-
-.grade-stamps {
-  display: flex;
-  gap: var(--mg-space-2);
-  justify-content: center;
 }
 
 /* Rule-of-glow compliance (art-direction.md 2): stamps stay muted at rest
@@ -914,31 +760,8 @@ h3 {
   filter: saturate(1) brightness(1);
 }
 
-.lot-name {
-  color: var(--mg-neon-cyan);
-}
-
 .player-estimate {
   margin: 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-/* Sprint 61 (item 15): a small muted class chip so a bidder knows which
-   class of parts this car takes (Kei & Compact / Sports / ...). */
-.class-chip {
-  display: inline-block;
-  margin-left: var(--mg-space-2);
-  padding: 0 var(--mg-space-1);
-  border: 1px solid var(--mg-panel-edge);
-  border-radius: 4px;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-xs, 0.7rem);
-  vertical-align: middle;
-}
-
-.lot-meta,
-.lot-turnout {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
@@ -965,34 +788,6 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* The room's number - the card's value headline, above its ledger. */
-.room-says {
-  margin: 0;
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-md);
-  font-weight: bold;
-}
-
-/* The compact receipt under the room's number: one small line per entry,
-   label left, signed yen right. */
-.ledger {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  max-width: 240px;
-  font-size: var(--mg-fs-xs, 0.7rem);
-  color: var(--mg-text-dim);
-}
-
-.ledger-line {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--mg-space-3);
-}
-
 /* Day count as a real countdown, not a line buried in prose; falls back to
    `d.closeLabel` verbatim when there's no count to show ("no bids yet" /
    "final call"). */
@@ -1017,36 +812,6 @@ h3 {
 .close-caption {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-}
-
-.lot-turnout {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-  flex-wrap: wrap;
-}
-
-/* Flavor only (maintainer decision 3) - no urgency coloring, just a subtle
-   shift so "packed" reads warmer than "thin" without shouting. */
-.turnout-badge {
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  font-size: var(--mg-fs-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.turnout-thin {
-  color: var(--mg-text-dim);
-}
-
-.turnout-steady {
-  color: var(--mg-neon-cyan);
-}
-
-.turnout-packed {
-  color: var(--mg-yen);
 }
 
 .quiet-state {
@@ -1138,19 +903,6 @@ h3 {
 .stepper:active {
   transform: translateY(2px);
   box-shadow: 0 0 0 var(--mg-panel-edge);
-}
-
-/* Sprint 50 decision 3: a proper table (car / your bid / state / action)
-   instead of a wrapping flex row per bid. */
-
-.winning-state {
-  font-size: var(--mg-fs-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.winning-state.outbid {
-  color: var(--mg-danger);
 }
 
 button {

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import diagnosticTests from '../data/diagnosticTests.json'
 import symptoms from '../data/symptoms.json'
-import { CarPartIdSchema, DiagnosticTestsSchema, SymptomsSchema, type Symptom } from '../src'
+import {
+  CarPartIdSchema,
+  DiagnosticTestsSchema,
+  SymptomSchema,
+  SymptomsSchema,
+  type Symptom,
+} from '../src'
 
 /**
  * Sprint 73 (diagnosis I): the symptom/cause/test content guards task 1
@@ -96,5 +102,134 @@ describe('symptom/cause/test content (Sprint 73)', () => {
     for (const symptom of PARSED_SYMPTOMS) {
       expect(symptom.tests.length, `"${symptom.id}" has no tests at all`).toBeGreaterThan(0)
     }
+  })
+})
+
+/**
+ * Sprint 106 (routed diagnosis): `unlockedBy` chain integrity, checked by
+ * `SymptomSchema`'s own `superRefine`. Hand-built fixtures rather than real
+ * content, since the point is the shape of the chain, not any particular
+ * symptom's causes - `buildTestSymptom` below only needs enough of a valid
+ * symptom (2 causes, well-formed partitions) for the chain rules themselves
+ * to be the only thing under test.
+ */
+function buildTestSymptom(
+  tests: Array<{ testId: string; unlockedBy?: { testId: string; group?: 0 | 1 } }>,
+): unknown {
+  return {
+    id: 'unlock-chain-symptom',
+    cardLine: 'Fixture symptom for unlock-chain tests.',
+    causes: [
+      { id: 'cause-a', carPartId: 'headValvetrain', setBand: 'worn', weight: 50 },
+      { id: 'cause-b', carPartId: 'headValvetrain', setBand: 'poor', weight: 50 },
+    ],
+    tests: tests.map(({ testId, unlockedBy }) => ({
+      testId,
+      partition: [['cause-a'], ['cause-b']],
+      resultCopy: ['Result A.', 'Result B.'],
+      ...(unlockedBy ? { unlockedBy } : {}),
+    })),
+  }
+}
+
+describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
+  it('accepts a valid 2-layer chain: a root plus one test it unlocks', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'child', unlockedBy: { testId: 'root', group: 0 } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(true)
+  })
+
+  it('rejects an unlockedBy.testId that names no other test on the symptom', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'child', unlockedBy: { testId: 'no-such-test', group: 0 } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects a test that is unlockedBy itself', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'self-locked', unlockedBy: { testId: 'self-locked', group: 0 } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects a cycle between two tests each unlocked by the other', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'a', unlockedBy: { testId: 'b', group: 0 } },
+      { testId: 'b', unlockedBy: { testId: 'a', group: 0 } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects an unlock chain deeper than 3 (a root sits at depth 1)', () => {
+    const symptom = buildTestSymptom([
+      { testId: 't1' },
+      { testId: 't2', unlockedBy: { testId: 't1', group: 0 } },
+      { testId: 't3', unlockedBy: { testId: 't2', group: 0 } },
+      { testId: 't4', unlockedBy: { testId: 't3', group: 0 } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects a symptom whose every test is locked (no root test to start from)', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'a', unlockedBy: { testId: 'b', group: 0 } },
+      { testId: 'b', unlockedBy: { testId: 'a', group: 0 } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+})
+
+/**
+ * `unlockedBy.group` is optional (a group-less entry opens once the named
+ * sibling has run at all, either outcome - the "whole board opens after a
+ * first look" case). The chain-integrity rules above key off `testId` alone,
+ * so they apply identically whether `group` is present or absent.
+ */
+describe("SymptomSchema's unlockedBy chain integrity with a group-less unlockedBy", () => {
+  it('accepts a valid 2-layer chain whose unlockedBy carries no group', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'child', unlockedBy: { testId: 'root' } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(true)
+  })
+
+  it('rejects a group-less unlockedBy.testId that names no other test on the symptom', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'child', unlockedBy: { testId: 'no-such-test' } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects a test that is group-lessly unlockedBy itself', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'self-locked', unlockedBy: { testId: 'self-locked' } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects a cycle between two tests each group-lessly unlocked by the other', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'root' },
+      { testId: 'a', unlockedBy: { testId: 'b' } },
+      { testId: 'b', unlockedBy: { testId: 'a' } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+  })
+
+  it('rejects a symptom whose every test is group-lessly locked (no root test to start from)', () => {
+    const symptom = buildTestSymptom([
+      { testId: 'a', unlockedBy: { testId: 'b' } },
+      { testId: 'b', unlockedBy: { testId: 'a' } },
+    ])
+    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
   })
 })

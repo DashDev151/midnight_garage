@@ -5,11 +5,13 @@ import { formatYenDelta } from '../utils/formatYen'
 /**
  * The free, public symptom disclosure for a listed car: the symptom line, its
  * still-open cause checklist (each cause priced by what the deal moves "if
- * true"), the inline result copy from a run test, and the run-test buttons.
+ * true"), the routed diagnostic tree as a trail of run tests above a fork of
+ * the currently offered ones, and the run-test buttons.
  * Purely presentational - the parent owns every decision: `disabledReasonFor`
- * says why a given test cannot run right now (`null` when it can),
- * `resultCopyFor` returns the copy already earned for a symptom, and a click
- * emits `run-test` for the parent to act on. Keeps the exact `data-test`
+ * says why a given fork test cannot run right now (`null` when it can), and a
+ * click emits `run-test` for the parent to act on. The store has already
+ * split run from offered and derived every trail entry's result line, so
+ * this component caches nothing of its own. Keeps the exact `data-test`
  * anchors both the auction board and the room demo rely on.
  */
 withDefaults(
@@ -17,7 +19,6 @@ withDefaults(
     symptoms: LotDetail['symptoms']
     lotId: string
     disabledReasonFor: (test: { minutes: number; alreadyRun: boolean }) => string | null
-    resultCopyFor: (symptomIndex: number) => string | undefined
     /** Whether to show each cause's "if true" value delta. The auction board
      * shows it; the room demo hides it to keep one adjusting value on screen. */
     showDeltas?: boolean
@@ -53,14 +54,22 @@ const emit = defineEmits<{
       </li>
     </ul>
 
-    <p
-      v-if="resultCopyFor(symptom.symptomIndex)"
-      class="test-result"
-      :data-test="'test-result-' + lotId + '-' + symptom.symptomIndex"
-    >
-      {{ resultCopyFor(symptom.symptomIndex) }}
-    </p>
+    <!-- The trail: every run test's own earned result line, in run order -
+         the player's growing case file, sitting above the fork it opened up. -->
+    <ul v-if="symptom.trail.length > 0" class="symptom-trail">
+      <li
+        v-for="entry in symptom.trail"
+        :key="entry.testId"
+        :data-test="'breadcrumb-' + entry.testId"
+      >
+        <span class="trail-label">{{ entry.label }}:</span>
+        <span class="trail-result">{{ entry.resultLine }}</span>
+      </li>
+    </ul>
 
+    <!-- The fork: only tests the routed tree currently offers and that
+         haven't run yet - a locked test is simply absent, never a disabled
+         button (the store has already filtered `symptom.tests` down to it). -->
     <div v-if="symptom.tests.length > 0" class="symptom-tests">
       <button
         v-for="test in symptom.tests"
@@ -77,6 +86,16 @@ const emit = defineEmits<{
         {{ test.label }} ({{ test.minutes }}m)
       </button>
     </div>
+
+    <!-- Closed: the tree has nothing further to offer, but the trail holds
+         at least one run test - a quiet closing line, not a banner. -->
+    <p
+      v-else-if="!symptom.resolved && symptom.trail.length > 0"
+      class="checklist-closed"
+      :data-test="'checklist-closed-' + symptom.symptomIndex"
+    >
+      That's everything the yard will tell you.
+    </p>
   </div>
 </template>
 
@@ -135,6 +154,26 @@ const emit = defineEmits<{
   opacity: 0.6;
 }
 
+/* The trail: a quiet case file, not a banner - the label dim, the earned
+   result line in normal text, one per run test. */
+.symptom-trail {
+  list-style: none;
+  margin: var(--mg-space-1) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: var(--mg-fs-xs, 0.7rem);
+}
+
+.trail-label {
+  color: var(--mg-text-dim);
+  margin-right: var(--mg-space-1);
+}
+
+.trail-result {
+  color: var(--mg-text);
+}
+
 .symptom-tests {
   display: flex;
   flex-wrap: wrap;
@@ -150,9 +189,12 @@ const emit = defineEmits<{
   background: transparent;
 }
 
-.test-result {
+/* The closed state: the tree has nothing further to offer - a quiet,
+   dim closing line, matching the trail's own subdued tone. */
+.checklist-closed {
   margin: var(--mg-space-1) 0 0;
   font-size: var(--mg-fs-xs, 0.7rem);
-  color: var(--mg-neon-cyan);
+  color: var(--mg-text-dim);
+  font-style: italic;
 }
 </style>
