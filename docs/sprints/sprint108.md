@@ -3,7 +3,7 @@
 **Date:** 2026-07-21
 **Source:** the Sprint 106 routing machinery and its three-tree vertical slice, once the
 maintainer's playtest validates the fork feel. This sprint is almost entirely authoring:
-the remaining fifteen symptoms get their trees, within the schema and laws 106 shipped.
+the remaining fourteen symptoms get their trees, within the schema and laws 106 shipped.
 
 **One-line goal:** every symptom in the game is a routed diagnosis - read, choose, learn,
 close - with dead ends, grenade routes, and copy that carries the mechanics.
@@ -26,7 +26,7 @@ reshaping, that happens first and this sprint inherits the reshaped laws.
 - The content-quality bar and the era band (1995-2005): every line personally swept by the
   orchestrator; result lines double as routing hints, so the sweep is a gameplay review.
 
-**Genuinely new:** nothing mechanical. Fifteen authored trees, their new observation
+**Genuinely new:** nothing mechanical. Fourteen authored trees, their new observation
 tests, their copy, and the sweep-wide probes below.
 
 ## Design
@@ -48,23 +48,24 @@ tests, their copy, and the sweep-wide probes below.
   such case is listed explicitly in the Exit so the probe asserts it rather than fails
   on it.
 
-### 2. Scope: the fifteen
+### 2. Scope: the fourteen
 
 The slice (106) covered `damp-passenger-footwell`, `smokes-on-startup`,
-`crunch-into-second`. This sprint routes the remaining fifteen, including the other ten
+`crunch-into-second`. This sprint routes the remaining fourteen, including the other ten
 grenade-bearing doubts (`non-starter`, `tick-at-idle`, `diff-whine`,
 `quarter-panel-filler`, `oil-pressure-flutter`, `overheats-in-traffic`,
-`hesitates-under-load`, `wont-idle`, `clunk-over-bumps`, `sagging-spring`) and the five
+`hesitates-under-load`, `wont-idle`, `clunk-over-bumps`, `sagging-spring`) and the four
 honestly non-fatal ones (brakes, steering, tyres, exhaust, and kin), which may stay
 shallow - a flat two-test doubt is legitimate where the ladder is simple; routing for
 routing's sake is noise.
 
 Special care:
 
-- **`tick-at-idle`** is the tutorial's diagnosis (`four-wheels`: one stethoscope run
-  resolves the lifter). Its tree must keep that single-test resolution reachable at the
-  root, or the tutorial breaks. The satisfiability probe is the gate; if the tree and the
-  tutorial conflict, the tree bends, not the tutorial.
+- **`tick-at-idle`** is the tutorial's diagnosis (`four-wheels`). Maintainer ruling
+  (2026-07-21): the tutorial predates the routed system and BENDS TO IT - the system is
+  never weakened to fit it. The tree goes fully legal (no law-1 exception); the tutorial's
+  guided step becomes the two-step read (revs-and-listen, then the stethoscope) and the
+  satisfiability probe is updated with it, in this sprint.
 - **`wont-idle`** keeps its deliberate bench-only ambiguity; its tree routes what IS
   knowable at the yard and closes honestly short.
 
@@ -91,9 +92,10 @@ minutes, trees, and the shared visit.
 
 1. **Authoring, not building.** Any mechanical gap discovered here goes back into a 106
    follow-up, not hacked in mid-sweep.
-2. **Shallow is allowed** where the ladder is simple; the five non-fatal doubts are not
+2. **Shallow is allowed** where the ladder is simple; the four non-fatal doubts are not
    padded to three layers.
-3. **The tutorial wins** any conflict with `tick-at-idle`'s tree.
+3. **The system wins** any conflict with the tutorial: the tutorial is updated to teach
+   the real tree, never the reverse (maintainer ruling, 2026-07-21).
 4. **Ambiguity is declared, not accidental:** the deliberately-partial symptoms are listed
    in the Exit and asserted by the probe.
 5. **Every line swept personally** against the content bar, era 1995-2005; the routing
@@ -105,7 +107,7 @@ minutes, trees, and the shared visit.
 
 - [ ] Author the ten grenade trees (routes, dead ends where earned, new observation tests
       registered, all result copy).
-- [ ] Author the five non-fatal doubts (shallow where right).
+- [ ] Author the four non-fatal doubts (shallow where right).
 - [ ] Probes: grenade-route walker, resolution accounting + the declared-ambiguity list,
       sweep-wide integrity; tutorial satisfiability green.
 - [ ] Copy sweep: orchestrator reads every new line personally; sign-off recorded in the

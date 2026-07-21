@@ -1,0 +1,277 @@
+[
+  {
+    "id": "valve-seals",
+    "carPartId": "headValvetrain",
+    "setBand": "worn"
+  },
+  {
+    "id": "gunked-breather",
+    "carPartId": "intake",
+    "setBand": "worn"
+  },
+  {
+    "id": "head-gasket",
+    "carPartId": "headValvetrain",
+    "setBand": "poor"
+  },
+  {
+    "id": "tired-rings",
+    "carPartId": "internals",
+    "setBand": "scrap"
+  },
+  {
+    "id": "flat-battery",
+    "carPartId": "ignitionEcu",
+    "setBand": "worn"
+  },
+  {
+    "id": "fuel-pump",
+    "carPartId": "fuelSystem",
+    "setBand": "poor"
+  },
+  {
+    "id": "seized-engine",
+    "carPartId": "block",
+    "setBand": "scrap"
+  },
+  {
+    "id": "lifter-tick",
+    "carPartId": "headValvetrain",
+    "setBand": "poor"
+  },
+  {
+    "id": "blowing-manifold",
+    "carPartId": "exhaust",
+    "setBand": "poor"
+  },
+  {
+    "id": "rod-knock",
+    "carPartId": "internals",
+    "setBand": "scrap"
+  },
+  {
+    "id": "vacuum-leak",
+    "carPartId": "intake",
+    "setBand": "worn"
+  },
+  {
+    "id": "tired-ecu",
+    "carPartId": "ignitionEcu",
+    "setBand": "poor"
+  },
+  {
+    "id": "worn-cams",
+    "carPartId": "camsTiming",
+    "setBand": "poor"
+  },
+  {
+    "id": "burnt-valve",
+    "carPartId": "headValvetrain",
+    "setBand": "scrap"
+  },
+  {
+    "id": "worn-synchros",
+    "carPartId": "gearbox",
+    "setBand": "worn"
+  },
+  {
+    "id": "low-thin-oil",
+    "carPartId": "gearbox",
+    "setBand": "fine"
+  },
+  {
+    "id": "dragging-clutch",
+    "carPartId": "clutch",
+    "setBand": "poor"
+  },
+  {
+    "id": "chewed-gearset",
+    "carPartId": "gearbox",
+    "setBand": "scrap"
+  },
+  {
+    "id": "tired-bushes",
+    "carPartId": "antiRollBars",
+    "setBand": "worn"
+  },
+  {
+    "id": "blown-dampers",
+    "carPartId": "dampers",
+    "setBand": "poor"
+  },
+  {
+    "id": "steering-play",
+    "carPartId": "steering",
+    "setBand": "poor"
+  },
+  {
+    "id": "rotted-subframe-mount",
+    "carPartId": "underbody",
+    "setBand": "scrap"
+  },
+  {
+    "id": "glazed-pads",
+    "carPartId": "brakePadsDiscs",
+    "setBand": "worn"
+  },
+  {
+    "id": "seized-calliper",
+    "carPartId": "brakeCalipersLines",
+    "setBand": "poor"
+  },
+  {
+    "id": "fan-switch",
+    "carPartId": "ignitionEcu",
+    "setBand": "worn"
+  },
+  {
+    "id": "tired-radiator",
+    "carPartId": "cooling",
+    "setBand": "poor"
+  },
+  {
+    "id": "early-head-gasket",
+    "carPartId": "headValvetrain",
+    "setBand": "poor"
+  },
+  {
+    "id": "cracked-block",
+    "carPartId": "block",
+    "setBand": "scrap"
+  },
+  {
+    "id": "worn-tyres",
+    "carPartId": "tyres",
+    "setBand": "worn"
+  },
+  {
+    "id": "buckled-rim",
+    "carPartId": "rims",
+    "setBand": "poor"
+  },
+  {
+    "id": "worn-driveshaft",
+    "carPartId": "driveline",
+    "setBand": "poor"
+  },
+  {
+    "id": "worn-diff-bearings",
+    "carPartId": "differential",
+    "setBand": "worn"
+  },
+  {
+    "id": "worn-propshaft-uj",
+    "carPartId": "driveline",
+    "setBand": "poor"
+  },
+  {
+    "id": "chewed-ring-pinion",
+    "carPartId": "differential",
+    "setBand": "scrap"
+  },
+  {
+    "id": "sagging-springs",
+    "carPartId": "springs",
+    "setBand": "worn"
+  },
+  {
+    "id": "broken-spring",
+    "carPartId": "springs",
+    "setBand": "poor"
+  },
+  {
+    "id": "rotted-strut-turret",
+    "carPartId": "chassis",
+    "setBand": "scrap"
+  },
+  {
+    "id": "panel-respray",
+    "carPartId": "panels",
+    "setBand": "worn"
+  },
+  {
+    "id": "rust-patch",
+    "carPartId": "panels",
+    "setBand": "poor"
+  },
+  {
+    "id": "structural-rail-repair",
+    "carPartId": "chassis",
+    "setBand": "scrap"
+  },
+  {
+    "id": "heater-matrix-weep",
+    "carPartId": "cooling",
+    "setBand": "worn"
+  },
+  {
+    "id": "blocked-scuttle-drain",
+    "carPartId": "underbody",
+    "setBand": "worn"
+  },
+  {
+    "id": "perished-grommet",
+    "carPartId": "chassis",
+    "setBand": "poor"
+  },
+  {
+    "id": "split-sunroof-drain",
+    "carPartId": "dashGauges",
+    "setBand": "poor"
+  },
+  {
+    "id": "rotten-bulkhead-seam",
+    "carPartId": "chassis",
+    "setBand": "scrap"
+  },
+  {
+    "id": "blown-flex-joint",
+    "carPartId": "exhaust",
+    "setBand": "worn"
+  },
+  {
+    "id": "cracked-manifold",
+    "carPartId": "exhaust",
+    "setBand": "poor"
+  },
+  {
+    "id": "tired-sender",
+    "carPartId": "dashGauges",
+    "setBand": "worn"
+  },
+  {
+    "id": "worn-oil-pump",
+    "carPartId": "internals",
+    "setBand": "poor"
+  },
+  {
+    "id": "worn-main-bearings",
+    "carPartId": "internals",
+    "setBand": "scrap"
+  },
+  {
+    "id": "clogged-fuel-filter",
+    "carPartId": "fuelSystem",
+    "setBand": "worn"
+  },
+  {
+    "id": "stretched-timing-chain",
+    "carPartId": "camsTiming",
+    "setBand": "poor"
+  },
+  {
+    "id": "jumped-timing-chain",
+    "carPartId": "headValvetrain",
+    "setBand": "scrap"
+  },
+  {
+    "id": "tired-track-rod-ends",
+    "carPartId": "steering",
+    "setBand": "worn"
+  },
+  {
+    "id": "worn-rack",
+    "carPartId": "steering",
+    "setBand": "poor"
+  }
+]

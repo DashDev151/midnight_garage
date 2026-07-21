@@ -1,21 +1,33 @@
 import { z } from 'zod'
-import { CarPartIdSchema, ConditionBandSchema } from './tags'
+import { FailureModeSchema, type FailureMode } from './failureMode'
 
 /**
- * Sprint 73 (diagnosis I, the fear-priced board): one possible root cause of a
- * symptom - the part it actually damages, the band that damage sets, and its
+ * A symptom's own authored reference to one entry in the shared failure-mode
+ * registry (`failureMode.ts`): which failure mode it can point to, and its
  * share of the weighted roll among the symptom's other causes (weights need
  * not be pre-normalized to exactly 100, but should sum to ~100 across a
  * symptom's own cause list - same convention as `economy.ts`'s
- * `serviceJobs.dailyOfferCountWeights`). `setBand` is a floor, never a
- * ceiling: generation (`auctions.ts`) sets the true band to the WORSE of the
- * part's already-rolled band and this value (decision 2), so a cause never
- * makes an already-worse part better.
+ * `serviceJobs.dailyOfferCountWeights`). The weight lives on the reference,
+ * not the registry entry, because odds are contextual: the same failure mode
+ * is likelier under one symptom than another. This is the shape `causes`
+ * carries in `symptoms.json`; it is never what sim/game consume directly.
  */
 export const CauseSchema = z.object({
-  id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
-  carPartId: CarPartIdSchema,
-  setBand: ConditionBandSchema,
+  failureModeId: z.string().min(1),
+  weight: z.number().positive(),
+})
+
+/**
+ * The resolved cause shape sim/game consume: the referenced failure mode's
+ * own identity (`id`/`carPartId`/`setBand`) joined
+ * with this symptom's own contextual weight. Produced at content-load time
+ * (`data.ts`) by resolving each symptom's `CauseSchema` references against
+ * the registry; `symptoms.json` never carries this shape directly. `setBand`
+ * is a floor, never a ceiling: generation (`auctions.ts`) sets the true band
+ * to the WORSE of the part's already-rolled band and this value, so a cause
+ * never makes an already-worse part better.
+ */
+export const ResolvedCauseSchema = FailureModeSchema.extend({
   weight: z.number().positive(),
 })
 
@@ -39,8 +51,8 @@ export const CauseSchema = z.object({
  * a whole board of follow-up tests opens after a first look. A lone
  * `TestApplicationSchema` cannot see its siblings, so the shape of every
  * chain (parent exists, no self-reference, acyclic, at least one root,
- * unlock depth at most 3) is validated by `SymptomSchema`'s own integrity
- * refinement below, not here.
+ * unlock depth at most 3) is validated by `checkTestChainIntegrity` below,
+ * shared by both symptom schemas, not here.
  */
 export const TestApplicationSchema = z.object({
   testId: z.string().min(1),
@@ -54,82 +66,134 @@ export const TestApplicationSchema = z.object({
     .optional(),
 })
 
+export type TestApplication = z.infer<typeof TestApplicationSchema>
+
 /**
- * A player-facing symptom a generated car can carry (Sprint 73 decision 4):
- * free and public on the lot card (`cardLine`), with an open weighted cause
- * table (`causes`) and the tests that narrow it (`tests` - Sprint 74 wires
- * the verb that actually runs one; the content ships now per decision 4's
- * own instruction). At least 2 causes, so there is always real ambiguity to
- * price and test.
- *
- * The integrity refinement (Sprint 106) checks the shape of `tests`' own
- * `unlockedBy` chains, whenever the symptom has any tests at all: every
- * `unlockedBy.testId` names another test of this same symptom (not itself,
- * not an unknown id); no chain cycles; at least one root test (a test with
- * no `unlockedBy`) exists to start from; and no chain runs deeper than 3
- * (a root sits at depth 1).
+ * The `unlockedBy` chain-integrity check, shared by both the raw-content and
+ * resolved symptom schemas below since it only ever looks at
+ * `tests` - unaffected by whether `causes` is a reference or a resolved
+ * cause. Whenever the symptom has any tests at all: every `unlockedBy.testId`
+ * names another test of this same symptom (not itself, not an unknown id);
+ * no chain cycles; at least one root test (a test with no `unlockedBy`)
+ * exists to start from; and no chain runs deeper than 3 (a root sits at
+ * depth 1).
  */
-export const SymptomSchema = z
-  .object({
+function checkTestChainIntegrity(
+  symptom: { id: string; tests: TestApplication[] },
+  ctx: z.RefinementCtx,
+): void {
+  if (symptom.tests.length === 0) return
+  const testsById = new Map(symptom.tests.map((test) => [test.testId, test]))
+  let hasRoot = false
+
+  for (const test of symptom.tests) {
+    if (!test.unlockedBy) {
+      hasRoot = true
+      continue
+    }
+    const parentId = test.unlockedBy.testId
+    if (parentId === test.testId) {
+      ctx.addIssue(`"${symptom.id}"'s test "${test.testId}" is unlockedBy itself`)
+      continue
+    }
+    if (!testsById.has(parentId)) {
+      ctx.addIssue(
+        `"${symptom.id}"'s test "${test.testId}" is unlockedBy unknown test "${parentId}"`,
+      )
+    }
+  }
+
+  if (!hasRoot) {
+    ctx.addIssue(`"${symptom.id}" has tests but no root test (every test has an unlockedBy)`)
+  }
+
+  for (const test of symptom.tests) {
+    const visited = new Set<string>([test.testId])
+    let currentId = test.testId
+    let depth = 1
+    for (;;) {
+      const parentId = testsById.get(currentId)?.unlockedBy?.testId
+      if (!parentId || !testsById.has(parentId)) break
+      if (visited.has(parentId)) {
+        ctx.addIssue(
+          `"${symptom.id}"'s test "${test.testId}"'s unlock chain cycles through "${parentId}"`,
+        )
+        break
+      }
+      visited.add(parentId)
+      depth += 1
+      if (depth > 3) {
+        ctx.addIssue(
+          `"${symptom.id}"'s test "${test.testId}"'s unlock chain exceeds the maximum depth of 3`,
+        )
+        break
+      }
+      currentId = parentId
+    }
+  }
+}
+
+/**
+ * The shape shared by both the raw-content and resolved symptom schemas,
+ * parameterized only over the cause schema - free and public on the lot card
+ * (`cardLine`), an open weighted cause table (`causes`), and the tests that
+ * narrow it (`tests`). At least 2 causes, so there is always real ambiguity
+ * to price and test.
+ */
+function symptomShape<C extends z.ZodTypeAny>(causeSchema: C) {
+  return z.object({
     id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
     cardLine: z.string().min(1),
-    causes: z.array(CauseSchema).min(2),
+    causes: z.array(causeSchema).min(2),
     tests: z.array(TestApplicationSchema),
   })
-  .superRefine((symptom, ctx) => {
-    if (symptom.tests.length === 0) return
-    const testsById = new Map(symptom.tests.map((test) => [test.testId, test]))
-    let hasRoot = false
+}
 
-    for (const test of symptom.tests) {
-      if (!test.unlockedBy) {
-        hasRoot = true
-        continue
-      }
-      const parentId = test.unlockedBy.testId
-      if (parentId === test.testId) {
-        ctx.addIssue(`"${symptom.id}"'s test "${test.testId}" is unlockedBy itself`)
-        continue
-      }
-      if (!testsById.has(parentId)) {
-        ctx.addIssue(
-          `"${symptom.id}"'s test "${test.testId}" is unlockedBy unknown test "${parentId}"`,
-        )
-      }
-    }
+/**
+ * A symptom exactly as authored in `symptoms.json`: `causes` is a list of
+ * `CauseSchema` references into the failure-mode registry, not yet resolved.
+ * Used only to validate/parse the raw content file (`data.ts`) before the
+ * registry join; sim/game never see this shape.
+ */
+export const SymptomContentSchema = symptomShape(CauseSchema).superRefine(checkTestChainIntegrity)
+export const SymptomsContentSchema = z.array(SymptomContentSchema).min(1)
 
-    if (!hasRoot) {
-      ctx.addIssue(`"${symptom.id}" has tests but no root test (every test has an unlockedBy)`)
-    }
-
-    for (const test of symptom.tests) {
-      const visited = new Set<string>([test.testId])
-      let currentId = test.testId
-      let depth = 1
-      for (;;) {
-        const parentId = testsById.get(currentId)?.unlockedBy?.testId
-        if (!parentId || !testsById.has(parentId)) break
-        if (visited.has(parentId)) {
-          ctx.addIssue(
-            `"${symptom.id}"'s test "${test.testId}"'s unlock chain cycles through "${parentId}"`,
-          )
-          break
-        }
-        visited.add(parentId)
-        depth += 1
-        if (depth > 3) {
-          ctx.addIssue(
-            `"${symptom.id}"'s test "${test.testId}"'s unlock chain exceeds the maximum depth of 3`,
-          )
-          break
-        }
-        currentId = parentId
-      }
-    }
-  })
-
+/**
+ * A player-facing symptom a generated car can carry, with `causes` resolved
+ * against the failure-mode registry (`ResolvedCauseSchema`) - the shape
+ * sim/game consume. `data.ts` produces this from `SymptomContentSchema`'s
+ * parsed output; never parsed directly from `symptoms.json`.
+ */
+export const SymptomSchema = symptomShape(ResolvedCauseSchema).superRefine(checkTestChainIntegrity)
 export const SymptomsSchema = z.array(SymptomSchema).min(1)
 
-export type Cause = z.infer<typeof CauseSchema>
-export type TestApplication = z.infer<typeof TestApplicationSchema>
+export type CauseRef = z.infer<typeof CauseSchema>
+export type Cause = z.infer<typeof ResolvedCauseSchema>
+export type SymptomContent = z.infer<typeof SymptomContentSchema>
 export type Symptom = z.infer<typeof SymptomSchema>
+
+/**
+ * Joins a raw-content symptom's cause references against the failure-mode
+ * registry, producing the resolved shape sim/game consume. `data.ts` calls
+ * this once per symptom at content-load time; tests call it directly to
+ * prove the join (and its dangling-reference failure) without needing the
+ * full content-loading pipeline. Fails loudly (throws) rather than silently
+ * dropping a cause, since a dangling reference is a content bug.
+ */
+export function resolveSymptomCauses(
+  symptom: SymptomContent,
+  registry: ReadonlyMap<string, FailureMode>,
+): Symptom {
+  return {
+    ...symptom,
+    causes: symptom.causes.map((cause) => {
+      const failureMode = registry.get(cause.failureModeId)
+      if (!failureMode) {
+        throw new Error(
+          `symptom "${symptom.id}" references unknown failureModeId "${cause.failureModeId}"`,
+        )
+      }
+      return { ...failureMode, weight: cause.weight }
+    }),
+  }
+}

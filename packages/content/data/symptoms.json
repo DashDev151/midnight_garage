@@ -4,27 +4,19 @@
     "cardLine": "Smokes on startup.",
     "causes": [
       {
-        "id": "valve-seals",
-        "carPartId": "headValvetrain",
-        "setBand": "worn",
+        "failureModeId": "valve-seals",
         "weight": 45
       },
       {
-        "id": "gunked-breather",
-        "carPartId": "intake",
-        "setBand": "worn",
+        "failureModeId": "gunked-breather",
         "weight": 20
       },
       {
-        "id": "head-gasket",
-        "carPartId": "headValvetrain",
-        "setBand": "poor",
+        "failureModeId": "head-gasket",
         "weight": 22
       },
       {
-        "id": "tired-rings",
-        "carPartId": "internals",
-        "setBand": "scrap",
+        "failureModeId": "tired-rings",
         "weight": 13
       }
     ],
@@ -47,25 +39,31 @@
           "Compression's even and healthy on all four. The bores are fine: it's the seals weeping down the guides, or the breather pushing oil where it shouldn't go.",
           "Down hard on two cylinders and the numbers don't lie. The bores are worn: that's the bottom end, and that's real money."
         ],
-        "unlockedBy": { "testId": "cold-start-watch" }
+        "unlockedBy": {
+          "testId": "cold-start-watch"
+        }
       },
       {
         "testId": "breather-check",
         "partition": [["gunked-breather"], ["valve-seals", "head-gasket", "tired-rings"]],
         "resultCopy": [
-          "The breather hose comes off full of mayonnaise and gunk. The crankcase can't breathe, so it's pushing oil up the intake: clean the system out and the smoke goes with it.",
+          "The breather hose comes off full of mayonnaise and gunk. The crankcase can't breathe, so it's pushing oil up the intake: clean the system out and the smoke goes with it. Cheapest engine rebuild you'll ever do.",
           "Breather's clean and clear. The oil's getting in lower down: guides or bores."
         ],
-        "unlockedBy": { "testId": "cold-start-watch" }
+        "unlockedBy": {
+          "testId": "cold-start-watch"
+        }
       },
       {
         "testId": "pull-a-plug",
         "partition": [["valve-seals", "gunked-breather", "tired-rings"], ["head-gasket"]],
         "resultCopy": [
           "Oily crust on the tips. It's burning oil, which the blue smoke already told you. Top or bottom end, a plug can't say.",
-          "Tips washed clean like they've been steamed."
+          "Tips washed bone-clean, steam-cleaned by coolant. That's the gasket's signature."
         ],
-        "unlockedBy": { "testId": "cold-start-watch" }
+        "unlockedBy": {
+          "testId": "cold-start-watch"
+        }
       },
       {
         "testId": "overrun-smoke-watch",
@@ -74,7 +72,9 @@
           "Hold it at revs and lift off: a big blue puff on the overrun. That's the guides sucking oil down: valve stem seals, nothing worse.",
           "Steady at revs, clean on the lift-off. Whatever's smoking, it isn't the guides."
         ],
-        "unlockedBy": { "testId": "cold-start-watch" }
+        "unlockedBy": {
+          "testId": "cold-start-watch"
+        }
       }
     ]
   },
@@ -83,21 +83,15 @@
     "cardLine": "Won't start. Turns over, nothing catches.",
     "causes": [
       {
-        "id": "flat-battery",
-        "carPartId": "ignitionEcu",
-        "setBand": "worn",
+        "failureModeId": "flat-battery",
         "weight": 57
       },
       {
-        "id": "fuel-pump",
-        "carPartId": "fuelSystem",
-        "setBand": "poor",
+        "failureModeId": "fuel-pump",
         "weight": 31
       },
       {
-        "id": "seized-engine",
-        "carPartId": "block",
-        "setBand": "scrap",
+        "failureModeId": "seized-engine",
         "weight": 12
       }
     ],
@@ -125,21 +119,15 @@
     "cardLine": "Faint tick at idle. Probably nothing.",
     "causes": [
       {
-        "id": "lifter-tick",
-        "carPartId": "headValvetrain",
-        "setBand": "poor",
+        "failureModeId": "lifter-tick",
         "weight": 62
       },
       {
-        "id": "blowing-manifold",
-        "carPartId": "exhaust",
-        "setBand": "poor",
+        "failureModeId": "blowing-manifold",
         "weight": 25
       },
       {
-        "id": "rod-knock",
-        "carPartId": "internals",
-        "setBand": "scrap",
+        "failureModeId": "rod-knock",
         "weight": 13
       }
     ],
@@ -167,27 +155,19 @@
     "cardLine": "Won't hold an idle. Hunts and dies.",
     "causes": [
       {
-        "id": "vacuum-leak",
-        "carPartId": "intake",
-        "setBand": "worn",
+        "failureModeId": "vacuum-leak",
         "weight": 48
       },
       {
-        "id": "tired-ecu",
-        "carPartId": "ignitionEcu",
-        "setBand": "poor",
+        "failureModeId": "tired-ecu",
         "weight": 27
       },
       {
-        "id": "worn-cams",
-        "carPartId": "camsTiming",
-        "setBand": "poor",
+        "failureModeId": "worn-cams",
         "weight": 15
       },
       {
-        "id": "burnt-valve",
-        "carPartId": "headValvetrain",
-        "setBand": "scrap",
+        "failureModeId": "burnt-valve",
         "weight": 10
       }
     ],
@@ -215,27 +195,19 @@
     "cardLine": "Crunches into second when cold.",
     "causes": [
       {
-        "id": "worn-synchros",
-        "carPartId": "gearbox",
-        "setBand": "worn",
+        "failureModeId": "worn-synchros",
         "weight": 48
       },
       {
-        "id": "low-thin-oil",
-        "carPartId": "gearbox",
-        "setBand": "fine",
+        "failureModeId": "low-thin-oil",
         "weight": 14
       },
       {
-        "id": "dragging-clutch",
-        "carPartId": "clutch",
-        "setBand": "poor",
+        "failureModeId": "dragging-clutch",
         "weight": 20
       },
       {
-        "id": "chewed-gearset",
-        "carPartId": "gearbox",
-        "setBand": "scrap",
+        "failureModeId": "chewed-gearset",
         "weight": 18
       }
     ],
@@ -256,9 +228,11 @@
         "partition": [["chewed-gearset"], ["worn-synchros", "low-thin-oil", "dragging-clutch"]],
         "resultCopy": [
           "The magnet comes out furred with metal. That's gear teeth, not wear dust: the box is chewing itself.",
-          "The magnet comes out clean: nothing's shedding metal in there."
+          "The magnet comes out clean. Nothing's making glitter in there: whatever this is, it's not the expensive kind."
         ],
-        "unlockedBy": { "testId": "gearbox-oil-check" }
+        "unlockedBy": {
+          "testId": "gearbox-oil-check"
+        }
       },
       {
         "testId": "clutch-drag-check",
@@ -267,7 +241,9 @@
           "Clutch pedal down, and it still creeps at the line. The clutch isn't clearing: it's dragging the box along.",
           "Clutch clears clean: it's not dragging the box."
         ],
-        "unlockedBy": { "testId": "gearbox-oil-check" }
+        "unlockedBy": {
+          "testId": "gearbox-oil-check"
+        }
       },
       {
         "testId": "try-it-warm",
@@ -276,10 +252,12 @@
           ["worn-synchros", "dragging-clutch"]
         ],
         "resultCopy": [
-          "Even warm it graunches, and there's a grind under it.",
+          "Warm makes no difference: it graunches just the same. Fifteen minutes of idling, nothing learnt.",
           "Warmed through, it slips into second sweet as you like. It did for the seller too: the crunch is a cold-morning problem, and you've learnt nothing new."
         ],
-        "unlockedBy": { "testId": "gearbox-oil-check" }
+        "unlockedBy": {
+          "testId": "gearbox-oil-check"
+        }
       },
       {
         "testId": "linkage-check",
@@ -288,10 +266,12 @@
           ["worn-synchros", "dragging-clutch"]
         ],
         "resultCopy": [
-          "Linkage bushes are tight, gate's clean. Whatever's crunching, the lever isn't it.",
-          "Linkage bushes are tight, gate's clean. Whatever's crunching, the lever isn't it."
+          "Linkage bushes are tight, the gate's clean. The lever is innocent: the crunch lives further in.",
+          "Linkage bushes are tight, the gate's clean. The lever is innocent: the crunch lives further in."
         ],
-        "unlockedBy": { "testId": "gearbox-oil-check" }
+        "unlockedBy": {
+          "testId": "gearbox-oil-check"
+        }
       }
     ]
   },
@@ -300,27 +280,19 @@
     "cardLine": "Clunks over bumps at the back.",
     "causes": [
       {
-        "id": "tired-bushes",
-        "carPartId": "antiRollBars",
-        "setBand": "worn",
+        "failureModeId": "tired-bushes",
         "weight": 42
       },
       {
-        "id": "blown-dampers",
-        "carPartId": "dampers",
-        "setBand": "poor",
+        "failureModeId": "blown-dampers",
         "weight": 33
       },
       {
-        "id": "steering-play",
-        "carPartId": "steering",
-        "setBand": "poor",
+        "failureModeId": "steering-play",
         "weight": 15
       },
       {
-        "id": "rotted-subframe-mount",
-        "carPartId": "underbody",
-        "setBand": "scrap",
+        "failureModeId": "rotted-subframe-mount",
         "weight": 10
       }
     ],
@@ -365,15 +337,11 @@
     "cardLine": "Pulls left under braking.",
     "causes": [
       {
-        "id": "glazed-pads",
-        "carPartId": "brakePadsDiscs",
-        "setBand": "worn",
+        "failureModeId": "glazed-pads",
         "weight": 55
       },
       {
-        "id": "seized-calliper",
-        "carPartId": "brakeCalipersLines",
-        "setBand": "poor",
+        "failureModeId": "seized-calliper",
         "weight": 45
       }
     ],
@@ -393,27 +361,19 @@
     "cardLine": "Runs hot in traffic. Fine on the move.",
     "causes": [
       {
-        "id": "fan-switch",
-        "carPartId": "ignitionEcu",
-        "setBand": "worn",
+        "failureModeId": "fan-switch",
         "weight": 38
       },
       {
-        "id": "tired-radiator",
-        "carPartId": "cooling",
-        "setBand": "poor",
+        "failureModeId": "tired-radiator",
         "weight": 35
       },
       {
-        "id": "early-head-gasket",
-        "carPartId": "headValvetrain",
-        "setBand": "poor",
+        "failureModeId": "early-head-gasket",
         "weight": 17
       },
       {
-        "id": "cracked-block",
-        "carPartId": "block",
-        "setBand": "scrap",
+        "failureModeId": "cracked-block",
         "weight": 10
       }
     ],
@@ -452,21 +412,15 @@
     "cardLine": "Vibration through the wheel, builds with road speed.",
     "causes": [
       {
-        "id": "worn-tyres",
-        "carPartId": "tyres",
-        "setBand": "worn",
+        "failureModeId": "worn-tyres",
         "weight": 55
       },
       {
-        "id": "buckled-rim",
-        "carPartId": "rims",
-        "setBand": "poor",
+        "failureModeId": "buckled-rim",
         "weight": 30
       },
       {
-        "id": "worn-driveshaft",
-        "carPartId": "driveline",
-        "setBand": "poor",
+        "failureModeId": "worn-driveshaft",
         "weight": 15
       }
     ],
@@ -494,21 +448,15 @@
     "cardLine": "Whines on the overrun. Quiet under power.",
     "causes": [
       {
-        "id": "worn-diff-bearings",
-        "carPartId": "differential",
-        "setBand": "worn",
+        "failureModeId": "worn-diff-bearings",
         "weight": 60
       },
       {
-        "id": "worn-propshaft-uj",
-        "carPartId": "driveline",
-        "setBand": "poor",
+        "failureModeId": "worn-propshaft-uj",
         "weight": 22
       },
       {
-        "id": "chewed-ring-pinion",
-        "carPartId": "differential",
-        "setBand": "scrap",
+        "failureModeId": "chewed-ring-pinion",
         "weight": 18
       }
     ],
@@ -536,21 +484,15 @@
     "cardLine": "Sits lower than it should. Wallows over rough tarmac.",
     "causes": [
       {
-        "id": "sagging-springs",
-        "carPartId": "springs",
-        "setBand": "worn",
+        "failureModeId": "sagging-springs",
         "weight": 62
       },
       {
-        "id": "broken-spring",
-        "carPartId": "springs",
-        "setBand": "poor",
+        "failureModeId": "broken-spring",
         "weight": 25
       },
       {
-        "id": "rotted-strut-turret",
-        "carPartId": "chassis",
-        "setBand": "scrap",
+        "failureModeId": "rotted-strut-turret",
         "weight": 13
       }
     ],
@@ -578,21 +520,15 @@
     "cardLine": "Faint filler line along a rear quarter panel.",
     "causes": [
       {
-        "id": "panel-respray",
-        "carPartId": "panels",
-        "setBand": "worn",
+        "failureModeId": "panel-respray",
         "weight": 60
       },
       {
-        "id": "rust-patch",
-        "carPartId": "panels",
-        "setBand": "poor",
+        "failureModeId": "rust-patch",
         "weight": 25
       },
       {
-        "id": "structural-rail-repair",
-        "carPartId": "chassis",
-        "setBand": "scrap",
+        "failureModeId": "structural-rail-repair",
         "weight": 15
       }
     ],
@@ -620,33 +556,23 @@
     "cardLine": "Carpet's damp on the passenger side.",
     "causes": [
       {
-        "id": "heater-matrix-weep",
-        "carPartId": "cooling",
-        "setBand": "worn",
+        "failureModeId": "heater-matrix-weep",
         "weight": 38
       },
       {
-        "id": "blocked-scuttle-drain",
-        "carPartId": "underbody",
-        "setBand": "worn",
+        "failureModeId": "blocked-scuttle-drain",
         "weight": 20
       },
       {
-        "id": "perished-grommet",
-        "carPartId": "chassis",
-        "setBand": "poor",
+        "failureModeId": "perished-grommet",
         "weight": 14
       },
       {
-        "id": "split-sunroof-drain",
-        "carPartId": "dashGauges",
-        "setBand": "poor",
+        "failureModeId": "split-sunroof-drain",
         "weight": 10
       },
       {
-        "id": "rotten-bulkhead-seam",
-        "carPartId": "chassis",
-        "setBand": "scrap",
+        "failureModeId": "rotten-bulkhead-seam",
         "weight": 18
       }
     ],
@@ -675,9 +601,11 @@
         ],
         "resultCopy": [
           "Sweet smell, and the wet's got a green tinge. That's coolant: the heater matrix is weeping under the dash.",
-          "Plain water, no smell. The matrix is fine: this is rainwater getting in somewhere it shouldn't."
+          "Plain water, no smell. The matrix is fine: this is rain, and rain leaves a trail you can follow."
         ],
-        "unlockedBy": { "testId": "trace-the-wet" }
+        "unlockedBy": {
+          "testId": "trace-the-wet"
+        }
       },
       {
         "testId": "scuttle-drain-poke",
@@ -689,7 +617,9 @@
           "Poke the drain and a cupful of stinking leaf water gushes out. There's the culprit: the scuttle's been overflowing into the cabin. Clear it and it's fixed.",
           "The drain runs clear. Nothing backing up under the scuttle: whatever's letting water in, it isn't this."
         ],
-        "unlockedBy": { "testId": "trace-the-wet" }
+        "unlockedBy": {
+          "testId": "trace-the-wet"
+        }
       },
       {
         "testId": "undercarriage-look",
@@ -699,9 +629,11 @@
         ],
         "resultCopy": [
           "There it is. The bulkhead seam's gone crumbly right where it meets the floor: proper rot, not a patch job.",
-          "The seam's solid all the way across. The water's finding another way in."
+          "The seam's solid all the way across. Wherever the water's getting in, it's cleverer than that."
         ],
-        "unlockedBy": { "testId": "trace-the-wet" }
+        "unlockedBy": {
+          "testId": "trace-the-wet"
+        }
       },
       {
         "testId": "carpet-lift",
@@ -710,10 +642,12 @@
           ["blocked-scuttle-drain", "rotten-bulkhead-seam"]
         ],
         "resultCopy": [
-          "Underlay's soaked through, right enough. It's coming in from somewhere up top: you knew that before you lifted it.",
+          "Underlay's soaked through. It's coming in up top somewhere: you knew that before you lifted it.",
           "Underlay's wet clear to the floor seam: soaked from below, which the trace already showed you."
         ],
-        "unlockedBy": { "testId": "trace-the-wet" }
+        "unlockedBy": {
+          "testId": "trace-the-wet"
+        }
       },
       {
         "testId": "hose-the-roof",
@@ -730,7 +664,10 @@
           "Water over the shut sunroof, and a minute later the A-pillar trim's running. The drain tube's split inside the pillar: rain's been shortcutting into the footwell.",
           "The roof drains swallow everything you pour at them. Dry pillars: the rain's not coming in up here."
         ],
-        "unlockedBy": { "testId": "coolant-check", "group": 1 }
+        "unlockedBy": {
+          "testId": "coolant-check",
+          "group": 1
+        }
       }
     ]
   },
@@ -739,15 +676,11 @@
     "cardLine": "Deep rasp under load, quiet at idle.",
     "causes": [
       {
-        "id": "blown-flex-joint",
-        "carPartId": "exhaust",
-        "setBand": "worn",
+        "failureModeId": "blown-flex-joint",
         "weight": 60
       },
       {
-        "id": "cracked-manifold",
-        "carPartId": "exhaust",
-        "setBand": "poor",
+        "failureModeId": "cracked-manifold",
         "weight": 40
       }
     ],
@@ -767,21 +700,15 @@
     "cardLine": "Oil light flickers at hot idle. Goes out with revs.",
     "causes": [
       {
-        "id": "tired-sender",
-        "carPartId": "dashGauges",
-        "setBand": "worn",
+        "failureModeId": "tired-sender",
         "weight": 65
       },
       {
-        "id": "worn-oil-pump",
-        "carPartId": "internals",
-        "setBand": "poor",
+        "failureModeId": "worn-oil-pump",
         "weight": 20
       },
       {
-        "id": "worn-main-bearings",
-        "carPartId": "internals",
-        "setBand": "scrap",
+        "failureModeId": "worn-main-bearings",
         "weight": 15
       }
     ],
@@ -809,21 +736,15 @@
     "cardLine": "Hesitates and flat-spots under hard acceleration. Smooth enough at a steady cruise.",
     "causes": [
       {
-        "id": "clogged-fuel-filter",
-        "carPartId": "fuelSystem",
-        "setBand": "worn",
+        "failureModeId": "clogged-fuel-filter",
         "weight": 62
       },
       {
-        "id": "stretched-timing-chain",
-        "carPartId": "camsTiming",
-        "setBand": "poor",
+        "failureModeId": "stretched-timing-chain",
         "weight": 26
       },
       {
-        "id": "jumped-timing-chain",
-        "carPartId": "headValvetrain",
-        "setBand": "scrap",
+        "failureModeId": "jumped-timing-chain",
         "weight": 12
       }
     ],
@@ -851,15 +772,11 @@
     "cardLine": "Steering feels vague, wants constant small corrections at speed.",
     "causes": [
       {
-        "id": "tired-track-rod-ends",
-        "carPartId": "steering",
-        "setBand": "worn",
+        "failureModeId": "tired-track-rod-ends",
         "weight": 60
       },
       {
-        "id": "worn-rack",
-        "carPartId": "steering",
-        "setBand": "poor",
+        "failureModeId": "worn-rack",
         "weight": 40
       }
     ],

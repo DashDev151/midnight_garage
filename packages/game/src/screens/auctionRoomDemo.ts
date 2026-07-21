@@ -517,7 +517,7 @@ function maybeStartFeud(room: DemoRoom): void {
   }
   const [a, b] = activeDealers
   room.feud = { names: [a!.name, b!.name], remaining: ROOM_TUNING.reactions.feudRungs }
-  room.log.push(`${a!.name} and ${b!.name} have history. This just became personal.`)
+  room.log.push(`${a!.name} and ${b!.name} have history. The rest of the room settles in to watch.`)
   if (forced) room.armedReaction = null
 }
 
@@ -737,7 +737,7 @@ function landRoomBid(room: DemoRoom, atMs: number): void {
       : kind === 'called'
         ? `${name} doesn't blink: ${formatYen(room.boardYen)}.`
         : kind === 'taxed'
-          ? `${name} is done waiting on the clock: straight to ${formatYen(room.boardYen)}.`
+          ? `${name} has had enough of the clock: straight to ${formatYen(room.boardYen)}.`
           : `${name} raises: ${formatYen(room.boardYen)}.`,
   )
   runDrops(room)

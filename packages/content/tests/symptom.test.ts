@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import diagnosticTests from '../data/diagnosticTests.json'
-import symptoms from '../data/symptoms.json'
-import {
-  CarPartIdSchema,
-  DiagnosticTestsSchema,
-  SymptomSchema,
-  SymptomsSchema,
-  type Symptom,
-} from '../src'
+import { CarPartIdSchema, DiagnosticTestsSchema, SYMPTOMS, SymptomContentSchema } from '../src'
 
 /**
  * Sprint 73 (diagnosis I): the symptom/cause/test content guards task 1
@@ -15,10 +8,13 @@ import {
  * cause addressing a real `CarPartId`, every test partition covering its
  * symptom's full cause list exactly once, and at least 2 causes per symptom
  * (the schema's own `.min(2)` already enforces the last one structurally,
- * re-asserted here as a content-level sanity check).
+ * re-asserted here as a content-level sanity check). Runs against `SYMPTOMS`,
+ * the already-resolved (failure-mode-joined) export - `symptoms.json` itself
+ * only carries registry references now; the raw-content shape and the
+ * registry join are covered separately in `failureMode.test.ts`.
  */
 
-const PARSED_SYMPTOMS: Symptom[] = SymptomsSchema.parse(symptoms)
+const PARSED_SYMPTOMS = SYMPTOMS
 const PARSED_TESTS = DiagnosticTestsSchema.parse(diagnosticTests)
 
 describe('symptom/cause/test content (Sprint 73)', () => {
@@ -107,11 +103,13 @@ describe('symptom/cause/test content (Sprint 73)', () => {
 
 /**
  * Sprint 106 (routed diagnosis): `unlockedBy` chain integrity, checked by
- * `SymptomSchema`'s own `superRefine`. Hand-built fixtures rather than real
+ * `SymptomContentSchema`'s own `superRefine`. Hand-built fixtures rather than real
  * content, since the point is the shape of the chain, not any particular
  * symptom's causes - `buildTestSymptom` below only needs enough of a valid
  * symptom (2 causes, well-formed partitions) for the chain rules themselves
- * to be the only thing under test.
+ * to be the only thing under test. `causes` uses the reference shape
+ * (`failureModeId` + `weight`) `SymptomContentSchema` validates raw content
+ * against.
  */
 function buildTestSymptom(
   tests: Array<{ testId: string; unlockedBy?: { testId: string; group?: 0 | 1 } }>,
@@ -120,8 +118,8 @@ function buildTestSymptom(
     id: 'unlock-chain-symptom',
     cardLine: 'Fixture symptom for unlock-chain tests.',
     causes: [
-      { id: 'cause-a', carPartId: 'headValvetrain', setBand: 'worn', weight: 50 },
-      { id: 'cause-b', carPartId: 'headValvetrain', setBand: 'poor', weight: 50 },
+      { failureModeId: 'cause-a', weight: 50 },
+      { failureModeId: 'cause-b', weight: 50 },
     ],
     tests: tests.map(({ testId, unlockedBy }) => ({
       testId,
@@ -132,13 +130,13 @@ function buildTestSymptom(
   }
 }
 
-describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
+describe("SymptomContentSchema's unlockedBy chain integrity (Sprint 106)", () => {
   it('accepts a valid 2-layer chain: a root plus one test it unlocks', () => {
     const symptom = buildTestSymptom([
       { testId: 'root' },
       { testId: 'child', unlockedBy: { testId: 'root', group: 0 } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(true)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(true)
   })
 
   it('rejects an unlockedBy.testId that names no other test on the symptom', () => {
@@ -146,7 +144,7 @@ describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
       { testId: 'root' },
       { testId: 'child', unlockedBy: { testId: 'no-such-test', group: 0 } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects a test that is unlockedBy itself', () => {
@@ -154,7 +152,7 @@ describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
       { testId: 'root' },
       { testId: 'self-locked', unlockedBy: { testId: 'self-locked', group: 0 } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects a cycle between two tests each unlocked by the other', () => {
@@ -163,7 +161,7 @@ describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
       { testId: 'a', unlockedBy: { testId: 'b', group: 0 } },
       { testId: 'b', unlockedBy: { testId: 'a', group: 0 } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects an unlock chain deeper than 3 (a root sits at depth 1)', () => {
@@ -173,7 +171,7 @@ describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
       { testId: 't3', unlockedBy: { testId: 't2', group: 0 } },
       { testId: 't4', unlockedBy: { testId: 't3', group: 0 } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects a symptom whose every test is locked (no root test to start from)', () => {
@@ -181,7 +179,7 @@ describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
       { testId: 'a', unlockedBy: { testId: 'b', group: 0 } },
       { testId: 'b', unlockedBy: { testId: 'a', group: 0 } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 })
 
@@ -191,13 +189,13 @@ describe("SymptomSchema's unlockedBy chain integrity (Sprint 106)", () => {
  * first look" case). The chain-integrity rules above key off `testId` alone,
  * so they apply identically whether `group` is present or absent.
  */
-describe("SymptomSchema's unlockedBy chain integrity with a group-less unlockedBy", () => {
+describe("SymptomContentSchema's unlockedBy chain integrity with a group-less unlockedBy", () => {
   it('accepts a valid 2-layer chain whose unlockedBy carries no group', () => {
     const symptom = buildTestSymptom([
       { testId: 'root' },
       { testId: 'child', unlockedBy: { testId: 'root' } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(true)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(true)
   })
 
   it('rejects a group-less unlockedBy.testId that names no other test on the symptom', () => {
@@ -205,7 +203,7 @@ describe("SymptomSchema's unlockedBy chain integrity with a group-less unlockedB
       { testId: 'root' },
       { testId: 'child', unlockedBy: { testId: 'no-such-test' } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects a test that is group-lessly unlockedBy itself', () => {
@@ -213,7 +211,7 @@ describe("SymptomSchema's unlockedBy chain integrity with a group-less unlockedB
       { testId: 'root' },
       { testId: 'self-locked', unlockedBy: { testId: 'self-locked' } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects a cycle between two tests each group-lessly unlocked by the other', () => {
@@ -222,7 +220,7 @@ describe("SymptomSchema's unlockedBy chain integrity with a group-less unlockedB
       { testId: 'a', unlockedBy: { testId: 'b' } },
       { testId: 'b', unlockedBy: { testId: 'a' } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 
   it('rejects a symptom whose every test is group-lessly locked (no root test to start from)', () => {
@@ -230,6 +228,6 @@ describe("SymptomSchema's unlockedBy chain integrity with a group-less unlockedB
       { testId: 'a', unlockedBy: { testId: 'b' } },
       { testId: 'b', unlockedBy: { testId: 'a' } },
     ])
-    expect(SymptomSchema.safeParse(symptom).success).toBe(false)
+    expect(SymptomContentSchema.safeParse(symptom).success).toBe(false)
   })
 })

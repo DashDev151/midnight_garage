@@ -5,6 +5,7 @@ import componentDisplayNamesJson from '../data/componentDisplayNames.json'
 import diagnosticTestsJson from '../data/diagnosticTests.json'
 import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
+import failureModesJson from '../data/failureModes.json'
 import lapReferencesJson from '../data/lapReferences.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
@@ -34,6 +35,7 @@ import { ComponentDisplayNamesSchema } from './componentDisplayName'
 import { DiagnosticTestsSchema } from './diagnosticTest'
 import { EconomyConfigSchema } from './economy'
 import { FacilitiesSchema } from './facilities'
+import { FailureModesSchema, type FailureMode } from './failureMode'
 import { LapReferencesSchema } from './lapReference'
 import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
 import { PartPricingSheetSchema } from './partPricing'
@@ -44,7 +46,7 @@ import { ProvenancePoolSchema } from './provenance'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
 import { StoryMissionsSchema, type StoryMission } from './storyMission'
-import { SymptomsSchema } from './symptom'
+import { resolveSymptomCauses, SymptomsContentSchema, SymptomsSchema } from './symptom'
 import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
@@ -136,11 +138,28 @@ export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)
 export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)
 
 /**
+ * The shared failure-mode registry each symptom's own `causes` entries
+ * reference by `failureModeId`.
+ */
+export const FAILURE_MODES = FailureModesSchema.parse(failureModesJson)
+const FAILURE_MODE_BY_ID = new Map<string, FailureMode>(
+  FAILURE_MODES.map((mode) => [mode.id, mode]),
+)
+
+/**
  * Sprint 73 (diagnosis I): the symptom/cause pool and the flat diagnostic-
  * test registry (id + minutes) each symptom's own `tests` entries reference
- * by `testId`.
+ * by `testId`. `symptoms.json` only ever carries `causes` as registry
+ * references (`CauseSchema`); resolved here by joining each reference
+ * against `FAILURE_MODES`, so `SYMPTOMS` keeps the exact resolved shape
+ * every downstream reader (sim, game) already expects. A dangling
+ * `failureModeId` fails loudly at load time rather than surfacing as a
+ * missing part downstream.
  */
-export const SYMPTOMS = SymptomsSchema.parse(symptomsJson)
+const SYMPTOMS_CONTENT = SymptomsContentSchema.parse(symptomsJson)
+export const SYMPTOMS = SymptomsSchema.parse(
+  SYMPTOMS_CONTENT.map((symptom) => resolveSymptomCauses(symptom, FAILURE_MODE_BY_ID)),
+)
 export const DIAGNOSTIC_TESTS = DiagnosticTestsSchema.parse(diagnosticTestsJson)
 
 /**

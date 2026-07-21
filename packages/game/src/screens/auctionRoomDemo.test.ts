@@ -266,7 +266,9 @@ describe('auctionRoomDemo machine', () => {
     // draws feud eligibility on every scheduled raise, no player bid needed;
     // this seeded run ignites one between Endo and Mrs. Sakaki, which leaves
     // Mrs. Sakaki, not Endo, as the final leader at the hammer.
-    expect(room.log).toContain('Endo and Mrs. Sakaki have history. This just became personal.')
+    expect(room.log).toContain(
+      'Endo and Mrs. Sakaki have history. The rest of the room settles in to watch.',
+    )
     expect(room.leaderName).toBe('Mrs. Sakaki')
     expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥108,645.')
     expect(dealersInRoom(room)).toBe(1)
@@ -654,7 +656,7 @@ describe('auctionRoomDemo machine', () => {
     expect(room.boardYen).toBe(
       boardBeforeTax + ROOM_TUNING.reactions.snipeTaxRungs * room.incrementYen,
     )
-    expect(room.log.at(-1)).toBe(`Endo is done waiting on the clock: straight to ¥140,000.`)
+    expect(room.log.at(-1)).toBe(`Endo has had enough of the clock: straight to ¥140,000.`)
   })
 
   it('starts a feud on a jump, alternating single-rung raises between the two named dealers on the feud delay band, ending when the burst is spent', () => {
@@ -673,7 +675,9 @@ describe('auctionRoomDemo machine', () => {
     playerBid(room, 0, 4)
 
     expect(room.feud).toEqual({ names: ['Endo', 'Mrs. Sakaki'], remaining: 4 })
-    expect(room.log.at(-1)).toBe('Endo and Mrs. Sakaki have history. This just became personal.')
+    expect(room.log.at(-1)).toBe(
+      'Endo and Mrs. Sakaki have history. The rest of the room settles in to watch.',
+    )
 
     const seenNames: string[] = []
     let fromMs = 0
@@ -816,7 +820,7 @@ describe('auctionRoomDemo machine', () => {
 
     expect(room.armedReaction).toBeNull()
     expect(room.boardYen).toBe(100_000 + ROOM_TUNING.reactions.snipeTaxRungs * room.incrementYen)
-    expect(room.log.at(-1)).toBe(`Endo is done waiting on the clock: straight to ¥120,000.`)
+    expect(room.log.at(-1)).toBe(`Endo has had enough of the clock: straight to ¥120,000.`)
 
     // A second room response with the arm already spent: an ordinary
     // rung-one raise, not a tax.
@@ -847,7 +851,7 @@ describe('auctionRoomDemo machine', () => {
       names: ['Endo', 'Mrs. Sakaki'],
       remaining: ROOM_TUNING.reactions.feudRungs,
     })
-    const feudLine = 'Endo and Mrs. Sakaki have history. This just became personal.'
+    const feudLine = 'Endo and Mrs. Sakaki have history. The rest of the room settles in to watch.'
     expect(room.log).toContain(feudLine)
 
     // The burst is over (simulated directly) and the arm is spent: a further
