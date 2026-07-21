@@ -377,10 +377,10 @@
   },
   "diagnosis": {
     "symptomChanceByTier": {
-      "shitbox": 0.45,
-      "common": 0.3,
-      "uncommon": 0.22,
-      "rare": 0.12
+      "shitbox": 0.55,
+      "common": 0.5,
+      "uncommon": 0.45,
+      "rare": 0.35
     },
     "secondSymptomChance": 0.15,
     "maxSymptomsPerCar": 2,

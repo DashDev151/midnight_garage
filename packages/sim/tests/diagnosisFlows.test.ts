@@ -306,10 +306,11 @@ function buildLot(car: CarInstance): AuctionLot {
   }
 }
 
-/** Runs `electrics-check` against a lot's `flat-battery` symptom during a
- * fresh visit at its own tier - `electrics-check`'s own partition
- * (`[['flat-battery'], ['fuel-pump', 'seized-engine']]`) fully resolves a
- * flat-battery car in this one test. Returns the resolved car. */
+/** Runs the routed non-starter board against a lot's `flat-battery` symptom
+ * during a fresh visit at its own tier, down to full resolution: `hand-crank`
+ * (the board's own root) first isolates the cheap-fault branch, `electrics-check`
+ * then narrows it to `[flat-battery, corroded-terminals]`, and `terminal-wiggle`
+ * isolates `flat-battery` alone. Returns the resolved car. */
 function resolveFlatBatteryAtAuction(car: CarInstance): CarInstance {
   const withLot: GameState = {
     ...createInitialGameState(CONTEXT, 1),
@@ -317,7 +318,11 @@ function resolveFlatBatteryAtAuction(car: CarInstance): CarInstance {
   }
   const visit = beginInspectionVisit(withLot, 'regional', CONTEXT)
   expect(visit.outcome).toBe('started')
-  const tested = runDiagnosticTest(visit.state, 'lot-flow-test', 0, 'electrics-check', CONTEXT)
+  const cranked = runDiagnosticTest(visit.state, 'lot-flow-test', 0, 'hand-crank', CONTEXT)
+  expect(cranked.outcome).toBe('ran')
+  const electrics = runDiagnosticTest(cranked.state, 'lot-flow-test', 0, 'electrics-check', CONTEXT)
+  expect(electrics.outcome).toBe('ran')
+  const tested = runDiagnosticTest(electrics.state, 'lot-flow-test', 0, 'terminal-wiggle', CONTEXT)
   expect(tested.outcome).toBe('ran')
   const resolvedCar = tested.state.activeAuctionLots[0]!.car
   expect(resolvedCar.symptoms[0]!.remainingCauseIds).toEqual(['flat-battery'])

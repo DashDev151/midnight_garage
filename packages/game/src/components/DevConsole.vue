@@ -127,6 +127,10 @@ function warp(): void {
     <div class="row">
       <button @click="router.push({ name: 'auction-room-demo' })">auction room demo</button>
     </div>
+
+    <div class="row">
+      <button @click="router.push({ name: 'inspection-demo' })">inspection demo</button>
+    </div>
   </aside>
 </template>
 

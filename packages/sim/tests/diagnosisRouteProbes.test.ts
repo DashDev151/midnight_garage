@@ -26,21 +26,52 @@ import { availableTestIdsFor } from '../src/diagnosis'
  * clicks blind pays for the dead ones too.
  */
 
+/**
+ * Deliberately unresolvable (symptomId, causeId) pairs: recorded design
+ * decisions where the yard cannot isolate this cause from its siblings even
+ * with every available test run (docs/design/failure-map.md's "deliberate
+ * residual ambiguity" lever, e.g. an ECU-versus-cams call that only a bench
+ * strip can settle). The resolution-accounting probe below treats any
+ * (symptomId, causeId) pair NOT listed here as an authoring gap and fails
+ * naming it. Empty for the three built trees, which fully resolve.
+ */
+export const DECLARED_AMBIGUOUS: ReadonlyArray<{ symptomId: string; causeId: string }> = []
+
 const SLICE_SYMPTOM_IDS = [
   'damp-passenger-footwell',
   'smokes-on-startup',
   'crunch-into-second',
+  'non-starter',
+  'tick-at-idle',
+  'wont-idle',
+  'clunk-over-bumps',
+  'overheats-in-traffic',
+  'diff-whine',
+  'sagging-spring',
+  'quarter-panel-filler',
+  'oil-pressure-flutter',
+  'hesitates-under-load',
 ] as const
 
 type SliceSymptomId = (typeof SLICE_SYMPTOM_IDS)[number]
 
-/** The three tests built to teach nothing new at their own unlock node -
- * an identical partition to whichever test unlocks them, so any remaining
- * set reaching them is already wholly inside one of their own two groups. */
+/** The tests built to teach nothing new at their own unlock node - an
+ * identical partition to whichever test unlocks them, so any remaining set
+ * reaching them is already wholly inside one of their own two groups. */
 const DEAD_END_TEST_BY_SYMPTOM: Record<SliceSymptomId, string> = {
   'damp-passenger-footwell': 'carpet-lift',
   'smokes-on-startup': 'pull-a-plug',
   'crunch-into-second': 'try-it-warm',
+  'non-starter': 'stethoscope',
+  'tick-at-idle': 'pull-a-plug',
+  'wont-idle': 'fuel-sniff',
+  'clunk-over-bumps': 'ride-height-check',
+  'overheats-in-traffic': 'hose-squeeze',
+  'diff-whine': 'stethoscope',
+  'sagging-spring': 'bounce-test',
+  'quarter-panel-filler': 'open-the-boot',
+  'oil-pressure-flutter': 'stethoscope',
+  'hesitates-under-load': 'pull-a-plug',
 }
 
 function symptomById(id: string): Symptom {
@@ -235,6 +266,21 @@ function bestRouteMinutesToResolve(symptom: Symptom, trueCauseId: string): numbe
   return best
 }
 
+/** True when some legal sequence of available tests can narrow "symptom"
+ * down to "causeId" alone - reuses the same brute-force search as
+ * `bestRouteMinutesToResolve`, since "some route resolves this cause" and
+ * "the cheapest such route costs N minutes" are the same reachability
+ * question, differing only in throw-versus-return shape; the resolution-
+ * accounting probe wants a boolean, not a minutes budget. */
+function isIsolatable(symptom: Symptom, causeId: string): boolean {
+  try {
+    bestRouteMinutesToResolve(symptom, causeId)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** The reading player's own expected minutes: the weighted (by real cause
  * weight) average of the cheapest full-resolution route for each possible
  * true cause - a player who reads every result and always picks the test
@@ -404,6 +450,23 @@ describe('waste and signal: every open board offers both a dead click and a narr
   }
 })
 
+describe('resolution accounting: every cause is isolatable by some route, or declared ambiguous', () => {
+  for (const symptom of routedSymptoms()) {
+    it(`${symptom.id}`, () => {
+      for (const cause of symptom.causes) {
+        const declared = DECLARED_AMBIGUOUS.some(
+          (entry) => entry.symptomId === symptom.id && entry.causeId === cause.id,
+        )
+        if (declared) continue
+        expect(
+          isIsolatable(symptom, cause.id),
+          `"${symptom.id}" cause "${cause.id}" is not isolatable by any route and is not declared ambiguous - author a route that narrows to it alone, or add {symptomId: "${symptom.id}", causeId: "${cause.id}"} to DECLARED_AMBIGUOUS with the design reason recorded in docs/design/failure-map.md`,
+        ).toBe(true)
+      }
+    })
+  }
+})
+
 describe('dead-end law: the identical-partition test narrows nothing once it is on offer', () => {
   for (const symptomId of SLICE_SYMPTOM_IDS) {
     const symptom = symptomById(symptomId)
@@ -443,7 +506,18 @@ describe('dead-end law: the identical-partition test narrows nothing once it is 
  * Measured: damp-passenger-footwell reader=17.40min blind=31.77min (1.83x,
  * clears the bar); smokes-on-startup reader=19.10min blind=30.80min (1.61x,
  * clears the bar); crunch-into-second reader=25.00min blind=42.50min (1.70x,
- * clears the bar).
+ * clears the bar); non-starter reader=21.65min blind=32.60min (1.51x, clears
+ * the bar, the tightest margin on the map - four causes behind one 15min
+ * root leaves little slack); tick-at-idle reader=10.00min blind=25.30min
+ * (2.53x, clears the bar); wont-idle reader=18.75min blind=31.88min (1.70x,
+ * clears the bar); clunk-over-bumps reader=15.00min blind=28.92min (1.93x,
+ * clears the bar); overheats-in-traffic reader=20.40min blind=37.22min
+ * (1.82x, clears the bar); diff-whine reader=16.50min blind=33.13min (2.01x,
+ * clears the bar); sagging-spring reader=18.50min blind=33.25min (1.80x,
+ * clears the bar); quarter-panel-filler reader=15.00min blind=27.00min
+ * (1.80x, clears the bar); oil-pressure-flutter reader=15.25min
+ * blind=30.13min (1.98x, clears the bar); hesitates-under-load
+ * reader=17.00min blind=31.13min (1.83x, clears the bar).
  */
 describe('reading pays: blind clicking costs at least 1.5x what reading and routing costs', () => {
   for (const symptomId of SLICE_SYMPTOM_IDS) {
@@ -470,12 +544,49 @@ describe('reading pays: blind clicking costs at least 1.5x what reading and rout
  * valve-seals and gunked-breather each settle with one more 10min test off
  * the root; tired-rings needs the root plus two more 10min tests);
  * crunch-into-second 25min (worn-synchros/dragging-clutch are free at the
- * root's own 15min; low-thin-oil/chewed-gearset need one more 10min test).
+ * root's own 15min; low-thin-oil/chewed-gearset need one more 10min test);
+ * non-starter 15min (every cause is decided at the root's own 15min - the
+ * scrap cause, seized-engine, is hand-crank's own group0, so its fate is
+ * settled the instant the root runs either way); tick-at-idle 10min (lifter
+ * and rocker are free at the root's own 5min; manifold and rod-knock both
+ * settle with one more 5min test off the root, exhaust-glove-test, which
+ * happens to fall exactly on that boundary); wont-idle 30min (leak and ECU
+ * are free at the root's own 5min; cams and burnt-valve both need one more
+ * 25min test, compression-test); clunk-over-bumps 15min (bushes and
+ * steering are free at the root's own 5min; dampers and subframe both
+ * settle with one more 10min test, bounce-test); overheats-in-traffic 35min
+ * (fan and radiator are free at the root's own 10min; gasket and block both
+ * need one more 25min test, compression-test); diff-whine 20min (the wheel
+ * bearing and centre bearing are free at the root's own 5min, since the
+ * scrap cause sits wholly in the other group; the diff bearings and the
+ * ring and pinion both need one more 15min test, gearbox-oil-check, to tell
+ * them apart); sagging-spring 25min (sagging springs and perished spring
+ * seats are free at the root's own 10min; the broken spring and the rotted
+ * strut turret both need one more 15min test, wheel-off-look or
+ * undercarriage-look); quarter-panel-filler 20min (the respray and tired
+ * lacquer are free at the root's own 5min; the rust patch settles with one
+ * more 10min test, magnet-check, but the structural rail repair needs one
+ * more 15min test, undercarriage-look, which sets the worst case); oil-
+ * pressure-flutter 25min (the tired sender and thin oil are free at the
+ * root's own 5min; worn oil pump and worn main bearings both need one more
+ * 20min test, oil-pressure-check); hesitates-under-load 30min (the clogged
+ * filter and stale fuel are free at the root's own 5min; the stretched and
+ * jumped timing chain both need one more 25min test, compression-test).
  */
 const GRENADE_MINUTE_BUDGET: Record<SliceSymptomId, number> = {
   'damp-passenger-footwell': 15,
   'smokes-on-startup': 30,
   'crunch-into-second': 25,
+  'non-starter': 15,
+  'tick-at-idle': 10,
+  'wont-idle': 30,
+  'clunk-over-bumps': 15,
+  'overheats-in-traffic': 35,
+  'diff-whine': 20,
+  'sagging-spring': 25,
+  'quarter-panel-filler': 20,
+  'oil-pressure-flutter': 25,
+  'hesitates-under-load': 30,
 }
 
 describe('grenade budget: every possible true cause reaches a verdict on the scrap cause within budget', () => {

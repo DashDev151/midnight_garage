@@ -58,6 +58,27 @@ function bidOnScriptedLot(state: GameState): GameState {
   }
 }
 
+/** Marks the scripted lot's first symptom as having had `testId` run - the
+ * fixture for the `testRun` condition kind. */
+function runTestOnScriptedLot(state: GameState, testId: string): GameState {
+  return {
+    ...state,
+    activeAuctionLots: state.activeAuctionLots.map((l) =>
+      l.id === LOT.lotId
+        ? {
+            ...l,
+            car: {
+              ...l.car,
+              symptoms: l.car.symptoms.map((s, i) =>
+                i === 0 ? { ...s, runTestIds: [...s.runTestIds, testId] } : s,
+              ),
+            },
+          }
+        : l,
+    ),
+  }
+}
+
 describe('TutorialOverlay', () => {
   const wrappers: ReturnType<typeof mount>[] = []
   function render() {
@@ -120,7 +141,7 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(false)
   })
 
-  it('accept completes on mission accept; the stethoscope line reveals only during a live yard visit', async () => {
+  it('accept completes on mission accept; ears-first reveals during the yard visit, then stethoscope after revs-and-listen runs', async () => {
     const game = useGameStore()
     game.newGame(3)
     game.acknowledgeTutorialStep('welcome')
@@ -130,11 +151,19 @@ describe('TutorialOverlay', () => {
 
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 11')
     expect(wrapper.text()).toContain('Local Yard')
-    expect(wrapper.text()).not.toContain('Put the stethoscope')
+    expect(wrapper.text()).not.toContain('Ears first, tools second')
 
     game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }
     await nextTick()
-    expect(wrapper.text()).toContain('Put the stethoscope')
+    expect(wrapper.text()).toContain('Ears first, tools second')
+    expect(wrapper.text()).not.toContain('A tidy tick, up top')
+
+    // The stethoscope line only takes over once revs-and-listen is in
+    // runTestIds; the ears-first line retires the moment it does.
+    game.gameState = runTestOnScriptedLot(game.gameState, 'revs-and-listen')
+    await nextTick()
+    expect(wrapper.text()).toContain('A tidy tick, up top')
+    expect(wrapper.text()).not.toContain('Ears first, tools second')
   })
 
   it('anyOf skip-ahead: a bid placed without inspecting lands the machine on close, not find or bid', async () => {

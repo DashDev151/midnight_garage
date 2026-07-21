@@ -54,8 +54,15 @@
       },
       {
         "speaker": "instruction",
-        "text": "You have the hour. Put the stethoscope on that tick; fifteen minutes tells us whether it lives at the top of the engine, which is cheap to put right, or the bottom, in which case we tip our hat and walk away.",
+        "text": "Ears first, tools second. Rev it gently and listen: valve gear keeps time, light and regular. Anything deeper, we worry about later. Five minutes.",
         "showWhen": { "kind": "inspectionVisitActive" },
+        "hideWhen": { "kind": "testRun", "testId": "revs-and-listen" },
+        "anchorTestId": "run-test-tutorial-lot-0-revs-and-listen"
+      },
+      {
+        "speaker": "instruction",
+        "text": "A tidy tick, up top. Now the stethoscope on the cam cover: fifteen minutes, and we'll know exactly which bit of the valve gear is talking.",
+        "showWhen": { "kind": "testRun", "testId": "revs-and-listen" },
         "anchorTestId": "run-test-tutorial-lot-0-stethoscope"
       }
     ],

@@ -158,6 +158,11 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
         const member = container.members[cond.carPartId]
         return !!member && bandIndex(member.band) >= bandIndex(cond.band)
       })
+    case 'testRun': {
+      // Mirrors `lotInspected`: the scripted car's first symptom, read live.
+      const s = scriptedCar.value?.symptoms[0]
+      return !!s && s.runTestIds.includes(cond.testId)
+    }
     case 'never':
       return false
   }

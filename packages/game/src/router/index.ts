@@ -15,6 +15,11 @@ const devRoutes: RouteRecordRaw[] = import.meta.env.DEV
         name: 'auction-room-demo',
         component: () => import('../screens/AuctionRoomDemoScreen.vue'),
       },
+      {
+        path: '/inspection-demo',
+        name: 'inspection-demo',
+        component: () => import('../screens/InspectionDemoScreen.vue'),
+      },
     ]
   : []
 

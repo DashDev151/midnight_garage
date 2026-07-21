@@ -160,7 +160,12 @@
     "setBand": "worn"
   },
   {
-    "id": "worn-propshaft-uj",
+    "id": "worn-wheel-bearing",
+    "carPartId": "driveline",
+    "setBand": "worn"
+  },
+  {
+    "id": "collapsed-centre-bearing",
     "carPartId": "driveline",
     "setBand": "poor"
   },
@@ -173,6 +178,11 @@
     "id": "sagging-springs",
     "carPartId": "springs",
     "setBand": "worn"
+  },
+  {
+    "id": "perished-spring-seats",
+    "carPartId": "springs",
+    "setBand": "fine"
   },
   {
     "id": "broken-spring",
@@ -188,6 +198,11 @@
     "id": "panel-respray",
     "carPartId": "panels",
     "setBand": "worn"
+  },
+  {
+    "id": "tired-lacquer",
+    "carPartId": "paint",
+    "setBand": "fine"
   },
   {
     "id": "rust-patch",
@@ -240,6 +255,11 @@
     "setBand": "worn"
   },
   {
+    "id": "thin-cheap-oil",
+    "carPartId": "internals",
+    "setBand": "fine"
+  },
+  {
     "id": "worn-oil-pump",
     "carPartId": "internals",
     "setBand": "poor"
@@ -248,6 +268,11 @@
     "id": "worn-main-bearings",
     "carPartId": "internals",
     "setBand": "scrap"
+  },
+  {
+    "id": "stale-fuel",
+    "carPartId": "fuelSystem",
+    "setBand": "fine"
   },
   {
     "id": "clogged-fuel-filter",
@@ -273,5 +298,15 @@
     "id": "worn-rack",
     "carPartId": "steering",
     "setBand": "poor"
+  },
+  {
+    "id": "corroded-terminals",
+    "carPartId": "ignitionEcu",
+    "setBand": "fine"
+  },
+  {
+    "id": "rocker-adjustment",
+    "carPartId": "headValvetrain",
+    "setBand": "fine"
   }
 ]

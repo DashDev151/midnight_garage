@@ -115,9 +115,9 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
     expect(lot.scripted).toBe(true)
     // The sleeper lesson, quantified: the room prices the tick at the odds,
     // so pre-knowledge its sheet value IS the honest expectation - the
-    // cause-weighted average over the feared rod-knock (internals poor) and
-    // the minor lifter tick (head/valvetrain worn). Certainty about which is
-    // what the inspection buys.
+    // cause-weighted average across all four possible causes, from the minor
+    // lifter tick through to the feared rod-knock. Certainty about which one
+    // it is is what the inspection buys.
     const sheet = sheetGuideValueYen(lot.car, MODEL, state, CONTEXT)
     const honest = expectedTrueValueYen(lot.car, MODEL, state, CONTEXT)
     expect(sheet).toBe(honest)

@@ -80,15 +80,19 @@
   },
   {
     "id": "non-starter",
-    "cardLine": "Won't start. Turns over, nothing catches.",
+    "cardLine": "Won't start.",
     "causes": [
       {
         "failureModeId": "flat-battery",
-        "weight": 57
+        "weight": 45
+      },
+      {
+        "failureModeId": "corroded-terminals",
+        "weight": 14
       },
       {
         "failureModeId": "fuel-pump",
-        "weight": 31
+        "weight": 29
       },
       {
         "failureModeId": "seized-engine",
@@ -97,20 +101,59 @@
     ],
     "tests": [
       {
-        "testId": "electrics-check",
-        "partition": [["flat-battery"], ["fuel-pump", "seized-engine"]],
+        "testId": "hand-crank",
+        "partition": [["seized-engine"], ["flat-battery", "corroded-terminals", "fuel-pump"]],
         "resultCopy": [
-          "Cranking speed sags hard and the lights dim with it. The battery's the problem, not the pump or the engine itself.",
-          "Cranking speed and the lights both hold steady. Not the battery, narrows to the fuel pump or the engine itself."
+          "The crank won't budge by hand. Not stiff, not reluctant. Seized. Whatever happened in there is finished happening. Battery and pump are irrelevant.",
+          "The crank turns over freely by hand. Nothing seized in there: whatever's stopping it is the cheap kind, battery or pump."
         ]
       },
       {
-        "testId": "hand-crank",
-        "partition": [["seized-engine"], ["flat-battery", "fuel-pump"]],
+        "testId": "electrics-check",
+        "partition": [
+          ["flat-battery", "corroded-terminals"],
+          ["fuel-pump", "seized-engine"]
+        ],
         "resultCopy": [
-          "The crank won't turn over by hand at all. The engine itself is seized, not a battery or fuel-pump fault.",
-          "The crank turns over freely by hand. Not a seized engine, narrows to the battery or the fuel pump."
-        ]
+          "Cranking sags and the lights dim with it. The juice isn't arriving: a flat battery, or terminals doing their best impression of one.",
+          "The battery's strong and the starter's fed. Whatever's wrong is past the electrics: the pump, or the engine itself, and you'd best hope it's the pump."
+        ],
+        "unlockedBy": {
+          "testId": "hand-crank"
+        }
+      },
+      {
+        "testId": "terminal-wiggle",
+        "partition": [["corroded-terminals"], ["flat-battery", "fuel-pump", "seized-engine"]],
+        "resultCopy": [
+          "Grab the battery clamp and it moves by hand, green fur under it. Tighten and clean, and this one starts. The kindest fault a non-starter can have.",
+          "Clamps tight, posts clean. The power's leaving the battery just fine."
+        ],
+        "unlockedBy": {
+          "testId": "hand-crank"
+        }
+      },
+      {
+        "testId": "listen-for-pump",
+        "partition": [["fuel-pump"], ["flat-battery", "corroded-terminals", "seized-engine"]],
+        "resultCopy": [
+          "Key on: silence from the tank. No prime, no hum. The pump's dead, and the engine's just been waiting on fuel that never came.",
+          "Key on and the pump primes with a clean two-second hum from the tank. Fuel's ready to go: it isn't this."
+        ],
+        "unlockedBy": {
+          "testId": "hand-crank"
+        }
+      },
+      {
+        "testId": "stethoscope",
+        "partition": [["seized-engine"], ["flat-battery", "corroded-terminals", "fuel-pump"]],
+        "resultCopy": [
+          "Nothing to hear: it never gets far enough to make a noise.",
+          "You can listen all day: a stopped engine keeps its opinions to itself."
+        ],
+        "unlockedBy": {
+          "testId": "hand-crank"
+        }
       }
     ]
   },
@@ -120,11 +163,15 @@
     "causes": [
       {
         "failureModeId": "lifter-tick",
-        "weight": 62
+        "weight": 50
+      },
+      {
+        "failureModeId": "rocker-adjustment",
+        "weight": 14
       },
       {
         "failureModeId": "blowing-manifold",
-        "weight": 25
+        "weight": 23
       },
       {
         "failureModeId": "rod-knock",
@@ -133,20 +180,73 @@
     ],
     "tests": [
       {
-        "testId": "stethoscope",
-        "partition": [["lifter-tick"], ["blowing-manifold", "rod-knock"]],
+        "testId": "revs-and-listen",
+        "partition": [
+          ["lifter-tick", "rocker-adjustment"],
+          ["blowing-manifold", "rod-knock"]
+        ],
         "resultCopy": [
-          "A light, even tick right at the top of the head, in time with the valves. Just the lifters, not the bottom end or the exhaust.",
-          "The tick sources lower and further out than the valve gear. Not the lifters, narrows to the bottom end or a blowing manifold."
+          "The tick keeps time at half engine speed, light and regular, and warming it changes nothing. Valve gear: a lifter, or clearances wanting a set.",
+          "It isn't the light metronome of valve gear. There's a chuff in it cold that fades as the manifold heats, or a harder edge that digs in with revs. Either way, lower and less friendly."
         ]
       },
       {
-        "testId": "oil-pressure-check",
-        "partition": [["rod-knock"], ["lifter-tick", "blowing-manifold"]],
+        "testId": "stethoscope",
+        "partition": [["lifter-tick"], ["rocker-adjustment", "blowing-manifold", "rod-knock"]],
         "resultCopy": [
-          "A gauge on the sender port shows oil pressure sagging low at hot idle, the knock deepening under load as it drops. Genuine bearing clearance in the bottom end, not the valve gear or the exhaust.",
-          "Hot-idle oil pressure holds steady and correct with the tick still there. The bottom end is sound, narrows to a worn lifter or a blowing manifold gasket."
-        ]
+          "Right at the top of the head, ticking with the valves. Hydraulic lifters, one of them lazy. Annoying, cheap, and it'll still be ticking long after you've stopped hearing it.",
+          "The top of the head is quiet under the probe. Whatever's ticking, it isn't the lifters."
+        ],
+        "unlockedBy": {
+          "testId": "revs-and-listen"
+        }
+      },
+      {
+        "testId": "tappet-listen",
+        "partition": [["rocker-adjustment"], ["lifter-tick", "blowing-manifold", "rod-knock"]],
+        "resultCopy": [
+          "Solid lifters under the cover, and the clearances have drifted wide. Good news: that's a feeler gauge and a quiet afternoon, not a parts bill.",
+          "Clearances sit right where they should. The adjusters aren't the story."
+        ],
+        "unlockedBy": {
+          "testId": "revs-and-listen"
+        }
+      },
+      {
+        "testId": "exhaust-glove-test",
+        "partition": [["blowing-manifold"], ["lifter-tick", "rocker-adjustment", "rod-knock"]],
+        "resultCopy": [
+          "A rag over the tailpipe and the tick stumbles; cold, there's a chuff at the manifold flange you can feel on your palm. It's breathing where it shouldn't: manifold.",
+          "The rag test changes nothing and the flange stays quiet. The exhaust's sealed: the tick is in the metal, not the breath."
+        ],
+        "unlockedBy": {
+          "testId": "revs-and-listen"
+        }
+      },
+      {
+        "testId": "oil-pressure-check",
+        "partition": [["rod-knock"], ["lifter-tick", "rocker-adjustment", "blowing-manifold"]],
+        "resultCopy": [
+          "Pressure sags low at hot idle and the knock hardens as it drops. That's rod bearings running out of oil film: the engine is telling you how it plans to die.",
+          "Hot-idle pressure holds steady and correct, tick or no tick. The bottom end is sound: this noise lives higher up."
+        ],
+        "unlockedBy": {
+          "testId": "revs-and-listen"
+        }
+      },
+      {
+        "testId": "pull-a-plug",
+        "partition": [
+          ["lifter-tick", "rocker-adjustment"],
+          ["blowing-manifold", "rod-knock"]
+        ],
+        "resultCopy": [
+          "Plugs look fine. They would: a tick doesn't write itself on a plug.",
+          "Plugs look fine. They would: a tick doesn't write itself on a plug."
+        ],
+        "unlockedBy": {
+          "testId": "revs-and-listen"
+        }
       }
     ]
   },
@@ -173,20 +273,51 @@
     ],
     "tests": [
       {
+        "testId": "idle-watch",
+        "partition": [
+          ["vacuum-leak", "tired-ecu"],
+          ["worn-cams", "burnt-valve"]
+        ],
+        "resultCopy": [
+          "It hunts: revs climbing and falling in slow waves, like it's chasing a number it can't find. That's air or brains, a leak or the ECU.",
+          "It doesn't hunt, it stumbles: a hard, uneven lump to the idle, one cylinder letting the side down. That's mechanical, cams or a valve."
+        ]
+      },
+      {
         "testId": "spray-test",
         "partition": [["vacuum-leak"], ["tired-ecu", "worn-cams", "burnt-valve"]],
         "resultCopy": [
           "The idle changes the instant a hose joint gets a squirt. A vacuum leak, not the ECU, the cams or a cylinder gone down.",
           "Nothing changes anywhere along the manifold. Not a vacuum leak, narrows to the ECU, the cam timing or a cylinder down on compression."
-        ]
+        ],
+        "unlockedBy": {
+          "testId": "idle-watch"
+        }
       },
       {
         "testId": "compression-test",
         "partition": [["burnt-valve"], ["vacuum-leak", "tired-ecu", "worn-cams"]],
         "resultCopy": [
-          "One cylinder reads badly down and won't hold pressure, the hiss carrying straight out of the exhaust. A burnt exhaust valve, not a vacuum leak or a tired ECU.",
-          "Compression reads even and healthy across every cylinder, every valve sealing. No burnt valve, and a squirt test aside, a yard gauge can take the ECU-versus-cams question no further."
-        ]
+          "One cylinder is barely holding pressure and you can hear the leak hissing straight out of the exhaust. A burnt valve: the head has to come off, and heads that come off bring friends.",
+          "Compression reads even and healthy across every cylinder, every valve sealing. No burnt valve. What's left is the cams, worn past their best: it runs, just never sweetly."
+        ],
+        "unlockedBy": {
+          "testId": "idle-watch"
+        }
+      },
+      {
+        "testId": "fuel-sniff",
+        "partition": [
+          ["vacuum-leak", "tired-ecu"],
+          ["worn-cams", "burnt-valve"]
+        ],
+        "resultCopy": [
+          "The tank smells like fuel, which is where fuel smells belong. Nothing learnt here.",
+          "The tank smells like fuel, which is where fuel smells belong. Nothing learnt here."
+        ],
+        "unlockedBy": {
+          "testId": "idle-watch"
+        }
       }
     ]
   },
@@ -298,6 +429,17 @@
     ],
     "tests": [
       {
+        "testId": "rock-and-listen",
+        "partition": [
+          ["tired-bushes", "steering-play"],
+          ["blown-dampers", "rotted-subframe-mount"]
+        ],
+        "resultCopy": [
+          "Rock the back end and the clunk answers from up in the links: a dry knock, small parts with too much freedom. Bushes, or the steering getting loose.",
+          "Rock it and the answer comes back deep, from the floor itself: a thud with weight behind it. Dampers gone, or something structural letting the subframe move."
+        ]
+      },
+      {
         "testId": "bounce-test",
         "partition": [
           ["blown-dampers"],
@@ -306,7 +448,10 @@
         "resultCopy": [
           "The corner keeps bouncing after a good shove instead of settling in one. The dampers are blown, not the bushes, the steering or anything structural.",
           "The corner settles in a single rebound after a shove. Not the dampers, narrows to the bushes, the steering or a mounting point."
-        ]
+        ],
+        "unlockedBy": {
+          "testId": "rock-and-listen"
+        }
       },
       {
         "testId": "undercarriage-look",
@@ -315,9 +460,12 @@
           ["tired-bushes", "blown-dampers", "steering-play"]
         ],
         "resultCopy": [
-          "A screwdriver goes clean through the rear subframe mounting point, the metal round it laced with rust and flaking away. A rotted structural mount, not worn suspension parts.",
+          "The screwdriver goes through the subframe mount like it's stale cake. That's structure, not suspension: the deep, expensive kind of rust.",
           "The subframe mounts and rails are solid, sound metal all round when probed. Nothing structural, narrows to the dampers, the bushes or the steering."
-        ]
+        ],
+        "unlockedBy": {
+          "testId": "rock-and-listen"
+        }
       },
       {
         "testId": "steering-linkage-check",
@@ -327,8 +475,25 @@
         ],
         "resultCopy": [
           "Rocking the wheel at 3 and 9 with the front end up, there's a knock and lash back through the steering joints. Play in the steering, not the dampers or a mounting point.",
-          "Rocking the wheel at 3 and 9, the steering stays tight, no lash at the joints. Not the steering, narrows to the dampers, the bushes or a rotted mount."
-        ]
+          "Rocking the wheel at 3 and 9, the steering stays tight, no lash at the joints. So the steering's innocent. That leaves the bushes, the dampers, and the one you're hoping it isn't."
+        ],
+        "unlockedBy": {
+          "testId": "rock-and-listen"
+        }
+      },
+      {
+        "testId": "ride-height-check",
+        "partition": [
+          ["tired-bushes", "steering-play"],
+          ["blown-dampers", "rotted-subframe-mount"]
+        ],
+        "resultCopy": [
+          "Ride height sits true at all four corners. Clunks don't show up on a tape measure.",
+          "Ride height sits true at all four corners. Clunks don't show up on a tape measure."
+        ],
+        "unlockedBy": {
+          "testId": "rock-and-listen"
+        }
       }
     ]
   },
@@ -394,16 +559,47 @@
         "partition": [["fan-switch"], ["tired-radiator", "early-head-gasket", "cracked-block"]],
         "resultCopy": [
           "The fan never kicks in even once the temp gauge climbs into the red. The fan switch, not the radiator or anything deeper.",
-          "The fan kicks in right on cue and still the heat builds in traffic. Not the fan switch, narrows to a tired radiator or a breach into the cooling system."
-        ]
+          "The fan kicks in right on cue and still the heat builds in traffic. So the fan's honest. That leaves the radiator, or something the radiator can't fix."
+        ],
+        "unlockedBy": {
+          "testId": "coolant-check"
+        }
       },
       {
         "testId": "compression-test",
         "partition": [["cracked-block"], ["fan-switch", "tired-radiator", "early-head-gasket"]],
         "resultCopy": [
-          "A cylinder reads badly down and holds no pressure, air hissing back through the coolant, the oil gone the colour of weak tea. The block itself is cracked or the head warped past the gasket, not a fault a service puts right.",
+          "One odd cylinder down, air bubbling back through the coolant, and the oil's gone the colour of weak tea. That's not a gasket pattern: the block itself has let go. There's no service schedule for that.",
           "Compression reads even and healthy across every cylinder, the oil clean on the stick. No cracked block, narrows to the fan, the radiator or an early gasket weep."
-        ]
+        ],
+        "unlockedBy": {
+          "testId": "coolant-check"
+        }
+      },
+      {
+        "testId": "rad-flow-feel",
+        "partition": [["tired-radiator"], ["fan-switch", "early-head-gasket", "cracked-block"]],
+        "resultCopy": [
+          "Across the warm core there are cold stripes a hand can map: whole channels furred shut. The radiator's doing half a job. New core, old problem gone.",
+          "The core warms even, edge to edge. The radiator's moving its share: the heat is coming from somewhere else."
+        ],
+        "unlockedBy": {
+          "testId": "coolant-check"
+        }
+      },
+      {
+        "testId": "hose-squeeze",
+        "partition": [
+          ["early-head-gasket", "cracked-block"],
+          ["fan-switch", "tired-radiator"]
+        ],
+        "resultCopy": [
+          "Top hose goes hard as it warms, like any healthy cooling system under pressure. That much is supposed to happen.",
+          "Top hose goes hard as it warms, like any healthy cooling system under pressure. That much is supposed to happen."
+        ],
+        "unlockedBy": {
+          "testId": "coolant-check"
+        }
       }
     ]
   },
@@ -449,33 +645,88 @@
     "causes": [
       {
         "failureModeId": "worn-diff-bearings",
-        "weight": 60
+        "weight": 50
       },
       {
-        "failureModeId": "worn-propshaft-uj",
-        "weight": 22
+        "failureModeId": "worn-wheel-bearing",
+        "weight": 15
+      },
+      {
+        "failureModeId": "collapsed-centre-bearing",
+        "weight": 20
       },
       {
         "failureModeId": "chewed-ring-pinion",
-        "weight": 18
+        "weight": 15
       }
     ],
     "tests": [
       {
-        "testId": "undercarriage-look",
-        "partition": [["worn-propshaft-uj"], ["worn-diff-bearings", "chewed-ring-pinion"]],
+        "testId": "coast-and-load-listen",
+        "partition": [
+          ["worn-diff-bearings", "chewed-ring-pinion"],
+          ["worn-wheel-bearing", "collapsed-centre-bearing"]
+        ],
         "resultCopy": [
-          "Rock the propshaft by hand and there's play in a universal joint, fine rust-brown dust worked out round its cap. A worn prop UJ, not anything inside the diff.",
-          "The prop joints are tight, no rust dust at the caps, no play anywhere in the shaft. Not the propshaft, narrows to the diff's own bearings or its ring and pinion."
+          "On and off the throttle the whine swells and dies with the load. That's gears leaning on each other: the diff, bearings or the teeth themselves.",
+          "The note doesn't care about the throttle: a steady drone that climbs with road speed alone. That's something spinning, not something meshing: a hub, or the prop's centre bearing."
         ]
       },
       {
         "testId": "gearbox-oil-check",
-        "partition": [["chewed-ring-pinion"], ["worn-diff-bearings", "worn-propshaft-uj"]],
+        "partition": [
+          ["chewed-ring-pinion"],
+          ["worn-diff-bearings", "worn-wheel-bearing", "collapsed-centre-bearing"]
+        ],
         "resultCopy": [
-          "Metal glints on the swab off the diff's filler plug. A chewed ring and pinion, not tired bearings or a prop joint.",
-          "Off the filler plug the diff oil comes away clean, just thin with age. Not a chewed ring and pinion, narrows to worn diff bearings or a prop UJ."
-        ]
+          "The swab off the filler plug comes back glittering. The diff has been milling its own gears into the oil: ring and pinion, done. It'll sing all the way to the scrapyard.",
+          "Off the filler plug the diff oil comes away clean, just thin with age. No glitter, so the gears live. Bearings or the prop, then: the survivable suspects."
+        ],
+        "unlockedBy": {
+          "testId": "coast-and-load-listen"
+        }
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [
+          ["collapsed-centre-bearing"],
+          ["worn-diff-bearings", "worn-wheel-bearing", "chewed-ring-pinion"]
+        ],
+        "resultCopy": [
+          "Under the middle of the car the prop's centre mount has collapsed, the rubber doughnut hanging in shreds and the shaft riding metal on metal. There's your drone: it hums the whole road home.",
+          "The prop runs true, centre mount solid, joints tight. Underneath is innocent: the noise lives in a hub or the diff."
+        ],
+        "unlockedBy": {
+          "testId": "coast-and-load-listen"
+        }
+      },
+      {
+        "testId": "spin-the-hub",
+        "partition": [
+          ["worn-wheel-bearing"],
+          ["worn-diff-bearings", "collapsed-centre-bearing", "chewed-ring-pinion"]
+        ],
+        "resultCopy": [
+          "Wheel off the ground, spin it by hand: a dry rumble through the hub you can feel in your fingertips. Wheel bearing. Cheap, and satisfying to silence.",
+          "The hub spins smooth and silent, no play at twelve and six. The bearings out here are fine."
+        ],
+        "unlockedBy": {
+          "testId": "coast-and-load-listen"
+        }
+      },
+      {
+        "testId": "stethoscope",
+        "partition": [
+          ["worn-diff-bearings", "chewed-ring-pinion"],
+          ["worn-wheel-bearing", "collapsed-centre-bearing"]
+        ],
+        "resultCopy": [
+          "Everything under there hums at speed and says nothing at a standstill. A stethoscope needs the road, and the road won't fit in the yard.",
+          "Everything under there hums at speed and says nothing at a standstill. A stethoscope needs the road, and the road won't fit in the yard."
+        ],
+        "unlockedBy": {
+          "testId": "coast-and-load-listen"
+        }
       }
     ]
   },
@@ -485,11 +736,15 @@
     "causes": [
       {
         "failureModeId": "sagging-springs",
-        "weight": 62
+        "weight": 50
+      },
+      {
+        "failureModeId": "perished-spring-seats",
+        "weight": 15
       },
       {
         "failureModeId": "broken-spring",
-        "weight": 25
+        "weight": 22
       },
       {
         "failureModeId": "rotted-strut-turret",
@@ -499,19 +754,70 @@
     "tests": [
       {
         "testId": "ride-height-check",
-        "partition": [["sagging-springs"], ["broken-spring", "rotted-strut-turret"]],
+        "partition": [
+          ["sagging-springs", "perished-spring-seats"],
+          ["broken-spring", "rotted-strut-turret"]
+        ],
         "resultCopy": [
-          "All four corners sit a little low and even, the coils sound and no corner out of line. Tired springs all round, not a break or a rotted mount.",
-          "One corner sits noticeably lower than the rest. Not even sag, narrows to a broken spring or a rotted strut top."
+          "All four corners sit low and even, coils sound. Springs gone soft with age, or the seats they stand on crumbling quietly. Either way it settled, it didn't break.",
+          "One corner sits noticeably lower than the rest. Springs don't sag one corner at a time: a break, or a rotted strut top."
         ]
       },
       {
-        "testId": "undercarriage-look",
-        "partition": [["rotted-strut-turret"], ["sagging-springs", "broken-spring"]],
+        "testId": "wheel-off-look",
+        "partition": [
+          ["broken-spring"],
+          ["sagging-springs", "perished-spring-seats", "rotted-strut-turret"]
+        ],
         "resultCopy": [
-          "Up under the bonnet the strut top mount has rusted through, the turret flaking and the mount lifting under load. A rotted strut top, structural, not a spring fault.",
-          "The strut tops are solid, sound metal round every mount. Nothing structural, narrows to tired springs or a cracked coil."
-        ]
+          "Wheel off, and there it is: a coil snapped clean a turn from the bottom, the ends still bright. A broken spring. One corner's worth of parts and an afternoon.",
+          "Coils whole all round, nothing bright, nothing missing. The springs are intact: whatever's dropped, it isn't a break."
+        ],
+        "unlockedBy": {
+          "testId": "ride-height-check"
+        }
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [
+          ["rotted-strut-turret"],
+          ["sagging-springs", "perished-spring-seats", "broken-spring"]
+        ],
+        "resultCopy": [
+          "Under the bonnet the strut top is lifting out of a turret gone to lace. Structural rot: the kind you inherit rather than fix.",
+          "The strut tops are solid, sound metal round every mount. Nothing structural: the drop is in the springs themselves, or what they sit on."
+        ],
+        "unlockedBy": {
+          "testId": "ride-height-check"
+        }
+      },
+      {
+        "testId": "seat-poke",
+        "partition": [
+          ["perished-spring-seats"],
+          ["sagging-springs", "broken-spring", "rotted-strut-turret"]
+        ],
+        "resultCopy": [
+          "Poke the spring seats and they give like old biscuit, perished to crumbs. The springs are fine: they've just been standing on bad ground. Pocket money to fix. The seats kept the record the seller didn't.",
+          "The seats hold firm under a screwdriver, rubber still rubber. The springs stand on solid ground."
+        ],
+        "unlockedBy": {
+          "testId": "ride-height-check"
+        }
+      },
+      {
+        "testId": "bounce-test",
+        "partition": [
+          ["sagging-springs", "perished-spring-seats"],
+          ["broken-spring", "rotted-strut-turret"]
+        ],
+        "resultCopy": [
+          "It bounces like a tired car and settles like a tired car. The dampers answer a different question.",
+          "It bounces like a tired car and settles like a tired car. The dampers answer a different question."
+        ],
+        "unlockedBy": {
+          "testId": "ride-height-check"
+        }
       }
     ]
   },
@@ -521,7 +827,11 @@
     "causes": [
       {
         "failureModeId": "panel-respray",
-        "weight": 60
+        "weight": 45
+      },
+      {
+        "failureModeId": "tired-lacquer",
+        "weight": 15
       },
       {
         "failureModeId": "rust-patch",
@@ -534,20 +844,62 @@
     ],
     "tests": [
       {
-        "testId": "undercarriage-look",
-        "partition": [["structural-rail-repair"], ["panel-respray", "rust-patch"]],
+        "testId": "sight-down-the-panel",
+        "partition": [
+          ["panel-respray", "tired-lacquer"],
+          ["rust-patch", "structural-rail-repair"]
+        ],
         "resultCopy": [
-          "A fresh weld bead runs along the rail and a jacking point sits not quite square. A structural rail repair, not just skin-deep panel work.",
-          "The rail underneath looks factory: no weld beads, no kinks, jacking points true. Whatever's been done is skin-deep, narrows to a respray or a filled rust patch."
+          "Down the length of the quarter the line is straight and the filler skim is thin, tidy work under the paint. Cosmetic history: a respray, or lacquer past its best.",
+          "Sight down the panel and the light ripples over it, low waves and a bubble or two under the skin. There's more under that paint than paint."
         ]
       },
       {
         "testId": "magnet-check",
-        "partition": [["rust-patch"], ["panel-respray", "structural-rail-repair"]],
+        "partition": [["rust-patch"], ["panel-respray", "tired-lacquer", "structural-rail-repair"]],
         "resultCopy": [
           "Run a magnet along the quarter and it drops off over one patch where it holds firm everywhere else, filler packed too thick for steel to be behind it. A filled rust hole in the panel, not just paint.",
           "The magnet holds firm the length of the quarter, sound steel under the paint the whole way. No rust hole in the skin, narrows to a plain respray or a repair down in the structure."
-        ]
+        ],
+        "unlockedBy": {
+          "testId": "sight-down-the-panel"
+        }
+      },
+      {
+        "testId": "undercarriage-look",
+        "partition": [["structural-rail-repair"], ["panel-respray", "tired-lacquer", "rust-patch"]],
+        "resultCopy": [
+          "A fresh weld bead down the rail, and a jacking point that's shy of square. Someone straightened this car and hoped. The rail remembers.",
+          "The rail underneath looks factory: no weld beads, no kinks, jacking points true. Whatever's been done is skin-deep, narrows to a respray or a filled rust patch."
+        ],
+        "unlockedBy": {
+          "testId": "sight-down-the-panel"
+        }
+      },
+      {
+        "testId": "polish-spot-test",
+        "partition": [["tired-lacquer"], ["panel-respray", "rust-patch", "structural-rail-repair"]],
+        "resultCopy": [
+          "A dab of compound on one corner and the colour comes back deep enough to stand in. Nothing wrong here a Saturday and a machine polish won't cure. The dull was hiding a good car.",
+          "Compound in, and the finish stays flat and tired. The dullness isn't on the surface: it goes deeper than polish."
+        ],
+        "unlockedBy": {
+          "testId": "sight-down-the-panel"
+        }
+      },
+      {
+        "testId": "open-the-boot",
+        "partition": [
+          ["panel-respray", "tired-lacquer"],
+          ["rust-patch", "structural-rail-repair"]
+        ],
+        "resultCopy": [
+          "Boot floor's dry, seams tidy, spare well seated. Nothing back here confesses. Panels talk from the outside on this one.",
+          "Boot floor's dry, seams tidy, spare well seated. Nothing back here confesses. Panels talk from the outside on this one."
+        ],
+        "unlockedBy": {
+          "testId": "sight-down-the-panel"
+        }
       }
     ]
   },
@@ -628,7 +980,7 @@
           ["heater-matrix-weep", "perished-grommet", "blocked-scuttle-drain", "split-sunroof-drain"]
         ],
         "resultCopy": [
-          "There it is. The bulkhead seam's gone crumbly right where it meets the floor: proper rot, not a patch job.",
+          "There it is. The bulkhead seam's gone crumbly right where it meets the floor: proper rot, not a patch job. Bring a welder or bring a trailer.",
           "The seam's solid all the way across. Wherever the water's getting in, it's cleverer than that."
         ],
         "unlockedBy": {
@@ -701,7 +1053,11 @@
     "causes": [
       {
         "failureModeId": "tired-sender",
-        "weight": 65
+        "weight": 50
+      },
+      {
+        "failureModeId": "thin-cheap-oil",
+        "weight": 15
       },
       {
         "failureModeId": "worn-oil-pump",
@@ -714,20 +1070,51 @@
     ],
     "tests": [
       {
-        "testId": "oil-pressure-check",
-        "partition": [["tired-sender"], ["worn-oil-pump", "worn-main-bearings"]],
+        "testId": "warm-gauge-watch",
+        "partition": [
+          ["tired-sender", "thin-cheap-oil"],
+          ["worn-oil-pump", "worn-main-bearings"]
+        ],
         "resultCopy": [
-          "A proper gauge on the sender port reads steady and correct at hot idle, climbing cleanly with revs. The sender is lying, not the oil: a tired sender, not a real pressure loss.",
-          "The gauge agrees with the light: pressure genuinely sags low at hot idle and barely lifts with revs. Real low pressure, not a lying sender, narrows to the pump or the bearings."
+          "Warm, the flicker only shows at idle and a blip clears it instantly. That smells like a small lie: a lazy sender, or oil thin enough to be almost honest.",
+          "The light's not flickering, it's warning: slow to go out, quick to come back, worse the hotter it gets. If the gauge agrees, this is real pressure going somewhere."
         ]
       },
       {
-        "testId": "stethoscope",
-        "partition": [["worn-main-bearings"], ["tired-sender", "worn-oil-pump"]],
+        "testId": "oil-pressure-check",
+        "partition": [["worn-main-bearings"], ["tired-sender", "thin-cheap-oil", "worn-oil-pump"]],
         "resultCopy": [
-          "On the stethoscope the bottom end has a deep knock that loudens under load, and there's bearing swarf caught on the sump-plug magnet. Worn mains, not the oil pump or a lying sender.",
-          "The bottom end stays quiet and even under load, the sump plug clean of swarf. No bearing knock, narrows to a worn oil pump or a sender telling tales."
-        ]
+          "The proper gauge reads low at hot idle and only part-recovers with revs. That's clearance in the mains: the oil's got more exits than the pump has answers. Bottom-end money.",
+          "On the proper gauge the story isn't bearings: healthy readings mean a lying sender or thin oil; low everywhere including cold is the pump. Either way the crank survives this one."
+        ],
+        "unlockedBy": {
+          "testId": "warm-gauge-watch"
+        }
+      },
+      {
+        "testId": "dipstick-check",
+        "partition": [["thin-cheap-oil"], ["tired-sender", "worn-oil-pump", "worn-main-bearings"]],
+        "resultCopy": [
+          "The dipstick tells it: oil like water, weeks past its best or bought on price. Drain it, fill it with the good stuff, and the light forgets it ever flickered. The cheapest cure in the book.",
+          "The oil on the stick is the right weight and holding its colour. Whatever the light's about, it isn't the oil itself."
+        ],
+        "unlockedBy": {
+          "testId": "warm-gauge-watch"
+        }
+      },
+      {
+        "testId": "stethoscope",
+        "partition": [
+          ["tired-sender", "thin-cheap-oil"],
+          ["worn-oil-pump", "worn-main-bearings"]
+        ],
+        "resultCopy": [
+          "Through the probe: an engine, running.",
+          "Through the probe: an engine, running."
+        ],
+        "unlockedBy": {
+          "testId": "warm-gauge-watch"
+        }
       }
     ]
   },
@@ -737,11 +1124,15 @@
     "causes": [
       {
         "failureModeId": "clogged-fuel-filter",
-        "weight": 62
+        "weight": 50
+      },
+      {
+        "failureModeId": "stale-fuel",
+        "weight": 15
       },
       {
         "failureModeId": "stretched-timing-chain",
-        "weight": 26
+        "weight": 23
       },
       {
         "failureModeId": "jumped-timing-chain",
@@ -750,20 +1141,71 @@
     ],
     "tests": [
       {
-        "testId": "fuel-pressure-check",
-        "partition": [["clogged-fuel-filter"], ["stretched-timing-chain", "jumped-timing-chain"]],
+        "testId": "rev-response-watch",
+        "partition": [
+          ["clogged-fuel-filter", "stale-fuel"],
+          ["stretched-timing-chain", "jumped-timing-chain"]
+        ],
         "resultCopy": [
-          "A gauge tee'd into the fuel line sags well off spec the moment the throttle's blipped. Fuel starvation on the filter and pump side, not the cam timing.",
-          "The gauge tee'd into the fuel line holds steady through the blip, right on spec. Not fuel starvation, narrows to the cam timing, slack or skipped."
+          "Hard on the throttle it pulls, then starves, then catches again: fuel arriving late for work. The tank side: a filter packing up, or fuel that's been sitting as long as the car has.",
+          "The hesitation isn't hunger, it's timing: a baggy, rattly pickup, the engine a beat behind the pedal. The chain side, slack or worse."
         ]
       },
       {
-        "testId": "compression-test",
-        "partition": [["jumped-timing-chain"], ["clogged-fuel-filter", "stretched-timing-chain"]],
+        "testId": "fuel-pressure-check",
+        "partition": [
+          ["clogged-fuel-filter"],
+          ["stale-fuel", "stretched-timing-chain", "jumped-timing-chain"]
+        ],
         "resultCopy": [
-          "A cylinder reads flat, next to no compression, the chain jumped a tooth and the valves met the pistons. Bent valves, not a slack chain or a starved fuel line.",
-          "Compression reads even and healthy across every cylinder, the valves all sealing. No bent valves, narrows to a starved fuel line or a chain merely stretched."
-        ]
+          "A gauge tee'd into the fuel line sags well off spec the moment the throttle's blipped. Fuel starvation on the filter and pump side, not the cam timing.",
+          "The gauge tee'd into the fuel line holds steady through the blip, right on spec. Not fuel starvation, narrows to the cam timing, slack or skipped."
+        ],
+        "unlockedBy": {
+          "testId": "rev-response-watch"
+        }
+      },
+      {
+        "testId": "fuel-sniff",
+        "partition": [
+          ["stale-fuel"],
+          ["clogged-fuel-filter", "stretched-timing-chain", "jumped-timing-chain"]
+        ],
+        "resultCopy": [
+          "The filler neck breathes out varnish, fuel gone stale watching this car not move. Drain it, fresh tank, and half the problem drives away. This one's been sitting: the tank says so even if the seller didn't.",
+          "The fuel smells like fuel, sharp and fresh enough. Whatever's holding it back, it isn't sitting-rot."
+        ],
+        "unlockedBy": {
+          "testId": "rev-response-watch"
+        }
+      },
+      {
+        "testId": "compression-test",
+        "partition": [
+          ["jumped-timing-chain"],
+          ["clogged-fuel-filter", "stale-fuel", "stretched-timing-chain"]
+        ],
+        "resultCopy": [
+          "One cylinder reads flat as the bench. The chain jumped and the valves met the pistons: it was a brief meeting, and the valves lost.",
+          "Compression reads even and healthy across every cylinder, the valves all sealing. The chain never jumped: what's left is slack in the timing, or fuel that isn't arriving fresh and willing."
+        ],
+        "unlockedBy": {
+          "testId": "rev-response-watch"
+        }
+      },
+      {
+        "testId": "pull-a-plug",
+        "partition": [
+          ["clogged-fuel-filter", "stale-fuel"],
+          ["stretched-timing-chain", "jumped-timing-chain"]
+        ],
+        "resultCopy": [
+          "Plugs read a touch lean and nothing else. Starved or late, they can't say which: the plug only knows it's hungry.",
+          "Plugs read a touch lean and nothing else. Starved or late, they can't say which: the plug only knows it's hungry."
+        ],
+        "unlockedBy": {
+          "testId": "rev-response-watch"
+        }
       }
     ]
   },

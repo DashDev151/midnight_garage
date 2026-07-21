@@ -346,9 +346,19 @@ describe('advanceDay golden master', () => {
     // integer slots to x10 energy points (`energySpentToday`, job labour), so the
     // hashed labour values move x10. A pure VALUE change (directive 17 case (a)):
     // no state-shape change, and the repeat-run determinism test above still passes.
+    // Re-pinned again (was 8be9ace1): the failure-mode registry gains five entries
+    // and five symptoms' cause tables are rebalanced with new causes, which shifts
+    // every seeded generation draw downstream from the first affected roll. A pure
+    // content change (directive 17 case (a)), not a sim-logic change: no state-
+    // shape change, and the repeat-run determinism test below still passes unchanged.
+    // Re-pinned again (was 59bc7db2): the 13-board diagnosis rebuild plus the
+    // symptomChanceByTier retune (0.55/0.5/0.45/0.35) reshuffle every seeded
+    // symptom and cause draw from day 1. A pure content change (directive 17
+    // case (a)), not a sim-logic change: no state-shape change, and the
+    // repeat-run determinism test below still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('8be9ace1')
+    expect(hashState(finalState)).toBe('39def365')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -607,7 +617,17 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned again (Sprint 94 energy bar, was acc59f28): labour rescaled to x10
     // energy points, so hashed labour values move x10 - a pure VALUE change
     // (directive 17 case (a)), determinism intact via the repeat-run test.
-    expect(hashState(acquisitionCareer().sold)).toBe('241e896b')
+    // Re-pinned again (was 241e896b): same cause as the 30-day career hash above -
+    // the five new registry entries and the five rebalanced symptom cause tables
+    // shift this acquisition->sale career's seeded stream from the first affected
+    // roll (directive 17 case (a)); the win/sale still resolve, and the repeat-run
+    // determinism test above still passes unchanged.
+    // Re-pinned again (was 7c18dab1): same cause as the 30-day career hash above -
+    // the 13-board diagnosis rebuild and the symptomChanceByTier retune reshuffle
+    // this acquisition->sale career's seeded stream from day 1 (directive 17 case
+    // (a)); the win/sale still resolve, and the repeat-run determinism test above
+    // still passes unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('55414088')
   })
 })
 

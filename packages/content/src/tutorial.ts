@@ -47,6 +47,9 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  * - `benchMemberBandAtLeast`: the scripted car's benched assembly member at
  *   `carPartId` holds an instance at `band` or better - the "fresh rubber is
  *   on the bench, refit it" beat (`showWhen`/`hideWhen` only).
+ * - `testRun`: the scripted tutorial car's first symptom has had `testId` run
+ *   (the test id appears in its `runTestIds`) - the diagnostic-test-done
+ *   signal.
  */
 const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('missionActive') }),
@@ -72,6 +75,7 @@ const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
     carPartId: CarPartIdSchema,
     band: ConditionBandSchema,
   }),
+  z.object({ kind: z.literal('testRun'), testId: z.string().min(1) }),
 ])
 
 export type TutorialBaseCondition = z.infer<typeof TutorialBaseConditionSchema>

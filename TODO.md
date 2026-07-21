@@ -363,6 +363,28 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Auto-bid, and a wider accessibility suite (maintainer-proposed 2026-07-21; auto-bid is
+  REQUIRED for the live-auction promotion, not optional).** The live room's per-bid fuse is the
+  one sanctioned exception to the no-reflex-input law; auto-bid is what squares that exception
+  with the law for players who struggle with click speed. Shape: the player sets a ceiling
+  (default: their own estimated value, i.e. "your number" from inspection) and the room places
+  their rung-one bids automatically up to it - the existing machine already supports this
+  (playerBid on a timer against a ceiling), and it deliberately never jumps, so reactions stay
+  reader-triggered. The wider suite to scope with it: fuse-length setting (clockMs is already
+  central), reduced motion, and colour-independent severity cues (band chips currently lean on
+  colour). Lands with the Sprint 100 promotion redesign.
+- [ ] **The Master Inspector staff trait - the diagnosis opt-out as an economy choice
+  (maintainer-proposed 2026-07-21).** A hireable character who "can find any issue and has no
+  interest in fixing any of them" (final copy at the content bar): while employed, the player
+  can send them to inspect lots instead of reading the trees personally; they walk the optimal
+  route within the visit's minute budget and the trail fills in with the same result lines, so
+  the flavour still plays, the player just does not choose. The opt-out therefore costs a staff
+  slot and wages on an otherwise-lacklustre hire rather than a settings toggle: engaged players
+  keep their edge for free, disengaged players buy theirs. Implementation note: the
+  best-route walker in diagnosisRouteProbes is effectively this character's brain already;
+  staff traits already touch inspection (auction-rat's extra minutes), so this is a trait plus
+  one resolver, not a new system. RULED v1.0 (maintainer, 2026-07-21), not post-launch.
+
 - [ ] **Auction Guarantors** (`docs/design/auction-guarantors.md`, maintainer-authored,
   filed 2026-07-19): story-mission guarantors replace the passive rep gate on
   regional/premium/collector-network. Maintainer ruling: implement AFTER the economy
