@@ -458,5 +458,17 @@
     "crewSpeedDiscount": [0, 0, 0, 1, 1, 2],
     "auctionRatExtraMinutes": 20,
     "perfectionistPartsDiscount": 0.1
+  },
+  "auctionGrading": {
+    "overallRatioSteps": [
+      { "maxRatio": 0.01, "grade": "S" },
+      { "maxRatio": 0.04, "grade": "6" },
+      { "maxRatio": 0.08, "grade": "5" },
+      { "maxRatio": 0.13, "grade": "4.5" },
+      { "maxRatio": 0.19, "grade": "4" },
+      { "maxRatio": 0.27, "grade": "3.5" },
+      { "maxRatio": 0.38, "grade": "3" },
+      { "maxRatio": 0.55, "grade": "2" }
+    ]
   }
 }

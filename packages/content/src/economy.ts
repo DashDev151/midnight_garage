@@ -67,6 +67,20 @@ const DayRangeSchema = z
   .tuple([z.number().int().positive(), z.number().int().positive()])
   .refine(([min, max]) => min <= max, { message: 'range min must be <= max' })
 
+/**
+ * One rung of the auction card's overall-grade ladder: the apparent
+ * restoration bill, as a fraction of the model's book value, at or below
+ * which the lot earns `grade`. `computeAuctionGrade` (sim/auctionGrade.ts)
+ * walks `overallRatioSteps` top-down and returns the first match; a ratio
+ * past every listed `maxRatio` falls through to grade '1' in code, so '1'
+ * itself never needs a step here. `grade` excludes 'R': that grade is the
+ * mechanical-corpse override, never a ratio-table outcome.
+ */
+const AuctionGradingStepSchema = z.object({
+  maxRatio: z.number().positive(),
+  grade: z.enum(['S', '6', '5', '4.5', '4', '3.5', '3', '2', '1']),
+})
+
 /** A [min, max] millisecond delay band, min <= max - the auction room's raise
  * pacing, reused for both the ordinary and the feud delay bands. */
 const AuctionRoomDelayRangeSchema = z
@@ -1507,6 +1521,20 @@ export const EconomyConfigSchema = z.object({
       },
       { message: 'staff.skillGroupMap must partition every component group exactly once' },
     ),
+  /**
+   * The auction card's four-stamp grade. `overallRatioSteps` is the only
+   * tunable: `computeAuctionGrade` (sim/auctionGrade.ts) divides the
+   * apparent car's mint-referenced restoration bill by the model's book
+   * value and walks this list top-down for the first step whose `maxRatio`
+   * covers that fraction, so a cheap car's bill has to be a much smaller
+   * slice of its own book value to earn the same grade as an expensive
+   * one's. Must stay non-empty; the letter grades (mechanical, exterior,
+   * interior) and the 'R' mechanical-corpse override carry no tunables of
+   * their own.
+   */
+  auctionGrading: z.object({
+    overallRatioSteps: z.array(AuctionGradingStepSchema).min(1),
+  }),
 })
 
 export type EconomyConfig = z.infer<typeof EconomyConfigSchema>

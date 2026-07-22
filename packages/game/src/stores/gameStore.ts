@@ -2161,7 +2161,7 @@ export const useGameStore = defineStore('game', () => {
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       turnout: lot.turnout,
       groupBands: groupBandsForCar(apparentCar),
-      auctionGrade: computeAuctionGrade(apparentCar, model, context.value.partIdsByGroup),
+      auctionGrade: computeAuctionGrade(apparentCar, model, context.value),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
       symptoms: symptomChecklistForCar(lot.car, apparentCar, model),

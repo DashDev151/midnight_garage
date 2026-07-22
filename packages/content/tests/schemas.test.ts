@@ -370,6 +370,7 @@ describe('seed content validates against schemas', () => {
       'auctionRoom',
       'lapModel',
       'staff',
+      'auctionGrading',
     ].sort()
     expect(Object.keys(economy).sort()).toEqual(expectedTopLevelKeys)
   })
@@ -428,6 +429,29 @@ describe('seed content validates against schemas', () => {
       spiteChance: 0.35,
       spiteMaxRungs: 1,
     })
+  })
+
+  /**
+   * The auction card's overall-grade ratio ladder (`computeAuctionGrade`,
+   * sim/auctionGrade.ts): a nonempty, ordered list of ratio/grade steps, none
+   * naming 'R' (the mechanical-corpse override lives in code, never a ratio
+   * outcome).
+   */
+  it('parses the auctionGrading block', () => {
+    const result = EconomyConfigSchema.safeParse(economy)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.auctionGrading.overallRatioSteps.length).toBeGreaterThan(0)
+    expect(result.data.auctionGrading.overallRatioSteps).toEqual([
+      { maxRatio: 0.01, grade: 'S' },
+      { maxRatio: 0.04, grade: '6' },
+      { maxRatio: 0.08, grade: '5' },
+      { maxRatio: 0.13, grade: '4.5' },
+      { maxRatio: 0.19, grade: '4' },
+      { maxRatio: 0.27, grade: '3.5' },
+      { maxRatio: 0.38, grade: '3' },
+      { maxRatio: 0.55, grade: '2' },
+    ])
   })
 })
 

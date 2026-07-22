@@ -162,6 +162,7 @@ describe('AuctionScreen', () => {
     // acquisition; the grade trio is the pre-bid condition read.
     expect(wrapper.find('.lot-bands').exists()).toBe(false)
     expect(wrapper.find(`[data-test="grade-stamp-overall-${lot.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-test="grade-stamp-mech-${lot.id}"]`).exists()).toBe(true)
     expect(wrapper.find(`[data-test="grade-stamp-ext-${lot.id}"]`).exists()).toBe(true)
     expect(wrapper.find(`[data-test="grade-stamp-int-${lot.id}"]`).exists()).toBe(true)
   })
@@ -204,7 +205,7 @@ describe('AuctionScreen', () => {
   })
 
   describe('the auction-grade stamps (Sprint 56: replaces the Sprint 50 grade-line text)', () => {
-    it('shows three grade stamps per lot, matching computeAuctionGrade for that car - no toggle needed', () => {
+    it('shows four grade stamps per lot, matching computeAuctionGrade for that car - no toggle needed', () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
@@ -212,12 +213,15 @@ describe('AuctionScreen', () => {
       const wrapper = mountScreen()
 
       const overall = wrapper.find(`[data-test="grade-stamp-overall-${lot.id}"]`)
+      const mech = wrapper.find(`[data-test="grade-stamp-mech-${lot.id}"]`)
       const ext = wrapper.find(`[data-test="grade-stamp-ext-${lot.id}"]`)
       const int = wrapper.find(`[data-test="grade-stamp-int-${lot.id}"]`)
       expect(overall.exists()).toBe(true)
+      expect(mech.exists()).toBe(true)
       expect(ext.exists()).toBe(true)
       expect(int.exists()).toBe(true)
       expect(overall.text()).toContain(detail.auctionGrade.overall)
+      expect(mech.text()).toContain(detail.auctionGrade.mechanical)
       expect(ext.text()).toContain(detail.auctionGrade.exterior)
       expect(int.text()).toContain(detail.auctionGrade.interior)
 

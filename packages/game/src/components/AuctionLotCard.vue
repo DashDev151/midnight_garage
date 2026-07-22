@@ -134,6 +134,11 @@ const TURNOUT_LABEL: Record<string, string> = {
           :data-test="'grade-stamp-overall-' + d.lot.id"
         />
         <GradeStamp
+          label="Mech"
+          :grade="d.auctionGrade.mechanical"
+          :data-test="'grade-stamp-mech-' + d.lot.id"
+        />
+        <GradeStamp
           label="Ext"
           :grade="d.auctionGrade.exterior"
           :data-test="'grade-stamp-ext-' + d.lot.id"

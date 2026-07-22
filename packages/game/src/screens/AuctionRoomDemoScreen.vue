@@ -93,7 +93,7 @@ function cardViewFor(
     displayName: resolveCarDisplayName(model),
     fitmentClass: fitmentClassForTier(model.tier),
     turnout,
-    auctionGrade: computeAuctionGrade(apparentCar, model, game.context.partIdsByGroup),
+    auctionGrade: computeAuctionGrade(apparentCar, model, game.context),
     symptoms: game.symptomChecklistForCar(lot.car, apparentCar, model),
     guideValueYen,
     ledger: roomLedgerFor(lot.car, model, state, game.context),

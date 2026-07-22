@@ -1,25 +1,37 @@
-import type { CarInstance, CarModel, CarPartId, ComponentId } from '@midnight-garage/content'
-import { bandIndex, isPartMissing } from './bands'
+import type { CarInstance, CarModel, ComponentId } from '@midnight-garage/content'
+import { bandIndex, carCostToMintYen, isPartMissing } from './bands'
+import type { SimContext } from './context'
 
 /**
- * Sprint 50: a real-world Japanese-used-car-auction-style condition summary,
- * computed purely from the car's EXISTING band state (never a new mechanic -
- * the 5-band repair/value model in bands.ts is untouched). Display-only:
- * feeds the auction screen's condition-report replacement, nothing else
- * reads it.
+ * The auction card's four-stamp condition read: one OVERALL number (how big
+ * the visible restoration project is, priced against the model it sits on)
+ * plus three area letters (where the wear actually lives). Display-only,
+ * computed purely from the car's own band state - never a second condition
+ * mechanic. Callers pass the APPARENT car (`apparentViewOf`); this function
+ * never applies that view itself, so a hidden symptom never leaks through
+ * the grade.
  *
- * The 6 component groups partition cleanly across the three readings below
- * so nothing is counted twice: `overall` reads ONLY the mechanical groups
- * (engine/drivetrain/suspension) - a real auction's headline grade tracks
- * age/mechanical condition, not cosmetics, which the two letter grades
- * already cover. `exterior`/`interior` read the remaining three groups
- * (body+wheels, interior) and never move the overall number.
+ * OVERALL prices `carCostToMintYen` against `model.bookValueYen`: the same
+ * bill in yen weighs more on a cheap car than an expensive one, so a trashed
+ * interior barely dents a collector car's overall while it craters a kei's -
+ * the letters below carry the state, the overall carries the cost.
+ *
+ * The 'R' override is the visible-corpse flag: a scrap or genuinely missing
+ * MECHANICAL part (engine, drivetrain, or suspension) reads as a car nobody
+ * should drive home, regardless of what the ratio table would otherwise say.
+ * Real auction R means accident history, not this - kept as a donor-car
+ * shorthand rather than a literal claim.
+ *
+ * Mileage and market heat never enter this grade: it reads the metal in
+ * front of the bidder, not what the market currently thinks that metal is
+ * worth.
  */
 export type OverallAuctionGrade = 'S' | '6' | '5' | '4.5' | '4' | '3.5' | '3' | '2' | '1' | 'R'
 export type LetterAuctionGrade = 'A' | 'B' | 'C' | 'D' | 'E'
 
 export interface AuctionGrade {
   overall: OverallAuctionGrade
+  mechanical: LetterAuctionGrade
   exterior: LetterAuctionGrade
   interior: LetterAuctionGrade
 }
@@ -28,44 +40,33 @@ const MECHANICAL_GROUPS: readonly ComponentId[] = ['engine', 'drivetrain', 'susp
 const EXTERIOR_GROUPS: readonly ComponentId[] = ['body', 'wheels']
 const INTERIOR_GROUPS: readonly ComponentId[] = ['interior']
 
-/** mint(4) -> A ... scrap(0) -> E - a direct 1:1 readout, no new tunables. */
+/** mint(4) -> A ... scrap(0) -> E: a direct readout of `bandIndex`, no tunables. */
 const LETTER_BY_BAND_INDEX: readonly LetterAuctionGrade[] = ['E', 'D', 'C', 'B', 'A']
 
-/** Overall grade steps, checked top-down against the mechanical groups'
- * average band index (0 = every mechanical part scrap-equivalent, 4 = every
- * mechanical part mint). Reaching `S` requires a near-perfect car, matching
- * how rare a real S-grade actually is. */
-const OVERALL_GRADE_STEPS: readonly [minAverage: number, grade: OverallAuctionGrade][] = [
-  [3.9, 'S'],
-  [3.6, '6'],
-  [3.2, '5'],
-  [2.8, '4.5'],
-  [2.4, '4'],
-  [2.0, '3.5'],
-  [1.5, '3'],
-  [1.0, '2'],
-]
-
-function overallGradeFromAverage(average: number): OverallAuctionGrade {
-  for (const [minAverage, grade] of OVERALL_GRADE_STEPS) {
-    if (average >= minAverage) return grade
-  }
-  return '1'
+/**
+ * One area's condition impression: the average band index over every
+ * present-or-genuinely-missing part in `groups` (a legitimately-absent slot,
+ * e.g. forced induction on a naturally-aspirated model, never counts either
+ * way), and whether any counted part is scrap or genuinely missing at all -
+ * the step-down trigger below. `count` zero (every slot in the area
+ * legitimately absent) defaults the average to mint and the flag to false,
+ * which is exactly "an all-absent area reads A."
+ */
+interface AreaReading {
+  averageBandIndex: number
+  hasWreckage: boolean
+  count: number
 }
 
-/** Worst-band-index reading (0..4) across `groups`, treating a genuinely
- * missing part as worse than scrap-equivalent (0) and a legitimately-absent
- * slot (e.g. forced induction on an NA car) as never counting at all -
- * mirrors `worstRepairableBandInGroup`'s present/missing/absent handling
- * (bands.ts), just aggregated across several groups instead of one. Defaults
- * to `mint` (index 4) when every part in `groups` is legitimately absent. */
-function worstBandIndexIn(
+function areaReadingFor(
   car: CarInstance,
   model: CarModel,
   groups: readonly ComponentId[],
-  partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
-): number {
-  let worst = bandIndex('mint')
+  partIdsByGroup: SimContext['partIdsByGroup'],
+): AreaReading {
+  let sum = 0
+  let count = 0
+  let hasWreckage = false
   for (const groupId of groups) {
     for (const partId of partIdsByGroup[groupId]) {
       const installed = car.parts[partId].installed
@@ -73,47 +74,76 @@ function worstBandIndexIn(
       if (!installed) {
         if (!isPartMissing(car, model, partId)) continue // legitimately absent - never counts
         index = bandIndex('scrap')
+        hasWreckage = true
       } else {
         index = bandIndex(installed.band)
-      }
-      if (index < worst) worst = index
-    }
-  }
-  return worst
-}
-
-export function computeAuctionGrade(
-  car: CarInstance,
-  model: CarModel,
-  partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
-): AuctionGrade {
-  let hasStructuralDefect = false
-  let sum = 0
-  let count = 0
-  for (const groupId of MECHANICAL_GROUPS) {
-    for (const partId of partIdsByGroup[groupId]) {
-      const installed = car.parts[partId].installed
-      let index: number
-      if (!installed) {
-        if (!isPartMissing(car, model, partId)) continue
-        hasStructuralDefect = true
-        index = bandIndex('scrap')
-      } else {
-        index = bandIndex(installed.band)
-        if (installed.band === 'scrap') hasStructuralDefect = true
+        if (installed.band === 'scrap') hasWreckage = true
       }
       sum += index
       count += 1
     }
   }
-  const average = count > 0 ? sum / count : bandIndex('mint')
+  return { averageBandIndex: count > 0 ? sum / count : bandIndex('mint'), hasWreckage, count }
+}
 
-  const exteriorIndex = worstBandIndexIn(car, model, EXTERIOR_GROUPS, partIdsByGroup)
-  const interiorIndex = worstBandIndexIn(car, model, INTERIOR_GROUPS, partIdsByGroup)
+/**
+ * The area's average band index, rounded to the nearest letter, then stepped
+ * down one letter (floored at 'E') when the area carries any scrap or
+ * genuinely missing part - so two areas can share a middling average and
+ * still read differently once one of them is actually wrecked rather than
+ * merely worn all over.
+ */
+function letterFor(reading: AreaReading): LetterAuctionGrade {
+  const roundedIndex = Math.round(reading.averageBandIndex)
+  const steppedIndex = reading.hasWreckage ? Math.max(0, roundedIndex - 1) : roundedIndex
+  return LETTER_BY_BAND_INDEX[steppedIndex]!
+}
 
+/**
+ * Walks `overallRatioSteps` top-down for the first step whose `maxRatio`
+ * covers `ratio`, falling through to '1' when the bill outruns every listed
+ * step - the same "first match wins, else the floor" shape the content
+ * schema's own doc comment describes.
+ */
+function overallGradeForRatio(
+  ratio: number,
+  overallRatioSteps: SimContext['economy']['auctionGrading']['overallRatioSteps'],
+): OverallAuctionGrade {
+  for (const step of overallRatioSteps) {
+    if (step.maxRatio >= ratio) return step.grade
+  }
+  return '1'
+}
+
+export function computeAuctionGrade(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+): AuctionGrade {
+  const mechanical = areaReadingFor(car, model, MECHANICAL_GROUPS, context.partIdsByGroup)
+  const exterior = areaReadingFor(car, model, EXTERIOR_GROUPS, context.partIdsByGroup)
+  const interior = areaReadingFor(car, model, INTERIOR_GROUPS, context.partIdsByGroup)
+
+  const letters = {
+    mechanical: letterFor(mechanical),
+    exterior: letterFor(exterior),
+    interior: letterFor(interior),
+  }
+
+  if (mechanical.hasWreckage) {
+    return { overall: 'R', ...letters }
+  }
+
+  const billYen = carCostToMintYen(
+    car,
+    model,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
+  const ratio = billYen / model.bookValueYen
   return {
-    overall: hasStructuralDefect ? 'R' : overallGradeFromAverage(average),
-    exterior: LETTER_BY_BAND_INDEX[exteriorIndex]!,
-    interior: LETTER_BY_BAND_INDEX[interiorIndex]!,
+    overall: overallGradeForRatio(ratio, context.economy.auctionGrading.overallRatioSteps),
+    ...letters,
   }
 }
