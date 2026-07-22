@@ -3,19 +3,20 @@ import { clearDragSession, useDragSession, useDraggable } from '../composables/u
 import { router } from './index'
 
 describe('router (Sprint 24 fix 1)', () => {
-  it('a navigation always clears any in-flight drag/pick session', async () => {
-    // The initial navigation lands on '/' (garage), so settle it and move
-    // elsewhere first: the assertion needs the later push to be a REAL
-    // navigation, and a push to the current route fires no guard.
-    await router.isReady()
-    await router.push({ name: 'auctions' })
+  // Generous timeout: the push awaits GarageScreen's lazy chunk, and under
+  // coverage instrumentation that import alone can blow through the 5s
+  // default.
+  it(
+    'a navigation always clears any in-flight drag/pick session',
+    { timeout: 30_000 },
+    async () => {
+      useDraggable(() => 'some-part-id').togglePick()
+      expect(useDragSession().value).not.toBeNull()
 
-    useDraggable(() => 'some-part-id').togglePick()
-    expect(useDragSession().value).not.toBeNull()
+      await router.push({ name: 'garage' })
+      expect(useDragSession().value).toBeNull()
 
-    await router.push({ name: 'garage' })
-    expect(useDragSession().value).toBeNull()
-
-    clearDragSession()
-  })
+      clearDragSession()
+    },
+  )
 })
