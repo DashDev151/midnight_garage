@@ -279,6 +279,33 @@ maintainer or CI run can catch a coherence drift before a playtest does.
 
 ## Amendment log
 
+- 2026-07-22: **The core-loop law added by explicit maintainer approval (in session, verbatim:
+  "The entire gameplay loop is Buying a car, FIXING IT, and then selling it. Without the FIXING
+  IT part there IS NO GAMEPLAY LOOP. IT MUST ALWAYS BE PROFITABLE TO FIX"), scope confirmed as
+  the two-clause form:** (1) every generated car carries work: generation guarantees at least a
+  tunable minimum of below-expectation repair bill on every lot
+  (`partsGeneration.minWorkBillFractionByTier`, the trap-guard gap named in this document's own
+  2026-07-14 diagnosis, finally closed in its inverse form as a work guarantee; cherished
+  provenance now means less damage, never none); (2) the fix play's profitability is what
+  Law 1's below-band clause ALREADY guarantees per repair yen (`marketRepairDiscount`,
+  unchanged at 1.3): the ruling adds no new profitability accounting. Law 1's
+  beyond-expectation diminishing clause is deliberately UNCHANGED: the when-to-stop decision
+  stays. Implementation: the generation floor alone, Sprint 113 (`docs/sprints/sprint113.md`),
+  triggered by the 2026-07-22 long-run playtest blocker (20% of shitbox lots generated with
+  zero fixable work).
+
+  **Same-day correction, recorded verbatim in substance:** the orchestrator initially
+  reinterpreted the ruling through Law 6's rent-inclusive wage accounting and changed live
+  constants to satisfy it (`marketRepairDiscount` 1.4, a fitment-class labour-time factor, a
+  hard wage gate on all tiers, six mission payouts re-authored). The maintainer rejected the
+  reinterpretation and ordered a full revert: labour slows the loop down, it does not decide
+  whether a fix is profitable; and the wage-margin gradient across tiers is intentional
+  progression (it is supposed to get easier to make money with nicer cars). Law 6's wage
+  probe therefore keeps its Sprint 72 posture: non-shitbox tiers gated positive, the shitbox
+  tier measured and disclosed as pacing information, not a profitability defect. Nobody
+  changes economy constants on an inferred mandate again; explicit approval of the specific
+  change, every time.
+
 - 2026-07-14: document created; Law 3 and the fitment-class/pricing-sheet system implemented
   (Sprint 53). Laws 1 and 2 designed, implementation pending (Sprint 54). Law 4's full machine-
   checked audit designed, implementation pending (Sprint 55).

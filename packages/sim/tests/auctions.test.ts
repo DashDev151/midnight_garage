@@ -2,12 +2,15 @@ import {
   ALL_CAR_PART_IDS,
   BUYERS,
   CARS,
+  ECONOMY,
   fitmentClassForTier,
   PARTS,
   PARTS_TAXONOMY,
+  type AuctionTier,
   type CarInstance,
   type CarModel,
   type GameState,
+  type RarityTier,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
@@ -15,7 +18,9 @@ import {
   generateAuctionCarInstance,
   generateAuctionCatalog,
 } from '../src/auctions'
+import { bandIndex, carCostToBandYen } from '../src/bands'
 import { buildSimContext } from '../src/context'
+import { expectationForCar } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
@@ -460,9 +465,17 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
   })
 
   it('a brand-new (age-0) car does not roll nearly every part poor', () => {
-    // A near-new car is low-mileage, so its condition baseline sits high - a
-    // small poor tail is fine, a majority is the incoherence this chain fixes.
-    expect(poorOrWorseFraction(generateAtAge(0, 100, 'young'))).toBeLessThan(0.2)
+    // A near-new car is low-mileage, so its wear-model condition baseline
+    // sits high. The core-loop floor now layers a SEPARATE, deliberate
+    // below-expectation top-up on top of that baseline (regardless of age -
+    // every generated car carries some floor-level fixable work), and for a
+    // shitbox model that top-up can only ever land on `poor` (its own
+    // 'worn' expectation band means anything milder does not count as
+    // below-expectation work), never a spread of gentler bands. The honest
+    // post-floor fraction therefore sits well above the old wear-model-only
+    // baseline this test measured before the floor existed - not a majority,
+    // but no longer a small tail either.
+    expect(poorOrWorseFraction(generateAtAge(0, 100, 'young'))).toBeLessThan(0.4)
   })
 
   it('an old (age ~25) car rolls meaningfully worse on average than an age-0 car, same seeds', () => {
@@ -493,4 +506,112 @@ describe('lot transparency (Sprint 26 decision 10 - no reveal machinery)', () =>
     const state = stateWithLots([lot])
     expect(state.activeAuctionLots[0]!.car.parts).toEqual(lot.car.parts)
   })
+})
+
+/**
+ * The core-loop law's floor: generation never produces a car with nothing
+ * below-expectation to fix. `partsGeneration.minWorkBillFractionByTier`
+ * fixes a minimum below-expectation bill per fitment class, and
+ * `generateAuctionCarInstance` tops up honest visible wear until every
+ * generated car clears it, cherished provenance included (cherished only
+ * ever means LESS damage, never none).
+ *
+ * The top-up's own contract has two legitimate outcomes, never a silent
+ * third: either the floor is met, or every present part has already bottomed
+ * out at `poor` (the worst band the never-force-`scrap` rule ever leaves a
+ * part at) with nothing left anywhere on the car to degrade further - a
+ * model whose parts are collectively too cheap, relative to its own book
+ * value, to reach the floor without scrapping something. Both outcomes are
+ * checked explicitly below; a shortfall that is NOT also fully exhausted is
+ * a real failure, not tolerance.
+ */
+describe('the core-loop floor: every generated lot carries fixable work', () => {
+  // Local Yard mixes shitbox and common models, so both are exercised there
+  // under their own rarity tier, each with its own floor fraction.
+  const TIERS: readonly [RarityTier, AuctionTier][] = [
+    ['shitbox', 'local-yard'],
+    ['common', 'local-yard'],
+    ['uncommon', 'regional'],
+    ['rare', 'premium'],
+  ]
+  const SEEDS = [11, 22, 33, 44, 55]
+  const LOTS_PER_SEED = 50 // 5 seeds x 50 = 250 lots per tier, clearing the 200-lot floor
+
+  const CHERISHED_PROVENANCE_NOTES = new Set(
+    Object.values(CONTEXT.provenancePool).flatMap((byUpkeepTier) => byUpkeepTier.cherished),
+  )
+
+  function floorYenFor(model: CarModel): number {
+    const fitmentClass = fitmentClassForTier(model.tier)
+    return Math.round(
+      model.bookValueYen * ECONOMY.partsGeneration.minWorkBillFractionByTier[fitmentClass],
+    )
+  }
+
+  function billBelowExpectationYen(car: CarInstance, model: CarModel): number {
+    return carCostToBandYen(
+      car,
+      model,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      ECONOMY,
+      expectationForCar(model, ECONOMY).band,
+    )
+  }
+
+  /** True once every present part sits at `poor` or worse - the state the
+   * top-up's never-force-`scrap` rule leaves a fully-exhausted candidate pool
+   * in. A missing or legitimately-absent slot was never a top-up candidate,
+   * so it never counts against this. */
+  function everyPartAtWorstReachableBand(car: CarInstance): boolean {
+    return ALL_CAR_PART_IDS.every((partId) => {
+      const installed = car.parts[partId].installed
+      return !installed || bandIndex(installed.band) <= bandIndex('poor')
+    })
+  }
+
+  function expectMeetsFloorOrExhausted(
+    lot: ReturnType<typeof generateAuctionCatalog>[number],
+    lotModel: CarModel,
+    rarityTier: RarityTier,
+  ): void {
+    const billBelow = billBelowExpectationYen(lot.car, lotModel)
+    const floor = floorYenFor(lotModel)
+    const metFloor = billBelow >= floor
+    const exhausted = everyPartAtWorstReachableBand(lot.car)
+    expect(
+      metFloor || exhausted,
+      `${lot.id} (${lotModel.id}): below-expectation bill ${billBelow} under its ${rarityTier} floor ${floor}, and NOT every part is exhausted at its worst reachable band - a real shortfall`,
+    ).toBe(true)
+  }
+
+  for (const [rarityTier, auctionTier] of TIERS) {
+    it(`every ${rarityTier} lot's true car meets its floor (or is fully exhausted trying), over >= 200 lots across several seeds`, () => {
+      const models = CARS.filter((m) => m.tier === rarityTier)
+      expect(models.length, `fixture roster has no ${rarityTier} models`).toBeGreaterThan(0)
+
+      const lots = SEEDS.flatMap((seed) =>
+        generateAuctionCatalog(models, auctionTier, 7, LOTS_PER_SEED, createRng(seed), CONTEXT),
+      )
+      expect(lots.length).toBeGreaterThanOrEqual(200)
+
+      for (const lot of lots) {
+        const lotModel = CONTEXT.modelsById[lot.modelId]
+        if (!lotModel) throw new Error(`generated lot references unknown model "${lot.modelId}"`)
+        expectMeetsFloorOrExhausted(lot, lotModel, rarityTier)
+      }
+
+      const cherishedLots = lots.filter((lot) =>
+        CHERISHED_PROVENANCE_NOTES.has(lot.car.provenanceNote),
+      )
+      expect(
+        cherishedLots.length,
+        `expected at least one cherished-provenance ${rarityTier} lot in the sample`,
+      ).toBeGreaterThan(0)
+      for (const lot of cherishedLots) {
+        const lotModel = CONTEXT.modelsById[lot.modelId]!
+        expectMeetsFloorOrExhausted(lot, lotModel, rarityTier)
+      }
+    })
+  }
 })

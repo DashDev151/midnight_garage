@@ -364,9 +364,15 @@ describe('advanceDay golden master', () => {
     // for the whole run. Directive 17 case (a), not a sim-logic bug: no
     // state-shape change, and the repeat-run determinism test below still
     // passes unchanged.
+    // Re-pinned again (was 8ae0637c): the core-loop minimum-work floor tops up
+    // every generated car's below-expectation bill with seeded degrade draws,
+    // consuming extra rng.next() calls generation did not make before - every
+    // later seeded roll in this career shifts as a result. Directive 17 case
+    // (a), not a sim-logic bug: no state-shape change, and the repeat-run
+    // determinism test below still passes unchanged.
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('8ae0637c')
+    expect(hashState(finalState)).toBe('64522008')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -633,7 +639,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // never waiting on a quiet-days or backstop hammer; directive 17 case (a), the
     // win/sale still resolve exactly as the test above asserts, and the repeat-run
     // determinism test still passes unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('6e332deb')
+    // Re-pinned again (was 6e332deb): same cause as the 30-day career hash above -
+    // the core-loop minimum-work floor's seeded top-up consumes extra rng draws
+    // during generation, shifting this career's seeded stream from day 1;
+    // directive 17 case (a), the win/sale still resolve exactly as the test above
+    // asserts, and the repeat-run determinism test still passes unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('76db2e32')
   })
 })
 

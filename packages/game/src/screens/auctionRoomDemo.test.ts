@@ -20,25 +20,30 @@ describe('auctionRoomDemo lobby', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('selects the highest-ratio lot (thin) and the single genuine trap (packed) from the fixed catalogue', () => {
+    // Directive 17 case (a): the seeded catalogue search picks whichever real
+    // car scores best/worst by true-value-to-read ratio, so a
+    // `valuation.marketRepairDiscount` or generation-floor move can pick
+    // different real cars entirely (not just move a price) - every field
+    // below is re-derived off a fresh run, not adjusted by hand.
     const [thin, packed] = buildLobby()
 
     expect(thin!.key).toBe('thin')
     expect(thin!.displayName).toBe('Honda CR-X SiR (EF8)')
-    expect(thin!.roomReadYen).toBe(196_877)
-    expect(thin!.trueValueYen).toBe(221_938)
+    expect(thin!.roomReadYen).toBe(266_639)
+    expect(thin!.trueValueYen).toBe(299_249)
     expect(thin!.incrementYen).toBe(5_000)
     expect(thin!.dealerCount).toBe(2)
     expect(thin!.verdict).toBe('better')
-    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.12729, 4)
+    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.1223, 4)
 
     expect(packed!.key).toBe('packed')
-    expect(packed!.displayName).toBe('Honda Prelude Si VTEC (BB4)')
-    expect(packed!.roomReadYen).toBe(444_437)
-    expect(packed!.trueValueYen).toBe(308_951)
+    expect(packed!.displayName).toBe('Honda Civic SiR-II (EG6)')
+    expect(packed!.roomReadYen).toBe(364_269)
+    expect(packed!.trueValueYen).toBe(196_388)
     expect(packed!.incrementYen).toBe(5_000)
     expect(packed!.dealerCount).toBe(6)
     expect(packed!.verdict).toBe('worse')
-    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.69515, 4)
+    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.5391, 4)
 
     // The thin lot beats the read (a clear steal); the trap sits below the trap
     // band of the read.

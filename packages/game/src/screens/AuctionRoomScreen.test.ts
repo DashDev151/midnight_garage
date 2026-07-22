@@ -63,6 +63,7 @@ interface RoomLike {
   clearingYen: number
   playerNumberYen: number
   config: { clockMs: number }
+  log: string[]
 }
 
 function roomOf(wrapper: VueWrapper): RoomLike {
@@ -229,8 +230,10 @@ describe('AuctionRoomScreen', () => {
     // test uses).
     await advance(3_600_000)
 
-    const log = wrapper.find('[data-test="log"]').text()
-    const playerBids = log.match(/You (open|raise):/g) ?? []
+    // Reads the room's own full log, not the rendered window (which only ever
+    // shows the newest five lines and would miss an early opener by now).
+    const fullLog = roomOf(wrapper).log.join('\n')
+    const playerBids = fullLog.match(/You (open|raise):/g) ?? []
     expect(playerBids).toHaveLength(1)
     expect(wrapper.find('[data-test="outcome"]').exists()).toBe(true)
     expect(roomOf(wrapper).boardYen).toBeGreaterThan(ceiling)
@@ -296,5 +299,56 @@ describe('AuctionRoomScreen', () => {
     expect(wrapper.find('[data-test="outcome"]').text()).toBe('Yours.')
     expect(game.gameState.ownedCars.some((c) => c.id === TUTORIAL_LOT.carId)).toBe(true)
     expect(game.gameState.activeAuctionLots.some((l) => l.id === TUTORIAL_LOT.lotId)).toBe(false)
+  })
+
+  it('shows only the newest five lines of a longer room log, in order', async () => {
+    const game = useGameStore()
+    const lot = makeLot(game, 'log-window-test-lot', 'packed')
+    seatLot(game, lot)
+    const { wrapper } = await mountRoom(lot.id)
+
+    // Runs the packed room's own dealer-versus-dealer climb forward until its
+    // full log has grown past the rendered window, stopping the instant it
+    // has (or if it resolves first, whichever comes first).
+    for (let i = 0; i < 500; i++) {
+      if (roomOf(wrapper).log.length > 5) break
+      if (wrapper.find('[data-test="outcome"]').exists()) break
+      await advance(200)
+    }
+    const fullLog = roomOf(wrapper).log
+    expect(fullLog.length).toBeGreaterThan(5)
+
+    const renderedLines = wrapper.find('[data-test="log"]').findAll('li')
+    expect(renderedLines).toHaveLength(5)
+    expect(renderedLines.at(-1)!.text()).toBe(fullLog.at(-1))
+  })
+
+  it('keeps the raise and let-go controls in place, disabled rather than gone, while the player leads', async () => {
+    const game = useGameStore()
+    const lot = makeLot(game, 'leading-test-lot', 'thin')
+    seatLot(game, lot)
+    const { wrapper } = await mountRoom(lot.id)
+
+    await wrapper.find('[data-test="bid"]').trigger('click')
+    expect(roomOf(wrapper).leader).toBe('player')
+
+    const actions = wrapper.find('.room-actions')
+    expect(actions.exists()).toBe(true)
+    const raiseButtons = actions.findAll('button[data-test^="bid"]')
+    expect(raiseButtons.length).toBeGreaterThan(0)
+    for (const button of raiseButtons) {
+      expect((button.element as HTMLButtonElement).disabled).toBe(true)
+    }
+    const letgo = wrapper.find('[data-test="letgo"]')
+    expect((letgo.element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('shows the current cash in the room header', async () => {
+    const game = useGameStore()
+    const lot = makeLot(game, 'cash-header-test-lot', 'thin')
+    seatLot(game, lot)
+    const { wrapper } = await mountRoom(lot.id)
+
+    expect(wrapper.find('[data-test="room-cash"]').text()).toBe(`Cash: ${formatYen(game.cashYen)}`)
   })
 })

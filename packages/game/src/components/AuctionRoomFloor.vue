@@ -55,7 +55,17 @@ function seatFlash(by: string): boolean {
 // the marker fires from the same landing price whichever raise is taken.
 const pastNumber = computed(() => nextRungYen(props.room) > props.room.playerNumberYen)
 
+// The log window: only the newest lines render, so the log's height never
+// grows with the room - the fixed height in the style block below is sized
+// exactly to this many lines.
+const LOG_WINDOW = 5
+const visibleLog = computed(() => props.room.log.slice(-LOG_WINDOW))
+
 const openDisabledReason = computed(() => props.raiseDisabledReasonFor(props.room.reserveYen))
+
+// True once the player already leads: raises and letting go both go inert
+// rather than the row disappearing, so the row itself never moves.
+const playerLeading = computed(() => props.room.leader === 'player')
 
 interface RaiseOption {
   rungs: number
@@ -117,7 +127,7 @@ function outcomeText(status: RoomStatus): string {
           <span class="shoulders"></span>
         </span>
         <span class="seat-name">{{ dealer.name }}</span>
-        <span v-if="!dealer.active" class="out-tag">out</span>
+        <span class="out-tag" :class="{ 'out-tag-hidden': dealer.active }">out</span>
       </div>
     </div>
 
@@ -132,10 +142,12 @@ function outcomeText(status: RoomStatus): string {
     </div>
 
     <ul class="room-log" data-test="log">
-      <li v-for="(line, i) in room.log" :key="i">{{ line }}</li>
+      <li v-for="(line, i) in visibleLog" :key="room.log.length - visibleLog.length + i">
+        {{ line }}
+      </li>
     </ul>
 
-    <div v-if="room.status === 'open' && room.leader !== 'player'" class="room-actions">
+    <div v-if="room.status === 'open'" class="room-actions">
       <template v-if="room.leader === null">
         <button
           :class="pastNumber ? 'danger' : 'primary'"
@@ -153,22 +165,20 @@ function outcomeText(status: RoomStatus): string {
           :key="option.rungs"
           :class="option.danger ? 'danger' : 'primary'"
           :data-test="option.dataTest"
-          :disabled="!!option.disabledReason"
+          :disabled="!!option.disabledReason || playerLeading"
           :title="option.disabledReason ?? undefined"
           @click="emit('bid', option.rungs)"
         >
           {{ option.label }}
         </button>
       </template>
-      <button data-test="letgo" @click="emit('letgo')">Let it go</button>
+      <button data-test="letgo" :disabled="playerLeading" @click="emit('letgo')">Let it go</button>
     </div>
-    <p
-      v-if="room.status === 'open' && room.leader !== 'player' && pastNumber"
-      class="past-number"
-      data-test="past-number"
-    >
-      Past your number.
-    </p>
+    <div v-if="room.status === 'open'" class="past-number-slot">
+      <p v-if="room.leader !== 'player' && pastNumber" class="past-number" data-test="past-number">
+        Past your number.
+      </p>
+    </div>
 
     <div v-if="room.status !== 'open'" class="outcome-strip">
       <p class="outcome" data-test="outcome">{{ outcomeText(room.status) }}</p>
@@ -251,6 +261,13 @@ function outcomeText(status: RoomStatus): string {
   padding: 0 var(--mg-space-1);
 }
 
+/* Always in the seat's own grid so a dealer dropping out never changes the
+   seat's height (and so never shifts the rows below it); hidden with
+   visibility rather than unmounted so its space stays reserved. */
+.out-tag-hidden {
+  visibility: hidden;
+}
+
 /* The winning chip: the board price in green, above the leader's head. */
 .chip {
   position: absolute;
@@ -292,7 +309,10 @@ function outcomeText(status: RoomStatus): string {
   background: var(--mg-danger);
 }
 
-/* The room log: monospace, like the day report's line lists. */
+/* The room log: monospace, like the day report's line lists. A fixed height
+   holding exactly LOG_WINDOW lines, so the log can never grow and push the
+   controls below it: 5 lines * (1rem line-height + 4px li padding) + the
+   list's own 1rem top+bottom padding (var(--mg-space-2) on all sides). */
 .room-log {
   list-style: none;
   margin: 0;
@@ -302,15 +322,36 @@ function outcomeText(status: RoomStatus): string {
   background: var(--mg-night-deep);
   font-family: var(--mg-font-body);
   font-size: var(--mg-fs-sm);
+  height: calc(6rem + 20px);
+  overflow: hidden;
 }
 
 .room-log li {
   padding: 2px 0;
+  line-height: 1rem;
   color: var(--mg-text-dim);
 }
 
+/* The newest line reads at full strength; older visible lines dissolve
+   upward, like room chatter fading rather than a scrolling document. */
 .room-log li:last-child {
   color: var(--mg-text);
+}
+
+.room-log li:nth-last-child(2) {
+  opacity: 0.75;
+}
+
+.room-log li:nth-last-child(3) {
+  opacity: 0.55;
+}
+
+.room-log li:nth-last-child(4) {
+  opacity: 0.4;
+}
+
+.room-log li:nth-last-child(5) {
+  opacity: 0.28;
 }
 
 .room-actions {
@@ -319,9 +360,17 @@ function outcomeText(status: RoomStatus): string {
   flex-wrap: wrap;
 }
 
+/* Reserves the warning's own line height for the whole open room, whether or
+   not the warning is currently showing, so it never shifts the rows below it
+   as it comes and goes mid-bidding. */
+.past-number-slot {
+  min-height: 1rem;
+}
+
 /* Past the player's number: the moment chasing stops paying. */
 .past-number {
   margin: 0;
+  line-height: 1rem;
   color: var(--mg-danger);
   font-size: var(--mg-fs-sm);
 }

@@ -45,6 +45,16 @@ export function climbBand(from: ConditionBand, grades: number): ConditionBand {
   return BAND_ORDER[nextIndex]!
 }
 
+/** Degrades `grades` steps toward scrap, floored there - the wear-direction
+ * mirror of `climbBand`. Callers that must never actually reach `scrap`
+ * (generation-time wear top-up) enforce that by excluding an already-`poor`
+ * part from their candidate pool before calling this, rather than relying on
+ * this floor - this clamp is a defensive backstop, not the real guard. */
+export function degradeBand(from: ConditionBand, grades: number): ConditionBand {
+  const nextIndex = Math.max(0, bandIndex(from) - Math.max(0, grades))
+  return BAND_ORDER[nextIndex]!
+}
+
 /**
  * Sprint 26 decision 5 (scrap is terminal, under any equipment or skill) +
  * Sprint 41 decision 2 (a non-repairable consumable - tyres, brakePadsDiscs,

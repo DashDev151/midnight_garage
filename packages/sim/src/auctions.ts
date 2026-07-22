@@ -24,14 +24,16 @@ import {
 import {
   bandForMigratedCondition,
   bandIndex,
+  carCostToBandYen,
   carCostToMintYen,
   climbBand,
+  degradeBand,
   hasForcedInduction,
   isPartMissing,
 } from './bands'
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
-import { mileageFactor } from './marketValue'
+import { expectationForCar, mileageFactor } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import type { Rng } from './rng'
 
@@ -199,6 +201,106 @@ function applySymptoms(
     symptoms,
     apparentBandByPartId: symptoms.length > 0 ? apparentBandByPartId : null,
   }
+}
+
+/** The number of times any single part could ever be degraded by
+ * `enforceMinWorkBill` below before it drops out of the candidate pool (see
+ * that function's own doc comment) - `mint` down to one step above `scrap`.
+ * Bounds the top-up loop so an unreachable floor stops cleanly rather than
+ * spinning. */
+const MAX_DEGRADE_STEPS_PER_PART = bandIndex('mint') - bandIndex('poor')
+
+/** Every present, installed part on `car` eligible for one more degrade step
+ * under `enforceMinWorkBill`'s never-to-scrap rule (a part already at `poor`,
+ * one band above `scrap`, is excluded outright), filtered further by whether
+ * its current band sits at/above `expectationBand` or strictly below it - the
+ * two-pass preference order that function draws from. Iterates
+ * `ALL_CAR_PART_IDS` in its own fixed order, so the candidate list is
+ * deterministic for a given car state; the caller's seeded `rng.pick` is what
+ * actually chooses among them. */
+function degradeCandidates(
+  car: CarInstance,
+  expectationBand: ConditionBand,
+  atOrAboveExpectation: boolean,
+): CarPartId[] {
+  const minDegradableIndex = bandIndex('poor') + 1
+  return ALL_CAR_PART_IDS.filter((partId) => {
+    const installed = car.parts[partId].installed
+    if (!installed) return false
+    if (bandIndex(installed.band) < minDegradableIndex) return false
+    const meetsExpectation = bandIndex(installed.band) >= bandIndex(expectationBand)
+    return atOrAboveExpectation ? meetsExpectation : !meetsExpectation
+  })
+}
+
+/**
+ * The core-loop floor (economy.json's `partsGeneration.
+ * minWorkBillFractionByTier`): every generated car must carry at least this
+ * much below-expectation restoration work, so there is always something
+ * profitable to fix. Runs on the already symptom-rolled, already Law-2
+ * (`enforceMaxBillFraction`) compliant TRUE car - the true state, not the
+ * apparent one, so a masked symptom can never be mistaken for real fixable
+ * work.
+ *
+ * While the true car's bill to its own tier's expectation band
+ * (`carCostToBandYen`, `expectationForCar`) sits under the floor, one
+ * installed part degrades a single band via the SAME seeded `rng` the rest
+ * of generation threads: preferring a part currently at or above the
+ * expectation band (`degradeCandidates` with `atOrAboveExpectation: true`),
+ * falling back to a below-expectation part only once none remain. This is
+ * honest visible wear, never a masked symptom - it never writes to
+ * `apparentBandByPartId`. The candidate pool never offers an already-`poor`
+ * part, so no part is ever forced to `scrap`; a car whose every part has
+ * already bottomed out at `poor` stops at best effort rather than looping
+ * forever (`MAX_DEGRADE_STEPS_PER_PART` bounds the loop).
+ *
+ * The top-up runs under the same Law 2 ceiling every other generation step
+ * obeys: after the loop, `enforceMaxBillFraction` runs once, and if it would
+ * move ANY band (the ceiling binds), the last degrade step reverts and the
+ * loop stops there - best-effort floor, never a breached ceiling. The content
+ * schema keeps the floor strictly under the ceiling, so this guard is a
+ * backstop rather than a path real content is expected to hit.
+ */
+function enforceMinWorkBill(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  carOrigin: PartOrigin,
+  rng: Rng,
+): CarInstance {
+  const { economy, partsById, partsTaxonomyById } = context
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const floorYen = Math.round(
+    model.bookValueYen * economy.partsGeneration.minWorkBillFractionByTier[fitmentClass],
+  )
+  const expectationBand = expectationForCar(model, economy).band
+  const billBelowExpectation = (c: CarInstance) =>
+    carCostToBandYen(c, model, partsById, partsTaxonomyById, economy, expectationBand)
+
+  let working = car
+  let beforeLastStep = car
+  const maxSteps = ALL_CAR_PART_IDS.length * MAX_DEGRADE_STEPS_PER_PART
+  for (let step = 0; step < maxSteps && billBelowExpectation(working) < floorYen; step++) {
+    const preferred = degradeCandidates(working, expectationBand, true)
+    const pool =
+      preferred.length > 0 ? preferred : degradeCandidates(working, expectationBand, false)
+    if (pool.length === 0) break // nothing left to degrade anywhere - best effort
+
+    beforeLastStep = working
+    const partId = rng.pick(pool)
+    const installed = working.parts[partId].installed!
+    working = {
+      ...working,
+      parts: {
+        ...working.parts,
+        [partId]: { installed: { ...installed, band: degradeBand(installed.band, 1) } },
+      },
+    }
+  }
+  if (working === car) return working // floor already met, or unreachable at step 0
+
+  const enforced = enforceMaxBillFraction(working, model, context, carOrigin)
+  return bandsMatch(enforced, working) ? enforced : beforeLastStep
 }
 
 /**
@@ -513,6 +615,13 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * customer cars alike (the standing TODO.md item this sprint closes asked
  * for both). Runs strictly before the symptom roll below, so a symptom's
  * cause can damage whatever ends up fitted either way.
+ *
+ * Once symptoms have landed (only when `allowSymptoms` is true - a
+ * `serviceJobs.ts` customer car keeps its own separate forced-work
+ * mechanism), `enforceMinWorkBill` tops up the true car with honest visible
+ * wear until its below-expectation bill clears the tier's floor
+ * (`economy.partsGeneration.minWorkBillFractionByTier`) - a generated auction
+ * lot always carries fixable work, never zero.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -649,7 +758,8 @@ export function generateAuctionCarInstance(
     symptoms,
     apparentBandByPartId,
   } = applySymptoms(softened, model, context, carOrigin, rng)
-  return { ...withSymptoms, symptoms, apparentBandByPartId }
+  const withMinWorkBill = enforceMinWorkBill(withSymptoms, model, context, carOrigin, rng)
+  return { ...withMinWorkBill, symptoms, apparentBandByPartId }
 }
 
 /**

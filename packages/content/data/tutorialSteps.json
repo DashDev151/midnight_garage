@@ -30,7 +30,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Accept the job when you are ready. There is no deadline; she is happy to wait."
+        "text": "Accept the job when you are ready."
       }
     ],
     "completion": { "kind": "missionActive" }

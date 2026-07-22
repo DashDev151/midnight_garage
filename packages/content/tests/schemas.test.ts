@@ -222,6 +222,22 @@ describe('seed content validates against schemas', () => {
     // Sprint 66: pulled 0.7 -> 0.6 as the other half of the wage law's (D, F)
     // pair (see marketRepairDiscount above).
     expect(result.data.partsGeneration.maxBillFraction).toBe(0.6)
+    // The core-loop law's floor: every generated car must carry at least
+    // this much below-expectation work, strictly under the ceiling above.
+    expect(result.data.partsGeneration.minWorkBillFractionByTier).toEqual({
+      shitbox: 0.1,
+      common: 0.06,
+      uncommon: 0.05,
+      rare: 0.04,
+    })
+    for (const [tier, floorFraction] of Object.entries(
+      result.data.partsGeneration.minWorkBillFractionByTier,
+    )) {
+      expect(
+        floorFraction,
+        `${tier} floor fraction must stay strictly under the maxBillFraction ceiling`,
+      ).toBeLessThan(result.data.partsGeneration.maxBillFraction)
+    }
     // Sprint 66 (item 6a): upkeep wear can only express in proportion to the
     // car's own mileage - a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])
@@ -495,5 +511,22 @@ describe('seed content ids are unique', () => {
     expect(ladder.local).toBeLessThan(ladder.known)
     expect(ladder.known).toBeLessThan(ladder.respected)
     expect(ladder.respected).toBeLessThan(ladder.legend)
+  })
+
+  it('the minimum-work floor stays strictly under the max-bill ceiling for every fitment class', () => {
+    // The floor top-up runs under the same Law 2 ceiling guard, so a floor
+    // fraction at or above the ceiling would make the guarantee unreachable -
+    // a bug, not a tuning choice, so the schema refuses it.
+    const bad = {
+      ...economy,
+      partsGeneration: {
+        ...economy.partsGeneration,
+        minWorkBillFractionByTier: {
+          ...economy.partsGeneration.minWorkBillFractionByTier,
+          shitbox: economy.partsGeneration.maxBillFraction,
+        },
+      },
+    }
+    expect(EconomyConfigSchema.safeParse(bad).success).toBe(false)
   })
 })

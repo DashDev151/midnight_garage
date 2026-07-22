@@ -219,6 +219,12 @@ pass."
   `playtest`, `decision \d`, or ISO dates inside comments under `packages/`, so the
   pattern cannot creep back.
 
+- [ ] **`AUCTION_TRAVEL_FEE_YEN` is dead content (found 2026-07-22, blocker investigation).**
+  Declared and schema-validated in `economy.json` (`local-yard: 8000`) but read by nothing in
+  sim or game (full-repo grep); the fee actually charged for a yard visit is
+  `diagnosis.travelFeeYenByTier` (2,000). Either wire it into the room/board flow it was
+  presumably meant for (a per-visit travel cost to remoter venues) or delete the block and its
+  schema; decide when next in the auction economy.
 - [ ] **The bench swap path bypasses the fitment law (found 2026-07-19, answering "what if
   the player buys the wrong-class tyres").** `partFitsCar` (economy-bible law 3: "a
   kei-class part physically cannot go on a sports car") is enforced on the on-car install
@@ -350,11 +356,23 @@ pass."
   reading) already landed 2026-07-22. The full required-asset inventory, the animation
   doctrine (proposed, awaiting sign-off), and the eight blocking decisions live in
   `docs/design/art-catalogue.md` (drafted 2026-07-22); its P1 column is this pass's scope.
-- [ ] **Reading-face rollout: audit every long-form reading surface onto `--mg-font-reading`.**
-  The token and both faces landed 2026-07-22 with the tutorial walkthrough as the proving
-  ground. Still to sweep once the maintainer approves the pairing: dialogue/mission copy,
-  symptom checklist result lines, event log, help/explainer text, and any copy sized below
-  1rem; labels, numbers, headers, and button text stay on the pixel face at on-grid sizes.
+- [ ] **Reading-face rollout: SPARING, by maintainer order (2026-07-22).** The pairing is
+  approved but the pixel face is the game's voice: the reading face applies only where
+  legibility genuinely demands it (long-form paragraphs below 16px: settings explainers,
+  skip/confirm copy, help bodies). EXPLICITLY STAYS PIXEL: all diagnosis text (symptom
+  checklist, result lines, trail), card lines, event log, labels, numbers, headers, buttons.
+- [ ] **Selling rework (maintainer-initiated, 2026-07-22 long-run playtest): selling is too
+  flat and needs a real design pass; haggling is ruled out as thematically wrong.** The
+  "Expect X to Y" range stays meanwhile. Seeds tabled for the design session (suggestions
+  offered in-session, none approved yet): listing channels (front-lot sign / magazine
+  classifieds / trade network / weekend meet: pick the audience to match the build); buyers
+  as legible characters with visible wants (selling becomes reading people the way buying
+  is reading cars: the taste system already exists in `buyers.json`/valuation); the
+  receipts-you-write idea (documented repair provenance raises buyer trust and lifts the
+  offer spread: ties the sale price back to the FIXING, reinforcing the core loop); a
+  one-shot name-your-price counter (accept / walk / one counter, resolved by the buyer's
+  hidden headroom: a decision beat, not a haggle loop). Needs its own design pass before
+  any sprint.
 - [ ] **Accessibility suite v2: reduced motion and colour-independent severity cues.** V1 has
   landed with the live room's promotion: an in-room auto-bid toggle places rung-one bids up to
   a player-set ceiling (defaulting to their own estimated value) without ever jumping, so

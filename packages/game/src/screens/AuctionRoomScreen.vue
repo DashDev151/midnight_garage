@@ -199,6 +199,7 @@ function backToAuctions(): void {
       <header class="room-head">
         <h3>{{ room.displayName }}</h3>
         <p class="headline">Estimated market value: {{ formatYen(room.playerNumberYen) }}</p>
+        <p class="room-cash" data-test="room-cash">Cash: {{ formatYen(game.cashYen) }}</p>
       </header>
 
       <AuctionRoomFloor
@@ -262,6 +263,12 @@ function backToAuctions(): void {
 .headline {
   margin: 0;
   color: var(--mg-text);
+  font-size: var(--mg-fs-sm);
+}
+
+.room-cash {
+  margin: 0;
+  color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
 }
 

@@ -215,6 +215,12 @@
       "cherished": 0
     },
     "maxBillFraction": 0.6,
+    "minWorkBillFractionByTier": {
+      "shitbox": 0.1,
+      "common": 0.06,
+      "uncommon": 0.05,
+      "rare": 0.04
+    },
     "wearExposureByMileageKm": [
       [0, 0],
       [5000, 0.15],

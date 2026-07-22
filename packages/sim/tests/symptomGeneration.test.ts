@@ -122,6 +122,11 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
       partsGeneration: {
         ...ECONOMY.partsGeneration,
         maxBillFraction: 0.0001,
+        // The core-loop floor is a separate mechanism from the Law 2 drop
+        // rule this test targets - zeroed here so it never tops up a part
+        // away from mint and confounds the "every part reverts to mint"
+        // assertion below.
+        minWorkBillFractionByTier: { shitbox: 0, common: 0, uncommon: 0, rare: 0 },
       },
       diagnosis: economyWithGuaranteedSymptom().diagnosis,
     }

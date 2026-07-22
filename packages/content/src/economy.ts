@@ -712,156 +712,189 @@ export const EconomyConfigSchema = z.object({
    * existing `bands`/`valuation` machinery outright, so this is the one
    * genuinely new economy knob the sprint adds.
    */
-  partsGeneration: z.object({
-    /** Base per-slot chance (decision 6) a generated auction/service-job
-     * car's slot rolls MISSING instead of a fresh stock part at the rolled
-     * band - multiplied by `missingSlotWeightByPart`'s per-part weight
-     * below, so the real per-slot chance is `missingSlotBaseChance *
-     * weight`. Deliberately low ("propose a low base rate"); never applies
-     * to `forcedInduction`, which is entirely tag-driven (decision 6(a)) -
-     * see `generateAuctionCarInstance`, auctions.ts. */
-    missingSlotBaseChance: z.number().min(0).max(1),
-    /** Per-part multiplier on `missingSlotBaseChance` (decision 6): 0 for
-     * `block`/`chassis` (never missing - the maintainer's explicit
-     * carve-out), higher for the cosmetically/physically pluckable slots
-     * (wheels, exhaust, aero, seats) than the flat baseline everything else
-     * gets. */
-    missingSlotWeightByPart: ByCarPartIdWeightSchema,
-    /**
-     * Sprint 34: generation is a single causal chain, `age -> mileage ->
-     * condition`. Age sets a mileage range (these two curves, km by age in
-     * years), a mileage is rolled uniformly in that range, and the mileage
-     * then sets the condition-baseline range below. Replaces Sprint 33's
-     * direct age->condition curves (single-system, directive 16): age no
-     * longer reaches condition except through mileage, so mileage is the one
-     * coherent wear driver (it is also the sole value-side wear signal, via
-     * `marketValue.ts`'s `mileageFactor`). `auctions.ts`'s
-     * `mileageRangeForAge` samples both curves at the car's age and rolls
-     * `rng.int(min, max)` once. 1990s Japan centres ~9-10k km/yr, low by world
-     * standards (the shaken inspection regime), with wide variance and a
-     * high-use tail - hence the spread rather than a single mean.
-     */
-    mileageRangeMinByAgeYears: CurveSchema,
-    mileageRangeMaxByAgeYears: CurveSchema,
-    /**
-     * Sprint 34: the condition-baseline roll's [min, max] range (percent,
-     * pre-jitter) as a function of the rolled mileage - replaces Sprint 33's
-     * age-keyed condition curves. `auctions.ts`'s
-     * `conditionBaselineRangeForMileage` samples both at the rolled mileage
-     * and rolls `rng.int(min, max)` once; the car's upkeep tier (Sprint 47,
-     * below) then offsets this baseline before each of the 29 parts jitters
-     * around it in a per-tier range. Higher mileage skews condition worse;
-     * low-mileage cars stay mostly good.
-     */
-    conditionBaselineMinByMileageKm: CurveSchema,
-    conditionBaselineMaxByMileageKm: CurveSchema,
-    /**
-     * Sprint 47 decision 4: a per-car upkeep roll, layered ON TOP of the
-     * mileage-based baseline above (that chain is unchanged) - real
-     * cross-car variance, so two cars at the same mileage can be a genuine
-     * wreck or genuinely sound, not interchangeably mediocre (the playtest's
-     * "no scrap, no poor parts, so why is it worth so little" complaint).
-     * Weights for the three tiers (`generateAuctionCarInstance` rolls one
-     * per car, weighted).
-     */
-    upkeepTierWeights: z.object({
-      neglected: z.number().nonnegative(),
-      average: z.number().nonnegative(),
-      cherished: z.number().nonnegative(),
-    }),
-    /** Added to the mileage-rolled condition baseline (percent) before
-     * per-part jitter - negative for neglected, 0 for average, positive for
-     * cherished. Clamped into [0, 100] same as the baseline+jitter always
-     * has been. Sprint 66: SCALED by `wearExposureByMileageKm` below, so
-     * upkeep only expresses itself in proportion to how far the car has
-     * actually been driven. */
-    upkeepBaselineOffset: z.object({
-      neglected: z.number(),
-      average: z.number(),
-      cherished: z.number(),
-    }),
-    /** Per-tier `[min, max]` per-part jitter range (percent), replacing the
-     * old flat symmetric `CAR_CONDITION_JITTER` (+/-15 for every car) -
-     * neglected skews a harsher negative tail (individual trashed
-     * components), cherished a gentler one. Sprint 66: the NEGATIVE bound is
-     * scaled by `wearExposureByMileageKm` (the positive bound is not - a car
-     * can be better than its baseline at any age; it cannot be worn out
-     * before it has been driven). */
-    upkeepJitterRange: z.object({
-      neglected: z.tuple([z.number(), z.number()]),
-      average: z.tuple([z.number(), z.number()]),
-      cherished: z.tuple([z.number(), z.number()]),
-    }),
-    /**
-     * Sprint 66 (playtest 2026-07-15 item 6a): how much of the upkeep tier's
-     * wear can express itself, by the car's own mileage - `[mileageKm,
-     * exposure]` breakpoints in [0, 1], read through the same
-     * `interpolateCurve` every other curve here uses.
-     *
-     * The bug this fixes: `upkeepBaselineOffset`/`upkeepJitterRange` used to
-     * apply as ABSOLUTE offsets regardless of age, so a `neglected` roll
-     * (-22 baseline, -30 jitter) could drive an 11 km car's parts to `poor` -
-     * the maintainer's verbatim "was that 11km driven on the surface of the
-     * sun?". Mileage-driven wear already lives in the condition baseline
-     * itself (`conditionBaselineMinByMileageKm`); this curve governs the
-     * SECOND, independent axis - how badly the previous owner treated it -
-     * which cannot have expressed itself on a car that has barely moved.
-     * At exposure 0 every upkeep tier produces the same near-mint car; at
-     * exposure 1 a neglected roll bites exactly as hard as it did before.
-     */
-    wearExposureByMileageKm: CurveSchema,
-    /** Multiplies `missingSlotBaseChance * missingSlotWeightByPart[partId]`
-     * by the car's upkeep tier - a neglected car sheds parts more often, a
-     * cherished one almost never. */
-    upkeepMissingMultiplier: z.object({
-      neglected: z.number().nonnegative(),
-      average: z.number().nonnegative(),
-      cherished: z.number().nonnegative(),
-    }),
-    /**
-     * Sprint 54 decision 4 (economy-bible.md law 2 - no value traps): the
-     * hard ceiling on a generated car's restoration bill, as a fraction of
-     * its clean value (at neutral heat) - `generateAuctionCarInstance`
-     * softens the worst-rolled parts, one band at a time in seeded order,
-     * until `carCostToMintYen(car) <= maxBillFraction * cleanValue`. Every
-     * generatable lot is therefore profitably restorable by construction.
-     *
-     * Retuned 0.7 -> 0.6 (Sprint 66) as the OTHER half of the wage law's
-     * (D, F) pair - see `valuation.marketRepairDiscount`'s own doc comment
-     * for the full constraint. In short: `marketRepairDiscount x
-     * maxBillFraction` must stay below 1 or a worst-case car's value falls
-     * through the scrap floor, so raising the repair return to 1.5 required
-     * pulling this ceiling down to 0.6 in the same edit (1.5 x 0.6 = 0.90).
-     * Never move one without the other.
-     */
-    maxBillFraction: z.number().positive().max(1),
-    /**
-     * Sprint 75 decision 1 (the standing TODO.md item: generated cars should
-     * sometimes arrive already modified): per ELIGIBLE, non-missing slot
-     * (eligible = the catalog has a `grade > stock` entry for this
-     * `carPartId` at the car's own fitment class), the chance
-     * `generateAuctionCarInstance` fits that aftermarket part instead of the
-     * default stock one, at the SAME rolled band the stock part would have
-     * had. Runs strictly after the missing-slot roll (a missing slot is
-     * never also aftermarket) and before the symptom roll (Sprint 73), so a
-     * symptom's cause can damage whatever ends up fitted either way.
-     */
-    aftermarketChance: z.number().min(0).max(1),
-    /** The hard cap on how many slots per car this roll can ever fit
-     * (decision 1) - a "someone's old project" car is meaningfully modified,
-     * not entirely rebuilt; `generateAuctionCarInstance` stops rolling
-     * aftermarket once this many slots have already landed one. */
-    maxAftermarketSlots: z.number().int().nonnegative(),
-    /** Which of the three real aftermarket grades a hit rolls, weighted
-     * (decision 1: street the common case, race the rare one) - renormalised
-     * over whichever grades the catalog actually has for this specific
-     * `carPartId`+fitment class (today, always all three). */
-    aftermarketGradeWeights: z.object({
-      street: z.number().nonnegative(),
-      sport: z.number().nonnegative(),
-      race: z.number().nonnegative(),
-    }),
-  }),
+  partsGeneration: z
+    .object({
+      /** Base per-slot chance (decision 6) a generated auction/service-job
+       * car's slot rolls MISSING instead of a fresh stock part at the rolled
+       * band - multiplied by `missingSlotWeightByPart`'s per-part weight
+       * below, so the real per-slot chance is `missingSlotBaseChance *
+       * weight`. Deliberately low ("propose a low base rate"); never applies
+       * to `forcedInduction`, which is entirely tag-driven (decision 6(a)) -
+       * see `generateAuctionCarInstance`, auctions.ts. */
+      missingSlotBaseChance: z.number().min(0).max(1),
+      /** Per-part multiplier on `missingSlotBaseChance` (decision 6): 0 for
+       * `block`/`chassis` (never missing - the maintainer's explicit
+       * carve-out), higher for the cosmetically/physically pluckable slots
+       * (wheels, exhaust, aero, seats) than the flat baseline everything else
+       * gets. */
+      missingSlotWeightByPart: ByCarPartIdWeightSchema,
+      /**
+       * Sprint 34: generation is a single causal chain, `age -> mileage ->
+       * condition`. Age sets a mileage range (these two curves, km by age in
+       * years), a mileage is rolled uniformly in that range, and the mileage
+       * then sets the condition-baseline range below. Replaces Sprint 33's
+       * direct age->condition curves (single-system, directive 16): age no
+       * longer reaches condition except through mileage, so mileage is the one
+       * coherent wear driver (it is also the sole value-side wear signal, via
+       * `marketValue.ts`'s `mileageFactor`). `auctions.ts`'s
+       * `mileageRangeForAge` samples both curves at the car's age and rolls
+       * `rng.int(min, max)` once. 1990s Japan centres ~9-10k km/yr, low by world
+       * standards (the shaken inspection regime), with wide variance and a
+       * high-use tail - hence the spread rather than a single mean.
+       */
+      mileageRangeMinByAgeYears: CurveSchema,
+      mileageRangeMaxByAgeYears: CurveSchema,
+      /**
+       * Sprint 34: the condition-baseline roll's [min, max] range (percent,
+       * pre-jitter) as a function of the rolled mileage - replaces Sprint 33's
+       * age-keyed condition curves. `auctions.ts`'s
+       * `conditionBaselineRangeForMileage` samples both at the rolled mileage
+       * and rolls `rng.int(min, max)` once; the car's upkeep tier (Sprint 47,
+       * below) then offsets this baseline before each of the 29 parts jitters
+       * around it in a per-tier range. Higher mileage skews condition worse;
+       * low-mileage cars stay mostly good.
+       */
+      conditionBaselineMinByMileageKm: CurveSchema,
+      conditionBaselineMaxByMileageKm: CurveSchema,
+      /**
+       * Sprint 47 decision 4: a per-car upkeep roll, layered ON TOP of the
+       * mileage-based baseline above (that chain is unchanged) - real
+       * cross-car variance, so two cars at the same mileage can be a genuine
+       * wreck or genuinely sound, not interchangeably mediocre (the playtest's
+       * "no scrap, no poor parts, so why is it worth so little" complaint).
+       * Weights for the three tiers (`generateAuctionCarInstance` rolls one
+       * per car, weighted).
+       */
+      upkeepTierWeights: z.object({
+        neglected: z.number().nonnegative(),
+        average: z.number().nonnegative(),
+        cherished: z.number().nonnegative(),
+      }),
+      /** Added to the mileage-rolled condition baseline (percent) before
+       * per-part jitter - negative for neglected, 0 for average, positive for
+       * cherished. Clamped into [0, 100] same as the baseline+jitter always
+       * has been. Sprint 66: SCALED by `wearExposureByMileageKm` below, so
+       * upkeep only expresses itself in proportion to how far the car has
+       * actually been driven. */
+      upkeepBaselineOffset: z.object({
+        neglected: z.number(),
+        average: z.number(),
+        cherished: z.number(),
+      }),
+      /** Per-tier `[min, max]` per-part jitter range (percent), replacing the
+       * old flat symmetric `CAR_CONDITION_JITTER` (+/-15 for every car) -
+       * neglected skews a harsher negative tail (individual trashed
+       * components), cherished a gentler one. Sprint 66: the NEGATIVE bound is
+       * scaled by `wearExposureByMileageKm` (the positive bound is not - a car
+       * can be better than its baseline at any age; it cannot be worn out
+       * before it has been driven). */
+      upkeepJitterRange: z.object({
+        neglected: z.tuple([z.number(), z.number()]),
+        average: z.tuple([z.number(), z.number()]),
+        cherished: z.tuple([z.number(), z.number()]),
+      }),
+      /**
+       * Sprint 66 (playtest 2026-07-15 item 6a): how much of the upkeep tier's
+       * wear can express itself, by the car's own mileage - `[mileageKm,
+       * exposure]` breakpoints in [0, 1], read through the same
+       * `interpolateCurve` every other curve here uses.
+       *
+       * The bug this fixes: `upkeepBaselineOffset`/`upkeepJitterRange` used to
+       * apply as ABSOLUTE offsets regardless of age, so a `neglected` roll
+       * (-22 baseline, -30 jitter) could drive an 11 km car's parts to `poor` -
+       * the maintainer's verbatim "was that 11km driven on the surface of the
+       * sun?". Mileage-driven wear already lives in the condition baseline
+       * itself (`conditionBaselineMinByMileageKm`); this curve governs the
+       * SECOND, independent axis - how badly the previous owner treated it -
+       * which cannot have expressed itself on a car that has barely moved.
+       * At exposure 0 every upkeep tier produces the same near-mint car; at
+       * exposure 1 a neglected roll bites exactly as hard as it did before.
+       */
+      wearExposureByMileageKm: CurveSchema,
+      /** Multiplies `missingSlotBaseChance * missingSlotWeightByPart[partId]`
+       * by the car's upkeep tier - a neglected car sheds parts more often, a
+       * cherished one almost never. */
+      upkeepMissingMultiplier: z.object({
+        neglected: z.number().nonnegative(),
+        average: z.number().nonnegative(),
+        cherished: z.number().nonnegative(),
+      }),
+      /**
+       * Sprint 54 decision 4 (economy-bible.md law 2 - no value traps): the
+       * hard ceiling on a generated car's restoration bill, as a fraction of
+       * its clean value (at neutral heat) - `generateAuctionCarInstance`
+       * softens the worst-rolled parts, one band at a time in seeded order,
+       * until `carCostToMintYen(car) <= maxBillFraction * cleanValue`. Every
+       * generatable lot is therefore profitably restorable by construction.
+       *
+       * Retuned 0.7 -> 0.6 (Sprint 66) as the OTHER half of the wage law's
+       * (D, F) pair - see `valuation.marketRepairDiscount`'s own doc comment
+       * for the full constraint. In short: `marketRepairDiscount x
+       * maxBillFraction` must stay below 1 or a worst-case car's value falls
+       * through the scrap floor, so raising the repair return to 1.5 required
+       * pulling this ceiling down to 0.6 in the same edit (1.5 x 0.6 = 0.90).
+       * Never move one without the other.
+       */
+      maxBillFraction: z.number().positive().max(1),
+      /**
+       * The core-loop law's floor: the minimum below-expectation restoration
+       * bill a generated car must carry, as a fraction of `bookValueYen`, keyed
+       * by `PartFitmentClass` (`fitmentClassForTier` - `legend`/`gaisha` fold
+       * into `rare`, same as every other fitment-keyed config). After symptoms
+       * land, `auctions.ts`'s `enforceMinWorkBill` degrades installed parts
+       * (seeded, honest visible wear, never forced to `scrap`) until the true
+       * car's bill to its own tier's expectation band
+       * (`valuation.expectationByTier[tier].band`) clears `bookValueYen *
+       * minWorkBillFractionByTier[tier]`. Without this floor a generated lot
+       * could roll with nothing below expectation to fix at all - no fixable
+       * work, no core loop. The trailing refine below keeps every tier's floor
+       * strictly under `maxBillFraction`'s ceiling: the floor top-up runs under
+       * the SAME Law 2 guard `enforceMaxBillFraction` already enforces, so the
+       * floor must never be able to reach the ceiling it is itself bounded by.
+       */
+      minWorkBillFractionByTier: z.record(PartFitmentClassSchema, z.number().positive().max(1)),
+      /**
+       * Sprint 75 decision 1 (the standing TODO.md item: generated cars should
+       * sometimes arrive already modified): per ELIGIBLE, non-missing slot
+       * (eligible = the catalog has a `grade > stock` entry for this
+       * `carPartId` at the car's own fitment class), the chance
+       * `generateAuctionCarInstance` fits that aftermarket part instead of the
+       * default stock one, at the SAME rolled band the stock part would have
+       * had. Runs strictly after the missing-slot roll (a missing slot is
+       * never also aftermarket) and before the symptom roll (Sprint 73), so a
+       * symptom's cause can damage whatever ends up fitted either way.
+       */
+      aftermarketChance: z.number().min(0).max(1),
+      /** The hard cap on how many slots per car this roll can ever fit
+       * (decision 1) - a "someone's old project" car is meaningfully modified,
+       * not entirely rebuilt; `generateAuctionCarInstance` stops rolling
+       * aftermarket once this many slots have already landed one. */
+      maxAftermarketSlots: z.number().int().nonnegative(),
+      /** Which of the three real aftermarket grades a hit rolls, weighted
+       * (decision 1: street the common case, race the rare one) - renormalised
+       * over whichever grades the catalog actually has for this specific
+       * `carPartId`+fitment class (today, always all three). */
+      aftermarketGradeWeights: z.object({
+        street: z.number().nonnegative(),
+        sport: z.number().nonnegative(),
+        race: z.number().nonnegative(),
+      }),
+    })
+    .refine(
+      (pg) =>
+        PartFitmentClassSchema.options.every((c) => pg.minWorkBillFractionByTier[c] !== undefined),
+      { message: 'partsGeneration.minWorkBillFractionByTier must name every fitment class' },
+    )
+    .refine(
+      (pg) =>
+        PartFitmentClassSchema.options.every(
+          (c) => pg.minWorkBillFractionByTier[c]! < pg.maxBillFraction,
+        ),
+      {
+        message:
+          'partsGeneration.minWorkBillFractionByTier[*] must be strictly below partsGeneration.maxBillFraction - the floor top-up runs under the same Law 2 ceiling guard, so it must never be able to reach it',
+      },
+    ),
   /**
    * Sprint 23 decision 1: replaces the old single all-or-nothing quality bar
    * (`QUALITY_SALE_MIN_CONDITION`/`_MIN_AUTHENTICITY`/`_REPUTATION_BONUS`,
