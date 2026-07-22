@@ -178,6 +178,9 @@ const draggedCarName = computed(() => {
       <ul>
         <li v-for="offer in game.pendingOffersView" :key="offer.carInstanceId">
           <span>{{ offer.copy }}</span>
+          <span v-if="offer.wantLine" class="offer-want" data-test="offer-want-garage">{{
+            offer.wantLine
+          }}</span>
           <button data-test="accept-offer-garage" @click="game.acceptOffer(offer.carInstanceId)">
             Accept
           </button>
@@ -336,6 +339,12 @@ button:disabled {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   padding: var(--mg-space-1) 0;
+}
+
+.offer-want {
+  flex: 1;
+  font-style: italic;
+  opacity: 0.85;
 }
 
 .log ul {

@@ -33,6 +33,7 @@ import type {
   PartInstance,
   ReputationTier,
   RequirementSpec,
+  SellingChannelId,
   ServiceJob,
   ServiceJobTask,
   StagedAction,
@@ -745,6 +746,10 @@ export interface SaleResultView {
    * Never fabricated - the same honesty `car-sold`'s optional `profitYen`
    * already encodes. */
   profitYen: number | null
+  /** True when this sale matched the buyer's visible want
+   * (`car-sold`'s own `matchedSale` flag) - the word-of-mouth close line,
+   * revealed only here (progression bible law 4, no ambient number). */
+  matchedSale: boolean
 }
 
 export interface ServiceJobResultView {
@@ -913,6 +918,10 @@ export interface PendingOfferView {
    * the one canonical copy string, also reused by the day-report line
    * (`dayLogFormat.ts`'s `offer-received` case) via `utils/offerCopy.ts`. */
   copy: string
+  /** This buyer archetype's authored want-line (`Buyer.wantLine`, content) -
+   * the want IS the taste ceiling, surfaced alongside the offer so holding
+   * out is an informed, rent-priced bet. */
+  wantLine: string
 }
 
 /** Summary of the day that just ended, for the end-of-day report modal. */
@@ -2039,9 +2048,21 @@ export const useGameStore = defineStore('game', () => {
     return context.value.buyers.find((b) => b.id === buyerId)?.displayName ?? buyerId
   }
 
+  /** This buyer archetype's authored want-line, or '' for an unknown id -
+   * `PendingOfferView.wantLine`'s source. */
+  function buyerWantLine(buyerId: string): string {
+    return context.value.buyers.find((b) => b.id === buyerId)?.wantLine ?? ''
+  }
+
   /** True while `carId` is toggled "taking offers". */
   function isForSale(carId: string): boolean {
     return gameState.value.carsForSale.some((f) => f.carInstanceId === carId)
+  }
+
+  /** The channel `carId` is currently listed on, `undefined` when it isn't
+   * for sale - the Sell section's "Listed on ..." line. */
+  function listingChannelId(carId: string): SellingChannelId | undefined {
+    return gameState.value.carsForSale.find((f) => f.carInstanceId === carId)?.channelId
   }
 
   function pendingOfferViewFor(carInstanceId: string): PendingOfferView | undefined {
@@ -2058,6 +2079,7 @@ export const useGameStore = defineStore('game', () => {
       buyerId: offer.buyerId,
       buyerName: buyer,
       priceYen: offer.priceYen,
+      wantLine: buyerWantLine(offer.buyerId),
       copy: offerCopy(buyer, carName, offer.priceYen),
     }
   }
@@ -3766,6 +3788,7 @@ export const useGameStore = defineStore('game', () => {
         // `profitYen` is absent exactly when the purchase price was unknown.
         // Pass the gap through rather than inventing a number.
         profitYen: sold.profitYen ?? null,
+        matchedSale: sold.matchedSale ?? false,
       }
     }
     logSessionEvent('acceptOffer', { carId })
@@ -3793,13 +3816,22 @@ export const useGameStore = defineStore('game', () => {
    * instant walk-in sell and list-publicly buttons: the car itself does
    * nothing until a real offer arrives (the daily draw, End Day) and the
    * player accepts it via `acceptOffer` above.
+   *
+   * `channelId` (default `shopFront`) is which listing channel to list on
+   * while turning offers on - ignored when `forSale` is false. Re-listing an
+   * already-listed car on a different channel pays that channel's fee again
+   * (`resolveSetForSale`'s own re-listing rule).
    */
-  function setForSale(carId: string, forSale: boolean): boolean {
+  function setForSale(
+    carId: string,
+    forSale: boolean,
+    channelId: SellingChannelId = 'shopFront',
+  ): boolean {
     const before = gameState.value
-    const result = resolveSetForSale(before, carId, forSale)
+    const result = resolveSetForSale(before, carId, forSale, context.value, channelId)
     if (result.state === before) return false
     gameState.value = result.state
-    logSessionEvent('setForSale', { carId, forSale })
+    logSessionEvent('setForSale', { carId, forSale, channelId })
     return true
   }
 
@@ -4134,6 +4166,7 @@ export const useGameStore = defineStore('game', () => {
     lotDetail,
     symptomChecklistForCar,
     isForSale,
+    listingChannelId,
     offerFor,
     pendingOffersView,
     estimatedSaleValue,

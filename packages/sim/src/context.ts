@@ -23,6 +23,7 @@ import type {
   Technique,
   ToolLine,
   ToolLines,
+  VenueNames,
 } from '@midnight-garage/content'
 import {
   ASSEMBLIES,
@@ -37,6 +38,7 @@ import {
   SYMPTOMS,
   TECHNIQUES,
   TOOL_LINES,
+  VENUE_NAMES,
 } from '@midnight-garage/content'
 
 /**
@@ -134,6 +136,9 @@ export interface SimContext {
   /** The job-ad candidate name/bio pools the seeded candidate roller
    * (`staff.ts`'s `rollStaffCandidate`) draws from. */
   staffCandidates: StaffCandidatePool
+  /** Each auction tier's venue-name pool - `newGame.ts` rolls one per tier
+   * from here at career start. */
+  venueNames: VenueNames
 }
 
 function indexById<T extends { id: string }>(items: readonly T[]): Record<string, T> {
@@ -222,6 +227,7 @@ export function buildSimContext(
   lapReferences: readonly LapReferenceEntry[] = LAP_REFERENCES,
   staffCandidates: StaffCandidatePool = STAFF_CANDIDATES,
   assemblies: readonly AssemblyDef[] = ASSEMBLIES,
+  venueNames: VenueNames = VENUE_NAMES,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
@@ -268,5 +274,6 @@ export function buildSimContext(
     lapReferencePool,
     lapReferenceAnchor,
     staffCandidates,
+    venueNames,
   }
 }

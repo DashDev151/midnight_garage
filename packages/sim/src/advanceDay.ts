@@ -252,8 +252,8 @@ export function advanceDay(
   // Runs before offer acceptance so a bot that both drops one car and accepts
   // an offer on another the same day sees a consistent `carsForSale` either
   // way.
-  for (const { carInstanceId, forSale } of queuedActions.setForSale) {
-    const result = resolveSetForSale(next, carInstanceId, forSale)
+  for (const { carInstanceId, forSale, channelId } of queuedActions.setForSale) {
+    const result = resolveSetForSale(next, carInstanceId, forSale, context, channelId)
     next = result.state
     log.push(...result.log)
   }

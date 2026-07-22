@@ -66,6 +66,7 @@ const tokens = computed<Record<string, string>>(() => ({
   payout: mission ? formatYen(mission.payoutYen) : '',
   model: model ? resolveCarDisplayName(model) : recipe.modelId,
   part: truePartName,
+  venue: game.gameState.venueNameByTier?.['local-yard'] ?? 'the local yard',
 }))
 
 function interpolate(text: string): string {

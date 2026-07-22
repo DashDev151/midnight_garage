@@ -17,3 +17,17 @@ export const VenueNamesSchema = z.object({
 })
 
 export type VenueNames = z.infer<typeof VenueNamesSchema>
+
+/**
+ * One rolled venue name per auction tier - `GameState.venueNameByTier`, set
+ * once at `newGame` from `VENUE_NAMES`' pools and displayed wherever that
+ * tier's label renders.
+ */
+export const VenueNameByTierSchema = z.object({
+  'local-yard': z.string().min(1),
+  regional: z.string().min(1),
+  premium: z.string().min(1),
+  'collector-network': z.string().min(1),
+})
+
+export type VenueNameByTier = z.infer<typeof VenueNameByTierSchema>

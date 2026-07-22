@@ -514,6 +514,26 @@ describe('seed content ids are unique', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  /**
+   * Each persona's want-line transplants byte-verbatim from the selling
+   * rework's authored copy. Pinned literally, not merely checked non-empty,
+   * since this is orchestrator-personal copy.
+   */
+  it('buyer want-lines match the sprint114.md authored copy exactly', () => {
+    const wantLineById = Object.fromEntries(
+      BuyersSchema.parse(buyers).map((b) => [b.id, b.wantLine]),
+    )
+    expect(wantLineById).toEqual({
+      collector:
+        'Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk.',
+      tuner: 'Wants the numbers, not the story. Power pays; provenance is for other people.',
+      stancer: 'Crouches at the arches before saying hello. If it sits right, the rest is detail.',
+      racer: 'Checks where the weight sits and how it turns in. Paint does not lap.',
+      'first-timer':
+        'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
+    })
+  })
+
   it('parts-taxonomy ids cover exactly the 29 real parts, no duplicates', () => {
     const ids = CarPartTaxonomyContentSchema.parse(partsTaxonomy).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)

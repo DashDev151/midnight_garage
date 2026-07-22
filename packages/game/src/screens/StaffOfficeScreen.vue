@@ -5,6 +5,7 @@ import type { StaffMemberCardView } from '../stores/staffStore'
 import { useStaffStore } from '../stores/staffStore'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { venueLabelFor } from '../utils/auctionTierLabels'
 
 /** The Staff Office renders the shop's two staff panels - the current crew and
  * the ad-reply candidates the weekly refresh posts. Hiring, dismissal, and the
@@ -19,6 +20,9 @@ const staff = useStaffStore()
 const game = useGameStore()
 
 const view = computed(() => staff.staffOfficeView)
+
+/** The local tier's rolled venue name, so flavour lines name the real place. */
+const localVenueName = computed(() => venueLabelFor('local-yard', game.gameState.venueNameByTier))
 
 /** The staff id whose dismissal is mid-confirm (two-step), or null. */
 const confirmingDismissId = ref<string | null>(null)
@@ -72,7 +76,7 @@ function toggleAssignment(member: StaffMemberCardView): void {
         >
           A perfectionist at the bench: work runs slower, wastes less.</span
         ><span v-if="view.benchCrew.auctionRat" data-test="bench-auction-rat">
-          An auction rat at the bench: extra time at the Local Yard.</span
+          An auction rat at the bench: extra time at {{ localVenueName }}.</span
         >
       </p>
       <p v-else-if="view.roster.length > 0" class="crew-line dim" data-test="bench-crew-empty">

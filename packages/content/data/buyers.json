@@ -16,7 +16,8 @@
       { "tier": "rare", "weight": 0.8 },
       { "tier": "uncommon", "weight": 0.3 }
     ],
-    "priceSensitivity": 0.2
+    "priceSensitivity": 0.2,
+    "wantLine": "Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk."
   },
   {
     "id": "tuner",
@@ -34,7 +35,8 @@
       { "tier": "uncommon", "weight": 0.6 },
       { "tier": "common", "weight": 0.4 }
     ],
-    "priceSensitivity": 0.4
+    "priceSensitivity": 0.4,
+    "wantLine": "Wants the numbers, not the story. Power pays; provenance is for other people."
   },
   {
     "id": "stancer",
@@ -52,7 +54,8 @@
       { "tier": "common", "weight": 0.5 },
       { "tier": "rare", "weight": 0.3 }
     ],
-    "priceSensitivity": 0.5
+    "priceSensitivity": 0.5,
+    "wantLine": "Crouches at the arches before saying hello. If it sits right, the rest is detail."
   },
   {
     "id": "racer",
@@ -70,7 +73,8 @@
       { "tier": "rare", "weight": 0.5 },
       { "tier": "common", "weight": 0.3 }
     ],
-    "priceSensitivity": 0.4
+    "priceSensitivity": 0.4,
+    "wantLine": "Checks where the weight sits and how it turns in. Paint does not lap."
   },
   {
     "id": "first-timer",
@@ -87,6 +91,7 @@
       { "tier": "shitbox", "weight": 1.0 },
       { "tier": "common", "weight": 0.6 }
     ],
-    "priceSensitivity": 0.9
+    "priceSensitivity": 0.9,
+    "wantLine": "Needs it to start every cold morning without eating the budget. A service history beats a spoiler."
   }
 ]

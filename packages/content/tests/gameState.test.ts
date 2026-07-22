@@ -297,7 +297,14 @@ describe('GameState / DayLog round-trip', () => {
       jobs: [],
       marketHeat: {},
       activeAuctionLots: [],
-      carsForSale: [{ carInstanceId: 'car-0002', sinceDay: 4 }],
+      carsForSale: [
+        {
+          carInstanceId: 'car-0002',
+          sinceDay: 4,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: 'car-0002', buyerId: 'tuner', priceYen: 500_000 }],
       serviceJobOffers: [],
       activeServiceJobs: [],

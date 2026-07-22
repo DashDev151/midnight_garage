@@ -48,6 +48,8 @@ const collector: Buyer = {
   statWeights: { power: 0.1, handling: 0.2, style: 0.3, reliability: 0.3, authenticity: 1.0 },
   tierPreferences: [{ tier: 'rare', weight: 0.8 }],
   priceSensitivity: 0.2,
+  wantLine:
+    'Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk.',
 }
 
 const firstTimer: Buyer = {
@@ -57,6 +59,8 @@ const firstTimer: Buyer = {
   statWeights: { power: 0.2, handling: 0.2, style: 0.1, reliability: 0.8, authenticity: 0.1 },
   tierPreferences: [{ tier: 'shitbox', weight: 1.0 }],
   priceSensitivity: 0.9,
+  wantLine:
+    'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
 }
 
 function valuate(buyer: Buyer, instance: CarInstance, heatPercent = 100) {

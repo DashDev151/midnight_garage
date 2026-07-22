@@ -6,6 +6,7 @@ import {
   GameStateSchema,
   PARTS,
   PARTS_TAXONOMY,
+  VENUE_NAMES,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
@@ -47,5 +48,28 @@ describe('createInitialGameState', () => {
 
   it('is a pure function of context and seed', () => {
     expect(createInitialGameState(CONTEXT, 7)).toEqual(createInitialGameState(CONTEXT, 7))
+  })
+
+  describe('venueNameByTier (Sprint 114)', () => {
+    it('rolls one real name per tier, from that tier’s own pool', () => {
+      const state = createInitialGameState(CONTEXT, 123)
+      const byTier = state.venueNameByTier
+      if (!byTier) throw new Error('expected venueNameByTier on a fresh career')
+      for (const tier of ['local-yard', 'regional', 'premium', 'collector-network'] as const) {
+        expect(VENUE_NAMES[tier]).toContain(byTier[tier])
+      }
+    })
+
+    it('is deterministic per seed', () => {
+      const a = createInitialGameState(CONTEXT, 55).venueNameByTier
+      const b = createInitialGameState(CONTEXT, 55).venueNameByTier
+      expect(a).toEqual(b)
+    })
+
+    it('rides its own independent rng stream, untouched by the day-1 catalog roll (tutorial mode injects an extra scripted lot, consuming different catalog rng, yet names the same venues)', () => {
+      const plain = createInitialGameState(CONTEXT, 55).venueNameByTier
+      const tutorial = createInitialGameState(CONTEXT, 55, { tutorial: true }).venueNameByTier
+      expect(tutorial).toEqual(plain)
+    })
   })
 })

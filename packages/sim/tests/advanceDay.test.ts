@@ -294,7 +294,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    expect(hashState(acquisitionCareer().sold)).toBe('76db2e32')
+    expect(hashState(acquisitionCareer().sold)).toBe('e293217c')
   })
 })
 
@@ -359,7 +359,14 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
     let state: GameState = {
       ...initialState(),
       day: 10,
-      carsForSale: [{ carInstanceId: 'car-0001', sinceDay: 10 }],
+      carsForSale: [
+        {
+          carInstanceId: 'car-0001',
+          sinceDay: 10,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
     }
     let sawOffer = false
     for (let i = 0; i < 60 && !sawOffer; i++) {
@@ -379,7 +386,14 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
     const state: GameState = {
       ...initialState(),
       day: 10,
-      carsForSale: [{ carInstanceId: 'car-0001', sinceDay: 10 }],
+      carsForSale: [
+        {
+          carInstanceId: 'car-0001',
+          sinceDay: 10,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'first-timer', priceYen: 400_000 }],
     }
     const cashBefore = state.cashYen

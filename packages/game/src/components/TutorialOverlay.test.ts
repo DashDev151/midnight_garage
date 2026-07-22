@@ -159,7 +159,10 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 10')
-    expect(wrapper.text()).toContain('Local Yard')
+    // The step names the career's rolled local venue through the {venue} token.
+    const localVenue = game.gameState.venueNameByTier?.['local-yard']
+    expect(localVenue).toBeTruthy()
+    expect(wrapper.text()).toContain(localVenue!)
     expect(wrapper.text()).not.toContain('Ears first, tools second')
 
     game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }

@@ -42,7 +42,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now the Auctions tab. There are several auction rooms in town, but a young garage starts in one: the Local Yard. Cheap cars and quick hammers, and exactly the right hunting ground for Yuki's budget."
+        "text": "Now the Auctions tab. There are several auction rooms in town, but a young garage starts in one: {venue}. Cheap cars and quick hammers, and exactly the right hunting ground for Yuki's budget."
       },
       {
         "speaker": "instruction",

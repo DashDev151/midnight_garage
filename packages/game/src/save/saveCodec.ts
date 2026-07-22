@@ -533,8 +533,24 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * model just re-enters the board as an ordinary, unsettled lot. The version
  * bump alone is still required (Save law) so an old client rejects a v44
  * save rather than silently misreading it.
+ * v44 -> v45 (the selling rework - channels and characters):
+ * `ForSaleEntrySchema` gained REQUIRED `channelId`/`weekendMeetPending`
+ * fields (which listing channel a for-sale car sits on, and that channel's
+ * one-shot state), and `GameState` gained an optional `venueNameByTier` (one
+ * rolled venue name per auction tier). Not the pure additive case for
+ * `ForSaleEntry`: `channelId`/`weekendMeetPending` carry no schema default,
+ * so a pre-v45 save's `carsForSale` entries fail `ForSaleEntrySchema.parse`
+ * outright. Per directive 19 (no pre-launch save compatibility), that is
+ * fine as-is: no `MIGRATIONS[44]` entry, no backfill, no legacy-compat
+ * branch - a pre-v45 save with anything listed simply fails to decode and
+ * falls back to a new game, the same fallback path every other non-additive
+ * bump in this file already relies on. `venueNameByTier` alone would have
+ * been the pure additive case (the genuinely-optional-key pattern), but the
+ * version bump is shared with the same sprint's `ForSaleEntry` change. The
+ * version bump is what makes a pre-v45 client reject a v45 save rather than
+ * silently misreading it.
  */
-export const SAVE_VERSION = 44
+export const SAVE_VERSION = 45
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

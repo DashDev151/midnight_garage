@@ -210,7 +210,14 @@ describe('staged repair/install work', () => {
     // rather than depending on the probabilistic daily draw.
     game.gameState = {
       ...game.gameState,
-      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      carsForSale: [
+        {
+          carInstanceId: carId,
+          sinceDay: game.gameState.day,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 300_000 }],
     }
     game.acceptOffer(carId)

@@ -193,6 +193,20 @@ const ByRarityTierMultiplierSchema = z.object({
 })
 
 /**
+ * The five listing channels a for-sale car can be listed on - the id a
+ * `ForSaleEntry` (sale.ts) carries and `sellingChannels` below is keyed by.
+ */
+export const SellingChannelIdSchema = z.enum([
+  'shopFront',
+  'freeAdsPaper',
+  'tunerMagazine',
+  'tradeNetwork',
+  'weekendMeet',
+])
+
+export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
+
+/**
  * One listing channel's shape - where you list decides who shows up, at what
  * cost, at what speed, and how much of the +/-12% taste band the arriving
  * pool can express. Every field but `feeYen` is optional; each channel uses

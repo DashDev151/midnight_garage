@@ -24,6 +24,11 @@ const result = computed(() => game.lastSaleResult)
     <div class="modal">
       <h3>Sold</h3>
       <p class="flavor">{{ result.displayName }} is off the books.</p>
+      <!-- The word-of-mouth reveal (progression bible law 4): diegetic, no
+           numbers, no rep figure - shown only for a matched sale. -->
+      <p v-if="result.matchedSale" class="matched-close" data-test="matched-sale-close">
+        Sold to someone who wanted exactly this. People like that tell their friends.
+      </p>
 
       <dl class="numbers">
         <div>
@@ -102,6 +107,12 @@ h3 {
 .flavor {
   margin: 0 0 var(--mg-space-3);
   color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.matched-close {
+  margin: 0 0 var(--mg-space-3);
+  color: var(--mg-text);
   font-size: var(--mg-fs-sm);
 }
 

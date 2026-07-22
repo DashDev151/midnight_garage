@@ -82,16 +82,65 @@ cheap metal, trade 0.90-0.97 certain, magazine/meet the only road past 1.0.
 Plus non-lever content: `venueNames.json` (the four approved pools), persona want-lines
 (copy). The approval-gate guard test re-pins in the same change as this doc's approval.
 
+## Authored copy (orchestrator-personal, transplant verbatim in phase 3)
+
+Buyer want-lines, one per archetype, shown with an offer so the want IS the read:
+
+- collector: "Asks who owned it before you, and who before that. Originality is the price
+  of entry; everything else is small talk."
+- tuner: "Wants the numbers, not the story. Power pays; provenance is for other people."
+- stancer: "Crouches at the arches before saying hello. If it sits right, the rest is
+  detail."
+- racer: "Checks where the weight sits and how it turns in. Paint does not lap."
+- first-timer: "Needs it to start every cold morning without eating the budget. A service
+  history beats a spoiler."
+
+Matched-sale close (the word-of-mouth reveal, diegetic, no numbers):
+"Sold to someone who wanted exactly this. People like that tell their friends."
+
 ## Tasks (sequenced after the hygiene batch commits)
 
-- [ ] Content: `sellingChannels` schema + block; `venueNames.json` + roll-at-newGame +
-      display seam; want-line fields on personas (copy authored by the orchestrator).
-- [ ] Sim: channel field on listings; channel-aware offer draw + mismatch lines; matched
+- [x] Content: `sellingChannels` schema + block; `venueNames.json` + roll-at-newGame +
+      display seam; want-line fields on buyers (copy authored by the orchestrator).
+- [x] Sim: channel field on listings; channel-aware offer draw + mismatch behaviour; matched
       bonus term; probes (channel determinism, mismatch honesty, bonus law-compliance).
-- [ ] Game: channel picker on the Sell section; persona want surfacing on offers;
-      sale-close word-of-mouth copy (orchestrator-authored).
-- [ ] Orchestrator: copy, verification, Exit.
+- [x] Game: channel picker on the Sell section; buyer want surfacing on offers;
+      sale-close word-of-mouth copy (orchestrator-authored); Dexie bump.
+- [x] Orchestrator: copy, closing wave, verification, Exit.
 
 ## Exit
 
-(To be filled from real verification output.)
+- [x] The channels are live end to end with the locked table byte-exact in content
+      (`sellingChannels`, plus `reputation.matchedSaleRepBonus`), the approval gate
+      re-pinned lawfully against this doc (64a6ae21 -> e8faedcf), and the venue pools
+      transplanted byte-verbatim (independently re-fetched and character-compared).
+- [x] Sim: `carsForSale[].channelId`/`weekendMeetPending` are required fields with no
+      compat defaults; one function (`channelBuyerTaste`) carries every ceiling (clamp at
+      1.00/1.05, extended top at 1.17) and the MATCHED definition (taste >= 1.0), used
+      identically at offer time and accept time; the trade network pays its exact band with
+      no taste roll; the meet consumes its one draw; fees charge at listing and refuse on
+      short cash; venue names roll once per career on their own seeded stream. Twenty new
+      probes; the acquisition-sale golden re-pinned 76db2e32 -> e293217c (new state fields
+      plus a changed rng-consumption pattern; the no-listing 30-day golden verified
+      untouched).
+- [x] Game: SAVE_VERSION 44 -> 45, no migration; the Sell section's five-channel picker
+      reads names, fees, and cadence facts from content (nothing hand-numbered), defaults
+      shopFront, re-lists with a re-charge, disables what cash cannot cover; the buyer's
+      want-line renders at accept/reject time on BOTH offer surfaces (car screen and the
+      garage panel, the latter closed in the orchestrator wave); the matched-sale close
+      line renders byte-verbatim only on a matched sale; venue names render on the auction
+      board with a plain-label fallback.
+- [x] Orchestrator wave: the staff-office auction-rat line now names the rolled venue; the
+      tutorial's yard introduction is token-driven ({venue}) so scripted copy matches
+      whatever the save rolled (pin re-anchored to the rolled name); channel label copy
+      reviewed and approved as-is; all six authored-copy surfaces are exact-match
+      guard-asserted (five want-lines, one close line).
+- [x] Deviations, all recorded and closed: phase 2 required one behaviour-preserving line
+      in the game store (a genuine compile break, correctly judged); phase 3's two flagged
+      textual "Local Yard" instances were resolved by the wave; the comment-hygiene guard
+      caught the phase-3 agent's own provenance comments mid-task and it self-corrected,
+      the guard's first live catch.
+- [x] Evidence (each suite at its phase's landing, wave files re-run after the closing
+      edits): game 55 files / 674 passed; content 14 files / 121 passed; sim 56 files /
+      1,377 passed; typecheck clean across all three packages. The pre-push hook is the
+      full gate.

@@ -16,6 +16,7 @@ import { ForSaleEntrySchema, PendingSaleOfferSchema, SaleChannelSchema } from '.
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema } from './facilities'
 import { StagedActionSchema } from './stagedWork'
+import { VenueNameByTierSchema } from './venueNames'
 
 /**
  * The two exponentially-decayed counters `marketHeat.ts`'s weekly
@@ -396,6 +397,14 @@ export const GameStateSchema = z.object({
    * needs touching.
    */
   uiSettings: UiSettingsSchema.optional(),
+  /**
+   * One rolled venue name per auction tier, seeded once at `newGame` from
+   * `VENUE_NAMES`' pools - pure flavour, no mechanics read it. Absent on any
+   * state never built through `createInitialGameState` (bots, probes, a save
+   * that predates it) - the genuinely-optional-key pattern (like
+   * `uiSettings` above), so no existing `GameState` literal needs touching.
+   */
+  venueNameByTier: VenueNameByTierSchema.optional(),
 })
 
 /**
@@ -612,6 +621,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * honest sale or one already fully resolved (nothing left to teach).
      */
     saleRevealLine: z.string().min(1).optional(),
+    /**
+     * True when the buyer's taste for this car was >= 1.0 (the car met that
+     * buyer's visible want) and `reputation.matchedSaleRepBonus` therefore
+     * stacked into this sale's reputation delta - the word-of-mouth term,
+     * revealed only in sale-close copy (progression bible law 4). Absent
+     * for an unmatched sale, never emitted as `false`.
+     */
+    matchedSale: z.literal(true).optional(),
   }),
   /** The whole car scrapped at once, shell and all - `carPartIds` lists
    * every slot that was still installed and went down with it (an empty

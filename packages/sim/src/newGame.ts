@@ -1,11 +1,36 @@
-import type { GameState } from '@midnight-garage/content'
+import type { AuctionTier, GameState, VenueNameByTier } from '@midnight-garage/content'
 import { currentGameYear } from './calendar'
 import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
-import { createRng } from './rng'
+import { createRng, hashStringToSeed } from './rng'
 import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
 import { freshToolTiers } from './toolLines'
 import { radialOffersGated } from './tutorial'
+
+const VENUE_NAME_TIERS: readonly AuctionTier[] = [
+  'local-yard',
+  'regional',
+  'premium',
+  'collector-network',
+]
+
+/**
+ * One rolled venue name per auction tier, seeded off the career `seed` but
+ * through its OWN independent rng stream (`hashStringToSeed`, the same
+ * per-concern-stream idiom used elsewhere in this codebase) rather than the
+ * shared day-1 `rng` catalog generation already consumes - pure flavour, so
+ * it must never shift a single auction/symptom roll it has nothing to do
+ * with. Deterministic per seed: the same career seed always rolls the same
+ * four names.
+ */
+function rollVenueNameByTier(context: SimContext, seed: number): VenueNameByTier {
+  const rng = createRng(hashStringToSeed(`venue-names:${seed}`))
+  const result = {} as Record<AuctionTier, string>
+  for (const tier of VENUE_NAME_TIERS) {
+    result[tier] = rng.pick(context.venueNames[tier])
+  }
+  return result as VenueNameByTier
+}
 
 export interface NewGameOptions {
   /** Builds this career as a guided-tutorial career, stamping
@@ -67,6 +92,7 @@ export function createInitialGameState(
     inspectionVisit: null,
     storyMissions: [],
     assemblyInventory: [],
+    venueNameByTier: rollVenueNameByTier(context, seed),
     // Genuinely-optional-key pattern (content gameState.ts): the key exists
     // only on a tutorial career, so bots/probes/tests stay untouched by any
     // tutorial machinery.

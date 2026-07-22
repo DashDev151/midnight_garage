@@ -762,6 +762,119 @@ describe('CarDetailScreen', () => {
     })
   })
 
+  describe('Sprint 114: the selling rework (channel picker + want-line)', () => {
+    const CHANNEL_IDS = [
+      'shopFront',
+      'freeAdsPaper',
+      'tunerMagazine',
+      'tradeNetwork',
+      'weekendMeet',
+    ] as const
+
+    it('renders all five channel options with real fee text, defaulting the armed choice to shopFront', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+
+      const picker = wrapper.find('[data-test="channel-picker"]')
+      expect(picker.exists()).toBe(true)
+      for (const channelId of CHANNEL_IDS) {
+        const option = picker.find(`[data-test="channel-option-${channelId}"]`)
+        expect(option.exists()).toBe(true)
+        const feeYen = game.context.economy.sellingChannels[channelId].feeYen
+        expect(option.text()).toContain(feeYen === 0 ? 'Free' : formatYen(feeYen))
+      }
+      expect(picker.find('[data-test="channel-option-shopFront"]').classes()).toContain('selected')
+    })
+
+    it('lists the car on the armed channel and shows it as the active channel', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+
+      await wrapper.find('[data-test="channel-option-freeAdsPaper"]').trigger('click')
+      await wrapper.find('[data-test="list-on-channel"]').trigger('click')
+
+      expect(game.listingChannelId(id)).toBe('freeAdsPaper')
+      const activeLine = wrapper.find('[data-test="active-channel"]')
+      expect(activeLine.exists()).toBe(true)
+      expect(activeLine.text()).toContain('Free ads paper')
+    })
+
+    it("re-listing on a different channel re-charges that channel's own fee", async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+
+      // shopFront first (free), then armed on freeAdsPaper (not free).
+      await wrapper.find('[data-test="list-on-channel"]').trigger('click')
+      expect(game.listingChannelId(id)).toBe('shopFront')
+      const cashBefore = game.cashYen
+      const feeYen = game.context.economy.sellingChannels.freeAdsPaper.feeYen
+
+      await wrapper.find('[data-test="channel-option-freeAdsPaper"]').trigger('click')
+      await wrapper.find('[data-test="list-on-channel"]').trigger('click')
+
+      expect(game.listingChannelId(id)).toBe('freeAdsPaper')
+      expect(game.cashYen).toBe(cashBefore - feeYen)
+    })
+
+    it('stops taking offers via the dedicated button', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+
+      await wrapper.find('[data-test="list-on-channel"]').trigger('click')
+      expect(game.isForSale(id)).toBe(true)
+      await wrapper.find('[data-test="stop-for-sale"]').trigger('click')
+      expect(game.isForSale(id)).toBe(false)
+      expect(wrapper.find('[data-test="stop-for-sale"]').exists()).toBe(false)
+    })
+
+    it('disables a channel option whose fee exceeds cash, with a real title reason', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const feeYen = game.context.economy.sellingChannels.freeAdsPaper.feeYen
+      game.gameState = { ...game.gameState, cashYen: feeYen - 1 }
+      const { wrapper } = await mountAt(id)
+
+      const option = wrapper.find('[data-test="channel-option-freeAdsPaper"]')
+      expect(option.attributes('disabled')).toBeDefined()
+      expect(option.attributes('title')).toContain('Not enough cash')
+    })
+
+    it("shows the buyer's displayName and authored want-line alongside a live offer", async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.gameState = {
+        ...game.gameState,
+        carsForSale: [
+          {
+            carInstanceId: id,
+            sinceDay: game.gameState.day,
+            channelId: 'shopFront',
+            weekendMeetPending: false,
+          },
+        ],
+        pendingOffers: [{ carInstanceId: id, buyerId: 'first-timer', priceYen: 400_000 }],
+      }
+      const { wrapper } = await mountAt(id)
+
+      const wantLine = wrapper.find('[data-test="offer-want-line"]')
+      expect(wantLine.exists()).toBe(true)
+      expect(wantLine.text()).toContain('First-timer')
+      expect(wantLine.text()).toContain(
+        'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
+      )
+    })
+  })
+
   describe('the service banner no longer offers completion (Sprint 57 decision 1)', () => {
     it('shows the work status but not the Complete/Give Up button - that moved to the jobs screen', async () => {
       const game = useGameStore()

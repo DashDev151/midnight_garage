@@ -3,6 +3,7 @@ import {
   CarPartIdSchema,
   ComponentIdSchema,
   ConditionBandSchema,
+  SellingChannelIdSchema,
 } from '@midnight-garage/content'
 import { z } from 'zod'
 
@@ -39,10 +40,18 @@ const LaborAssignmentSchema = z.object({
  * `resolveSellViaWalkIn`'s reputation/heat/event-log plumbing. */
 const AcceptOfferActionSchema = z.object({ carInstanceId: z.string().min(1) })
 
-/** Toggle "taking offers" on a car. */
+/**
+ * Toggle "taking offers" on a car, and (while turning on) which channel to
+ * list it on. `channelId` is genuinely optional here (not `.default()`) so
+ * every existing queued-action literal that predates channels keeps
+ * compiling unchanged - `resolveSetForSale`'s own parameter default resolves
+ * an omitted channel to `'shopFront'`, the same place every other listing
+ * default lives.
+ */
 const SetForSaleActionSchema = z.object({
   carInstanceId: z.string().min(1),
   forSale: z.boolean(),
+  channelId: SellingChannelIdSchema.optional(),
 })
 
 const BuyPartActionSchema = z.object({

@@ -9,11 +9,13 @@ import {
   type CarPartId,
   type CarPartTaxonomyEntry,
   type GameState,
+  type SellingChannelId,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { interestedBuyers } from '../src/bidding'
 import { buildSimContext } from '../src/context'
 import { bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
+import { marketValueYen } from '../src/marketValue'
 import {
   bestFitBuyer,
   drawDailyOffers,
@@ -24,7 +26,7 @@ import {
   resolveSetForSale,
   sellViaWalkIn,
 } from '../src/selling'
-import { valuateCarForBuyer } from '../src/valuation'
+import { channelBuyerTaste, valuateCarForBuyer } from '../src/valuation'
 import { createRng } from '../src/rng'
 import {
   buildCarInstance,
@@ -195,7 +197,8 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
 /** `stateWithCar` plus a real live offer today on that car - the fixture
  * every `resolveSellViaWalkIn` test below needs, since accepting
  * consumes a pre-rolled `pendingOffers` entry instead of rolling one
- * itself. */
+ * itself. Listed on `shopFront` by default; pass `carsForSale` in
+ * `overrides` to test a different channel. */
 function stateWithOffer(
   car: CarInstance,
   priceYen: number,
@@ -203,7 +206,9 @@ function stateWithOffer(
   overrides: Partial<GameState> = {},
 ): GameState {
   return stateWithCar(car, {
-    carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+    carsForSale: [
+      { carInstanceId: car.id, sinceDay: 1, channelId: 'shopFront', weekendMeetPending: false },
+    ],
     pendingOffers: [{ carInstanceId: car.id, buyerId, priceYen }],
     ...overrides,
   })
@@ -219,7 +224,9 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
     expect(result.state.pendingOffers).toEqual([])
     // The whole point: rejecting one lowball is not the same as pulling the
     // car off the market.
-    expect(result.state.carsForSale).toEqual([{ carInstanceId: car.id, sinceDay: 1 }])
+    expect(result.state.carsForSale).toEqual([
+      { carInstanceId: car.id, sinceDay: 1, channelId: 'shopFront', weekendMeetPending: false },
+    ])
   })
 
   it('logs what was turned down, and costs no reputation', () => {
@@ -248,7 +255,9 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
 
   it('is a no-op with no live offer, or for a car not owned', () => {
     const listedNoOffer = stateWithCar(car, {
-      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
+      carsForSale: [
+        { carInstanceId: car.id, sinceDay: 1, channelId: 'shopFront', weekendMeetPending: false },
+      ],
     })
     expect(resolveRejectOffer(listedNoOffer, car.id).state).toBe(listedNoOffer)
     expect(resolveRejectOffer(listedNoOffer, car.id).log).toEqual([])
@@ -273,33 +282,119 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
   })
 })
 
-describe('resolveSetForSale (Sprint 31)', () => {
-  it('toggles a car for sale on and off', () => {
+describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
+  it('toggles a car for sale on and off, defaulting to the free shopFront channel', () => {
     const state = stateWithCar(car)
-    const on = resolveSetForSale(state, car.id, true)
-    expect(on.state.carsForSale).toEqual([{ carInstanceId: car.id, sinceDay: state.day }])
+    const on = resolveSetForSale(state, car.id, true, CONTEXT)
+    expect(on.state.carsForSale).toEqual([
+      {
+        carInstanceId: car.id,
+        sinceDay: state.day,
+        channelId: 'shopFront',
+        weekendMeetPending: false,
+      },
+    ])
 
-    const off = resolveSetForSale(on.state, car.id, false)
+    const off = resolveSetForSale(on.state, car.id, false, CONTEXT)
     expect(off.state.carsForSale).toEqual([])
   })
 
   it('is a no-op for a car not owned', () => {
     const state = stateWithCar(car)
-    const result = resolveSetForSale(state, 'ghost-car', true)
+    const result = resolveSetForSale(state, 'ghost-car', true, CONTEXT)
     expect(result.state).toBe(state)
   })
 
-  it('is a no-op when toggling to the state it is already in', () => {
-    const state = resolveSetForSale(stateWithCar(car), car.id, true).state
-    const result = resolveSetForSale(state, car.id, true)
+  it('is a no-op when toggling to the state it is already in, on a non-weekendMeet channel', () => {
+    const state = resolveSetForSale(stateWithCar(car), car.id, true, CONTEXT).state
+    const result = resolveSetForSale(state, car.id, true, CONTEXT)
     expect(result.state).toBe(state)
   })
 
   it('turning off drops any live pending offer on that car too', () => {
     const state = stateWithOffer(car, 900_000, 'tuner')
-    const result = resolveSetForSale(state, car.id, false)
+    const result = resolveSetForSale(state, car.id, false, CONTEXT)
     expect(result.state.pendingOffers).toEqual([])
     expect(result.state.carsForSale).toEqual([])
+  })
+
+  it('listing on a channel charges its feeYen immediately (freeAdsPaper: 1,500)', () => {
+    const state = stateWithCar(car, { cashYen: 100_000 })
+    const result = resolveSetForSale(state, car.id, true, CONTEXT, 'freeAdsPaper')
+    expect(result.state.cashYen).toBe(100_000 - CONTEXT.economy.sellingChannels.freeAdsPaper.feeYen)
+    expect(result.state.carsForSale).toEqual([
+      {
+        carInstanceId: car.id,
+        sinceDay: state.day,
+        channelId: 'freeAdsPaper',
+        weekendMeetPending: false,
+      },
+    ])
+  })
+
+  it('shopFront and tradeNetwork carry no fee', () => {
+    const state = stateWithCar(car, { cashYen: 100_000 })
+    const shopFront = resolveSetForSale(state, car.id, true, CONTEXT, 'shopFront')
+    expect(shopFront.state.cashYen).toBe(100_000)
+    const tradeNetwork = resolveSetForSale(state, car.id, true, CONTEXT, 'tradeNetwork')
+    expect(tradeNetwork.state.cashYen).toBe(100_000)
+  })
+
+  it('re-listing on a DIFFERENT channel pays that channel fee again, replacing the entry', () => {
+    const listed = resolveSetForSale(
+      stateWithCar(car, { cashYen: 100_000 }),
+      car.id,
+      true,
+      CONTEXT,
+      'shopFront',
+    ).state
+    const relisted = resolveSetForSale(listed, car.id, true, CONTEXT, 'tunerMagazine')
+    expect(relisted.state.cashYen).toBe(
+      100_000 - CONTEXT.economy.sellingChannels.tunerMagazine.feeYen,
+    )
+    expect(relisted.state.carsForSale).toEqual([
+      {
+        carInstanceId: car.id,
+        sinceDay: listed.day,
+        channelId: 'tunerMagazine',
+        weekendMeetPending: false,
+      },
+    ])
+  })
+
+  it('insufficient cash refuses quietly - no state change, no log entry', () => {
+    const poor = stateWithCar(car, {
+      cashYen: CONTEXT.economy.sellingChannels.tunerMagazine.feeYen - 1,
+    })
+    const result = resolveSetForSale(poor, car.id, true, CONTEXT, 'tunerMagazine')
+    expect(result.state).toBe(poor)
+    expect(result.log).toEqual([])
+  })
+
+  it('weekendMeet: listing sets weekendMeetPending, and re-listing on the SAME channel re-charges the fee (attend again)', () => {
+    const state = stateWithCar(car, { cashYen: 100_000 })
+    const first = resolveSetForSale(state, car.id, true, CONTEXT, 'weekendMeet')
+    expect(first.state.carsForSale).toEqual([
+      {
+        carInstanceId: car.id,
+        sinceDay: state.day,
+        channelId: 'weekendMeet',
+        weekendMeetPending: true,
+      },
+    ])
+    expect(first.state.cashYen).toBe(100_000 - CONTEXT.economy.sellingChannels.weekendMeet.feeYen)
+
+    // Spend the flag, as drawDailyOffers would, then list again: the fee is
+    // charged a second time and the flag comes back.
+    const spent = {
+      ...first.state,
+      carsForSale: [{ ...first.state.carsForSale[0]!, weekendMeetPending: false }],
+    }
+    const again = resolveSetForSale(spent, car.id, true, CONTEXT, 'weekendMeet')
+    expect(again.state.carsForSale[0]?.weekendMeetPending).toBe(true)
+    expect(again.state.cashYen).toBe(
+      spent.cashYen - CONTEXT.economy.sellingChannels.weekendMeet.feeYen,
+    )
   })
 })
 
@@ -316,12 +411,25 @@ describe('offerChanceFor (Sprint 31 decision 2)', () => {
   })
 })
 
-describe('drawDailyOffers (Sprint 31 decision 2)', () => {
+/** A listing entry on `channelId`, `shopFront`'s own defaults otherwise. */
+function listedOn(
+  channelId: SellingChannelId,
+  overrides: Partial<GameState['carsForSale'][number]> = {},
+): GameState['carsForSale'] {
+  return [
+    {
+      carInstanceId: car.id,
+      sinceDay: 1,
+      channelId,
+      weekendMeetPending: channelId === 'weekendMeet',
+      ...overrides,
+    },
+  ]
+}
+
+describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   it('is deterministic for the same seed', () => {
-    const state = {
-      ...stateWithCar(car),
-      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
-    }
+    const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
     const a = drawDailyOffers(state, CONTEXT, createRng(9))
     const b = drawDailyOffers(state, CONTEXT, createRng(9))
     expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
@@ -335,20 +443,13 @@ describe('drawDailyOffers (Sprint 31 decision 2)', () => {
   })
 
   it('prunes a stale for-sale entry once the car is no longer owned', () => {
-    const state = {
-      ...stateWithCar(car),
-      ownedCars: [],
-      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
-    }
+    const state = { ...stateWithCar(car), ownedCars: [], carsForSale: listedOn('shopFront') }
     const result = drawDailyOffers(state, CONTEXT, createRng(1))
     expect(result.state.carsForSale).toEqual([])
   })
 
   it('draws a real, logged offer within a reasonable number of seeded attempts', () => {
-    const state = {
-      ...stateWithCar(car),
-      carsForSale: [{ carInstanceId: car.id, sinceDay: 1 }],
-    }
+    const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
     let found = false
     for (let seed = 0; seed < 40 && !found; seed++) {
       const result = drawDailyOffers(state, CONTEXT, createRng(seed))
@@ -360,6 +461,103 @@ describe('drawDailyOffers (Sprint 31 decision 2)', () => {
       }
     }
     expect(found).toBe(true)
+  })
+
+  describe('tradeNetwork', () => {
+    const state = { ...stateWithCar(car), carsForSale: listedOn('tradeNetwork') }
+
+    it('prices priceBand-uniform against plain market value, buyer presented as the trade network itself', () => {
+      let found = false
+      for (let seed = 0; seed < 40 && !found; seed++) {
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+        const offer = result.state.pendingOffers[0]
+        if (!offer) continue
+        found = true
+        expect(offer.buyerId).toBe('trade-network')
+        const value = marketValueYen(
+          model,
+          car,
+          100,
+          CONTEXT.partsById,
+          CONTEXT.partsTaxonomyById,
+          ECONOMY,
+        )
+        const { min, max } = ECONOMY.sellingChannels.tradeNetwork.priceBand!
+        expect(offer.priceYen).toBeGreaterThanOrEqual(Math.round(value * min))
+        expect(offer.priceYen).toBeLessThanOrEqual(Math.round(value * max))
+      }
+      expect(found).toBe(true)
+    })
+
+    it('is deterministic for the same seed', () => {
+      const a = drawDailyOffers(state, CONTEXT, createRng(3))
+      const b = drawDailyOffers(state, CONTEXT, createRng(3))
+      expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
+    })
+  })
+
+  describe('weekendMeet: one guaranteed draw, then spent', () => {
+    it('the flag is always consumed by the draw, hit or miss', () => {
+      const state = { ...stateWithCar(car), carsForSale: listedOn('weekendMeet') }
+      for (let seed = 0; seed < 10; seed++) {
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+        expect(result.state.carsForSale[0]?.weekendMeetPending).toBe(false)
+      }
+    })
+
+    it('never draws again once the flag is spent, for any seed', () => {
+      const spent = {
+        ...stateWithCar(car),
+        carsForSale: listedOn('weekendMeet', { weekendMeetPending: false }),
+      }
+      for (let seed = 0; seed < 20; seed++) {
+        const result = drawDailyOffers(spent, CONTEXT, createRng(seed))
+        expect(result.state.pendingOffers).toEqual([])
+      }
+    })
+
+    it('can actually produce a real offer while the flag is still owed', () => {
+      const state = { ...stateWithCar(car), carsForSale: listedOn('weekendMeet') }
+      let found = false
+      for (let seed = 0; seed < 40 && !found; seed++) {
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+        if (result.state.pendingOffers.length > 0) found = true
+      }
+      expect(found).toBe(true)
+    })
+  })
+
+  describe('the mismatch mechanism (tunerMagazine, matchedOnly)', () => {
+    // A worn, honest shitbox's only genuine buyer pool is first-timer
+    // (buyers.json's only shitbox tierPreference); depressed condition
+    // drags first-timer's reliability-weighted taste for it under 1.0.
+    // Seed 0 is the first seed low enough to clear both channels' own
+    // chance rolls (verified: shopFront draws, magazine does not, on this
+    // exact seed).
+    const shitboxModel = CARS.find((c) => c.id === 'honda-city-e-aa')
+    if (!shitboxModel) throw new Error('fixture car missing from seed content')
+    const shitboxCar: CarInstance = buildCarInstance({
+      modelId: shitboxModel.id,
+      year: 1990,
+      mileageKm: 120_000,
+      authenticityPercent: 70,
+      parts: uniformCarParts('worn'),
+    })
+
+    it('a stock shitbox listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {
+      const shopFrontState: GameState = {
+        ...stateWithCar(shitboxCar),
+        carsForSale: listedOn('shopFront', { carInstanceId: shitboxCar.id }),
+      }
+      const magazineState: GameState = {
+        ...shopFrontState,
+        carsForSale: listedOn('tunerMagazine', { carInstanceId: shitboxCar.id }),
+      }
+      const shopFrontResult = drawDailyOffers(shopFrontState, CONTEXT, createRng(0))
+      const magazineResult = drawDailyOffers(magazineState, CONTEXT, createRng(0))
+      expect(shopFrontResult.state.pendingOffers.length).toBeGreaterThan(0)
+      expect(magazineResult.state.pendingOffers).toEqual([])
+    })
   })
 })
 
@@ -487,6 +685,155 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       const result = resolveSellViaWalkIn(state, resolvedCar.id, CONTEXT)
       expect(result.log[0]).not.toHaveProperty('saleRevealLine')
     })
+  })
+
+  describe('the matched-sale word-of-mouth bonus (Sprint 114)', () => {
+    // A synthetic buyer weighted purely on authenticity: `authenticity` is a
+    // direct, uncapped passthrough of `car.authenticityPercent` (unlike
+    // power/handling/style/reliability, which all cap below 100 through
+    // their own stat formulas), so this is the one stat a fixture can push
+    // to an exact normalizedTasteScore of 1.0 without depending on roster
+    // content. score=1 -> shopFront taste clamps to exactly its 1.00
+    // ceiling (matched); a buyer weighted the same way at authenticity 0
+    // scores 0 -> taste 0.88 (not matched).
+    const authenticityBuyer = {
+      id: 'authenticity-only',
+      archetype: 'collector' as const,
+      displayName: 'Authenticity Only',
+      statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
+      tierPreferences: [{ tier: 'common' as const, weight: 1 }],
+      priceSensitivity: 0.5,
+      wantLine: 'synthetic fixture buyer - no authored copy needed',
+    }
+    const matchedCar: CarInstance = buildCarInstance({
+      modelId: car.modelId,
+      authenticityPercent: 100,
+      parts: uniformCarParts('mint'),
+    })
+    const mismatchedCar: CarInstance = buildCarInstance({
+      modelId: car.modelId,
+      authenticityPercent: 0,
+      parts: uniformCarParts('mint'),
+    })
+
+    it('fires (stacks a reputation point on top) exactly when the buyer taste was >= 1.0', () => {
+      expect(
+        channelBuyerTaste(authenticityBuyer, model, matchedCar, {}, PARTS_TAXONOMY, ECONOMY, 1),
+      ).toBeGreaterThanOrEqual(1)
+
+      const matchedState = stateWithOffer(matchedCar, 900_000, authenticityBuyer.id)
+      const matchedResult = resolveSellViaWalkIn(
+        matchedState,
+        matchedCar.id,
+        buildSimContext(CARS, PARTS, [...BUYERS, authenticityBuyer], PARTS_TAXONOMY),
+      )
+      expect(matchedResult.log[0]).toMatchObject({ matchedSale: true })
+      expect(matchedResult.state.reputationPoints).toBeGreaterThanOrEqual(
+        CONTEXT.economy.reputation.matchedSaleRepBonus,
+      )
+    })
+
+    it('never fires below taste 1.0', () => {
+      expect(
+        channelBuyerTaste(authenticityBuyer, model, mismatchedCar, {}, PARTS_TAXONOMY, ECONOMY, 1),
+      ).toBeLessThan(1)
+
+      const mismatchedState = stateWithOffer(mismatchedCar, 900_000, authenticityBuyer.id)
+      const result = resolveSellViaWalkIn(
+        mismatchedState,
+        mismatchedCar.id,
+        buildSimContext(CARS, PARTS, [...BUYERS, authenticityBuyer], PARTS_TAXONOMY),
+      )
+      expect(result.log[0]).not.toHaveProperty('matchedSale')
+    })
+
+    it('never fires through the trade network (no real persona behind the offer)', () => {
+      const state = stateWithOffer(car, 900_000, 'trade-network', {
+        carsForSale: [
+          {
+            carInstanceId: car.id,
+            sinceDay: 1,
+            channelId: 'tradeNetwork',
+            weekendMeetPending: false,
+          },
+        ],
+      })
+      const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+      expect(result.log[0]).not.toHaveProperty('matchedSale')
+    })
+  })
+})
+
+describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
+  // Same authenticity-only synthetic buyer as the matched-sale block above -
+  // score=1 exercises every channel's ceiling at its exact top.
+  const perfectFitBuyer = {
+    id: 'authenticity-only',
+    archetype: 'collector' as const,
+    displayName: 'Authenticity Only',
+    statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
+    tierPreferences: [],
+    priceSensitivity: 0.5,
+    wantLine: 'synthetic fixture buyer - no authored copy needed',
+  }
+  const perfectFitCar: CarInstance = buildCarInstance({
+    modelId: car.modelId,
+    authenticityPercent: 100,
+    parts: uniformCarParts('mint'),
+  })
+
+  it('shopFront never yields taste above its 1.00 ceiling, even at a perfect stat fit', () => {
+    const taste = channelBuyerTaste(
+      perfectFitBuyer,
+      model,
+      perfectFitCar,
+      {},
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ECONOMY.sellingChannels.shopFront.tasteCeiling!,
+    )
+    expect(taste).toBeLessThanOrEqual(1.0)
+  })
+
+  it('the tuner magazine can exceed the standard 1.12 band top, up to its own 1.17 ceiling, on a matched draw', () => {
+    const taste = channelBuyerTaste(
+      perfectFitBuyer,
+      model,
+      perfectFitCar,
+      {},
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ECONOMY.sellingChannels.tunerMagazine.tasteCeiling!,
+    )
+    expect(taste).toBeGreaterThan(1 + ECONOMY.valuation.tasteSpread)
+    expect(taste).toBeLessThanOrEqual(ECONOMY.sellingChannels.tunerMagazine.tasteCeiling!)
+  })
+
+  it('the low end never moves - every channel shares the same floor as the standard band', () => {
+    const worstFitCar: CarInstance = buildCarInstance({
+      modelId: car.modelId,
+      authenticityPercent: 0,
+      parts: uniformCarParts('mint'),
+    })
+    const floor = 1 - ECONOMY.valuation.tasteSpread
+    for (const channelId of [
+      'shopFront',
+      'freeAdsPaper',
+      'tunerMagazine',
+      'weekendMeet',
+    ] as const) {
+      const ceiling = ECONOMY.sellingChannels[channelId].tasteCeiling!
+      const taste = channelBuyerTaste(
+        perfectFitBuyer,
+        model,
+        worstFitCar,
+        {},
+        PARTS_TAXONOMY,
+        ECONOMY,
+        ceiling,
+      )
+      expect(taste).toBeCloseTo(floor, 6)
+    }
   })
 })
 

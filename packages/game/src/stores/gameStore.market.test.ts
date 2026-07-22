@@ -5,6 +5,7 @@ import {
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
+import { channelBuyerTaste } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -94,6 +95,39 @@ describe('market: selling', () => {
     expect(offer!.copy).toContain('Today only')
   })
 
+  /** `setForSale` threads its `channelId` parameter down to
+   * `resolveSetForSale`, defaulting to `shopFront` when omitted. */
+  it('setForSale defaults to shopFront and threads a chosen channelId through to the listing', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+
+    expect(game.setForSale(carId, true)).toBe(true)
+    expect(game.listingChannelId(carId)).toBe('shopFront')
+
+    expect(game.setForSale(carId, false)).toBe(true)
+    expect(game.listingChannelId(carId)).toBeUndefined()
+
+    expect(game.setForSale(carId, true, 'freeAdsPaper')).toBe(true)
+    expect(game.listingChannelId(carId)).toBe('freeAdsPaper')
+  })
+
+  /** Re-listing an already-listed car on a DIFFERENT channel pays that
+   * channel's own fee again (the sim's own re-listing rule). */
+  it("re-listing on a different channel re-charges that channel's fee", () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+    expect(game.setForSale(carId, true, 'shopFront')).toBe(true) // free
+
+    const cashBefore = game.cashYen
+    const feeYen = game.context.economy.sellingChannels.freeAdsPaper.feeYen
+    expect(game.setForSale(carId, true, 'freeAdsPaper')).toBe(true)
+
+    expect(game.listingChannelId(carId)).toBe('freeAdsPaper')
+    expect(game.cashYen).toBe(cashBefore - feeYen)
+  })
+
   /** Rejecting an offer drops it but leaves the car listed. */
   it('rejecting an offer drops it but leaves the car listed, so tomorrow can bring a better one', () => {
     const game = useGameStore()
@@ -102,7 +136,14 @@ describe('market: selling', () => {
     const cashBefore = game.cashYen
     game.gameState = {
       ...game.gameState,
-      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      carsForSale: [
+        {
+          carInstanceId: carId,
+          sinceDay: game.gameState.day,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
     }
 
@@ -130,7 +171,14 @@ describe('market: selling', () => {
     const displayName = game.carDetail(carId)!.displayName
     game.gameState = {
       ...game.gameState,
-      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      carsForSale: [
+        {
+          carInstanceId: carId,
+          sinceDay: game.gameState.day,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
       carLedgers: { [carId]: { purchaseYen: 300_000, repairYen: 40_000, partsYen: 20_000 } },
     }
@@ -146,9 +194,66 @@ describe('market: selling', () => {
     expect(receipt!.partsYen).toBe(20_000)
     expect(receipt!.totalSpentYen).toBe(360_000)
     expect(receipt!.profitYen).toBe(140_000) // 500,000 - 360,000
+    // The receipt threads `car-sold`'s own `matchedSale` flag - this pairing
+    // (a generated shitbox, the reliability-led first-timer archetype) is
+    // not the buyer's visible want, so unmatched.
+    expect(receipt!.matchedSale).toBe(false)
 
     game.dismissSaleResult()
     expect(game.lastSaleResult).toBeNull()
+  })
+
+  /**
+   * A MATCHED sale (the buyer's taste for the car clears the listing
+   * channel's own tasteCeiling) surfaces `matchedSale: true` on the receipt.
+   * Finds a genuinely matched real buyer/generated-car pairing via
+   * `channelBuyerTaste` (the same public sim function `resolveSellViaWalkIn`
+   * itself uses) rather than hand-rolling a synthetic fixture, so the test
+   * proves the store's own passthrough against a real sim computation.
+   */
+  it('accepting a matched sale surfaces matchedSale: true on the receipt', () => {
+    const game = useGameStore()
+    let match: { carId: string; buyerId: string } | undefined
+    for (let i = 0; i < CARS.length && !match; i++) {
+      game.devGrantCar(CARS[i]!.id)
+      const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
+      const model = game.context.modelsById[car.modelId]!
+      for (const buyer of game.context.buyers) {
+        const taste = channelBuyerTaste(
+          buyer,
+          model,
+          car,
+          game.context.partsById,
+          game.context.partsTaxonomy,
+          game.context.economy,
+          game.context.economy.sellingChannels.weekendMeet.tasteCeiling!,
+        )
+        if (taste >= 1) {
+          match = { carId: car.id, buyerId: buyer.id }
+          break
+        }
+      }
+    }
+    expect(
+      match,
+      'expected at least one real buyer/generated-car pairing to clear a taste ceiling',
+    ).toBeDefined()
+
+    game.gameState = {
+      ...game.gameState,
+      carsForSale: [
+        {
+          carInstanceId: match!.carId,
+          sinceDay: game.gameState.day,
+          channelId: 'weekendMeet',
+          weekendMeetPending: false,
+        },
+      ],
+      pendingOffers: [{ carInstanceId: match!.carId, buyerId: match!.buyerId, priceYen: 500_000 }],
+    }
+
+    expect(game.acceptOffer(match!.carId)).toBe(true)
+    expect(game.lastSaleResult!.matchedSale).toBe(true)
   })
 
   it('reports an unknown purchase price as no profit at all, rather than inventing one', () => {
@@ -161,7 +266,14 @@ describe('market: selling', () => {
     const carId = game.gameState.ownedCars[0]!.id
     game.gameState = {
       ...game.gameState,
-      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      carsForSale: [
+        {
+          carInstanceId: carId,
+          sinceDay: game.gameState.day,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
       carLedgers: {},
     }
@@ -178,7 +290,14 @@ describe('market: selling', () => {
     const cashBefore = game.cashYen
     game.gameState = {
       ...game.gameState,
-      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      carsForSale: [
+        {
+          carInstanceId: carId,
+          sinceDay: game.gameState.day,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
     }
 
@@ -195,7 +314,14 @@ describe('market: selling', () => {
     const carId = game.gameState.ownedCars[0]!.id
     game.gameState = {
       ...game.gameState,
-      carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
+      carsForSale: [
+        {
+          carInstanceId: carId,
+          sinceDay: game.gameState.day,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
     }
     expect(game.offerFor(carId)?.priceYen).toBe(500_000)

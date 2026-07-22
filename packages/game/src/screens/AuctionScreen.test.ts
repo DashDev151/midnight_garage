@@ -2,7 +2,7 @@ import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
-import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
+import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
 import AuctionScreen from './AuctionScreen.vue'
 
@@ -509,22 +509,64 @@ describe('AuctionScreen', () => {
   })
 
   describe('tier display labels and the inspect control', () => {
-    it('tier headings and the visit panel show the display label, never the raw enum slug', async () => {
+    /**
+     * The tier heading/visit panel render through `venueLabelFor`, which
+     * prefers the save's own rolled `venueNameByTier` name and falls back to
+     * the plain tier label - every `useGameStore()` career rolls real venue
+     * names (`createInitialGameState`), so this asserts against
+     * `venueLabelFor`'s own output rather than the bare `AUCTION_TIER_LABELS`
+     * map, and the two dedicated tests below cover the rolled-name and
+     * no-venue-names cases explicitly.
+     */
+    it('tier headings and the visit panel show the venue label, never the raw enum slug', async () => {
       const game = useGameStore()
       warpToCatalog(game)
       const tiers = new Set(game.gameState.activeAuctionLots.map((l) => l.tier))
       const wrapper = mountScreen()
 
       const headings = wrapper.findAll('.tier-head h3').map((h) => h.text())
-      for (const tier of tiers) expect(headings).toContain(AUCTION_TIER_LABELS[tier])
+      for (const tier of tiers) {
+        expect(headings).toContain(venueLabelFor(tier, game.gameState.venueNameByTier))
+      }
       // Slugs live in data-test attributes only - never in rendered text.
       expect(wrapper.text()).not.toContain('local-yard')
       expect(wrapper.text()).not.toContain('collector-network')
 
-      // The active-visit panel names the yard through the same map.
+      // The active-visit panel names the yard through the same seam.
       const tier = game.gameState.activeAuctionLots[0]!.tier
       await wrapper.find(`[data-test="inspect-visit-${tier}"]`).trigger('click')
-      expect(wrapper.text()).toContain(`At the yard (${AUCTION_TIER_LABELS[tier]})`)
+      expect(wrapper.text()).toContain(
+        `At the yard (${venueLabelFor(tier, game.gameState.venueNameByTier)})`,
+      )
+    })
+
+    it("renders the save's own rolled venue name literally on the tier heading (Sprint 114)", () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const tier = game.gameState.activeAuctionLots[0]!.tier
+      game.gameState = {
+        ...game.gameState,
+        venueNameByTier: {
+          'local-yard': 'Test Yard Alpha',
+          regional: 'Test Regional Beta',
+          premium: 'Test Premium Gamma',
+          'collector-network': 'Test Collector Delta',
+        },
+      }
+      const wrapper = mountScreen()
+      const rolledName = game.gameState.venueNameByTier![tier]
+      expect(wrapper.findAll('.tier-head h3').map((h) => h.text())).toContain(rolledName)
+    })
+
+    it('falls back to the plain tier label when the save has no rolled venue names (Sprint 114)', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      game.gameState = { ...game.gameState, venueNameByTier: undefined }
+      const tier = game.gameState.activeAuctionLots[0]!.tier
+      const wrapper = mountScreen()
+      expect(wrapper.findAll('.tier-head h3').map((h) => h.text())).toContain(
+        AUCTION_TIER_LABELS[tier],
+      )
     })
 
     it('the inspect control carries its per-tier data-test anchor for the tutorial spotlight', () => {

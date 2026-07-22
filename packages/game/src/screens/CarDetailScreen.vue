@@ -4,6 +4,7 @@ import type {
   CarPartId,
   ComponentId,
   ConditionBand,
+  SellingChannelId,
   StagedAction,
 } from '@midnight-garage/content'
 import {
@@ -38,6 +39,12 @@ import {
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
+import {
+  SELLING_CHANNEL_LABELS,
+  SELLING_CHANNEL_ORDER,
+  sellingChannelCadenceLabel,
+  sellingChannelFeeLabel,
+} from '../utils/sellingChannelLabels'
 
 const game = useGameStore()
 const route = useRoute()
@@ -308,10 +315,48 @@ function toggleBay(): void {
   game.moveCar(d.car.id, d.inServiceBay ? 'parking' : 'service')
 }
 
-// --- The for-sale toggle + live offer card ---
+// --- The for-sale channel picker + live offer card ---
 
 const forSale = computed(() => game.isForSale(carId.value))
 const offer = computed(() => game.offerFor(carId.value))
+const activeChannelId = computed(() => game.listingChannelId(carId.value))
+
+/** The channel armed in the picker - defaults to shopFront, follows the
+ * active listing's own channel once the car is actually listed, so
+ * re-opening the screen shows where the car really sits. */
+const selectedChannelId = ref<SellingChannelId>('shopFront')
+watch(
+  activeChannelId,
+  (id) => {
+    if (id) selectedChannelId.value = id
+  },
+  { immediate: true },
+)
+
+/** Why `id` can't be armed right now, `null` when it can - the existing
+ * disabled-reason idiom (`AuctionScreen.vue`'s buyout button: disabled +
+ * title share the same check). */
+function channelDisabledReason(id: SellingChannelId): string | null {
+  const feeYen = game.context.economy.sellingChannels[id].feeYen
+  if (game.cashYen < feeYen) return `Not enough cash - listing here costs ${formatYen(feeYen)}`
+  return null
+}
+
+/** List (or re-list) the car on the armed channel - re-listing on a
+ * different channel pays that channel's fee again (the sim's own rule);
+ * `weekendMeet` re-charges even on the SAME channel, since its one
+ * guaranteed draw is spent the moment it resolves. */
+function listOnSelectedChannel(): void {
+  const d = detail.value
+  if (!d) return
+  game.setForSale(d.car.id, true, selectedChannelId.value)
+}
+
+function stopTakingOffers(): void {
+  const d = detail.value
+  if (!d) return
+  game.setForSale(d.car.id, false)
+}
 
 // --- The flip ledger's financial panel ---
 
@@ -320,12 +365,6 @@ const totalSpentYen = computed(() => {
   if (!d) return 0
   return (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen
 })
-
-function toggleForSale(): void {
-  const d = detail.value
-  if (!d) return
-  game.setForSale(d.car.id, !forSale.value)
-}
 
 // --- Staging, replace, remove ---
 
@@ -1231,7 +1270,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </p>
 
         <div v-if="offer" class="offer-card" data-test="pending-offer">
-          <p class="offer-copy">{{ offer.copy }}</p>
+          <div class="offer-info">
+            <p class="offer-copy">{{ offer.copy }}</p>
+            <p class="offer-want" data-test="offer-want-line">
+              {{ offer.buyerName }} - {{ offer.wantLine }}
+            </p>
+          </div>
           <div class="offer-actions">
             <button
               class="primary"
@@ -1251,10 +1295,39 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </div>
         </div>
 
-        <div class="for-sale-toggle">
-          <button data-test="toggle-for-sale" @click="toggleForSale">
-            {{ forSale ? 'Stop taking offers' : 'Take offers' }}
-          </button>
+        <div class="channel-picker" data-test="channel-picker">
+          <p v-if="forSale && activeChannelId" class="active-channel" data-test="active-channel">
+            Listed on {{ SELLING_CHANNEL_LABELS[activeChannelId] }}
+          </p>
+          <ul class="channel-options">
+            <li v-for="id in SELLING_CHANNEL_ORDER" :key="id">
+              <button
+                type="button"
+                class="channel-option"
+                :class="{ selected: selectedChannelId === id }"
+                :disabled="!!channelDisabledReason(id)"
+                :title="channelDisabledReason(id) ?? undefined"
+                :data-test="'channel-option-' + id"
+                @click="selectedChannelId = id"
+              >
+                <span class="channel-name">{{ SELLING_CHANNEL_LABELS[id] }}</span>
+                <span class="channel-fee">{{
+                  sellingChannelFeeLabel(game.context.economy.sellingChannels[id])
+                }}</span>
+                <span class="channel-cadence">{{
+                  sellingChannelCadenceLabel(game.context.economy.sellingChannels[id])
+                }}</span>
+              </button>
+            </li>
+          </ul>
+          <div class="for-sale-toggle">
+            <button data-test="list-on-channel" @click="listOnSelectedChannel">
+              {{ forSale ? 'Re-list here' : 'List here' }}
+            </button>
+            <button v-if="forSale" data-test="stop-for-sale" @click="stopTakingOffers">
+              Stop taking offers
+            </button>
+          </div>
           <span v-if="forSale && !offer" class="for-sale-hint">
             Taking offers - a buyer may show up tomorrow.
           </span>
@@ -1792,8 +1865,20 @@ h4 {
   margin-top: var(--mg-space-2);
 }
 
+.offer-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-1);
+}
+
 .offer-copy {
   margin: 0;
+  font-size: var(--mg-fs-sm);
+}
+
+.offer-want {
+  margin: 0;
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 
@@ -1808,6 +1893,62 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
+.channel-picker {
+  margin-top: var(--mg-space-2);
+}
+
+.active-channel {
+  margin: 0 0 var(--mg-space-1);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.channel-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--mg-space-2);
+  margin: 0 0 var(--mg-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.channel-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2);
+  cursor: pointer;
+}
+
+.channel-option.selected {
+  border-color: var(--mg-neon-cyan);
+}
+
+.channel-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.channel-name {
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text);
+}
+
+.channel-fee {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+}
+
+.channel-cadence {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
 .for-sale-toggle {
   display: flex;
   align-items: center;
@@ -1816,6 +1957,8 @@ h4 {
 }
 
 .for-sale-hint {
+  display: block;
+  margin-top: var(--mg-space-2);
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }

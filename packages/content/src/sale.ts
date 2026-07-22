@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SellingChannelIdSchema } from './economy'
 
 /**
  * Every sale resolves through the same walk-in-style path, so there is exactly
@@ -10,10 +11,20 @@ export const SaleChannelSchema = z.enum(['walk-in-offer'])
  * A car the player has toggled "taking offers" on. The car stays in `ownedCars`/
  * the shop the whole time; `sinceDay` is when the toggle was switched on, read
  * by bots' accept-threshold policies as the holding-cost-pressure clock.
+ *
+ * `channelId` is where it's listed - sets the fee already paid, the offer
+ * cadence, and which buyer pool can arrive (`economy.sellingChannels`).
+ * Re-listing on another channel replaces this and pays that channel's fee
+ * again. `weekendMeetPending` is that one channel's own one-shot state: true
+ * whenever (re-)listed on `weekendMeet`, consumed (set false) the moment
+ * `drawDailyOffers` resolves that listing's single guaranteed draw, hit or
+ * miss; always false for every other channel.
  */
 export const ForSaleEntrySchema = z.object({
   carInstanceId: z.string().min(1),
   sinceDay: z.number().int().positive(),
+  channelId: SellingChannelIdSchema,
+  weekendMeetPending: z.boolean(),
 })
 
 /**

@@ -860,7 +860,14 @@ describe('saveCodec', () => {
   it('round-trips a current state with a real for-sale car and a live pending offer (Sprint 31)', () => {
     const withOffer: GameState = GameStateSchema.parse({
       ...fullState,
-      carsForSale: [{ carInstanceId: 'car-0002', sinceDay: 40 }],
+      carsForSale: [
+        {
+          carInstanceId: 'car-0002',
+          sinceDay: 40,
+          channelId: 'shopFront',
+          weekendMeetPending: false,
+        },
+      ],
       pendingOffers: [{ carInstanceId: 'car-0002', buyerId: 'tuner', priceYen: 500_000 }],
     })
     const decoded = decodeSave(encodeSave(withOffer))
@@ -978,7 +985,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(44)
+    expect(SAVE_VERSION).toBe(45)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1027,7 +1034,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(44)
+    expect(SAVE_VERSION).toBe(45)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1616,7 +1623,7 @@ describe('saveCodec', () => {
    * tracks the current value, not this fact.
    */
   it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(44)
+    expect(SAVE_VERSION).toBe(45)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1719,7 +1726,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(44)
+    expect(SAVE_VERSION).toBe(45)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1752,7 +1759,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(44)
+    expect(SAVE_VERSION).toBe(45)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1799,7 +1806,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is 40 (Sprint 87 assembly model)', () => {
-    expect(SAVE_VERSION).toBe(44)
+    expect(SAVE_VERSION).toBe(45)
   })
 
   it("a real pre-v28 save remaps a shitbox car's common-class stock part to the shitbox-class sibling SKU", () => {
@@ -2128,5 +2135,53 @@ describe('saveCodec', () => {
     })
     const decoded = decodeSave(encodeSave(withMissions))
     expect(decoded.storyMissions).toEqual(withMissions.storyMissions)
+  })
+
+  /**
+   * v44 -> v45 (the selling rework - channels and characters):
+   * `ForSaleEntrySchema` gained REQUIRED `channelId`/`weekendMeetPending`
+   * fields, and `GameState` gained an optional `venueNameByTier`. Per
+   * directive 19 (no pre-launch save compatibility), there is deliberately
+   * no migration backfilling `channelId`/`weekendMeetPending` onto an old
+   * save: a pre-v45 save with a listing fails to decode outright, and a v45
+   * state round-trips both new shapes exactly.
+   */
+  it('a pre-v45 save (a listed car with no channelId) fails to decode cleanly rather than crashing', () => {
+    const preV45 = {
+      version: 44,
+      gameState: {
+        ...fullState,
+        carsForSale: [{ carInstanceId: 'car-0001', sinceDay: 5 }],
+      },
+    }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV45))
+    expect(() => decodeSave(code)).toThrow()
+  })
+
+  it('a v45 state round-trips channelId/weekendMeetPending and venueNameByTier exactly', () => {
+    const withChannelsAndVenues: GameState = GameStateSchema.parse({
+      ...fullState,
+      carsForSale: [
+        {
+          carInstanceId: 'car-0001',
+          sinceDay: 5,
+          channelId: 'weekendMeet',
+          weekendMeetPending: true,
+        },
+      ],
+      venueNameByTier: {
+        'local-yard': 'Harumidai Car Land',
+        regional: 'Tsurumi Auto Auction Hall',
+        premium: 'NCX Yokohama',
+        'collector-network': 'The Meisha-kai List',
+      },
+    })
+    const decoded = decodeSave(encodeSave(withChannelsAndVenues))
+    expect(decoded).toEqual(withChannelsAndVenues)
+    expect(decoded.carsForSale[0]).toMatchObject({
+      channelId: 'weekendMeet',
+      weekendMeetPending: true,
+    })
+    expect(decoded.venueNameByTier).toEqual(withChannelsAndVenues.venueNameByTier)
   })
 })

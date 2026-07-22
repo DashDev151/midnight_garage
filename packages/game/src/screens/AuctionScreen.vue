@@ -5,7 +5,7 @@ import type { AuctionTier } from '@midnight-garage/content'
 import AuctionLotCard from '../components/AuctionLotCard.vue'
 import LabourBar from '../components/LabourBar.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
-import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
+import { venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
@@ -138,7 +138,7 @@ const hasLots = computed(() => totalLots.value > 0)
          or the moment a different tier's visit starts, never lingers past
          either. -->
     <p v-if="game.inspectionVisit" class="visit-panel" data-test="visit-panel">
-      At the yard ({{ AUCTION_TIER_LABELS[game.inspectionVisit.tier] }}):
+      At the yard ({{ venueLabelFor(game.inspectionVisit.tier, game.gameState.venueNameByTier) }}):
       {{ game.inspectionVisit.minutesLeft }}m left
     </p>
 
@@ -157,7 +157,7 @@ const hasLots = computed(() => totalLots.value > 0)
 
     <div v-for="group in allGroups" :key="group.tier" class="tier">
       <div class="tier-head">
-        <h3>{{ AUCTION_TIER_LABELS[group.tier] }}</h3>
+        <h3>{{ venueLabelFor(group.tier, game.gameState.venueNameByTier) }}</h3>
         <button
           v-if="!isActiveVisitTier(group.tier)"
           type="button"
