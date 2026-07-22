@@ -226,6 +226,7 @@ describe('AuctionRoomDemoScreen', () => {
     expect(wrapper.find('[data-test="force-goad"]').text()).toBe('Goad')
     expect(wrapper.find('[data-test="force-tax"]').text()).toBe('Snipe tax')
     expect(wrapper.find('[data-test="force-feud"]').text()).toBe('Feud')
+    expect(wrapper.find('[data-test="force-spite"]').text()).toBe('Spite')
   })
 
   it('clicking a force button arms the room and marks the button active', async () => {

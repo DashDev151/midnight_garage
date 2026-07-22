@@ -43,6 +43,14 @@ export const router = createRouter({
       // `App.vue` hides the header/nav chrome on any route with `chrome: false`.
       meta: { chrome: false },
     },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../screens/SettingsScreen.vue'),
+      // A sub-page of the pause menu, not a gameplay tab - same chrome-free
+      // treatment as the menu itself.
+      meta: { chrome: false },
+    },
     { path: '/car/:id', name: 'car', component: () => import('../screens/CarDetailScreen.vue') },
     {
       path: '/auctions',

@@ -150,6 +150,14 @@ export const AuctionRoomConfigSchema = z.object({
     feudRungs: z.number().int().positive(),
     /** The short, urgent delay band the feud paces on. */
     feudDelayMs: AuctionRoomDelayRangeSchema,
+    /** The chance a room with nothing left to bid answers anyway: drawn the
+     * moment a player raise first sweeps the next room rung past the
+     * clearing price with a dealer still active. */
+    spiteChance: z.number().min(0).max(1),
+    /** The spite counter's own rungs, past the player's board that sweep -
+     * exempt from the clearing cap, but the counter is discarded outright if
+     * that rung would land at or above the room's read. */
+    spiteMaxRungs: z.number().int().positive(),
   }),
 })
 
@@ -1332,7 +1340,7 @@ export const EconomyConfigSchema = z.object({
   }),
   /**
    * The live auction room's tuning: the seeded clearing draw, the raise
-   * pacing, and the five bidding reactions, all read by the shared room
+   * pacing, and the six bidding reactions, all read by the shared room
    * machine (`packages/game/src/screens/auctionRoom.ts`) rather than a
    * hardcoded constant, so every room the game seats (the tuning demo, the
    * tutorial's quiet room, and the production floor alike) rides one source

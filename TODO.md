@@ -354,6 +354,23 @@ pass."
   best-route walker in diagnosisRouteProbes is effectively this character's brain already;
   staff traits already touch inspection (auction-rat's extra minutes), so this is a trait plus
   one resolver, not a new system. RULED v1.0 (maintainer, 2026-07-21), not post-launch.
+- [x] **RULING (Sprint 111, 2026-07-22 playtest): owned-car diagnosis stays workup-only, closed,
+  not to be re-opened casually.** The routed diagnostic tests (a yard visit's minute-budget
+  route) are the yard's time game; at home, on a car the player already owns, the full afternoon
+  is honest, so the workup screen's full manual diagnosis stays the only owned-car path - no
+  routed/time-limited diagnosis mode for owned cars. Recorded here so the question does not
+  resurface without cause; `sprint111.md` item 2 is the workup gate fix (hide/disable once every
+  symptom is resolved) that shipped alongside this ruling.
+- [ ] **Next-day delivery of auction wins (maintainer-proposed, 2026-07-22 playtest, floated as
+  the alternative to express parts delivery; needs its own design pass before any sprint).** A
+  car won at auction would arrive the morning after the hammer rather than settling straight into
+  `ownedCars`, mirroring the "commit now, land later" shape parts delivery already uses
+  (`resolveBuyPart`'s standard/express split). Sim-wide ripples, not a one-liner: the room's
+  settle flow (`settleAuctionHammer`), where/how a won-but-undelivered car is held and displayed
+  before it lands, and the tutorial's scripted-lot flow (which currently settles the tutorial car
+  immediately). Scope questions for the design pass: does an in-transit car block the bay/slot
+  it will eventually occupy; does an express option exist for cars the way it does for parts, or
+  is next-day the only speed; how it reads on the car list before delivery.
 
 - [ ] **Auction Guarantors** (`docs/design/auction-guarantors.md`, maintainer-authored,
   filed 2026-07-19): story-mission guarantors replace the passive rep gate on

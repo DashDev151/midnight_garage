@@ -211,12 +211,14 @@ describe('AuctionRoomScreen', () => {
     const game = useGameStore()
     const lot = makeLot(game, 'autobid-test-lot', 'thin')
     seatLot(game, lot)
+    // Auto-bid is enabled from Settings now (Sprint 111 item 5), not a
+    // toggle in the room - the room only offers the ceiling once it's on.
+    game.setAutoBidEnabled(true)
     const { wrapper } = await mountRoom(lot.id)
     const opening = roomOf(wrapper)
     const ceiling = opening.reserveYen + opening.incrementYen
 
     await wrapper.find('[data-test="autobid-ceiling"]').setValue(ceiling)
-    await wrapper.find('[data-test="autobid-toggle"]').setValue(true)
 
     // The opener lands (autobid itself, since nothing has bid yet and the
     // reserve sits at or under the ceiling), then the room's own counter
@@ -234,18 +236,21 @@ describe('AuctionRoomScreen', () => {
     expect(roomOf(wrapper).boardYen).toBeGreaterThan(ceiling)
   })
 
-  it('a relaxed or unhurried fuse preset scales the room clock, pinned to the exact multiplier', async () => {
+  it('a relaxed or unhurried fuse preset (set from Settings) scales the room clock on the next room built, pinned to the exact multiplier', async () => {
     const game = useGameStore()
     const lot = makeLot(game, 'fuse-test-lot', 'thin')
     seatLot(game, lot)
-    const { wrapper } = await mountRoom(lot.id)
     const baseClockMs = game.context.economy.auctionRoom.clockMs
-    expect(roomOf(wrapper).config.clockMs).toBe(baseClockMs)
 
-    await wrapper.find('[data-test="fuse-preset-unhurried"]').trigger('click')
+    const first = await mountRoom(lot.id)
+    expect(roomOf(first.wrapper).config.clockMs).toBe(baseClockMs)
+    first.wrapper.unmount()
 
-    expect(game.fusePreset).toBe('unhurried')
-    expect(roomOf(wrapper).config.clockMs).toBe(Math.round(baseClockMs * 2.4))
+    // The preset selector lives in Settings now (Sprint 111 item 5) - the
+    // room only ever reads `game.fusePreset` when it builds a fresh room.
+    game.setFusePreset('unhurried')
+    const second = await mountRoom(lot.id)
+    expect(roomOf(second.wrapper).config.clockMs).toBe(Math.round(baseClockMs * 2.4))
   })
 
   it('disables a raise option the instant its landing price passes current cash, with a reason', async () => {

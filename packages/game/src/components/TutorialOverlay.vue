@@ -291,33 +291,41 @@ function fallbackTestIds(anchorScreen: string): string[] {
 }
 
 let spotlit: Element | null = null
-watchEffect((onCleanup) => {
-  // Re-run when the step, its visible lines (via anchorTestId), or the route
-  // changes - the route swap is what mounts/unmounts the real controls.
-  void route.name
-  if (spotlit) {
-    spotlit.classList.remove('tutorial-spotlight')
-    spotlit = null
-  }
-  const step = currentStep.value
-  const primary = anchorTestIds.value
-  if (step && primary.length > 0 && typeof document !== 'undefined') {
-    for (const testId of [...primary, ...fallbackTestIds(step.anchorScreen)]) {
-      const el = document.querySelector(`[data-test="${testId}"]`)
-      if (el) {
-        el.classList.add('tutorial-spotlight')
-        spotlit = el
-        break
-      }
-    }
-  }
-  onCleanup(() => {
+watchEffect(
+  (onCleanup) => {
+    // Re-run when the step, its visible lines (via anchorTestId), or the
+    // route changes - the route swap is what mounts/unmounts the real
+    // controls.
+    void route.name
     if (spotlit) {
       spotlit.classList.remove('tutorial-spotlight')
       spotlit = null
     }
-  })
-})
+    const step = currentStep.value
+    const primary = anchorTestIds.value
+    if (step && primary.length > 0 && typeof document !== 'undefined') {
+      for (const testId of [...primary, ...fallbackTestIds(step.anchorScreen)]) {
+        const el = document.querySelector(`[data-test="${testId}"]`)
+        if (el) {
+          el.classList.add('tutorial-spotlight')
+          spotlit = el
+          break
+        }
+      }
+    }
+    onCleanup(() => {
+      if (spotlit) {
+        spotlit.classList.remove('tutorial-spotlight')
+        spotlit = null
+      }
+    })
+  },
+  // The target control (e.g. a newly unlocked diagnostic-test button) can
+  // mount in the very same reactive flush that shifts the chosen anchor -
+  // the default 'pre' timing would query the DOM before that mount lands,
+  // so this must run 'post', after every component's own update.
+  { flush: 'post' },
+)
 
 // --- draggable overlay (Sprint 95 decision 8) --------------------------------
 
@@ -363,12 +371,41 @@ function onHeaderPointerDown(event: PointerEvent): void {
 onUnmounted(onDragEnd)
 
 /** Dragged position (session-only, ui store) overrides the default
- * bottom-left CSS; unset means the stylesheet position applies untouched. */
+ * bottom-left CSS; unset means the stylesheet position (plain or hinted via
+ * `panelPositionClass` below) applies untouched. `transform: none` cancels
+ * the `right` hint's vertical-centering transform, which otherwise fights
+ * an explicit top pixel value. */
 const overlayStyle = computed(() => {
   const pos = ui.tutorialOverlayPos
   if (!pos) return undefined
-  return { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto' }
+  return { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto', transform: 'none' }
 })
+
+// --- per-step default placement ----------------------------------------------
+
+/** The class carrying the current step's `panelPosition` hint, if any -
+ * `undefined`/`'default'` adds nothing and the plain bottom-left CSS applies. */
+const panelPositionClass = computed(() => {
+  switch (currentStep.value?.panelPosition) {
+    case 'right':
+      return 'tutorial-pos-right'
+    case 'bottom-right':
+      return 'tutorial-pos-bottom-right'
+    default:
+      return ''
+  }
+})
+
+/** A step change re-applies that step's default placement: dropping any
+ * drag from the step just left rather than carrying it forward. Dragging
+ * within a step is untouched - only the step boundary (or mounting onto a
+ * step, which clears any position remembered from before the mount)
+ * resets it. */
+watch(
+  () => currentStep.value?.id,
+  () => ui.setTutorialOverlayPos(null),
+  { immediate: true },
+)
 
 const confirmingSkip = ref(false)
 </script>
@@ -377,7 +414,7 @@ const confirmingSkip = ref(false)
   <aside
     v-if="game.tutorialActive && currentStep"
     ref="overlayEl"
-    class="tutorial-overlay"
+    :class="['tutorial-overlay', panelPositionClass]"
     data-test="tutorial-overlay"
     role="complementary"
     aria-label="Walkthrough"
@@ -485,6 +522,20 @@ const confirmingSkip = ref(false)
   color: #e7ecff;
   font-size: 0.86rem;
   line-height: 1.4;
+}
+/* Per-step default placement (`panelPosition`): the class wins over the base
+ * rule above on specificity alone, and a drag's inline style wins over both. */
+.tutorial-overlay.tutorial-pos-bottom-right {
+  left: auto;
+  right: 1rem;
+  bottom: 1rem;
+}
+.tutorial-overlay.tutorial-pos-right {
+  left: auto;
+  right: 1rem;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
 }
 .tutorial-head {
   display: flex;

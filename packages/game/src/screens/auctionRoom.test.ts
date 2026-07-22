@@ -85,6 +85,8 @@ function bareRoom(dealers: Dealer[], reserve: number, increment: number, clearin
     snipeCount: 0,
     pendingCallRungs: null,
     feud: null,
+    spiteFired: false,
+    pendingSpiteRungs: null,
     armedReaction: null,
     config: cfg,
   }
@@ -541,7 +543,102 @@ describe('auctionRoom machine', () => {
     expect(room.log).not.toContain('Somebody saw you under that car earlier. The room sits up.')
   })
 
-  it('CAP LAW: without the goad, no room-attributed bid ever lands above the room read, across many seeded rooms and assorted player jumps', () => {
+  it('fires the spite counter at the sweep-in moment: a successful roll counters the player raise that first swept the board past clearing, landing spiteMaxRungs past it and under the read, then never fires again', () => {
+    const room = bareRoom(
+      [
+        { name: 'Endo', active: true },
+        { name: 'Mrs. Sakaki', active: true },
+      ],
+      100_000,
+      10_000,
+      110_000,
+    )
+    room.roomReadYen = 200_000
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    // The spite roll succeeds (< spiteChance), then its own delay draw.
+    room.rng = sequence([0.0, 0.5])
+
+    playerBid(room, 0, 1) // a plain rung-one raise already sweeps past the tight clearing price
+
+    expect(room.spiteFired).toBe(true)
+    expect(room.pendingRoomBid).not.toBeNull()
+
+    tick(room, room.pendingRoomBid!.atMs)
+
+    expect(room.leader).toBe('room')
+    expect(room.boardYen).toBe(110_000 + config().reactions.spiteMaxRungs * room.incrementYen)
+    expect(room.boardYen).toBeLessThan(room.roomReadYen)
+    // The spite is the last word: the room schedules nothing further off it.
+    expect(room.pendingRoomBid).toBeNull()
+    const spiteLine = "Endo won't be swept aside: ¥120,000."
+    expect(room.log.at(-1)).toBe(spiteLine)
+
+    // A further silent-win raise, with a stub that would satisfy the spite
+    // chance again if it were still eligible: the latch means it never fires
+    // twice, and the player's re-raise wins unanswered.
+    room.rng = sequence([0.0])
+    playerBid(room, 200, 1)
+    expect(room.log.filter((line) => line === spiteLine)).toHaveLength(1)
+    expect(room.pendingRoomBid).toBeNull()
+  })
+
+  it('never lets the spite counter land at or above the room read: an unfit target is discarded outright, even when armed, leaving the room silent and the arm in place', () => {
+    const room = bareRoom([{ name: 'Endo', active: true }], 100_000, 10_000, 105_000)
+    room.roomReadYen = 105_000 // board(100,000) + spiteMaxRungs*increment would already sweep past this
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    armReaction(room, 'spite')
+
+    playerBid(room, 0, 1) // sweeps past the tight clearing price
+
+    expect(room.spiteFired).toBe(false)
+    expect(room.armedReaction).toBe('spite') // the arm survives an unfit target
+    expect(room.pendingRoomBid).toBeNull() // no counter: the room stays silent as normal
+  })
+
+  it("force-arms the spite: the next sweep-in raise counters with no chance draw, and a further sweep-in raise does not refire once the arm and the room's own latch are spent", () => {
+    const room = bareRoom(
+      [
+        { name: 'Endo', active: true },
+        { name: 'Mrs. Sakaki', active: true },
+      ],
+      100_000,
+      10_000,
+      110_000,
+    )
+    room.roomReadYen = 200_000
+    room.leader = 'room'
+    room.leaderName = 'Endo'
+    room.boardYen = 100_000
+    armReaction(room, 'spite')
+    // No chance draw for the forced spite; just its own delay draw.
+    room.rng = sequence([0.5])
+
+    playerBid(room, 0, 1)
+
+    expect(room.armedReaction).toBeNull()
+    expect(room.spiteFired).toBe(true)
+
+    tick(room, room.pendingRoomBid!.atMs)
+
+    expect(room.boardYen).toBe(110_000 + config().reactions.spiteMaxRungs * room.incrementYen)
+    expect(room.boardYen).toBeLessThan(room.roomReadYen)
+    expect(room.pendingRoomBid).toBeNull()
+    const spiteLine = "Endo won't be swept aside: ¥120,000."
+    expect(room.log.at(-1)).toBe(spiteLine)
+
+    // A further sweep-in raise, with the arm already spent: no chance draw
+    // stub is queued, so a redraw here would throw - the latch means it never
+    // reaches one.
+    playerBid(room, 200, 1)
+    expect(room.log.filter((line) => line === spiteLine)).toHaveLength(1)
+    expect(room.pendingRoomBid).toBeNull()
+  })
+
+  it('CAP LAW: without the goad, no room-attributed bid ever lands above the room read - true whether or not the spite counter (a real chance here, mixed in unstubbed) happens to fire, since the spite itself is bound by the same read - across many seeded rooms and assorted player jumps', () => {
     const entries = buildLobby()
     for (const entry of entries) {
       for (let run = 0; run < 25; run++) {
@@ -569,6 +666,40 @@ describe('auctionRoom machine', () => {
         }
       }
     }
+  })
+
+  it('CAP LAW: with every chance draw stubbed to fail, neither the goad nor the spite ever fires, so no room-attributed bid ever lands above the clearing price', () => {
+    const room = bareRoom(
+      [
+        { name: 'Endo', active: true },
+        { name: 'Mrs. Sakaki', active: true },
+      ],
+      100_000,
+      10_000,
+      150_000,
+    )
+    // A constant just under 1: every chance draw in the module (scare, call,
+    // goad, feud, snipe tax, spite) reads its own u against a chance <= 1 and
+    // fails every time; the same stub also stands in for every delay draw,
+    // landing each one at (near) the top of its band, which is harmless.
+    room.rng = () => 0.999
+    let nowMs = 0
+    let guard = 0
+    while (room.status === 'open' && guard < 100) {
+      guard++
+      if (room.leader === 'player') {
+        nowMs = room.pendingRoomBid ? room.pendingRoomBid.atMs : room.clockEndsAtMs
+        tick(room, nowMs)
+      } else {
+        nowMs += 50
+        playerBid(room, nowMs, 4) // a jump every time, exercising every jump-reaction draw too
+      }
+      if (room.leader === 'room') {
+        expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
+      }
+    }
+    expect(room.status).not.toBe('open')
+    expect(room.spiteFired).toBe(false)
   })
 
   it('taxes a room response once the snipe tolerance is spent, without touching the delay band', () => {

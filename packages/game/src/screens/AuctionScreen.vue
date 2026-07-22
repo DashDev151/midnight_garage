@@ -185,19 +185,13 @@ const hasLots = computed(() => totalLots.value > 0)
           <AuctionLotCard
             :d="d"
             :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
+            :player-estimate-yen="d.playerEstimateYen"
             @run-test="({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)"
           >
             <template #info>
               <div class="lot-secondary">
                 <span>reserve {{ formatYen(d.reserveYen) }}</span>
               </div>
-              <!-- The player's own number, once any test has run or any
-                   symptom has resolved - hidden while it could only equal
-                   the room's number, so the moment it appears is the
-                   moment of divergence. -->
-              <p v-if="d.playerEstimateYen !== null" class="player-estimate" data-test="you-say">
-                you say {{ formatYen(d.playerEstimateYen) }}
-              </p>
             </template>
 
             <template #actions>
@@ -358,12 +352,6 @@ h3 {
 .lot:hover :deep(.grade-stamp),
 .lot:focus-within :deep(.grade-stamp) {
   filter: saturate(1) brightness(1);
-}
-
-.player-estimate {
-  margin: 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
 }
 
 .lot-secondary {

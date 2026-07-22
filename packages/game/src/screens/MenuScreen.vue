@@ -37,6 +37,10 @@ function onNewGameClick(): void {
 function cancelNewGame(): void {
   confirmingNewGame.value = false
 }
+
+function onSettingsClick(): void {
+  void router.push({ name: 'settings' })
+}
 </script>
 
 <template>
@@ -66,7 +70,7 @@ function cancelNewGame(): void {
 
       <SaveMenu />
 
-      <button disabled data-test="menu-settings" title="coming soon">Settings</button>
+      <button data-test="menu-settings" @click="onSettingsClick">Settings</button>
     </div>
   </section>
 </template>

@@ -127,7 +127,7 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
   })
 
   it('the taught build stays completable after one mistake, and clears a small deliberate profit', () => {
-    // Sprint 91 coherence fix: her budget and her pay are one figure (¥148,000);
+    // Sprint 91 coherence fix: her budget and her pay are one figure (¥145,000);
     // the mission is not "spend under a cap higher than she pays" - it is "build
     // within her money and keep what is left". So the guarantee is that a single
     // wrong-band purchase still completes (spend + mistake within her money), not

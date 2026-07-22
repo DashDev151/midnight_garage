@@ -30,14 +30,17 @@ export const useUiStore = defineStore('ui', () => {
 
   /**
    * Sprint 95 decision 8: where the player has dragged the walkthrough overlay
-   * this session, in viewport pixels (top-left corner). `null` means never
-   * dragged - the overlay keeps its default bottom-left CSS position. Session
+   * this session, in viewport pixels (top-left corner). `null` means the
+   * overlay keeps its current step's default placement (the stylesheet's
+   * bottom-left corner, or that step's own `panelPosition` hint). Session
    * state only, never persisted to the save: a reload snaps the overlay back
-   * to the default, which is fine.
+   * to the default, which is fine. The overlay itself clears this back to
+   * `null` whenever the active step changes, so a drag never survives past
+   * the beat it happened on.
    */
   const tutorialOverlayPos = ref<{ x: number; y: number } | null>(null)
 
-  function setTutorialOverlayPos(pos: { x: number; y: number }): void {
+  function setTutorialOverlayPos(pos: { x: number; y: number } | null): void {
     tutorialOverlayPos.value = pos
   }
 

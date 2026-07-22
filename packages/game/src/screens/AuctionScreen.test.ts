@@ -357,7 +357,7 @@ describe('AuctionScreen', () => {
       expect(fearEls[0]!.text()).toContain('Doubts, at the odds')
     })
 
-    it('shows "you say" only once a test has narrowed something - absent on an untested lot, present after', async () => {
+    it('the "room says" headline stays a single plain figure until a test actually moves the estimate off it', async () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
@@ -368,15 +368,54 @@ describe('AuctionScreen', () => {
       expect(game.lotDetail(lot.id)!.playerEstimateYen).toBeNull()
 
       const wrapper = mountScreen()
-      expect(wrapper.find('[data-test="you-say"]').exists()).toBe(false)
+      const roomSays = wrapper.find('[data-test="room-says"]')
+      expect(roomSays.find('.was').exists()).toBe(false)
 
       await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
       await wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).trigger('click')
 
-      const youSay = wrapper.find('[data-test="you-say"]')
-      expect(youSay.exists()).toBe(true)
-      expect(youSay.text()).toContain('you say')
-      expect(youSay.text()).toContain(formatYen(game.lotDetail(lot.id)!.playerEstimateYen!))
+      // cold-start-watch narrows the doubt (Sprint 111 item 1's precondition:
+      // the estimate has genuinely moved off the room's fixed read).
+      const detail = game.lotDetail(lot.id)!
+      expect(detail.playerEstimateYen).not.toBeNull()
+      expect(detail.playerEstimateYen).not.toBe(detail.guideValueYen)
+
+      const movedRoomSays = wrapper.find('[data-test="room-says"]')
+      const was = movedRoomSays.find('.was')
+      expect(was.exists()).toBe(true)
+      expect(was.text()).toBe(formatYen(detail.guideValueYen))
+      const trend = movedRoomSays.find(
+        detail.playerEstimateYen! > detail.guideValueYen ? '.up' : '.down',
+      )
+      expect(trend.exists()).toBe(true)
+      expect(trend.text()).toBe(formatYen(detail.playerEstimateYen!))
+      // The old separate "you say" line is gone - the headline carries it now.
+      expect(wrapper.find('[data-test="you-say"]').exists()).toBe(false)
+    })
+
+    it('relabels the fear line "Doubt, resolved" once every symptom is narrowed to its one remaining cause', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      game.gameState = { ...game.gameState, activeAuctionLots: [withSymptom] }
+
+      const wrapper = mountScreen()
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      await wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).trigger('click')
+
+      // Still two remaining causes (valve-seals, tired-rings) - not resolved yet.
+      expect(wrapper.find('[data-test="ledger-line-fear"]').text()).toContain('Doubts, at the odds')
+
+      // overrun-smoke-watch unlocks off cold-start-watch and isolates
+      // valve-seals alone, fully resolving the symptom.
+      await wrapper.find(`[data-test="run-test-${lot.id}-0-overrun-smoke-watch"]`).trigger('click')
+      const updatedCar = game.gameState.activeAuctionLots.find((l) => l.id === lot.id)!.car
+      expect(updatedCar.symptoms[0]!.remainingCauseIds).toEqual(['valve-seals'])
+
+      const fearLine = wrapper.find('[data-test="ledger-line-fear"]')
+      expect(fearLine.text()).toContain('Doubt, resolved')
+      expect(fearLine.text()).not.toContain('at the odds')
     })
   })
 

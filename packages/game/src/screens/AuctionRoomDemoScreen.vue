@@ -247,6 +247,7 @@ const FORCE_REACTION_OPTIONS: ForceReactionOption[] = [
   { kind: 'goad', dataTest: 'force-goad', label: 'Goad' },
   { kind: 'tax', dataTest: 'force-tax', label: 'Snipe tax' },
   { kind: 'feud', dataTest: 'force-feud', label: 'Feud' },
+  { kind: 'spite', dataTest: 'force-spite', label: 'Spite' },
 ]
 
 // Arms the live room so its next natural trigger for `kind` fires

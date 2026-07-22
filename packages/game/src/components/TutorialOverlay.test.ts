@@ -2,7 +2,7 @@ import { PARTS, STORY_MISSIONS, TUTORIAL_LOT, type GameState } from '@midnight-g
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { computed, defineComponent, h, nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import TutorialOverlay from './TutorialOverlay.vue'
@@ -59,6 +59,27 @@ function runTestOnScriptedLot(state: GameState, testId: string): GameState {
               ...l.car,
               symptoms: l.car.symptoms.map((s, i) =>
                 i === 0 ? { ...s, runTestIds: [...s.runTestIds, testId] } : s,
+              ),
+            },
+          }
+        : l,
+    ),
+  }
+}
+
+/** Narrows the scripted lot's first symptom to a single remaining cause - the
+ * fixture for the `lotInspected` condition kind (a completed yard visit). */
+function inspectScriptedLot(state: GameState): GameState {
+  return {
+    ...state,
+    activeAuctionLots: state.activeAuctionLots.map((l) =>
+      l.id === LOT.lotId
+        ? {
+            ...l,
+            car: {
+              ...l.car,
+              symptoms: l.car.symptoms.map((s, i) =>
+                i === 0 ? { ...s, remainingCauseIds: s.remainingCauseIds.slice(0, 1) } : s,
               ),
             },
           }
@@ -154,6 +175,55 @@ describe('TutorialOverlay', () => {
     expect(wrapper.text()).not.toContain('Ears first, tools second')
   })
 
+  it('spotlights the stethoscope test button once revs-and-listen has run, not the auctions tab fallback', async () => {
+    const game = useGameStore()
+    game.newGame(4)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
+    game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }
+
+    const revsAnchor = addAnchor('run-test-tutorial-lot-0-revs-and-listen')
+    const navAuctions = addAnchor('nav-auctions')
+
+    // Stands in for SymptomChecklist's real stethoscope button: absent from
+    // the DOM until revs-and-listen is actually in runTestIds, so it mounts
+    // in the very same reactive flush that retires the ears-first line -
+    // unlike `addAnchor`'s statically pre-existing elements, this exercises
+    // the DOM-mutation timing the real button goes through.
+    const StethoscopeStub = defineComponent({
+      name: 'StethoscopeStub',
+      setup() {
+        const store = useGameStore()
+        const visible = computed(() => {
+          const lot = store.gameState.activeAuctionLots.find((l) => l.id === LOT.lotId)
+          return !!lot?.car.symptoms[0]?.runTestIds.includes('revs-and-listen')
+        })
+        return () =>
+          visible.value ? h('button', { 'data-test': 'run-test-tutorial-lot-0-stethoscope' }) : null
+      },
+    })
+
+    // Mounted after the overlay, same as the real screen content mounting
+    // later in the tree than this app-level overlay.
+    render()
+    await nextTick()
+    expect(revsAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+
+    const stubWrapper = mount(StethoscopeStub, { attachTo: document.body })
+    wrappers.push(stubWrapper)
+    await nextTick()
+
+    game.gameState = runTestOnScriptedLot(game.gameState, 'revs-and-listen')
+    await nextTick()
+
+    const stethoscopeEl = document.querySelector(
+      '[data-test="run-test-tutorial-lot-0-stethoscope"]',
+    )
+    expect(stethoscopeEl).not.toBeNull()
+    expect(stethoscopeEl!.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(navAuctions.classList.contains('tutorial-spotlight')).toBe(false)
+  })
+
   it('bid completes once the car is owned; bay completes once it reaches a service slot', async () => {
     const game = useGameStore()
     game.newGame(5)
@@ -164,7 +234,7 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 10')
-    expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('certain something')
+    expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('under all that dirt')
     expect(wrapper.text()).toContain('drag her across')
 
     game.gameState = scriptedCarIntoBay(game.gameState)
@@ -186,7 +256,7 @@ describe('TutorialOverlay', () => {
     expect(wrapper.text()).toContain('Her tyres are scrap')
     expect(wrapper.text()).not.toContain('Add to cart')
     expect(wrapper.text()).not.toContain('Tyres ordered')
-    expect(wrapper.text()).not.toContain('your tyres are in')
+    expect(wrapper.text()).not.toContain('four fresh tyres')
     expect(wrapper.findAll('.tutorial-line.is-dim')).toHaveLength(0)
 
     game.gameState = {
@@ -242,7 +312,7 @@ describe('TutorialOverlay', () => {
     }
     await nextTick()
     expect(wrapper.text()).not.toContain('Tyres ordered')
-    expect(wrapper.text()).toContain('your tyres are in')
+    expect(wrapper.text()).toContain('four fresh tyres')
 
     // Fitted into the benched assembly: the fit line retires with the
     // emptied shelf, and the refit beat takes over (playtest item 19 - this
@@ -269,7 +339,7 @@ describe('TutorialOverlay', () => {
     }
     await nextTick()
     expect(wrapper.text()).toContain('Fresh rubber on')
-    expect(wrapper.text()).not.toContain('your tyres are in')
+    expect(wrapper.text()).not.toContain('four fresh tyres')
     expect(wrapper.text()).not.toContain('Add to cart')
 
     // Fresh tyres fitted -> engine beat, with {part} resolved.
@@ -446,5 +516,30 @@ describe('TutorialOverlay', () => {
     await nextTick()
     expect(overlay.style.left).toBe('100px')
     expect(overlay.style.top).toBe('60px')
+  })
+
+  it('applies the find step panelPosition hint, and reverts once the next step has none', async () => {
+    const game = useGameStore()
+    game.newGame(13)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
+    const wrapper = render()
+    await nextTick()
+
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 3 of 10')
+    expect(wrapper.find('[data-test="tutorial-overlay"]').classes()).toContain(
+      'tutorial-pos-bottom-right',
+    )
+
+    game.gameState = inspectScriptedLot(game.gameState)
+    await nextTick()
+
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 4 of 10')
+    expect(wrapper.find('[data-test="tutorial-overlay"]').classes()).not.toContain(
+      'tutorial-pos-bottom-right',
+    )
+    expect(wrapper.find('[data-test="tutorial-overlay"]').classes()).not.toContain(
+      'tutorial-pos-right',
+    )
   })
 })

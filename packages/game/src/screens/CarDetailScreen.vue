@@ -679,6 +679,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </ul>
         </div>
         <button
+          v-if="detail.workupGateReason !== 'already-resolved'"
           type="button"
           class="workup-btn"
           :disabled="!!detail.workupGateReason"
@@ -1151,14 +1152,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </section>
 
-      <section v-if="!detail.serviceJob" class="finances" data-test="finance-panel">
-        <h3>
-          Finances
-          <HelpHint label="Finances">
-            What you paid, what you've sunk into it since, and what it's worth right now. Repairing
-            or installing a part updates this immediately.
-          </HelpHint>
-        </h3>
+      <details v-if="!detail.serviceJob" class="finances" data-test="finance-panel">
+        <summary class="finances-summary" data-test="finance-summary">Finances</summary>
+        <p class="finances-intro">
+          What you paid, what you've sunk into it since, and what it's worth right now. Repairing or
+          installing a part updates this immediately.
+        </p>
         <h4 class="ledger-head">
           The ledger
           <HelpHint label="The ledger">
@@ -1271,7 +1270,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </div>
           </dl>
         </template>
-      </section>
+      </details>
 
       <section v-if="!detail.serviceJob" class="sell">
         <h3>Sell</h3>
@@ -1737,6 +1736,19 @@ h4 {
 
 .finances {
   margin: var(--mg-space-4) 0;
+}
+
+.finances-summary {
+  display: list-item;
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-md);
+  cursor: pointer;
+}
+
+.finances-intro {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: var(--mg-space-2) 0;
 }
 
 .ledger-head {

@@ -24,7 +24,7 @@ import { formatYen } from '../utils/formatYen'
  * the caller priced the lot at; this module prices nothing itself.
  *
  * A room also carries an optional armed reaction (`armReaction`), which
- * guarantees one of the five bidding reactions at its next natural trigger
+ * guarantees one of the six bidding reactions at its next natural trigger
  * point, useful for exercising a reaction deterministically without waiting
  * on its own chance draw. An armed reaction replaces its chance draw
  * entirely: it fires deterministically and consumes no draw from the stream
@@ -130,8 +130,14 @@ export interface Room {
   /** The dealer feud in progress, if any: the two named dealers taking turns
    * and the raises left in the burst. */
   feud: { names: [string, string]; remaining: number } | null
+  /** Whether the spite counter has fired in this room; it fires at most once. */
+  spiteFired: boolean
+  /** The one scheduled spite counter's own rungs, if the player's raise has
+   * just swept the board and drawn a hit; consumed (and cleared) the moment
+   * it lands. */
+  pendingSpiteRungs: number | null
   /** A reaction forced, if any; see `armReaction`. Null on an unarmed room. */
-  armedReaction: 'scare' | 'call' | 'goad' | 'tax' | 'feud' | null
+  armedReaction: 'scare' | 'call' | 'goad' | 'tax' | 'feud' | 'spite' | null
   /** The tuning this room was seated with; every raise, reaction, and log
    * line reads only this, never a module-level constant. */
   config: RoomConfig
@@ -203,8 +209,26 @@ export function clearingFractionFor(
  * feud-eligibility draw does not fire for it: nobody has bid yet, so there
  * is no leader to be feuding over.
  *
+ * Last in the order, every player raise (jump or not, once any jump
+ * reactions above have resolved) is checked for the spite trigger: the
+ * moment it is the first raise ever to push the next room rung past the
+ * clearing price - the sweep-in that would otherwise leave the room with
+ * nothing left to bid - with a dealer still active and the room not yet
+ * spited, this draws the spite chance right there, before the room's own
+ * scheduling draws below. A miss (or an ineligible raise) leaves the room to
+ * schedule, or fall silent, exactly as an unarmed raise would - the
+ * feud-eligibility and delay draws described above run as normal. A hit
+ * schedules one room counter instead, spiteMaxRungs rungs past the player's
+ * own board, exempt from the clearing cap but discarded outright (no
+ * schedule, no delay draw, the latch left unset) if that landing would sit
+ * at or above the room's read; a landing counter spends its own delay draw
+ * in place of, not alongside, the feud-eligibility and ordinary scheduling
+ * draws. It fires at most once a room: once it has landed, the room
+ * schedules nothing further off it, so a player re-raise afterwards wins
+ * unanswered.
+ *
  * This whole order describes the unarmed room. `armReaction` forces one of
- * the five reactions above: at its trigger point in this order, the forced
+ * the six reactions above: at its trigger point in this order, the forced
  * reaction fires in place of its chance draw (no draw spent deciding whether
  * it happens) and any eligibility gate the design calls out as relaxed is
  * skipped too; every other draw in the order above is unaffected.
@@ -251,6 +275,8 @@ export function enterRoom(
     snipeCount: 0,
     pendingCallRungs: null,
     feud: null,
+    spiteFired: false,
+    pendingSpiteRungs: null,
     armedReaction: null,
     config,
   }
@@ -357,16 +383,19 @@ export function tick(room: Room, nowMs: number): void {
  * The player's bid: the reserve if nobody has bid yet, `rungs` increments
  * above the board otherwise (the opening ignores `rungs`, landing on the
  * reserve regardless). The raise interrupts and reschedules any pending room
- * raise, or clears it when the next rung tops the clearing price (the room is
- * beaten and will not counter). A leading bid cannot be withdrawn, so this
- * no-ops while the player already leads.
+ * raise, or clears it when the next rung tops the clearing price - the room
+ * is beaten and will not counter, unless the spite chance below has other
+ * ideas. A leading bid cannot be withdrawn, so this no-ops while the player
+ * already leads.
  *
  * A non-opening bid landed inside the last `snipeWindowMs` of the fuse counts
  * as a snipe. A non-opening raise of `jumpRungs` rungs or more reads as a
  * jump and draws the jump reactions (see the draw-order law on `enterRoom`);
- * a plain rung-one raise with no jump draws none of those, but every raise,
- * jump or not, still schedules the room's response through `scheduleRoomBid`,
- * which spends its own feud-eligibility draw regardless.
+ * a plain rung-one raise with no jump draws none of those. Every raise, jump
+ * or not, is then checked for the spite trigger (`maybeFireSpite`); only when
+ * that does not schedule a counter does the raise fall through to the room's
+ * ordinary response through `scheduleRoomBid`, which spends its own
+ * feud-eligibility draw regardless.
  */
 export function playerBid(room: Room, nowMs: number, rungs = 1): void {
   if (room.status !== 'open' || room.leader === 'player') return
@@ -385,7 +414,7 @@ export function playerBid(room: Room, nowMs: number, rungs = 1): void {
   if (isJump) applyJumpReactions(room)
   runDrops(room)
   room.clockEndsAtMs = nowMs + room.config.clockMs
-  scheduleRoomBid(room, nowMs)
+  if (!maybeFireSpite(room, nowMs)) scheduleRoomBid(room, nowMs)
 }
 
 /**
@@ -430,8 +459,10 @@ function fireGoad(room: Room, latch: boolean): void {
  * and the arm clears, except a forced call still checks the fits-under-
  * clearing condition and, when it cannot fit, leaves the arm armed and does
  * nothing else this jump (scare and goad stay skipped either way). An arm of
- * 'tax' or 'feud' does not apply to a jump and falls through to the normal
- * draws below.
+ * 'tax', 'feud', or 'spite' does not apply here and falls through to the
+ * normal draws below - spite is not a jump reaction at all: it is checked
+ * separately, against every player raise, jump or not, once this function
+ * returns (see `maybeFireSpite`).
  */
 function applyJumpReactions(room: Room): void {
   const r = room.config.reactions
@@ -471,6 +502,45 @@ function applyJumpReactions(room: Room): void {
 }
 
 /**
+ * The spite counter: checked against every player raise, jump or not, once
+ * any jump reactions above have resolved. Eligible only at the sweep-in
+ * moment - the first raise ever to push the next room rung past the
+ * clearing price, with a dealer still active and the room not yet spited -
+ * so an ordinary raise that still leaves the room a rung to counter with
+ * never reaches this at all. An unarmed room draws the spite chance right
+ * there; armed with 'spite', it fires without that draw instead. Either way, a
+ * landing target at or above the room's read is discarded outright: no
+ * schedule, no delay draw, the latch (and a forced arm) left untouched, so
+ * the room stays silent exactly as an unarmed sweep-in would and a later
+ * qualifying raise can try again. A fitting target schedules one room
+ * counter, `spiteMaxRungs` rungs past the player's own board and exempt from
+ * the clearing cap, off its own delay draw - in place of, not alongside, the
+ * caller's own `scheduleRoomBid` - and latches the room so it never spites
+ * twice. Returns whether it scheduled the counter, so the caller knows
+ * whether to fall back to its own ordinary scheduling.
+ */
+function maybeFireSpite(room: Room, fromMs: number): boolean {
+  if (room.spiteFired) return false
+  if (room.boardYen + room.incrementYen <= room.clearingYen) return false
+  if (!room.dealers.some((dealer) => dealer.active)) return false
+  const r = room.config.reactions
+  const forced = room.armedReaction === 'spite'
+  if (!forced) {
+    const u = room.rng()
+    if (u >= r.spiteChance) return false
+  }
+  const targetYen = room.boardYen + r.spiteMaxRungs * room.incrementYen
+  if (targetYen >= room.roomReadYen) return false
+  if (forced) room.armedReaction = null
+  room.spiteFired = true
+  room.pendingSpiteRungs = r.spiteMaxRungs
+  const band = room.config.bidDelayMs
+  const delay = Math.round(band.min + room.rng() * (band.max - band.min))
+  room.pendingRoomBid = { atMs: fromMs + delay }
+  return true
+}
+
+/**
  * The player passes. Before any bid the lot rolls back unsold; with the room
  * leading it hammers to the leading dealer at the board. No-op while the player
  * leads.
@@ -505,15 +575,25 @@ export function letGo(room: Room): void {
  * or a pending call is not already claiming the response (those keep their
  * own precedence unchanged; the tax arm simply waits for a response neither
  * covers).
+ *
+ * A pending spite counter (`maybeFireSpite`) takes top precedence over all of
+ * that: it lands its own `spiteMaxRungs`, exempt from the clamp-to-clearing
+ * loop below (the whole point of the spite is to pay past the room's own
+ * cap), and its own dealer, cycled the same way an ordinary raise is.
  */
 function landRoomBid(room: Room, atMs: number): void {
   const r = room.config.reactions
   const opening = room.leader === null
   let rungs = 1
-  let kind: 'normal' | 'called' | 'taxed' = 'normal'
+  let kind: 'normal' | 'called' | 'taxed' | 'spite' = 'normal'
   let name: string
 
-  if (!opening && room.feud) {
+  if (!opening && room.pendingSpiteRungs !== null) {
+    rungs = room.pendingSpiteRungs
+    room.pendingSpiteRungs = null
+    kind = 'spite'
+    name = room.dealers[advanceToNextActiveDealer(room)]!.name
+  } else if (!opening && room.feud) {
     const feud = room.feud
     const turnIndex = (r.feudRungs - feud.remaining) % 2
     name = turnIndex === 0 ? feud.names[0] : feud.names[1]
@@ -550,7 +630,9 @@ function landRoomBid(room: Room, atMs: number): void {
         ? `${name} doesn't blink: ${formatYen(room.boardYen)}.`
         : kind === 'taxed'
           ? `${name} has had enough of the clock: straight to ${formatYen(room.boardYen)}.`
-          : `${name} raises: ${formatYen(room.boardYen)}.`,
+          : kind === 'spite'
+            ? `${name} won't be swept aside: ${formatYen(room.boardYen)}.`
+            : `${name} raises: ${formatYen(room.boardYen)}.`,
   )
   runDrops(room)
   if (room.feud) {

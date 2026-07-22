@@ -89,6 +89,7 @@ import {
   groupCostToMintYen,
   installedPartsValueYen,
   installLaborSlotsFor,
+  isFreeInstallRefit,
   refitLaborSlotsFor,
   hasParkingSpace,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
@@ -278,6 +279,14 @@ export interface CarDetail extends DetailedCar {
    * Sprint 28 scope (sprint26.md decision 10/13's own deferral).
    */
   groupBands: Record<ComponentId, ConditionBand>
+  /**
+   * Each of the 6 real groups' completeness: true when any member slot is a
+   * real defect empty slot (`groupIncompleteForCar`), never the
+   * legitimately-empty NA `forcedInduction` case. The service diagram
+   * consults this alongside `groupBands` so a stripped group never reads
+   * healthy just because its remaining present parts band well.
+   */
+  groupIncomplete: Record<ComponentId, boolean>
   /**
    * Sprint 41 decision 4 (condition-panel readability): each of the 6
    * groups' own scaled restoration bill (`groupCostToMintYen`, the car's
@@ -721,6 +730,14 @@ export interface MissionResultView {
   tipYen: number
   reputationGained: number
   specialtyGained: Record<ComponentId, number>
+  /**
+   * `payoutYen` minus the delivered car's ledger total (purchase + repairs +
+   * parts, `carLedgerFor` - the same figure CarDetail's finances panel
+   * sums), the same 0-for-unknown-purchase idiom that panel already uses.
+   * Never includes the tip (shown on its own line) - this is what the car
+   * itself earned back against what it cost to bring to this state.
+   */
+  profitYen: number
 }
 
 /** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
@@ -1165,8 +1182,11 @@ export const useGameStore = defineStore('game', () => {
    * Each of the 6 real groups' worst present-part band (Sprint 26 decision
    * 10/13) - the group-level condition summary both the car-detail and the
    * (now always-transparent) auction lot-detail screens show. A group with
-   * no present parts (never happens today - only `forcedInduction` can be
-   * unfitted, and every group has other members) reports `'mint'`.
+   * no present parts (a fully torn-down group mid-service) reports `'mint'`
+   * here by construction - this function only ever looks at parts that ARE
+   * present, so it says nothing about whether the group is complete. Pair it
+   * with `groupIncompleteForCar` before rendering a group's status; a
+   * consumer that reads this alone will show a stripped group as healthy.
    */
   function groupBandsForCar(car: CarInstance): Record<ComponentId, ConditionBand> {
     const result = {} as Record<ComponentId, ConditionBand>
@@ -1179,6 +1199,26 @@ export const useGameStore = defineStore('game', () => {
         if (bandIndex(band) < bandIndex(worst)) worst = band
       }
       result[groupId] = worst
+    }
+    return result
+  }
+
+  /**
+   * Whether each of the 6 real groups carries a real defect empty slot
+   * (`isPartMissing`) - a part pulled for service, not the legitimately-empty
+   * `forcedInduction` case on a naturally-aspirated car. The service diagram
+   * reads this alongside `groupBandsForCar` so a group missing any of its
+   * parts renders a distinct open/incomplete state instead of whatever band
+   * its remaining present parts happen to carry (a fully stripped group's
+   * band defaults to `'mint'`, since a band computed over zero parts finds
+   * nothing wrong with any of them).
+   */
+  function groupIncompleteForCar(car: CarInstance, model: CarModel): Record<ComponentId, boolean> {
+    const result = {} as Record<ComponentId, boolean>
+    for (const groupId of REAL_COMPONENT_GROUPS) {
+      result[groupId] = context.value.partIdsByGroup[groupId].some((partId) =>
+        isPartMissing(car, model, partId),
+      )
     }
     return result
   }
@@ -1768,6 +1808,7 @@ export const useGameStore = defineStore('game', () => {
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
       stagedActions: gameState.value.stagedCarWork[carId] ?? [],
       groupBands: groupBandsForCar(car),
+      groupIncomplete: groupIncompleteForCar(car, model),
       groupBillYen: groupBillsForCar(car, model),
       totalBillYen: carCostToMintYen(
         car,
@@ -2186,15 +2227,35 @@ export const useGameStore = defineStore('game', () => {
 
   /** The live auction room's fuse-length preset, persisted across careers -
    * `standard` for any save that predates the setting (the genuinely-
-   * optional-key `uiSettings` field). */
+   * optional-key `uiSettings` field). Set from the settings screen. */
   const fusePreset = computed<FusePreset>(
     () => gameState.value.uiSettings?.fusePreset ?? 'standard',
   )
 
   /** Sets the fuse-length preset - takes effect the next time a room is
-   * built; the room machine itself never reads this. */
+   * built; the room machine itself never reads this. Preserves any other
+   * `uiSettings` field already set (e.g. `autoBidEnabled`). */
   function setFusePreset(preset: FusePreset): void {
-    gameState.value = { ...gameState.value, uiSettings: { fusePreset: preset } }
+    gameState.value = {
+      ...gameState.value,
+      uiSettings: { ...gameState.value.uiSettings, fusePreset: preset },
+    }
+  }
+
+  /** Whether the auction room auto-bids on the player's behalf, persisted
+   * across careers - off for any save that predates the setting. Set from
+   * the settings screen; the room only shows its ceiling input, and only
+   * actually auto-bids, while this is on. */
+  const autoBidEnabled = computed<boolean>(
+    () => gameState.value.uiSettings?.autoBidEnabled ?? false,
+  )
+
+  /** Sets the auto-bid enable toggle - preserves the fuse preset already set. */
+  function setAutoBidEnabled(enabled: boolean): void {
+    gameState.value = {
+      ...gameState.value,
+      uiSettings: { fusePreset: fusePreset.value, autoBidEnabled: enabled },
+    }
   }
 
   /**
@@ -2984,6 +3045,16 @@ export const useGameStore = defineStore('game', () => {
       ) {
         return false
       }
+      // A free refit - zero labour, zero new cash - resolves right now
+      // through the same job machinery Confirm would use, exactly as
+      // `removePart` already resolves instantly, rather than sitting on the
+      // staged list waiting for a click that would spend nothing anyway. A
+      // costed install (real labour, or any machine-shop fee) still stages.
+      if (isFreeInstallRefit(gameState.value, carId, action, context.value)) {
+        install(carId, action.componentId, action.partInstanceId, action.carPartId)
+        logSessionEvent('stageAction', { carId, action })
+        return true
+      }
     }
 
     // Sprint 87: staged-action collision is kind-aware - per-part actions
@@ -3580,6 +3651,10 @@ export const useGameStore = defineStore('game', () => {
     const record = activeMissionRecord()
     if (!record) return false
     const mission = context.value.storyMissionsById[record.missionId]
+    // Read the ledger BEFORE resolving - delivery removes the car and its
+    // ledger (the same reason `acceptOffer` reads it first for the sale
+    // receipt), so afterwards there is nothing left to compute profit from.
+    const ledger = carLedgerFor(gameState.value, carInstanceId)
     const result = resolveDeliverMission(
       gameState.value,
       record.missionId,
@@ -3593,6 +3668,7 @@ export const useGameStore = defineStore('game', () => {
     const entry = result.log.find((e) => e.type === 'mission-delivered')
     if (entry?.type === 'mission-delivered' && mission) {
       const persona = context.value.personasById[mission.personaId]
+      const totalSpentYen = (ledger.purchaseYen ?? 0) + ledger.repairYen + ledger.partsYen
       lastMissionResult.value = {
         personaName: persona?.name ?? mission.personaId,
         copy: entry.tipYen > 0 ? mission.overdeliveredCopy : mission.deliveredCopy,
@@ -3600,6 +3676,7 @@ export const useGameStore = defineStore('game', () => {
         tipYen: entry.tipYen,
         reputationGained: entry.reputationGained,
         specialtyGained: entry.specialtyGained,
+        profitYen: entry.payoutYen - totalSpentYen,
       }
     }
     logSessionEvent('deliverMission', { missionId: record.missionId, carInstanceId })
@@ -4102,6 +4179,7 @@ export const useGameStore = defineStore('game', () => {
     buyerName,
     carDetail,
     groupBandsForCar,
+    groupIncompleteForCar,
     groupRepairFloorBand,
     nextRepairStep,
     nextPartStepRange,
@@ -4125,6 +4203,8 @@ export const useGameStore = defineStore('game', () => {
     travelFeeYenFor,
     fusePreset,
     setFusePreset,
+    autoBidEnabled,
+    setAutoBidEnabled,
     beginInspectionVisit,
     runDiagnosticTest,
     resolveOwnedWorkup,

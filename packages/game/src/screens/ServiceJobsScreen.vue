@@ -172,7 +172,12 @@ function offerCountdownLabel(expiresOnDay: number): string {
             {{ c.displayName }}
           </option>
         </select>
-        <button :disabled="!pickedCarId" data-test="mission-grade" @click="onShowCar">
+        <button
+          class="decline"
+          :disabled="!pickedCarId"
+          data-test="mission-grade"
+          @click="onShowCar"
+        >
           Show them the car
         </button>
         <button
@@ -578,6 +583,13 @@ h3 {
   padding: 2px 8px;
   font-family: inherit;
   font-size: var(--mg-fs-sm);
+}
+
+/* The row is a flex line, so the primary Hand it over must not carry the
+   standalone button's top margin - the same fix the offer and active rows
+   already apply to their own inline primary button. */
+.car-picker button.primary {
+  margin-top: 0;
 }
 
 /* The reference-lap board (decision 4) - the anchor rows are visually

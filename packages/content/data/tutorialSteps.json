@@ -69,7 +69,8 @@
     "completion": {
       "kind": "anyOf",
       "of": [{ "kind": "lotInspected" }, { "kind": "scriptedCarOwned" }]
-    }
+    },
+    "panelPosition": "bottom-right"
   },
   {
     "id": "bid",
@@ -94,14 +95,15 @@
     "lines": [
       {
         "speaker": "yuki",
-        "text": "It has a certain something. Under the dirt."
+        "text": "Oh, that one! I know she's scruffy, but look at her. There's a good little car under all that dirt, I can feel it from here."
       },
       {
         "speaker": "instruction",
         "text": "The {model} is yours, and she is sitting in parking looking sorry for herself. Tools only reach a car in the service bay: drag her across (or open her and press Move to service bay) and let us get a proper look."
       }
     ],
-    "completion": { "kind": "scriptedCarInServiceBay" }
+    "completion": { "kind": "scriptedCarInServiceBay" },
+    "panelPosition": "right"
   },
   {
     "id": "wheel",
@@ -114,12 +116,12 @@
       },
       {
         "speaker": "instruction",
-        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (taking things apart is free, and quietly one of life's pleasures), and the wheels land on the bench below.",
+        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (taking things apart is free), and the wheels land on the bench below.",
         "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" }
       },
       {
         "speaker": "instruction",
-        "text": "Fresh tyres, then. In the Parts tab, open Wheels & tyres and pick Tyres, and set the fits filter to her {model}: the shop will only show what fits her. Press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout; standard delivery lands tomorrow morning.",
+        "text": "Fresh tyres, then. In the Parts tab, open Wheels & tyres and pick Tyres, and set the fits filter to her {model}: the shop will only show what fits her. Press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout; standard delivery lands tomorrow morning. Go express, just this once. That surcharge is usually the price of planning badly; today it's the price of not making Yuki wait on my timetable.",
         "showWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" },
         "hideWhen": {
           "kind": "anyOf",
@@ -139,7 +141,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Morning: your tyres are in. Click the Tyres block on the bench, press Replace, and pick the fresh stock tyres from your parts; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears).",
+        "text": "There they are: four fresh tyres. Click the Tyres block on the bench, press Replace, and pick the fresh stock tyres from your parts; the small fee is the fitting shop's machine doing the pressing (one day you will own one, and the fee disappears).",
         "showWhen": { "kind": "partInInventory", "carPartId": "tyres" },
         "anchorTestId": "bench-member-tyres"
       },
@@ -150,7 +152,8 @@
         "anchorTestId": "refit-assembly-wheelAssembly"
       }
     ],
-    "completion": { "kind": "partBandAtLeast", "carPartId": "tyres", "band": "fine" }
+    "completion": { "kind": "partBandAtLeast", "carPartId": "tyres", "band": "fine" },
+    "panelPosition": "right"
   },
   {
     "id": "engine",
@@ -169,7 +172,7 @@
       },
       {
         "speaker": "yuki",
-        "text": "My uncle had an engine crane once. He also had a roof. Long story."
+        "text": "Careful with that! Sorry. I'll stop watching. ...I won't, though."
       },
       {
         "speaker": "instruction",
@@ -182,7 +185,8 @@
         "text": "The repair and the refit are where the labour goes; taking things off never costs any. If the bar runs dry before you are done, no matter: press End Day, and the morning brings a fresh one."
       }
     ],
-    "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "worn" }
+    "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "worn" },
+    "panelPosition": "right"
   },
   {
     "id": "reassemble",
@@ -194,7 +198,8 @@
         "text": "Nearly home; the Intake, the Exhaust and the Cooling are still on your shelf. Click each empty slot on the diagram, press Replace and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
       }
     ],
-    "completion": { "kind": "scriptedCarWhole" }
+    "completion": { "kind": "scriptedCarWhole" },
+    "panelPosition": "right"
   },
   {
     "id": "deliver",

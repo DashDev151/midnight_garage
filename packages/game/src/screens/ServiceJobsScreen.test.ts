@@ -392,6 +392,35 @@ describe('ServiceJobsScreen', () => {
       expect(game.lastMissionResult).not.toBeNull()
     })
 
+    it('the Delivered receipt shows profit as the payout minus the real ledger total (purchase + repairs + parts)', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      acceptFirstMission(game)
+      const carId = grantRoadworthyCar(game)
+      // A real ledger, the same shape CarDetail's finances panel reads - not
+      // the dev-grant default (unknown purchase), so the profit line has
+      // real spend to net against.
+      game.gameState = {
+        ...game.gameState,
+        carLedgers: {
+          ...game.gameState.carLedgers,
+          [carId]: { purchaseYen: 90_614, repairYen: 3_000, partsYen: 5_500 },
+        },
+      }
+
+      const wrapper = mountScreen()
+      await wrapper.find('[data-test="mission-pick-car"]').setValue(carId)
+      await wrapper.find('[data-test="mission-grade"]').trigger('click')
+      await wrapper.find('[data-test="mission-deliver"]').trigger('click')
+      await wrapper.find('[data-test="mission-deliver"]').trigger('click')
+
+      const result = game.lastMissionResult!
+      expect(result.profitYen).toBe(result.payoutYen - (90_614 + 3_000 + 5_500))
+      // The car (and its ledger) is gone once delivered - profit was read
+      // before delivery removed it, not recomputed after.
+      expect(game.gameState.carLedgers[carId]).toBeUndefined()
+    })
+
     /**
      * Sprint 77 decision 4: neither Sprint 76 placeholder mission carries a
      * `lapTimeCeiling` requirement (real lap-time missions are Sprint 78

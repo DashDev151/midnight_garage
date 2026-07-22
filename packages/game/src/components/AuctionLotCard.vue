@@ -17,6 +17,8 @@ export type AuctionLotCardView = Pick<
 
 <script setup lang="ts">
 import { partFitmentClassLabel } from '@midnight-garage/content'
+import type { ValueLedgerLineId } from '@midnight-garage/sim'
+import { computed } from 'vue'
 import { formatYen } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import GradeStamp from './GradeStamp.vue'
@@ -37,7 +39,7 @@ import SymptomChecklist from './SymptomChecklist.vue'
  * the test logic in the parent.
  */
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     d: AuctionLotCardView
     disabledReasonFor: (test: { minutes: number; alreadyRun: boolean }) => string | null
@@ -50,13 +52,45 @@ withDefaults(
      * block, under the ledger, so the room demo can pair the narrowing
      * checklist with the estimate it moves. */
     inspectionOnRight?: boolean
+    /** The player's own honest number for this lot, once anything has
+     * narrowed the doubt - `null` beforehand. Drives the "room says" headline:
+     * the instant it diverges from `d.guideValueYen`, the room figure strikes
+     * through with this number beside it (the demo's own est-value idiom).
+     * Left at its default `null` on the demo card, which draws its own
+     * separate estimate line and never diverges this shared headline. */
+    playerEstimateYen?: number | null
   }>(),
-  { showDeltas: true, inspectionOnRight: false },
+  { showDeltas: true, inspectionOnRight: false, playerEstimateYen: null },
 )
 
 const emit = defineEmits<{
   (e: 'run-test', payload: { lotId: string; symptomIndex: number; testId: string }): void
 }>()
+
+/** True once the player's own number has actually moved off the room's read -
+ * untested or tied, the headline stays the single plain figure it always was. */
+const estimateMoved = computed(
+  () => props.playerEstimateYen !== null && props.playerEstimateYen !== props.d.guideValueYen,
+)
+const estimateAbove = computed(
+  () => props.playerEstimateYen !== null && props.playerEstimateYen > props.d.guideValueYen,
+)
+/** Never read while `estimateMoved` is false - a plain fallback keeps the
+ * type a real number rather than threading a null-assertion into the template. */
+const displayedEstimateYen = computed(() => props.playerEstimateYen ?? props.d.guideValueYen)
+
+/** True once every symptom on the lot is narrowed to its one remaining cause
+ * - the doubt is known, even though only a repair cures it. The ledger's
+ * fear line relabels to say so; its yen is untouched, since knowing the
+ * cause is not the same as having fixed it. */
+const doubtsResolved = computed(
+  () => props.d.symptoms.length > 0 && props.d.symptoms.every((s) => s.resolved),
+)
+
+function ledgerLabelFor(lineId: ValueLedgerLineId): string {
+  if (lineId === 'fear' && doubtsResolved.value) return 'Doubt, resolved'
+  return LEDGER_LINE_LABELS[lineId]
+}
 
 /** Turnout badge text: one word of texture, never a numeric gauge. */
 const TURNOUT_LABEL: Record<string, string> = {
@@ -135,7 +169,14 @@ const TURNOUT_LABEL: Record<string, string> = {
              it is the exact decomposition the sheet sums to, the fear line last
              on a symptomatic lot. -->
         <p class="room-says" data-test="room-says">
-          the room says {{ formatYen(d.guideValueYen) }}
+          the room says
+          <template v-if="!estimateMoved">{{ formatYen(d.guideValueYen) }}</template>
+          <template v-else>
+            <span class="was">{{ formatYen(d.guideValueYen) }}</span>
+            <span :class="estimateAbove ? 'up' : 'down'">{{
+              formatYen(displayedEstimateYen)
+            }}</span>
+          </template>
           <HelpHint label="The ledger">
             Every price is the same short receipt: the book price, minus the work still outstanding
             (buyers knock off one and a half times that bill, which is exactly the margin you earn
@@ -151,7 +192,7 @@ const TURNOUT_LABEL: Record<string, string> = {
             class="ledger-line"
             :data-test="'ledger-line-' + line.id"
           >
-            <span class="ledger-label">{{ LEDGER_LINE_LABELS[line.id] }}</span>
+            <span class="ledger-label">{{ ledgerLabelFor(line.id) }}</span>
             <span class="ledger-yen">{{ formatLedgerLineYen(line) }}</span>
           </li>
         </ul>
@@ -262,6 +303,27 @@ const TURNOUT_LABEL: Record<string, string> = {
   color: var(--mg-yen);
   font-size: var(--mg-fs-md);
   font-weight: bold;
+}
+
+/* Once the player's own number diverges from the room's read, the room
+ * figure strikes through (dim, normal weight) and the player's figure sits
+ * beside it, green above / red below - the same struck-original idiom the
+ * auction room demo's est-value line uses. */
+.room-says .was {
+  color: var(--mg-text-dim);
+  font-weight: normal;
+  text-decoration: line-through;
+  margin-left: 0.35em;
+}
+
+.room-says .up {
+  color: var(--mg-success);
+  margin-left: 0.35em;
+}
+
+.room-says .down {
+  color: var(--mg-danger);
+  margin-left: 0.35em;
 }
 
 /* The compact receipt under the room's number: one small line per entry, label

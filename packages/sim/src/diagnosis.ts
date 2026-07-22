@@ -11,6 +11,7 @@ import type {
   Symptom,
 } from '@midnight-garage/content'
 import { titleCaseFromSlug } from '@midnight-garage/content'
+import { bandIndex } from './bands'
 import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
 import { benchHasTrait } from './crewSkills'
@@ -316,6 +317,50 @@ export function revealOnRemoval(
   return { car: { ...car, symptoms }, revealedCauseId }
 }
 
+/**
+ * Cure-on-repair: `revealOnRemoval`'s sibling on the install side, a pure
+ * prune over `remainingCauseIds`, called after ANY resolver raises one of
+ * `car`'s installed part bands - a repair-zone completion, a fresh install,
+ * a benched member's refit. For every symptom, drops each remaining cause
+ * whose own `carPartId` currently sits STRICTLY better (by `bandIndex`) than
+ * that cause's `setBand`: whatever damage the cause claims, the part fitted
+ * now cannot carry it. Equal band never cures - the damage a cause claims is
+ * still exactly what's fitted, so it stays a live candidate; an unfitted
+ * slot proves nothing either way, so a cause targeting it is left alone too.
+ * A symptom pruned down to zero causes is CURED and leaves `car.symptoms`
+ * entirely, exactly as if it had never been generated; pruned to exactly one
+ * is resolved knowledge, the same state a workup or a narrowing test leaves
+ * behind. Never called on removal - an emptied slot reveals nothing about
+ * which cause was true (`revealOnRemoval` owns that read); this only ever
+ * runs where a band goes UP.
+ */
+export function pruneCuredCauses(car: CarInstance, context: SimContext): CarInstance {
+  if (car.symptoms.length === 0) return car
+  let changed = false
+  const symptoms: CarSymptom[] = []
+  for (const carSymptom of car.symptoms) {
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) {
+      symptoms.push(carSymptom)
+      continue
+    }
+    const remainingCauseIds = carSymptom.remainingCauseIds.filter((id) => {
+      const cause = symptom.causes.find((c) => c.id === id)
+      if (!cause) return true
+      const installed = car.parts[cause.carPartId].installed
+      if (!installed) return true
+      return bandIndex(installed.band) <= bandIndex(cause.setBand)
+    })
+    if (remainingCauseIds.length === carSymptom.remainingCauseIds.length) {
+      symptoms.push(carSymptom)
+      continue
+    }
+    changed = true
+    if (remainingCauseIds.length > 0) symptoms.push({ ...carSymptom, remainingCauseIds })
+  }
+  return changed ? { ...car, symptoms } : car
+}
+
 /** Outcome discriminants shared by the three day-state verbs below - every
  * refusal is a plain no-op (unchanged `state`, empty `log`), matching every
  * other instant resolver's own "refuse quietly, let the caller show why"
@@ -525,7 +570,8 @@ export function runDiagnosticTest(
   return { state: nextState, log: [], outcome: 'ran', resultCopy }
 }
 
-export type OwnedWorkupGateReason = 'no-labor-slot' | 'not-found' | 'no-symptoms'
+export type OwnedWorkupGateReason =
+  'no-labor-slot' | 'not-found' | 'no-symptoms' | 'already-resolved'
 
 export type ResolveOwnedWorkupOutcome = 'done' | OwnedWorkupGateReason
 
@@ -539,7 +585,10 @@ export interface ResolveOwnedWorkupResult {
  * Sprint 74 decision 3: the pure "why can't I run a full workup on this car
  * right now" predicate - the "Full workup" button's own proactive disabled
  * reason (mirrors `inspectionVisitGateReason`/`removeBlockReason`'s reuse
- * shape). `null` when nothing blocks it.
+ * shape). `null` when nothing blocks it. `already-resolved`: every symptom
+ * is already down to its single remaining cause - nothing left for a workup
+ * to narrow, so the UI hides the button rather than offering a click that
+ * would spend labour to learn nothing new.
  */
 export function ownedWorkupGateReason(
   state: GameState,
@@ -549,6 +598,7 @@ export function ownedWorkupGateReason(
   const car = state.ownedCars.find((c) => c.id === carInstanceId)
   if (!car) return 'not-found'
   if (car.symptoms.length === 0) return 'no-symptoms'
+  if (car.symptoms.every((s) => s.remainingCauseIds.length <= 1)) return 'already-resolved'
   const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
   if (freeEnergy < context.economy.energy.actionPoints.workup) return 'no-labor-slot'
   return null

@@ -118,13 +118,21 @@ export type TutorialLine = z.infer<typeof TutorialLineSchema>
 /** One guided beat. `anchorScreen` is the router route name the step lives on;
  * `anchorTestId` is the `data-test` control the overlay spotlights (a
  * `{lotId}` token resolves to the scripted lot at render time). `completion`
- * is the state predicate that advances past this step. */
+ * is the state predicate that advances past this step. `panelPosition` sets
+ * the walkthrough panel's default placement for this step: absent or
+ * `'default'` keeps the panel where it always sits, `'right'` pins it to the
+ * right edge, and `'bottom-right'` pins it to the bottom-right corner - both
+ * chosen where the default spot would otherwise sit over the control the
+ * step is guiding the player towards. The player can still drag the panel
+ * anywhere while the step is active; moving to the next step re-applies that
+ * step's own default. */
 export const TutorialStepSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
   anchorScreen: z.string().min(1),
   anchorTestId: z.string().min(1),
   lines: z.array(TutorialLineSchema).min(1),
   completion: TutorialConditionSchema,
+  panelPosition: z.enum(['default', 'right', 'bottom-right']).optional(),
 })
 
 export type TutorialStep = z.infer<typeof TutorialStepSchema>

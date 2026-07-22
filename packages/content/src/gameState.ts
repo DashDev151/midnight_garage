@@ -111,13 +111,16 @@ export type FusePreset = z.infer<typeof FusePresetSchema>
 
 /**
  * A small persisted player-preference slice, separate from any sim-economic
- * state - currently just the fuse-length preset. Genuinely optional (not
- * defaulted): a save that predates this reads as absent, which every caller
- * treats as the standard preset, so no existing `GameState` literal needs a
- * new field.
+ * state - the fuse-length preset and the auction room's auto-bid enable
+ * toggle, both set from the settings screen. Genuinely optional (not
+ * defaulted): a save that predates either field reads it as absent, which
+ * every caller treats as the off/standard default, so no existing
+ * `GameState` literal needs a new field. `autoBidEnabled` defaults to off:
+ * the room only auto-bids once the player has opted in.
  */
 export const UiSettingsSchema = z.object({
   fusePreset: FusePresetSchema,
+  autoBidEnabled: z.boolean().optional(),
 })
 
 export type UiSettings = z.infer<typeof UiSettingsSchema>

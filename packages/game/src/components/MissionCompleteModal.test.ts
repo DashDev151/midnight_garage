@@ -42,6 +42,7 @@ describe('MissionCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      profitYen: 50_000,
     }
     const wrapper = track(mount(MissionCompleteModal))
     expect(wrapper.find('[data-test="mission-complete-modal"]').exists()).toBe(true)
@@ -70,6 +71,7 @@ describe('MissionCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      profitYen: 100_000,
     }
     const wrapper = track(mount(MissionCompleteModal))
     const tipEl = wrapper.find('[data-test="mission-result-tip"]')
@@ -93,6 +95,7 @@ describe('MissionCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      profitYen: 20_000,
     }
     const wrapper = track(mount(MissionCompleteModal))
     expect(wrapper.text()).not.toContain('Specialty')
@@ -114,9 +117,61 @@ describe('MissionCompleteModal', () => {
         body: 0,
         interior: 0,
       },
+      profitYen: 20_000,
     }
     const wrapper = track(mount(MissionCompleteModal))
     await wrapper.find('[data-test="mission-result-continue"]').trigger('click')
     expect(game.lastMissionResult).toBeNull()
+  })
+
+  describe('the profit line (Sprint 111 item 4)', () => {
+    it('shows a positive profit in green, tabbed alongside payout and tip', () => {
+      const game = useGameStore()
+      game.lastMissionResult = {
+        personaName: 'Test Customer',
+        copy: 'Thanks.',
+        payoutYen: 148_000,
+        tipYen: 0,
+        reputationGained: 15,
+        specialtyGained: {
+          engine: 15,
+          drivetrain: 0,
+          suspension: 0,
+          wheels: 0,
+          body: 0,
+          interior: 0,
+        },
+        profitYen: 10_600,
+      }
+      const wrapper = track(mount(MissionCompleteModal))
+      const profitEl = wrapper.find('[data-test="mission-result-profit"]')
+      expect(profitEl.exists()).toBe(true)
+      expect(profitEl.classes()).toContain('up')
+      expect(profitEl.text()).toBe('+¥10,600')
+    })
+
+    it('shows a negative profit in red, signed', () => {
+      const game = useGameStore()
+      game.lastMissionResult = {
+        personaName: 'Test Customer',
+        copy: 'Thanks.',
+        payoutYen: 100_000,
+        tipYen: 0,
+        reputationGained: 15,
+        specialtyGained: {
+          engine: 0,
+          drivetrain: 0,
+          suspension: 0,
+          wheels: 0,
+          body: 0,
+          interior: 0,
+        },
+        profitYen: -25_000,
+      }
+      const wrapper = track(mount(MissionCompleteModal))
+      const profitEl = wrapper.find('[data-test="mission-result-profit"]')
+      expect(profitEl.classes()).toContain('down')
+      expect(profitEl.text()).toBe('-¥25,000')
+    })
   })
 })

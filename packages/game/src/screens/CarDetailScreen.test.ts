@@ -594,6 +594,24 @@ describe('CarDetailScreen', () => {
       )
     })
 
+    it('the Finances block is a closed-by-default disclosure; the Sell section stays visible regardless', async () => {
+      const game = useGameStore()
+      const id = buyoutACar(game)
+      const { wrapper } = await mountAt(id)
+
+      const panel = wrapper.find('[data-test="finance-panel"]')
+      expect(panel.exists()).toBe(true)
+      expect(panel.element.tagName).toBe('DETAILS')
+      expect(panel.attributes('open')).toBeUndefined()
+      expect(wrapper.find('[data-test="finance-summary"]').text()).toBe('Finances')
+
+      // The Sell section is never nested inside the collapsed disclosure.
+      expect(wrapper.find('[data-test="finance-panel"] [data-test="sale-range"]').exists()).toBe(
+        false,
+      )
+      expect(wrapper.find('[data-test="sale-range"]').exists()).toBe(true)
+    })
+
     it('shows "-" for purchase on a dev-granted (unknown-purchase) car, with repairs/parts/total still numeric', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
@@ -1287,6 +1305,57 @@ describe('CarDetailScreen', () => {
       game.unstageAction(id, 'suspension', 'dampers')
       expect(game.isPartStagedAnywhere(partInstanceId)).toBe(false)
     })
+
+    it('a free refit (the exact removed part back into its own slot) executes immediately - no stagedCarWork entry', () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.moveCar(id, 'service') // labour only progresses jobs in the bay
+      // antiRollBars is a plain bolt-on suspension slot - never machine-gated
+      // (dampers/springs are the group's signature slots), so a matching
+      // refit is free at every tool tier.
+      const removedInstanceId = game.gameState.ownedCars.find((c) => c.id === id)!.parts
+        .antiRollBars.installed!.id
+      game.removePart(id, 'antiRollBars')
+      expect(
+        game.gameState.ownedCars.find((c) => c.id === id)!.parts.antiRollBars.installed,
+      ).toBeNull()
+
+      const staged = game.stageAction(id, {
+        kind: 'install',
+        componentId: 'suspension',
+        carPartId: 'antiRollBars',
+        partInstanceId: removedInstanceId,
+      })
+      expect(staged).toBe(true)
+      expect(
+        game.gameState.ownedCars.find((c) => c.id === id)!.parts.antiRollBars.installed?.id,
+      ).toBe(removedInstanceId)
+      expect(game.gameState.stagedCarWork[id]).toBeUndefined()
+    })
+
+    it('a costed install (a different part than the vacated slot held) still stages, not executed immediately', () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
+      const part = untaggedPartFor('dampers')
+      game.devGrantPart(part.id)
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
+
+      const staged = game.stageAction(id, {
+        kind: 'install',
+        componentId: 'suspension',
+        carPartId: 'dampers' as CarPartId,
+        partInstanceId,
+      })
+      expect(staged).toBe(true)
+      expect(game.gameState.stagedCarWork[id]).toEqual([
+        { kind: 'install', componentId: 'suspension', carPartId: 'dampers', partInstanceId },
+      ])
+      // Not applied to the car yet - Confirm is still required for costed work.
+      expect(game.gameState.ownedCars.find((c) => c.id === id)!.parts.dampers.installed).toBeNull()
+    })
   })
 
   describe('the symptom panel and full workup (Sprint 74 decisions 3/5/8)', () => {
@@ -1390,6 +1459,26 @@ describe('CarDetailScreen', () => {
       const button = wrapper.find('[data-test="car-workup"]')
       expect((button.element as HTMLButtonElement).disabled).toBe(true)
       expect(button.attributes('title')).toContain('No labour left today')
+    })
+
+    it('hides the Full workup button entirely once every symptom has narrowed to a single remaining cause (already resolved)', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      injectSymptom(game, id)
+      game.gameState = {
+        ...game.gameState,
+        ownedCars: game.gameState.ownedCars.map((c) =>
+          c.id === id
+            ? { ...c, symptoms: [{ ...c.symptoms[0]!, remainingCauseIds: ['valve-seals'] }] }
+            : c,
+        ),
+      }
+
+      const { wrapper } = await mountAt(id)
+      // The checklist still shows - only the workup button hides.
+      expect(wrapper.find('[data-test="car-symptoms"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="car-workup"]').exists()).toBe(false)
     })
   })
 })

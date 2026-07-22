@@ -25,7 +25,7 @@ import {
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
-import { revealOnRemoval } from './diagnosis'
+import { pruneCuredCauses, revealOnRemoval } from './diagnosis'
 import { partFitsCar } from './parts'
 import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
@@ -164,6 +164,11 @@ interface CarEffect {
  * reinstalling at its real band is the correct, necessary consequence of
  * that, not a bug - forcing mint here would let remove+reinstall repair a
  * part for free.
+ *
+ * Both branches run the result through `pruneCuredCauses` (cure-on-repair):
+ * any symptom whose remaining causes all target parts now fitted strictly
+ * better than they claim is cured, in whole or in part, the moment the band
+ * actually climbs.
  */
 function applyJobToCar(
   car: CarInstance,
@@ -190,7 +195,7 @@ function applyJobToCar(
       parts[partId] = { installed: { ...installed, band: targetBand } }
     }
     return {
-      car: { ...car, parts },
+      car: pruneCuredCauses({ ...car, parts }, context),
       partInventory: [...partInventory],
       blockedByOccupiedSlot: false,
     }
@@ -216,13 +221,16 @@ function applyJobToCar(
     return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
   }
   return {
-    car: {
-      ...car,
-      parts: {
-        ...car.parts,
-        [targetPartId]: { installed: partInstance },
+    car: pruneCuredCauses(
+      {
+        ...car,
+        parts: {
+          ...car.parts,
+          [targetPartId]: { installed: partInstance },
+        },
       },
-    },
+      context,
+    ),
     partInventory: partInventory.filter((_, i) => i !== partIndex),
     blockedByOccupiedSlot: false,
   }

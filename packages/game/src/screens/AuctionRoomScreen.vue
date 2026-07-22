@@ -41,12 +41,6 @@ const game = useGameStore()
 const lotId = computed(() => String(route.params.lotId))
 
 const FUSE_MULTIPLIER: Record<FusePreset, number> = { standard: 1, relaxed: 1.6, unhurried: 2.4 }
-const FUSE_LABEL: Record<FusePreset, string> = {
-  standard: 'Standard',
-  relaxed: 'Relaxed',
-  unhurried: 'Unhurried',
-}
-const FUSE_PRESETS: readonly FusePreset[] = ['standard', 'relaxed', 'unhurried']
 
 // The room's own clock: a plain accumulator, advanced only by the interval
 // below and handed to the machine on every fire - no wall-clock reads.
@@ -56,7 +50,6 @@ const nowMs = ref(0)
 let intervalId: ReturnType<typeof setInterval> | undefined
 
 const room = ref<Room | null>(null)
-const autoBidOn = ref(false)
 const autoBidCeilingYen = ref(0)
 
 /** The stable per-lot, per-day seed: re-entering the same lot on the same day
@@ -133,7 +126,7 @@ function buildRoom(): Room | null {
  * reads as a steady hand, never a glitchy snap-raise. */
 function maybeAutoBid(): void {
   const live = room.value
-  if (!autoBidOn.value || !live || live.status !== 'open' || live.leader === 'player') return
+  if (!game.autoBidEnabled || !live || live.status !== 'open' || live.leader === 'player') return
   const sinceLastBid = live.lastBid ? nowMs.value - live.lastBid.atMs : Number.POSITIVE_INFINITY
   if (sinceLastBid < AUTO_BID_DELAY_MS) return
   const rung = nextRungYen(live)
@@ -196,18 +189,6 @@ function raiseDisabledReasonFor(landingYen: number): string | null {
 function backToAuctions(): void {
   void router.replace({ name: 'auctions' })
 }
-
-/** Changing the preset rebuilds the CURRENT room fresh (same stable seed, so
- * the same draw sequence replays start to finish - only the fuse length
- * differs) while it's still open; once resolved, the choice only shapes the
- * next room entered, never re-litigating a settled one. */
-function selectFusePreset(preset: FusePreset): void {
-  game.setFusePreset(preset)
-  if (room.value && room.value.status === 'open') {
-    nowMs.value = 0
-    room.value = reactive(buildRoom() ?? room.value)
-  }
-}
 </script>
 
 <template>
@@ -220,21 +201,6 @@ function selectFusePreset(preset: FusePreset): void {
         <p class="headline">Estimated market value: {{ formatYen(room.playerNumberYen) }}</p>
       </header>
 
-      <div class="fuse-presets" data-test="fuse-presets">
-        <span class="fuse-presets-label">Fuse</span>
-        <button
-          v-for="preset in FUSE_PRESETS"
-          :key="preset"
-          type="button"
-          class="fuse-preset-btn"
-          :class="{ active: game.fusePreset === preset }"
-          :data-test="'fuse-preset-' + preset"
-          @click="selectFusePreset(preset)"
-        >
-          {{ FUSE_LABEL[preset] }}
-        </button>
-      </div>
-
       <AuctionRoomFloor
         :room="room"
         :now-ms="nowMs"
@@ -242,14 +208,13 @@ function selectFusePreset(preset: FusePreset): void {
         @bid="onBid"
         @letgo="onLetGo"
       >
-        <template #extra>
+        <!-- The fuse preset and the auto-bid enable toggle both live in
+             Settings now; the room only shows the
+             ceiling input, and only once auto-bid is actually on. -->
+        <template v-if="game.autoBidEnabled" #extra>
           <div class="autobid" data-test="autobid">
-            <label class="autobid-toggle-row">
-              <input v-model="autoBidOn" type="checkbox" data-test="autobid-toggle" />
-              Auto-bid
-            </label>
             <label class="autobid-ceiling-row">
-              Up to
+              Auto-bid up to
               <input
                 v-model.number="autoBidCeilingYen"
                 type="number"
@@ -300,32 +265,9 @@ function selectFusePreset(preset: FusePreset): void {
   font-size: var(--mg-fs-sm);
 }
 
-.fuse-presets {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-  flex-wrap: wrap;
-}
-
-.fuse-presets-label {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.fuse-preset-btn {
-  font-size: var(--mg-fs-sm);
-  color: var(--mg-text-dim);
-  border-color: var(--mg-panel-edge);
-  background: transparent;
-}
-
-.fuse-preset-btn.active {
-  color: var(--mg-neon-cyan);
-  border-color: var(--mg-neon-cyan);
-}
-
-/* The accessibility strip: quiet chrome, set off from the room log by a thin
-   top rule, matching the demo's own dev-force placement. */
+/* The auto-bid ceiling strip: quiet chrome, set off from the room log by a
+   thin top rule, matching the demo's own dev-force placement. Only rendered
+   at all while auto-bid is enabled in Settings. */
 .autobid {
   display: flex;
   align-items: center;
@@ -338,7 +280,6 @@ function selectFusePreset(preset: FusePreset): void {
   font-size: var(--mg-fs-sm);
 }
 
-.autobid-toggle-row,
 .autobid-ceiling-row {
   display: flex;
   align-items: center;

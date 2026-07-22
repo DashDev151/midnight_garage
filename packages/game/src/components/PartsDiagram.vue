@@ -34,6 +34,7 @@ const game = useGameStore()
 // Copy swept and approved (Sprint 84 string sweep). Reused as-is (Sprint 88 C).
 const INSPECT_PROMPT = 'Point at a part to see what it is and what sits on top of it.'
 const EMPTY_LABEL = 'empty'
+const OPEN_LABEL = 'open'
 const TILE_PROMPT = 'Point at a section of the car to see what is inside.'
 const BACK_LABEL = '< All groups'
 const SITS_UNDER_PREFIX = 'Parts here sit under: '
@@ -109,6 +110,7 @@ const rowsById = computed(() => {
 })
 
 const groupBands = computed(() => game.carDetail(props.carId)?.groupBands ?? null)
+const groupIncomplete = computed(() => game.carDetail(props.carId)?.groupIncomplete ?? null)
 
 /** A slot is fitted when something occupies it; empty otherwise. */
 function isFitted(partId: CarPartId): boolean {
@@ -145,6 +147,11 @@ interface TileView {
   rect: TileRect
   name: string
   band: ReturnType<typeof bandOf>
+  /** True when the group has a real defect empty slot (`groupIncomplete`),
+   * never the legitimately-empty NA `forcedInduction` case - a fully or
+   * partially stripped group, whatever band its remaining present parts
+   * carry. */
+  incomplete: boolean
   partCount: number
   uncertain: boolean
   sitsUnderGroups: string[]
@@ -169,6 +176,7 @@ const tiles = computed<TileView[]>(() =>
       rect: GROUP_TILE_LAYOUT[componentId],
       name: game.componentLabel(componentId),
       band: bandOf(componentId),
+      incomplete: groupIncomplete.value?.[componentId] ?? false,
       partCount: members.length,
       uncertain: members.some((partId) => rowsById.value[partId]?.uncertain ?? false),
       sitsUnderGroups: [...outsideGroups].map((g) => game.componentLabel(g)),
@@ -185,9 +193,21 @@ function tileStyle(rect: TileRect): Record<string, string> {
   }
 }
 
+/** A group with an open slot always reads "open", never whatever band its
+ * remaining present parts happen to carry - the same fix `tileWashClasses`
+ * applies to colour, applied to the announced text. */
 function tileTitle(tile: TileView): string {
-  const band = tile.band ?? EMPTY_LABEL
+  const band = tile.incomplete ? OPEN_LABEL : (tile.band ?? EMPTY_LABEL)
   return `${tile.name}: ${band}, ${tile.partCount} parts`
+}
+
+/** The tile's condition wash: an incomplete group always gets the distinct
+ * open treatment, regardless of band - the fix for the tile that used to
+ * read healthy while stripped (a band computed over zero present parts
+ * finds nothing wrong with any of them). */
+function tileWashClasses(tile: TileView): string[] {
+  if (tile.incomplete) return ['pd-washed', 'pd-wash-open']
+  return washClasses(tile.band, tile.uncertain)
 }
 
 const hoveredTile = computed<TileView | null>(
@@ -424,7 +444,7 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
           :key="tile.componentId"
           type="button"
           class="pd-tile"
-          :class="washClasses(tile.band, tile.uncertain)"
+          :class="tileWashClasses(tile)"
           :style="tileStyle(tile.rect)"
           :title="tileTitle(tile)"
           :aria-label="tileTitle(tile)"
@@ -628,6 +648,15 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
 .pd-wash-poor,
 .pd-wash-scrap {
   --pd-wash: var(--mg-neon-pink);
+}
+
+/* A group with a real defect empty slot: a torn-down or partially-stripped
+   group, distinct from both the band tints above and the uncertain grey
+   below - it is not a condition reading at all, it is "this is open right
+   now" - so it never inherits whatever band the remaining present parts
+   happen to carry. */
+.pd-wash-open {
+  --pd-wash: var(--mg-danger);
 }
 
 .pd-wash-neutral {

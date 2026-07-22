@@ -9,7 +9,12 @@ import {
 import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { clearStagedWork, confirmStagedWork, previewPlannedWork } from '../src/stagedWork'
+import {
+  clearStagedWork,
+  confirmStagedWork,
+  isFreeInstallRefit,
+  previewPlannedWork,
+} from '../src/stagedWork'
 import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
 // Real CARS/PARTS (Sprint 24 fix 2: findOrCreateJob validates install-part
@@ -267,5 +272,72 @@ describe('previewPlannedWork (Sprint 48)', () => {
   it('returns null for an unknown car', () => {
     const state = baseState()
     expect(previewPlannedWork(state, 'no-such-car', CONTEXT)).toBeNull()
+  })
+})
+
+describe('isFreeInstallRefit (immediate free refits)', () => {
+  it("is true for an install matching the target slot's own vacated baseline exactly, with no machine-gated fee", () => {
+    // antiRollBars is a plain bolt-on suspension slot - never machine-gated
+    // (dampers/springs are the group's own signature slots) - so refitting
+    // its own real stock instance back onto itself is free at any tool tier.
+    const installedAntiRollBars = car.parts.antiRollBars.installed!
+    const vacatedCar: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        antiRollBars: {
+          installed: null,
+          vacatedBaseline: {
+            partId: installedAntiRollBars.partId,
+            band: installedAntiRollBars.band,
+            genuinePeriod: installedAntiRollBars.genuinePeriod,
+          },
+        },
+      },
+    }
+    const state = baseState({
+      ownedCars: [vacatedCar],
+      partInventory: [installedAntiRollBars, sparePart],
+    })
+    expect(
+      isFreeInstallRefit(
+        state,
+        car.id,
+        { kind: 'install', componentId: 'suspension', partInstanceId: installedAntiRollBars.id },
+        CONTEXT,
+      ),
+    ).toBe(true)
+  })
+
+  it('is false for an install into a slot with no matching baseline - real labour, real work', () => {
+    const state = baseState() // dampers: installed null, no vacatedBaseline recorded
+    expect(
+      isFreeInstallRefit(
+        state,
+        car.id,
+        { kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id },
+        CONTEXT,
+      ),
+    ).toBe(false)
+  })
+
+  it('is false for an unknown car or a part instance no longer in inventory', () => {
+    const state = baseState()
+    expect(
+      isFreeInstallRefit(
+        state,
+        'no-such-car',
+        { kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id },
+        CONTEXT,
+      ),
+    ).toBe(false)
+    expect(
+      isFreeInstallRefit(
+        state,
+        car.id,
+        { kind: 'install', componentId: 'suspension', partInstanceId: 'no-such-part' },
+        CONTEXT,
+      ),
+    ).toBe(false)
   })
 })

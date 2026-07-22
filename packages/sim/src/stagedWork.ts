@@ -1,4 +1,4 @@
-import type { CarInstance, DayLogEntry, GameState } from '@midnight-garage/content'
+import type { CarInstance, DayLogEntry, GameState, StagedAction } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 import {
   assemblyContainerFor,
@@ -8,7 +8,14 @@ import {
 } from './assemblies'
 import { bandIndex, canRepair, planGroupRepair } from './bands'
 import type { SimContext } from './context'
-import { findWorkableCar, installLaborSlotsFor, refitLaborSlotsFor, resolveJobLabor } from './jobs'
+import {
+  findWorkableCar,
+  installLaborSlotsFor,
+  machineAssistFeeYen,
+  refitLaborSlotsFor,
+  resolveJobLabor,
+  signatureOpFeeYen,
+} from './jobs'
 
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
@@ -30,6 +37,38 @@ export function clearStagedWork(state: GameState, carInstanceId: string): GameSt
 export interface StagedWorkResolution {
   state: GameState
   log: DayLogEntry[]
+}
+
+/**
+ * Immediate free refits: true when staging `action` (an
+ * 'install') would resolve for FREE right now - zero labour (the picked
+ * instance matches the target slot's own vacated baseline exactly, the
+ * equivalence refit `refitLaborSlotsFor` prices free) AND zero new cash (no
+ * machine-shop assist or signature-op fee on the target slot). A free refit
+ * is putting the car back together the way it was found, not real work - the
+ * game store's `stageAction` resolves it right away through the same job
+ * machinery Confirm would use, exactly as `removePart` already resolves
+ * instantly, rather than parking it on the staged list for a click that
+ * would spend nothing anyway. A costed install (real labour, or any fee)
+ * always stays staged. `false` for an unresolvable car/part/slot - the
+ * caller's own fit gate has already refused those before this ever runs.
+ */
+export function isFreeInstallRefit(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'install' }>,
+  context: SimContext,
+): boolean {
+  const car = findWorkableCar(state, carInstanceId)
+  const partInstance = state.partInventory.find((p) => p.id === action.partInstanceId)
+  const catalogPart = partInstance ? context.partsById[partInstance.partId] : undefined
+  const targetPartId = action.carPartId ?? catalogPart?.carPartId
+  if (!car || !partInstance || !targetPartId) return false
+  if (refitLaborSlotsFor(car, targetPartId, partInstance, context) > 0) return false
+  const feeYen =
+    machineAssistFeeYen(targetPartId, state, context) +
+    signatureOpFeeYen(targetPartId, state, context)
+  return feeYen === 0
 }
 
 /**

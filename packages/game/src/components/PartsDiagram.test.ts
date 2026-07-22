@@ -1,4 +1,5 @@
-import { CARS, PARTS_TAXONOMY } from '@midnight-garage/content'
+import { CARS, PARTS_TAXONOMY, type ComponentId } from '@midnight-garage/content'
+import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -7,10 +8,30 @@ import PartsDiagram from './PartsDiagram.vue'
 
 let pinia: Pinia
 
-function grantCar() {
+function grantCar(modelId?: string) {
   const game = useGameStore()
-  game.devGrantCar(CARS[0]!.id)
+  game.devGrantCar(modelId ?? CARS[0]!.id)
   return { game, carId: game.gameState.ownedCars.at(-1)!.id }
+}
+
+/** Forces every member of `groupId` (bar `forcedInduction`, whose empty slot
+ * is only sometimes a defect) onto the car at mint - deterministic fixture
+ * setup that doesn't depend on a granted car's own random condition roll. */
+function fitAllMembers(game: ReturnType<typeof useGameStore>, carId: string, groupId: ComponentId) {
+  const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+  for (const entry of PARTS_TAXONOMY.filter(
+    (e) => e.group === groupId && e.id !== 'forcedInduction',
+  )) {
+    car.parts[entry.id] = {
+      installed: {
+        id: `test-${entry.id}`,
+        partId: entry.id,
+        band: 'mint',
+        genuinePeriod: false,
+        origin: makeMarketOrigin(game.gameState.day),
+      },
+    }
+  }
 }
 
 function mountFor(carId: string) {
@@ -197,6 +218,41 @@ describe('PartsDiagram (two-level, Sprint 84 amendment)', () => {
       const { carId } = grantCar()
       const wrapper = mountFor(carId)
       expect(wrapper.get('[data-test="diagram-tile-suspension"]').classes()).toContain('pd-washed')
+    })
+  })
+
+  describe('the open/incomplete state (a real defect empty slot, never the healthy colour)', () => {
+    it('a fully disassembled group never reads healthy', () => {
+      const { game, carId } = grantCar()
+      expect(game.removeAssembly(carId, 'wheelAssembly')).toBe(true)
+      const wrapper = mountFor(carId)
+      const tile = wrapper.get('[data-test="diagram-tile-wheels"]')
+      expect(tile.classes()).not.toContain('pd-wash-mint')
+      expect(tile.classes()).toContain('pd-wash-open')
+    })
+
+    it('a naturally-aspirated car with an otherwise fully fitted engine is not incomplete - the legitimately-empty forcedInduction slot alone never counts', () => {
+      const naModel = CARS.find(
+        (m) => !m.tags.includes('Turbo') && !m.tags.includes('Supercharged'),
+      )!
+      const { game, carId } = grantCar(naModel.id)
+      fitAllMembers(game, carId, 'engine')
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      expect(car.parts.forcedInduction.installed).toBeNull()
+
+      const wrapper = mountFor(carId)
+      const tile = wrapper.get('[data-test="diagram-tile-engine"]')
+      expect(tile.classes()).not.toContain('pd-wash-open')
+      expect(tile.classes()).toContain('pd-wash-mint')
+    })
+
+    it('a group with every member fitted stays the healthy green', () => {
+      const { game, carId } = grantCar()
+      fitAllMembers(game, carId, 'suspension')
+      const wrapper = mountFor(carId)
+      const tile = wrapper.get('[data-test="diagram-tile-suspension"]')
+      expect(tile.classes()).toContain('pd-wash-mint')
+      expect(tile.classes()).not.toContain('pd-wash-open')
     })
   })
 

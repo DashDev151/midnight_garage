@@ -13,6 +13,7 @@ function makeRouter(): Router {
     routes: [
       { path: '/', name: 'garage', component: { template: '<div>garage</div>' } },
       { path: '/menu', name: 'menu', component: MenuScreen },
+      { path: '/settings', name: 'settings', component: { template: '<div>settings</div>' } },
     ],
   })
 }
@@ -106,9 +107,13 @@ describe('MenuScreen (Sprint 40 item 1)', () => {
     expect(wrapper.find('[data-test="menu-load-code"]').exists()).toBe(false)
   })
 
-  it('Settings is a disabled stub', async () => {
-    const { wrapper } = await mountMenu()
+  it('Settings navigates to the settings screen', async () => {
+    const { wrapper, router } = await mountMenu()
     const button = wrapper.get('[data-test="menu-settings"]')
-    expect((button.element as HTMLButtonElement).disabled).toBe(true)
+    expect((button.element as HTMLButtonElement).disabled).toBe(false)
+
+    await button.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('settings')
   })
 })

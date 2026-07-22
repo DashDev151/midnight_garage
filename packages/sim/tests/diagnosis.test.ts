@@ -24,6 +24,7 @@ import {
   inspectionVisitGateReason,
   ownedWorkupGateReason,
   playerEstimateYen,
+  pruneCuredCauses,
   resolveOwnedWorkup,
   revealOnRemoval,
   runDiagnosticTest,
@@ -140,6 +141,34 @@ const ROUTED_GROUPLESS_SYMPTOM: Symptom = {
   ],
 }
 
+/** Cure-on-repair: a two-cause symptom, both causes on `clutch` - the
+ * haunted-Carina fixture, narrowed to one remaining cause the same way a
+ * workup or a test would leave it. */
+const CLUTCH_SYMPTOM: Symptom = {
+  id: 'clutch-test-symptom',
+  cardLine: 'Clutch test symptom.',
+  causes: [
+    { id: 'clutch-cause-mild', carPartId: 'clutch', setBand: 'worn', weight: 50 },
+    { id: 'clutch-cause-severe', carPartId: 'clutch', setBand: 'poor', weight: 50 },
+  ],
+  tests: [],
+}
+
+/** Four causes on four different parts, all still live - the partial-prune
+ * fixture (repairing one part past its own cause's claim must lose exactly
+ * that cause, leaving the other three untouched). */
+const FOUR_CAUSE_SYMPTOM: Symptom = {
+  id: 'four-cause-symptom',
+  cardLine: 'Four cause test symptom.',
+  causes: [
+    { id: 'four-cause-1', carPartId: 'headValvetrain', setBand: 'poor', weight: 25 },
+    { id: 'four-cause-2', carPartId: 'internals', setBand: 'poor', weight: 25 },
+    { id: 'four-cause-3', carPartId: 'intake', setBand: 'poor', weight: 25 },
+    { id: 'four-cause-4', carPartId: 'exhaust', setBand: 'poor', weight: 25 },
+  ],
+  tests: [],
+}
+
 const CONTEXT = buildSimContext(
   CARS,
   PARTS,
@@ -153,7 +182,14 @@ const CONTEXT = buildSimContext(
   undefined,
   undefined,
   undefined,
-  [TEST_SYMPTOM, MULTI_PART_SYMPTOM, ROUTED_SYMPTOM, ROUTED_GROUPLESS_SYMPTOM],
+  [
+    TEST_SYMPTOM,
+    MULTI_PART_SYMPTOM,
+    ROUTED_SYMPTOM,
+    ROUTED_GROUPLESS_SYMPTOM,
+    CLUTCH_SYMPTOM,
+    FOUR_CAUSE_SYMPTOM,
+  ],
   [
     { id: 'test-diagnostic', minutes: 15 },
     { id: 'routed-root-test', minutes: 10 },
@@ -935,6 +971,16 @@ describe('resolveOwnedWorkup / ownedWorkupGateReason (Sprint 74 decision 3)', ()
     expect(resolveOwnedWorkup(state, car.id, CONTEXT).outcome).toBe('no-labor-slot')
   })
 
+  it('refuses already-resolved once every symptom has narrowed to a single remaining cause, even with a free labour slot available', () => {
+    const resolved: CarInstance = {
+      ...carWithSymptom(),
+      symptoms: [{ ...carWithSymptom().symptoms[0]!, remainingCauseIds: ['cause-mild'] }],
+    }
+    const state: GameState = { ...createInitialGameState(CONTEXT, 1), ownedCars: [resolved] }
+    expect(ownedWorkupGateReason(state, resolved.id, CONTEXT)).toBe('already-resolved')
+    expect(resolveOwnedWorkup(state, resolved.id, CONTEXT).outcome).toBe('already-resolved')
+  })
+
   it('on success: collapses every symptom straight to its own trueCauseId, spends exactly 1 labour slot with no fee, and logs car-workup', () => {
     const car = carWithSymptom()
     const state: GameState = { ...createInitialGameState(CONTEXT, 1), ownedCars: [car] }
@@ -1132,5 +1178,133 @@ describe('saleRevealLineFor (Sprint 75 decision 2): the organic teacher', () => 
     expect(line).toBe(
       CONTEXT.economy.diagnosis.saleRevealCopy.playerWon.replace('<cause>', 'Cause severe'),
     )
+  })
+})
+
+describe('pruneCuredCauses (cure-on-repair)', () => {
+  /** A car resolved (the workup shape - `remainingCauseIds` narrowed to one)
+   * to `clutch-cause-severe` - the clutch itself still at 'poor', matching
+   * the cause's own claim, and `apparentBandByPartId` still recording the
+   * room's pre-damage 'mint' read (nothing repairs that until the symptom
+   * itself is cured). */
+  function carWithResolvedClutchCause(): CarInstance {
+    return {
+      ...buildCarInstance({ modelId: MODEL.id, parts: mintCarParts({ clutch: 'poor' }) }),
+      symptoms: [
+        {
+          symptomId: 'clutch-test-symptom',
+          trueCauseId: 'clutch-cause-severe',
+          remainingCauseIds: ['clutch-cause-severe'],
+          runTestIds: [],
+        },
+      ],
+      apparentBandByPartId: { clutch: 'mint' },
+    }
+  }
+
+  it('the haunted-Carina regression: fitting a mint clutch cures the resolved cause outright, and sheetGuideValueYen/playerEstimateYen recover to the no-symptom figures', () => {
+    const beforeCure = carWithResolvedClutchCause()
+    const honestValue = marketValueYen(
+      MODEL,
+      { ...beforeCure, parts: mintCarParts() },
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    // Fear-priced while the poor clutch is still fitted - both numbers sit
+    // below the honest (mint) value.
+    expect(sheetGuideValueYen(beforeCure, MODEL, STATE, CONTEXT)).toBeLessThan(honestValue)
+    expect(playerEstimateYen(beforeCure, MODEL, STATE, CONTEXT)).toBeLessThan(honestValue)
+
+    // Fit a mint clutch - strictly better than the cause's own 'poor' claim.
+    const mintClutchFitted: CarInstance = { ...beforeCure, parts: mintCarParts({ clutch: 'mint' }) }
+    const cured = pruneCuredCauses(mintClutchFitted, CONTEXT)
+    expect(cured.symptoms).toEqual([]) // cured outright - zero causes left
+
+    expect(sheetGuideValueYen(cured, MODEL, STATE, CONTEXT)).toBe(honestValue)
+    expect(playerEstimateYen(cured, MODEL, STATE, CONTEXT)).toBe(honestValue)
+  })
+
+  it('partial prune: an unresolved 4-cause symptom loses exactly the one cause whose part is repaired strictly past its own setBand', () => {
+    const car: CarInstance = {
+      ...buildCarInstance({
+        modelId: MODEL.id,
+        parts: mintCarParts({
+          headValvetrain: 'poor',
+          internals: 'poor',
+          intake: 'poor',
+          exhaust: 'poor',
+        }),
+      }),
+      symptoms: [
+        {
+          symptomId: 'four-cause-symptom',
+          trueCauseId: 'four-cause-1',
+          remainingCauseIds: ['four-cause-1', 'four-cause-2', 'four-cause-3', 'four-cause-4'],
+          runTestIds: [],
+        },
+      ],
+    }
+    // headValvetrain repaired to mint - strictly better than its own cause's
+    // 'poor' claim; the other three parts (and their causes) are untouched.
+    const repaired: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        headValvetrain: { installed: { ...car.parts.headValvetrain.installed!, band: 'mint' } },
+      },
+    }
+    const result = pruneCuredCauses(repaired, CONTEXT)
+    expect(result.symptoms).toHaveLength(1)
+    expect([...result.symptoms[0]!.remainingCauseIds].sort()).toEqual(
+      ['four-cause-2', 'four-cause-3', 'four-cause-4'].sort(),
+    )
+  })
+
+  it("equal-band never cures: raising a part up to, but not past, its cause's own setBand leaves the cause in place", () => {
+    const car: CarInstance = {
+      ...buildCarInstance({ modelId: MODEL.id, parts: mintCarParts({ clutch: 'scrap' }) }),
+      symptoms: [
+        {
+          symptomId: 'clutch-test-symptom',
+          trueCauseId: 'clutch-cause-severe',
+          remainingCauseIds: ['clutch-cause-severe'],
+          runTestIds: [],
+        },
+      ],
+    }
+    // Repaired from 'scrap' up to EXACTLY the cause's own claim ('poor') -
+    // a real band raise, but not strictly past it.
+    const repaired: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        clutch: { installed: { ...car.parts.clutch.installed!, band: 'poor' } },
+      },
+    }
+    const result = pruneCuredCauses(repaired, CONTEXT)
+    expect(result).toBe(repaired) // unchanged reference - no cure fired
+    expect(result.symptoms[0]!.remainingCauseIds).toEqual(['clutch-cause-severe'])
+  })
+
+  it('cures via a recondition-style partial climb: a bench recondition to fine (strictly past the poor claim, short of mint) still cures', () => {
+    const beforeRecondition = carWithResolvedClutchCause()
+    // A bench recondition lifts the clutch from 'poor' to 'fine' rather than
+    // a fresh mint part - still strictly better than the cause's own claim.
+    const reconditioned: CarInstance = {
+      ...beforeRecondition,
+      parts: {
+        ...beforeRecondition.parts,
+        clutch: { installed: { ...beforeRecondition.parts.clutch.installed!, band: 'fine' } },
+      },
+    }
+    const cured = pruneCuredCauses(reconditioned, CONTEXT)
+    expect(cured.symptoms).toEqual([])
+  })
+
+  it('is a no-op (same reference) for an honest car (no symptoms)', () => {
+    const honest = buildCarInstance({ modelId: MODEL.id })
+    expect(pruneCuredCauses(honest, CONTEXT)).toBe(honest)
   })
 })

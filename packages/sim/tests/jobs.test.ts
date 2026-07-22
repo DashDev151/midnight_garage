@@ -2005,6 +2005,66 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
     expect(result.log[0]).not.toHaveProperty('revealedCauseId')
     expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-panels'])
   })
+
+  describe('completeJob wiring to pruneCuredCauses (cure-on-repair)', () => {
+    it('a completed per-part repair-zone job that raises a resolved cause’s part past its setBand cures the symptom outright - it leaves car.symptoms entirely', () => {
+      const base = carWithRevealSymptom('cause-panels')
+      const resolvedCar: CarInstance = {
+        ...base,
+        symptoms: [{ ...base.symptoms[0]!, remainingCauseIds: ['cause-panels'] }],
+      }
+      const state = baseState({ ownedCars: [resolvedCar] })
+      const job: Job = {
+        id: 'job-cure-panels',
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        carPartId: 'panels',
+        targetBand: 'mint',
+        laborSlotsRequired: 1,
+        laborSlotsSpent: 1,
+      }
+      const result = completeJob(state, job, CONTEXT_WITH_SYMPTOM)
+      expect(result.state.ownedCars[0]!.parts.panels.installed?.band).toBe('mint')
+      expect(result.state.ownedCars[0]!.symptoms).toEqual([])
+    })
+
+    it('a completed install-part job that fits a strictly-better part cures a resolved cause on that slot', () => {
+      // Seats is vacated directly so an install-part job has a real slot to fill.
+      const base = carWithRevealSymptom('cause-seats')
+      const resolvedCar: CarInstance = {
+        ...base,
+        symptoms: [{ ...base.symptoms[0]!, remainingCauseIds: ['cause-seats'] }],
+        parts: {
+          ...base.parts,
+          seats: {
+            installed: null,
+            vacatedBaseline: { partId: 'stub', band: 'poor', genuinePeriod: false },
+          },
+        },
+      }
+      const mintSeats: PartInstance = {
+        id: 'pi-mint-seats',
+        partId: PARTS.find((p) => p.carPartId === 'seats' && p.grade === 'stock')!.id,
+        band: 'mint',
+        genuinePeriod: false,
+        origin: makeMarketOrigin(1),
+      }
+      const state = baseState({ ownedCars: [resolvedCar], partInventory: [mintSeats] })
+      const job: Job = {
+        id: 'job-cure-seats',
+        carInstanceId: car.id,
+        kind: 'install-part',
+        componentId: 'interior',
+        partInstanceId: mintSeats.id,
+        laborSlotsRequired: 1,
+        laborSlotsSpent: 1,
+      }
+      const result = completeJob(state, job, CONTEXT_WITH_SYMPTOM)
+      expect(result.state.ownedCars[0]!.parts.seats.installed?.id).toBe(mintSeats.id)
+      expect(result.state.ownedCars[0]!.symptoms).toEqual([])
+    })
+  })
 })
 
 describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 decision 4)', () => {

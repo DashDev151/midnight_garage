@@ -10,8 +10,8 @@
         "kind": "roadworthy"
       }
     ],
-    "budgetCapYen": 148000,
-    "payoutYen": 148000,
+    "budgetCapYen": 145000,
+    "payoutYen": 145000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,

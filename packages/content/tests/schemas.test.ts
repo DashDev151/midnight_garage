@@ -425,6 +425,8 @@ describe('seed content validates against schemas', () => {
       feudMinGapRungs: 6,
       feudRungs: 4,
       feudDelayMs: { min: 400, max: 1100 },
+      spiteChance: 0.35,
+      spiteMaxRungs: 1,
     })
   })
 })

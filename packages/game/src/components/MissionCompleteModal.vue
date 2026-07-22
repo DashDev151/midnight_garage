@@ -2,7 +2,7 @@
 import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 /**
  * Sprint 77 decision 6: the deliver flow's own receipt - the same shape and
@@ -44,6 +44,12 @@ const specialtyLines = computed(() => {
         <div v-if="result.tipYen > 0" data-test="mission-result-tip">
           <dt>Tip</dt>
           <dd class="up">{{ formatYen(result.tipYen) }}</dd>
+        </div>
+        <div>
+          <dt>Your profit</dt>
+          <dd :class="result.profitYen >= 0 ? 'up' : 'down'" data-test="mission-result-profit">
+            {{ formatYenDelta(result.profitYen) }}
+          </dd>
         </div>
         <div>
           <dt>Reputation</dt>
@@ -123,6 +129,10 @@ h3 {
 
 .up {
   color: var(--mg-success);
+}
+
+.down {
+  color: var(--mg-danger);
 }
 
 button.primary {

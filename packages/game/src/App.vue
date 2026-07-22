@@ -41,7 +41,7 @@ const showChrome = computed(() => route.meta.chrome !== false)
 watch(
   () => route.name,
   (name) => {
-    if (typeof name === 'string' && name !== 'menu' && name !== 'spike') {
+    if (typeof name === 'string' && name !== 'menu' && name !== 'settings' && name !== 'spike') {
       ui.rememberGameplayRoute(name)
     }
   },
