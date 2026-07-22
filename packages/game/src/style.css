@@ -8,15 +8,32 @@
  */
 
 /*
- * OFL pixel font, wired now, file lands later (decision 6). The src points
- * at the Vite public dir (/fonts/...), so a missing file falls back to
- * monospace at runtime instead of breaking the build - drop a chosen OFL
- * .woff2 into packages/game/public/fonts/pixel.woff2 (+ its OFL.txt) and it
- * takes effect. font-display: swap keeps text visible meanwhile.
+ * Two OFL faces (interim pairing; the final display/body pairing is a P3
+ * open call in the art bible). PixelFont is DotGothic16, the era Japanese
+ * 16-dot gothic: the default face, on-grid at 16px and integer multiples.
+ * ReadingFont is M PLUS Rounded 1c (maru gothic): for long-form reading
+ * surfaces and any copy below 16px, where a bitmap grid smears. Licences
+ * ship beside the files in /fonts/.
  */
 @font-face {
   font-family: 'PixelFont';
   src: url('/fonts/pixel.woff2') format('woff2');
+  font-display: swap;
+}
+/* The reading files are the 500 and 700 cuts: light-on-dark text thins
+ * visually, so the Medium cut plays the "regular" role (CSS weight matching
+ * resolves a 400 request to the 500 file) and bold runs are a real cut, not
+ * a synthesised smear. */
+@font-face {
+  font-family: 'ReadingFont';
+  src: url('/fonts/reading.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'ReadingFont';
+  src: url('/fonts/reading-bold.woff2') format('woff2');
+  font-weight: 700;
   font-display: swap;
 }
 
@@ -37,6 +54,7 @@
 
   /* Type scale */
   --mg-font-body: 'PixelFont', 'Courier New', monospace;
+  --mg-font-reading: 'ReadingFont', 'Hiragino Maru Gothic ProN', sans-serif;
   --mg-fs-sm: 0.85rem;
   --mg-fs-md: 1rem;
   --mg-fs-lg: 1.5rem;

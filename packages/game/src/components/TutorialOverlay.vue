@@ -561,6 +561,9 @@ const confirmingSkip = ref(false)
   font-size: 0.68rem;
   color: #9aa4c8;
 }
+/* Guidance is a long-form reading surface at sub-16px sizes, where the
+ * bitmap face smears off its dot grid: it gets the reading face. Chrome
+ * (header label, buttons) stays on the app's pixel face. */
 .tutorial-lines {
   list-style: none;
   margin: 0;
@@ -568,6 +571,7 @@ const confirmingSkip = ref(false)
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  font-family: var(--mg-font-reading);
 }
 .tutorial-line {
   display: block;
@@ -644,6 +648,7 @@ const confirmingSkip = ref(false)
   margin: 0;
   font-size: 0.78rem;
   color: #c9d1f0;
+  font-family: var(--mg-font-reading);
 }
 .tutorial-skip-actions {
   display: flex;

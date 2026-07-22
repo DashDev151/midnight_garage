@@ -337,6 +337,22 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **The cohesion pass: the game must look like the game before outside playtesting
+  (maintainer amendment to the art bible, 2026-07-22).** A cohesive, if unpolished, art pass
+  gates the first outside playtest; a mixed placeholder surface poisons the feedback. Zero
+  spend stands: maintainer-made art and free licensed assets only. Scope when the arc opens:
+  the layer model from the 2026-07-22 art-direction session (world = pixel canvas islands,
+  object = bitmap diegetic controls, document = pixel-styled HTML cast as paper), the
+  corner/border retrofit of the DOM UI (square/stepped corners, nine-slice frames), the
+  palette decision (CC-29 extension vs Apollo subset, parked earlier), the navigation tab
+  object (cassette rack retired; candidates in the art bible's open calls), and the font
+  pairing rollout below. The interim font pairing (DotGothic16 display + M PLUS Rounded 1c
+  reading) already landed 2026-07-22.
+- [ ] **Reading-face rollout: audit every long-form reading surface onto `--mg-font-reading`.**
+  The token and both faces landed 2026-07-22 with the tutorial walkthrough as the proving
+  ground. Still to sweep once the maintainer approves the pairing: dialogue/mission copy,
+  symptom checklist result lines, event log, help/explainer text, and any copy sized below
+  1rem; labels, numbers, headers, and button text stay on the pixel face at on-grid sizes.
 - [ ] **Accessibility suite v2: reduced motion and colour-independent severity cues.** V1 has
   landed with the live room's promotion: an in-room auto-bid toggle places rung-one bids up to
   a player-set ceiling (defaulting to their own estimated value) without ever jumping, so

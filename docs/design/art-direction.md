@@ -7,6 +7,12 @@ the P3 asset-spec doc (roadmap Sprint 9) when commissioning starts. The roadmap'
 stands: **no art or audio money is spent before the Fun Gate passes.** Everything here is
 planning; placeholder assets stay free until then.
 
+**Amendment (maintainer, 2026-07-22):** the zero-spend rule stands, but a **cohesive, if
+unpolished, art pass is required before any outside playtesting**. Outside players must judge
+something that generally looks like the game will look; a mixed placeholder surface poisons the
+feedback. The pass uses maintainer-made art and free (properly licensed) assets only, and this
+requirement sits in front of the playtest milestone, not behind the Fun Gate.
+
 AI-generated renders were used to converge on this direction (moodboarding only). **No
 AI-generated art or music ships in the product, ever - and none appears in devlogs or public
 marketing either.** The pixel-art indie audience is openly hostile to AI assets; the vibe-led
@@ -114,7 +120,7 @@ reduced-motion compliance (both are launch DoD items; the skin never replaces th
 | Level / choice selection (target band, volume, station) | **Rotary knob or dial with detents** - discrete clicks per stop, pointer rotates, label window updates | Slider track, dropdown |
 | Progress / gauges (labor, condition, dyno) | Analog needle gauge, segmented LED bar, flip counter | Plain CSS progress bar |
 | Status displays (day, cash, rep, tallies) | Flip clock, register/LED marquee, dot-matrix VFD, chalkboard | Text in a box |
-| Navigation | Cassette-tab rack | Browser-y tab strip |
+| Navigation | Diegetic tab objects, exact object TBD (cassette rack retired 2026-07-22: too nostalgia-forward; candidates in section 7) | Browser-y tab strip |
 | Lists / documents (jobs, ledger) | Clipboard, carbon-paper invoice, cassette rack | Default table chrome |
 
 The volume control is the canonical example: not a UI slider, but a drawn knob on the boombox
@@ -201,6 +207,17 @@ Register cha-ching (sale), flip-clock flap (End Day), shutter, ratchet, air-wren
 - **96x48 car masters / 640x360 stage / 16px prop grid / integer-only scaling** (2026-07-13).
 - **Diegetic radio with bundled stations + player-URL tuning dial** (2026-07-13).
 - **Visceral-feedback law** (2026-07-13): section 4 is binding on all future UI work.
+- **Cohesive-before-playtest amendment** (maintainer, 2026-07-22): a cohesive, if unpolished,
+  art pass (maintainer-made art + free licensed assets, zero spend) is required before outside
+  playtesting. See the Status amendment at the top of this doc.
+- **Cassette-tab rack retired** (maintainer, 2026-07-22): navigation stays diegetic, but the
+  cassette rack tried too hard for the nostalgia note. Replacement object is an open call
+  (section 7).
+- **Interim font pairing landed** (2026-07-22): DotGothic16 (the era Japanese 16-dot gothic) as
+  the pixel display/default face; M PLUS Rounded 1c (maru gothic) as the reading face for
+  long-form copy and anything below 16px, where a bitmap grid smears. Both OFL, licences shipped
+  beside the files. This is the free placeholder pairing; the final pairing remains a P3 open
+  call with the artist.
 - Standing rules restated from GDD/roadmap: parody parts brands from day one; Naming Layer flip
   must hold for any art containing brand marks (draw badges as separate swappable layers); no
   reflex-based input anywhere; era-authentic yen everywhere.
@@ -213,3 +230,7 @@ Register cha-ching (sale), flip-clock flap (End Day), shutter, ratchet, air-wren
   exist at all).
 - Which existing screens get the diegetic-control retrofit first once P3 starts (candidate order:
   garage status row, End Day, radio, band-picker dial).
+- The navigation tab object (cassette rack retired 2026-07-22). Candidates that fit "HTML plays
+  paper, bitmaps play things" without leaning on nostalgia: manila index-folder tabs on the
+  shop's paperwork, a pegboard with hanging tags, filing-cabinet drawer labels, parts-drawer
+  labels. Decide during the cohesion pass.
