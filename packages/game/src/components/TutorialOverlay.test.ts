@@ -291,8 +291,8 @@ describe('TutorialOverlay', () => {
     }
     await nextTick()
     expect(wrapper.text()).toContain('Tyres ordered')
-    // The shop-trip line retires the moment the order exists (hideWhen,
-    // playtest item 19) - the box never ends on an errand already run.
+    // The shop-trip line retires the moment the order exists (hideWhen) - the
+    // box never ends on an errand already run.
     expect(wrapper.text()).not.toContain('Add to cart')
 
     // Delivery: the order clears, a non-scrap inventory part addressed to
@@ -314,9 +314,9 @@ describe('TutorialOverlay', () => {
     expect(wrapper.text()).not.toContain('Tyres ordered')
     expect(wrapper.text()).toContain('four fresh tyres')
 
-    // Fitted into the benched assembly: the fit line retires with the
-    // emptied shelf, and the refit beat takes over (playtest item 19 - this
-    // exact state previously read "go shopping").
+    // Fitted into the benched assembly: the fit line retires with the emptied
+    // shelf, and the refit beat takes over - this exact state previously read
+    // "go shopping".
     game.gameState = {
       ...game.gameState,
       partInventory: [],

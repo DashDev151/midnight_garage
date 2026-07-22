@@ -4,16 +4,9 @@ import { useGameStore } from '../stores/gameStore'
 import { describeLogEntry } from '../utils/dayLogFormat'
 
 /**
- * Sprint 69 (playtest item 20): the event log, off the main garage view.
- *
- * It lived as a permanent 40-line wall at the bottom of `GarageScreen`, under
- * the bays and the shop - the two things the garage is actually for. It is
- * reference material a player consults, not something they read every day, so
- * it moves behind a small control in the app chrome and opens on demand.
- *
- * The derivation is the same one the garage ran (`describeLogEntry` over the
- * last 40 entries, newest first) - moved, not rewritten, so the lines a player
- * knows are the lines they still get.
+ * The event log appears behind a small control in the app chrome, opened on
+ * demand. It shows reference material: the last 40 entries, newest first, via
+ * `describeLogEntry`.
  */
 const game = useGameStore()
 const open = ref(false)

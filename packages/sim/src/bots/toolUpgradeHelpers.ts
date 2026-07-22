@@ -8,7 +8,7 @@ import type { SimContext } from '../context'
  * only ever build a `DayActions` object), so without this a bot iterating
  * several cars that all want the same line upgraded would queue the same
  * upgrade repeatedly. Mirrors `ServiceBayBudget`'s
- * mutable-counter-threaded-through-a-tick shape (`bayHelpers.ts`, Sprint 09).
+ * mutable-counter-threaded-through-a-tick shape (`bayHelpers.ts`).
  */
 export interface ToolUpgradeBudget {
   queuedComponentIds: Set<ComponentId>
@@ -19,21 +19,19 @@ export function toolUpgradeBudget(): ToolUpgradeBudget {
 }
 
 /**
- * Sprint 36: the shared "should this bot buy the next tier of this line"
- * decision - the tool-line successor to the retired buy-or-skip equipment
- * logic. Queues the line's next tier iff the line is below 3 AND the bot
- * can cover `upgradePriceYen * cashBufferMultiplier` from its current cash
+ * The shared "should this bot buy the next tier of this line" decision.
+ * Queues the line's next tier iff the line is below 3 AND the bot can
+ * cover `upgradePriceYen * cashBufferMultiplier` from its current cash
  * (the same headroom style every bot already applies to its other spends).
  * Never a prerequisite for working: repair is always possible at the
  * current tier, so callers proceed with their work whether or not this
  * queues anything.
  *
- * Deliberately NO bot-side reputation check (Sprint 43 added a reputation
- * floor on tiers 2/3, `applyToolUpgrade`/`nextToolTierRepGate`, toolLines.ts):
- * a bot below the gate still queues the upgrade exactly as before, and the
- * resolver silently refuses it - the same no-op contract an unaffordable
- * upgrade already has. No bot needs to reason about reputation to decide
- * whether to try.
+ * Deliberately NO bot-side reputation check: tiers 2/3 gate on reputation
+ * (`applyToolUpgrade`/`nextToolTierRepGate`, toolLines.ts), but a bot
+ * below the gate still queues the upgrade, and the resolver silently
+ * refuses it - the same no-op contract an unaffordable upgrade already
+ * has. No bot needs to reason about reputation to decide whether to try.
  *
  * Returns `true` when an upgrade was queued this call (or already queued
  * this same tick - the budget dedupe); `false` when the line is maxed or

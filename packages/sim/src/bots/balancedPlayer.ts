@@ -20,7 +20,7 @@ const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
  * lot on principle. */
 const FAIR_BID_MULTIPLIER = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.2
-/** Sprint 36: an average player's double-cover buffer on tool upgrades. */
+/** An average player's double-cover buffer on tool upgrades. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 /** "A few of the most critical repairs," not a full restoration. */
 const CRITICAL_REPAIR_ZONE_COUNT = 2
@@ -33,9 +33,9 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
 ]
 /**
  * "First okay offer," not "first offer, period." A mid player still has a
- * floor: below this fraction of the car's best-fit valuation, a live offer
- * reads as a lowball and gets left on the table (Sprint 31 decision 4) -
- * unless holding-cost pressure (`MAX_HOLDING_DAYS`) forces a sale anyway.
+ * floor: below this fraction of the car's best-fit valuation, a live
+ * offer reads as a lowball and gets left on the table - unless
+ * holding-cost pressure (`MAX_HOLDING_DAYS`) forces a sale anyway.
  */
 const ACCEPT_FRACTION = 0.85
 const MAX_HOLDING_DAYS = 12
@@ -85,8 +85,8 @@ export function balancedPlayerStrategy(
 
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    // Sprint 36: consider upgrading the line for speed, but repair proceeds
-    // either way - work is always possible at the current tier.
+    // Consider upgrading the line for speed, but repair proceeds either
+    // way - work is always possible at the current tier.
     considerToolUpgrade(
       state,
       worstComponent,

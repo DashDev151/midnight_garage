@@ -23,10 +23,10 @@ function member(
 }
 
 /**
- * Sprint 82 decision 6: the staff store owns the Staff Office view but reads and
+ * The staff store owns the Staff Office view but reads and
  * writes the persisted staff data through `gameStore`. These tests seed via
  * `useGameStore` and read the view off `useStaffStore` to prove the two stay in
- * one source of truth, and cover the new `benchCrew` summary (decision 1).
+ * one source of truth, and cover the `benchCrew` summary.
  */
 describe('useStaffStore benchCrew (Sprint 82)', () => {
   beforeEach(() => setActivePinia(createPinia()))

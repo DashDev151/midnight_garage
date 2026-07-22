@@ -10,17 +10,15 @@ import { z } from 'zod'
  * Per-day input to advanceDay - ephemeral simulation input, not persisted
  * seed content, so it lives in sim rather than packages/content.
  *
- * Sprint 26: `fix-issue` retired with the hidden-issue system. `targetBand`
- * (decision 5) is set for `repair-zone` specs only - how far the player is
+ * `targetBand` is set for `repair-zone` specs only - how far the player is
  * staging every eligible part in the group to climb; `jobs.ts`'s
  * `repairJobGate`/`applyJobToCar` are what actually resolve it per part.
  *
- * Sprint 28: `carPartId` narrows a spec from the whole `componentId` group
- * to one specific part within it - mirrors `Job`/`StagedAction`'s own
- * addition (content package). Absent means the pre-Sprint-28 group-level
- * behavior; bots never set this (`bots/bandHelpers.ts`'s `queueGroupRepair`
- * stays group-scoped by design), so every existing queued spec is
- * unaffected.
+ * `carPartId` narrows a spec from the whole `componentId` group to one
+ * specific part within it - mirrors `Job`/`StagedAction`'s own addition
+ * (content package). Absent means the group-level behavior; bots never
+ * set this (`bots/bandHelpers.ts`'s `queueGroupRepair` stays group-scoped
+ * by design).
  */
 const NewJobSpecSchema = z.object({
   carInstanceId: z.string().min(1),
@@ -37,12 +35,11 @@ const LaborAssignmentSchema = z.object({
   laborSlots: z.number().int().positive(),
 })
 
-/** Sprint 31: accept today's live pending offer on this car, resolving
- * through `resolveSellViaWalkIn`'s reputation/heat/event-log plumbing. */
+/** Accept today's live pending offer on this car, resolving through
+ * `resolveSellViaWalkIn`'s reputation/heat/event-log plumbing. */
 const AcceptOfferActionSchema = z.object({ carInstanceId: z.string().min(1) })
 
-/** Sprint 31: toggle "taking offers" on a car - replaces both the old
- * instant walk-in sell and list-publicly actions. */
+/** Toggle "taking offers" on a car. */
 const SetForSaleActionSchema = z.object({
   carInstanceId: z.string().min(1),
   forSale: z.boolean(),
@@ -50,28 +47,27 @@ const SetForSaleActionSchema = z.object({
 
 const BuyPartActionSchema = z.object({
   partId: z.string().min(1),
-  /** Sprint 14: defaults to 'express' (today's pre-Sprint-14 instant-buy
-   * behavior) so every pre-existing caller/fixture that omits it keeps
-   * working unchanged. */
+  /** Defaults to 'express' - the instant-buy behavior every caller/fixture
+   * that omits it keeps getting. */
   deliverySpeed: z.enum(['standard', 'express']).default('express'),
 })
 
 const BuyoutLotActionSchema = z.object({ lotId: z.string().min(1) })
 
-/** Sprint 26 decision 6: sell a scrap `PartInstance` for scrap value - the
- * only action available on it. */
+/** Sell a scrap `PartInstance` for scrap value - the only action
+ * available on it. */
 const ScrapPartActionSchema = z.object({ partInstanceId: z.string().min(1) })
 
 /**
- * Sprint 33: bots' only path to pulling a part off a slot before installing
- * a replacement - the player does this instantly via a direct store call
+ * Bots' only path to pulling a part off a slot before installing a
+ * replacement - the player does this instantly via a direct store call
  * (`resolveRemovePart`, jobs.ts) using the same Remove button that gates
- * Replace behind an empty slot. Needed because Sprint 32's stock-baseline
- * model fills every real slot by default (including a service-job
- * customer's car), so a bot's queued install task can no longer assume the
- * target slot starts empty - `bots/serviceJobHelpers.ts`'s
- * `queueServiceJobTasks` queues this first, on its own tick, exactly
- * mirroring the player's required remove-then-replace two-step.
+ * Replace behind an empty slot. Needed because the stock-baseline model
+ * fills every real slot by default (including a service-job customer's
+ * car), so a bot's queued install task can't assume the target slot
+ * starts empty - `bots/serviceJobHelpers.ts`'s `queueServiceJobTasks`
+ * queues this first, on its own tick, exactly mirroring the player's
+ * required remove-then-replace two-step.
  */
 const RemovePartActionSchema = z.object({
   carInstanceId: z.string().min(1),
@@ -87,8 +83,8 @@ const MoveCarActionSchema = z.object({
 
 const BuyBayActionSchema = z.object({ kind: BayKindSchema })
 
-/** Sprint 36: climb one tool line one tier (sequential, cash-gated only -
- * no reputation gate). Replaces the retired buy-equipment action. */
+/** Climb one tool line one tier (sequential, cash-gated only - no
+ * reputation gate). */
 const UpgradeToolLineActionSchema = z.object({ componentId: ComponentIdSchema })
 
 export const DayActionsSchema = z.object({

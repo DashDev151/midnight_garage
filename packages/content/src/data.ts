@@ -23,6 +23,7 @@ import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
 import tutorialLotJson from '../data/tutorialLot.json'
 import tutorialStepsJson from '../data/tutorialSteps.json'
+import venueNamesJson from '../data/venueNames.json'
 import { AssemblyDefsSchema } from './assembly'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
@@ -51,6 +52,7 @@ import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
 import { TutorialLotRecipeSchema, TutorialStepsSchema } from './tutorial'
+import { VenueNamesSchema } from './venueNames'
 
 /**
  * Parsed, schema-validated seed content - the single source of truth for
@@ -62,10 +64,10 @@ import { TutorialLotRecipeSchema, TutorialStepsSchema } from './tutorial'
 export const CARS = CarModelsSchema.parse(carsJson)
 
 /**
- * Sprint 53 (economy-bible.md): every SKU's `priceYen` is resolved once here,
- * at content-load time, from the pricing sheet - never a hand-authored JSON
- * field. `PARTS` keeps the exact shape/name every downstream reader already
- * expects; only where the number comes from changed.
+ * Every SKU's `priceYen` is resolved once here, at content-load time, from
+ * the pricing sheet - never a hand-authored JSON field. `PARTS` keeps the
+ * exact shape/name every downstream reader already expects; only where the
+ * number comes from changed.
  */
 const PART_CATALOG_ENTRIES = PartCatalogEntriesSchema.parse(partsJson)
 const PART_PRICING_SHEET = PartPricingSheetSchema.parse(partPricingJson)
@@ -76,10 +78,10 @@ export const PARTS = PartsSchema.parse(
 const FITMENT_CLASSES: readonly PartFitmentClass[] = ['shitbox', 'common', 'uncommon', 'rare']
 
 /**
- * Sprint 53: a taxonomy entry's per-class stock-replacement price is simply
- * that class's own stock-grade SKU price - derived from the resolved `PARTS`
- * catalog, never a hand-maintained mirror, so it can never drift from the
- * catalog it describes.
+ * A taxonomy entry's per-class stock-replacement price is simply that class's
+ * own stock-grade SKU price - derived from the resolved `PARTS` catalog,
+ * never a hand-maintained mirror, so it can never drift from the catalog it
+ * describes.
  */
 function stockReplacementPricesByClass(carPartId: CarPartId): Record<PartFitmentClass, number> {
   const result = {} as Record<PartFitmentClass, number>
@@ -104,19 +106,18 @@ export const PARTS_TAXONOMY: CarPartTaxonomyEntry[] = CarPartTaxonomySchema.pars
 )
 
 /**
- * Sprint 87 (the assembly model): the three sub-assemblies (wheels, engine,
- * gearbox) that come off and go back on as one unit. A pure grouping over the
- * `PARTS_TAXONOMY` members above - the labour and gate machinery it drives
- * lives entirely in `packages/sim/src/assemblies.ts`, built over the existing
- * per-slot resolvers.
+ * The three sub-assemblies (wheels, engine, gearbox) that come off and go
+ * back on as one unit. A pure grouping over the `PARTS_TAXONOMY` members
+ * above - the labour and gate machinery it drives lives entirely in
+ * `packages/sim/src/assemblies.ts`, built over the existing per-slot resolvers.
  */
 export const ASSEMBLIES = AssemblyDefsSchema.parse(assembliesJson)
 
 export const BUYERS = BuyersSchema.parse(buyersJson)
 export const TRAITS = TraitDefinitionsSchema.parse(traitsJson)
 /**
- * Sprint 80 (staff I): the job-ad candidate name and bio pools the seeded
- * candidate roller (`sim/staff.ts`) draws from.
+ * The job-ad candidate name and bio pools the seeded candidate roller
+ * (`sim/staff.ts`) draws from.
  */
 export const STAFF_CANDIDATES = StaffCandidatePoolSchema.parse(staffCandidatesJson)
 export const SERVICE_JOB_TYPES = ServiceJobTypesSchema.parse(serviceJobTemplatesJson)
@@ -131,11 +132,15 @@ export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
 export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)
 
 /**
- * Sprint 70: the car-history flavour pool (`CarInstance.provenanceNote`),
- * relocated from `packages/sim/src/auctions.ts`'s `PROVENANCE_POOL` constant -
- * the content law now covers it too.
+ * The car-history flavour pool (`CarInstance.provenanceNote`).
  */
 export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)
+
+/**
+ * Each auction tier's venue-name pool - a new save rolls one per tier and
+ * stores it, displayed wherever the tier label renders.
+ */
+export const VENUE_NAMES = VenueNamesSchema.parse(venueNamesJson)
 
 /**
  * The shared failure-mode registry each symptom's own `causes` entries
@@ -147,14 +152,13 @@ const FAILURE_MODE_BY_ID = new Map<string, FailureMode>(
 )
 
 /**
- * Sprint 73 (diagnosis I): the symptom/cause pool and the flat diagnostic-
- * test registry (id + minutes) each symptom's own `tests` entries reference
- * by `testId`. `symptoms.json` only ever carries `causes` as registry
- * references (`CauseSchema`); resolved here by joining each reference
- * against `FAILURE_MODES`, so `SYMPTOMS` keeps the exact resolved shape
- * every downstream reader (sim, game) already expects. A dangling
- * `failureModeId` fails loudly at load time rather than surfacing as a
- * missing part downstream.
+ * The symptom/cause pool and the flat diagnostic-test registry (id + minutes)
+ * each symptom's own `tests` entries reference by `testId`. `symptoms.json`
+ * only ever carries `causes` as registry references (`CauseSchema`); resolved
+ * here by joining each reference against `FAILURE_MODES`, so `SYMPTOMS` keeps
+ * the exact resolved shape every downstream reader (sim, game) already expects.
+ * A dangling `failureModeId` fails loudly at load time rather than surfacing
+ * as a missing part downstream.
  */
 const SYMPTOMS_CONTENT = SymptomsContentSchema.parse(symptomsJson)
 export const SYMPTOMS = SymptomsSchema.parse(
@@ -163,12 +167,11 @@ export const SYMPTOMS = SymptomsSchema.parse(
 export const DIAGNOSTIC_TESTS = DiagnosticTestsSchema.parse(diagnosticTestsJson)
 
 /**
- * Sprint 76 (story missions I): the hand-authored campaign's customers, and
- * the missions themselves. `budgetCapYen` is each mission's single authored
- * spend ceiling - mirrored here into a matching `budgetCap` requirement
- * appended to `requirements`, so `gradeMissionCar` (sim) never has to read
- * two different fields to grade one concern, and content never carries the
- * same number twice (`storyMission.ts`'s own doc comment).
+ * The hand-authored campaign's customers, and the missions themselves.
+ * `budgetCapYen` is each mission's single authored spend ceiling - mirrored
+ * here into a matching `budgetCap` requirement appended to `requirements`, so
+ * `gradeMissionCar` (sim) never has to read two different fields to grade one
+ * concern, and content never carries the same number twice.
  */
 export const PERSONAS = PersonasSchema.parse(personasJson)
 const STORY_MISSIONS_AUTHORED = StoryMissionsSchema.parse(storyMissionsJson)
@@ -181,19 +184,18 @@ export const STORY_MISSIONS: StoryMission[] = STORY_MISSIONS_AUTHORED.map((missi
 }))
 
 /**
- * Sprint 77 (story missions II): the reference-lap board's fictional
- * comparable pool + the one grip anchor - see `lapReference.ts`'s own doc
- * comment for the anchor/pool discriminated shape.
+ * The reference-lap board's fictional comparable pool + the one grip anchor -
+ * see `lapReference.ts`'s own doc comment for the anchor/pool discriminated shape.
  */
 export const LAP_REFERENCES = LapReferencesSchema.parse(lapReferencesJson)
 
 /**
- * Sprint 89 (Yuki teaches you the game): the guided-tutorial script and the
- * one scripted auction lot recipe. `TUTORIAL_STEPS` is the ordered coach beats
- * the overlay renders (all copy orchestrator-swept); `TUTORIAL_LOT` is the
- * fixed shitbox-runabout recipe the sim builds deterministically while the
- * tutorial is live - the satisfiability probe
- * (`packages/sim/tests/tutorialProbe.test.ts`) pins its economics.
+ * The guided-tutorial script and the one scripted auction lot recipe.
+ * `TUTORIAL_STEPS` is the ordered coach beats the overlay renders (all copy
+ * orchestrator-swept); `TUTORIAL_LOT` is the fixed shitbox-runabout recipe
+ * the sim builds deterministically while the tutorial is live - the
+ * satisfiability probe (`packages/sim/tests/tutorialProbe.test.ts`) pins its
+ * economics.
  */
 export const TUTORIAL_STEPS = TutorialStepsSchema.parse(tutorialStepsJson)
 export const TUTORIAL_LOT = TutorialLotRecipeSchema.parse(tutorialLotJson)

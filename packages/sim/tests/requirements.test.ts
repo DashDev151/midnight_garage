@@ -252,13 +252,14 @@ describe('evaluateRequirement', () => {
     })
 
     /**
-     * Decision 1's own claim: `valuateCarForBuyer / marketValueYen` equals the
-     * buyer's taste multiplier regardless of which heat value is used for
-     * BOTH terms - so `evaluateRequirement` can read at a fixed neutral heat
-     * without threading live `GameState.marketHeat` into its signature. Proven
-     * directly here (not through `evaluateRequirement`, which always uses its
-     * own fixed heat): the ratio computed at two very different heat
-     * percentages is the same, up to the rounding both functions already do.
+     * `valuateCarForBuyer / marketValueYen` equals the buyer's taste
+     * multiplier regardless of which heat value is used for BOTH terms -
+     * so `evaluateRequirement` can read at a fixed neutral heat without
+     * threading live `GameState.marketHeat` into its signature. Proven
+     * directly here (not through `evaluateRequirement`, which always uses
+     * its own fixed heat): the ratio computed at two very different heat
+     * percentages is the same, up to the rounding both functions already
+     * do.
      */
     it('the heat-cancelling property: the valuation ratio is the same at two different heat values', () => {
       const car = buildCarInstance({ modelId: MODEL.id })

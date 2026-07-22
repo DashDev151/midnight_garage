@@ -23,12 +23,8 @@ export function staffSkillSum(stats: StaffMember['stats']): number {
 }
 
 /**
- * Sprint 80 crew model, R4 (content law, the Sprint 78 formula-derived-content
- * pattern): a staff member's weekly wage is a PURE function of the stat line
- * and the labour slots, never rolled independently. Every coefficient is
- * content (`economy.staff`); the formula relationship is the invariant,
- * asserted by `staffProbes.test.ts` so wage content and this formula can never
- * drift.
+ * A staff member's weekly wage is a pure function of the stat line and
+ * labour slots, never rolled independently - asserted by `staffProbes.test.ts`.
  *
  * `weeklyWageYen = round100(wageBaseYen + wagePerSkillPointYen * sum(stats)
  *                 + wagePerLaborSlotYen * laborSlotsPerDay)`.
@@ -46,21 +42,15 @@ export function deriveStaffWageYen(
   return Math.round(raw / 100) * 100
 }
 
-/**
- * Sprint 80 crew model, R6a: the one-off introduction fee charged at hire -
- * `introductionFeeWeeks` multiples of the candidate's own weekly wage. 0
- * disables it. Content law: the multiple is a knob (`economy.staff`).
- */
+/** The one-off introduction fee charged at hire: `introductionFeeWeeks`
+ * multiples of the candidate's own weekly wage. 0 disables it. */
 export function introductionFeeYen(weeklyWageYen: number, economy: EconomyConfig): number {
   return weeklyWageYen * economy.staff.introductionFeeWeeks
 }
 
-/**
- * Sprint 80 crew model, R2: roll `laborSlotsPerDay` (1 or 2) from the content
- * weight tuple `[weightFor1Slot, weightFor2Slots]`. One `rng.next()` draw via
- * cumulative weights, the same single-draw shape `sampleDailyOfferCount` and
- * `rollUpkeepTier` use.
- */
+/** Rolls `laborSlotsPerDay` (1 or 2) from the content weight tuple
+ * `[weightFor1Slot, weightFor2Slots]` - one `rng.next()` draw via cumulative
+ * weights. */
 function rollLaborSlotsPerDay(weights: readonly [number, number], rng: Rng): 1 | 2 {
   const total = weights[0] + weights[1]
   const roll = rng.next() * total
@@ -68,16 +58,11 @@ function rollLaborSlotsPerDay(weights: readonly [number, number], rng: Rng): 1 |
 }
 
 /**
- * Sprint 80 crew model, R2/R3: roll one job-ad candidate for the given hiring
- * tier. Each of the three quality stats is rolled uniformly in that tier's
- * per-stat budget (`economy.staff.statBudgetByTier` - better shops attract
- * people stronger across the board); `laborSlotsPerDay` is a weighted 1-or-2
- * roll; the trait is rolled uniformly; the wage is DERIVED by formula, never
- * rolled. A fresh hire starts `bench`-assigned with nothing pending. The
- * display name avoids `usedNames` (current staff plus live ads) so the board
- * never shows a duplicate; if the pool is exhausted it falls back to the full
- * pool rather than looping forever. The bio is drawn independently and rides on
- * the ad only (not the persisted staff member).
+ * Rolls one job-ad candidate for `reputationTier`. Each quality stat is
+ * rolled uniformly within the tier's per-stat budget
+ * (`economy.staff.statBudgetByTier`); the wage is DERIVED by formula, never
+ * rolled. The display name avoids `usedNames` (current staff plus live
+ * ads), falling back to the full pool if that leaves nothing fresh.
  */
 export function rollStaffCandidate(
   context: SimContext,
@@ -112,13 +97,10 @@ export function rollStaffCandidate(
 }
 
 /**
- * Sprint 80 decision 2: the weekly job-ad refresh, run from `advanceDay`'s
- * day-boundary tick on the same 7-day cadence as wages. Expired ads (posted
- * more than `adExpiryDays` ago) drop first, then seeded rolls top the board
- * back up to `maxOpenAds` with fresh candidates whose names avoid current
- * staff and the surviving ads. Candidate ids are `staff-<day>-<i>` (the
- * refresh runs at most once per day, so they never collide). One
- * `staff-ads-refreshed` log entry when any ad was posted.
+ * The weekly job-ad refresh: drops ads older than `adExpiryDays`, then tops
+ * the board back up to `maxOpenAds` with fresh candidates whose names avoid
+ * current staff and the surviving ads. Logs `staff-ads-refreshed` when any
+ * ad was posted.
  */
 export function refreshStaffAds(state: GameState, context: SimContext, rng: Rng): StaffResolution {
   const { maxOpenAds, adExpiryDays } = context.economy.staff
@@ -150,14 +132,10 @@ export function refreshStaffAds(state: GameState, context: SimContext, rng: Rng)
 }
 
 /**
- * Sprint 80 crew model, R6a: hire the candidate on the ad with `candidateId` -
- * instant. The introduction fee (`introductionFeeWeeks` x weekly wage) is
- * charged to cash at hire (may go negative, as rent/wages already can); the
- * member joins `state.staff` bench-assigned (its labour applies from the next
- * slot computation; the first wage lands on the next weekly tick via the
- * existing `finances.ts` path). The ad leaves the board. A no-op (empty log,
- * matching every instant resolver's contract) when the ad is gone or the shop
- * is already at `economy.staff.maxStaff`.
+ * Hires the candidate on ad `candidateId`, instant. Charges the
+ * introduction fee to cash (may go negative) and joins `state.staff`
+ * bench-assigned. A no-op when the ad is gone or the shop is already at
+ * `economy.staff.maxStaff`.
  */
 export function resolveHireStaff(
   state: GameState,
@@ -185,11 +163,8 @@ export function resolveHireStaff(
   }
 }
 
-/**
- * Sprint 80 decision 6: dismiss `staffId` - immediate, no severance, no morale
- * machinery (GDD section 7: no morale sim). A no-op when no such member
- * exists. The two-step confirm lives in the UI, not here.
- */
+/** Dismisses `staffId`, immediate: no severance, no morale machinery (GDD
+ * section 7). A no-op when no such member exists. */
 export function resolveDismissStaff(state: GameState, staffId: string): StaffResolution {
   const member = state.staff.find((entry) => entry.id === staffId)
   if (!member) return { state, log: [] }
@@ -202,14 +177,10 @@ export function resolveDismissStaff(state: GameState, staffId: string): StaffRes
 }
 
 /**
- * Sprint 80 crew model, R3: schedule a member's reassignment between `bench`
- * and `contract`. It takes effect on the NEXT day boundary
- * (`commitPendingStaffAssignments`, run by `advanceDay`), never mid-day - a
- * bench day cannot also collect the retainer, and the labour pool never shifts
- * under an action already taken. Setting the pending value back to the current
- * effective assignment simply clears any pending change. A no-op (returns the
- * same state) when no such member exists. No log entry: the change is silent
- * until it lands.
+ * Schedules a member's reassignment between `bench` and `contract`; takes
+ * effect on the next day boundary (`commitPendingStaffAssignments`), never
+ * mid-day. Setting the pending value back to the current assignment clears
+ * any pending change. A no-op when no such member exists.
  */
 export function resolveReassignStaff(
   state: GameState,
@@ -228,12 +199,9 @@ export function resolveReassignStaff(
   return { state: { ...state, staff }, log: [] }
 }
 
-/**
- * Sprint 80 crew model, R3: commit every scheduled reassignment. Called from
- * `advanceDay`'s day-boundary finalisation (step 10), AFTER contract income has
- * accrued for the day that is ending - so a reassignment made today takes
- * effect tomorrow, never tonight. Members with nothing pending are untouched.
- */
+/** Commits every scheduled reassignment. Called from `advanceDay`'s
+ * day-boundary finalisation, after contract income has accrued for the
+ * ending day - so a reassignment made today takes effect tomorrow. */
 export function commitPendingStaffAssignments(staff: readonly StaffMember[]): StaffMember[] {
   return staff.map((member) =>
     member.pendingAssignment !== null

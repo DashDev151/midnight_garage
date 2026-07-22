@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { energyMax } from '../src/laborSlots'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
-// Sprint 94 (the energy bar): the daily labour pool is energy POINTS now, not
-// integer slots - `basePoolPoints` for a solo shop, plus each benched member's
-// `laborSlotsPerDay x pointsPerLabour`. Directive 17 case (a): the assertions
-// below re-derive off the same content knobs the sim reads.
+// The daily labour pool is energy POINTS, not integer slots -
+// `basePoolPoints` for a solo shop, plus each benched member's
+// `laborSlotsPerDay x pointsPerLabour`. Directive 17 case (a): the
+// assertions below re-derive off the same content knobs the sim reads.
 const BASE = ECONOMY.energy.basePoolPoints
 const PER_SLOT = ECONOMY.energy.pointsPerLabour
 

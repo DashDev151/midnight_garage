@@ -5,15 +5,13 @@ import { useGameStore } from '../stores/gameStore'
 import EventLogDrawer from './EventLogDrawer.vue'
 
 /**
- * Sprint 69 (playtest item 20): the event log moved off the garage view into
- * an on-demand drawer.
+ * The event log lives in an on-demand drawer, not on the garage view.
  *
  * The two behaviour tests below are PORTED from `GarageScreen.test.ts`, not
  * rewritten - the log itself did not change, only where it lives, so its
  * coverage moves with it rather than being deleted along with the section.
- * (Sprint 58 set this precedent when the menu's load panel moved to SaveMenu.)
  */
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
@@ -74,9 +72,9 @@ describe('EventLogDrawer (Sprint 69 item 20)', () => {
     }
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')
     if (!lot) throw new Error('expected a local-yard lot after the first catalog')
-    // Sprint 81's 25-model pool can put a lot at the local yard whose buyout
+    // The 25-model pool can put a lot at the local yard whose buyout
     // price exceeds starting cash; affordability is not what this test
-    // exercises, so grant the buyout price outright (the Sprint 59 pattern).
+    // exercises, so grant the buyout price outright.
     game.devGiveCash(game.lotDetail(lot.id)!.buyoutPriceYen)
     expect(game.buyout(lot.id)).toBe(true)
     const carId = game.gameState.ownedCars.at(-1)!.id

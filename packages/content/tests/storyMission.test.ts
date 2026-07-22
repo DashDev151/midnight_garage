@@ -4,12 +4,12 @@ import storyMissions from '../data/storyMissions.json'
 import { ComponentIdSchema, PersonasSchema, StoryMissionsSchema, type StoryMission } from '../src'
 
 /**
- * Sprint 76 (story missions I): the content guards task 2 calls for - schema
- * parse, id uniqueness, ascending gate order (the strictly linear campaign),
- * valid specialty groups, and non-empty copy fields. Parses the raw authored
- * JSON directly (not `STORY_MISSIONS` from `src/data.ts`), since that export
- * mirrors `budgetCapYen` into an extra `requirements` entry at load - this
- * file is checking the AUTHORED content, before that mirror is applied.
+ * The campaign's content guards: schema parse, id uniqueness, ascending
+ * gate order (the strictly linear campaign), valid specialty groups, and
+ * non-empty copy fields. Parses the raw authored JSON directly (not
+ * `STORY_MISSIONS` from `src/data.ts`), since that export mirrors
+ * `budgetCapYen` into an extra `requirements` entry at load - this file is
+ * checking the AUTHORED content, before that mirror is applied.
  */
 const PARSED_MISSIONS: StoryMission[] = StoryMissionsSchema.parse(storyMissions)
 const PARSED_PERSONAS = PersonasSchema.parse(personas)

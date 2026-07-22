@@ -189,8 +189,8 @@ const DEFAULT_SEED = 1
 
 /**
  * A fresh random career seed. Game-layer only (Math.random is fine here -
- * the sim stays fully deterministic *given* a seed). External review 2026-07
- * finding 3: a fixed default meant every player got the identical career.
+ * the sim stays fully deterministic *given* a seed): a fixed default would
+ * give every player the identical career.
  * Explicit seeds (dev console, tests, the balance harness) still bypass this.
  */
 function randomSeed(): number {
@@ -198,7 +198,7 @@ function randomSeed(): number {
 }
 
 /** The 6 real component groups, in a stable display order - shared by every
- * group-level and per-part view builder below (Sprint 26/27) so the order
+ * group-level and per-part view builder below so the order
  * lives in exactly one place. */
 const REAL_COMPONENT_GROUPS: readonly ComponentId[] = [
   'engine',
@@ -210,7 +210,7 @@ const REAL_COMPONENT_GROUPS: readonly ComponentId[] = [
 ]
 
 /** One real part within a group, for the car-detail screen's per-part breakdown
- * (Sprint 26; reshaped Sprint 32 for the stock-baseline/missing-slot model). */
+ * (the stock-baseline/missing-slot model). */
 export interface CarPartRowView {
   partId: CarPartId
   displayName: string
@@ -224,8 +224,7 @@ export interface CarPartRowView {
    * null when the slot is empty. */
   grade: Grade | null
   /**
-   * True when the slot is empty AND that's a real defect (Sprint 32
-   * decision 3) - a stolen wheel, a gutted cat, a missing turbo on a
+   * True when the slot is empty AND that's a real defect - a stolen wheel, a gutted cat, a missing turbo on a
    * factory-turbo car - needing a fill prompt. False when the slot is
    * filled, or (the one legitimately-empty case) `forcedInduction` on an NA
    * car, which renders as permanently absent instead - see
@@ -236,16 +235,16 @@ export interface CarPartRowView {
    * defect, nothing to fill, distinct copy from `missing`. Always false for
    * every other part. */
   legitimatelyAbsent: boolean
-  /** Sprint 41 decision 2: false for tyres/brakePadsDiscs/clutch - the
+  /** False for tyres/brakePadsDiscs/clutch - the
    * per-part repair row and the bench recondition control both hide
    * themselves when this is false; only Replace ever touches the part. */
   repairable: boolean
-  /** Sprint 71 (the teardown game): false only for chassis/paint/underbody -
+  /** False only for chassis/paint/underbody -
    * the shell itself, repaired in place and never pulled. The car-detail
    * screen's "Take it off" control only ever renders when this is true. */
   removable: boolean
   /**
-   * Sprint 74 decision 5: true when `band` above is the car's APPARENT band
+   * True when `band` above is the car's APPARENT band
    * rather than its true one - a still-open symptom targets this part and
    * hasn't narrowed enough to resolve it yet (`displayedBandFor`,
    * diagnosis.ts). Always false for a non-symptomatic car/part. The row
@@ -265,18 +264,17 @@ export interface DetailedCar {
 
 /** Everything the car-detail screen needs for one car. */
 export interface CarDetail extends DetailedCar {
-  /** Jobs currently in progress on this car - created and labored on instantly (Sprint 11). */
+  /** Jobs currently in progress on this car - created and labored on instantly. */
   jobs: Job[]
   /** Set when this car belongs to a service job the player is working. */
   serviceJob?: ServiceJobView
   /** Whether this car is currently in a service bay (labor only reaches it if so). */
   inServiceBay: boolean
-  /** Repair/install work staged on this car but not yet confirmed (Sprint 18). */
+  /** Repair/install work staged on this car but not yet confirmed. */
   stagedActions: StagedAction[]
   /**
-   * Each of the 6 real groups' worst present-part band (Sprint 26) - the
-   * group-level display this sprint ships; a real per-part breakdown is
-   * Sprint 28 scope (sprint26.md decision 10/13's own deferral).
+   * Each of the 6 real groups' worst present-part band - the
+   * group-level display; a real per-part breakdown also exists.
    */
   groupBands: Record<ComponentId, ConditionBand>
   /**
@@ -288,27 +286,23 @@ export interface CarDetail extends DetailedCar {
    */
   groupIncomplete: Record<ComponentId, boolean>
   /**
-   * Sprint 41 decision 4 (condition-panel readability): each of the 6
+   * Each of the 6
    * groups' own scaled restoration bill (`groupCostToMintYen`, the car's
    * real tier factor applied) - the condition panel's per-group bill line.
    */
   groupBillYen: Record<ComponentId, number>
-  /** Sprint 41 decision 4: the car's total restoration bill
-   * (`carCostToMintYen`) - the same figure `marketValueYen` deducts,
-   * surfaced as the condition panel's one total-bill line. */
-  totalBillYen: number
   /**
-   * Sprint 42 (the flip ledger): this car's money-in record - purchase
+   * This car's money-in record - purchase
    * price (or null when unknown, e.g. a dev grant or a pre-v25 save),
    * repairs, and installed parts. Always populated (`carLedgerFor`'s
    * unknown-purchase default when no real entry exists), even for a
    * customer's service-job car - the financial panel itself only ever
-   * renders for an owned car (mirrors `groupBillYen`/`totalBillYen`, which
-   * are likewise computed unconditionally for both car kinds).
+   * renders for an owned car (mirrors `groupBillYen`, which is likewise
+   * computed unconditionally for both car kinds).
    */
   ledger: CarLedger
   /**
-   * Sprint 42: the same guide value the auction house shows
+   * The same guide value the auction house shows
    * (`bidding.ts`'s `anchorValueYen`, generalized to any car+model via
    * `carGuideValueYen` - zero new valuation math).
    */
@@ -335,40 +329,41 @@ export interface CarDetail extends DetailedCar {
    */
   saleRangeYen: { lowYen: number; highYen: number }
   /**
-   * Sprint 60 (economy-bible.md law 5, the foundation law): non-null only
+   * Non-null only
    * when a bad foundational part is withholding real aftermarket-premium
-   * value from this car - the failing part display names and the withheld
+   * value from this car (economy-bible.md law 5, the foundation law) - the
+   * failing part display names and the withheld
    * yen, so the Finances panel can name what to fix first. Null when the
    * foundation is sound (factor 1.0) or the car carries no premium to
    * withhold in the first place.
    */
   foundationWarning: { failingParts: string[]; withheldYen: number } | null
-  /** economy-bible law 1's legibility clause (Sprint 66): non-null when this
+  /** economy-bible law 1's legibility clause: non-null when this
    * car has repair work available ABOVE its tier's expectation band, i.e. work
    * that costs more than it returns. See `passionSpendNoticeFor`. */
   passionSpendNotice: { band: ConditionBand; returnRate: number } | null
   /**
-   * Sprint 48: the pre-Confirm estimate of what planned work will do to this
+   * The pre-Confirm estimate of what planned work will do to this
    * car - null when nothing is planned. Every figure assumes the plan fully
    * completes (labor permitting); "estimate, not confirmed" is the caller's
    * job to label.
    */
   plannedEstimate: PlannedEstimateView | null
   /**
-   * Sprint 74 decision 8: this owned car's own symptom checklist (`[]` for
+   * This owned car's own symptom checklist (`[]` for
    * an honest car) - same shape as `LotDetail.symptoms`, but the UI never
    * renders its `tests` entries here (no yard tests on an owned car; the
    * full workup below supersedes them).
    */
   symptoms: LotDetail['symptoms']
   /**
-   * Sprint 74 decision 3: why the "Full workup" button is disabled
+   * Why the "Full workup" button is disabled
    * right now, `null` when it isn't (`ownedWorkupGateReason`).
    */
   workupGateReason: OwnedWorkupGateReason | null
 }
 
-/** Sprint 48: the Finances panel's pre-Confirm preview - null (via
+/** The Finances panel's pre-Confirm preview - null (via
  * `CarDetail.plannedEstimate`) when there's nothing planned yet. */
 export interface PlannedEstimateView {
   /** What every currently planned repair action will charge at Confirm -
@@ -376,30 +371,22 @@ export interface PlannedEstimateView {
    * installs cost nothing NEW here; that cash already left when the part
    * was bought, already counted in `ledger.partsYen`). */
   plannedRepairCostYen: number
-  /** Sprint 63: the total labour slots the planned work will require at
+  /** The total labour slots the planned work will require at
    * Confirm - the same accounting `confirmStagedWork` uses (a repair action's
-   * `planGroupRepair.laborSlotsRequired`, plus - Sprint 71 - the target
+   * `planGroupRepair.laborSlotsRequired`, plus the target
    * slot's own per-depth-class labour per planned install). The Confirm
    * button shows THIS, not the remaining-today figure, so the player knows
    * what a click actually costs. */
   plannedLaborSlots: number
-  /** Sprint 82 decision 2: labour slots the benched crew's speed skills shave
+  /** Labour slots the benched crew's speed skills shave
    * off `plannedLaborSlots` (0 when no crew covers the planned work). Surfaced
    * so the faster total is honest, not silent. */
   crewLaborSaved: number
-  /** Sprint 82 decision 5: yen a benched perfectionist takes off the planned
+  /** Yen a benched perfectionist takes off the planned
    * repair cost (0 when none is benched). */
   perfectionistCostSavedYen: number
-  /** The restoration bill remaining AFTER the plan completes. */
-  billYenAfter: number
-  /** The guide value AFTER the plan completes - the same `marketValueYen`
-   * the real guide value already uses, on the projected car. */
-  guideValueYenAfter: number
   /** Total spent (purchase + repairs + parts) AFTER the plan completes. */
   totalSpentYenAfter: number
-  /** `guideValueYenAfter - totalSpentYenAfter` - the Finances panel's
-   * headline "profit after" number. */
-  projectedProfitYenAfter: number
 }
 
 /** A car sitting somewhere in the shop (a service bay or parking), for the bay layout. */
@@ -409,13 +396,13 @@ export interface ShopCarView {
   /** True for a customer's car in for a service job - never owned. */
   isCustomerCar: boolean
   /**
-   * True while an accepted service job's car hasn't actually arrived yet
-   * (Sprint 25 task 2) - always false for an owned car. The slot renders it
+   * True while an accepted service job's car hasn't actually arrived yet -
+   * always false for an owned car. The slot renders it
    * dimmed, undraggable, and un-movable until this clears.
    */
   arrivingTomorrow: boolean
   /**
-   * Sprint 68 decision 4 (playtest item 22): a live walk-in offer is waiting
+   * A live walk-in offer is waiting
    * on this car right now. Always false for a customer's car (never ours to
    * sell). The badge is what tells a player their listed car has something to
    * answer today, without opening it.
@@ -423,8 +410,8 @@ export interface ShopCarView {
   hasOffer: boolean
 }
 
-/** One tool line's ladder state, for the Upgrades screen (Sprint 36). */
-/** One rung of a tool line's 3-node ladder (Sprint 43 tool wall). */
+/** One tool line's ladder state, for the Upgrades screen. */
+/** One rung of a tool line's 3-node ladder (the tool wall). */
 export interface ToolTierRungView {
   tier: ToolTier
   displayName: string
@@ -435,14 +422,14 @@ export interface ToolTierRungView {
   /** This rung's own reputation requirement, regardless of whether it's met yet - null on tier 1. */
   minReputationTier: ReputationTier | null
   /**
-   * Sprint 52 decision 2: true only when a live classifieds listing exists
+   * True only when a live classifieds listing exists
    * for exactly this line+tier - reputation/cash alone no longer make a
    * tier purchasable, so the Upgrade button reads this too.
    */
   isListed: boolean
 }
 
-/** Sprint 52 decision 2: the one live used-machinery classifieds listing,
+/** The one live used-machinery classifieds listing,
  * surfaced for the Upgrades screen - null when nothing's on offer this
  * week ("nothing in the classifieds this week" empty state). */
 export interface MachineListingView {
@@ -454,7 +441,7 @@ export interface MachineListingView {
   daysLeft: number
 }
 
-/** Sprint 48: one click-per-rung repair step, priced/labored off the real
+/** One click-per-rung repair step, priced/labored off the real
  * plan - shared shape for the group row, the per-part row, and the bench
  * recondition control. */
 export interface NextRepairStepView {
@@ -464,11 +451,10 @@ export interface NextRepairStepView {
 }
 
 /**
- * Sprint 87 (the assembly model): one assembly's car-level row - remove it as a
+ * One assembly's car-level row - remove it as a
  * unit, or refit it once it is on the bench. `blockedReason` is a plain string
  * naming the external blockers still in the way (null when nothing blocks it),
  * phrased the same way `removeBlockedReason` phrases a single-part blocker.
- * Sprint 88 replaces this minimal surface.
  */
 export interface AssemblyRowView {
   assemblyId: AssemblyId
@@ -481,8 +467,8 @@ export interface AssemblyRowView {
   blockedReason: string | null
 }
 
-/** Sprint 87: one member slot of a benched assembly container - reconditioned
- * or swapped on the bench (Sprint 88 replaces this surface). */
+/** One member slot of a benched assembly container - reconditioned
+ * or swapped on the bench. */
 export interface BenchMemberView {
   carPartId: CarPartId
   displayName: string
@@ -499,7 +485,7 @@ export interface BenchMemberView {
   swapFeeYen: number
 }
 
-/** Sprint 87: one assembly container on the bench for a given car. */
+/** One assembly container on the bench for a given car. */
 export interface BenchContainerView {
   id: string
   assemblyId: AssemblyId
@@ -518,14 +504,14 @@ export interface ToolLineView {
   nextTierName: string | null
   nextTierPriceYen: number | null
   /** The reputation tier still needed for the next rung, or null if already met/ungated/maxed
-   * (Sprint 43 - mirrors `nextBayReputationGate`'s hint-only-when-unmet shape). */
+   * (mirrors `nextBayReputationGate`'s hint-only-when-unmet shape). */
   nextTierRepGate: ReputationTier | null
   maxed: boolean
-  /** The full 3-rung ladder, for the tool-wall grid (Sprint 43). */
+  /** The full 3-rung ladder, for the tool-wall grid. */
   tiers: ToolTierRungView[]
 }
 
-/** Sprint 43: a readable job-template name derived from its kebab-case
+/** A readable job-template name derived from its kebab-case
  * catalog id, zero new authored strings ("cooling-system-service" ->
  * "Cooling System Service"). Templates have no player-facing display name
  * anywhere else in the game (players only ever see a generated job's own
@@ -537,7 +523,7 @@ function humanizeTemplateId(id: string): string {
     .join(' ')
 }
 
-/** Sprint 43 tool-wall info box: what reaching `tier` of `componentId`'s
+/** Tool-wall info box: what reaching `tier` of `componentId`'s
  * line actually unlocks - derived live from the real catalog, nothing
  * hand-authored. */
 export interface ToolTierInfo {
@@ -549,11 +535,11 @@ export interface ToolTierInfo {
   /** True only for engine tier 3 - the one real own-car capability ceiling
    * (`toolCeilings.naToTurboConversionEngineTier`). */
   unlocksNaToTurboConversion: boolean
-  /** The speed effect every tier has, in plain words (Sprint 94: the labour
+  /** The speed effect every tier has, in plain words (the labour
    * ENERGY a repair costs per grade at this tier, `energyPerGradeByTier`). */
   laborSlotsPerGradeText: string
   /**
-   * Sprint 92 (rental made legible): the one-line rental notice shown on a
+   * The one-line rental notice shown on a
    * group's tier-2 rung while the shop does not yet own that tier-2 machine -
    * null once owned, so the line then simply does not render. States the group's
    * per-job machine-shop fee, closing the "invisible until it disappears" gap.
@@ -562,26 +548,26 @@ export interface ToolTierInfo {
 }
 
 /** One line of the parts-market cart, aggregated by part (repeats in
- * `cartPartIds` = quantity), for the cart panel (Sprint 14). */
+ * `cartPartIds` = quantity), for the cart panel. */
 export interface CartItemView {
   part: Part
   quantity: number
   subtotalYen: number
 }
 
-/** One owned part paired with its catalog entry, for the staging inventory panel (Sprint 18). */
+/** One owned part paired with its catalog entry, for the staging inventory panel. */
 export interface StageablePartView {
   instance: PartInstance
   part: Part
 }
 
-/** One task's condition, for the offer/active-job board (Sprint 29). */
+/** One task's condition, for the offer/active-job board. */
 export interface ServiceJobTaskView {
   label: string
   done: boolean
 }
 
-/** Sprint 61 (item 10): one "fits this vehicle" option in the parts market -
+/** One "fits this vehicle" option in the parts market -
  * an owned car or an accepted customer service-job car (arrived or inbound). */
 export interface PartsFitVehicleOption {
   id: string
@@ -589,7 +575,7 @@ export interface PartsFitVehicleOption {
   fitmentClass: PartFitmentClass | null
 }
 
-/** Sprint 62 (item 17): the reputation half of the Standing screen. */
+/** The reputation half of the Standing screen. */
 export interface StandingReputationView {
   tier: ReputationTier
   points: number
@@ -598,7 +584,7 @@ export interface StandingReputationView {
   nextTier: { tier: ReputationTier; threshold: number } | null
 }
 
-/** Sprint 62: one discipline's row on the Standing screen - its points and
+/** One discipline's row on the Standing screen - its points and
  * the named tier-4 technique it earns (shown whether or not it's unlocked,
  * progression bible law 5: every unlock is a named real thing). */
 export interface StandingSpecialtyView {
@@ -608,19 +594,18 @@ export interface StandingSpecialtyView {
   technique: { displayName: string; thresholdPoints: number; unlocked: boolean } | null
 }
 
-/** Sprint 62 (item 17): everything the Standing screen renders - granular
+/** Everything the Standing screen renders - granular
  * reputation, all six specialty disciplines, and the derived shop title. Pure
- * function of existing state (no new persisted field), the same shape Sprint
- * 39's title derivation already established. */
+ * function of existing state (no new persisted field). */
 export interface StandingView {
   reputation: StandingReputationView
   specialties: StandingSpecialtyView[]
   shopTitleName: string | null
 }
 
-/** Sprint 82 decision 6: the staff card/office view interfaces
+/** The staff card/office view interfaces
  * (`StaffMemberCardView`, `StaffAdCardView`, `BenchCrewView`, `StaffOfficeView`)
- * moved to `stores/staffStore.ts` alongside `useStaffStore`. */
+ * live in `stores/staffStore.ts` alongside `useStaffStore`. */
 
 /** A service-job offer on the board (accept to bring the car into the shop). */
 export interface ServiceJobOfferView {
@@ -629,7 +614,7 @@ export interface ServiceJobOfferView {
   description: string
   tasks: ServiceJobTaskView[]
   carName: string
-  /** Sprint 61: the customer car's fitment class (which class of parts fit
+  /** The customer car's fitment class (which class of parts fit
    * it) - `null` if the model is somehow unresolved. Rendered as a small chip
    * so the player knows which parts to buy for the job. */
   fitmentClass: PartFitmentClass | null
@@ -637,8 +622,8 @@ export interface ServiceJobOfferView {
   baseReputation: number
   expiresOnDay: number
   /**
-   * False while any task's `minToolTier` exceeds its line's current tier
-   * (Sprint 36) - `resolveAcceptServiceJob` refuses it, so the UI shows why
+   * False while any task's `minToolTier` exceeds its line's current tier -
+   * `resolveAcceptServiceJob` refuses it, so the UI shows why
    * upfront rather than letting the click silently fail. Derived live, so
    * it flips true the moment the upgrade lands.
    */
@@ -656,7 +641,7 @@ export interface ServiceJobView {
   tasks: ServiceJobTaskView[]
   carId: string
   carName: string
-  /** Sprint 61: the customer car's fitment class - same chip as the offer
+  /** The customer car's fitment class - same chip as the offer
    * card, so the in-shop job also shows which parts fit it. `null` if the
    * model is somehow unresolved. */
   fitmentClass: PartFitmentClass | null
@@ -668,14 +653,13 @@ export interface ServiceJobView {
   failureReputationPenalty: number
   /** Days remaining before the deadline auto-resolves it (null if somehow unset). */
   daysLeft: number | null
-  /** Set while the customer's car hasn't arrived yet (Sprint 25 task 2); null once it has. */
+  /** Set while the customer's car hasn't arrived yet; null once it has. */
   arrivesOnDay: number | null
   /**
-   * True while the customer's car is still in transit (Sprint 40) - derived
+   * True while the customer's car is still in transit - derived
    * via the same `isServiceJobInTransit` helper the sim's own completion
    * guard uses, rather than callers re-deriving `arrivesOnDay != null`
-   * locally (CarDetailScreen's old local computed did exactly that - a small
-   * DRY violation this field closes). The board and the car page both gate
+   * locally. The board and the car page both gate
    * their "work done" / "work outstanding" display on this, never `workDone`
    * alone - a job's tasks can read as satisfied on the rolled customer car
    * before it has even arrived, and that must never render as "hand it
@@ -685,9 +669,9 @@ export interface ServiceJobView {
 }
 
 /**
- * Sprint 76 (story missions I): the campaign's pinned card - the currently
- * `offered` mission, if any (at most one exists at a time). Grade/deliver UI
- * is Sprint 77; this sprint's surface is Accept only.
+ * The campaign's pinned card - the currently
+ * `offered` mission, if any (at most one exists at a time). This view's
+ * surface is Accept only; grading and delivering use `ActiveStoryMissionView`.
  */
 export interface StoryMissionOfferView {
   id: string
@@ -699,8 +683,8 @@ export interface StoryMissionOfferView {
 }
 
 /** The pinned card's active-mission counterpart. `requirementLines` is the
- * always-visible "labels only, no live pass/fail" checklist (Sprint 77
- * decision 5) - real requirement text computed WITHOUT a picked car, since
+ * always-visible "labels only, no live pass/fail" checklist - real
+ * requirement text computed WITHOUT a picked car, since
  * `requirementLabel` never reads the car itself. `lapTimeCeiling` is set
  * only when the mission has that requirement, telling the screen whether to
  * render the reference board at all. */
@@ -718,7 +702,7 @@ export interface MissionCarOption {
   displayName: string
 }
 
-/** Sprint 77 (story missions II): the mission-complete modal's own receipt -
+/** The mission-complete modal's own receipt -
  * the same "everything here is a READ" shape as `SaleResultView`/
  * `ServiceJobResultView`. `copy` is already the RIGHT template
  * (`overdeliveredCopy` when a tip landed, `deliveredCopy` otherwise) - the
@@ -740,16 +724,15 @@ export interface MissionResultView {
   profitYen: number
 }
 
-/** Immediate feedback for a resolved service job (Sprint 10), for a completion modal. */
+/** Immediate feedback for a resolved service job, for a completion modal. */
 /**
- * Sprint 68 decision 5 (playtest item 23): the receipt for a completed sale -
+ * The receipt for a completed sale -
  * mirrors `ServiceJobResultView`'s shape and its store-ref + global-mount
- * lifecycle exactly, because a sale closing with nothing to show for it was
- * the same gap `JobCompleteModal` already closed for a job.
+ * lifecycle exactly.
  *
- * Everything here is a READ. The Sprint 42 car ledger already tracked purchase,
- * repairs and parts; `car-sold` already carried the price and a real
- * `profitYen`. None of it was ever rendered.
+ * Everything here is a READ: the car ledger already tracks purchase,
+ * repairs and parts; `car-sold` already carries the price and a real
+ * `profitYen`.
  */
 export interface SaleResultView {
   displayName: string
@@ -767,14 +750,14 @@ export interface SaleResultView {
 export interface ServiceJobResultView {
   outcome: 'paid' | 'failed'
   customerName: string
-  /** Sprint 29: a job can have several tasks now - one label per task,
+  /** A job can have several tasks - one label per task,
    * built from real part names, never the raw camelCase id. */
   taskLabels: string[]
   payoutYen: number
   /** Positive for a paid job, negative (or zero) for a failed one. */
   reputationDelta: number
   /**
-   * Sprint 57: what the player actually paid, read from the job's own
+   * What the player actually paid, read from the job's own
    * ledger - present (0 when that kind of spend never happened) whether
    * the job paid or failed, so a repair-only job reports real numbers too.
    */
@@ -788,7 +771,7 @@ export interface ServiceJobResultView {
   specialtyGained: Record<ComponentId, number>
   /** Days between acceptance and this resolution. */
   daysSpent?: number
-  /** Sprint 72 decision 5: display strings ("<brand> <name>") for every
+  /** Display strings ("<brand> <name>") for every
    * customer-origin part that left with the car at close-out - paid or
    * failed alike. Empty when nothing customer-owned was ever pulled. */
   returnedParts: string[]
@@ -805,7 +788,7 @@ export interface LotDetail {
   lot: AuctionLot
   model: CarModel
   displayName: string
-  /** Sprint 61: the car's fitment class (which class of parts fit it),
+  /** The car's fitment class (which class of parts fit it),
    * rendered as a small chip on the lot card so a bidder knows what they'd be
    * buying parts for. */
   fitmentClass: PartFitmentClass
@@ -824,25 +807,24 @@ export interface LotDetail {
    */
   ledger: ValueLedger
   /**
-   * Sprint 27 (Sprint 30 decision 2 pulled forward) rebased `reserveYen`
-   * itself onto the per-instance guide value above, so reserve and buyout
+   * `reserveYen` is based on the per-instance guide value above, so reserve and buyout
    * both derive from this specific car's real worth - they move together
    * with condition, no static book anchor left to reconcile against.
    */
   reserveYen: number
-  /** Always visible, on every lot (maintainer decision 2). */
+  /** Always visible, on every lot. */
   buyoutPriceYen: number
   /**
-   * The lot's rolled bidder-count band (Sprint 30 decision 3), read straight
+   * The lot's rolled bidder-count band, read straight
    * off `lot.turnout` - fixed for the lot's whole life, not recomputed
    * daily. Feeds the live auction room's own turnout tuning. Still shown as
-   * a word only, no numeric gauge (maintainer decision 3: price is king).
+   * a word only, no numeric gauge (price is king).
    */
   turnout: TurnoutBand
   /**
-   * Each of the 6 real groups' worst present-part band (Sprint 26 decision
-   * 10) - lots are transparent now, no reveal machinery: this is always
-   * populated, not gated behind an inspection step. Sprint 73: read off the
+   * Each of the 6 real groups' worst present-part band -
+   * lots are transparent, no reveal machinery: this is always
+   * populated, not gated behind an inspection step. Reads off the
    * car's APPARENT view for a symptomatic lot (`groupBands`/`auctionGrade`
    * both price consistently off what the room actually
    * shows - never the true, currently-installed band a symptom's cause set -
@@ -851,12 +833,11 @@ export interface LotDetail {
    */
   groupBands: Record<ComponentId, ConditionBand>
   /**
-   * Sprint 50: a real-world auction-style condition summary (overall
+   * A real-world auction-style condition summary (overall
    * number/letter plus exterior/interior letter grades) computed purely
-   * from the car's existing band state - replaces the old expandable
-   * 29-part condition report as this card's pre-bid condition signal.
-   * Sprint 73 decision 8: stays apparent forever on the lot, even once
-   * Sprint 74 lets the player narrow down (never eliminate) a symptom's true
+   * from the car's existing band state.
+   * Stays apparent forever on the lot, even once
+   * the player narrows down (never eliminates) a symptom's true
    * cause - the sheet is a fixed listing, not a live readout.
    */
   auctionGrade: AuctionGrade
@@ -893,14 +874,14 @@ export interface LotDetail {
     }[]
   }[]
   /**
-   * Sprint 74 decision 6: the player's own honest estimate, once they've
+   * The player's own honest estimate, once they've
    * learned something about this lot (any test run, or any symptom
    * resolved by any other route) - null beforehand, so the UI only shows
    * "your estimate" once there is genuinely a player-side estimate to show,
    * never a number identical to the guide before any knowledge exists.
    */
   playerEstimateYen: number | null
-  /** This lot's backstop close day (the Sprint 19 duration roll) - a lot
+  /** This lot's backstop close day (the duration roll) - a lot
    * settled sooner, via the live auction room or an instant buyout, never
    * reaches it. */
   expiresOnDay: number
@@ -909,7 +890,7 @@ export interface LotDetail {
 }
 
 /**
- * A ballpark market-value preview for an owned car (Sprint 31) - the
+ * A ballpark market-value preview for an owned car - the
  * for-sale toggle's "roughly what to expect" number. Not a real offer: real
  * offers only exist once the daily draw actually rolls one (see
  * `pendingOffersView`/`offerFor` below); this is the best-fit buyer's own
@@ -920,7 +901,7 @@ export interface SaleValueEstimate {
   offerYen: number
 }
 
-/** A live, same-day-only offer on an owned car (Sprint 31 decision 2), ready
+/** A live, same-day-only offer on an owned car, ready
  * for the car-detail/garage offer panels. */
 export interface PendingOfferView {
   carInstanceId: string
@@ -928,7 +909,7 @@ export interface PendingOfferView {
   buyerId: string
   buyerName: string
   priceYen: number
-  /** "A tuner is offering ¥1,240,000 for the FC. Today only." (decision 5) -
+  /** "A tuner is offering ¥1,240,000 for the FC. Today only." -
    * the one canonical copy string, also reused by the day-report line
    * (`dayLogFormat.ts`'s `offer-received` case) via `utils/offerCopy.ts`. */
   copy: string
@@ -944,9 +925,9 @@ export interface DayReport {
 /**
  * The state bridge between the pure sim and Vue. Holds the one object Dexie
  * persists (`gameState`), the static content `context` (rebuilt each
- * session, never saved), and the running day log. Sprint 11: every player
+ * session, never saved), and the running day log. Every player
  * action resolves the instant it's clicked (a direct call to the matching
- * sim instant resolver) - there is no queued plan anymore. `endDay()` is
+ * sim instant resolver) - there is no queued plan. `endDay()` is
  * purely a day-boundary tick (labor reset, rent, market drift, catalog
  * refresh). The interactive per-day seed uses the same `seed + day`
  * derivation as the balance harness, so a played game is as reproducible as
@@ -976,26 +957,25 @@ export const useGameStore = defineStore('game', () => {
   const reportVisible = ref(false)
   // Immediate feedback shown after a "Complete Job" resolution (paid or failed).
   const lastJobResult = ref<ServiceJobResultView | null>(null)
-  /** Sprint 68 (item 23): mirrors `lastJobResult` - set by `acceptOffer`,
+  /** Mirrors `lastJobResult` - set by `acceptOffer`,
    * cleared on dismiss, rendered by a globally-mounted modal. */
   const lastSaleResult = ref<SaleResultView | null>(null)
-  /** Sprint 77: mirrors `lastSaleResult` - set by `deliverMission`, cleared
+  /** Mirrors `lastSaleResult` - set by `deliverMission`, cleared
    * on dismiss, rendered by `MissionCompleteModal`. */
   const lastMissionResult = ref<MissionResultView | null>(null)
   /**
-   * True once `hydrate()` has resolved AND actually loaded a real save
-   * (Sprint 40) - `MenuScreen`'s own flag: Continue shows only when this is
+   * True once `hydrate()` has resolved AND actually loaded a real save -
+   * `MenuScreen`'s own flag: Continue shows only when this is
    * true, and New Game skips its confirmation step when it's false (nothing
    * to lose yet). Starts false; `hydrate()` silently seeding a fresh career
-   * when no save exists no longer matters for anything else, since the menu
-   * is what reads this flag rather than inferring "is this a real save" any
+   * when no save exists does not affect this flag, since the menu
+   * reads this flag rather than inferring "is this a real save" any
    * other way.
    */
   const hasExistingSave = ref(false)
 
   /**
-   * Session log v0 (Sprint 24, the record-real-play seed - maintainer idea
-   * 2026-07-09): appends one raw event per player action, for a future
+   * Session log v0: appends one raw event per player action, for a future
    * offline pass to parse into per-archetype rates/biases (see `TODO.md`).
    * Fire-and-forget by design - never awaited in an action path, since a
    * lost telemetry write must never break play (matches `writeSave`'s own
@@ -1010,15 +990,13 @@ export const useGameStore = defineStore('game', () => {
   const reputationTier = computed(() => gameState.value.reputationTier)
   const reputationPoints = computed(() => gameState.value.reputationPoints)
   const ownedCarCount = computed(() => gameState.value.ownedCars.length)
-  // Sprint 94 (the energy bar): the daily labour pool and what's left of it are
-  // energy POINTS now (see sim `energyMax`). The store identifiers keep their
-  // names (code identifiers, directive 18); the player-facing bar reads the
-  // integer point values.
+  // The daily labour pool and what's left of it are energy POINTS (see sim `energyMax`).
+  // The store identifiers keep their names; the player-facing bar reads the integer point values.
   const laborSlotsPerDay = computed(() => energyMax(gameState.value, context.value.economy))
   const laborSlotsRemainingToday = computed(() =>
     Math.max(0, laborSlotsPerDay.value - gameState.value.energySpentToday),
   )
-  /** Sprint 94: energy points one labour slot is worth - so a screen can render
+  /** Energy points one labour slot is worth - so a screen can render
    * a staff member's `laborSlotsPerDay` (1/2) as the labour they actually add to
    * the day's pool (`laborSlotsPerDay x pointsPerLabour`). */
   const pointsPerLabour = computed(() => context.value.economy.energy.pointsPerLabour)
@@ -1027,7 +1005,7 @@ export const useGameStore = defineStore('game', () => {
   const actionPoints = computed(() => context.value.economy.energy.actionPoints)
   const serviceJobOffers = computed(() => gameState.value.serviceJobOffers)
   const activeServiceJobs = computed(() => gameState.value.activeServiceJobs)
-  /** Sprint 74: the active yard visit, or `null` outside one - the fixed
+  /** The active yard visit, or `null` outside one - the fixed
    * "At the yard: Xm left" panel's own source. */
   const inspectionVisit = computed(() => gameState.value.inspectionVisit)
 
@@ -1060,7 +1038,7 @@ export const useGameStore = defineStore('game', () => {
     gameState.value.activeServiceJobs.map(serviceJobViewFor),
   )
 
-  /** Sprint 76: the pinned mission card's own content - the one currently
+  /** The pinned mission card's own content - the one currently
    * `offered` mission, or `null` (locked, or already active/delivered). */
   const storyMissionOfferView = computed<StoryMissionOfferView | null>(() => {
     const record = gameState.value.storyMissions.find((r) => r.status === 'offered')
@@ -1078,7 +1056,7 @@ export const useGameStore = defineStore('game', () => {
     }
   })
 
-  /** Sprint 76: the active-mission summary row's own content. */
+  /** The active-mission summary row's own content. */
   const activeStoryMissionView = computed<ActiveStoryMissionView | null>(() => {
     const record = gameState.value.storyMissions.find((r) => r.status === 'active')
     if (!record) return null
@@ -1100,7 +1078,7 @@ export const useGameStore = defineStore('game', () => {
     }
   })
 
-  /** Sprint 77: the deliver flow's own car picker options - every owned car,
+  /** The deliver flow's own car picker options - every owned car,
    * by display name (no filtering; the mission's own requirements are what
    * decide fit, not this list). */
   const missionCarOptions = computed<MissionCarOption[]>(() =>
@@ -1108,7 +1086,7 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * Sprint 68 decision 2 (playtest item 11): jobs whose work is finished and
+   * Jobs whose work is finished and
    * whose car is sitting in the shop, unpaid, because nobody handed it back.
    * A day ends and that payout just does not arrive.
    */
@@ -1116,7 +1094,7 @@ export const useGameStore = defineStore('game', () => {
     activeServiceJobViews.value.filter((job) => job.workDone && !job.inTransit),
   )
 
-  /** Sprint 68 decision 2 (item 11): cars carrying planned work that was never
+  /** Cars carrying planned work that was never
    * confirmed - it costs nothing and does nothing until Confirm, so ending the
    * day on it is pure lost time. */
   const carsWithUnconfirmedWork = computed<string[]>(() =>
@@ -1126,7 +1104,7 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * Sprint 61 (item 10): the parts market's "fits this vehicle" filter's
+   * The parts market's "fits this vehicle" filter's
    * options - every owned car PLUS every accepted service-job customer car,
    * including one that hasn't arrived yet. The core loop is accept the job,
    * order the right-class parts, then car and parts arrive together the next
@@ -1179,8 +1157,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Each of the 6 real groups' worst present-part band (Sprint 26 decision
-   * 10/13) - the group-level condition summary both the car-detail and the
+   * Each of the 6 real groups' worst present-part band - the
+   * group-level condition summary both the car-detail and the
    * (now always-transparent) auction lot-detail screens show. A group with
    * no present parts (a fully torn-down group mid-service) reports `'mint'`
    * here by construction - this function only ever looks at parts that ARE
@@ -1333,8 +1311,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Each of the 6 real groups' own scaled restoration bill (Sprint 41
-   * decision 4) - `groupCostToMintYen` per group, the condition panel's
+   * Each of the 6 real groups' own scaled restoration bill -
+   * `groupCostToMintYen` per group, the condition panel's
    * per-group bill line. Reuses the exact same function `repair()`'s own
    * cost preview and `carCostToMintYen`'s per-part sum both build on -
    * never a second bill computation.
@@ -1356,8 +1334,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * The worst REPAIRABLE, sub-mint present-part band within a group (Sprint
-   * 41 coordinator fix) - the group "Repair all" control's own floor,
+   * The worst REPAIRABLE, sub-mint present-part band within a group - the
+   * group "Repair all" control's own floor,
    * distinct from `groupBandsForCar`'s display chip (which correctly
    * includes scrap/non-repairable parts in what it reports as the group's
    * worst condition - real information, left unchanged). Feeding THAT value
@@ -1379,9 +1357,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 48: one repairable row's or one whole group's NEXT single rung of
-   * repair - "click to plan one more band," replacing the old BandPicker
-   * (pick any target, then a separate Stage button). Priced/labored off the
+   * One repairable row's or one whole group's NEXT single rung of
+   * repair - "click to plan one more band." Priced/labored off the
    * REAL repair plan (never a hardcoded one-click-one-labor assumption):
    * computes the plan through the already-staged target (if any) and through
    * one rung further, and returns the DIFFERENCE - the true marginal cost of
@@ -1392,7 +1369,7 @@ export const useGameStore = defineStore('game', () => {
    */
   /**
    * The shared computation behind `nextRepairStep` below - factored out so
-   * `nextPartStepRange` (Sprint 74 decision 5) can price the SAME next-rung
+   * `nextPartStepRange` can price the SAME next-rung
    * step against a band-overridden copy of `car` rather than always reading
    * `car`'s own true band, without duplicating the plan-diff arithmetic.
    */
@@ -1413,13 +1390,13 @@ export const useGameStore = defineStore('game', () => {
     const effectiveCurrent = stagedTarget ?? realFloor
     if (effectiveCurrent === 'mint') return null
     const nextRung = climbBand(effectiveCurrent, 1)
-    // Sprint 93 (the band ceiling): a REPAIR climbs only to the group's own
-    // tool-tier ceiling (tier-1 caps at fine; mint needs the tier-2 machine
-    // OWNED). Once the next rung would cross that ceiling, there is no further
-    // "+" to offer - the sim's `repairJobGate` would refuse the same target, so
-    // the affordance must not stage a rung Confirm cannot honour. Mint stays
-    // reachable by BUYING and fitting a mint part (Replace), never gated here;
-    // `repairCeilingCaption` names the machine that lifts the ceiling.
+    // A REPAIR climbs only to the group's own tool-tier ceiling (tier-1 caps at
+    // fine; mint needs the tier-2 machine OWNED). Once the next rung would cross
+    // that ceiling, there is no further "+" to offer - the sim's `repairJobGate`
+    // would refuse the same target, so the affordance must not stage a rung
+    // Confirm cannot honour. Mint stays reachable by BUYING and fitting a mint
+    // part (Replace), never gated here; `repairCeilingCaption` names the machine
+    // that lifts the ceiling.
     const repairCeiling = repairCeilingForLevel(
       gameState.value.toolTiers[componentId],
       context.value.economy,
@@ -1461,7 +1438,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 74 decision 5: the range a repair-cost preview must show instead
+   * The range a repair-cost preview must show instead
    * of a single number, for a part whose true band is still hidden behind an
    * unresolved symptom (`displayedBandFor`'s `uncertain` flag) - the ordinary
    * preview (`nextRepairStep`) reads the car's real, true band directly,
@@ -1497,7 +1474,7 @@ export const useGameStore = defineStore('game', () => {
     return { best, worst }
   }
 
-  /** Sprint 48: the bench recondition control's own next-rung step - reuses
+  /** The bench recondition control's own next-rung step - reuses
    * `reconditionQuoteFor` (already the exact charge `reconditionPart` will
    * make) rather than re-deriving the plan, since bench work has no staging
    * step to diff against (each click executes immediately). Null when
@@ -1516,7 +1493,7 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** Sprint 41 decision 2: whether a real car part can be repaired at all -
+  /** Whether a real car part can be repaired at all -
    * false for tyres/brakePadsDiscs/clutch. The per-part repair row and the
    * bench recondition control (`PartCard.vue`) both key off this. */
   function isPartRepairable(carPartId: CarPartId): boolean {
@@ -1524,10 +1501,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 93 (the band ceiling): the legibility caption shown at a per-part
+   * The legibility caption shown at a per-part
    * repair affordance when the shop's own tools cannot finish this part past
    * fine - naming the group's tier-2 machine, the purchase that lifts the repair
-   * ceiling to mint (same principle as Sprint 92's fee caption: show the
+   * ceiling to mint (same principle as the fee caption: show the
    * constraint at the point of the action). Returned only where a REPAIR is the
    * relevant, genuinely-capped action: the part is actually repairable now
    * (`canRepair` - not scrap, not a non-repairable consumable), it is below mint,
@@ -1562,16 +1539,16 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Every real part addressed to `componentId`'s group on `car` (Sprint 26
-   * decision 13) - operates on a `CarInstance` directly so both the
+   * Every real part addressed to `componentId`'s group on `car` -
+   * operates on a `CarInstance` directly so both the
    * owned-car screen (`partsInGroup`, below, looked up by car id) and the
-   * auction lot-detail screen (Sprint 27 decision 3, which has no owned car
+   * auction lot-detail screen (which has no owned car
    * to look up) share one row-building implementation rather than each
-   * re-deriving it. `model` (Sprint 32) is needed to tell a genuinely
+   * re-deriving it. `model` is needed to tell a genuinely
    * MISSING slot apart from the one legitimately-empty case
    * (`forcedInduction` on an NA car) - see `isPartMissing`, sim/bands.ts.
    *
-   * Sprint 28: iterates every part the taxonomy assigns to the group
+   * Iterates every part the taxonomy assigns to the group
    * (`partIdsByGroup`), not just the present ones (`presentPartIdsInGroup`)
    * - the drill-down needs to show an empty slot too, so there's a row to
    * fill it from. Group-band/valuation math is unaffected: it still goes
@@ -1631,7 +1608,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Display label for a component id - real words, never the raw camelCase
-   * id (Sprint 25 task 6). Every template renders a component through this
+   * id. Every template renders a component through this
    * instead of interpolating `componentId` directly.
    */
   function componentLabel(id: ComponentId): string {
@@ -1639,7 +1616,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Display label for one of the 29 real car parts (Sprint 26) - reads the
+   * Display label for one of the 29 real car parts - reads the
    * taxonomy's own authored `displayName`, never the raw camelCase
    * `CarPartId`. Distinct from `componentLabel` above (that one's for the
    * 6 groups; this one's for a specific part within a group).
@@ -1648,14 +1625,14 @@ export const useGameStore = defineStore('game', () => {
     return context.value.partsTaxonomyById[id]?.displayName ?? id
   }
 
-  /** Which of the 6 groups a real car part belongs to (Sprint 26) - the
+  /** Which of the 6 groups a real car part belongs to - the
    * catalog/taxonomy lookup every group-level UI action needs. */
   function groupForCarPart(id: CarPartId): ComponentId | undefined {
     return context.value.partsTaxonomyById[id]?.group
   }
 
   /**
-   * Display label for a part's fitment class (Sprint 53) - the diegetic
+   * Display label for a part's fitment class - the diegetic
    * name ("Kei & Compact", "Family", ...), never the raw code identifier
    * (`shitbox`/`common`/...). Every template renders a SKU's class through
    * this instead of interpolating `fitmentClass` directly.
@@ -1665,12 +1642,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * A short human label for one service-job task (Sprint 29; Sprint 72
-   * decision 7: outcome-phrased, since a task no longer prescribes an
-   * action). Always built from the real part's display name, never the raw
-   * camelCase `CarPartId` (Sprint 25 task 6's rule, extended to the
-   * multi-task job shape - a job's copy is built from `tasks` now, never a
-   * single `work` field). Band/grade words (`mint`, `street`, ...) are
+   * A short human label for one service-job task - outcome-phrased, since a
+   * task no longer prescribes an action. Always built from the real part's
+   * display name, never the raw camelCase `CarPartId`, extended to the
+   * multi-task job shape - a job's copy is built from `tasks`, never a
+   * single `work` field. Band/grade words (`mint`, `street`, ...) are
    * already plain English, not ids, so they render as-is - same convention
    * `BandChip` uses.
    */
@@ -1704,7 +1680,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * True while `carId` is an accepted service job's customer car still in
-   * transit (Sprint 25 task 2) - false for an owned car (never in transit)
+   * transit - false for an owned car (never in transit)
    * and false once the car has actually arrived. Staging, moving, and
    * swapping all refuse while this is true; there's simply nothing there yet
    * to work on or relocate.
@@ -1716,8 +1692,9 @@ export const useGameStore = defineStore('game', () => {
 
   /** Full detail bundle for one workable car (owned or in-shop), or undefined. */
   /**
-   * Sprint 60 (economy-bible.md law 5): the foundation-law surfacing for one
-   * car - the failing foundational parts and the aftermarket-premium yen they
+   * The foundation-law surfacing for one
+   * car (economy-bible.md law 5) - the failing foundational parts and the
+   * aftermarket-premium yen they
    * withhold, or null when the foundation is sound OR the car carries no
    * premium to withhold. Reads the same `foundationFactor`/
    * `installedPartsValueYen` the value formula itself uses, so what the panel
@@ -1743,7 +1720,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * The legibility clause of economy-bible law 1 (as amended, Sprint 66),
+   * The legibility clause of economy-bible law 1,
    * which is part of the law and not a nicety: work planned ABOVE the car's
    * tier expectation band returns less than it costs, deliberately, and the
    * player has to be told so in the same breath as the price. A disclosed,
@@ -1810,13 +1787,6 @@ export const useGameStore = defineStore('game', () => {
       groupBands: groupBandsForCar(car),
       groupIncomplete: groupIncompleteForCar(car, model),
       groupBillYen: groupBillsForCar(car, model),
-      totalBillYen: carCostToMintYen(
-        car,
-        model,
-        context.value.partsById,
-        context.value.partsTaxonomyById,
-        context.value.economy,
-      ),
       ledger: carLedgerFor(gameState.value, carId),
       guideValueYen,
       // A symptomatic car's "you say" is the remaining-cause estimate (a
@@ -1846,17 +1816,17 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** Sprint 82: the benched crew a repair plan should be priced/sized against
-   * (decisions 2 and 5) - the same context the sim's own repair resolvers use,
+  /** The benched crew a repair plan should be priced/sized against -
+   * the same context the sim's own repair resolvers use,
    * so the store preview and the committed job agree. */
   function crewCtx(): CrewSkillContext {
     return { staff: gameState.value.staff, economy: context.value.economy }
   }
 
   /** The total yen every currently planned REPAIR action will charge at
-   * Confirm - the exact figure `confirmStagedWork` deducts (Sprint 47: no
+   * Confirm - the exact figure `confirmStagedWork` deducts (no
    * consumables fee on top). Planned installs charge nothing NEW here - that
-   * cash already left when the part was bought. Sprint 82: `applyCrew` prices
+   * cash already left when the part was bought. `applyCrew` prices
    * against the benched crew (a perfectionist's parts discount); passed `false`
    * only to recover the pre-crew base for the "saved" display. */
   function plannedRepairCostYen(carId: string, applyCrew = true): number {
@@ -1882,22 +1852,22 @@ export const useGameStore = defineStore('game', () => {
     return total
   }
 
-  /** Sprint 63: the total labour slots the currently planned work will
+  /** The total labour slots the currently planned work will
    * require at Confirm - mirrors `confirmStagedWork`'s own accounting exactly
    * (a repair action's `planGroupRepair.laborSlotsRequired` when it has real
-   * work, plus - Sprint 71 - the target slot's own per-depth-class labour per
+   * work, plus the target slot's own per-depth-class labour per
    * planned install), so the Confirm button shows what a click actually
-   * spends, not the day's remaining total. Sprint 82: `applyCrew` sizes against
+   * spends, not the day's remaining total. `applyCrew` sizes against
    * the benched crew's speed discount; passed `false` only to recover the base
    * for the "crew saved N labour" display. */
   /**
    * The labour one staged action will cost at Confirm - a repair action's
    * `planGroupRepair.laborSlotsRequired` (when it has real work), or an
    * install's per-depth-class fit, free when it matches the slot's vacated
-   * baseline (Sprint 79). A staged assembly op is never sized here (the sim's
+   * baseline. A staged assembly op is never sized here (the sim's
    * resolvers charge it at Confirm; `previewPlannedWork` carries its
    * projection), so it returns 0. Shared by `plannedLaborSlots` (summed) and
-   * the per-action confirm-bar attribution (Sprint 88 decision 3), so the item
+   * the per-action confirm-bar attribution, so the item
    * rows sum to Confirm's own figure by construction.
    */
   function stagedActionLaborSlots(
@@ -1926,8 +1896,8 @@ export const useGameStore = defineStore('game', () => {
       const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
       const targetPartId = action.carPartId ?? catalogPart?.carPartId
       if (!targetPartId) return 0
-      // Sprint 79: a refit matching the slot's own vacated baseline (putting
-      // the car back the way it was found) is free.
+      // A refit matching the slot's own vacated baseline (putting the car back
+      // the way it was found) is free.
       return partInstance
         ? refitLaborSlotsFor(car, targetPartId, partInstance, context.value)
         : installLaborSlotsFor(targetPartId, context.value)
@@ -1946,7 +1916,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 88 decision 3 (labour made loud): what ONE staged action costs in
+   * What ONE staged action costs in
    * yen and labour, for the confirm bar's per-item attribution. Read-only, and
    * built from the same `plannedStepFor`/`stagedActionLaborSlots` the totals
    * use - never a parallel estimator. An install's cash already left when the
@@ -1967,15 +1937,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 67 decision 1 (playtest item 7): what the action planned at ONE
+   * What the action planned at ONE
    * address will cost and cost in labour - null when nothing is planned there.
-   *
-   * The bug this closes: a row's caption used to show the NEXT rung's
-   * increment, so a `poor -> fine` plan (2 rungs) read "+Y4,800 - +1 labour"
-   * while Confirm correctly charged "Y9,600 - 2 labour". Both numbers were
-   * individually right; the row was answering a different question than the
-   * player was asking. Now the row shows the ROW's own planned total and the
-   * increment lives in the `+` button's tooltip.
+   * The row shows the ROW's own planned total (a `poor -> fine` plan, 2 rungs,
+   * reads its full cost and labour); the increment lives in the `+` button's
+   * tooltip instead.
    *
    * Deliberately the same `planGroupRepair` call, with the same arguments, as
    * `plannedRepairCostYen`/`plannedLaborSlots` make - scoped to one staged
@@ -2005,8 +1971,8 @@ export const useGameStore = defineStore('game', () => {
       context.value.economy.restoration.repairStepFraction,
       context.value.economy.energy.energyPerGradeByTier,
       action.carPartId,
-      // Sprint 82: the row total is the crew-adjusted figure, so the rows still
-      // sum to Confirm's own (crew-adjusted) total by construction.
+      // The row total is the crew-adjusted figure, so the rows still sum to
+      // Confirm's own (crew-adjusted) total by construction.
       crewCtx(),
     )
     return {
@@ -2017,10 +1983,8 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** Sprint 48: the Finances panel's pre-Confirm estimate - null when
-   * nothing is planned. Feeds the projected car (`previewPlannedWork`)
-   * straight into the same `carCostToMintYen`/`carGuideValueYen` the real
-   * bill/guide value already use, so "after" is never a parallel estimator. */
+  /** The Finances panel's pre-Confirm estimate - null when nothing is planned.
+   * Real money only: what the plan will charge, its labour, and total spent after. */
   function plannedEstimateFor(carId: string): PlannedEstimateView | null {
     if (stagedActionsFor(carId).length === 0) return null
     const car = findWorkableCar(carId)
@@ -2030,30 +1994,19 @@ export const useGameStore = defineStore('game', () => {
 
     const repairCostYen = plannedRepairCostYen(carId)
     const laborSlots = plannedLaborSlots(carId)
-    // Sprint 82: the base (pre-crew) totals recover what the crew's speed and
-    // cost effects shaved off, for an honest "the crew did this" line.
+    // The base (pre-crew) totals recover what the crew's speed and cost effects
+    // shaved off, for an honest "the crew did this" line.
     const crewLaborSaved = plannedLaborSlots(carId, false) - laborSlots
     const perfectionistCostSavedYen = plannedRepairCostYen(carId, false) - repairCostYen
     const ledger = carLedgerFor(gameState.value, carId)
     const totalSpentYenAfter =
       (ledger.purchaseYen ?? 0) + ledger.repairYen + repairCostYen + ledger.partsYen
-    const billYenAfter = carCostToMintYen(
-      preview,
-      model,
-      context.value.partsById,
-      context.value.partsTaxonomyById,
-      context.value.economy,
-    )
-    const guideValueYenAfter = carGuideValueYen(preview, model, gameState.value, context.value)
     return {
       plannedRepairCostYen: repairCostYen,
       plannedLaborSlots: laborSlots,
       crewLaborSaved,
       perfectionistCostSavedYen,
-      billYenAfter,
-      guideValueYenAfter,
       totalSpentYenAfter,
-      projectedProfitYenAfter: guideValueYenAfter - totalSpentYenAfter,
     }
   }
 
@@ -2080,13 +2033,13 @@ export const useGameStore = defineStore('game', () => {
 
   // --- auction & market selectors --------------------------------------
 
-  /** Display name for a buyer archetype (Sprint 31) - "Tuner", "Collector",
+  /** Display name for a buyer archetype - "Tuner", "Collector",
    * ... - the other half of the offer copy alongside the car's own name. */
   function buyerName(buyerId: string): string {
     return context.value.buyers.find((b) => b.id === buyerId)?.displayName ?? buyerId
   }
 
-  /** True while `carId` is toggled "taking offers" (Sprint 31 decision 2). */
+  /** True while `carId` is toggled "taking offers". */
   function isForSale(carId: string): boolean {
     return gameState.value.carsForSale.some((f) => f.carInstanceId === carId)
   }
@@ -2109,13 +2062,13 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** Today's live offer on one car, if any (Sprint 31) - the car-detail
+  /** Today's live offer on one car, if any - the car-detail
    * screen's offer card. */
   function offerFor(carId: string): PendingOfferView | undefined {
     return pendingOfferViewFor(carId)
   }
 
-  /** Every live offer across every owned car (Sprint 31) - the garage-wide
+  /** Every live offer across every owned car - the garage-wide
    * offers panel. */
   const pendingOffersView = computed<PendingOfferView[]>(() =>
     gameState.value.pendingOffers.flatMap((o) => {
@@ -2127,7 +2080,7 @@ export const useGameStore = defineStore('game', () => {
   /** Current auction catalog grouped by tier (only tiers with lots present).
    * A scripted lot (the tutorial car) sorts to the top of its tier so the
    * walkthrough's subject is the first card, not buried under the day's
-   * random stock (playtest 2026-07-19 item 21); the stable sort keeps the
+   * random stock; the stable sort keeps the
    * remaining lots in state order. */
   const auctionLotsByTier = computed<{ tier: AuctionTier; lots: AuctionLot[] }[]>(() => {
     const byTier = new Map<AuctionTier, AuctionLot[]>()
@@ -2142,8 +2095,8 @@ export const useGameStore = defineStore('game', () => {
     }))
   })
 
-  /** Derived numbers + the 6 real group bands for one lot (Sprint 26 decision
-   * 10: lots are transparent now, no inspection gate). */
+  /** Derived numbers + the 6 real group bands for one lot (lots are
+   * transparent, no inspection gate). */
   function lotDetail(lotId: string): LotDetail | undefined {
     const lot = gameState.value.activeAuctionLots.find((l) => l.id === lotId)
     if (!lot) return undefined
@@ -2174,7 +2127,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Ballpark market-value preview for an owned car (Sprint 31) - the
+   * Ballpark market-value preview for an owned car - the
    * for-sale toggle's own estimate, NOT a live offer (real offers only exist
    * once the daily draw actually rolls one - `offerFor`/`pendingOffersView`
    * above). The best-fit buyer's own un-spread valuation, so it reads as
@@ -2211,7 +2164,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 74 decision 7: the yard visit's own gate reason for `tier` right
+   * The yard visit's own gate reason for `tier` right
    * now (`inspectionVisitGateReasonCore`) - the per-tier "Inspect here"
    * button's proactive "why not" read, `null` when nothing blocks it.
    */
@@ -2259,11 +2212,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Start (or replace) the yard inspection visit at `tier` (Sprint 74
-   * decision 1) - the per-tier "Inspect here" button. Replacing an
+   * Start (or replace) the yard inspection visit at `tier` - the per-tier
+   * "Inspect here" button. Replacing an
    * already-active visit with minutes left forfeits the remainder; the
-   * two-step confirm before that happens is the caller's own job (decision
-   * 7) - this always commits immediately once called.
+   * two-step confirm before that happens is the caller's own job -
+   * this always commits immediately once called.
    */
   function beginInspectionVisit(tier: AuctionTier): boolean {
     const result = beginInspectionVisitCore(gameState.value, tier, context.value)
@@ -2276,7 +2229,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Run `testId` against `lotId`'s `symptomIndex`-th symptom during the
-   * active yard visit (Sprint 74 decision 2). Returns the authored result-
+   * active yard visit. Returns the authored result-
    * copy line for inline display on a legal run, `null` on any refusal.
    * No day-log entry either way (`runDiagnosticTestCore`'s own `log` is
    * always `[]`) - the result copy itself is the player-facing record.
@@ -2296,7 +2249,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * The owned-car full workup (Sprint 74 decision 3) - spends `pointsPerLabour`
+   * The owned-car full workup - spends `pointsPerLabour`
    * of the day's energy, no fee, no clock, collapses every one of
    * `carInstanceId`'s symptoms straight to their true cause. The only
    * bench-side route (alongside uninstall-reveals-truth) that resolves a
@@ -2312,14 +2265,14 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Parts in inventory that fit an EMPTY slot within the given group
-   * (Sprint 26 decision 13's "bridge": a group-level install still resolves
+   * Parts in inventory that fit an EMPTY slot within the given group -
+   * a group-level install still resolves
    * to whichever specific `CarPartId` in that group is actually empty and
-   * the picked catalog part addresses). A scrap `PartInstance` never fits
-   * anywhere (decision 6).
+   * the picked catalog part addresses. A scrap `PartInstance` never fits
+   * anywhere.
    *
-   * Sprint 32: scans every part the taxonomy assigns to the group directly
-   * (`partIdsByGroup`), not `presentPartIdsInGroup` - that helper now means
+   * Scans every part the taxonomy assigns to the group directly
+   * (`partIdsByGroup`), not `presentPartIdsInGroup` - that helper means
    * "physically occupied," so filtering it again for "not installed" would
    * always be empty (every slot it returns already has something
    * installed).
@@ -2327,7 +2280,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Whether a loose inventory part is legally installable onto `carId` -
    * always true for a player-owned part, but a part whose origin traces to an
-   * active customer job (Sprint 70) may only go back onto that SAME
+   * active customer job may only go back onto that SAME
    * customer's car, never a different one, including the player's own
    * (mirrors the sim-side gate, `installFitGate` in jobs.ts).
    */
@@ -2340,7 +2293,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Whether a loose inventory part currently belongs to an active service
-   * job's customer (Sprint 70) - the badge/lock `PartCard.vue` shows. Asks the
+   * job's customer - the badge/lock `PartCard.vue` shows. Asks the
    * same question as `isPartAvailableFor`, just without a target car in mind.
    */
   function isCustomerOwnedPart(part: PartInstance): boolean {
@@ -2348,7 +2301,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** The dim "where did this come from" caption line `PartCard.vue` shows
-   * beneath a part's name (Sprint 70). */
+   * beneath a part's name. */
   function describePartOrigin(part: PartInstance): string {
     return describeOrigin(part.origin)
   }
@@ -2370,12 +2323,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 28: the per-part counterpart to `installablePartsFor` above - the
+   * The per-part counterpart to `installablePartsFor` above - the
    * CarDetailScreen drill-down's own per-part Replace drawer filters to
-   * exactly this set (decision 3: "shows only catalog parts addressed to
-   * that part that fit the car"). Checks the SPECIFIC slot's own
+   * exactly this set (shows only catalog parts addressed to
+   * that part that fit the car). Checks the SPECIFIC slot's own
    * `installed` state, not just "some slot in the group is empty" - closes
-   * the gap `installablePartsFor` has (see `installFitGate`'s Sprint 28 doc
+   * the gap `installablePartsFor` has (see `installFitGate`'s doc
    * comment, sim/jobs.ts). Deliberately does NOT gate on `fitted`: the whole
    * point of a per-part Replace on the one conditional slot
    * (`forcedInduction` on an NA car) is fitting a kit that isn't there yet.
@@ -2397,7 +2350,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 37: the human-readable reason `installablePartsForPart`'s results
+   * The human-readable reason `installablePartsForPart`'s results
    * are all blocked for this slot right now - just the one own-car
    * capability ceiling (NA-to-turbo conversion), the same check
    * `installFitGate` enforces sim-side. Null when nothing is blocked, so the
@@ -2415,7 +2368,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 71 (the teardown game): the human-readable reason `removePart`
+   * The human-readable reason `removePart`
    * would refuse this slot right now, or `null` when nothing structural
    * blocks it (it may still refuse for insufficient labor - the labor bar
    * already shows that separately). Mirrors `installBlockedReason`'s own
@@ -2435,16 +2388,15 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 85 decision 6 (machine-shop assist): the fee, in yen, a REMOVAL of
-   * `carPartId` costs because the shop doesn't yet own the tier-2 machine the
-   * slot needs - the engine/drivetrain buried-slot gate only (`machineAssistFeeYen`),
-   * 0 (no caption) when the machine is owned or the slot isn't machine-gated. The
-   * UI shows a `machine shop assist +<fee>` caption on the affordance whenever
-   * this is above 0; the operation itself is never blocked (ownership buys
-   * margin, not capability). Sprint 92 keeps removal exactly here: the new
-   * suspension/body/interior signature gates never charge on removal (Sprint 79
-   * removal law), so this getter stays engine/drivetrain-only for the remove
-   * affordance.
+   * The fee, in yen, a REMOVAL of `carPartId` costs because the shop doesn't
+   * yet own the tier-2 machine the slot needs - the engine/drivetrain
+   * buried-slot gate only (`machineAssistFeeYen`), 0 (no caption) when the
+   * machine is owned or the slot isn't machine-gated. The UI shows a
+   * `machine shop assist +<fee>` caption on the affordance whenever this is
+   * above 0; the operation itself is never blocked (ownership buys margin,
+   * not capability). The suspension/body/interior signature gates never
+   * charge on removal, so this getter stays engine/drivetrain-only for the
+   * remove affordance.
    */
   function machineAssistFee(carId: string, carPartId: CarPartId): number {
     const car = findWorkableCar(carId)
@@ -2453,7 +2405,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 92 (rental made legible): the fee an INSTALL/REPLACE of `carPartId`
+   * The fee an INSTALL/REPLACE of `carPartId`
    * costs at the current tiers - the exact figure `completeJob`'s install branch
    * charges (`installMachineAssistFeeYen` = the engine/drivetrain buried fee OR
    * the suspension/body/interior signature-slot fee; a carPartId is in one group,
@@ -2471,7 +2423,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 92 (rental made legible): the fee an on-car per-part REPAIR of
+   * The fee an on-car per-part REPAIR of
    * `carPartId` costs - the exact figure `repairJobGate` charges for a per-part
    * repair. Per-part repair is bench-only for any non-`surface` slot (the sim
    * refuses it), so a per-part repair charges the signature fee ONLY for a
@@ -2519,16 +2471,16 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * One entry per service bay slot - the car in it, or null if empty.
-   * Sprint 17: `serviceBayCarIds` is real, index-addressable state now (one
-   * entry per physical bay), so this is a direct map, not a compact-list-
-   * plus-padding reconstruction.
+   * `serviceBayCarIds` is real, index-addressable state (one entry per
+   * physical bay), so this is a direct map, not a compact-list-plus-padding
+   * reconstruction.
    */
   const serviceBaysView = computed<(ShopCarView | null)[]>(() =>
     gameState.value.serviceBayCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
   )
 
   /** The parking counterpart to `serviceBaysView` above - same shape, same
-   * reasoning (Sprint 17: `parkingCarIds` is real indexed state now, not
+   * reasoning (`parkingCarIds` is real indexed state, not
    * "every shop car not in a service bay"). */
   const parkingView = computed<(ShopCarView | null)[]>(() =>
     gameState.value.parkingCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
@@ -2545,7 +2497,7 @@ export const useGameStore = defineStore('game', () => {
   const shopAtCapacity = computed(() => parkingFull.value && serviceBayFreeCount.value <= 0)
 
   /**
-   * Sprint 45: the one double-parked car (grace/overflow slot), if any -
+   * The one double-parked car (grace/overflow slot), if any -
    * reuses `shopCarView` since a double-parked car is still either an owned
    * car or a customer's, just without a real bay to sit in.
    */
@@ -2570,7 +2522,7 @@ export const useGameStore = defineStore('game', () => {
     return nextBayPriceYen(gameState.value, kind, context.value.facilities)
   }
 
-  /** Reputation tier still needed for the next bay of this kind (Sprint 16),
+  /** Reputation tier still needed for the next bay of this kind,
    * or null if that's already met, ungated, or the ladder is maxed. */
   function nextBayReputationGate(kind: BayKind): ReputationTier | null {
     return nextBayMinReputationTier(gameState.value, kind, context.value.facilities)
@@ -2600,8 +2552,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Swap a service-bay car and a parking car's positions atomically (Sprint
-   * 11, round-2 playtest #3) - the fix for a shop that's exactly full
+   * Swap a service-bay car and a parking car's positions atomically - the
+   * fix for a shop that's exactly full
    * (services + parking cars == total capacity, zero slack): neither
    * direction of `moveCar` has anywhere to go, but a swap's net occupancy
    * change in each location is zero, so it always succeeds.
@@ -2624,7 +2576,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Move (or swap) a car into a SPECIFIC slot - the real positional path
-   * behind drag-and-drop (Sprint 17 playtest fix): dropping a car onto an
+   * behind drag-and-drop: dropping a car onto an
    * empty slot places it exactly there; dropping onto a slot occupied by a
    * different car exchanges their positions (same section or across
    * service/parking alike); dropping onto its own slot is a no-op. Unlike
@@ -2662,11 +2614,10 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  // --- tool lines (Sprint 36) ---------------------------------------------
+  // --- tool lines ---
 
-  /** The six tool-line ladders with their current/next tier, for the
-   * Upgrades screen (Sprint 36 - replaces the equipment catalog; Sprint 43
-   * extends it into a full 3-rung ladder plus the reputation-gate hint). */
+  /** The six tool-line ladders with their current/next tier and reputation gate,
+   * for the Upgrades screen. */
   const toolLineViews = computed<ToolLineView[]>(() =>
     REAL_COMPONENT_GROUPS.map((componentId) => {
       const line = context.value.toolLines[componentId]
@@ -2694,7 +2645,7 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * Sprint 52 decision 2: the current classifieds listing for the Upgrades
+   * The current classifieds listing for the Upgrades
    * screen, or null for the "nothing in the classifieds this week" empty
    * state.
    */
@@ -2713,7 +2664,7 @@ export const useGameStore = defineStore('game', () => {
   })
 
   /**
-   * Sprint 43 tool-wall info box: what reaching `tier` of `componentId`'s
+   * What reaching `tier` of `componentId`'s
    * line unlocks, derived live from the real catalog (job templates whose
    * task list needs exactly this tier in this group, the engine tier-3
    * NA-to-turbo ceiling, and the tier's own speed effect).
@@ -2726,8 +2677,8 @@ export const useGameStore = defineStore('game', () => {
           task.minToolTier === tier,
       ),
     ).map((template) => humanizeTemplateId(template.id))
-    // Sprint 92: the tier-2 rung shows its per-job rental fee until the machine
-    // is owned - verbatim from the copy sheet, the group's fee interpolated.
+    // The tier-2 rung shows its per-job rental fee until the machine is owned,
+    // verbatim from the copy sheet, interpolated per group.
     const rentalFeeText =
       tier === 2 && gameState.value.toolTiers[componentId] < 2
         ? `Until you own this, its heavy jobs go to the machine shop at ${formatYen(
@@ -2739,16 +2690,14 @@ export const useGameStore = defineStore('game', () => {
       unlocksNaToTurboConversion:
         componentId === 'engine' &&
         tier === context.value.economy.toolCeilings.naToTurboConversionEngineTier,
-      // Sprint 94 (the energy bar): DRAFT copy, flagged for the orchestrator's
-      // sweep. The old ceil(grades/tier)-slots formula is gone - a repair now
-      // costs a flat energy per grade by tier (`energyPerGradeByTier`), and the
-      // player reads the integer point value directly.
+      // A repair costs a flat energy per grade by tier (`energyPerGradeByTier`),
+      // and the player reads the integer point value directly.
       laborSlotsPerGradeText: `Repair work costs ${context.value.economy.energy.energyPerGradeByTier[tier]} labour per grade at this tier`,
       rentalFeeText,
     }
   }
 
-  // --- specialty (Sprint 38) -----------------------------------------------
+  // --- specialty ---
 
   /**
    * The six per-discipline specialty counters, dev-console-only (progression
@@ -2766,7 +2715,7 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * Sprint 39: the shop's derived title copy ("the engine house"), or null
+   * The shop's derived title copy ("the engine house"), or null
    * below `titleThresholdPoints` - plain text alongside reputation
    * (`GarageScreen.vue`), never a meter. Pure function of `specialty`; can
    * shift the moment another line overtakes, no ceremony, no lock-in.
@@ -2776,7 +2725,7 @@ export const useGameStore = defineStore('game', () => {
     return group ? context.value.specialtyCopy[group].titleName : null
   })
 
-  /** The techniques the shop has unlocked right now (Sprint 39) - dev-
+  /** The techniques the shop has unlocked right now - dev-
    * console-only, same "one sanctioned debug exception" as `specialtyView`. */
   const unlockedTechniqueViews = computed<{ id: string; displayName: string }[]>(() =>
     unlockedTechniques(gameState.value, context.value).map((t) => ({
@@ -2786,10 +2735,10 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * Sprint 62 (item 17): the Standing screen's whole payload - granular
+   * The Standing screen's whole payload - granular
    * reputation (points + the named next tier), all six specialty disciplines
    * (points + their named technique), and the shop title. Progression bible
-   * law 4 was amended this sprint to permit these exact numbers on this ONE
+   * law 4 permits these exact numbers on this ONE
    * dedicated view; every other surface stays meter-free. Pure derivation, no
    * new state.
    */
@@ -2829,7 +2778,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Upgrade one tool line to its next tier - instant, effective the same day
    * (repair work sizes off the new tier immediately). Cash-gated only, no
-   * reputation gate (Sprint 36). Returns false if maxed or unaffordable.
+   * reputation gate. Returns false if maxed or unaffordable.
    */
   function upgradeToolLine(componentId: ComponentId): boolean {
     const result = applyToolUpgrade(gameState.value, componentId, context.value)
@@ -2840,14 +2789,14 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  // --- instant actions (Sprint 11) ---------------------------------------
+  // --- instant actions ---
 
   /**
-   * Repair a group (or, Sprint 28, one specific part within it when
+   * Repair a group (or one specific part within it when
    * `carPartId` is given - the drill-down's own per-part Repair row) -
    * instant, targeting `targetBand` (mint by default, the plain "Repair"
-   * button's behavior; staging lets the player choose a lower target,
-   * decision 5). Finds the car's already-open repair job for this exact
+   * button's behavior; staging lets the player choose a lower target).
+   * Finds the car's already-open repair job for this exact
    * address (if the player already started it on an earlier day) or starts
    * a new one, sized for real by `planGroupRepair`, then immediately spends
    * up to today's remaining labor on it. A repeat click just continues the
@@ -2872,9 +2821,9 @@ export const useGameStore = defineStore('game', () => {
       context.value.economy.restoration.repairStepFraction,
       context.value.economy.energy.energyPerGradeByTier,
       carPartId,
-      // Sprint 82: the instant repair job is sized with the benched crew's
-      // speed discount; `repairJobGate` charges the matching (perfectionist-
-      // adjusted) cost, so the job and its charge stay consistent.
+      // The instant repair job is sized with the benched crew's speed discount;
+      // `repairJobGate` charges the matching (perfectionist-adjusted) cost, so
+      // the job and its charge stay consistent.
       crewCtx(),
     )
     if (plan.partIds.length === 0) return
@@ -2898,7 +2847,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Install an owned part into an empty component - instant, same
-   * continuation rule as `repair`. Sprint 28: `carPartId`, when given,
+   * continuation rule as `repair`. `carPartId`, when given,
    * addresses one specific slot (the drill-down's own per-part Replace row)
    * rather than "whichever slot in the group the part's own address
    * resolves to."
@@ -2909,11 +2858,11 @@ export const useGameStore = defineStore('game', () => {
     partInstanceId: string,
     carPartId?: CarPartId,
   ): void {
-    // Sprint 71: labour sizes off the TARGET slot's own depth class - the
-    // picked part's own catalog address when `carPartId` (the per-part
-    // drawer) is unset, exactly how `applyJobToCar` resolves the real target
-    // slot at completion. Sprint 79: free when it matches the slot's own
-    // vacated baseline (putting the car back the way it was found).
+    // Labour sizes off the TARGET slot's own depth class - the picked part's
+    // own catalog address when `carPartId` (the per-part drawer) is unset,
+    // exactly how `applyJobToCar` resolves the real target slot at completion.
+    // Free when it matches the slot's own vacated baseline (putting the car back
+    // the way it was found).
     const car = findWorkableCar(carId)
     const partInstance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
     const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
@@ -2941,13 +2890,13 @@ export const useGameStore = defineStore('game', () => {
     dayLog.value.push(...result.log)
   }
 
-  // --- staged repair/install work (Sprint 18) -----------------------------
+  // --- staged repair/install work ---
 
   /**
    * True if this exact part instance is staged as an install anywhere in the
    * shop - on this car or a different one, any component. A staged part is
    * unavailable to stage again until its stage resolves (Confirm) or is
-   * explicitly unstaged (decision 3): the inventory panel uses this to omit
+   * explicitly unstaged: the inventory panel uses this to omit
    * it from what's currently pickable, and `stageAction` below enforces the
    * same rule as a real guard, not just a UI nicety.
    */
@@ -2964,7 +2913,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Every owned part not currently staged anywhere, paired with its catalog
-   * entry - the pick list for staging an install (decision 3), shared by the
+   * entry - the pick list for staging an install, shared by the
    * standalone inventory screen and the panel embedded on a car's detail
    * screen (both show the exact same "available to stage" set).
    */
@@ -2979,17 +2928,17 @@ export const useGameStore = defineStore('game', () => {
   })
 
   /**
-   * Stage a repair or install on a car's component - or, Sprint 28, on one
+   * Stage a repair or install on a car's component - or on one
    * specific part within it when `action.carPartId` is set (the drill-down's
    * per-part Repair/Replace rows) - free, instant, and fully reversible
    * until Confirm. Refuses (returns false, no state change) for an unknown
-   * car, an address that already has an open `Job` (decision 4: staging
+   * car, an address that already has an open `Job` (staging
    * never applies to work already in progress - that keeps its existing
-   * single-click "Continue repair" flow, now generalized to per-part via
+   * single-click "Continue repair" flow, generalized to per-part via
    * `addressesOverlap` - a group-level job blocks staging anything on any of
    * its parts, and vice versa), or an install whose part is already staged
-   * elsewhere (decision 3). Staging over an address that already has a
-   * *different, overlapping* staged action there replaces it (decision 8) -
+   * elsewhere. Staging over an address that already has a
+   * *different, overlapping* staged action there replaces it -
    * the displaced entry (and its part, for a displaced install) simply stops
    * being staged, freeing it up again. A group-level stage displaces every
    * per-part stage inside that group (and vice versa); two per-part stages
@@ -2999,9 +2948,9 @@ export const useGameStore = defineStore('game', () => {
     const car = findWorkableCar(carId)
     if (!car) return false
     if (isCarInTransit(carId)) return false
-    // Sprint 87: an assembly action carries no per-part address, so it never
-    // matches a job's address here - member busyness is the assembly
-    // resolvers' own gate at Confirm (`resolveRemoveAssembly`).
+    // An assembly action carries no per-part address, so it never matches a
+    // job's address here - member busyness is the assembly resolvers' own gate
+    // at Confirm (`resolveRemoveAssembly`).
     const perPart = hasWorkAddress(action) ? action : null
     const busy =
       perPart !== null &&
@@ -3009,18 +2958,15 @@ export const useGameStore = defineStore('game', () => {
     if (busy) return false
     if (action.kind === 'install') {
       if (isPartStagedAnywhere(action.partInstanceId)) return false
-      // Sprint 24 fix 2: refuse a part/component/model mismatch here too -
-      // not just at Confirm's job-creation time - so a caller that bypasses
-      // the UI's own filtered drawer (a bot, the dev console, a future
-      // client) can't stage an install that would only fail silently later.
-      // Sprint 28: when `action.carPartId` is set, also refuses a part whose
-      // own catalog address doesn't match that exact slot, or whose exact
-      // slot is already occupied (mirrors `installFitGate`, sim/jobs.ts).
-      // Sprint 32: `slotEmpty` always resolves from the picked part's own
-      // catalog address (`part.carPartId`), same fix as `installFitGate` -
-      // most slots start filled with a stock part now, so a group-level
-      // stage needs the same real occupied-slot check a per-part one always
-      // had, not just when `action.carPartId` happens to be set.
+      // Refuse a part/component/model mismatch here too - not just at Confirm's
+      // job-creation time - so a caller that bypasses the UI's own filtered
+      // drawer can't stage an install that would only fail silently later. When
+      // `action.carPartId` is set, also refuse a part whose own catalog address
+      // doesn't match that exact slot, or whose exact slot is already occupied.
+      // `slotEmpty` always resolves from the picked part's own catalog address
+      // (`part.carPartId`) - most slots start filled with a stock part now, so
+      // a group-level stage needs the same real occupied-slot check a per-part
+      // one always had, not just when `action.carPartId` happens to be set.
       const model = context.value.modelsById[car.modelId]
       const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
       const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
@@ -3038,9 +2984,9 @@ export const useGameStore = defineStore('game', () => {
           context.value.partsTaxonomyById,
           action.carPartId,
         ) ||
-        // Sprint 37: the one own-car capability ceiling (NA-to-turbo
-        // conversion) - mirrors `installFitGate`'s own check, same reason a
-        // stage-then-silently-fail-at-Confirm bug can't happen here either.
+        // The one own-car capability ceiling (NA-to-turbo conversion) - mirrors
+        // `installFitGate`'s own check, same reason a stage-then-silently-fail-
+        // at-Confirm bug can't happen here either.
         naToTurboConversionBlocked(part.carPartId, model, gameState.value, context.value)
       ) {
         return false
@@ -3057,9 +3003,9 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // Sprint 87: staged-action collision is kind-aware - per-part actions
-    // displace by address overlap exactly as before; an assembly action
-    // displaces only the same op on the same assembly (`stagedActionsCollide`).
+    // Staged-action collision is kind-aware - per-part actions displace by
+    // address overlap exactly as before; an assembly action displaces only the
+    // same op on the same assembly (`stagedActionsCollide`).
     const existing = stagedActionsFor(carId).filter((a) => !stagedActionsCollide(a, action))
     gameState.value = {
       ...gameState.value,
@@ -3071,17 +3017,16 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Un-stage whatever's staged at this exact address, if anything - free,
-   * no-op if nothing was staged there. Sprint 28: `carPartId`, when given,
-   * un-stages only that specific part's own entry, leaving a sibling part's
-   * stage (or the group's own) in the same group untouched - an exact
-   * address match (`sameAddress` semantics inlined below), not the broader
-   * `addressesOverlap` `stageAction` uses to decide what a NEW stage
-   * displaces.
+   * no-op if nothing was staged there. When `carPartId` is given, un-stages
+   * only that specific part's own entry, leaving a sibling part's stage (or the
+   * group's own) in the same group untouched - an exact address match
+   * (`sameAddress` semantics inlined below), not the broader `addressesOverlap`
+   * `stageAction` uses to decide what a NEW stage displaces.
    */
   function unstageAction(carId: string, componentId: ComponentId, carPartId?: CarPartId): void {
-    // Sprint 87: an assembly action has no per-part address, so a per-part
-    // unstage never matches (and never sweeps) one - it has its own
-    // `unstageAssemblyAction` below.
+    // An assembly action has no per-part address, so a per-part unstage never
+    // matches (and never sweeps) one - it has its own `unstageAssemblyAction`
+    // below.
     const remaining = stagedActionsFor(carId).filter(
       (a) => !hasWorkAddress(a) || !(a.componentId === componentId && a.carPartId === carPartId),
     )
@@ -3092,7 +3037,7 @@ export const useGameStore = defineStore('game', () => {
     logSessionEvent('unstageAction', { carId, componentId })
   }
 
-  /** Sprint 87: un-stage one staged assembly op - the assembly twin of
+  /** Un-stage one staged assembly op - the assembly twin of
    * `unstageAction`, keyed on kind + assemblyId since an assembly action
    * carries no per-part address. Free, no-op if nothing matches. */
   function unstageAssemblyAction(
@@ -3114,7 +3059,7 @@ export const useGameStore = defineStore('game', () => {
    * Confirm - locks in every staged action on this car at once: creates or
    * continues the real jobs and spends today's remaining labor and cash for
    * real, through the exact same resolvers the old instant-click flow
-   * always used (Sprint 18). The staged list is cleared whether or not
+   * always used. The staged list is cleared whether or not
    * every action could be fully labored today - a partial-labor action just
    * leaves a normal continuable job behind.
    */
@@ -3133,18 +3078,18 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Pull whatever occupies `carPartId`'s slot into inventory - no staging
    * step, resolves instantly against today's remaining labor. Removal always
-   * leaves the slot empty (Sprint 85), whatever grade the removed part was;
+   * leaves the slot empty, whatever grade the removed part was;
    * the removed part lands in inventory. A no-op (returns false) if the slot
    * is already empty, a job is currently open on this address, the part isn't
    * removable at all, a `blockedBy` slot is still occupied, or today's labor
-   * doesn't cover it (Sprint 71 - see `removeBlockReason` for the UI's
+   * doesn't cover it (see `removeBlockReason` for the UI's
    * proactive "why not"). A buried engine/drivetrain slot needs that line's
-   * tier-2 machine OR the machine-shop assist fee (Sprint 85 decision 6).
+   * tier-2 machine OR the machine-shop assist fee.
    */
   function removePart(carId: string, carPartId: CarPartId): boolean {
-    // Sprint 87 decision 6: an assembly member never comes off the car
-    // individually; it is worked only via its assembly. This is the
-    // player-facing enforcement; the sim primitive stays unchanged.
+    // An assembly member never comes off the car individually; it is worked
+    // only via its assembly. This is the player-facing enforcement; the sim
+    // primitive stays unchanged.
     if (isAssemblyMember(carPartId)) return false
     const result = resolveRemovePart(
       gameState.value,
@@ -3160,7 +3105,7 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  // --- assemblies (Sprint 87: the assembly model) ------------------------
+  // --- assemblies ---
 
   /** Whether a car part is a member of one of the three sub-assemblies - a
    * member is worked only via its assembly, never pulled off the car on its
@@ -3170,7 +3115,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Remove a whole assembly to the bench (Sprint 87 operation 1) - 0 labour
+   * Remove a whole assembly to the bench - 0 labour
    * plus a machine-shop assist fee for the engine/gearbox assemblies when the
    * line's tier-2 machine isn't owned. Mirrors `removePart`'s apply pattern; a
    * no-op (returns false) on any refusal (`resolveRemoveAssembly.ok === false`).
@@ -3191,7 +3136,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Refit a benched assembly back onto its source car (Sprint 87 operation 3) -
+   * Refit a benched assembly back onto its source car -
    * free per member equal to its vacated baseline, charged install labour for a
    * changed member, plus the same machine assist fee removal owed. A no-op if
    * the car has no such container on the bench, or the refit itself refuses.
@@ -3213,8 +3158,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Move a bin part into a member slot of an open bench container (Sprint 87
-   * operation 2) - the displaced member returns to the bin. A tyre swap owes
+   * Move a bin part into a member slot of an open bench container -
+   * the displaced member returns to the bin. A tyre swap owes
    * the wheels bench fee without the tier-2 machine. A no-op on any refusal.
    */
   function swapAssemblyMember(
@@ -3354,7 +3299,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * The yen a scrap `PartInstance` would fetch if sold right now (Sprint 28)
+   * The yen a scrap `PartInstance` would fetch if sold right now
    * - the "Scrap it" button's own price tag, mirroring `resolveScrapPart`'s
    * (sim/parts.ts) internal lookup so the UI can show the real number before
    * the player commits, not just after. Returns 0 for an unknown instance or
@@ -3371,9 +3316,9 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sell a scrap `PartInstance` for scrap value (Sprint 26 decision 6) - the
+   * Sell a scrap `PartInstance` for scrap value - the
    * only action available on it, since it can never be reinstalled anywhere.
-   * Sprint 35: a customer-owned part (`customerJobId` set) is refused by the
+   * A customer-owned part (`customerJobId` set) is refused by the
    * resolver, so this returns false; the UI disables the control with a reason
    * rather than relying on the silent refusal alone.
    */
@@ -3392,7 +3337,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 71 decision 6 (the teardown game's donor economy): the yen a
+   * The yen a
    * non-scrap `PartInstance` would fetch sold used right now - the "Sell"
    * button's own price tag, mirroring `resolveSellPart`'s (sim/parts.ts)
    * internal formula so the UI shows the real number before the player
@@ -3412,8 +3357,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sell a used, non-scrap `PartInstance` at the donor-economy haircut
-   * (Sprint 71 decision 6) - instant, no labour, the counterpart to
+   * Sell a used, non-scrap `PartInstance` at the donor-economy haircut -
+   * instant, no labour, the counterpart to
    * `scrapPart` for a part still worth more than scrap. Refused (returns
    * false) for a customer-owned part while its job is active - same
    * ownership lock `scrapPart` enforces.
@@ -3429,7 +3374,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * A read-only recondition quote for a loose inventory part to `targetBand`
-   * (Sprint 35) - the yen cost, labor slots, and whether the covering
+   * - the yen cost, labor slots, and whether the covering
    * equipment is owned, for the inventory card's recondition control. Routes
    * through the sim's `reconditionQuote`, which prices/sizes off the exact
    * same repair economy as an on-car repair. Null when there is nothing to do
@@ -3440,7 +3385,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Recondition a loose inventory part to `targetBand` (Sprint 35, mint by
+   * Recondition a loose inventory part to `targetBand` (mint by
    * default - the same instant "climb to mint" an on-car Repair click does) -
    * instant, spending up to today's remaining labor, through the SAME repair
    * economy as an on-car repair (`resolveReconditionLabor`: same yen cost,
@@ -3495,10 +3440,10 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Buy a single catalog part directly, bypassing the cart - the primitive
    * `checkoutCart` calls per item below. Not wired to any "Buy" button on
-   * `PartsMarketScreen.vue` (Sprint 14 replaced the instant per-row buy with
-   * cart + checkout, specifically to stop a misclick from spending real
+   * `PartsMarketScreen.vue` (cart + checkout replaced the old instant
+   * per-row buy, specifically to stop a misclick from spending real
    * cash) but kept as a real store action for tests/dev use. Defaults to
-   * 'express' - today's pre-Sprint-14 instant behavior.
+   * 'express' - the old instant behaviour.
    */
   function buyPart(partId: string, deliverySpeed: DeliverySpeed = 'express'): boolean {
     const result = resolveBuyPart(gameState.value, partId, context.value, deliverySpeed)
@@ -3598,7 +3543,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Decline a radial offer (Sprint 85 decision 4) - clears it from the board
+   * Decline a radial offer - clears it from the board
    * with zero side effects. No reputation change and no day-log entry, so the
    * resolver signals success by returning a new state reference (there is no
    * log to check); a no-op returns the same state unchanged.
@@ -3611,8 +3556,7 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** Accept the currently offered story mission - instant, offered -> active
-   * (Sprint 76). Grade/deliver actions are Sprint 77. */
+  /** Accept the currently offered story mission - instant, offered -> active. */
   function acceptMission(missionId: string): boolean {
     const result = resolveAcceptMission(gameState.value, missionId, context.value)
     if (result.log.length === 0) return false
@@ -3630,7 +3574,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 77 decision 5: "Show them the car" - free, repeatable, no state
+   * "Show them the car" - free, repeatable, no state
    * change. A no-op shape (`{ pass: false, lines: [] }`) when there is no
    * active mission at all, matching `gradeMissionCar`'s own contract for an
    * unresolvable mission/car.
@@ -3642,7 +3586,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 77 decision 5: "Hand it over" - requires `gradeMission` to already
+   * "Hand it over" - requires `gradeMission` to already
    * pass (the screen gates the button on it; `resolveDeliverMission` itself
    * re-grades and refuses regardless). Populates `lastMissionResult` for the
    * completion modal with whichever copy the tip actually earned.
@@ -3687,20 +3631,17 @@ export const useGameStore = defineStore('game', () => {
     lastMissionResult.value = null
   }
 
-  // --- staff (Sprint 80: staff I) ----------------------------------------
-  // Sprint 82 decision 6: the Staff Office surface (the roster/ads view and the
-  // hire/dismiss/reassign actions) moved to `useStaffStore` (stores/staffStore.
-  // ts). The persisted staff data stays in `GameState` here; the staff store
-  // reads and writes it through this store's exposed `gameState`, `dayLog`,
-  // `context`, and `logSessionEvent`.
+  // --- staff ---
+  // The persisted staff data stays in `GameState`; the staff store reads and
+  // writes it through this store's exposed `gameState`, `dayLog`, `context`,
+  // and `logSessionEvent`.
 
   /**
-   * Sprint 77 decision 4: the reference-lap board for the active mission's
-   * `lapTimeCeiling` requirement (empty when it has none). `carInstanceId`
-   * null - or a car with no measurable time (no tyres/scrap) - falls back to
-   * decision 4's own "no candidate" selection (nearest to the requirement's
-   * own target, no grade filtering); the player's own predicted time is
-   * never part of the returned rows either way.
+   * The reference-lap board for the active mission's `lapTimeCeiling` requirement
+   * (empty when it has none). Null carInstanceId or a car with no measurable time
+   * (no tyres/scrap) falls back to the "no candidate" selection (nearest to the
+   * requirement's own target, no grade filtering); the player's own predicted time
+   * is never part of the returned rows either way.
    */
   function lapBoardRowsFor(carInstanceId: string | null): LapBoardRow[] {
     const record = activeMissionRecord()
@@ -3742,17 +3683,17 @@ export const useGameStore = defineStore('game', () => {
     const job = gameState.value.activeServiceJobs.find((sj) => sj.id === jobId)
     const resolution = resolveServiceJob(gameState.value, jobId, context.value)
     if (!job || resolution.outcome === 'not-found') return 'not-found'
-    // Sprint 40 defense in depth: the resolver itself already refused (no
-    // state change) - a graceful no-op here too, never reachable through the
-    // normal UI (the car-page "Complete Job" button only renders once the
-    // car has arrived) but kept honest in case a caller bypasses that.
+    // The resolver itself already refused (no state change) - a graceful no-op
+    // here too, never reachable through the normal UI (the car-page "Complete Job"
+    // button only renders once the car has arrived) but kept honest in case a
+    // caller bypasses that.
     if (resolution.outcome === 'in-transit') return 'in-transit'
     gameState.value = resolution.state
     dayLog.value.push(...resolution.log)
 
     const entry = resolution.log[0]
-    // Sprint 72 decision 5: the returned-parts receipt line is appended
-    // after the completed/failed entry, not always at index 0.
+    // The returned-parts receipt line is appended after the completed/failed
+    // entry, not always at index 0.
     const returnedParts =
       resolution.log.find((e) => e.type === 'service-parts-returned')?.parts ?? []
     if (entry?.type === 'service-job-completed') {
@@ -3792,7 +3733,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Accept today's live offer on an owned car - instant (Sprint 31). Resolves
+   * Accept today's live offer on an owned car - instant. Resolves
    * through the same reputation/heat/event-log plumbing the old instant
    * walk-in sell always used; a no-op (returns false) if there's no live
    * offer on this car right now.
@@ -3808,8 +3749,7 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = result.state
     dayLog.value.push(...result.log)
 
-    // Sprint 68 decision 5 (item 23): the receipt. Everything here already
-    // existed and was simply never shown - the Sprint 42 ledger, and
+    // The receipt draws from existing data structures: the ledger and
     // `car-sold`'s own price/profit.
     const sold = result.log.find((e) => e.type === 'car-sold')
     if (sold?.type === 'car-sold' && detail) {
@@ -3832,7 +3772,7 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** Sprint 68 decision 3 (item 21): turn today's offer down. The car stays
+  /** Turn today's offer down. The car stays
    * listed, so tomorrow's draw can bring a better one. */
   function rejectOffer(carId: string): boolean {
     const result = resolveRejectOffer(gameState.value, carId)
@@ -3849,7 +3789,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Toggle "taking offers" on an owned car - free, instant, reversible any
-   * time before it sells (Sprint 31 decision 2). Replaces both the old
+   * time before it sells. Replaces both the old
    * instant walk-in sell and list-publicly buttons: the car itself does
    * nothing until a real offer arrives (the daily draw, End Day) and the
    * player accepts it via `acceptOffer` above.
@@ -3864,7 +3804,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Sprint 71 decision 7 (the teardown game): the yen scrapping this car's
+   * The yen scrapping this car's
    * whole shell would pay right now - the "Scrap the shell" control's own
    * price tag, mirroring `resolveScrapShell`'s (sim/selling.ts) formula so
    * the two-step confirm shows the real number before the player commits.
@@ -3878,7 +3818,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Scrap the whole car at once, shell and all (Sprint 71 decision 7) -
+   * Scrap the whole car at once, shell and all -
    * removes the car and every part still on it, frees its bay/grace slot,
    * and pays the flat scrap-value fraction of book value. Irreversible; the
    * screen gates this behind a two-step confirm (mirrors `AuctionScreen.vue`'s
@@ -3901,7 +3841,7 @@ export const useGameStore = defineStore('game', () => {
   // --- day advance ------------------------------------------------------
 
   /**
-   * End Day - purely a day-boundary tick now (Sprint 11): labor resets,
+   * End Day - purely a day-boundary tick now: labor resets,
    * weekly rent/wages and market-heat drift fire on the 7-day boundary,
    * catalogs refresh and expire, and the service-job deadline backstop
    * runs. Nothing here *decides* a player action anymore - that already
@@ -3928,10 +3868,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** Start a fresh career. Defaults to a random seed so players don't all get the same run.
-   * Sprint 89: every new career is a tutorial career - `installTutorial` marks
+   * Every new career is a tutorial career - `installTutorial` marks
    * it active, offers Yuki's mission on day 1, and seeds the scripted Local Yard
    * lot (a bot/probe career built straight from `createInitialGameState` never
-   * does, so those stay tutorial-free). Sprint 95: the tutorial intent is
+   * does, so those stay tutorial-free). The tutorial intent is
    * passed to `createInitialGameState` itself, because the day-1 board is
    * generated inside it - the Yuki-only job board and the tutorial-model
    * auction exclusion are generation gates, and the flag has to exist before
@@ -3946,7 +3886,7 @@ export const useGameStore = defineStore('game', () => {
     reportVisible.value = false
   }
 
-  // --- persistence (Sprint 07) ------------------------------------------
+  // --- persistence ---
 
   /**
    * Load the autosaved career on startup (called once from main.ts before
@@ -4023,10 +3963,10 @@ export const useGameStore = defineStore('game', () => {
       true,
       gameState.value.day,
     )
-    // Sprint 17: parking is a real indexed array now - a granted car needs an
-    // actual slot, not just membership in `ownedCars` (assignToParking grows
-    // the array if parking happens to be nominally full, since this bypasses
-    // the normal `hasParkingSpace` gate on purpose, same as it always has).
+    // Parking is a real indexed array - a granted car needs an actual slot,
+    // not just membership in `ownedCars` (`assignToParking` grows the array if
+    // parking happens to be nominally full, since this bypasses the normal
+    // `hasParkingSpace` gate on purpose).
     gameState.value = assignToParking(
       { ...gameState.value, ownedCars: [...gameState.value.ownedCars, car] },
       id,
@@ -4097,14 +4037,14 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // --- guided tutorial (Sprint 89) --------------------------------------
+  // --- guided tutorial ---
 
   /** Whether the guided tutorial overlay is live for this career. Read-only:
    * the overlay derives its current step from game state, never from a stored
    * step index. */
   const tutorialActive = computed<boolean>(() => gameState.value.tutorialStatus === 'active')
 
-  /** Permanently dismiss the walkthrough for this career (decision 5): the
+  /** Permanently dismiss the walkthrough for this career: the
    * story mission stays, the guidance never returns. `'skipped'` also stops the
    * scripted-lot injection (`ensureTutorialLot`, sim). */
   function skipTutorial(): void {
@@ -4113,15 +4053,15 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** Retire the overlay for good once the sign-off has been read after delivery
-   * (decision 5) - distinct from a skip only in intent; both suppress the
+   * - distinct from a skip only in intent; both suppress the
    * overlay and the scripted lot forever. */
   function finishTutorial(): void {
     if (gameState.value.tutorialStatus !== 'active') return
     gameState.value = { ...gameState.value, tutorialStatus: 'done' }
   }
 
-  /** Record a "Got it" press on an `acknowledged`-completion walkthrough step
-   * (Sprint 95): appends the step id to `tutorialAcknowledgedSteps` (created on
+  /** Record a "Got it" press on an `acknowledged`-completion walkthrough step:
+   * appends the step id to `tutorialAcknowledgedSteps` (created on
    * first use, never duplicated). The overlay's state-derived step machine
    * reads the array to advance past the step; the sim never reads it. */
   function acknowledgeTutorialStep(stepId: string): void {
@@ -4145,9 +4085,8 @@ export const useGameStore = defineStore('game', () => {
     acknowledgeTutorialStep,
     gameState,
     dayLog,
-    // Sprint 82 decision 6: exposed so `useStaffStore` (stores/staffStore.ts)
-    // can read the sim context and log session events while it owns the staff
-    // surface. The persisted staff data still lives in `gameState` here.
+    // Exposed so the staff store can read the sim context and log session
+    // events. The persisted staff data still lives in `gameState` here.
     context,
     logSessionEvent,
     day,

@@ -33,10 +33,10 @@ import {
 } from './testFixtures'
 
 /**
- * Sprint 75 decision 3: the three integration flows are the sprint's spine -
- * all sim-level and deterministic, so every car below is hand-built from the
- * real `non-starter` symptom's own content rather than hoping a generated
- * seed happens to roll the right cause (matching `diagnosis.test.ts`'s own
+ * The three integration flows below are all sim-level and deterministic,
+ * so every car is hand-built from the real `non-starter` symptom's own
+ * content rather than hoping a generated seed happens to roll the right
+ * cause (matching `diagnosis.test.ts`'s own
  * `carWithSymptom`/`carWithMultiPartSymptom` precedent).
  */
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -80,8 +80,8 @@ function affectedPartId(trueCauseId: NonStarterCauseId): CarPartId {
   return NON_STARTER!.causes.find((c) => c.id === trueCauseId)!.carPartId
 }
 
-/** Every removable slot's own tool-tier gate cleared (Sprint 71) - the donor
- * flow strips the whole car, not just what today's tool tiers allow. */
+/** Every removable slot's own tool-tier gate cleared - the donor flow
+ * strips the whole car, not just what today's tool tiers allow. */
 const HIGH_TOOL_TIERS = testToolTiers({
   engine: 3,
   drivetrain: 3,
@@ -102,9 +102,9 @@ function ownedState(car: CarInstance, cashYen: number): GameState {
 }
 
 /** Removes every real, removable slot on `carId` - repeated passes so a
- * part still blocked by an unremoved neighbour (Sprint 71's `blockedBy`
- * chains) gets picked up once its blocker clears, with no need to hand-sort
- * a topological order. Ample labour (100) per call - this flow is about the
+ * part still blocked by an unremoved neighbour (`blockedBy` chains) gets
+ * picked up once its blocker clears, with no need to hand-sort a
+ * topological order. Ample labour (100) per call - this flow is about the
  * donor economy, not the day-by-day labour budget. */
 function stripAllRemovableParts(state: GameState, carId: string): GameState {
   const removableIds = ALL_CAR_PART_IDS.filter(
@@ -122,7 +122,7 @@ function stripAllRemovableParts(state: GameState, carId: string): GameState {
 }
 
 /** Sells every loose part in inventory - scrap-band via `resolveScrapPart`,
- * everything else via `resolveSellPart` (Sprint 71's donor economy). */
+ * everything else via `resolveSellPart`. */
 function sellAllInventory(state: GameState): GameState {
   let current = state
   for (const instance of [...current.partInventory]) {
@@ -237,10 +237,10 @@ function repairOneAndFlipNetYen(car: CarInstance, trueCauseId: 'flat-battery' | 
 }
 
 /**
- * Sprint 75 decision 3: "the sleeper is worth fixing, the corpse is worth
- * stripping." Verified directly and honestly against real economy numbers
- * for this specific model (`nissan-180sx-rps13`, uncommon tier) rather than
- * asserted on faith:
+ * "The sleeper is worth fixing, the corpse is worth stripping." Verified
+ * directly and honestly against real economy numbers for this specific
+ * model (`nissan-180sx-rps13`, uncommon tier) rather than asserted on
+ * faith:
  *
  * - Repairing-and-flipping the ONE diagnosed defect is genuinely profitable
  *   for the flat-battery sleeper and genuinely a LOSS for the seized-engine
@@ -248,8 +248,7 @@ function repairOneAndFlipNetYen(car: CarInstance, trueCauseId: 'flat-battery' | 
  *   fixture this test tried while being built.
  * - Donor-flow's own standing relative to repair improves substantially for
  *   the corpse (the gap between them narrows) - stripping becomes the
- *   comparatively BETTER choice as the diagnosed defect worsens, exactly the
- *   direction decision 3 describes.
+ *   comparatively BETTER choice as the diagnosed defect worsens.
  *
  * DISCLOSED, not silently forced: under today's tuned numbers
  * (`teardown.usedPartSaleFraction` 0.55), donor-flow does not fully overtake
@@ -257,12 +256,10 @@ function repairOneAndFlipNetYen(car: CarInstance, trueCauseId: 'flat-battery' | 
  * fixture's worst-case severity - stripping ~28 largely-`worn` (not
  * badly-damaged) parts at a 45% haircut costs more than the single
  * catastrophic repair saves, for an uncommon-tier car's own price scale.
- * This is a measured fact about the current economy tuning, structurally the
- * same kind of finding as Sprint 72's shitbox Law 6 disclosure - flagged in
- * this sprint's Exit for the maintainer, not papered over with an
- * unrealistic fixture (an all-mint or all-scrap car) to force an outright
- * "donor wins" result that would not represent anything generation could
- * plausibly produce.
+ * This is a measured fact about the current economy tuning, not papered
+ * over with an unrealistic fixture (an all-mint or all-scrap car) to force
+ * an outright "donor wins" result that would not represent anything
+ * generation could plausibly produce.
  */
 describe('donor flow vs repair-and-flip (Sprint 75 decision 3)', () => {
   it('repairing the one diagnosed defect is profitable for the sleeper, a loss for the corpse', () => {
@@ -367,8 +364,8 @@ describe('sleeper flow: yard-tested to resolution, bought at sheet, fixed, flipp
   })
 
   /**
-   * "Realised margin ≈ the coherence table's predicted edge for that cause"
-   * (decision 3): the closed-form edge (`coherence.ts`'s
+   * "Realised margin ≈ the coherence table's predicted edge for that
+   * cause": the closed-form edge (`coherence.ts`'s
    * `SymptomCauseEdgeRow.edgeYen`) is `causeValueYen - sheetValueYen` on the
    * car's UNREPAIRED state - the mispricing the sheet's own fear premium
    * bakes in before any money is spent fixing anything. The simulated
@@ -376,8 +373,7 @@ describe('sleeper flow: yard-tested to resolution, bought at sheet, fixed, flipp
    * value it recovers, so the two are not expected to match exactly - this
    * asserts they land within the same order of magnitude and the same sign,
    * which is what "≈" can honestly mean once a real repair cost enters the
-   * picture: reused directly rather than re-deriving a second formula for a
-   * quantity `coherence.ts` already computes.
+   * picture.
    */
   it("realised margin is the same sign as, and the same order of magnitude as, the cause's own predicted edge", () => {
     const car = carWithNonStarter('flat-battery')

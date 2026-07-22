@@ -2,11 +2,11 @@
 import type { Grade } from '@midnight-garage/content'
 
 /**
- * Sprint 69 (playtest item 14): a part's grade as a chip, not a bare word
- * buried in a meta line. Sprint 86 decision 5: the ramp reads as one amber
+ * A part's grade as a chip, not a bare word
+ * buried in a meta line. The ramp reads as one amber
  * family with intensity rising by tier (stock grey, then amber text, then an
  * amber border, then a low-alpha amber fill at race), so a tier never borrows
- * the condition-verdict palette (cyan/magenta) the way street/race used to.
+ * the condition-verdict palette (cyan/magenta).
  *
  * Deliberately `BandChip`'s exact shape - same box, same sizing, same
  * capitalisation - so the two chips a player sees side by side on a part row

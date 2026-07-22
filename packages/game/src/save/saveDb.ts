@@ -7,8 +7,8 @@ import type { Table } from 'dexie'
  * is a no-op when IndexedDB is unavailable (e.g. the happy-dom test env),
  * so store logic tests run without a fake IndexedDB dependency.
  *
- * Sprint 82 decision 8: Dexie is imported dynamically (`import('dexie')`
- * inside `getDb`), the sprint's one code-split - it is the largest single
+ * Dexie is imported dynamically (`import('dexie')`
+ * inside `getDb`) since it is the largest single
  * dependency reachable only from persistence, none of it needed for first
  * paint. Every export here is already async, so the split is internal: no
  * caller (or test) changes, they still `await` the same functions.
@@ -20,8 +20,7 @@ interface SaveRow {
 }
 
 /**
- * Sprint 24 (session log v0 - the record-real-play seed, maintainer idea
- * 2026-07-09): one row per player action, append-only. `payload` is a plain
+ * The session log (v0) - one row per player action, append-only. `payload` is a plain
  * object specific to `type` (e.g. `{ lotId, maxBidYen }` for a bid) - no
  * schema per event type here, since this is raw capture for a future
  * offline parsing pass, not a validated, replay-driving format. `timestamp`
@@ -48,7 +47,7 @@ let dbPromise: Promise<SaveDb | undefined> | undefined
 
 /**
  * Lazily opens the database, dynamically importing Dexie on first use so it
- * lands in its own chunk (decision 8). Returns undefined where IndexedDB is
+ * lands in its own chunk. Returns undefined where IndexedDB is
  * absent (the test env), keeping every method a safe no-op there.
  */
 function getDb(): Promise<SaveDb | undefined> {

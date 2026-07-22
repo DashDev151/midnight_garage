@@ -22,8 +22,7 @@ import {
   queueServiceJobTasks,
 } from './serviceJobHelpers'
 
-/** The six real component groups, canonical order (Sprint 36: replaces the
- * retired ascending-equipment-cost ordering). */
+/** The six real component groups, canonical order. */
 const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
 
 /**
@@ -44,17 +43,15 @@ const MAX_CONCURRENT_CARS = 1
 const FAIR_BID_MULTIPLIER = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.15
 /**
- * Sprint 31 decision 4: this policy's own sell accept-threshold - the
- * measurement probe the orchestrator's wait-vs-gain balance-report section
- * (sprint31.md decision 3) reads against. Deliberately its own constants,
+ * This policy's own sell accept-threshold. Deliberately its own constants,
  * not a re-use of `cautiousRestorerStrategy`'s (sellingHelpers.ts's own
  * doc comment): a future retune of one must never silently drag the other.
  */
 const ACCEPT_FRACTION = 0.9
 const MAX_HOLDING_DAYS = 15
 
-/** Sprint 36: a competent player's double-cover buffer on tool upgrades -
- * speed is bought when the bankroll comfortably covers it, never before. */
+/** A competent player's double-cover buffer on tool upgrades - speed is
+ * bought when the bankroll comfortably covers it, never before. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 
 const TIER_ORDER: readonly AuctionTier[] = [
@@ -73,25 +70,20 @@ function highestAccessibleTier(state: GameState): AuctionTier {
 }
 
 /**
- * Sprint 23's measurement instrument - the "competent player" invariant 3
- * (days-to-`local`) and the M1/M3 measurement tasks are read against. This
- * is deliberately NOT a bot archetype (sprint23.md's own framing:
- * "operationalized by the probe policies below, not by bot archetypes") -
- * it lives in `bots/` and matches `BotStrategy`'s shape only because that's
- * the existing, reusable way to run a deterministic day-by-day policy
- * through `runCareer`/`exportCareers.ts`, not because it belongs in the
- * balance harness's roster of playstyle comparisons.
+ * The "competent player" measurement instrument. Deliberately NOT a bot
+ * archetype - it lives in `bots/` and matches `BotStrategy`'s shape only
+ * because that's the existing, reusable way to run a deterministic
+ * day-by-day policy through `runCareer`/`exportCareers.ts`, not because it
+ * belongs in the balance harness's roster of playstyle comparisons.
  *
  * The policy, in order: (1) continue open jobs; (2/3) buy out a lot of the
  * current highest-accessible tier, capped at a fixed multiple of the value
- * anchor (never an unbounded chase) - lots are transparent (Sprint 26), so
- * there is no separate inspect step anymore; (4) fully restore every group
- * to mint,
- * cheapest-to-unlock first (Sprint 23 decision 6's fix); (5) sell restored
- * cars for a clean/concours reputation gain (decision 1's faucet); (6) work
- * a service job on whatever labor restoration doesn't use that day - car
- * restoration is the priority, service work is the overflow, matching the
- * doc's own "work service jobs on idle labor" phrasing.
+ * anchor (never an unbounded chase) - lots are transparent, so there is no
+ * separate inspect step; (4) fully restore every group to mint,
+ * cheapest-to-unlock first; (5) sell restored cars for a clean/concours
+ * reputation gain; (6) work a service job on whatever labor restoration
+ * doesn't use that day - car restoration is the priority, service work is
+ * the overflow.
  */
 export function competentPolicyStrategy(
   state: GameState,
@@ -117,9 +109,9 @@ export function competentPolicyStrategy(
   }
 
   // 2/3. Only shop for a car when there's actually room for one (patient -
-  // see MAX_CONCURRENT_CARS's own doc comment): buy out a lot of the current
-  // highest-accessible tier (Sprint 26: lots are transparent now, no
-  // separate inspect step).
+  // see MAX_CONCURRENT_CARS's own doc comment): buy out a lot of the
+  // current highest-accessible tier (lots are transparent, no separate
+  // inspect step).
   const hasRoomToBuy = state.ownedCars.length < MAX_CONCURRENT_CARS
   if (hasRoomToBuy) {
     const candidates = state.activeAuctionLots.filter(
@@ -141,11 +133,10 @@ export function competentPolicyStrategy(
     }
   }
 
-  // 4. Repair the first needy component on each owned, job-free car.
-  // Sprint 36: work is always possible at the current tool tier (the
-  // Sprint 19c/23 reachability-deadlock class is structurally gone), so
-  // this picks the first below-mint group, considers upgrading its line for
-  // speed, and proceeds with the repair regardless.
+  // 4. Repair the first needy component on each owned, job-free car. Work
+  // is always possible at the current tool tier, so this picks the first
+  // below-mint group, considers upgrading its line for speed, and proceeds
+  // with the repair regardless.
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
   const carsGettingJobsToday = new Set<string>()
   for (const car of state.ownedCars) {
@@ -199,9 +190,8 @@ export function competentPolicyStrategy(
   }
 
   // 5. Take offers on fully-restored, job-free cars - the clean/concours-
-  // eligible sale (decision 1's reputation faucet actually being reachable
-  // is this sprint's whole point). Sprint 31: the accept-threshold below is
-  // this policy's own measurement probe (see ACCEPT_FRACTION's doc comment).
+  // eligible sale. The accept-threshold below is this policy's own
+  // measurement probe (see ACCEPT_FRACTION's doc comment).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id) || carsGettingJobsToday.has(car.id)) continue
     const isRestored = ALL_GROUPS.every((id) =>
@@ -217,8 +207,7 @@ export function competentPolicyStrategy(
 
   // 6. Work a service job on whatever labor car-restoration didn't use
   // today - restoration is this policy's priority, service work is the
-  // overflow (the doc's own "work service jobs on idle labor" phrasing).
-  // Sprint 29: a job's task list can mix repair and install now
+  // overflow. A job's task list can mix repair and install
   // (`serviceJobHelpers.ts`'s `queueServiceJobTasks` executes both, unlike
   // `serviceGrinderStrategy`'s deliberately repair-only restriction) - this
   // is the "well-rounded operator" measurement probe, so it takes whatever
@@ -253,10 +242,10 @@ export function competentPolicyStrategy(
     }
 
     if (laborBudget > 0 && bayBudget.free > 0) {
-      // Sprint 36: acceptance is gated by tool-tier deficits, not ownership -
-      // this probe only takes offers it can accept outright (zero deficits);
-      // chasing an upgrade-hint offer is serviceGrinder's archetype, not the
-      // competent baseline's.
+      // Acceptance is gated by tool-tier deficits, not ownership - this
+      // probe only takes offers it can accept outright (zero deficits);
+      // chasing an upgrade-hint offer is serviceGrinder's archetype, not
+      // the competent baseline's.
       const offer = state.serviceJobOffers.find(
         (o) =>
           expectedProfitPerLaborSlot(o, context) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&

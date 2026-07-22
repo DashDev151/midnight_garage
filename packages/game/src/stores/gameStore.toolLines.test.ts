@@ -63,8 +63,7 @@ describe('tool lines in the store (Sprint 36)', () => {
   })
 
   /**
-   * Sprint 43 (maintainer decision, 2026-07-13): tools now gate on cash AND
-   * reputation for tiers 2/3.
+   * Tools gate on cash AND reputation for tiers 2/3.
    */
   it("refuses (reputation gate) below wheels tier 2's rep floor even with unlimited cash", () => {
     const game = useGameStore()
@@ -94,7 +93,7 @@ describe('tool lines in the store (Sprint 36)', () => {
   })
 
   /**
-   * Sprint 92 (rental made legible): the tier-2 rung of every group carries a
+   * The tier-2 rung of every group carries a
    * one-line rental notice with the group's per-job fee while the machine is
    * unowned, and the line drops once it is owned. Tier 1 and tier 3 never carry
    * it.
@@ -121,11 +120,11 @@ describe('tool lines in the store (Sprint 36)', () => {
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
 
-    // Sprint 71: 'wheels' (brakePadsDiscs/brakeCalipersLines/rims/tyres) is
-    // entirely bolt-on/buried now - bench-only, refused on-car regardless of
+    // 'wheels' (brakePadsDiscs/brakeCalipersLines/rims/tyres) is
+    // entirely bolt-on/buried - bench-only, refused on-car regardless of
     // tool tier - so it can no longer prove an ABSENCE of a tier gate. 'body'
     // stays fully on-car-repairable and exercises the exact same claim.
-    // Sprint 93 (the band ceiling): a tier-1 repair finishes at fine, so target
+    // A tier-1 repair finishes at fine, so target
     // fine - the reachable ceiling. The claim under test is unchanged: no
     // OWNERSHIP gate exists, a fine repair just proceeds at tier 1.
     game.repair(car.id, 'body', 'fine')

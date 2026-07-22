@@ -4,28 +4,23 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
 
 /**
  * One piece of work the player intends to do on a car but hasn't committed to
- * yet (Sprint 18) - staged freely, at zero cost, until Confirm resolves the
- * whole list at once through the existing job/labor system. Mirrors
- * `ServiceJobWorkSchema`'s repair/install split, but carries the specific
- * `partInstanceId` for an install stage (the drag gesture onto a component
- * row *is* the part choice - there's no separate picker step).
+ * yet - staged freely, at zero cost, until Confirm resolves the whole list at
+ * once through the existing job/labor system. Mirrors `ServiceJobWorkSchema`'s
+ * repair/install split, but carries the specific `partInstanceId` for an
+ * install stage (the drag gesture onto a component row *is* the part choice).
  *
- * Sprint 26: `fix-issue` is retired with the hidden-issue system. A repair
- * stage gains `targetBand` (decision 5) - the player chooses how far to
- * climb, not always mint; Confirm climbs every non-mint, non-scrap part in
- * the group toward it, labor allowing (group-level "bridge", decision 13).
+ * A repair stage has `targetBand` - the player chooses how far to climb, not
+ * always mint; Confirm climbs every non-mint, non-scrap part in the group
+ * toward it, labor allowing.
  *
- * Sprint 28: both kinds gain an optional `carPartId` - the per-part address
- * added alongside the existing group-level addressing, not instead of it
- * (the CarDetailScreen drill-down's own per-part Repair/Replace rows). When
- * absent, behavior is exactly the pre-Sprint-28 group-level one (a `repair`
- * climbs every eligible part in the group; an `install` targets whichever
- * slot in the group the picked catalog part's own address resolves to).
- * When present, a `repair` climbs only that one part, and an `install` is
- * additionally checked against that exact slot (not just "some empty slot
- * somewhere in the group") - see `installFitGate` (sim/jobs.ts). An optional
- * field with no default, so this needed no save-schema version bump (see
- * `saveCodec.ts`'s `SAVE_VERSION` doc comment).
+ * Both kinds gain an optional `carPartId` - the per-part address added
+ * alongside the existing group-level addressing. When absent, behavior is
+ * exactly group-level (a `repair` climbs every eligible part in the group;
+ * an `install` targets whichever slot in the group the picked catalog part's
+ * own address resolves to). When present, a `repair` climbs only that one
+ * part, and an `install` is additionally checked against that exact slot
+ * (not just "some empty slot somewhere in the group") - see `installFitGate`
+ * (sim/jobs.ts).
  */
 export const StagedActionSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -41,13 +36,12 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     carPartId: CarPartIdSchema.optional(),
   }),
   /**
-   * Sprint 87 (the assembly model): pull / put back one sub-assembly as a unit.
-   * Addressed by `assemblyId` rather than a container id so a "remove then
-   * refit" pair stages coherently before the container exists - at Confirm the
-   * remove creates the container and the refit finds it (at most one container
-   * per (car, assembly) is ever on the bench). The confirm/labour pipeline
-   * itself is untouched; `confirmStagedWork` just calls the assembly resolvers
-   * for these two kinds.
+   * Pull / put back one sub-assembly as a unit. Addressed by `assemblyId`
+   * rather than a container id so a "remove then refit" pair stages coherently
+   * before the container exists - at Confirm the remove creates the container
+   * and the refit finds it (at most one container per (car, assembly) is ever
+   * on the bench). The confirm/labour pipeline itself is untouched;
+   * `confirmStagedWork` just calls the assembly resolvers for these two kinds.
    */
   z.object({ kind: z.literal('remove-assembly'), assemblyId: AssemblyIdSchema }),
   z.object({ kind: z.literal('refit-assembly'), assemblyId: AssemblyIdSchema }),

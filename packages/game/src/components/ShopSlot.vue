@@ -3,12 +3,11 @@ import { RouterLink } from 'vue-router'
 import type { ShopCarView } from '../stores/gameStore'
 import { useDraggable, useDropZone } from '../composables/useDragAndDrop'
 
-/**
- * One shop slot - a service bay or a parking row - draggable if occupied,
- * and always its own drop zone (Sprint 17). Purely presentational: the
- * parent decides what "accepts" means and what a drop actually does (move
- * vs. swap), since that depends on which list this slot belongs to and the
- * full game state this component deliberately doesn't know about.
+/** One shop slot - a service bay or a parking row - draggable if occupied,
+ * and always its own drop zone. Purely presentational: the parent decides what
+ * "accepts" means and what a drop actually does (move vs. swap), since that
+ * depends on which list this slot belongs to and the full game state this
+ * component deliberately doesn't know about.
  */
 const props = defineProps<{
   car: ShopCarView | null
@@ -16,8 +15,8 @@ const props = defineProps<{
   moveLabel: string
   moveDisabled: boolean
   testIdPrefix: string
-  /** A stable id for this slot when `car` is null, e.g. `empty-parking-2` - several empty
-   * slots can render at once (Sprint 17 playtest fix), so a single hardcoded "empty" would
+  /** A stable id for this slot when `car` is null, e.g. `empty-parking-2` -
+   * several empty slots can render at once, so a single hardcoded "empty" would
    * collide across all of them in the "Place here" button's `data-test`. */
   emptySlotId: string
 }>()
@@ -33,12 +32,11 @@ const dropZone = useDropZone<string>(
   (carId) => emit('drop', carId),
 )
 
-/**
- * Sprint 25 task 2: a customer's car still in transit occupies its slot
- * (the parking spot was claimed at accept time) but hasn't actually arrived
- * - there's nothing there yet to pick up or move, so the drag/pick gesture
- * is a no-op while `arrivingTomorrow` is true, same as the grab-handle
- * button being hidden entirely below.
+/** A customer's car still in transit occupies its slot (the parking spot was
+ * claimed at accept time) but hasn't actually arrived - there's nothing there
+ * yet to pick up or move, so the drag/pick gesture is a no-op while
+ * `arrivingTomorrow` is true, same as the grab-handle button being hidden
+ * entirely below.
  */
 function onCardPointerDown(event: PointerEvent): void {
   if (props.car?.arrivingTomorrow) return
@@ -82,9 +80,9 @@ function onCardPointerUp(event: PointerEvent): void {
           {{ car.displayName }}
           <span v-if="car.arrivingTomorrow" class="badge arriving">arriving tomorrow</span>
           <span v-else-if="car.isCustomerCar" class="badge">customer job</span>
-          <!-- Sprint 68 decision 4 (item 22): a live offer is waiting on this
-               car today. Same hardcoded-badge shape as the two above - three
-               is still not enough to justify a generic badge system. -->
+          <!-- A live offer is waiting on this car today. Same hardcoded-badge
+               shape as the two above - three is still not enough to justify a
+               generic badge system. -->
           <span
             v-if="car.hasOffer"
             class="badge offer"
@@ -115,9 +113,9 @@ function onCardPointerUp(event: PointerEvent): void {
     <div v-else class="slot-empty" :class="{ 'active-target': dropZone.isActiveTarget.value }">
       {{ dropZone.isActiveTarget.value ? 'drop here' : 'empty bay' }}
     </div>
-    <!-- Accessibility fallback (decision 2): a distinct button, never the
-         RouterLink/car area, so placing a picked car never fights with
-         navigating to a car whose slot happens to be the drop target. -->
+    <!-- Accessibility fallback: a distinct button, never the RouterLink/car
+         area, so placing a picked car never fights with navigating to a car
+         whose slot happens to be the drop target. -->
     <button
       v-if="dropZone.isActiveTarget.value"
       type="button"
@@ -195,7 +193,7 @@ function onCardPointerUp(event: PointerEvent): void {
   outline-offset: 4px;
 }
 
-/* Sprint 25 task 2: nothing to pick up yet - dimmed, no grab cursor. */
+/* Nothing to pick up yet - dimmed, no grab cursor. */
 .car-card.in-transit {
   opacity: 0.5;
   cursor: default;
@@ -226,7 +224,7 @@ function onCardPointerUp(event: PointerEvent): void {
 }
 
 /* Money on the table reads in the money colour, not the violet the
-   customer-job badge uses (Sprint 68 item 22). */
+   customer-job badge uses. */
 .badge.offer {
   color: var(--mg-yen);
 }

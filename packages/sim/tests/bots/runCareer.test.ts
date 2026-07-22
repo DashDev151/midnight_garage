@@ -70,25 +70,10 @@ describe('Passive Grinder', () => {
 })
 
 describe('Service Grinder (the Act 1 floor)', () => {
-  /**
-   * Sprint 36 re-base: the equipment-ownership bootstrap this describe used
-   * to measure (Sprints 16/22/33 - a catch-22 between reputation-gated
-   * equipment and the job board's hint/actionable filter, re-fixed twice and
-   * re-measured each time) is structurally gone. Every tool line is owned at
-   * tier 1 from day one, the offer filter and hint reroll are deleted, and
-   * with Sprint 36's all-default-1 `minToolTier` content every offer on the
-   * board is acceptable outright. What remains is the archetype's real
-   * claim - the Act 1 floor: service work alone, on cars the bot never owns,
-   * produces paid income within a career. Still sampled across seeds (offer
-   * arrival and profitability stay seed-dependent), but no longer against a
-   * deliberately-probabilistic filter, so a smaller sample carries the claim.
-   */
+  // Sampled across seeds: offer arrival and profitability are seed-dependent.
   const SEED_SAMPLE_SIZE = 50
 
-  // 50 seeds x 100 days outruns vitest's 5s default test timeout under
-  // `pnpm test:coverage`'s v8 instrumentation overhead (plain `pnpm test`
-  // comfortably clears the default) - the explicit 20s below is a real
-  // wall-clock budget, not a looser assertion.
+  // Real wall-clock budget for 50 seeds x 100 days under coverage instrumentation.
   const PAID_WORK_SAMPLE_TIMEOUT_MS = 20_000
 
   it(
@@ -110,109 +95,17 @@ describe('Service Grinder (the Act 1 floor)', () => {
 })
 
 describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
-  /**
-   * Sprint 16 gated `regional` tier behind `local` reputation, but this
-   * strategy only ever inspected/bid on regional lots and never did anything
-   * that earns reputation (no service jobs; it can't sell a car it never
-   * owns) - a catch-22 identical in shape to the Service Grinder one above,
-   * just discovered five sprints later because the balance harness sat
-   * unrun in between. Verified via the real 2026-07-10 harness run: 0/1000
-   * seeds ever owned a car, reputation flat at 0 the entire career, cash
-   * trajectory bit-for-bit identical to Passive Grinder's do-nothing
-   * baseline.
-   *
-   * Fixing this uncovered two more real, stacked bugs that had never had a
-   * chance to manifest before (acquisition itself was always the first
-   * blocker): `REPAIRABLE_COMPONENTS`'s old engine-first order made this bot
-   * always try to unlock the single most expensive tool in the game
-   * (engine-crane, Y1.5M - more than its entire starting capital) before any
-   * other, and it had no "continue an already-open job" step at all (every
-   * other bot does), so a job that didn't finish the same day it was
-   * created - e.g. because inspection already spent labor that day - sat
-   * open forever. Both fixed in `cautiousRestorer.ts` (see its own doc
-   * comments).
-   *
-   * What's left, disclosed rather than force-fixed: this bot only ever
-   * lists a car once ALL 8 repairable components clear 90 (Sprint 03's
-   * "fully restores every zone" identity, widened from 5 to all 8 by
-   * Sprint 23 decision 6 - wheels/brakes/forcedInduction now count too) -
-   * which needs all 7 equipment types owned first (Y4.25M combined, per
-   * equipment.json), against a Y1.5M starting budget now also paying weekly
-   * rent (decision 4). Sprint 23 decisions 1/3/6 make real progress (repair
-   * order no longer deadlocks, 3 of 7 gates loosen, a real clean-sale bar
-   * now exists to aim at) but do not close this gap: real 2026-07-11
-   * measurement (the test below) shows 30/30 seeds still bootstrap into
-   * ownership but 0/30 ever complete a full 8-component restoration within
-   * 100 days, topping out at 4 of 7 tools owned. That's not a mechanical bug
-   * like the two above; it's a real tension between this archetype's
-   * original "always fully restore, never sell partial" design (Sprint 03,
-   * predates equipment gating) and the widened bar, and it's not this fix's
-   * call to resolve by quietly loosening what "fully restored" means or by
-   * giving this bot a service-job income stream it was never designed to
-   * have. Tracked honestly in TODO.md and sprint23.md's Exit, matching this
-   * project's own precedent for reporting a real negative finding (Sprint
-   * 03's original "Cautious Restorer's day100 result is honestly negative")
-   * rather than silently patching it away. `competentPolicyStrategy`
-   * (Sprint 23) is the bot that actually escapes this cycle, via a
-   * service-job overflow step this one deliberately doesn't have - see its
-   * own days-to-tier measurement (M3) for the sprint's real pacing claim.
-   *
-   * Sprint 36 note: the equipment-ownership world the paragraphs above
-   * describe (reputation-gated tools, Y4.25M of purchases needed for full
-   * coverage) is retired - every tool line is owned at tier 1 from day one
-   * and only upgrade PRICE gates progress. The history stays because it is
-   * what the bootstrap-rate thresholds below were measured against; the
-   * `equipmentOwnedCount` snapshot field now counts tool-tier upgrades
-   * (sum of tiers minus 6) under its legacy CSV name.
-   */
+  // This bot only sells a car once ALL 8 repairable components clear 90,
+  // which needs all 7 equipment types owned (Y4.25M combined) against a
+  // Y1.5M start now paying rent - it bootstraps into ownership reliably but
+  // rarely finishes a full restoration or upgrades a tool tier.
   const SEED_SAMPLE_SIZE = 200
 
-  // 200 seeds x 100 days outruns vitest's 5s default test timeout under
-  // `pnpm test:coverage`'s v8 instrumentation overhead (plain `pnpm test`
-  // comfortably clears the default) - same class of fix as
-  // `PAID_WORK_SAMPLE_TIMEOUT_MS` above, an explicit wall-clock budget, not
-  // a looser assertion. Sprint 41's tier-scaled repair-cost math adds a
-  // little more per-day work to every simulated career, tipping these two
-  // already-borderline loops over the default.
-  // Re-measured (Sprint 73, diagnosis I): a symptomatic auction lot now
-  // reprices through `sheetGuideValueYen` (a handful of extra `marketValueYen`
-  // calls per cause) every time `carGuideValueYen` is read - reserve, buyout,
-  // every rival cohort's private valuation, every active night the lot stays
-  // open. Real, deliberate added work, not a bug (`diagnosis.ts`'s
-  // `symptomDiscountYen` already shares one apparent-view computation across
-  // both callers rather than duplicating it). Measured directly under
-  // `pnpm test:coverage`: ~22.4s and ~21.9s for these two tests respectively
-  // (was comfortably under the old 20s budget pre-Sprint-73) - bumped with
-  // real headroom rather than to the bare measured figure.
-  // Re-bumped again 45,000 -> 70,000 (Sprint 75): observed timing out at
-  // 45,000 under this session's full-workspace coverage run - the same
-  // CPU-contention class of cause as every other bump in this file, not a
-  // logic regression (this exact test passes in well under 10s whenever run
-  // in isolation, coverage included).
+  // Real wall-clock budget for 200 seeds x 100 days under coverage instrumentation.
   const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 70_000
 
-  /**
-   * Sprint 27 update, re-measured (not re-derived) after the restoration-
-   * bill value rewrite: this bot never lowballs (`FAIR_BID_MULTIPLIER`), and
-   * `walkAwayTargetYen` now derives from `instanceValue`, which floor-clamps
-   * at `floorFraction * cleanValue` (0.1x) for almost any realistically-worn
-   * local-yard-tier lot - the fixed per-part restoration cost total
-   * (~Y524k-2.6M across all 29 parts, unrelated to a model's own book value)
-   * dwarfs a shitbox/common book value (Y180k-650k) far more often than it
-   * dwarfs a regional-tier one. Measured directly (this exact harness, 900
-   * rolled local-yard lots): only ~2% clear the unchanged 0.4x-book auction
-   * reserve at all. A fair-pricing, non-lowballing bidder can no longer
-   * reliably open bidding on most local-yard lots - real, honest, and
-   * substantially lower than the pre-Sprint-27 rate this test used to
-   * require. n=200: 65 successes (32.5%) - a real, repeatable minority, not
-   * sampling noise (n=30 gave 11/30, 37%, the same order of magnitude).
-   * Flagged prominently in sprint27.md's Exit for maintainer review (the
-   * `floorFraction` vs `AUCTION_RESERVE_PRICE_FRACTION` pairing looks
-   * miscalibrated relative to the retired formula, which kept its own floor
-   * near 0.42x book - just above reserve, by design). This test is
-   * recalibrated to the honestly-measured rate, not called a regression, per
-   * this file's own established precedent for this exact bot.
-   */
+  // A fair, non-lowballing bidder clears auction reserve on a real minority
+  // of local-yard lots, so the bootstrap rate is a minority, not a majority.
   it(
     'a meaningful share of 100-day careers bootstrap into real car ownership via the local-yard fallback',
     () => {
@@ -229,25 +122,9 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
   it(
     'almost none of those that bootstrap ever invest in the shop, once tool tiers gate on reputation (Sprint 43)',
     () => {
-      // Before Sprint 19c: 0/1000 real seeds ever bought equipment at all (the
-      // engine-crane-first deadlock). Sprint 36 restored a real majority under
-      // the tool-line model (any line, tier 1 -> 2, cash-gated only). Sprint 43
-      // (maintainer decision, 2026-07-13: tiers 2/3 gate on reputation same as
-      // bays) inverts that majority back toward zero for THIS bot specifically -
-      // measured directly (this exact harness, 200 real seeds): 200/200
-      // bootstrap into car ownership, but only 2/200 ever clear even tier 2's
-      // `local` floor on ANY of the six lines. Root cause confirmed structural,
-      // not a bug: this bot never runs service jobs and its sales rarely clear
-      // the clean/concours bar (the only two ways reputation accrues), so it has
-      // no realistic route to `local` - the exact "0/30 ever earn a point"
-      // finding already documented above for this same bot, now blocking EVERY
-      // tool tier instead of just the reputation-only claims that were already
-      // known-open. Maintainer-confirmed (2026-07-13): this is the simulation
-      // exposing a bot that plays the game in an unintended way (cash-only,
-      // no reputation faucet), and the resulting tool-upgrade lockout is the
-      // correct, intended consequence of gating tools on reputation - not a
-      // defect to tune away. Deferred to TODO.md for a future bot-behavior
-      // pass (give this archetype some route to reputation), not fixed here.
+      // This bot never runs service jobs and its sales rarely clear the
+      // clean/concours bar, so it has no realistic route to `local` and is
+      // locked out of every tool tier past 1 (TODO.md tracks a future fix).
       let bootstrapped = 0
       let upgraded = 0
       for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
@@ -261,89 +138,15 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
     },
     BOOTSTRAP_SAMPLE_TIMEOUT_MS,
   )
-
-  /**
-   * Sprint 23 decision 6 predicted that, after decisions 1-3, "a majority
-   * of bootstrapped careers also reach reputationPoints > 0 within 100
-   * days" would become a feasible assertion. Real measurement (30 real
-   * seeds, this exact harness) disproves that: 30/30 bootstrap into car
-   * ownership, but 0/30 ever earn a point, and equipment ownership tops out
-   * at 4 of the 7 tools a full 8-component restoration now needs (decision
-   * 6 also widens `REPAIRABLE_COMPONENTS` from 5 to all 8 real components,
-   * per its own text - adding wheels/brakes/forcedInduction). The reason is
-   * structural, not a leftover bug: this bot's Sprint 03 identity never
-   * sells a car until literally every component clears the repair
-   * threshold, and full coverage now requires all 7 equipment types
-   * (Y4.25M combined) - against a Y1.5M start now also paying weekly rent
-   * (decision 4), with no service-job income to supplement it (this bot has
-   * no service-job step at all, unlike `serviceGrinderStrategy` or
-   * `competentPolicyStrategy`). Decision 3 only loosens 3 of the 7 gates;
-   * engine-crane (engine + forcedInduction, both mandatory under the
-   * widened list) still needs `known` reputation, and this bot has no route
-   * to `known` other than the clean sale it can't yet complete - the same
-   * circular-gate shape the sprint's own Trigger paragraph names, just
-   * recurring here at a stricter bar than decisions 1-3 close for a bot
-   * with no alternate (service-job) faucet. `competentPolicyStrategy` is
-   * Sprint 23's actual instrument for the reputation-pacing claim (see M3
-   * below) precisely because its service-job overflow step breaks this
-   * exact cycle; this file's job is disclosure, not a forced pass. Recorded
-   * in sprint23.md's Exit rather than silently loosening this assertion
-   * until it's true, matching this file's own established precedent (see
-   * the "What's left, disclosed rather than force-fixed" comment above).
-   */
 })
 
 describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => {
-  /**
-   * The real, hard-gated CI check (`tools/balance/src/balance/check`,
-   * invariant 3) runs this against the full 1000-career export and requires
-   * p50 in [15, 35] - measured there (2026-07-11): p50=30, 983/1000 seeds
-   * reach `local` within the 100-day horizon. This unit-level test is a
-   * much smaller, fast smoke check on the same claim (a clear majority
-   * reach `local`), not a re-derivation of the CI-gated percentile band -
-   * that lives in Python against the real export, per decision 7.
-   */
+  // Smoke check on the days-to-`local` claim (the CI balance invariant is suspended per directive 21).
   const SEED_SAMPLE_SIZE = 100
 
-  // 100 seeds x 100 days outruns vitest's 5s default test timeout under
-  // `pnpm test:coverage`'s v8 instrumentation overhead - same class of fix
-  // as `BOOTSTRAP_SAMPLE_TIMEOUT_MS` above. Re-bumped 20,000 -> 30,000
-  // (Sprint 75): observed timing out at the old figure under this session's
-  // full-workspace coverage run (heavier CPU contention across ~90
-  // concurrent test files than whatever this figure was originally measured
-  // against) - real headroom, not the bare re-measured number.
+  // Real wall-clock budget for 100 seeds x 100 days under coverage instrumentation.
   const REPUTATION_SAMPLE_TIMEOUT_MS = 30_000
 
-  /**
-   * Sprint 69 re-based this from "a clear majority" to "a usable sample", with
-   * the real number disclosed rather than the bar quietly nudged: measured
-   * 45/100 at the Sprint 69 ladder.
-   *
-   * Sprint 71 (the teardown game) broke this probe outright: 0/100 seeds now
-   * gain a single reputation point in 100 days. `competentPolicyStrategy`
-   * (`bots/competentPolicy.ts`) still treats every component group as
-   * on-car-repairable; step 4 claims the sole starting service bay for the
-   * first below-mint group it finds, but Sprint 71 moved bolt-on/buried
-   * repair to the bench (`planGroupRepair` now excludes those slots
-   * entirely, `bands.ts`), so a bolt-on/buried group can never reach mint
-   * through this bot's only repair path. Step 4b's stall-detection never
-   * rescues it either: `carsGettingJobsToday.add(car.id)` runs
-   * unconditionally, even when the queued repair plan was empty, so the bay
-   * is never freed. With `MAX_CONCURRENT_CARS = 1` the one bay and the one
-   * car are wedged together for the rest of the career, and since the same
-   * bay also gates step 6's service-job work, reputation gain stops
-   * entirely, not just the clean/concours sale path.
-   *
-   * This is a bot-harness limitation (see `TODO.md`'s bot-harness rework
-   * entry, finding 6), not a defect in the teardown mechanic itself: a human
-   * player uses the new uninstall/bench-repair/reinstall loop freely
-   * (`CarDetailScreen.vue`'s "Take it off"). Per this file's own established
-   * precedent (the Handyman/Cautious-Restorer/competent-policy tool-upgrade
-   * lockouts recorded in `TODO.md`), the assertion is rewritten to the
-   * honestly-measured value, not loosened to force a pass, and teaching a bot
-   * the teardown loop is deferred to the bot-harness rework rather than
-   * patched ad hoc in Sprint 71.
-   */
   it(
     'enough 100-day careers reach `local` for days-to-`local` to be measurable at all',
     () => {
@@ -352,31 +155,17 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
         const { snapshots } = runCareer(competentPolicyStrategy, seed, 100, CONTEXT)
         if (snapshots.some((s) => s.reputationTier !== 'unknown')) reachedLocal++
       }
-      // Sprint 71: honestly-measured zero (see comment above) - the probe is
-      // now unmeasurable, not merely thin. Pinned rather than force-passed so
-      // a bot-harness rework that teaches teardown must consciously revisit
-      // this exact assertion.
+      // Zero is a known bot-harness limitation (TODO.md): this policy's only
+      // repair path can't reach bolt-on/buried groups, wedging its one
+      // service bay for the whole career.
       expect(reachedLocal).toBe(0)
     },
     REPUTATION_SAMPLE_TIMEOUT_MS,
   )
 
-  /**
-   * Sprint 32: reputation legitimately oscillates now (a service-job
-   * completion earns it, a later failure - deadline missed while the one
-   * starting service bay is busy elsewhere - floors it straight back to 0,
-   * `applyReputationDelta`'s existing behavior) rather than climbing
-   * monotonically, so pinning either claim to the exact final snapshot of
-   * one hardcoded seed is fragile: a content reprice, or (Sprint 40) the
-   * generation-forcing step's extra rng draw on a collision, can legitimately
-   * shift a career's whole downstream draw sequence - which day a reset
-   * lands on, or whether a tool upgrade happens to fall inside the 100-day
-   * window - without the underlying mechanic being broken (seed 1 itself
-   * flipped from "upgrades by day 4" to "never upgrades in 100 days" purely
-   * from Sprint 40's fix, while still ending on healthy cash/reputation).
-   * Assert both claims across a seed sample instead of betting everything on
-   * seed 1, same shape as the majority check just above.
-   */
+  // Reputation legitimately oscillates (a completion earns it, a later
+  // failure floors it back to 0), so this asserts across a seed sample
+  // rather than pinning one seed's exact trajectory.
   it(
     'a clear majority of careers see the faucet fire (reputationPoints > 0), though post-Sprint-59 none afford a tool upgrade within 100 days',
     () => {
@@ -386,43 +175,13 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
         const { snapshots } = runCareer(competentPolicyStrategy, seed, 100, CONTEXT)
         if (snapshots.some((s) => s.reputationPoints > 0)) sawFaucetCount++
         const finalSnapshot = snapshots[snapshots.length - 1]
-        // Bay-release fix (Sprint 23 M3): the policy must free its service bay
-        // from a stalled restoration so the service-job overflow can ever run -
-        // tool tiers climbing past the tier-1 floor (Sprint 36: the snapshot
-        // field counts upgrades now) is the visible signature that this isn't
-        // happening via cars alone.
         if (finalSnapshot && finalSnapshot.equipmentOwnedCount > 0) upgradedCount++
       }
-      // Re-pinned (the overnight bidder is gone): the instant buyout is now
-      // this policy's only acquisition channel, priced as a flat premium
-      // over the value anchor rather than a contested ladder starting near
-      // the reserve - a real, structural rise in the cash a first
-      // acquisition needs. Measured 11/100 within the 100-day window, down
-      // hard from a clear majority. The faucet still genuinely fires for a
-      // real fraction of careers, just far fewer of them; not loosened to
-      // force the old bar, asserted near the honestly-measured value.
+      // A real minority of careers see the faucet fire; asserted near the
+      // honestly-measured value, not a majority bar.
       expect(sawFaucetCount).toBeGreaterThan(5)
-      // Sprint 44 (constant, price-derived repair costs + the across-the-
-      // board catalog rebase) measurably cooled tool-upgrade adoption for
-      // this policy (measured 48/100, down from a majority pre-Sprint-44) -
-      // cheaper repairs plausibly reduce the cash pressure that used to push
-      // the bot toward upgrading tools within the 100-day window.
-      // Re-pinned again (Sprint 52, the classifieds gate): reputation/cash
-      // eligibility no longer means purchasable - a live listing for the
-      // exact line+tier is required too, and only one listing exists at a
-      // time across all six lines with a real, roughly-4-8-day gap between
-      // them. Measured 14/100 within the 100-day window, down hard from 48 -
-      // exactly the timing shift `sprint52.md`'s own decision 2 anticipated
-      // ("competent-policy's tool timing will shift"), not a bug.
-      // Re-pinned again (Sprint 59, the earned-yen retune): STARTING_CASH_YEN
-      // cut 1.5M -> 300k plus tightened service-job margins push tool-tier
-      // affordability past the 100-day window entirely for this policy -
-      // measured 0/100, down from 14. Reputation itself is unaffected
-      // (`sawFaucetCount` above still clears its own bar easily); this is a
-      // real cash-pressure effect, not a logic bug, and is tracked in
-      // TODO.md alongside the pre-existing Handyman/Cautious-Restorer
-      // tool-lockout finding for a future maintainer bot-tuning pass. Not
-      // loosened to force a pass - asserted at the honestly-measured value.
+      // Tool-tier affordability falls outside the 100-day window for this
+      // policy; reputation itself is unaffected (TODO.md tracks this).
       expect(upgradedCount).toBe(0)
     },
     REPUTATION_SAMPLE_TIMEOUT_MS,
@@ -430,26 +189,7 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
 })
 
 describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
-  /**
-   * Sprint 43 (maintainer decision, 2026-07-13: tool tiers 2/3 gate on
-   * reputation, same as bays) inverts this claim for Handyman specifically.
-   * Measured directly (this exact harness, 30 real seeds): 0/30 ever clear
-   * even tier 2's `local` floor on any of the six lines - Handyman never
-   * runs service jobs and its sales rarely clear the clean/concours bar, the
-   * only two ways reputation accrues, so it has no realistic route to
-   * `local`. Confirmed structural, not a bug (maintainer, 2026-07-13): a bot
-   * with no reputation faucet is playing the game in an unintended way, and
-   * being permanently locked out of every tool tier is the correct,
-   * intended consequence of gating tools on reputation - not tuned away
-   * here. Deferred to TODO.md for a future bot-behavior pass. Investor
-   * (the never-upgrades control) is unaffected either way - it never
-   * intended to upgrade in the first place.
-   */
-  // Same class of fix as `BOOTSTRAP_SAMPLE_TIMEOUT_MS`/
-  // `REPUTATION_SAMPLE_TIMEOUT_MS` above: 30 real 100-day careers clears
-  // vitest's 5s default comfortably alone, but not under `pnpm
-  // test:coverage`'s full-workspace v8 instrumentation + CPU contention
-  // across ~90 concurrent test files (observed directly, Sprint 75).
+  // Real wall-clock budget for 30 seeds x 100 days under coverage instrumentation.
   const TOOL_LOCKOUT_SAMPLE_TIMEOUT_MS = 20_000
 
   it(
@@ -476,11 +216,7 @@ describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
  */
 const TELEMETRY_SEED_COUNT = 30
 
-// Same class of fix as `BOOTSTRAP_SAMPLE_TIMEOUT_MS`/
-// `REPUTATION_SAMPLE_TIMEOUT_MS` above (Sprint 73): 30 real 100-day careers
-// clears vitest's 5s default comfortably alone (~4.6s measured directly,
-// Sprint 75), but not under `pnpm test:coverage`'s full-workspace v8
-// instrumentation + CPU contention across ~90 concurrent test files.
+// Real wall-clock budget for 30 seeds x 100 days under coverage instrumentation.
 const TELEMETRY_SAMPLE_TIMEOUT_MS = 20_000
 
 function aggregateCareers(strategy: BotStrategy, seedCount: number) {

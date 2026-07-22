@@ -41,22 +41,20 @@ export interface AdvanceDayResult {
  * Sim contract: advanceDay(state, queuedActions, seed, context) -> newState + eventLog.
  * `seed` is caller-derived per day (e.g. state.seed + state.day), not read
  * from state.seed directly, so every day gets a distinct but fully
- * reproducible RNG stream from one career seed. `context` (Sprint 03
- * addition) carries the static content catalogs - models, parts, buyers,
- * hidden issues - that auction generation and valuation need; sim has no
- * data loader of its own, so the caller builds it once and passes it in.
+ * reproducible RNG stream from one career seed. `context` carries the static
+ * content catalogs - models, parts, buyers, hidden issues - that auction
+ * generation and valuation need; sim has no data loader of its own, so the
+ * caller builds it once and passes it in.
  *
- * Sprint 11: this function shrank from resolving every player action to a
- * pure day-boundary tick. Every action that used to resolve here now has its
- * own instant resolver (bidding.ts, auctions.ts, selling.ts, serviceJobs.ts,
- * parts.ts, jobs.ts) that the store calls directly the moment the player
- * clicks. `queuedActions` still exists because bots decide a whole day at
- * once (they're headless - they can't click); advanceDay resolves their
- * batch by calling the exact same instant resolvers in a loop, one call per
- * queued action, so there is one resolution path, not two. What's left
- * inline below is genuinely day-boundary-only: labor reset, weekly rent and
- * market-heat update, catalog refresh and expiry, and the service-job
- * deadline backstop.
+ * Every action that resolves has its own instant resolver (bidding.ts,
+ * auctions.ts, selling.ts, serviceJobs.ts, parts.ts, jobs.ts) that the
+ * store calls directly the moment the player clicks. `queuedActions` exists
+ * because bots decide a whole day at once (they're headless - they can't
+ * click); advanceDay resolves their batch by calling the exact same instant
+ * resolvers in a loop, one call per queued action, so there is one resolution
+ * path, not two. What's left inline below is genuinely day-boundary-only:
+ * labor reset, weekly rent and market-heat update, catalog refresh and
+ * expiry, and the service-job deadline backstop.
  */
 export function advanceDay(
   state: GameState,
@@ -119,11 +117,11 @@ export function advanceDay(
   // repair-zone spec passes through the same `repairJobGate` the player's
   // instant path uses (consumables + repair cost affordable) before it's
   // created - a gate refusal just skips that one queued spec rather than
-  // creating a job that could never receive labor. Sprint
-  // 24 fix 2: an install-part spec likewise passes `installFitGate` - this
-  // loop calls `findOrCreateJob`'s two gates directly rather than
-  // `findOrCreateJob` itself (see that function's own doc comment on the
-  // differing id schemes), so both gates need calling here explicitly.
+  // creating a job that could never receive labor. An install-part spec
+  // likewise passes `installFitGate` - this loop calls `findOrCreateJob`'s
+  // two gates directly rather than `findOrCreateJob` itself (see that
+  // function's own doc comment on the differing id schemes), so both gates
+  // need calling here explicitly.
   const jobs: Job[] = [...next.jobs]
   queuedActions.createJobs.forEach((spec, i) => {
     const fitGate = installFitGate(next, spec, context)
@@ -149,8 +147,8 @@ export function advanceDay(
   next = { ...next, jobs }
 
   // 1b. Bots' queued part purchases - the player buys instantly via
-  // resolveBuyPart directly from the store (via the cart/checkout flow,
-  // Sprint 14). Bots choose deliverySpeed themselves (partDeliveryHelpers.ts)
+  // resolveBuyPart directly from the store (via the cart/checkout flow).
+  // Bots choose deliverySpeed themselves (partDeliveryHelpers.ts)
   // before queuing the action; this loop just calls the same resolver.
   for (const { partId, deliverySpeed } of queuedActions.buyParts) {
     const result = resolveBuyPart(next, partId, context, deliverySpeed)
@@ -166,7 +164,7 @@ export function advanceDay(
     log.push(...result.log)
   }
 
-  // 1d. Bots' queued scrap-part sells (Sprint 26 decision 6) - the player
+  // 1d. Bots' queued scrap-part sells - the player
   // sells instantly via resolveScrapPart directly from the store.
   for (const { partInstanceId } of queuedActions.scrapParts) {
     const result = resolveScrapPart(
@@ -249,13 +247,11 @@ export function advanceDay(
   }
 
   // 5. Bots' queued for-sale toggles - the player toggles instantly via
-  // resolveSetForSale directly from the store. Sprint 31: replaces the old
-  // instant walk-in-sell/list-publicly channels outright - a car simply
-  // becomes eligible (or ineligible) for the daily offer draw below the
-  // moment this fires. Runs before offer acceptance so a bot that both
-  // drops one car and accepts an offer on another the same day sees a
-  // consistent `carsForSale` either way (the two never target the same car
-  // in practice, but there's no ordering hazard if they did).
+  // resolveSetForSale directly from the store. A car simply becomes eligible
+  // (or ineligible) for the daily offer draw below the moment this fires.
+  // Runs before offer acceptance so a bot that both drops one car and accepts
+  // an offer on another the same day sees a consistent `carsForSale` either
+  // way.
   for (const { carInstanceId, forSale } of queuedActions.setForSale) {
     const result = resolveSetForSale(next, carInstanceId, forSale)
     next = result.state
@@ -265,42 +261,37 @@ export function advanceDay(
   // 5b. Bots' queued offer accepts - the player accepts instantly via
   // resolveSellViaWalkIn directly from the store. Resolves TODAY's live
   // offer (rolled at the end of the PREVIOUS day's advanceDay tick, step 8a2
-  // below) through the walk-in resolution path - reputation/heat/event-log
-  // plumbing unchanged since Sprint 11, only the price source moved (see
-  // that function's own doc comment, selling.ts).
+  // below) through the walk-in resolution path.
   for (const { carInstanceId } of queuedActions.acceptOffers) {
     const result = resolveSellViaWalkIn(next, carInstanceId, context)
     next = result.state
     log.push(...result.log)
   }
 
-  // 6. Resolve standard-delivery part orders due today (Sprint 14) - the
-  // same "due today resolves, the rest stays pending" shape every
-  // day-boundary resolution loop in this function uses.
+  // 6. Resolve standard-delivery part orders due today - the same
+  // "due today resolves, the rest stays pending" shape every day-boundary
+  // resolution loop in this function uses.
   const deliveries = resolvePartDeliveries(next)
   next = deliveries.state
   log.push(...deliveries.log)
 
   // 6b. Clear arrivesOnDay on any accepted service job whose customer car
-  // reaches the shop today (Sprint 25 task 2) - same "due today resolves"
-  // shape as 6, immediately above.
+  // reaches the shop today - same "due today resolves" shape as 6, immediately
+  // above.
   const arrivals = resolveServiceJobArrivals(next)
   next = arrivals.state
   log.push(...arrivals.log)
 
-  // 7. Expire every active auction lot whose backstop day (Sprint 19
-  // decision 1's flash/standard/long duration roll) has arrived. A lot no
-  // longer resolves overnight - it is settled, same day, by an instant
+  // 7. Expire every active auction lot whose backstop day has arrived. A lot
+  // no longer resolves overnight - it is settled, same day, by an instant
   // buyout (`resolveBuyoutInstant`, step 4 above) or by winning it in the
   // live auction room (`settleAuctionHammer`, called directly from the store
   // the moment the room closes) - so anything still on the board once
-  // `expiresOnDay` arrives has genuinely gone unsold. Silent: an unsold lot
-  // was already the quiet, no-log case before this sprint. Stale
-  // service-job offers expire the same way they always have. Then roll
-  // today's staggered arrivals (Sprint 30 decision 4: `catalogs.ts`'s
-  // `generateDailyAuctionArrivals`, EVERY day, not just a day-7 boundary -
-  // day 1's own full opening board still comes from `createInitialGameState`
-  // via `refreshCatalogs`, a separate, fixed-batch generation path).
+  // `expiresOnDay` arrives has genuinely gone unsold. Stale service-job
+  // offers expire the same way. Then roll today's staggered arrivals via
+  // `catalogs.ts`'s `generateDailyAuctionArrivals`, EVERY day - day 1's own
+  // full opening board still comes from `createInitialGameState` via
+  // `refreshCatalogs`, a separate, fixed-batch generation path.
   const unexpiredLots = next.activeAuctionLots.filter((lot) => next.day < lot.expiresOnDay)
   next = { ...next, activeAuctionLots: unexpiredLots }
   const unexpiredOffers = next.serviceJobOffers.filter((offer) => offer.expiresOnDay > next.day)
@@ -308,19 +299,11 @@ export function advanceDay(
 
   // `next.day + 1` (not `next.day`), same pre-increment-day convention as
   // `generateDailyServiceJobOffers` just below - these lots are posted for
-  // the day about to begin, and generation's own `lot-${day}-${tier}-${i}`
-  // id scheme would otherwise collide with `createInitialGameState`'s day-1
-  // seed batch (both would generate `lot-1-*` ids on the very first
-  // advanceDay call, silently merging two DIFFERENT lots under one id - every
-  // id-keyed operation in bidding.ts then treats them as the same lot, so a
-  // single bid mirrors onto both and one lot's hammer resolution removes
-  // both from the board; whichever of the two resolves second, if parking or
-  // cash no longer allows it, then logs a bogus "lost" for a lot the player
-  // already genuinely won and paid for on the first resolution. This is the
-  // exact hazard `generateDailyServiceJobOffers`'s own `next.day + 1` was
-  // already guarding against in this same file - Sprint 30 introduced the
-  // unconditional daily call without carrying that offset over. Found via a
-  // real playtest report, 2026-07-13.
+  // the day about to begin. Generation's own `lot-${day}-${tier}-${i}` id
+  // scheme would collide with `createInitialGameState`'s day-1 seed batch if
+  // both generated `lot-1-*` ids on the first advanceDay call. This would
+  // silently merge different lots under one id, causing id-keyed operations
+  // to treat them as the same lot.
   const arrivalsToday = generateDailyAuctionArrivals(next, context, next.day + 1, rng)
   for (const { tier, lotCount } of arrivalsToday.lotsByTier) {
     log.push({ type: 'auction-catalog-refreshed', tier, lotCount })
@@ -330,31 +313,23 @@ export function advanceDay(
     arrivalsToday.freshLots.map((lot) => lot.modelId),
   )
 
-  // 7-tut. Sprint 89: keep the scripted tutorial lot on the board while the
-  // tutorial window is open - re-injected here (a no-op unless it resolved this
-  // tick and the mission is still live) for the day about to begin, `next.day +
-  // 1`, matching the arrivals convention just above so it hammers at the next
-  // End Day exactly as its first injection did. Inert for every non-tutorial
+  // 7-tut. Keep the scripted tutorial lot on the board while the tutorial
+  // window is open - re-injected here (a no-op unless it resolved this tick
+  // and the mission is still live) for the day about to begin, `next.day + 1`,
+  // matching the arrivals convention just above. Inert for every non-tutorial
   // career (`tutorialStatus` absent).
   next = ensureTutorialLot(next, context, next.day + 1)
 
-  // 7a. Sprint 29: daily service-job offer generation - a bell-curve draw
-  // (0-4, economy.json's `serviceJobs.dailyOfferCountWeights`) EVERY day,
-  // replacing the old weekly fixed-count dump `refreshCatalogs` used to also
-  // produce (see that function's own doc comment). Uses the same `rng`
-  // stream as everything else this day, drawn from sequentially like every
-  // other per-day concern in this function. `next.day + 1` (not `next.day`),
-  // same pre-increment-day convention as `resolvePartDeliveries`/
-  // `resolveServiceJobArrivals` elsewhere in this file: these offers are
-  // posted for the day about to begin, and generation's own `svc-${day}-${i}`
-  // id scheme would otherwise collide with `createInitialGameState`'s day-1
-  // seed batch (both would generate `svc-1-*` ids on the very first
-  // advanceDay call, silently duplicating offer ids with different content).
-  // Sprint 95 decision 4 (the radial-offer gate): while the tutorial is
-  // active and Yuki's mission is undelivered, the board stays deliberately
-  // Yuki-only - generation is skipped at this call site, never forked inside
-  // the generator. A delivery or a skip lifts the gate here, at the next End
-  // Day; a non-tutorial career is never gated.
+  // 7a. Daily service-job offer generation - a bell-curve draw (0-4,
+  // economy.json's `serviceJobs.dailyOfferCountWeights`) every day. Uses the
+  // same `rng` stream as everything else this day, drawn sequentially.
+  // `next.day + 1` (not `next.day`), same pre-increment-day convention as
+  // `resolvePartDeliveries`/`resolveServiceJobArrivals` elsewhere in this
+  // file - these offers are posted for the day about to begin. While the
+  // tutorial is active and Yuki's mission is undelivered, the board stays
+  // deliberately Yuki-only - generation is skipped at this call site, never
+  // forked inside the generator. A delivery or a skip lifts the gate at the
+  // next End Day; a non-tutorial career is never gated.
   if (!radialOffersGated(next)) {
     const freshServiceJobOffers = generateDailyServiceJobOffers(
       context,
@@ -373,23 +348,20 @@ export function advanceDay(
     }
   }
 
-  // 7a2. Sprint 31: the daily for-sale offer draw for the day about to
-  // begin - same day-boundary-generation position as 7a immediately above,
-  // and the same reason: today's report shows "a tuner is offering..." for
-  // the day that's about to start, exactly like an auction catalog refresh
-  // reads as "news for tomorrow" logged tonight. `drawDailyOffers` REPLACES
-  // `pendingOffers` wholesale rather than accumulating - the no-reflex rule
-  // (CLAUDE.md hard design rule: nothing resolves on a timer or mid-screen)
-  // means an offer is valid the day it's drawn for only, so whatever was
-  // live today and went unaccepted (step 5b above already had its chance)
-  // is simply gone, not carried into tomorrow.
+  // 7a2. The daily for-sale offer draw for the day about to begin - same
+  // day-boundary-generation position as 7a immediately above. Today's report
+  // shows "a tuner is offering..." for the day that's about to start, exactly
+  // like an auction catalog refresh reads as "news for tomorrow" logged
+  // tonight. `drawDailyOffers` replaces `pendingOffers` wholesale - an offer
+  // is valid the day it's drawn for only, so whatever was live today and went
+  // unaccepted (step 5b above already had its chance) is simply gone.
   const offerDraw = drawDailyOffers(next, context, rng)
   next = offerDraw.state
   log.push(...offerDraw.log)
 
-  // 7a3. Sprint 52 decision 2: the used-machinery classifieds' day-boundary
-  // step - same "posted for the day about to begin" `next.day + 1` position
-  // as 7a/7a2 immediately above.
+  // 7a3. The used-machinery classifieds' day-boundary step - same "posted for
+  // the day about to begin" `next.day + 1` position as 7a/7a2 immediately
+  // above.
   const listingRoll = rollMachineListings(next, context, next.day + 1, rng)
   next = listingRoll.state
   log.push(...listingRoll.log)
@@ -411,44 +383,42 @@ export function advanceDay(
     log.push(...resolution.log)
   }
 
-  // 7c. Sprint 76 (story missions I; Sprint 85: unfailable): the campaign's
-  // day-boundary tick. `advanceStoryMissions` offers the next locked mission
-  // once reputation clears its gate, and nothing else - missions cannot lapse
-  // or be reoffered, so there is no deadline or wait window to check here.
+  // 7c. The campaign's day-boundary tick. `advanceStoryMissions` offers the
+  // next locked mission once reputation clears its gate, and nothing else -
+  // missions cannot lapse or be reoffered, so there is no deadline or wait
+  // window to check here.
   const missions = advanceStoryMissions(next, context)
   next = missions.state
   log.push(...missions.log)
 
-  // 7d. Sprint 80 (staff I): the weekly job-ad refresh - expired ads drop,
-  // then seeded rolls top the board back up to `economy.staff.maxOpenAds`.
-  // Same 7-day boundary as wages (step 9), read off `next.day` before the
-  // increment, exactly like the mission hook above. Placed AFTER every other
-  // rng consumer this tick so adding candidate rolls leaves the auction /
-  // service-job / offer / machine-listing draws byte-identical - the golden
-  // re-pin is purely the new `staffAds` field and its rolls, nothing else.
+  // 7d. The weekly job-ad refresh - expired ads drop, then seeded rolls top
+  // the board back up to `economy.staff.maxOpenAds`. Same 7-day boundary as
+  // wages (step 9), read off `next.day` before the increment. Placed after
+  // every other rng consumer this tick so the ordering of upstream draws is
+  // preserved.
   if (next.day % 7 === 0) {
     const staffAds = refreshStaffAds(next, context, rng)
     next = staffAds.state
     log.push(...staffAds.log)
   }
 
-  // 8. Sprint 80 crew model (R3): the daily fleet-contract retainer from any
-  // contract-assigned staff (bench-assigned members earn nothing here - their
-  // hands are on the shop's own work). Reads the day's effective assignment;
-  // any reassignment made today is still pending and commits below in step 10,
-  // so tonight's retainer never pays a member the player parked this morning.
+  // 8. The daily fleet-contract retainer from any contract-assigned staff
+  // (bench-assigned members earn nothing here - their hands are on the shop's
+  // own work). Reads the day's effective assignment; any reassignment made
+  // today is still pending and commits below in step 10, so tonight's retainer
+  // never pays a member the player parked this morning.
   const contractIncome = computeContractIncomeYen(next.staff, context.economy)
   if (contractIncome > 0) {
     next = { ...next, cashYen: next.cashYen + contractIncome }
     log.push({ type: 'contract-income', amountYen: contractIncome })
   }
 
-  // 8a. Sprint 45: the grace/"double parking" overflow slot's own day-
-  // boundary resolution - migrates the double-parked car into real capacity
-  // FIRST if any opened up today (a sale, a bought bay, a released car), so
-  // it's never fined the same day it frees itself; only charges the daily
-  // fine if the slot is still occupied after that check. A no-op when
-  // nothing is double-parked.
+  // 8a. The grace/"double parking" overflow slot's own day-boundary
+  // resolution - migrates the double-parked car into real capacity first if
+  // any opened up today (a sale, a bought bay, a released car), so it's never
+  // fined the same day it frees itself; only charges the daily fine if the
+  // slot is still occupied after that check. A no-op when nothing is
+  // double-parked.
   const graceParking = resolveGraceParking(next, context.economy)
   next = graceParking.state
   log.push(...graceParking.log)
@@ -463,12 +433,11 @@ export function advanceDay(
   log.push(...heat.log)
 
   // 10. The day itself passes, and today's labor budget replenishes for the
-  // next one. Sprint 74 decision 1: any inspection visit dies with the day
-  // too, unconditionally - minutes spent chasing a lot that sells to
-  // someone else overnight are simply spent, no carry-over negotiation.
-  // Sprint 80 crew model (R3): scheduled staff reassignments commit here, after
-  // tonight's contract income (step 8), so a switch made today takes effect
-  // tomorrow.
+  // next one. Any inspection visit dies with the day too, unconditionally -
+  // minutes spent chasing a lot that sells to someone else overnight are
+  // simply spent, no carry-over negotiation. Scheduled staff reassignments
+  // commit here, after tonight's contract income (step 8), so a switch made
+  // today takes effect tomorrow.
   next = {
     ...next,
     day: next.day + 1,

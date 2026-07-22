@@ -15,11 +15,10 @@ import { valuateCarForBuyer } from './valuation'
 import type { SimContext } from './context'
 
 /**
- * Sprint 72 (outcome-based service jobs, the shared module story missions
- * consume too - Sprint 76): the result of checking one `RequirementSpec`
- * against a car right now. `label`/`actual`/`required` are plain, catalog-
- * display-name-backed strings (never a raw id) so a caller can show them
- * directly, without a second lookup pass.
+ * The result of checking one `RequirementSpec` against a car right now.
+ * `label`/`actual`/`required` are plain, catalog-display-name-backed
+ * strings (never a raw id) so a caller can show them directly, without a
+ * second lookup pass.
  */
 export interface RequirementResult {
   pass: boolean
@@ -29,13 +28,12 @@ export interface RequirementResult {
 }
 
 /**
- * Sprint 77 (story missions II, the deliver-flow "labels only, no live
- * pass/fail" checklist): every requirement kind's `label`/`required` text
- * depends only on the spec itself and `context` (display names, buyer
- * names) - never on a specific car - so this is the ONE place that text is
- * computed, and every `evaluate*` function below calls it rather than
- * recomputing its own copy. Exported so a caller can render the checklist
- * before any car is even picked (`gameStore.ts`'s `activeStoryMissionView`).
+ * Every requirement kind's `label`/`required` text depends only on the
+ * spec itself and `context` (display names, buyer names) - never on a
+ * specific car - so this is the ONE place that text is computed, and
+ * every `evaluate*` function below calls it rather than recomputing its
+ * own copy. Exported so a caller can render the checklist before any car
+ * is even picked (`gameStore.ts`'s `activeStoryMissionView`).
  */
 export function requirementLabel(
   spec: RequirementSpec,
@@ -87,11 +85,9 @@ export function requirementLabel(
   }
 }
 
-/** Sprint 72's original primitive: a slot's installed part must be at least
- * `minBand`, and - when present - at least `minGrade`. An empty or scrap-band
- * slot always fails, regardless of `minGrade` - closes the old "or empty"
- * hole (`isServiceTaskDone`'s former `if (!installed) return true` for a
- * repair task). */
+/** A slot's installed part must be at least `minBand`, and - when present -
+ * at least `minGrade`. An empty or scrap-band slot always fails,
+ * regardless of `minGrade`. */
 function evaluateSlotCondition(
   spec: Extract<RequirementSpec, { kind: 'slotCondition' }>,
   car: CarInstance,
@@ -112,13 +108,11 @@ function evaluateSlotCondition(
 }
 
 /**
- * Sprint 76 (story missions I): a derived-stat floor/ceiling over
- * `computeDerivedStats`. `model` is optional and trailing on
- * `evaluateRequirement` itself (every pre-Sprint-76 call site never had one to
- * pass); a mission call site always resolves and passes a real `CarModel`, so
- * `model` missing here only ever means "evaluated from a call site that can't
- * resolve one" - fails closed rather than throwing, keeping the function
- * total.
+ * A derived-stat floor/ceiling over `computeDerivedStats`. `model` is
+ * optional and trailing on `evaluateRequirement` itself; a mission call
+ * site always resolves and passes a real `CarModel`, so `model` missing
+ * here only ever means "evaluated from a call site that can't resolve
+ * one" - fails closed rather than throwing, keeping the function total.
  */
 function evaluateStatBound(
   spec: Extract<RequirementSpec, { kind: 'statThreshold' | 'statCeiling' }>,
@@ -141,8 +135,8 @@ function evaluateStatBound(
   return { pass, label, actual: `${actualValue}`, required }
 }
 
-/** Sprint 76: a spend ceiling over the caller's own `ledger` - purchase (0
- * when unknown - only reachable via a dev grant, accepted), repairs, and
+/** A spend ceiling over the caller's own `ledger` - purchase (0 when
+ * unknown - only reachable via a dev grant, accepted), repairs, and
  * installed parts must together stay at or under `maxTotalSpendYen`. */
 function evaluateBudgetCap(
   spec: Extract<RequirementSpec, { kind: 'budgetCap' }>,
@@ -159,8 +153,8 @@ function evaluateBudgetCap(
   }
 }
 
-/** Sprint 76: a day-of-delivery cutoff, evaluated against the caller's own
- * `day` - delivery day, not accept day. */
+/** A day-of-delivery cutoff, evaluated against the caller's own `day` -
+ * delivery day, not accept day. */
 function evaluateDeadline(
   spec: Extract<RequirementSpec, { kind: 'deadline' }>,
   day: number,
@@ -171,8 +165,8 @@ function evaluateDeadline(
 }
 
 /**
- * Sprint 76: "this buyer archetype has to actually want it." `valuateCarForBuyer
- * / marketValueYen` is exactly `tasteMultiplier` (`valuation.ts`) regardless
+ * "This buyer archetype has to actually want it." `valuateCarForBuyer /
+ * marketValueYen` is exactly `tasteMultiplier` (`valuation.ts`) regardless
  * of which heat value is used for both terms, as long as it's the SAME heat
  * for both - so this reads at a fixed neutral heat rather than needing the
  * live `GameState.marketHeat` map threaded into `evaluateRequirement`'s
@@ -213,13 +207,13 @@ function evaluateTasteMatch(
 }
 
 /**
- * Sprint 76, corrected Sprint 90: every slot a real defect could touch holds
- * an installed part at `worn` condition or better. A filled slot fails when it
- * is below `worn`; an empty slot fails only when it is genuinely missing
- * (`isPartMissing`) - a legitimately-absent `forcedInduction` slot on an NA car
- * is not a defect and never counts, exactly as every other consumer (auction
- * grading, the cost/condition/stat helpers) already treats it. An unresolvable
- * model fails closed (an empty slot counts), matching how the sibling
+ * Every slot a real defect could touch holds an installed part at `worn`
+ * condition or better. A filled slot fails when it is below `worn`; an
+ * empty slot fails only when it is genuinely missing (`isPartMissing`) - a
+ * legitimately-absent `forcedInduction` slot on an NA car is not a defect
+ * and never counts, exactly as every other consumer (auction grading, the
+ * cost/condition/stat helpers) already treats it. An unresolvable model
+ * fails closed (an empty slot counts), matching how the sibling
  * stat/taste/lap evaluators degrade.
  */
 function evaluateRoadworthy(
@@ -246,12 +240,12 @@ function evaluateRoadworthy(
   return { pass: failingCount === 0, label, actual, required }
 }
 
-/** Sprint 77 decision 2: a reference-lap time ceiling on one named course -
- * passes when `lapTimeSecondsFor` returns a real time at or under
- * `maxSeconds`. Fails with `actual: "no time set"` when the model returns
- * `null` (no tyres fitted, or a scrap-band set - nothing to grip the road
- * with). `model` missing here (a legacy call site) fails closed the same
- * way, for the same reason `evaluateStatBound`/`evaluateTasteMatch` do. */
+/** A reference-lap time ceiling on one named course - passes when
+ * `lapTimeSecondsFor` returns a real time at or under `maxSeconds`. Fails
+ * with `actual: "no time set"` when the model returns `null` (no tyres
+ * fitted, or a scrap-band set - nothing to grip the road with). `model`
+ * missing here (a legacy call site) fails closed the same way, for the
+ * same reason `evaluateStatBound`/`evaluateTasteMatch` do. */
 function evaluateLapTimeCeiling(
   spec: Extract<RequirementSpec, { kind: 'lapTimeCeiling' }>,
   car: CarInstance,
@@ -265,11 +259,9 @@ function evaluateLapTimeCeiling(
 }
 
 /**
- * The one evaluator every requirement kind runs through. Pure and total over
- * `RequirementSpec` (Sprint 76 extended the dispatch from `slotCondition`
- * alone to six kinds; Sprint 77 adds `lapTimeCeiling` as the seventh).
- * `model` is optional and trailing: every pre-Sprint-76 call site
- * (`isServiceTaskDone`, evaluating `slotCondition` only) keeps compiling
+ * The one evaluator every requirement kind runs through. Pure and total
+ * over `RequirementSpec`'s seven kinds. `model` is optional and trailing:
+ * `isServiceTaskDone` (evaluating `slotCondition` only) keeps compiling
  * unchanged, since none of those kinds ever read it; a story-mission call
  * site always resolves and passes the real `CarModel` the stat/taste/lap
  * kinds need.

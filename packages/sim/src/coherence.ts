@@ -34,15 +34,14 @@ import { makeCarOrigin } from './provenance'
 import { freshToolTiers } from './toolLines'
 
 /**
- * Sprint 55 (economy-bible.md law 4 - one derived ledger, machine-checked):
- * the closed-form coherence math, per roster model. Every number below is
+ * Economy-bible.md law 4 (one derived ledger, machine-checked): the
+ * closed-form coherence math, per roster model. Every number below is
  * produced by CALLING the real sim functions (`enforceMaxBillFraction`,
  * `carCostToMintYen`, `marketValueYen`) against a deliberately worse-than-
  * generation-could-ever-roll car, never a re-derivation of their formulas -
  * so this can never silently drift from what the game itself actually does.
  * No careers/RNG needed: every input is either roster content or the
- * worst-case construction below, so this is cheap enough to run on every
- * `pnpm balance:run` alongside the Monte Carlo career export.
+ * worst-case construction below.
  */
 
 const CONSUMABLE_PART_IDS: readonly CarPartId[] = ['tyres', 'brakePadsDiscs', 'clutch']
@@ -61,30 +60,31 @@ export interface ModelCoherenceRow {
   billToCleanRatio: number
   /** Buy at reserve (off the worst-bill lot's own damaged guide value), pay
    * the worst bill to fully restore TO MINT, sell at guide (= clean value,
-   * Law 1's ceiling) - the flip margin a maintainer or player could realize on
-   * the single worst lot the game could ever generate for this model.
+   * Law 1's ceiling) - the flip margin a player could realize on the single
+   * worst lot the game could ever generate for this model.
    *
    * This is Law 2's literal claim and stays gated as such: full restoration
-   * must be mathematically capable of profit on every generatable lot. Since
-   * Sprint 66 it is NOT the headline number, because on a low tier it prices a
-   * play no sane player makes - a mint kei. Read `sensibleFlipMarginYen` for
-   * the play the economy actually asks for. */
+   * must be mathematically capable of profit on every generatable lot. It
+   * is NOT the headline number, because on a low tier it prices a play no
+   * sane player makes - a mint kei. Read `sensibleFlipMarginYen` for the
+   * play the economy actually asks for. */
   flipMarginYen: number
   flipMarginFraction: number
   /**
-   * The SENSIBLE play, and the number to read first (Sprint 66): buy a rough
-   * but fixable car (`buildWageProbeCar` - every real slot at `poor`) at
+   * The SENSIBLE play, and the number to read first: buy a rough but
+   * fixable car (`buildWageProbeCar` - every real slot at `poor`) at
    * reserve off its own damaged guide value, repair it up to its tier's
    * expectation band (not a yen past), sell at the resulting guide value.
    *
-   * Every figure comes from the real sim functions, so this is what a player
-   * following the economy's own advice actually clears. It exists because
-   * Law 1's Sprint 66 amendment made "fully restore" the wrong default: the
-   * market barely discounts a worn kei (`beyondDiscount` 0.4), so you pay near
-   * clean value for one and a mint restore burns the margin - `flipMarginYen`
-   * collapses on the shitbox tier for exactly that reason, correctly. The
-   * money on a cheap car is in buying BELOW the expectation band and bringing
-   * it up to the band, which is discounted at the full `marketRepairDiscount`.
+   * Every figure comes from the real sim functions, so this is what a
+   * player following the economy's own advice actually clears. Law 1's
+   * expectation-band amendment made "fully restore" the wrong default: the
+   * market barely discounts a worn kei (`beyondDiscount` 0.4), so you pay
+   * near clean value for one and a mint restore burns the margin -
+   * `flipMarginYen` collapses on the shitbox tier for exactly that reason,
+   * correctly. The money on a cheap car is in buying BELOW the expectation
+   * band and bringing it up to the band, discounted at the full
+   * `marketRepairDiscount`.
    */
   sensibleFlipMarginYen: number
   sensibleFlipMarginFraction: number
@@ -94,14 +94,14 @@ export interface ModelCoherenceRow {
   consumablesCostYen: number
   consumablesShare: number
   /**
-   * Law 6 (the wage law, Sprint 66) - does a day at the bench out-earn a day
-   * of standing still? Measured closed-form on the repairable portion of the
+   * Law 6 (the wage law) - does a day at the bench out-earn a day of
+   * standing still? Measured closed-form on the repairable portion of the
    * worst generatable car, at a fresh shop's tier-1 tools, planned to the
-   * car's own EXPECTATION BAND (Law 1 as amended), never to mint - and, since
-   * Sprint 93 (the band ceiling), clamped to the tier-1 repair ceiling (`fine`)
-   * so a rare car's mint expectation is measured as a repair to fine, the most a
-   * fresh shop's tools can finish (its mint is reached by owning tier-2, or by
-   * buying mint parts - a replacement, excluded from this bench-wage figure):
+   * car's own EXPECTATION BAND, never to mint - and clamped to the tier-1
+   * repair ceiling (`fine`), so a rare car's mint expectation is measured
+   * as a repair to fine, the most a fresh shop's tools can finish (its
+   * mint is reached by owning tier-2, or by buying mint parts - a
+   * replacement, excluded from this bench-wage figure):
    *
    * - `repairCostYen` / `repairLaborSlots` come from the SAME real
    *   `planGroupRepair(... expectationBand)` calls, summed over the six
@@ -128,10 +128,10 @@ export interface ModelCoherenceRow {
   rentDuringRepairYen: number
   wageMarginYen: number
   /**
-   * `repairGainYen / rentDuringRepairYen` - how many times over the bench work
-   * pays for the time it takes. The gate is `wageMarginYen > 0`; this ratio is
-   * reported alongside it because a positive margin is not the same as one
-   * worth getting out of bed for, and the maintainer tunes against the ratio.
+   * `repairGainYen / rentDuringRepairYen` - how many times over the bench
+   * work pays for the time it takes. The gate is `wageMarginYen > 0`; this
+   * ratio is reported alongside it because a positive margin is not the
+   * same as one worth getting out of bed for.
    */
   wageRatio: number
 }
@@ -301,30 +301,25 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   // perform on a kei, and then reports that it barely pays; the expectation
   // band is the repair the economy actually asks for.
   const expectationBand = expectationForCar(model, context.economy).band
-  // Sprint 93 (the band ceiling): the wage probe measures a FRESH shop's bench,
-  // and a fresh shop's tools are tier-1, which caps a REPAIR at fine. A rare
-  // car's mint expectation is therefore not reachable by repair here - the
-  // sensible tier-1 play repairs the rough car up to the ceiling (fine) and
-  // sells at that band. Reaching the mint expectation needs the tier-2 machine
-  // OWNED (repair fine->mint cheaply) or buying mint parts (a per-part loss on a
-  // rare car - stockReplacementPrice is ~5x the worn->mint repair, so it is NOT
-  // the sensible play, only the always-available satisfiability floor). Owning
-  // tier-2 is exactly what WIDENS this margin, which is the incentive to buy it.
-  // Every tier whose expectation already sits at or below fine (shitbox `worn`,
-  // common/uncommon `fine`) is untouched - the clamp is a no-op there.
+  // The wage probe measures a fresh shop's bench, and a fresh shop's tools are
+  // tier-1, which caps a repair at fine. A rare car's mint expectation is not
+  // reachable by repair here - the sensible tier-1 play repairs the rough car
+  // up to the ceiling (fine) and sells at that band. Reaching the mint
+  // expectation needs the tier-2 machine owned (repair fine->mint cheaply) or
+  // buying mint parts. Owning tier-2 widens this margin, which is the incentive
+  // to buy it. Every tier whose expectation already sits at or below fine is
+  // untouched - the clamp is a no-op there.
   const effectiveExpectationBand = clampRepairTarget(
     expectationBand,
     repairCeilingForLevel(1, context.economy),
   )
   const wageCar = buildWageProbeCar(model, context)
-  // Sprint 71 (the teardown game) narrowed `planGroupRepair` (bands.ts) to
-  // surface-slot candidates only: bolt-on/buried repair moved to the bench,
-  // off the on-car plan this sum reads. `buildWageProbeCar`'s "repaired to
-  // the expectation band" value-side lift below is gated on `repairable`,
-  // not `depthClass`, so it still credits the full car - so the loop below
-  // separately prices every non-surface repairable part's own bench-repair
-  // cost, closing the gap Sprint 71 disclosed (TODO.md: "teardown labour in
-  // Law 1 margins and Law 6 payouts") per Sprint 72 decision 6.
+  // `planGroupRepair` (bands.ts) covers surface-slot candidates only:
+  // bolt-on/buried repair moved to the bench, off the on-car plan this sum
+  // reads. `buildWageProbeCar`'s "repaired to the expectation band" value-side
+  // lift is gated on `repairable`, not `depthClass`, so it still credits the
+  // full car - so the loop below separately prices every non-surface repairable
+  // part's own bench-repair cost.
   let repairCostYen = 0
   let repairLaborSlots = 0
   for (const groupId of ComponentIdSchema.options) {
@@ -342,13 +337,10 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired
   }
-  // Sprint 79 (the equivalence-priced labour model): removal and blocker
-  // refits are free, so the once-per-restoration blocker premium this loop
-  // used to track (a shared `blockedBy` part pulled and refitted only ONCE,
-  // not once per dependent behind it) is gone along with it - a bench
-  // repair simply adds its own `installLaborSlotsFor` refit, the same
-  // unconditional charge `serviceJobCostBreakdown` now uses, since a
-  // restoration always improves the slot it repairs.
+  // Removal and blocker refits are free - a bench repair simply adds its own
+  // `installLaborSlotsFor` refit, the same unconditional charge
+  // `serviceJobCostBreakdown` uses, since a restoration always improves the
+  // slot it repairs.
   for (const partId of ALL_CAR_PART_IDS) {
     const entry = context.partsTaxonomyById[partId]
     if (!entry || entry.depthClass === 'surface') continue
@@ -373,10 +365,9 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     repairLaborSlots += plan.laborSlotsRequired + installLaborSlotsFor(partId, context)
   }
   const repairGainYen = (context.economy.valuation.marketRepairDiscount - 1) * repairCostYen
-  // Sprint 94: `repairLaborSlots` is now labour ENERGY, and a solo shop's daily
-  // budget is `energy.basePoolPoints` - both rescaled by the same
-  // `pointsPerLabour`, so days-of-work (and thus the rent this bench time accrues)
-  // is invariant vs the old integer-slot model.
+  // `repairLaborSlots` is labour energy, and a solo shop's daily budget is
+  // `energy.basePoolPoints` - both rescaled by the same `pointsPerLabour`, so
+  // days-of-work (and thus the rent this bench time accrues) is invariant.
   const repairDays = repairLaborSlots / context.economy.energy.basePoolPoints
   const rentDuringRepairYen = repairDays * (context.economy.WEEKLY_RENT_YEN / 7)
 
@@ -442,25 +433,23 @@ export interface ModelDonorCoherenceRow {
    * directly rather than through a throwaway `GameState` since it is a plain
    * one-line arithmetic reuse, not a re-derivation - plus scrapping the
    * stripped shell (`model.bookValueYen x economy.bands.scrapValueFraction`).
-   * Decision 8's "whole beats parted" gate compares this against
-   * `wholeSaleYen` above, on every roster model. */
+   * The "whole beats parted" gate compares this against `wholeSaleYen`
+   * above, on every roster model. */
   partedYieldYen: number
   /** Total uninstall labour the parted route above actually costs - every
    * removable part's own `removeLaborSlotsFor`, summed. Not gated; disclosed
-   * alongside the yen figures so a maintainer can read "is this worth the
-   * bench time" at a glance. */
+   * alongside the yen figures so it's easy to read "is this worth the bench
+   * time" at a glance. */
   stripLaborSlots: number
   /**
-   * Sprint 71 decision 8's second probe: on the SAME worst-case generatable
-   * car `computeModelCoherence` builds (`buildWorstCaseRawCar` softened by
-   * `enforceMaxBillFraction` - reused here exactly, not rebuilt differently),
-   * the yield of parting out only the parts strictly better than `poor` (the
-   * ones actually worth pulling rather than replacing outright) plus
-   * scrapping the shell. The crossover against that same model's
-   * `sensibleFlipMarginYen` (`ModelCoherenceRow`) - the bill-to-clean ratio
-   * above which parting out beats the sensible repair - is measured and
-   * DISCLOSED per model in `coherence.test.ts`, not force-asserted against
-   * `economy.teardown.donorBreakEvenBillRatio` exactly.
+   * On the SAME worst-case generatable car `computeModelCoherence` builds
+   * (`buildWorstCaseRawCar` softened by `enforceMaxBillFraction` - reused
+   * here exactly, not rebuilt differently), the yield of parting out only
+   * the parts strictly better than `poor` (the ones actually worth pulling
+   * rather than replacing outright) plus scrapping the shell. The crossover
+   * against that same model's `sensibleFlipMarginYen` (`ModelCoherenceRow`)
+   * - the bill-to-clean ratio above which parting out beats the sensible
+   * repair - is measured and DISCLOSED per model in `coherence.test.ts`.
    */
   partedYieldOfWorstCaseYen: number
 }
@@ -469,10 +458,10 @@ export interface ModelDonorCoherenceRow {
  * A clean (0 km, all-mint stock, authenticity 100), honest example of
  * `model` - the "what a healthy example of this tier looks like" probe,
  * shared by `computeDonorCoherence` (the whole-vs-parted question) and
- * `computeSymptomCoherence` (Sprint 73, the blind-buy guardrail - a
- * symptom's damage is applied ON TOP of this same clean baseline, never a
- * worst-case one, since the whole point of a symptom is a surprise on a car
- * that otherwise looks fine).
+ * `computeSymptomCoherence` (the blind-buy guardrail - a symptom's damage
+ * is applied ON TOP of this same clean baseline, never a worst-case one,
+ * since the whole point of a symptom is a surprise on a car that otherwise
+ * looks fine).
  */
 function buildCleanProbeCar(
   model: CarModel,
@@ -515,11 +504,11 @@ function buildCleanProbeCar(
 }
 
 /**
- * Sprint 71 decision 8 (the teardown game's donor-economy law): is a clean
- * car ever worth more parted out than sold whole? It must never be - a player
- * should never be better off destroying a good car for scrap parts, which is
- * the whole reason `usedPartSaleFraction`/`scrapValueFraction` are haircuts,
- * not parity prices.
+ * The teardown game's donor-economy law: is a clean car ever worth more
+ * parted out than sold whole? It must never be - a player should never be
+ * better off destroying a good car for scrap parts, which is the whole
+ * reason `usedPartSaleFraction`/`scrapValueFraction` are haircuts, not
+ * parity prices.
  */
 export function computeDonorCoherence(
   model: CarModel,
@@ -591,10 +580,10 @@ export function computeRosterDonorCoherence(
   return models.map((model) => computeDonorCoherence(model, context))
 }
 
-/** One cause's edge (Sprint 73): `marketValueYen` if this cause turns out
- * true, minus what the room's sheet actually charges - positive means this
- * cause is a pleasant surprise (the car is worth more than paid), negative
- * means it costs more than it turned out to be worth. */
+/** One cause's edge: `marketValueYen` if this cause turns out true, minus
+ * what the room's sheet actually charges - positive means this cause is a
+ * pleasant surprise (the car is worth more than paid), negative means it
+ * costs more than it turned out to be worth. */
 export interface SymptomCauseEdgeRow {
   causeId: string
   edgeYen: number
@@ -651,8 +640,8 @@ export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRo
       if (!model) continue
 
       const clean = buildCleanProbeCar(model, context, `symptom-${symptom.id}`, 'symptom probe')
-      // Every cause in a real symptom addresses the same part (decision 4's
-      // content) - any cause's own `carPartId` names the slot to record.
+      // Every cause in a real symptom addresses the same part - any
+      // cause's own `carPartId` names the slot to record.
       const carPartId = symptom.causes[0]!.carPartId
       const apparentBand = clean.parts[carPartId].installed?.band ?? 'mint'
       const carWithSymptom: CarInstance = {
@@ -716,49 +705,48 @@ export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRo
 }
 
 /**
- * Sprint 80 crew model, R5 (maintainer redesign 2026-07-17): the hire
- * coherence probe, closed-form, one row per reputation tier. Every figure is a
- * direct call into the real wage formula (`deriveStaffWageYen`), the contract
- * coefficients, the introduction-fee rule, and the live content rates, so it
- * can never drift from what the game does - the same standing as
- * `computeRosterCoherence` above.
+ * The hire coherence probe, closed-form, one row per reputation tier. Every
+ * figure is a direct call into the real wage formula (`deriveStaffWageYen`),
+ * the contract coefficients, the introduction-fee rule, and the live
+ * content rates, so it can never drift from what the game does.
  *
  * A contract-assigned member MUST net a profit (that is the point of the
- * assignment), but a modest one, and the same hands billed out must always beat
- * the retainer. The three bounds, all HARD-gated, measured here and asserted
- * (exhaustively across each tier's whole budget cube) in `staffProbes.test.ts`:
+ * assignment), but a modest one, and the same hands billed out must always
+ * beat the retainer. The bounds, measured here and asserted (exhaustively
+ * across each tier's whole budget cube) in `staffProbes.test.ts`:
  *
  * - Bound A (net profit), every candidate every tier: `weeklyContract` in
  *   `[1.05, 1.40] x weeklyWage`. Each row carries the tier's two binding
  *   candidates - the lowest ratio (nearest 1.05) and the highest (nearest
- *   1.40); the probe finds them by walking the cube, so it stays correct if the
- *   coefficients move.
+ *   1.40); the probe finds them by walking the cube, so it stays correct if
+ *   the coefficients move.
  * - Bound B (honest work beats the retainer), every candidate:
- *   `weeklyContract <= HIRE_BOUND_B_BILLABLE_FRACTION x (laborSlotsPerDay x 7 x
- *   serviceJobs.laborRateYen)`. The row carries the tier's tightest candidate
- *   (the largest contract at the fewest slots).
+ *   `weeklyContract <= HIRE_BOUND_B_BILLABLE_FRACTION x (laborSlotsPerDay x
+ *   7 x serviceJobs.laborRateYen)`. The row carries the tier's tightest
+ *   candidate (the largest contract at the fewest slots).
  * - Bound C (first hire reachable), hard-gated only at the entry tier
  *   (`boundCGated`), disclosed elsewhere: the tier's cheapest candidate's
  *   introduction fee stays within `HIRE_BOUND_C_STARTING_CASH_FRACTION` of
  *   `STARTING_CASH_YEN`.
- * - Bound D (Sprint 82 decision 3: skills worth paying for), hard-gated only at
- *   the entry tier (`boundDGated`), disclosed elsewhere: the wage premium of a
- *   max-skill candidate over a min-skill one (identical slots) stays within
+ * - Bound D (skills worth paying for), hard-gated only at the entry tier
+ *   (`boundDGated`), disclosed elsewhere: the wage premium of a max-skill
+ *   candidate over a min-skill one (identical slots) stays within
  *   `HIRE_BOUND_D_SAVEABLE_MULTIPLE x` the weekly value of the labour that
- *   candidate's speed discount can save at full utilisation. Idle skills save
- *   nothing, and bound A already stops contract income from carrying the
- *   premium - so a skilled hire is only ever worth it for a shop that works.
+ *   candidate's speed discount can save at full utilisation. Idle skills
+ *   save nothing, and bound A already stops contract income from carrying
+ *   the premium - so a skilled hire is only ever worth it for a shop that
+ *   works.
  */
 export const HIRE_BOUND_A_MIN_RATIO = 1.05
 export const HIRE_BOUND_A_MAX_RATIO = 1.4
 export const HIRE_BOUND_B_BILLABLE_FRACTION = 0.5
 export const HIRE_BOUND_C_STARTING_CASH_FRACTION = 0.15
 /**
- * Sprint 82 decision 3 (bound D): the wage premium a shop pays for a max-skill
- * candidate over a min-skill one (identical slots) must not exceed this
- * multiple of the weekly value of the labour that candidate's speed discount
- * can save at full utilisation. Skills must be worth paying for when the shop
- * is busy; the discount they buy is worth far more than the premium.
+ * Bound D: the wage premium a shop pays for a max-skill candidate over a
+ * min-skill one (identical slots) must not exceed this multiple of the
+ * weekly value of the labour that candidate's speed discount can save at
+ * full utilisation. Skills must be worth paying for when the shop is busy;
+ * the discount they buy is worth far more than the premium.
  */
 export const HIRE_BOUND_D_SAVEABLE_MULTIPLE = 2
 
@@ -873,10 +861,10 @@ export function computeHireCoherence(context: SimContext): HireCoherenceRow[] {
     const boundCWageYen = deriveStaffWageYen(cheapestStats, 1, economy)
     const boundCFeeYen = introductionFeeYen(boundCWageYen, economy)
 
-    // Bound D (decision 3): the wage premium of the all-max-skill candidate over
-    // the all-min-skill one at IDENTICAL slots (the slot premium cancels, so 1
-    // slot stands for both), against the weekly value of the labour the tier's
-    // best hands can save at full utilisation.
+    // Bound D: the wage premium of the all-max-skill candidate over the
+    // all-min-skill one at IDENTICAL slots (the slot premium cancels, so 1
+    // slot stands for both), against the weekly value of the labour the
+    // tier's best hands can save at full utilisation.
     const dearestStats: StaffMember['stats'] = {
       engine: budget.max,
       chassis: budget.max,

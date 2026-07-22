@@ -63,12 +63,12 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 12: the old `wheelsInterior` slot's 3 parts were hand-reclassified
-   * by name onto the new `wheels`/`interior` components (no schema check can
-   * catch a swap here - `carPartId` is a valid enum value either way, so
-   * this is the only thing that would catch e.g. the bucket seat accidentally
-   * landing on a wheels part). Sprint 26 remap: wheels parts now address the
-   * specific taxonomy part (`rims`), not the old flat `wheels` component.
+   * The old `wheelsInterior` slot's 3 parts were hand-reclassified by name
+   * onto the new `wheels`/`interior` components (no schema check can catch
+   * a swap here - `carPartId` is a valid enum value either way, so this is
+   * the only thing that would catch e.g. the bucket seat accidentally
+   * landing on a wheels part). Wheels parts now address the specific
+   * taxonomy part (`rims`), not the old flat `wheels` component.
    */
   it('the former wheelsInterior parts landed on the correct real part', () => {
     const parsedParts = PartCatalogEntriesSchema.parse(parts)
@@ -79,18 +79,17 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 11: the job-type + flavor-pool model exists specifically so a
-   * flavor line can never be paired with work it wasn't written for -
-   * Sprint 10's own "Brakes are shot" line on a suspension-zone job is the
-   * exact bug this structurally prevents. Sprint 29: a template's `tasks`
-   * can now touch several parts across several groups, so this guards the
-   * multi-task shape - no flavor line names a component group that none of
-   * the template's own tasks actually touch.
+   * The job-type + flavor-pool model exists specifically so a flavor line
+   * can never be paired with work it wasn't written for - a "Brakes are
+   * shot" line on a suspension-zone job is the exact bug this structurally
+   * prevents. A template's `tasks` can touch several parts across several
+   * groups, so this guards the multi-task shape - no flavor line names a
+   * component group that none of the template's own tasks actually touch.
    */
   it('no template flavor line names a component group it does not actually touch', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
-    // Sprint 26: 6 real groups (forcedInduction folded into engine, brakes
-    // folded into suspension - see tags.ts's ComponentIdSchema).
+    // 6 real groups (forcedInduction folded into engine, brakes folded into
+    // suspension - see tags.ts's ComponentIdSchema).
     const COMPONENT_WORDS = ['engine', 'drivetrain', 'suspension', 'body', 'interior', 'wheels']
     for (const type of parsedTypes) {
       const touchedGroups = new Set(
@@ -110,14 +109,12 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 26 decision 5 (scrap is unrepairable), reimplemented over the
-   * outcome shape (Sprint 72 - directive 17 case (a), the old `action`
-   * discriminant this test branched on no longer exists, every task is a
-   * `slotCondition` now): no requirement's `minBand` is ever `scrap` - a
-   * template whose premise implies a wrecked part sets a real `minBand`
-   * (with a `minGrade`, if it's meant to be satisfied by a fresh part)
-   * instead, so the customer pays for actual work rather than a floor
-   * `evaluateRequirement` treats as permanently failing regardless of route.
+   * Scrap is unrepairable (directive 17 case (a)): no requirement's
+   * `minBand` is ever `scrap` - a template whose premise implies a wrecked
+   * part sets a real `minBand` (with a `minGrade`, if it's meant to be
+   * satisfied by a fresh part) instead, so the customer pays for actual work
+   * rather than a floor `evaluateRequirement` treats as permanently failing
+   * regardless of route.
    */
   it("no requirement's minBand is ever scrap", () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
@@ -132,23 +129,22 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 29: payout is derived, not authored, so the guaranteed-loss bug
-   * (Sprint 25 task 10's "install-forced-induction paid as little as
-   * 110,000 against a 180,000 cheapest turbo") is structurally retired by
-   * the payout FORMULA itself - covered by the mandatory profitability
-   * invariant property test in `packages/sim/tests/serviceJobPayout.test.ts`
-   * (every template x every roster model), not a content-shape check here.
+   * Payout is derived, not authored, so a guaranteed-loss bug is
+   * structurally retired by the payout FORMULA itself - covered by the
+   * mandatory profitability invariant property test in
+   * `packages/sim/tests/serviceJobPayout.test.ts` (every template x every
+   * roster model), not a content-shape check here.
    */
 
   /**
-   * Sprint 28 DoD (catalog validation, not authoring); Sprint 32 decision 1
-   * normalized the catalog to exactly 4 tiers per component (stock/street/
-   * sport/race, 116 entries total) and dropped every `requiredTags` entry
-   * (aftermarket parts fit any car for now). This asserts every one of the
-   * 29 `CarPartId`s still has at least one catalog part addressed to it,
-   * and that part fits at least one roster car (not just parses) - a
-   * vacuous pass now that `requiredTags` is always `[]`, but still real
-   * coverage against a `CarPartId` with zero catalog entries at all.
+   * Catalog validation, not authoring. The catalog carries exactly 4 tiers
+   * per component (stock/street/sport/race, 116 entries total) and no
+   * `requiredTags` entries (aftermarket parts fit any car for now). This
+   * asserts every one of the 29 `CarPartId`s still has at least one catalog
+   * part addressed to it, and that part fits at least one roster car (not
+   * just parses) - a vacuous pass now that `requiredTags` is always `[]`,
+   * but still real coverage against a `CarPartId` with zero catalog entries
+   * at all.
    */
   it('every real car part has a catalog part addressed to it that fits at least one roster car (Sprint 28)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
@@ -166,12 +162,11 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 28's own trigger: the rotary content hole found during triage -
-   * "verified during triage that zero Rotary-tagged parts exist, so the FC
-   * and FD RX-7s can never receive any engine or forced induction part"
-   * (sprint28.md's Goal). Every real engine-group part (the 9 non-FI engine
-   * parts plus `forcedInduction` itself) must have at least one catalog
-   * part that actually fits a Rotary-tagged car now.
+   * The rotary content hole this guards against: zero Rotary-tagged parts
+   * would mean the FC and FD RX-7s could never receive any engine or forced
+   * induction part. Every real engine-group part (the 9 non-FI engine parts
+   * plus `forcedInduction` itself) must have at least one catalog part that
+   * actually fits a Rotary-tagged car.
    */
   it('every Rotary-tagged roster car has a fitting catalog part for every real engine-group part', () => {
     const parsedCars = CarModelsSchema.parse(cars)
@@ -197,16 +192,14 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 28 decision 4: a forced-induction kit is installable on an NA car
-   * via the universal FI slot, plus at least one underglow kit (the
-   * underbody style slot). Checked against a real NA, Piston roster car (no
-   * Turbo/Supercharged tag of its own). Sprint 32 decision 1 normalized the
-   * forced-induction catalog to one entry per tier (dropping the old
-   * separate turbo/supercharger flavor split - `requiredTags` is `[]`
-   * everywhere now, so "fits" is no longer the discriminating fact this
-   * test was originally written to prove; the real remaining fact worth
-   * guarding is that a forced-induction and an underglow kit both still
-   * exist in the catalog at all).
+   * A forced-induction kit is installable on an NA car via the universal FI
+   * slot, plus at least one underglow kit (the underbody style slot).
+   * Checked against a real NA, Piston roster car (no Turbo/Supercharged tag
+   * of its own). The forced-induction catalog carries one entry per tier
+   * with `requiredTags` always `[]`, so "fits" is no longer the
+   * discriminating fact; the real remaining fact worth guarding is that a
+   * forced-induction and an underglow kit both still exist in the catalog
+   * at all.
    */
   it('at least one forced-induction kit and one underglow kit fit an NA Piston roster car', () => {
     const parsedCars = CarModelsSchema.parse(cars)
@@ -237,10 +230,10 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 44: `restoration.repairStepFraction` is the ONE knob every repair
-   * cost in the pipeline scales by - must be a real, positive fraction of a
-   * part's price (never negative, never able to exceed the part's own value
-   * per grade), matching the schema's own `.positive().max(1)` bound.
+   * `restoration.repairStepFraction` is the ONE knob every repair cost in
+   * the pipeline scales by - must be a real, positive fraction of a part's
+   * price (never negative, never able to exceed the part's own value per
+   * grade), matching the schema's own `.positive().max(1)` bound.
    */
   it('economy.restoration.repairStepFraction is a positive fraction of a part price', () => {
     const parsedEconomy = EconomyConfigSchema.parse(economy)
@@ -250,14 +243,14 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 53 (economy-bible.md law 3): repair cost derives from the
-   * INSTALLED instance's own resolved `priceYen`, and the flat replacement
-   * price (scrap, a missing slot, a non-repairable consumable) is the
-   * taxonomy's `stockReplacementPriceYenByClass` - these two numbers are
-   * DERIVED from the same resolved catalog (data.ts), so they can never
-   * hand-drift apart the way two independently authored numbers could; this
-   * guards the derivation wiring itself (a refactor that breaks the link
-   * between `PARTS` and `PARTS_TAXONOMY` would still be caught here).
+   * economy-bible.md law 3: repair cost derives from the INSTALLED
+   * instance's own resolved `priceYen`, and the flat replacement price
+   * (scrap, a missing slot, a non-repairable consumable) is the taxonomy's
+   * `stockReplacementPriceYenByClass` - these two numbers are DERIVED from
+   * the same resolved catalog (data.ts), so they can never hand-drift apart
+   * the way two independently authored numbers could; this guards the
+   * derivation wiring itself (a refactor that breaks the link between
+   * `PARTS` and `PARTS_TAXONOMY` would still be caught here).
    */
   it("every stock-grade catalog part's resolved price matches its taxonomy entry's per-class stock-replacement price", () => {
     for (const part of PARTS) {
@@ -272,10 +265,10 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 53 Definition of Done: every component slot ships 16 real store
-   * SKUs (4 fitment classes x 4 grades) - real, separately named catalog
-   * entries, never a single part with a runtime price switch. Guards both
-   * directions: nothing missing, nothing accidentally duplicated.
+   * Every component slot ships 16 real store SKUs (4 fitment classes x 4
+   * grades) - real, separately named catalog entries, never a single part
+   * with a runtime price switch. Guards both directions: nothing missing,
+   * nothing accidentally duplicated.
    */
   it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
     const FITMENT_CLASSES = ['shitbox', 'common', 'uncommon', 'rare'] as const
@@ -296,9 +289,8 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 53: the diegetic class names never leak a raw fitment-class
-   * identifier back at the player (mirrors the Sprint 25 component-display-
-   * name law's own guard).
+   * The diegetic class names never leak a raw fitment-class identifier back
+   * at the player (mirrors the component-display-name law's own guard).
    */
   it('every fitment class has a real display name, never the raw identifier', () => {
     for (const fitmentClass of ['shitbox', 'common', 'uncommon', 'rare'] as const) {
@@ -309,16 +301,16 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Sprint 41 decision 2's guard retired (directive 17 case (a), not simply
-   * deleted without reason): it existed because a pre-Sprint-72 `repair` task
-   * PRESCRIBED an action, and prescribing repair on a non-repairable part
-   * (`repairable: false` - tyres/brakePadsDiscs/clutch) was a content bug -
-   * the job would price/complete through a formula that never applied to
-   * that part. Sprint 72's outcome-based tasks don't prescribe a route at
-   * all (decision 4: "any route counts") - a band-only `slotCondition` on a
-   * non-repairable part is perfectly satisfiable by replacing it, priced
-   * correctly by `serviceJobCostBreakdown`'s fall-through to the install
-   * route. There is no longer a content bug this guard could catch.
+   * A guard retired here (directive 17 case (a), not simply deleted without
+   * reason): it existed because a `repair` task once PRESCRIBED an action,
+   * and prescribing repair on a non-repairable part (`repairable: false` -
+   * tyres/brakePadsDiscs/clutch) was a content bug - the job would
+   * price/complete through a formula that never applied to that part.
+   * Outcome-based tasks don't prescribe a route at all ("any route counts")
+   * - a band-only `slotCondition` on a non-repairable part is perfectly
+   * satisfiable by replacing it, priced correctly by
+   * `serviceJobCostBreakdown`'s fall-through to the install route. There is
+   * no longer a content bug this guard could catch.
    */
 })
 

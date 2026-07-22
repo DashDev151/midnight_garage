@@ -5,15 +5,12 @@ import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * Sprint 62 (playtest pass-2 item 17): the one place the shop's granular
+ * The one place the shop's granular
  * standing lives - exact reputation points with the named next tier, all six
  * specialty disciplines with their points and named tier-4 technique, and the
- * derived shop title. Progression bible law 4 was amended in Sprint 62 to
- * permit these exact numbers on THIS view only, and amended a SECOND time in
- * Sprint 69 to permit progress bars here too (the maintainer, having used the
- * prose version: "Make the mastery progress bars. Like 19/120 to next level.
- * Same with Rep."). Everywhere else stays meter-free - nothing follows the
- * player around, nothing pops up mid-job. Pure renderer over
+ * derived shop title. Progression bible law 4 permits these exact numbers and
+ * progress bars on THIS view only. Everywhere else stays meter-free - nothing
+ * follows the player around, nothing pops up mid-job. Pure renderer over
  * `game.standingView` - no local logic, no new state; the bars are a
  * re-presentation of numbers that view already carried.
  */

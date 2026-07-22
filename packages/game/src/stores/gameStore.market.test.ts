@@ -19,7 +19,7 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('market: auctions', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('the scripted tutorial lot sorts to the top of its tier (playtest 2026-07-19 item 21)', () => {
+  it('the scripted tutorial lot sorts to the top of its tier', () => {
     const game = useGameStore()
     game.newGame(1)
     const local = game.auctionLotsByTier.find((g) => g.tier === 'local-yard')
@@ -30,7 +30,7 @@ describe('market: auctions', () => {
     expect(local!.lots.length).toBeGreaterThan(1)
   })
 
-  it('lotDetail always carries the real group bands - lots are transparent now (Sprint 26 decision 10)', () => {
+  it('lotDetail always carries the real group bands - lots are transparent now', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
@@ -62,9 +62,9 @@ describe('market: auctions', () => {
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots.find((l) => l.tier === 'local-yard')!
     const carsBefore = game.ownedCarCount
-    // Sprint 81's 25-model pool can put a lot at the local yard whose buyout
-    // price exceeds starting cash; affordability is not what this test
-    // exercises, so grant the buyout price outright (the Sprint 59 pattern).
+    // The 25-model pool can put a lot at the local yard whose buyout price
+    // exceeds starting cash; affordability is not what this test exercises, so
+    // grant the buyout price outright.
     game.devGiveCash(game.lotDetail(lot.id)!.buyoutPriceYen)
     game.buyout(lot.id)
     expect(game.ownedCarCount).toBe(carsBefore + 1)
@@ -75,7 +75,7 @@ describe('market: auctions', () => {
 describe('market: selling', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('taking offers on a car eventually draws a live offer (Sprint 31)', () => {
+  it('taking offers on a car eventually draws a live offer', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -94,7 +94,7 @@ describe('market: selling', () => {
     expect(offer!.copy).toContain('Today only')
   })
 
-  /** Sprint 68 decision 3 (playtest item 21). */
+  /** Rejecting an offer drops it but leaves the car listed. */
   it('rejecting an offer drops it but leaves the car listed, so tomorrow can bring a better one', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
@@ -123,7 +123,6 @@ describe('market: selling', () => {
     expect(game.rejectOffer(carId)).toBe(false)
   })
 
-  /** Sprint 68 decision 5 (playtest item 23): the receipt. */
   it('accepting an offer produces a real sale receipt off the Sprint 42 ledger', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
@@ -235,7 +234,7 @@ describe('market: buying parts', () => {
 
     game.devGrantCar(pair.modelId)
     const car = game.gameState.ownedCars[0]!
-    // Sprint 32: every slot starts filled with a stock part - empty this
+    // Every slot starts filled with a stock part - empty this
     // one so the bought part actually has somewhere to install.
     game.removePart(car.id, pair.carPartId)
     const cashBefore = game.cashYen

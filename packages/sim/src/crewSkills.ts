@@ -7,12 +7,11 @@ import type {
 } from '@midnight-garage/content'
 
 /**
- * Sprint 82 (staff II): the crew-skill reads that turn benched members'
- * `engine`/`chassis`/`body` stats and traits into live effects. Every function
- * here is a pure derived read of the crew - no new persisted state (decision
- * 10). The single activity gate throughout is bench assignment: a member on a
- * fleet contract is busy elsewhere and contributes nothing here, exactly as
- * they contribute no bench labour (`energyMax`).
+ * The crew-skill reads that turn benched members' `engine`/`chassis`/`body`
+ * stats and traits into live effects. Every function here is a pure
+ * derived read of the crew - no persisted state. The single activity gate
+ * throughout is bench assignment: a contracted member contributes nothing
+ * here, exactly as they contribute no bench labour (`energyMax`).
  */
 
 /** The three crew skills - the keys of a member's `stats`. */
@@ -38,14 +37,14 @@ export function benchHasTrait(staff: readonly StaffMember[], trait: TraitId): bo
   return staff.some((m) => m.assignment === 'bench' && m.trait === trait)
 }
 
-/** True while any perfectionist is at the bench (decision 5). */
+/** True while any perfectionist is at the bench. */
 export function benchHasPerfectionist(staff: readonly StaffMember[]): boolean {
   return benchHasTrait(staff, 'perfectionist')
 }
 
 /**
- * Decision 1: the highest mapped skill for `group` among benched members - the
- * best pair of hands leads the job. 0 when no benched member covers the group
+ * The highest mapped skill for `group` among benched members - the best
+ * pair of hands leads the job. 0 when no benched member covers the group
  * (no crew, or everyone is on contract), which yields no speed effect.
  */
 export function crewSkillFor(
@@ -64,16 +63,14 @@ export function crewSkillFor(
 }
 
 /**
- * Decision 2 (Sprint 82; rescaled to energy in Sprint 94): the labour ENERGY a
- * group-G repair plan of `baseEnergy` points saves, given the benched crew. The
- * `crewSpeedDiscount` curve stays authored in SLOTS (its natural unit for the
- * hire-coherence bound D); read at `crewSkillFor(group)`, a benched
- * perfectionist spends one of those saved slots on careful work (decision 5),
- * and the surviving slot saving is scaled to energy by `pointsPerLabour`. The
- * saving is then clamped so the plan keeps at least half its base energy
- * (`floor(base / 2)` is the most it can lose) and at least one labour's worth
- * (`pointsPerLabour`) of work - it can never fall to zero, exactly as the
- * pre-Sprint-94 slot version kept at least one slot.
+ * The labour ENERGY a group-G repair plan of `baseEnergy` points saves,
+ * given the benched crew. The `crewSpeedDiscount` curve is authored in
+ * SLOTS (its natural unit for the hire-coherence bound D); read at
+ * `crewSkillFor(group)`, a benched perfectionist spends one of those saved
+ * slots on careful work, and the surviving slot saving is scaled to energy
+ * by `pointsPerLabour`. The saving is clamped so the plan keeps at least
+ * half its base energy and at least one labour's worth of work - it can
+ * never fall to zero.
  */
 export function crewEnergySaved(
   baseEnergy: number,
@@ -96,9 +93,9 @@ export function crewEnergySaved(
   return Math.max(0, saved)
 }
 
-/** `baseEnergy` less the benched crew's speed saving (decision 2) - what a group
- * repair plan actually takes with the crew that is on the bench right now, in
- * energy points. */
+/** `baseEnergy` less the benched crew's speed saving - what a group repair
+ * plan actually takes with the crew on the bench right now, in energy
+ * points. */
 export function crewAdjustedGroupEnergy(
   baseEnergy: number,
   group: ComponentId,
@@ -108,8 +105,8 @@ export function crewAdjustedGroupEnergy(
   return baseEnergy - crewEnergySaved(baseEnergy, group, staff, economy)
 }
 
-/** Decision 5: the multiplier a benched perfectionist puts on repair cash cost
- * (1 when none is benched). Applied to the whole repair economy so bench and
+/** The multiplier a benched perfectionist puts on repair cash cost (1 when
+ * none is benched). Applied to the whole repair economy so bench and
  * on-car work stay one economy. */
 export function perfectionistCostMultiplier(
   staff: readonly StaffMember[],
@@ -118,8 +115,8 @@ export function perfectionistCostMultiplier(
   return benchHasPerfectionist(staff) ? 1 - economy.staff.perfectionistPartsDiscount : 1
 }
 
-/** The crew context a repair planner needs to apply the speed and cost effects
- * (decisions 2 and 5) - the current staff roster plus the economy knobs. */
+/** The crew context a repair planner needs to apply the speed and cost
+ * effects - the current staff roster plus the economy knobs. */
 export interface CrewSkillContext {
   staff: readonly StaffMember[]
   economy: EconomyConfig

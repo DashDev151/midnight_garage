@@ -99,7 +99,7 @@ describe('ShopSlot (Sprint 24 fix 5)', () => {
   })
 
   /**
-   * Sprint 25 task 2: a customer's car still in transit occupies its slot
+   * A customer's car still in transit occupies its slot
    * but isn't there yet - nothing to grab, drag, or move.
    */
   it('an in-transit car shows "arriving tomorrow", hides the grab-handle, and disables the move button', () => {
@@ -115,7 +115,7 @@ describe('ShopSlot (Sprint 24 fix 5)', () => {
     ).toBeDefined()
   })
 
-  /** Sprint 68 decision 4 (playtest item 22): money waiting on a car should be
+  /** Money waiting on a car should be
    * visible from the garage, without opening it. */
   it('badges a car that has a live offer today', () => {
     const withOffer: ShopCarView = { ...car, hasOffer: true }

@@ -5,7 +5,7 @@ import { useGameStore } from '../stores/gameStore'
 import MissionCompleteModal from './MissionCompleteModal.vue'
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * Every wrapper is tracked
  * and unmounted after its test, so a component left mounted from a prior test
  * cannot leak its store's pinia into the next (see App/CarDetailScreen).
  */

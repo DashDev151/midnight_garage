@@ -30,9 +30,9 @@ const FITMENT: PartFitmentClass = fitmentClassForTier(MODEL.tier)
 
 /** A full stock parts map at `band`, with per-slot overrides - the same shape
  * `stockCarPartsAt` in `storyMissionProbes.test.ts` uses, kept local so this
- * probe is self-contained. The Wagon R is naturally aspirated (Sprint 90), so
- * its forcedInduction slot is left legitimately empty - the honest NA build the
- * tutorial car itself now uses (`buildTutorialLot`), no phantom turbo, which
+ * probe is self-contained. The Wagon R is naturally aspirated, so its
+ * forcedInduction slot is left legitimately empty - the honest NA build the
+ * tutorial car itself uses (`buildTutorialLot`), no phantom turbo, which
  * `roadworthy` grades as sound. */
 function stockPartsAt(
   band: ConditionBand,
@@ -59,9 +59,9 @@ function stockPartsAt(
 }
 
 /**
- * Sprint 89 decision 3: the tutorial satisfiability probe. Closed-form, no bot
- * careers (directive 21) - the scripted recipe's whole economics recomputed
- * from shipped content and asserted, so the tutorial can never quietly drift
+ * The tutorial satisfiability probe. Closed-form, no bot careers
+ * (directive 21) - the scripted recipe's whole economics recomputed from
+ * shipped content and asserted, so the tutorial can never quietly drift
  * unwinnable and the four-wheels budget/payout it rides on stay honest.
  *
  * The build the tutorial teaches: buy the scripted lot AT RESERVE, pull the
@@ -127,11 +127,12 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
   })
 
   it('the taught build stays completable after one mistake, and clears a small deliberate profit', () => {
-    // Sprint 91 coherence fix: her budget and her pay are one figure (¥145,000);
-    // the mission is not "spend under a cap higher than she pays" - it is "build
-    // within her money and keep what is left". So the guarantee is that a single
-    // wrong-band purchase still completes (spend + mistake within her money), not
-    // that a fat cap absorbs it. profit IS the slack on this lean intro job.
+    // Her budget and her pay are one figure (¥145,000); the mission is not
+    // "spend under a cap higher than she pays" - it is "build within her
+    // money and keep what is left". So the guarantee is that a single
+    // wrong-band purchase still completes (spend + mistake within her
+    // money), not that a fat cap absorbs it. profit IS the slack on this
+    // lean intro job.
     expect(totalSpendYen + oneMistakeYen).toBeLessThanOrEqual(FOUR_WHEELS.budgetCapYen)
     // The intro mission is deliberately not a big earner: the payout covers
     // her costs with a modest margin, guarded both ways so a payout bump can

@@ -12,10 +12,8 @@ export interface ServiceBayBudget {
 }
 
 export function serviceBayBudget(state: GameState): ServiceBayBudget {
-  // Sprint 17: `serviceBayCarIds` is a real, fixed-length indexed array now
-  // (one entry per physical bay, `null` = empty) rather than a compact list
-  // of only-occupied ids - free slots are a null count, not a length
-  // subtraction (which would always come out to ~0 under the new shape).
+  // `serviceBayCarIds` is a fixed-length indexed array (one entry per
+  // physical bay, `null` = empty); free slots are a null count.
   return { free: state.serviceBayCarIds.filter((id) => id === null).length }
 }
 

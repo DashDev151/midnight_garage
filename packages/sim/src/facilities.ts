@@ -34,11 +34,9 @@ function withSlot(
   return next
 }
 
-/**
- * How many cars are currently sitting in parking. Sprint 17: `parkingCarIds`
- * is real, index-addressable state now (a specific slot, not "everyone not
- * in a service bay") - occupancy is just its non-null count.
- */
+/** How many cars are currently sitting in parking - `parkingCarIds` is
+ * real, index-addressable state (a specific slot each), so occupancy is
+ * just its non-null count. */
 export function parkingOccupancy(state: GameState): number {
   return state.parkingCarIds.filter((id) => id !== null).length
 }
@@ -61,18 +59,17 @@ export function hasServiceBaySpace(state: GameState): boolean {
 }
 
 /**
- * Whether the shop has any REAL (owned) capacity free right now - parking or
- * a service bay, either counts. Sprint 45 decision 1: acquisition capacity
- * checks both, not parking alone, so a car with no free parking spot but an
- * open bay still has somewhere real to go.
+ * Whether the shop has any REAL (owned) capacity free right now - parking
+ * or a service bay, either counts, so a car with no free parking spot but
+ * an open bay still has somewhere real to go.
  */
 export function hasOwnedShopSpace(state: GameState): boolean {
   return hasParkingSpace(state) || hasServiceBaySpace(state)
 }
 
 /**
- * Whether the one grace/"double parking" overflow slot (Sprint 45) is free.
- * Always exactly one slot, never purchasable - `null` means nothing is
+ * Whether the one grace/"double parking" overflow slot is free. Always
+ * exactly one slot, never purchasable - `null` means nothing is
  * double-parked right now.
  */
 export function hasGraceSpace(state: GameState): boolean {
@@ -80,25 +77,20 @@ export function hasGraceSpace(state: GameState): boolean {
 }
 
 /**
- * The real acquisition gate (Sprint 45, replaces the old parking-only
- * `hasParkingSpace` check at every acquisition call site): true whenever
- * there is ANYWHERE for a new car to go - real capacity first, the grace
- * slot as the last resort. Only when this is false does an acquisition
- * genuinely fail with no money spent (the same no-escrow forfeit shape the
- * pre-Sprint-45 parking-only check already used).
+ * The real acquisition gate: true whenever there is ANYWHERE for a new car
+ * to go - real capacity first, the grace slot as the last resort. Only
+ * when this is false does an acquisition genuinely fail with no money
+ * spent.
  */
 export function hasAcquisitionSpace(state: GameState): boolean {
   return hasOwnedShopSpace(state) || hasGraceSpace(state)
 }
 
 /**
- * Clears a car's slot - wherever it currently sits, service, parking, or the
- * grace overflow slot (Sprint 45) - called whenever a car leaves the shop
- * entirely (sold, listed, scrapped, or a service job resolved) so the freed
- * slot is immediately reusable, not haunted by a stale id. Before Sprint 17
- * this only ever needed to check the service-bay array (parking had no
- * stored slots to leak); now a car can just as easily be leaving from a
- * specific parking slot or the grace slot.
+ * Clears a car's slot - wherever it currently sits, service, parking, or
+ * the grace overflow slot - called whenever a car leaves the shop entirely
+ * (sold, listed, scrapped, or a service job resolved) so the freed slot is
+ * immediately reusable, not haunted by a stale id.
  */
 export function releaseCarFromShop(state: GameState, carInstanceId: string): GameState {
   const serviceIndex = state.serviceBayCarIds.indexOf(carInstanceId)
@@ -119,12 +111,11 @@ export function releaseCarFromShop(state: GameState, carInstanceId: string): Gam
  * Assigns a car that just entered the shop (won at auction, a service-job
  * customer's car, a dev grant) to a parking slot - the first empty one
  * (real or implicit, up to `parkingBayCount`), or a genuinely appended slot
- * beyond that if none is free. Every normal acquisition path now checks
- * `hasAcquisitionSpace` and places through `assignToShop` (Sprint 45) rather
- * than calling this directly - `assignToParking` itself is UNCHANGED and
- * still backs `devGrantCar` exactly as before (a deliberate capacity-
- * bypassing dev tool, not a path Sprint 45 touches), so its overflow branch
- * still exists purely so a dev-granted car is never silently unplaced.
+ * beyond that if none is free. Every normal acquisition path checks
+ * `hasAcquisitionSpace` and places through `assignToShop` instead;
+ * `assignToParking` backs `devGrantCar`, a deliberate capacity-bypassing
+ * dev tool, so its overflow branch exists purely so a dev-granted car is
+ * never silently unplaced.
  */
 export function assignToParking(state: GameState, carInstanceId: string): GameState {
   if (
@@ -166,13 +157,11 @@ function assignToFirstOpenRealSlot(
 }
 
 /**
- * The real acquisition placement cascade (Sprint 45 decision 1+2): parking
- * first, a service bay if parking is full, the one grace/"double parking"
- * overflow slot only if neither real option is free. Callers must already
- * have confirmed `hasAcquisitionSpace(state)` - this function does not
- * re-check or refuse, it places into whichever tier is actually free, and
- * the grace branch is only ever reached when both real tiers are genuinely
- * full.
+ * The real acquisition placement cascade: parking first, a service bay if
+ * parking is full, the one grace/"double parking" overflow slot only if
+ * neither real option is free. Callers must already have confirmed
+ * `hasAcquisitionSpace(state)` - this function does not re-check or
+ * refuse, it places into whichever tier is actually free.
  */
 export function assignToShop(state: GameState, carInstanceId: string): GameState {
   if (hasParkingSpace(state)) return assignToFirstOpenRealSlot(state, carInstanceId, 'parking')
@@ -186,17 +175,15 @@ export interface GraceParkingResult {
 }
 
 /**
- * The day-boundary resolution for the grace/"double parking" slot (Sprint 45
- * decision 3), called once per `advanceDay` tick. Migrates the double-parked
- * car into real capacity FIRST if any has opened up since it was placed
- * there (a car sold, a bay bought, another car released) - logging the
- * existing `'car-moved'` entry, the same shape any other slot change uses -
- * so a car that frees its own overflow slot the same day it becomes fined-
- * eligible is never actually fined that day. Only if the slot is STILL
- * occupied after that check does the daily fine apply
+ * The day-boundary resolution for the grace/"double parking" slot, called
+ * once per `advanceDay` tick. Migrates the double-parked car into real
+ * capacity FIRST if any has opened up since it was placed there (a car
+ * sold, a bay bought, another car released) - logging the existing
+ * `'car-moved'` entry, so a car that frees its own overflow slot the same
+ * day it becomes fined-eligible is never actually fined that day. Only if
+ * the slot is STILL occupied does the daily fine apply
  * (`economy.DOUBLE_PARKING_FINE_YEN`, unconditional deduction, no floor
- * check - the same shape `applyWeeklyRentAndWages` already uses for rent). A
- * no-op (empty log, unchanged state) when nothing is double-parked.
+ * check). A no-op when nothing is double-parked.
  */
 export function resolveGraceParking(state: GameState, economy: EconomyConfig): GraceParkingResult {
   const carInstanceId = state.graceParkingCarId
@@ -243,15 +230,12 @@ function locate(state: GameState, carInstanceId: string): { from: BayKind; index
 
 /**
  * Moves (or swaps) a car into a SPECIFIC slot - the real positional core
- * behind drag-and-drop (Sprint 17 playtest fix). Dropping a car onto an
- * empty slot moves it there; dropping onto a slot occupied by a DIFFERENT
- * car exchanges their positions (same section or across service/parking
- * alike - "occupied service bay 1 onto occupied service bay 2" is now a
- * real swap, not the no-op it briefly was); dropping onto its own slot is a
- * no-op. Slot position is real, persisted state now - "parking bay 4" means
- * bay 4, not wherever the array used to happen to render a car. `slotIndex`
- * is checked against the bay *count*, not the array's current length -
- * see `slotAt`/`withSlot`.
+ * behind drag-and-drop. Dropping a car onto an empty slot moves it there;
+ * dropping onto a slot occupied by a DIFFERENT car exchanges their
+ * positions (same section or across service/parking alike); dropping onto
+ * its own slot is a no-op. Slot position is real, persisted state -
+ * "parking bay 4" means bay 4. `slotIndex` is checked against the bay
+ * *count*, not the array's current length - see `slotAt`/`withSlot`.
  *
  * A move's labour is `energy.actionPoints.moveCar` (0 in shipped content,
  * so moves are free today): when `economy` is passed and the figure is
@@ -337,15 +321,14 @@ export function moveCar(
 }
 
 /**
- * Atomically exchanges a service-bay car and a parking car's positions
- * (Sprint 11, round-2 playtest #3) - the fix for a shop that's exactly full
- * (services + parking cars == total capacity, zero slack): neither
- * direction of `moveCar` has anywhere to go, but a swap's net occupancy
- * change in each location is zero, so it always succeeds. A thin wrapper
- * over `moveCarToSlot` (Sprint 17): resolves `parkingCarId`'s current slot
- * and moves `serviceCarId` there, which - since that slot is occupied by a
- * different car - is exactly a swap. No-op (not an error) if either car
- * isn't where the caller claims.
+ * Atomically exchanges a service-bay car and a parking car's positions -
+ * the fix for a shop that's exactly full (zero slack): neither direction of
+ * `moveCar` has anywhere to go, but a swap's net occupancy change in each
+ * location is zero, so it always succeeds. A thin wrapper over
+ * `moveCarToSlot`: resolves `parkingCarId`'s current slot and moves
+ * `serviceCarId` there, which - since that slot is occupied by a different
+ * car - is exactly a swap. No-op (not an error) if either car isn't where
+ * the caller claims.
  */
 export function swapCars(
   state: GameState,
@@ -401,12 +384,12 @@ export function nextBayPriceYen(
 }
 
 /**
- * The reputation tier required for the next bay of this kind (Sprint 16
- * decision 2), or null if it's already met (or there's no gate, or the
- * ladder is maxed). Kept separate from `nextBayPriceYen` - same as cash
- * affordability, which `nextBayPriceYen` also doesn't check - so a UI can
- * tell "not enough reputation yet" apart from "maxed out" instead of both
- * collapsing into the same null.
+ * The reputation tier required for the next bay of this kind, or null if
+ * it's already met (or there's no gate, or the ladder is maxed). Kept
+ * separate from `nextBayPriceYen` - same as cash affordability, which
+ * `nextBayPriceYen` also doesn't check - so a UI can tell "not enough
+ * reputation yet" apart from "maxed out" instead of both collapsing into
+ * the same null.
  */
 export function nextBayMinReputationTier(
   state: GameState,
@@ -429,11 +412,11 @@ export interface BayPurchaseResult {
 
 /**
  * The pure "buy one more bay" core - same instant-for-the-player /
- * DayAction-for-bots pattern as moveCar. A no-op (not an error) if the price
- * is unknown (at the max), unaffordable, or (Sprint 16) the required
- * reputation tier hasn't been reached yet. Appends a new empty slot to the
- * relevant indexed array (Sprint 17) so array length keeps tracking the
- * purchased count exactly under normal play.
+ * DayAction-for-bots pattern as moveCar. A no-op (not an error) if the
+ * price is unknown (at the max), unaffordable, or the required reputation
+ * tier hasn't been reached yet. Appends a new empty slot to the relevant
+ * indexed array so array length keeps tracking the purchased count exactly
+ * under normal play.
  */
 export function applyBayPurchase(
   state: GameState,

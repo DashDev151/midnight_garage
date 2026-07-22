@@ -32,13 +32,9 @@ export const TagSchema = z.enum([
 ])
 
 /**
- * The 6 real car component groups (Sprint 26 - replaces the Sprint 12 8-way
- * split; `forcedInduction` folds into `engine`, `brakes` folds into
- * `suspension`). This stays the addressing granularity for staging, `Job`,
- * `ServiceJobWork`, and equipment - a group-level "bridge" the sprint's own
- * design decision 13 locks in - even though a car's actual condition state
- * (`CarInstance.parts`) is now tracked per `CarPartId`, one level below this.
- * Per-part addressing for staging/jobs is Sprint 28 scope, not this one.
+ * The 6 real car component groups. This stays the addressing granularity for
+ * staging, `Job`, `ServiceJobWork`, and equipment. A car's actual condition
+ * state (`CarInstance.parts`) is tracked per `CarPartId`, one level below this.
  */
 export const ComponentIdSchema = z.enum([
   'engine',
@@ -50,11 +46,10 @@ export const ComponentIdSchema = z.enum([
 ])
 
 /**
- * The 29 real car parts (Sprint 26), one level below the 6 groups above -
- * see `docs/sprints/sprint26.md`'s locked taxonomy table. Used exclusively
+ * The 29 real car parts, one level below the 6 groups above. Used exclusively
  * by `CarInstance.parts`' keys, the parts catalog's `carPartId` field, and
  * `parts-taxonomy.json` - never by staging/Job/ServiceJobWork, which stay
- * group-addressed this sprint.
+ * group-addressed.
  */
 export const CarPartIdSchema = z.enum([
   // engine
@@ -95,10 +90,10 @@ export const CarPartIdSchema = z.enum([
 ])
 
 /**
- * The five named part condition bands (Sprint 26) - the ONLY condition state
- * a car part ever carries; no 0-100 number survives anywhere alongside it.
- * Ordered worst to best; `scrap` is a terminal band (never repairable, only
- * replaceable or sold for scrap value - see sprint26.md decisions 5-6).
+ * The five named part condition bands - the ONLY condition state a car part
+ * ever carries; no 0-100 number survives anywhere alongside it. Ordered
+ * worst to best; `scrap` is a terminal band (never repairable, only
+ * replaceable or sold for scrap value).
  */
 export const ConditionBandSchema = z.enum(['scrap', 'poor', 'worn', 'fine', 'mint'])
 

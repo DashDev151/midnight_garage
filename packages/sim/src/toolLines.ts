@@ -12,13 +12,13 @@ import type { UpgradeToolLineAction } from './actions'
 import type { Rng } from './rng'
 
 /**
- * Sprint 36: tool lines replace binary equipment ownership. Every line is
- * always owned at tier 1 or above (progression bible law 1: nothing basic
- * is ever locked); upgrading buys labor efficiency (tier IS the
- * `repairLevel` the banded repair formula climbs at) and, from Sprint 37's
- * content onward, capability ceilings (`minToolTier` on service-job tasks).
- * There is no ownership gate anywhere - the old owns-the-machine refusal
- * class is structurally unrepresentable.
+ * Tool lines replace binary equipment ownership. Every line is always
+ * owned at tier 1 or above (progression bible law 1: nothing basic is
+ * ever locked); upgrading buys labor efficiency (tier IS the
+ * `repairLevel` the banded repair formula climbs at) and capability
+ * ceilings (`minToolTier` on service-job tasks). There is no ownership
+ * gate anywhere - the old owns-the-machine refusal class is structurally
+ * unrepresentable.
  */
 
 /** A fresh shop's tool tiers: every line at 1 (owned from day one). */
@@ -47,10 +47,10 @@ export interface ToolUpgradeResult {
 }
 
 /**
- * The reputation tier still required for `componentId`'s NEXT tool tier
- * (Sprint 43), or null if it's already met (or there's no gate - tier 1 has
- * none - or the line is maxed). Mirrors `nextBayMinReputationTier`
- * (facilities.ts) exactly, one gate vocabulary for both purchasable things.
+ * The reputation tier still required for `componentId`'s NEXT tool tier,
+ * or null if it's already met (or there's no gate - tier 1 has none - or
+ * the line is maxed). Mirrors `nextBayMinReputationTier` (facilities.ts)
+ * exactly, one gate vocabulary for both purchasable things.
  */
 export function nextToolTierRepGate(
   state: GameState,
@@ -76,9 +76,9 @@ const ALL_COMPONENT_IDS: readonly ComponentId[] = [
 ]
 
 /**
- * Sprint 52 decision 2: true while a live classifieds listing exists for
- * exactly this line+tier - the one thing (besides reputation and cash)
- * `applyToolUpgrade` gates a tier-2/3 purchase on.
+ * True while a live classifieds listing exists for exactly this line+tier
+ * - the one thing (besides reputation and cash) `applyToolUpgrade` gates a
+ * tier-2/3 purchase on.
  */
 export function isToolTierListed(
   state: GameState,
@@ -115,15 +115,15 @@ function eligibleMachineListingCandidates(
 }
 
 /**
- * Sprint 52 decision 2 (maintainer-approved, "used-machinery classifieds"):
- * the day-boundary step - lapses an expired live listing (scheduling the
- * next gap from today), then, once nothing is live, either starts that gap
- * timer (the first time any line becomes reputation-eligible) or posts a
- * fresh listing once the gap elapses, drawn uniformly from every eligible-
- * but-not-yet-owned (line, tier) pair. At most one listing live at a time
- * by construction - `GameState.machineListing` is a single nullable field,
- * never a list. A lapsed machine is never permanently lost: it simply stays
- * in the eligible pool for a later issue to draw again.
+ * The "used-machinery classifieds" day-boundary step - lapses an expired
+ * live listing (scheduling the next gap from today), then, once nothing is
+ * live, either starts that gap timer (the first time any line becomes
+ * reputation-eligible) or posts a fresh listing once the gap elapses,
+ * drawn uniformly from every eligible-but-not-yet-owned (line, tier) pair.
+ * At most one listing live at a time by construction -
+ * `GameState.machineListing` is a single nullable field, never a list. A
+ * lapsed machine is never permanently lost: it simply stays in the
+ * eligible pool for a later issue to draw again.
  *
  * `day` is the day this result is posted FOR - callers pass their own
  * `+1`-offset day, matching every other daily-generation step in
@@ -181,21 +181,20 @@ export function rollMachineListings(
 }
 
 /**
- * The pure "upgrade one tool line one tier" core (Sprint 36) - same
+ * The pure "upgrade one tool line one tier" core - same
  * instant-for-the-player / DayAction-for-bots pattern as `applyBayPurchase`.
  * Sequential only: one call climbs exactly one tier, and gates in order:
  * already at 3 -> no-op not-applied; below the tier's reputation floor
- * (Sprint 43 - tiers 2/3 gate on reputation same as bays, tier 1 never
- * does) -> no-op not-applied; can't afford the next tier's `upgradePriceYen`
- * -> no-op not-applied; no live classifieds listing for this exact line+tier
- * (Sprint 52 decision 2) -> no-op not-applied; otherwise deduct, set tier +
- * 1, consume the listing, and log `tool-upgraded`. A same-day duplicate in a
- * bot's batch re-checks reputation/cash/tier/listing per call, so it is
- * either a genuine second sequential step or a no-op - never a double
- * charge for the same tier, and - since one purchase consumes the ONE live
- * listing - a same-day double-tier climb now requires two separate listing
- * cycles, not two cash/reputation checks; this is deliberate, not a
- * regression (the whole point of decision 2 is one machine at a time).
+ * (tiers 2/3 gate on reputation same as bays, tier 1 never does) -> no-op
+ * not-applied; can't afford the next tier's `upgradePriceYen` -> no-op
+ * not-applied; no live classifieds listing for this exact line+tier ->
+ * no-op not-applied; otherwise deduct, set tier + 1, consume the listing,
+ * and log `tool-upgraded`. A same-day duplicate in a bot's batch re-checks
+ * reputation/cash/tier/listing per call, so it is either a genuine second
+ * sequential step or a no-op - never a double charge for the same tier,
+ * and - since one purchase consumes the ONE live listing - a same-day
+ * double-tier climb requires two separate listing cycles, not two
+ * cash/reputation checks; this is deliberate, one machine at a time.
  */
 export function applyToolUpgrade(
   state: GameState,
@@ -210,12 +209,12 @@ export function applyToolUpgrade(
   const nextTier = context.toolLines[componentId].tiers[currentTier]!
   if (state.cashYen < nextTier.upgradePriceYen) return { state, log: [], applied: false }
   const toTier = (currentTier + 1) as ToolTier
-  // Sprint 52 decision 2: reputation/cash only make a tier ELIGIBLE - a
-  // live classifieds listing for this exact line+tier is what makes it
-  // actually purchasable. Bots keep firing this every day regardless (the
-  // existing fire-and-let-the-resolver-refuse contract, `considerToolUpgrade`
-  // - this is simply one more refusal reason, same shape as the reputation
-  // gate above); the player's own Upgrade button is disabled the same way.
+  // Reputation/cash only make a tier ELIGIBLE - a live classifieds listing
+  // for this exact line+tier is what makes it actually purchasable. Bots
+  // keep firing this every day regardless (the fire-and-let-the-resolver-
+  // refuse contract, `considerToolUpgrade` - this is simply one more
+  // refusal reason, same shape as the reputation gate above); the
+  // player's own Upgrade button is disabled the same way.
   if (!isToolTierListed(state, componentId, toTier)) return { state, log: [], applied: false }
   return {
     state: {

@@ -229,6 +229,9 @@ fails that test outright, rather than silently drifting).
 | `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
 | `diagnosis.symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The odds-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law; `fearPremium` retired 2026-07-19, see the Amendment log), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
 | `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
+| `auctionRoom.*` | `economy.json` | The live auction room: fuse clock, reserve/clearing draws, turnout bands, bid rungs, and the reaction chances (rows added 2026-07-22 for blocks landed with their sprints' recorded mandates; `staff.*` and `machineShopAssist`-family keys remain the known table gap awaiting the standing ruling) |
+| `auctionGrading.overallRatioSteps` | `economy.json` | The four-stamp sheet's OVERALL grade (apparent restoration bill over book value, stepped; maintainer-locked design, Sprint 112's doc is the approval record) |
+| `sellingChannels.*` and `reputation.matchedSaleRepBonus` | `economy.json` | The listing channels' fees, cadences, taste ceilings, and the trade-network price band, plus the matched-sale word-of-mouth term (values maintainer-locked in session; `docs/sprints/sprint114.md`'s lever table is the approval record) |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 

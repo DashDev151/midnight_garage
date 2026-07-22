@@ -10,8 +10,7 @@ import RotaryMarker from './RotaryMarker.vue'
 const game = useGameStore()
 
 /**
- * One owned part instance, draggable onto a compatible component's drop zone
- * (Sprint 18 - the second consumer of Sprint 17's drag-and-drop composable).
+ * One owned part instance, draggable onto a compatible component's drop zone.
  * Purely presentational: the parent decides what a drop actually does
  * (stage an install) and which components currently accept this part.
  */
@@ -30,14 +29,14 @@ const props = withDefaults(
      */
     fits?: boolean
     /**
-     * Whether to offer the in-inventory recondition control (Sprint 35).
+     * Whether to offer the in-inventory recondition control.
      * Defaults to true - the browse inventory is the place to recondition a
      * part. The `ReplaceDrawer` passes false: it's a focused install picker,
      * not the place to also kick off bench work.
      */
     showRecondition?: boolean
     /**
-     * Sprint 37: overrides the generic "doesn't fit here" hint when `fits`
+     * Overrides the generic "doesn't fit here" hint when `fits`
      * is false for a specific, actionable reason (e.g. the one own-car
      * capability ceiling - NA-to-turbo conversion needs a higher engine tool
      * tier). Ignored when `fits` is true.
@@ -56,7 +55,7 @@ const emit = defineEmits<{
 const draggable = useDraggable(() => props.instance.id)
 
 /**
- * Sprint 26 decision 6, Sprint 28 task: a scrap instance can never be
+ * A scrap instance can never be
  * reinstalled anywhere (the fit-check rejects it universally), so it never
  * offers the pick/drag-to-install affordance - only "Scrap it". Checked
  * here, once, rather than in every screen that renders a `PartCard`.
@@ -70,26 +69,26 @@ const scrapLabourSuffix = computed(() =>
   game.actionPoints.scrapPart > 0 ? ` · ${game.actionPoints.scrapPart} labour` : '',
 )
 
-/** Sprint 71 decision 6 (the teardown game's donor economy): the used-part
+/** The used-part
  * sale price for a non-scrap instance - "Sell" beside "Scrap it", the other
  * way to cash out a part still worth more than scrap value. */
 const sellValueYen = computed(() => game.sellValueForPart(props.instance.id))
 
 /**
- * Sprint 35: a part pulled off a customer's car is tracked here but locked
+ * A part pulled off a customer's car is tracked here but locked
  * from sale/scrap (only reconditioning and refitting are allowed) until the
  * job closes out. The badge and the disabled-scrap reason both key off this.
- * Sprint 70: ownership is read from the instance's own `origin` against every
+ * Ownership is read from the instance's own `origin` against every
  * active service job, not a mutable tag (`game.isCustomerOwnedPart`).
  */
 const isCustomerOwned = computed(() => game.isCustomerOwnedPart(props.instance))
 
-/** Sprint 70: the dim "where did this come from" caption line beneath the
+/** The dim "where did this come from" caption line beneath the
  * part name. */
 const originCaption = computed(() => game.describePartOrigin(props.instance))
 
 /**
- * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only - a
+ * Tyres/brakePadsDiscs/clutch are replace-only - a
  * non-repairable part can't be bench-reconditioned any more than it can be
  * repaired on a car (`isPartRepairable` reads the same taxonomy flag
  * `canRepair` does, bands.ts).
@@ -97,10 +96,10 @@ const originCaption = computed(() => game.describePartOrigin(props.instance))
 const isRepairable = computed(() => game.isPartRepairable(props.part.carPartId))
 
 /**
- * Sprint 48: the click-per-rung bench recondition step - climbs exactly one
+ * The click-per-rung bench recondition step - climbs exactly one
  * band per click, priced/labored off the real recondition quote for that
  * next rung (never a hardcoded guess). Null when there is nothing left to
- * recondition (already mint, scrap, or - Sprint 41 - non-repairable).
+ * recondition (already mint, scrap, or non-repairable).
  */
 const nextStep = computed(() =>
   props.showRecondition && !isScrap.value && isRepairable.value
@@ -253,7 +252,7 @@ function onPointerUp(event: PointerEvent): void {
   padding: var(--mg-space-2) var(--mg-space-3);
   touch-action: none;
   cursor: pointer;
-  /* Sprint 25 task 7: pointer-drag (mousedown + move without releasing) was
+  /* Pointer-drag (mousedown + move without releasing) was
      selecting the card's text like a text drag, since nothing suppressed
      native selection here - ShopSlot.vue already carried this pair for the
      same reason. */
@@ -313,7 +312,7 @@ function onPointerUp(event: PointerEvent): void {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 35: the customer-owned tag, using BandChip's chip vocabulary (chip
+/* The customer-owned tag, using BandChip's chip vocabulary (chip
    padding/border/radius, an --mg-* accent) rather than any new color literal. */
 .owner-chip {
   display: inline-block;
@@ -353,7 +352,7 @@ function onPointerUp(event: PointerEvent): void {
   border-color: var(--mg-neon-pink);
 }
 
-/* Sprint 71 decision 6: the donor-economy sibling to "Scrap it" - same yen
+/* The donor-economy sibling to "Scrap it" - same yen
    colour (it earns cash too), cyan border to read as the "keeps value"
    option rather than scrap's pink write-off tone. */
 .sell-handle {
@@ -372,7 +371,7 @@ function onPointerUp(event: PointerEvent): void {
   cursor: default;
 }
 
-/* Sprint 63 (item 7): the bench recondition control matches the car page's
+/* The bench recondition control matches the car page's
    repair rows - a compact `+` button with the cost as a quiet caption, never
    a sentence in the button. */
 .recondition-step {

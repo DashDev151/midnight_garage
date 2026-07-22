@@ -36,14 +36,10 @@ export function currentGameYear(reputationTier: ReputationTier): number {
 }
 
 /**
- * Turns accrued reputation points into a tier (Sprint 15) - the highest tier
- * whose threshold `points` has reached, reading `economy.reputation
- * .tierThresholds` so there is exactly one place the point/tier mapping is
- * defined.
- *
- * Sprint 69: the ladder moved from `sim/constants.ts` into content (the
- * content law), so this takes the economy rather than closing over a
- * hardcoded table.
+ * Turns accrued reputation points into a tier - the highest tier whose
+ * threshold `points` has reached, reading
+ * `economy.reputation.tierThresholds` so there is exactly one place the
+ * point/tier mapping is defined.
  */
 export function deriveReputationTier(points: number, economy: EconomyConfig): ReputationTier {
   const thresholds = economy.reputation.tierThresholds
@@ -55,10 +51,10 @@ export function deriveReputationTier(points: number, economy: EconomyConfig): Re
 }
 
 /**
- * The single place `reputationPoints` ever changes (Sprint 15): clamps at
- * zero (a penalty can never go negative - matches the pre-existing
- * service-job-failure clamp) and re-derives `reputationTier` in the same
- * step, so the tier is never stale relative to the points underneath it.
+ * The single place `reputationPoints` ever changes: clamps at zero (a
+ * penalty can never go negative) and re-derives `reputationTier` in the
+ * same step, so the tier is never stale relative to the points underneath
+ * it.
  */
 export function applyReputationDelta(
   state: GameState,

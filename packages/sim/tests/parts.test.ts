@@ -182,13 +182,13 @@ describe('resolvePartDeliveries (Sprint 14, day arithmetic fixed Sprint 25 task 
   })
 
   /**
-   * Sprint 25 task 3: `advanceDay` never mutates `state.day` until the very
-   * last line of its own body, so the one `advanceDay` call that takes day
-   * N to day N + 1 calls this function with `state.day` still at N - not
-   * N + 1. This is exactly that call: a standard order bought on day N must
-   * already be in inventory by the time this single call returns, so it's
-   * there the moment the player lands on day N + 1 (one End Day click, not
-   * two).
+   * `advanceDay` never mutates `state.day` until the very last line of
+   * its own body, so the one `advanceDay` call that takes day N to day N
+   * + 1 calls this function with `state.day` still at N - not N + 1.
+   * This is exactly that call: a standard order bought on day N must
+   * already be in inventory by the time this single call returns, so
+   * it's there the moment the player lands on day N + 1 (one End Day
+   * click, not two).
    */
   it('regression: a standard order bought on day N delivers in the very next resolvePartDeliveries call', () => {
     const dayN = 5
@@ -249,10 +249,8 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
   })
 
   /**
-   * Sprint 70: ownership is read from the instance's own `origin` against
-   * every active service job (`provenance.ts`'s `isCustomerOriginPart`), not
-   * a mutable `customerJobId` tag - directive-17 case (a), same rule as
-   * before, reimplemented over the new mechanism.
+   * Ownership is read from the instance's own `origin` against every
+   * active service job (`provenance.ts`'s `isCustomerOriginPart`).
    */
   it("refuses to scrap a part whose origin traces to an active customer job's car - a no-op", () => {
     const customerCar = buildCarInstance({ id: 'car-customer-scrap' })

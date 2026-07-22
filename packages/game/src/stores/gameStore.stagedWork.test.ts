@@ -4,8 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
 
-/** A benched crew member with a given body skill and trait, for the Sprint 82
- * crew-effect estimate tests. */
+/** A benched crew member with a given body skill and trait. */
 function benchedBody(id: string, body: number, trait: StaffMember['trait']): StaffMember {
   return {
     id,
@@ -20,12 +19,10 @@ function benchedBody(id: string, body: number, trait: StaffMember['trait']): Sta
 }
 
 /**
- * An aftermarket (non-stock) catalog part for this slot - every part fits
- * any car of the right CLASS now (Sprint 32 decision 1 drops requiredTags;
- * Sprint 53 adds the fitment-class check), so this just needs to avoid the
- * stock grade (already occupying every slot by default). Pinned to
- * `shitbox` - every car this file grants (`CARS[0]`/`CARS[1]`,
- * honda-city-e-aa/suzuki-wagon-r-ct21s) is that tier.
+ * An aftermarket (non-stock) catalog part for this slot. Every part fits any
+ * car of the right CLASS now, so this just needs to avoid the stock grade
+ * (already occupying every slot by default). Pinned to `shitbox` - every car
+ * this file grants (honda-city-e-aa and suzuki-wagon-r-ct21s) is that tier.
  */
 function untaggedPartFor(carPartId: string) {
   return PARTS.find(
@@ -33,7 +30,7 @@ function untaggedPartFor(carPartId: string) {
   )!
 }
 
-describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)', () => {
+describe('staged repair/install work', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('staging and unstaging a repair cost nothing', () => {
@@ -56,12 +53,12 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(game.cashYen).toBe(cashBefore)
   })
 
-  it('the planned estimate sums the labour the planned work will actually cost (Sprint 63)', () => {
+  it('the planned estimate sums the labour the planned work will actually cost', () => {
     const game = useGameStore()
     // A car whose body group has a real tier-1 repair step (below the fine
-    // ceiling), so a genuine plan exists. Sprint 93: a `fine` group has no
-    // further "+" at tier 1, so gate on the step existing, not merely on the
-    // band being non-mint.
+    // ceiling), so a genuine plan exists. A `fine` group has no further "+" at
+    // tier 1, so gate on the step existing, not merely on the band being
+    // non-mint.
     let car = game.gameState.ownedCars.at(-1)
     for (let i = 0; i < 30 && (!car || game.nextRepairStep(car.id, 'body') == null); i++) {
       game.devGrantCar(CARS[0]!.id)
@@ -83,7 +80,7 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(estimate.plannedRepairCostYen).toBe(step.costYen)
   })
 
-  it('refuses to stage over a component with an open job (decision 4)', () => {
+  it('refuses to stage over a component with an open job', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -109,7 +106,7 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     ).toBe(false)
   })
 
-  it('re-staging over an already-staged component replaces it (decision 8)', () => {
+  it('re-staging over an already-staged component replaces it', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -131,7 +128,7 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(game.isPartStagedAnywhere(partAInstanceId)).toBe(false)
   })
 
-  it('a part staged on one car is unavailable to stage on another until unstaged (decision 3)', () => {
+  it('a part staged on one car is unavailable to stage on another until unstaged', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     game.devGrantCar(CARS[1]?.id ?? CARS[0]!.id)
@@ -174,11 +171,11 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(game.gameState.partInventory.some((pi) => pi.id === partInstanceId)).toBe(false)
   })
 
-  it('confirmCarWork starts a staged repair at tier 1 with nothing upgraded (the Sprint 13 equipment gate is retired)', () => {
+  it('confirmCarWork starts a staged repair at tier 1 with nothing upgraded', () => {
     const game = useGameStore()
     // Correlated band rolls can land a group with no tier-1 repair step even on
-    // a rough car - retry grants until the body group has a real "+" step below
-    // the fine ceiling (Sprint 93: a `fine` group offers none at tier 1).
+    // a rough car. Retry grants until the body group has a real "+" step below
+    // the fine ceiling. A `fine` group offers none at tier 1.
     let car = game.gameState.ownedCars.at(-1)
     for (let i = 0; i < 30 && (!car || game.nextRepairStep(car.id, 'body') == null); i++) {
       game.devGrantCar(CARS[0]!.id)
@@ -187,30 +184,30 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     if (!car) throw new Error('expected a granted car')
     game.moveCar(car.id, 'service')
     const cashBefore = game.cashYen
-    // Sprint 93: a tier-1 repair finishes at fine, so stage to the reachable
-    // ceiling. The claim under test is unchanged - the repair really starts and
-    // charges cash, no equipment gate blocks it.
+    // A tier-1 repair finishes at fine, so stage to the reachable ceiling. The
+    // claim under test is unchanged - the repair really starts and charges cash,
+    // no equipment gate blocks it.
     game.stageAction(car.id, { kind: 'repair', componentId: 'body', targetBand: 'fine' })
 
     game.confirmCarWork(car.id)
 
     expect(game.stagedActionsFor(car.id)).toEqual([])
     // The repair really started: the group's repair bill was charged (no
-    // consumables fee since Sprint 47). No refusal path exists anymore -
-    // nothing gets job-blocked.
+    // consumables fee). No refusal path exists anymore - nothing gets
+    // job-blocked.
     expect(game.cashYen).toBeLessThan(cashBefore)
     expect(game.dayLog.some((e) => e.type === 'job-blocked')).toBe(false)
   })
 
-  it('selling the car drops its staged work (decision 7)', () => {
+  it('selling the car drops its staged work', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
 
-    // Sprint 31: selling now goes through a live pending offer rather than
-    // an instant roll - inject one directly (same pattern the "open job"
-    // test above uses) rather than depending on the probabilistic daily draw.
+    // Selling now goes through a live pending offer rather than an instant
+    // roll. Inject one directly (same pattern the "open job" test above uses)
+    // rather than depending on the probabilistic daily draw.
     game.gameState = {
       ...game.gameState,
       carsForSale: [{ carInstanceId: carId, sinceDay: game.gameState.day }],
@@ -221,7 +218,7 @@ describe('staged repair/install work (Sprint 18; re-based on bands, Sprint 26)',
     expect(game.gameState.stagedCarWork[carId]).toBeUndefined()
   })
 
-  it('refuses to stage a part onto a component it does not fit (Sprint 24 fix 2)', () => {
+  it('refuses to stage a part onto a component it does not fit', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -279,7 +276,7 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
 
     game.gameState = { ...game.gameState, staff: [benchedBody('h', 5, 'night-owl')] }
     const withCrew = game.carDetail(carId)!.plannedEstimate!
-    // Sprint 94: the crew speed discount saves labour ENERGY - the curve value
+    // The crew speed discount saves labour ENERGY - the curve value
     // (2 slots at skill 5) scaled by pointsPerLabour, clamped in energy (keep at
     // least half the base and at least one labour's worth).
     const PER = ECONOMY.energy.pointsPerLabour
@@ -298,7 +295,7 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
 
     game.gameState = { ...game.gameState, staff: [benchedBody('p', 5, 'perfectionist')] }
     const withPerf = game.carDetail(carId)!.plannedEstimate!
-    // Sprint 94: skill 5 saves 2 labour, the perfectionist trims one, scaled to
+    // Skill 5 saves 2 labour, the perfectionist trims one, scaled to
     // energy by pointsPerLabour and clamped as above.
     const PER = ECONOMY.energy.pointsPerLabour
     const expectedSaved = Math.min(1 * PER, Math.floor(baseSlots / 2), baseSlots - PER)

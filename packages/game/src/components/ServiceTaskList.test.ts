@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest'
 import ServiceTaskList from './ServiceTaskList.vue'
 
 /**
- * The maintainer read a job, missed one of its actions, and only found out
- * later - the list rendered as dim grey prose, so a list of work the player
- * MUST do read as flavour text. These pin the checklist shape that fixes it.
+ * These pin the checklist shape: a list of work the player MUST do must
+ * never read as flavour text (dim grey prose).
  */
 describe('ServiceTaskList', () => {
   const tasks = [

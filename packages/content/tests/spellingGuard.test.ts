@@ -10,21 +10,19 @@ import {
 } from '../src/data'
 
 /**
- * Sprint 75 decision 5: extends the game package's own spelling guard
- * (`packages/game/src/spellingGuard.test.ts`, Sprint 63/67) to CONTENT's own
- * player-facing string fields - the same `BANNED` pattern list, the same
- * word-boundary matching, one shared standard for every surface a player
- * actually reads regardless of which package it lives in. Covers:
+ * Extends the game package's own spelling guard
+ * (`packages/game/src/spellingGuard.test.ts`) to CONTENT's own player-facing
+ * string fields - the same `BANNED` pattern list, the same word-boundary
+ * matching, one shared standard for every surface a player actually reads
+ * regardless of which package it lives in. Covers:
  *
  * - `symptoms.json`'s `cardLine` (the free lot-card line) and every test's
- *   `resultCopy` pair (Sprint 73).
- * - `provenance.json`'s whole flavour pool (Sprint 70) - never covered by a
- *   guard until now, since it predates this content-side test.
- * - `economy.json`'s `diagnosis.saleRevealCopy` templates (Sprint 75
- *   decision 2, the organic teacher).
+ *   `resultCopy` pair.
+ * - `provenance.json`'s whole flavour pool.
+ * - `economy.json`'s `diagnosis.saleRevealCopy` templates.
  * - `storyMissions.json`'s title/request/delivered/overdelivered/lapsed
- *   copy and `personas.json`'s name/intro (Sprint 76).
- * - `lapReferences.json`'s entry names (Sprint 77).
+ *   copy and `personas.json`'s name/intro.
+ * - `lapReferences.json`'s entry names.
  *
  * Deliberately field-targeted, not a blanket scan of every string in every
  * JSON file (unlike `noEmDash.test.ts`'s repo-wide sweep) - a content id
@@ -82,7 +80,7 @@ function findOffenses(): string[] {
     ),
   )
 
-  // Sprint 76 (story missions I): the campaign's own player-facing copy.
+  // The campaign's own player-facing copy.
   for (const mission of STORY_MISSIONS) {
     offenses.push(...offensesIn(`storyMissions.json:${mission.id}.title`, mission.title))
     offenses.push(
@@ -103,12 +101,12 @@ function findOffenses(): string[] {
     offenses.push(...offensesIn(`personas.json:${persona.id}.intro`, persona.intro))
   }
 
-  // Sprint 77 (story missions II): the reference-lap board's fictional names.
+  // The reference-lap board's fictional names.
   for (const entry of LAP_REFERENCES) {
     offenses.push(...offensesIn(`lapReferences.json:${entry.id}.name`, entry.name))
   }
 
-  // Sprint 80 (staff I): the job-ad candidate name and bio pools.
+  // The job-ad candidate name and bio pools.
   STAFF_CANDIDATES.names.forEach((name, i) => {
     offenses.push(...offensesIn(`staffCandidates.json:names[${i}]`, name))
   })
@@ -126,8 +124,8 @@ describe('British spelling in content-side player copy (Sprint 75 decision 5)', 
   })
 
   /**
-   * The guard checks ITSELF (same reasoning as the game package's own guard,
-   * Sprint 67): a pattern list that matches nothing passes just as quietly as
+   * The guard checks ITSELF (same reasoning as the game package's own
+   * guard): a pattern list that matches nothing passes just as quietly as
    * clean content. These cases are the proof the instrument works.
    */
   it.each([

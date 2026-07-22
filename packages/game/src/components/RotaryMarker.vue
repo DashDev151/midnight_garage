@@ -1,5 +1,5 @@
 <!--
-  The rotary-only part marker (Sprint 28 reuse analysis): a small triangle
+  The rotary-only part marker: a small triangle
   glyph on any catalog part card that requires the `Rotary` tag - the one
   semantic exception to the no-decorative-Unicode rule (CLAUDE.md directive
   2), carrying its meaning in a `title` tooltip rather than inline jargon

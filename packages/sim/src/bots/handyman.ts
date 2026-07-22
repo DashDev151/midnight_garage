@@ -20,8 +20,8 @@ const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
 const FAIR_BID_MULTIPLIER = 1.3
 /** Same headroom style as every other bot's cash buffer (auction spends). */
 const CASH_BUFFER_MULTIPLIER = 1.2
-/** Sprint 36: this archetype upgrades at a bare 1.0 buffer - invest fast is
- * its whole identity; the harness's payback-curve columns measure whether
+/** This archetype upgrades at a bare 1.0 buffer - invest fast is its
+ * whole identity; the harness's payback-curve columns measure whether
  * that pays off against Investor's never-upgrade control. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 1.0
 const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
@@ -31,20 +31,19 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'body',
   'interior',
 ]
-/** Sprint 31 decision 4: accept an offer once it clears this fraction of the
- * car's best-fit valuation, or once it's been for-sale this many days. */
+/** Accept an offer once it clears this fraction of the car's best-fit
+ * valuation, or once it's been for-sale this many days. */
 const ACCEPT_FRACTION = 0.85
 const MAX_HOLDING_DAYS = 12
 
 /**
- * The tier-payback archetype (Sprint 13; re-based on tool lines in Sprint
- * 36) - "invest fast, harvest the labor-efficiency margin." Each day it
- * queues the CHEAPEST next-tier tool upgrade across all six lines it can
- * buffer, *before* deciding what to do with its cars - capability is the
- * priority spend, not an afterthought. Otherwise a disciplined restorer:
- * fixes the worst component per car (always possible now, just faster at
- * higher tiers) and sells at a fair floor. The harness's payback-curve
- * columns (sprint13.md decision 11) compare this bot's cash/net-worth
+ * The tier-payback archetype: "invest fast, harvest the labor-efficiency
+ * margin." Each day it queues the CHEAPEST next-tier tool upgrade across
+ * all six lines it can buffer, *before* deciding what to do with its cars
+ * - capability is the priority spend, not an afterthought. Otherwise a
+ * disciplined restorer: fixes the worst component per car (always
+ * possible now, just faster at higher tiers) and sells at a fair floor.
+ * The harness's payback-curve columns compare this bot's cash/net-worth
  * trajectory against Investor's to check the investment actually pays off.
  */
 export function handymanStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
@@ -93,7 +92,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
   const jobbedCarIds = new Set(state.jobs.map((job) => job.carInstanceId))
 
   // 3. Repair the worst repairable component per job-free owned car - work
-  // is always possible at the current tier (Sprint 36), so no gate here.
+  // is always possible at the current tier, so no gate here.
   for (const car of state.ownedCars) {
     if (laborBudget <= 0) break
     if (jobbedCarIds.has(car.id)) continue

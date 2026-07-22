@@ -22,14 +22,15 @@ export interface MissionResolution {
 }
 
 /**
- * Sprint 76 decision 3: the next locked mission that's eligible to be
- * offered - `context.storyMissions` is pre-sorted by `gateReputationPoints`
+ * The next locked mission that's eligible to be offered -
+ * `context.storyMissions` is pre-sorted by `gateReputationPoints`
  * (`buildSimContext`), so the first mission with no progress record at all
  * is the campaign's current frontier. Returns `undefined` the instant an
  * EARLIER mission (in gate order) isn't `delivered` yet (including one
  * that's currently `offered`/`active`) - the strictly linear campaign never
- * lets a later mission jump ahead, and this same check is what keeps "at most
- * one offered/active mission at a time" true without a separate count check.
+ * lets a later mission jump ahead, and this same check is what keeps "at
+ * most one offered/active mission at a time" true without a separate
+ * count check.
  */
 function nextOfferableMission(
   records: readonly StoryMissionRecord[],
@@ -45,13 +46,12 @@ function nextOfferableMission(
 }
 
 /**
- * Sprint 76 decision 3 (Sprint 85 decision 2: unfailable): the day-boundary
- * mission tick - offer the next locked mission if reputation clears its gate,
- * and nothing else. Story missions can no longer lapse or reoffer (playtest
- * 18); the budget cap and requirements are the whole challenge. At most one
- * offered/active mission exists at a time, so this adds at most one `offered`
- * record. Offering is silent - the player reads the card appearing, no log
- * entry (unchanged from Sprint 76).
+ * The day-boundary mission tick - offer the next locked mission if
+ * reputation clears its gate, and nothing else. Story missions cannot
+ * lapse or reoffer; the budget cap and requirements are the whole
+ * challenge. At most one offered/active mission exists at a time, so this
+ * adds at most one `offered` record. Offering is silent - the player
+ * reads the card appearing, no log entry.
  */
 export function advanceStoryMissions(state: GameState, context: SimContext): MissionResolution {
   const candidate = nextOfferableMission(state.storyMissions, context)
@@ -65,10 +65,10 @@ export function advanceStoryMissions(state: GameState, context: SimContext): Mis
   return { state: { ...state, storyMissions }, log: [] }
 }
 
-/** Sprint 76 decision 4 (Sprint 85 decision 2: unfailable): offered -> active,
- * stamping `acceptedOnDay` only - there is no deadline to count from. A no-op
- * (matching every other instant resolver's contract) when the mission isn't
- * actually `offered` or doesn't exist. */
+/** Offered -> active, stamping `acceptedOnDay` only - there is no
+ * deadline to count from. A no-op (matching every other instant
+ * resolver's contract) when the mission isn't actually `offered` or
+ * doesn't exist. */
 export function resolveAcceptMission(
   state: GameState,
   missionId: string,
@@ -94,12 +94,11 @@ export interface MissionGradeReport {
 }
 
 /**
- * Sprint 76 decision 4 (Sprint 85 decision 2: unfailable): pure, free,
- * repeatable - every one of the mission's requirements (already including its
- * mirrored `budgetCap`, decision 2). No deadline check anymore - story
- * missions cannot lapse, so there is no day-of-delivery cutoff to grade. No
- * state change; an unresolvable mission or car reports an outright fail with
- * no lines rather than throwing.
+ * Pure, free, repeatable - every one of the mission's requirements
+ * (already including its mirrored `budgetCap`). No deadline check - story
+ * missions cannot lapse, so there is no day-of-delivery cutoff to grade.
+ * No state change; an unresolvable mission or car reports an outright
+ * fail with no lines rather than throwing.
  */
 export function gradeMissionCar(
   state: GameState,
@@ -133,15 +132,14 @@ function isLapTimeCeiling(
 }
 
 /**
- * Sprint 76 decision 4, extended Sprint 79 decision 6: whether every
- * `statThreshold` requirement on `mission` clears its `min` by at least
- * `tipTriggerFraction` AND every `lapTimeCeiling` requirement clears its
- * `maxSeconds` by at least `lapTipTriggerFraction` - the tip condition. A
- * mission authoring neither kind has nothing to overdeliver against, so it
- * never earns a tip (never vacuously true; `four-wheels`, a `roadworthy`-only
- * mission, stays tipless by design). A `lapTimeCeiling` mission whose car
- * cannot even set a time (`lapTimeSeconds === null` - no tyres fitted, or
- * scrap-band) never tips either.
+ * Whether every `statThreshold` requirement on `mission` clears its `min`
+ * by at least `tipTriggerFraction` AND every `lapTimeCeiling` requirement
+ * clears its `maxSeconds` by at least `lapTipTriggerFraction` - the tip
+ * condition. A mission authoring neither kind has nothing to overdeliver
+ * against, so it never earns a tip (never vacuously true; `four-wheels`, a
+ * `roadworthy`-only mission, stays tipless by design). A `lapTimeCeiling`
+ * mission whose car cannot even set a time (`lapTimeSeconds === null` - no
+ * tyres fitted, or scrap-band) never tips either.
  */
 function earnsTip(
   mission: StoryMission,
@@ -163,13 +161,13 @@ function earnsTip(
 }
 
 /**
- * Sprint 76 decision 4: requires `gradeMissionCar` to pass; removes the car
- * (the sale path's own release/staged-work/ledger cleanup, decision reuse -
- * never a market sale, so no market-heat/player-sales bump), pays
- * `payoutYen` (+ a tip when `earnsTip` above holds), and applies
- * `reputationReward` (+ its `specialtyGroups` split) exactly like a
- * completed service job. A no-op when the mission isn't `active`, the car
- * doesn't exist, or grading fails.
+ * Requires `gradeMissionCar` to pass; removes the car (the sale path's own
+ * release/staged-work/ledger cleanup - never a market sale, so no
+ * market-heat/player-sales bump), pays `payoutYen` (+ a tip when
+ * `earnsTip` above holds), and applies `reputationReward` (+ its
+ * `specialtyGroups` split) exactly like a completed service job. A no-op
+ * when the mission isn't `active`, the car doesn't exist, or grading
+ * fails.
  */
 export function resolveDeliverMission(
   state: GameState,

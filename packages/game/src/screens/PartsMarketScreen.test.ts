@@ -6,9 +6,9 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import PartsMarketScreen from './PartsMarketScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
-// wrapper and unmount it after each test, so a component left mounted from a
-// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+// Track every mounted wrapper and unmount it after each test, so a component
+// left mounted from a prior test cannot leak its store's pinia into the next
+// (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
 /** A minimal real router so RouterLink resolves against real routes. Route
@@ -53,7 +53,7 @@ describe('PartsMarketScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('shows six department hero cards and no parts list by default (Sprint 49 decision 1)', async () => {
+  it('shows six department hero cards and no parts list by default', async () => {
     const { wrapper } = await mountScreen()
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
     expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(true)
@@ -68,7 +68,7 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
   })
 
-  it('each slot card renders its sprite (Sprint 88 decision 7, moved to the slot level)', async () => {
+  it('each slot card renders its sprite', async () => {
     const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
     const sprite = wrapper.find('[data-test="catalog-part-block"] .hero-sprite')
@@ -100,7 +100,7 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.text()).not.toContain(`${suspensionPart.brand} ${suspensionPart.name}`)
   })
 
-  it('drills down group -> sub-part to filter the catalog (Sprint 33 decision 3), then leaves the department via the breadcrumb', async () => {
+  it('drills down group to sub-part to filter the catalog, then leaves the department via the breadcrumb', async () => {
     const { wrapper } = await mountScreen()
     const ignitionEcuOnly = PARTS.filter((p) => p.carPartId === 'ignitionEcu')
 
@@ -108,8 +108,8 @@ describe('PartsMarketScreen', () => {
     await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
     expect(wrapper.findAll('.part').length).toBe(ignitionEcuOnly.length)
 
-    // Leaving a department is via the breadcrumb root (Sprint 49 decision 2) -
-    // back to the six heroes, not a flat "all parts" tile inside the catalog.
+    // Leaving a department is via the breadcrumb root - back to the six heroes,
+    // not a flat "all parts" tile inside the catalog.
     await wrapper.find('[data-test="breadcrumb-root"]').trigger('click')
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
   })
@@ -125,7 +125,7 @@ describe('PartsMarketScreen', () => {
     )
   })
 
-  it('adding to cart spends nothing (Sprint 14 misclick safeguard)', async () => {
+  it('adding to cart spends nothing', async () => {
     const game = useGameStore()
     const cashBefore = game.cashYen
     const { wrapper } = await mountScreen()
@@ -191,7 +191,7 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.find('[data-test="cart-panel"]').text()).toContain(cheapest.name)
   })
 
-  it('the cart rail is visible on the home view too, not only inside a department (Sprint 58 decision 3)', async () => {
+  it('the cart rail is visible on the home view too, not only inside a department', async () => {
     const game = useGameStore()
     const { wrapper } = await mountScreen()
     expect(wrapper.findAll('.hero-card')).toHaveLength(6) // still the home view
@@ -206,7 +206,7 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.find('[data-test="cart-panel"]').text()).toContain(cheapest.name)
   })
 
-  it('a Back button exits a department without hunting the breadcrumb (Sprint 58 decision 5)', async () => {
+  it('a Back button exits a department without hunting the breadcrumb', async () => {
     const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="hero-engine"]').trigger('click')
     expect(wrapper.find('[data-test="hero-engine"]').exists()).toBe(false)
@@ -215,14 +215,14 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
   })
 
-  it('the "fits this vehicle" filter lists an accepted (inbound) customer service-job car (Sprint 61 item 10)', async () => {
+  it('the "fits this vehicle" filter lists an accepted customer service-job car', async () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 95 (directive 17 case (a)): the radial-offer gate keeps a fresh
-    // tutorial career's board Yuki-only, so this no longer assumes a day-1
-    // offer - it skips the walkthrough and advances to the next generation
-    // point instead. The accept below still happens the same day the offer is
-    // read, so the car is inbound (arrives tomorrow) exactly as before.
+    // The radial-offer gate keeps a fresh tutorial career's board Yuki-only,
+    // so this no longer assumes a day-1 offer - it skips the walkthrough and
+    // advances to the next generation point instead. The accept below still
+    // happens the same day the offer is read, so the car is inbound (arrives
+    // tomorrow) exactly as before.
     game.skipTutorial()
     for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
     const offer = game.serviceJobOffers[0]

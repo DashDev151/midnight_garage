@@ -8,10 +8,10 @@ import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from '../src/
 import { bellNormal, createRng, hashStringToSeed } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
-// Real PARTS (not []): generation now fills every slot with a real stock
-// PartInstance by default (Sprint 32) - an empty catalog would make every
-// part read as MISSING, crushing every generated car's value to the floor
-// and making this file's value-anchor assertions meaningless.
+// Real PARTS (not []): generation fills every slot with a real stock
+// PartInstance by default - an empty catalog would make every part read
+// as MISSING, crushing every generated car's value to the floor and
+// making this file's value-anchor assertions meaningless.
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
 function sampleLot(modelId: string, tier: 'local-yard' | 'regional' | 'premium', seed: number) {

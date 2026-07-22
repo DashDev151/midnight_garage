@@ -8,7 +8,7 @@ import UpgradesScreen from './UpgradesScreen.vue'
 
 const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
@@ -19,7 +19,7 @@ function mountScreen() {
   return wrapper
 }
 
-/** Sprint 52 decision 2: a purchase also needs a live classifieds listing
+/** A purchase also needs a live classifieds listing
  * for the exact line+tier - tests that exercise a real purchase must seed
  * one directly, same as they already seed reputation/cash. */
 function listingFor(
@@ -73,9 +73,7 @@ describe('UpgradesScreen', () => {
   })
 
   /**
-   * Sprint 43 (maintainer decision, 2026-07-13): tools now gate on cash AND
-   * reputation, tiers 2/3 only - inverts the old "tools are never
-   * reputation-gated" assertion this test used to make.
+   * Tools gate on cash AND reputation, tiers 2/3 only.
    */
   it("refuses (with a reputation hint) below wheels tier 2's rep floor even with unlimited cash, and succeeds once reputation clears it", async () => {
     const game = useGameStore()
@@ -124,7 +122,7 @@ describe('UpgradesScreen', () => {
     })
 
     /**
-     * Sprint 92 (rental made legible): selecting an unowned tier-2 rung surfaces
+     * Selecting an unowned tier-2 rung surfaces
      * the machine-shop rental notice; owning that tier-2 removes it.
      */
     it('a tier-2 rung shows the rental fee line until the machine is owned', async () => {

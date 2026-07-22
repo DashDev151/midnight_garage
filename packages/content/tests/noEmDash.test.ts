@@ -39,9 +39,9 @@ function findEmDashOffenses(): string[] {
 }
 
 /**
- * CLAUDE.md directive 15: the em dash is banned everywhere, permanently
- * (maintainer directive 2026-07-11, after a repo-wide purge). This test is
- * the enforcement mechanism so the ban can never silently regress.
+ * CLAUDE.md directive 15: the em dash is banned everywhere, permanently.
+ * This test is the enforcement mechanism so the ban can never silently
+ * regress.
  */
 describe('no em dashes anywhere under packages/', () => {
   it('contains zero em dash (U+2014) characters', () => {

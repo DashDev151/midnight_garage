@@ -6,7 +6,7 @@ import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import PartsInventoryScreen from './PartsInventoryScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
@@ -48,7 +48,7 @@ describe('PartsInventoryScreen', () => {
     const partInstanceId = game.gameState.partInventory[0]!.id
     game.devGrantCar()
     const carId = game.gameState.ownedCars[0]!.id
-    // Sprint 32: every slot starts filled with a stock part by default -
+    // Every slot starts filled with a stock part by default -
     // empty this one directly (not via removePart, which would drop a
     // second, still-unstaged part into inventory) so the staged install
     // actually has somewhere to land.

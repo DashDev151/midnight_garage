@@ -1,11 +1,11 @@
 import { computed, ref, type ComputedRef } from 'vue'
 
 /**
- * A general-purpose drag-and-drop primitive (Sprint 17), built on the
+ * A general-purpose drag-and-drop primitive, built on the
  * Pointer Events API so mouse and touch work identically with the same
  * code - no native HTML5 Drag-and-Drop (poor/nonexistent touch support) and
- * no new dependency. Generic over payload type `T` (a car id today,
- * Sprint 18's part id tomorrow) - this file has zero domain knowledge.
+ * no new dependency. Generic over payload type `T` (a car id, a part id, ...)
+ * - this file has zero domain knowledge.
  *
  * Deliberately does NOT use `setPointerCapture` or `elementFromPoint`: a
  * drop zone's own `onPointerUp` handler fires naturally via standard DOM
@@ -49,7 +49,7 @@ export interface DraggableHandle {
   onPointerDown: (event: PointerEvent) => void
   onPointerMove: (event: PointerEvent) => void
   onPointerUp: (event: PointerEvent) => void
-  /** Click-based fallback for keyboard/switch-access players (decision 2): toggles this payload
+  /** Click-based fallback for keyboard/switch-access players: toggles this payload
    * as "picked" without any pointer-drag gesture. A drop zone's `onClick` completes the move. */
   togglePick: () => void
 }
@@ -143,11 +143,11 @@ export function useDraggable<T>(getPayload: () => T): DraggableHandle {
 
 export interface DropZoneHandle {
   /** True while this specific zone should highlight as a drop target - for "valid drop targets
-   * highlight, invalid ones don't" (Sprint 17 DoD). During a live pointer drag this means "the
+   * highlight, invalid ones don't". During a live pointer drag this means "the
    * pointer is actually over this zone right now" (bound via `onPointerEnter`/`onPointerLeave`),
-   * not "every zone that would accept this payload somewhere on the page" - the latter lit up
-   * every bay at once the moment a drag started, regardless of where the pointer was (found by
-   * playtest). The click-based "pick" fallback has no pointer position to hover, so every
+   * not "every zone that would accept this payload somewhere on the page" - the latter would
+   * light up every bay at once the moment a drag started, regardless of where the pointer was.
+   * The click-based "pick" fallback has no pointer position to hover, so every
    * accepting zone still highlights in that mode - that's the whole point of the fallback. */
   isActiveTarget: ComputedRef<boolean>
   /** Bind on the zone's root element: resolves a live pointer-drag dropped here. */

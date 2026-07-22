@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import SettingsScreen from './SettingsScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
-// wrapper and unmount it after each test, so a component left mounted from a
-// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+// Track every mounted wrapper and unmount it after each test, so a component
+// left mounted from a prior test cannot leak its store's pinia into the next
+// (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
 function mountScreen() {
@@ -15,7 +15,7 @@ function mountScreen() {
   return wrapper
 }
 
-describe('SettingsScreen (Sprint 111 item 5)', () => {
+describe('SettingsScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()

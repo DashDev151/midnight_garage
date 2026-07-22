@@ -15,11 +15,11 @@ import { h } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { formatYen } from '../utils/formatYen'
 import CarDetailScreen from './CarDetailScreen.vue'
 
 /**
- * Sprint 88 (the diagram is the page): the Components list, its drill-down and
+ * The Components list, its drill-down and
  * its condition filter are gone - the diagram plus the docked info/action panel
  * is the single repair surface. Every test that drove the old list was
  * re-targeted here under directive 17 case (a) (the surface was intentionally
@@ -62,7 +62,7 @@ async function mountAt(carId: string) {
 }
 
 /**
- * Sprint 88: the one interaction that reaches a part's actions now - open the
+ * The one interaction that reaches a part's actions now - open the
  * part's group tile (level 2), then click its diagram block, which docks the
  * info/action panel on that part. Handles already being inside another group's
  * level-2 view by backing out first.
@@ -112,7 +112,7 @@ function untaggedPartFor(carPartId: string) {
 }
 
 /** The rows in `componentId` an on-car per-part repair step exists for -
- * a repairable SURFACE part below mint (Sprint 71: bolt-on/buried parts are
+ * a repairable SURFACE part below mint (bolt-on/buried parts are
  * bench-only, so they never grow an on-car repair button). */
 function repairableSurfaceRows(
   game: ReturnType<typeof useGameStore>,
@@ -125,11 +125,10 @@ function repairableSurfaceRows(
       row.band !== 'mint' &&
       row.band !== 'scrap' &&
       row.repairable &&
-      // Sprint 93 (the band ceiling): only a row the on-car "+" can act on
-      // right now. At tier 1 a `fine` part has no further rung (mint needs
-      // the group's tier-2 machine owned), so its stage button never renders
-      // - select it and the tests below click a control that is not there.
-      // This gate is tier-aware: at tier 2/3 a below-mint part still steps.
+      // Only a row the on-car "+" can act on right now. At tier 1 a `fine`
+      // part has no further rung (mint needs the group's tier-2 machine owned),
+      // so its stage button never renders. This gate is tier-aware: at tier 2/3
+      // a below-mint part still steps.
       game.nextRepairStep(carId, componentId, row.partId) !== null &&
       PARTS_TAXONOMY.find((e) => e.id === row.partId)?.depthClass === 'surface',
   )
@@ -221,7 +220,7 @@ describe('CarDetailScreen', () => {
   })
 
   /**
-   * Sprint 92 (rental made legible): the `machine shop assist +<fee>` caption is
+   * The `machine shop assist +<fee>` caption is
    * previewed exactly where a signature-op fee is charged - the install/replace
    * and on-car per-part repair of a suspension/body/interior signature slot - and
    * never on a removal (removal is free for these groups). Owning the tier-2
@@ -268,7 +267,7 @@ describe('CarDetailScreen', () => {
   })
 
   /**
-   * Sprint 93 (the band ceiling): the on-car per-part repair affordance shows a
+   * The on-car per-part repair affordance shows a
    * caption at tier 1 naming the group's tier-2 machine - the constraint at the
    * point of the action (why the repair finishes at fine, and which machine
    * reaches mint). It is absent once that machine is owned (no cap at tier 2).
@@ -555,7 +554,7 @@ describe('CarDetailScreen', () => {
       return game.gameState.ownedCars.at(-1)!.id
     }
 
-    it('shows purchase, repairs, parts, total spent, the value ledger, You say, restoration bill, a projected profit off your number, and the sale range right after a buyout', async () => {
+    it('shows purchase, repairs, parts, total spent, the value ledger, You say, and the sale range right after a buyout', async () => {
       const game = useGameStore()
       const id = buyoutACar(game)
       const detail = game.carDetail(id)!
@@ -582,11 +581,9 @@ describe('CarDetailScreen', () => {
       // An owned car's receipt is honest - never a fear line.
       expect(panel.find('[data-test="ledger-line-fear"]').exists()).toBe(false)
       expect(panel.find('[data-test="you-say"]').text()).toBe(formatYen(detail.yourNumberYen))
-      expect(panel.find('[data-test="finance-bill-remaining"]').text()).toBe(
-        formatYen(detail.totalBillYen),
-      )
-      const expectedProfit = detail.yourNumberYen - detail.ledger.purchaseYen!
-      expect(panel.find('[data-test="finance-profit"]').text()).toBe(formatYenDelta(expectedProfit))
+      // The restoration-bill-remaining and projected-profit rows are gone.
+      expect(panel.find('[data-test="finance-bill-remaining"]').exists()).toBe(false)
+      expect(panel.find('[data-test="finance-profit"]').exists()).toBe(false)
 
       const range = wrapper.find('[data-test="sale-range"]')
       expect(range.text().replace(/\s+/g, ' ')).toBe(
@@ -622,7 +619,7 @@ describe('CarDetailScreen', () => {
       expect(panel.find('[data-test="finance-total-spent"]').text()).toBe(formatYen(0))
     })
 
-    it('repairing the car updates repairs and total spent immediately, moving projected profit', async () => {
+    it('repairing the car updates repairs and total spent immediately', async () => {
       const game = useGameStore()
       for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
       const id = grantCarNeedingRepair(game, 'body')
@@ -650,9 +647,9 @@ describe('CarDetailScreen', () => {
     it('is not shown for a customer service-job car (never owned, never ledgered)', async () => {
       const game = useGameStore()
       game.newGame(1)
-      // Sprint 95 (directive 17 case (a)): the radial-offer gate keeps a fresh
-      // tutorial career's board Yuki-only, so the offer is obtained post-skip
-      // at the next generation point rather than assumed on day 1.
+      // The radial-offer gate keeps a fresh tutorial career's board Yuki-only,
+      // so the offer is obtained post-skip at the next generation point rather
+      // than assumed on day 1.
       game.skipTutorial()
       for (let i = 0; i < 20 && game.gameState.serviceJobOffers.length === 0; i++) game.endDay()
       const offer = game.gameState.serviceJobOffers[0]
@@ -769,8 +766,8 @@ describe('CarDetailScreen', () => {
     it('shows the work status but not the Complete/Give Up button - that moved to the jobs screen', async () => {
       const game = useGameStore()
       game.newGame(1)
-      // Sprint 95 (directive 17 case (a)): same post-skip offer setup as the
-      // finance-panel customer-car test above - day-1 offers are gated now.
+      // Same post-skip offer setup as the finance-panel customer-car test
+      // above - day-1 offers are gated.
       game.skipTutorial()
       for (let i = 0; i < 20 && game.gameState.serviceJobOffers.length === 0; i++) game.endDay()
       const offer = game.gameState.serviceJobOffers[0]
@@ -860,8 +857,8 @@ describe('CarDetailScreen', () => {
       game.devSetToolTier('engine', 3)
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      // Sprint 71: forcedInduction is blockedBy 'intake' - it must come off
-      // first, or Confirm refuses the fit even though staging looks fine.
+      // forcedInduction is blockedBy 'intake' - it must come off first, or
+      // Confirm refuses the fit even though staging looks fine.
       game.removePart(id, 'intake')
       const turboKit = PARTS.find(
         (p) =>
@@ -973,7 +970,7 @@ describe('CarDetailScreen', () => {
 
   describe('the bench dead end (Sprint 96 decision 1)', () => {
     /** Benches the wheel assembly and docks the panel on its tyres member -
-     * the exact click path of the measured playtest defect (item 13). */
+     * the exact click path that reaches the bench dead end. */
     async function benchTyres(game: ReturnType<typeof useGameStore>) {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id

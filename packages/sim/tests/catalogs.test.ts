@@ -81,11 +81,11 @@ describe('refreshCatalogs', () => {
     expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(true)
   })
 
-  // Sprint 29: service-job offers no longer refresh here (see
-  // `refreshCatalogs`'s own doc comment) - they moved to a daily cadence,
-  // `generateDailyServiceJobOffers` in serviceJobs.ts, with its own
-  // dedicated tests (distribution shape, tier gating, equipment filtering)
-  // in `serviceJobPayout.test.ts`/`serviceJobs.test.ts`.
+  // Service-job offers don't refresh here (see `refreshCatalogs`'s own doc
+  // comment) - they're on a daily cadence, `generateDailyServiceJobOffers`
+  // in serviceJobs.ts, with its own dedicated tests (distribution shape,
+  // tier gating, equipment filtering) in
+  // `serviceJobPayout.test.ts`/`serviceJobs.test.ts`.
 
   it('never generates a car older than the calendar allows for the current reputation tier', () => {
     // Every model's yearFrom already predates 1995 in the seed content, so at

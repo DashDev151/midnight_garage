@@ -196,16 +196,16 @@ export function playerEstimateYen(
 }
 
 /**
- * Sprint 74 decision 5: the ONE rule governing every band the player sees.
- * True when (a) the car is honest, (b) this part has no recorded apparent
- * band at all (a symptom never damaged it), or (c) every symptom that DOES
- * target this part has narrowed enough to resolve it - either no remaining
- * candidate cause still targets this part, or the symptom has narrowed to
- * exactly one remaining cause overall (so whichever it is, its effect on
- * this part - damaging it or not - is already known). Otherwise the
- * APPARENT band, flagged `uncertain` for the UI's "?" chip. `null` band
- * means genuinely missing (mirrors every other missing-slot convention in
- * this codebase - never a real `ConditionBand` value).
+ * The ONE rule governing every band the player sees. True when (a) the car
+ * is honest, (b) this part has no recorded apparent band at all (a symptom
+ * never damaged it), or (c) every symptom that DOES target this part has
+ * narrowed enough to resolve it - either no remaining candidate cause
+ * still targets this part, or the symptom has narrowed to exactly one
+ * remaining cause overall (so whichever it is, its effect on this part -
+ * damaging it or not - is already known). Otherwise the APPARENT band,
+ * flagged `uncertain` for the UI's "?" chip. `null` band means genuinely
+ * missing (mirrors every other missing-slot convention in this codebase -
+ * never a real `ConditionBand` value).
  */
 export function displayedBandFor(
   car: CarInstance,
@@ -234,7 +234,7 @@ export function displayedBandFor(
 
 /** Every cause across `car`'s symptoms that still (a) remains a live
  * candidate and (b) targets `partId` - the "worst remaining cause" repair-
- * cost-preview range (decision 5) reads this to find its worst-case band. */
+ * cost-preview range reads this to find its worst-case band. */
 function remainingCausesTargeting(
   car: CarInstance,
   partId: CarPartId,
@@ -254,10 +254,10 @@ function remainingCausesTargeting(
 }
 
 /**
- * Sprint 74 decision 5's repair-cost-preview range: the worst (lowest) band
- * any still-live remaining cause would set `partId` to, or `null` when
- * nothing remaining targets it (an uncertain-repair-cost preview has
- * nothing worse to show than the apparent band itself).
+ * The repair-cost-preview range: the worst (lowest) band any still-live
+ * remaining cause would set `partId` to, or `null` when nothing remaining
+ * targets it (an uncertain-repair-cost preview has nothing worse to show
+ * than the apparent band itself).
  */
 export function worstRemainingBandFor(
   car: CarInstance,
@@ -275,9 +275,9 @@ export function worstRemainingBandFor(
 }
 
 /**
- * Sprint 74 decision 4: uninstall reveals truth. Called from `resolveRemovePart`
- * (jobs.ts) after a successful removal of `carPartId` on an OWNED car - the
- * removed instance's band was always the true band, so pulling it is free
+ * Uninstall reveals truth. Called from `resolveRemovePart` (jobs.ts) after
+ * a successful removal of `carPartId` on an OWNED car - the removed
+ * instance's band was always the true band, so pulling it is free
  * knowledge, no extra labour beyond what the teardown itself already cost.
  * For each symptom still open (more than one remaining cause): if its
  * `trueCauseId` targets `carPartId`, the true cause is now directly known -
@@ -288,9 +288,9 @@ export function worstRemainingBandFor(
  * by whichever cause turns out true, so every remaining candidate that
  * targets `carPartId` is eliminated (silent narrowing, no reveal line, even
  * if it happens to leave exactly one remaining candidate for some OTHER
- * part). At most one symptom's own `trueCauseId` can target a given part in
- * practice (Sprint 73 content), so `revealedCauseId` reports the first (and
- * only) one found.
+ * part). At most one symptom's own `trueCauseId` can target a given part
+ * in practice, so `revealedCauseId` reports the first (and only) one
+ * found.
  */
 export function revealOnRemoval(
   car: CarInstance,
@@ -376,10 +376,10 @@ export interface BeginInspectionVisitResult {
 export type InspectionVisitGateReason = 'no-labor-slot' | 'no-cash' | 'no-lots'
 
 /**
- * Sprint 74 decision 1: the pure "why can't I start a visit at `tier` right
- * now" predicate - what the UI queries proactively for the per-tier button's
- * disabled reason (mirrors `removeBlockReason`'s own reuse shape, jobs.ts).
- * `null` when nothing blocks it. Shared with `beginInspectionVisit` below so
+ * The pure "why can't I start a visit at `tier` right now" predicate -
+ * what the UI queries proactively for the per-tier button's disabled
+ * reason (mirrors `removeBlockReason`'s own reuse shape, jobs.ts). `null`
+ * when nothing blocks it. Shared with `beginInspectionVisit` below so
  * there is one gate, not two.
  */
 export function inspectionVisitGateReason(
@@ -397,19 +397,18 @@ export function inspectionVisitGateReason(
 }
 
 /**
- * Sprint 74 decision 1: start (or replace) the yard inspection visit at
- * `tier` - requires a free labour slot, enough cash for
- * `economy.diagnosis.travelFeeYenByTier[tier]`, and at least one live lot at
- * that tier (`inspectionVisitGateReason` above). Spends the slot and the fee,
- * sets `minutesLeft` to the full `economy.diagnosis.visitMinutes`.
- * Deliberately does NOT refuse when a different visit is already active with
- * minutes left - it simply replaces it, forfeiting the remainder; the
- * two-step confirm before that happens at all is a UI-layer courtesy
- * (decision 7), not a rule this resolver enforces itself.
+ * Start (or replace) the yard inspection visit at `tier` - requires a free
+ * labour slot, enough cash for `economy.diagnosis.travelFeeYenByTier[tier]`,
+ * and at least one live lot at that tier (`inspectionVisitGateReason`
+ * above). Spends the slot and the fee, sets `minutesLeft` to the full
+ * `economy.diagnosis.visitMinutes`. Deliberately does NOT refuse when a
+ * different visit is already active with minutes left - it simply replaces
+ * it, forfeiting the remainder; the two-step confirm before that happens
+ * at all is a UI-layer courtesy, not a rule this resolver enforces itself.
  *
- * Sprint 82 decision 4: a benched `auction-rat` knows the Local Yard, so a
- * local-yard visit grants `economy.staff.auctionRatExtraMinutes` on top of the
- * base minutes. One tier, no stacking - one rat's worth regardless of count.
+ * A benched `auction-rat` knows the Local Yard, so a local-yard visit
+ * grants `economy.staff.auctionRatExtraMinutes` on top of the base
+ * minutes. One tier, no stacking - one rat's worth regardless of count.
  */
 export function beginInspectionVisit(
   state: GameState,
@@ -439,22 +438,22 @@ export function beginInspectionVisit(
 }
 
 /**
- * Sprint 106 (routed diagnosis): which of `symptom`'s own test applications
- * are currently offerable to `carSymptom` - a test qualifies iff it has no
- * `unlockedBy` (a root, offered from the start), or its `unlockedBy.testId`
- * is already in `carSymptom.runTestIds` AND (`unlockedBy.group` is absent, or
- * that parent test's own outcome fell in partition group `unlockedBy.group`).
- * An absent `group` means the sibling having run at all is enough, whichever
- * way it resolved - this is how a whole board of follow-up tests opens after
- * a first look. A parent's outcome group is the index of its `partition`
- * entry containing `carSymptom.trueCauseId` - the sim itself may read the
- * true cause to route the tree; the player only ever sees the result copy
- * the room already showed them. Availability is always DERIVED from
- * `runTestIds` + `trueCauseId` + content, never stored, so it needs no
- * save-state of its own. An already-run test still counts as available here
- * - separating "offered" from "already run" is the caller's job
- * (`runDiagnosticTest`'s own `already-run` gate, the UI's breadcrumb trail),
- * not this function's.
+ * Which of `symptom`'s own test applications are currently offerable to
+ * `carSymptom` - a test qualifies iff it has no `unlockedBy` (a root,
+ * offered from the start), or its `unlockedBy.testId` is already in
+ * `carSymptom.runTestIds` AND (`unlockedBy.group` is absent, or that
+ * parent test's own outcome fell in partition group `unlockedBy.group`).
+ * An absent `group` means the sibling having run at all is enough,
+ * whichever way it resolved - this is how a whole board of follow-up
+ * tests opens after a first look. A parent's outcome group is the index of
+ * its `partition` entry containing `carSymptom.trueCauseId` - the sim
+ * itself may read the true cause to route the tree; the player only ever
+ * sees the result copy the room already showed them. Availability is
+ * always DERIVED from `runTestIds` + `trueCauseId` + content, never
+ * stored, so it needs no save-state of its own. An already-run test still
+ * counts as available here - separating "offered" from "already run" is
+ * the caller's job (`runDiagnosticTest`'s own `already-run` gate, the UI's
+ * breadcrumb trail), not this function's.
  */
 export function availableTestIdsFor(carSymptom: CarSymptom, symptom: Symptom): string[] {
   return symptom.tests
@@ -493,14 +492,14 @@ export interface RunDiagnosticTestResult {
 }
 
 /**
- * Sprint 74 decision 2: run `testId` against `lotId`'s `symptomIndex`-th
- * symptom. Legal only with an active visit at the lot's own tier, a test
- * that actually applies to this symptom and is registered, one currently
- * OFFERED by the routed tree (`availableTestIdsFor`, Sprint 106 - checked
- * before the already-run refusal, so a locked test reports `locked` even on
- * a repeat call), one that hasn't already run on this exact symptom instance
- * (`runTestIds`), and enough `minutesLeft`. Deterministic, no RNG: finds
- * which of the test's two partition groups contains the (already-rolled,
+ * Run `testId` against `lotId`'s `symptomIndex`-th symptom. Legal only
+ * with an active visit at the lot's own tier, a test that actually
+ * applies to this symptom and is registered, one currently OFFERED by the
+ * routed tree (`availableTestIdsFor` - checked before the already-run
+ * refusal, so a locked test reports `locked` even on a repeat call), one
+ * that hasn't already run on this exact symptom instance (`runTestIds`),
+ * and enough `minutesLeft`. Deterministic, no RNG: finds which of the
+ * test's two partition groups contains the (already-rolled,
  * generation-time) `trueCauseId`, and narrows `remainingCauseIds` to its
  * intersection with that group. Knowledge lives on the car itself, not the
  * visit, so it survives a purchase and dies with a lost lot for free -
@@ -582,12 +581,12 @@ export interface ResolveOwnedWorkupResult {
 }
 
 /**
- * Sprint 74 decision 3: the pure "why can't I run a full workup on this car
- * right now" predicate - the "Full workup" button's own proactive disabled
- * reason (mirrors `inspectionVisitGateReason`/`removeBlockReason`'s reuse
- * shape). `null` when nothing blocks it. `already-resolved`: every symptom
- * is already down to its single remaining cause - nothing left for a workup
- * to narrow, so the UI hides the button rather than offering a click that
+ * The pure "why can't I run a full workup on this car right now" predicate
+ * - the "Full workup" button's own proactive disabled reason (mirrors
+ * `inspectionVisitGateReason`/`removeBlockReason`'s reuse shape). `null`
+ * when nothing blocks it. `already-resolved`: every symptom is already
+ * down to its single remaining cause - nothing left for a workup to
+ * narrow, so the UI hides the button rather than offering a click that
  * would spend labour to learn nothing new.
  */
 export function ownedWorkupGateReason(
@@ -609,8 +608,8 @@ export function ownedWorkupGateReason(
  * clock, collapses every one of `carInstanceId`'s symptoms straight to
  * their true cause (`remainingCauseIds = [trueCauseId]`). Owned cars only
  * (never a lot, never a customer's service-job car); this is also the only
- * way to resolve `wont-idle`'s deliberate bench-only ambiguity (decision 4
- * of sprint73.md), alongside uninstall-reveals-truth.
+ * way to resolve `wont-idle`'s deliberate bench-only ambiguity, alongside
+ * uninstall-reveals-truth.
  */
 export function resolveOwnedWorkup(
   state: GameState,
@@ -641,18 +640,18 @@ export function resolveOwnedWorkup(
 }
 
 /**
- * Sprint 75 decision 2 (the organic teacher): the one-line reveal a sale
- * gains when the sold car still carries an unresolved symptom
- * (`remainingCauseIds.length > 1`) - `undefined` for an honest car, or one
- * already fully resolved by a test/workup/reveal-on-removal (nothing left to
- * teach). Picks the first such symptom (array order, deterministic) if the
- * car happens to carry more than one. Compares the car's own TRUE value
- * (`marketValueYen` on the real, already-damaged car - exactly what the sale
- * itself paid, per Sprint 73's sale-side blindness) against the player's own
- * pre-sale estimate (`playerEstimateYen`): the true cause turning out
- * CHEAPER (true value above the estimate) fires `buyerWon`; DEARER (true
- * value at or below the estimate) fires `playerWon`. Substitutes the true
- * cause's own display label for each template's `<cause>` token.
+ * The organic teacher: the one-line reveal a sale gains when the sold car
+ * still carries an unresolved symptom (`remainingCauseIds.length > 1`) -
+ * `undefined` for an honest car, or one already fully resolved by a
+ * test/workup/reveal-on-removal (nothing left to teach). Picks the first
+ * such symptom (array order, deterministic) if the car happens to carry
+ * more than one. Compares the car's own TRUE value (`marketValueYen` on
+ * the real, already-damaged car - exactly what the sale itself paid, per
+ * the sale-side blindness law) against the player's own pre-sale estimate
+ * (`playerEstimateYen`): the true cause turning out CHEAPER (true value
+ * above the estimate) fires `buyerWon`; DEARER (true value at or below the
+ * estimate) fires `playerWon`. Substitutes the true cause's own display
+ * label for each template's `<cause>` token.
  */
 export function saleRevealLineFor(
   car: CarInstance,

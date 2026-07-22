@@ -212,8 +212,8 @@ describe('AuctionRoomScreen', () => {
     const game = useGameStore()
     const lot = makeLot(game, 'autobid-test-lot', 'thin')
     seatLot(game, lot)
-    // Auto-bid is enabled from Settings now (Sprint 111 item 5), not a
-    // toggle in the room - the room only offers the ceiling once it's on.
+    // Auto-bid is enabled from Settings, not a toggle in the room - the room
+    // only offers the ceiling once it's on.
     game.setAutoBidEnabled(true)
     const { wrapper } = await mountRoom(lot.id)
     const opening = roomOf(wrapper)
@@ -249,8 +249,8 @@ describe('AuctionRoomScreen', () => {
     expect(roomOf(first.wrapper).config.clockMs).toBe(baseClockMs)
     first.wrapper.unmount()
 
-    // The preset selector lives in Settings now (Sprint 111 item 5) - the
-    // room only ever reads `game.fusePreset` when it builds a fresh room.
+    // The preset selector lives in Settings - the room only ever reads
+    // `game.fusePreset` when it builds a fresh room.
     game.setFusePreset('unhurried')
     const second = await mountRoom(lot.id)
     expect(roomOf(second.wrapper).config.clockMs).toBe(Math.round(baseClockMs * 2.4))

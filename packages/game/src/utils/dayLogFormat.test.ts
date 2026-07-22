@@ -86,7 +86,7 @@ const SAMPLES: DayLogEntry[] = [
     },
     netProfitYen: -5_000,
   },
-  // Kept for old-log decode compatibility (Sprint 36 retired the action).
+  // Kept for old-log decode compatibility.
   { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
   { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
   { type: 'machine-listed', componentId: 'wheels', tier: 2, priceYen: 150_000 },
@@ -168,7 +168,7 @@ describe('describeLogEntry', () => {
     expect(boughtOut).not.toContain('lot-1')
   })
 
-  it('Sprint 25 task 2: accepting a service job reads as the customer, not a raw car id', () => {
+  it('accepting a service job reads as the customer, not a raw car id', () => {
     const line = describeLogEntry({
       type: 'service-job-accepted',
       jobId: 'svc-1',
@@ -178,7 +178,7 @@ describe('describeLogEntry', () => {
     expect(line).not.toContain('car-1')
   })
 
-  it('Sprint 31 decision 5: an offer reads as a person naming the car, resolving both buyer and model', () => {
+  it('an offer reads as a person naming the car, resolving both buyer and model', () => {
     const line = describeLogEntry(
       {
         type: 'offer-received',
@@ -193,7 +193,7 @@ describe('describeLogEntry', () => {
     expect(line).toBe('A tuner is offering ¥1,240,000 for the FC. Today only.')
   })
 
-  it('Sprint 42: a sale with a known profit shows "profit +Y..." (or a loss with a minus sign)', () => {
+  it('a sale with a known profit shows "profit +Y..." (or a loss with a minus sign)', () => {
     const gain = describeLogEntry({
       type: 'car-sold',
       carInstanceId: 'car-1',
@@ -237,7 +237,7 @@ describe('describeLogEntry', () => {
     expect(line).toContain('sold as a clean example, reputation +3')
   })
 
-  it('Sprint 75 decision 2 (the organic teacher): a sale with a saleRevealLine appends it after the quality clause, one line, no popup', () => {
+  it('a sale with a saleRevealLine appends it after the quality clause, one line, no popup', () => {
     const line = describeLogEntry({
       type: 'car-sold',
       carInstanceId: 'car-1',
@@ -251,7 +251,7 @@ describe('describeLogEntry', () => {
     expect(line).toContain('The buyer had it looked over: Valve seals. They did well out of you.')
   })
 
-  it('Sprint 75 decision 2: a sale with no saleRevealLine renders exactly as before (an honest or fully-resolved car)', () => {
+  it('a sale with no saleRevealLine renders exactly as before (an honest or fully-resolved car)', () => {
     const line = describeLogEntry({
       type: 'car-sold',
       carInstanceId: 'car-1',
@@ -261,19 +261,19 @@ describe('describeLogEntry', () => {
     expect(line).not.toContain('had it looked over')
   })
 
-  it('Sprint 36: a tool upgrade reads as the line label and the named tier, never a raw id', () => {
+  it('a tool upgrade reads as the line label and the named tier, never a raw id', () => {
     const line = describeLogEntry({
       type: 'tool-upgraded',
       componentId: 'wheels',
       toTier: 2,
       priceYen: 150_000,
     })
-    // Sprint 63 (item 9): the wheels group label is "Wheels and Tyres" now.
+    // The wheels group label is "Wheels and Tyres".
     expect(line).toBe('Upgraded Wheels and Tyres to Tyre machine & balancer for ¥150,000')
     expect(line).not.toContain('wheels')
   })
 
-  it('Sprint 52: a fresh classifieds listing reads as the named tier and its price', () => {
+  it('a fresh classifieds listing reads as the named tier and its price', () => {
     const line = describeLogEntry({
       type: 'machine-listed',
       componentId: 'wheels',
@@ -283,7 +283,7 @@ describe('describeLogEntry', () => {
     expect(line).toBe('Classifieds: Tyre machine & balancer listed, ¥150,000')
   })
 
-  it('Sprint 76: a mission delivered with a tip shows the tip alongside the payout', () => {
+  it('a mission delivered with a tip shows the tip alongside the payout', () => {
     const line = describeLogEntry({
       type: 'mission-delivered',
       missionId: 'test-mission-a',
@@ -322,7 +322,7 @@ describe('describeLogEntry', () => {
     expect(line).not.toContain('tip')
   })
 
-  it('part lines carry the player-facing brand and name, never the raw catalogue id (playtest item 23)', () => {
+  it('part lines carry the player-facing brand and name, never the raw catalogue id', () => {
     const part = PARTS[0]!
     const delivered = describeLogEntry({ type: 'part-delivered', partId: part.id } as DayLogEntry)
     expect(delivered).toContain(part.name)

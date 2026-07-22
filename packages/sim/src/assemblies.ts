@@ -20,14 +20,14 @@ import {
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
- * Sprint 87 (the assembly model). An assembly is a BATCH over the per-slot
- * machinery, never a second labour model: remove pulls every member slot at
- * once (each stamping its own `vacatedBaseline`, Sprint 79), refit charges each
- * member by the same `refitLaborSlotsFor` equivalence rule a single part uses,
- * and the external blockers / machine gate are DERIVED from the members here,
- * not stored in content. `blockedBy` edges internal to an assembly (e.g. tyres
- * behind rims, clutch behind gearbox) stop mattering once it is on the bench -
- * that is the whole point of a bench.
+ * An assembly is a batch over the per-slot machinery, never a second labour
+ * model: remove pulls every member slot at once (each stamping its own
+ * `vacatedBaseline`), refit charges each member by the same
+ * `refitLaborSlotsFor` equivalence rule a single part uses, and the external
+ * blockers / machine gate are derived from the members here, not stored in
+ * content. `blockedBy` edges internal to an assembly (e.g. tyres behind rims,
+ * clutch behind gearbox) stop mattering once it is on the bench - that is the
+ * whole point of a bench.
  */
 
 /** The uniform result of every atomic assembly operation - `ok` distinguishes
@@ -89,7 +89,7 @@ function occupiedExternalBlockers(
  * this is one fee: `engineAssembly` owes one engine fee, `gearboxAssembly` one
  * drivetrain fee, `wheelAssembly` none (rims/tyres are not machine-gated).
  * Applies to both remove and refit, so a full round trip costs two fees when
- * renting - the margin the maintainer's rental ruling intends.
+ * renting.
  */
 export function assemblyMachineAssistFeeYen(
   def: AssemblyDef,
@@ -109,12 +109,11 @@ export function assemblyMachineAssistFeeYen(
 }
 
 /**
- * The wheels-group bench fee for a tyre-into-assembly op (Sprint 87 decision
- * 1) - `economy.machineShopAssist.feeYenByGroup.wheels` unless the shop owns
- * the tier-2 tyre machine. Applies ONLY to swapping the `tyres` member; every
- * other member swap is free. Deliberately separate from
- * `machineAssistFeeYen`, which stays engine/drivetrain-only (a coherence probe
- * pins `machineAssistFeeYen('tyres') === 0`).
+ * The wheels-group bench fee for a tyre-into-assembly op -
+ * `economy.machineShopAssist.feeYenByGroup.wheels` unless the shop owns
+ * the tier-2 tyre machine. Applies only to swapping the `tyres` member;
+ * every other member swap is free. Deliberately separate from
+ * `machineAssistFeeYen`, which stays engine/drivetrain-only.
  */
 export function benchSwapFeeYen(
   memberSlot: CarPartId,
@@ -197,8 +196,8 @@ function anyMemberBusy(
 }
 
 /**
- * Remove an assembly as a unit (car-level, Sprint 87 operation 1). Legal when
- * every external blocker is vacant and no member has an open job; labour is
+ * Remove an assembly as a unit (car-level). Legal when every external
+ * blocker is vacant and no member has an open job; labour is
  * `energy.actionPoints.removeAssembly` (0 in shipped content), gated on
  * `laborAvailable` when raised; the machine gate is satisfied by ownership or
  * the assist fee (posted to the car/job ledger). Each installed member moves into
@@ -256,8 +255,8 @@ export function resolveRemoveAssembly(
         },
       },
     }
-    // Sprint 74: uninstall reveals truth (free) - owned cars only, exactly as
-    // per-slot removal does. A customer's car never carries symptoms.
+    // Uninstall reveals truth (free) - owned cars only, exactly as per-slot
+    // removal does. A customer's car never carries symptoms.
     let revealedCauseId: string | undefined
     if (isOwned) {
       const revealed = revealOnRemoval(nextCar, member, context)
@@ -291,9 +290,9 @@ export function resolveRemoveAssembly(
 }
 
 /**
- * Refit an assembly as a unit (car-level, Sprint 87 operation 3). The
- * operation itself costs `energy.actionPoints.refitAssembly` (0 in shipped
- * content) PLUS per-member charging: a member equal to the slot's
+ * Refit an assembly as a unit (car-level). The operation itself costs
+ * `energy.actionPoints.refitAssembly` (0 in shipped content) PLUS
+ * per-member charging: a member equal to the slot's
  * `vacatedBaseline` refits at `energy.actionPoints.refitUnchangedMember`
  * (also 0 today, via `refitLaborSlotsFor`), a changed member charges its
  * normal install labour (`installLaborSlotsFor`, reading
@@ -364,7 +363,7 @@ export interface AssemblyMemberMoveResult {
 }
 
 /**
- * Swap a member of an open assembly on the bench (Sprint 87 operation 2): move
+ * Swap a member of an open assembly on the bench: move
  * `newPartInstanceId` from the parts bin into the member slot, and the displaced
  * member (if any) back to the bin. Labour is `energy.actionPoints.benchFitMember`
  * (0 in shipped content), gated on `laborAvailable` when raised. A
@@ -460,8 +459,8 @@ export function resolveRemoveAssemblyMember(
 }
 
 /**
- * Build an assembly on the bench from loose bin parts (Sprint 87 operation 4) -
- * a container with `sourceCarId: null` holding the named members. Labour is
+ * Build an assembly on the bench from loose bin parts - a container with
+ * `sourceCarId: null` holding the named members. Labour is
  * `energy.actionPoints.benchBuildAssembly` (0 in shipped content), gated on
  * `laborAvailable` when raised. Installing it onto a car
  * (`resolveRefitAssembly` with `overrideCarId`) then charges install labour
@@ -518,8 +517,8 @@ function containers(state: GameState): readonly AssemblyContainer[] {
 }
 
 /**
- * Sprint 87: on a car leaving the shop (sold, or a customer service job handed
- * back), dissolve any of its assemblies still on the bench - every member drops
+ * On a car leaving the shop (sold, or a customer service job handed back),
+ * dissolve any of its assemblies still on the bench - every member drops
  * to the parts bin. The existing close-out reconciliation
  * (`partsOriginatingFromCar`) then returns a customer's benched members with
  * their car; an owned car's benched members simply stay the player's. A no-op

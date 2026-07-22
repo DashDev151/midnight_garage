@@ -163,13 +163,6 @@ describe('computeDerivedStats', () => {
     expect(result.authenticity).toBe(75)
   })
 
-  /**
-   * Sprint 26 decision 8: every real part now feeds at least one stat -
-   * replaces the old Sprint 12 "brakes/wheels/forcedInduction/interior are
-   * inert" guard, which described a real gap that this sprint deliberately
-   * closes. Each of these previously-dead groups now measurably moves a
-   * stat when its own band changes.
-   */
   it('every previously-inert group now measurably affects a stat via its own band', () => {
     const baseline = stats(baseInstance)
 
@@ -197,7 +190,7 @@ describe('computeDerivedStats', () => {
 
   it('a legitimately-empty forced-induction slot on this NA model drops out of the power weighting instead of dragging it down', () => {
     // `model` (Honda City, tags include 'NA') makes an empty forcedInduction
-    // slot legitimate absence, not a defect (Sprint 32 decisions 2-3).
+    // slot legitimate absence, not a defect.
     const naCar = buildCarInstance({
       modelId: model.id,
       authenticityPercent: 90,

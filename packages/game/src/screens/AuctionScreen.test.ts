@@ -6,9 +6,9 @@ import { AUCTION_TIER_LABELS } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
 import AuctionScreen from './AuctionScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
-// wrapper and unmount it after each test, so a component left mounted from a
-// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+// Track every mounted wrapper and unmount it after each test, so a component
+// left mounted from a prior test cannot leak its store's pinia into the next
+// (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
 function mountScreen() {
@@ -62,7 +62,7 @@ describe('AuctionScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders lots already on day 1 (Sprint 10: no empty first week), with a buyout control', () => {
+  it('renders lots already on day 1 with a buyout control, with no empty first week', () => {
     const game = useGameStore()
     const wrapper = mountScreen()
     expect(wrapper.text()).not.toContain('No lots listed')
@@ -90,14 +90,14 @@ describe('AuctionScreen', () => {
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    // One of the turnout labels renders somewhere on the screen - flavor
-    // only (maintainer decision 3), not a numeric gauge.
+    // One of the turnout labels renders somewhere on the screen - flavor only,
+    // not a numeric gauge.
     expect(wrapper.text()).toMatch(/Thin turnout|Steady turnout|Packed turnout/)
-    // Buy Now is offered on every lot, bid on or not (maintainer decision 2).
+    // Buy Now is offered on every lot, bid on or not.
     expect(wrapper.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
   })
 
-  describe('Buy Now is demoted and takes two clicks (Sprint 64 item 3)', () => {
+  describe('Buy Now is demoted and takes two clicks', () => {
     it('the first click only arms a confirm - no car changes hands', async () => {
       const game = useGameStore()
       game.devGiveCash(5_000_000) // comfortably afford any buyout
@@ -152,7 +152,7 @@ describe('AuctionScreen', () => {
     })
   })
 
-  it('shows grade stamps instead of per-group bands on the auction card (Sprint 56 - amends Sprint 26 decision 10)', () => {
+  it('shows grade stamps instead of per-group bands on the auction card', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
@@ -167,7 +167,7 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="grade-stamp-int-${lot.id}"]`).exists()).toBe(true)
   })
 
-  describe('the capacity cascade warning (Sprint 45)', () => {
+  describe('the capacity cascade warning', () => {
     it('shows neither warning while the shop still has real capacity', () => {
       const wrapper = mountScreen()
       expect(wrapper.find('[data-test="double-park-warning"]').exists()).toBe(false)
@@ -204,7 +204,7 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('the auction-grade stamps (Sprint 56: replaces the Sprint 50 grade-line text)', () => {
+  describe('the auction-grade stamps', () => {
     it('shows four grade stamps per lot, matching computeAuctionGrade for that car - no toggle needed', () => {
       const game = useGameStore()
       warpToCatalog(game)
@@ -231,17 +231,17 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('symptom disclosure (Sprint 73 decision 7)', () => {
+  describe('symptom disclosure', () => {
     it("shows a symptomatic lot's card line and its still-fully-open cause checklist with per-cause value deltas", () => {
       const game = useGameStore()
       warpToCatalog(game)
       const lot = game.gameState.activeAuctionLots[0]!
       // Every OTHER engine-group part is forced to mint (true band) so the
       // group's apparent chip below is deterministic regardless of what
-      // generation happened to roll for this specific seed/lot (Sprint 75:
-      // the aftermarket-at-generation roll shifts the RNG sequence, so a
+      // generation happened to roll for this specific seed/lot. The
+      // aftermarket-at-generation roll shifts the RNG sequence, so a
       // hardcoded "the rest of the engine group happens to be mint"
-      // assumption is no longer safe to rely on incidentally).
+      // assumption is no longer safe to rely on incidentally.
       const ENGINE_GROUP_PART_IDS = [
         'block',
         'internals',
@@ -307,9 +307,9 @@ describe('AuctionScreen', () => {
       for (const cause of detail.symptoms[0]!.causes) {
         expect(cause.dealDeltaYen).toBeLessThan(0)
       }
-      // Sprint 73 decision 7: the grade/bands/bill all read the APPARENT
-      // band (mint), never the true one (worn) - the engine group's chip
-      // must not leak the truth next to the sheet's own fear-priced guide.
+      // The grade/bands/bill all read the APPARENT band (mint), never the true
+      // one (worn) - the engine group's chip must not leak the truth next to
+      // the sheet's own fear-priced guide.
       expect(detail.groupBands.engine).toBe('mint')
 
       const wrapper = mountScreen()
@@ -378,8 +378,8 @@ describe('AuctionScreen', () => {
       await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
       await wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).trigger('click')
 
-      // cold-start-watch narrows the doubt (Sprint 111 item 1's precondition:
-      // the estimate has genuinely moved off the room's fixed read).
+      // cold-start-watch narrows the doubt; the estimate has genuinely moved
+      // off the room's fixed read.
       const detail = game.lotDetail(lot.id)!
       expect(detail.playerEstimateYen).not.toBeNull()
       expect(detail.playerEstimateYen).not.toBe(detail.guideValueYen)
@@ -423,7 +423,7 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('the yard visit and diagnostic tests (Sprint 74 decisions 1-2/7)', () => {
+  describe('the yard visit and diagnostic tests', () => {
     it('offers a per-tier "Inspect here" button that starts a visit: spends cash and a labour slot, and shows the fixed "At the yard" panel', async () => {
       const game = useGameStore()
       warpToCatalog(game)
@@ -438,7 +438,7 @@ describe('AuctionScreen', () => {
 
       expect(game.inspectionVisit?.tier).toBe(tier)
       expect(game.cashYen).toBeLessThan(cashBefore)
-      // Sprint 94: a visit spends one labour's worth of the day's energy (pointsPerLabour).
+      // A visit spends one labour's worth of the day's energy (pointsPerLabour).
       expect(game.laborSlotsRemainingToday).toBe(laborBefore - game.pointsPerLabour)
       expect(wrapper.text()).toContain('At the yard')
       // The now-active tier's own button is redundant with the fixed panel.
@@ -508,7 +508,7 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('tier display labels and the inspect control (Sprint 95 decisions 6-7)', () => {
+  describe('tier display labels and the inspect control', () => {
     it('tier headings and the visit panel show the display label, never the raw enum slug', async () => {
       const game = useGameStore()
       warpToCatalog(game)
@@ -538,7 +538,7 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('the art placeholder (Sprint 50 decision 1)', () => {
+  describe('the art placeholder', () => {
     it('renders one placeholder block per lot card', () => {
       const game = useGameStore()
       warpToCatalog(game)

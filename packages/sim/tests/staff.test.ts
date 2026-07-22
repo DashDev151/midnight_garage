@@ -152,7 +152,7 @@ describe('hire and dismiss (Sprint 80 decision 6)', () => {
     // Force a two-slot candidate to exercise the crew-model labour contribution.
     ad.candidate.laborSlotsPerDay = 2
     const { state } = resolveHireStaff(baseState({ staffAds: [ad] }), 'grafter', CONTEXT)
-    // Sprint 94: a bench member raises the energy pool by laborSlotsPerDay x pointsPerLabour.
+    // A bench member raises the energy pool by laborSlotsPerDay x pointsPerLabour.
     expect(energyMax(state, ECONOMY)).toBe(
       energyMax(baseState(), ECONOMY) + 2 * ECONOMY.energy.pointsPerLabour,
     )

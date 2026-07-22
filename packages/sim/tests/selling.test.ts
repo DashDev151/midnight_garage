@@ -192,9 +192,10 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
   }
 }
 
-/** `stateWithCar` plus a real live offer today on that car (Sprint 31) - the
- * fixture every `resolveSellViaWalkIn` test below needs, now that accepting
- * consumes a pre-rolled `pendingOffers` entry instead of rolling one itself. */
+/** `stateWithCar` plus a real live offer today on that car - the fixture
+ * every `resolveSellViaWalkIn` test below needs, since accepting
+ * consumes a pre-rolled `pendingOffers` entry instead of rolling one
+ * itself. */
 function stateWithOffer(
   car: CarInstance,
   priceYen: number,
@@ -565,9 +566,8 @@ describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26; Spri
   })
 
   it('accepting an offer on a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
-    // A player at 2 points selling a lemon (nominal -5) only has 2 to lose -
-    // `applyReputationDelta` floors at 0. Before this fix, the log entry
-    // carried the nominal -5 regardless of what actually applied.
+    // A player at 2 points selling a lemon (nominal -5) only has 2 to
+    // lose - `applyReputationDelta` floors at 0.
     const state = stateWithOffer(lemonCar, 300_000, 'first-timer', { reputationPoints: 2 })
     const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
     expect(result.state.reputationPoints).toBe(0)

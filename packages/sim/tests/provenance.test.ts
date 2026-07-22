@@ -151,13 +151,6 @@ describe('birth site: generateAuctionCarInstance (auctions.ts) stamps a car orig
   })
 })
 
-// Sprint 85 (the phantom-mint fix): the former "backfill instance carries the
-// car's own origin" birth-site test is gone with the mechanism it documented -
-// removal no longer synthesises a stock instance into the vacated slot at all
-// (directive 17 case (a): the branch was intentionally deleted, playtest
-// 15/16/20). A removed part keeps its own origin, covered by the close-out
-// parity tests below.
-
 describe('birth site: resolveBuyPart (parts.ts) stamps a market origin', () => {
   it('an express purchase carries a market origin at the current day', () => {
     const partId = PARTS[0]!.id

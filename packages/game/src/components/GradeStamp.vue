@@ -3,13 +3,12 @@ import type { LetterAuctionGrade, OverallAuctionGrade } from '@midnight-garage/s
 import { computed } from 'vue'
 
 /**
- * Sprint 56 decision 2: one real-world auction-style grade rendered as a
- * chunky ink-stamp box - the auction card's replacement for the old
- * per-group `BandChip` row (`AuctionScreen.vue`). Pure presentation over
+ * One real-world auction-style grade rendered as a
+ * chunky ink-stamp box (`AuctionScreen.vue`). Pure presentation over
  * `computeAuctionGrade`'s own output (sim/auctionGrade.ts); this component
  * adds no new grading logic, only an ink-color mapping and stamp styling.
  *
- * Ink ramp (decision 2): green for a strong grade (S/6/5 overall, A/B
+ * Ink ramp: green for a strong grade (S/6/5 overall, A/B
  * letter), sodium amber for a middling one (4.5/4/3.5 overall, C letter),
  * red for a weak one (3/2/1 overall, D/E letter), and `R` (the structural-
  * defect flag `computeAuctionGrade` returns when a mechanical part is

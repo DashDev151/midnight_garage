@@ -44,11 +44,11 @@ function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
 const noActions = DayActionsSchema.parse({})
 
 /**
- * Sprint 47: generation now rolls a per-car upkeep tier, so a given seed's
- * panels slot is no longer guaranteed to land below mint - forces it to a
- * known repairable 'worn' band (a real stock part) so createJobs below is
- * guaranteed to find something to repair regardless of the roll. These
- * tests are purely about the labor gate/timing, not condition.
+ * Generation rolls a per-car upkeep tier, so a given seed's panels slot
+ * isn't guaranteed to land below mint - forces it to a known repairable
+ * 'worn' band (a real stock part) so createJobs below is guaranteed to
+ * find something to repair regardless of the roll. These tests are
+ * purely about the labor gate/timing, not condition.
  */
 function withWornPanels(state: GameState): GameState {
   const car = state.ownedCars[0]!
@@ -89,8 +89,7 @@ describe('labor is gated by service-bay membership', () => {
       ).state,
     )
     const car = won.ownedCars[0]!
-    // Delivered straight to parking, not a service bay (Sprint 17: real
-    // indexed slots now, not a compact "who's occupied" list).
+    // Delivered straight to parking, not a service bay.
     expect(won.serviceBayCarIds.every((id) => id !== car.id)).toBe(true)
     expect(won.parkingCarIds).toContain(car.id)
 
@@ -179,9 +178,9 @@ describe('acquisitions require a free parking space at delivery, never at biddin
 
   it('accepting a service job is skipped (offer stays) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
     const base = createInitialGameState(CONTEXT, 1)
-    // Sprint 36: no equipment/tool gate can interfere here - every line is
-    // owned at tier 1 and all shipped templates default to minToolTier 1,
-    // so this test is purely about capacity.
+    // No equipment/tool gate can interfere here - every line is owned at
+    // tier 1 and all shipped templates default to minToolTier 1, so this
+    // test is purely about capacity.
     const full = {
       ...base,
       parkingBayCount: 0,

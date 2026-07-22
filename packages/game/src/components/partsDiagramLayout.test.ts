@@ -17,7 +17,7 @@ import {
 } from './partsDiagramLayout'
 
 /**
- * Sprint 84 decision 3: the layout-coherence test - the load-bearing piece.
+ * The layout-coherence test - the load-bearing piece.
  *
  * The parts diagram must tell the truth the sim enforces, so this reads the
  * LIVE taxonomy (`PARTS_TAXONOMY`) rather than any re-encoding of it, and holds
@@ -28,7 +28,7 @@ import {
  *     would draw a dependency the taxonomy does not have).
  *
  * A future `blockedBy` change therefore fails the diagram here until the drawing
- * is made honest again - the Sprint 78 content-probe pattern, applied to a view.
+ * is made honest again.
  */
 
 /** Positive-area intersection (a shared edge alone is not an overlap). */
@@ -113,7 +113,7 @@ describe('parts diagram layout coherence', () => {
 })
 
 /**
- * Sprint 84 amendment (maintainer, 2026-07-17): the level-1 tile map's own
+ * The level-1 tile map's own
  * sanity checks. Tiles are a navigation surface, not a dependency drawing, so
  * unlike part rectangles they must NEVER overlap - a tile overlap would imply
  * a group-level dependency that does not exist at tile grain.
@@ -162,7 +162,7 @@ describe('parts diagram group tile map', () => {
 })
 
 /**
- * Sprint 88 decision 4: the layout now renders a placeholder sprite in every
+ * The layout renders a placeholder sprite in every
  * block, so the layout is coupled to `partSprites.ts`'s footprints. This keeps
  * the two in step - every drawn part (and every assembly composite) has exactly
  * one authored sprite at one of the two grid sizes the spec fixes (24x16 for a

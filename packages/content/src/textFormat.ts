@@ -1,10 +1,8 @@
 /**
  * "valve-seals" -> "Valve seals" - the plain, honest fallback label for
- * content that has no player-facing name of its own yet (Sprint 73's symptom
- * causes: an id, never a dedicated display string). Lives in content (moved
- * from `packages/game` in Sprint 75) since `packages/sim`'s own sale-reveal
- * copy (`resolveSellViaWalkIn`, decision 2) needs the identical label the lot
- * card's cause checklist and the day-log reveal line already use - one
+ * content that has no player-facing name of its own yet. Lives in content
+ * since `packages/sim`'s own sale-reveal copy needs the identical label the
+ * lot card's cause checklist and the day-log reveal line already use - one
  * shared, dependency-free utility rather than a second implementation on
  * either side of the sim/game boundary.
  */

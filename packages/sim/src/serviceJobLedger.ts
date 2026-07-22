@@ -1,11 +1,11 @@
 import type { GameState, ServiceJobLedger } from '@midnight-garage/content'
 
 /**
- * Sprint 57: the read/write primitives for `GameState.serviceJobLedgers`,
- * mirroring `carLedger.ts`'s exact shape at job scope instead of car scope -
- * what the player actually spent on a customer's job (repair charges,
- * installed parts at their paid price), so the completion report can show
- * real numbers instead of a catalog-price reconstruction.
+ * The read/write primitives for `GameState.serviceJobLedgers`, mirroring
+ * `carLedger.ts`'s exact shape at job scope instead of car scope - what
+ * the player actually spent on a customer's job (repair charges,
+ * installed parts at their paid price), so the completion report can
+ * show real numbers instead of a catalog-price reconstruction.
  */
 const EMPTY_LEDGER: ServiceJobLedger = { repairYen: 0, partsYen: 0 }
 

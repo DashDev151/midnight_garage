@@ -2,15 +2,12 @@
 import { computed } from 'vue'
 
 /**
- * Sprint 69 (playtest item 24): a labelled progress bar, "19 / 120" against a
+ * A labelled progress bar, "19 / 120" against a
  * named threshold.
  *
- * The maintainer asked for exactly this after using Sprint 62's prose-only
- * Standing screen: *"Make the mastery progress bars. Like 19/120 to next
- * level. Same with Rep."* It exists ONLY for that one screen - progression
- * bible law 4 still bans ambient meters everywhere else, and its second
- * amendment (this sprint) permits bars on the one screen the player opens on
- * purpose, because a shop owner can read their own ledger.
+ * It exists ONLY for the Standing screen - progression bible law 4 still
+ * bans ambient meters everywhere else; it permits bars on the one screen the
+ * player opens on purpose, because a shop owner can read their own ledger.
  *
  * `max: null` means there is nothing left to climb (the top of the reputation
  * ladder). The bar reads full rather than empty - an empty rail at the top of

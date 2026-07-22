@@ -46,8 +46,8 @@ const router = useRouter()
 const carId = computed(() => String(route.params.id))
 const detail = computed(() => game.carDetail(carId.value))
 
-/** Sprint 88 decision 2/6: the radar rides top-right of the hero header at a
- * smaller size than the Sprint 86 default. */
+/** The radar rides top-right of the hero header at a
+ * smaller size than the default. */
 const RADAR_SIZE = 150
 
 /** Each part's blockers, from the live taxonomy - the panel's "Sits under" line
@@ -56,7 +56,7 @@ const BLOCKED_BY: Record<string, readonly CarPartId[]> = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry.blockedBy]),
 )
 
-/** Sprint 63: whether the planned work needs more labour than is left today. */
+/** Whether the planned work needs more labour than is left today. */
 const plannedLaborOverToday = computed(
   () => (detail.value?.plannedEstimate?.plannedLaborSlots ?? 0) > game.laborSlotsRemainingToday,
 )
@@ -72,7 +72,7 @@ watch(
   { immediate: true },
 )
 
-/** Sprint 71 decision 7: "Scrap the shell" is a two-step commit. Reset on
+/** "Scrap the shell" is a two-step commit. Reset on
  * navigating to a different car. */
 const scrapConfirming = ref(false)
 watch(carId, () => {
@@ -90,9 +90,9 @@ function onScrapShellClick(): void {
   }
 }
 
-/** Sprint 74 decision 3: the "Full workup" button's own disabled reason. */
+/** The "Full workup" button's own disabled reason. */
 const WORKUP_GATE_LABEL: Record<string, string> = {
-  // Sprint 94: labour is a continuous bar now, not integer slots.
+  // Labour is a continuous bar, not integer slots.
   'no-labor-slot': 'No labour left today',
   'not-found': 'Car not found',
   'no-symptoms': 'Nothing to diagnose',
@@ -121,7 +121,7 @@ function rowsFor(componentId: ComponentId) {
   return detail.value ? game.partsInGroup(detail.value.car.id, componentId) : []
 }
 
-// --- Sprint 88: the diagram is the page. The docked info/action panel replaces
+// --- The diagram is the page. The docked info/action panel replaces
 // the old components list; a diagram block or a bench-strip member is its
 // target. -----------------------------------------------------------------
 
@@ -169,7 +169,7 @@ const selectedBench = computed<{ containerId: string; member: BenchMemberView } 
 })
 
 /** The parts that sit on top of the selected part (its taxonomy blockers), for
- * the panel's "Sits under: {names}" line (Sprint 88 decision 3, FINAL format). */
+ * the panel's "Sits under: {names}" line. */
 const selectedBlockers = computed<string[]>(() => {
   const id = selectedPartId.value
   if (!id) return []
@@ -230,7 +230,7 @@ const panelHead = computed(() => {
   return null
 })
 
-// --- Repair steps (Sprint 88 decision 3: labour made loud) -----------------
+// --- Repair steps (labour made prominent) -
 
 function nextPartStep(componentId: ComponentId, carPartId: CarPartId) {
   return detail.value ? game.nextRepairStep(detail.value.car.id, componentId, carPartId) : null
@@ -246,16 +246,15 @@ function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) 
   )
 }
 
-/** The action button's full inline text (Sprint 88 decision 3; Sprint 94 - the
- * energy bar - the labour figure is an integer point value now, shown as
- * `Repair to fine · ¥9,600 · 20 labour`). The price and labour are loud, never
- * hover-only. */
+/** The action button's full inline text - the labour figure is an integer
+ * point value, shown as `Repair to fine · ¥9,600 · 20 labour`. The price and
+ * labour are loud, never hover-only. */
 function repairStepText(step: NextRepairStepView): string {
   return `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
 }
 
 /**
- * Sprint 74 decision 5: an uncertain part's repair-step preview is a range, so
+ * An uncertain part's repair-step preview is a range, so
  * the tooltip never leaks the true band. Ordinary rows get the same loud text
  * the button already shows.
  */
@@ -309,25 +308,17 @@ function toggleBay(): void {
   game.moveCar(d.car.id, d.inServiceBay ? 'parking' : 'service')
 }
 
-// --- Sprint 31: the for-sale toggle + live offer card ----------------------
+// --- The for-sale toggle + live offer card ---
 
 const forSale = computed(() => game.isForSale(carId.value))
 const offer = computed(() => game.offerFor(carId.value))
 
-// --- Sprint 42: the flip ledger's financial panel -------------------------
+// --- The flip ledger's financial panel ---
 
 const totalSpentYen = computed(() => {
   const d = detail.value
   if (!d) return 0
   return (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen
-})
-
-/** Your number minus everything spent so far - the same two sources the
- * panel already itemises, never a parallel estimator. */
-const projectedProfitYen = computed(() => {
-  const d = detail.value
-  if (!d) return 0
-  return d.yourNumberYen - totalSpentYen.value
 })
 
 function toggleForSale(): void {
@@ -336,7 +327,7 @@ function toggleForSale(): void {
   game.setForSale(d.car.id, !forSale.value)
 }
 
-// --- Staging, replace, remove (Sprint 18/28; the panel is a new face) ------
+// --- Staging, replace, remove ---
 
 function stagedFor(componentId: ComponentId, carPartId?: CarPartId): StagedAction | undefined {
   return detail.value?.stagedActions.find(
@@ -366,7 +357,7 @@ function stagedInstallAttribution(componentId: ComponentId, carPartId?: CarPartI
   return staged ? attributionText(staged) : ''
 }
 
-/** Sprint 48: the per-part click-per-rung repair - each click plans one more
+/** The per-part click-per-rung repair - each click plans one more
  * band, re-staging at the new target. */
 function advancePartRepair(componentId: ComponentId, carPartId: CarPartId): void {
   const d = detail.value
@@ -455,10 +446,10 @@ function removeBlockedReasonFor(carPartId: CarPartId): string | null {
 }
 
 /**
- * Sprint 85 decision 6 / Sprint 92: the `machine shop assist +<fee>` caption,
+ * The `machine shop assist +<fee>` caption,
  * computed PER OPERATION so the fee shown is exactly the fee `advanceDay` will
  * charge - `null` when owned, ungated, or free. Removal keeps the
- * engine/drivetrain buried gate only (Sprint 79: removal is free for the new
+ * engine/drivetrain buried gate only (removal is free for the
  * suspension/body/interior signature groups); install/replace adds their
  * signature fee; on-car per-part repair charges the signature fee only for a
  * surface signature slot (the sim's own bench-only rule for non-surface slots),
@@ -480,13 +471,13 @@ function repairAssistCaptionFor(carPartId: CarPartId): string | null {
   const d = detail.value
   return d ? assistCaption(game.machineAssistRepairFee(d.car.id, carPartId)) : null
 }
-/** Sprint 93: the tier-1 repair-ceiling caption for this part's group, or null. */
+/** The tier-1 repair-ceiling caption for this part's group, or null. */
 function repairCeilingCaptionFor(componentId: ComponentId, carPartId: CarPartId): string | null {
   const d = detail.value
   return d ? game.repairCeilingCaption(d.car.id, componentId, carPartId) : null
 }
 
-// --- Bench work (Sprint 87 verbs, Sprint 88 panel) -------------------------
+// --- Bench work ---
 
 function benchSwapCandidates(carPartId: CarPartId) {
   return game.stageableParts.filter(
@@ -509,7 +500,7 @@ function benchOffersRecondition(member: BenchMemberView): boolean {
 
 /** Whether a benched member is below serviceable (worn or worse, or the slot
  * is empty) - the bench empty-state renders only then, never beside fresh
- * rubber (playtest 2026-07-19 item 19: a mint member needs nothing). */
+ * rubber (a mint member needs nothing). */
 function benchMemberBelowFine(member: BenchMemberView): boolean {
   return (
     member.band === null ||
@@ -529,7 +520,7 @@ function benchShopLabel(carPartId: CarPartId): string {
     .join(' ')
 }
 
-// --- Confirm + the per-action attribution (Sprint 88 decision 3) -----------
+// --- Confirm + the per-action attribution ---
 
 function onConfirm(): void {
   const d = detail.value
@@ -557,8 +548,8 @@ function stagedActionLabel(action: StagedAction): string {
     : `Install ${partInstanceDisplayName(action.partInstanceId)} → ${targetLabel}`
 }
 
-/** Sprint 88 decision 3; Sprint 94: this staged item's own yen and labour (an
- * integer point value now). `Refit · free` for an equivalence install (0
+/** This staged item's own yen and labour (an
+ * integer point value). `Refit · free` for an equivalence install (0
  * labour); a repair its price and labour. */
 function attributionText(action: StagedAction): string {
   const a = game.plannedActionAttribution(carId.value, action)
@@ -725,8 +716,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </section>
 
-      <!-- Sprint 88: the diagram is the page. Full-width diagram, then the
-           bench strip (if any), then the docked info/action panel. -->
+      <!-- The diagram is the page. Full-width diagram, then the bench strip
+           (if any), then the docked info/action panel. -->
       <PartsDiagram
         :car-id="detail.car.id"
         :selected-part-id="selectedPartId"
@@ -881,10 +872,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >
               </template>
 
-              <!-- Sprint 93 (the band ceiling): at tier 1 a repair finishes at
-                   fine; this names the tier-2 machine that reaches mint. Sits
-                   outside the "+" block above so it still shows once the part is
-                   at fine and no further "+" rung remains. -->
+              <!-- At tier 1 a repair finishes at fine; this names the tier-2
+                   machine that reaches mint. Sits outside the "+" block above so
+                   it still shows once the part is at fine and no further "+"
+                   rung remains. -->
               <span
                 v-if="repairCeilingCaptionFor(selectedGroup, selectedRow.partId)"
                 class="ceiling-caption"
@@ -984,9 +975,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Replace{{ labourSuffix(game.actionPoints.benchFitMember) }}
             </button>
-            <!-- Playtest 2026-07-19 item 25: a mounted member comes OFF the
-                 assembly before its successor goes on - dead rubber never has
-                 to stay on the rims waiting for the shop. Free, into the bin. -->
+            <!-- A mounted member comes OFF the assembly before its successor
+                 goes on - dead rubber never stays waiting. Free, into the bin. -->
             <button
               v-if="selectedBench.member.instance"
               type="button"
@@ -999,11 +989,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Take it off{{ labourSuffix(game.actionPoints.benchRemoveMember) }}
             </button>
-            <!-- Sprint 96 decision 1 (amended same day): never a SILENT dead
-                 end - nothing to recondition and nothing on hand to fit states
-                 the situation and where the shop is; the player navigates the
-                 parts market themselves (maintainer ruling: no one-off
-                 deep-link button). -->
+            <!-- Never a silent dead end - when nothing to recondition and
+                 nothing on hand to fit, state the situation; the player
+                 navigates the parts market themselves. -->
             <span
               v-if="
                 !benchOffersRecondition(selectedBench.member) &&
@@ -1069,10 +1057,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         @close="closeReplaceDrawer"
       />
 
-      <p class="total-bill-line" data-test="total-bill">
-        Total restoration bill: {{ formatYen(detail.totalBillYen) }}
-      </p>
-
       <section class="staged-panel">
         <h4>
           Planned work ({{ detail.stagedActions.length }})
@@ -1136,8 +1120,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             class="crew-saving"
             data-test="confirm-crew-saving"
           >
-            <!-- Sprint 94 DRAFT copy (crew line, flagged for the orchestrator's
-                 sweep): crewLaborSaved is an integer labour point value now. -->
+            <!-- crewLaborSaved is an integer labour point value. -->
             <span v-if="detail.plannedEstimate.crewLaborSaved > 0" data-test="crew-labour-saved"
               >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour.</span
             >
@@ -1202,17 +1185,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <dt>You say</dt>
             <dd data-test="you-say">{{ formatYen(detail.yourNumberYen) }}</dd>
           </div>
-          <div class="finance-row">
-            <dt>Restoration bill remaining</dt>
-            <dd data-test="finance-bill-remaining">{{ formatYen(detail.totalBillYen) }}</dd>
-          </div>
-          <div
-            class="finance-row profit"
-            :class="projectedProfitYen >= 0 ? 'positive' : 'negative'"
-          >
-            <dt>Projected profit</dt>
-            <dd data-test="finance-profit">{{ formatYenDelta(projectedProfitYen) }}</dd>
-          </div>
         </dl>
 
         <p
@@ -1245,27 +1217,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <dt>Total spent after</dt>
               <dd data-test="finance-estimate-total-spent">
                 {{ formatYen(detail.plannedEstimate.totalSpentYenAfter) }}
-              </dd>
-            </div>
-            <div class="finance-row">
-              <dt>Guide value after</dt>
-              <dd data-test="finance-estimate-guide-value">
-                {{ formatYen(detail.plannedEstimate.guideValueYenAfter) }}
-              </dd>
-            </div>
-            <div class="finance-row">
-              <dt>Restoration bill after</dt>
-              <dd data-test="finance-estimate-bill">
-                {{ formatYen(detail.plannedEstimate.billYenAfter) }}
-              </dd>
-            </div>
-            <div
-              class="finance-row profit"
-              :class="detail.plannedEstimate.projectedProfitYenAfter >= 0 ? 'positive' : 'negative'"
-            >
-              <dt>Projected profit after</dt>
-              <dd data-test="finance-estimate-profit">
-                {{ formatYenDelta(detail.plannedEstimate.projectedProfitYenAfter) }}
               </dd>
             </div>
           </dl>
@@ -1312,8 +1263,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section class="jobs">
         <h3>Work</h3>
-        <!-- Sprint 94 (the energy bar): the day's labour is a BAR (primary,
-             glanceable), the exact integer point values on hover. -->
+        <!-- The day's labour is a BAR (primary, glanceable), with exact
+             integer point values on hover. -->
         <LabourBar
           :remaining="game.laborSlotsRemainingToday"
           :max="game.laborSlotsPerDay"
@@ -1395,7 +1346,7 @@ h4 {
   margin: var(--mg-space-1) 0;
 }
 
-/* Sprint 88 decision 2: the hero header - title/info on the left, the radar
+/* The hero header - title/info on the left, the radar
    pinned top-right at a smaller size. The diagram, panel, and the rest of the
    page stack full-width below (the old two-column .cols grid is dissolved). */
 .detail-hero {
@@ -1570,7 +1521,7 @@ h4 {
   color: var(--mg-neon-pink);
 }
 
-/* Sprint 88: the bench strip under the diagram - benched assembly members as
+/* The bench strip under the diagram - benched assembly members as
    the same sprite block components, each selecting the docked panel. */
 .bench-strip {
   margin: var(--mg-space-2) 0 0;
@@ -1627,7 +1578,7 @@ h4 {
   pointer-events: none;
 }
 
-/* Sprint 88 decision 1: the docked info/action panel - the diagram's single
+/* The docked info/action panel - the diagram's single
    companion, showing the selected block's identity and every action the old
    list row offered. */
 .action-panel {
@@ -1710,7 +1661,7 @@ h4 {
   color: var(--mg-text-dim);
 }
 
-/* Sprint 88 decision 3: the repair-step button carries its full price inline,
+/* The repair-step button carries its full price inline,
    never on hover. */
 .step-up.loud {
   padding: 2px 10px;
@@ -1725,13 +1676,6 @@ h4 {
   line-height: 1;
   color: var(--mg-neon-pink);
   border-color: var(--mg-panel-edge);
-}
-
-.total-bill-line {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-  font-weight: bold;
-  margin: var(--mg-space-3) 0 0;
 }
 
 .finances {
@@ -1791,20 +1735,6 @@ h4 {
   font-weight: bold;
   border-top: var(--mg-border);
   padding-top: var(--mg-space-1);
-}
-
-.finance-row.profit dt,
-.finance-row.profit dd {
-  font-size: var(--mg-fs-md);
-  font-weight: bold;
-}
-
-.finance-row.profit.positive dd {
-  color: var(--mg-success);
-}
-
-.finance-row.profit.negative dd {
-  color: var(--mg-danger);
 }
 
 .foundation-warning {
@@ -1933,7 +1863,7 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 93 (the band ceiling): the "your tools finish at fine" hint pointing at
+/* The "your tools finish at fine" hint pointing at
    the tier-2 machine - a buy-the-machine prompt, so it reads as guidance, not a
    fee. */
 .ceiling-caption {
@@ -1968,7 +1898,7 @@ h4 {
   min-width: 0;
 }
 
-/* Sprint 88 decision 3: each staged item lists its own yen and slots. */
+/* Each staged item lists its own yen and slots. */
 .staged-attr {
   color: var(--mg-yen);
   white-space: nowrap;

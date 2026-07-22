@@ -10,10 +10,8 @@ import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 
-/** Sprint 74 decision 7: the yard visit panel and per-tier "Inspect here"
- * button. */
 const GATE_REASON_LABEL: Record<string, string> = {
-  // Sprint 94: labour is a continuous bar now, not integer slots.
+  // Labour is a continuous bar now, not integer slots.
   'no-labor-slot': 'No labour left today',
   'no-cash': 'Not enough cash for the travel fee',
   'no-lots': 'No lots at this tier to inspect',
@@ -32,11 +30,10 @@ function inspectButtonTitle(tier: AuctionTier): string {
   return `Spend ${game.actionPoints.inspectionVisit} labour + ${formatYen(game.travelFeeYenFor(tier))} to inspect lots here`
 }
 
-/**
- * Sprint 74 decision 7: starting a visit at a DIFFERENT tier while one is
- * still active with minutes left forfeits the remainder - a real cost (a
- * spent labour slot and fee, gone for nothing) that needs the same two-step
- * arm-then-confirm the buyout button already uses, not a silent replace.
+/** Starting a visit at a DIFFERENT tier while one is still active with
+ * minutes left forfeits the remainder - a real cost (a spent labour slot and
+ * fee, gone for nothing) that needs the same two-step arm-then-confirm the
+ * buyout button already uses, not a silent replace.
  */
 const visitConfirmingTier = ref<AuctionTier | null>(null)
 
@@ -77,11 +74,10 @@ function testDisabledReason(
   return null
 }
 
-/**
- * Sprint 64 (item 3): Buy Now is a two-step commit - the first click arms
- * this per-lot confirm state, the second actually buys. A car is expensive
- * and irreversible, so it must never fire on a single stray click; the same
- * two-step pattern the End Day cart-confirm and New Game confirm use.
+/** Buy Now is a two-step commit - the first click arms this per-lot confirm
+ * state, the second actually buys. A car is expensive and irreversible, so it
+ * must never fire on a single stray click; the same two-step pattern the End
+ * Day cart-confirm and New Game confirm use.
  */
 const buyoutConfirming = reactive<Record<string, boolean>>({})
 
@@ -97,17 +93,15 @@ function onBuyoutClick(lotId: string): void {
   }
 }
 
-/**
- * Sprint 45: the shop's real capacity (parking + every service bay) is full,
- * but the one grace/"double parking" overflow slot is not - a won lot still
- * has somewhere to go, it just double-parks and starts costing a daily fine
+/** The shop's real capacity (parking + every service bay) is full, but the
+ * one grace/"double parking" overflow slot is not - a won lot still has
+ * somewhere to go, it just double-parks and starts costing a daily fine
  * rather than being genuinely lost.
  */
 const willDoubleParkOnWin = computed(() => game.shopAtCapacity && !game.graceSlotOccupied)
 
-/**
- * Sprint 45: real capacity AND the grace slot are both full - only now does
- * a won lot have genuinely nowhere to go and get forfeited to a rival.
+/** Real capacity AND the grace slot are both full - only now does a won lot
+ * have genuinely nowhere to go and get forfeited to a rival.
  */
 const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccupied)
 
@@ -140,9 +134,9 @@ const hasLots = computed(() => totalLots.value > 0)
       </p>
     </header>
 
-    <!-- Sprint 74 decision 7: the active yard visit's own fixed panel - dies
-         at day end (`advanceDay`) or the moment a different tier's visit
-         starts, never lingers past either. -->
+    <!-- The active yard visit's own fixed panel - dies at day end (`advanceDay`)
+         or the moment a different tier's visit starts, never lingers past
+         either. -->
     <p v-if="game.inspectionVisit" class="visit-panel" data-test="visit-panel">
       At the yard ({{ AUCTION_TIER_LABELS[game.inspectionVisit.tier] }}):
       {{ game.inspectionVisit.minutesLeft }}m left
@@ -272,9 +266,8 @@ h3 {
   margin: 0 0 var(--mg-space-2);
 }
 
-/* Sprint 95 decision 7 (playtest item 8): a visible secondary control, not a
-   ghost chip - amber text and border on the panel colour, kept small so it
-   never competes with the tier heading. */
+/* A visible secondary control, not a ghost chip - amber text and border on
+   the panel colour, kept small so it never competes with the tier heading. */
 .inspect-visit {
   font-size: var(--mg-fs-sm);
   color: var(--mg-neon-violet);
@@ -297,8 +290,7 @@ h3 {
   margin: var(--mg-space-3) 0;
 }
 
-/* Sprint 74 decision 7: the active yard visit's own fixed banner - a real
-   clock the player is spending, so it gets the same weight as the
+/* A real clock the player is spending, so it gets the same weight as the
    parking/double-park warnings below rather than blending into `.cash`. */
 .visit-panel {
   color: var(--mg-neon-cyan);
@@ -331,9 +323,8 @@ h3 {
   gap: var(--mg-space-3);
 }
 
-/* Sprint 56 decision 3: the two-panel card - a fixed-width left identity
-   panel (art + grades) and a flexible right panel (money + buy stack),
-   replacing Sprint 50's single 160px art column + one info stack. */
+/* The two-panel card - a fixed-width left identity panel (art + grades) and
+   a flexible right panel (money + buy stack). */
 .lot {
   background: var(--mg-panel);
   border: var(--mg-border);
@@ -381,8 +372,7 @@ h3 {
   text-decoration: none;
 }
 
-/* Sprint 64 (item 3): Buy Now is a small ghost control below the reserve/
-   estimate lines. */
+/* Buy Now is a small ghost control below the reserve/estimate lines. */
 .buyout-row {
   margin-top: var(--mg-space-2);
   padding-top: var(--mg-space-2);

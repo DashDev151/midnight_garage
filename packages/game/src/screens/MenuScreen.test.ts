@@ -18,9 +18,9 @@ function makeRouter(): Router {
   })
 }
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
-// wrapper and unmount it after each test, so a component left mounted from a
-// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+// Track every mounted wrapper and unmount it after each test, so a component
+// left mounted from a prior test cannot leak its store's pinia into the next
+// (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
 async function mountMenu() {
@@ -32,7 +32,7 @@ async function mountMenu() {
   return { wrapper, router }
 }
 
-describe('MenuScreen (Sprint 40 item 1)', () => {
+describe('MenuScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
@@ -98,9 +98,9 @@ describe('MenuScreen (Sprint 40 item 1)', () => {
 
   it('renders exactly one Save surface (SaveMenu), inline, no toggle and no second load panel', async () => {
     const { wrapper } = await mountMenu()
-    // Sprint 65: SaveMenu's controls render inline (no toggle-and-popover);
-    // exactly one copy-save control, one load-reveal, and no leftover inline
-    // menu load panel from the pre-Sprint-58 era.
+    // SaveMenu's controls render inline (no toggle-and-popover); exactly one
+    // copy-save control, one load-reveal, and no leftover inline menu load
+    // panel.
     expect(wrapper.findAll('[data-test="copy-save"]')).toHaveLength(1)
     expect(wrapper.findAll('[data-test="reveal-load"]')).toHaveLength(1)
     expect(wrapper.find('[data-test="save-toggle"]').exists()).toBe(false)

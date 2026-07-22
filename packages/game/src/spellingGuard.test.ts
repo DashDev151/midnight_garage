@@ -8,8 +8,8 @@ const DAY_LOG_FORMAT = join(__dirname, 'utils', 'dayLogFormat.ts')
 const REPO_ROOT = join(__dirname, '..', '..', '..')
 
 /**
- * Sprint 63 (CLAUDE.md directive 18): player-visible copy uses British
- * spelling. This guard fails if any American form leaks into the text a
+ * Player-visible copy uses British spelling (CLAUDE.md directive 18). This
+ * guard fails if any American form leaks into the text a
  * player actually reads - the `.vue` template TEXT nodes (script and style
  * blocks, HTML tags with their attribute bindings, mustache expressions, and
  * comments all stripped, so a code identifier like `laborSlotsRequired` or a
@@ -22,11 +22,10 @@ const REPO_ROOT = join(__dirname, '..', '..', '..')
  * Each entry is a regex source, matched case-insensitively between word
  * boundaries.
  *
- * Sprint 67: these were bare words, so `\blabor\b` missed "labored" - the
- * boundary requires nothing after "labor" - and a real American spelling sat
- * in `CarDetailScreen`'s Components hint from Sprint 63 until it was found by
- * hand. Inflections are now enumerated explicitly rather than with `\w*`,
- * which would trip on "laboratory" (a real word that starts with "labor").
+ * Inflections are enumerated explicitly rather than with `\w*`, which would
+ * trip on "laboratory" (a real word that starts with "labor") - a bare
+ * `\blabor\b` would also miss "labored", since the boundary requires nothing
+ * after "labor".
  *
  * `tire` deliberately does NOT enumerate `-d`/`-ing`: "a tired engine" is
  * genuine car idiom, not the American spelling of "tyre".
@@ -92,12 +91,11 @@ describe('British spelling in player-visible copy (Sprint 63, CLAUDE.md directiv
   })
 
   /**
-   * Sprint 67: the guard checks ITSELF, because a guard that matches nothing
-   * passes just as quietly as a clean codebase. That is not hypothetical - the
-   * pre-Sprint-67 `\blabor\b` could never match "labored" (the boundary
-   * requires nothing after "labor"), so a real American spelling sat in
-   * `CarDetailScreen`'s Components hint from Sprint 63 until it was found by
-   * hand, with this test green the whole time. These cases are the proof the
+   * The guard checks ITSELF, because a guard that matches nothing
+   * passes just as quietly as a clean codebase. That is not hypothetical - a
+   * bare `\blabor\b` can never match "labored" (the boundary
+   * requires nothing after "labor"), so a real American spelling could sit
+   * undetected with this test green the whole time. These cases are the proof the
    * instrument works; without them "0 offenses" means nothing.
    */
   it.each([

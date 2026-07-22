@@ -15,11 +15,11 @@ const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
 ) as Record<CarPartId, CarPartTaxonomyEntry>
 
 /**
- * Sprint 32: `saleReputationDeltaFor` gained a `model` parameter to decide
- * whether an empty `forcedInduction` slot is a real defect or legitimate
- * absence. `model` is Turbo-tagged (matching every fixture in this file,
- * which always fills the slot anyway); `naModel` is used only by the tests
- * that specifically exercise legitimate absence.
+ * `saleReputationDeltaFor` takes a `model` parameter to decide whether an
+ * empty `forcedInduction` slot is a real defect or legitimate absence.
+ * `model` is Turbo-tagged (matching every fixture in this file, which
+ * always fills the slot anyway); `naModel` is used only by the tests that
+ * specifically exercise legitimate absence.
  */
 const model: CarModel = {
   id: 'test-model',
@@ -93,11 +93,6 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
     )
   })
 
-  /**
-   * Sprint 32 decision 3: a MISSING part fails clean/concours and triggers
-   * lemon exactly like a scrap part does - a stripped car can't pass as
-   * well-kept just because a slot is empty instead of merely worn.
-   */
   it('penalizes a lemon by a single missing (non-FI) part, even with every other part mint', () => {
     const car = mintWithOneOverride('tyres', null)
     expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
@@ -106,9 +101,9 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
   })
 
   /**
-   * Sprint 32 decisions 2-3: the FI-missing-vs-FI-absent distinction, proven
-   * both directly via `isPartMissing` and end-to-end via the sale outcome -
-   * a Turbo car with an empty forcedInduction slot is missing a real part
+   * The FI-missing-vs-FI-absent distinction, proven both directly via
+   * `isPartMissing` and end-to-end via the sale outcome - a Turbo car
+   * with an empty forcedInduction slot is missing a real part
    * (lemon-eligible); the same empty slot on an NA car is legitimate and
    * permanent absence (doesn't even block a clean sale).
    */

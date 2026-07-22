@@ -6,8 +6,8 @@ import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
 
 /**
- * Sprint 40 item 1 / Sprint 65: the game's real front door - a full-screen
- * menu (no app chrome, Sprint 65 decision 1) that every session boots to and
+ * The game's real front door - a full-screen
+ * menu (no app chrome) that every session boots to and
  * that Escape/the header menu control open on demand as a pause menu.
  * Continue (and Escape while here) returns to the gameplay route the player
  * left, tracked in the ui store - pause-menu semantics, not always the garage.

@@ -24,8 +24,7 @@ export interface CatalogRefresh {
  * gated), asks `countForTier` how many lots to roll today and generates
  * exactly that many via `generateAuctionCatalog` - the one place "which
  * tiers, gated how" lives, whether the caller wants a fixed day-1 batch
- * (`refreshCatalogs`) or a small daily trickle (`generateDailyAuctionArrivals`,
- * Sprint 30 decision 4).
+ * (`refreshCatalogs`) or a small daily trickle (`generateDailyAuctionArrivals`).
  */
 function generateForEligibleTiers(
   state: GameState,
@@ -35,10 +34,10 @@ function generateForEligibleTiers(
   countForTier: (tier: AuctionTier) => number,
 ): CatalogRefresh {
   const year = currentGameYear(state.reputationTier)
-  // Sprint 95 decision 5: while the tutorial is active the tutorial model is
-  // excluded from every random roll. Computed here because BOTH callers (the
-  // day-1 batch and the daily arrivals) flow through this loop, so the
-  // scripted lot can never gain an un-scripted twin on any day.
+  // While the tutorial is active, the tutorial model is excluded from every
+  // random roll. Computed here because both callers (the day-1 batch and the
+  // daily arrivals) flow through this loop, so the scripted lot can never
+  // gain an un-scripted twin on any day.
   const excludedModelIds = excludedAuctionModelIds(state)
 
   const freshLots: AuctionLot[] = []
@@ -69,12 +68,10 @@ function generateForEligibleTiers(
 }
 
 /**
- * Generates DAY 1's full opening auction board (Sprint 10) - the fixed
+ * Generates day 1's full opening auction board - the fixed
  * `AUCTION_LOTS_PER_TIER` batch per eligible tier, so a new career isn't
  * empty on its first day. Called once, by `createInitialGameState` only;
- * every day after day 1 uses `generateDailyAuctionArrivals` below instead
- * (Sprint 30 decision 4 replaced the old weekly `day % 7` re-use of this
- * same fixed-batch function with a daily trickle).
+ * every day after day 1 uses `generateDailyAuctionArrivals` below instead.
  */
 export function refreshCatalogs(
   state: GameState,
@@ -92,13 +89,11 @@ export function refreshCatalogs(
 }
 
 /**
- * Sprint 30 decision 4: every day's real arrival process - per-tier daily
- * spawn RATE (`economy.json`'s `AUCTION_DAILY_SPAWN_RATE`, tuned above naive
- * weekly-volume parity per the maintainer's explicit ask for more lots than
+ * Every day's real arrival process - per-tier daily spawn RATE
+ * (`economy.json`'s `AUCTION_DAILY_SPAWN_RATE`, tuned for more lots than
  * a player can chase), turned into an actual integer lot count via
  * `rollDailySpawnCount`. Called every day from `advanceDay`'s day-boundary
- * step, replacing the old `day % 7` dump onto `refreshCatalogs`'s fixed
- * batch (day 1 alone still gets that fixed batch, via `createInitialGameState`).
+ * step.
  */
 export function generateDailyAuctionArrivals(
   state: GameState,

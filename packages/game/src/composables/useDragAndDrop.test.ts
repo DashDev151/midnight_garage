@@ -130,9 +130,7 @@ describe('useDraggable / useDropZone (Sprint 17)', () => {
   })
 
   it('during a live drag, isActiveTarget is only true for the zone the pointer is actually over', () => {
-    // Real playtest finding: every accepting zone used to light up the moment
-    // a drag started, regardless of where the pointer was. Highlighting must
-    // track genuine hover, not just "would this zone accept a drop."
+    // Highlighting must track genuine hover, not just "would this zone accept a drop."
     const draggable = useDraggable(() => 'car-1')
     const zone = useDropZone<string>((payload) => payload === 'car-1', vi.fn())
     expect(zone.isActiveTarget.value).toBe(false) // nothing in progress yet

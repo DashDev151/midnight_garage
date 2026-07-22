@@ -68,15 +68,9 @@ const CONTEXT = buildSimContext(
  * loudly instead of silently drifting. */
 const singleRepairType = findType('small-bodywork-touchup') // tasks: [repair panels -> fine]
 const installType = findType('coilover-install') // tasks: [install dampers >= street]
-/**
- * tasks: [repair dampers -> fine, repair springs -> fine], tier 2.
- * Sprint 41 decision 2 converted the old source for this fixture
- * (tyres-and-pads-service) from two repair tasks to two install tasks (both
- * tyres and brakePadsDiscs are now replace-only consumables) - suspension-
- * refresh is the real content's remaining two-repair-task template, so
- * every test below that needs "two independently band-settable repair
- * tasks" still exercises real content, not a synthetic fixture.
- */
+/** tasks: [repair dampers -> fine, repair springs -> fine], tier 2 - the
+ * real content's two-repair-task template, so tests needing two
+ * independently band-settable repair tasks exercise real content. */
 const twoRepairType = findType('suspension-refresh') // tasks: [repair dampers, repair springs]
 const mixedType = findType('put-her-in-a-ditch') // tasks: [repair panels, repair dampers, install tyres]
 const twoInstallType = findType('engine-internals-rebuild') // tasks: [install internals, install headValvetrain]
@@ -116,9 +110,8 @@ function partInstance(partId: string): PartInstance {
   }
 }
 
-/** A template's tasks with every `minToolTier` raised to `tier` - the
- * Sprint 36 test knob for exercising the tool-tier accept gate before
- * Sprint 37 authors real ceilings in content. */
+/** A template's tasks with every `minToolTier` raised to `tier` - the test
+ * knob for exercising the tool-tier accept gate. */
 function raiseMinToolTier(type: ServiceJobType, tier: 2 | 3): ServiceJobType['tasks'] {
   return type.tasks.map((task) => ({ ...task, minToolTier: tier }))
 }
@@ -140,9 +133,8 @@ describe('generateDailyServiceJobOffers', () => {
     const result = generateDailyServiceJobOffers(CONTEXT, 7, createRng(1))
     expect(result.length).toBeGreaterThan(0) // sanity: this seed rolls at least one offer
     expect(new Set(result.map((o) => o.id)).size).toBe(result.length)
-    // Sprint 85 decision 3: each offer's lifetime is rolled per offer from
-    // economy.serviceJobs.offerLifetimeDaysRange ([3, 8]), so it expires day
-    // 7 + 3..8 inclusive rather than the old flat day-17 (7 + 10).
+    // Each offer's lifetime is rolled per offer from
+    // economy.serviceJobs.offerLifetimeDaysRange.
     const [minLife, maxLife] = CONTEXT.economy.serviceJobs.offerLifetimeDaysRange
     expect(
       result.every((o) => o.expiresOnDay >= 7 + minLife && o.expiresOnDay <= 7 + maxLife),
@@ -153,12 +145,6 @@ describe('generateDailyServiceJobOffers', () => {
     expect(result.every((o) => o.payoutYen > 0)).toBe(true)
   })
 
-  /**
-   * Sprint 85 decision 3 (playtest 6): the per-offer lifetime roll. Every
-   * offer's `expiresOnDay` lands within `day + offerLifetimeDaysRange`
-   * inclusive, and across many offers the roll genuinely varies (it is not a
-   * single flat value stamped on the whole batch, the pre-Sprint-85 behaviour).
-   */
   it('rolls each offer a lifetime within offerLifetimeDaysRange, and the value varies across offers', () => {
     const [minLife, maxLife] = CONTEXT.economy.serviceJobs.offerLifetimeDaysRange
     const lifetimes = new Set<number>()
@@ -226,11 +212,6 @@ describe('generateDailyServiceJobOffers', () => {
     expect(generateDailyServiceJobOffers(noModels, 7, createRng(1))).toEqual([])
   })
 
-  /**
-   * Sprint 29 decision 4: a bell curve over 0-4, not a fixed weekly count -
-   * statistical, not exact, matching how every other probabilistic sim
-   * mechanic in this codebase is tested.
-   */
   it('draws a daily offer count roughly matching the content-tunable bell-curve weights', () => {
     const counts = [0, 0, 0, 0, 0]
     const days = 4000
@@ -245,14 +226,7 @@ describe('generateDailyServiceJobOffers', () => {
     }
   })
 
-  /**
-   * Sprint 52 decision 1: the day-1 pacing ramp - a step-function clamp on
-   * the bell-curve draw above (`economy.json`'s `serviceJobs.
-   * offerCountCapByDay`), so a fresh career sees a gentle trickle before the
-   * full distribution unlocks. Statistical across many seeds, same style as
-   * the bell-curve test just above - the ramp is a CLAMP, so the true max
-   * observed count at each rung is the assertion, not a distribution match.
-   */
+  // A CLAMP: the max observed count at each rung is the assertion, not a distribution match.
   describe('the day-1 pacing ramp (Sprint 52 decision 1)', () => {
     const SEEDS = 300
 
@@ -384,13 +358,6 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
     expect(sawAnyOffer).toBe(true) // sanity: the board isn't just always empty
   })
 
-  /**
-   * Sprint 37 DoD: the day-one board is diverse, not just honest. All 11
-   * tier-1 templates (Sprint 37's authored ladder) have every task at
-   * minToolTier 1, so a fresh (all-tier-1) shop has zero deficits on every
-   * one of them - between them they touch all six lines, so the board
-   * should draw from every discipline, not just one.
-   */
   it('the day-one board is diverse: the union of offered templates touches all six groups across 300 seeds', () => {
     const touchedGroups = new Set<string>()
     for (let seed = 1; seed <= 300; seed++) {
@@ -432,12 +399,9 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
   })
 
   it('one tier out in one group is offerable (an upgrade-hint offer); two tiers out, or two deficient groups, is not', () => {
-    // singleRepairType stays within one group (body). mixedType
-    // (put-her-in-a-ditch) spans three (body/suspension/wheels) - Sprint 41:
-    // twoRepairType (suspension-refresh) is single-group now that the old
-    // cross-group source (tyres-and-pads-service) converted to two install
-    // tasks (decision 2), so this specific "more than one deficient group"
-    // case borrows a still-real multi-group template instead.
+    // singleRepairType stays within one group (body); mixedType
+    // (put-her-in-a-ditch) spans three (body/suspension/wheels), covering
+    // the "more than one deficient group" case.
     const oneGroupOneTier = singleRepairType.tasks.map((task) => ({
       ...task,
       minToolTier: 2 as const,
@@ -483,8 +447,8 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
     const task = singleRepairType.tasks[0]!
     const { carPartId, minBand } = task.requirement
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: 'scrap' }) })
-    // Sprint 72 decision 1: scrap no longer counts as "done" on its own -
-    // this fixture is already genuinely outstanding without any forcing.
+    // Scrap no longer counts as "done" on its own - this fixture is already
+    // genuinely outstanding without any forcing.
     expect(isServiceTaskDone(car, task, CONTEXT)).toBe(false)
 
     const forced = forceTasksOutstanding(car, singleRepairType.tasks, CONTEXT, createRng(2))
@@ -502,9 +466,8 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
     const task = singleRepairType.tasks[0]!
     const { carPartId } = task.requirement
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: null }) })
-    // Sprint 72 decision 1: an empty slot no longer counts as "done" on its
-    // own - already genuinely outstanding, so forceTasksOutstanding (which
-    // only re-rolls a task that reads as already-satisfied) leaves it alone.
+    // An empty slot no longer counts as "done" on its own - already
+    // genuinely outstanding, so forceTasksOutstanding leaves it alone.
     expect(isServiceTaskDone(car, task, CONTEXT)).toBe(false)
 
     const forced = forceTasksOutstanding(car, singleRepairType.tasks, CONTEXT, createRng(3))
@@ -513,15 +476,9 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
   })
 
   it("keeps a grade-requirement task's original part (rolled down to a neglected band), never clearing the slot (Sprint 61)", () => {
-    // Sprint 61 (the maintainer's "keep track of the original part"
-    // direction, replacing Sprint 40's slot-clearing hack): a grade-
-    // requirement task no longer manufactures a missing slot. The
+    // A grade-requirement task no longer manufactures a missing slot: the
     // customer's original part stays present (same instance id), just
-    // degraded to a neglected band so the complaint is honest. Sprint 72
-    // retires the baseline-instance check this test used to require for
-    // "not done" - the rolled-down BAND alone (decision 2 converts every
-    // grade task's `minBand` to `fine`) already fails the requirement,
-    // regardless of the part's own (still-qualifying) grade.
+    // degraded to a neglected band so the complaint is honest.
     const task = installType.tasks[0]!
     const { carPartId, minGrade } = task.requirement
     const streetPart = catalogPartFor(carPartId, (p) => p.grade === minGrade)
@@ -595,39 +552,23 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
     expect(breakdown.laborSlots).toBeGreaterThan(0)
   })
 
-  /**
-   * Sprint 72 decision 1: scrap no longer counts as "done" on its own for a
-   * band-only task - directive 17 case (a), the old assertion (0 cost,
-   * "already done") is now stale. A scrap part genuinely needs replacing,
-   * and `serviceJobCostBreakdown` now prices exactly that (the buy-new
-   * route), rather than silently charging nothing for real required work.
-   */
   it('a band-only task on a scrap part now prices a replacement (unrepairable, but no longer "already done")', () => {
     const car = buildCarInstance({ parts: mintCarParts({ panels: 'scrap' }) })
     const model = CARS[0]!
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
-    // 'panels' is a SURFACE slot (Sprint 71) - installLaborSlotsFor is 0 for
-    // that depth class, so the buy-new route's real labour cost is 0 here
-    // too, correctly: only the cash side changed for this specific part.
+    // 'panels' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
+    // class, so only the cash side changes here.
     expect(breakdown.laborSlots).toBe(0)
   })
 
-  /**
-   * Sprint 72 decision 1: a missing slot no longer counts as "done" on its
-   * own either - directive 17 case (a), same reasoning as the scrap case
-   * above (the old "same treatment as scrap" comment stays true, just at
-   * the opposite conclusion: both now genuinely need pricing, not both
-   * being silently free).
-   */
   it('a band-only task on a missing (empty) slot now prices a replacement too - same treatment as scrap', () => {
     const car = buildCarInstance({ parts: mintCarParts({ panels: null }) })
     const model = CARS[0]!
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
-    // 'panels' is a SURFACE slot (Sprint 71) - installLaborSlotsFor is 0 for
-    // that depth class, so the buy-new route's real labour cost is 0 here
-    // too, correctly: only the cash side changed for this specific part.
+    // 'panels' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
+    // class, so only the cash side changes here.
     expect(breakdown.laborSlots).toBe(0)
   })
 
@@ -649,14 +590,6 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
 })
 
 describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)', () => {
-  /**
-   * Sprint 72 decision 1: an empty or scrap-band slot now always FAILS a
-   * band-only requirement - directive 17 case (a), inverting the old
-   * "scrap/missing already counts as done" rule this test used to assert
-   * (the old rule existed only because scrap/missing were structurally
-   * unrepairable; outcome-based tasks don't care why a slot fails, only
-   * that it does).
-   */
   it('a band-only task is done once its part reaches minBand - never while empty or scrap, even though scrap is unrepairable', () => {
     const task = singleRepairType.tasks[0]!
     const { carPartId, minBand } = task.requirement
@@ -703,16 +636,8 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     expect(isServiceTaskDone(withRace, task, CONTEXT)).toBe(true)
   })
 
-  /**
-   * Sprint 72 decision 4 ("any route counts"): the Sprint 61 baseline-
-   * instance check is retired entirely - directive 17 case (a), a direct
-   * behavioural inversion. Re-fitting the customer's OWN original part instance
-   * now counts exactly the same as fitting a bought or donor-pulled one,
-   * as long as it genuinely meets band + grade. The band floor (decision 2:
-   * every grade task converts to `minBand: 'fine'`) is what makes this
-   * honest: a merely-refitted, still-degraded part fails on band regardless
-   * of which instance it is.
-   */
+  // Every grade task's `minBand` converts to 'fine', so a merely-refitted,
+  // still-degraded part fails on band regardless of which instance it is.
   describe('any route counts (Sprint 72 decision 4): a grade-requirement task no longer cares about instance identity', () => {
     const task = installType.tasks[0]!
     const { carPartId, minGrade } = task.requirement
@@ -805,10 +730,8 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     })
     expect(isServiceWorkDone(done, CONTEXT)).toBe(true)
 
-    // Sprint 37: put-her-in-a-ditch's install task only requires a `stock`+
-    // tyre (any installed tyre satisfies it - "sort all of it" doesn't imply
-    // an upgrade), so a MISSING tyres slot (not merely a stock one) is what
-    // actually exercises "the install task isn't done yet".
+    // put-her-in-a-ditch's install task only requires a `stock`+ tyre, so a
+    // MISSING tyres slot (not merely a stock one) exercises "not done yet".
     const missingInstall = activeJob(mixedType, {
       parts: mintCarParts({ panels: 'fine', dampers: 'fine', tyres: null }),
     })
@@ -892,14 +815,8 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(next).toBe(state)
   })
 
-  /**
-   * Sprint 40 defense-in-depth guard: `resolveServiceJob` refuses outright
-   * while the customer car is still in transit, even though this path is
-   * currently unreachable through normal play (the deadline backstop only
-   * fires once `dueOnDay`, always >= `arrivesOnDay`, has passed). Accept on
-   * day N, attempt resolve on day N (still in transit) -> refused, no state
-   * change; advance to N + 1 (arrived) -> resolves normally.
-   */
+  // Defense-in-depth: refuses outright while the customer car is still in
+  // transit, even though this path is unreachable through normal play.
   it("refuses (outcome 'in-transit') while the customer car hasn't arrived yet; resolves normally once it has", () => {
     const offer = {
       ...activeJob(twoRepairType, {
@@ -953,16 +870,8 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(failed.state.stagedCarWork[failedJob.car.id]).toBeUndefined()
   })
 
-  /**
-   * Sprint 70 (parts provenance): reconciliation now reads a part's own
-   * `origin` (`partsOriginatingFromCar`, provenance.ts) rather than a
-   * mutable `customerJobId` tag - directive-17 case (a), the mechanism
-   * changed but the rule (a customer's pulled parts leave at close-out;
-   * anyone else's don't) is exactly the one Sprint 35 decision 5 established.
-   * Since a job's car has its own unique id, keying reconciliation off the
-   * car (`origin.carInstanceId`) rather than the job is behaviourally
-   * identical - one customer car per job, always.
-   */
+  // Reconciliation reads a part's own `origin` (`partsOriginatingFromCar`):
+  // a customer's pulled parts leave at close-out; anyone else's don't.
   describe('close-out reconciliation of customer-owned parts (Sprint 35 decision 5)', () => {
     const playerOwned: PartInstance = {
       id: 'pi-mine',
@@ -971,8 +880,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
-    /** A part whose origin traces to `carInstanceId` - the Sprint 70
-     * stand-in for the old `customerJobId` tag. */
+    /** A part whose origin traces to `carInstanceId`. */
     const customerOwned = (id: string, carInstanceId: string): PartInstance => ({
       id,
       partId: 'khs-street-ecu',
@@ -996,18 +904,8 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       expect(next.partInventory).toEqual([playerOwned, otherJob])
     })
 
-    /**
-     * Sprint 68 (playtest item 17), end to end - the loop a player actually
-     * walks, not two resolvers checked apart:
-     *
-     *   buy a part -> fit it to the customer's car -> think better of it and
-     *   pull it back off -> hand the job back
-     *
-     * Before this sprint the part was gone. `resolveRemovePart` tagged it as
-     * the customer's (deciding by where the car was PARKED), and close-out
-     * then dropped everything carrying the job's id. The player was robbed of
-     * a part they had paid for, for changing their mind.
-     */
+    // The loop a player actually walks, end to end: buy a part -> fit it to
+    // the customer's car -> pull it back off -> hand the job back.
     it("a part the player bought and fitted to a customer's car survives close-out - it was never the customer's", () => {
       const PLAYER_BOUGHT = 'pi-player-bought-ecu'
       const job = activeJob(twoRepairType, {
@@ -1088,15 +986,12 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
   })
 
   /**
-   * Sprint 72 task 7: a grade-requirement task satisfied via each of the
-   * three legitimate routes decision 4 ("any route counts") opens up -
    * `evaluateRequirement` reads band + grade only, never instance identity or
-   * origin, so completion and payout must be identical regardless of which
-   * route filled the slot. The one thing origin DOES still drive is decision
-   * 5's return-at-close-out rule: repair-and-refit never displaces the
-   * customer's own part, so nothing comes back; buy-new and donor-pulled both
-   * displace it into inventory, so it returns with a receipt line either way
-   * - proving the receipt rule is genuinely route-blind too.
+   * origin, so completion and payout are identical regardless of which route
+   * filled the slot. Origin still drives the return-at-close-out rule:
+   * repair-and-refit never displaces the customer's own part, so nothing
+   * comes back; buy-new and donor-pulled both displace it into inventory, so
+   * it returns with a receipt line either way.
    */
   describe('a job satisfied via each of the three routes (Sprint 72 task 7)', () => {
     const task = installType.tasks[0]!
@@ -1528,8 +1423,8 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
     it('does not apply to a template spanning more than one group, even with that specialty maxed', () => {
       // put-her-in-a-ditch: body + suspension + wheels - never "in lane" for
       // any single specialty, however high. Its repair tasks are minToolTier
-      // 2 in both touched groups (Sprint 37 content), so the tool-tier
-      // ceiling must actually be met or the offer rule excludes it entirely.
+      // 2 in both touched groups, so the tool-tier ceiling must be met or
+      // the offer rule excludes it entirely.
       const context = singleTemplateContext('put-her-in-a-ditch')
       const readyTiers = testToolTiers({ body: 2, suspension: 2 })
       let compared = false
@@ -1583,8 +1478,7 @@ describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
 describe('techniques and the derived shop title (Sprint 39)', () => {
   /** A context whose only candidate template is the one real signature
    * template under test - eliminates template-choice randomness (a
-   * 1-candidate offerable pool always picks it), matching the Sprint 38
-   * single-template-context test pattern. */
+   * 1-candidate offerable pool always picks it). */
   function singleSignatureContext(templateId: string) {
     const only = SERVICE_JOB_TYPES.filter((t) => t.id === templateId)
     return buildSimContext(
@@ -1749,12 +1643,6 @@ describe('techniques and the derived shop title (Sprint 39)', () => {
 })
 
 describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-task)', () => {
-  /**
-   * Sprint 25 task 2: acceptance claims the parking slot instantly (unchanged),
-   * but the car itself arrives `SERVICE_JOB_ARRIVAL_DELAY_DAYS` later, and the
-   * work deadline is counted from that arrival day using the OFFER's own
-   * `deadlineDays` (Sprint 29), not a flat sim constant.
-   */
   it('moves the offer into activeServiceJobs, marks it in transit, and counts the deadline from arrival', () => {
     const offer = { ...activeJob(twoRepairType), dueOnDay: null }
     const state = {
@@ -1841,11 +1729,6 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
     ])
   })
 
-  /**
-   * Sprint 36: acceptance is gated by tool-tier deficits (the offer rule's
-   * accept half) - an upgrade-hint offer is refused until the line is
-   * upgraded, then accepted, with the deficit re-checked live.
-   */
   it("refuses (reason 'tool-tier') while a task's minToolTier exceeds the line's tier, and accepts once upgraded", () => {
     const template = { ...twoRepairType, tasks: raiseMinToolTier(twoRepairType, 2) }
     const offer = { ...activeJob(template), tasks: template.tasks, dueOnDay: null }
@@ -1862,9 +1745,8 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
 
     const upgraded = {
       ...state,
-      // twoRepairType (suspension-refresh) is single-group now (Sprint 41) -
-      // both its tasks live in suspension, so upgrading that one line clears
-      // the deficit.
+      // twoRepairType is single-group: both its tasks live in suspension, so
+      // upgrading that one line clears the deficit.
       toolTiers: testToolTiers({ suspension: 2 }),
     }
     const accepted = resolveAcceptServiceJob(upgraded, offer.id, CONTEXT)
@@ -1872,9 +1754,8 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
   })
 
   it('accepts a fresh-game (all-tier-1) offer outright when every task is minToolTier 1', () => {
-    // installType (coilover-install) is a real Sprint 37 tier-1 template:
-    // every task's minToolTier is 1, so a brand-new shop (all lines at 1)
-    // has zero deficits and accept succeeds immediately.
+    // installType is a real tier-1 template: every task's minToolTier is 1,
+    // so a brand-new shop has zero deficits and accept succeeds immediately.
     const offer = { ...activeJob(installType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -1885,10 +1766,8 @@ describe('resolveAcceptServiceJob (Sprint 11 instant resolver, Sprint 29 multi-t
   })
 
   it("refuses a fresh-game offer whose real content minToolTier exceeds tier 1 (reason 'tool-tier')", () => {
-    // mixedType (put-her-in-a-ditch) is a real Sprint 37 tier-2 template:
-    // its repair tasks are minToolTier 2, so a brand-new shop can't accept
-    // it yet - proof the offer rule is enforced against REAL content, not
-    // just the synthetic raiseMinToolTier fixtures above.
+    // mixedType is a real tier-2 template: its repair tasks are minToolTier
+    // 2, so a brand-new shop can't accept it yet.
     const offer = { ...activeJob(mixedType), dueOnDay: null }
     const state = {
       ...createInitialGameState(CONTEXT, 1),
@@ -1947,12 +1826,7 @@ describe('service jobs in advanceDay', () => {
     expect(next.ownedCars).toHaveLength(0)
   })
 
-  /**
-   * Sprint 25 task 2 regression, matching the sprint doc's exact required
-   * test: accept on day N, run exactly one advanceDay, and the car is
-   * already workable (arrivesOnDay cleared) - not still in transit for a
-   * second day, same off-by-one class as parts.ts's resolvePartDeliveries.
-   */
+  // Same off-by-one class as parts.ts's resolvePartDeliveries.
   it('accept-then-advance places a workable (arrived) car after exactly one advanceDay', () => {
     const offer = { ...activeJob(twoRepairType), dueOnDay: null }
     const dayN = 5
@@ -2016,14 +1890,12 @@ describe('service jobs in advanceDay', () => {
     const offer = { ...activeJob(twoRepairType), dueOnDay: null, expiresOnDay: 1 }
     const state = { ...createInitialGameState(CONTEXT, 1), day: 1, serviceJobOffers: [offer] }
     const { state: next } = advanceDay(state, DayActionsSchema.parse({}), 1, CONTEXT)
-    // Sprint 29: this same advanceDay call can also add fresh offers (the
-    // new daily cadence, step 8a) - the stale one is specifically gone, not
-    // necessarily the whole board.
+    // This same advanceDay call can also add fresh offers - the stale one
+    // is specifically gone, not necessarily the whole board.
     expect(next.serviceJobOffers.some((o) => o.id === offer.id)).toBe(false)
   })
 
-  /** Sprint 29: replaces the old weekly-dump refresh - fresh offers can land
-   * on ANY day now, not just every 7th. */
+  /** Fresh offers can land on ANY day, not just every 7th. */
   it('a plain day (no week boundary) can still add fresh offers to the board', () => {
     const state = createInitialGameState(CONTEXT, 1)
     let sawGrowth = false

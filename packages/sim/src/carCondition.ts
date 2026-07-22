@@ -9,32 +9,30 @@ import {
 import { bandIndex, costWeightedBandFactor, isPartMissing } from './bands'
 
 /**
- * The reputation effect of selling this car (Sprint 15), shared by both sale
+ * The reputation effect of selling this car, shared by both sale
  * channels: a lemon costs reputation; a genuinely well-restored car earns
  * it. Lemon is checked first and takes explicit precedence. Plain selling
  * in between is reputation-neutral, regardless of price - normal flipping
  * isn't punished.
  *
- * Sprint 26 decision 9: re-based on bands, replacing the issue-based lemon
- * trigger (deleted with the paused hidden-issue system) outright:
  * - **Lemon**: any present part at `scrap` (unrepairable, universally
  *   uninstallable elsewhere - the game's honest "this needs real money
  *   before it's sellable" state), OR the car's cost-weighted band factor
  *   (`costWeightedBandFactor`, the same figure that feeds valuation) at or
  *   below the reputation config's `lemonMaxAverageBandFactor`.
  * - **Clean**: every present part at or above `cleanSaleMinBand` - a floor
- *   per part (Sprint 23's fix for "seven great parts can't hide one
- *   neglected one"), reachable by player effort alone.
+ *   per part so seven great parts can't hide one neglected one, reachable
+ *   by player effort alone.
  * - **Concours**: clean, AND every present part is `mint`, AND
  *   `authenticityPercent` clears its own bar - a genuine bonus for a
  *   well-matched find (that value is never player-modifiable), not the only
  *   door into the faucet.
  *
- * Sprint 32: a MISSING part (`isPartMissing` - a real defect, distinct from
- * the one legitimately-empty `forcedInduction`-on-NA case) now fails clean/
- * concours exactly like a scrap part does, and triggers lemon exactly like
- * one too - a stripped car can't quietly pass as a well-kept one just
- * because a slot happens to be empty instead of merely worn.
+ * A MISSING part (`isPartMissing` - a real defect, distinct from the one
+ * legitimately-empty `forcedInduction`-on-NA case) fails clean/concours
+ * exactly like a scrap part does, and triggers lemon exactly like one too
+ * - a stripped car can't quietly pass as a well-kept one just because a
+ * slot happens to be empty instead of merely worn.
  */
 export function saleReputationDeltaFor(
   car: CarInstance,
@@ -70,9 +68,9 @@ export function saleReputationDeltaFor(
 export type SaleQuality = 'lemon' | 'clean' | 'concours'
 
 /**
- * Derives which of `saleReputationDeltaFor`'s bonuses/penalty actually fired
- * from its numeric return value, for the day-report copy (Sprint 23) - the
- * four outcomes (-8/0/+2/+4 by default config) are mutually exclusive by
+ * Derives which of `saleReputationDeltaFor`'s bonuses/penalty actually
+ * fired from its numeric return value, for the day-report copy - the four
+ * outcomes (-8/0/+2/+4 by default config) are mutually exclusive by
  * construction, so comparing against the same economy thresholds that
  * produced the delta identifies the tier without a second, parallel
  * computation.

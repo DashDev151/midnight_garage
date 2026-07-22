@@ -2,14 +2,13 @@
 import { computed } from 'vue'
 
 /**
- * The shared labour bar (Sprint 94 "the energy bar"). The day's remaining
+ * The shared labour bar. The day's remaining
  * labour is a glanceable BAR - the primary display - with the exact integer
  * point readout on hover only (the bar's `title`), never crowding the fill.
  *
  * Built as one component so every labour readout is the same bar: the garage
  * dashboard, the car-detail Work section, and anywhere else the day's labour is
- * shown. It replaces the plain "60/60 labour" text the dashboard still carried
- * after Sprint 94 wired the bar onto the car page alone.
+ * shown.
  *
  * `caption` is optional: callers whose surrounding label already names the
  * readout (the dashboard's `<dt>Labour left today</dt>`) omit it.

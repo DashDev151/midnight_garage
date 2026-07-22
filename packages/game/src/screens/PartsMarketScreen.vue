@@ -21,13 +21,12 @@ import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
 
-/** Sprint 53 decision 5: the plain class slicer's options, in a stable
- * shitbox -> rare order (cheapest to priciest) rather than object-key order. */
+/** The plain class slicer's options, in a stable order (cheapest to priciest)
+ * rather than object-key order. */
 const FITMENT_CLASS_OPTIONS: readonly PartFitmentClass[] = PartFitmentClassSchema.options
 
 /** The 6 real component groups, in the same stable order the car-detail
- * drill-down uses - the filter's own group-then-part structure (Sprint 28
- * decision 3). */
+ * drill-down uses - the filter's own group-then-part structure. */
 const COMPONENT_GROUPS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -37,8 +36,8 @@ const COMPONENT_GROUPS: readonly ComponentId[] = [
   'interior',
 ]
 
-/** The 29 real car parts (Sprint 26) - one filter option per catalog address,
- * not the coarser 6-group addressing staging/jobs use. */
+/** One filter option per catalog address, not the coarser 6-group addressing
+ * staging/jobs use. */
 const CAR_PART_OPTIONS: readonly CarPartId[] = [
   'block',
   'internals',
@@ -72,9 +71,7 @@ const CAR_PART_OPTIONS: readonly CarPartId[] = [
 ]
 
 /** `CAR_PART_OPTIONS` bucketed under its group, for the catalog's click-
- * through drill-down (Sprint 33 decision 3: group -> sub-part, replacing the
- * old one-flat-list-plus-dropdown shape) - group first, then the specific
- * part within it. */
+ * through drill-down - group first, then the specific part within it. */
 const groupedCarPartOptions = computed(() =>
   COMPONENT_GROUPS.map((groupId) => ({
     groupId,
@@ -89,23 +86,19 @@ const SORT_OPTIONS = [
   { value: 'price-desc', label: 'price: high to low' },
 ] as const
 
-/**
- * Sprint 49 decision 1: the market's default view is six department hero
- * cards, no parts list at all - `view` gates the whole hero-grid vs.
- * catalog template split. `'browse-everything'` is the demoted "All parts"
- * escape hatch (a small link, not a seventh hero); `'department'` is
- * reached only by clicking one of the six heroes.
+/** The market's default view is six department hero cards, no parts list at
+ * all - `view` gates the whole hero-grid vs. catalog template split.
+ * `'browse-everything'` is the demoted "All parts" escape hatch (a small link,
+ * not a seventh hero); `'department'` is reached only by clicking one of the
+ * six heroes.
  */
 type MarketView = 'home' | 'browse-everything' | 'department'
 const view = ref<MarketView>('home')
 
-/**
- * Sprint 33 decision 3, kept as the catalog's own click-through state once
- * inside a department: `null` (browse-everything) shows the flat,
- * unfiltered catalog; a department view sets this to that group; picking a
+/** The catalog's own click-through state: `null` (browse-everything) shows the
+ * flat, unfiltered catalog; a department view sets this to that group; picking a
  * sub-part within it narrows further to the exact `CarPartId` via
- * `componentFilter` - unchanged plumbing, only how the player REACHES this
- * state is new (a hero click, not a flat tile row).
+ * `componentFilter`.
  */
 const selectedGroup = ref<ComponentId | null>(null)
 const componentFilter = ref<CarPartId | ''>('')
@@ -113,19 +106,18 @@ const gradeFilter = ref<Grade | ''>('')
 const sortBy = ref<(typeof SORT_OPTIONS)[number]['value']>('price-asc')
 const deliverySpeed = ref<'standard' | 'express'>('standard')
 
-/**
- * Sprint 53 decision 5: two fitment controls. `classFilter` is the plain
- * class slicer; `vehicleFilter` is the "Fits this vehicle" picker - choosing
- * a car sets `classFilter` to that car's own fitment class so the counter
- * narrows to what could ever go on it. The two stay independently editable
- * afterward (picking a vehicle is a shortcut to a class, not a separate mode).
+/** Two fitment controls. `classFilter` is the plain class slicer; `vehicleFilter`
+ * is the "Fits this vehicle" picker - choosing a car sets `classFilter` to that
+ * car's own fitment class so the counter narrows to what could ever go on it.
+ * The two stay independently editable afterward (picking a vehicle is a shortcut
+ * to a class, not a separate mode).
  */
 const classFilter = ref<PartFitmentClass | ''>('')
 const vehicleFilter = ref<string>('')
 
-// Sprint 61 (item 10): owned cars AND accepted customer service-job cars
-// (arrived or inbound) - so the accept-job, order-parts, both-arrive-tomorrow
-// loop can filter parts to a car that isn't physically in the shop yet.
+// Owned cars AND accepted customer service-job cars (arrived or inbound) - so
+// the accept-job, order-parts, both-arrive-tomorrow loop can filter parts to a
+// car that isn't physically in the shop yet.
 const vehicleOptions = computed(() => game.partsFitVehicleOptions)
 
 function onVehicleFilterChange(): void {
@@ -165,12 +157,11 @@ function goBack(): void {
   else returnHome()
 }
 
-/**
- * Sprint 96 decisions 2-3: the /parts?slot={carPartId} deep link. The bench
- * dead-end control and ReplaceDrawer's empty state land here already pointed
- * at the right department with the slot filter applied - the same state a
- * hero click plus a slot-card click sets. The query is an entry hint, not
- * persistent state, so it is dropped from the route straight away.
+/** The /parts?slot={carPartId} deep link. The bench dead-end control and
+ * ReplaceDrawer's empty state land here already pointed at the right department
+ * with the slot filter applied - the same state a hero click plus a slot-card
+ * click sets. The query is an entry hint, not persistent state, so it is
+ * dropped from the route straight away.
  */
 /** How many products a slot has - the count shown on its card. */
 function slotPartCount(slotId: CarPartId): number {
@@ -186,8 +177,8 @@ const selectedGroupParts = computed(() => {
   return group?.parts ?? []
 })
 
-/** Sprint 53: a part also has to be the right fitment class for at least
- * one owned car, on top of the pre-existing platform-tag check. */
+/** A part also has to be the right fitment class for at least one owned car,
+ * on top of the pre-existing platform-tag check. */
 function fitsAnyOwnedCar(part: Part): boolean {
   if (game.carsDetailed.length === 0) return false
   return game.carsDetailed.some(
@@ -492,7 +483,7 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 49 decision 1: the default view - six department hero cards, no
+/* The default view - six department hero cards, no
    parts list until one is opened. */
 .hero-grid {
   list-style: none;
@@ -522,9 +513,8 @@ h3 {
   border-color: var(--mg-neon-cyan);
 }
 
-/* The department's sprite frame (Sprint 88 UI fix): the group's representative
-   assembly sprite fills this box. Placeholder art only, per the sprite module's
-   provenance note. */
+/* The department's sprite frame: the group's representative assembly sprite
+   fills this box. Placeholder art only, per the sprite module's provenance note. */
 .hero-art {
   width: 100%;
   aspect-ratio: 2 / 1;
@@ -548,9 +538,9 @@ h3 {
 .hero-label {
   color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-md);
-  /* Sprint 65 decision 4: reserve two lines so a wrapping label ("Suspension
-     and Brakes") doesn't render its hero card taller than the single-line
-     siblings in the same grid row. */
+  /* Reserve two lines so a wrapping label ("Suspension and Brakes") doesn't
+     render its hero card taller than the single-line siblings in the same grid
+     row. */
   min-height: 2.6em;
   display: flex;
   align-items: center;
@@ -643,8 +633,8 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 49 decision 3: the cart becomes a sticky right rail beside the
-   list, stacking below it on narrow viewports so it's never lost. */
+/* The cart is a sticky right rail beside the list, stacking below it on
+   narrow viewports so it's never lost. */
 .market-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -685,10 +675,10 @@ h3 {
   padding: var(--mg-space-2) var(--mg-space-3);
 }
 
-/* Sprint 65 decision 5: a part that doesn't fit an owned car is NOT dimmed -
-   it's fully buyable (parts don't have to fit a current car to be bought),
-   and dimming read as "disabled". Fit status is carried by the `.part-fit`
-   tag below (recoloured), not by greying out a clickable row. */
+/* A part that doesn't fit an owned car is NOT dimmed - it's fully buyable
+   (parts don't have to fit a current car to be bought), and dimming read as
+   "disabled". Fit status is carried by the `.part-fit` tag below (recoloured),
+   not by greying out a clickable row. */
 
 .part-info {
   display: flex;
@@ -697,9 +687,9 @@ h3 {
   min-width: 0;
 }
 
-/* The part's slot sprite (Sprint 88 decision 7): a decorative thumbnail reusing
-   the diagram's crisp nearest-neighbour treatment (.pd-sprite). Placeholder art
-   only, per the sprite module's provenance note. */
+/* The part's slot sprite: a decorative thumbnail reusing the diagram's crisp
+   nearest-neighbour treatment (.pd-sprite). Placeholder art only, per the
+   sprite module's provenance note. */
 .part-sprite {
   flex: 0 0 auto;
   width: 44px;
@@ -729,8 +719,8 @@ h3 {
   margin-left: var(--mg-space-2);
 }
 
-/* Sprint 65 decision 5: the "doesn't fit a car you own" tag reads as a note,
-   not a disabled state - a distinct muted violet, legible against the panel. */
+/* The "doesn't fit a car you own" tag reads as a note, not a disabled state -
+   a distinct muted violet, legible against the panel. */
 .part-fit:not(.fit) {
   color: var(--mg-neon-violet);
 }

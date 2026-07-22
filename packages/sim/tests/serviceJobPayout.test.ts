@@ -31,31 +31,24 @@ const CONTEXT = buildSimContext(
 )
 
 /**
- * The single mandatory property test from `docs/sprints/sprint29.md`
- * decision 1: for EVERY template x EVERY roster model, the WORST payout
- * roll (`margin = marginMin`) covers the player's minimum achievable cost
- * by at least 1.15x. This structurally retires the Sprint 25 task 10
- * guaranteed-loss bug (an authored payout blind to real part prices) for
- * every current and future template, not just the four repriced by hand
- * that sprint.
+ * The single mandatory property: for EVERY template x EVERY roster model,
+ * the WORST payout roll (`margin = marginMin`) covers the player's
+ * minimum achievable cost by at least 1.15x.
  *
  * "Player's minimum achievable cost" is computed independently of
  * `deriveServiceJobPayoutYen`'s own cost basis (`serviceJobCostBreakdown`)
  * so this test cannot pass merely by re-deriving the same number twice.
  *
- * Sprint 72 (outcome-based service jobs): a band-only requirement (former
- * `repair`) prices the bench-repair route when the slot is repairable and
- * not scrap - genuinely deterministic (no player choice, so it's the same
- * number either way - Sprint 44: derived from the installed instance's own
- * catalog price). Decision 1 retires "scrap/missing already counts as
- * done," so BOTH now fall through to the buy-new route below instead of
- * contributing 0 - the same fallback a grade-requirement task (former
- * `install`) always uses. A grade-requirement task's TRUE minimum is the
- * cheapest fitting part across the full "grade >= minGrade" set - a
- * strictly wider set than the payout formula's own narrowed median-of-the-
- * tightest-fitting-tier basis (see `deriveServiceJobPayoutYen`'s doc
- * comment for why that narrowing can only ever price a task at or above
- * this test's true minimum, never below it).
+ * A band-only requirement prices the bench-repair route when the slot is
+ * repairable and not scrap - genuinely deterministic (no player choice, so
+ * it's the same number either way). Otherwise it falls through to the
+ * buy-new route below, the same fallback a grade-requirement task always
+ * uses. A grade-requirement task's TRUE minimum is the cheapest fitting
+ * part across the full "grade >= minGrade" set - a strictly wider set than
+ * the payout formula's own narrowed median-of-the-tightest-fitting-tier
+ * basis (see `deriveServiceJobPayoutYen`'s doc comment for why that
+ * narrowing can only ever price a task at or above this test's true
+ * minimum, never below it).
  */
 function playerMinCostYen(
   tasks: readonly ServiceJobTask[],
@@ -79,8 +72,7 @@ function playerMinCostYen(
     }
 
     // The buy-new route: a grade requirement, or a band-only requirement
-    // the slot can't reach by repair (scrap, missing, or non-repairable) -
-    // decision 1 means neither of the latter two is "already done" anymore.
+    // the slot can't reach by repair (scrap, missing, or non-repairable).
     const fitting = CONTEXT.parts.filter(
       (part) =>
         partFitsCar(part, model, entry.group, CONTEXT.partsTaxonomyById, carPartId) &&
@@ -150,17 +142,12 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
   })
 
   /**
-   * Sprint 72 task 7 introduced a deep-slot job (buried parts behind real
-   * `blockedBy` chains - `internals` blocked by `headValvetrain`,
-   * `headValvetrain` blocked by `camsTiming`/`intake`) to prove a teardown-
-   * chain premium was actually live for real content. Sprint 79 (the
-   * equivalence-priced labour model) retires that premium: removal and
-   * blocker refits are free, so a deep task's labour is now exactly its own
+   * A deep-slot job (buried parts behind real `blockedBy` chains -
+   * `internals` blocked by `headValvetrain`, `headValvetrain` blocked by
+   * `camsTiming`/`intake`) proves the worst-margin payout clears the Law 4
+   * floor on a real deep-slot template, not a synthetic one. Removal and
+   * blocker refits are free, so a deep task's labour is exactly its own
    * target slot's `installLaborSlotsFor` - no chain surcharge on top.
-   * Directive 17 case (a): the old assertion (`toBeGreaterThan` the bare
-   * install baseline) is now intentionally wrong; this still proves the
-   * genuinely load-bearing claim - the worst-margin payout clears the Law 4
-   * floor on a real deep-slot template, not a synthetic one.
    */
   it('a deep-slot job (engine-internals-rebuild) prices exactly its own target slots (no teardown-chain premium, Sprint 79), and the worst-margin payout still clears the floor', () => {
     const template = SERVICE_JOB_TYPES.find((t) => t.id === 'engine-internals-rebuild')
@@ -174,8 +161,8 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
 
     const breakdown = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT)
-    // Sprint 94: `installLaborSlotsFor` returns labour ENERGY now, while the
-    // payout breakdown reports slot-equivalents (energy / pointsPerLabour) so the
+    // `installLaborSlotsFor` returns labour ENERGY, while the payout
+    // breakdown reports slot-equivalents (energy / pointsPerLabour) so the
     // market labour rate stays per-slot. Compare in the same unit.
     const bareInstallEnergy = template.tasks.reduce(
       (sum, task) => sum + installLaborSlotsFor(task.requirement.carPartId, CONTEXT),

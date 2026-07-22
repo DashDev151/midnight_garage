@@ -60,9 +60,9 @@ function modelWith(overrides: { stockPowerPs: number; curbWeightKg: number }): C
 }
 
 /** The same raw formula the sim uses, restated independently here so the
- * test is a genuine cross-check of the implementation against the published
- * coefficients (Sprint 77 decision 1's own instruction: "the FORMULA is the
- * contract", not any single hand-computed decimal example). */
+ * test is a genuine cross-check of the implementation against the
+ * published coefficients: "the FORMULA is the contract", not any single
+ * hand-computed decimal example. */
 function expectedLapTimeSeconds(weightKg: number, powerPs: number, gripMult: number): number {
   const { C, ratioExp } = ECONOMY.lapModel
   return Math.round(C * Math.pow(weightKg / powerPs, ratioExp) * gripMult * 10) / 10
@@ -77,8 +77,8 @@ describe('lapTimeSecondsFor (Sprint 77 decision 1)', () => {
     })
     const result = lapTimeSecondsFor(car, model, CONTEXT)
     expect(result).toBe(expectedLapTimeSeconds(940, 130, ECONOMY.lapModel.gripMult.street))
-    // Sanity check against decision 1's own worked example (~84.9s) - a
-    // generous tolerance, since the doc itself says not to trust its
+    // Sanity check against the worked example (~84.9s) - a generous
+    // tolerance, since the doc itself says not to trust its
     // hand-computed decimals, only the formula.
     expect(result).toBeCloseTo(84.9, 0)
   })
@@ -303,10 +303,10 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
 })
 
 /**
- * Sprint 77 task 3: the real `lapReferences.json` content, run through the
- * real model - a generous [55s, 125s] band around decision 3's own "roughly
- * 70 to 110s" target (times are synthetic and formula-derived, never
- * authored, so a small coefficient retune should not make this brittle).
+ * The real `lapReferences.json` content, run through the real model - a
+ * generous [55s, 125s] band around the "roughly 70 to 110s" target (times
+ * are synthetic and formula-derived, never authored, so a small
+ * coefficient retune should not make this brittle).
  */
 describe('LAP_REFERENCES content sanity (Sprint 77 task 3)', () => {
   it('every pool entry computes a lap time in the intended range', () => {

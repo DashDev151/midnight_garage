@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ReputationTierSchema } from './tags'
 
-/** The two physical capacities a shop has (Sprint 09). */
+/** The two physical capacities a shop has. */
 export const BayKindSchema = z.enum(['service', 'parking'])
 
 /**
@@ -9,9 +9,9 @@ export const BayKindSchema = z.enum(['service', 'parking'])
  * the yen price of each purchasable bay in order (the Nth-purchased bay's
  * price is `bayPricesYen[N-1]`). Array length must equal `maxCount -
  * startCount` - every purchasable step needs a price. `minReputationTier`
- * (Sprint 16) is the same shape, one entry per purchasable rung - a coarse
- * banding, not a unique threshold per rung (see sprint16.md decision 2):
- * bays require both cash and reputation, mirroring equipment's existing gate.
+ * is the same shape, one entry per purchasable rung - a coarse banding, not
+ * a unique threshold per rung: bays require both cash and reputation, mirroring
+ * equipment's existing gate.
  */
 const BayFacilitySchema = z
   .object({

@@ -4,23 +4,21 @@ import { useGameStore } from '../stores/gameStore'
 import { pluralise } from '../utils/dayLogFormat'
 
 /**
- * The shared "End Day" control (Sprint 24 fix 4) - five screen templates
- * (Garage, CarDetail, ServiceJobs, Auction, PartsMarket) used to call
- * `game.endDay()` inline, each its own copy of the same button; the cart
- * warning (playtest 2026-07-10 #1) needed one place to land, not five.
+ * The shared "End Day" control. Five screen templates (Garage, CarDetail,
+ * ServiceJobs, Auction, PartsMarket) used to call `game.endDay()` inline,
+ * each its own copy of the same button; centralised here, not five.
  * `DevConsole.vue`'s direct call stays ungated (dev tool, not a player flow).
  */
 const game = useGameStore()
 const confirming = ref(false)
 
 /**
- * Sprint 68 decision 2 (playtest item 11): everything you're about to leave
- * undone, as one stacked list rather than a modal per condition.
+ * Everything you're about to leave undone, as one stacked list rather than a
+ * modal per condition.
  *
- * All three WARN, never block - the Sprint 51/64 rule. A player is allowed to
- * end the day with a full cart and a finished job on the ramp; they just
- * shouldn't do it by accident, which is what happened when the day ended
- * silently.
+ * All three WARN, never block. A player is allowed to end the day with a full
+ * cart and a finished job on the ramp; they just shouldn't do it by accident,
+ * which is what happened when the day ended silently.
  */
 const warnings = computed<string[]>(() => {
   const list: string[] = []
@@ -62,9 +60,9 @@ function cancel(): void {
 }
 
 /**
- * Sprint 51 decision 1: this component now has exactly one, app-wide mount
- * point (`App.vue`) - its cart-confirm modal is the one App.vue's global
- * Escape handler needs to close instead of navigating to the menu.
+ * This component has exactly one, app-wide mount point (`App.vue`) - its
+ * cart-confirm modal is the one App.vue's global Escape handler needs to close
+ * instead of navigating to the menu.
  */
 defineExpose({ confirming, cancel })
 </script>
@@ -72,9 +70,8 @@ defineExpose({ confirming, cancel })
 <template>
   <button class="primary" data-test="end-day" @click="onClick">End Day</button>
 
-  <!-- `end-day-cart-warning` and its cancel/confirm hooks keep their Sprint
-       51 names: the same modal, now carrying every warning rather than only
-       the cart's, and App.vue's Escape handler still closes it the same way. -->
+  <!-- The same modal, now carrying every warning rather than only the
+       cart's, and App.vue's Escape handler still closes it. -->
   <div v-if="confirming" class="overlay" data-test="end-day-cart-warning">
     <div class="modal">
       <h3>Before you close up</h3>
@@ -156,9 +153,8 @@ button {
   padding: var(--mg-space-2) var(--mg-space-4);
   font-family: inherit;
   font-size: var(--mg-fs-md);
-  /* Sprint 69 item 2: real travel, borrowed verbatim from AuctionScreen's
-     `.stepper` - the shadow IS the height the button falls through, so the
-     two must always move together. */
+  /* The shadow IS the height the button falls through, so the two must
+     always move together. */
   box-shadow: 0 2px 0 var(--mg-panel-edge);
 }
 

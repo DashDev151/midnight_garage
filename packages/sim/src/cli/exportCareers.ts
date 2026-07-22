@@ -1,7 +1,7 @@
 /**
- * Balance-harness data export (Sprint 03 decision 1). Compiled separately
- * (tsconfig.cli.json) to plain CommonJS and run via `node`, not
- * Vite/Vitest - the harness needs a real Node process to write files, and
+ * Balance-harness data export. Compiled separately (tsconfig.cli.json) to
+ * plain CommonJS and run via `node`, not Vite/Vitest - the harness needs a
+ * real Node process to write files, and
  * plain Node can't execute TypeScript or resolve `@midnight-garage/content`'s
  * live-source package export at runtime the way Vite's dev/test transform
  * does. This file therefore reaches into content's source via a relative
@@ -93,11 +93,11 @@ const ACQUISITIONS_COLUMNS = [
   { name: 'channel', type: 'string' },
 ] as const
 
-/** One offer a for-sale car drew (Sprint 31 decision 3) - `carEpisodeId` is a
- * synthetic per-career counter (see `runCareer.ts`'s `OfferSample` doc
- * comment), not the real game car id: the report section groups by it to
- * reconstruct one car's day-by-day offer history (median days-to-sell,
- * "beat the first offer by 10% within 5 days"). */
+/** One offer a for-sale car drew - `carEpisodeId` is a synthetic
+ * per-career counter (see `runCareer.ts`'s `OfferSample` doc comment), not
+ * the real game car id: the report section groups by it to reconstruct
+ * one car's day-by-day offer history (median days-to-sell, "beat the
+ * first offer by 10% within 5 days"). */
 const OFFERS_COLUMNS = [
   { name: 'strategy', type: 'string' },
   { name: 'seed', type: 'int64' },
@@ -109,10 +109,10 @@ const OFFERS_COLUMNS = [
   { name: 'accepted', type: 'bool' },
 ] as const
 
-/** Sprint 55 (economy-bible.md law 4): one row per roster model, the
- * closed-form coherence facts `computeRosterCoherence` derives by calling
- * the real Law 1/Law 2 sim functions directly - no seeded careers needed,
- * so this exports once, not per-seed. */
+/** Economy-bible law 4: one row per roster model, the closed-form
+ * coherence facts `computeRosterCoherence` derives by calling the real
+ * Law 1/Law 2 sim functions directly - no seeded careers needed, so this
+ * exports once, not per-seed. */
 const COHERENCE_COLUMNS = [
   { name: 'modelId', type: 'string' },
   { name: 'fitmentClass', type: 'string' },
@@ -133,10 +133,10 @@ const COHERENCE_COLUMNS = [
   { name: 'wageRatio', type: 'float64' },
 ] as const
 
-/** Sprint 71 decision 8 (the teardown game's donor economy): one row per
- * roster model, `computeRosterDonorCoherence`'s closed-form whole-vs-parted
- * facts - same one-shot-per-model shape as `COHERENCE_COLUMNS` above, no
- * seeded careers needed. */
+/** The teardown game's donor economy: one row per roster model,
+ * `computeRosterDonorCoherence`'s closed-form whole-vs-parted facts - same
+ * one-shot-per-model shape as `COHERENCE_COLUMNS` above, no seeded
+ * careers needed. */
 const DONOR_COHERENCE_COLUMNS = [
   { name: 'modelId', type: 'string' },
   { name: 'wholeSaleYen', type: 'int64' },
@@ -145,13 +145,13 @@ const DONOR_COHERENCE_COLUMNS = [
   { name: 'partedYieldOfWorstCaseYen', type: 'int64' },
 ] as const
 
-/** Sprint 73 decision 6 (diagnosis I, the blind-buy guardrail): one row per
- * symptom x fitment tier x cause - `computeSymptomCoherence`'s closed-form
- * edge table, long format (a cause's own edge doesn't fit a fixed-width
- * column set, so the shared per-symptom/tier figures repeat per cause row
- * rather than embedding a JSON cell polars can't type-check). Same one-shot
- * shape as `COHERENCE_COLUMNS`/`DONOR_COHERENCE_COLUMNS` above, no seeded
- * careers needed. */
+/** The blind-buy guardrail: one row per symptom x fitment tier x cause -
+ * `computeSymptomCoherence`'s closed-form edge table, long format (a
+ * cause's own edge doesn't fit a fixed-width column set, so the shared
+ * per-symptom/tier figures repeat per cause row rather than embedding a
+ * JSON cell polars can't type-check). Same one-shot shape as
+ * `COHERENCE_COLUMNS`/`DONOR_COHERENCE_COLUMNS` above, no seeded careers
+ * needed. */
 const SYMPTOM_COHERENCE_COLUMNS = [
   { name: 'symptomId', type: 'string' },
   { name: 'fitmentClass', type: 'string' },
@@ -249,8 +249,8 @@ function main(): void {
     daysPerCareer: DAYS_PER_CAREER,
     strategies: STRATEGIES.map((s) => s.name),
     columns: COLUMNS,
-    // Sprint 23: so the Python check validates against the values that
-    // actually ran this export, not a second, drift-prone copy in Python.
+    // So the Python check validates against the values that actually ran
+    // this export, not a second, drift-prone copy in Python.
     startingCashYen: ECONOMY.STARTING_CASH_YEN,
     weeklyRentYen: ECONOMY.WEEKLY_RENT_YEN,
   })
@@ -295,9 +295,9 @@ function main(): void {
     simVersion: SIM_VERSION,
     generatedFrom: 'packages/sim/src/cli/exportCareers.ts',
     columns: COHERENCE_COLUMNS,
-    // Sprint 55: the two content thresholds the Python coherence checks
-    // gate against, sourced from the same economy.json this export actually
-    // ran with (Sprint 23's own "validate against the real run" precedent).
+    // The two content thresholds the Python coherence checks gate
+    // against, sourced from the same economy.json this export actually
+    // ran with.
     maxBillFraction: ECONOMY.partsGeneration.maxBillFraction,
     maxConsumablesShareOfBookValue: ECONOMY.coherence.maxConsumablesShareOfBookValue,
     payoutMarginMin: ECONOMY.serviceJobs.marginMin,

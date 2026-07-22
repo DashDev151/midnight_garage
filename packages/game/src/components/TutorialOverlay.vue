@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Sprint 89 (Yuki teaches you the game): the guided-tutorial coach overlay.
+ * The guided-tutorial coach overlay.
  *
  * A strict VIEW. It reads game/store state and static tutorial content only,
  * derives the current step from live state (never a stored step index, never a
@@ -8,7 +8,7 @@
  * mutates the sim - the only state it writes is the tutorial's own
  * skip/finish/acknowledge bits, through the store's `skipTutorial`/
  * `finishTutorial`/`acknowledgeTutorialStep` actions, and its own session-only
- * drag position in the ui store (Sprint 95).
+ * drag position in the ui store.
  */
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
@@ -190,7 +190,7 @@ const currentStep = computed<TutorialStep | undefined>(() => {
 const isTerminal = computed(() => currentStep.value?.completion.kind === 'never')
 
 /** The "Got it" button renders only on a step whose completion IS the
- * acknowledgement (Sprint 95 decision 3). */
+ * acknowledgement. */
 const isAcknowledgedStep = computed(() => currentStep.value?.completion.kind === 'acknowledged')
 
 function acknowledgeCurrentStep(): void {
@@ -200,7 +200,7 @@ function acknowledgeCurrentStep(): void {
 
 /** Each visible line with its stable index in the step's own line array -
  * the index keys the render AND the seen-text bookkeeping below. A line
- * renders when shown and not yet retired (`hideWhen`, playtest item 19): the
+ * renders when shown and not yet retired (`hideWhen`): the
  * box must never end on an errand the player has already run. */
 const visibleEntries = computed(() => {
   const step = currentStep.value
@@ -214,13 +214,12 @@ const visibleEntries = computed(() => {
     )
 })
 
-// --- seen-text dimming (playtest item 20, corrected same day) ---------------
+// --- seen-text dimming ---
 // Dim ONLY text that was already on screen when NEWER text arrived. A freshly
 // opened step shows every line at full strength; when a reveal lands at the
 // bottom, everything the player has already read drops to lower contrast.
-// The machine itself is stateless, so this is deliberately view-local memory:
-// which line indices have rendered for the current step, and which arrived in
-// the newest batch.
+// This is deliberately view-local memory: which line indices have rendered for
+// the current step, and which arrived in the newest batch.
 let dimStepId = ''
 const seenLineIdx = new Set<number>()
 const latestBatch = ref<ReadonlySet<number>>(new Set())
@@ -264,7 +263,7 @@ const stepTotal = TUTORIAL_STEPS.length
 // --- best-effort spotlight of the current step's real control ---------------
 
 /** The spotlight's chosen `data-test` chain: the LAST visible line carrying
- * its own `anchorTestId` wins (Sprint 95 decision 9 - the spotlight follows
+ * its own `anchorTestId` wins (the spotlight follows
  * the sub-state through a step), else the step's own anchor. A line anchor
  * may be a chain tried in DOM order (a multi-screen errand spotlights the
  * deepest control that exists right now). A `{lotId}` token resolves to the
@@ -327,7 +326,7 @@ watchEffect(
   { flush: 'post' },
 )
 
-// --- draggable overlay (Sprint 95 decision 8) --------------------------------
+// --- draggable overlay ---
 
 const overlayEl = ref<HTMLElement | null>(null)
 
@@ -576,7 +575,7 @@ const confirmingSkip = ref(false)
 .tutorial-line {
   display: block;
 }
-/* Playtest item 20 (corrected): only text the player has ALREADY seen dims,
+/* Only text the player has ALREADY seen dims,
  * and only once newer guidance has actually landed below it - a freshly
  * opened step renders every line at full strength. The class is driven by
  * the seen-line bookkeeping in the script, never by position alone. */

@@ -15,7 +15,7 @@ const nextServiceBayRepGate = computed(() => game.nextBayReputationGate('service
 const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking'))
 
 /**
- * Sprint 43 tool wall: the selected/hovered ladder rung whose info box is
+ * The selected/hovered ladder rung whose info box is
  * showing - null until the player picks one. Any rung (owned, next, or
  * locked) can be selected; only the actual next-purchasable rung also gets
  * a live Upgrade button.
@@ -280,7 +280,7 @@ h3 {
   margin-bottom: var(--mg-space-4);
 }
 
-/* Sprint 52 decision 3: facilities become cards in the same grid/card
+/* Facilities are cards in the same grid/card
    language the tool wall already uses - symmetrical columns, consistent
    padding, no separate visual dialect. */
 .purchase-grid {
@@ -299,13 +299,13 @@ h3 {
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
   text-align: center;
-  /* Sprint 65 decision 4: a fixed floor so a gated card (with its tooltip
+  /* A fixed floor so a gated card (with its tooltip
      trigger) never renders taller than its sibling, staggering the grid. */
   min-height: 132px;
   justify-content: flex-start;
 }
 
-/* Sprint 65 decision 3: a gated card dims but keeps its price legible; the
+/* A gated card dims but keeps its price legible; the
    reason lives in the HintTooltip, not a permanent sentence. */
 .purchase-card.gated {
   opacity: 0.7;
@@ -329,10 +329,10 @@ h3 {
 
 .tool-wall {
   display: grid;
-  /* Sprint 69 item 4: `minmax(0, 1fr)` lets the columns actually shrink. The
-     scrollbar was a symptom of the 120px floor - six columns that cannot go
-     below 120px overflow any container narrower than ~750px, so `overflow-x`
-     was papering over a grid that could not fit by construction. */
+  /* `minmax(0, 1fr)` lets the columns actually shrink - a fixed floor across
+     six columns would overflow any container narrower than six times that
+     floor, so `overflow-x` alone cannot fix a grid that does not fit by
+     construction. */
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--mg-space-3);
   margin: 0 0 var(--mg-space-3);
@@ -350,7 +350,7 @@ h3 {
   font-size: var(--mg-fs-sm);
   text-align: center;
   margin: 0 0 var(--mg-space-2);
-  /* Sprint 65 decision 4: reserve two lines so a wrapping label ("Suspension
+  /* Reserve two lines so a wrapping label ("Suspension
      and Brakes", "Wheels and Tyres") doesn't push its column's ladder down
      out of line with the single-line columns. */
   min-height: 2.4em;
@@ -371,18 +371,11 @@ h3 {
 
 /*
  * Rows align across the wall BY CONSTRUCTION, not by hoping every rung's name
- * happens to be the same length.
- *
- * This was a flex column, so each node was only as tall as its own text:
- * "Engine crane & stand" wraps to two lines, "Two-post lift" doesn't, so the
- * tier-2 cards had different heights and every rung below them staggered
- * (Suspension's tier 1 sat ~50px above Engine's). Sprint 65's `min-height` on
- * the h4 fixed the header and left this untouched one level down.
- *
- * Three equal `1fr` rows, in a ladder stretched to the column's full height.
- * The wall's grid already stretches every column to the tallest, so each
- * column divides the SAME height into the same three rows - tier 1 is level
- * with tier 1 everywhere, whatever any label does.
+ * happens to be the same length: three equal `1fr` rows, in a ladder
+ * stretched to the column's full height. The wall's grid already stretches
+ * every column to the tallest, so each column divides the SAME height into
+ * the same three rows - tier 1 is level with tier 1 everywhere, whatever any
+ * label does.
  */
 .tier-ladder {
   list-style: none;
@@ -407,7 +400,7 @@ h3 {
   font-size: var(--mg-fs-sm);
   text-align: center;
   cursor: pointer;
-  /* Sprint 65 decision 4: a fixed floor so a node carrying a gate tooltip is
+  /* A fixed floor so a node carrying a gate tooltip is
      the same height as one that doesn't - the whole ladder stays aligned. */
   min-height: 76px;
   justify-content: center;
@@ -422,7 +415,7 @@ h3 {
 }
 
 /* A gated next-rung (rep or classifieds) dims like a locked one; the WHY is
-   its HintTooltip (Sprint 65 decision 3). */
+   its HintTooltip. */
 .tier-node.locked,
 .tier-node.gated {
   opacity: 0.55;

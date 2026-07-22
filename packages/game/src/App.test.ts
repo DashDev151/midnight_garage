@@ -64,10 +64,9 @@ describe('App (Sprint 51: chrome)', () => {
   })
 
   it('the Standing screen is reachable from the nav on a gameplay screen', async () => {
-    // Regression: the route existed from Sprint 62 but the only ways in were
-    // two links styled `color: inherit; text-decoration: none` with a
-    // panel-edge dotted border - invisible on a dark panel. The screen was
-    // effectively unreachable. A real nav entry is the fix.
+    // The route must be reachable via an explicit nav link; invisible links
+    // styled `color: inherit; text-decoration: none` with a panel-edge dotted
+    // border don't work on a dark panel.
     const wrapper = await mountAppAt('garage')
     const link = wrapper.find('[data-test="nav-standing"]')
     expect(link.exists()).toBe(true)

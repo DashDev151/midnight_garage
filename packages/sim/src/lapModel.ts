@@ -7,11 +7,11 @@ function round1(value: number): number {
 }
 
 /**
- * Sprint 77 (story missions II, the lap model): the raw formula over primitive
- * power/weight/tyre-grade values, shared by `lapTimeSecondsFor` (a real owned
- * car) and `selectBoardRows` (the reference board's content entries, which
- * carry no `CarInstance`/`CarModel` of their own). `economy.lapModel` is the
- * one source for every coefficient - never a hardcoded constant here.
+ * The raw lap-time formula over primitive power/weight/tyre-grade values,
+ * shared by `lapTimeSecondsFor` (a real owned car) and `selectBoardRows`
+ * (the reference board's content entries, which carry no
+ * `CarInstance`/`CarModel` of their own). `economy.lapModel` is the one
+ * source for every coefficient - never a hardcoded constant here.
  */
 function lapTimeFromRaw(
   weightKg: number,
@@ -24,12 +24,12 @@ function lapTimeFromRaw(
 }
 
 /**
- * Sprint 77 decision 1: `round1(C x (curbWeightKg / power) ^ ratioExp x
- * gripMult[tyreGrade])`, where `power` is the car's CURRENT derived power
- * (condition and parts matter - that is the build game) and `tyreGrade` is
- * the fitted tyre SKU's own catalog grade. Returns `null` (no time can be
- * set) when the tyres slot is empty or scrap-band - there is nothing to
- * grip the road with.
+ * `round1(C x (curbWeightKg / power) ^ ratioExp x gripMult[tyreGrade])`,
+ * where `power` is the car's CURRENT derived power (condition and parts
+ * matter - that is the build game) and `tyreGrade` is the fitted tyre
+ * SKU's own catalog grade. Returns `null` (no time can be set) when the
+ * tyres slot is empty or scrap-band - there is nothing to grip the road
+ * with.
  */
 export function lapTimeSecondsFor(
   car: CarInstance,
@@ -63,10 +63,10 @@ export interface LapReferenceCar {
 }
 
 /** One row of the reference-lap board - a comparable car (or the grip
- * anchor, rendered once per tyre grade) with its model-computed time. Times
- * are never authored; they're always the live output of `lapTimeFromRaw`,
- * so retuning `economy.lapModel`'s coefficients retunes the whole board for
- * free (decision 3's own "synthetic, never authored" ruling). */
+ * anchor, rendered once per tyre grade) with its model-computed time.
+ * Times are never authored; they're always the live output of
+ * `lapTimeFromRaw`, so retuning `economy.lapModel`'s coefficients retunes
+ * the whole board for free. */
 export interface LapBoardRow {
   id: string
   name: string
@@ -96,7 +96,7 @@ function timeEntries(
 
 /** The 4 anchor rows - one grip-anchor car (`content/src/lapReference.ts`'s
  * `anchor: true` entry), rendered once per tyre grade so the player reads
- * the grade deltas off one identical car (decision 3's own ruling). */
+ * the grade deltas off one identical car. */
 function anchorRows(anchor: LapReferenceCar, economy: EconomyConfig): LapBoardRow[] {
   return GRADES.map((tyreGrade) => ({
     id: `${anchor.id}-${tyreGrade}`,
@@ -129,8 +129,8 @@ function nearestInDirection(
 }
 
 /**
- * Sprint 77 decision 4: the board's straddling-selection rule, pure and
- * deterministic. With a candidate car picked: from the pool entries at the
+ * The board's straddling-selection rule, pure and deterministic. With a
+ * candidate car picked: from the pool entries at the
  * SAME tyre grade, take the 2 nearest slower and 2 nearest faster; if
  * either side comes up short (fewer than 2 within that grade), pad it from
  * the rest of the pool - any grade, nearest by time - since a grade-

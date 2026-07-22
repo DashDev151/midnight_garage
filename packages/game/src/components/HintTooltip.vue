@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Sprint 65 decision 3: a small shared tooltip for gate/lock explanations -
+ * A small shared tooltip for gate/lock explanations -
  * the reason a control is unavailable lives here (revealed on hover or
  * keyboard focus) instead of a permanent sentence inflating the card. A
  * "locked" trigger stays visible so the card still reads as gated at a

@@ -27,11 +27,10 @@ function importCode(): void {
   if (result.ok) importText.value = ''
 }
 
-/**
- * Session log v0 (Sprint 24) - capture only, no replay this sprint. No
- * download pattern exists elsewhere to reuse (the save export above copies
- * to the clipboard); this is the small standard Blob + object-URL + anchor-
- * click helper, kept local here until a second consumer needs it.
+/** Session log v0 - capture only. No download pattern exists elsewhere to reuse
+ * (the save export above copies to the clipboard); this is the small standard
+ * Blob + object-URL + anchor-click helper, kept local here until a second
+ * consumer needs it.
  */
 async function exportSessionLog(): Promise<void> {
   const events = await loadSessionEvents()
@@ -47,10 +46,10 @@ async function exportSessionLog(): Promise<void> {
 </script>
 
 <template>
-  <!-- Sprint 65 decision 2: the save controls render inline as the menu's own
-       full-width buttons (no toggle-and-popover, no redundant "Save" title) -
-       one honest save surface. The Load textarea reveals on demand so the
-       menu isn't cluttered by an input the player rarely uses. -->
+  <!-- The save controls render inline as the menu's own full-width buttons (no
+       toggle-and-popover, no redundant "Save" title) - one honest save surface.
+       The Load textarea reveals on demand so the menu isn't cluttered by an
+       input the player rarely uses. -->
   <div class="save-menu">
     <p class="nudge">Your save code is your backup - some browsers can forget the game.</p>
     <button class="menu-btn" data-test="copy-save" @click="copyCode">Copy save code</button>

@@ -26,17 +26,17 @@ const dragSession = useDragSession()
 const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevConsole.vue')) : null
 
 /**
- * Sprint 65 decision 1: the menu is a real full-screen menu, not a tab. Any
- * route flagged `meta: { chrome: false }` (the menu) hides the header/nav and
- * the End Day button; every gameplay route shows them.
+ * The menu is a real full-screen menu, not a tab. Any route flagged
+ * `meta: { chrome: false }` (the menu) hides the header/nav and the End Day
+ * button; every gameplay route shows them.
  */
 const showChrome = computed(() => route.meta.chrome !== false)
 
 /**
- * Sprint 65: remember the gameplay route the player leaves when the menu
- * opens, so the menu's Continue and Escape-from-menu return there (pause-menu
- * semantics), not always to the garage. The dev-only spike sandbox is never a
- * "return here" target.
+ * Remember the gameplay route the player leaves when the menu opens, so the
+ * menu's Continue and Escape-from-menu return there (pause-menu semantics),
+ * not always to the garage. The dev-only spike sandbox is never a "return
+ * here" target.
  */
 watch(
   () => route.name,
@@ -53,22 +53,21 @@ function openMenu(): void {
 }
 
 /**
- * Sprint 51 decision 3: the one app-wide End Day mount point - shown on
- * every gameplay route (chrome routes), never on the menu.
+ * The one app-wide End Day mount point, shown on every gameplay route (chrome
+ * routes), never on the menu.
  */
 const endDayButton = ref<InstanceType<typeof EndDayButton> | null>(null)
 const logDrawer = ref<InstanceType<typeof EventLogDrawer> | null>(null)
 const showEndDay = computed(() => showChrome.value)
 
 /**
- * Sprint 51 decision 1: Escape reaches the menu from anywhere in gameplay,
- * with three things taking priority over that navigation, checked in order:
- * (1) typing in a field - Escape is left to the field itself; (2) a live
- * pick/drag session - CarDetailScreen's own handler already clears that
- * (existing Sprint 24 behavior), so the global handler defers by doing
- * nothing; (3) any open modal (DayReport, JobComplete, SaleComplete,
- * MissionComplete, the event-log drawer, End Day's cart confirm) - Escape
- * closes it instead of navigating away underneath it.
+ * Escape reaches the menu from anywhere in gameplay, with three things taking
+ * priority over that navigation, checked in order: (1) typing in a field -
+ * Escape is left to the field itself; (2) a live pick/drag session -
+ * CarDetailScreen's own handler already clears that, so the global handler
+ * defers by doing nothing; (3) any open modal (DayReport, JobComplete,
+ * SaleComplete, MissionComplete, the event-log drawer, End Day's cart
+ * confirm) - Escape closes it instead of navigating away underneath it.
  */
 function onGlobalKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
@@ -99,8 +98,8 @@ function onGlobalKeydown(event: KeyboardEvent): void {
     endDayButton.value.cancel()
     return
   }
-  // Sprint 65: Escape is a pause-menu toggle - open the menu from gameplay,
-  // and from the menu return to the gameplay route the player left.
+  // Escape is a pause-menu toggle - open the menu from gameplay, and from
+  // the menu return to the gameplay route the player left.
   if (route.name === 'menu') {
     void router.push({ name: ui.lastGameplayRoute })
   } else {
@@ -123,12 +122,11 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       <RouterLink :to="{ name: 'upgrades' }" data-test="nav-upgrades">Upgrades</RouterLink>
       <RouterLink :to="{ name: 'staff' }" data-test="nav-staff">Staff</RouterLink>
       <RouterLink :to="{ name: 'standing' }" data-test="nav-standing">Standing</RouterLink>
-      <!-- Sprint 69 item 20: the event log is reference material, not a
-           permanent wall under the garage's bays. A control in the chrome,
-           opened on demand. -->
+      <!-- The event log is reference material, not a permanent wall under the
+           garage's bays. A control in the chrome, opened on demand. -->
       <EventLogDrawer ref="logDrawer" />
-      <!-- Sprint 65 decision 1: a menu CONTROL (not a tab) - a mouse player's
-           way into the full-screen menu, mirroring Escape. -->
+      <!-- A menu CONTROL (not a tab) - a mouse player's way into the
+           full-screen menu, mirroring Escape. -->
       <button class="menu-button" data-test="open-menu" title="Menu (Esc)" @click="openMenu">
         Menu
       </button>
@@ -189,8 +187,8 @@ nav a.router-link-active {
   color: var(--mg-neon-violet);
 }
 
-/* Sprint 65 decision 1: the menu control - a button styled like the dev
-   toggle (a control, not a nav tab). */
+/* The menu control: a button styled like the dev toggle (a control, not a
+   nav tab). */
 .menu-button {
   background: transparent;
   color: var(--mg-text-dim);
@@ -215,8 +213,8 @@ nav a.router-link-active {
   font-family: inherit;
 }
 
-/* Sprint 51 decision 3: room for the fixed End Day button so it never
-   covers the bottom of a screen's own content. */
+/* Room for the fixed End Day button so it never covers the bottom of a
+   screen's own content. */
 main.with-end-day {
   padding-bottom: 80px;
 }

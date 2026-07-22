@@ -14,24 +14,21 @@ import {
   type TileRect,
 } from './partsDiagramLayout'
 
-/**
- * Sprint 88 (the diagram is the page): the parts diagram stops being a
- * hyperlink index into a list and becomes the repair surface itself. Level 1
- * still shows the six group tiles positioned as car regions; opening a tile
- * drops to level 2, that group's member slots drawn with placeholder pixel-art
- * sprites (`partSprites.ts`), plus any OUTSIDE blocker of a member as a visiting
- * sprite at its true overlap position. Clicking a level-2 block selects it
- * (`select`), which the screen turns into the docked info/action panel below;
- * clicking a tile only navigates. Assembly members render inside a bordered
- * cluster (decision 5); clicking any member selects the assembly's context in
- * the panel just the same, since the panel derives the assembly from the part.
+/** The parts diagram is the repair surface. Level 1 shows the six group tiles
+ * positioned as car regions; opening a tile drops to level 2, that group's
+ * member slots drawn with placeholder pixel-art sprites (`partSprites.ts`), plus
+ * any OUTSIDE blocker of a member as a visiting sprite at its true overlap
+ * position. Clicking a level-2 block selects it (`select`), which the screen
+ * turns into the docked info/action panel below; clicking a tile only navigates.
+ * Assembly members render inside a bordered cluster; clicking any member selects
+ * the assembly's context in the panel just the same, since the panel derives the
+ * assembly from the part.
  */
 const props = defineProps<{ carId: string; selectedPartId?: CarPartId | null }>()
 const emit = defineEmits<{ (e: 'select', partId: CarPartId | null): void }>()
 
 const game = useGameStore()
 
-// Copy swept and approved (Sprint 84 string sweep). Reused as-is (Sprint 88 C).
 const INSPECT_PROMPT = 'Point at a part to see what it is and what sits on top of it.'
 const EMPTY_LABEL = 'empty'
 const OPEN_LABEL = 'open'
@@ -119,12 +116,11 @@ function isFitted(partId: CarPartId): boolean {
 
 const spriteFor = (partId: CarPartId): string => partSpriteDataUrl(partId)
 
-/**
- * Sprint 96 decision 4: the always-on condition wash. A block's whole face
- * carries a low-alpha tint of the same band palette tokens BandChip (and the
- * retired corner dot) authors, so condition reads at a glance without hover.
- * An uncertain band keeps a neutral wash rather than asserting a condition
- * the player cannot trust yet; a block with no band gets no wash at all.
+/** The always-on condition wash. A block's whole face carries a low-alpha tint
+ * of the same band palette tokens BandChip (and the retired corner dot) authors,
+ * so condition reads at a glance without hover. An uncertain band keeps a
+ * neutral wash rather than asserting a condition the player cannot trust yet;
+ * a block with no band gets no wash at all.
  */
 const WASH_CLASS_BY_BAND: Record<string, string> = {
   mint: 'pd-wash-mint',
@@ -329,7 +325,7 @@ function visitorHomeLabel(partId: CarPartId): string {
   return componentId ? game.componentLabel(componentId) : ''
 }
 
-// --- Assembly clusters (decision 5) --------------------------------------
+// --- Assembly clusters ------------------------------------------------------
 // Each assembly whose members live in the active group draws a bordered box
 // around its member slots' bounding box, with a chip naming the unit. The chip
 // selects a member (the panel derives the assembly from any member), so the
@@ -546,8 +542,7 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   cursor: pointer;
 }
 
-/* The fixed-aspect stage - relative units only, full container width (Sprint
-   88 decision 2 lifts the old 640px cap). */
+/* The fixed-aspect stage - relative units only, full container width. */
 .pd-stage {
   position: relative;
   width: 100%;
@@ -583,7 +578,7 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
 /* The placeholder pixel-art sprite - crisp nearest-neighbour, aspect kept by
    `contain`, as the block's sole fill. Level-1 tiles show the group's assembly
    sprite, level-2 slots their part sprite; ghost slots dim the same sprite
-   (decision 4; no baked transparency). */
+   (no baked transparency). */
 .pd-sprite,
 .pd-tile-sprite {
   flex: 1 1 auto;
@@ -628,11 +623,10 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   pointer-events: none;
 }
 
-/* Condition wash (Sprint 96 decision 4, replaces the corner dot): the block's
-   whole face carries a low-alpha tint of its band colour - the SAME band
-   palette tokens BandChip authors - always on so condition reads at a glance,
-   slightly stronger while hovered. Functional colour, not neon accent: the
-   alpha stays low enough that the sprite and label read first. */
+/* Condition wash: the block's whole face carries a low-alpha tint of its band
+   colour - the SAME band palette tokens BandChip authors - always on so condition
+   reads at a glance, slightly stronger while hovered. Functional colour, not
+   neon accent: the alpha stays low enough that the sprite and label read first. */
 .pd-wash-mint {
   --pd-wash: var(--mg-success);
 }
@@ -674,8 +668,8 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   background-color: color-mix(in srgb, var(--pd-wash) 28%, transparent);
 }
 
-/* Ghost placeholder for an empty slot: the sprite still renders (decision 4)
-   but dimmed, with a dashed edge saying "something belongs here". */
+/* Ghost placeholder for an empty slot: the sprite still renders but dimmed,
+   with a dashed edge saying "something belongs here". */
 .pd-slot.ghost {
   border-style: dashed;
   border-color: var(--mg-panel-edge);
@@ -724,8 +718,8 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
   opacity: 0.4;
 }
 
-/* Assembly cluster (decision 5): a bordered box around its member sprites,
-   drawn behind them, with a chip naming the unit. */
+/* Assembly cluster: a bordered box around its member sprites, drawn behind
+   them, with a chip naming the unit. */
 .pd-cluster {
   position: absolute;
   z-index: 1;

@@ -21,8 +21,8 @@ describe('buyParts resolution in advanceDay', () => {
     const state = createInitialGameState(CONTEXT, 1)
     const { state: next, log } = advanceDay(state, actions([{ partId: cheapest.id }]), 1, CONTEXT)
 
-    // Sprint 14: buyParts defaults to 'express' (today's pre-Sprint-14
-    // instant behavior), which now carries a surcharge over the sticker price.
+    // buyParts defaults to 'express', which carries a surcharge over the
+    // sticker price.
     expect(next.cashYen).toBe(state.cashYen - cheapestExpressPriceYen)
     expect(next.partInventory).toHaveLength(1)
     expect(next.partInventory[0]!.partId).toBe(cheapest.id)

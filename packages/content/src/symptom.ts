@@ -32,27 +32,24 @@ export const ResolvedCauseSchema = FailureModeSchema.extend({
 })
 
 /**
- * One diagnostic test's APPLICATION to a specific symptom (Sprint 73): which
+ * One diagnostic test's APPLICATION to a specific symptom: which
  * globally-registered test (`diagnosticTest.ts`'s `DiagnosticTestSchema`, by
  * `testId`) narrows this symptom's cause list, how it partitions the causes
  * into exactly two groups, and the player-facing result line for each group.
- * A cause id must appear in exactly one partition group - `integrity`-style
- * content tests enforce full, non-overlapping coverage of the symptom's own
- * `causes` list. `resultCopy[i]` describes the outcome when the true cause
- * falls in `partition[i]`.
+ * A cause id must appear in exactly one partition group - content tests
+ * enforce full, non-overlapping coverage of the symptom's own `causes` list.
+ * `resultCopy[i]` describes the outcome when the true cause falls in
+ * `partition[i]`.
  *
- * `unlockedBy` (Sprint 106, the routed diagnostic tree): absent means this
- * test is a ROOT, offered from the start; present means it is offered only
- * once the named sibling test (`unlockedBy.testId`, another test of the SAME
- * symptom) has run. With `unlockedBy.group` present (0 or 1, matching that
- * parent test's own `partition` index), the sibling must also have resolved
- * to that partition group; with `unlockedBy.group` absent, the sibling
- * having run at all is enough, whichever group it resolved to - this is how
- * a whole board of follow-up tests opens after a first look. A lone
- * `TestApplicationSchema` cannot see its siblings, so the shape of every
- * chain (parent exists, no self-reference, acyclic, at least one root,
- * unlock depth at most 3) is validated by `checkTestChainIntegrity` below,
- * shared by both symptom schemas, not here.
+ * `unlockedBy`: absent means this test is a ROOT, offered from the start;
+ * present means it is offered only once the named sibling test
+ * (`unlockedBy.testId`, another test of the SAME symptom) has run. With
+ * `unlockedBy.group` present (0 or 1, matching that parent test's own
+ * `partition` index), the sibling must also have resolved to that partition
+ * group; with `unlockedBy.group` absent, the sibling having run at all is
+ * enough, whichever group it resolved to. A lone `TestApplicationSchema`
+ * cannot see its siblings, so the shape of every chain is validated by
+ * `checkTestChainIntegrity` below, shared by both symptom schemas, not here.
  */
 export const TestApplicationSchema = z.object({
   testId: z.string().min(1),

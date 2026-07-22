@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 /**
  * Ephemeral session/view state that is never persisted (contrast the
- * game store, whose `gameState` is the Sprint 7 save payload). Screen
+ * game store, whose `gameState` is the save payload). Screen
  * location lives in the router, not here - this store is for transient
  * view flags like whether the dev console is open.
  */
@@ -15,7 +15,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   /**
-   * Sprint 65 decision 1: the gameplay route the player was last on before
+   * The gameplay route the player was last on before
    * opening the menu (Escape or the header control). The menu's Continue, and
    * Escape while on the menu, both return here - pause-menu semantics - so the
    * menu never dumps the player back on the garage from, say, the auction
@@ -29,7 +29,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   /**
-   * Sprint 95 decision 8: where the player has dragged the walkthrough overlay
+   * Where the player has dragged the walkthrough overlay
    * this session, in viewport pixels (top-left corner). `null` means the
    * overlay keeps its current step's default placement (the stylesheet's
    * bottom-left corner, or that step's own `panelPosition` hint). Session

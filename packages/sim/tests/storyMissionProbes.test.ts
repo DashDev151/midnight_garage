@@ -36,11 +36,11 @@ function mission(id: string) {
 }
 
 /**
- * Sprint 78 decision 1 (the threshold formula rule): every numeric target is
- * derived from its mission's own probe build through these fixed formulas -
- * restated here, independently of any authoring step, so a test that
- * recomputes them from a FRESH measurement and compares against the
- * authored content can never silently drift from the rule that produced it.
+ * The threshold formula rule: every numeric target is derived from its
+ * mission's own probe build through these fixed formulas - restated here,
+ * independently of any authoring step, so a test that recomputes them from
+ * a FRESH measurement and compares against the authored content can never
+ * silently drift from the rule that produced it.
  */
 const floor90 = (measured: number): number => Math.floor(0.9 * measured)
 const round2At97Percent = (measuredRatio: number): number =>
@@ -90,23 +90,23 @@ interface AftermarketFit {
 }
 
 /**
- * Sprint 76 decision 5 / Sprint 78 decision 1: one probe recipe - a "before"
- * car (uniform `worn`, all stock, the model's own fitment class) and an
- * "after" car (uniform `endBand`, with `aftermarket` slots carrying a real
- * catalog part at that grade instead of a repaired stock one). Probe cost
- * `C` = the before car's `marketValueYen` (the purchase proxy) + every
- * aftermarket part's own catalog price + the repair-atom cost of every
- * OTHER slot from `worn` to `endBand` (`carCostToBandYen` - a slot getting a
- * brand new part is never ALSO charged to repair the part it's replacing).
+ * One probe recipe - a "before" car (uniform `worn`, all stock, the
+ * model's own fitment class) and an "after" car (uniform `endBand`, with
+ * `aftermarket` slots carrying a real catalog part at that grade instead
+ * of a repaired stock one). Probe cost `C` = the before car's
+ * `marketValueYen` (the purchase proxy) + every aftermarket part's own
+ * catalog price + the repair-atom cost of every OTHER slot from `worn` to
+ * `endBand` (`carCostToBandYen` - a slot getting a brand new part is never
+ * ALSO charged to repair the part it's replacing).
  *
- * Sprint 93 (the band ceiling): `carCostToBandYen` is the tier-INDEPENDENT
- * restoration bill (the market's mint-referenced value accounting), so the
- * probe cost is unchanged by the repair ceiling - a mint `endBand` slot is
- * always reachable at any tier by BUYING a mint part and fitting it (an install,
- * never repair-gated), which is precisely the price this bill already carries.
- * The tier-1 repair cap only changes the COST of the alternative genuine-period
- * repair route, never whether the required band can be produced - the
- * satisfiability of that is asserted directly in its own describe below.
+ * `carCostToBandYen` is the tier-INDEPENDENT restoration bill, so the probe
+ * cost is unchanged by the repair ceiling - a mint `endBand` slot is always
+ * reachable at any tier by BUYING a mint part and fitting it (an install,
+ * never repair-gated), which is precisely the price this bill already
+ * carries. The tier-1 repair cap only changes the COST of the alternative
+ * genuine-period repair route, never whether the required band can be
+ * produced - the satisfiability of that is asserted directly in its own
+ * describe below.
  */
 function buildProbe(modelId: string, endBand: ConditionBand, aftermarket: AftermarketFit[] = []) {
   const model = CARS.find((c) => c.id === modelId)!
@@ -195,12 +195,10 @@ function lapTimeCeilingMaxSeconds(target: ReturnType<typeof mission>): number {
 }
 
 /** Asserts a commercial probe car passes `gradeMissionCar` and holds the
- * Sprint 91 Amendment 2 one-price contract: the client pays a single price
- * (`budgetCapYen === payoutYen`), that price is still the unchanged 1.3x
- * formula reward (`payoutYen === payoutYenFor(probeCostYen)`), and a sensible
- * probe build fits inside it at a positive margin (`probeCostYen < payoutYen`).
- * The old 1.1x budget-cap pin is gone: budget no longer sits below payout, it
- * IS the payout. */
+ * one-price contract: the client pays a single price (`budgetCapYen ===
+ * payoutYen`), that price is still the unchanged 1.3x formula reward
+ * (`payoutYen === payoutYenFor(probeCostYen)`), and a sensible probe build
+ * fits inside it at a positive margin (`probeCostYen < payoutYen`). */
 function assertPassesAndPriceLocked(
   missionId: string,
   afterCar: CarInstance,
@@ -224,21 +222,15 @@ function assertPassesAndPriceLocked(
 }
 
 /**
- * Sprint 78 (story missions III, the campaign): one satisfiability probe per
- * authored mission, per decision 1's own instruction - each asserts BOTH
- * that the probe build actually passes `gradeMissionCar` AND that every
+ * One satisfiability probe per authored mission - each asserts BOTH that
+ * the probe build actually passes `gradeMissionCar` AND that every
  * formula-derived content field (thresholds, budget, payout) exactly
  * reproduces the fixed formula against a freshly-measured probe build, so
- * content and probe can never quietly drift apart. Replaces Sprint 76's
- * `placeholder-a`/`placeholder-b` probes outright (directive 17 case (a):
- * the placeholders are deleted, an intentional content replacement, not a
- * regression).
+ * content and probe can never quietly drift apart.
  */
 describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
-  // Sprint 91 Amendment 2 (the one-price model, directive 17 case (a)): every
-  // build job carries ONE contract price, not a spend cap below a separate
-  // reward. The dual budgetCapYenFor (1.1x) / payoutYenFor (1.3x) pin - which
-  // asserted budget < payout - is intentionally replaced by budget === payout.
+  // Every build job carries ONE contract price, not a spend cap below a
+  // separate reward.
   it('every story mission is one-price: budgetCapYen === payoutYen', () => {
     for (const target of STORY_MISSIONS) {
       expect(target.budgetCapYen, `${target.id} budgetCapYen === payoutYen`).toBe(target.payoutYen)
@@ -247,8 +239,8 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
 
   it('four-wheels (off-formula, Sprint 91): an honest NA wagon-r is roadworthy, and the hand-tuned intro economics sit deliberately below the generic 1.1x/1.3x formula', () => {
     const { model, afterCar, probeCostYen } = buildProbe('suzuki-wagon-r-ct21s', 'worn')
-    // Sprint 90: the Wagon R is naturally aspirated, so the honest build leaves
-    // its forcedInduction slot empty (no phantom turbo). Grade THAT car -
+    // The Wagon R is naturally aspirated, so the honest build leaves its
+    // forcedInduction slot empty (no phantom turbo). Grade THAT car -
     // roadworthy grades the legitimately-absent slot as sound.
     expect(hasForcedInduction(model)).toBe(false)
     const honestCar: CarInstance = {
@@ -259,12 +251,11 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     const report = gradeMissionCar(state, 'four-wheels', honestCar.id, CONTEXT)
     expect(report.pass, JSON.stringify(report.lines)).toBe(true)
 
-    // Sprint 91 (directive 17 case (a)): four-wheels comes OFF the generic
-    // 1.1x/1.3x formula pin - the intro mission is redefined from a fat-margin
-    // flip into a near-break-even teacher, so it deliberately does NOT call
-    // assertPassesAndBudgetLocked. The direction is the guard: both its cap and
-    // its payout now sit strictly BELOW what the generic formula would author,
-    // so a bump back toward the old fat formula payout fails here.
+    // four-wheels is deliberately OFF the generic 1.1x/1.3x formula pin -
+    // the intro mission is a near-break-even teacher, not a fat-margin
+    // flip, so it does NOT call assertPassesAndPriceLocked. The direction
+    // is the guard: both its cap and its payout sit strictly BELOW what the
+    // generic formula would author.
     const target = mission('four-wheels')
     expect(target.budgetCapYen).toBeLessThan(budgetCapYenFor(probeCostYen))
     expect(target.payoutYen).toBeLessThan(payoutYenFor(probeCostYen))
@@ -490,14 +481,15 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
 })
 
 /**
- * Sprint 93 (the band ceiling): the tool-satisfiability the missions previously
- * lacked entirely. The five mint-band missions build their car to mint; under
- * the repair ceiling a fresh (tier-1) shop cannot REPAIR a part above fine, yet
- * mint stays reachable at any tier by BUYING a mint replacement part and FITTING
- * it (an install, never gated by the repair ceiling). So no mission is ever
- * tool-locked: the cap changes the COST of the genuine-period repair route, not
- * whether the required band can be produced. Owning a group's tier-2 machine is
- * what lets a shop reach mint by cheaper repair instead of buying.
+ * The tool-satisfiability the missions previously lacked entirely. The five
+ * mint-band missions build their car to mint; under the repair ceiling a
+ * fresh (tier-1) shop cannot REPAIR a part above fine, yet mint stays
+ * reachable at any tier by BUYING a mint replacement part and FITTING it
+ * (an install, never gated by the repair ceiling). So no mission is ever
+ * tool-locked: the cap changes the COST of the genuine-period repair
+ * route, not whether the required band can be produced. Owning a group's
+ * tier-2 machine is what lets a shop reach mint by cheaper repair instead
+ * of buying.
  */
 describe('the mint-band missions stay satisfiable at any tier (Sprint 93 band ceiling)', () => {
   const MINT_MISSIONS = [
@@ -528,9 +520,8 @@ describe('the mint-band missions stay satisfiable at any tier (Sprint 93 band ce
 })
 
 /**
- * Sprint 85 decision 6 (machine-shop assist v1): the two coherence probes the
- * sprint doc calls for. Closed-form, no bot careers (directive 21) - pure
- * arithmetic against the shipped content.
+ * The coherence probes for the machine-shop assist model. Closed-form, no
+ * bot careers (directive 21) - pure arithmetic against the shipped content.
  */
 describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
   // A fresh shop: every tool line at tier 1, so every buried engine/drivetrain
@@ -538,14 +529,12 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
   const TIER1_STATE = createInitialGameState(CONTEXT, 1)
 
   /**
-   * Probe (a): each assist fee is positive (renting always beats being walled
-   * out) and, over `probeAmortisationOps` operations, never dearer than buying
-   * the tier-2 machine outright (owning beats renting once past that volume).
-   * The engine fee sits EXACTLY at the boundary (15,000 x 40 = 600,000, the
-   * engine crane's own price), so the bound is `<=`, not a strict `<`.
-   *
-   * Sprint 92 (uniform tool access): the loop now covers all six groups (it
-   * previously skipped suspension, wheels, body and interior), so the
+   * Probe (a): each assist fee is positive (renting always beats being
+   * walled out) and, over `probeAmortisationOps` operations, never dearer
+   * than buying the tier-2 machine outright (owning beats renting once
+   * past that volume). The engine fee sits EXACTLY at the boundary
+   * (15,000 x 40 = 600,000, the engine crane's own price), so the bound is
+   * `<=`, not a strict `<`. The loop covers all six groups, so the
    * amortisation invariant is pinned for every rent-or-own group at once.
    */
   it('each assist fee is positive and amortises within its tier-2 machine price', () => {
@@ -618,14 +607,14 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
   })
 
   /**
-   * Sprint 92 (uniform tool access, Axis 1): the three groups that gained a
-   * signature-op gate this sprint. `signatureOpFeeYen` charges the group's fee
-   * on a signature slot at tier 1 and 0 once the tier-2 machine is owned, and
-   * never fires for a non-signature (light bolt-on) slot in the same group - the
-   * no-over-gating check. It is also 0 for the engine/drivetrain/wheels slots,
-   * which keep their own separate gates (`machineAssistFeeYen`/`benchSwapFeeYen`),
-   * proving the new predicate never leaks into - or double-charges - the three
-   * pre-existing gates, which stay byte-identical.
+   * The three groups with a signature-op gate. `signatureOpFeeYen` charges
+   * the group's fee on a signature slot at tier 1 and 0 once the tier-2
+   * machine is owned, and never fires for a non-signature (light bolt-on)
+   * slot in the same group - the no-over-gating check. It is also 0 for
+   * the engine/drivetrain/wheels slots, which keep their own separate
+   * gates (`machineAssistFeeYen`/`benchSwapFeeYen`), proving the new
+   * predicate never leaks into - or double-charges - the three
+   * pre-existing gates.
    */
   it('the three new signature-op gates charge at tier 1, are free at tier 2, and never over-gate light or pre-existing-gate work', () => {
     const { feeYenByGroup, signatureSlotsByGroup } = CONTEXT.economy.machineShopAssist

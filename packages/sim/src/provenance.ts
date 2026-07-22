@@ -1,12 +1,9 @@
 import type { PartInstance, PartOrigin, ServiceJob } from '@midnight-garage/content'
 
 /**
- * Sprint 70 (parts provenance, ground up): the single module every ownership
- * question in the codebase routes through. Replaces the old inference chain
- * (Sprint 35's `customerJobId` tag, Sprint 61/68's `baselineInstalledPartIds`
- * ownership use) - a part's origin is stamped once, at birth, and every
- * caller that used to re-derive ownership from a side channel asks it here
- * instead.
+ * The single module every ownership question in the codebase routes
+ * through: a part's origin is stamped once, at birth, and every caller
+ * asks it here rather than re-deriving ownership from a side channel.
  */
 
 /** A part's origin when it was pulled from (or generated already installed
@@ -43,8 +40,8 @@ export function partsOriginatingFromCar(
   )
 }
 
-/** The player-facing origin line a `PartCard` shows beneath the part name -
- * reused by the teardown system (Sprint 71) as well, hence living here rather
+/** The player-facing origin line a `PartCard` shows beneath the part
+ * name - reused by the teardown system as well, hence living here rather
  * than in a UI component. */
 export function describeOrigin(origin: PartOrigin): string {
   return origin.kind === 'car' ? `Pulled from ${origin.carLabel}` : `Bought day ${origin.day}`

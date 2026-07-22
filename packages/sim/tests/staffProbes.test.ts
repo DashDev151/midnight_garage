@@ -22,10 +22,10 @@ import { deriveStaffWageYen, rollStaffCandidate, staffSkillSum } from '../src/st
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
-/** The wage formula restated independently of the implementation, per the
- * Sprint 78 formula-derived-content pattern - a test that recomputes the wage
- * from the raw content coefficients and compares against `deriveStaffWageYen`
- * can never silently drift from the rule that produced it. */
+/** The wage formula restated independently of the implementation - a test
+ * that recomputes the wage from the raw content coefficients and compares
+ * against `deriveStaffWageYen` can never silently drift from the rule
+ * that produced it. */
 function wageFromRawFormula(stats: StaffMember['stats'], laborSlotsPerDay: number): number {
   const { wageBaseYen, wagePerSkillPointYen, wagePerLaborSlotYen } = ECONOMY.staff
   const sum = stats.engine + stats.chassis + stats.body
@@ -84,12 +84,12 @@ describe('staff wage formula (crew model R4, content law)', () => {
 })
 
 /**
- * Sprint 80 crew model R5 (maintainer redesign 2026-07-17): the reworked hire
- * coherence probe hard-gates all three bounds with honest margins. A contract-
- * assigned member must net a modest profit (A), the same hands billed out must
- * always out-earn the retainer (B), and a day-one shop must afford its first
- * hire (C). Every bound is asserted exhaustively across each tier's whole
- * budget cube x both labour-slot counts.
+ * The hire coherence probe hard-gates all three bounds with honest
+ * margins. A contract-assigned member must net a modest profit (A), the
+ * same hands billed out must always out-earn the retainer (B), and a
+ * day-one shop must afford its first hire (C). Every bound is asserted
+ * exhaustively across each tier's whole budget cube x both labour-slot
+ * counts.
  */
 describe('hire coherence probe (crew model R5)', () => {
   const rows = computeHireCoherence(CONTEXT)

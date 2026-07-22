@@ -1,13 +1,13 @@
 import type { CarPartId, ComponentId } from '@midnight-garage/content'
 
 /**
- * Sprint 84 (the parts diagram): the hand-authored layout map - one rectangle
+ * The hand-authored layout map - one rectangle
  * per car part slot, positioned as a rough side-on shop view of the car so the
- * teardown hierarchy reads as physical occlusion (decision 2). It is authored
+ * teardown hierarchy reads as physical occlusion. It is authored
  * FROM `packages/content/data/parts-taxonomy.json`'s `blockedBy` data, not from
- * memory: the one visual rule (decision 1) is that a blocker's rectangle
+ * memory: the one visual rule is that a blocker's rectangle
  * overlaps every part it blocks and sits above it in `z`. The layout-coherence
- * test (`partsDiagramLayout.test.ts`, decision 3) reads the live taxonomy and
+ * test (`partsDiagramLayout.test.ts`) reads the live taxonomy and
  * fails the moment this drawing stops telling the truth the sim enforces.
  *
  * This module carries ONLY presentation geometry. It never re-encodes the
@@ -37,7 +37,7 @@ export interface DiagramSlot {
   h: number
   /**
    * Stacking order - higher draws on top. A blocker ALWAYS has a higher `z`
-   * than every part it blocks (decision 1); the coherence test asserts it.
+   * than every part it blocks; the coherence test asserts it.
    */
   z: number
 }
@@ -111,9 +111,9 @@ export interface TileRect {
 }
 
 /**
- * Sprint 84 amendment (maintainer, 2026-07-17): the level-1 view - six group
- * tiles positioned as car regions on the same canvas (front of car at left),
- * replacing the all-29-rectangles single view that read as clutter. Clicking a
+ * The level-1 view - six group
+ * tiles positioned as car regions on the same canvas (front of car at left).
+ * Clicking a
  * tile opens level 2: that group's member slots from `PARTS_DIAGRAM_LAYOUT`
  * above, scaled up, plus any outside blockers as visiting rectangles.
  *

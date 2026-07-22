@@ -248,6 +248,7 @@
     "cleanSaleBonus": 2,
     "concoursSaleMinAuthenticityPercent": 85,
     "concoursSaleBonus": 4,
+    "matchedSaleRepBonus": 1,
     "lemonSalePenalty": 8,
     "lemonMaxAverageBandFactor": 0.45
   },
@@ -283,6 +284,42 @@
       "hot": 1.3
     },
     "offerSpread": [0.93, 1.05]
+  },
+  "sellingChannels": {
+    "shopFront": {
+      "feeYen": 0,
+      "offerChanceFactor": 0.7,
+      "tasteCeiling": 1.0
+    },
+    "freeAdsPaper": {
+      "feeYen": 1500,
+      "offerChanceFactorByTierClass": {
+        "shitbox": 1.5,
+        "common": 1.5,
+        "uncommon": 0.5,
+        "rare": 0.5,
+        "gaisha": 0.5,
+        "legend": 0.5
+      },
+      "tasteCeiling": 1.05
+    },
+    "tunerMagazine": {
+      "feeYen": 12000,
+      "offerChanceFactor": 0.6,
+      "tasteCeiling": 1.17,
+      "matchedOnly": true
+    },
+    "tradeNetwork": {
+      "feeYen": 0,
+      "offerChanceFactor": 3.0,
+      "priceBand": { "min": 0.95, "max": 1.02 }
+    },
+    "weekendMeet": {
+      "feeYen": 3000,
+      "oneDrawNextEndDay": true,
+      "tasteCeiling": 1.17,
+      "matchedOnly": true
+    }
   },
   "toolCeilings": {
     "naToTurboConversionEngineTier": 3

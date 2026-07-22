@@ -18,7 +18,7 @@ describe('useGameStore', () => {
     game.newGame(42)
     expect(() => GameStateSchema.parse(game.gameState)).not.toThrow()
     expect(game.day).toBe(1)
-    // Sprint 59: STARTING_CASH_YEN retuned 1,500,000 -> 300,000 (derived from
+    // STARTING_CASH_YEN is 300,000 (derived from
     // roster medians, see economy.ts's own schema doc comment).
     expect(game.cashYen).toBe(300_000)
     expect(game.ownedCarCount).toBe(0)
@@ -89,7 +89,7 @@ describe('useGameStore', () => {
     const before = game.serviceBayCount
     game.devGrantBay('service')
     expect(game.serviceBayCount).toBe(before + 1)
-    expect(game.cashYen).toBe(300_000) // unaffected (Sprint 59 starting cash)
+    expect(game.cashYen).toBe(300_000) // unaffected (starting cash)
   })
 
   it('devGrantBay is a no-op once a kind is already at its max count', () => {

@@ -17,12 +17,12 @@ import {
 } from '../src/stagedWork'
 import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
-// Real CARS/PARTS (Sprint 24 fix 2: findOrCreateJob validates install-part
-// fit against the real catalog, so an install spec needs both to resolve).
+// Real CARS/PARTS: findOrCreateJob validates install-part fit against
+// the real catalog, so an install spec needs both to resolve.
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
-/** Sprint 36: a mixed-tier shop (body at 2, engine at 3) so the plans these
- * tests derive exercise real tier-sized labor, not just the tier-1 floor. */
+/** A mixed-tier shop (body at 2, engine at 3) so the plans these tests
+ * derive exercise real tier-sized labor, not just the tier-1 floor. */
 const TOOL_TIERS = testToolTiers({ body: 2, engine: 3, interior: 2 })
 
 const car: CarInstance = buildCarInstance({
@@ -32,15 +32,14 @@ const car: CarInstance = buildCarInstance({
   mileageKm: 100_000,
   authenticityPercent: 90,
   parts: {
-    // Sprint 71: 'interior' (surface, still on-car-repairable) joins the
-    // fixture - 'engine' is bench-only now, so the two-staged-actions test
-    // below needs a second on-car-repairable group to spill labor onto.
+    // 'interior' (surface, still on-car-repairable) joins the fixture -
+    // 'engine' is bench-only, so the two-staged-actions test below needs
+    // a second on-car-repairable group to spill labor onto.
     ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn', interior: 'poor' }),
-    // Sprint 32: every slot defaults to a filled stock part now, so the
-    // staged-install test below needs a genuinely empty target slot (a
-    // group-level install into an already-occupied slot is refused by the
-    // tightened installFitGate) - dampers is the suspension-group part it
-    // installs onto.
+    // Every slot defaults to a filled stock part, so the staged-install
+    // test below needs a genuinely empty target slot (a group-level
+    // install into an already-occupied slot is refused by installFitGate)
+    // - dampers is the suspension-group part it installs onto.
     dampers: { installed: null },
   },
 })
@@ -63,8 +62,8 @@ function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
   )
 }
 
-// Sprint 53: `car` (honda-city-e-aa) is 'shitbox' tier - the fitment-class
-// gate refuses a mismatched-class spare part.
+// `car` (honda-city-e-aa) is 'shitbox' tier - the fitment-class gate
+// refuses a mismatched-class spare part.
 const sparePart: PartInstance = {
   id: 'pi-0001',
   partId: 'shitbox-tanuki-street-coilovers',
@@ -152,7 +151,7 @@ describe('confirmStagedWork', () => {
         [car.id]: [{ kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id }],
       },
     })
-    // Sprint 94: offer a full day's energy so the (now energy-sized) install completes.
+    // Offer a full day's energy so the install completes.
     const result = confirmStagedWork(state, car.id, 60, CONTEXT)
     expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
     expect(result.state.partInventory).toHaveLength(0)
@@ -163,8 +162,7 @@ describe('confirmStagedWork', () => {
     const interiorPlan = planFor('interior')
     // Enough for body (staged first) to complete fully, plus exactly 1 slot
     // spillover for interior (staged second) - a real, continuable partial
-    // job. Sprint 71: 'interior' stands in for the old 'engine' fixture -
-    // engine is bench-only now.
+    // job. 'interior' is used here since engine is bench-only.
     const offeredLabor = bodyPlan.laborSlotsRequired + 1
     const state = baseState({
       stagedCarWork: {

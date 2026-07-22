@@ -8,10 +8,9 @@ const REPO_ROOT = join(__dirname, '..', '..', '..')
 const HELP_HINT_RE = /<HelpHint\b[^>]*>([\s\S]*?)<\/HelpHint>/g
 
 /**
- * Sprint 51 decision 5: dev-facing/internal words that must never leak into
+ * Dev-facing/internal words that must never leak into
  * player-visible HelpHint copy - "gate" (mechanic jargon), "staged" (retired
- * Sprint 48 terminology), "dev" (internal tooling). Sprint 52 rewrote
- * UpgradesScreen's copy wholesale, so it is no longer exempt from any check.
+ * terminology), "dev" (internal tooling).
  */
 const BANNED_WORDS = ['gate', 'staged', 'dev'] as const
 

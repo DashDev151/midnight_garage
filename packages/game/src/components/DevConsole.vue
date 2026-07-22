@@ -46,9 +46,7 @@ function warp(): void {
       {{ game.reputationTier }}
     </div>
 
-    <!-- Sprint 38: specialty is a dev-only readout (progression bible law 4 -
-         no player-facing meter; real players only ever see the offer mix
-         and copy this drives). -->
+    <!-- Specialty is a dev-only readout; no player-facing meter. -->
     <div class="readout" data-test="specialty-readout">
       specialty:
       <span v-for="line in game.specialtyView" :key="line.componentId">
@@ -56,7 +54,7 @@ function warp(): void {
       </span>
     </div>
 
-    <!-- Sprint 39: techniques + the derived title, same dev-only exception. -->
+    <!-- Techniques + the derived title - dev-only. -->
     <div class="readout" data-test="techniques-readout">
       title: {{ game.shopTitleName ?? 'none' }} · techniques:
       <span v-if="game.unlockedTechniqueViews.length === 0">none</span>

@@ -12,17 +12,17 @@ import { energyMax } from '../src/laborSlots'
 import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
 /**
- * Sprint 94 (the energy bar) calibration probe, closed-form (no bots, no RNG) -
- * the honest check that the continuous daily labour bar is calibrated so day-1
- * is unchanged and tools + staff are the loosening levers (maintainer ruling
- * 2026-07-18). Every figure is a direct call into the real `energyMax` /
- * `planGroupRepair`, so it can never drift from what the game does.
+ * A calibration probe, closed-form (no bots, no RNG) - the honest check
+ * that the continuous daily labour bar is calibrated so day-1 is
+ * unchanged and tools + staff are the loosening levers. Every figure is a
+ * direct call into the real `energyMax` / `planGroupRepair`, so it can
+ * never drift from what the game does.
  *
- * "Throughput" here is grade-climbs a shop can afford in one day: the daily
- * energy pool divided by the per-grade repair cost at its tools. Day-1 is a
- * fresh solo tier-1 shop; late game is a full bench on tier-3 tools. The ratio
- * between them is DISCLOSED (not force-pinned) so the loosening curve stays
- * honest.
+ * "Throughput" here is grade-climbs a shop can afford in one day: the
+ * daily energy pool divided by the per-grade repair cost at its tools.
+ * Day-1 is a fresh solo tier-1 shop; late game is a full bench on tier-3
+ * tools. The ratio between them is DISCLOSED (not force-pinned) so the
+ * loosening curve stays honest.
  */
 const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const { basePoolPoints, pointsPerLabour, energyPerGradeByTier: EPG } = ECONOMY.energy

@@ -23,9 +23,9 @@ const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
 ) as Record<CarPartId, CarPartTaxonomyEntry>
 
 /**
- * Sprint 44: repair cost derives from an installed instance's own catalog
- * price, so every real fixture car (built via `mintCarParts`/`uniformCarParts`,
- * which install real stock parts) needs a real `partsById` to price its
+ * Repair cost derives from an installed instance's own catalog price, so
+ * every real fixture car (built via `mintCarParts`/`uniformCarParts`, which
+ * install real stock parts) needs a real `partsById` to price its
  * restoration bill correctly - an empty map would silently skip every
  * repairable part's contribution rather than reflecting the real formula.
  */
@@ -56,9 +56,9 @@ const model: CarModel = {
  * restoration bill doesn't out-discount it (see the floor test below). */
 const cheapModel: CarModel = { ...model, id: 'test-shitbox', bookValueYen: 300_000 }
 
-/** An NA-tagged variant of `model` (Sprint 32) - for the tests that
- * specifically exercise a legitimately-empty `forcedInduction` slot rather
- * than a real defect. */
+/** An NA-tagged variant of `model` - for the tests that specifically
+ * exercise a legitimately-empty `forcedInduction` slot rather than a real
+ * defect. */
 const naModel: CarModel = {
   ...model,
   id: 'test-supra-na',
@@ -66,12 +66,11 @@ const naModel: CarModel = {
 }
 
 /**
- * Sprint 30: every fixture in this file rolls (via `testFixtures.ts`'s
+ * Every fixture in this file rolls (via `testFixtures.ts`'s
  * `buildCarInstance` default) `mileageKm: 60_000` - the exact neutral point
- * of `economy.json`'s `mileageFactorCurve` (factor 1.0), so every test below
- * still isolates the restoration-bill formula the same way it did
- * pre-Sprint-30, unless it's explicitly testing mileage. Car age no longer
- * factors into value at all (post-Sprint-30 maintainer decision) - `year` is
+ * of `economy.json`'s `mileageFactorCurve` (factor 1.0), so every test
+ * below isolates the restoration-bill formula unless it's explicitly
+ * testing mileage. Car age plays no part in value at all - `year` is
  * stored/displayed flavor text only, so this fixture's `year` value is
  * arbitrary.
  */
@@ -93,11 +92,11 @@ function neutralCar(overrides: Partial<CarInstance> = {}): CarInstance {
 }
 
 /**
- * Sprint 54 decision 1's one-slope formula (economy-bible.md law 1), read
- * straight from `economy.json` rather than hardcoded, so a retune doesn't
- * make this test lie about what `marketValueYen` actually does. Sprint 30:
- * also folds in `mileageFactor` via the real exported function (rather than
- * assuming it away), even though every fixture in this file keeps it at 1.0.
+ * Economy-bible.md law 1's one-slope formula, read straight from
+ * `economy.json` rather than hardcoded, so a retune doesn't make this test
+ * lie about what `marketValueYen` actually does. Also folds in
+ * `mileageFactor` via the real exported function, even though every
+ * fixture in this file keeps it at 1.0.
  */
 function expectedBaseValueYen(
   car: CarInstance,
@@ -123,9 +122,9 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
 
   it('an all-stock-mint car (zero restoration bill, stock contributes no installed-parts value) is worth exactly book value at heat 100', () => {
     const stockCar = neutralCar({ parts: mintCarParts() })
-    // Sprint 32 decision 4: stock is the baseline, not an upgrade - it must
-    // contribute nothing to installed-parts value, or this car would price
-    // above book despite carrying no real aftermarket parts.
+    // Stock is the baseline, not an upgrade - it must contribute nothing to
+    // installed-parts value, or this car would price above book despite
+    // carrying no real aftermarket parts.
     expect(installedPartsValueYen(stockCar, {}, ECONOMY)).toBe(0)
     expect(marketValueYen(model, stockCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
       model.bookValueYen,
@@ -186,12 +185,11 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
   })
 
   /**
-   * Sprint 27 decision 5, verbatim: two otherwise-identical cars, one with a
-   * scrap forcedInduction (fitted) and the other with scrap brakePadsDiscs,
-   * must differ in value by exactly `marketRepairDiscount *
-   * (stockReplacementPriceYen(FI) - stockReplacementPriceYen(brakePadsDiscs))`
-   * - FI being the costlier part by content, so the turbo car is worth
-   * strictly less.
+   * Two otherwise-identical cars, one with a scrap forcedInduction (fitted)
+   * and the other with scrap brakePadsDiscs, must differ in value by
+   * exactly `marketRepairDiscount * (stockReplacementPriceYen(FI) -
+   * stockReplacementPriceYen(brakePadsDiscs))` - FI being the costlier part
+   * by content, so the turbo car is worth strictly less.
    */
   it("differs by marketRepairDiscount x the stock-price gap between a scrap-turbo car and a scrap-brakes car (the maintainer's worked case)", () => {
     const scrapTurboCar = neutralCar({
@@ -255,10 +253,11 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     const rawValue = cleanValue - ECONOMY.valuation.marketRepairDiscount * billToMintYen
     // Sanity: this all-scrap fixture must actually drive the raw (unclamped)
     // value below the backstop floor, otherwise the floor never engages and
-    // the test proves nothing. This fixture is hand-built via `uniformCarParts`,
-    // bypassing `auctions.ts`'s Law 2 generation guard entirely - proving the
-    // floor still exists as a backstop, not that a real generated lot can
-    // ever reach it (the dedicated Sprint 54 probe suite covers that).
+    // the test proves nothing. This fixture is hand-built via
+    // `uniformCarParts`, bypassing `auctions.ts`'s Law 2 generation guard
+    // entirely - proving the floor still exists as a backstop, not that a
+    // real generated lot can ever reach it (the dedicated probe suite in
+    // `valueModelProbes.test.ts` covers that).
     expect(rawValue).toBeLessThan(ECONOMY.bands.scrapValueFraction * cleanValue)
     const expectedFloor = Math.round(ECONOMY.bands.scrapValueFraction * cleanValue)
     expect(marketValueYen(cheapModel, wreck, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
@@ -294,15 +293,14 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
       priceYen: 100_000,
     }
-    // Sprint 44: repair cost derives from the installed part's own catalog
-    // price, so a swapped-in part contributes to the bill unless it sits at
-    // `mint` (0 contribution at any price) - the dampers slot must be mint on
-    // BOTH cars, not just the swapped one, to isolate the installed-parts-
-    // value addition (the one thing this test is meant to prove) from any
+    // Repair cost derives from the installed part's own catalog price, so a
+    // swapped-in part contributes to the bill unless it sits at `mint` (0
+    // contribution at any price) - the dampers slot must be mint on BOTH
+    // cars, not just the swapped one, to isolate the installed-parts-value
+    // addition (the one thing this test is meant to prove) from any
     // restoration-bill change. The rest of each car stays 'fine' so its own
-    // (real, price-derived) bill contribution is identical in both `car` and
-    // `withPart` - the merged `partsById` below resolves those real stock
-    // parts the same way for both calls.
+    // (real, price-derived) bill contribution is identical in both `car`
+    // and `withPart`.
     const partsById = { ...PARTS_BY_ID, [suspensionKit.id]: suspensionKit }
     const fineCar = carAtUniformBand('fine')
     const car: CarInstance = {
@@ -349,9 +347,8 @@ describe('mileageFactor (Sprint 30 decision 1)', () => {
   })
 
   it('a higher-mileage car is worth strictly less than an otherwise-identical low-mileage one', () => {
-    // Car age no longer affects value (post-Sprint-30 maintainer decision) -
-    // both fixtures share the same `year`, so mileage is the only variable
-    // this test isolates.
+    // Car age plays no part in value - both fixtures share the same `year`,
+    // so mileage is the only variable this test isolates.
     const freshCar = neutralCar({ parts: mintCarParts(), mileageKm: 30_000 })
     const wornMileageCar = neutralCar({ parts: mintCarParts(), mileageKm: 180_000 })
     const freshValue = marketValueYen(
@@ -494,12 +491,12 @@ describe('installedPartsValueYen', () => {
 })
 
 /**
- * Sprint 60 (economy-bible.md law 5 - the foundation law). `foundationFactor`
- * is a pure read over the car's own bands/missing state, so its unit tests
- * need no premium; the `marketValueYen` integration tests below build a real
- * aftermarket premium (an installed race intake on a NON-foundation slot) and
- * vary a foundation part independently to prove the premium is withheld and
- * then released.
+ * Economy-bible.md law 5 (the foundation law). `foundationFactor` is a pure
+ * read over the car's own bands/missing state, so its unit tests need no
+ * premium; the `marketValueYen` integration tests below build a real
+ * aftermarket premium (an installed race intake on a NON-foundation slot)
+ * and vary a foundation part independently to prove the premium is
+ * withheld and then released.
  */
 describe('foundationFactor (Sprint 60, law 5)', () => {
   const { factorByState } = ECONOMY.valuation.foundation

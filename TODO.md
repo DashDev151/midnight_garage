@@ -361,18 +361,14 @@ pass."
   legibility genuinely demands it (long-form paragraphs below 16px: settings explainers,
   skip/confirm copy, help bodies). EXPLICITLY STAYS PIXEL: all diagnosis text (symptom
   checklist, result lines, trail), card lines, event log, labels, numbers, headers, buttons.
-- [ ] **Selling rework (maintainer-initiated, 2026-07-22 long-run playtest): selling is too
-  flat and needs a real design pass; haggling is ruled out as thematically wrong.** The
-  "Expect X to Y" range stays meanwhile. Seeds tabled for the design session (suggestions
-  offered in-session, none approved yet): listing channels (front-lot sign / magazine
-  classifieds / trade network / weekend meet: pick the audience to match the build); buyers
-  as legible characters with visible wants (selling becomes reading people the way buying
-  is reading cars: the taste system already exists in `buyers.json`/valuation); the
-  receipts-you-write idea (documented repair provenance raises buyer trust and lifts the
-  offer spread: ties the sale price back to the FIXING, reinforcing the core loop); a
-  one-shot name-your-price counter (accept / walk / one counter, resolved by the buyer's
-  hidden headroom: a decision beat, not a haggle loop). Needs its own design pass before
-  any sprint.
+- [ ] **Selling rework: design drafted, awaiting maintainer review
+  (`docs/design/selling-rework.md`, 2026-07-22).** Channels agreed in principle (five,
+  each a cost and a purpose, incl. the free-ads paper for shitboxes; mismatch teaches
+  visibly); buyer-reading made to matter via three decision-shaped mechanisms (the priced
+  hold, the matched-sale second currency PENDING a progression-bible rep-law check, taste
+  premium extraction as skill); the receipts idea parked honestly (no mechanics without
+  per-car work provenance); haggling permanently out. Venue-name pools (rolled per save)
+  drafted in the same doc, copy awaiting the red pen; wiring is small and queued.
 - [ ] **Accessibility suite v2: reduced motion and colour-independent severity cues.** V1 has
   landed with the live room's promotion: an in-room auto-bid toggle places rung-one bids up to
   a player-set ceiling (defaulting to their own estimated value) without ever jumping, so
@@ -446,6 +442,14 @@ pass."
   optimized) and remains unbuilt/unscheduled, this item stays open for exactly that scope.
 
 ## Design decisions awaiting maintainer direction
+
+- [ ] **The progression map is drafted (`docs/design/progression-map.md`, 2026-07-22): the
+  factual board for the mid-game design session, holes ranked.** Headliners: the
+  collector-network auction gate opens at `respected` onto a structurally EMPTY tier (zero
+  legend-rarity cars exist in content); the `legend` rep rung (1,400) gates nothing but staff
+  stat rolls; three of five staff traits are hireable but mechanically inert (ex-pro-driver,
+  night-owl, gaisha-fluent); gaisha cars are unreachable by any channel (no Import Broker
+  exists). The session's questions are listed at the map's end; no design was done in it.
 
 - [ ] **Naming Layer parody-flag default is undecided.** GDD explicitly defers whether the game
   ships with real brand names or parody names by default to closer to release. Revisit once a

@@ -11,11 +11,9 @@ import {
   type ToolTiers,
 } from '@midnight-garage/content'
 
-/**
- * Sprint 36 shared fixture: a full six-line `toolTiers` map, every line at
- * 1 (the new-game floor) unless overridden - so no test file hand-writes
- * all six keys to move one line.
- */
+/** A full six-line `toolTiers` map, every line at 1 (the new-game floor)
+ * unless overridden - so no test file hand-writes all six keys to move
+ * one line. */
 export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
   return {
     engine: 1,
@@ -28,11 +26,8 @@ export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
   }
 }
 
-/**
- * Sprint 38 shared fixture: a full six-line `specialty` map, every line at
- * 0 (a fresh shop's floor) unless overridden - same shape as
- * `testToolTiers` above.
- */
+/** A full six-line `specialty` map, every line at 0 (a fresh shop's
+ * floor) unless overridden - same shape as `testToolTiers` above. */
 export function testSpecialty(
   overrides: Partial<Record<ComponentId, number>> = {},
 ): Record<ComponentId, number> {
@@ -49,11 +44,9 @@ export function testSpecialty(
 
 /**
  * One `grade: 'stock'` catalog part id per `CarPartId`, `common` fitment
- * class (Sprint 32 decision 1; Sprint 53 adds the class dimension - `common`
- * is the pre-Sprint-53 catalog unchanged, so every existing fixture car's
- * default parts stay byte-identical) - what a fixture car's slot defaults
- * to, same shape as real generation (`generateAuctionCarInstance`,
- * sim/auctions.ts) at the `common` class.
+ * class - what a fixture car's slot defaults to, same shape as real
+ * generation (`generateAuctionCarInstance`, sim/auctions.ts) at the
+ * `common` class.
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
   PARTS.filter((part) => part.grade === 'stock' && part.fitmentClass === 'common').map((part) => [
@@ -62,11 +55,12 @@ const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
   ]),
 )
 
-/** Sprint 70: every fixture-stock part carries the fixture car's own origin
- * (`BASE_CAR_INSTANCE.id` below) - plain, not-a-customer-job car origin, so
- * ownership-neutral tests never accidentally trip a provenance gate. Tests
- * that DO exercise ownership build their own specific `PartInstance` (with an
- * explicit `origin`) via the `CarPartOverride` escape hatch instead. */
+/** Every fixture-stock part carries the fixture car's own origin
+ * (`BASE_CAR_INSTANCE.id` below) - plain, not-a-customer-job car origin,
+ * so ownership-neutral tests never accidentally trip a provenance gate.
+ * Tests that DO exercise ownership build their own specific
+ * `PartInstance` (with an explicit `origin`) via the `CarPartOverride`
+ * escape hatch instead. */
 function stockInstanceFor(partId: CarPartId, band: ConditionBand): PartInstance {
   return {
     id: `fixture-stock-${partId}`,
@@ -78,13 +72,12 @@ function stockInstanceFor(partId: CarPartId, band: ConditionBand): PartInstance 
 }
 
 /**
- * One slot override (Sprint 32): a bare `ConditionBand` keeps the slot
- * filled with the real catalog stock part at that band - the common case,
- * mirroring the pre-Sprint-32 `{ band: 'X' }` shorthand every test file
- * used to write; a `PartInstance` installs that exact instance (an
- * aftermarket part, or any other specific band/grade combination); `null`
- * leaves the slot genuinely empty (missing, or - for `forcedInduction` -
- * legitimately absent, depending on the test's own model tags).
+ * One slot override: a bare `ConditionBand` keeps the slot filled with
+ * the real catalog stock part at that band - the common case; a
+ * `PartInstance` installs that exact instance (an aftermarket part, or
+ * any other specific band/grade combination); `null` leaves the slot
+ * genuinely empty (missing, or - for `forcedInduction` - legitimately
+ * absent, depending on the test's own model tags).
  */
 export type CarPartOverride = ConditionBand | PartInstance | null
 
@@ -95,11 +88,9 @@ function resolveOverride(partId: CarPartId, override: CarPartOverride): CarPartS
 }
 
 /**
- * Sprint 26 shared test fixture, reshaped Sprint 32 for the stock-baseline/
- * missing-slot model: every real car now carries 29 keyed parts instead of
- * 8 - this one helper builds a full `CarInstance.parts` map so no test file
- * has to hand-write all 29 keys itself. Every part defaults to a mint
- * catalog stock part (matching real generation); pass `overrides` (keyed by
+ * Builds a full `CarInstance.parts` map (29 keyed parts) so no test file
+ * has to hand-write them itself. Every part defaults to a mint catalog
+ * stock part (matching real generation); pass `overrides` (keyed by
  * `CarPartId`) to set a specific part's band, install a specific
  * `PartInstance`, or leave it empty (`null`) - see `CarPartOverride`.
  */
@@ -126,12 +117,10 @@ export function uniformCarParts(band: ConditionBand): CarInstance['parts'] {
 }
 
 /**
- * Sets every part belonging to each named group to that group's band -
- * mirrors how test fixtures used to set one flat `condition` per component
- * before Sprint 26. Membership is resolved from `PARTS_TAXONOMY` itself
- * (never a second, hand-maintained group->parts list), so this stays
- * correct even if the taxonomy changes. Parts in an unmentioned group stay
- * mint.
+ * Sets every part belonging to each named group to that group's band.
+ * Membership is resolved from `PARTS_TAXONOMY` itself (never a second,
+ * hand-maintained group->parts list), so this stays correct even if the
+ * taxonomy changes. Parts in an unmentioned group stay mint.
  */
 export function groupCarParts(
   bandsByGroup: Partial<Record<ComponentId, ConditionBand>>,
@@ -145,13 +134,12 @@ export function groupCarParts(
 }
 
 /**
- * `mileageKm: 60_000` is deliberate (Sprint 30): it's the neutral point of
- * `economy.json`'s `valuation.mileageFactorCurve` (factor exactly 1.0), so a
- * test built from this fixture without overriding mileage gets the
- * pre-Sprint-30 "clean value == book value at heat 100" behavior unchanged,
- * unless the test is specifically exercising mileage. Car age no longer
- * factors into value at all (post-Sprint-30 maintainer decision) - `year` is
- * stored/displayed flavor text only.
+ * `mileageKm: 60_000` is deliberate: it's the neutral point of
+ * `economy.json`'s `valuation.mileageFactorCurve` (factor exactly 1.0),
+ * so a test built from this fixture without overriding mileage gets
+ * "clean value == book value at heat 100" unless the test is
+ * specifically exercising mileage. Car age never factors into value -
+ * `year` is stored/displayed flavor text only.
  */
 const BASE_CAR_INSTANCE: Omit<CarInstance, 'parts'> = {
   id: 'car-test-0001',

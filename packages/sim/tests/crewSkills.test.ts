@@ -10,10 +10,11 @@ import {
   skillKeyForGroup,
 } from '../src/crewSkills'
 
-// Sprint 94 (the energy bar): the crew speed discount is measured in labour
-// ENERGY now. The `crewSpeedDiscount` curve stays authored in slots; the saving
-// is scaled to energy by `pointsPerLabour` and clamped in energy (keep at least
-// half the base, and at least one labour's worth). Directive 17 case (a).
+// The crew speed discount is measured in labour ENERGY. The
+// `crewSpeedDiscount` curve stays authored in slots; the saving is
+// scaled to energy by `pointsPerLabour` and clamped in energy (keep at
+// least half the base, and at least one labour's worth). Directive 17
+// case (a).
 const PER = ECONOMY.energy.pointsPerLabour
 
 /** A benched member with a given stat line and trait; overrides let a test

@@ -11,12 +11,10 @@ const game = useGameStore()
 
 const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
 
-/**
- * Sprint 77 decision 5 (the deliver flow): grading is free and repeatable,
- * but never LIVE - `hasGraded` gates the checklist from "labels only" to
- * "full [ ]/[x] lines with actual-vs-required" only once "Show them the
- * car" is actually clicked, and resets whenever the picked car (or the
- * active mission itself) changes, so a stale grade can never read as
+/** Grading is free and repeatable, but never LIVE - `hasGraded` gates the
+ * checklist from "labels only" to "full [ ]/[x] lines with actual-vs-required"
+ * only once "Show them the car" is clicked, and resets whenever the picked car
+ * (or the active mission itself) changes, so a stale grade can never read as
  * current.
  */
 const pickedCarId = ref<string | null>(null)
@@ -75,9 +73,9 @@ function onHandItOver(): void {
   }
 }
 
-/** Sprint 86 decision 4: an offer's countdown, in days from today to its
- * expiry (`expiresOnDay - day`). Offers are filtered out at day rollover, so
- * there is no "due today" case; the floor renders `last day` instead. */
+/** An offer's countdown, in days from today to its expiry (`expiresOnDay - day`).
+ * Offers are filtered out at day rollover, so there is no "due today" case;
+ * the floor renders `last day` instead. */
 function offerDaysLeft(expiresOnDay: number): number {
   return expiresOnDay - game.day
 }
@@ -270,8 +268,6 @@ function offerCountdownLabel(expiresOnDay: number): string {
               >
                 Book it in
               </button>
-              <!-- Sprint 85 decision 4: decline clears the offer with zero side
-                   effects. Sprint 86 decision 3: primary Accept, quiet Decline. -->
               <button
                 class="decline"
                 :data-test="'decline-' + offer.id"
@@ -297,8 +293,7 @@ function offerCountdownLabel(expiresOnDay: number): string {
                 game.fitmentClassLabel(job.fitmentClass)
               }}</span></span
             >
-            <!-- Sprint 67 decision 7 (item 12): no `!job.inTransit` guard.
-                 An in-transit job's tasks are exactly what a player needs in
+            <!-- An in-transit job's tasks are exactly what a player needs in
                  order to go and buy parts before the car lands. -->
             <ServiceTaskList :tasks="job.tasks" />
           </div>
@@ -370,9 +365,7 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* The rep figure links to the Standing screen. It must LOOK like a link - the
-   Sprint 62 styling rendered it invisible on a dark panel (see GarageScreen's
-   matching comment). */
+/* The rep figure links to the Standing screen. It must LOOK like a link. */
 .standing-link {
   color: var(--mg-neon-violet);
   text-decoration: underline;
@@ -410,9 +403,8 @@ h3 {
   flex-direction: column;
 }
 
-/* Four visually separated sections (Sprint 86 decision 3): each child carries
-   its own padding and every one after the first is ruled off with a top
-   border - the same panel divider idiom the lap board and buyout row use. */
+/* Each child carries its own padding and every one after the first is ruled
+   off with a top border. */
 .offer > * {
   padding: var(--mg-space-3);
 }
@@ -444,8 +436,8 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Sprint 61 (item 15): a small muted class chip so the player knows which
-   class of parts fits this customer's car (Kei & Compact / Sports / ...). */
+/* A small muted class chip so the player knows which class of parts fits this
+   customer's car (Kei & Compact / Sports / ...). */
 .class-chip {
   display: inline-block;
   margin-left: var(--mg-space-1);
@@ -483,8 +475,8 @@ h3 {
   margin-top: 0;
 }
 
-/* Sprint 76 (story missions I): the pinned campaign card - a distinct
-   neon-violet border marks it as the one non-generic card on this board. */
+/* The pinned campaign card - a distinct neon-violet border marks it as the
+   one non-generic card on this board. */
 .mission-card {
   background: var(--mg-panel);
   border: 1px solid var(--mg-neon-violet);
@@ -533,9 +525,9 @@ h3 {
   gap: var(--mg-space-2);
 }
 
-/* Sprint 77 (story missions II, the deliver flow): the requirement checklist
-   - a plain [ ]/[x] list, never colour-only (accessibility), the label
-   always visible, actual-vs-required appended only once graded. */
+/* The requirement checklist - a plain [ ]/[x] list, never colour-only
+   (accessibility), the label always visible, actual-vs-required appended only
+   once graded. */
 .requirement-checklist {
   list-style: none;
   padding: 0;
@@ -592,9 +584,8 @@ h3 {
   margin-top: 0;
 }
 
-/* The reference-lap board (decision 4) - the anchor rows are visually
-   grouped by a top divider, since they always come last in the returned
-   rows. */
+/* The anchor rows are visually grouped by a top divider, since they always
+   come last in the returned rows. */
 .lap-board {
   border-collapse: collapse;
   font-size: var(--mg-fs-sm);
@@ -621,16 +612,14 @@ h3 {
   color: var(--mg-text-dim);
 }
 
-/* The armed second-click state (Sprint 71's scrap-shell idiom) - a real
-   commitment reads as a border/colour change, never a relabel alone. */
+/* A real commitment reads as a border/colour change, never a relabel alone. */
 button.confirming {
   border-color: var(--mg-neon-pink);
   color: var(--mg-neon-pink);
 }
 
-/* Compact disabled state for a tool-tier lock (Sprint 36): a colored border
-   reads as "blocked, not just busy" at a glance, and the upgrade hint lives
-   in the title tooltip instead of a separate text line. */
+/* A colored border reads as "blocked, not just busy" at a glance, and the
+   upgrade hint lives in the title tooltip instead of a separate text line. */
 button.needs-upgrade {
   border-color: var(--mg-neon-pink);
   opacity: 0.6;
@@ -700,8 +689,7 @@ button:disabled {
   cursor: default;
 }
 
-/* Sprint 85 decision 4: a muted secondary control, deliberately minimal -
-   the Sprint 86 card face-lift restyles Accept/Decline together. */
+/* A muted secondary control, deliberately minimal. */
 button.decline {
   color: var(--mg-text-dim);
 }

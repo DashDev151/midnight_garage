@@ -8,7 +8,7 @@ const game = useGameStore()
 
 const result = computed(() => game.lastJobResult)
 
-/** Sprint 57: one line per group the job's tasks actually touched - the
+/** One line per group the job's tasks actually touched - the
  * untouched groups (0) stay silent. */
 const specialtyLines = computed(() => {
   const r = result.value
@@ -20,11 +20,11 @@ const specialtyLines = computed(() => {
 
 /**
  * One flavor line, varying by outcome - no garage-name templating (no such
- * field exists yet). Sprint 29: a job can carry several tasks now, so the
- * flavor line no longer names one specific piece of work (that would read
+ * field exists yet). A job can carry several tasks, so the
+ * flavor line does not name one specific piece of work (that would read
  * oddly for a multi-task job) - the per-task breakdown renders separately,
- * below, from `taskLabels` (already clean, properly-spaced phrases, Sprint
- * 25 task 6: "Engine repair to fine", never a raw camelCase id).
+ * below, from `taskLabels` (already clean, properly-spaced phrases like
+ * "Engine repair to fine", never a raw camelCase id).
  */
 const flavorLine = computed(() => {
   const r = result.value

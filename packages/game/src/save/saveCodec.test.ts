@@ -12,7 +12,7 @@ const GOLDEN_V1_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjoxLCJnYW1lU3RhdGUiOnsiZGF5Ijo1LCJzZWVkIjoxLCJjYXNoWWVuIjo5MDAwMDAsInJlcHV0YXRpb25UaWVyIjoidW5rbm93biJ9fQ=='
 
 /**
- * A save code produced by version 2 (Sprint 08), pinned as a literal - same
+ * A save code produced by version 2, pinned as a literal - same
  * Save law as the v1 code above. Carries non-default `reputationPoints` so
  * the test can distinguish "preserved" from "defaulted."
  */
@@ -20,7 +20,7 @@ const GOLDEN_V2_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjoyLCJnYW1lU3RhdGUiOnsiZGF5IjoxMiwic2VlZCI6OTksImNhc2hZZW4iOjExMDAwMDAsInJlcHV0YXRpb25UaWVyIjoibG9jYWwiLCJyZXB1dGF0aW9uUG9pbnRzIjo1LCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdfX0='
 
 /**
- * A save code produced by version 3 (Sprint 09), pinned as a literal - same
+ * A save code produced by version 3, pinned as a literal - same
  * Save law again. Carries non-default `serviceBayCount`/`parkingBayCount` so
  * the test can distinguish "preserved" from "defaulted" for those, while
  * `laborSlotsSpentToday` (added in v4) is necessarily absent, proving the
@@ -30,7 +30,7 @@ const GOLDEN_V3_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjozLCJnYW1lU3RhdGUiOnsiZGF5IjoyMCwic2VlZCI6NTUsImNhc2hZZW4iOjIwMDAwMDAsInJlcHV0YXRpb25UaWVyIjoia25vd24iLCJyZXB1dGF0aW9uUG9pbnRzIjoxMiwic2VydmljZUpvYk9mZmVycyI6W10sImFjdGl2ZVNlcnZpY2VKb2JzIjpbXSwic2VydmljZUJheUNvdW50IjoyLCJwYXJraW5nQmF5Q291bnQiOjQsInNlcnZpY2VCYXlDYXJJZHMiOltdfX0='
 
 /**
- * A save code produced by version 5 (Sprint 12, post components-refactor),
+ * A save code produced by version 5 (post components-refactor),
  * pinned as a literal - same Save law again. Carries non-default
  * `laborSlotsSpentToday` so the test can distinguish "preserved" from
  * "defaulted", while `ownedEquipmentIds` (added in v6) is necessarily
@@ -40,7 +40,7 @@ const GOLDEN_V5_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjo1LCJnYW1lU3RhdGUiOnsiZGF5IjozMywic2VlZCI6NywiY2FzaFllbiI6MzAwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJrbm93biIsInJlcHV0YXRpb25Qb2ludHMiOjIwLCJzZXJ2aWNlSm9iT2ZmZXJzIjpbXSwiYWN0aXZlU2VydmljZUpvYnMiOltdLCJzZXJ2aWNlQmF5Q291bnQiOjIsInBhcmtpbmdCYXlDb3VudCI6NSwic2VydmljZUJheUNhcklkcyI6W10sImxhYm9yU2xvdHNTcGVudFRvZGF5IjozfX0='
 
 /**
- * A save code produced by version 6 (Sprint 13, post equipment economy),
+ * A save code produced by version 6 (post equipment economy),
  * pinned as a literal - same Save law again. Carries non-default
  * `ownedEquipmentIds` so the test can distinguish "preserved" from
  * "defaulted", while `pendingPartOrders`/`cartPartIds` (added in v7) are
@@ -51,7 +51,7 @@ const GOLDEN_V6_CODE =
   'MGSAVE1.eyJ2ZXJzaW9uIjo2LCJnYW1lU3RhdGUiOnsiZGF5Ijo1MCwic2VlZCI6MywiY2FzaFllbiI6NDUwMDAwMCwicmVwdXRhdGlvblRpZXIiOiJyZXNwZWN0ZWQiLCJyZXB1dGF0aW9uUG9pbnRzIjozMCwic2VydmljZUpvYk9mZmVycyI6W10sImFjdGl2ZVNlcnZpY2VKb2JzIjpbXSwic2VydmljZUJheUNvdW50IjozLCJwYXJraW5nQmF5Q291bnQiOjYsInNlcnZpY2VCYXlDYXJJZHMiOltdLCJsYWJvclNsb3RzU3BlbnRUb2RheSI6MSwib3duZWRFcXVpcG1lbnRJZHMiOlsid2VsZGVyIiwidGlyZS1tYWNoaW5lIl19fQ=='
 
 /**
- * A save code produced by version 7 (Sprint 14, post cart/checkout rework),
+ * A save code produced by version 7 (post cart/checkout rework),
  * pinned as a literal - same Save law again. Carries a real pending
  * `activeListings` entry in the pre-v8 shape (no `reputationDeltaOnSale`),
  * so the test can confirm the v7 -> v8 migration default-fills that field to
@@ -114,8 +114,8 @@ function stockPartFixture(carPartId: string, band: ConditionBandFixture): PartIn
   }
 }
 
-/** A full 29-key mint `parts` map (Sprint 26; reshaped Sprint 32 for the
- * stock-baseline/missing-slot model - every slot defaults to a mint stock
+/** A full 29-key mint `parts` map (introduced with the banded-parts model,
+ * reshaped for the stock-baseline/missing-slot model) - every slot defaults to a mint stock
  * `PartInstance`, matching real generation), for tests that need a
  * current-schema `CarInstance` without hand-writing every key. `overrides`
  * is keyed by `CarPartId`, one `CarPartOverrideFixture` per slot to change. */
@@ -138,7 +138,7 @@ function mintParts(
   return base
 }
 
-/** A fresh shop's tool tiers (Sprint 36) - what every pre-v23 save with no
+/** A fresh shop's tool tiers - what every pre-v23 save with no
  * owned equipment migrates to, and what a new game starts at. */
 const FRESH_TOOL_TIERS = {
   engine: 1,
@@ -149,7 +149,7 @@ const FRESH_TOOL_TIERS = {
   interior: 1,
 }
 
-/** A fresh shop's specialty (Sprint 38) - what every pre-v24 save (which
+/** A fresh shop's specialty - what every pre-v24 save (which
  * never earned any) migrates to, and what a new game starts at. */
 const FRESH_SPECIALTY = {
   engine: 0,
@@ -190,25 +190,25 @@ describe('saveCodec', () => {
     expect(decoded.ownedCars).toEqual([])
     expect(decoded.carsForSale).toEqual([])
     expect(decoded.pendingOffers).toEqual([])
-    // v1 -> v2 migration is pure default-fill: the Sprint-08 fields a v1 save
-    // never had come back at their defaults, proving old saves still load.
+    // v1 -> v2 migration is pure default-fill: fields a v1 save never had come
+    // back at their defaults, proving old saves still load.
     expect(decoded.reputationPoints).toBe(0)
     expect(decoded.serviceJobOffers).toEqual([])
     expect(decoded.activeServiceJobs).toEqual([])
     // v2 -> v3 migration is likewise pure default-fill: a v1 save never had
-    // the Sprint-09 bay fields either, and comes back at a fresh game's
-    // starting counts (matching facilities.json's startCounts).
+    // bay fields either, and comes back at a fresh game's starting counts
+    // (matching facilities.json's startCounts).
     expect(decoded.serviceBayCount).toBe(1)
     expect(decoded.parkingBayCount).toBe(3)
     expect(decoded.serviceBayCarIds).toEqual([])
     // v3 -> v4 migration is pure default-fill too: a v1 save never had the
-    // Sprint-11 daily labor counter either.
+    // daily labor counter either.
     expect(decoded.energySpentToday).toBe(0)
-    // v22 -> v23 (Sprint 36): a v1 save never owned any equipment, so every
-    // tool line comes back at the tier-1 floor.
+    // v22 -> v23: a v1 save never owned any equipment, so every tool line
+    // comes back at the tier-1 floor.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill too: a v1 save never had the
-    // Sprint-14 order/cart fields either.
+    // Order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
     expect(decoded.cartPartIds).toEqual([])
   })
@@ -220,18 +220,18 @@ describe('saveCodec', () => {
     expect(decoded.reputationTier).toBe('local')
     // v2 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.reputationPoints).toBe(5)
-    // v2 -> v3 migration is pure default-fill: the Sprint-09 bay fields a v2
-    // save never had come back at a fresh game's starting counts.
+    // v2 -> v3 migration is pure default-fill: bay fields a v2 save never had
+    // come back at a fresh game's starting counts.
     expect(decoded.serviceBayCount).toBe(1)
     expect(decoded.parkingBayCount).toBe(3)
     expect(decoded.serviceBayCarIds).toEqual([])
-    // v3 -> v4 migration is pure default-fill: a v2 save never had the
-    // Sprint-11 daily labor counter either.
+    // v3 -> v4 migration is pure default-fill: a v2 save never had the daily
+    // labor counter either.
     expect(decoded.energySpentToday).toBe(0)
-    // v22 -> v23 (Sprint 36): no equipment owned -> every line at tier 1.
+    // v22 -> v23: no equipment owned -> every line at tier 1.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v2 save never had the
-    // Sprint-14 order/cart fields either.
+    // Order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
     expect(decoded.cartPartIds).toEqual([])
   })
@@ -245,13 +245,13 @@ describe('saveCodec', () => {
     // v3 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.serviceBayCount).toBe(2)
     expect(decoded.parkingBayCount).toBe(4)
-    // v3 -> v4 migration is pure default-fill: a v3 save never had the
-    // Sprint-11 daily labor counter.
+    // v3 -> v4 migration is pure default-fill: a v3 save never had the daily
+    // labor counter.
     expect(decoded.energySpentToday).toBe(0)
-    // v22 -> v23 (Sprint 36): no equipment owned -> every line at tier 1.
+    // v22 -> v23: no equipment owned -> every line at tier 1.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v3 save never had the
-    // Sprint-14 order/cart fields either.
+    // Order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
     expect(decoded.cartPartIds).toEqual([])
   })
@@ -265,17 +265,17 @@ describe('saveCodec', () => {
     // v5 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.serviceBayCount).toBe(2)
     expect(decoded.parkingBayCount).toBe(5)
-    // Sprint 94 (the energy bar): the v5 save's `laborSlotsSpentToday: 3` is NOT
-    // migrated to the renamed `energySpentToday` (directive 19 - no pre-launch
-    // save compat), so it default-fills to 0. Harmless: the counter resets every
-    // day boundary anyway.
+    // The v5 save's `laborSlotsSpentToday: 3` is NOT migrated to the renamed
+    // `energySpentToday` (directive 19 - no pre-launch save compat), so it
+    // default-fills to 0. Harmless: the counter resets every day boundary
+    // anyway.
     expect(decoded.energySpentToday).toBe(0)
-    // v5 -> v6 (Sprint 13) used to default-fill the equipment list a v5 save
-    // never had; v22 -> v23 (Sprint 36) now lands that same "never owned
-    // anything" state at the tool-tier floor instead.
+    // v5 -> v6 used to default-fill the equipment list a v5 save never had;
+    // v22 -> v23 now lands that same "never owned anything" state at the
+    // tool-tier floor instead.
     expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     // v6 -> v7 migration is pure default-fill: a v5 save never had the
-    // Sprint-14 order/cart fields either.
+    // Order/cart fields either.
     expect(decoded.pendingPartOrders).toEqual([])
     expect(decoded.cartPartIds).toEqual([])
   })
@@ -289,17 +289,18 @@ describe('saveCodec', () => {
     // v6 fields are preserved unchanged, not reset to their defaults.
     expect(decoded.serviceBayCount).toBe(3)
     expect(decoded.parkingBayCount).toBe(6)
-    // Sprint 94: the v6 save's `laborSlotsSpentToday: 1` is not migrated to
-    // `energySpentToday` (directive 19), so it default-fills to 0 (resets daily).
+    // The v6 save's `laborSlotsSpentToday: 1` is not migrated to
+    // `energySpentToday` (directive 19), so it default-fills to 0 (resets
+    // daily).
     expect(decoded.energySpentToday).toBe(0)
-    // v22 -> v23 (Sprint 36): the code's real owned machines (welder +
+    // v22 -> v23: the code's real owned machines (welder +
     // tire-machine) map through the frozen legacy table - body and wheels
     // land at tier 2, everything else at the tier-1 floor - rather than
     // silently resetting the player's spent money to all-1.
     expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, body: 2, wheels: 2 })
-    // v6 -> v7 migration (Sprint 14): a v6 save never had the order/cart
-    // fields at all - correct, since neither concept existed yet, and this
-    // is the normal additive case, unlike Sprint 12's deliberate nuke.
+    // v6 -> v7 migration: a v6 save never had the order/cart fields at all -
+    // correct, since neither concept existed yet, and this is the normal
+    // additive case rather than a deliberate reset.
     expect(decoded.pendingPartOrders).toEqual([])
     expect(decoded.cartPartIds).toEqual([])
   })
@@ -307,26 +308,25 @@ describe('saveCodec', () => {
   it('decodes the pinned golden v7 save under the current version (Save law)', () => {
     const decoded = decodeSave(GOLDEN_V7_CODE)
     expect(decoded.day).toBe(60)
-    // Sprint 31: the pinned v7 code carries a real pending listing (350,000
-    // asking price, see GOLDEN_V7_CODE's own doc comment) that
-    // migrateV19ToV20 now resolves instantly at load, crediting the cash on
-    // top of the code's own 5,000,000 - the "least player harm" rule, not a
-    // dropped sale.
+    // The pinned v7 code carries a real pending listing (350,000 asking
+    // price, see GOLDEN_V7_CODE's own doc comment) that migrateV19ToV20 now
+    // resolves instantly at load, crediting the cash on top of the code's own
+    // 5,000,000 - the "least player harm" rule, not a dropped sale.
     expect(decoded.cashYen).toBe(5_000_000 + 350_000)
     expect(decoded.reputationTier).toBe('known')
     expect(decoded.reputationPoints).toBe(40)
-    // v22 -> v23 (Sprint 36): the code's owned tire-machine maps to wheels
+    // v22 -> v23: the code's owned tire-machine maps to wheels
     // tier 2 via the frozen legacy table; every other line floors at 1.
     expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, wheels: 2 })
-    // v19 -> v20 migration (Sprint 31): the resolved listing leaves nothing
-    // behind - no stray for-sale toggle or offer under a mechanic that
-    // didn't exist when this code was produced.
+    // v19 -> v20 migration: the resolved listing leaves nothing behind - no
+    // stray for-sale toggle or offer under a mechanic that didn't exist when
+    // this code was produced.
     expect(decoded.carsForSale).toEqual([])
     expect(decoded.pendingOffers).toEqual([])
   })
 
   /**
-   * v8 -> v9 (Sprint 17): a pre-v9 save's `serviceBayCarIds` is a compact
+   * v8 -> v9: a pre-v9 save's `serviceBayCarIds` is a compact
    * list of only-occupied ids (no `parkingCarIds` at all) - the exclusion-
    * based model every version before this used. `MIGRATIONS[8]` must
    * reconstruct both real, index-addressable arrays rather than default-
@@ -335,13 +335,13 @@ describe('saveCodec', () => {
    * but invisible to the new parking view).
    */
   it('decodes a pre-v9 save, reconstructing indexed bay/parking arrays from the old exclusion model', () => {
-    // Sprint 70: this test's own subject (bay/parking array reconstruction)
-    // has nothing to do with a car's parts - `parts: mintParts()` (the
-    // current, origin-carrying shape) is used here in place of the
-    // historically-accurate pre-Sprint-26 `components` shape, same testing
-    // convenience the v17 -> v19 blocks below already rely on, since a
-    // genuinely pre-v26 `components` shape can no longer reach final schema
-    // validation at all (see the v15 -> v16/v20 -> v21 retirement notes).
+    // This test's own subject (bay/parking array reconstruction) has nothing
+    // to do with a car's parts - `parts: mintParts()` (the current,
+    // origin-carrying shape) is used here in place of the historically-accurate
+    // legacy `components` shape, same testing convenience the v17 -> v19 blocks
+    // below already rely on, since a genuinely legacy `components` shape can no
+    // longer reach final schema validation at all (see the v15 -> v16/v20 -> v21
+    // retirement notes).
     const ownedCar = (id: string) => ({
       id,
       modelId: 'honda-city-e-aa',
@@ -411,7 +411,7 @@ describe('saveCodec', () => {
     expect(decoded.day).toBe(80)
     expect(decoded.reputationPoints).toBe(130)
     // v9 -> v10 migration is pure default-fill: a v9 save never had the
-    // Sprint-18 staged-work field either.
+    // staged-work field either.
     expect(decoded.stagedCarWork).toEqual({})
   })
 
@@ -563,7 +563,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v12 -> v13 (Sprint 21, value model): a pre-v13 save never tracked the
+   * v12 -> v13 (value model): a pre-v13 save never tracked the
    * supply/demand ledger - purely additive, so it decodes with both
    * counters empty rather than needing an explicit migration step.
    */
@@ -603,9 +603,9 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v13 -> v14 (Sprint 22, hidden issues), now observed through the full
+   * v13 -> v14 (hidden issues), now observed through the full
    * chain up to v16: `hiddenIssues` no longer exists as a concept at all
-   * (Sprint 26 removes the paused inspection system entirely, not just the
+   * (v16 removes the paused inspection system entirely, not just the
    * severity/repaired backfill this step used to add) - so the only thing
    * left to verify here is that a real pre-v14 save carrying `hiddenIssues`
    * on all three `CarInstance` populations (owned, active-lot, active
@@ -613,8 +613,8 @@ describe('saveCodec', () => {
    * rather than crashing, and that each car's `hiddenIssues` data is gone
    * (not merely defaulted) on the far side.
    *
-   * Sprint 70: `parts: mintParts()` stands in for the historically-accurate
-   * pre-Sprint-26 `components` shape (same convenience as the pre-v9/v11/v12
+   * `parts: mintParts()` stands in for the historically-accurate
+   * pre-v16 `components` shape (same convenience as the pre-v9/v11/v12
    * tests above) - a genuinely old `components` shape can no longer reach
    * final schema validation at all (see the v15 -> v16 retirement note). This
    * test's own subject, `hiddenIssues` dropping cleanly, is unaffected.
@@ -709,7 +709,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v14 -> v15 (Sprint 25 task 2): a pre-v15 save's accepted service jobs
+   * v14 -> v15: a pre-v15 save's accepted service jobs
    * never had `arrivesOnDay` - it defaults to `null`, and null is exactly
    * right here: under the old instant-placement rule, every such car was
    * already fully in the shop, not still in transit.
@@ -801,9 +801,9 @@ describe('saveCodec', () => {
   })
 
   /**
-   * Sprint 12 decision 3 ("nuke"): the zones+slots -> components migration
-   * deliberately has no `MIGRATIONS[4]` transform, since the maintainer
-   * confirmed there are no existing saves worth preserving. A pre-v5 save
+   * The zones+slots -> components migration (v5) deliberately has no
+   * `MIGRATIONS[4]` transform, since there are no existing saves worth
+   * preserving. A pre-v5 save
    * that actually contains a car (unlike GOLDEN_V1/V2/V3 above, which never
    * populate `ownedCars`) exercises the real break: its car's old
    * `condition`/`buildSheet` shape no longer matches `CarInstanceSchema`, so
@@ -906,7 +906,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v16 -> v17 (Sprint 28, per-part addressing): `Job`/`StagedAction` each
+   * v16 -> v17 (per-part addressing): `Job`/`StagedAction` each
    * gained an optional `carPartId` - the normal additive case (like v2-v8),
    * so it needs NO `MIGRATIONS[16]` entry, but it DOES bump `SAVE_VERSION`
    * (Save law / engineering law 4: every save-schema change bumps the
@@ -1006,15 +1006,11 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v30 -> v31 (Sprint 70, parts provenance): `PartInstance` gained a
-   * REQUIRED `origin` and lost `customerJobId` entirely. Directive 17 case
-   * (a): these two tests used to cover the Sprint 35 tag's own additive
-   * migration (v21 -> v22) and round-trip - that mechanism is gone, and
-   * directive 19 (no pre-launch save compatibility) means there is
-   * deliberately no migration path backfilling `origin` onto an old save, so
-   * the OLD assertion ("a pre-v22 save still decodes, player-owned") is now
-   * false. The new correct behaviour: any pre-v31 save fails to decode
-   * outright, and a v31 save round-trips `origin` (not a tag) exactly.
+   * v30 -> v31 (parts provenance): `PartInstance` gained a
+   * REQUIRED `origin` field and lost `customerJobId` entirely. Per directive
+   * 19 (no pre-launch save compatibility), there is deliberately no
+   * migration path backfilling `origin` onto an old save: a pre-v31 save
+   * fails to decode outright, and a v31 save round-trips `origin` exactly.
    */
   it('a pre-v31 save (a part with no origin) fails to decode cleanly rather than crashing', () => {
     const preV31 = {
@@ -1066,28 +1062,13 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v15 -> v16 (Sprint 26, the banded parts model) - RETIRED by Sprint 70
-   * (parts provenance). This block used to decode a real pre-Sprint-26 save
-   * (percent/`components` shape) through the full migration chain and assert
-   * the resulting shape: non-uniform group conditions bucketing into bands,
-   * an installed part relocating to its correct slot, `aero`/
-   * `forcedInduction` handling, the retired `fix-issue` drop, the old 8-way
-   * `componentId` remap, `partInventory.conditionPercent` -> `band` - see git
-   * history for the full test bodies (8 tests, all decoding one shared
-   * fixture).
-   *
-   * `PartInstanceSchema` gaining a REQUIRED `origin` with directive 19's
-   * intentional NO migration makes this permanently unreachable:
-   * `migratePartInstance`/`migrateCarInstanceToBands` (the functions THIS
-   * migration step calls to synthesize `PartInstance`s from raw percentages)
-   * predate `origin` and were deliberately left untouched - adding a de facto
-   * origin backfill there would be exactly the "make an old save work again"
-   * migration directive 19 forbids. A pre-v31 save can therefore never again
-   * reach final schema validation, regardless of which historical step is
-   * under test. Decision 2's own words: "old saves break; that is accepted
-   * and intended" - and directive 19 bans "golden-save tests that pin a
-   * legacy shape" outright, which is exactly what this block was. What
-   * remains: confirming decode still fails cleanly for this specific shape.
+   * `PartInstanceSchema` requires `origin`, and directive 19 (no pre-launch
+   * save compatibility) means there is no migration backfilling it onto an
+   * old save: `migratePartInstance`/`migrateCarInstanceToBands` (the
+   * functions the v15 -> v16 step calls to synthesize `PartInstance`s from
+   * raw percentages) predate `origin` and are deliberately left untouched. A
+   * pre-v16 (pre-banded-parts) save can therefore never reach final schema
+   * validation, regardless of which historical shape it carries.
    */
   it('a pre-v16 (v15 envelope, pre-banded-parts) save also fails to decode - no migration reaches that far back anymore', () => {
     const preV16 = {
@@ -1126,7 +1107,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v17 -> v18 (Sprint 29, service-jobs framework v2): `ServiceJob.work` is
+   * v17 -> v18 (service-jobs framework v2): `ServiceJob.work` is
    * replaced by `tasks`, and a new `deadlineDays` is required - see the
    * `SAVE_VERSION` doc comment for the full reasoning behind treating
    * `activeServiceJobs` (kept, migrated) and `serviceJobOffers` (dropped)
@@ -1167,11 +1148,11 @@ describe('saveCodec', () => {
       const code = 'MGSAVE1.' + btoa(JSON.stringify(preV18))
       const decoded = decodeSave(code)
       const job = decoded.activeServiceJobs[0]
-      // `minToolTier: 1` is the Sprint 36 schema default - a legacy task
-      // decodes at the no-ceiling floor. Sprint 72: the migration's own
-      // output is the current outcome-based shape (directive 17 case (a) -
-      // `migrateServiceJobToTasks` was updated so its result still
-      // validates under the schema it now decodes into).
+      // `minToolTier: 1` is the schema default for legacy tasks - they decode
+      // at the no-ceiling floor. The migration's output is the current
+      // outcome-based shape (directive 17 case (a) - `migrateServiceJobToTasks`
+      // was updated so its result still validates under the schema it now
+      // decodes into).
       expect(job?.tasks).toEqual([
         {
           requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
@@ -1319,7 +1300,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v18 -> v19 (Sprint 30, living auctions): `AuctionLot` gained `turnout` -
+   * v18 -> v19 (living auctions): `AuctionLot` gained `turnout` -
    * see the `SAVE_VERSION` doc comment for why this is a plain default-fill
    * (no `MIGRATIONS[18]` entry) rather than a reconstruction.
    */
@@ -1395,7 +1376,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v19 -> v20 (Sprint 31, listings removed): a genuinely pending pre-v20
+   * v19 -> v20 (listings removed): a genuinely pending pre-v20
    * listing represents real money the player was owed - `migrateV19ToV20`
    * must resolve it instantly at its locked asking price rather than
    * silently dropping it. See the SAVE_VERSION doc comment above.
@@ -1468,15 +1449,14 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v20 -> v21 (Sprint 32, stock-baseline/missing-slot model) - the
-   * old-shape-decode half of this block is RETIRED by Sprint 70 (parts
-   * provenance), same reasoning as the v15 -> v16 retirement above:
-   * `migrateCarInstanceToStockBaseline`/`migratePartSlotToStock` synthesize
-   * fresh `PartInstance`s from the pre-v21 `{ band, installed, fitted }`
-   * shape, and that synthesis predates `origin` - left untouched per
-   * directive 19, so it can never again produce schema-valid output. What
-   * survives: the current-shape (v21+) round-trip test below, and a check
-   * that a genuine pre-v21 save now fails to decode rather than crashing.
+   * v20 -> v21 (stock-baseline/missing-slot model): same reasoning as the
+   * v15 -> v16 retirement above - `migrateCarInstanceToStockBaseline`/
+   * `migratePartSlotToStock` synthesize fresh `PartInstance`s from the
+   * pre-v21 `{ band, installed, fitted }` shape, and that synthesis predates
+   * `origin` - left untouched per directive 19, so it can never again
+   * produce schema-valid output. What survives: the current-shape (v21+)
+   * round-trip test below, and a check that a genuine pre-v21 save now
+   * fails to decode rather than crashing.
    */
   describe('v20 -> v21 migration (Sprint 32, stock-baseline/missing-slot model)', () => {
     it('a pre-v21 save (the old { band, installed, fitted } shape) fails to decode - no migration reaches that far back anymore', () => {
@@ -1520,7 +1500,7 @@ describe('saveCodec', () => {
             provenanceNote: '',
             authenticityPercent: 90,
             parts: mintParts({
-              // A genuinely missing slot (Sprint 32 decision 3).
+              // A genuinely missing slot (a real defect).
               rims: null,
               // A real aftermarket part, distinct from the mint-stock default.
               dampers: {
@@ -1544,7 +1524,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v22 -> v23 (Sprint 36, tool lines): `ownedEquipmentIds` is replaced by
+   * v22 -> v23 (tool lines): `ownedEquipmentIds` is replaced by
    * the six-line `toolTiers` map. NOT a plain default-fill: a legacy save's
    * owned machines are real repair capability (and real money spent), so
    * `migrateV22ToV23` maps them through its frozen inline legacy table
@@ -1596,7 +1576,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v23 -> v24 (Sprint 38, specialty): `GameStateSchema` gained `specialty`,
+   * v23 -> v24 (specialty): `GameStateSchema` gained `specialty`,
    * the progression bible's horizontal axis - the normal additive case (like
    * v2/v22), so it needs NO `MIGRATIONS[23]` entry, but it DOES bump
    * `SAVE_VERSION` (Save law). These two tests are its regression coverage:
@@ -1627,14 +1607,13 @@ describe('saveCodec', () => {
   })
 
   /**
-   * Sprint 39 (techniques + the derived shop title): NO save bump. Both are
-   * pure functions of `state.specialty` (already persisted since v24) plus
-   * the technique catalog (content, not save data) - nothing new is ever
-   * stored, so a v24 save carrying high specialty decodes identically
-   * whether or not a technique/title derives from it. (Sprint 42 DID bump
-   * the version again, for an unrelated reason - `carLedgers` - so this
-   * canary now reads 25, not 24; the Sprint 39 fact itself, that Sprint 39
-   * on its own added nothing, remains true.)
+   * Techniques and the derived shop title need no save bump of their own:
+   * both are pure functions of `state.specialty` (already persisted since
+   * v24) plus the technique catalog (content, not save data) - nothing new
+   * is ever stored, so a v24 save carrying high specialty decodes
+   * identically whether or not a technique/title derives from it.
+   * `SAVE_VERSION` has since moved on for unrelated reasons; this canary
+   * tracks the current value, not this fact.
    */
   it('Sprint 39 (techniques + shop title) needed no save bump on its own; SAVE_VERSION has since moved to 40 (Sprint 87 assembly model)', () => {
     expect(SAVE_VERSION).toBe(44)
@@ -1650,7 +1629,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v24 -> v25 (Sprint 42, the flip ledger): `GameStateSchema` gained
+   * v24 -> v25 (the flip ledger): `GameStateSchema` gained
    * `carLedgers` (default `{}`) and `PartInstanceSchema` gained an optional
    * `pricePaidYen` - the normal additive case (like v2/v22/v24), so it needs
    * NO `MIGRATIONS[24]` entry, but it DOES bump `SAVE_VERSION` (Save law).
@@ -1730,7 +1709,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v25 -> v26 (Sprint 45, the double-parking grace slot): `GameStateSchema`
+   * v25 -> v26 (the double-parking grace slot): `GameStateSchema`
    * gained `graceParkingCarId` (default `null`) - the normal additive case
    * (like v2/v22/v24/v25), so it needs NO `MIGRATIONS[25]` entry, but it DOES
    * bump `SAVE_VERSION` (Save law). These two tests are its regression
@@ -1762,7 +1741,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v26 -> v27 (Sprint 52, the used-machinery classifieds): `GameStateSchema`
+   * v26 -> v27 (the used-machinery classifieds): `GameStateSchema`
    * gained `machineListing` and `nextMachineListingDay` (both default `null`)
    * - the normal additive case (like v2/v22/v24/v25/v26), so it needs NO
    * `MIGRATIONS[26]` entry, but it DOES bump `SAVE_VERSION` (Save law). These
@@ -1810,12 +1789,12 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v27 -> v28 (Sprint 53, fitment-class parts): NOT the pure-additive case
+   * v27 -> v28 (fitment-class parts): NOT the pure-additive case
    * (`GameStateSchema` gained no new field) - a pre-v28 save's installed
    * parts are all implicitly `common`-class regardless of their host car's
    * real tier, so `migrateV27ToV28` remaps every real `CarInstance`
    * population's installed parts to their own model's fitment class. A real
-   * pre-v28 (v27 envelope) shitbox car with the pre-Sprint-53 `stock-block`
+   * pre-v28 (v27 envelope) shitbox car with the original `stock-block`
    * id installed must come out re-addressed to the shitbox-class sibling SKU,
    * same slot, same band, same everything else.
    */
@@ -1866,11 +1845,11 @@ describe('saveCodec', () => {
           partId: 'stock-block',
           band: 'mint',
           genuinePeriod: false,
-          // Sprint 70: `origin` is required by the current schema, but this
-          // migration itself (and this test's own assertions) only ever
-          // touch `customerJobId`/`partId` - `origin` is untouched filler so
-          // the final `GameStateSchema.parse` below has something valid to
-          // read (directive 19: no migration backfills it).
+          // `origin` is required by the current schema, but this migration
+          // itself (and this test's own assertions) only ever touch
+          // `customerJobId`/`partId` - `origin` is untouched filler so the
+          // final `GameStateSchema.parse` below has something valid to read
+          // (directive 19: no migration backfills it).
           origin: { kind: 'market', day: 1 },
           customerJobId: 'job-01',
         },
@@ -1935,7 +1914,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v28 -> v29 (Sprint 57, the service-job ledger): `GameStateSchema` gained
+   * v28 -> v29 (the service-job ledger): `GameStateSchema` gained
    * `serviceJobLedgers` (default `{}`) - the normal additive case, so it
    * needs NO `MIGRATIONS[28]` entry, but it DOES bump `SAVE_VERSION` (Save
    * law). These two tests are its regression coverage: a real pre-v29 (v28
@@ -1965,19 +1944,14 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v29 -> v30 (Sprint 61, baseline-tracked installs) added
-   * `baselineInstalledPartIds`; Sprint 72 (decision 4, "any route counts")
-   * retired the mechanism itself - `isServiceTaskDone` no longer checks
-   * instance identity at all, so the field was dropped from `ServiceJobSchema`
-   * outright (see the v31 -> v32 `SAVE_VERSION` doc comment). The two tests
-   * that once lived here exercised `baselineInstalledPartIds` directly; with
-   * the mechanism gone, not just the assertions but their entire premise no
-   * longer applies (directive 17 case (a): the implementation intentionally
-   * changed what is correct), so they are removed rather than converted.
+   * `baselineInstalledPartIds` (added at v30) was later dropped from
+   * `ServiceJobSchema` entirely once `isServiceTaskDone` stopped checking
+   * instance identity (see the v31 -> v32 entry in the `SAVE_VERSION` doc
+   * comment) - no dedicated round-trip test remains for it.
    */
 
   /**
-   * v32 -> v33 (Sprint 73, diagnosis I): `CarInstanceSchema` gained
+   * v32 -> v33 (diagnosis I): `CarInstanceSchema` gained
    * `symptoms` (default `[]`) and `apparentBandByPartId` (default `null`) -
    * the normal additive case, so it needs NO `MIGRATIONS[32]` entry, but it
    * DOES bump `SAVE_VERSION` (Save law). These two tests are its regression
@@ -2041,14 +2015,14 @@ describe('saveCodec', () => {
         symptomId: 'smokes-on-startup',
         trueCauseId: 'valve-seals',
         remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
-        runTestIds: [], // Sprint 74 addition, default-filled - see that section below
+        runTestIds: [], // Addition to schema, default-filled for legacy saves
       },
     ])
     expect(decoded.ownedCars[0]?.apparentBandByPartId).toEqual({ headValvetrain: 'mint' })
   })
 
   /**
-   * v33 -> v34 (Sprint 74, diagnosis II): `GameState` gained `inspectionVisit`
+   * v33 -> v34 (diagnosis II): `GameState` gained `inspectionVisit`
    * (default `null`) and each car symptom entry gained `runTestIds` (default
    * `[]`) - the normal additive case, so it needs NO `MIGRATIONS[33]` entry,
    * but it DOES bump `SAVE_VERSION` (Save law). These two tests are its
@@ -2126,7 +2100,7 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v34 -> v35 (Sprint 76, story missions I): `GameStateSchema` gained
+   * v34 -> v35 (story missions I): `GameStateSchema` gained
    * `storyMissions` (default `[]`) - the normal additive case, so it needs
    * NO `MIGRATIONS[34]` entry, but it DOES bump `SAVE_VERSION` (Save law).
    * These two tests are its regression coverage: a real pre-v35 (v34

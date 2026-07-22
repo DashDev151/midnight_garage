@@ -31,11 +31,8 @@ export interface SaleOffer {
 
 /**
  * The candidate buyer pool for a sale - only archetypes with a genuinely
- * stated interest in the car's tier (Sprint 11, round-2 playtest #4: a
- * collector was making walk-in offers on a shitbox because nothing gated
- * who's even a candidate buyer on the sell side). Reuses the exact gate
- * `bidding.ts` already applies to auction rivals - the same rule, the
- * second place it was missing, not a different one.
+ * stated interest in the car's tier. Reuses the exact gate `bidding.ts`
+ * already applies to auction rivals - the same rule, not a different one.
  */
 function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
   return interestedBuyers(model, buyers).map((i) => i.buyer)
@@ -49,13 +46,11 @@ function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
  * be the one who walks in - "someone happens by," not "a stranger is
  * offered a car they don't care about."
  *
- * Sprint 31: this is now the core roll BOTH the daily offer-draw step
- * (`drawDailyOffers`, called from advanceDay once per for-sale car per day)
- * and the harness/tests use directly - the spread itself moved from the old
- * sim-constant `WALK_IN_OFFER_RANGE` to `economy.selling.offerSpread` (the
- * content law: designer-tunable numbers live in JSON), but the shape of the
- * roll (weighted buyer pick, then a uniform spread around that buyer's own
- * valuation) is unchanged since Sprint 11.
+ * This is the core roll BOTH the daily offer-draw step (`drawDailyOffers`,
+ * called from advanceDay once per for-sale car per day) and the
+ * harness/tests use directly - the spread itself lives in
+ * `economy.selling.offerSpread` (the content law: designer-tunable numbers
+ * live in JSON).
  */
 export function sellViaWalkIn(
   car: CarInstance,
@@ -140,10 +135,10 @@ export function bestFitBuyer(
 }
 
 /**
- * Cold/normal/hot bucketing of today's market heat (Sprint 31 decision 2) -
- * feeds `offerChanceFor`'s heat multiplier below. Three flat bands, not a
- * continuous curve, mirroring the auction turnout-band style: simple enough
- * for a maintainer to eyeball-tune directly in economy.json.
+ * Cold/normal/hot bucketing of today's market heat - feeds
+ * `offerChanceFor`'s heat multiplier below. Three flat bands, not a
+ * continuous curve, mirroring the auction turnout-band style: simple
+ * enough to eyeball-tune directly in economy.json.
  */
 function heatBandFor(heatPercent: number, economy: EconomyConfig): 'cold' | 'normal' | 'hot' {
   const { heatBandColdBelowPercent, heatBandHotAtOrAbovePercent } = economy.selling
@@ -153,12 +148,12 @@ function heatBandFor(heatPercent: number, economy: EconomyConfig): 'cold' | 'nor
 }
 
 /**
- * Today's chance a for-sale car draws an offer at all (Sprint 31 decision
- * 2): base x this model's rarity-tier desirability x today's heat-band
- * multiplier, clamped to [0, 1]. Independent of `saleCandidates` (whether
- * ANY buyer archetype is even a plausible fit for this tier) - that gate
- * still runs inside `sellViaWalkIn` itself, so a tier nobody wants never
- * produces a live offer even when this chance rolls true.
+ * Today's chance a for-sale car draws an offer at all: base x this
+ * model's rarity-tier desirability x today's heat-band multiplier,
+ * clamped to [0, 1]. Independent of `saleCandidates` (whether ANY buyer
+ * archetype is even a plausible fit for this tier) - that gate still runs
+ * inside `sellViaWalkIn` itself, so a tier nobody wants never produces a
+ * live offer even when this chance rolls true.
  */
 export function offerChanceFor(
   model: CarModel,
@@ -177,14 +172,13 @@ export interface SetForSaleResult {
 }
 
 /**
- * Toggle a car's "taking offers" flag (Sprint 31 decision 2) - free,
- * instant, reversible any time before it sells. This REPLACES both the old
- * instant walk-in sell and the list-publicly buttons: marking a car for sale
- * no longer sells it or resolves anything by itself, it just makes the car
- * eligible for the daily offer draw (`drawDailyOffers`) below. Turning it
- * off drops the toggle and any live offer on the car - there's nothing else
- * to reconcile, since an offer only ever lives one day anyway. A no-op for a
- * car not owned, or a toggle to the state it's already in.
+ * Toggle a car's "taking offers" flag - free, instant, reversible any
+ * time before it sells. Marking a car for sale doesn't sell it or resolve
+ * anything by itself, it just makes the car eligible for the daily offer
+ * draw (`drawDailyOffers`) below. Turning it off drops the toggle and any
+ * live offer on the car - there's nothing else to reconcile, since an
+ * offer only ever lives one day anyway. A no-op for a car not owned, or a
+ * toggle to the state it's already in.
  */
 export function resolveSetForSale(
   state: GameState,
@@ -216,16 +210,17 @@ export function resolveSetForSale(
 }
 
 /**
- * Sprint 68 decision 3 (playtest item 21): turn an offer down explicitly.
+ * Turn an offer down explicitly.
  *
- * Drops just that car's pending offer and leaves `carsForSale` alone, so the
- * car stays on the market and tomorrow's `drawDailyOffers` can bring a better
- * one. The removal itself is the same one `resolveSetForSale`'s un-list branch
- * already performs, scoped to the offer instead of the listing.
+ * Drops just that car's pending offer and leaves `carsForSale` alone, so
+ * the car stays on the market and tomorrow's `drawDailyOffers` can bring a
+ * better one. The removal itself is the same one `resolveSetForSale`'s
+ * un-list branch already performs, scoped to the offer instead of the
+ * listing.
  *
- * Deliberately no reputation cost: turning down a lowball is a negotiation,
- * not a slight. A no-op (unknown car, no live offer) returns the state
- * untouched with an empty log, like every other resolver here.
+ * Deliberately no reputation cost: turning down a lowball is a
+ * negotiation, not a slight. A no-op (unknown car, no live offer) returns
+ * the state untouched with an empty log, like every other resolver here.
  */
 export function resolveRejectOffer(state: GameState, carInstanceId: string): SetForSaleResult {
   const offer = state.pendingOffers.find((o) => o.carInstanceId === carInstanceId)
@@ -255,15 +250,15 @@ export interface DailyOfferDrawResult {
 }
 
 /**
- * The daily offer-draw step (Sprint 31 decision 2), called once per
- * advanceDay tick for the day about to begin: every for-sale, still-owned
- * car independently rolls `offerChanceFor`; a hit rolls a fresh
- * `sellViaWalkIn`-style offer and it becomes today's live offer on that car.
- * `pendingOffers` is REPLACED wholesale, not accumulated (the no-reflex
- * rule: an offer is valid the day it's drawn for only - see advanceDay.ts's
- * own call-site comment for the full day-cycle reasoning). `carsForSale` is
- * pruned to still-owned cars in the same pass, so a sold (or otherwise
- * departed) car's toggle never lingers.
+ * The daily offer-draw step, called once per advanceDay tick for the day
+ * about to begin: every for-sale, still-owned car independently rolls
+ * `offerChanceFor`; a hit rolls a fresh `sellViaWalkIn`-style offer and it
+ * becomes today's live offer on that car. `pendingOffers` is REPLACED
+ * wholesale, not accumulated (the no-reflex rule: an offer is valid the
+ * day it's drawn for only - see advanceDay.ts's own call-site comment for
+ * the full day-cycle reasoning). `carsForSale` is pruned to still-owned
+ * cars in the same pass, so a sold (or otherwise departed) car's toggle
+ * never lingers.
  */
 export function drawDailyOffers(
   state: GameState,
@@ -316,16 +311,15 @@ export interface SaleResult {
 
 /**
  * Resolve today's live offer on `carInstanceId`, if one exists - the sale
- * mechanics (reputation, market-heat ledger, staged-work cleanup, event log)
- * are the exact plumbing this resolver has carried since Sprint 11; only the
- * PRICE source changed (Sprint 31 decision 2): instead of rolling a fresh
- * walk-in offer the instant it's clicked, it consumes today's pre-rolled
- * `state.pendingOffers` entry (drawn by `drawDailyOffers` at the end of the
- * PREVIOUS day). A no-op (no offer live today, or the car isn't owned)
- * leaves state untouched, same contract as every other instant resolver in
- * this file. Seeded/random only via the offer already stored in state -
- * this function itself makes no further rolls, so a repeat call is inert
- * once the offer's gone.
+ * mechanics (reputation, market-heat ledger, staged-work cleanup, event
+ * log) are this resolver's plumbing; the PRICE comes from consuming
+ * today's pre-rolled `state.pendingOffers` entry (drawn by
+ * `drawDailyOffers` at the end of the PREVIOUS day), never a fresh roll on
+ * click. A no-op (no offer live today, or the car isn't owned) leaves
+ * state untouched, same contract as every other instant resolver in this
+ * file. Seeded/random only via the offer already stored in state - this
+ * function itself makes no further rolls, so a repeat call is inert once
+ * the offer's gone.
  */
 export function resolveSellViaWalkIn(
   state: GameState,
@@ -350,26 +344,23 @@ export function resolveSellViaWalkIn(
     carInstanceId,
   )
   const released = applyReputationDelta(clearedState, nominalDelta, context.economy)
-  // Sprint 24 fix 3: log what actually happened, not the nominal delta -
-  // `applyReputationDelta` floors `reputationPoints` at 0, so a player at 2
-  // points selling a lemon (nominal -5) only ever loses 2, not 5. The
-  // *label* still comes from the nominal delta (`saleQualityFor`) - the
-  // sale was still mechanically a lemon regardless of how much was left to
-  // lose - but the logged number is the real, applied one.
+  // Log what actually happened, not the nominal delta - `applyReputationDelta`
+  // floors `reputationPoints` at 0, so a player at 2 points selling a lemon
+  // (nominal -5) only ever loses 2, not 5. The logged number is the real,
+  // applied one.
   const appliedDelta = released.reputationPoints - clearedState.reputationPoints
 
-  // Sprint 42: realized profit against the ledger recorded since acquisition
-  // - only when the purchase price itself is known (never fabricated for an
-  // unknown-purchase car, e.g. a dev grant or a pre-v25 save).
+  // Realised profit against the ledger recorded since acquisition - only when
+  // the purchase price itself is known.
   const ledger = carLedgerFor(state, carInstanceId)
   const profitYen =
     ledger.purchaseYen === null
       ? undefined
       : offer.priceYen - (ledger.purchaseYen + ledger.repairYen + ledger.partsYen)
 
-  // Sprint 75 decision 2 (the organic teacher): computed against the
-  // ORIGINAL, pre-sale `state`/`car` - the same snapshot every other figure
-  // above reads from, before this sale's own reputation/heat effects apply.
+  // Computed against the original, pre-sale `state`/`car` - the same snapshot
+  // every other figure above reads from, before this sale's own
+  // reputation/heat effects apply.
   const saleRevealLine = saleRevealLineFor(car, model, state, context)
 
   return {
@@ -411,15 +402,11 @@ export interface ScrapShellResult {
 }
 
 /**
- * Sprint 71 decision 7: scrap the whole car at once, shell and all - the
- * end-of-the-line donor move once a car is stripped down (or not worth
- * stripping further). Pays `model.bookValueYen * economy.bands.scrapValueFraction`
- * regardless of what's still installed (the same flat scrap-value fraction
- * `scrapValueYen` applies to a single part, here applied to the whole car),
- * removes the car and every part still on it, frees its bay/grace slot
- * (`releaseCarFromShop`, the same release a sale uses), clears any staged
- * work, and deletes its ledger entry - a car that no longer exists has
- * nothing left to account for.
+ * Scrap the whole car at once, shell and all - the end-of-the-line donor move
+ * once a car is stripped down (or not worth stripping further). Pays
+ * `model.bookValueYen * economy.bands.scrapValueFraction` regardless of
+ * what's still installed, removes the car and every part still on it, frees
+ * its bay/grace slot, clears any staged work, and deletes its ledger entry.
  *
  * Labour is `energy.actionPoints.scrapShell` (0 in shipped content), gated on
  * `laborAvailable` when raised and spent into `energySpentToday`.

@@ -22,17 +22,15 @@ export interface CareerSnapshot {
   /** Cash plus owned cars valued at book price - a simple, transparent proxy, not a real buyer valuation. */
   netWorthEstimateYen: number
   reputationTier: ReputationTier
-  /** Sprint 15: raw reputation points, alongside the derived tier - lets
-   * Sprint 16's gating ladder be tuned against real trajectories instead of
-   * guesses about how fast a bot climbs. */
+  /** Raw reputation points, alongside the derived tier - lets the gating
+   * ladder be tuned against real trajectories instead of guesses. */
   reputationPoints: number
-  /** The harness's payback-curve signal. Sprint 36: KEEPS its CSV column
-   * name but counts tool-tier upgrades now - the sum of all six lines'
-   * tiers minus 6 (0 for a fresh, never-upgraded shop). */
+  /** The harness's payback-curve signal: counts tool-tier upgrades, the
+   * sum of all six lines' tiers minus 6 (0 for a fresh, never-upgraded
+   * shop). */
   equipmentOwnedCount: number
-  /** Sprint 38, informational (no invariant reads this yet): the group the
-   * bot is most known for right now and its point value - `engine`/0 for a
-   * bot that has never earned any (the argmax default). */
+  /** The group the bot is most known for right now and its point value -
+   * `engine`/0 for a bot that has never earned any (the argmax default). */
   specialtyTopGroup: ComponentId
   specialtyTopPoints: number
 }
@@ -50,16 +48,15 @@ export interface AcquisitionSample {
 }
 
 /**
- * One offer a for-sale car drew, by the time its outcome is known (Sprint 31
- * decision 3's designer-facing math: the offers.csv the balance report reads
- * "distribution of best-offer-in-n-days vs first offer" from). `carEpisodeId`
- * is a synthetic per-career counter, not the real game car id (never needed
- * outside this one process) - it's what lets the Python side reconstruct one
- * car's full day-by-day offer history without a real identifier leaking
- * anywhere. `day` is the day the offer was actually live (matches the day
- * the resulting `car-sold`, if any, would land on). `accepted` is true only
- * when this exact offer was the one taken - a later, different offer on the
- * same car is its own separate row.
+ * One offer a for-sale car drew, by the time its outcome is known - feeds
+ * the offers.csv the balance report reads "distribution of
+ * best-offer-in-n-days vs first offer" from. `carEpisodeId` is a synthetic
+ * per-career counter, not the real game car id - it's what lets the
+ * Python side reconstruct one car's full day-by-day offer history without
+ * a real identifier leaking anywhere. `day` is the day the offer was
+ * actually live. `accepted` is true only when this exact offer was the
+ * one taken - a later, different offer on the same car is its own
+ * separate row.
  */
 export interface OfferSample {
   carEpisodeId: number
@@ -95,10 +92,9 @@ export function runCareer(
   const acquisitions: AcquisitionSample[] = []
   const offers: OfferSample[] = []
 
-  // Sprint 31 offers.csv telemetry: a synthetic per-career counter (never
-  // the real game car id) so the Python side can group one car's day-by-day
-  // offer history together, and a one-row-per-car buffer for whichever offer
-  // is currently live and not yet known to be accepted or not.
+  // Per-car offer telemetry: `episodeIdFor` assigns the synthetic
+  // carEpisodeId, and `pendingOfferByCar` buffers whichever offer is
+  // currently live and not yet known to be accepted or not.
   const episodeIdByCar = new Map<string, number>()
   let nextEpisodeId = 1
   function episodeIdFor(carInstanceId: string): number {
@@ -130,11 +126,11 @@ export function runCareer(
         if (lot) acquisitions.push({ day, tier: lot.tier, channel: 'buyout' })
       }
 
-      // Sprint 31 offers.csv telemetry: a sold car's accepted offer finalizes
-      // whatever was pending on it; a fresh offer means yesterday's (if any)
-      // went unaccepted - finalize that one as declined before buffering the
-      // new one. `state` here is `result.state` (today's post-advance state),
-      // so the car (if still owned) and today's real market heat are both
+      // A sold car's accepted offer finalizes whatever was pending on it;
+      // a fresh offer means yesterday's (if any) went unaccepted -
+      // finalize that one as declined before buffering the new one.
+      // `state` here is `result.state` (today's post-advance state), so
+      // the car (if still owned) and today's real market heat are both
       // the live ones the offer was actually drawn against.
       if (entry.type === 'car-sold') {
         finalizePendingOffer(entry.carInstanceId, true)

@@ -2,13 +2,12 @@ import { z } from 'zod'
 import { ComponentIdSchema } from './tags'
 
 /**
- * Sprint 39: a named, real-world craft (progression bible law 5 - every
- * unlock is a named, real thing) that unlocks once the shop's specialty in
- * `componentId` clears `thresholdPoints`. Access only (law 3): a technique
- * never touches speed, cost, or quality math - it only gates which
- * templates (`unlocksTemplateIds`) can be offered/accepted at all. No state
- * of its own; `unlockedTechniques` (serviceJobs.ts) derives the unlocked
- * set purely from `state.specialty` every time, nothing is stored.
+ * A named, real-world craft that unlocks once the shop's specialty in
+ * `componentId` clears `thresholdPoints`. A technique never touches speed,
+ * cost, or quality math - it only gates which templates (`unlocksTemplateIds`)
+ * can be offered/accepted at all. No state of its own; `unlockedTechniques`
+ * (serviceJobs.ts) derives the unlocked set purely from `state.specialty`
+ * every time, nothing is stored.
  */
 export const TechniqueSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),

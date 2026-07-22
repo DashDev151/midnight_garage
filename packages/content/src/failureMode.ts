@@ -6,11 +6,9 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  * component, at one severity band - the terminal node of the diagnosis map.
  * A symptom's own `causes` entries (`symptom.ts`'s `CauseSchema`) reference
  * an entry here by `id` rather than repeating `carPartId`/`setBand` inline,
- * so a failure mode genuinely shared by two symptoms (the same fault, the
- * same part, the same band) is authored once. `setBand` is a floor, never a
- * ceiling: generation (`auctions.ts`) sets the true band to the WORSE of the
- * part's already-rolled band and this value, exactly as before this
- * registry existed.
+ * so a failure mode genuinely shared by two symptoms is authored once.
+ * `setBand` is a floor, never a ceiling: generation sets the true band to the
+ * WORSE of the part's already-rolled band and this value.
  */
 export const FailureModeSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),

@@ -41,7 +41,7 @@ function mountFor(carId: string) {
 const ENGINE_MEMBER_COUNT = PARTS_TAXONOMY.filter((e) => e.group === 'engine').length
 const SUSPENSION_MEMBER_COUNT = PARTS_TAXONOMY.filter((e) => e.group === 'suspension').length
 
-describe('PartsDiagram (two-level, Sprint 84 amendment)', () => {
+describe('PartsDiagram (two-level)', () => {
   beforeEach(() => {
     pinia = createPinia()
     setActivePinia(pinia)
@@ -111,9 +111,9 @@ describe('PartsDiagram (two-level, Sprint 84 amendment)', () => {
 
   it('a pulled visitor blocker reads as cleared, and a pulled member as a ghost in place', async () => {
     const { game, carId } = grantCar()
-    // Sprint 87 decision 6: rims is a wheel-assembly member now, so it never
-    // comes off per-part - pulling the whole assembly vacates the slot instead
-    // (the diagram concern under test, a cleared visitor, is unchanged).
+    // Rims is a wheel-assembly member now, so it never comes off per-part -
+    // pulling the whole assembly vacates the slot instead (the diagram concern
+    // under test, a cleared visitor, is unchanged).
     expect(game.removePart(carId, 'rims')).toBe(false)
     expect(game.removeAssembly(carId, 'wheelAssembly')).toBe(true)
     expect(game.removePart(carId, 'dampers')).toBe(true)
@@ -143,7 +143,7 @@ describe('PartsDiagram (two-level, Sprint 84 amendment)', () => {
     expect(wrapper.emitted('select')?.[0]).toEqual(['block'])
   })
 
-  describe('the condition wash (Sprint 96 decision 4)', () => {
+  describe('the condition wash', () => {
     it('the corner dot is gone at both levels - the wash replaced it', async () => {
       const { carId } = grantCar()
       const wrapper = mountFor(carId)

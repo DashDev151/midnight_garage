@@ -1,7 +1,7 @@
 import type { CarPartId, AssemblyId, ComponentId } from '@midnight-garage/content'
 
 /**
- * Placeholder part sprites for the service diagram (Sprint 88, decision 4).
+ * Placeholder part sprites for the service diagram.
  *
  * Development placeholders only: they never appear in a public build,
  * screenshot, devlog or marketing material, and commissioned art replaces them

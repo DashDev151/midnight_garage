@@ -24,15 +24,12 @@ function decayedEntry(
 }
 
 /**
- * Bumps `lotSupply[modelId]` by 1 for each fresh lot generated this catalog
- * refresh (Sprint 21) - one entry per lot, so a tier that generates 3 lots
- * of the same model bumps that model 3 times. Called from `advanceDay.ts`'s
- * daily-arrivals step (Sprint 30 decision 4: every day now, not just a
- * weekly boundary), right beside the `freshLots` append (`catalogs.ts`'s
- * generators stay pure - they never touch state themselves). The weekly
- * market-pressure update below still only READS the accumulated ledger on
- * its own 7-day cadence, so smaller, more frequent bumps land the same
- * total supply signal, just smoother.
+ * Bumps `lotSupply[modelId]` by 1 for each fresh lot generated - one entry
+ * per lot, so a tier that generates 3 lots of the same model bumps that
+ * model 3 times. Called from `advanceDay.ts`'s daily-arrivals step, right
+ * beside the `freshLots` append (`catalogs.ts`'s generators stay pure - they
+ * never touch state themselves). The weekly market-pressure update still only
+ * reads the accumulated ledger on its own 7-day cadence.
  */
 export function bumpLotSupply(state: GameState, modelIds: readonly string[]): GameState {
   if (modelIds.length === 0) return state
@@ -44,9 +41,9 @@ export function bumpLotSupply(state: GameState, modelIds: readonly string[]): Ga
 }
 
 /**
- * Bumps `playerSales[modelId]` by 1 for one resolved player sale (Sprint
- * 21) - called from `resolveSellViaWalkIn` (selling.ts) and the public-
- * listing resolution step in `advanceDay.ts`.
+ * Bumps `playerSales[modelId]` by 1 for one resolved player sale - called
+ * from `resolveSellViaWalkIn` (selling.ts) and the public-listing resolution
+ * step in `advanceDay.ts`.
  */
 export function bumpPlayerSales(state: GameState, modelId: string): GameState {
   const playerSales = { ...state.marketLedger.playerSales }
@@ -55,9 +52,8 @@ export function bumpPlayerSales(state: GameState, modelId: string): GameState {
 }
 
 /**
- * Weekly market-pressure update (Sprint 21 - replaces the old pure random
- * walk, `+/-4` weekly on every tracked model). Three deterministic signals
- * combine into a target heat each model's real heat smooths toward:
+ * Weekly market-pressure update that combines three deterministic signals
+ * into a target heat each model's real heat smooths toward:
  *
  * 1. A slow per-model demand wave (`WAVE_AMPLITUDE x sin(...)`), phase-offset
  *    per model by `hashStringToSeed(modelId)` so models don't all crest
@@ -72,10 +68,8 @@ export function bumpPlayerSales(state: GameState, modelId: string): GameState {
  * clamped to `[HEAT_MIN, HEAT_MAX]`; real heat closes `SMOOTHING` of the gap
  * to it per update, so heat drifts rather than jumps. Both ledger counters
  * decay by `LEDGER_DECAY` first (dropped below `LEDGER_PRUNE_THRESHOLD`),
- * so a burst of activity fades over a few weeks rather than lingering
- * forever. Fully deterministic - no `Date.now()`/`Math.random()` - and a
- * no-op off the day-7 boundary, same pipeline position `driftMarketHeat`
- * used to occupy.
+ * so old activity gradually fades. Fully deterministic - no `Date.now()`/`Math.random()` -
+ * and a no-op off the day-7 boundary.
  */
 export function updateMarketHeat(state: GameState, context: SimContext): MarketHeatUpdateResult {
   if (state.day % 7 !== 0) {

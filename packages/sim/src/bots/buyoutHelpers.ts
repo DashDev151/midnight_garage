@@ -51,11 +51,11 @@ export function acquireLot(
 }
 
 /**
- * A bot's walk-away target for a lot: the value anchor (Sprint 27:
- * `instanceValue`, via `anchorValueYen`) times its own strategy multiplier,
- * with a small private spread layered on top (Sprint 27 decision 4). Thin
- * wrapper over `bidding.ts`'s `privateValuationYen`, reusing the identical
- * formula rather than standing up a second one (directive 16).
+ * A bot's walk-away target for a lot: the value anchor (`instanceValue`,
+ * via `anchorValueYen`) times its own strategy multiplier, with a small
+ * private spread layered on top. Thin wrapper over `bidding.ts`'s
+ * `privateValuationYen`, reusing the identical formula rather than
+ * standing up a second one (directive 16).
  */
 export function walkAwayTargetYen(
   lot: AuctionLot,

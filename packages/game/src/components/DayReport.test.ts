@@ -6,9 +6,8 @@ import { formatYen } from '../utils/formatYen'
 import DayReport from './DayReport.vue'
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
- * and unmounted after its test, so a component left mounted from a prior test
- * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ * Every wrapper is tracked and unmounted after its test, so a component left
+ * mounted from a prior test cannot leak its store's pinia into the next.
  */
 const mountedWrappers: VueWrapper[] = []
 function track<T extends VueWrapper>(wrapper: T): T {
@@ -37,7 +36,7 @@ describe('DayReport', () => {
     expect(wrapper.find('[data-test="day-report"]').exists()).toBe(false)
   })
 
-  it('Sprint 42: renders a profit clause on a car-sold entry, via the shared describeLogEntry formatter', async () => {
+  it('renders a profit clause on a car-sold entry, via the shared describeLogEntry formatter', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = track(mount(DayReport))
@@ -61,7 +60,7 @@ describe('DayReport', () => {
     expect(wrapper.text()).toContain('profit +¥40,000')
   })
 
-  it('Sprint 64: a won car opens the report as a celebration card, not a red loss', async () => {
+  it('a won car opens the report as a celebration card, not a red loss', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = track(mount(DayReport))
@@ -114,10 +113,9 @@ describe('DayReport', () => {
     const noise = wrapper.find('[data-test="report-noise"]')
     expect(noise.exists()).toBe(true)
     // 1 + 2 lots aggregate into one line, pluralised correctly.
-    // Sprint 69 item 5: the auction-catalogue line is GONE. The maintainer
-    // does not want the morning report narrating inventory churn they can go
-    // and look at, so both refresh entries above now produce no line at all -
-    // the sim still logs them, the report just swallows them.
+    // The auction-catalogue line is gone - the morning report does not narrate
+    // inventory churn the player can view directly. Both refresh entries above
+    // produce no line; the sim still logs them, the report swallows them.
     expect(noise.text()).not.toContain('at the auctions')
     expect(noise.text()).not.toContain('new lot')
     expect(noise.text()).toContain('Market prices moved on 1 car')

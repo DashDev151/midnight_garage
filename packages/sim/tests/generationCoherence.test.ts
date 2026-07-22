@@ -14,11 +14,11 @@ import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
 
 /**
- * Sprint 66 (playtest 2026-07-15 item 6a): generated cars must be COHERENT -
- * a car's condition, mileage, age and flavour blurb have to describe the same
- * vehicle. The maintainer's verbatim bug: a `1995 · 11 km` Nissan 180SX with
- * MOSTLY WORN parts and "dealer trade-in, service history unknown"
- * ("was that 11km driven on the surface of the sun?").
+ * Generated cars must be COHERENT - a car's condition, mileage, age and
+ * flavour blurb have to describe the same vehicle. The failure mode this
+ * guards: a `1995 · 11 km` Nissan 180SX with MOSTLY WORN parts and
+ * "dealer trade-in, service history unknown" ("was that 11km driven on
+ * the surface of the sun?").
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -69,22 +69,15 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
   })
 
   /**
-   * The regression, stated as the maintainer stated it: a barely-driven car
-   * cannot be worn out. Before this sprint an 11 km car could roll `poor`
-   * parts, because `upkeepBaselineOffset` (-22 for neglected) and
-   * `upkeepJitterRange` (-30) applied as ABSOLUTE offsets with no age term.
-   *
-   * Sprint 73 (diagnosis I) adds a SEPARATE, deliberate exception to this
-   * invariant: a symptom's cause sets its part to the worse of its current
-   * band and the cause's own `setBand`, regardless of mileage - the entire
-   * point of a symptom is a surprising, otherwise-inexplicable fault on a car
+   * A symptom's cause sets its part to the worse of its current band and
+   * the cause's own `setBand`, regardless of mileage - the entire point
+   * of a symptom is a surprising, otherwise-inexplicable fault on a car
    * that looks fine everywhere else (a smoking engine on a genuinely
-   * low-mileage example is exactly the scenario symptoms exist to create).
-   * That is a narratively-intended exception to THIS test's wear-model
-   * coherence claim, not a regression in it - cars that rolled a symptom are
-   * excluded from the sample so this keeps checking the age/mileage/upkeep
-   * chain alone, the same mechanism the test was written to cover (directive
-   * 17 case (a): the implementation intentionally changed what's correct).
+   * low-mileage example is exactly the scenario symptoms exist to
+   * create). That is a deliberate exception to THIS test's wear-model
+   * coherence claim, not a violation of it - cars that rolled a symptom
+   * are excluded from the sample so this keeps checking the age/mileage/
+   * upkeep chain alone (directive 17 case (a)).
    */
   it('a barely-driven car is never rough from the wear model alone, at ANY upkeep tier', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')

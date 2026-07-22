@@ -42,21 +42,20 @@ import {
 } from './testFixtures'
 
 /**
- * Sprint 26: unit tests for the band-math primitives every other condition-
- * aware sim module (jobs, staged work, market value, save migration) builds
- * on. Real `PARTS` are needed (Sprint 44: repair cost derives from an
- * installed instance's own catalog price, so the fixture cars' stock parts
- * must actually resolve).
+ * Unit tests for the band-math primitives every other condition-aware sim
+ * module (jobs, staged work, market value, save migration) builds on. Real
+ * `PARTS` are needed: repair cost derives from an installed instance's own
+ * catalog price, so the fixture cars' stock parts must actually resolve.
  */
 const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const TAXONOMY_BY_ID = CONTEXT.partsTaxonomyById
 
 /**
- * Sprint 32: `carCostToMintYen`/`groupCostToMintYen`/`costWeightedBandFactor`
- * gained a `model` parameter to decide whether an empty `forcedInduction`
- * slot is a real defect or legitimate absence. `TEST_MODEL` is Turbo-tagged
- * (so a filled-or-missing forcedInduction slot behaves like every other
- * part); `NA_MODEL` drops the tag for the tests that specifically exercise
+ * `carCostToMintYen`/`groupCostToMintYen`/`costWeightedBandFactor` take a
+ * `model` parameter to decide whether an empty `forcedInduction` slot is a
+ * real defect or legitimate absence. `TEST_MODEL` is Turbo-tagged (so a
+ * filled-or-missing forcedInduction slot behaves like every other part);
+ * `NA_MODEL` drops the tag for the tests that specifically exercise
  * legitimate absence.
  */
 const TEST_MODEL: CarModel = {
@@ -83,27 +82,27 @@ const NA_MODEL: CarModel = {
   tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
 }
 
-/** Sprint 44: `repairStepFraction` at 1 isolates the plain `grades * price`
- * arithmetic from the real tuning value (0.15) - tests that check the
- * band-math sums themselves (not the scaling feature) use this neutral
- * override; the scaling itself gets its own dedicated tests below. */
+/** `repairStepFraction` at 1 isolates the plain `grades * price` arithmetic
+ * from the real tuning value (0.15) - tests that check the band-math sums
+ * themselves (not the scaling feature) use this neutral override; the
+ * scaling itself gets its own dedicated tests below. */
 const NEUTRAL_ECONOMY: EconomyConfig = {
   ...ECONOMY,
   restoration: { repairStepFraction: 1 },
 }
 
-// Sprint 94 (the energy bar): repair labour is measured in energy points now -
-// `grades x energyPerGradeByTier[tier]`, no ceil. `EPG` is the content per-tier
-// per-grade cost ({1:10, 2:6, 3:4}); `PER` is `pointsPerLabour` (10). Directive
-// 17 case (a): every labour assertion below re-derives off these knobs.
+// Repair labour is measured in energy points: `grades x
+// energyPerGradeByTier[tier]`, no ceil. `EPG` is the content per-tier
+// per-grade cost ({1:10, 2:6, 3:4}); `PER` is `pointsPerLabour` (10). Every
+// labour assertion below re-derives off these knobs.
 const EPG = ECONOMY.energy.energyPerGradeByTier
 const PER = ECONOMY.energy.pointsPerLabour
 
 /** The real catalog price of whatever is actually installed at `partId` on
- * `car` - Sprint 44's repair cost derives from this, never a car/model
- * identity, so expected-value math in these tests reads it back the same
- * way the pipeline does rather than hardcoding a number that would silently
- * drift from the next catalog rebase. */
+ * `car` - repair cost derives from this, never a car/model identity, so
+ * expected-value math in these tests reads it back the same way the
+ * pipeline does rather than hardcoding a number that would silently drift
+ * from the next catalog rebase. */
 function installedPriceYen(car: CarInstance, partId: CarPartId): number {
   return CONTEXT.partsById[car.parts[partId].installed!.partId]!.priceYen
 }
@@ -154,7 +153,7 @@ describe('climbBand', () => {
 
 describe('canRepair (Sprint 26 decision 5: scrap is terminal; Sprint 41 decision 2: non-repairable consumables)', () => {
   const dampers = TAXONOMY_BY_ID.dampers // repairable
-  const tyres = TAXONOMY_BY_ID.tyres // non-repairable (Sprint 41)
+  const tyres = TAXONOMY_BY_ID.tyres // non-repairable
 
   it('is false only for scrap on a repairable part - every other band is repairable', () => {
     expect(canRepair('scrap', dampers)).toBe(false)
@@ -290,8 +289,8 @@ describe('energyToClimb (Sprint 94: grades x energyPerGradeByTier[tier], no ceil
 })
 
 describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price; Sprint 71: surface-only)", () => {
-  // body group (Sprint 71: the one all-surface group, so on-car repair still
-  // applies to every member): panels worn (2 grades), paint poor (3 grades),
+  // body group (the one all-surface group, so on-car repair still applies
+  // to every member): panels worn (2 grades), paint poor (3 grades),
   // underbody scrap (unrepairable - excluded), aero fine (1 grade). No
   // non-repairable consumable lives in this group - that exclusion is
   // covered directly by `canRepair`'s own tests above, which every planner
@@ -717,11 +716,12 @@ describe('costWeightedBandFactor (Sprint 26 decision 4 shim)', () => {
   })
 
   it('returns 1, not NaN, when the taxonomy has no matching entries so nothing contributes any weight (the zero-weight guard)', () => {
-    // Sprint 32: every part now defaults to a present stock part, and the
-    // only legitimately-absent slot (forcedInduction on an NA car) is just
-    // one of 29 parts, so "nothing is present" can no longer be forced via
-    // car-side overrides alone. An empty taxonomy makes every `entry` lookup
-    // miss instead, which is the same "totalWeight never leaves 0" path.
+    // Every part now defaults to a present stock part, and the only
+    // legitimately-absent slot (forcedInduction on an NA car) is just one
+    // of 29 parts, so "nothing is present" can no longer be forced via
+    // car-side overrides alone. An empty taxonomy makes every `entry`
+    // lookup miss instead, which is the same "totalWeight never leaves 0"
+    // path.
     const car = buildCarInstance()
     const emptyTaxonomyById = {} as Readonly<Record<CarPartId, CarPartTaxonomyEntry>>
     expect(costWeightedBandFactor(car, TEST_MODEL, emptyTaxonomyById, ECONOMY)).toBe(1)

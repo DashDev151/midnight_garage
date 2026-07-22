@@ -21,7 +21,7 @@ const MAX_BIDS_PER_DAY = 2
  */
 const BID_FRACTION_OF_BOOK = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.3
-/** Sprint 36: even a fast flipper only invests in tools at double cover. */
+/** Even a fast flipper only invests in tools at double cover. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 /** Shitbox-range only - local-yard also carries Common-tier lots (e.g. an
  * EG6 at 650k book) whose much larger absolute swings don't fit a bot
@@ -43,8 +43,8 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'body',
   'interior',
 ]
-/** Sprint 31 decision 4: flip fast means take the FIRST live offer,
- * whatever it is - no price floor, no patience. */
+/** Flip fast means take the FIRST live offer, whatever it is - no price
+ * floor, no patience. */
 const ACCEPT_FRACTION = 0
 const MAX_HOLDING_DAYS = 0
 
@@ -81,8 +81,8 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (isGroupAtLeast(car, worstComponent, 'mint', context.partIdsByGroup)) continue
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    // Sprint 36: consider upgrading the line for speed, but repair proceeds
-    // either way - work is always possible at the current tier.
+    // Consider upgrading the line for speed, but repair proceeds either
+    // way - work is always possible at the current tier.
     considerToolUpgrade(
       state,
       worstComponent,

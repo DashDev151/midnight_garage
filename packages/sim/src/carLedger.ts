@@ -1,17 +1,16 @@
 import type { CarLedger, GameState } from '@midnight-garage/content'
 
 /**
- * Sprint 42 (the flip ledger): the shared read/write primitives every
- * resolver that touches `GameState.carLedgers` uses - one small module so
- * "how do I record a spend against a car" has exactly one implementation,
- * not one per call site (auction win/buyout, repair-job creation, install
- * completion, sale).
+ * Shared read/write primitives that every resolver which touches
+ * `GameState.carLedgers` uses - one small module so "how do I record a
+ * spend against a car" has exactly one implementation, not one per call site
+ * (auction win/buyout, repair-job creation, install completion, sale).
  */
 const UNKNOWN_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
 
 /** `carLedgers[carInstanceId]`, or the unknown-purchase default when no
- * entry exists yet (a car whose acquisition predates this sprint, or a
- * dev-granted car) - callers never see `undefined`, only degrade gracefully. */
+ * entry exists yet (a car with unknown acquisition, or a dev-granted car) -
+ * callers never see `undefined`, only degrade gracefully. */
 export function carLedgerFor(state: GameState, carInstanceId: string): CarLedger {
   return state.carLedgers[carInstanceId] ?? UNKNOWN_LEDGER
 }

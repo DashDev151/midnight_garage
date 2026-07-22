@@ -2,7 +2,7 @@ import { createRng } from '@midnight-garage/sim'
 import { Container, Graphics, Sprite, Texture } from 'pixi.js'
 
 /**
- * R1 art-architecture spike (roadmap Sprint 0): one indexed body template
+ * R1 art-architecture spike: one indexed body template
  * plus a separate wheel layer, composited at runtime with palette swaps and
  * a ride-height offset. One drawing = every paint color; wheels are drawn
  * once and shared. The sprite itself is deliberately bad placeholder art.
@@ -114,7 +114,7 @@ export function buildCar(paint: Paint, dropPx = 0): Container {
 }
 
 /**
- * The Sprint 0 DoD scene: the same template in all four paints, order
+ * The demo scene: the same template in all four paints, order
  * shuffled by the seeded sim RNG (proves the sim workspace import), last
  * car slammed to show the ride-height layer offset.
  */

@@ -4,29 +4,23 @@ import { SlotConditionRequirementSchema } from './requirement'
 import { ToolTierSchema } from './toolLines'
 
 /**
- * One task within a service-job template (Sprint 72: outcome-based). What
- * the customer's car must end up in, not what the player must DO to it - a
- * `RequirementSpec` (`requirement.ts`), evaluated fresh every time via
- * `evaluateRequirement` (sim). Any route that leaves the car in the required
- * state satisfies it: repair-and-refit, buy-new, or a donor-pulled part all
- * count equally (decision 4) - closing the old `action`-based split (this
- * schema no longer distinguishes `repair`/`install` at all; a pure band
- * requirement and a band-plus-grade requirement are both just a
- * `slotCondition`).
+ * One task within a service-job template. What the customer's car must end
+ * up in, not what the player must DO to it - a `RequirementSpec`
+ * (`requirement.ts`), evaluated fresh every time via `evaluateRequirement`
+ * (sim). Any route that leaves the car in the required state satisfies it:
+ * repair-and-refit, buy-new, or a donor-pulled part all count equally.
  *
- * `minToolTier` (Sprint 36): the tool tier this task's group needs before
- * the work can be offered without a hint or accepted at all - the
- * capability ceiling along the bolt-on vs built line (progression bible).
- * Defaults to 1 (no ceiling); Sprint 37 authors the real values. Stays on
- * the task wrapper, not inside the requirement - it gates OFFERABILITY
- * (`taskToolDeficit`), not the end state itself.
+ * `minToolTier` is the tool tier this task's group needs before the work can
+ * be offered without a hint or accepted at all - the capability ceiling.
+ * Defaults to 1 (no ceiling). Stays on the task wrapper, not inside the
+ * requirement - it gates OFFERABILITY (`taskToolDeficit`), not the end state
+ * itself.
  *
  * `requirement` is pinned to `SlotConditionRequirementSchema` specifically,
- * not the full `RequirementSpec` union (Sprint 76 widens that union to six
- * kinds for story missions) - a service-job task only ever authors a
- * slot/band/grade requirement, so its own type stays concrete rather than
- * every reader needing a `kind` narrowing check for five sibling kinds it
- * can never actually see. `evaluateRequirement` (sim) still accepts it
+ * not the full `RequirementSpec` union - a service-job task only ever
+ * authors a slot/band/grade requirement, so its own type stays concrete
+ * rather than every reader needing a `kind` narrowing check for sibling kinds
+ * it can never actually see. `evaluateRequirement` (sim) still accepts it
  * directly - a `SlotConditionRequirement` is one member of `RequirementSpec`,
  * so it is always assignable where the wider union is expected.
  */
@@ -37,9 +31,8 @@ export const ServiceJobTaskSchema = z.object({
 
 export const ServiceJobTasksSchema = z.array(ServiceJobTaskSchema).min(1)
 
-/** The four progression gates a template unlocks at (Sprint 29 decision 2):
- * 1 at `unknown`, 2 at `local`, 3 at `known`, 4 at `respected` - see
- * `sim/constants.ts`'s `SERVICE_JOB_TIER_MIN_REPUTATION` for the mapping. */
+/** The four progression gates a template unlocks at: 1 at `unknown`, 2 at
+ * `local`, 3 at `known`, 4 at `respected`. */
 export const ServiceJobTierSchema = z.union([
   z.literal(1),
   z.literal(2),
@@ -48,15 +41,13 @@ export const ServiceJobTierSchema = z.union([
 ])
 
 /**
- * A themed, multi-task service-job template (Sprint 29 schema v2 - replaces
- * the Sprint 11 single-`work` + authored `payoutRangeYen` shape). `tasks`
- * names the vocabulary of work a generated offer needs done; payout is
- * DERIVED from those tasks and the specific customer car at generation time
- * (`serviceJobs.ts`'s `deriveServiceJobPayoutYen`), never authored here.
- * `flavorPool` needs at least 2 entries so generation has real variety, and
- * every line must describe only the parts this template's own `tasks`
- * touch - never a component the job doesn't actually work on (Sprint 11
- * decision 5's rule, extended to the multi-task shape).
+ * A themed, multi-task service-job template. `tasks` names the vocabulary of
+ * work a generated offer needs done; payout is DERIVED from those tasks and
+ * the specific customer car at generation time (`serviceJobs.ts`'s
+ * `deriveServiceJobPayoutYen`), never authored here. `flavorPool` needs at
+ * least 2 entries so generation has real variety, and every line must
+ * describe only the parts this template's own `tasks` touch - never a
+ * component the job doesn't actually work on.
  */
 export const ServiceJobTypeSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
@@ -64,18 +55,16 @@ export const ServiceJobTypeSchema = z.object({
   tasks: ServiceJobTasksSchema,
   flavorPool: z.array(z.string().min(1)).min(2, 'each template needs at least 2 flavor variants'),
   /** Days the player has to finish + hand back a job of this template once
-   * accepted, counted from the customer car's arrival (Sprint 25 task 2) -
-   * replaces the old flat `SERVICE_JOB_DEADLINE_DAYS` constant, one value
-   * per template instead of one value for every job in the game. */
+   * accepted, counted from the customer car's arrival - one value per
+   * template instead of a global constant. */
   deadlineDays: z.number().int().positive(),
   /** Reputation for completing (multiplied by the priciest installed part's
    * grade, if this template has any install tasks - `reputationForCompletion`,
    * serviceJobs.ts). */
   baseReputation: z.number().int().nonnegative(),
-  /** Sprint 39: a signature template's gate - the id of the `Technique`
-   * (techniques.json) that must be unlocked (the shop's specialty in that
-   * technique's group clears its `thresholdPoints`) before this template can
-   * ever be offered or accepted. Absent for every ordinary template. */
+  /** A signature template's gate - the id of the `Technique` (techniques.json)
+   * that must be unlocked before this template can ever be offered or accepted.
+   * Absent for every ordinary template. */
   requiresTechnique: z.string().min(1).optional(),
 })
 
@@ -101,18 +90,16 @@ export const ServiceJobSchema = z.object({
   car: CarInstanceSchema,
   payoutYen: z.number().int().positive(),
   baseReputation: z.number().int().nonnegative(),
-  /** Captured from the template at generation time (Sprint 29) - stamps
-   * `dueOnDay` at accept time; kept on the job afterward as a record, same
-   * as `baseReputation`. */
+  /** Captured from the template at generation time - stamps `dueOnDay` at
+   * accept time; kept on the job afterward as a record, same as `baseReputation`. */
   deadlineDays: z.number().int().positive(),
   /** Day the offer leaves the board if not accepted. */
   expiresOnDay: z.number().int().positive(),
   /**
    * Day the customer's car actually arrives in the shop, once accepted (null
-   * while still an offer, and null again once arrival day is reached - Sprint
-   * 25 task 2: acceptance no longer places the car instantly). While this is
-   * still a future day, the car sits in its claimed slot but is not yet
-   * workable - see `isServiceJobInTransit`.
+   * while still an offer, and null again once arrival day is reached).
+   * While this is still a future day, the car sits in its claimed slot but is
+   * not yet workable - see `isServiceJobInTransit`.
    */
   arrivesOnDay: z.number().int().positive().nullable().default(null),
   /**

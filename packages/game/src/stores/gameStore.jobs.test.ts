@@ -36,13 +36,11 @@ const context = buildSimContext(
 )
 
 /**
- * A still-genuinely-unfinished offer (Sprint 29: a job's task list can mix
- * repair and install now, so "any offer at all" is no longer enough - some
- * templates are install-only; and a randomly-rolled customer car can
- * occasionally already satisfy an easy repair task by chance - more often
- * still since Sprint 33's age-aware condition curve skews generated cars
- * toward better condition - which "has a repair task" alone doesn't rule
- * out).
+ * A still-genuinely-unfinished offer. A job's task list can mix repair and
+ * install now, so "any offer at all" is no longer enough - some templates are
+ * install-only. A randomly-rolled customer car can occasionally already satisfy
+ * an easy repair task by chance; the condition curve skews generated cars toward
+ * better condition, so "has a repair task" alone does not rule this out.
  */
 function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find((o) =>
@@ -52,18 +50,16 @@ function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob 
 
 /**
  * A still-genuinely-unfinished repair-touching offer (same caveat as
- * `findUnfinishedOffer`, narrowed to a band-only task specifically - Sprint
- * 72 collapsed the old `action: 'repair'|'install'` split into one
- * `requirement`-based shape, so "repair-shaped" now means "no `minGrade`").
- * Sprint 73: also narrowed to a SURFACE-depth part - `warpToRepairOffer`'s
- * own work loop only knows the simple on-car group `repair()` verb, which
- * Sprint 71's bench-only rule refuses for a bolt-on/buried slot (that needs
- * the separate remove/recondition/reinstall flow instead, out of scope for
- * this completion-flow test). Before this sprint's own generation change
- * (an extra symptom-count roll per generated car, shifting every subsequent
- * random draw) the RNG stream never happened to hand this test a
- * buried-part template; narrowing the search directly is more robust than
- * depending on which offer a given seed happens to produce.
+ * `findUnfinishedOffer`, narrowed to a band-only task specifically - the task
+ * shape is now `requirement`-based, so "repair-shaped" means "no `minGrade`").
+ * Also narrowed to a SURFACE-depth part; the work loop only knows the simple
+ * on-car group `repair()` verb, which bench-only rules refuse for a bolt-on or
+ * buried slot (that needs the separate remove/recondition/reinstall flow
+ * instead, out of scope for this completion-flow test). Before generation
+ * changes (an extra symptom-count roll per car, shifting every subsequent random
+ * draw) the RNG stream never handed this test a buried-part template; narrowing
+ * the search directly is more robust than depending on which offer a seed
+ * produces.
  */
 function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find(
@@ -76,10 +72,10 @@ function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): Servi
   )
 }
 
-/** End days until `findUnfinishedOffer` finds something, bounded. Sprint 95
- * (the radial-offer gate): a fresh career's board is Yuki-only while the
- * tutorial runs, so both warps skip the walkthrough first - the gate lifts at
- * the next generation point, which the End Day loop then reaches. */
+/** End days until `findUnfinishedOffer` finds something, bounded. A fresh
+ * career's board is Yuki-only while the tutorial runs, so both warps skip the
+ * walkthrough first. The gate lifts at the next generation point, which the End
+ * Day loop then reaches. */
 function warpToUnfinishedOffer(game: ReturnType<typeof useGameStore>) {
   game.skipTutorial()
   for (let i = 0; i < 20 && !findUnfinishedOffer(game); i++) game.endDay()
@@ -95,11 +91,10 @@ describe('service jobs in the store', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   /**
-   * Sprint 95 (directive 17 case (a)): this used to pin day-1 offers (Sprint
-   * 10's "no empty first day"). A fresh tutorial career now deliberately
+   * This used to pin day-1 offers. A fresh tutorial career now deliberately
    * opens Yuki-only, so the correct behaviour is a gated day 1 and offers
-   * resuming once the walkthrough is skipped. Sprint 10's original guarantee
-   * lives on for non-tutorial careers in the sim's own tests
+   * resuming once the walkthrough is skipped. The original guarantee lives on
+   * for non-tutorial careers in the sim's own tests
    * (`packages/sim/tests/tutorialIsolation.test.ts`).
    */
   it('the board is Yuki-only on day 1 of a tutorial career; skipping brings offers back', () => {
@@ -114,8 +109,8 @@ describe('service jobs in the store', () => {
   it('accepting brings the customer car into the shop instantly, owning nothing', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 36: nothing gates acceptance at tier 1 - every shipped template
-    // defaults to minToolTier 1, so no tool setup is needed here.
+    // Nothing gates acceptance at tier 1 - every shipped template defaults to
+    // minToolTier 1, so no tool setup is needed here.
     warpToUnfinishedOffer(game)
     const offer = findUnfinishedOffer(game)
     if (!offer) throw new Error('expected an unfinished offer on the board')
@@ -130,9 +125,9 @@ describe('service jobs in the store', () => {
   it('doing the repair work then clicking Complete pays out immediately and gains reputation', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 36: max every tool line so the work loop below keeps its old
-    // all-equipment pacing (fastest repair level) inside the 20-day cap -
-    // this test is about completion + payout, not tier-1 throughput.
+    // Max every tool line so the work loop below keeps its all-equipment
+    // pacing (fastest repair level) inside the 20-day cap - this test is about
+    // completion plus payout, not tier-1 throughput.
     for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
@@ -140,8 +135,8 @@ describe('service jobs in the store', () => {
 
     const repBefore = game.reputationPoints
     game.acceptServiceJob(offer.id)
-    // Sprint 25 task 2: the car claims its parking slot instantly but isn't
-    // actually workable until it arrives the following day.
+    // The car claims its parking slot instantly but is not actually workable
+    // until it arrives the following day.
     game.endDay()
 
     const carId = offer.car.id
@@ -192,10 +187,10 @@ describe('service jobs in the store', () => {
     expect(game.reputationPoints).toBeGreaterThan(repBefore)
     expect(game.activeServiceJobs.some((j) => j.id === offer.id)).toBe(false)
     expect(game.ownedCarCount).toBe(0)
-    // Sprint 57: the completion report reads real spend off the job's own
-    // ledger - this career did real (charged) repair/install work, so at
-    // least one of the two cost lines should be a real, non-zero number,
-    // and the net profit is exactly payout minus what was actually spent.
+    // The completion report reads real spend off the job's own ledger. This
+    // career did real (charged) repair/install work, so at least one of the two
+    // cost lines should be a real, non-zero number, and the net profit is
+    // exactly payout minus what was actually spent.
     const result = game.lastJobResult
     expect(result?.outcome).toBe('paid')
     expect((result?.repairCostYen ?? 0) + (result?.partsCostYen ?? 0)).toBeGreaterThan(0)
@@ -211,10 +206,10 @@ describe('service jobs in the store', () => {
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
     game.acceptServiceJob(offer.id)
-    // Sprint 40: let the car actually arrive first - this test is about
-    // "work not done," not "car not here yet" (that's the in-transit guard's
-    // own test below), and completeServiceJob now correctly refuses the
-    // latter rather than silently failing the job.
+    // Let the car actually arrive first. This test is about "work not done,"
+    // not "car not here yet" (that is the in-transit guard's own test below).
+    // completeServiceJob now correctly refuses the latter rather than silently
+    // failing the job.
     game.endDay()
 
     const cashBefore = game.cashYen
@@ -225,10 +220,10 @@ describe('service jobs in the store', () => {
   })
 
   /**
-   * Sprint 40 defense in depth: `completeServiceJob` refuses (no state
-   * change) while the customer's car is still in transit - unreachable
-   * through the real UI (the Complete Job button only renders once
-   * `inTransit` is false), but a direct store call must still be safe.
+   * `completeServiceJob` refuses (no state change) while the customer's car is
+   * still in transit. This is unreachable through the real UI (the Complete Job
+   * button only renders once `inTransit` is false), but a direct store call
+   * must still be safe.
    */
   it('clicking Complete before the car has even arrived refuses, no-op (the in-transit guard)', () => {
     const game = useGameStore()
@@ -252,12 +247,12 @@ describe('service jobs in the store', () => {
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
-    const deadlineDays = offer.deadlineDays // Sprint 29: per-template now, not a flat constant
+    const deadlineDays = offer.deadlineDays // per-template, not a flat constant
     game.acceptServiceJob(offer.id)
 
     const cashBefore = game.cashYen
     // Never touch the car; run past the deadline (counted from arrival,
-    // Sprint 25 task 2 - one extra day beyond the deadline length itself).
+    // one extra day beyond the deadline length itself).
     for (let i = 0; i <= SERVICE_JOB_ARRIVAL_DELAY_DAYS + deadlineDays; i++) {
       game.endDay()
     }
@@ -267,7 +262,7 @@ describe('service jobs in the store', () => {
   })
 
   /**
-   * Sprint 25 task 2, the sprint doc's own required test: work staged
+   * Work staged
    * against an in-transit car is rejected. `moveCar`/`swapCars` get the
    * same guard - covered separately in gameStore's own move tests - this
    * is specifically the staging path.
@@ -299,7 +294,7 @@ describe('service jobs in the store', () => {
   })
 
   /**
-   * Sprint 38: the store threads `gameState.specialty` through to
+   * The store threads `gameState.specialty` through to
    * `advanceDay` (and so to fresh offer generation) purely by passing the
    * whole `GameState` object - no dedicated wiring code, so this is an
    * end-to-end proof the pipeline actually works through the real store,
@@ -308,7 +303,7 @@ describe('service jobs in the store', () => {
   it('a fresh offer generated while a specialty dominates and clears the threshold draws its flavor from the word-of-mouth copy pool', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 95 (directive 17 case (a)): the radial-offer gate would keep the
+    // The radial-offer gate would keep the
     // End Day loop below offerless forever on a tutorial career - skip first.
     game.skipTutorial()
     game.gameState = {

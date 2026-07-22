@@ -194,18 +194,8 @@ describe('generateAuctionCarInstance', () => {
     expect(instance.year).toBeGreaterThanOrEqual(model.spec.yearFrom)
   })
 
-  /**
-   * Sprint 32 originally shipped every filled slot as stock-grade,
-   * unconditionally. Sprint 75 decision 1 (the aftermarket-at-generation
-   * roll) intentionally ends that: a filled slot is now stock OR a real
-   * aftermarket part, by design - "starts stock" is no longer a system
-   * truth, just the common case. This test's own premise updated
-   * accordingly (directive 17 case (a) - the old, narrower title/assertion
-   * is renamed and retargeted at what generation now actually guarantees:
-   * every filled slot is a REAL catalog entry, whatever its grade). The
-   * aftermarket-specific frequency/cap/fit tests live in their own describe
-   * block below.
-   */
+  /** The aftermarket-specific frequency/cap/fit tests live in their own
+   * describe block below. */
   it('every filled slot holds a real catalog part instance, stock or aftermarket', () => {
     const instance = generateAuctionCarInstance(model, 'car-test', createRng(1), CONTEXT)
     let sawFilled = false

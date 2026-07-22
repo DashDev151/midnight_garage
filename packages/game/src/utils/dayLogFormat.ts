@@ -10,8 +10,7 @@ import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
 
 /** Catalogue part id -> its player-facing "Brand Name" label; internal ids
- * (e.g. `shitbox-stock-tyres`) never reach the day report (playtest
- * 2026-07-19 item 23: internal tier words stay internal). */
+ * (e.g. `shitbox-stock-tyres`) never reach the day report. */
 const PART_LABELS = new Map(PARTS.map((p) => [p.id, `${p.brand} ${p.name}`]))
 
 function partLabel(partId: string): string {
@@ -19,9 +18,8 @@ function partLabel(partId: string): string {
 }
 
 /** `count noun` with an `s` on the noun unless the count is exactly 1 - the
- * one place count copy is pluralised, so "1 lots" can never come back
- * (Sprint 64 decision 2). Handles only regular `-s` plurals, which is every
- * count noun the day report uses. */
+ * one place count copy is pluralised, so "1 lots" can never come back.
+ * Handles only regular `-s` plurals, which is every count noun the day report uses. */
 export function pluralise(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
@@ -74,8 +72,8 @@ export function describeLogEntry(
     case 'offer-rejected':
       return `Turned down ${formatYen(entry.priceYen)} for the ${resolveModelName(entry.modelId)}`
     case 'car-sold': {
-      // Sprint 42: profit reads before the reputation clause, once, so it
-      // shows regardless of which quality branch (or none) fires below.
+      // Profit reads before the reputation clause, once, so it shows
+      // regardless of which quality branch (or none) fires below.
       const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
       const withProfit =
         entry.profitYen !== undefined ? `${base}, profit ${formatYenDelta(entry.profitYen)}` : base
@@ -91,8 +89,8 @@ export function describeLogEntry(
             return withProfit
         }
       })()
-      // Sprint 75 decision 2 (the organic teacher): one line, appended, no
-      // popup - set only when the car still carried an unresolved symptom.
+      // One line, appended, no popup - set only when the car still carried an
+      // unresolved symptom.
       return entry.saleRevealLine ? `${withQuality} ${entry.saleRevealLine}` : withQuality
     }
     case 'part-bought':
@@ -109,15 +107,15 @@ export function describeLogEntry(
       return `Reconditioned a part to ${entry.band}`
     case 'part-removed': {
       const base = `Removed ${entry.carPartId} from ${entry.carInstanceId}`
-      // Sprint 74 decision 4: uninstall reveals truth - this removal
-      // collapsed one of the car's symptoms to exactly one remaining cause.
+      // Uninstall reveals truth - this removal collapsed one of the car's
+      // symptoms to exactly one remaining cause.
       return entry.revealedCauseId
         ? `${base}. Opened it up: ${titleCaseFromSlug(entry.revealedCauseId)}.`
         : base
     }
     case 'service-job-accepted':
-      // Sprint 25 task 2: acceptance no longer places the car instantly, so
-      // this reads as the customer's own promise, not a status update.
+      // Acceptance no longer places the car instantly, so this reads as the
+      // customer's own promise, not a status update.
       return `Thanks - I'll drop it off first thing in the morning.`
     case 'service-job-completed':
       return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep), profit ${formatYenDelta(entry.netProfitYen)}`
@@ -180,12 +178,11 @@ export function describeLogEntry(
 }
 
 /**
- * Sprint 64 (playtest pass-2 item 13): the morning report's structured view,
- * derived entirely in the game layer from a day's `DayLogEntry[]` (the sim is
- * untouched). Winning a car opens the report as a celebration, not a red
- * number; the recurring money is summed into one honest line; and the pure
- * noise (heat drift, catalogue refreshes, per-tick labour) is aggregated into
- * a couple of quiet, correctly-pluralised lines instead of flooding the list.
+ * The morning report's structured view, derived entirely in the game layer from
+ * a day's `DayLogEntry[]`. Winning a car opens the report as a celebration, not
+ * a red number; the recurring money is summed into one honest line; and noise
+ * (heat drift, catalogue refreshes, per-tick labour) is aggregated into quiet,
+ * correctly-pluralised lines instead of flooding the list.
  */
 export interface DayReportWin {
   modelName: string
@@ -223,8 +220,8 @@ const NOISE_TYPES = new Set<DayLogEntry['type']>([
   'market-heat-shift',
   'auction-catalog-refreshed',
   'job-progress',
-  // Sprint 80: the weekly job-ad refresh is board churn the player reads on
-  // the Staff Office, same treatment as an auction-catalog refresh.
+  // The weekly job-ad refresh is board churn the player reads on the Staff
+  // Office, same treatment as an auction-catalog refresh.
   'staff-ads-refreshed',
 ])
 
@@ -284,9 +281,9 @@ export function classifyDayReport(
         money.billsYen += Math.abs(entry.amountYen)
         rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
-      // Sprint 69 item 5: swallowed on purpose. The sim still logs the entry
-      // (the day log and the harness both read it); the morning report simply
-      // stops narrating inventory churn the player can go and look at.
+      // Swallowed on purpose. The sim still logs the entry (the day log and the
+      // harness both read it); the morning report simply stops narrating
+      // inventory churn the player can go and look at.
       case 'auction-catalog-refreshed':
         break
       case 'market-heat-shift':
@@ -308,8 +305,7 @@ export function classifyDayReport(
 
   const noise: string[] = []
   if (heatShifts > 0) noise.push(`Market prices moved on ${pluralise(heatShifts, 'car')}`)
-  // Sprint 94 DRAFT copy (day-report labour line, flagged for the orchestrator's
-  // sweep): labourTicked is an integer labour point value now, not whole slots.
+  // labourTicked is an integer labour point value, not whole slots.
   if (labourTicked > 0) noise.push(`${labourTicked} labour spent in the shop`)
 
   return { wins, money, notable: rest, noise }

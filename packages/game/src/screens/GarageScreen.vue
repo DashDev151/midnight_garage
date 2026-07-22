@@ -19,19 +19,12 @@ const occupiedParkingCars = computed(() =>
 const parkingCarIds = computed(() => new Set(occupiedParkingCars.value.map((c) => c.carId)))
 const serviceCarIds = computed(() => new Set(occupiedServiceCars.value.map((c) => c.carId)))
 
-/**
- * Every shop slot accepts any car currently in the shop - a car is always
- * exactly one of "in parking" or "in service", so this is really "any real
- * car", not a filter. Dropping a car back into its own section (occupied or
- * empty) is a real, accepted gesture, not a rejection - `moveCarToSlot`
- * (Sprint 17 positional fix) resolves same-section drops as a real
+/** Every shop slot accepts any car currently in the shop - a car is always
+ * exactly one of "in parking" or "in service", so this is really "any real car",
+ * not a filter. Dropping a car back into its own section (occupied or empty) is a
+ * real, accepted gesture, not a rejection - same-section drops resolve as a real
  * reposition/swap rather than a no-op, so the target highlighting and the
  * completed gesture both reflect something that actually happened.
- * Rejecting it outright (the original design) made every same-section drag
- * look broken: the drop target never highlighted and the gesture visibly
- * "failed" instead of completing cleanly (found via real dragging, not
- * something a unit test would have caught - same-section drags were never
- * exercised on purpose).
  */
 function acceptsIntoService(carId: string): boolean {
   return parkingCarIds.value.has(carId) || serviceCarIds.value.has(carId)
@@ -40,10 +33,10 @@ function acceptsIntoParking(carId: string): boolean {
   return serviceCarIds.value.has(carId) || parkingCarIds.value.has(carId)
 }
 
-/** Drop a car onto service-bay slot `index` - moves it there if empty, swaps positions with
- * whoever's there if occupied, same section or across (Sprint 17 positional fix: `moveCarToSlot`
- * targets the exact slot dropped on, so there's one call for every case, including same-section
- * reposition/swap, which used to need its own no-op guard here). */
+/** Drop a car onto service-bay slot `index` - moves it there if empty, swaps
+ * positions with whoever's there if occupied, same section or across. The `moveCarToSlot`
+ * call targets the exact slot dropped on, so there's one call for every case,
+ * including same-section reposition/swap. */
 function onDropOnBaySlot(index: number, carId: string): void {
   game.moveCarToSlot(carId, 'service', index)
 }
@@ -51,9 +44,9 @@ function onDropOnParkingSlot(index: number, carId: string): void {
   game.moveCarToSlot(carId, 'parking', index)
 }
 
-// Sprint 17: the ghost preview that follows the pointer during a live drag -
-// generic session data (payload is just a car id) resolved back to a
-// display name using the same data the slots already render from.
+// The ghost preview that follows the pointer during a live drag - generic
+// session data (payload is just a car id) resolved back to a display name using
+// the same data the slots already render from.
 const dragSession = useDragSession()
 const allShopCars = computed<ShopCarView[]>(() => [
   ...occupiedServiceCars.value,
@@ -85,9 +78,9 @@ const draggedCarName = computed(() => {
         <dt>Cash</dt>
         <dd class="cash">{{ formatYen(game.cashYen) }}</dd>
       </div>
-      <!-- Sprint 67 decision 6 (playtest item 13): labour left today is a
-           first-class stat here, not just a caption buried on the car page.
-           It is the one resource the whole day is budgeted against. -->
+      <!-- Labour left today is a first-class stat here, not just a caption
+           buried elsewhere. It is the one resource the whole day is budgeted
+           against. -->
       <div>
         <dt>Labour left today</dt>
         <dd data-test="labour-value">
@@ -122,7 +115,7 @@ const draggedCarName = computed(() => {
       </h3>
       <ul class="bay-slots">
         <!-- data-test falls through to ShopSlot's root <li> - the tutorial
-             walkthrough spotlights the first bay (Sprint 95 decision 9). -->
+             walkthrough spotlights the first bay. -->
         <ShopSlot
           v-for="(slot, i) in game.serviceBaysView"
           :key="slot?.carId ?? 'empty-' + i"
@@ -252,10 +245,7 @@ h3 {
 }
 
 /* The reputation line is a door to the Standing screen. It must LOOK like one:
-   the Sprint 62 styling (inherited colour, no underline, a dotted border in
-   the panel-edge colour) rendered an invisible link on a dark panel, so the
-   screen was effectively unreachable. Interactive text is cyan and underlined,
-   like every other link in the app. */
+   interactive text is cyan and underlined, like every other link in the app. */
 .standing-link {
   color: var(--mg-neon-violet);
   text-decoration: underline;

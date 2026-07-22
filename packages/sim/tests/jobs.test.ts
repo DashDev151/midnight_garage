@@ -40,9 +40,7 @@ import {
   testToolTiers,
 } from './testFixtures'
 
-// Real CARS/PARTS (not empty arrays) since Sprint 24 fix 2: `findOrCreateJob`
-// now validates install-part fit against the actual model/part catalog, so
-// an install spec needs both to resolve to something real.
+// Real CARS/PARTS: an install spec must resolve against the actual catalog.
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
 const car: CarInstance = buildCarInstance({
@@ -59,25 +57,18 @@ const car: CarInstance = buildCarInstance({
       body: 'poor',
       interior: 'worn',
     }),
-    // Sprint 32: every slot defaults to a filled stock part now, but the
-    // install-part tests below need a genuinely empty target slot (a
-    // group-level install into an already-occupied slot is refused by the
-    // tightened installFitGate) - dampers is the suspension-group part these
-    // tests install onto.
+    // dampers is left genuinely empty: the install-part tests below need a
+    // real target slot to install onto.
     dampers: { installed: null },
   },
 })
 
-/** The one global repair-cost knob `repairJobGate` itself resolves internally
- * (Sprint 44: derived from the installed part's own price, never the host
- * car's tier) - reused here so these tests' own `planGroupRepair` calls
- * predict the exact same charge. */
+/** Mirrors the repair-cost knob `repairJobGate` resolves internally, so this
+ * file's own `planGroupRepair` calls predict the exact same charge. */
 const REPAIR_STEP_FRACTION = CONTEXT.economy.restoration.repairStepFraction
 
-// Sprint 53: `car` (honda-city-e-aa) is 'shitbox' tier - every fitting
-// catalog part in this file's fixtures must be the shitbox-class SKU, or
-// the new fitment-class check refuses it before any of these tests' own
-// gates are ever reached.
+// `car` is 'shitbox' tier: fitting catalog parts here must be shitbox-class
+// SKUs or the fitment-class check refuses them first.
 const sparePart: PartInstance = {
   id: 'pi-0001',
   partId: 'shitbox-tanuki-street-coilovers',
@@ -284,8 +275,6 @@ describe('completeJob', () => {
       CONTEXT,
     )
     expect(result.state.carLedgers).toEqual({})
-    // Sprint 92: dampers is a suspension signature slot, so the tier-1 install
-    // owes the assist fee - it lands on the customer's job ledger repairYen.
     expect(result.state.serviceJobLedgers[owningJob.id]).toEqual({
       repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
       partsYen: 42_000,
@@ -371,8 +360,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
     const second = findOrCreateJob(
       first.state,
       {
-        // Sprint 71: 'interior' (surface, still on-car-repairable) stands in
-        // for the old 'engine' fixture - engine is now entirely bench-only.
+        // 'interior' is used here since engine is entirely bench-only now.
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'interior',
@@ -413,8 +401,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         REPAIR_STEP_FRACTION,
         CONTEXT.economy.energy.energyPerGradeByTier,
       )
-      // Sprint 92: the body plan climbs panels/underbody (signature slots), so a
-      // tier-1 body repair also owes the one-per-job body machine-shop fee.
+      // The body group's signature slots owe the one-per-job assist fee too.
       const totalCostYen = plan.costYen + CONTEXT.economy.machineShopAssist.feeYenByGroup.body
       const cashBefore = baseState().cashYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
@@ -457,8 +444,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const afterFirstRepairYen = first.state.carLedgers[car.id]!.repairYen
       // A different group's own job is independent (one open job per
       // component at a time, not one per car) - both charges land on the
-      // same car's ledger. Sprint 71: 'interior' (still on-car-repairable)
-      // stands in for the old 'engine' fixture - engine is bench-only now.
+      // same car's ledger.
       const secondSpec = { ...spec, componentId: 'interior' as const, laborSlotsRequired: 2 }
       const second = findOrCreateJob(first.state, secondSpec, CONTEXT)
       expect(second.state.carLedgers[car.id]!.repairYen).toBeGreaterThan(afterFirstRepairYen)
@@ -589,25 +575,17 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.state.ownedCars[0]?.parts.dampers.installed).toBeNull()
     })
 
-    /**
-     * Sprint 37: the one own-car capability ceiling (progression bible's
-     * bolt-on vs built line). `car`'s model (honda-city-e-aa) is factory-NA
-     * (no Turbo/Supercharged tag); with its `forcedInduction` slot
-     * genuinely empty, fitting the FIRST turbo is a conversion, gated
-     * behind engine tier 3 - refused below it, allowed at it.
-     */
+    // `car`'s model is factory-NA, so fitting the FIRST turbo is a
+    // conversion, gated behind engine tier 3.
     it("refuses converting a factory-NA car to forced induction below engine tier 3 (reason 'tool-tier'), allows it at tier 3", () => {
       const naCar: CarInstance = {
         ...car,
-        // Sprint 71: forcedInduction is blockedBy intake (fitting a turbo
-        // means the intake has to come off first) - emptied here too, so
-        // this test isolates the tool-tier gate it's actually about rather
-        // than tripping the new blocker rule instead.
+        // intake is emptied too, so this isolates the tool-tier gate rather
+        // than tripping the blockedBy rule instead.
         parts: { ...car.parts, forcedInduction: { installed: null }, intake: { installed: null } },
       }
-      // Sprint 53: naCar (honda-city-e-aa) is 'shitbox' tier - the turbo kit
-      // must be the shitbox-class SKU or the new fitment check refuses it
-      // before ever reaching the tool-tier gate this test is about.
+      // The turbo kit must be the shitbox-class SKU or the fitment check
+      // refuses it first.
       const turboKit = PARTS.find(
         (p) =>
           p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
@@ -654,11 +632,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(allowed.job).not.toBeNull()
     })
 
-    /**
-     * Sprint 37: swapping an already-installed forced-induction part (a
-     * factory-turbo car, or one already converted) is a bolt-on swap, not a
-     * conversion - never gated, at any engine tier.
-     */
     it('does not gate swapping forced induction on a car that already has one installed', () => {
       const alreadyTurboCar: CarInstance = {
         ...car,
@@ -813,13 +786,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(ontoOwningCar.job).not.toBeNull()
     })
 
-    /**
-     * Sprint 71 decision 4 (the symmetric blocker rule): install validates
-     * `blockedBy` exactly like uninstall does - `forcedInduction` is
-     * `blockedBy: ['intake']`, so fitting a turbo kit is refused while the
-     * default-filled stock intake is still on, reason 'blocked-by', and
-     * allowed the moment `intake` is pulled.
-     */
     it("refuses installing onto a slot whose blockedBy list is still occupied, reason 'blocked-by', allows it once the blocker is cleared", () => {
       const naCar: CarInstance = {
         ...car,
@@ -919,14 +885,6 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
     expect(gate.ok).toBe(false)
   })
 
-  /**
-   * Sprint 71 decision 2 (the teardown game): a bolt-on/buried slot is
-   * bench-only - an on-car repair-zone job addressed at it (per-part or the
-   * whole group) is refused outright, reason 'bench-only', regardless of
-   * cash or tool tier. `dampers` (bolt-on, on the module-level `car` fixture,
-   * band 'worn' per its suspension-group override) is the exact
-   * `depthClass !== 'surface'` case this decision introduces.
-   */
   it("refuses an on-car repair-zone job addressed at a bolt-on/buried part, reason 'bench-only'", () => {
     const dampersCar: CarInstance = {
       ...car,
@@ -1120,12 +1078,6 @@ describe('resolveJobLabor (Sprint 11) - the instant player-facing resolver', () 
 })
 
 describe('resolveRemovePart (Sprint 32 decision 7)', () => {
-  // Sprint 88 (the deferred sim-primitive hardening from the Sprint 87 Exit):
-  // an assembly member comes off the car ONLY via its assembly, so the primitive
-  // refuses it outright. rims is the cleanest witness for the refusal REASON: it
-  // is a wheelAssembly member with no blockers and is removable, so nothing but
-  // the new membership guard can stop its removal - a true no-op, not a
-  // blocker/busy/tier refusal.
   it('Sprint 88: refuses to pull an assembly member off the car directly (it comes off with its assembly)', () => {
     const state = baseState()
     const before = state.ownedCars[0]!.parts.rims.installed
@@ -1138,11 +1090,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(result.state.partInventory.some((p) => p.id === before!.id)).toBe(false)
   })
 
-  // Directive 17 case (a), sprint85 decision 1: the OLD test asserted removing
-  // an aftermarket part "reverts the slot to a fresh mint stock instance" -
-  // a mechanism Sprint 79 redefined and Sprint 85 deletes outright (the
-  // phantom-mint spawn, playtest 15/16/20). Rewritten to the new contract:
-  // the slot goes genuinely empty, whatever grade the removed part was.
   it('removing an aftermarket part empties the slot - no phantom mint stock spawns (Sprint 85)', () => {
     const aftermarketInstance: PartInstance = {
       id: 'pi-aftermarket-dampers',
@@ -1170,11 +1117,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     ])
   })
 
-  // Regression (a), sprint85 decision 1: the emptied slot carries the REMOVED
-  // instance's own identity as its `vacatedBaseline` ({partId, band,
-  // genuinePeriod}), never a synthesised mint-stock baseline. This is exactly
-  // the input `refitLaborSlotsFor` compares against, which the phantom-mint
-  // spawn corrupted on a second removal (playtest 15/20).
+  // `vacatedBaseline` is the input `refitLaborSlotsFor` compares against.
   it("removal stamps the removed aftermarket part's own identity as the vacated baseline (regression)", () => {
     const aftermarketInstance: PartInstance = {
       id: 'pi-aftermarket-dampers-baseline',
@@ -1200,13 +1143,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(result.state.partInventory).toEqual([aftermarketInstance])
   })
 
-  // Regression (b), sprint85 decision 1 (playtest 16): the full chain. With
-  // the phantom-mint spawn gone, the vacated baseline holds the aftermarket
-  // part's identity, so a genuinely NEW mint stock part of the stock SKU
-  // installed into that vacancy fails the equivalence match and is charged
-  // FULL install labour - never the free refit the corrupted baseline used to
-  // grant (which is why item 16's new tyres cost 0). `refitLaborSlotsFor`
-  // itself is correct and untouched.
   it('a new mint stock part installed into a vacated aftermarket slot is charged full install labour, not a free refit (regression)', () => {
     const aftermarketInstance: PartInstance = {
       id: 'pi-aftermarket-dampers-chain',
@@ -1322,9 +1258,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(result.log).toEqual([])
   })
 
-  /** A minimal, schema-shaped active service job wrapping the module-level
-   * fixture `car` as the CUSTOMER's car - Sprint 33 decision 8's contrast
-   * case against the owned-car tests above. */
+  /** Wraps the module-level fixture `car` as the CUSTOMER's car. */
   const customerServiceJob: ServiceJob = {
     id: 'svc-test',
     typeId: 'small-bodywork-touchup',
@@ -1357,11 +1291,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     // The slot still updates exactly like the owned-car case (panels is
     // stock, so the slot goes genuinely empty)...
     expect(result.state.activeServiceJobs[0]?.car.parts.panels.installed).toBeNull()
-    // ...and the removed part lands in OUR inventory completely unchanged.
-    // Sprint 70 retired the customerJobId tag this test used to check for:
-    // ownership is now a fact the instance was born with (`origin`), never
-    // stamped by removal, so the pulled instance is byte-identical to the
-    // one that was on the car.
+    // ...and the removed part lands in OUR inventory byte-identical, its
+    // ownership (`origin`) never rewritten by removal.
     expect(result.state.partInventory).toEqual([originalInstance])
     expect(result.log).toEqual([
       {
@@ -1373,19 +1304,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     ])
   })
 
-  /**
-   * Sprint 70 (parts provenance, ground up): `resolveRemovePart` no longer
-   * decides whose part it is - Sprint 68's `baselineInstalledPartIds`-vs-tag
-   * dance (and the two theft bugs it patched, TODO.md's "parts provenance"
-   * diagnosis) is retired along with the `customerJobId` tag itself. Ownership
-   * is now a fact stamped once at birth (`origin`) and never rewritten, so
-   * removal is a pure passthrough regardless of who actually fitted the part
-   * or which slot it sat in - directive-17 case (a): the OLD test asserted a
-   * mechanism (tag-stamping via baseline comparison) that no longer exists;
-   * the real behaviour it was protecting (a player-bought part stays player-
-   * owned even after being pulled back off a customer's car) is still true,
-   * just structurally so now rather than something this function computes.
-   */
   it("a market-bought part fitted onto a customer's car keeps its market origin when pulled back off - it was never the customer's", () => {
     const marketBought: PartInstance = {
       id: 'pi-player-bought',
@@ -1441,15 +1359,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(result.state.partInventory).toEqual([aftermarketInstance])
   })
 
-  /**
-   * Sprint 71 decision 4 (the symmetric blocker rule) and decision 1's own
-   * framing of the engine-internals chain as "the deepest job in the game" -
-   * the drivetrain side is the same shape at a shallower depth: clutch
-   * blocked by gearbox; gearbox blocked by driveline AND exhaust. The
-   * module-level `car` fixture has every drivetrain part filled (`worn`, via
-   * its `groupCarParts` override), so every blocker starts genuinely
-   * occupied.
-   */
   it("refuses removing 'clutch' until 'gearbox' is off, and 'gearbox' until 'driveline' + 'exhaust' are both off", () => {
     const state = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
 
@@ -1476,11 +1385,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const stillBlocked = resolveRemovePart(afterExhaust.state, car.id, 'gearbox', CONTEXT)
     expect(stillBlocked.log).toEqual([])
 
-    // Sprint 88 (directive 17 case a): the physical blocker relationship above is
-    // unchanged, but gearbox and clutch are gearboxAssembly members - they never
-    // come off the car per-part (the assembly does), so the primitive refuses them
-    // even once every external blocker is clear. The assembly-level removal and its
-    // reassembly ordering are re-pinned in `assemblies.test.ts`.
+    // gearbox and clutch are gearboxAssembly members - they never come off
+    // the car per-part, even once every external blocker is clear.
     const afterDriveline = resolveRemovePart(afterExhaust.state, car.id, 'driveline', CONTEXT)
     expect(afterDriveline.log).toHaveLength(1)
     const gearboxRefused = resolveRemovePart(afterDriveline.state, car.id, 'gearbox', CONTEXT)
@@ -1492,14 +1398,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(clutchRefused.log).toEqual([])
   })
 
-  /**
-   * Sprint 85 decision 6, re-targeted for Sprint 88 (directive 17 case (a)): the
-   * buried ENGINE-group machine gate is a fee below engine tier 2, free at tier 2.
-   * `camsTiming` is an engineAssembly member, so per-part removal now refuses it
-   * (it comes off with the engine assembly, whose fee POSTING to cash and the
-   * ledger is pinned in `assemblies.test.ts`); the fee it owes and its being free
-   * at tier 2 are asserted here through the fee function itself.
-   */
+  // camsTiming is an engineAssembly member, asserted through the fee
+  // function directly since it no longer comes off the car per-part.
   it('a buried ENGINE-group member owes the machine-shop assist fee below engine tier 2, free at tier 2', () => {
     const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
     expect(engineFee).toBeGreaterThan(0)
@@ -1509,12 +1409,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(machineAssistFeeYen('camsTiming', tierTwo, CONTEXT)).toBe(0)
   })
 
-  /**
-   * Sprint 85 decision 6, re-targeted for Sprint 88: the drivetrain side. `gearbox`
-   * is a gearboxAssembly member (per-part removal refuses it now), so its machine
-   * fee below drivetrain tier 2 - and its being free at tier 2 - is asserted
-   * through the fee function, the assembly fee posting living in `assemblies.test.ts`.
-   */
+  // gearbox is a gearboxAssembly member, asserted the same way as camsTiming above.
   it('a buried DRIVETRAIN-group member owes the machine-shop assist fee below drivetrain tier 2, free at tier 2', () => {
     const drivetrainFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.drivetrain
     expect(drivetrainFee).toBeGreaterThan(0)
@@ -1524,14 +1419,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(machineAssistFeeYen('gearbox', tierTwo, CONTEXT)).toBe(0)
   })
 
-  /**
-   * Sprint 85 decision 6: the install side of the same gate. Fitting a buried
-   * ENGINE-group part below engine tier 2 charges the machine-shop assist fee
-   * at completion (`completeJob`) - the crane is needed to lower it in too -
-   * and owning the machine makes it free. The part price is not cash here (a
-   * dev-granted part was never bought through `resolveBuyPart`), so only the
-   * fee moves cash.
-   */
   it('installing a buried ENGINE-group part below engine tier 2 charges the assist fee at completion, free at tier 2', () => {
     const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
     const stockCams = CONTEXT.stockPartByCarPartId.shitbox!.camsTiming!
@@ -1594,18 +1481,9 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(byClass.buried) // 20
   })
 
-  /**
-   * Sprint 79: directive 17 case (a) again - the old test proved a removal
-   * could be labour-starved (camsTiming needed 2 slots, offering 1 refused
-   * it). Removal is now genuinely free, so the same scenario must now
-   * succeed even when NO labour is offered at all - the intentional new
-   * correct behaviour, not a regression.
-   */
   it('a removal succeeds even when zero labour is offered today, since removal now costs nothing', () => {
     const state = baseState()
-    // Sprint 88: assembly members come off only via the assembly, so this uses a
-    // loose bolt-on (exhaust). Removal is free at every depth (Sprint 79), so it
-    // succeeds even when NO labour is offered.
+    // exhaust is a loose bolt-on: assembly members come off only via the assembly.
     const funded = resolveRemovePart(state, car.id, 'exhaust', CONTEXT, 0)
     expect(funded.laborSlotsUsed).toBe(0)
     expect(funded.log).toHaveLength(1)
@@ -1613,16 +1491,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 })
 
-/**
- * Sprint 88: assembly members (rims, tyres, gearbox, clutch, the engine
- * internals) no longer come off the car per-part - `resolveRemovePart` refuses
- * them; the wheel/engine/gearbox assembly is the only way off. These
- * equivalence-labour cases build the vacated slot directly instead - the exact
- * state a per-part pull used to leave: the slot empty with its `vacatedBaseline`
- * stamped and the pulled instance in the bin - so the DOWNSTREAM refit and
- * recondition economics they exist to pin stay unchanged. The removal-is-free
- * half is re-pinned at the assembly level in `assemblies.test.ts`.
- */
+/** Builds the vacated-slot state directly for assembly members, which
+ * `resolveRemovePart` now refuses to pull off the car per-part. */
 function vacateSlot(state: GameState, carInstanceId: string, carPartId: CarPartId): GameState {
   const carIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
   if (carIndex === -1) return state
@@ -1648,11 +1518,8 @@ function vacateSlot(state: GameState, carInstanceId: string, carPartId: CarPartI
 }
 
 describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer directive 2026-07-16)', () => {
-  // honda-city-e-aa is 'shitbox' tier (Sprint 53) - `partFitsCar` requires an
-  // exact fitment-class match, so the car's rims/tyres must be real
-  // shitbox-class stock instances, not `testFixtures.ts`'s generic
-  // common-class default (which is fixture convenience only, never checked
-  // against a real model's tier).
+  // honda-city-e-aa is 'shitbox' tier: rims/tyres must be real shitbox-class
+  // stock instances to pass `partFitsCar`'s fitment-class match.
   const stockRims = CONTEXT.stockPartByCarPartId.shitbox!.rims!
   const stockTyres = CONTEXT.stockPartByCarPartId.shitbox!.tyres!
   const originalRims: PartInstance = {
@@ -1751,7 +1618,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
 
     const carAfterBothOff = afterBoth.ownedCars[0]!
     const newTyresSlots = refitLaborSlotsFor(carAfterBothOff, 'tyres', newTyres, CONTEXT)
-    // Sprint 94: bolt-on install energy (no baseline match - a genuinely different part).
+    // Bolt-on install energy: no baseline match, a genuinely different part.
     expect(newTyresSlots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
     const newTyresFit = resolveJobLabor(
       afterBoth,
@@ -1886,25 +1753,14 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(slots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
   })
 
-  /**
-   * Sprint 79 decision 1's clutch illustration, verbatim in spirit: blockers
-   * off free, clutch out free, a NEW clutch's refit charged at its buried
-   * class (2 slots). `clutch` is `repairable: false` in the shipped taxonomy
-   * (Sprint 71), so "bench rebuild" is tested here via the only real route a
-   * clutch actually has - buy-new, not bench-repair - which still proves the
-   * doc's point: an improved (here, replaced) slot always costs, deep work
-   * costs exactly the value it adds.
-   */
   it('the clutch chain: gearbox blockers off free, clutch off free, a NEW clutch refit charged at the buried rate (2 slots)', () => {
     const drivetrainState = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
     const exhaustOff = resolveRemovePart(drivetrainState, car.id, 'exhaust', CONTEXT)
     expect(exhaustOff.laborSlotsUsed).toBe(0)
     const drivelineOff = resolveRemovePart(exhaustOff.state, car.id, 'driveline', CONTEXT)
     expect(drivelineOff.laborSlotsUsed).toBe(0)
-    // Sprint 88: gearbox and clutch are gearboxAssembly members - vacated via the
-    // assembly, not per-part. The vacated state is built directly here so the NEW
-    // clutch's buried-rate refit charge (the point of this case) stays pinned; the
-    // free member removal itself is re-pinned in `assemblies.test.ts`.
+    // gearbox and clutch are gearboxAssembly members: vacated via vacateSlot,
+    // not per-part removal.
     const clutchVacated = vacateSlot(
       vacateSlot(drivelineOff.state, car.id, 'gearbox'),
       car.id,
@@ -2096,10 +1952,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
     expect(quote).not.toBeNull()
 
-    // The on-car per-part plan for the identical part - Sprint 44: cost
-    // derives from the installed instance's own catalog price, never a
-    // car/tier factor, so the bench and on-car formulas are simply the same
-    // call with the same inputs.
+    // The on-car per-part plan for the identical part - same call, same inputs.
     const plan = planGroupRepair(
       carWithPoorPanels(),
       'body',
@@ -2120,7 +1973,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
   it("Sprint 42: a bench recondition adds its full repair charge to the loose instance's pricePaidYen, not any car ledger", () => {
     const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
     const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
-    // Sprint 94: offer a full day's energy so the (now energy-sized) recondition completes.
+    // Offer a full day's energy so the energy-sized recondition completes.
     const result = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
     const reconditioned = result.state.partInventory.find((p) => p.id === loosePart.id)
     expect(reconditioned?.band).toBe('fine')
@@ -2174,18 +2027,14 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
         carPartId: 'panels',
         laborSlotsRequired: onCarPlan.laborSlotsRequired,
       },
-      // Sprint 94: offer a full day's energy so the (now energy-sized) job
-      // completes and panels actually reaches fine.
+      // A full day's energy, so the energy-sized job completes.
       60,
       CONTEXT,
     )
     const carCashSpent = carState.cashYen - carResult.state.cashYen
     const carLaborSpent = carResult.state.energySpentToday
-    // Sprint 92: panels is a body signature slot, so the on-car repair also owes
-    // the body machine-shop assist fee on top of the intrinsic repair price. The
-    // fee is a tool-tier charge, NOT a host-car factor, so it never reintroduces
-    // the donor-car arbitrage this test guards - the repair PRICE stays
-    // intrinsic, asserted directly below.
+    // panels is a body signature slot: the on-car repair also owes the body
+    // machine-shop assist fee, a tool-tier charge on top of the intrinsic price.
     const bodyFeeYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.body
     expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
     expect(carCashSpent).toBeGreaterThan(0)
@@ -2216,13 +2065,8 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
     // Same labor either way (tier-independent labor sizing, unchanged).
     expect(invLaborSpent).toBe(carLaborSpent)
-    // The arbitrage-death assertion, on the intrinsic REPAIR PRICE: a Sprint
-    // 41-style car-tier factor would have made these differ (e.g. a shitbox car
-    // repairing far cheaper than the bench); Sprint 44 makes the repair price
-    // identical, since it is intrinsic to the part, not to whether or which car
-    // it is bolted to. Sprint 92: the bench path pays only that intrinsic price,
-    // while the on-car signature op pays it PLUS the body machine fee - so the
-    // two differ by exactly the fee, never by a host-car factor.
+    // The arbitrage-death assertion: the intrinsic repair price is identical
+    // either way; the bench and on-car costs differ by exactly the body fee.
     expect(onCarPlan.costYen).toBe(benchPlan.costYen)
     expect(carCashSpent).toBe(invCashSpent + bodyFeeYen)
     // The loose part climbed to mint (and is no longer an open job).
@@ -2248,8 +2092,6 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'fine',
       CONTEXT,
     )!
-    // Sprint 94: poor -> fine is 2 grades; tier 1 costs 2 x EPG[1], tier 3 the
-    // cheaper 2 x EPG[3] (a genuine fraction now, no ceil).
     expect(t1Quote.laborSlotsRequired).toBe(2 * CONTEXT.economy.energy.energyPerGradeByTier[1])
     expect(t3Quote.laborSlotsRequired).toBe(2 * CONTEXT.economy.energy.energyPerGradeByTier[3])
 
@@ -2266,17 +2108,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'panels',
     )
     expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)
-    // The yen cost of the work itself is tier-independent (decision 7), and
-    // Sprint 47 removed the per-tier consumables fee entirely - the two
-    // quotes cost exactly the same.
+    // The yen cost of the work itself is tier-independent.
     expect(t3Quote.costYen).toBe(t1Quote.costYen)
   })
 
-  /**
-   * Sprint 41 decision 2: replace-only semantics reach the bench too - a
-   * non-repairable consumable can never be reconditioned, quote or resolver,
-   * exactly like a scrap part already couldn't (Sprint 26 decision 5).
-   */
   it('a non-repairable consumable (tyres) cannot be reconditioned - no quote, resolver is a no-op', () => {
     const wornTyresId = PARTS.find((p) => p.carPartId === 'tyres' && p.grade === 'stock')!.id
     const wornTyres: PartInstance = {

@@ -5,14 +5,14 @@ import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 /**
- * Sprint 77 decision 6: the deliver flow's own receipt - the same shape and
+ * The deliver flow's own receipt - the same shape and
  * lifecycle as `SaleCompleteModal`/`JobCompleteModal` (a store ref set on the
  * action, cleared on dismiss, mounted once globally in App.vue, dismissible
  * with Escape via App.vue's existing modal priority order). `result.copy` is
  * already the RIGHT template picked in the store (`overdeliveredCopy` when
  * the tip triggered, `deliveredCopy` otherwise) - this component never
- * branches on `tipYen` for that. Story missions are unfailable (Sprint 85
- * decision 2), so there is no lapse surface at all.
+ * branches on `tipYen` for that. Story missions are unfailable, so there is
+ * no lapse surface at all.
  */
 const game = useGameStore()
 

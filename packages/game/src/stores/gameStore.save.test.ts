@@ -35,7 +35,7 @@ describe('persistence: export / import save code', () => {
   })
 
   /**
-   * Sprint 12 decision 3 ("nuke"): a pre-v5 save carrying a car in the old
+   * A pre-v5 save carrying a car in the old
    * condition/buildSheet shape is intentionally unsupported (no migration).
    * `importSaveCode`'s existing try/catch (the same one `hydrate()` uses at
    * startup) must turn that decode failure into a clean `{ok: false}`

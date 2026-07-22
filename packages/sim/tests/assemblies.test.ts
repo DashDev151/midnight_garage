@@ -89,7 +89,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-// --- shared wheels fixture (mirrors the Sprint 79 jobs.test.ts fixture) ------
+// --- shared wheels fixture (mirrors jobs.test.ts's own fixture) -------------
 const stockRims = CONTEXT.stockPartByCarPartId.shitbox!.rims!
 const stockTyres = CONTEXT.stockPartByCarPartId.shitbox!.tyres!
 const originalRims: PartInstance = {
@@ -193,7 +193,7 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(swap.ok).toBe(true)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // rims free (equivalence), new tyre charged the bolt-on install energy (Sprint 94).
+    // rims free (equivalence), new tyre charged the bolt-on install energy.
     expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
     expect(off.laborSlotsUsed + on.laborSlotsUsed).toBe(
       CONTEXT.economy.energy.energyByClass['bolt-on'],

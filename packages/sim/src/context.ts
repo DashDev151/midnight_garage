@@ -66,80 +66,73 @@ export interface SimContext {
   partsById: Readonly<Record<string, Part>>
   /**
    * The one generic, brand-neutral `grade: 'stock'` catalog part per
-   * `CarPartId`, PER FITMENT CLASS (Sprint 32 decision 1; Sprint 53 adds the
-   * class dimension) - what generation fills a non-empty slot with by
-   * default, and what removing an aftermarket part reverts a slot to
-   * (`jobs.ts`'s `resolveRemovePart`). Derived once from `parts` rather than
-   * filtered on every generation/removal call.
+   * `CarPartId`, PER FITMENT CLASS - what generation fills a non-empty slot
+   * with by default, and what removing an aftermarket part reverts a slot
+   * to (`jobs.ts`'s `resolveRemovePart`). Derived once from `parts` rather
+   * than filtered on every generation/removal call.
    */
   stockPartByCarPartId: Readonly<Record<PartFitmentClass, Readonly<Record<CarPartId, Part>>>>
   /**
-   * Sprint 75 decision 1: the catalog's `street`/`sport`/`race` entry for
-   * each `CarPartId`, per fitment class - what the aftermarket-at-generation
-   * roll (`generateAuctionCarInstance`, auctions.ts) fits instead of the
-   * stock default. Derived once from `parts`, same reasoning as
-   * `stockPartByCarPartId` above; a `Partial` value since a future content
-   * change could ship a part missing one grade (today's catalog always has
-   * all three).
+   * The catalog's `street`/`sport`/`race` entry for each `CarPartId`, per
+   * fitment class - what the aftermarket-at-generation roll
+   * (`generateAuctionCarInstance`, auctions.ts) fits instead of the stock
+   * default. A `Partial` value since a future content change could ship a
+   * part missing one grade.
    */
   aftermarketPartByCarPartId: Readonly<
     Record<PartFitmentClass, Readonly<Record<CarPartId, Readonly<Partial<Record<Grade, Part>>>>>>
   >
   buyers: readonly Buyer[]
-  /** The 29-part taxonomy (Sprint 26), indexed by CarPartId - replaces the
-   * Sprint 22 hidden-issue catalogs, which are paused and removed. */
+  /** The 29-part taxonomy, indexed by CarPartId. */
   partsTaxonomy: readonly CarPartTaxonomyEntry[]
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>
   /** Every CarPartId belonging to each of the 6 groups, derived once from
    * the taxonomy rather than re-filtered on every call. */
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>
-  /** Sprint 87 (the assembly model): the three sub-assemblies (wheels, engine,
-   * gearbox) removed/refitted as a unit - `packages/sim/src/assemblies.ts`'s
-   * resolvers key off these. */
+  /** The three sub-assemblies (wheels, engine, gearbox) removed/refitted as
+   * a unit - `packages/sim/src/assemblies.ts`'s resolvers key off these. */
   assemblies: readonly AssemblyDef[]
   assembliesById: Readonly<Record<AssemblyId, AssemblyDef>>
   serviceJobTypes: readonly ServiceJobType[]
   serviceJobCustomerNames: readonly string[]
   facilities: Facilities
-  /** The six always-owned tool ladders (Sprint 36 - replaces the equipment
-   * catalog), keyed by ComponentId. */
+  /** The six always-owned tool ladders, keyed by ComponentId. */
   toolLines: ToolLines
   /** Convenience lookup for one line - `toolLines[componentId]`, named. */
   toolLineFor(componentId: ComponentId): ToolLine
   economy: EconomyConfig
-  /** Sprint 38: the word-of-mouth flavor pool a generated offer draws from
-   * instead of its template's own `flavorPool` when the in-lane specialty
-   * premium applies (`serviceJobs.ts`). */
+  /** The word-of-mouth flavor pool a generated offer draws from instead of
+   * its template's own `flavorPool` when the in-lane specialty premium
+   * applies (`serviceJobs.ts`). */
   specialtyCopy: SpecialtyCopy
-  /** Sprint 39: the named-craft catalog gating signature templates
+  /** The named-craft catalog gating signature templates
    * (`unlockedTechniques`/`requiresUnmetTechnique`, serviceJobs.ts). */
   techniques: readonly Technique[]
-  /** Sprint 70: the car-history flavour pool (`CarInstance.provenanceNote`),
-   * relocated from `auctions.ts`'s hardcoded `PROVENANCE_POOL` into content -
-   * `auctions.ts` reads it from here instead of a local constant. */
+  /** The car-history flavour pool (`CarInstance.provenanceNote`) -
+   * `auctions.ts` reads it from here. */
   provenancePool: ProvenancePool
-  /** Sprint 73 (diagnosis I): the symptom/cause pool `generateAuctionCarInstance`
-   * rolls from, and the flat diagnostic-test registry a symptom's own `tests`
-   * entries reference by id. */
+  /** The symptom/cause pool `generateAuctionCarInstance` rolls from, and
+   * the flat diagnostic-test registry a symptom's own `tests` entries
+   * reference by id. */
   symptoms: readonly Symptom[]
   symptomsById: Readonly<Record<string, Symptom>>
   diagnosticTests: readonly DiagnosticTest[]
   diagnosticTestsById: Readonly<Record<string, DiagnosticTest>>
-  /** Sprint 76 (story missions I): the hand-authored campaign, sorted by
-   * `gateReputationPoints` (the strictly linear order `missions.ts`'s
-   * `advanceDay` hook walks), and its customers. */
+  /** The hand-authored campaign, sorted by `gateReputationPoints` (the
+   * strictly linear order `missions.ts`'s `advanceDay` hook walks), and its
+   * customers. */
   storyMissions: readonly StoryMission[]
   storyMissionsById: Readonly<Record<string, StoryMission>>
   personas: readonly Persona[]
   personasById: Readonly<Record<string, Persona>>
-  /** Sprint 77 (story missions II, the reference-lap board): the fictional
-   * comparable pool `lapModel.ts`'s `selectBoardRows` straddles, and the one
-   * grip anchor rendered once per tyre grade - pre-split from the raw
-   * `lapReferences.json` list once here, so no caller re-filters it. */
+  /** The fictional comparable pool `lapModel.ts`'s `selectBoardRows`
+   * straddles, and the one grip anchor rendered once per tyre grade -
+   * pre-split from the raw `lapReferences.json` list once here, so no
+   * caller re-filters it. */
   lapReferencePool: readonly Extract<LapReferenceEntry, { anchor: false }>[]
   lapReferenceAnchor: Extract<LapReferenceEntry, { anchor: true }>
-  /** Sprint 80 (staff I): the job-ad candidate name/bio pools the seeded
-   * candidate roller (`staff.ts`'s `rollStaffCandidate`) draws from. */
+  /** The job-ad candidate name/bio pools the seeded candidate roller
+   * (`staff.ts`'s `rollStaffCandidate`) draws from. */
   staffCandidates: StaffCandidatePool
 }
 
@@ -163,9 +156,9 @@ function groupPartIdsByGroup(
 
 const FITMENT_CLASSES: readonly PartFitmentClass[] = ['shitbox', 'common', 'uncommon', 'rare']
 
-/** One `grade: 'stock'` catalog part per `CarPartId`, per fitment class
- * (Sprint 32 decision 1 + Sprint 53's class dimension - the resolved catalog
- * guarantees exactly one exists per component per class). */
+/** One `grade: 'stock'` catalog part per `CarPartId`, per fitment class -
+ * the resolved catalog guarantees exactly one exists per component per
+ * class. */
 function indexStockPartsByCarPartId(
   parts: readonly Part[],
 ): Record<PartFitmentClass, Record<CarPartId, Part>> {
@@ -182,9 +175,9 @@ function indexStockPartsByCarPartId(
   return result
 }
 
-/** Sprint 75 decision 1: the catalog's non-stock (`street`/`sport`/`race`)
- * entry per `CarPartId`, per fitment class - `aftermarketPartByCarPartId`'s
- * builder, mirroring `indexStockPartsByCarPartId` above exactly. */
+/** The catalog's non-stock (`street`/`sport`/`race`) entry per `CarPartId`,
+ * per fitment class - `aftermarketPartByCarPartId`'s builder, mirroring
+ * `indexStockPartsByCarPartId` above exactly. */
 function indexAftermarketPartsByCarPartId(
   parts: readonly Part[],
 ): Record<PartFitmentClass, Record<CarPartId, Partial<Record<Grade, Part>>>> {
@@ -202,43 +195,12 @@ function indexAftermarketPartsByCarPartId(
 }
 
 /**
- * `economy` (Sprint 20 step 0) is deliberately the LAST parameter, defaulted
- * to the real parsed `economy.json` (content's `ECONOMY`) - every other
- * `buildSimContext` call site (the ~16 sim test files that call this
- * positionally) keeps compiling and gets the real economy config with no
- * changes, since a trailing default doesn't shift any existing positional
- * argument. Callers that want a different economy (none do yet) pass it
+ * Every parameter after `partsTaxonomy` is optional, trailing, and defaults
+ * to the real parsed content - so every existing positional call site (the
+ * ~16 sim test files that call this positionally) keeps compiling and gets
+ * the real config, since a trailing default never shifts an existing
+ * positional argument. Callers that want something different pass it
  * explicitly.
- *
- * Sprint 26: the 4th positional parameter, previously the (now-paused)
- * hidden-issues catalog, is the 29-part taxonomy instead - same position,
- * same "required" cardinality, so every existing call site's shape stays
- * predictable even though what it means changed.
- *
- * Sprint 36: the 8th positional parameter, previously the (now-retired)
- * equipment catalog, is the tool-lines record instead - defaulted to the
- * real parsed `toolLines.json` (content's `TOOL_LINES`), since every shop
- * always owns all six lines; there is no "no tools" configuration anymore.
- *
- * Sprint 38: `specialtyCopy` is a new 10th (trailing) parameter, same
- * "defaulted, so every existing positional call site keeps compiling"
- * treatment as `economy` right before it.
- *
- * Sprint 39: `techniques` is an 11th (trailing) parameter, same treatment.
- *
- * Sprint 70: `provenancePool` is a 12th (trailing) parameter, same treatment.
- *
- * Sprint 73: `symptoms`/`diagnosticTests` are 13th/14th (trailing)
- * parameters, same treatment.
- *
- * Sprint 76: `storyMissions`/`personas` are 15th/16th (trailing) parameters,
- * same treatment.
- *
- * Sprint 77: `lapReferences` is a 17th (trailing) parameter, same treatment.
- *
- * Sprint 80: `staffCandidates` is an 18th (trailing) parameter, same treatment.
- *
- * Sprint 87: `assemblies` is a 19th (trailing) parameter, same treatment.
  */
 export function buildSimContext(
   models: readonly CarModel[],

@@ -18,7 +18,7 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
 ]
 const MAX_CONCURRENT_CARS = 3
 const CASH_BUFFER_MULTIPLIER = 1.2
-/** Sprint 36: tool upgrades only at double cover, same as the other generalists. */
+/** Tool upgrades only at double cover, same as the other generalists. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 2.0
 
 type Archetype = 'flip' | 'restore' | 'mid'
@@ -40,9 +40,9 @@ const BID_MULTIPLIER = 1.3
 interface ArchetypeProfile {
   /** How many zones get repaired before the car is considered sellable. */
   repairZonesBeforeSale: number
-  /** Sprint 31 decision 4: this archetype's own accept-threshold - mirrors
-   * Flipper's/Balanced Player's/Cautious Restorer's own constants (see each
-   * bot's own `sellingHelpers.ts` call site). */
+  /** This archetype's own accept-threshold - mirrors Flipper's/Balanced
+   * Player's/Cautious Restorer's own constants (see each bot's own
+   * `sellingHelpers.ts` call site). */
   acceptFraction: number
   maxHoldingDays: number
 }
@@ -118,8 +118,8 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
 
     const worstComponent = worstGroup(car, REPAIRABLE_COMPONENTS, context.partIdsByGroup)
     if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
-    // Sprint 36: consider upgrading the line for speed, but repair proceeds
-    // either way - work is always possible at the current tier.
+    // Consider upgrading the line for speed, but repair proceeds either
+    // way - work is always possible at the current tier.
     considerToolUpgrade(
       state,
       worstComponent,
@@ -142,9 +142,9 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
   }
 
   // 3. Sell each job-free, sufficiently-repaired car through its own
-  // archetype's accept-threshold (Sprint 31 decision 4): flip takes the
-  // first offer regardless of price, restore holds out near full value,
-  // mid takes the first offer that clears a reasonable floor.
+  // archetype's accept-threshold: flip takes the first offer regardless
+  // of price, restore holds out near full value, mid takes the first
+  // offer that clears a reasonable floor.
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const profile = PROFILES[archetypeForCar(car.id)]

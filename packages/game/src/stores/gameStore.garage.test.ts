@@ -14,13 +14,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
 
 /**
- * The Sprint 05 garage logic, updated for Sprint 11's instant actions: repair
- * and install resolve the moment they're clicked, spending whatever labor is
- * available right now. Sprint 26 re-based on bands: a "zone" is now a group
- * of real parts, and repair climbs every non-mint, non-scrap part in it to
- * the target band (mint by default) rather than lifting one flat percent.
- * These assert real outcomes (a group actually reaches mint, stats actually
- * change, labor is actually capped), not just that methods run.
+ * The garage logic, updated for instant actions: repair and install resolve
+ * the moment they are clicked, spending whatever labour is available right now.
+ * The logic is re-based on bands: a "zone" is now a group of real parts, and
+ * repair climbs every non-mint, non-scrap part in it to the target band (mint
+ * by default) rather than lifting one flat percent. These assert real outcomes
+ * (a group actually reaches mint, stats actually change, labour is actually
+ * capped), not just that methods run.
  */
 describe('garage: grant + detail', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -49,17 +49,14 @@ describe('garage: instant repair and labor', () => {
 
   it('repairing completes and lifts the group to mint, possibly over several days', () => {
     const game = useGameStore()
-    // Sprint 36: no ownership gate exists anymore - max every line's tier so
-    // this test keeps its old all-equipment pacing (the fastest repair
-    // level), staying a test of completion mechanics rather than of tier-1
-    // throughput against the 20-day loop cap below.
+    // No ownership gate exists anymore - max every line's tier so this test
+    // keeps its old all-equipment pacing (the fastest repair level), staying a
+    // test of completion mechanics rather than of tier-1 throughput.
     for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
-    // Sprint 71: 'engine' (intake/exhaust/fuelSystem/ignitionEcu/cooling/
-    // forcedInduction/camsTiming/headValvetrain/internals/block) is entirely
-    // bolt-on/buried now - bench-only, so `repair()` refuses it outright.
-    // 'body' is the surface group this on-car completion mechanism still
-    // exercises. Correlated band rolls (Sprint 12/26) can occasionally land
-    // a group fully mint even on a "rough" car - retry grants until the body
+    // 'engine' is now entirely bolt-on or buried - bench-only, so `repair()`
+    // refuses it outright. 'body' is the surface group this on-car completion
+    // mechanism still exercises. Correlated band rolls can occasionally land a
+    // group fully mint even on a "rough" car, so retry grants until the body
     // group specifically needs work.
     let car = game.gameState.ownedCars.at(-1)
     for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
@@ -123,10 +120,10 @@ describe('garage: instant part install', () => {
       | undefined
     for (const part of PARTS) {
       if (part.statModifiers.power <= 0) continue
-      // Sprint 87: an assembly member (block/internals/... , rims/tyres,
-      // gearbox/clutch) never comes off the car per-part, so the `removePart`
-      // below can no longer open its slot for this generic install mechanic -
-      // pick a per-part-removable (non-member) slot instead.
+      // An assembly member (block/internals, rims/tyres, gearbox/clutch) never
+      // comes off the car per-part, so `removePart` can no longer open its slot
+      // for this generic install mechanic. Pick a per-part-removable
+      // (non-member) slot instead.
       if (game.isAssemblyMember(part.carPartId)) continue
       const model = CARS.find(
         (c) =>
@@ -144,11 +141,10 @@ describe('garage: instant part install', () => {
     game.devGrantCar(pair.modelId)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
-    // Sprint 71: clear the target slot's own blockers first (a generated car
-    // starts every slot filled), and satisfy the buried-engine/drivetrain
-    // machine gate if the target happens to sit behind one - neither concerns
-    // this generic "install a compatible part" mechanic, which just needs the
-    // slot open.
+    // Clear the target slot's own blockers first (a generated car starts every
+    // slot filled), and satisfy the buried-engine/drivetrain machine gate if
+    // the target happens to sit behind one. Neither concerns this generic
+    // "install a compatible part" mechanic, which just needs the slot open.
     const taxonomyEntry = PARTS_TAXONOMY.find((e) => e.id === pair.carPartId)!
     for (const blockerId of taxonomyEntry.blockedBy) {
       game.removePart(car.id, blockerId)
@@ -156,13 +152,12 @@ describe('garage: instant part install', () => {
     if (taxonomyEntry.depthClass === 'buried') {
       game.devSetToolTier(pair.componentId, 2)
     }
-    // Sprint 32: every slot starts filled with a stock part by default -
-    // empty this one first so the group-level install has somewhere to land.
+    // Every slot starts filled with a stock part by default. Empty this one
+    // first so the group-level install has somewhere to land.
     game.removePart(car.id, pair.carPartId)
-    // Sprint 71: a buried target plus its blockers can spend more than one
-    // day's labor budget on removal alone - end the day so the install below
-    // (which this test actually cares about) gets a fresh budget rather than
-    // silently starving.
+    // A buried target plus its blockers can spend more than one day's labour
+    // budget on removal alone. End the day so the install below gets a fresh
+    // budget rather than silently starving.
     game.endDay()
     game.devGrantPart(pair.partId)
     const partInstance = game.gameState.partInventory.at(-1)!
@@ -191,8 +186,8 @@ describe('garage: instant part install', () => {
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
-    // Sprint 32: generation fills every slot by default - the whole
-    // `interior` group (seats, dashGauges) starts fully occupied.
+    // Generation fills every slot by default - the whole `interior` group
+    // (seats, dashGauges) starts fully occupied.
     expect(game.installablePartsFor(car.id, 'interior')).toEqual([])
 
     game.removePart(car.id, 'seats')
@@ -223,10 +218,10 @@ describe('garage: instant part install', () => {
     game.removePart(customerCar.id, 'seats')
     game.devGrantPart(part.id)
     const granted = game.gameState.partInventory.at(-1)!
-    // Sprint 70: ownership is read from the instance's own `origin` against
-    // every active service job, not a mutable `customerJobId` tag - the
-    // instance's origin must trace to the owning job's car for the "not this
-    // car" refusal below to have anything real to refuse.
+    // Ownership is read from the instance's own `origin` against every active
+    // service job, not a mutable `customerJobId` tag. The instance's origin
+    // must trace to the owning job's car for the "not this car" refusal below
+    // to have anything real to refuse.
     const tagged: PartInstance = {
       ...granted,
       origin: makeCarOrigin(customerCar.id, 'Customer Car', 0),

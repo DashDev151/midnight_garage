@@ -109,6 +109,7 @@ h3 {
   margin: 0;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+  font-family: var(--mg-font-reading);
 }
 
 .fuse-presets {

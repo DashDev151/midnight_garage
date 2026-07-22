@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import GradeStamp from './GradeStamp.vue'
 
 /**
- * Sprint 56 decision 6: the stamp color-bucket mapping (green/amber/red,
+ * The stamp color-bucket mapping (green/amber/red,
  * plus `R`'s own distinct defect tone) - the one genuinely new piece of
- * logic this sprint adds (everything else is presentation over an existing
+ * logic here (everything else is presentation over an existing
  * `computeAuctionGrade` output).
  */
 describe('GradeStamp', () => {

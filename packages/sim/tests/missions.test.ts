@@ -24,11 +24,11 @@ import { buildCarInstance, testSpecialty, uniformCarParts } from './testFixtures
 
 const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
 
-/** Measured, not guessed (Sprint 75's own precedent): the mint civic's real
- * derived power via a plain, mission-free context - so the tip-trigger
- * thresholds below are picked relative to a number this test actually
- * measures, never an assumed catalog value that could quietly drift as the
- * parts catalog is rebalanced. */
+/** Measured, not guessed: the mint civic's real derived power via a
+ * plain, mission-free context - so the tip-trigger thresholds below are
+ * picked relative to a number this test actually measures, never an
+ * assumed catalog value that could quietly drift as the parts catalog is
+ * rebalanced. */
 const MEASURING_CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const MINT_CIVIC_POWER = computeDerivedStats(
   CIVIC,
@@ -38,8 +38,8 @@ const MINT_CIVIC_POWER = computeDerivedStats(
   MEASURING_CONTEXT.economy,
 ).power
 
-/** Same measured-not-guessed precedent, for the Sprint 79 lap-tip tests: the
- * mint civic's real lap time under the shipped `economy.lapModel`. */
+/** Same measured-not-guessed precedent, for the lap-tip tests: the mint
+ * civic's real lap time under the shipped `economy.lapModel`. */
 const MINT_CIVIC_LAP_SECONDS = lapTimeSecondsFor(
   buildCarInstance({ modelId: CIVIC.id }),
   CIVIC,
@@ -49,9 +49,9 @@ const MINT_CIVIC_LAP_SECONDS = lapTimeSecondsFor(
 /** A minimal, fully-specified test mission - every field a real
  * `storyMissions.json` entry would carry, with the `budgetCap` requirement
  * already mirrored in (the same shape `data.ts`'s load-time mirror produces
- * for real content), so tests never depend on the real placeholder content's
- * own numbers, which Sprint 78 replaces outright. Sprint 85 decision 2: no
- * deadline/lapse fields - story missions are unfailable. */
+ * for real content), so tests never depend on the real placeholder
+ * content's own numbers. No deadline/lapse fields - story missions are
+ * unfailable. */
 function buildMission(overrides: Partial<StoryMission> = {}): StoryMission {
   return {
     id: 'test-mission-a',
@@ -289,10 +289,8 @@ describe('story missions (Sprint 76)', () => {
       expect(roadworthyLine?.pass).toBe(false)
     })
 
-    // Sprint 85 decision 2 (directive 17 case (a)): the old test asserted a
-    // graded "Deliver on time" line that fails once the day passes a record's
-    // dueOnDay. Story missions are unfailable now, so grading never adds a
-    // deadline line at all - the day the car is delivered is immaterial.
+    // Story missions are unfailable, so grading never adds a deadline
+    // line at all - the day the car is delivered is immaterial.
     it('never grades a deadline line, however many days have passed since acceptance', () => {
       const car = buildCarInstance({
         id: 'car-a',
@@ -448,8 +446,8 @@ describe('story missions (Sprint 76)', () => {
     })
 
     /**
-     * Sprint 79 decision 6: `earnsTip` extends to `lapTimeCeiling`
-     * requirements - a lap mission tips when the delivered car clears
+     * `earnsTip` extends to `lapTimeCeiling` requirements - a lap mission
+     * tips when the delivered car clears
      * `maxSeconds * (1 - lapTipTriggerFraction)`, the lap-time twin of the
      * stat-threshold trigger above.
      */

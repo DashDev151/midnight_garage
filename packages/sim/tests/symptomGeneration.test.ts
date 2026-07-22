@@ -19,13 +19,14 @@ const GAME_YEAR = 1995
 const SHITBOX_MODEL = CARS.find((c) => c.tier === 'shitbox')!
 
 /**
- * Sprint 73 decision 2's generation logic - `generateAuctionCarInstance`
- * rolling symptoms after its existing `enforceMaxBillFraction` softening
- * pass. Tested entirely through the public generation function (no need to
- * export the private `applySymptoms`/`rollSymptomCount` helpers): the Law 2
- * drop rule is forced by overriding `partsGeneration.maxBillFraction` to an
- * impossible-to-clear value, and a guaranteed-roll economy override drives
- * the "symptomatic car" tests without depending on a hand-found lucky seed.
+ * `generateAuctionCarInstance` rolls symptoms after its existing
+ * `enforceMaxBillFraction` softening pass. Tested entirely through the
+ * public generation function (no need to export the private
+ * `applySymptoms`/`rollSymptomCount` helpers): the Law 2 drop rule is
+ * forced by overriding `partsGeneration.maxBillFraction` to an
+ * impossible-to-clear value, and a guaranteed-roll economy override
+ * drives the "symptomatic car" tests without depending on a hand-found
+ * lucky seed.
  */
 
 function economyWithGuaranteedSymptom(overrides: Partial<EconomyConfig['diagnosis']> = {}) {

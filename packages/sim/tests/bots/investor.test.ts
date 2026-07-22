@@ -12,11 +12,12 @@ const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
 /**
  * `interior` has two real slots: `dashGauges` (cheapest catalog option
- * Y30,000) and `seats` (cheapest catalog option Y95,000). The fixture below
- * leaves `dashGauges` occupied (mint stock, the Sprint 32 default) and
- * `seats` genuinely empty - the exact "multi-part group, only one open slot"
- * shape TODO.md flagged: a group-level-only part filter would happily pick
- * the cheaper `dashGauges` part even though it's the wrong slot.
+ * Y30,000) and `seats` (cheapest catalog option Y95,000). The fixture
+ * below leaves `dashGauges` occupied (mint stock, the default) and
+ * `seats` genuinely empty - the exact "multi-part group, only one open
+ * slot" shape TODO.md flagged: a group-level-only part filter would
+ * happily pick the cheaper `dashGauges` part even though it's the wrong
+ * slot.
  */
 const car = buildCarInstance({
   id: 'car-investor-01',
@@ -82,9 +83,9 @@ describe('investorStrategy replace-loop fixes (2026-07-12)', () => {
   })
 
   it('installs a PRIOR-tick purchase onto the exact empty slot once it is genuinely in inventory', () => {
-    // Sprint 53: car (honda-city-e-aa) is 'shitbox' tier - the landed part
-    // must be the shitbox-class SKU or the fitment-class gate refuses it,
-    // sending the bot to (correctly) buy a fresh matching one instead.
+    // car (honda-city-e-aa) is 'shitbox' tier - the landed part must be
+    // the shitbox-class SKU or the fitment-class gate refuses it, sending
+    // the bot to (correctly) buy a fresh matching one instead.
     const boughtPartId = 'shitbox-stock-seats'
     const landed = {
       id: 'part-landed-01',

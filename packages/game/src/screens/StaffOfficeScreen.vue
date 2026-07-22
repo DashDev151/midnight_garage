@@ -6,19 +6,16 @@ import { useStaffStore } from '../stores/staffStore'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
-/**
- * Sprint 80 (staff I, the Staff Office), crew model: the shop's two staff
- * panels - the current crew and the ad-reply candidates the weekly refresh
- * posts. Pure renderer over `game.staffOfficeView`; hiring, dismissal, and the
+/** The Staff Office renders the shop's two staff panels - the current crew and
+ * the ad-reply candidates the weekly refresh posts. Hiring, dismissal, and the
  * bench/contract reassignment are instant store actions (reassignment lands on
  * the next day boundary). Diegetic framing (art bible): the board reads as
- * pinned notices, not a menu of stat blocks. The three stats and the trait are
- * shown honestly but only bite in Staff II; the labour and the assignment are
- * live now - see the sprint doc.
+ * pinned notices, not a menu of stat blocks. The labour and the assignment are
+ * live controls.
  */
 const staff = useStaffStore()
-// Sprint 94: the game store carries the labour-point scale so the crew-labour
-// display can show what a member adds to the day's pool (points), not raw slots.
+// The game store carries the labour-point scale so the crew-labour display can
+// show what a member adds to the day's pool (points), not raw slots.
 const game = useGameStore()
 
 const view = computed(() => staff.staffOfficeView)
@@ -101,9 +98,7 @@ function toggleAssignment(member: StaffMemberCardView): void {
             Engine {{ member.stats.engine }} &middot; Chassis {{ member.stats.chassis }} &middot;
             Body {{ member.stats.body }}
           </p>
-          <!-- Sprint 94 DRAFT copy (crew line - benched members RAISE the pool,
-               flagged for the orchestrator's sweep): show the labour they add to
-               the day (laborSlotsPerDay x pointsPerLabour), not the raw slot count. -->
+          <!-- Shows the labour they add to the day (laborSlotsPerDay x pointsPerLabour), not the raw slot count. -->
           <p class="slot-note" data-test="staff-labour">
             +{{ member.laborSlotsPerDay * game.pointsPerLabour }} labour/day
           </p>
@@ -184,7 +179,7 @@ function toggleAssignment(member: StaffMemberCardView): void {
             Engine {{ ad.stats.engine }} &middot; Chassis {{ ad.stats.chassis }} &middot; Body
             {{ ad.stats.body }}
           </p>
-          <!-- Sprint 94 DRAFT copy (crew line, flagged): labour added to the day. -->
+          <!-- Labour added to the day. -->
           <p class="slot-note" data-test="ad-labour">
             +{{ ad.laborSlotsPerDay * game.pointsPerLabour }} labour/day
           </p>

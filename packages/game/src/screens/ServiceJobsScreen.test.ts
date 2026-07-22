@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import ServiceJobsScreen from './ServiceJobsScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
-// wrapper and unmount it after each test, so a component left mounted from a
-// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+// Track every mounted wrapper and unmount it after each test, so a component
+// left mounted from a prior test cannot leak its store's pinia into the next
+// (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
 function mountScreen() {
@@ -16,11 +16,10 @@ function mountScreen() {
   return wrapper
 }
 
-/** Sprint 95 (the radial-offer gate): a fresh career's board is Yuki-only
- * while the tutorial runs, so every test exercising the radial board skips
- * the walkthrough first - the gate lifts at the next generation point, hence
- * the bounded End Day loop. Yuki's mission itself survives a skip, so the
- * mission tests below are unaffected. */
+/** A fresh career's board is Yuki-only while the tutorial runs, so every test
+ * exercising the radial board skips the walkthrough first - the gate lifts at
+ * the next generation point, hence the bounded End Day loop. Yuki's mission
+ * itself survives a skip, so the mission tests below are unaffected. */
 function warpToOffers(game: ReturnType<typeof useGameStore>) {
   game.skipTutorial()
   for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
@@ -81,12 +80,11 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * Sprint 95 (directive 17 case (a)): this used to pin day-1 offers (Sprint
-   * 10's "no empty first day"). A fresh tutorial career now deliberately
+   * This used to pin day-1 offers. A fresh tutorial career now deliberately
    * opens Yuki-only, so the correct behaviour is offers rendering once the
    * gate lifts - the offers themselves are obtained legitimately post-skip.
    */
-  it('shows the job board with offers on it once the tutorial gate lifts (Sprint 95)', () => {
+  it('shows the job board with offers on it once the tutorial gate lifts', () => {
     const game = useGameStore()
     game.newGame(1)
     warpToOffers(game)
@@ -96,11 +94,11 @@ describe('ServiceJobsScreen', () => {
     expect(wrapper.findAll('.offer').length).toBe(game.serviceJobOffers.length)
   })
 
-  it('accepting a job brings the car into the shop instantly (Sprint 11)', async () => {
+  it('accepting a job brings the car into the shop instantly', async () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 36: nothing gates acceptance at tier 1 - every shipped template
-    // defaults to minToolTier 1.
+    // Nothing gates acceptance at tier 1 - every shipped template defaults to
+    // minToolTier 1.
     warpToOffers(game)
     const offer = game.serviceJobOffers[0]
     if (!offer) throw new Error('expected an offer on the board')
@@ -111,11 +109,10 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * Sprint 67 decision 7 (playtest item 12): an in-transit job STILL shows
-   * what the customer asked for. The list used to be hidden behind
-   * `v-if="!job.inTransit"` here and skipped entirely on the car page, so the
-   * one thing a player needs in order to go and buy parts before the car lands
-   * was unreadable on both screens at once.
+   * An in-transit job STILL shows what the customer asked for. The list used to
+   * be hidden behind `v-if="!job.inTransit"` here and skipped entirely on the
+   * car page, so the one thing a player needs in order to go and buy parts
+   * before the car lands was unreadable on both screens at once.
    */
   it('shows an in-transit job\'s task list, not just "car arriving tomorrow"', () => {
     const game = useGameStore()
@@ -137,11 +134,11 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * Sprint 40 item 2: the board must never read "work done - hand back" (or
+   * The board must never read "work done - hand back" (or
    * even "work outstanding") while the customer's car is still in transit -
    * only "car arriving tomorrow." Board gating keys off `inTransit`, not
-   * `workDone` alone (the pre-fix bug: a rolled car could vacuously satisfy
-   * a task before it ever arrived).
+   * `workDone` alone: a rolled car could vacuously satisfy
+   * a task before it ever arrives.
    */
   it('shows "car arriving tomorrow" for an in-transit job; the normal work-state line only appears once it arrives', async () => {
     const game = useGameStore()
@@ -168,7 +165,7 @@ describe('ServiceJobsScreen', () => {
     expect(hasWorkStateLine).toBe(true)
   })
 
-  it('an offer one tool tier short disables Accept, with the upgrade hint as its tooltip (Sprint 36)', () => {
+  it('an offer one tool tier short disables Accept, with the upgrade hint as its tooltip', () => {
     const game = useGameStore()
     game.newGame(1)
     warpToOffers(game)
@@ -191,9 +188,9 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * Sprint 57 decision 1: completion moves to this screen - one place to
-   * accept, one and the same place to complete. Clicking the button here
-   * (not the car page, which no longer offers it) resolves the job.
+   * Completion moves to this screen - one place to accept, one and the same
+   * place to complete. Clicking the button here (not the car page, which no
+   * longer offers it) resolves the job.
    */
   it('completes (or gives up) a job right from this screen, once the car has arrived', async () => {
     const game = useGameStore()
@@ -213,7 +210,7 @@ describe('ServiceJobsScreen', () => {
     expect(game.lastJobResult?.outcome).toBe('failed')
   })
 
-  it('the rep figure links to the Standing screen (Sprint 62 item 17)', () => {
+  it('the rep figure links to the Standing screen', () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
@@ -224,11 +221,11 @@ describe('ServiceJobsScreen', () => {
     expect(link!.props('to')).toEqual({ name: 'standing' })
   })
 
-  it('shows a fitment-class chip on each offer card (Sprint 61 item 15)', () => {
+  it('shows a fitment-class chip on each offer card', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Sprint 95 (directive 17 case (a)): day-1 offers are gated on a tutorial
-    // career now, so the offer is obtained post-skip instead.
+    // Day-1 offers are gated on a tutorial career now, so the offer is obtained
+    // post-skip instead.
     warpToOffers(game)
     const offer = game.serviceJobOfferViews[0]
     if (!offer) throw new Error('expected an offer on the board')
@@ -242,12 +239,11 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * Sprint 89 (Yuki teaches you the game): a fresh career now pins Yuki's
-   * `four-wheels` mission on day 1 - `newGame` runs `installTutorial`, which
-   * offers the gate-0 mission through the ordinary story-mission machine so the
-   * guided tutorial's very first beat has a card to point at. (A raw
-   * `createInitialGameState`, used by bots/probes, still seeds no mission; only
-   * the player-career path installs the tutorial.)
+   * A fresh career now pins Yuki's `four-wheels` mission on day 1 - `newGame`
+   * runs `installTutorial`, which offers the gate-0 mission through the
+   * ordinary story-mission machine so the guided tutorial's very first beat has
+   * a card to point at. (A raw `createInitialGameState`, used by bots/probes,
+   * still seeds no mission; only the player-career path installs the tutorial.)
    */
   it('pins Yuki’s mission on day 1 for a fresh tutorial career', () => {
     const game = useGameStore()
@@ -288,7 +284,7 @@ describe('ServiceJobsScreen', () => {
     expect(wrapperAfter.text()).toContain(active.title)
   })
 
-  describe('the deliver flow (Sprint 77 decision 5)', () => {
+  describe('the deliver flow', () => {
     it('shows the requirement checklist as labels only, with no pass/fail marks, before any car is graded', () => {
       const game = useGameStore()
       game.newGame(1)
@@ -422,12 +418,11 @@ describe('ServiceJobsScreen', () => {
     })
 
     /**
-     * Sprint 77 decision 4: neither Sprint 76 placeholder mission carries a
-     * `lapTimeCeiling` requirement (real lap-time missions are Sprint 78
-     * content), so this proves the board's `v-if` gate correctly hides it
-     * rather than rendering an empty/broken table. Full reference-board
-     * rendering (correct straddling rows, anchor grouping, and the
-     * candidate's own time never appearing) is proven at the sim level in
+     * Neither placeholder mission carries a `lapTimeCeiling` requirement, so
+     * this proves the board's `v-if` gate correctly hides it rather than
+     * rendering an empty/broken table. Full reference-board rendering (correct
+     * straddling rows, anchor grouping, and the candidate's own time never
+     * appearing) is proven at the sim level in
      * `packages/sim/tests/lapModel.test.ts`; true end-to-end coverage
      * arrives once a real lap-time mission ships.
      */
@@ -445,7 +440,7 @@ describe('ServiceJobsScreen', () => {
     })
   })
 
-  describe('the real campaign (Sprint 78)', () => {
+  describe('the real campaign', () => {
     it("delivering four-wheels shows Yuki's own deliveredCopy in the completion receipt", async () => {
       const game = useGameStore()
       game.newGame(1)
@@ -465,12 +460,11 @@ describe('ServiceJobsScreen', () => {
     })
 
     /**
-     * Sprint 85 decision 2 (playtest 18, directive 17 case (a)): story missions
-     * are unfailable now, so the old "lapses then reoffers after reofferDays"
-     * flow is gone. An accepted mission stays active however many days pass,
-     * with no reputation penalty. Skips straight to `the-column-clock` (mission
-     * 5, gate 200) by marking the four earlier missions delivered directly,
-     * the same setup the removed lapse test used.
+     * Story missions are unfailable now, so the old "lapses then reoffers after
+     * reofferDays" flow is gone. An accepted mission stays active however many
+     * days pass, with no reputation penalty. Skips straight to
+     * `the-column-clock` (mission 5, gate 200) by marking the four earlier
+     * missions delivered directly, the same setup the removed lapse test used.
      */
     it('an accepted mission (the-column-clock) never lapses, however many days pass', () => {
       const game = useGameStore()

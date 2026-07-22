@@ -3,15 +3,15 @@ import diagnosticTests from '../data/diagnosticTests.json'
 import { CarPartIdSchema, DiagnosticTestsSchema, SYMPTOMS, SymptomContentSchema } from '../src'
 
 /**
- * Sprint 73 (diagnosis I): the symptom/cause/test content guards task 1
- * calls for - schema parse, id uniqueness, weights summing to 100, every
- * cause addressing a real `CarPartId`, every test partition covering its
- * symptom's full cause list exactly once, and at least 2 causes per symptom
- * (the schema's own `.min(2)` already enforces the last one structurally,
- * re-asserted here as a content-level sanity check). Runs against `SYMPTOMS`,
- * the already-resolved (failure-mode-joined) export - `symptoms.json` itself
- * only carries registry references now; the raw-content shape and the
- * registry join are covered separately in `failureMode.test.ts`.
+ * The symptom/cause/test content guards: schema parse, id uniqueness,
+ * weights summing to 100, every cause addressing a real `CarPartId`, every
+ * test partition covering its symptom's full cause list exactly once, and
+ * at least 2 causes per symptom (the schema's own `.min(2)` already enforces
+ * the last one structurally, re-asserted here as a content-level sanity
+ * check). Runs against `SYMPTOMS`, the already-resolved
+ * (failure-mode-joined) export - `symptoms.json` itself only carries
+ * registry references now; the raw-content shape and the registry join are
+ * covered separately in `failureMode.test.ts`.
  */
 
 const PARSED_SYMPTOMS = SYMPTOMS
@@ -102,14 +102,13 @@ describe('symptom/cause/test content (Sprint 73)', () => {
 })
 
 /**
- * Sprint 106 (routed diagnosis): `unlockedBy` chain integrity, checked by
- * `SymptomContentSchema`'s own `superRefine`. Hand-built fixtures rather than real
- * content, since the point is the shape of the chain, not any particular
- * symptom's causes - `buildTestSymptom` below only needs enough of a valid
- * symptom (2 causes, well-formed partitions) for the chain rules themselves
- * to be the only thing under test. `causes` uses the reference shape
- * (`failureModeId` + `weight`) `SymptomContentSchema` validates raw content
- * against.
+ * `unlockedBy` chain integrity, checked by `SymptomContentSchema`'s own
+ * `superRefine`. Hand-built fixtures rather than real content, since the
+ * point is the shape of the chain, not any particular symptom's causes -
+ * `buildTestSymptom` below only needs enough of a valid symptom (2 causes,
+ * well-formed partitions) for the chain rules themselves to be the only
+ * thing under test. `causes` uses the reference shape (`failureModeId` +
+ * `weight`) `SymptomContentSchema` validates raw content against.
  */
 function buildTestSymptom(
   tests: Array<{ testId: string; unlockedBy?: { testId: string; group?: 0 | 1 } }>,

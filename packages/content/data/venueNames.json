@@ -1,0 +1,50 @@
+{
+  "local-yard": [
+    "Harumidai Car Land",
+    "Nishikage Auto Fair, No. 2 Yard",
+    "Midorizaka Auto Plaza, Rear Lot",
+    "Sunadabashi Sunday Auto Market",
+    "Ozuhama Motor Pool",
+    "Shirahagi Auto Fair, Annex Yard",
+    "Tobishima Auto Square No. 3",
+    "Kanamori U-Car Plaza, East Lot",
+    "Rokugo Riverside Car Yard",
+    "Kagemine Auto Ichiba"
+  ],
+  "regional": [
+    "K.K. Hamakaze Auto Exchange",
+    "Tsurumi Auto Auction Hall",
+    "K.K. Ohgishima Motor Market",
+    "Keihin Car Exchange, Main Yard",
+    "Shonan Auto Fair, Head Office Yard",
+    "K.K. Wakamatsu & Sons Auto Auction",
+    "Tsubakidai Auction Hall",
+    "Minamigawa Auto Auction, Yard B",
+    "K.K. Fujimidai Car Trading",
+    "Isogodai Auto Exchange"
+  ],
+  "premium": [
+    "NCX Yokohama",
+    "UCS Bayside",
+    "KAX Keihin, No. 1 Hall",
+    "AAN Tokyo Bay",
+    "Pacific Auto Exchange, Daikoku Hall",
+    "Aoba Auto Auction International",
+    "JXA Haneda",
+    "Makuhari Motor Auction Pavilion",
+    "NCX Shonan",
+    "UCS Rinkai Hall"
+  ],
+  "collector-network": [
+    "The Meisha-kai List",
+    "Katsuragi Private Treaty Sales",
+    "Hozonkai Register, Setagaya",
+    "Kurogane & Partners, By Introduction",
+    "Shirakawa Collection Exchange",
+    "The Garage Azabu Ledger",
+    "Tsukishima Private Viewing Room",
+    "The Hayama Concours Circle",
+    "Onodera Estate Dispersals",
+    "The Daikanyama Consignment Book"
+  ]
+}

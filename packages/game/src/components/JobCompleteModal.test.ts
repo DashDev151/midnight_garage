@@ -5,7 +5,7 @@ import { useGameStore } from '../stores/gameStore'
 import JobCompleteModal from './JobCompleteModal.vue'
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * Every wrapper is tracked
  * and unmounted after its test, so a component left mounted from a prior test
  * cannot leak its store's pinia into the next (see App/CarDetailScreen).
  */
@@ -111,7 +111,7 @@ describe('JobCompleteModal', () => {
     expect(wrapper.text()).not.toContain('Parts cost')
   })
 
-  /** Sprint 72 decision 5: customer-origin parts leave with the car at
+  /** Customer-origin parts leave with the car at
    * close-out - the receipt line names them, and stays absent when nothing
    * customer-owned was ever pulled (the three fixtures above). */
   it('shows a "Returned with the car" line naming every customer-origin part released at close-out', () => {

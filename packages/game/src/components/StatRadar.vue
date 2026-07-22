@@ -13,10 +13,9 @@ import {
 const props = withDefaults(defineProps<{ stats: StatBlock; size?: number }>(), { size: 200 })
 
 /**
- * Sprint 67 decision 5 (playtest item 8): a readable radar. It had one grid
- * pentagon and nothing else - no rings to read a value against, no spokes to
- * follow, and every label centred on its vertex so the long ones rode into the
- * plot. Pure presentation over the same `stats` prop; no stat maths changed.
+ * A readable radar: concentric rings to read a value against, spokes to
+ * follow, and labels anchored by side so long ones don't ride into the plot.
+ * Pure presentation over the same `stats` prop; no stat maths changed.
  */
 const rings = computed(() =>
   RADAR_RING_MAGNITUDES.map((magnitude) => ({

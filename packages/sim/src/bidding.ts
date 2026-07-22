@@ -17,12 +17,10 @@ import { bellNormal, createRng, hashStringToSeed } from './rng'
 export type { TurnoutBand }
 
 /**
- * Buyer archetypes with a genuinely stated interest in a model's tier - the
- * gate (Sprint 10). No entry for a tier means that archetype never bids on
- * it; there is no default fallback (that fallback was the original "every
- * buyer wants every car" bug). Exported (Sprint 11) so `selling.ts` can
- * apply the identical gate to walk-in/listing buyers - the same rule was
- * missing on the sell side, not a different rule.
+ * Buyer archetypes with a genuinely stated interest in a model's tier. No
+ * entry for a tier means that archetype never bids on it; there is no
+ * default fallback. Also used by `selling.ts` to apply the identical gate
+ * to walk-in/listing buyers - the same rule, not a different one.
  */
 export function interestedBuyers(
   model: CarModel,
@@ -35,36 +33,32 @@ export function interestedBuyers(
 }
 
 /**
- * The single value anchor (Sprint 20, auction rework II; body swapped
- * Sprint 21). Every other money number in this file (`privateValuationYen`,
- * `computeBuyoutPriceYen`, `reserveYen`) calls this ONE function, never
- * `marketValueYen` directly - that isolation is what let Sprint 21 re-anchor
- * every auction-money number at once by swapping one function's body.
+ * The single value anchor. Every other money number in this file
+ * (`privateValuationYen`, `computeBuyoutPriceYen`, `reserveYen`) calls this
+ * ONE function, never `marketValueYen` directly - that isolation lets the
+ * whole file re-anchor every auction-money number at once by swapping one
+ * function's body.
  *
- * Sprint 21 decision 7: dealers buy at wholesale off the taste-free market
- * value (`marketValueYen`, the rolled lot car's condition/parts/heat, no
- * buyer stat-fit) - taste belongs to end customers, not the trade. The
- * `interestedBuyers` tier gate stays (reuse table: "still gates ... auction
- * participation") as a precondition, not a value input: it still answers
- * "does ANY dealer archetype care about this tier at all", returning 0 when
- * nobody does (the demand ceiling then sits below any reserve, so the lot
- * simply never opens on its own) - but no longer selects *which* buyer's
- * valuation to use, since `marketValueYen` doesn't take a buyer.
+ * Dealers buy at wholesale off the taste-free market value
+ * (`marketValueYen`, the rolled lot car's condition/parts/heat, no buyer
+ * stat-fit) - taste belongs to end customers, not the trade. The
+ * `interestedBuyers` tier gate stays as a precondition, not a value input:
+ * it still answers "does ANY dealer archetype care about this tier at
+ * all", returning 0 when nobody does (the demand ceiling then sits below
+ * any reserve, so the lot simply never opens on its own) - but no longer
+ * selects *which* buyer's valuation to use, since `marketValueYen` doesn't
+ * take a buyer.
  *
- * Sprint 26 decision 4: drops the deleted `(1 - modelRiskDiscount)` term -
- * the hidden-issue system it discounted for is paused and removed; the
- * anchor is `marketValueYen` alone now, unadjusted.
- *
- * Sprint 73 decision 3 (diagnosis I): a symptomatic car (`car.symptoms.length
- * > 0`) prices through `sheetGuideValueYen` (`diagnosis.ts`) instead - the
- * fear-priced room read off the car's APPARENT condition, never the true
- * one. An honest car is completely unaffected; `sheetGuideValueYen` itself
- * degenerates to `marketValueYen` for one anyway, so this branch exists for
- * clarity (and to skip the extra per-cause valuation work) rather than
- * necessity. Every downstream reader (`reserveYen`, `computeBuyoutPriceYen`,
- * `privateValuationYen`) calls this ONE function, so
- * the whole room reprices through this single seam - none of them, and no
- * rival-valuation code anywhere, ever reads `car.symptoms[].trueCauseId` or
+ * A symptomatic car (`car.symptoms.length > 0`) prices through
+ * `sheetGuideValueYen` (`diagnosis.ts`) instead - the fear-priced room read
+ * off the car's APPARENT condition, never the true one. An honest car is
+ * completely unaffected; `sheetGuideValueYen` itself degenerates to
+ * `marketValueYen` for one anyway, so this branch exists for clarity (and
+ * to skip the extra per-cause valuation work) rather than necessity. Every
+ * downstream reader (`reserveYen`, `computeBuyoutPriceYen`,
+ * `privateValuationYen`) calls this ONE function, so the whole room
+ * reprices through this single seam - none of them, and no rival-valuation
+ * code anywhere, ever reads `car.symptoms[].trueCauseId` or
  * `.remainingCauseIds` directly.
  */
 export function carGuideValueYen(
@@ -94,23 +88,19 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
 }
 
 /**
- * Seller's floor under a deal (GDD 6.5): a fraction of the lot's GUIDE VALUE.
- * Bidding opens here; a lot no rival cohort ever clears this on simply never
- * opens on its own (nobody came for it) - it can still be bought out, or bid
- * on directly by the player.
+ * Seller's floor under a deal (GDD 6.5): a fraction of the lot's GUIDE
+ * VALUE. Bidding opens here; a lot no rival cohort ever clears this on
+ * simply never opens on its own (nobody came for it) - it can still be
+ * bought out, or bid on directly by the player.
  *
- * Sprint 27 (Sprint 30 decision 2 pulled forward) rebased this off
- * `anchorValueYen` (= `marketValueYen` = the new restoration-bill
- * `instanceValue`), replacing the old `bookValueYen` basis. Once car value
- * dropped to reflect a worn car's restoration bill, a static book-value
- * reserve sat *above* most worn cars' actual guide value, so no lot could
- * clear and the whole auction market seized (balance harness: acquisitions
- * -95%, Flipper down to the do-nothing baseline). Coupling the reserve to the
- * same value everything else prices from (the auction anchor, buyout, walk-in
- * offers, bot bid caps) fixes that by construction: the reserve now moves with
- * this specific worn car, not with a static per-model constant. `state`/
- * `context` are threaded through purely to reach `anchorValueYen`, exactly
- * like `computeBuyoutPriceYen`/`privateValuationYen` already do.
+ * Rebased off `anchorValueYen` (= `marketValueYen` = the restoration-bill
+ * `instanceValue`), not a static `bookValueYen` basis - a static book-value
+ * reserve would sit *above* most worn cars' actual guide value once car
+ * value reflects a worn car's restoration bill, seizing the whole auction
+ * market. Coupling the reserve to the same value everything else prices
+ * from (the auction anchor, buyout, walk-in offers, bot bid caps) fixes
+ * that by construction: the reserve moves with this specific worn car, not
+ * with a static per-model constant.
  */
 export function reserveYen(lot: AuctionLot, state: GameState, context: SimContext): number {
   return Math.round(
@@ -119,9 +109,9 @@ export function reserveYen(lot: AuctionLot, state: GameState, context: SimContex
 }
 
 /**
- * A private rival valuation of this lot (Sprint 27 decision 4): bell-shaped
- * around `anchorValueYen * multiplier`, seeded so it's a fixed, reproducible
- * read for a given lot, not a per-day reroll. A bot's own walk-away decision
+ * A private rival valuation of this lot: bell-shaped around
+ * `anchorValueYen * multiplier`, seeded so it's a fixed, reproducible read
+ * for a given lot, not a per-day reroll. A bot's own walk-away decision
  * (`bots/buyoutHelpers.ts`'s `walkAwayTargetYen`) is this file's one
  * remaining caller.
  */
@@ -138,10 +128,10 @@ export function privateValuationYen(
 }
 
 /**
- * The real, chargeable instant-buyout price (Sprint 20): `anchorValueYen *
- * AUCTION_BUYOUT_PREMIUM` - the same exported anchor every private valuation
- * centers on (maintainer decision 2: buyout is available on every lot,
- * priced rather than forbidden).
+ * The real, chargeable instant-buyout price: `anchorValueYen *
+ * AUCTION_BUYOUT_PREMIUM` - the same exported anchor every private
+ * valuation centers on. Buyout is available on every lot, priced rather
+ * than forbidden.
  */
 export function computeBuyoutPriceYen(
   lot: AuctionLot,
@@ -196,11 +186,11 @@ function settleLotPurchase(
 }
 
 /**
- * The instant buyout resolver (Sprint 11; re-priced Sprint 20): a guaranteed
- * purchase at `computeBuyoutPriceYen`, no rival contest - a full garage just
- * means the purchase doesn't happen right now (no money spent), the lot
- * stays on the board for a retry once space frees up. Shared by the
- * player's instant click and advanceDay's bot batch loop.
+ * The instant buyout resolver: a guaranteed purchase at
+ * `computeBuyoutPriceYen`, no rival contest - a full garage just means the
+ * purchase doesn't happen right now (no money spent), the lot stays on the
+ * board for a retry once space frees up. Shared by the player's instant
+ * click and advanceDay's bot batch loop.
  */
 export function resolveBuyoutInstant(
   state: GameState,

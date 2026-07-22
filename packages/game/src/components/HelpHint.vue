@@ -2,15 +2,9 @@
 import { ref } from 'vue'
 
 /**
- * Sprint 33 decision 1 (UI declutter): the shared help affordance that
- * replaces every permanent `<p class="how">...</p>` explainer paragraph
- * that used to sit unconditionally on a main gameplay screen (the
- * playtest-flagged "drag a car onto another slot..." move hint, the
- * "Owning a component's equipment is what unlocks Repair..." equipment
- * explainer, and half a dozen others just like them). The explainer text
- * itself is unchanged - only WHEN it renders changes: collapsed by default,
- * shown on click, never permanent chrome. One small reusable component
- * instead of nine ad hoc `v-if` toggles (directive 3, DRY).
+ * The shared help affordance: explainer text collapsed by default, shown on
+ * click, never permanent chrome. One small reusable component instead of ad
+ * hoc `v-if` toggles per screen (directive 3, DRY).
  *
  * Keyboard-and-pointer by construction: a real `<button>` toggles `open`,
  * so Tab/Enter/Space work with no extra wiring.
@@ -82,6 +76,7 @@ const open = ref(false)
   padding: var(--mg-space-2) var(--mg-space-3);
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+  font-family: var(--mg-font-reading);
   font-weight: normal;
   text-transform: none;
   letter-spacing: normal;

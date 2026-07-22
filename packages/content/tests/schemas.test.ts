@@ -10,6 +10,7 @@ import partsTaxonomy from '../data/parts-taxonomy.json'
 import provenance from '../data/provenance.json'
 import toolLines from '../data/toolLines.json'
 import traits from '../data/traits.json'
+import venueNames from '../data/venueNames.json'
 import {
   AgeBandSchema,
   BuyersSchema,
@@ -25,6 +26,7 @@ import {
   ToolLinesSchema,
   TraitDefinitionsSchema,
   UpkeepTierSchema,
+  VenueNamesSchema,
 } from '../src'
 
 describe('seed content validates against schemas', () => {
@@ -34,15 +36,15 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
-  /** Sprint 53: the raw catalog is identity-only, no `priceYen` - that's
-   * resolved at content-load time (data.ts) from `partPricing.json`. */
+  /** The raw catalog is identity-only, no `priceYen` - that's resolved at
+   * content-load time (data.ts) from `partPricing.json`. */
   it('parts.json', () => {
     const result = PartCatalogEntriesSchema.safeParse(parts)
     if (!result.success) throw new Error(result.error.message)
     expect(result.data.length).toBeGreaterThan(0)
   })
 
-  /** Sprint 53: the centralised pricing sheet every SKU's price resolves from. */
+  /** The centralised pricing sheet every SKU's price resolves from. */
   it('partPricing.json', () => {
     const result = PartPricingSheetSchema.safeParse(partPricing)
     if (!result.success) throw new Error(result.error.message)
@@ -56,10 +58,10 @@ describe('seed content validates against schemas', () => {
   })
 
   /**
-   * Sprint 26: the 29-part taxonomy replaces hidden-issues.json (archived,
-   * not deleted - the paused feature's data, not this sprint's schema).
-   * Sprint 53: the raw content has no price field - `stockReplacementPriceYenByClass`
-   * is derived at content-load time (data.ts) from the resolved parts catalog.
+   * The 29-part taxonomy replaces hidden-issues.json (archived, not deleted
+   * - the paused feature's data). The raw content has no price field -
+   * `stockReplacementPriceYenByClass` is derived at content-load time
+   * (data.ts) from the resolved parts catalog.
    */
   it('parts-taxonomy.json', () => {
     const result = CarPartTaxonomyContentSchema.safeParse(partsTaxonomy)
@@ -73,7 +75,7 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
-  /** Sprint 36: the six always-owned tool lines replace equipment.json. */
+  /** The six always-owned tool lines replace equipment.json. */
   it('toolLines.json', () => {
     const result = ToolLinesSchema.safeParse(toolLines)
     if (!result.success) throw new Error(result.error.message)
@@ -92,10 +94,10 @@ describe('seed content validates against schemas', () => {
   })
 
   /**
-   * Sprint 25 task 6: the raw camelCase ComponentId must never reach player
-   * copy - this map is the fix, so it must cover every real component and
-   * never contain a camelCase token itself (a display name that's just the
-   * id back again would defeat the whole point).
+   * The raw camelCase ComponentId must never reach player copy - this map
+   * is the fix, so it must cover every real component and never contain a
+   * camelCase token itself (a display name that's just the id back again
+   * would defeat the whole point).
    */
   it('componentDisplayNames.json', () => {
     const result = ComponentDisplayNamesSchema.safeParse(componentDisplayNames)
@@ -107,16 +109,15 @@ describe('seed content validates against schemas', () => {
         /[a-z][A-Z]/,
       )
     }
-    // Sprint 58: the schema's own key set is exactly the 6 real groups - no
-    // dead pre-Sprint-26 entries (`brakes`, `forcedInduction`) survive.
+    // The schema's own key set is exactly the 6 real groups - no dead
+    // legacy entries (`brakes`, `forcedInduction`) survive.
     expect(Object.keys(result.data).sort()).toEqual([...ComponentIdSchema.options].sort())
   })
 
   /**
-   * Sprint 70: `PROVENANCE_POOL` relocated here from `packages/sim/src/
-   * auctions.ts` (the content law now covers it) - every `(ageBand,
-   * upkeepTier)` cell must carry at least 2 lines for real variety, checked
-   * explicitly per cell rather than trusting the schema's own `.min(2)` alone.
+   * Every `(ageBand, upkeepTier)` cell must carry at least 2 lines for real
+   * variety, checked explicitly per cell rather than trusting the schema's
+   * own `.min(2)` alone.
    */
   it('provenance.json', () => {
     const result = ProvenancePoolSchema.safeParse(provenance)
@@ -133,11 +134,25 @@ describe('seed content validates against schemas', () => {
     }
   })
 
+  /**
+   * Each auction tier's venue-name pool (`docs/design/selling-rework.md`
+   * section 4) - authored copy, ten names per tier, checked explicitly per
+   * tier rather than trusting the schema's own `.min(1)` alone.
+   */
+  it('venueNames.json', () => {
+    const result = VenueNamesSchema.safeParse(venueNames)
+    if (!result.success) throw new Error(result.error.message)
+    for (const tier of ['local-yard', 'regional', 'premium', 'collector-network'] as const) {
+      expect(result.data[tier], `${tier} has no venue-name pool`).toBeTruthy()
+      expect(result.data[tier].length, `${tier} does not have exactly 10 names`).toBe(10)
+    }
+  })
+
   it('facilities.json', () => {
     const result = FacilitiesSchema.safeParse(facilities)
     if (!result.success) throw new Error(result.error.message)
-    // Sprint 16: minReputationTier must line up one-for-one with bayPricesYen
-    // for every bay kind - the schema's own refine already enforces this at
+    // minReputationTier must line up one-for-one with bayPricesYen for
+    // every bay kind - the schema's own refine already enforces this at
     // parse time; this just names the invariant for anyone reading the test.
     expect(result.data.service.minReputationTier.length).toBe(
       result.data.service.bayPricesYen.length,
@@ -150,77 +165,58 @@ describe('seed content validates against schemas', () => {
   it('economy.json', () => {
     const result = EconomyConfigSchema.safeParse(economy)
     if (!result.success) throw new Error(result.error.message)
-    // Sprint 20's own bidding rework (stage B) deliberately changes these
-    // two values from stage A's pure-relocation pins: rent zeroed until the
-    // reworked auction economy worked end-to-end, buyout premium re-pointed
-    // at the value anchor and raised from 1.1x book to 1.25x anchor. Sprint
-    // 23 decision 4 restores rent as a tuned knob (0.3x measured median
-    // weekly gross margin, rounded to the nearest Y10,000 - see economy.ts's
-    // own doc comment for the full derivation).
+    // Rent is a tuned knob (0.3x measured median weekly gross margin,
+    // rounded to the nearest Y10,000 - see economy.ts's own doc comment for
+    // the full derivation).
     expect(result.data.WEEKLY_RENT_YEN).toBe(20_000)
-    // Sprint 45: the daily fine for leaving a car in the grace/"double
-    // parking" overflow slot - first-pass number, explicit tuning bait.
+    // The daily fine for leaving a car in the grace/"double parking"
+    // overflow slot.
     expect(result.data.DOUBLE_PARKING_FINE_YEN).toBe(8_000)
     expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
-    // Sprint 59 (playtest item 12): derived from real roster medians, not
-    // asserted - see STARTING_CASH_YEN's own schema doc comment.
+    // Derived from real roster medians, not asserted - see
+    // STARTING_CASH_YEN's own schema doc comment.
     expect(result.data.STARTING_CASH_YEN).toBe(300_000)
-    // Sprint 59 (playtest item 19): the reserve is a pure seller floor, not
-    // the price-setter - see AUCTION_RESERVE_PRICE_FRACTION's own doc comment.
+    // The reserve is a pure seller floor, not the price-setter - see
+    // AUCTION_RESERVE_PRICE_FRACTION's own doc comment.
     expect(result.data.AUCTION_RESERVE_PRICE_FRACTION).toBe(0.6)
-    // New Sprint 20 auction-rework knobs, born in JSON from day one.
-    // Auction-close + rival-contest knobs, retuned by the 2026-07-12
-    // auction fix (anti-snipe + longer visible window + more contest), then
-    // retuned again by Sprint 55 decision 3 (economy-bible.md law 4's retune
-    // pass): the wholesale center moved back down once Sprint 54's gentler
-    // value law raised anchorValueYen enough that the same contestation
-    // rules were overshooting into a frenzy tail instead of a steal one.
-    // Retuned again by Sprint 59 (playtest item 19, the ~156k unimproved
-    // instant-flip bug): rivals now price near guide value instead of
-    // wholesale, so a contested close converges on fair value.
+    // Auction-close + rival-contest knobs. Rivals now price near guide
+    // value instead of wholesale, so a contested close converges on fair
+    // value.
     expect(result.data.AUCTION_WHOLESALE_FRACTION).toBe(0.97)
-    // Sprint 30 (living auctions): daily arrivals knobs.
-    // Sprint 66 (playtest item 15): the board turns over roughly twice as
-    // fast - rates above 1 mean a guaranteed lot plus a fractional chance.
+    // Daily arrivals knobs: rates above 1 mean a guaranteed lot plus a
+    // fractional chance.
     expect(result.data.AUCTION_DAILY_SPAWN_RATE['local-yard']).toBe(1.3)
-    // Sprint 66 (item 6a): no current-model-year car at a backyard auction.
+    // No current-model-year car at a backyard auction.
     expect(result.data.AUCTION_MIN_AGE_YEARS).toBe(3)
-    // Sprint 110 (the live room): the overnight bidder-interest process is
-    // gone; the lot-generation turnout roll weights live directly under
-    // `auction` now.
+    // The lot-generation turnout roll weights live directly under `auction`.
     expect(result.data.auction.turnoutBandWeights).toEqual([0.2, 0.45, 0.35])
-    // Sprint 21 (value model): new valuation/marketPressure/statFormulas
-    // blocks, born in JSON from day one.
     expect(result.data.valuation.tasteSpread).toBe(0.12)
-    // Sprint 30 decision 1: mileage curve inside clean value (the matching
-    // age curve was dropped by a post-Sprint-30 maintainer decision - car
-    // age no longer factors into value at all).
+    // Mileage curve inside clean value - car age no longer factors into
+    // value at all, only mileage does.
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
-    // Sprint 54 decision 1 (economy-bible.md law 1): replaces Sprint 47's
-    // two-slope premium with ONE slope, always above 1, plus the same small
-    // scrap-value backstop floor (bands.scrapValueFraction, unchanged).
-    // Sprint 66 (economy-bible.md law 6, the wage law): raised 1.2 -> 1.5 so
-    // repair work pays a real wage. This number IS the entire return on a
-    // repair (cost and bill reduction are the same product), and it is
-    // jointly constrained with maxBillFraction below - their product must
-    // stay under 1 or the scrap floor binds. Asserted together, deliberately.
+    // economy-bible.md law 1: ONE slope, always above 1, plus the same
+    // small scrap-value backstop floor (bands.scrapValueFraction,
+    // unchanged). economy-bible.md law 6 (the wage law): this number IS the
+    // entire return on a repair (cost and bill reduction are the same
+    // product), and it is jointly constrained with maxBillFraction below -
+    // their product must stay under 1 or the scrap floor binds. Asserted
+    // together, deliberately.
     expect(result.data.valuation.marketRepairDiscount).toBe(1.3)
     expect(
       result.data.valuation.marketRepairDiscount * result.data.partsGeneration.maxBillFraction,
     ).toBeLessThan(1)
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
-    // Sprint 60 (economy-bible.md law 5, the foundation law): the aftermarket
-    // premium is scaled by the worst foundational part's factor. Foundational
-    // parts are safety/structure; the factor table is monotonic and capped at
-    // 1 (the schema enforces both), withholding premium for a bad foundation
+    // economy-bible.md law 5 (the foundation law): the aftermarket premium
+    // is scaled by the worst foundational part's factor. Foundational parts
+    // are safety/structure; the factor table is monotonic and capped at 1
+    // (the schema enforces both), withholding premium for a bad foundation
     // and never inflating it.
     expect(result.data.valuation.foundation.parts).toContain('brakePadsDiscs')
     expect(result.data.valuation.foundation.factorByState.scrap).toBe(0.15)
     expect(result.data.valuation.foundation.factorByState.worn).toBe(1.0)
-    // Sprint 54 decision 4 (economy-bible.md law 2): the generation-time
-    // bill-vs-clean-value ceiling every generated car is softened to satisfy.
-    // Sprint 66: pulled 0.7 -> 0.6 as the other half of the wage law's (D, F)
-    // pair (see marketRepairDiscount above).
+    // economy-bible.md law 2: the generation-time bill-vs-clean-value
+    // ceiling every generated car is softened to satisfy - the other half
+    // of the wage law's (D, F) pair (see marketRepairDiscount above).
     expect(result.data.partsGeneration.maxBillFraction).toBe(0.6)
     // The core-loop law's floor: every generated car must carry at least
     // this much below-expectation work, strictly under the ceiling above.
@@ -238,21 +234,16 @@ describe('seed content validates against schemas', () => {
         `${tier} floor fraction must stay strictly under the maxBillFraction ceiling`,
       ).toBeLessThan(result.data.partsGeneration.maxBillFraction)
     }
-    // Sprint 66 (item 6a): upkeep wear can only express in proportion to the
-    // car's own mileage - a brand-new car is mint whoever owned it.
+    // Upkeep wear can only express in proportion to the car's own mileage -
+    // a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])
-    // Sprint 47 decision 2 (maintainer, 2026-07-13: "repairs in general are
-    // too expensive"): retuned down from Sprint 44's 0.15.
     expect(result.data.restoration.repairStepFraction).toBe(0.1)
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)
     expect(result.data.statFormulas.powerNormalizationCeiling).toBe(300)
-    // Sprint 23 decision 1: the clean/concours sale-quality bars and bonuses.
-    // Sprint 26: clean's bar is a band now, not a condition percent.
-    // Sprint 69: the ladder lives in content now (it was `sim/constants.ts`'s
-    // `REPUTATION_TIER_THRESHOLDS`, a content-law violation), raised ~4x and
-    // calibrated against real play rather than the ~1 rep/day probe bot.
+    // The reputation ladder lives in content, calibrated against real play
+    // rather than the ~1 rep/day probe bot.
     expect(result.data.reputation.tierThresholds).toEqual({
       unknown: 0,
       local: 60,
@@ -271,13 +262,10 @@ describe('seed content validates against schemas', () => {
     expect(result.data.reputation.lemonSalePenalty).toBe(8)
     expect(result.data.reputation.lemonMaxAverageBandFactor).toBe(0.45)
 
-    // Sprint 26: the banded parts model's own tunables, born in JSON.
     expect(result.data.bands.bandFactors.mint).toBe(1.0)
     expect(result.data.bands.bandFactors.scrap).toBe(0.15)
     expect(result.data.bands.migrationThresholds.poor).toBe(15)
     expect(result.data.bands.scrapValueFraction).toBe(0.05)
-    // Sprint 31 (the walk-in offer stream): the daily offer-draw tunables,
-    // born in JSON from day one.
     expect(result.data.selling.offerChanceBase).toBe(0.65)
     expect(result.data.selling.offerChanceByTier.shitbox).toBeGreaterThan(
       result.data.selling.offerChanceByTier.legend,
@@ -285,19 +273,57 @@ describe('seed content validates against schemas', () => {
     expect(result.data.selling.offerChanceByHeatBand.hot).toBeGreaterThan(
       result.data.selling.offerChanceByHeatBand.cold,
     )
-    // Sprint 55 decision 3 (economy-bible.md law 4's retune pass): raised
-    // from [0.82, 1.12] so a bad walk-in roll can no longer erase the
-    // worst-case flip margin the Law 2 generation guard still permits; the
-    // upper edge came down to keep the spread's own mean at/below 1.0 (the
-    // Sprint 54 no-free-lunch invariant). Narrowed again to [0.93, 1.05] by
-    // Sprint 59 (playtest item 19): the mean stays 0.99, but the tails can no
-    // longer let a lucky roll manufacture profit on an unimproved flip.
+    // economy-bible.md law 4: the floor must stay high enough that a bad
+    // walk-in roll can no longer erase the worst-case flip margin the Law 2
+    // generation guard still permits; the mean stays at/below 1.0 (the
+    // no-free-lunch invariant) with tails narrow enough that a lucky roll
+    // can't manufacture profit on an unimproved flip.
     expect(result.data.selling.offerSpread).toEqual([0.93, 1.05])
-    // Sprint 55 (economy-bible.md law 4): the roster-coherence "brake pads
-    // vs car price" cap - a content anchor, not a hardcoded check constant.
+    // The five listing channels (directive 22 lever list). The shop front
+    // is the deliberate worst-typical-outcome floor (tasteCeiling 1.00,
+    // never above value); the trade network trades taste upside for a
+    // fixed, near-value band; the tuner magazine and weekend meet are the
+    // only two channels whose ceiling clears 1.0, both matched-persona-only.
+    expect(result.data.reputation.matchedSaleRepBonus).toBe(1)
+    expect(result.data.sellingChannels.shopFront).toEqual({
+      feeYen: 0,
+      offerChanceFactor: 0.7,
+      tasteCeiling: 1.0,
+    })
+    expect(result.data.sellingChannels.freeAdsPaper).toEqual({
+      feeYen: 1500,
+      offerChanceFactorByTierClass: {
+        shitbox: 1.5,
+        common: 1.5,
+        uncommon: 0.5,
+        rare: 0.5,
+        gaisha: 0.5,
+        legend: 0.5,
+      },
+      tasteCeiling: 1.05,
+    })
+    expect(result.data.sellingChannels.tunerMagazine).toEqual({
+      feeYen: 12_000,
+      offerChanceFactor: 0.6,
+      tasteCeiling: 1.17,
+      matchedOnly: true,
+    })
+    expect(result.data.sellingChannels.tradeNetwork).toEqual({
+      feeYen: 0,
+      offerChanceFactor: 3.0,
+      priceBand: { min: 0.95, max: 1.02 },
+    })
+    expect(result.data.sellingChannels.weekendMeet).toEqual({
+      feeYen: 3000,
+      oneDrawNextEndDay: true,
+      tasteCeiling: 1.17,
+      matchedOnly: true,
+    })
+    // economy-bible.md law 4: the roster-coherence "brake pads vs car
+    // price" cap - a content anchor, not a hardcoded check constant.
     expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)
-    // Sprint 71 (the teardown game): per-depth-class labour, replacing the
-    // old flat INSTALL_LABOR_SLOTS constant everywhere. Sprint 79 (the
+    // Per-depth-class labour, replacing the old flat INSTALL_LABOR_SLOTS
+    // constant everywhere.
     expect(result.data.teardown.usedPartSaleFraction).toBe(0.55)
     expect(result.data.teardown.donorBreakEvenBillRatio).toBe(0.45)
   })
@@ -339,9 +365,9 @@ describe('seed content validates against schemas', () => {
   })
 
   /**
-   * Sprint 55 (economy-bible.md law 4 - one derived ledger, machine-checked):
-   * every top-level `economy.json` group is a hand-authored anchor, listed in
-   * the bible's Anchor Inventory section. This is the machine half of that
+   * economy-bible.md law 4 (one derived ledger, machine-checked): every
+   * top-level `economy.json` group is a hand-authored anchor, listed in the
+   * bible's Anchor Inventory section. This is the machine half of that
    * claim - a new top-level field added here without updating the bible's
    * table (or this list) fails loudly instead of silently drifting, exactly
    * the "if two prices drifted apart, would a test catch it" litmus the law
@@ -374,6 +400,7 @@ describe('seed content validates against schemas', () => {
       'reputation',
       'serviceJobs',
       'selling',
+      'sellingChannels',
       'toolCeilings',
       'repairBandCeilingByTier',
       'specialty',

@@ -14,14 +14,14 @@ import {
 /** No other spend competes for cash, so a light margin is enough to stay solvent. */
 const CASH_BUFFER_MULTIPLIER = 1.1
 
-/** Sprint 36: this bot invests in a tool line exactly when a profitable
- * offer on the board needs the next tier - a purposeful, job-driven upgrade,
- * buffered lighter than the car-flipping bots since jobs are its only draw
- * on cash beyond parts. */
+/** This bot invests in a tool line exactly when a profitable offer on
+ * the board needs the next tier - a purposeful, job-driven upgrade,
+ * buffered lighter than the car-flipping bots since jobs are its only
+ * draw on cash beyond parts. */
 const TOOL_UPGRADE_CASH_BUFFER_MULTIPLIER = 1.5
 
-/** The group of the largest-deficit task on `offer` (Sprint 36) - what this
- * bot upgrades toward before accepting. Null when nothing is deficient. */
+/** The group of the largest-deficit task on `offer` - what this bot
+ * upgrades toward before accepting. Null when nothing is deficient. */
 function largestDeficitGroup(
   offer: ServiceJob,
   state: GameState,
@@ -52,17 +52,12 @@ function largestDeficitGroup(
  * Exists so the balance harness can check that a broke player can survive
  * on jobs alone.
  *
- * Sprint 36 re-base: the Sprint 33 single-discipline special-casing is
- * deleted (it existed only because equipment ownership walled off repair
- * work at zero reputation - a wall that no longer exists; every discipline
- * is workable at tier 1 from day one). Acceptance follows the new offer
- * rule: an offer with zero tool-tier deficits is accepted outright; an
- * upgrade-hint offer (exactly one line, one tier short) triggers a same-tick
- * `considerToolUpgrade` toward its largest-deficit task's group - upgrades
- * resolve before accepts in advanceDay's step order, so a buffered upgrade
- * really does unlock the same-tick accept, mirroring the old
- * buy-equipment-then-accept pattern. Ignores the `rng` arg of BotStrategy
- * (fewer params satisfies the type).
+ * Acceptance rule: an offer with zero tool-tier deficits is accepted
+ * outright; an upgrade-hint offer (exactly one line, one tier short)
+ * triggers a same-tick `considerToolUpgrade` toward its largest-deficit
+ * task's group - upgrades resolve before accepts in advanceDay's step
+ * order, so a buffered upgrade really does unlock the same-tick accept.
+ * Ignores the `rng` arg of BotStrategy (fewer params satisfies the type).
  */
 export function serviceGrinderStrategy(state: GameState, context: SimContext): DayActions {
   const actions = emptyDayActions()
@@ -102,13 +97,12 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
 
   // Spare labor and an empty bay (after this tick's moves)? Bring the next
   // profitable car into the shop - it moves into the bay and starts work
-  // from the following day, once it's actually a real active job. Sprint 36:
-  // an offer with zero deficits is accepted outright; a one-tier-short
-  // upgrade-hint offer is accepted only when the upgrade itself gets queued
-  // this same tick (it resolves before the accept in advanceDay's order,
-  // mirroring the old buy-then-accept pattern) - otherwise the bot looks at
-  // the next profitable offer rather than wasting the day on one it can't
-  // take yet.
+  // from the following day, once it's actually a real active job. An offer
+  // with zero deficits is accepted outright; a one-tier-short upgrade-hint
+  // offer is accepted only when the upgrade itself gets queued this same
+  // tick (it resolves before the accept in advanceDay's order) - otherwise
+  // the bot looks at the next profitable offer rather than wasting the day
+  // on one it can't take yet.
   if (laborBudget > 0 && bayBudget.free > 0) {
     for (const offer of state.serviceJobOffers) {
       if (expectedProfitPerLaborSlot(offer, context) < MIN_PROFIT_PER_LABOR_SLOT_YEN) continue

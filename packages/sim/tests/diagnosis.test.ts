@@ -41,8 +41,8 @@ const MODEL = CARS[0]!
 
 /** A minimal, hand-computable one-symptom two-cause fixture: 50/50 weights
  * so the expected value is a plain average, not a real-content weighted
- * split - decouples this test from any future content retune. Sprint 74
- * gives it one real test (`test-diagnostic`, a clean 1-vs-1 partition) so the
+ * split - decouples this test from any future content retune. Carries one
+ * real test (`test-diagnostic`, a clean 1-vs-1 partition) so the
  * verb-gating tests below don't have to depend on real content's own
  * partitions. */
 const TEST_SYMPTOM: Symptom = {
@@ -71,9 +71,9 @@ const TEST_SYMPTOM: Symptom = {
   ],
 }
 
-/** Sprint 74: a second fixture symptom whose three causes target THREE
- * different parts - `TEST_SYMPTOM` above can't exercise `revealOnRemoval`'s
- * "the removed part isn't the true cause's own target" branch or
+/** A second fixture symptom whose three causes target THREE different
+ * parts - `TEST_SYMPTOM` above can't exercise `revealOnRemoval`'s "the
+ * removed part isn't the true cause's own target" branch or
  * `displayedBandFor`'s "resolved for THIS part while other causes remain
  * open" case, since both its causes share one part. */
 const MULTI_PART_SYMPTOM: Symptom = {
@@ -87,11 +87,10 @@ const MULTI_PART_SYMPTOM: Symptom = {
   tests: [],
 }
 
-/** Sprint 106 (routed diagnosis): a two-test symptom exercising the
- * `unlockedBy` chain - `routed-locked-test` is offered only once
- * `routed-root-test` has run AND resolved to partition group 0
- * (`routed-cause-a`); it stays locked forever against a car whose true
- * cause resolves the root to group 1. */
+/** A two-test symptom exercising the `unlockedBy` chain -
+ * `routed-locked-test` is offered only once `routed-root-test` has run AND
+ * resolved to partition group 0 (`routed-cause-a`); it stays locked
+ * forever against a car whose true cause resolves the root to group 1. */
 const ROUTED_SYMPTOM: Symptom = {
   id: 'routed-symptom',
   cardLine: 'Routed test symptom.',
@@ -114,11 +113,10 @@ const ROUTED_SYMPTOM: Symptom = {
   ],
 }
 
-/** Sprint 106 addendum: a symptom whose `unlockedBy` carries no `group` -
- * `groupless-child-test` is offered once `groupless-root-test` has run at
- * all, whichever partition group it resolved to (this is how a whole board
- * of follow-up tests opens after a first look, rather than one branch of
- * it). */
+/** A symptom whose `unlockedBy` carries no `group` - `groupless-child-test`
+ * is offered once `groupless-root-test` has run at all, whichever
+ * partition group it resolved to (this is how a whole board of follow-up
+ * tests opens after a first look, rather than one branch of it). */
 const ROUTED_GROUPLESS_SYMPTOM: Symptom = {
   id: 'routed-groupless-symptom',
   cardLine: 'Routed groupless test symptom.',
@@ -203,8 +201,8 @@ const STATE = createInitialGameState(CONTEXT, 1)
 
 /** A car whose true headValvetrain band (`worn`, the mild cause's own
  * `setBand`) is genuinely worse than its recorded apparent band (`mint`) -
- * matching real generation's own invariant (decision 2: true is always the
- * WORSE of the two). */
+ * matching real generation's own invariant (true is always the WORSE of
+ * the two). */
 function carWithSymptom(): CarInstance {
   return {
     ...buildCarInstance({
@@ -237,9 +235,9 @@ function carWithMultiPartSymptom(trueCauseId: string, remainingCauseIds: string[
   }
 }
 
-/** A car carrying `ROUTED_SYMPTOM` (Sprint 106) - `trueCauseId` and
- * `runTestIds` vary per test to exercise `availableTestIdsFor`'s and
- * `runDiagnosticTest`'s own locked/unlocked gating. */
+/** A car carrying `ROUTED_SYMPTOM` - `trueCauseId` and `runTestIds` vary
+ * per test to exercise `availableTestIdsFor`'s and `runDiagnosticTest`'s
+ * own locked/unlocked gating. */
 function carWithRoutedSymptom(trueCauseId: string, runTestIds: string[] = []): CarInstance {
   return {
     ...buildCarInstance({
@@ -282,8 +280,8 @@ function carWithGrouplessRoutedSymptom(
   }
 }
 
-/** A minimal `AuctionLot` at `local-yard` wrapping `car` - the fixture every
- * Sprint 74 verb test needs to reach `state.activeAuctionLots`. */
+/** A minimal `AuctionLot` at `local-yard` wrapping `car` - the fixture
+ * every verb test needs to reach `state.activeAuctionLots`. */
 function buildLot(car: CarInstance, tier: AuctionLot['tier'] = 'local-yard'): AuctionLot {
   return {
     id: 'lot-diag-test',
@@ -482,8 +480,8 @@ describe('sale-side blindness (Sprint 73 decision 8): a sale always prices the t
 
 describe('beginInspectionVisit / inspectionVisitGateReason (Sprint 74 decision 1)', () => {
   it('refuses no-lots when no lot is live at the requested tier - the gate reason matches', () => {
-    // createInitialGameState seeds a real starter board (Sprint 10), so this
-    // has to clear it explicitly rather than assume day 1 starts empty.
+    // createInitialGameState seeds a real starter board, so this has to
+    // clear it explicitly rather than assume day 1 starts empty.
     const state: GameState = { ...createInitialGameState(CONTEXT, 1), activeAuctionLots: [] }
     expect(inspectionVisitGateReason(state, 'local-yard', CONTEXT)).toBe('no-lots')
     const result = beginInspectionVisit(state, 'local-yard', CONTEXT)

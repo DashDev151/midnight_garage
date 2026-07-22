@@ -15,7 +15,7 @@ import { useGameStore } from '../stores/gameStore'
 import PartCard from './PartCard.vue'
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * Every wrapper is tracked
  * and unmounted after its test, so a component left mounted from a prior test
  * cannot leak its store's pinia into the next (see App/CarDetailScreen).
  */
@@ -114,8 +114,8 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
   describe('the rotary marker (Sprint 28)', () => {
     it('shows on a Rotary-only part', () => {
-      // Sprint 32 decision 1 drops `requiredTags` from every real catalog
-      // part (rotary authenticity is explicitly deferred) - the marker
+      // No real catalog part carries `requiredTags` today (rotary
+      // authenticity is explicitly deferred) - the marker
       // component itself still keys off `requiredTags.includes('Rotary')`
       // (PartCard.vue), so a synthetic fixture proves the mechanism works
       // even though no live catalog part currently exercises it.
@@ -150,7 +150,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     }
 
     /**
-     * Sprint 70: ownership is read from the instance's own `origin` against
+     * Ownership is read from the instance's own `origin` against
      * every active service job (`game.isCustomerOwnedPart`), not a mutable
      * `customerJobId` tag - the store needs a real active service job whose
      * car matches the origin for the badge/lock to have anything to key off.
@@ -234,7 +234,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     })
 
     /**
-     * Sprint 48: recondition is click-per-rung now, same as an on-car
+     * Recondition is click-per-rung, same as an on-car
      * repair - one click climbs exactly one band, priced/labored off the
      * real next-rung quote, never straight to mint in a single click.
      */
@@ -249,7 +249,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
 
     it('clicking Recondition repeatedly climbs one rung at a time until mint', async () => {
       const { game, instance: poor } = grantInventoryPart('poor')
-      // Sprint 93 (the band ceiling): a bench recondition finishes at fine at
+      // A bench recondition finishes at fine at
       // tier 1; reaching mint needs the group's tier-2 machine owned. `dampers`
       // is a suspension part, so own that line's tier-2 machine to climb the
       // whole way to mint - the rung-at-a-time behaviour this test asserts.
@@ -269,7 +269,7 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     })
 
     /**
-     * Sprint 41 decision 2: tyres/brakePadsDiscs/clutch are replace-only -
+     * Tyres/brakePadsDiscs/clutch are replace-only -
      * the recondition control never renders for one, even below mint,
      * mirroring how it never renders for scrap (there's simply nothing to
      * fix on the bench either way).

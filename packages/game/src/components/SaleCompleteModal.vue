@@ -4,12 +4,11 @@ import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 /**
- * Sprint 68 decision 5 (playtest item 23): a sale closes with a receipt.
+ * A sale closes with a receipt.
  *
- * Selling a car used to just push a log line and remove the car - the whole
- * point of the flip, and it resolved silently. Everything shown here already
- * existed and was simply never rendered: the Sprint 42 car ledger (purchase,
- * repairs, parts) and `car-sold`'s own price and realised `profitYen`.
+ * Everything shown here already existed and was simply never rendered: the
+ * car ledger (purchase, repairs, parts) and `car-sold`'s own price and
+ * realised `profitYen`.
  *
  * Deliberately the same shape and lifecycle as `JobCompleteModal` - a store
  * ref set on the action, cleared on dismiss, mounted once globally in App.vue,

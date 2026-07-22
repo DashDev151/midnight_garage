@@ -47,8 +47,9 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-111 implemented and committed (Sprint 100 was superseded unbuilt
-by Sprint 110's live-room promotion; its doc records that).
+**Current state:** Sprints 00-113 implemented and committed (Sprint 100 was superseded unbuilt
+by Sprint 110's live-room promotion; its doc records that); Sprint 114 (the selling rework) is
+in flight with its lever table maintainer-locked.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file

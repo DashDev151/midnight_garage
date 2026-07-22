@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import StandingScreen from './StandingScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
@@ -31,9 +31,8 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
     expect(wrapper.find('[data-test="rep-tier"]').text()).toBe('local')
     expect(wrapper.find('[data-test="rep-points"]').text()).toBe(String(game.reputationPoints))
     // The next tier is named with its real threshold, read from content
-    // (Sprint 69 moved the ladder into `economy.json`) - never a number this
-    // test hardcodes, which is exactly what made it stale when the ladder
-    // moved.
+    // (`economy.json`'s reputation ladder) - never a number this
+    // test hardcodes.
     const next = wrapper.find('[data-test="rep-next"]').text()
     expect(next).toContain('known')
     expect(next).toContain(String(ECONOMY.reputation.tierThresholds.known))
@@ -90,7 +89,7 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
 
       const bar = wrapper.find('[data-test="rep-bar"]')
       expect(bar.exists()).toBe(true)
-      // "60 / 200" - the maintainer's "19/120 to next level", for rep.
+      // "60 / 200" - the progress-bar readout format, e.g. "19/120 to next level", for rep.
       expect(bar.find('[data-test="progress-readout"]').text()).toBe(
         `${game.reputationPoints} / ${ECONOMY.reputation.tierThresholds.known}`,
       )
@@ -120,7 +119,7 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
 
       expect(wrapper.findAll('[data-test^="specialty-bar-"]')).toHaveLength(6)
       const engine = wrapper.find('[data-test="specialty-bar-engine"]')
-      // The maintainer's own example, literally: "like 19/120 to next level".
+      // The canonical readout format, literally: "19/120 to next level".
       expect(engine.find('[data-test="progress-readout"]').text()).toBe('19 / 120')
     })
 

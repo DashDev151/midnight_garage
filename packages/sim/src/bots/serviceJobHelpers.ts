@@ -7,12 +7,11 @@ import { gradeAtLeast, partFitsCar } from '../parts'
 import { isServiceTaskDone, serviceJobCostBreakdown } from '../serviceJobs'
 
 /**
- * Sprint 29: shared bot-side helpers for the multi-task service-job
- * framework - every bot that touches service jobs used to work a single
- * repair-only `work` per job; now a job carries a themed list of tasks that
- * can mix repair and install, so "is this offer worth taking" and "advance
- * every unfinished task" are worth one shared implementation instead of two
- * near-identical ones (`serviceGrinder.ts`, `competentPolicy.ts`).
+ * Shared bot-side helpers for the multi-task service-job framework: a job
+ * carries a themed list of tasks that can mix repair and install, so "is
+ * this offer worth taking" and "advance every unfinished task" are one
+ * shared implementation rather than two near-identical ones
+ * (`serviceGrinder.ts`, `competentPolicy.ts`).
  */
 
 /** First-pass floor for the accept decision below - deliberately modest:
@@ -26,9 +25,9 @@ export const MIN_PROFIT_PER_LABOR_SLOT_YEN = 3000
 /**
  * Expected profit per labor slot for an offer still on the board - payout
  * minus material cost (the same `serviceJobCostBreakdown` an offer's own
- * payout derives from), divided by the labor its task list nominally takes.
- * The bots' accept threshold (Sprint 29 DoD: "accept if expected profit per
- * labor slot clears a threshold").
+ * payout derives from), divided by the labor its task list nominally
+ * takes. The bots' accept threshold: accept if this clears
+ * `MIN_PROFIT_PER_LABOR_SLOT_YEN`.
  */
 export function expectedProfitPerLaborSlot(offer: ServiceJob, context: SimContext): number {
   const model = context.modelsById[offer.car.modelId]
@@ -67,26 +66,21 @@ function findExistingTaskJob(
 }
 
 /**
- * Queues whatever's needed to advance every not-yet-done task on one active
- * service job's car, against a shared per-tick labor/cash budget (Sprint 29:
- * extends the repair-only bot loop to also buy-and-install).
+ * Queues whatever's needed to advance every not-yet-done task on one
+ * active service job's car, against a shared per-tick labor/cash budget.
  *
- * An install task's part purchase and its install job are DELIBERATELY split
- * across two different ticks, never queued the same day: `advanceDay`
- * resolves `createJobs` (step 1) BEFORE `buyParts` (step 1b), so a job
- * created this same tick, referencing a partInstanceId this same tick's
+ * An install task's part purchase and its install job are DELIBERATELY
+ * split across two different ticks, never queued the same day:
+ * `advanceDay` resolves `createJobs` before `buyParts`, so a job created
+ * this same tick, referencing a partInstanceId this same tick's
  * `buyParts` hasn't resolved yet, would fail `installFitGate`'s inventory
- * lookup every time (`state.partInventory` doesn't have it yet) - a real,
- * previously-undiscovered bug in `investor.ts`'s own "predict the id"
- * approach (that file's own doc comment describes the id prediction but
- * never actually verifies the same-tick job succeeds; it doesn't - see
- * `serviceJobHelpers.test.ts`'s regression coverage). Fixed here by
- * checking `state.partInventory` FIRST for an already-owned, still-uninstalled
- * fitting part (bought on a PRIOR tick, genuinely present in this snapshot)
- * and only creating the install job against that; if nothing fits yet, this
- * call buys the cheapest fitting part that clears `minGrade` (`gradeAtLeast`)
- * and stops there for this task - the install job itself queues on
- * whichever later tick finds that purchase sitting in inventory.
+ * lookup (`state.partInventory` doesn't have it yet). This checks
+ * `state.partInventory` FIRST for an already-owned, still-uninstalled
+ * fitting part (bought on a PRIOR tick) and only creates the install job
+ * against that; if nothing fits yet, this call buys the cheapest fitting
+ * part that clears `minGrade` (`gradeAtLeast`) and stops there for this
+ * task - the install job itself queues on whichever later tick finds
+ * that purchase sitting in inventory.
  */
 export function queueServiceJobTasks(
   state: GameState,
@@ -150,8 +144,8 @@ export function queueServiceJobTasks(
       continue
     }
 
-    // Sprint 32's stock-baseline model fills every real slot by default, so
-    // a grade-requirement task's target is usually occupied (by the stock
+    // The stock-baseline model fills every real slot by default, so a
+    // grade-requirement task's target is usually occupied (by the stock
     // part, or anything else that didn't already satisfy `isServiceTaskDone`
     // above) - `installFitGate` refuses to install over an occupied slot (by
     // design, never a silent overwrite), so this queues the same

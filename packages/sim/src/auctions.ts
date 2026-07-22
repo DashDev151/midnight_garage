@@ -39,21 +39,9 @@ import type { Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
 
-/**
- * Sprint 47 decision 4: the flavor blurb correlates with the car's real rolled
- * upkeep tier (it used to be one flat pool with no mechanical meaning at all) -
- * the variance is legible pre-bid, not hidden.
- *
- * Sprint 66 (playtest 2026-07-15 item 6a): keyed by AGE BAND as well. Keying on
- * upkeep alone put "dealer trade-in, service history unknown" on a 1995 car
- * with 11 km on it - the maintainer's verbatim "how can the service history be
- * unknown?". A blurb has to fit the car it is describing: a nearly-new car has
- * a short, known history; only an old one can have been parked up for years.
- *
- * Sprint 70: the pool itself moved to `packages/content/data/provenance.json`
- * (`context.provenancePool`) - the content law now covers it (it was
- * previously hardcoded here). `AgeBand`/`UpkeepTier` are content types now too.
- */
+/** The flavor blurb pool (`context.provenancePool`) is keyed by both upkeep
+ * tier and age band: a blurb has to fit the car it describes (an 11 km car
+ * can't have an unknown service history). */
 const AGE_BAND_MIDDLING_FROM_YEARS = 6
 const AGE_BAND_OLD_FROM_YEARS = 15
 
@@ -63,10 +51,8 @@ function ageBandFor(ageYears: number): AgeBand {
   return 'old'
 }
 
-/** Sprint 47 decision 4: a per-car upkeep roll, layered on top of the
- * mileage-based condition baseline - real cross-car variance at the same
- * mileage, so a car isn't interchangeably mediocre with every other car of
- * the same age. */
+/** A per-car upkeep roll, layered on top of the mileage-based condition
+ * baseline - real cross-car variance at the same mileage. */
 function rollUpkeepTier(weights: Readonly<Record<UpkeepTier, number>>, rng: Rng): UpkeepTier {
   const entries = Object.entries(weights) as [UpkeepTier, number][]
   const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
@@ -79,10 +65,9 @@ function rollUpkeepTier(weights: Readonly<Record<UpkeepTier, number>>, rng: Rng)
   return entries[entries.length - 1]![0]
 }
 
-/** Weighted pick over a symptom's own `causes` list (Sprint 73) - same
- * cumulative-sum-over-one-`rng.next()`-draw shape as `rollUpkeepTier`/
- * `pickServiceJobTemplate` (serviceJobs.ts), the established convention for
- * every weighted roll in this file. */
+/** Weighted pick over a symptom's own `causes` list - same
+ * cumulative-sum-over-one-draw shape as every other weighted roll in this
+ * file. */
 function pickWeightedCause(causes: readonly Cause[], rng: Rng): Cause {
   const total = causes.reduce((sum, cause) => sum + cause.weight, 0)
   const roll = rng.next() * total
@@ -94,11 +79,10 @@ function pickWeightedCause(causes: readonly Cause[], rng: Rng): Cause {
   return causes[causes.length - 1]!
 }
 
-/** How many symptoms a freshly-generated car attempts (Sprint 73 decision 2):
- * a first independent roll at the tier's own chance, then, only if that
- * landed, a second independent roll at the flat `secondSymptomChance`,
- * capped at `maxSymptomsPerCar`. Not how many SURVIVE - `enforceMaxBillFraction`
- * may still veto an individual symptom's damage afterward. */
+/** How many symptoms a freshly-generated car attempts: a first roll at the
+ * tier's own chance, then, if that landed, a second at
+ * `secondSymptomChance`, capped at `maxSymptomsPerCar`. Not how many
+ * SURVIVE - `enforceMaxBillFraction` may still veto one afterward. */
 function rollSymptomCount(
   fitmentClass: PartFitmentClass,
   economy: EconomyConfig,
@@ -111,9 +95,8 @@ function rollSymptomCount(
 }
 
 /** Whether every part on `a` and `b` shares the same installed-or-not state
- * and, if installed, the same band - the Sprint 73 decision 2 "did the Law 2
- * guard have to alter anything" check, comparing `enforceMaxBillFraction`'s
- * output against its own pre-guard input. */
+ * and, if installed, the same band - the "did the Law 2 guard alter
+ * anything" check. */
 function bandsMatch(a: CarInstance, b: CarInstance): boolean {
   return ALL_CAR_PART_IDS.every((partId) => {
     const partA = a.parts[partId].installed
@@ -124,21 +107,14 @@ function bandsMatch(a: CarInstance, b: CarInstance): boolean {
 }
 
 /**
- * Sprint 73 decision 2: rolls this car's symptoms (0-2, per
- * `rollSymptomCount`) and applies each one's damage in turn, on the ALREADY
- * Law-2-compliant car `generateAuctionCarInstance` produces before this runs.
- * Each symptom's cause sets its part to the WORSE of the part's current band
- * and the cause's own `setBand` - never a milder cause overriding worse
- * pre-existing damage - then `enforceMaxBillFraction` re-checks the WHOLE
- * car; if the guard would move ANY band (this symptom pushed the car over
- * its bill ceiling), the symptom is dropped outright: the part reverts to
- * its pre-symptom band and nothing is recorded for it (no clamping
- * negotiation, no partial damage - deterministic keep-or-drop). A symptom
- * whose cause targets an already-missing slot is dropped the same way (there
- * is nothing there to damage). `apparentBandByPartId` only ever records a
- * part's band from BEFORE THE FIRST symptom that damages it - a second kept
- * symptom targeting the same part must not overwrite the truly original
- * value with an already-damaged one.
+ * Rolls this car's symptoms and applies each one's damage in turn, on the
+ * ALREADY Law-2-compliant car. Each cause sets its part to the WORSE of the
+ * current band and the cause's own `setBand`, then `enforceMaxBillFraction`
+ * re-checks the whole car; if it would move ANY band, the symptom is
+ * dropped outright (deterministic keep-or-drop, no partial damage). A cause
+ * targeting an already-missing slot is dropped the same way.
+ * `apparentBandByPartId` records a part's band from BEFORE THE FIRST
+ * symptom that damages it, never overwritten by a later one.
  */
 function applySymptoms(
   car: CarInstance,
@@ -325,13 +301,9 @@ export function auctionTierForRarity(tier: RarityTier): AuctionTier | null {
   }
 }
 
-/**
- * Duration by rarity (Sprint 19 decision 1): a rare flash-sale roll applies
- * to any tier first (an occasional short event, not tied to one rarity);
+/** Duration by rarity: a rare flash-sale roll applies to any tier first;
  * otherwise legend cars always get a long sale, uncommon/rare occasionally
- * do, and everything else gets the standard band. First-pass day ranges,
- * openly adjustable (content/economy.json, Sprint 20 step 0).
- */
+ * do, and everything else gets the standard band. */
 export function rollAuctionDurationDays(
   rarity: RarityTier,
   rng: Rng,
@@ -356,12 +328,8 @@ function clampCondition(value: number): number {
 
 const TURNOUT_BANDS: readonly TurnoutBand[] = ['thin', 'steady', 'packed']
 
-/**
- * Rolls a lot's rival-turnout band (Sprint 30 decision 3), weighted by
- * `economy.auction.turnoutBandWeights` - fixed for the lot's whole life (see
- * `TurnoutBandSchema`'s own doc comment, content/auction.ts). Feeds the live
- * auction room's own turnout tuning (`economy.auctionRoom.turnout`).
- */
+/** Rolls a lot's rival-turnout band, weighted by
+ * `economy.auction.turnoutBandWeights` - fixed for the lot's whole life. */
 function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
   const weights = economy.auction.turnoutBandWeights
   const total = weights.reduce((sum, w) => sum + w, 0)
@@ -376,12 +344,11 @@ function rollTurnoutBand(rng: Rng, economy: EconomyConfig): TurnoutBand {
 
 /**
  * Piecewise-linear interpolation over ascending `[x, y]` breakpoints -
- * clamps to the first/last y outside the breakpoint range, linearly
- * interpolates between the two straddling `x` otherwise. Deliberately
- * duplicates `marketValue.ts`'s private helper of the same shape rather than
- * importing it: `marketValue.ts` is the frozen value model this sprint is
- * explicitly forbidden from touching (sprint33.md), even for a
- * behavior-preserving refactor, so this stays a small local copy instead.
+ * clamps to the first/last y outside the range, interpolates between the
+ * two straddling `x` otherwise. Deliberately duplicates `marketValue.ts`'s
+ * private helper of the same shape rather than importing it: that file is
+ * the frozen value model, never touched even for a behavior-preserving
+ * refactor.
  */
 function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x: number): number {
   const first = breakpoints[0]!
@@ -399,15 +366,9 @@ function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x
   return last[1]
 }
 
-/**
- * Sprint 34: the [min, max] mileage range (km) for a car of this age, sampled
- * from `economy.json`'s `partsGeneration.mileageRangeMinByAgeYears`/
- * `MaxByAgeYears` curves. Age reaches nothing downstream except this range
- * (design decision 1) - from here, mileage is the single coherent wear driver
- * (it is also the sole value-side wear signal, via `marketValue.ts`'s
- * `mileageFactor`). Rounded to whole km since `rng.int` requires integer
- * bounds; the two curves never cross, so `min <= max` holds at every age.
- */
+/** The [min, max] mileage range (km) for a car of this age, sampled from
+ * `economy.json`'s mileage curves. Age reaches nothing downstream except
+ * this range - mileage is the single coherent wear driver from here on. */
 function mileageRangeForAge(ageYears: number, economy: EconomyConfig): [number, number] {
   const { mileageRangeMinByAgeYears, mileageRangeMaxByAgeYears } = economy.partsGeneration
   const min = Math.round(interpolateCurve(mileageRangeMinByAgeYears, ageYears))
@@ -415,16 +376,10 @@ function mileageRangeForAge(ageYears: number, economy: EconomyConfig): [number, 
   return [min, max]
 }
 
-/**
- * Sprint 34: the condition-baseline roll's [min, max] range for a car at this
- * mileage, sampled from `economy.json`'s
- * `partsGeneration.conditionBaselineMinByMileageKm`/`MaxByMileageKm` curves -
- * replaces Sprint 33's age-keyed `conditionBaselineRangeForAge` (single-system,
- * directive 16). Mileage is now the sole input to generated condition; age
- * influences it only indirectly, through `mileageRangeForAge` above. Rounded
- * to whole percentage points since `rng.int` requires integer bounds; the two
- * curves never cross, so `min <= max` holds at every mileage.
- */
+/** The condition-baseline roll's [min, max] range for a car at this
+ * mileage, sampled from `economy.json`'s curves. Mileage is the sole input
+ * to generated condition; age influences it only indirectly, through
+ * `mileageRangeForAge` above. */
 function conditionBaselineRangeForMileage(
   mileageKm: number,
   economy: EconomyConfig,
@@ -437,15 +392,10 @@ function conditionBaselineRangeForMileage(
 }
 
 /**
- * Sprint 66 (playtest 2026-07-15 item 6a): how much of the upkeep tier's wear
- * this car's mileage lets express, in [0, 1]
- * (`partsGeneration.wearExposureByMileageKm`).
- *
- * Mileage-driven wear is ALREADY in the condition baseline above; this governs
- * the second, independent axis - how the previous owner treated it - which
- * simply cannot have shown up on a car that has barely turned a wheel. Without
- * it, a `neglected` roll applied its full -22 baseline offset and -30 jitter to
- * an 11 km car and produced `poor` parts on a nearly-new vehicle.
+ * How much of the upkeep tier's wear this car's mileage lets express, in
+ * [0, 1]. Mileage-driven wear is already in the condition baseline; this is
+ * the second, independent axis - how the previous owner treated it, which
+ * cannot show up on a car that has barely turned a wheel.
  */
 export function wearExposure(mileageKm: number, economy: EconomyConfig): number {
   const raw = interpolateCurve(economy.partsGeneration.wearExposureByMileageKm, mileageKm)
@@ -454,20 +404,11 @@ export function wearExposure(mileageKm: number, economy: EconomyConfig): number 
 
 /**
  * Rolls one fresh, mint-catalog stock `PartInstance` at `band` for `partId`
- * (Sprint 32 decision 6's default fill) - `undefined` only if the catalog
- * genuinely has no stock entry for this `CarPartId`, which decision 1
- * guarantees never happens for a real 29-part taxonomy id; kept as a
- * defensive fallback (an empty slot) rather than a throw, matching this
- * file's existing tolerance for a not-yet-fully-seeded catalog in tests.
- * Exported (Sprint 40): `serviceJobs.ts`'s generation-forcing step reuses
- * this exact stock-instance shape rather than standing up a second one.
- *
- * Sprint 53: `fitmentClass` selects which class's stock SKU fills the slot -
- * always the host car's own class, so a shitbox never rolls a family-priced
- * stock part (economy-bible.md law 3).
- *
- * Sprint 70: `origin` is required (every caller is generating this part as
- * part of a specific car's birth, so it always has one to stamp).
+ * - `null` only if the catalog genuinely has no stock entry for this
+ * `CarPartId` (a defensive fallback, never expected for real content).
+ * `fitmentClass` selects which class's stock SKU fills the slot - always
+ * the host car's own class, so a shitbox never rolls a family-priced stock
+ * part (economy-bible.md law 3).
  */
 export function stockInstanceFor(
   partId: CarPartId,
@@ -482,16 +423,10 @@ export function stockInstanceFor(
   return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
 }
 
-/**
- * Sprint 75 decision 1: the aftermarket-at-generation roll's own instance
- * builder - same shape as `stockInstanceFor` above, but picks a random
- * matching catalog part at a weighted grade (`street`/`sport`/`race`)
- * instead of the fixed stock one, at the SAME rolled `band` the stock part
- * would have had. `null` when the catalog has no aftermarket entry at all
- * for this `carPartId`+fitment class (never happens against today's
- * catalog, which always ships all three grades - a defensive, honest
- * fallback for future content rather than an assumed guarantee).
- */
+/** The aftermarket-at-generation roll's own instance builder - same shape
+ * as `stockInstanceFor` above, but picks a random matching catalog part at
+ * a weighted grade instead of the fixed stock one, at the SAME rolled
+ * `band`. `null` when the catalog has no aftermarket entry at all. */
 function aftermarketInstanceFor(
   partId: CarPartId,
   band: ReturnType<typeof bandForMigratedCondition>,
@@ -523,105 +458,53 @@ function aftermarketInstanceFor(
   return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
 }
 
-/** The denormalised label a `PartOrigin` carries (Sprint 70 decision 1) -
- * `"'95 Corolla"` style, using the model's display name and the instance
- * year, so it still reads correctly after the donor car is sold or scrapped. */
+/** The denormalised label a `PartOrigin` carries - `"'95 Corolla"` style,
+ * using the model's display name and the instance year, so it still reads
+ * correctly after the donor car is sold or scrapped. */
 export function carOriginLabel(model: CarModel, year: number): string {
   return `'${String(year % 100).padStart(2, '0')} ${resolveCarDisplayName(model)}`
 }
 
 /**
  * Rolls a fresh, not-yet-owned car for an auction lot. Every slot fills with
- * a fresh stock `PartInstance` at the rolled condition band by default
- * (Sprint 32 decision 6) - an auction car hasn't been touched yet (GDD: "buy
- * rough, restore/build"), so it starts on its factory baseline, not
- * aftermarket. `currentYear` (Sprint 10, default Infinity = unrestricted)
- * clamps the rolled model year to the in-game calendar - see calendar.ts.
+ * a fresh stock `PartInstance` at the rolled condition band by default - an
+ * auction car hasn't been touched yet (GDD: "buy rough, restore/build").
+ * `currentYear` (default Infinity = unrestricted) clamps the rolled model
+ * year to the in-game calendar.
  *
- * Sprint 12: part condition is not rolled independently per part - a car
- * that rolled a pristine engine and a wrecked transmission with no
- * relationship between them read as arbitrary rather than "this car has had
- * a hard life." One 0-100 baseline is rolled per car, and each of the 29
- * real parts (Sprint 26) jitters around it (a per-upkeep-tier range since
- * Sprint 47, see below), then buckets into its condition band via
- * `bandForMigratedCondition` (bands.ts)
- * - the same percent-to-band mapping the save migration uses, reused here
- * rather than authoring a second one (directive 16). The band is rolled for
- * EVERY part unconditionally, including one that ends up empty, so the RNG
- * draw sequence stays uniform regardless of what a slot ends up holding.
+ * One 0-100 condition baseline is rolled per car, and each of the 29 real
+ * parts jitters around it, then buckets into its band via
+ * `bandForMigratedCondition`. `forcedInduction` alone follows the model's
+ * tag, never the missing-slot roll; every OTHER slot additionally rolls a
+ * small, content-tunable chance of coming up MISSING instead of its default
+ * stock fill.
  *
- * Sprint 26 decision 2 / Sprint 32 decision 6(a): `forcedInduction` alone
- * follows the model's tag, never the missing-slot roll below - a stock
- * turbo (at the rolled band) on a Turbo/Supercharged model, `null` on NA.
- * Sprint 32 decision 6(b): every OTHER slot additionally rolls a small,
- * content-tunable (`economy.partsGeneration`) chance of coming up MISSING
- * (`null`) instead of its default stock fill - the stripped-car case,
- * weighted toward the cosmetically/physically pluckable slots and never
- * `block`/`chassis` (their catalog weight is 0). Decision 10: a lot's
- * rolled bands are plain, always-visible state now - there is no reveal
- * machinery left to layer on top.
+ * Generation is a single causal chain: `year -> ageYears -> mileage range ->
+ * roll mileage -> condition range -> roll condition baseline -> per-part
+ * jitter`. Mileage is the one coherent wear driver - age reaches condition
+ * only through it. This is generation only, not value: `marketValue.ts` has
+ * no age factor; mileage reaches value solely via `mileageFactor`.
  *
- * Sprint 34: generation is a single causal chain, `year -> ageYears ->
- * mileage range -> roll mileage -> condition range -> roll condition baseline
- * -> per-part jitter`. `year` rolls first, its age picks a mileage range
- * (`mileageRangeForAge`) from which `mileageKm` is rolled, and that mileage
- * picks the condition-baseline range (`conditionBaselineRangeForMileage`) -
- * replacing Sprint 33's direct age->condition curve and the old flat
- * `rng.int(30_000, 180_000)` mileage draw, which were independent (a 1-year-old
- * could roll 180,000 km, a 30-year-old 30,000 km, equal odds). Age now reaches
- * condition only through mileage, so mileage is the one coherent wear driver.
- * `currentYear` not being finite (most callers with no real calendar context -
- * see that param's own doc note below) falls back to a fixed
- * `DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED` (constants.ts) rather than an
- * infinite/undefined age. This is generation only, not value - `marketValue.ts`
- * never re-gained an age factor (a maintainer decision after Sprint 30 removed
- * it there specifically); mileage reaches value solely via `mileageFactor`.
+ * A per-car upkeep tier (neglected/average/cherished) is rolled once and
+ * layered on top of the mileage-based baseline: it offsets the baseline,
+ * reshapes the per-part jitter range, scales the missing-slot chance, and
+ * picks `provenanceNote` from a tier-matched pool.
  *
- * Sprint 47 decision 4: a per-car upkeep tier (neglected/average/cherished,
- * `economy.partsGeneration.upkeepTierWeights`) is rolled once and layered ON
- * TOP of the mileage-based baseline above - it offsets the baseline, reshapes
- * the per-part jitter range (a wider, harsher-tailed spread for neglected, a
- * tighter and gentler one for cherished, replacing the old flat symmetric
- * `CAR_CONDITION_JITTER`), and scales the missing-slot chance. Two cars at the
- * identical mileage can now be a genuine wreck or genuinely sound, not
- * interchangeably mediocre - the tier also picks `provenanceNote` from a
- * tier-matched pool, so the variance reads pre-bid instead of only after the
- * condition report is opened.
+ * `allowMissingSlots` (default true) lets `serviceJobs.ts`'s customer-car
+ * generation pass false - a customer's car should never turn up missing an
+ * unrelated part. `day` (default 0) stamps every part's `origin`.
+ * `allowSymptoms` (default true) similarly lets customer-car generation
+ * pass false - symptoms only spawn on auction lots.
  *
- * Sprint 47 decision 7: `allowMissingSlots` (default `true`, unchanged for
- * every existing auction-lot caller) lets `serviceJobs.ts`'s customer-car
- * generation pass `false` - a customer's car should never turn up missing a
- * part unrelated to the job it's booked for; only `forceTasksOutstanding`'s
- * install-task branch empties a slot on a customer car, deliberately.
+ * After the missing-slot roll, a non-missing, non-`forcedInduction` slot
+ * rolls a chance to fit a weighted-grade aftermarket part
+ * (`aftermarketInstanceFor`) instead of the default stock one, at the SAME
+ * rolled band, capped at `maxAftermarketSlots` per car - this runs for
+ * every caller, with no gating parameter.
  *
- * Sprint 70: `day` (default 0 - unchanged for every existing test/dev-tool
- * caller with no real calendar) is the in-game day this car is generated on -
- * stamped onto every part's `origin` (`makeCarOrigin`) alongside this car's
- * own id and denormalised label, built once here and threaded down to every
- * `stockInstanceFor` call this function makes.
- *
- * Sprint 73 decision 9: `allowSymptoms` (default `true`, unchanged for every
- * existing auction-lot caller) lets `serviceJobs.ts`'s customer-car
- * generation pass `false` - symptoms only spawn on auction lots, never on a
- * customer's own car or the dev-granted car.
- *
- * Sprint 75 decision 1: after the missing-slot roll (a slot is never both
- * missing and aftermarket), a non-missing, non-`forcedInduction` slot rolls
- * `economy.partsGeneration.aftermarketChance` to fit a weighted-grade
- * aftermarket part (`aftermarketInstanceFor`) instead of the default stock
- * one, at the SAME rolled band, capped at `maxAftermarketSlots` per car.
- * Unlike `allowMissingSlots`/`allowSymptoms`, this one has no gating
- * parameter - it runs for every caller, auction lots and service-job
- * customer cars alike (the standing TODO.md item this sprint closes asked
- * for both). Runs strictly before the symptom roll below, so a symptom's
- * cause can damage whatever ends up fitted either way.
- *
- * Once symptoms have landed (only when `allowSymptoms` is true - a
- * `serviceJobs.ts` customer car keeps its own separate forced-work
- * mechanism), `enforceMinWorkBill` tops up the true car with honest visible
- * wear until its below-expectation bill clears the tier's floor
- * (`economy.partsGeneration.minWorkBillFractionByTier`) - a generated auction
- * lot always carries fixable work, never zero.
+ * Once symptoms have landed, `enforceMinWorkBill` tops up the car with
+ * honest visible wear until its below-expectation bill clears the tier's
+ * floor - a generated auction lot always carries fixable work.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -635,10 +518,9 @@ export function generateAuctionCarInstance(
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
-  // Sprint 66 (item 6a): a current-model-year car doesn't turn up at a backyard
-  // auction. Clamp the rolled year to at least `AUCTION_MIN_AGE_YEARS` old,
-  // never earlier than the model's own release (a car can't predate its model,
-  // so a just-released model still generates at its release year).
+  // A current-model-year car doesn't turn up at a backyard auction. Clamp the
+  // rolled year to at least `AUCTION_MIN_AGE_YEARS` old, never earlier than
+  // the model's own release (a car can't predate its model).
   const youngestAllowedYear = Number.isFinite(currentYear)
     ? Math.max(model.spec.yearFrom, currentYear - economy.AUCTION_MIN_AGE_YEARS)
     : Infinity
@@ -655,25 +537,23 @@ export function generateAuctionCarInstance(
     economy.partsGeneration
   const { upkeepTierWeights, upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier } =
     economy.partsGeneration
-  // Sprint 75 decision 1: shared across every part in the loop below (not
-  // reset per part) - the cap is per CAR, not per slot.
+  // Shared across every part in the loop below (not reset per part) - the cap
+  // is per car, not per slot.
   let aftermarketSlotsFitted = 0
   const upkeepTier = rollUpkeepTier(upkeepTierWeights, rng)
-  // Sprint 66 (item 6a): upkeep only expresses in proportion to how far the car
-  // has actually been driven - see `wearExposure`. At ~0 km the offset and the
-  // negative jitter tail both vanish, so a nearly-new car is near-mint whoever
-  // owned it; at high mileage a neglected roll bites exactly as hard as before.
-  // The POSITIVE jitter bound is untouched: a car can be better than its
-  // baseline at any age, it just cannot be worn out before it has been used.
+  // Upkeep only expresses in proportion to how far the car has actually been
+  // driven - see `wearExposure`. At ~0 km a nearly-new car is near-mint; at
+  // high mileage a neglected roll bites exactly as hard as before. A car can
+  // be better than its baseline at any age, it just cannot be worn out before
+  // it has been used.
   const exposure = wearExposure(mileageKm, economy)
   const conditionBaseline = clampCondition(
     rolledBaseline + upkeepBaselineOffset[upkeepTier] * exposure,
   )
   const [rawJitterMin, jitterMax] = upkeepJitterRange[upkeepTier]
   const jitterMin = Math.round(rawJitterMin * exposure)
-  // Sprint 70: every part this car is born with shares this one origin -
-  // built once, before any per-part loop, so the whole car reads as a single
-  // birth event.
+  // Every part this car is born with shares this one origin - built once,
+  // before any per-part loop, so the whole car reads as a single birth event.
   const carOrigin = makeCarOrigin(id, carOriginLabel(model, year), day)
 
   const parts = Object.fromEntries(
@@ -701,10 +581,8 @@ export function generateAuctionCarInstance(
           upkeepMissingMultiplier[upkeepTier]
         : 0
       const rolledMissing = rng.next() < missingChance
-      // Sprint 75 decision 1: rolled unconditionally (even once the cap is
-      // already reached) so the RNG draw sequence per slot stays uniform
-      // regardless of outcome - the same reasoning `missingChance` above
-      // already follows.
+      // Rolled unconditionally (even once the cap is already reached) so the
+      // RNG draw sequence per slot stays uniform regardless of outcome.
       const rolledAftermarket = rng.next() < aftermarketChance
       const aftermarket =
         !rolledMissing && rolledAftermarket && aftermarketSlotsFitted < maxAftermarketSlots
@@ -741,9 +619,7 @@ export function generateAuctionCarInstance(
     year,
     mileageKm,
     color: rng.pick(COLOR_POOL),
-    // Sprint 66 (item 6a): the blurb must fit the car's AGE as well as its
-    // upkeep - keying on upkeep alone put "service history unknown" on an
-    // 11 km car.
+    // The blurb must fit the car's AGE as well as its upkeep.
     provenanceNote: rng.pick(context.provenancePool[ageBandFor(ageYears)][upkeepTier]),
     authenticityPercent: rng.int(60, 95),
     parts,
@@ -763,40 +639,23 @@ export function generateAuctionCarInstance(
 }
 
 /**
- * Sprint 54 decision 4 (economy-bible.md law 2 - no value traps): softens a
- * freshly-rolled car until `carCostToMintYen(car) <= maxBillFraction x
- * cleanValue` (at neutral, heat-100 reference - generation doesn't know a
- * model's future live heat) - every generatable lot is therefore profitably
- * restorable. Two bounded, always-convergent passes, in this order because
- * band damage is the common case and missing slots are comparatively rare
- * (preserves "a missing slot is reachable" as the normal outcome, not
- * something this guard silently erases):
+ * Economy-bible.md law 2 (no value traps): softens a freshly-rolled car
+ * until `carCostToMintYen(car) <= maxBillFraction x cleanValue` - every
+ * generatable lot is therefore profitably restorable. Two bounded,
+ * always-convergent passes, since band damage is the common case and
+ * missing slots are comparatively rare:
  *
- * 1. Up to 4 passes lifting every part currently at the car's single worst
- *    band by one step (scrap -> poor -> worn -> fine -> mint is at most 4
- *    climbs for any part), re-checking the bill after each pass. This
- *    softens ordinary condition damage, the common trap cause.
- * 2. If the bill still exceeds budget once every part is mint (only possible
- *    when one or more genuinely-missing slots are themselves driving the
- *    bill - a mint slot contributes nothing, so nothing further to climb),
- *    fills every genuinely-missing slot with a fresh mint stock part.
- *    Guaranteed to satisfy the guard: at that point every present part is
- *    mint and no real defect remains, so the bill is exactly zero (or the
- *    cost of a legitimately-absent forcedInduction slot on an NA car, which
- *    is also zero).
+ * 1. Up to 4 passes lifting every part at the car's single worst band by
+ *    one step, re-checking the bill after each pass.
+ * 2. If the bill still exceeds budget once every part is mint (only
+ *    possible when a genuinely-missing slot is driving it), fills every
+ *    missing slot with a fresh mint stock part - guaranteed to satisfy the
+ *    guard, since the bill is then exactly zero.
  *
  * Both passes are pure functions of the already-rolled `car` (no additional
- * RNG draws), so determinism for a given seed is unaffected.
- *
- * Exported (Sprint 55): the coherence harness calls this SAME function
- * against a deliberately worse-than-generation-could-ever-roll car for every
- * roster model, proving Law 2 holds everywhere rather than re-deriving its
- * math a second time (`coherence.ts`).
- *
- * Sprint 70: `origin` is the fresh part's stamp when the missing-slot fill
- * pass fires - the same origin every other part on `car` already carries
- * (this is still generation, softening a car that hasn't left the birth
- * process yet).
+ * RNG draws), so determinism for a given seed is unaffected. The coherence
+ * harness (`coherence.ts`) calls this SAME function to prove Law 2 holds
+ * for every roster model.
  */
 export function enforceMaxBillFraction(
   car: CarInstance,
@@ -854,17 +713,10 @@ export function enforceMaxBillFraction(
   return working
 }
 
-/**
- * Sprint 85 decision 5 (playtest 14): a reputation-conditioned weighted model
- * pick. Each candidate model's weight is
- * `economy.auction.rarityWeightsByReputation[reputationTier]?.[model.tier] ?? 1`,
- * so any reputation tier or rarity absent from the content map draws at the
- * implicit 1 (uniform). Consumes exactly ONE `rng.next()` via a cumulative-
- * weight draw; with every weight equal to 1 the total is the model count and
- * the chosen index collapses to `floor(next() * length)`, which is byte-for-
- * byte what `rng.pick` itself did - so a `local`+ career's auction stream is
- * unchanged, and only a fresh (`unknown`-rep) board's shitbox bias is new.
- */
+/** A reputation-conditioned weighted model pick. Each candidate model's
+ * weight is `economy.auction.rarityWeightsByReputation[reputationTier]?.
+ * [model.tier] ?? 1`, so any tier or rarity absent from the content map
+ * draws at the implicit 1 (uniform). */
 function pickWeightedModel(
   models: readonly CarModel[],
   reputationTier: ReputationTier,
@@ -885,26 +737,18 @@ function pickWeightedModel(
 
 /**
  * Weekly catalog for one tier: one lot per eligible model that's in stock
- * this week, up to `count`. `currentYear` (Sprint 10, default Infinity =
- * unrestricted) also excludes any model whose `yearFrom` postdates the
- * in-game calendar - see calendar.ts - so a still-unreleased model can't
- * appear at auction (GDD 2.2: "new model years appear at auction over time").
- * Each lot's own duration is rolled independently off its model's rarity
- * (Sprint 19 decision 1).
+ * this week, up to `count`. `currentYear` (default Infinity = unrestricted)
+ * also excludes any model whose `yearFrom` postdates the in-game calendar,
+ * so a still-unreleased model can't appear at auction (GDD 2.2). Each lot's
+ * own duration is rolled independently off its model's rarity.
  *
- * `reputationTier` (Sprint 85 decision 5, default `'legend'` = no weighting,
- * so every existing caller stays byte-identical) conditions the model draw:
- * `pickWeightedModel` biases toward the rarities `economy.auction.
- * rarityWeightsByReputation` names for that tier (today, shitboxes at
- * `unknown` reputation), and is exactly the old uniform pick anywhere the map
- * is silent.
+ * `reputationTier` (default `'legend'` = no weighting) conditions the model
+ * draw via `pickWeightedModel`, biasing toward the rarities
+ * `economy.auction.rarityWeightsByReputation` names for that tier.
  *
- * `excludedModelIds` (Sprint 95 decision 5, default none) drops the named
- * models from the eligible pool before any draw - one more predicate on the
- * same filter, never a forked generator. Its one current use is the
- * tutorial-model exclusion (`excludedAuctionModelIds`, tutorial.ts), threaded
- * down from `catalogs.ts` so the scripted Wagon R never gains a random twin
- * while the tutorial is active.
+ * `excludedModelIds` (default none) drops the named models from the
+ * eligible pool before any draw - its one current use keeps the scripted
+ * tutorial Wagon R from gaining a random twin.
  */
 export function generateAuctionCatalog(
   models: readonly CarModel[],

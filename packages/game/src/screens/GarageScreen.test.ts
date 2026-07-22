@@ -7,7 +7,7 @@ import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import GarageScreen from './GarageScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
+// Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
@@ -72,7 +72,7 @@ describe('GarageScreen', () => {
   it('renders the starting day and cash', () => {
     const wrapper = mountScreen()
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
-    // Sprint 59: STARTING_CASH_YEN retuned 1,500,000 -> 300,000 (derived from
+    // STARTING_CASH_YEN is 300,000 (derived from
     // roster medians, see economy.ts's own schema doc comment).
     expect(wrapper.text()).toContain('¥300,000')
   })
@@ -102,7 +102,7 @@ describe('GarageScreen', () => {
   })
 
   it('End Day advances the rendered day counter (the DoD)', async () => {
-    // Sprint 51: EndDayButton is now App.vue's single global mount point,
+    // EndDayButton is App.vue's single global mount point,
     // not rendered on this screen - advance via the store directly, the
     // same action the button itself calls.
     const game = useGameStore()
@@ -112,16 +112,14 @@ describe('GarageScreen', () => {
     expect(wrapper.get('[data-test="day-value"]').text()).toBe('2')
   })
 
-  // The two event-log tests that lived here moved to
-  // `EventLogDrawer.test.ts` with the log itself (Sprint 69 item 20) - the
-  // behaviour is unchanged, only its home.
+  // Event-log coverage lives in `EventLogDrawer.test.ts`, not here.
 
   it('a granted car lands in parking (never straight into a bay)', async () => {
     const game = useGameStore()
     const wrapper = mountScreen()
-    // Sprint 17 playtest fix: parking always renders its full capacity as
+    // Parking always renders its full capacity as
     // slots (occupied + empty), mirroring service bays - so "empty bay"
-    // placeholders (real drop targets now) are present from the start.
+    // placeholders (real drop targets) are present from the start.
     expect(wrapper.findAll('.parking-list .car-card')).toHaveLength(0)
     expect(wrapper.text()).toContain('empty bay')
 
@@ -206,9 +204,9 @@ describe('GarageScreen', () => {
       const wrapper = mountScreen()
 
       // carA is in the (only) service slot, carB sits in parking - at whichever real slot index
-      // it was originally assigned (Sprint 17: a genuine position, not "whichever parking row
+      // it was originally assigned (a genuine position, not "whichever parking row
       // renders first"), so the drop must target carB's occupied slot specifically, not just the
-      // first parking `.shop-slot` in DOM order (that could just as easily be an empty one now).
+      // first parking `.shop-slot` in DOM order (that could just as easily be an empty one).
       await dragPast(wrapper, '.bay-slots .car-card')
       await dropOn(wrapper, '.parking-list .shop-slot:has(.car-card)')
 
@@ -224,9 +222,7 @@ describe('GarageScreen', () => {
       const wrapper = mountScreen()
 
       // Parking is entirely empty at this point - every parking-list slot
-      // rendered is an empty placeholder, a real drop target since the
-      // playtest fix (parking used to render zero slots when nothing was
-      // parked, leaving nothing to drop onto).
+      // rendered is an empty placeholder, a real drop target.
       await dragPast(wrapper, '.bay-slots .car-card')
       await dropOn(wrapper, '.parking-list .shop-slot')
 

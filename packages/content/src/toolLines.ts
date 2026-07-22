@@ -2,18 +2,13 @@ import { z } from 'zod'
 import { ComponentIdSchema, ReputationTierSchema } from './tags'
 
 /**
- * One tier of a tool line (Sprint 36 - replaces binary equipment ownership).
- * Every line is always owned at some tier; a tier is never "unowned", only
- * not-yet-upgraded-to. `upgradePriceYen` is what upgrading TO this tier
- * costs (0 for tier 1, owned from day one) - a higher tier speeds labor
- * only (`repairLevelForGroup`, bands.ts); it carries no per-job cost of its
- * own (Sprint 47 decision 1, maintainer 2026-07-13: the flat consumables fee
- * this tier used to charge is gone - it was a hidden surcharge the
- * displayed restoration bill never included). `minReputationTier` (Sprint
- * 43, maintainer decision 2026-07-13: tools gate on cash AND reputation, the
- * same as facilities) is the reputation floor required to buy UP TO this
- * tier - always absent on tier 1 (owned from day one, gating it would be
- * meaningless), always present on tiers 2/3.
+ * One tier of a tool line. Every line is always owned at some tier; a tier is
+ * never "unowned", only not-yet-upgraded-to. `upgradePriceYen` is what
+ * upgrading TO this tier costs (0 for tier 1, owned from day one) - a higher
+ * tier speeds labour only (`repairLevelForGroup`, bands.ts). `minReputationTier`
+ * is the reputation floor required to buy UP TO this tier - always absent on
+ * tier 1 (owned from day one, gating it would be meaningless), always present
+ * on tiers 2/3.
  */
 export const ToolLineTierSchema = z.object({
   displayName: z.string().min(1),
@@ -56,14 +51,13 @@ export const ToolLineSchema = z
 export const ToolLinesSchema = z.record(ComponentIdSchema, ToolLineSchema)
 
 /** A tool line's tier: 1, 2, or 3 - exactly the `repairLevel` ladder the
- * banded repair formula has used since Sprint 26, re-sourced (Sprint 36). */
+ * banded repair formula uses. */
 export const ToolTierSchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
 
 /**
- * The shop's current tier per tool line (Sprint 36 - replaces the retired
- * equipment-ownership list). Keyed by the six `ComponentId` groups; Zod 4's
- * enum-keyed record is exhaustive, so all six keys are required. Every line
- * starts at 1 (nothing basic is ever locked - progression bible law 1).
+ * The shop's current tier per tool line. Keyed by the six `ComponentId`
+ * groups; Zod 4's enum-keyed record is exhaustive, so all six keys are
+ * required. Every line starts at 1 (nothing basic is ever locked).
  */
 export const ToolTiersSchema = z.record(ComponentIdSchema, ToolTierSchema)
 

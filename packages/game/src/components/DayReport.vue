@@ -9,10 +9,10 @@ const game = useGameStore()
 const report = computed(() => game.lastDayReport)
 
 /**
- * Sprint 64: the report's structured view - wins as celebration cards, the
- * recurring money in one honest line, the meaningful shop/market lines
- * (outbid first), and the pure noise aggregated. All derived in the game
- * layer via `classifyDayReport`; the sim is untouched.
+ * The report's structured view: wins as celebration cards, the recurring
+ * money in one honest line, the meaningful shop/market lines (outbid first),
+ * and the pure noise aggregated. All derived in the game layer via
+ * `classifyDayReport`; the sim is untouched.
  */
 const view = computed(() =>
   classifyDayReport(report.value?.entries ?? [], game.resolveModelName, game.buyerName),
@@ -35,10 +35,8 @@ const isQuietDay = computed(
 <template>
   <div v-if="game.reportVisible && report" class="overlay" data-test="day-report">
     <div class="report">
-      <!-- Sprint 69 item 6b: the heading leads with the win. Sprint 64 put
-           win cards first and they still did not land - a weight problem, not
-           a missing feature - so the very first words of the report are now
-           the thing that happened. -->
+      <!-- The heading leads with the win; the very first words of the report
+           are the thing that happened. -->
       <h3 data-test="report-heading">
         <template v-if="view.wins.length === 1 && view.wins[0]">
           Day {{ report.day }} - you {{ view.wins[0].kind === 'bought' ? 'bought' : 'won' }} the
@@ -120,8 +118,8 @@ h3 {
   margin-top: 0;
 }
 
-/* Sprint 64: the win cards - the first thing the eye lands on, in accent
-   colour, never red. */
+/* The win cards - the first thing the eye lands on, in accent colour,
+   never red. */
 .wins {
   list-style: none;
   padding: 0;
@@ -131,9 +129,8 @@ h3 {
 }
 
 .win-card {
-  /* Sprint 69 item 6b: real weight. Was a baseline-aligned row that read like
-     any other line; now the banner and the car name carry the card and it is
-     unmistakably the loudest thing in the report. */
+  /* The banner and the car name carry the card; it is unmistakably the
+     loudest thing in the report. */
   display: grid;
   gap: 2px;
   background: var(--mg-night-deep);

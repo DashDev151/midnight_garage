@@ -3,12 +3,11 @@ import lapReferences from '../data/lapReferences.json'
 import { LapReferencesSchema } from '../src'
 
 /**
- * Sprint 77 (story missions II, the reference-lap board): the content guards
- * task 3 calls for - schema parse, exactly one grip anchor, exactly 12 pool
- * entries, and unique ids across the whole list. The "times-within-range
- * through the model" assertion lives in `packages/sim/tests/lapModel.test.ts`
- * instead - only sim can compute a real lap time (the boundary law: content
- * never depends on sim).
+ * The reference-lap board's content guards: schema parse, exactly one grip
+ * anchor, exactly 12 pool entries, and unique ids across the whole list. The
+ * "times-within-range through the model" assertion lives in
+ * `packages/sim/tests/lapModel.test.ts` instead - only sim can compute a
+ * real lap time (the boundary law: content never depends on sim).
  */
 const PARSED = LapReferencesSchema.parse(lapReferences)
 

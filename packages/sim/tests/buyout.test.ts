@@ -23,9 +23,9 @@ describe('buyoutLots resolution', () => {
     const actions = DayActionsSchema.parse({ buyoutLots: [{ lotId: lot.id }] })
     const { state: next, log } = advanceDay(state, actions, 1, CONTEXT)
 
-    // Sprint 20: the real, chargeable price is anchorValueYen * premium (or
-    // the current-bid floor, whichever is higher) - not book * premium,
-    // since buyout re-points at the value anchor, not book value.
+    // The real, chargeable price is anchorValueYen * premium (or the
+    // current-bid floor, whichever is higher) - not book * premium, since
+    // buyout re-points at the value anchor, not book value.
     const expectedPrice = computeBuyoutPriceYen(lot, state, CONTEXT)
     expect(next.cashYen).toBe(state.cashYen - expectedPrice)
     expect(next.ownedCars).toHaveLength(1)

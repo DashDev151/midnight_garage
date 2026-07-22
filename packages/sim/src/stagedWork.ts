@@ -20,11 +20,10 @@ import {
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
  * car-exit resolver (walk-in sale, public listing, service-job resolution)
- * so staged work never outlives the car it was staged on. A car that leaves
- * with staged installs still pending would otherwise leave those specific
- * `PartInstance`s permanently greyed out in the inventory (decision 3's
- * cross-car guard has no way to know the stage it's protecting is dead).
- * No-op (same reference) if the car has no staged entry.
+ * so staged work never outlives the car it was staged on. A car that
+ * leaves with staged installs still pending would otherwise leave those
+ * specific `PartInstance`s permanently greyed out in the inventory. No-op
+ * (same reference) if the car has no staged entry.
  */
 export function clearStagedWork(state: GameState, carInstanceId: string): GameState {
   if (!(carInstanceId in state.stagedCarWork)) return state
@@ -72,32 +71,32 @@ export function isFreeInstallRefit(
 }
 
 /**
- * The Confirm resolver (Sprint 18): resolves every staged action on one car
- * at once, against a single shared remaining-labor budget, through the exact
- * same `resolveJobLabor`/`findOrCreateJob` machinery the old per-click instant
+ * The Confirm resolver: resolves every staged action on one car at once,
+ * against a single shared remaining-labor budget, through the exact same
+ * `resolveJobLabor`/`findOrCreateJob` machinery the old per-click instant
  * flow always used - Confirm is a loop over that machinery, not a new
- * resolution path. Staged actions are processed in list order (first staged,
- * first dibs on today's labor); an action whose gate refuses (e.g. the
- * repair-cost affordability gate) or that only partially labors today still
- * leaves behind a normal, continuable `Job` - nothing here changes what
- * happens to an already-open job afterward. The car's staged list is cleared
- * unconditionally at the end, whether or not every action could be fully
- * labored today.
+ * resolution path. Staged actions are processed in list order (first
+ * staged, first dibs on today's labor); an action whose gate refuses (e.g.
+ * the repair-cost affordability gate) or that only partially labors today
+ * still leaves behind a normal, continuable `Job` - nothing here changes
+ * what happens to an already-open job afterward. The car's staged list is
+ * cleared unconditionally at the end, whether or not every action could be
+ * fully labored today.
  *
- * Sprint 26 decision 13 (the group-level "bridge"): a staged `repair` sizes
- * its `NewJobSpec.laborSlotsRequired` via `planGroupRepair` (bands.ts) -
- * every non-mint, non-scrap part in the group climbing toward the staged
- * `targetBand`, at the group's own repair level. A group with nothing left
- * to repair (already there, or every part scrap) simply produces no spec -
- * the same "nothing to do" no-op `repairJobGate` itself falls back on.
+ * A staged `repair` sizes its `NewJobSpec.laborSlotsRequired` via
+ * `planGroupRepair` (bands.ts) - every non-mint, non-scrap part in the
+ * group climbing toward the staged `targetBand`, at the group's own repair
+ * level. A group with nothing left to repair (already there, or every
+ * part scrap) simply produces no spec - the same "nothing to do" no-op
+ * `repairJobGate` itself falls back on.
  *
- * Sprint 28: `action.carPartId`, when set, passes straight through to the
- * built `NewJobSpec` (and into `planGroupRepair`'s `onlyPartId`) - a
- * per-part staged action resolves through this exact same loop, sized down
- * to one part instead of the whole group. Nothing else about the loop
- * changes; group-level and per-part staged actions on the same car are
- * simply different entries in the same `staged` list, each producing its
- * own spec and its own job.
+ * `action.carPartId`, when set, passes straight through to the built
+ * `NewJobSpec` (and into `planGroupRepair`'s `onlyPartId`) - a per-part
+ * staged action resolves through this exact same loop, sized down to one
+ * part instead of the whole group. Nothing else about the loop changes;
+ * group-level and per-part staged actions on the same car are simply
+ * different entries in the same `staged` list, each producing its own
+ * spec and its own job.
  */
 export function confirmStagedWork(
   state: GameState,
@@ -114,9 +113,9 @@ export function confirmStagedWork(
     const car = findWorkableCar(current, carInstanceId)
     if (!car) break // the car left the shop mid-loop - nothing left to work on
 
-    // Sprint 87: an assembly op is a single atomic resolver, not a NewJobSpec -
-    // it runs against the same shared remaining-labour budget and appends to the
-    // same log, but never touches the repair/install job pipeline below.
+    // An assembly op is a single atomic resolver, not a NewJobSpec - it
+    // runs against the same shared remaining-labour budget and appends to
+    // the same log, but never touches the repair/install job pipeline below.
     if (action.kind === 'remove-assembly') {
       const result = resolveRemoveAssembly(
         current,
@@ -154,8 +153,8 @@ export function confirmStagedWork(
         context.economy.restoration.repairStepFraction,
         context.economy.energy.energyPerGradeByTier,
         action.carPartId,
-        // Sprint 82: size staged repair labour with the benched crew's speed
-        // discount (decision 2), matching the store's Confirm-total preview.
+        // Size staged repair labour with the benched crew's speed
+        // discount, matching the store's Confirm-total preview.
         { staff: current.staff, economy: context.economy },
       )
       if (plan.partIds.length > 0) {
@@ -169,13 +168,13 @@ export function confirmStagedWork(
         }
       }
     } else {
-      // Sprint 71: labor sizes off the TARGET slot's own depth class - the
-      // picked part's own catalog address when `action.carPartId` (the
-      // per-part drawer) is unset, exactly how `applyJobToCar` itself
-      // resolves the real target slot at completion. Sprint 79: a refit
-      // matching the slot's own `vacatedBaseline` (putting the car back the
-      // way it was found) is free - `refitLaborSlotsFor` falls back to the
-      // plain class-based cost whenever `partInstance` can't be resolved.
+      // Labor sizes off the TARGET slot's own depth class - the picked
+      // part's own catalog address when `action.carPartId` (the per-part
+      // drawer) is unset, exactly how `applyJobToCar` itself resolves the
+      // real target slot at completion. A refit matching the slot's own
+      // `vacatedBaseline` (putting the car back the way it was found) is
+      // free - `refitLaborSlotsFor` falls back to the plain class-based
+      // cost whenever `partInstance` can't be resolved.
       const partInstance = current.partInventory.find((p) => p.id === action.partInstanceId)
       const catalogPart = partInstance ? context.partsById[partInstance.partId] : undefined
       const targetPartId = action.carPartId ?? catalogPart?.carPartId
@@ -204,14 +203,14 @@ export function confirmStagedWork(
 }
 
 /**
- * Sprint 48: a pure "what would this car look like if every currently
- * planned action fully completed" projection - no cash, no labor, no jobs
- * created, nothing in `state` mutated. Powers the Finances panel's
- * pre-confirm estimate: the projected car feeds straight into the same
- * `marketValueYen` the real guide value already uses, so "value after" is
- * never a parallel estimator. Deliberately simpler than `confirmStagedWork`
- * (no labor budget, no partial completion) - a preview assumes every planned
- * action finishes, which is exactly what "projected after Confirm, assuming
+ * A pure "what would this car look like if every currently planned action
+ * fully completed" projection - no cash, no labor, no jobs created,
+ * nothing in `state` mutated. Powers the Finances panel's pre-confirm
+ * estimate: the projected car feeds straight into the same `marketValueYen`
+ * the real guide value already uses, so "value after" is never a parallel
+ * estimator. Deliberately simpler than `confirmStagedWork` (no labor
+ * budget, no partial completion) - a preview assumes every planned action
+ * finishes, which is exactly what "projected after Confirm, assuming
  * enough labor" should show.
  */
 export function previewPlannedWork(
@@ -238,11 +237,11 @@ export function previewPlannedWork(
         parts = { ...parts, [partId]: { installed: { ...installed, band: action.targetBand } } }
       }
     } else if (action.kind === 'remove-assembly') {
-      // Sprint 87: the assembly comes off - every member slot projects empty.
+      // The assembly comes off - every member slot projects empty.
       const def = assemblyDefById(action.assemblyId, context)
       if (def) for (const member of def.members) parts = { ...parts, [member]: { installed: null } }
     } else if (action.kind === 'refit-assembly') {
-      // Sprint 87: the assembly goes back on - fill each member slot from the
+      // The assembly goes back on - fill each member slot from the
       // container currently on the bench, if any.
       const container = assemblyContainerFor(state, carInstanceId, action.assemblyId)
       if (container) {

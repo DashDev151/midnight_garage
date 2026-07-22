@@ -26,9 +26,9 @@ const CONTEXT = buildSimContext(
 )
 
 /**
- * Sprint 55 (economy-bible.md law 4): the closed-form coherence invariants,
- * checked here as a fast, CI-gated unit test against the real shipped roster
- * - the same numbers `tools/balance/data/coherence.csv` exports for the
+ * Economy-bible law 4's closed-form coherence invariants, checked here as
+ * a fast, CI-gated unit test against the real shipped roster - the same
+ * numbers `tools/balance/data/coherence.csv` exports for the
  * human-readable per-model report, computed by the exact same function
  * (`computeRosterCoherence`), so a failure here and a failure in
  * `balance.cli check` can never disagree.
@@ -86,9 +86,9 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
   })
 
   it('discloses, per model, where the worst-case car crosses from "repair it" to "part it out" against economy.teardown.donorBreakEvenBillRatio', () => {
-    // Not a gate (decision 8): the crossover is measured here, not
-    // force-asserted at an exact ratio - this pins the CURRENT shape so a
-    // future economy retune can't silently drift it unnoticed.
+    // Not a gate: the crossover is measured here, not force-asserted at
+    // an exact ratio - this pins the CURRENT shape so a future economy
+    // retune can't silently drift it unnoticed.
     const donorBreakEvenBillRatio = CONTEXT.economy.teardown.donorBreakEvenBillRatio
     const byModel = new Map(modelRows.map((r) => [r.modelId, r]))
     const crossings = donorRows.map((r) => {
@@ -104,7 +104,7 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
     // against `donorBreakEvenBillRatio` specifically to disclose whether
     // the shipped roster's worst rolls ever actually reach the point where
     // parting out would win.
-    // Disclosure only (decision 8): the roster's worst-case rolls genuinely
+    // Disclosure only: the roster's worst-case rolls genuinely
     // reach both sides of `donorBreakEvenBillRatio`, and both outcomes
     // (parting out wins, the sensible repair wins) occur somewhere on the
     // roster - the mechanism is real and exercised, not a threshold that

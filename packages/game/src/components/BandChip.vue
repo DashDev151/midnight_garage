@@ -2,22 +2,20 @@
 import type { ConditionBand } from '@midnight-garage/content'
 
 /**
- * The shared band chip (Sprint 28 decision "shared band chip/formatter
- * component") - the five named condition bands (Sprint 26), colored
+ * The shared band chip - the five named condition bands, coloured
  * consistently everywhere a band renders: the car-detail screen's group and
- * per-part rows, and the auction lot-detail's group and per-part rows
- * (Sprint 27). Built once, reused on both screens, so "what color is a
- * 'poor' chip" has exactly one answer instead of two screens each
- * authoring their own.
+ * per-part rows, and the auction lot-detail's group and per-part rows.
+ * Built once, reused on both screens, so "what colour is a 'poor' chip"
+ * has exactly one answer instead of two screens each authoring their own.
  *
  * `band: null` renders the one state a real part slot can be in with no
- * condition to show (Sprint 28; Sprint 32: an empty slot, whether a
- * genuine defect or the one legitimately-empty forced-induction-on-NA
- * case) as "empty" rather than making every caller branch between this
- * component and its own ad hoc markup. Callers that need to distinguish a
- * defect from legitimate absence layer their own tag alongside this one
- * (`CarPartRowView`'s `missing`/`legitimatelyAbsent`) rather than this
- * component guessing at which.
+ * condition to show (an empty slot, whether a genuine defect or the one
+ * legitimately-empty forced-induction-on-NA case) as "empty" rather than
+ * making every caller branch between this component and its own ad hoc
+ * markup. Callers that need to distinguish a defect from legitimate absence
+ * layer their own tag alongside this one (`CarPartRowView`'s
+ * `missing`/`legitimatelyAbsent`) rather than this component guessing at
+ * which.
  */
 defineProps<{ band: ConditionBand | null }>()
 </script>

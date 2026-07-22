@@ -3,11 +3,10 @@ import type { CarPartId, Grade } from './tags'
 import type { PartFitmentClass } from './partFitment'
 
 /**
- * One yen value per `CarPartId` (Sprint 53) - the stock-grade, `common`-class
- * baseline every SKU's price scales from. Explicit per-part keys (not a
- * generic `z.record`), matching this codebase's established preference
- * (`economy.ts`'s `ByCarPartIdWeightSchema`) for a missing key to fail
- * validation rather than silently price a part at 0.
+ * One yen value per `CarPartId` - the stock-grade, `common`-class baseline
+ * every SKU's price scales from. Explicit per-part keys (not a generic
+ * `z.record`), matching this codebase's established preference for a missing
+ * key to fail validation rather than silently price a part at 0.
  */
 const ByCarPartIdPriceSchema = z.object({
   block: z.number().int().positive(),
@@ -56,12 +55,10 @@ const ByGradeFactorSchema = z.object({
 })
 
 /**
- * Sprint 53 (economy-bible.md's centralised pricing sheet): every catalog
- * SKU's price resolves from these five knobs, not from a hand-authored
- * `priceYen` field - a whole-market rebalance is a handful of multiplications,
- * never a mass content edit. `overrides` ships EMPTY; every entry is a
- * deliberate, individually-justified maintainer decision, and Sprint 55's
- * coherence report flags any override that drifts far from its formula price.
+ * Every catalog SKU's price resolves from these five knobs, not from a
+ * hand-authored `priceYen` field - a whole-market rebalance is a handful of
+ * multiplications, never a mass content edit. `overrides` ships EMPTY; every
+ * entry is a deliberate, individually-justified decision.
  */
 export const PartPricingSheetSchema = z.object({
   baseCostYen: ByCarPartIdPriceSchema,
@@ -74,11 +71,11 @@ export const PartPricingSheetSchema = z.object({
 export type PartPricingSheet = z.infer<typeof PartPricingSheetSchema>
 
 /**
- * The one formula every SKU's price runs through (economy-bible.md): an
- * override wins outright; otherwise `round100(base x class x grade x
- * global)`. Rounds to the nearest Y100 - fine-grained enough that the
- * class/grade ladder still reads distinctly, coarse enough that a shop's
- * price tags never carry single-yen noise.
+ * The one formula every SKU's price runs through: an override wins outright;
+ * otherwise `round100(base x class x grade x global)`. Rounds to the nearest
+ * Y100 - fine-grained enough that the class/grade ladder still reads
+ * distinctly, coarse enough that a shop's price tags never carry single-yen
+ * noise.
  */
 export function resolvePartPriceYen(
   entry: { id: string; carPartId: CarPartId; fitmentClass: PartFitmentClass; grade: Grade },

@@ -13,7 +13,7 @@ vi.mock('../save/saveDb', async (importOriginal) => {
 const loadSessionEvents = vi.mocked(saveDb.loadSessionEvents)
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
+ * Every wrapper is tracked
  * and unmounted after its test, so a component left mounted from a prior test
  * cannot leak its store's pinia into the next (see App/CarDetailScreen). This
  * module-level afterEach coexists with the per-describe vi.unstubAllGlobals one.
@@ -61,10 +61,8 @@ describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
 })
 
 /**
- * Sprint 58 decision 2: the menu's own inline load panel is gone - SaveMenu
- * is the single load surface now, so its load-behavior coverage moves here
- * (ported from the old MenuScreen tests; SaveMenu's load path had no direct
- * coverage of its own before this). Sprint 65: the load textarea reveals via
+ * SaveMenu is the single load surface - its load-behavior coverage lives
+ * here (ported from the old MenuScreen tests). The load textarea reveals via
  * the inline "Load from a code" button (no toggle-and-popover), so opening it
  * is a `reveal-load` click.
  */

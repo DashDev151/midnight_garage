@@ -6,9 +6,9 @@ import { useGameStore } from '../stores/gameStore'
 import EndDayButton from './EndDayButton.vue'
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
- * and unmounted after its test, so a component left mounted from a prior test
- * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ * Every wrapper is tracked and unmounted after its test, so a component left
+ * mounted from a prior test cannot leak its store's pinia into the next
+ * (see App/CarDetailScreen).
  */
 const mountedWrappers: VueWrapper[] = []
 function track<T extends VueWrapper>(wrapper: T): T {
@@ -19,7 +19,7 @@ afterEach(() => {
   for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
 })
 
-describe('EndDayButton (Sprint 24 fix 4)', () => {
+describe('EndDayButton', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('an empty cart ends the day immediately, with no dialog', async () => {
@@ -71,7 +71,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     expect(game.gameState.day).toBe(dayBefore + 1)
   })
 
-  describe('the warning stack (Sprint 68 decision 2, playtest item 11)', () => {
+  describe('the warning stack', () => {
     it('warns about planned work that was never confirmed, and does not end the day', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
@@ -91,9 +91,9 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     it('warns about a finished job nobody handed back', async () => {
       const game = useGameStore()
       game.newGame(1)
-      // Sprint 95 (directive 17 case (a)): the radial-offer gate keeps a
-      // tutorial career's board Yuki-only, so the offer is obtained
-      // legitimately post-skip - the gate lifts at the next generation point.
+      // The radial-offer gate keeps a tutorial career's board Yuki-only, so
+      // the offer is obtained legitimately post-skip. The gate lifts at the
+      // next generation point.
       game.skipTutorial()
       for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
       const offer = game.serviceJobOffers[0]
@@ -166,7 +166,7 @@ describe('EndDayButton (Sprint 24 fix 4)', () => {
     })
   })
 
-  it('says exactly "End Day" and nothing else (Sprint 69 items 1 + 2)', () => {
+  it('says exactly "End Day" and nothing else', () => {
     // The `showCash` prop is gone, not just unset: cash already lives in the
     // garage tiles and every screen header, so the button repeated a number
     // the player could already see. One word, one job.

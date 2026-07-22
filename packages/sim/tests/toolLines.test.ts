@@ -19,9 +19,9 @@ import {
 import { createRng } from '../src/rng'
 
 /**
- * Sprint 36: tool lines replace binary equipment ownership. Upgrades are
- * sequential; every line is owned at tier 1 from day one. Sprint 43 added a
- * reputation floor on tiers 2/3 (mirrors the bay gate) - every fixture below
+ * Tool lines replace binary equipment ownership. Upgrades are
+ * sequential; every line is owned at tier 1 from day one. A reputation
+ * floor gates tiers 2/3 (mirrors the bay gate) - every fixture below
  * that upgrades past tier 1 sets `reputationTier` to the real content
  * requirement rather than a guessed value, so a future JSON retune can't
  * silently desync these tests from the actual gate.
@@ -39,9 +39,9 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   return { ...createInitialGameState(CONTEXT, 1), ...overrides }
 }
 
-/** A live classifieds listing fixture (Sprint 52 decision 2) - every test
- * exercising a real purchase now needs one, since reputation/cash alone no
- * longer make a tier purchasable. */
+/** A live classifieds listing fixture - every test exercising a real
+ * purchase needs one, since reputation/cash alone don't make a tier
+ * purchasable. */
 function listedFor(componentId: ComponentId, tier: ToolTier) {
   return {
     componentId,
@@ -110,11 +110,6 @@ describe('applyToolUpgrade', () => {
     expect(result.state).toBe(state)
   })
 
-  /**
-   * Sprint 43 (maintainer decision, 2026-07-13): tools now gate on cash AND
-   * reputation for tiers 2/3 - inverts the old "has NO reputation gate"
-   * assertion this describe block used to make.
-   */
   it("refuses (reputation gate) below the next tier's rep floor even with unlimited cash, with no state change", () => {
     const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
     const result = applyToolUpgrade(state, 'wheels', CONTEXT)
@@ -304,14 +299,10 @@ describe('applyToolUpgrades (bots batch path) - sequential, re-checked per call'
   })
 
   /**
-   * Sprint 52 decision 2: a same-day 1 -> 3 double climb, freely possible
-   * before this sprint whenever cash and reputation both covered it, is now
-   * structurally impossible - buying tier 2 consumes the ONE live listing,
-   * and no new listing appears mid-day (only the day-boundary
-   * `rollMachineListings` step posts one, once). This is the exact "no
-   * milestone puts more than one machine on offer at once" guarantee
-   * decision 2 exists for, not a regression - see `applyToolUpgrade`'s own
-   * updated doc comment.
+   * A same-day 1 -> 3 double climb is structurally impossible: buying
+   * tier 2 consumes the ONE live listing, and no new listing appears
+   * mid-day (only the day-boundary `rollMachineListings` step posts one,
+   * once) - see `applyToolUpgrade`'s own doc comment.
    */
   it('a same-day 1 -> 3 double climb no longer happens even with cash AND reputation covering both - only the currently-listed tier applies', () => {
     const state = baseState({

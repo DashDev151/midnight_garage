@@ -53,10 +53,10 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
   })
 
   /**
-   * Sprint 10 item 2: a job's customer description once named a specific
-   * model that didn't match the car the job actually attached to. The fix
-   * made every description car-agnostic; this guards against that
-   * mismatch recurring by ensuring no flavor line names a car at all.
+   * A job's customer description once named a specific model that didn't
+   * match the car the job actually attached to; the fix made every
+   * description car-agnostic. This guards against that mismatch recurring
+   * by ensuring no flavor line names a car at all.
    */
   it('no service-job flavor line references a specific car model or brand', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
@@ -73,10 +73,10 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
   })
 
   /**
-   * Sprint 76 (story missions I): the hand-authored campaign's own copy
-   * (mission request/delivered/lapsed lines, persona intros) is exactly the
-   * kind of player-facing text the naming layer exists to protect - extends
-   * the same leak guard rather than a second, parallel one.
+   * The hand-authored campaign's own copy (mission request/delivered/lapsed
+   * lines, persona intros) is exactly the kind of player-facing text the
+   * naming layer exists to protect - extends the same leak guard rather
+   * than a second, parallel one.
    */
   it('no story-mission copy references a specific car model or brand', () => {
     const parsedMissions = StoryMissionsSchema.parse(storyMissions)
@@ -107,9 +107,9 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
   })
 
   /**
-   * Sprint 77 (story missions II): the reference-lap board's fictional
-   * comparable names (a shop car, a touge regular's build, a magazine
-   * feature car) are diegetic flavour text, so they get the same guard.
+   * The reference-lap board's fictional comparable names (a shop car, a
+   * touge regular's build, a magazine feature car) are diegetic flavour
+   * text, so they get the same guard.
    */
   it('no lap-reference entry name references a specific car model or brand', () => {
     const parsedLapReferences = LapReferencesSchema.parse(lapReferences)

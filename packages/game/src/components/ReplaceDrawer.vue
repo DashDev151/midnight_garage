@@ -5,22 +5,15 @@ import HelpHint from './HelpHint.vue'
 import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
-/**
- * The Replace flow (Sprint 18, round 2 - real playtest fix; retargeted to a
- * specific part in Sprint 28): clicking a part row's "Replace" button opens
- * this as an in-page side panel, scoped to that one part slot. It never
- * lives on a separate route - the reported bug was a player having no idea
- * a part had to come from a *different tab* to drag onto a component here;
- * this renders directly alongside the part rows so the source and the drop
- * target are visible at once.
+/** Clicking a part row's "Replace" button opens this as an in-page side panel,
+ * scoped to that one part slot. It never lives on a separate route - the panel
+ * ensures the player can see both source and drop target at once.
  *
- * Sprint 28 decision 3: the drawer now shows ONLY catalog parts addressed to
- * this exact `carPartId` (not "shown either way" across the whole
- * inventory like the pre-Sprint-28 group-scoped drawer) - a car has no use
- * for seeing a suspension part while replacing an intake. Within that
- * narrowed set, a part that doesn't fit this specific car (wrong platform
- * tag) still renders, dimmed, per Sprint 18's original "show the whole
- * relevant set, not a mysteriously filtered subset" call.
+ * The drawer shows ONLY catalog parts addressed to this exact `carPartId` (not
+ * across the whole inventory) - a car has no use for seeing a suspension part
+ * while replacing an intake. Within that narrowed set, a part that doesn't fit
+ * this specific car (wrong platform tag) still renders, dimmed, to show the
+ * whole relevant set rather than a mysteriously filtered subset.
  */
 const props = defineProps<{
   carId: string
@@ -39,18 +32,15 @@ const game = useGameStore()
 
 const componentId = computed(() => game.groupForCarPart(props.carPartId))
 
-/**
- * Sprint 37: the one own-car capability ceiling (NA-to-turbo conversion) -
- * when set, every candidate in this drawer is dimmed with this specific
- * reason instead of the generic "doesn't fit here" hint, since the block
- * isn't about any one part's fit, it's the slot itself not being buildable
- * yet.
+/** When set, every candidate in this drawer is dimmed with this specific reason
+ * instead of the generic "doesn't fit here" hint, since the block isn't about
+ * any one part's fit, it's the slot itself not being buildable yet.
  */
 const blockedReason = computed(() => game.installBlockedReason(props.carId, props.carPartId))
 
 /** Every stageable part addressed to this exact slot, each flagged with
  * whether it actually fits this specific car (platform tags) and excluding
- * scrap (never installable anywhere, Sprint 26 decision 6). */
+ * scrap (never installable anywhere). */
 const entries = computed(() => {
   const fitting = new Set(
     game.installablePartsForPart(props.carId, props.carPartId).map((p) => p.id),
@@ -101,8 +91,8 @@ function onSelect(partInstanceId: string): void {
       </button>
     </header>
     <p class="count">{{ entries.length }} part{{ entries.length === 1 ? '' : 's' }} on hand</p>
-    <!-- Sprint 96 decision 2: the link lands on the market already filtered
-         to this exact slot (the ?slot deep link), not the market root. -->
+    <!-- The link lands on the market already filtered to this exact slot
+         (the ?slot deep link), not the market root. -->
     <p v-if="entries.length === 0" class="empty">
       No parts on hand - visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>

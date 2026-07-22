@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import StaffOfficeScreen from './StaffOfficeScreen.vue'
 
-// Sprint 82 decision 7 (Pinia multi-mount isolation): track every mounted
-// wrapper and unmount it after each test, so a component left mounted from a
-// prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
+// Track every mounted wrapper and unmount it after each test, so a component
+// left mounted from a prior test cannot leak its store's pinia into the next
+// (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
 function mountScreen() {
@@ -40,7 +40,7 @@ function seed(game: ReturnType<typeof useGameStore>, staff: StaffMember[], ads: 
   game.gameState = { ...game.gameState, staff, staffAds: ads }
 }
 
-describe('StaffOfficeScreen (Sprint 80: staff I, crew model)', () => {
+describe('StaffOfficeScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
@@ -67,7 +67,7 @@ describe('StaffOfficeScreen (Sprint 80: staff I, crew model)', () => {
     expect(card.text()).toContain('Body 2')
     // Hustle is gone from the crew model.
     expect(card.text()).not.toContain('Hustle')
-    // Sprint 94: a 1-slot candidate adds 1 x pointsPerLabour labour to the day's pool.
+    // A 1-slot candidate adds 1 x pointsPerLabour labour to the day's pool.
     expect(wrapper.find('[data-test="ad-labour"]').text()).toContain(
       `+${1 * ECONOMY.energy.pointsPerLabour} labour/day`,
     )

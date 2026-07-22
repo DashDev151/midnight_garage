@@ -11,9 +11,9 @@ import { useGameStore } from '../stores/gameStore'
 import ReplaceDrawer from './ReplaceDrawer.vue'
 
 /**
- * Sprint 82 decision 7 (Pinia multi-mount isolation): every wrapper is tracked
- * and unmounted after its test, so a component left mounted from a prior test
- * cannot leak its store's pinia into the next (see App/CarDetailScreen).
+ * Every wrapper is tracked and unmounted after its test, so a component left
+ * mounted from a prior test cannot leak its store's pinia into the next
+ * (see App/CarDetailScreen).
  */
 const mountedWrappers: VueWrapper[] = []
 function mountDrawer(options: ComponentMountingOptions<typeof ReplaceDrawer>) {
@@ -25,15 +25,15 @@ afterEach(() => {
   for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
 })
 
-describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprint 28)', () => {
+describe('ReplaceDrawer', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('shows only parts addressed to this exact carPartId; an already-occupied slot flags every entry as not-fitting', () => {
     const game = useGameStore()
-    // Sprint 32: every slot starts filled with a stock part by default -
-    // forcedInduction stays genuinely empty on honda-city-e-aa (NA) though,
-    // so leave that one alone and exercise the occupied case on a normally-
-    // filled slot (dampers) instead.
+    // Every slot starts filled with a stock part by default. forcedInduction
+    // stays genuinely empty on honda-city-e-aa (NA) though, so leave that one
+    // alone and exercise the occupied case on a normally-filled slot (dampers)
+    // instead.
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
@@ -132,7 +132,7 @@ describe('ReplaceDrawer (Sprint 24 fix 5; retargeted to a specific part in Sprin
     expect(wrapper.text()).toContain('No parts on hand')
   })
 
-  it('renders the empty-inventory state with a slot-prefiltered link to the parts market (Sprint 96 decision 2)', () => {
+  it('renders the empty-inventory state with a link to the parts market', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id

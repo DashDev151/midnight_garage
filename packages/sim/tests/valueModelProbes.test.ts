@@ -37,11 +37,10 @@ import {
 } from './testFixtures'
 
 /**
- * Sprint 21 acceptance probes (sprint21.md's "Restoration-uplift" and
- * "Full-flip" Testing bullets). Both reuse Sprint 20's probe harness shape
- * (`bidding.test.ts`'s `independentLots`/`stateWithLots`) - a real generated
- * lot population, resolved purely through the same functions `advanceDay`
- * calls, not a bot or a mocked shortcut.
+ * Acceptance probes for "Restoration-uplift" and "Full-flip". Reuses the
+ * probe harness shape (`bidding.test.ts`'s `independentLots`/`stateWithLots`)
+ * - a real generated lot population, resolved purely through the same
+ * functions `advanceDay` calls, not a bot or a mocked shortcut.
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -50,9 +49,9 @@ const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
 ) as Record<CarPartId, CarPartTaxonomyEntry>
 
 /**
- * Sprint 44: repair cost derives from an installed instance's own catalog
- * price, so a rolled lot's real stock parts need a real `partsById` to price
- * the restoration bill correctly - `{}` would silently skip every repairable
+ * Repair cost derives from an installed instance's own catalog price, so a
+ * rolled lot's real stock parts need a real `partsById` to price the
+ * restoration bill correctly - `{}` would silently skip every repairable
  * part's contribution (only scrap/missing still price flat), collapsing the
  * measured uplift toward zero for the common no-scrap-no-missing lot.
  */
@@ -121,11 +120,11 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
 }
 
 /**
- * Every real part driven to mint - a full restoration (Sprint 32 shape): an
- * already-filled slot keeps its own installed part, just bumped to mint
- * band; a genuinely missing slot (the stripped-car roll) is filled with a
- * fresh mint stock part, since "restored" means every real defect -
- * including a missing component - is gone. The one legitimate exception is
+ * Every real part driven to mint - a full restoration: an already-filled
+ * slot keeps its own installed part, just bumped to mint band; a genuinely
+ * missing slot (the stripped-car roll) is filled with a fresh mint stock
+ * part, since "restored" means every real defect - including a missing
+ * component - is gone. The one legitimate exception is
  * `forcedInduction` on an NA model, which restoration never adds
  * (`hasForcedInduction`, bands.ts) - it stays permanently, legitimately
  * absent either way.
@@ -188,10 +187,9 @@ describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
     })
 
     const upliftMedian = median(upliftFractions)
-    // Sprint 26 rewired the value shim onto cost-weighted band factors -
-    // this is a real, expected number shift from the old percent-weighted
-    // formula (decision 4), not a regression; the floor/ceiling bounds still
-    // hold because the shim reuses the exact same floor-to-ceiling curve.
+    // The value shim is wired onto cost-weighted band factors; the
+    // floor/ceiling bounds hold because it reuses the exact same
+    // floor-to-ceiling curve.
     expect(upliftMedian).toBeGreaterThan(0)
     expect(upliftMedian).toBeLessThan(0.75)
   })
@@ -266,21 +264,20 @@ describe('full-flip probe (acceptance)', () => {
     expect(marginFractions.length).toBeGreaterThan(50)
     const marginMedian = median(marginFractions)
     const positiveShare = marginFractions.filter((m) => m > 0).length / marginFractions.length
-    // Sprint 26: re-measure against the new cost-weighted value shim rather
-    // than pin the old percent-model's exact numbers (decision 4 - expected
-    // shift, not a regression). Bar kept loose: the acquisition-restoration-
-    // sale loop should still be profitable most of the time.
+    // Measured against the cost-weighted value shim; bar kept loose - the
+    // acquisition-restoration-sale loop should still be profitable most of
+    // the time.
     expect(marginMedian).toBeGreaterThan(0)
     expect(positiveShare).toBeGreaterThanOrEqual(0.5)
   })
 })
 
 /**
- * Sprint 47 decision 6 acceptance probes (playtest 2026-07-13: repairing a
- * car for resale must be reliably profitable on ordinary work, and buying
- * wrecks for parts must still make sense). Deterministic, uniform-band cars
- * rather than a random sample - the point is to prove the value/repair
- * formulas' own math, not to re-run the generation roll.
+ * Acceptance probes: repairing a car for resale must be reliably profitable
+ * on ordinary work, and buying wrecks for parts must still make sense.
+ * Deterministic, uniform-band cars rather than a random sample - the point
+ * is to prove the value/repair formulas' own math, not to re-run the
+ * generation roll.
  */
 describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
   const COMMON_MODEL = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
@@ -291,8 +288,7 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
 
   /** Total yen to bring every repairable part in `car` from its current
    * band to `targetBand`, across all six real groups - the same pipeline a
-   * real "repair all" confirm would charge (Sprint 47: no consumables fee on
-   * top, per decision 1). */
+   * real "repair all" confirm would charge (no consumables fee on top). */
   function totalRepairCostYen(car: CarInstance, targetBand: 'fine' | 'mint'): number {
     let total = 0
     for (const groupId of ComponentIdSchema.options) {
@@ -311,10 +307,9 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
     return total
   }
 
-  /** Sprint 47 decision 6(a), HARD-GATED: an average-condition common-tier
-   * car, bought at reserve, repaired worn -> fine only (no parts, no mint
-   * polishing), sold at guide value - must net a real positive margin. This
-   * is the direct, computed answer to the playtest's City scenario. */
+  /** HARD-GATED: an average-condition common-tier car, bought at reserve,
+   * repaired worn -> fine only (no parts, no mint polishing), sold at guide
+   * value - must net a real positive margin. */
   it('a sane flip (average-upkeep common car, worn -> fine repairs only) is reliably profitable', () => {
     const wornCar = buildCarInstance({
       modelId: COMMON_MODEL.id,
@@ -346,13 +341,12 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
   })
 
   /**
-   * Sprint 47 decision 6(b), INFORMATIONAL (disclosed, not gated): a
-   * neglected wreck (uniform scrap - the extreme end of the neglected
-   * upkeep tier) bought at reserve, fully parted out from a second,
-   * identically-cheap donor wreck (every slot filled at the donor's own
-   * purchase price, not catalog price), then sold. Measures whether the
-   * "buy two wrecks, cannibalize one" salvage economy the maintainer asked
-   * about actually pencils out under the new value curve.
+   * INFORMATIONAL (disclosed, not gated): a neglected wreck (uniform scrap
+   * - the extreme end of the neglected upkeep tier) bought at reserve,
+   * fully parted out from a second, identically-cheap donor wreck (every
+   * slot filled at the donor's own purchase price, not catalog price), then
+   * sold. Measures whether the "buy two wrecks, cannibalize one" salvage
+   * economy actually pencils out under the value curve.
    */
   it('a salvage flip (two neglected wrecks, one dismantled to fix the other) - margin measured and disclosed', () => {
     const wreckCar = buildCarInstance({
@@ -381,22 +375,21 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
 
     // Measured: each wreck ~Y3,600 (near the scrap-value floor), two wrecks
     // ~Y7,200 total, sold parted-out ~Y144,000 -> margin ~+Y136,800 - the
-    // wreck-profit path (decision 3's requirement 2) really does work, even
-    // at this maximally extreme uniform-scrap case.
+    // wreck-profit path really does work, even at this maximally extreme
+    // uniform-scrap case.
     const marginYen = sellPriceYen - totalCostYen
-    // Disclosed, not gated (decision 6(b)): a real number for the maintainer,
-    // not asserted to be positive - a full scrap-to-mint parting-out is the
-    // most extreme case, not the typical "fill a few missing slots" salvage
-    // play. Sanity bound only: the formula must produce a finite, real yen
-    // figure, not NaN/Infinity from a division or missing-catalog lookup.
+    // Disclosed, not gated: not asserted to be positive - a full
+    // scrap-to-mint parting-out is the most extreme case, not the typical
+    // "fill a few missing slots" salvage play. Sanity bound only: the
+    // formula must produce a finite, real yen figure, not NaN/Infinity.
     expect(Number.isFinite(marginYen)).toBe(true)
   })
 })
 
 /**
- * Sprint 54 acceptance probes (economy-bible.md laws 1-2, decision 5). Every
- * probe below would have caught the exact playtest bug (buy a cheap shitbox,
- * triage-repair it, guide value doesn't move) this sprint exists to retire.
+ * Acceptance probes for economy-bible.md laws 1-2. Every probe below would
+ * have caught the exact bug: buy a cheap shitbox, triage-repair it, guide
+ * value doesn't move.
  */
 
 const CITY_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
@@ -513,8 +506,8 @@ describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regres
     let profitYen = guideYen - buyPriceYen - spentYen
     expect(profitYen).toBeGreaterThanOrEqual(0) // the acquisition discount alone is already non-negative
 
-    // The playtest's own triage play: replace the two cheapest consumables,
-    // then step a couple of ordinary groups from poor to worn.
+    // The triage play: replace the two cheapest consumables, then step a
+    // couple of ordinary groups from poor to worn.
     const triageSteps: (() => { car: CarInstance; costYen: number })[] = [
       () => replaceConsumable(car, CITY_MODEL, 'tyres'),
       () => replaceConsumable(car, CITY_MODEL, 'brakePadsDiscs'),
@@ -547,7 +540,7 @@ describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regres
       profitYen = nextProfitYen
     }
 
-    expect(profitYen).toBeGreaterThan(0) // the exact playtest scenario now actually profits
+    expect(profitYen).toBeGreaterThan(0) // the exact scenario now actually profits
   })
 })
 
@@ -681,16 +674,12 @@ describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
   })
 
   /**
-   * Sprint 75 decision 1 (directive 17 case (a)): this probe used to read
-   * "fully restoring any generated car" and iterate every lot unfiltered,
-   * which held only because pre-Sprint-75 generation never fitted a real
-   * aftermarket part - every generated car WAS a stock-only car. Now that
    * `generateAuctionCarInstance` can legitimately pre-fit street/sport/race
-   * parts, a modified car's own ceiling is deliberately higher than plain
+   * parts, so a modified car's own ceiling is deliberately higher than plain
    * clean value (Law 5: the aftermarket premium is real, additive value,
    * gated by foundation/tier-return but never zeroed) - that math has its
    * own dedicated coverage in `marketValue.test.ts`. This probe's actual,
-   * narrower claim was always Law 1's: an ORDINARY stock restoration never
+   * narrower claim is Law 1's: an ORDINARY stock restoration never
    * manufactures value from nothing. Filtered to stock-only cars, that claim
    * still holds exactly - the sample is widened to keep a real count of
    * qualifying cars after the filter (aftermarketChance applies per slot, so
@@ -741,8 +730,7 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
 })
 
 /**
- * Sprint 59 decision 1 acceptance probe (playtest item 19: the ~156k
- * unimproved instant-flip bug). The maintainer's law: buying a car at
+ * Acceptance probe for the unimproved instant-flip bug: buying a car at
  * auction and selling it straight back, untouched, should net a few
  * thousand yen profit to a few thousand yen loss at most - the whole point
  * is that the car must be improved. Reuses the full-flip probe's exact
@@ -750,7 +738,7 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
  * through the real day-by-day bidding process against real generated rival
  * cohorts) but skips restoration entirely and sells AS ROLLED through the
  * real walk-in channel (`sellViaWalkIn`, one seeded draw per lot) - the
- * literal "buy and flip immediately" play the playtest hit.
+ * literal "buy and flip immediately" play.
  */
 describe('unimproved-flip probe (the instant-flip guard)', () => {
   it.each(['shitbox', 'common', 'uncommon', 'rare'] as const)(
@@ -814,23 +802,22 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
 })
 
 /**
- * Sprint 60 acceptance probes (economy-bible.md law 5 - the foundation law).
- * The maintainer's verbatim example becomes a permanent, machine-checked
- * test: an incoherent build (expensive aftermarket parts bolted onto a car
- * with neglected foundations) must LOSE money, not profit like a coherent
- * build. Probe (b) (repairing the foundation releases the premium) and the
+ * Acceptance probes for economy-bible.md law 5 (the foundation law): an
+ * incoherent build (expensive aftermarket parts bolted onto a car with
+ * neglected foundations) must LOSE money, not profit like a coherent build.
+ * Probe (b) (repairing the foundation releases the premium) and the
  * pure-function behavior live in `marketValue.test.ts`; probes (c)/(d) (the
- * no-inflation ceiling and Sprint 59's flip band) are the unchanged probes
- * above, which still pass because a generated lot's stock parts carry no
- * premium for the factor to scale.
+ * no-inflation ceiling and the unimproved-flip band) are the unchanged
+ * probes above, which still pass because a generated lot's stock parts
+ * carry no premium for the factor to scale.
  */
 describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5, item 18)', () => {
   const SHITBOX_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!SHITBOX_MODEL) throw new Error('fixture shitbox-tier car missing from seed content')
 
-  // The maintainer's build, in real shitbox-class catalog SKUs: a race
-  // engine (block + internals), a race turbo, and expensive cosmetics
-  // (livery + aero) - each bought at full catalog price at the parts market.
+  // The build, in real shitbox-class catalog SKUs: a race engine (block +
+  // internals), a race turbo, and expensive cosmetics (livery + aero) -
+  // each bought at full catalog price at the parts market.
   const RACE_PART_IDS = [
     'shitbox-hagane-race-block',
     'shitbox-oni-race-piston-kit',
@@ -858,8 +845,8 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
   }
 
   it('buying the wreck, fitting a race engine/turbo/cosmetics, and selling loses money while the foundations stay neglected', () => {
-    // The neglected foundations the maintainer described: barely-working
-    // brakes, bald tyres, a rusted-through body.
+    // The neglected foundations: barely-working brakes, bald tyres, a
+    // rusted-through body.
     const neglectedFoundations = {
       brakePadsDiscs: 'scrap' as const,
       tyres: 'scrap' as const,
@@ -984,26 +971,22 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
 
 describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
   /**
-   * The maintainer's law, verbatim: "It should ALWAYS be more profitable to
-   * make sensible repairs to a car and then sell than just selling the piece
-   * of shit."
+   * The law: "It should ALWAYS be more profitable to make sensible repairs
+   * to a car and then sell than just selling the piece of shit."
    *
    * Repairing is the same product twice over: a repair's cash cost and the
    * bill reduction it buys are IDENTICAL by construction (both are
    * `repairStepFraction x partPriceYen`), and guide value moves by
    * `marketRepairDiscount x` the bill reduction. So the profit delta between
    * repair-then-sell and sell-as-is is exactly `(D - 1) x repairCost`, and
-   * `marketRepairDiscount` IS the entire wage. Before Sprint 66, D was 1.20:
-   * ten yen of work bought two yen of margin, which is what the playtest felt
-   * as "I have done a lot of work and the projected profit barely moved".
+   * `marketRepairDiscount` IS the entire wage.
    */
   it('repairing and selling beats selling as-is for common/uncommon/rare tiers', () => {
-    // Sprint 72 decision 6: honestly pricing a bolt-on/buried repair's full
-    // teardown chain (deduped once per shared blocker across the whole
-    // restoration, not once per part behind it - see the comment on
-    // `computeModelCoherence`'s teardown loop) surfaces a REAL shitbox-tier
-    // gap, disclosed in its own test below rather than gated here.
-    // Common/uncommon/rare clear a large positive margin regardless.
+    // Honestly pricing a bolt-on/buried repair's full teardown chain
+    // (deduped once per shared blocker across the whole restoration, not
+    // once per part behind it) surfaces a REAL shitbox-tier gap, disclosed
+    // in its own test below rather than gated here. Common/uncommon/rare
+    // clear a large positive margin regardless.
     for (const row of computeRosterCoherence(CARS, CONTEXT)) {
       if (row.fitmentClass === 'shitbox') continue
       expect(
@@ -1017,14 +1000,11 @@ describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
     // A shitbox's cheap parts return too little repair gain
     // (`repairGainYen` scales with part price) to outearn the rent burned by
     // the labour needed to reach the tier's expectation band (labour is
-    // value-blind - see "discloses the tier spread" below). Before Sprint 72
-    // this read as a thin but positive margin, because `repairCostYen`
-    // undercounted bolt-on/buried repair entirely (Sprint 71's disclosed
-    // gap); honestly priced, it is negative. Disclosed, not gated (directive
-    // 17 case (a): the economy intentionally changed once the undercount was
-    // fixed) - a maintainer economy-tuning pass (TODO.md) can decide whether
-    // to soften the teardown premium, raise `marketRepairDiscount`, or accept
-    // that not every shitbox repair is worth a player's day.
+    // value-blind - see "discloses the tier spread" below). Honestly
+    // priced, it is negative. Disclosed, not gated - a future
+    // economy-tuning pass (TODO.md) can decide whether to soften the
+    // teardown premium, raise `marketRepairDiscount`, or accept that not
+    // every shitbox repair is worth a player's day.
     const shitbox = computeRosterCoherence(CARS, CONTEXT).filter(
       (r) => r.fitmentClass === 'shitbox',
     )
@@ -1064,8 +1044,8 @@ describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
   })
 
   it('a mint restore is a WORSE play than the sensible one on a shitbox, and a BETTER one on a rare car (Sprint 72: both directions now gated)', () => {
-    // The shitbox half is the whole point of decision 7: diminishing returns
-    // are real and tier-keyed, chasing mint destroys margin on a cheap car.
+    // Diminishing returns are real and tier-keyed: chasing mint destroys
+    // margin on a cheap car.
     const rows = computeRosterCoherence(CARS, CONTEXT)
     const shitbox = rows.filter((r) => r.fitmentClass === 'shitbox')
     expect(shitbox.length, 'expected shitbox-class models on the roster').toBeGreaterThan(0)
@@ -1077,16 +1057,12 @@ describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
     }
 
     // The rare-car half (mint beats sensible - "that is what makes it a
-    // project") was inverted before Sprint 72: Sprint 71's bench-only rule
-    // (bands.ts) narrowed `planGroupRepair` to surface slots, so
-    // `sensibleFlipMarginYen`'s cost side (coherence.ts) undercounted any car
-    // whose expectation band lifts a bolt-on/buried part, inflating the
-    // sensible margin past the mint margin. Sprint 72 decision 6 prices the
-    // full teardown chain (deduped per shared blocker across the whole
-    // restoration) into the wage probe, which restores the intended
-    // direction here - now gated rather than disclosed (directive 17 case
-    // (a): the economy intentionally changed, and this confirms it changed
-    // correctly).
+    // project"): the bench-only rule (bands.ts) narrows `planGroupRepair` to
+    // surface slots, so `sensibleFlipMarginYen`'s cost side (coherence.ts)
+    // would otherwise undercount any car whose expectation band lifts a
+    // bolt-on/buried part. Pricing the full teardown chain (deduped per
+    // shared blocker across the whole restoration) into the wage probe
+    // restores the intended direction here.
     const rare = rows.filter((r) => r.fitmentClass === 'rare')
     expect(rare.length, 'expected rare-class models on the roster').toBeGreaterThan(0)
     for (const row of rare) {
@@ -1100,12 +1076,10 @@ describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
   it('discloses the tier spread: bench work pays a shitbox far worse than a rare car - Sprint 72 shows it as a net loss, not just thin', () => {
     // Repair LABOUR is value-blind (a shitbox takes similar teardown/refit
     // slots to reach its expectation band as a rare car) while the gain
-    // scales with part price, so `wageRatio` falls hard down the roster.
-    // Before Sprint 72 this was "thin but still positive" on a shitbox; it is
-    // a genuine loss now (ratio below 1) - the raw number is gated in its own
+    // scales with part price, so `wageRatio` falls hard down the roster - a
+    // genuine loss on a shitbox (ratio below 1), gated in its own
     // disclosure test above. This test only pins the RELATIVE shape (rare
-    // clears a comfortable positive wage, shitbox does not) so the tier
-    // spread cannot rot unnoticed.
+    // clears a comfortable positive wage, shitbox does not).
     const rows = computeRosterCoherence(CARS, CONTEXT)
     const shitbox = rows.filter((r) => r.fitmentClass === 'shitbox')
     const rare = rows.filter((r) => r.fitmentClass === 'rare')

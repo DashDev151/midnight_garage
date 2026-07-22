@@ -28,13 +28,13 @@ const CONTEXT = buildSimContext(
 )
 
 /**
- * Sprint 95 decisions 4-5: the tutorial's sim-side isolation. While the
- * walkthrough runs, the first loop must be exactly the taught loop - no radial
- * service-job offers competing with Yuki's mission (decision 4), and no random
- * twin of the scripted Wagon R muddying "the {model} on the block" (decision
- * 5). Both gates live at the generation call sites / eligible pool, so these
- * tests drive the REAL paths: `createInitialGameState`'s day-1 batch and
- * `advanceDay`'s daily arrivals, never a mocked generator.
+ * The tutorial's sim-side isolation. While the walkthrough runs, the
+ * first loop must be exactly the taught loop - no radial service-job
+ * offers competing with Yuki's mission, and no random twin of the
+ * scripted Wagon R muddying "the {model} on the block". Both gates live
+ * at the generation call sites / eligible pool, so these tests drive the
+ * REAL paths: `createInitialGameState`'s day-1 batch and `advanceDay`'s
+ * daily arrivals, never a mocked generator.
  */
 
 /** The exact production new-career path (gameStore.newGame): the tutorial

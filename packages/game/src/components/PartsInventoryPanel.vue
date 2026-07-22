@@ -4,8 +4,8 @@ import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * The owned-parts pick list (Sprint 18) - every part not currently staged
- * anywhere (decision 3), draggable onto a car's component drop zones.
+ * The owned-parts pick list - every part not currently staged
+ * anywhere, draggable onto a car's component drop zones.
  * Shared, unmodified, between the standalone inventory screen and the panel
  * embedded on `CarDetailScreen.vue`: picking a part here (the click-fallback
  * "move…" toggle) persists across navigation via the shared drag session, so

@@ -11,11 +11,10 @@ import {
 import type { SimContext } from '../context'
 
 /**
- * Sprint 26: shared bot-side helpers for the banded parts model's
- * group-level "bridge" (decision 13) - every bot used to read a single
- * `car.components[id].condition` number per zone; now a "zone" is a group
- * of several real parts, so "how repaired is this group" and "repair it"
- * are worth one shared implementation instead of six near-identical ones.
+ * Shared bot-side helpers for the banded parts model's group-level
+ * "bridge": a "zone" is a group of several real parts, so "how repaired
+ * is this group" and "repair it" are one shared implementation rather
+ * than six near-identical ones.
  */
 
 function minBandIndexInGroup(
@@ -78,12 +77,12 @@ export function queueGroupRepair(
   context: SimContext,
   laborBudget: number,
 ): number {
-  // Sprint 93 (the band ceiling): repair only climbs to the group's own
-  // tool-tier ceiling, so target the clamped band (fine at tier-1, mint once the
-  // tier-2 machine is owned) rather than an unconditional `mint`. This keeps the
-  // sizing plan, the queued spec, and the eventual `repairJobGate` all agreeing
-  // on the same target - an unclamped `mint` spec would simply be refused
-  // (`tool-tier`) at a tier-1 group and waste the action.
+  // Repair only climbs to the group's own tool-tier ceiling, so target the
+  // clamped band (fine at tier-1, mint once the tier-2 machine is owned)
+  // rather than an unconditional `mint`. This keeps the sizing plan, the
+  // queued spec, and the eventual `repairJobGate` all agreeing on the same
+  // target - an unclamped `mint` spec would simply be refused (`tool-tier`)
+  // at a tier-1 group and waste the action.
   const targetBand = clampRepairTarget(
     'mint',
     repairCeilingForLevel(repairLevelForGroup(state.toolTiers, groupId), context.economy),

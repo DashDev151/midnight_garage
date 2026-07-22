@@ -52,18 +52,12 @@ export function installLaborSlotsFor(carPartId: CarPartId, context: SimContext):
 }
 
 /**
- * Sprint 79 (the equivalence-priced labour model, maintainer directive
- * 2026-07-16): the REAL labour a refit costs, once the slot's own vacated
- * baseline is taken into account - `installLaborSlotsFor` above stays the
- * unconditional "improving this slot" figure service-job costing and the
- * coherence probes deliberately keep using (a customer task or a repair
- * probe always improves the slot, so the fit is always charged there); this
- * is the one additional site - the player's own real refit of a part from
- * inventory onto a car - where "putting it back exactly as it was" is free.
- * `partInstance` matching the slot's `vacatedBaseline` on every field
- * (`partId`, `band`, `genuinePeriod`) means the car is going back together
- * unchanged - logistics, not work; anything else (repaired, replaced,
- * upgraded) fails the match and costs the normal class-based labour.
+ * Labour cost for refitting a part from inventory onto a car: free if the part
+ * matches the slot's `vacatedBaseline` exactly (unchanged refit), otherwise the
+ * normal class-based labour cost. `installLaborSlotsFor` above is used for
+ * service-job costing and repairs, where the slot always improves, so labour is
+ * always charged; this is the one site where restoring an unchanged part-band
+ * pair costs nothing (logistics, not work).
  */
 export function refitLaborSlotsFor(
   car: CarInstance,
@@ -140,30 +134,20 @@ interface CarEffect {
 
 /**
  * The pure "apply a completed job to a car" core, shared by owned cars and
- * service-job cars (Sprint 26: rewritten for the group-level "bridge",
- * decision 13 - a job addresses a 6-way group, but its effect lands on the
- * real per-part state).
+ * service-job cars. A job addresses a 6-way group, but its effect lands on
+ * the real per-part state.
  *
  * Repair-zone: climbs every non-mint, non-scrap part in the group that's
- * still below `job.targetBand` up to it - exactly the set `planGroupRepair`
- * priced and sized at job creation (decision 5). A part reached scrap or
- * mint between creation and completion is simply skipped now (scrap stays
- * unrepairable; mint has nothing left to climb) rather than erroring - the
- * job was already fully paid for and labored, so there is nothing to refund.
- * A slot that's become empty since creation (e.g. removed mid-job) is also
+ * still below `job.targetBand` up to it. Parts that reached scrap or mint
+ * between creation and completion are skipped (already unrepairable/complete)
+ * rather than erroring; the job was fully paid and labored. Empty slots are
  * skipped - there is nothing left to climb.
  *
- * Install-part: resolves which CarPartId the picked catalog part actually
- * addresses (`context.partsById[...].carPartId`, decision 13's "only that
- * one part's slot changes") and installs the `PartInstance` as-is, at
- * whatever band it already carries. Sprint 32: this no longer forces the
- * slot to `mint` on install (the old model's slot-level `band` did, as a
- * side effect of every install) - the instance's own band is the single
- * truth now, and a freshly-bought part is already `mint` by construction
- * (`resolveBuyPart`); a previously-removed, still-worn part (decision 7)
- * reinstalling at its real band is the correct, necessary consequence of
- * that, not a bug - forcing mint here would let remove+reinstall repair a
- * part for free.
+ * Install-part: installs the picked `PartInstance` as-is, at whatever band
+ * it carries - does NOT force slots to `mint` on install. A freshly-bought
+ * part arrives already `mint` by construction; a previously-removed worn part
+ * reinstalling at its real band is correct (forcing mint would let
+ * remove+reinstall repair a part for free).
  *
  * Both branches run the result through `pruneCuredCauses` (cure-on-repair):
  * any symptom whose remaining causes all target parts now fitted strictly
@@ -182,9 +166,8 @@ function applyJobToCar(
       throw new Error(`repair-zone job ${job.id} missing targetBand`)
     }
     const parts = { ...car.parts }
-    // Sprint 28: a per-part job (job.carPartId set) climbs only that one
-    // part; a group-level job (unset) climbs every eligible part in the
-    // group, exactly as before.
+    // A per-part job (job.carPartId set) climbs only that one part; a
+    // group-level job (unset) climbs every eligible part in the group.
     const candidateIds = job.carPartId
       ? [job.carPartId]
       : presentPartIdsInGroup(car, job.componentId, context.partIdsByGroup)
@@ -237,21 +220,19 @@ function applyJobToCar(
 }
 
 /**
- * Sprint 35: a completed `recondition-part` job's effect - climb the loose
- * `PartInstance` in `partInventory` to the job's `targetBand`, exactly the
- * way `applyJobToCar`'s repair-zone branch climbs an installed part (skip
- * scrap, skip anything already at/above the target). No car, no slot; the
- * part's own band is the only state that moves. A part that vanished from
- * inventory since the job was created (sold, installed, reconciled at
- * close-out) is simply a no-op - the job was already paid and labored, so
- * there is nothing to refund, same as `applyJobToCar`'s own mid-job-departure
- * handling.
+ * A completed `recondition-part` job's effect - climb the loose `PartInstance`
+ * in `partInventory` to the job's `targetBand`, exactly the way
+ * `applyJobToCar`'s repair-zone branch climbs an installed part (skip scrap,
+ * skip anything already at/above the target). No car, no slot; the part's own
+ * band is the only state that moves. A part that vanished from inventory since
+ * the job was created (sold, installed, reconciled at close-out) is simply a
+ * no-op - the job was already paid and labored.
  */
 function completeReconditionJob(state: GameState, job: Job, context: SimContext): GameState {
   const targetBand = job.targetBand
   if (!job.partInstanceId || !targetBand) return state
-  // Sprint 87: the part may be a loose bin part OR a member sitting in an open
-  // assembly container (`findLoosePart`) - it climbs its band wherever it lives.
+  // The part may be a loose bin part or a member sitting in an open assembly
+  // container (`findLoosePart`) - it climbs its band wherever it lives.
   const instance = findLoosePart(state, job.partInstanceId)
   if (!instance) return state
   const catalogPart = context.partsById[instance.partId]
@@ -267,11 +248,11 @@ function completeReconditionJob(state: GameState, job: Job, context: SimContext)
 }
 
 /**
- * Applies a completed job's effect (group repair, part install, or - Sprint
- * 35 - an in-inventory recondition) to GameState. For a car job the target
- * may be an owned car OR a customer car sitting in a service job (the player
- * works both with the same job system); a `recondition-part` job targets a
- * loose inventory part instead. Does not remove the job from state.jobs - the
+ * Applies a completed job's effect (group repair, part install, or an
+ * in-inventory recondition) to GameState. For a car job the target may be an
+ * owned car or a customer car sitting in a service job (the player works both
+ * with the same job system); a `recondition-part` job targets a loose
+ * inventory part instead. Does not remove the job from state.jobs - the
  * caller owns list bookkeeping.
  */
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
@@ -287,12 +268,9 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
     ownedCars[ownedIndex] = effect.car
     let next: GameState = { ...state, ownedCars, partInventory: effect.partInventory }
     if (job.kind === 'install-part') {
-      // Sprint 42: the part's own cost lands on the car's ledger the moment
-      // it's physically installed (not at purchase - a bought-but-not-yet-
-      // installed part sits in inventory, spent but not yet "on" any car).
-      // Sprint 85 decision 6: a buried engine/drivetrain fit also owes the
-      // machine-shop assist fee unless the machine is owned - deducted from
-      // cash and posted to the car's ledger repairYen, the same path removal uses.
+      // The part's own cost lands on the car's ledger the moment it's
+      // physically installed (not at purchase). A buried engine/drivetrain fit
+      // also owes the machine-shop assist fee unless the machine is owned.
       const pricePaidYen =
         state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
       const assistFeeYen = installMachineAssistFeeYen(state, job, context)
@@ -315,12 +293,10 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: effect.car }
     let next: GameState = { ...state, activeServiceJobs, partInventory: effect.partInventory }
     if (job.kind === 'install-part') {
-      // Sprint 57: the same paid-price accounting as the owned-car branch
-      // above, at job scope instead of car scope, so the completion report
-      // can show what this specific job actually cost, not a catalog price.
-      // Sprint 85 decision 6: the machine-shop assist fee for a buried
-      // engine/drivetrain fit lands on the job's own ledger too, so the
-      // customer's bill is honest.
+      // The paid-price accounting at job scope, so the completion report can
+      // show what this specific job actually cost. The machine-shop assist fee
+      // for a buried engine/drivetrain fit lands on the job's own ledger too,
+      // so the customer's bill is honest.
       const pricePaidYen =
         state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
       const assistFeeYen = installMachineAssistFeeYen(state, job, context)
@@ -346,9 +322,9 @@ export interface RemovePartResult {
   laborSlotsUsed: number
 }
 
-/** Sprint 71 (the teardown game): every `blockedBy` slot for `carPartId` that
- * is still occupied on `car` - empty when nothing blocks. The symmetric rule
- * (decision 4) that both `resolveRemovePart` and `installFitGate` gate on. */
+/** Every `blockedBy` slot for `carPartId` that is still occupied on `car` -
+ * empty when nothing blocks. The symmetric rule that both `resolveRemovePart`
+ * and `installFitGate` gate on. */
 export function occupiedBlockers(
   car: CarInstance,
   carPartId: CarPartId,
@@ -360,18 +336,17 @@ export function occupiedBlockers(
 }
 
 /**
-/** The two component groups whose BURIED slots need a tier-2 machine (or, from
- * Sprint 85, the machine-shop assist fee) - the engine crane and the
- * transmission bench. */
+ * The two component groups whose buried slots need a tier-2 machine (or the
+ * machine-shop assist fee) - the engine crane and the transmission bench.
+ */
 export type MachineGateGroup = 'engine' | 'drivetrain'
 
 /**
- * Sprint 71 decision 3: the tool line (and its tier-2 machine) a BURIED slot in
- * that group needs - `null` for a surface/bolt-on slot, or any group other than
- * engine/drivetrain (no machine gate exists elsewhere). Exported so the UI can
- * pre-empt the same gate `resolveRemovePart`/`completeJob` key off (mirrors
- * `naToTurboConversionBlocked`). Sprint 85 decision 6: this is no longer a hard
- * wall - it names which group's machine-shop assist fee applies (`machineAssistFeeYen`).
+ * The tool line (and its tier-2 machine) a buried slot in that group needs -
+ * `null` for a surface/bolt-on slot, or any group other than engine/drivetrain
+ * (no machine gate exists elsewhere). Exported so the UI can pre-empt the same
+ * gate `resolveRemovePart`/`completeJob` uses. Names which group's machine-shop
+ * assist fee applies (`machineAssistFeeYen`).
  */
 export function removeMachineGateGroup(
   carPartId: CarPartId,
@@ -383,14 +358,11 @@ export function removeMachineGateGroup(
 }
 
 /**
- * Sprint 85 decision 6 (playtest 21, machine-shop assist v1): the cash fee to
- * perform a machine-gated operation (remove OR install) on `carPartId` WITHOUT
- * owning the tier-2 machine - `economy.machineShopAssist.feeYenByGroup[group]`
- * for a buried engine/drivetrain slot, or 0 when no machine gate applies (any
- * other slot) or the machine is already owned (`toolTiers[group] >= 2` - no
- * fee, ownership buys the margin). Keys off the SAME `removeMachineGateGroup`
- * predicate as the structural checks, so removal and install charge identically.
- * Exported so the UI can show the fee on the affordance before the click.
+ * The cash fee to perform a machine-gated operation (remove or install) on
+ * `carPartId` without owning the tier-2 machine - `economy.machineShopAssist.feeYenByGroup[group]`
+ * for a buried engine/drivetrain slot, or 0 when no machine gate applies or
+ * the machine is already owned. Removal and install charge identically.
+ * Exported so the UI can show the fee before the click.
  */
 export function machineAssistFeeYen(
   carPartId: CarPartId,
@@ -403,21 +375,14 @@ export function machineAssistFeeYen(
 }
 
 /**
- * Sprint 92 (uniform tool access, Axis 1): the machine-shop assist fee for a
- * group's SIGNATURE heavy op - a repair or install/replace of one of
- * `economy.machineShopAssist.signatureSlotsByGroup[group]` - WITHOUT owning that
- * group's tier-2 machine, or 0 otherwise. The suspension/body/interior analogue
- * of `machineAssistFeeYen`'s engine/drivetrain buried-slot gate: the two-post
- * lift, MIG welder and trim bench each gate their group's heavy work
- * (dampers/springs, panels/underbody, seats/dashGauges), reachable by owning the
- * machine OR paying the fee. Deliberately SEPARATE from `machineAssistFeeYen`
- * (engine/drivetrain buried, gated on remove AND install) and `benchSwapFeeYen`
- * (wheels tyre bench op): those three groups keep their own gates unchanged and
- * name no slots in `signatureSlotsByGroup`, so this predicate always returns 0
- * for them - it never double-charges the pre-existing gates. Removal of a
- * signature slot stays free (Sprint 79 removal law); a light bolt-on slot in the
- * same group (anti-roll bars, steering, aero) is not a signature slot, so it is
- * never charged. Exported so the UI/probes read the same value the charge uses.
+ * The machine-shop assist fee for a group's signature heavy op - a repair or
+ * install/replace of one of `economy.machineShopAssist.signatureSlotsByGroup[group]` -
+ * without owning that group's tier-2 machine, or 0 otherwise. The
+ * suspension/body/interior analogue of `machineAssistFeeYen`'s engine/drivetrain
+ * buried-slot gate: the two-post lift, MIG welder and trim bench each gate
+ * their group's heavy work, reachable by owning the machine or paying the fee.
+ * Removal of a signature slot stays free. Exported so the UI/probes read the
+ * same value the charge uses.
  */
 export function signatureOpFeeYen(
   carPartId: CarPartId,
@@ -433,14 +398,11 @@ export function signatureOpFeeYen(
 }
 
 /**
- * Sprint 85 decision 6: the machine-shop assist fee an install-part `job`
- * owes, or 0 - resolved from the part being installed (its catalog
- * `carPartId`, still in `state.partInventory` at this point, matching the
- * `pricePaidYen` lookup beside it in `completeJob`) against the current tool
- * tiers. The install side of the SAME gate removal charges: fitting a buried
- * engine/drivetrain part needs the crane/bench too, satisfied by ownership or
- * this fee (playtest 21's inconsistency fix - the install used to be ungated).
- * Sprint 92: an install also owes the suspension/body/interior signature-slot
+ * The machine-shop assist fee an install-part `job` owes, or 0 - resolved from
+ * the part being installed (its catalog `carPartId`, still in
+ * `state.partInventory` at this point) against the current tool tiers. Fitting
+ * a buried engine/drivetrain part needs the crane/bench, satisfied by ownership
+ * or this fee. An install also owes the suspension/body/interior signature-slot
  * fee (`signatureOpFeeYen`). A carPartId is in exactly one group, so at most one
  * of the two terms is ever non-zero.
  */
@@ -464,25 +426,18 @@ function installMachineAssistFeeYen(state: GameState, job: Job, context: SimCont
  * open on this exact address (component- or part-level) - a part can't be
  * yanked out from under work already in progress.
  *
- * Sprint 85 (the phantom-mint fix, playtest 15/16/20): removal used to
- * backfill a synthesised MINT OEM stock instance whenever the removed part's
- * catalogue grade was not `stock`, contradicting the schema contract (an
- * installed part and a `vacatedBaseline` can never coexist - see
- * `content/src/carInstance.ts`). That branch is gone: there is no factory
- * part magically underneath an aftermarket one, and a second removal can no
- * longer overwrite the baseline with phantom mint-stock fields (which is what
- * let a genuinely new mint stock part then install as a free equivalence
- * refit). `refitLaborSlotsFor` itself was always correct and is untouched.
+ * No synthesised stock backfill: removal does not backfill a MINT OEM instance,
+ * even when the removed part's catalogue grade was not `stock`. There is no
+ * factory part magically underneath an aftermarket one. An installed part and a
+ * `vacatedBaseline` can never coexist (see `content/src/carInstance.ts`).
+ * `refitLaborSlotsFor` was always correct and is untouched.
  *
- * Sprint 71 (the teardown game): three refusals, all silent no-ops matching
- * every other can't-do-it gate in this codebase - `removeBlockReason` below is
- * the single predicate the UI queries to explain them proactively.
- * `removable: false` (the shell itself - chassis/paint/underbody) never comes
- * off at all. A slot in another slot's `blockedBy` list refuses while that
- * other slot is still occupied (decision 4's symmetric rule - reassembly order
- * matters, e.g. the gearbox before the clutch). A BURIED engine/drivetrain
- * slot needs that line's tier-2 machine, OR the machine-shop assist fee
- * (Sprint 85 decision 6) posted to the car's ledger.
+ * Removal has three refusal cases, all silent no-ops - `removeBlockReason`
+ * below is the single predicate the UI queries to explain them. Shell parts
+ * (`removable: false`) never come off. Blocked slots (occupied by a part that
+ * must stay installed until reassembled) refuse while the blocker is still
+ * occupied. Buried engine/drivetrain slots need the tier-2 machine OR incur
+ * a machine-shop assist fee (charged to the car's ledger).
  *
  * Removal labour reads `energy.actionPoints.removePart` (0 in shipped
  * content, so removal is free today); a figure above zero gates on
@@ -493,16 +448,11 @@ function installMachineAssistFeeYen(state: GameState, job: Job, context: SimCont
  * (`refitLaborSlotsFor`) to decide whether putting the car back together is
  * free logistics or chargeable work.
  *
- * Sprint 35 decision 2 (supersedes Sprint 33 decision 8): a part pulled off a
- * service-job CUSTOMER's car is no longer discarded - it lands in OUR
- * `partInventory`, tracked and reconditionable (the PC-Building-Sim model)
- * while staying locked from sale/scrap and reconciled out at close-out
- * (`resolveServiceJob`). A part pulled off a car we actually own is simply
- * ours, unchanged from Sprint 32. Either way the instance moves into
- * inventory completely unchanged - Sprint 70 retired the old
- * `customerJobId` tag this function used to stamp on: the pulled instance
- * already carries its immutable `origin` from birth, which is what every
- * ownership question (`provenance.ts`) now reads instead.
+ * Parts pulled off a service-job customer's car land in `partInventory`,
+ * tracked and reconditionable, locked from sale/scrap, and reconciled at
+ * close-out. Parts pulled off owned cars join inventory unchanged. The removed
+ * instance's immutable `origin` (set at part creation) determines ownership
+ * for all later operations (see `provenance.ts`).
  */
 export function resolveRemovePart(
   state: GameState,
@@ -518,10 +468,8 @@ export function resolveRemovePart(
   const entry = context.partsTaxonomyById[carPartId]
   const componentId = entry?.group
   if (!entry || !componentId) return { state, log: [], laborSlotsUsed: 0 }
-  // Sprint 88: an assembly member is worked only via its assembly, never pulled
-  // off the car on its own. The sim primitive now refuses it outright (the store
-  // and UI already refuse; this closes the direct-caller hole the Sprint 87 Exit
-  // deferred here).
+  // Assembly members are worked only via their assembly, never pulled off
+  // individually. Refuse here so the direct-caller path matches the UI.
   if (context.assemblies.some((a) => a.members.includes(carPartId))) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
@@ -538,18 +486,16 @@ export function resolveRemovePart(
   const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
   if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
-  // Sprint 85 decision 6 (machine-shop assist): a buried engine/drivetrain slot
-  // is no longer a hard wall without the tier-2 machine - the removal proceeds
-  // at a cash fee (0 when the machine is owned or the slot isn't machine-gated),
-  // deducted from cash below and posted to the car's ledger through the existing
-  // repair-cost path so mission budget caps and service-job billing see it.
+  // Buried engine/drivetrain removal may incur a machine-shop assist fee (zero
+  // if the machine is owned or the slot isn't gated), deducted from cash and
+  // posted to the car's ledger via the repair-cost path so budget caps and
+  // service-job billing see it.
   const assistFeeYen = machineAssistFeeYen(carPartId, state, context)
 
-  // Removal always empties the slot and stamps the removed instance's identity
-  // as the slot's `vacatedBaseline` (Sprint 79) - a matching refit later is
-  // free logistics, anything else is charged (`refitLaborSlotsFor`). There is
-  // no synthesised stock backfill: an installed part and a baseline can never
-  // coexist on one slot (`content/src/carInstance.ts`).
+  // Removal empties the slot and stamps the removed instance's identity as
+  // `vacatedBaseline` - a matching refit later is free logistics, anything
+  // else is charged (`refitLaborSlotsFor`). No stock backfill: installed part
+  // and baseline never coexist on one slot.
   const vacatedBaseline = {
     partId: installed.partId,
     band: installed.band,
@@ -570,8 +516,8 @@ export function resolveRemovePart(
 
   const ownedIndex = withLabor.ownedCars.findIndex((c) => c.id === carInstanceId)
   if (ownedIndex !== -1) {
-    // An owned car: the removed part is ours, keep it (unchanged from Sprint 32).
-    // Sprint 74 decision 4: uninstall reveals truth - free, no extra labour.
+    // An owned car: the removed part is ours, kept as-is. Uninstall reveals
+    // truth diagnoses at no extra cost.
     const { car: revealedCar, revealedCauseId } = revealOnRemoval(updatedCar, carPartId, context)
     const ownedCars = [...withLabor.ownedCars]
     ownedCars[ownedIndex] = revealedCar
@@ -604,11 +550,10 @@ export function resolveRemovePart(
   if (serviceIndex !== -1) {
     // A customer's car: a pulled part stays in our inventory - not ours to
     // sell or scrap, but ours to recondition until the job closes out. Sprint
-    // 70 retired the Sprint 35/68 tagging dance here entirely: `installed`
-    // already carries whichever origin it was born with (the customer's car,
-    // or the market if the player bought and fitted it), and that is what
-    // every ownership question now reads (`provenance.ts`) - nothing to stamp
-    // on the way into inventory.
+    // No tagging needed on the way into inventory: `installed` already carries
+    // its immutable origin from birth (the customer's car, or the market if the
+    // player bought and fitted it), and that is what every ownership question
+    // reads (`provenance.ts`).
     const serviceJob = withLabor.activeServiceJobs[serviceIndex]!
     const activeServiceJobs = [...withLabor.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
@@ -631,19 +576,17 @@ export type RemoveBlockReason =
   { kind: 'not-removable' } | { kind: 'blocked-by'; blockedBy: CarPartId[] }
 
 /**
- * Sprint 71: the pure "why can't this come off" predicate - what the UI
- * queries proactively (mirrors `naToTurboConversionBlocked`'s own reuse
- * shape), independent of today's remaining labor (a separate, dynamic
+ * The pure "why can't this come off" predicate - what the UI queries
+ * proactively (mirrors `naToTurboConversionBlocked`'s own reuse shape),
+ * independent of today's remaining labour (a separate, dynamic
  * concern the UI already shows via the labor bar). `null` when nothing
  * structural blocks it (it may still be refused for insufficient labor, or
  * simply already removed).
  *
- * Sprint 85 decision 6: the old `tool-tier` reason is gone - a buried
- * engine/drivetrain slot without the tier-2 machine is no longer BLOCKED, it
- * is workable at the machine-shop assist fee (`machineAssistFeeYen`), which the
- * UI surfaces as a fee caption on the affordance rather than a can't-do-it
- * reason. Only genuinely structural refusals (the shell itself, an occupied
- * blocker) remain here.
+ * A buried engine/drivetrain slot without the tier-2 machine is not blocked
+ * here; it is workable at the machine-shop assist fee (`machineAssistFeeYen`),
+ * which the UI surfaces as a fee caption. Only genuinely structural refusals
+ * (the shell itself, an occupied blocker) remain here.
  */
 export function removeBlockReason(
   car: CarInstance,
@@ -659,11 +602,10 @@ export function removeBlockReason(
 
 /**
  * An open job's stable id - one job per car+component+kind at a time
- * (group-level), or one per car+component+kind+part (Sprint 28 per-part
- * addressing) - the `carPartId` suffix is what lets a per-part job on
- * `intake` and one on `exhaust` (same `engine` group) stay open at once
- * without colliding, and never collides with a group-level job on the same
- * group either. Omitted, this is byte-identical to the pre-Sprint-28 id.
+ * (group-level), or one per car+component+kind+part (per-part addressing).
+ * The `carPartId` suffix lets per-part jobs on different parts in the same
+ * group stay open at once without colliding, and never collides with a
+ * group-level job on the same group.
  */
 function jobIdFor(spec: NewJobSpec): string {
   const address = spec.carPartId ? `${spec.componentId}-${spec.carPartId}` : spec.componentId
@@ -673,15 +615,11 @@ function jobIdFor(spec: NewJobSpec): string {
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
 
 /**
- * Sprint 35: the single money step shared by on-car repair (`repairJobGate`
- * below) and in-inventory recondition (`resolveReconditionLabor`) - charges
- * the already-priced repair work against cash, or refuses silently when
- * unaffordable (matching every can't-afford gate in this codebase). ONE
- * repair economy: both paths deduct the exact same banded-repair `costYen`.
- * Sprint 47 decision 1 (maintainer, 2026-07-13: "get rid of the ¥2,000
- * charge"): the per-job flat consumables fee is gone - it was a hidden
- * surcharge the displayed restoration bill never included (the playtest's
- * "bill said 24k, charged 35k" complaint), so bill truth is now structural:
+ * The single money step shared by on-car repair (`repairJobGate` below) and
+ * in-inventory recondition (`resolveReconditionLabor`) - charges the
+ * already-priced repair work against cash, or refuses silently when
+ * unaffordable. One repair economy: both paths deduct the same banded-repair
+ * `costYen`. No per-job flat consumables fee - bill truth is structural:
  * this IS the number `carCostToMintYen`/`planGroupRepair` already show.
  */
 function chargeRepairWork(
@@ -697,21 +635,16 @@ function chargeRepairWork(
 }
 
 /**
- * The repair-cost gate on *starting* a new repair-zone job - checked once,
- * at creation, never again. Sprint 36: there is NO ownership gate anymore
- * (tool lines are always owned - progression bible law 1); the shop's
- * current tool tier only sets the repair level the work climbs at.
+ * The repair-cost gate on starting a new repair-zone job - checked once at
+ * creation, never again. There is no ownership gate (tool lines are always
+ * owned per progression bible law 1); the shop's current tool tier only sets
+ * the repair level the work climbs at.
  *
- * Sprint 26 decisions 5+7: repair-zone charges the real yen cost of the
- * work - `planGroupRepair`'s `costYen` (grades climbed times each part's
- * own catalog price, summed across every eligible part in the group), and
- * nothing else (Sprint 47 decision 1 removed the old per-job consumables
- * fee). A group with nothing left to repair (every part already at or
- * above the target, or every part scrap) refuses quietly - there is
- * nothing to create a job for. `install-part` is a no-op here (it has never
- * charged anything beyond the part itself, bought separately). Shared by the
- * player's instant `findOrCreateJob` path and advanceDay's bot batch
- * job-creation loop.
+ * Repair-zone charges the real yen cost of the work from `planGroupRepair`'s
+ * `costYen`, nothing else. A group with nothing left to repair (all parts at
+ * or above target, or scrap) refuses quietly. `install-part` is a no-op here
+ * (charges only the part itself, bought separately). Shared by the player's
+ * instant `findOrCreateJob` path and advanceDay's bot batch job-creation.
  */
 export function repairJobGate(
   state: GameState,
@@ -725,25 +658,21 @@ export function repairJobGate(
   if (!car) return { ok: false, log: [] }
   const model = context.modelsById[car.modelId]
   if (!model) return { ok: false, log: [] }
-  // Sprint 71 decision 2: a per-part repair addressed at one exact bolt-on/
-  // buried slot is bench-only - refused explicitly (rather than falling
-  // through to the group plan's own silent empty-plan refusal below) so the
-  // UI has a real reason to show for a deliberate single-part action.
+  // Per-part repairs on buried slots are bench-only - refuse explicitly so
+  // the UI has a real reason to show, rather than silently falling through.
   if (spec.carPartId && context.partsTaxonomyById[spec.carPartId]?.depthClass !== 'surface') {
     return {
       ok: false,
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
     }
   }
-  // Sprint 93 (the band ceiling): a REPAIR climbs a part only to the group's own
-  // tool-tier ceiling (`economy.repairBandCeilingByTier`) - tier-1 caps at fine;
-  // mint needs the group's tier-2 machine OWNED. An explicit job that targets a
-  // band ABOVE the ceiling is refused with a `tool-tier` reason (the UI already
-  // renders that reason for the NA-to-turbo gate) rather than silently clamped,
-  // so a created job never climbs a part past what was priced and labored. This
-  // gates REPAIR only: a mint result stays reachable at any tier by BUYING a
-  // mint replacement part and fitting it (an install, never gated here) - owning
-  // tier-2 only lets a shop REPAIR the existing part to mint instead (cheaper).
+  // A REPAIR climbs a part only to the group's tool-tier ceiling
+  // (`economy.repairBandCeilingByTier`) - tier-1 caps at fine; mint needs the
+  // group's tier-2 machine owned. Jobs targeting bands above the ceiling are
+  // refused with a `tool-tier` reason (the UI already renders this) rather
+  // than silently clamped. Mint is still reachable at any tier via BUYING a
+  // mint replacement and fitting it (install, never gated); owning tier-2
+  // only lets you REPAIR the existing part to mint (cheaper).
   const repairCeiling = repairCeilingForLevel(
     repairLevelForGroup(state.toolTiers, spec.componentId),
     context.economy,
@@ -754,9 +683,9 @@ export function repairJobGate(
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'tool-tier' }],
     }
   }
-  // Sprint 82: pass the benched crew so the CHARGE reflects a perfectionist's
-  // parts discount (decision 5); the caller already sized the job's labour with
-  // the same crew, so cost and slots stay consistent for the player.
+  // Pass the benched crew so the charge reflects a perfectionist's parts
+  // discount; the caller already sized the job's labour with the same crew,
+  // so cost and slots stay consistent for the player.
   const plan = planGroupRepair(
     car,
     spec.componentId,
@@ -776,13 +705,12 @@ export function repairJobGate(
     return { ok: false, log: [] }
   }
 
-  // Sprint 92 (uniform tool access, Axis 1): a repair that climbs one of the
-  // suspension/body/interior signature slots owes that group's machine-shop
-  // assist fee unless its tier-2 machine is owned - ONE fee per repair operation
-  // (every signature slot in a group shares the one fee, so the max over the
-  // plan is the group fee once), charged with the repair cost and posted to the
-  // same ledger `repairYen`. Engine/drivetrain/wheels name no signature slots,
-  // so their repairs are byte-identical (the fee stays 0).
+  // A repair that climbs a suspension/body/interior signature slot owes that
+  // group's machine-shop assist fee unless the tier-2 machine is owned - ONE fee
+  // per repair operation (every signature slot in a group shares the one fee, so
+  // the max over the plan is the group fee once), charged with repair cost and
+  // posted to `repairYen` ledger. Engine/drivetrain/wheels have no signature
+  // slots, so their repairs incur no fee.
   const signatureFeeYen = plan.partIds.reduce(
     (fee, partId) => Math.max(fee, signatureOpFeeYen(partId, state, context)),
     0,
@@ -791,11 +719,10 @@ export function repairJobGate(
   // Can't afford the work right now - a silent refusal, matching every
   // other can't-afford-it gate in this codebase.
   if (!charged.ok) return { ok: false, log: [] }
-  // Sprint 42: this same gate also runs a customer's service-job car (the
-  // player fronts the repair, gets paid via the job's own payout on
-  // handback) - an owned car gets a car ledger entry; a customer's (Sprint
-  // 57) gets its job's own ledger entry instead, so the completion report
-  // can show what the player actually spent.
+  // This gate also runs a customer's service-job car (the player fronts the
+  // repair, gets paid via the job's payout on handback). Owned cars get a car
+  // ledger entry; customer cars get the job's own ledger entry so the
+  // completion report shows what was actually spent.
   const isOwnedCar = state.ownedCars.some((c) => c.id === spec.carInstanceId)
   if (isOwnedCar) {
     const chargedState = updateCarLedger(charged.state, spec.carInstanceId, (ledger) => ({
@@ -817,17 +744,14 @@ export function repairJobGate(
 export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
 
 /**
- * Sprint 37: the one own-car capability ceiling (progression bible's
- * bolt-on vs built line). Converting a factory-NA car to forced induction -
- * fitting the FIRST turbo/supercharger into a legitimately-empty slot
- * (`hasForcedInduction(model) === false`, same Sprint 26 distinction
- * `isPartMissing` uses) - is fabrication work, gated behind
- * `economy.toolCeilings.naToTurboConversionEngineTier`. A car that already
- * carries a forced-induction part, factory-turbo or from a previous
- * conversion, swaps freely at any tier: only the first conversion is gated,
- * never a same-slot replacement. Exported so the UI (`gameStore.ts`'s
- * `stageAction`/`installBlockedReason`) can pre-empt the same refusal
- * `installFitGate` below enforces, one source of truth for both.
+ * The one own-car capability ceiling (progression bible's bolt-on vs built
+ * line). Converting a factory-NA car to forced induction - fitting the FIRST
+ * turbo/supercharger into a legitimately-empty slot - is fabrication work,
+ * gated behind `economy.toolCeilings.naToTurboConversionEngineTier`. A car
+ * that already carries forced induction (factory or from a previous
+ * conversion) swaps freely at any tier; only the first conversion is gated.
+ * Exported so the UI can pre-empt the same refusal `installFitGate` below
+ * enforces, one source of truth for both.
  */
 export function naToTurboConversionBlocked(
   carPartId: CarPartId,
@@ -840,26 +764,21 @@ export function naToTurboConversionBlocked(
 }
 
 /**
- * Sprint 24 fix 2: the sim never validated part-component fit on install -
- * only the UI's own inline copy did. A separate, small gate beside
- * `repairJobGate` - exported and called from both `findOrCreateJob` below
- * (the player's instant path) AND `advanceDay`'s bot batch job-creation loop
- * directly.
+ * Validates part-component fit on install - this was only done in the UI
+ * before. A separate gate beside `repairJobGate`, exported and called from
+ * both `findOrCreateJob` (the player's instant path) and `advanceDay`'s bot
+ * batch job-creation loop.
  *
- * Sprint 26 decision 6: additionally, universally rejects any `PartInstance`
- * whose own band is `scrap` - a scrap part cannot move between cars, only be
- * replaced or scrap-sold (`resolveScrapPart`, parts.ts). Decision 13: fit is
- * now checked against the target GROUP (`spec.componentId`), resolved via
- * the catalog part's own taxonomy group, not a direct componentId match.
+ * Universally rejects any `PartInstance` whose band is `scrap` - scrap parts
+ * cannot move between cars, only be replaced or scrap-sold. Fit is checked
+ * against the target GROUP (`spec.componentId`), resolved via the catalog
+ * part's own taxonomy group, not a direct componentId match.
  *
- * Sprint 28: when `spec.carPartId` is set (the per-part Replace drawer),
- * additionally requires the catalog part's own address to match that exact
- * slot (`partFitsCar`'s new optional param).
- *
- * Sprint 32: `slotEmpty` now always resolves from the picked part's OWN
- * catalog address (`part.carPartId`), not just when `spec.carPartId` is
- * explicitly set - closing a real gap the Sprint 28 comment above used to
- * describe as "pre-existing": a group-level spec's `slotEmpty` used to be
+ * For per-part installs (when `spec.carPartId` is set), additionally requires
+ * the catalog part's own address to match that exact slot (`partFitsCar`'s
+ * optional param). Slot emptiness always resolves from the picked part's OWN
+ * catalog address (`part.carPartId`), closing a gap where group-level specs
+ * used to check the wrong slot.
  * unconditionally `true` (no per-part check at all), which barely mattered
  * when almost every slot started genuinely empty pre-Sprint-32, but now
  * that every slot starts filled with a stock part by default, a group-level
@@ -898,11 +817,10 @@ export function installFitGate(
   if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }
   }
-  // A part whose origin traces to an active customer job (Sprint 70) is only
-  // ever ours to recondition and reinstall onto that SAME customer's car -
-  // never sold, scrapped, or installed onto a different car, including the
-  // player's own. `partInstance` is guaranteed defined here (part of the
-  // `fits` conjunction above).
+  // A part whose origin traces to an active customer job is only ever ours to
+  // recondition and reinstall onto that SAME customer's car - never sold,
+  // scrapped, or installed onto a different car, including the player's own.
+  // `partInstance` is guaranteed defined here (part of the `fits` conjunction).
   const owningJob = state.activeServiceJobs.find((job) => isCustomerOriginPart(partInstance!, job))
   if (owningJob && owningJob.car.id !== spec.carInstanceId) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'not-your-part' }] }
@@ -912,10 +830,9 @@ export function installFitGate(
   if (naToTurboConversionBlocked(part!.carPartId, model!, state, context)) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'tool-tier' }] }
   }
-  // Sprint 71 decision 4 (the symmetric blocker rule): install requires every
-  // `blockedBy` slot for the TARGET address empty, exactly like uninstall
-  // does (`resolveRemovePart`) - reassembly order matters (e.g. the clutch
-  // can't go back in before the gearbox is on).
+  // Install requires every `blockedBy` slot for the TARGET address empty,
+  // exactly like uninstall (`resolveRemovePart`) - reassembly order matters
+  // (e.g. the clutch can't go back in before the gearbox is on).
   if (occupiedBlockers(car!, part!.carPartId, context).length > 0) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'blocked-by' }] }
   }
@@ -924,16 +841,14 @@ export function installFitGate(
 
 /**
  * Finds the car's already-open job matching this spec's kind+component, or
- * creates one (Sprint 11). A car can only have one open job per component at
- * a time, so a repeat click on the same repair/install just continues the
- * existing job rather than creating a duplicate - the id is derived
- * deterministically from car+kind+componentId instead of a day/index
- * counter, so "the same job" is recognizable across days without extra
- * bookkeeping. Sprint 13: a *new* repair-zone job additionally passes
- * `repairJobGate` (repair cost affordable) before it's created - `job`
- * comes back `null` when the gate refuses, since
- * nothing was created to return. Sprint 24: a *new* install-part job
- * likewise passes `installFitGate` (fix 2).
+ * creates one. A car can only have one open job per component at a time, so
+ * a repeat click on the same repair/install continues the existing job rather
+ * than creating a duplicate; the id is deterministic from car+kind+componentId
+ * so "the same job" is recognizable across days.
+ *
+ * A new repair-zone job additionally passes `repairJobGate` (repair cost
+ * affordable) before creation; `job` comes back `null` when the gate refuses.
+ * A new install-part job likewise passes `installFitGate`.
  */
 export function findOrCreateJob(
   state: GameState,
@@ -975,9 +890,9 @@ export interface LaborApplicationResult {
 }
 
 /**
- * Applies up to `laborAvailable` labor to one job (by id), completing it
+ * Applies up to `laborAvailable` labour to one job (by id), completing it
  * immediately if that's enough - the single-job core shared by the player's
- * instant repair/install click and advanceDay's bot batch loop (Sprint 11).
+ * instant repair/install click and advanceDay's bot batch loop.
  * Bumps `energySpentToday` by exactly what was used, so the caller never
  * has to track the daily budget separately from the state transition itself.
  */
@@ -991,11 +906,10 @@ export function applyAvailableLaborToJob(
   if (!job) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
-  // Sprint 35: a `recondition-part` job works a loose inventory part on the
-  // bench, not a car - the in-service-bay requirement is a car-only
-  // constraint, so it's skipped for reconditions (which have no car). Every
-  // other step below - the daily labor budget, the completion path - is
-  // identical, the ONE repair economy.
+  // A `recondition-part` job works a loose inventory part on the bench, not a
+  // car - the in-service-bay requirement is a car-only constraint, so it's
+  // skipped for reconditions (which have no car). Every other step below - the
+  // daily labour budget, the completion path - is identical; one repair economy.
   if (job.kind !== 'recondition-part' && !state.serviceBayCarIds.includes(job.carInstanceId)) {
     return {
       state,
@@ -1005,11 +919,11 @@ export function applyAvailableLaborToJob(
   }
 
   const need = job.laborSlotsRequired - job.laborSlotsSpent
-  // Sprint 71: a surface-slot job is created needing ZERO labor
+  // A surface-slot job may be created needing ZERO labour
   // (`economy.teardown.*SlotsByClass.surface` is 0) - it must still run
   // through `completeJob` below on this very call, or it would sit in
   // `state.jobs` forever, "complete" by `isJobComplete` yet never applied to
-  // the car. Only a job that is BOTH incomplete and starved of labor today is
+  // the car. Only a job that is BOTH incomplete and starved of labour today is
   // a genuine no-op.
   if (need > 0 && laborAvailable <= 0) {
     return { state, log: [], laborSlotsUsed: 0 }
@@ -1033,9 +947,8 @@ export function applyAvailableLaborToJob(
     } else {
       next = { ...next, jobs: next.jobs.filter((j) => j.id !== jobId) }
       if (updatedJob.kind === 'recondition-part') {
-        // Sprint 35: a loose-part recondition has no car to report against, so
-        // it logs the bench-repair completion (`part-reconditioned`) rather
-        // than the car-oriented `job-completed`.
+        // A loose-part recondition has no car to report against, so it logs
+        // `part-reconditioned` rather than the car-oriented `job-completed`.
         log.push({
           type: 'part-reconditioned',
           partInstanceId: updatedJob.partInstanceId!,
@@ -1056,14 +969,12 @@ export function applyAvailableLaborToJob(
 }
 
 /**
- * The instant player-facing resolver (Sprint 11): find-or-create the job for
- * this car+zone/slot, then apply as much of today's remaining labor as it
- * needs. Composes `findOrCreateJob` + `applyAvailableLaborToJob` - the same
- * two primitives advanceDay's bot batch loop uses, just for a single click
- * instead of a whole day's queue. Sprint 13: `findOrCreateJob` can now refuse
- * to create a repair-zone job at all (no equipment / can't afford it) -
- * `job` comes back `null` in that case, and there's nothing left to apply
- * labor to.
+ * The instant player-facing resolver: find-or-create the job for this
+ * car+zone/slot, then apply as much of today's remaining labour as it needs.
+ * Composes `findOrCreateJob` + `applyAvailableLaborToJob` - the same two
+ * primitives advanceDay's bot batch loop uses, just for a single click.
+ * `findOrCreateJob` can refuse to create a repair-zone job (no equipment /
+ * can't afford it); `job` comes back `null` in that case.
  */
 export function resolveJobLabor(
   state: GameState,
@@ -1077,7 +988,7 @@ export function resolveJobLabor(
   return { ...result, log: [...created.log, ...result.log] }
 }
 
-// --- in-inventory reconditioning (Sprint 35) ----------------------------
+// --- in-inventory reconditioning ---
 
 /** A recondition job's stable id - one open recondition per loose part at a
  * time (a repeat click continues the same job rather than duplicating it),
@@ -1087,14 +998,12 @@ function reconditionJobIdFor(partInstanceId: string): string {
 }
 
 /**
- * Sprint 87 (the assembly model): a loose `PartInstance` the player can
- * bench-work right now - the parts bin, PLUS every member sitting in an open
- * assembly container (`state.assemblyInventory`). A benched member reconditions
- * through the EXACT same recondition path a bin part does (`planReconditionPart`
- * / `completeReconditionJob` both resolve the instance through here), which is
- * the reuse the sprint's own analysis calls for: no second bench economy.
- * Returns `undefined` when the id is nowhere loose (installed on a car, sold,
- * or never existed).
+ * A loose `PartInstance` the player can bench-work right now - the parts bin
+ * OR every member sitting in an open assembly container (`state.assemblyInventory`).
+ * A benched member reconditions through the EXACT same path a bin part does
+ * (`planReconditionPart` / `completeReconditionJob` both resolve via here);
+ * no separate bench economy. Returns `undefined` when the id is nowhere loose
+ * (installed on a car, sold, or never existed).
  */
 export function findLoosePart(state: GameState, partInstanceId: string): PartInstance | undefined {
   const inBin = state.partInventory.find((p) => p.id === partInstanceId)
@@ -1109,9 +1018,9 @@ export function findLoosePart(state: GameState, partInstanceId: string): PartIns
 
 /**
  * Applies `fn` to whichever loose location holds `partInstanceId` - the parts
- * bin or an open assembly container's member slot (Sprint 87) - leaving every
- * other part untouched. A no-op (same state reference) when the id is nowhere
- * loose. The bin/container split of `findLoosePart` above, on the write side.
+ * bin or an open assembly container's member slot - leaving every other part
+ * untouched. A no-op (same state reference) when the id is nowhere loose.
+ * The bin/container split of `findLoosePart` above, on the write side.
  */
 function updateLoosePart(
   state: GameState,
@@ -1145,25 +1054,22 @@ function updateLoosePart(
 interface ReconditionPlan {
   group: ComponentId
   plan: PartRepairPlan
-  /** Sprint 93: the EFFECTIVE target after the tier ceiling clamp - the band
-   * the bench recondition will actually reach and the band the created job must
-   * carry, so completion (`completeReconditionJob`) never climbs the part past
-   * what the plan priced and labored. */
+  /** The effective target after tier ceiling clamp - the band the bench
+   * recondition will actually reach and the band the created job must carry,
+   * so completion never climbs the part past what the plan priced and labored. */
   targetBand: ConditionBand
 }
 
 /**
- * Everything the recondition gate/labor needs for a loose inventory part, or
+ * Everything the recondition gate/labour needs for a loose inventory part, or
  * null when it can't be reconditioned (not in inventory, no catalog/taxonomy
  * entry, scrap, non-repairable, or already at/above the target). Reuses the
- * on-car repair atoms EXACTLY - `repairLevelForGroup` for the tool-tier
- * repair level and `planPartRepair` (bands.ts) for the cost + labor, priced
- * off the SAME `catalogPart.priceYen` an on-car repair of the identical
- * instance would use - so a loose part and the same part installed on a car
- * price and size identically (Sprint 44: the bench/on-car asymmetry Sprint 41
- * introduced is gone - a part's repair price is intrinsic to the part, never
- * to whether or which car it's bolted to). This is the reuse the sprint
- * exists to enforce: there is no separate bench formula.
+ * on-car repair atoms exactly - `repairLevelForGroup` for the tool-tier repair
+ * level and `planPartRepair` (bands.ts) for the cost + labour, priced off the
+ * same `catalogPart.priceYen` an on-car repair of the identical instance would
+ * use - so a loose part and the same part installed on a car price and size
+ * identically. A part's repair price is intrinsic to the part, never to
+ * whether or which car it's bolted to. There is no separate bench formula.
  */
 function planReconditionPart(
   state: GameState,
@@ -1178,12 +1084,11 @@ function planReconditionPart(
   const group = taxonomyEntry?.group
   if (!catalogPart || !taxonomyEntry || !group) return null
   const repairLevel = repairLevelForGroup(state.toolTiers, group)
-  // Sprint 93 (the band ceiling): a bench recondition climbs only to the
-  // group's tool-tier ceiling. A "sweep to a band" clamps rather than refuses
-  // (the spec's own split) - a tier-1 recondition of a worn part toward mint
-  // repairs it as far as it can (to fine) and the created job carries that
-  // clamped band, so mint by REPAIR needs the tier-2 machine while mint by
-  // BUYING a replacement part stays available at any tier (unchanged).
+  // A bench recondition climbs only to the group's tool-tier ceiling. A
+  // "sweep to a band" clamps rather than refuses - a tier-1 recondition of a
+  // worn part toward mint repairs it as far as it can (to fine) and the
+  // created job carries that clamped band, so mint by REPAIR needs the tier-2
+  // machine while mint by BUYING a replacement part stays available at any tier.
   const effectiveTarget = clampRepairTarget(
     targetBand,
     repairCeilingForLevel(repairLevel, context.economy),
@@ -1200,9 +1105,8 @@ function planReconditionPart(
   // Zero when scrap, non-repairable, nothing left to climb, or already at/above
   // the tier ceiling (a tier-1 recondition of an already-fine part toward mint).
   if (plan.laborSlotsRequired === 0) return null
-  // Sprint 82: bench recondition shares the one repair economy, so the benched
-  // crew's speed discount (decision 2) and a perfectionist's parts discount
-  // (decision 5) apply here exactly as they do to on-car group repair.
+  // Bench recondition shares the one repair economy: crew speed discounts and
+  // perfectionist parts discounts apply here exactly as they do to on-car repairs.
   const adjusted: PartRepairPlan = {
     laborSlotsRequired:
       plan.laborSlotsRequired -
@@ -1222,14 +1126,11 @@ export interface ReconditionQuote {
 
 /**
  * A read-only quote for reconditioning one loose inventory part to
- * `targetBand`, or null when there is nothing to do (not repairable, or
- * already at/above the target). Powers the inventory UI's recondition control
- * (cost/labor preview) without mutating anything - it routes through the
- * exact same `planReconditionPart` the resolver does, so the previewed
- * cost/labor is precisely what the player will be charged. Sprint 36: no
- * tooling gate anymore - the current tool tier only sets speed. Sprint 47:
- * no consumables charge either (decision 1) - the current tool tier affects
- * only labor speed now, never cost.
+ * `targetBand`, or null when there is nothing to do. Powers the inventory UI's
+ * recondition control (cost/labour preview) without mutating; routes through
+ * the exact same `planReconditionPart` the resolver does, so the previewed
+ * cost/labour is precisely what the player will be charged. The current tool
+ * tier affects only labour speed, never cost.
  */
 export function reconditionQuote(
   state: GameState,
@@ -1246,18 +1147,15 @@ export function reconditionQuote(
 }
 
 /**
- * The instant player-facing recondition resolver (Sprint 35) - the loose-part
- * analogue of `resolveJobLabor`. Finds the part's already-open recondition
- * job (a repeat click continues it) or creates one through the SAME repair
- * economy as an on-car repair: the same banded-repair charge
- * (`chargeRepairWork`), the same tool-tier-sized labor (`planPartRepair`).
- * Then it spends today's remaining labor via the SAME
- * `applyAvailableLaborToJob` the on-car click uses (which books the spend
- * into `energySpentToday` identically and completes by climbing the
- * part's band). There is no second bench cost, no second labor pool - one
- * repair economy, targeting a loose part instead of a car slot. Works on ANY
- * inventory part, not only customer-owned ones. Sprint 36: no tooling gate -
- * bench work is always possible, just slower at tier 1.
+ * The instant player-facing recondition resolver - the loose-part analogue of
+ * `resolveJobLabor`. Finds the part's already-open recondition job (repeat
+ * click continues it) or creates one through the SAME repair economy as an
+ * on-car repair: same banded-repair charge (`chargeRepairWork`), same tool-tier
+ * labour (`planPartRepair`). Spends today's remaining labour via the SAME
+ * `applyAvailableLaborToJob` the on-car click uses (books the spend into
+ * `energySpentToday` and completes by climbing the part's band). One repair
+ * economy, targeting a loose part instead of a car slot. Works on ANY
+ * inventory part. Bench work is always possible, just slower at tier 1.
  */
 export function resolveReconditionLabor(
   state: GameState,
@@ -1279,12 +1177,11 @@ export function resolveReconditionLabor(
   const charged = chargeRepairWork(state, planned.plan.costYen)
   if (!charged.ok) return { state, log: [], laborSlotsUsed: 0 }
 
-  // Sprint 42: a bench recondition has no car ledger to charge - the spend
-  // lands on the loose PartInstance's own `pricePaidYen` instead (a
-  // reconditioned part "cost" its buy price plus this work), charged at job
-  // creation, matching every other repair charge's timing. Sprint 87: the
-  // instance may be a benched assembly member, so this routes through the
-  // same bin-or-container writer the band climb does.
+  // A bench recondition has no car ledger; the spend lands on the loose
+  // PartInstance's own `pricePaidYen` (a reconditioned part "costs" its buy
+  // price plus this work), charged at job creation like every other repair.
+  // The instance may be a benched assembly member, so this routes through the
+  // bin-or-container writer the band climb does.
   const pricedState: GameState = updateLoosePart(charged.state, partInstanceId, (instance) => ({
     ...instance,
     pricePaidYen: (instance.pricePaidYen ?? 0) + charged.totalCostYen,
@@ -1292,15 +1189,14 @@ export function resolveReconditionLabor(
 
   const job: Job = {
     id: jobId,
-    // No car - a loose part on the bench. `carInstanceId` (required by the
-    // schema) holds the part's own id purely so the field is a stable
-    // non-empty identity; the `recondition-part` kind is what every resolver
-    // branches on, never this value (it never resolves against a car or bay).
+    // No car - a loose part on the bench. `carInstanceId` (required by schema)
+    // holds the part's own id purely for stable non-empty identity; the
+    // `recondition-part` kind is what every resolver branches on.
     carInstanceId: partInstanceId,
     kind: 'recondition-part',
     componentId: planned.group,
     partInstanceId,
-    // Sprint 93: the CLAMPED target the plan actually priced/labored, so
+    // The clamped target the plan actually priced/laboured, so
     // `completeReconditionJob` climbs the loose part to exactly that band.
     targetBand: planned.targetBand,
     laborSlotsRequired: planned.plan.laborSlotsRequired,

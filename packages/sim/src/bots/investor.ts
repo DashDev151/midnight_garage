@@ -20,13 +20,13 @@ const MAX_TARGET_BOOK_VALUE_YEN = 1_500_000
  * lot on principle. */
 const FAIR_BID_MULTIPLIER = 1.3
 const CASH_BUFFER_MULTIPLIER = 1.2
-/** Sprint 31 decision 4: accept an offer once it clears this fraction of the
- * car's best-fit valuation, or once it's been for-sale this many days. */
+/** Accept an offer once it clears this fraction of the car's best-fit
+ * valuation, or once it's been for-sale this many days. */
 const ACCEPT_FRACTION = 0.85
 const MAX_HOLDING_DAYS = 12
 
-/** Sprint 26: the 6 real component groups (`forcedInduction` folded into
- * `engine`, `brakes` folded into `suspension`). */
+/** The 6 real component groups (`forcedInduction` folded into `engine`,
+ * `brakes` folded into `suspension`). */
 const ALL_COMPONENTS: readonly ComponentId[] = [
   'engine',
   'drivetrain',
@@ -37,26 +37,18 @@ const ALL_COMPONENTS: readonly ComponentId[] = [
 ]
 
 /**
- * Sprint 13: the control for the payback-curve question - never upgrades a
- * tool line, ever (Sprint 36: every line stays at tier 1 all career), and
- * restores cars entirely through Replace (buy a catalog part, install it)
- * instead of Repair. Every component is fair game (not just the 5 that
- * feed stat formulas), since Replace was always available everywhere and
- * Investor's whole premise is "skip the investment, pay per-job instead."
- * Should end up *worse* than Handyman post-investment (paying full part
- * price every time beats no restoration at all, but loses to labor-only
- * repair once the upgrade's paid for) - the harness's payback-curve columns
- * (sprint13.md decision 11) are what turn that "should" into a measured
- * fact.
+ * Never upgrades a tool line and restores cars entirely through Replace
+ * (buy a catalog part, install it) instead of Repair; every component is
+ * fair game, since Replace is always available everywhere.
  *
- * Buying a part and installing it are split across two ticks, never queued
- * the same day: `advanceDay` resolves `createJobs` before `buyParts`, so an
- * install job referencing a same-tick purchase would fail `installFitGate`
- * every time (the part genuinely isn't in `state.partInventory` yet). Fixed
- * (2026-07-12) by checking inventory first for an already-owned, still-
- * uninstalled fitting part before ever creating an install job - if nothing
- * fits yet, this tick only buys; the install job queues once a later tick's
- * snapshot shows the purchase actually landed. Mirrors the identical fix in
+ * Buying a part and installing it are split across two ticks, never
+ * queued the same day: `advanceDay` resolves `createJobs` before
+ * `buyParts`, so an install job referencing a same-tick purchase would
+ * fail `installFitGate` (the part isn't in `state.partInventory` yet).
+ * This checks inventory first for an already-owned, still-uninstalled
+ * fitting part before creating an install job - if nothing fits yet, this
+ * tick only buys; the install job queues once a later tick's snapshot
+ * shows the purchase landed. Mirrors the identical logic in
  * `bots/serviceJobHelpers.ts::queueServiceJobTasks`.
  */
 export function investorStrategy(state: GameState, context: SimContext, rng: Rng): DayActions {
@@ -96,9 +88,9 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     const model = context.modelsById[car.modelId]
     if (!model) continue
 
-    // Sprint 32: `presentPartIdsInGroup` now means "physically occupied",
-    // so an empty slot (missing or the legitimately-absent forcedInduction-
-    // on-NA case) is never IN that list - filtering it again for "not
+    // `presentPartIdsInGroup` means "physically occupied", so an empty
+    // slot (missing, or the legitimately-absent forcedInduction-on-NA
+    // case) is never in that list - filtering it again for "not
     // installed" would always be empty. Scan every part the taxonomy
     // assigns to the group instead, the same set `installablePartsFor`
     // (gameStore.ts) filters against for the player's own Replace flow.
@@ -146,8 +138,8 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
       continue
     }
 
-    // Sprint 14: pinned to express, not a policy choice - Investor pays full
-    // retail for speed just as readily as it skips investing in equipment.
+    // Pinned to express, not a policy choice - Investor pays full retail
+    // for speed just as readily as it skips investing in equipment.
     // Nothing owned yet that fits this exact slot; buy the cheapest option
     // and stop here for this car this tick - the install job queues on a
     // later tick, once the purchase genuinely lands in inventory.
@@ -162,9 +154,9 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
 
   // 3. Sell any job-free car with nothing left worth replacing cheaply -
   // "good enough" for Investor means every component has *something*
-  // installed, not that every condition is high (it never repairs). Same
-  // Sprint 32 fix as `emptyComponents` above: scan every part the taxonomy
-  // assigns to each group, not just the already-"present" ones.
+  // installed, not that every condition is high (it never repairs). Scans
+  // every part the taxonomy assigns to each group, not just the
+  // already-"present" ones (mirrors `emptyComponents` above).
   for (const car of state.ownedCars) {
     if (jobbedCarIds.has(car.id)) continue
     const isBuilt = ALL_COMPONENTS.every((id) =>

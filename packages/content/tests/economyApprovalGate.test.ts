@@ -19,7 +19,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('64a6ae21c0496c312948364fd7bc199191beceb348caea81172127105d6dc69d')
+    ).toBe('e8faedcff9c10fbef7440c6aaeb97f18179b16a512912e815019712f1265a8c9')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
