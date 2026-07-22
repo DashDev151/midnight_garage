@@ -66,9 +66,20 @@ by one iron rule:
 
 ### 3.2 Car sprites
 
-- **One master side-view per body, 96x48 canvas.** No second "hero" sprite ever - the garage
-  scene shows the same master at integer 2x. (Controlled integer-ratio mixing - big hero car, 1x
-  props - is standard practice and reads as intentional.)
+- **Two sprite classes per car (amended 2026-07-22, maintainer approval in session,
+  superseding the original "no second hero sprite" rule):**
+  1. **The side-view master, 96x48 canvas** - the car's identity portrait, styled like a
+     listing photo: auction cards, detail pages, anywhere the player inspects or compares.
+     This is the layered-compositing set (body + wheels + aero + ride height, palette-swap
+     paint) and the only class that renders mods.
+  2. **The garage-scene overworld sprite** - a dedicated FRONT-FACING drawing per model in
+     the scene's elevated three-quarter view, flat body + palette swap only (no part
+     compositing; mods read on the master). **Exactly two classes per car, locked
+     (maintainer, 2026-07-22):** every scene context, including the lift bay, reuses the
+     front-facing sprite; a third angle class was considered and rejected (each angle class
+     costs one drawing per roster model forever).
+  (Controlled integer-ratio mixing - big hero car, 1x props - remains standard practice and
+  reads as intentional.)
 - **Length varies inside the canvas by class:** a kei car occupies ~70px, a JZA80 ~92px.
   Relative size between models is free identity - never normalize it away.
 - Why 96 and not 80: wheels. At 96px car length, wheels run 18-20px diameter - the minimum where
@@ -213,6 +224,15 @@ Register cha-ching (sale), flip-clock flap (End Day), shutter, ratchet, air-wren
 - **Cassette-tab rack retired** (maintainer, 2026-07-22): navigation stays diegetic, but the
   cassette rack tried too hard for the nostalgia note. Replacement object is an open call
   (section 7).
+- **Top-down oblique locked; two car sprite classes locked** (maintainer, 2026-07-22): the
+  garage scene renders in elevated three-quarter view (Stardew/Pokemon lineage); each car gets
+  exactly two drawings - the 96x48 side master (listing-photo identity, the only class that
+  renders mods) and a front-facing oblique scene sprite reused everywhere in-scene, including
+  the lift bay. A third angle class was rejected on cost (one drawing per roster model,
+  forever). The auction-sheet card direction was confirmed the same day via a second reference
+  render (AI, moodboard only): aged-paper sheet, red grade stamps, listing-photo frame,
+  physical action buttons - with the corrections recorded in `art-catalogue.md` O9 (no
+  countdown timers on cards, one ledger, real vetted kanji only, the photo is the side master).
 - **Interim font pairing landed** (2026-07-22): DotGothic16 (the era Japanese 16-dot gothic) as
   the pixel display/default face; M PLUS Rounded 1c (maru gothic) as the reading face for
   long-form copy and anything below 16px, where a bitmap grid smears. Both OFL, licences shipped
@@ -226,8 +246,14 @@ Register cha-ching (sale), flip-clock flap (End Day), shutter, ratchet, air-wren
 
 - Exact hex ramps per palette tier, and the display/body font pairing (P3, with the artist).
 - Outline/dither/AA per-asset conventions beyond section 3.5's defaults (P3 asset spec).
-- Hero-scene composition: single-bay closeup vs multi-bay wide (affects whether 480x270 islands
-  exist at all).
+- Hero-scene composition: the VIEW is now LOCKED (maintainer, 2026-07-22): elevated
+  three-quarter (top-down oblique, the Stardew/Pokemon lineage, NOT isometric), compositing
+  the interior bay and the exterior parking apron in one scene, with the diegetic status row
+  (flip-clock day, register, VFD cash panel, CRT reputation, chalkboard tally) above it -
+  direction set via a maintainer reference render (AI moodboard only, never ships, never
+  appears publicly, per this doc's standing law). Still open: exact composition, crop, bay
+  count, and whether 480x270 islands exist. The render's cassette tabs predate the cassette
+  retirement and are superseded.
 - Which existing screens get the diegetic-control retrofit first once P3 starts (candidate order:
   garage status row, End Day, radio, band-picker dial).
 - The navigation tab object (cassette rack retired 2026-07-22). Candidates that fit "HTML plays

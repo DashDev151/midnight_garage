@@ -347,7 +347,9 @@ pass."
   palette decision (CC-29 extension vs Apollo subset, parked earlier), the navigation tab
   object (cassette rack retired; candidates in the art bible's open calls), and the font
   pairing rollout below. The interim font pairing (DotGothic16 display + M PLUS Rounded 1c
-  reading) already landed 2026-07-22.
+  reading) already landed 2026-07-22. The full required-asset inventory, the animation
+  doctrine (proposed, awaiting sign-off), and the eight blocking decisions live in
+  `docs/design/art-catalogue.md` (drafted 2026-07-22); its P1 column is this pass's scope.
 - [ ] **Reading-face rollout: audit every long-form reading surface onto `--mg-font-reading`.**
   The token and both faces landed 2026-07-22 with the tutorial walkthrough as the proving
   ground. Still to sweep once the maintainer approves the pairing: dialogue/mission copy,
