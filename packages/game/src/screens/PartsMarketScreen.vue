@@ -8,6 +8,7 @@ import type {
 } from '@midnight-garage/content'
 import {
   fitmentClassForTier,
+  MATERIALS,
   PART_FITMENT_CLASS_DISPLAY_NAMES,
   PartFitmentClassSchema,
 } from '@midnight-garage/content'
@@ -165,7 +166,7 @@ function goBack(): void {
  */
 /** How many products a slot has - the count shown on its card. */
 function slotPartCount(slotId: CarPartId): number {
-  return game.partsCatalog.filter((p) => p.carPartId === slotId).length
+  return game.partsCatalog.filter((p) => p.carPartId === slotId && !isDelisted(p)).length
 }
 
 /** The drilled-into group's own sub-parts, or empty when no group is
@@ -196,8 +197,23 @@ function statSummary(part: Part): string {
     .join(' ')
 }
 
+/** `panels`/`paint`/`underbody`'s own stock SKU stays in the catalogue (the
+ * derived value carriers' installed reference - `bodyPipeline.ts`), but the
+ * market never lists it again: a zone-panel SKU still carries `carPartId:
+ * "panels"` at `grade: "stock"`, so the exclusion is guarded on `zoneId`
+ * too, or it would delist the real zone panels alongside the whole-slot
+ * reference. */
+const DELISTED_DERIVED_PART_IDS: readonly CarPartId[] = ['panels', 'paint', 'underbody']
+function isDelisted(part: Part): boolean {
+  return (
+    part.grade === 'stock' &&
+    part.zoneId == null &&
+    DELISTED_DERIVED_PART_IDS.includes(part.carPartId)
+  )
+}
+
 const visibleParts = computed(() => {
-  let parts = game.partsCatalog.slice()
+  let parts = game.partsCatalog.filter((p) => !isDelisted(p))
   if (componentFilter.value) {
     parts = parts.filter((p) => p.carPartId === componentFilter.value)
   } else if (selectedGroup.value) {
@@ -230,7 +246,6 @@ function onCheckout(): void {
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
     <header class="head">
       <h2>Parts market</h2>
-      <p class="cash">{{ formatYen(game.cashYen) }}</p>
     </header>
 
     <div class="market-layout">
@@ -265,6 +280,25 @@ function onCheckout(): void {
           >
             Browse everything
           </button>
+
+          <section class="materials-shelf" data-test="materials-shelf">
+            <h3>Body pipeline materials</h3>
+            <p class="materials-note">
+              Charged into a stage's own cost line the moment you work it - never bought or stocked
+              ahead of time.
+            </p>
+            <ul class="materials-list">
+              <li
+                v-for="material in MATERIALS"
+                :key="material.id"
+                class="materials-row"
+                :data-test="'material-' + material.id"
+              >
+                <span class="materials-name">{{ material.name }}</span>
+                <span class="materials-price">{{ formatYen(material.priceYen) }}</span>
+              </li>
+            </ul>
+          </section>
         </template>
 
         <template v-else>
@@ -476,11 +510,6 @@ h3 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-md);
   margin: 0 0 var(--mg-space-2);
-}
-
-.cash {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
 }
 
 /* The default view - six department hero cards, no

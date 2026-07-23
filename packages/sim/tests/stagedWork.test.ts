@@ -8,6 +8,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
+import { zonePanelPart } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import {
   clearStagedWork,
@@ -15,7 +16,13 @@ import {
   isFreeInstallRefit,
   previewPlannedWork,
 } from '../src/stagedWork'
-import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  groupCarParts,
+  mintCarParts,
+  testSpecialty,
+  testToolTiers,
+} from './testFixtures'
 
 // Real CARS/PARTS: findOrCreateJob validates install-part fit against
 // the real catalog, so an install spec needs both to resolve.
@@ -58,7 +65,7 @@ function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
     CONTEXT.economy.restoration.repairStepFraction,
-    CONTEXT.economy.energy.energyPerGradeByTier,
+    CONTEXT.economy.energy.energyPerBandStepByToolTier,
   )
 }
 
@@ -147,6 +154,9 @@ describe('confirmStagedWork', () => {
 
   it('resolves a staged install for the exact part instance staged', () => {
     const state = baseState({
+      // dampers is a suspension signature slot - the install needs the line
+      // hired for the day (suspension is tier 1 in this file's TOOL_TIERS).
+      machineHirePaidDayByGroup: { suspension: 1 },
       stagedCarWork: {
         [car.id]: [{ kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id }],
       },
@@ -205,6 +215,75 @@ describe('confirmStagedWork', () => {
     const result = confirmStagedWork(state, car.id, 5, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
+  })
+})
+
+describe('confirmStagedWork: pipeline-swap-panel', () => {
+  it('harvests the old zone panel into inventory and re-projects the derived panels band', () => {
+    // Every zone starts clean except a damaged bonnet (metal severity 2, the
+    // 'worn' rung) - the pre-swap state the old panel is harvested at.
+    const cleanZone = { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false }
+    const zoneState = {
+      bonnet: { ...cleanZone, metal: 2 },
+      boot: cleanZone,
+      left: cleanZone,
+      right: cleanZone,
+      roof: cleanZone,
+      chassis: cleanZone,
+    }
+    // honda-city-e-aa is 'shitbox' tier, so the fitting zone-panel catalogue
+    // SKU is the one `zonePanelPart` resolves for (bonnet, shitbox).
+    const bonnetPanelPart = zonePanelPart(CONTEXT.partsById, 'bonnet', 'shitbox')!
+    const zoneCar: CarInstance = buildCarInstance({
+      id: 'car-0002',
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      authenticityPercent: 90,
+      // Pre-swap panels band starts deliberately wrong ('poor') so the
+      // post-confirm assertion proves the derived band was re-projected from
+      // zone state, not merely left at whatever the fixture set.
+      parts: mintCarParts({ panels: 'poor' }),
+      zoneState,
+    })
+    const newBonnetPanel: PartInstance = {
+      id: 'pi-panel-new-bonnet',
+      partId: bonnetPanelPart.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: { kind: 'market', day: 1 },
+    }
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      partInventory: [newBonnetPanel],
+      stagedCarWork: {
+        [zoneCar.id]: [
+          { kind: 'pipeline-swap-panel', zoneId: 'bonnet', partInstanceId: newBonnetPanel.id },
+        ],
+      },
+    })
+    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+
+    // The new panel is consumed from inventory...
+    expect(result.state.partInventory.some((p) => p.id === newBonnetPanel.id)).toBe(false)
+
+    // ...and the OLD panel is harvested into inventory in its place, at the
+    // band its pre-swap metal severity (2) maps to ('worn'), addressing the
+    // panels slot for the bonnet zone, with a car-kind origin.
+    const harvested = result.state.partInventory.find((p) => p.partId === bonnetPanelPart.id)
+    expect(harvested).toBeDefined()
+    expect(harvested?.band).toBe('worn')
+    expect(harvested?.origin.kind).toBe('car')
+    const harvestedCatalogPart = CONTEXT.partsById[harvested!.partId]
+    expect(harvestedCatalogPart?.zoneId).toBe('bonnet')
+    expect(harvestedCatalogPart?.carPartId).toBe('panels')
+
+    // The zone's metal clears to the swapped-in mint panel's band (severity
+    // 0), and the derived panels band re-projects from a now-clean bonnet
+    // plus the already-clean remaining zones.
+    expect(result.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
+    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
   })
 })
 

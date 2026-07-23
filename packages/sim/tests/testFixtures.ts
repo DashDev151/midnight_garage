@@ -46,13 +46,14 @@ export function testSpecialty(
  * One `grade: 'stock'` catalog part id per `CarPartId`, `common` fitment
  * class - what a fixture car's slot defaults to, same shape as real
  * generation (`generateAuctionCarInstance`, sim/auctions.ts) at the
- * `common` class.
+ * `common` class. Zone-scoped panels (a `zoneId`-carrying SKU) address a
+ * single body zone, never the whole slot, so they are excluded here just as
+ * the live stock-filler index excludes them.
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
-  PARTS.filter((part) => part.grade === 'stock' && part.fitmentClass === 'common').map((part) => [
-    part.carPartId,
-    part.id,
-  ]),
+  PARTS.filter(
+    (part) => part.grade === 'stock' && part.fitmentClass === 'common' && part.zoneId == null,
+  ).map((part) => [part.carPartId, part.id]),
 )
 
 /** Every fixture-stock part carries the fixture car's own origin

@@ -4,20 +4,22 @@ import type {
   CarPartId,
   ComponentId,
   ConditionBand,
+  PartInstance,
   SellingChannelId,
   StagedAction,
 } from '@midnight-garage/content'
 import {
   ALL_CAR_PART_IDS,
   ASSEMBLIES,
+  ComponentIdSchema,
   PARTS_TAXONOMY,
   fitmentClassForTier,
+  titleCaseFromSlug,
 } from '@midnight-garage/content'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
-import LabourBar from '../components/LabourBar.vue'
 import PartsDiagram from '../components/PartsDiagram.vue'
 import { partSpriteDataUrl } from '../components/partSprites'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
@@ -36,6 +38,7 @@ import {
   type CarPartRowView,
   type NextRepairStepView,
 } from '../stores/gameStore'
+import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
@@ -62,6 +65,35 @@ const RADAR_SIZE = 150
 const BLOCKED_BY: Record<string, readonly CarPartId[]> = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry.blockedBy]),
 )
+
+/** The Machine hire panel's six rows, in the catalog's own declared order. */
+const MACHINE_LINE_GROUPS = ComponentIdSchema.options
+
+/** The hire button's own disabled reason (short cash only - ownership and
+ * an already-hired line never reach a button at all, see the template). */
+function hireGateReasonFor(group: ComponentId): string | null {
+  const reason = game.hireMachineLineGateReason(group)
+  return reason === 'no-cash' ? 'Not enough cash' : null
+}
+
+function onHireMachineLineClick(group: ComponentId): void {
+  game.hireMachineLine(group)
+}
+
+/** The gate reason a staged row shows, or null - `StagedAction`'s own
+ * flavour of `removeBlockedReasonFor`/`installGateReasonFor` above. */
+function stagedActionGateReasonFor(action: StagedAction): string | null {
+  const d = detail.value
+  return d ? game.stagedActionGateReasonFor(d.car.id, action) : null
+}
+
+/** Whether Confirm should stay disabled because some staged action needs a
+ * machine line neither owned nor hired today - explains itself via the
+ * per-row gate reason rather than failing silently. */
+const stagedWorkGated = computed(() => {
+  const d = detail.value
+  return d ? game.stagedWorkGated(d.car.id) : false
+})
 
 /** Whether the planned work needs more labour than is left today. */
 const plannedLaborOverToday = computed(
@@ -479,36 +511,35 @@ function onRemoveClick(carPartId: CarPartId): void {
   game.removePart(d.car.id, carPartId)
 }
 
+/**
+ * The remove affordance's own gate reason (structural refusals - not
+ * removable, blocked-by - plus the buried engine/drivetrain machine-line
+ * gate) - `null` when nothing blocks it.
+ */
 function removeBlockedReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
   return d ? game.removeBlockedReason(d.car.id, carPartId) : null
 }
 
 /**
- * The `machine shop assist +<fee>` caption,
- * computed PER OPERATION so the fee shown is exactly the fee `advanceDay` will
- * charge - `null` when owned, ungated, or free. Removal keeps the
- * engine/drivetrain buried gate only (removal is free for the
- * suspension/body/interior signature groups); install/replace adds their
- * signature fee; on-car per-part repair charges the signature fee only for a
- * surface signature slot (the sim's own bench-only rule for non-surface slots),
- * so a bolt-on signature slot repaired via the group/bench shows no per-part
- * repair caption.
+ * The install/replace affordance's own gate reason - `null` when owned,
+ * hired for today, or ungated. Covers a buried engine/drivetrain slot and a
+ * suspension/body/interior signature slot alike.
  */
-function assistCaption(fee: number): string | null {
-  return fee > 0 ? `machine shop assist +${formatYen(fee)}` : null
-}
-function removeAssistCaptionFor(carPartId: CarPartId): string | null {
+function installGateReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
-  return d ? assistCaption(game.machineAssistFee(d.car.id, carPartId)) : null
+  return d ? game.installGateReasonFor(d.car.id, carPartId) : null
 }
-function installAssistCaptionFor(carPartId: CarPartId): string | null {
+
+/**
+ * The per-part on-car repair affordance's own gate reason - `null` when
+ * owned, hired for today, or ungated. Per-part repair is bench-only for any
+ * non-`surface` slot, so this only ever gates a surface signature slot
+ * (panels, underbody, seats, dashGauges).
+ */
+function repairGateReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
-  return d ? assistCaption(game.machineAssistInstallFee(d.car.id, carPartId)) : null
-}
-function repairAssistCaptionFor(carPartId: CarPartId): string | null {
-  const d = detail.value
-  return d ? assistCaption(game.machineAssistRepairFee(d.car.id, carPartId)) : null
+  return d ? game.repairGateReasonFor(d.car.id, carPartId) : null
 }
 /** The tier-1 repair-ceiling caption for this part's group, or null. */
 function repairCeilingCaptionFor(componentId: ComponentId, carPartId: CarPartId): string | null {
@@ -566,13 +597,46 @@ function onConfirm(): void {
   if (d) game.confirmCarWork(d.car.id)
 }
 
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  stripPrep: 'Strip & prep',
+  beat: 'Beat',
+  weld: 'Weld',
+  fillAndSand: 'Fill & sand',
+  prime: 'Prime',
+  polish: 'Polish',
+}
+
+function isPipelineStagedAction(
+  action: StagedAction,
+): action is Extract<
+  StagedAction,
+  { kind: 'pipeline-stage' | 'pipeline-swap-panel' | 'pipeline-paint' }
+> {
+  return (
+    action.kind === 'pipeline-stage' ||
+    action.kind === 'pipeline-swap-panel' ||
+    action.kind === 'pipeline-paint'
+  )
+}
+
 /** A stable per-action key for `v-for`/`data-test`. */
 function stagedKeyFor(action: StagedAction): string {
+  if (isPipelineStagedAction(action)) {
+    return action.kind === 'pipeline-stage'
+      ? `${action.kind}:${action.zoneId}:${action.stage}`
+      : `${action.kind}:${action.zoneId}`
+  }
   if (!hasWorkAddress(action)) return `${action.kind}:${action.assemblyId}`
   return action.carPartId ? `${action.componentId}:${action.carPartId}` : action.componentId
 }
 
 function stagedActionLabel(action: StagedAction): string {
+  if (isPipelineStagedAction(action)) {
+    const zoneName = titleCaseFromSlug(action.zoneId)
+    if (action.kind === 'pipeline-swap-panel') return `Swap panel: ${zoneName}`
+    if (action.kind === 'pipeline-paint') return `Paint (${action.colour}): ${zoneName}`
+    return `${PIPELINE_STAGE_LABELS[action.stage] ?? action.stage}: ${zoneName}`
+  }
   if (!hasWorkAddress(action)) {
     const name = game.assemblyLabel(action.assemblyId)
     return action.kind === 'remove-assembly'
@@ -595,14 +659,82 @@ function attributionText(action: StagedAction): string {
   if (action.kind === 'repair') return `${formatYen(a.costYen)} · ${a.laborSlots} labour`
   if (action.kind === 'install')
     return a.laborSlots === 0 ? 'Refit · free' : `Fit · ${a.laborSlots} labour`
+  if (isPipelineStagedAction(action)) return `${formatYen(a.costYen)} · ${a.laborSlots} labour`
   return 'free'
 }
 
 function onUnstageSummary(action: StagedAction): void {
   const d = detail.value
   if (!d) return
-  if (hasWorkAddress(action)) game.unstageAction(d.car.id, action.componentId, action.carPartId)
+  if (isPipelineStagedAction(action)) game.unstagePipelineAction(d.car.id, action)
+  else if (hasWorkAddress(action))
+    game.unstageAction(d.car.id, action.componentId, action.carPartId)
   else game.unstageAssemblyAction(d.car.id, action.kind, action.assemblyId)
+}
+
+// --- Body zones (minimal, docs/design/workshop-rework.md phase 1 - the
+// representative-schematic views land in phase 2; this is a plain list). ---
+
+const ZONE_IDS = ['bonnet', 'boot', 'left', 'right', 'roof', 'chassis'] as const
+type ZoneId = (typeof ZONE_IDS)[number]
+const PANEL_ZONE_IDS = ['bonnet', 'boot', 'left', 'right', 'roof'] as const
+const GENERIC_STAGES = ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish'] as const
+
+const zoneState = computed(() => detail.value?.car.zoneState ?? null)
+
+/** One generic stage's live preview for one zone - `null` when its
+ * prerequisite isn't met yet (the button shows disabled with no total),
+ * straight from `pipelineActionPlan` (the exact function Confirm resolves
+ * with), never a re-derived client-side gate. */
+function genericStagePreview(
+  zoneId: ZoneId,
+  stage: (typeof GENERIC_STAGES)[number],
+): { costYen: number; laborSlots: number } | null {
+  const d = detail.value
+  if (!d) return null
+  return game.pipelineActionPlan(d.car, { kind: 'pipeline-stage', stage, zoneId })
+}
+
+function onStageGeneric(zoneId: ZoneId, stage: (typeof GENERIC_STAGES)[number]): void {
+  const d = detail.value
+  if (!d) return
+  game.stageAction(d.car.id, { kind: 'pipeline-stage', stage, zoneId })
+}
+
+const paintColourByZone = ref<Record<string, string>>({})
+
+function paintPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
+  const d = detail.value
+  const colour = paintColourByZone.value[zoneId]
+  if (!d || !colour) return null
+  return game.pipelineActionPlan(d.car, { kind: 'pipeline-paint', zoneId, colour })
+}
+
+function onStagePaint(zoneId: ZoneId): void {
+  const d = detail.value
+  const colour = paintColourByZone.value[zoneId]
+  if (!d || !colour) return
+  game.stageAction(d.car.id, { kind: 'pipeline-paint', zoneId, colour })
+}
+
+/** Zone panels sitting in inventory that fit THIS car's own fitment class,
+ * for one panel zone - the swap-panel control's own picker. */
+function matchingPanelsFor(zoneId: (typeof PANEL_ZONE_IDS)[number]): PartInstance[] {
+  const d = detail.value
+  if (!d) return []
+  const model = game.context.modelsById[d.car.modelId]
+  if (!model) return []
+  const fitmentClass = fitmentClassForTier(model.tier)
+  return game.gameState.partInventory.filter((p: PartInstance) => {
+    const part = game.context.partsById[p.partId]
+    return part?.zoneId === zoneId && part.fitmentClass === fitmentClass
+  })
+}
+
+function onStageSwapPanel(zoneId: (typeof PANEL_ZONE_IDS)[number], partInstanceId: string): void {
+  const d = detail.value
+  if (!d || !partInstanceId) return
+  game.stageAction(d.car.id, { kind: 'pipeline-swap-panel', zoneId, partInstanceId })
 }
 
 const draggedPartName = computed(() => {
@@ -904,10 +1036,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   &times;
                 </button>
                 <span
-                  v-if="repairAssistCaptionFor(selectedRow.partId)"
-                  class="assist-caption"
+                  v-if="repairGateReasonFor(selectedRow.partId)"
+                  class="blocked-reason"
                   :data-test="'assist-fee-repair-' + selectedRow.partId"
-                  >{{ repairAssistCaptionFor(selectedRow.partId) }}</span
+                  >{{ repairGateReasonFor(selectedRow.partId) }}</span
                 >
               </template>
 
@@ -952,10 +1084,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   </button>
                 </template>
                 <span
-                  v-if="installAssistCaptionFor(selectedRow.partId)"
-                  class="assist-caption"
+                  v-if="installGateReasonFor(selectedRow.partId)"
+                  class="blocked-reason"
                   :data-test="'assist-fee-' + selectedRow.partId"
-                  >{{ installAssistCaptionFor(selectedRow.partId) }}</span
+                  >{{ installGateReasonFor(selectedRow.partId) }}</span
                 >
               </template>
 
@@ -977,12 +1109,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   class="blocked-reason"
                   :data-test="'remove-blocked-' + selectedRow.partId"
                   >{{ removeBlockedReasonFor(selectedRow.partId) }}</span
-                >
-                <span
-                  v-if="removeAssistCaptionFor(selectedRow.partId)"
-                  class="assist-caption"
-                  :data-test="'assist-fee-' + selectedRow.partId"
-                  >{{ removeAssistCaptionFor(selectedRow.partId) }}</span
                 >
               </template>
             </template>
@@ -1042,50 +1168,137 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               >No replacement {{ benchShopLabel(selectedBench.member.carPartId) }} on hand - the
               parts shop sells them.</span
             >
-            <!-- Prices the fit the Replace flow leads to. -->
+            <!-- Names the line the Replace flow needs before a fit can land. -->
             <span
-              v-if="selectedBench.member.swapFeeYen > 0"
-              class="assist-caption"
-              :data-test="'bench-swap-fee-' + selectedBench.member.carPartId"
-              >machine shop assist +{{ formatYen(selectedBench.member.swapFeeYen) }}</span
+              v-if="selectedBench.member.swapGateReason"
+              class="blocked-reason"
+              :data-test="'bench-swap-gate-' + selectedBench.member.carPartId"
+              >{{ selectedBench.member.swapGateReason }}</span
             >
           </div>
 
           <!-- The shared assembly Remove/Refit action, when the target belongs
-               to an assembly (a member on the car, or a benched member). -->
+               to an assembly (a member on the car, or a benched member).
+               Which button shows is `onBench` alone - `canRefit`/`canRemove`
+               only ever disable the button that's actually showing, so a
+               gated refit never falls through to a stray Remove button. -->
           <div v-if="panelAssemblyRow" class="panel-actions assembly-action">
             <button
-              v-if="panelAssemblyRow.canRefit"
+              v-if="panelAssemblyRow.onBench"
               type="button"
+              :disabled="!panelAssemblyRow.canRefit"
               :data-test="'refit-assembly-' + panelAssemblyRow.assemblyId"
               @click="game.refitAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
             >
               Refit assembly{{ labourSuffix(game.actionPoints.refitAssembly) }}
             </button>
-            <template v-else>
-              <button
-                type="button"
-                :disabled="!panelAssemblyRow.canRemove"
-                :data-test="'remove-assembly-' + panelAssemblyRow.assemblyId"
-                @click="game.removeAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
-              >
-                Remove assembly{{ labourSuffix(game.actionPoints.removeAssembly) }}
-              </button>
-              <span
-                v-if="panelAssemblyRow.blockedReason"
-                class="blocked-reason"
-                :data-test="'assembly-blocked-' + panelAssemblyRow.assemblyId"
-                >{{ panelAssemblyRow.blockedReason }}</span
-              >
-            </template>
+            <button
+              v-else
+              type="button"
+              :disabled="!panelAssemblyRow.canRemove"
+              :data-test="'remove-assembly-' + panelAssemblyRow.assemblyId"
+              @click="game.removeAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
+            >
+              Remove assembly{{ labourSuffix(game.actionPoints.removeAssembly) }}
+            </button>
             <span
-              v-if="panelAssemblyRow.machineFeeYen > 0"
-              class="assist-caption"
-              :data-test="'assembly-assist-' + panelAssemblyRow.assemblyId"
-              >machine shop assist +{{ formatYen(panelAssemblyRow.machineFeeYen) }}</span
+              v-if="panelAssemblyRow.blockedReason"
+              class="blocked-reason"
+              :data-test="'assembly-blocked-' + panelAssemblyRow.assemblyId"
+              >{{ panelAssemblyRow.blockedReason }}</span
             >
           </div>
         </template>
+      </section>
+
+      <section v-if="zoneState" class="body-zones-panel" data-test="body-zones-panel">
+        <h4>
+          Body zones
+          <HelpHint label="Body zones">
+            Panels, paint, and underbody all read from the six zones below - work a zone's own
+            pipeline to move it. Metal is beaten or welded free of charge (it costs labour, never
+            yen); surface and finish need real materials.
+          </HelpHint>
+        </h4>
+        <ul class="body-zone-list">
+          <li
+            v-for="zid in ZONE_IDS"
+            :key="zid"
+            class="body-zone-row"
+            :data-test="'body-zone-row-' + zid"
+          >
+            <div class="body-zone-head">
+              <span class="body-zone-name">{{ titleCaseFromSlug(zid) }}</span>
+              <span class="body-zone-severity" :data-test="'body-zone-severity-' + zid"
+                >metal {{ zoneState![zid].metal }} · surface {{ zoneState![zid].surface }} · finish
+                {{ zoneState![zid].finish
+                }}{{ zoneState![zid].panelMissing ? ' · panel missing' : '' }}</span
+              >
+            </div>
+            <div class="body-zone-stages">
+              <button
+                v-for="stage in GENERIC_STAGES"
+                :key="stage"
+                type="button"
+                :disabled="!genericStagePreview(zid, stage)"
+                :data-test="'pipeline-' + stage + '-' + zid"
+                :title="
+                  genericStagePreview(zid, stage)
+                    ? formatYen(genericStagePreview(zid, stage)!.costYen) +
+                      ' · ' +
+                      genericStagePreview(zid, stage)!.laborSlots +
+                      ' labour'
+                    : 'Not ready yet'
+                "
+                @click="onStageGeneric(zid, stage)"
+              >
+                {{ PIPELINE_STAGE_LABELS[stage] }}
+              </button>
+              <template v-if="(PANEL_ZONE_IDS as readonly string[]).includes(zid)">
+                <select
+                  :data-test="'pipeline-swap-panel-select-' + zid"
+                  @change="
+                    onStageSwapPanel(
+                      zid as (typeof PANEL_ZONE_IDS)[number],
+                      ($event.target as HTMLSelectElement).value,
+                    )
+                  "
+                >
+                  <option value="">Swap panel…</option>
+                  <option
+                    v-for="pi in matchingPanelsFor(zid as (typeof PANEL_ZONE_IDS)[number])"
+                    :key="pi.id"
+                    :value="pi.id"
+                  >
+                    {{ game.partName(pi.partId) }} ({{ pi.band }})
+                  </option>
+                </select>
+              </template>
+              <input
+                v-model="paintColourByZone[zid]"
+                type="text"
+                placeholder="colour"
+                :data-test="'pipeline-paint-colour-' + zid"
+              />
+              <button
+                type="button"
+                :disabled="!paintPreview(zid)"
+                :data-test="'pipeline-paint-' + zid"
+                :title="
+                  paintPreview(zid)
+                    ? formatYen(paintPreview(zid)!.costYen) +
+                      ' · ' +
+                      paintPreview(zid)!.laborSlots +
+                      ' labour'
+                    : 'Not ready yet'
+                "
+                @click="onStagePaint(zid)"
+              >
+                Paint
+              </button>
+            </div>
+          </li>
+        </ul>
       </section>
 
       <ReplaceDrawer
@@ -1095,6 +1308,49 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         :bench-container-id="activeBenchReplaceContainerId ?? undefined"
         @close="closeReplaceDrawer"
       />
+
+      <section class="machine-hire-panel" data-test="machine-hire-panel">
+        <h4>
+          Machine hire
+          <HelpHint label="Machine hire">
+            Pay a machine's fee once and it's yours without limit until End Day - every car, every
+            operation. It never shows up on a car's own bill; it's a running cost, same as rent.
+          </HelpHint>
+        </h4>
+        <ul class="machine-hire-list">
+          <li
+            v-for="group in MACHINE_LINE_GROUPS"
+            :key="group"
+            class="machine-hire-row"
+            :data-test="'machine-hire-row-' + group"
+          >
+            <span class="machine-hire-name">{{ MACHINE_LINE_NAMES[group] }}</span>
+            <span
+              v-if="game.machineLineOwned(group)"
+              class="chip owned"
+              :data-test="'machine-hire-chip-' + group"
+              >In-house</span
+            >
+            <span
+              v-else-if="game.machineLineHiredToday(group)"
+              class="chip hired"
+              :data-test="'machine-hire-chip-' + group"
+              >Hired today</span
+            >
+            <button
+              v-else
+              type="button"
+              class="hire-btn"
+              :disabled="!!hireGateReasonFor(group)"
+              :title="hireGateReasonFor(group) ?? undefined"
+              :data-test="'hire-machine-' + group"
+              @click="onHireMachineLineClick(group)"
+            >
+              Hire for the day ({{ formatYen(game.machineLineFeeYen(group)) }})
+            </button>
+          </li>
+        </ul>
+      </section>
 
       <section class="staged-panel">
         <h4>
@@ -1118,6 +1374,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <span class="staged-attr" :data-test="'staged-attr-' + stagedKeyFor(action)">{{
               attributionText(action)
             }}</span>
+            <span
+              v-if="stagedActionGateReasonFor(action)"
+              class="blocked-reason"
+              :data-test="'staged-gate-' + stagedKeyFor(action)"
+              >{{ stagedActionGateReasonFor(action) }}</span
+            >
             <button
               type="button"
               :data-test="'unstage-summary-' + stagedKeyFor(action)"
@@ -1131,7 +1393,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <button
             class="primary confirm-lever"
             data-test="confirm-work"
-            :disabled="detail.stagedActions.length === 0"
+            :disabled="detail.stagedActions.length === 0 || stagedWorkGated"
+            :title="stagedWorkGated ? 'Some planned work needs a machine hired first' : undefined"
             @click="onConfirm"
           >
             Confirm
@@ -1141,14 +1404,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
           </button>
           <p
-            v-if="detail.plannedEstimate"
-            class="confirm-caption"
-            :class="{ warn: plannedLaborOverToday }"
+            v-if="detail.plannedEstimate && plannedLaborOverToday"
+            class="confirm-caption warn"
             data-test="confirm-labour-caption"
           >
-            {{ game.laborSlotsRemainingToday }} labour left today<span v-if="plannedLaborOverToday">
-              - the rest carries to tomorrow</span
-            >.
+            Today's labour runs out first - the rest carries to tomorrow.
           </p>
           <p
             v-if="
@@ -1336,14 +1596,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section class="jobs">
         <h3>Work</h3>
-        <!-- The day's labour is a BAR (primary, glanceable), with exact
-             integer point values on hover. -->
-        <LabourBar
-          :remaining="game.laborSlotsRemainingToday"
-          :max="game.laborSlotsPerDay"
-          caption="Labour"
-          data-test="labour-card"
-        />
 
         <div v-if="detail.jobs.length" class="job-group">
           <h4>In progress</h4>
@@ -2001,11 +2253,6 @@ h4 {
   font-style: italic;
 }
 
-.assist-caption {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-}
-
 /* The "your tools finish at fine" hint pointing at
    the tier-2 machine - a buy-the-machine prompt, so it reads as guidance, not a
    fee. */
@@ -2013,6 +2260,48 @@ h4 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-sm);
   font-style: italic;
+}
+
+.machine-hire-panel {
+  margin-top: var(--mg-space-3);
+  padding-top: var(--mg-space-3);
+  border-top: var(--mg-border);
+}
+
+.machine-hire-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--mg-space-1);
+}
+
+.machine-hire-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+}
+
+.machine-hire-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chip {
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: 0 var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+  white-space: nowrap;
+}
+
+.chip.owned {
+  color: var(--mg-success);
+}
+
+.chip.hired {
+  color: var(--mg-yen);
 }
 
 .staged-panel {

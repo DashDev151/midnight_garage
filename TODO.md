@@ -206,19 +206,6 @@ pass."
 
 ## Open engineering
 
-- [ ] **CRITICAL: full-codebase comment sweep - directive 10 is violated wholesale
-  (maintainer, 2026-07-19).** Comments across every package carry process narrative:
-  sprint numbers, decision numbers, playtest item numbers, dates, "amended same day",
-  ruling attributions. Directive 10 explicitly forbids this, and the volume of comments
-  is itself a violation: most code should carry none. The sweep's contract: every comment
-  either states a real present-tense constraint or non-obvious behaviour with all
-  provenance stripped, or is deleted; history lives in `git log` and `docs/sprints/`
-  only. Scope is large (sim, game, content, tests) - orchestrator sets the style
-  contract and spot-audits, agents execute file-by-file. Strongly consider landing a
-  guard test alongside (mirroring the em-dash guard) that fails on `Sprint \d`,
-  `playtest`, `decision \d`, or ISO dates inside comments under `packages/`, so the
-  pattern cannot creep back.
-
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
@@ -341,31 +328,12 @@ pass."
   legibility genuinely demands it (long-form paragraphs below 16px: settings explainers,
   skip/confirm copy, help bodies). EXPLICITLY STAYS PIXEL: all diagnosis text (symptom
   checklist, result lines, trail), card lines, event log, labels, numbers, headers, buttons.
-- [ ] **Selling rework: design drafted, awaiting maintainer review
-  (`docs/design/selling-rework.md`, 2026-07-22).** Channels agreed in principle (five,
-  each a cost and a purpose, incl. the free-ads paper for shitboxes; mismatch teaches
-  visibly); buyer-reading made to matter via three decision-shaped mechanisms (the priced
-  hold, the matched-sale second currency PENDING a progression-bible rep-law check, taste
-  premium extraction as skill); the receipts idea parked honestly (no mechanics without
-  per-car work provenance); haggling permanently out. Venue-name pools (rolled per save)
-  drafted in the same doc, copy awaiting the red pen; wiring is small and queued.
 - [ ] **Accessibility suite v2: reduced motion and colour-independent severity cues.** V1 has
   landed with the live room's promotion: an in-room auto-bid toggle places rung-one bids up to
   a player-set ceiling (defaulting to their own estimated value) without ever jumping, so
   reactions stay reader-triggered; a persisted fuse-length preset (standard/relaxed/unhurried)
   scales the per-bid clock. Still open and unscoped: reduced motion, and colour-independent
   severity cues (band chips currently lean on colour alone).
-- [ ] **The Master Inspector staff trait - the diagnosis opt-out as an economy choice
-  (maintainer-proposed 2026-07-21).** A hireable character who "can find any issue and has no
-  interest in fixing any of them" (final copy at the content bar): while employed, the player
-  can send them to inspect lots instead of reading the trees personally; they walk the optimal
-  route within the visit's minute budget and the trail fills in with the same result lines, so
-  the flavour still plays, the player just does not choose. The opt-out therefore costs a staff
-  slot and wages on an otherwise-lacklustre hire rather than a settings toggle: engaged players
-  keep their edge for free, disengaged players buy theirs. Implementation note: the
-  best-route walker in diagnosisRouteProbes is effectively this character's brain already;
-  staff traits already touch inspection (auction-rat's extra minutes), so this is a trait plus
-  one resolver, not a new system. RULED v1.0 (maintainer, 2026-07-21), not post-launch.
 - [x] **RULING (Sprint 111, 2026-07-22 playtest): owned-car diagnosis stays workup-only, closed,
   not to be re-opened casually.** The routed diagnostic tests (a yard visit's minute-budget
   route) are the yard's time game; at home, on a car the player already owns, the full afternoon
@@ -413,6 +381,13 @@ pass."
   canonical progression rules now); its still-open "staff/player skill optimizes efficiency and
   quality" scope is genuinely distinct from specialty (Sprint 38, identity/access, earned not
   optimized) and remains unbuilt/unscheduled, this item stays open for exactly that scope.
+
+- [ ] **Generated modified cars never wear the migrated body kits (Sprint 119 scope line).**
+  The widened aero-and-body-kit family carries multiple SKUs per grade after the Sprint 119
+  migration (Lip Kit + Lightweight Body Kit + Underglow Kit at street, etc.), but car
+  generation still rolls exactly one canonical SKU per grade (Lip Kit / GT Wing / Race Aero
+  Kit); the migrated kits are market-purchasable only. A later modified-cars pass should
+  teach generation to pick among a grade's kit SKUs so auction lots can wear them.
 
 ## Design decisions awaiting maintainer direction
 

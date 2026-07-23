@@ -2,6 +2,7 @@ import {
   BUYERS,
   CARS,
   COMPONENT_DISPLAY_NAMES,
+  ComponentIdSchema,
   ECONOMY,
   FACILITIES,
   PARTS,
@@ -54,7 +55,7 @@ import {
   applyMoves,
   applyToolUpgrade,
   assemblyContainerFor,
-  assemblyMachineAssistFeeYen,
+  assemblyMachineGateGroup,
   assignToParking,
   attendAuctionGateReason as attendAuctionGateReasonCore,
   availableTestIdsFor,
@@ -63,7 +64,7 @@ import {
   bandFactor,
   bandIndex,
   benchedMemberWithTrait,
-  benchSwapFeeYen,
+  benchSwapGateGroup,
   beginInspectionVisit as beginInspectionVisitCore,
   canRepair,
   climbBand,
@@ -90,38 +91,47 @@ import {
   generateAuctionCarInstance,
   gradeMissionCar,
   groupCostToMintYen,
+  hasMachineLineFor,
   installedPartsValueYen,
   installLaborSlotsFor,
   isFreeInstallRefit,
   refitLaborSlotsFor,
   hasParkingSpace,
+  hireMachineLineGateReason as hireMachineLineGateReasonCore,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
+  isBodyDerivedPart,
   isCustomerOriginPart,
   isPartMissing,
   lapTimeSecondsFor,
   ownedWorkupGateReason as ownedWorkupGateReasonCore,
+  machineHiredToday,
+  machineLineGroupFor,
   makeMarketOrigin,
   isServiceJobInTransit,
   isToolTierListed,
   isServiceTaskDone,
   isServiceWorkDone,
-  machineAssistFeeYen,
   marketValueYen,
-  signatureOpFeeYen,
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
+  ownsMachineForGroup,
   removeBlockReason,
+  resolveHireMachineLine,
+  signatureGroupFor,
   nextBayMinReputationTier,
   nextBayPriceYen,
   nextToolTierRepGate,
   parkingOccupancy,
   partFitsCar,
   planGroupRepair,
+  planPaintStage,
+  planPipelineStage,
   playerEstimateYen,
   presentPartIdsInGroup,
   previewPlannedWork,
   reconditionQuote,
   repairCeilingForLevel,
+  repairLevelForGroup,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
   reputationForFailure,
   requirementLabel,
@@ -170,6 +180,7 @@ import {
   type AuctionGrade,
   type CrewSkillContext,
   type DeliverySpeed,
+  type HireMachineLineGateReason,
   type InspectionVisitGateReason,
   type LapBoardRow,
   type MissionGradeReport,
@@ -185,6 +196,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
+import { machineLineGateCopy } from '../utils/dayLogFormat'
 import { formatYen } from '../utils/formatYen'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
@@ -375,10 +387,14 @@ export interface CarDetail extends DetailedCar {
 /** The Finances panel's pre-Confirm preview - null (via
  * `CarDetail.plannedEstimate`) when there's nothing planned yet. */
 export interface PlannedEstimateView {
-  /** What every currently planned repair action will charge at Confirm -
-   * the exact figure `confirmStagedWork` will deduct, not a guess (planned
-   * installs cost nothing NEW here; that cash already left when the part
-   * was bought, already counted in `ledger.partsYen`). */
+  /** All NEW cash every currently planned action will charge at Confirm -
+   * the exact figure `confirmStagedWork` will deduct, not a guess: parts +
+   * labour only, plan cost with nothing folded in. Machine access (a buried
+   * or signature slot's group owned or hired for the day) is a gate, never
+   * a fee - a plan needing an unhired line shows its own gate reason
+   * (`stagedActionGateReasonFor`) instead of inflating this total. A plain
+   * install's PART price is not counted again here; that cash already left
+   * when the part was bought, already counted in `ledger.partsYen`. */
   plannedRepairCostYen: number
   /** The total labour slots the planned work will require at
    * Confirm - the same accounting `confirmStagedWork` uses (a repair action's
@@ -462,8 +478,11 @@ export interface NextRepairStepView {
 /**
  * One assembly's car-level row - remove it as a
  * unit, or refit it once it is on the bench. `blockedReason` is a plain string
- * naming the external blockers still in the way (null when nothing blocks it),
- * phrased the same way `removeBlockedReason` phrases a single-part blocker.
+ * naming why the relevant action (remove when off the bench, refit when on
+ * it) can't run right now - an external blocker still in the way, or the
+ * assembly's machine line neither owned nor hired today - phrased the same
+ * way `removeBlockedReason` phrases a single-part blocker. Null when nothing
+ * blocks it.
  */
 export interface AssemblyRowView {
   assemblyId: AssemblyId
@@ -472,7 +491,6 @@ export interface AssemblyRowView {
   onBench: boolean
   canRemove: boolean
   canRefit: boolean
-  machineFeeYen: number
   blockedReason: string | null
 }
 
@@ -489,9 +507,10 @@ export interface BenchMemberView {
   /** The next single-rung recondition step for this member, or null when
    * there is nothing to recondition (empty, mint, scrap, or non-repairable). */
   reconditionStep: NextRepairStepView | null
-  /** The wheels bench fee a tyre swap owes without the tier-2 machine (0
-   * otherwise) - the `machine shop assist` caption's own figure. */
-  swapFeeYen: number
+  /** Why fitting a part into this member slot is gated right now (only ever
+   * set for the `tyres` member, needing the wheels line owned or hired
+   * today), or null when nothing gates it. */
+  swapGateReason: string | null
 }
 
 /** One assembly container on the bench for a given car. */
@@ -545,7 +564,8 @@ export interface ToolTierInfo {
    * (`toolCeilings.naToTurboConversionEngineTier`). */
   unlocksNaToTurboConversion: boolean
   /** The speed effect every tier has, in plain words (the labour
-   * ENERGY a repair costs per grade at this tier, `energyPerGradeByTier`). */
+   * ENERGY a repair costs per band step at this tier,
+   * `energyPerBandStepByToolTier`). */
   laborSlotsPerGradeText: string
   /**
    * The one-line rental notice shown on a
@@ -1396,6 +1416,11 @@ export const useGameStore = defineStore('game', () => {
     componentId: ComponentId,
     carPartId?: CarPartId,
   ): NextRepairStepView | null {
+    // A body value carrier's band is derived from zone state on a car that's
+    // on the zone model (`bodyPipeline.ts`) - the per-part Repair control
+    // never offers a step for it; work the zone's own pipeline stages
+    // instead.
+    if (carPartId && car.zoneState && isBodyDerivedPart(carPartId)) return null
     const staged = stagedActionsFor(carId).find(
       (a) => a.kind === 'repair' && a.componentId === componentId && a.carPartId === carPartId,
     )
@@ -1430,7 +1455,7 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy.restoration.repairStepFraction,
-        context.value.economy.energy.energyPerGradeByTier,
+        context.value.economy.energy.energyPerBandStepByToolTier,
         carPartId,
       )
     const alreadyPlanned = stagedTarget
@@ -1537,6 +1562,11 @@ export const useGameStore = defineStore('game', () => {
   ): string | null {
     const car = findWorkableCar(carId)
     if (!car) return null
+    // A body value carrier's band is derived from zone state on a car that's
+    // on the zone model (`bodyPipeline.ts`) - it never grows the on-car
+    // repair "+" affordance this caption rides, so the caption never shows
+    // for it either.
+    if (car.zoneState && isBodyDerivedPart(carPartId)) return null
     const entry = context.value.partsTaxonomyById[carPartId]
     // Surface only: this caption rides the on-car per-part repair "+" affordance,
     // which exists solely for surface slots (bolt-on/buried parts are bench-only,
@@ -1840,31 +1870,44 @@ export const useGameStore = defineStore('game', () => {
     return { staff: gameState.value.staff, economy: context.value.economy }
   }
 
-  /** The total yen every currently planned REPAIR action will charge at
-   * Confirm - the exact figure `confirmStagedWork` deducts (no
-   * consumables fee on top). Planned installs charge nothing NEW here - that
-   * cash already left when the part was bought. `applyCrew` prices
-   * against the benched crew (a perfectionist's parts discount); passed `false`
-   * only to recover the pre-crew base for the "saved" display. */
+  /** The total yen every currently planned action will charge at Confirm -
+   * the exact figure `confirmStagedWork` deducts: plan cost only (parts +
+   * labour). A repair action charges its plan's own cost; an install
+   * charges nothing for the part itself (that cash already left when it was
+   * bought). Machine access (a buried or signature slot's group owned or
+   * hired for the day) is a gate, never a fee here - a plan needing an
+   * unhired line shows its own gate reason (`stagedActionGateReasonFor`)
+   * instead of an inflated total, so the estimate is always the real charge.
+   * `applyCrew` prices the repair portion against the benched crew (a
+   * perfectionist's parts discount); passed `false` only to recover the
+   * pre-crew base for the "saved" display. */
   function plannedRepairCostYen(carId: string, applyCrew = true): number {
     const car = findWorkableCar(carId)
     if (!car) return 0
     let total = 0
     for (const action of stagedActionsFor(carId)) {
-      if (action.kind !== 'repair') continue
-      total += planGroupRepair(
-        car,
-        action.componentId,
-        action.targetBand,
-        gameState.value.toolTiers,
-        context.value.partIdsByGroup,
-        context.value.partsById,
-        context.value.partsTaxonomyById,
-        context.value.economy.restoration.repairStepFraction,
-        context.value.economy.energy.energyPerGradeByTier,
-        action.carPartId,
-        applyCrew ? crewCtx() : undefined,
-      ).costYen
+      if (action.kind === 'repair') {
+        const plan = planGroupRepair(
+          car,
+          action.componentId,
+          action.targetBand,
+          gameState.value.toolTiers,
+          context.value.partIdsByGroup,
+          context.value.partsById,
+          context.value.partsTaxonomyById,
+          context.value.economy.restoration.repairStepFraction,
+          context.value.economy.energy.energyPerBandStepByToolTier,
+          action.carPartId,
+          applyCrew ? crewCtx() : undefined,
+        )
+        total += plan.costYen
+      } else if (
+        action.kind === 'pipeline-stage' ||
+        action.kind === 'pipeline-swap-panel' ||
+        action.kind === 'pipeline-paint'
+      ) {
+        total += pipelineActionPlan(car, action)?.costYen ?? 0
+      }
     }
     return total
   }
@@ -1877,6 +1920,58 @@ export const useGameStore = defineStore('game', () => {
    * spends, not the day's remaining total. `applyCrew` sizes against
    * the benched crew's speed discount; passed `false` only to recover the base
    * for the "crew saved N labour" display. */
+  /**
+   * A staged body-pipeline action's own cost/labour - the same
+   * `planPipelineStage`/`planPaintStage`/`planSwapPanel` calls
+   * `resolvePipelineStageAction`/`resolvePipelinePaintAction`/
+   * `resolvePipelineSwapPanelAction` (sim/stagedWork.ts) resolve with at
+   * Confirm, so this preview and the real charge can never drift apart.
+   * `null` when the car has no zone state, the zone's own prerequisite isn't
+   * met yet, or (swap panel) the picked inventory part no longer fits - the
+   * row then shows no total rather than a wrong one.
+   */
+  function pipelineActionPlan(
+    car: CarInstance,
+    action: Extract<
+      StagedAction,
+      { kind: 'pipeline-stage' | 'pipeline-swap-panel' | 'pipeline-paint' }
+    >,
+  ): { costYen: number; laborSlots: number } | null {
+    if (!car.zoneState) return null
+    const zone = car.zoneState[action.zoneId]
+    const repairLevel = repairLevelForGroup(gameState.value.toolTiers, 'body')
+    const rate = context.value.economy.energy.energyPerBandStepByToolTier[repairLevel]
+    const capability = {
+      unlocked: hasMachineLineFor('body', gameState.value),
+      fullCapability:
+        gameState.value.toolTiers.body >= 3 || machineHiredToday('body', gameState.value),
+    }
+    if (action.kind === 'pipeline-stage') {
+      const plan = planPipelineStage(action.stage, zone, capability)
+      if (!plan.ok) return null
+      return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
+    }
+    if (action.kind === 'pipeline-paint') {
+      const plan = planPaintStage(zone, action.zoneId, action.colour, capability)
+      if (!plan.ok) return null
+      return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
+    }
+    const model = context.value.modelsById[car.modelId]
+    const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
+    const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
+    if (!model || !partInstance || !catalogPart) return null
+    if (
+      catalogPart.zoneId !== action.zoneId ||
+      catalogPart.fitmentClass !== fitmentClassForTier(model.tier)
+    ) {
+      return null
+    }
+    return {
+      costYen: 0,
+      laborSlots: context.value.economy.energy.energyByClass['bolt-on'],
+    }
+  }
+
   /**
    * The labour one staged action will cost at Confirm - a repair action's
    * `planGroupRepair.laborSlotsRequired` (when it has real work), or an
@@ -1902,7 +1997,7 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy.restoration.repairStepFraction,
-        context.value.economy.energy.energyPerGradeByTier,
+        context.value.economy.energy.energyPerBandStepByToolTier,
         action.carPartId,
         applyCrew ? crewCtx() : undefined,
       )
@@ -1918,6 +2013,13 @@ export const useGameStore = defineStore('game', () => {
       return partInstance
         ? refitLaborSlotsFor(car, targetPartId, partInstance, context.value)
         : installLaborSlotsFor(targetPartId, context.value)
+    }
+    if (
+      action.kind === 'pipeline-stage' ||
+      action.kind === 'pipeline-swap-panel' ||
+      action.kind === 'pipeline-paint'
+    ) {
+      return pipelineActionPlan(car, action)?.laborSlots ?? 0
     }
     return 0
   }
@@ -1950,6 +2052,14 @@ export const useGameStore = defineStore('game', () => {
       )
     }
     const car = findWorkableCar(carId)
+    if (
+      car &&
+      (action.kind === 'pipeline-stage' ||
+        action.kind === 'pipeline-swap-panel' ||
+        action.kind === 'pipeline-paint')
+    ) {
+      return pipelineActionPlan(car, action) ?? { costYen: 0, laborSlots: 0 }
+    }
     return { costYen: 0, laborSlots: car ? stagedActionLaborSlots(car, action, true) : 0 }
   }
 
@@ -1986,18 +2096,76 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsById,
       context.value.partsTaxonomyById,
       context.value.economy.restoration.repairStepFraction,
-      context.value.economy.energy.energyPerGradeByTier,
+      context.value.economy.energy.energyPerBandStepByToolTier,
       action.carPartId,
       // The row total is the crew-adjusted figure, so the rows still sum to
       // Confirm's own (crew-adjusted) total by construction.
       crewCtx(),
     )
     return {
+      // Plan cost only - this row's own figure is exactly what Confirm will
+      // charge for it. Machine access is a gate (`stagedActionGateReasonFor`),
+      // never a fee folded into this total.
       costYen: plan.costYen,
       // Mirrors `plannedLaborSlots`' own accounting: a plan with no real work
       // costs no labour, matching what `confirmStagedWork` actually spends.
       laborSlots: plan.partIds.length > 0 ? plan.laborSlotsRequired : 0,
     }
+  }
+
+  /**
+   * The machine group, if any, gating one staged action right now - `null`
+   * when the action needs no line, or needs one already owned or hired for
+   * today. A repair action gates on any signature slot its own plan
+   * actually climbs (mirrors `repairJobGate`'s check exactly); an install
+   * gates on its target slot (mirrors `completeJob`'s check). Assembly ops
+   * are outside this rework's three gate sites and are never gated here.
+   */
+  function stagedActionGateGroup(carId: string, action: StagedAction): ComponentId | null {
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    if (action.kind === 'repair') {
+      const plan = planGroupRepair(
+        car,
+        action.componentId,
+        action.targetBand,
+        gameState.value.toolTiers,
+        context.value.partIdsByGroup,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy.restoration.repairStepFraction,
+        context.value.economy.energy.energyPerBandStepByToolTier,
+        action.carPartId,
+      )
+      const needsLine = plan.partIds.some((id) => signatureGroupFor(id, context.value) !== null)
+      return needsLine && !hasMachineLineFor(action.componentId, gameState.value)
+        ? action.componentId
+        : null
+    }
+    if (action.kind === 'install') {
+      const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
+      const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
+      const targetPartId = action.carPartId ?? catalogPart?.carPartId
+      if (!targetPartId) return null
+      const group = machineLineGroupFor(targetPartId, context.value)
+      return group && !hasMachineLineFor(group, gameState.value) ? group : null
+    }
+    return null
+  }
+
+  /** The gate reason a staged row shows, or `null` - the Planned Work
+   * panel's own explanation for why Confirm won't move this row, instead
+   * of failing silently at Confirm time. */
+  function stagedActionGateReasonFor(carId: string, action: StagedAction): string | null {
+    const group = stagedActionGateGroup(carId, action)
+    return group ? machineLineGateCopy(group) : null
+  }
+
+  /** Whether ANY currently staged action needs a machine line neither
+   * owned nor hired today - the Confirm button's own disable condition, so
+   * a gated plan explains itself instead of quietly doing nothing. */
+  function stagedWorkGated(carId: string): boolean {
+    return stagedActionsFor(carId).some((action) => stagedActionGateGroup(carId, action) !== null)
   }
 
   /** The Finances panel's pre-Confirm estimate - null when nothing is planned.
@@ -2230,6 +2398,43 @@ export const useGameStore = defineStore('game', () => {
     return context.value.economy.auctionRoom.attendanceFeeYenByTier[tier]
   }
 
+  // --- machine hire (the daily unlock) ------------------------------------
+
+  /** Whether `group`'s tier-2 machine is owned outright - the "In-house"
+   * chip's own condition. */
+  function machineLineOwned(group: ComponentId): boolean {
+    return ownsMachineForGroup(group, gameState.value)
+  }
+
+  /** Whether `group`'s daily hire has already been paid today - the "Hired
+   * today" chip's own condition. */
+  function machineLineHiredToday(group: ComponentId): boolean {
+    return machineHiredToday(group, gameState.value)
+  }
+
+  /** Whether `group`'s line is usable right now for every operation - owned
+   * outright, or hired for today. */
+  function machineLineAvailable(group: ComponentId): boolean {
+    return hasMachineLineFor(group, gameState.value)
+  }
+
+  /** The hire panel's own price tag for `group` - `economy.machineShopAssist
+   * .feeYenByGroup[group]`, unchanged from the old per-operation fee, just a
+   * daily charge now instead. */
+  function machineLineFeeYen(group: ComponentId): number {
+    return context.value.economy.machineShopAssist.feeYenByGroup[group]
+  }
+
+  /**
+   * Whether hiring `group`'s line right now is blocked
+   * (`hireMachineLineGateReasonCore`) - the hire panel's proactive "why
+   * not" read, `null` when nothing blocks it (including when it is already
+   * owned, hired, or free - the button simply never shows for those).
+   */
+  function hireMachineLineGateReason(group: ComponentId): HireMachineLineGateReason | null {
+    return hireMachineLineGateReasonCore(gameState.value, group, context.value)
+  }
+
   /** The live auction room's fuse-length preset, persisted across careers -
    * `standard` for any save that predates the setting (the genuinely-
    * optional-key `uiSettings` field). Set from the settings screen. */
@@ -2456,72 +2661,58 @@ export const useGameStore = defineStore('game', () => {
    * would refuse this slot right now, or `null` when nothing structural
    * blocks it (it may still refuse for insufficient labor - the labor bar
    * already shows that separately). Mirrors `installBlockedReason`'s own
-   * reuse shape, over the sim's `removeBlockReason` predicate.
+   * reuse shape, over the sim's `removeBlockReason` predicate. A buried
+   * engine/drivetrain slot without the line owned or hired today gates here
+   * too (`machine-line`) - the suspension/body/interior signature gates
+   * never gate removal, only install/repair.
    */
   function removeBlockedReason(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
     if (!car) return null
-    const reason = removeBlockReason(car, carPartId, context.value)
+    const reason = removeBlockReason(car, carPartId, gameState.value, context.value)
     if (!reason) return null
     switch (reason.kind) {
       case 'not-removable':
         return "Can't come off the car."
       case 'blocked-by':
         return `Take off ${reason.blockedBy.map((id) => carPartLabel(id)).join(', ')} first`
+      case 'machine-line':
+        return machineLineGateCopy(reason.group)
     }
   }
 
   /**
-   * The fee, in yen, a REMOVAL of `carPartId` costs because the shop doesn't
-   * yet own the tier-2 machine the slot needs - the engine/drivetrain
-   * buried-slot gate only (`machineAssistFeeYen`), 0 (no caption) when the
-   * machine is owned or the slot isn't machine-gated. The UI shows a
-   * `machine shop assist +<fee>` caption on the affordance whenever this is
-   * above 0; the operation itself is never blocked (ownership buys margin,
-   * not capability). The suspension/body/interior signature gates never
-   * charge on removal, so this getter stays engine/drivetrain-only for the
-   * remove affordance.
+   * The reason an INSTALL/REPLACE of `carPartId` is gated right now, or
+   * `null` when it isn't - a buried engine/drivetrain slot or a
+   * suspension/body/interior signature slot whose line is neither owned nor
+   * hired for today (`machineLineGroupFor` + `hasMachineLineFor`). Drives
+   * the install/replace affordance's disabled state and caption.
    */
-  function machineAssistFee(carId: string, carPartId: CarPartId): number {
+  function installGateReasonFor(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
-    if (!car) return 0
-    return machineAssistFeeYen(carPartId, gameState.value, context.value)
+    if (!car) return null
+    const group = machineLineGroupFor(carPartId, context.value)
+    if (!group || hasMachineLineFor(group, gameState.value)) return null
+    return machineLineGateCopy(group)
   }
 
   /**
-   * The fee an INSTALL/REPLACE of `carPartId`
-   * costs at the current tiers - the exact figure `completeJob`'s install branch
-   * charges (`installMachineAssistFeeYen` = the engine/drivetrain buried fee OR
-   * the suspension/body/interior signature-slot fee; a carPartId is in one group,
-   * so at most one term is non-zero). Drives the install/replace affordance's
-   * `machine shop assist +<fee>` caption. Engine/drivetrain installs are
-   * byte-identical (their signature term is 0).
+   * The reason an on-car per-part REPAIR of `carPartId` is gated right now,
+   * or `null` when it isn't. Per-part repair is bench-only for any
+   * non-`surface` slot (the sim refuses it before this ever matters), so
+   * this only ever gates a surface signature slot (seats, dashGauges - not
+   * `panels`/`underbody` any more, both derived body value carriers now
+   * with no on-car repair affordance at all, `bodyPipeline.ts`) - a bolt-on
+   * signature slot (dampers, springs) is repaired via the group or the
+   * bench, never this per-part affordance. Engine/drivetrain repair is
+   * never gated, so this is `null` for them too.
    */
-  function machineAssistInstallFee(carId: string, carPartId: CarPartId): number {
+  function repairGateReasonFor(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
-    if (!car) return 0
-    return (
-      machineAssistFeeYen(carPartId, gameState.value, context.value) +
-      signatureOpFeeYen(carPartId, gameState.value, context.value)
-    )
-  }
-
-  /**
-   * The fee an on-car per-part REPAIR of
-   * `carPartId` costs - the exact figure `repairJobGate` charges for a per-part
-   * repair. Per-part repair is bench-only for any non-`surface` slot (the sim
-   * refuses it), so a per-part repair charges the signature fee ONLY for a
-   * surface signature slot (panels, underbody, seats, dashGauges); a bolt-on
-   * signature slot (dampers, springs) is repaired via the group or the bench and
-   * carries no per-part on-car charge, so this returns 0 there and no caption
-   * shows. Engine/drivetrain repair is never fee-charged, so this is 0 for them
-   * too - the caption only appears where a fee is actually taken.
-   */
-  function machineAssistRepairFee(carId: string, carPartId: CarPartId): number {
-    const car = findWorkableCar(carId)
-    if (!car) return 0
-    if (context.value.partsTaxonomyById[carPartId]?.depthClass !== 'surface') return 0
-    return signatureOpFeeYen(carPartId, gameState.value, context.value)
+    if (!car) return null
+    if (car.zoneState && isBodyDerivedPart(carPartId)) return null
+    if (context.value.partsTaxonomyById[carPartId]?.depthClass !== 'surface') return null
+    return installGateReasonFor(carId, carPartId)
   }
 
   // --- facilities (bays) -------------------------------------------------
@@ -2761,22 +2952,25 @@ export const useGameStore = defineStore('game', () => {
           task.minToolTier === tier,
       ),
     ).map((template) => humanizeTemplateId(template.id))
-    // The tier-2 rung shows its per-job rental fee until the machine is owned,
-    // verbatim from the copy sheet, interpolated per group.
+    // The tier-2 rung shows its daily hire price until the machine is owned -
+    // the same machine the Machine hire panel charges to hire by the day.
     const rentalFeeText =
       tier === 2 && gameState.value.toolTiers[componentId] < 2
-        ? `Until you own this, its heavy jobs go to the machine shop at ${formatYen(
+        ? `Until you own this, its heavy jobs need the ${
+            context.value.toolLines[componentId].tiers[1]!.displayName
+          } hired for the day at ${formatYen(
             context.value.economy.machineShopAssist.feeYenByGroup[componentId],
-          )} a job.`
+          )}.`
         : null
     return {
       unlocksJobTemplateNames,
       unlocksNaToTurboConversion:
         componentId === 'engine' &&
         tier === context.value.economy.toolCeilings.naToTurboConversionEngineTier,
-      // A repair costs a flat energy per grade by tier (`energyPerGradeByTier`),
-      // and the player reads the integer point value directly.
-      laborSlotsPerGradeText: `Repair work costs ${context.value.economy.energy.energyPerGradeByTier[tier]} labour per grade at this tier`,
+      // A repair costs a flat energy per band step by tier
+      // (`energyPerBandStepByToolTier`), and the player reads the integer
+      // point value directly.
+      laborSlotsPerGradeText: `Repair work costs ${context.value.economy.energy.energyPerBandStepByToolTier[tier]} labour per grade at this tier`,
       rentalFeeText,
     }
   }
@@ -2903,7 +3097,7 @@ export const useGameStore = defineStore('game', () => {
       context.value.partsById,
       context.value.partsTaxonomyById,
       context.value.economy.restoration.repairStepFraction,
-      context.value.economy.energy.energyPerGradeByTier,
+      context.value.economy.energy.energyPerBandStepByToolTier,
       carPartId,
       // The instant repair job is sized with the benched crew's speed discount;
       // `repairJobGate` charges the matching (perfectionist-adjusted) cost, so
@@ -3139,6 +3333,25 @@ export const useGameStore = defineStore('game', () => {
     logSessionEvent('unstageAssemblyAction', { carId, kind, assemblyId })
   }
 
+  /** Un-stage one staged body-pipeline action - the pipeline twin of
+   * `unstageAction`, matching exactly (kind + zone, and `pipeline-stage`
+   * additionally its own stage) since these carry no group/part address.
+   * Free, no-op if nothing matches. */
+  function unstagePipelineAction(
+    carId: string,
+    action: Extract<
+      StagedAction,
+      { kind: 'pipeline-stage' | 'pipeline-swap-panel' | 'pipeline-paint' }
+    >,
+  ): void {
+    const remaining = stagedActionsFor(carId).filter((a) => !stagedActionsCollide(a, action))
+    const stagedCarWork = { ...gameState.value.stagedCarWork }
+    if (remaining.length === 0) delete stagedCarWork[carId]
+    else stagedCarWork[carId] = remaining
+    gameState.value = { ...gameState.value, stagedCarWork }
+    logSessionEvent('unstagePipelineAction', { carId, action })
+  }
+
   /**
    * Confirm - locks in every staged action on this car at once: creates or
    * continues the real jobs and spends today's remaining labor and cash for
@@ -3199,10 +3412,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Remove a whole assembly to the bench - 0 labour
-   * plus a machine-shop assist fee for the engine/gearbox assemblies when the
-   * line's tier-2 machine isn't owned. Mirrors `removePart`'s apply pattern; a
-   * no-op (returns false) on any refusal (`resolveRemoveAssembly.ok === false`).
+   * Remove a whole assembly to the bench - 0 labour, gated on the
+   * engine/gearbox assembly's own line owned or hired for the day. Mirrors
+   * `removePart`'s apply pattern; a no-op (returns false) on any refusal
+   * (`resolveRemoveAssembly.ok === false`), including the machine gate.
    */
   function removeAssembly(carId: string, assemblyId: AssemblyId): boolean {
     const result = resolveRemoveAssembly(
@@ -3222,7 +3435,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Refit a benched assembly back onto its source car -
    * free per member equal to its vacated baseline, charged install labour for a
-   * changed member, plus the same machine assist fee removal owed. A no-op if
+   * changed member, gated on the same machine line removal needed. A no-op if
    * the car has no such container on the bench, or the refit itself refuses.
    */
   function refitAssembly(carId: string, assemblyId: AssemblyId): boolean {
@@ -3243,8 +3456,8 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Move a bin part into a member slot of an open bench container -
-   * the displaced member returns to the bin. A tyre swap owes
-   * the wheels bench fee without the tier-2 machine. A no-op on any refusal.
+   * the displaced member returns to the bin. A tyre swap is gated on the
+   * wheels line owned or hired for the day. A no-op on any refusal.
    */
   function swapAssemblyMember(
     containerId: string,
@@ -3284,16 +3497,6 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** The machine-shop assist fee an assembly op owes at the current tool tiers
-   * (0 when owned or not machine-gated). `carId` is unused today (the fee is a
-   * function of the assembly and tool tiers, not the car) - kept for symmetry
-   * with `machineAssistFee` and future per-car gating. */
-  function assemblyMachineFee(carId: string, assemblyId: AssemblyId): number {
-    const def = context.value.assembliesById[assemblyId]
-    if (!def) return 0
-    return assemblyMachineAssistFeeYen(def, gameState.value, context.value)
-  }
-
   /** An assembly's player-facing display name ("Wheels & tyres"), from
    * content - the assembly twin of `carPartLabel`/`componentLabel`. */
   function assemblyLabel(assemblyId: AssemblyId): string {
@@ -3301,10 +3504,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Every assembly's car-level row for one workable car - whether it is on the
-   * bench, whether it can be removed or refitted right now, its machine assist
-   * fee, and a plain "why not" when an external blocker is in the way. Empty
-   * for an unknown car.
+   * Every assembly's car-level row for one workable car - whether it is on
+   * the bench, whether it can be removed or refitted right now, and a plain
+   * "why not" when an external blocker or the assembly's own machine line is
+   * in the way. Empty for an unknown car.
    */
   function assemblyRowsFor(carId: string): AssemblyRowView[] {
     const car = findWorkableCar(carId)
@@ -3314,20 +3517,25 @@ export const useGameStore = defineStore('game', () => {
       const occupiedBlockers = externalBlockersFor(def, context.value).filter(
         (b) => car.parts[b].installed !== null,
       )
+      const structurallyBlocked = occupiedBlockers.length > 0
+      const gateGroup = assemblyMachineGateGroup(def, context.value)
+      const blockingGateGroup =
+        gateGroup && !hasMachineLineFor(gateGroup, gameState.value) ? gateGroup : null
       return {
         assemblyId: def.id,
         displayName: def.displayName,
         group: def.group,
         onBench,
-        canRefit: onBench,
+        canRefit: onBench && !structurallyBlocked && !blockingGateGroup,
         canRemove:
           !onBench &&
           def.members.some((m) => car.parts[m].installed !== null) &&
-          occupiedBlockers.length === 0,
-        machineFeeYen: assemblyMachineAssistFeeYen(def, gameState.value, context.value),
-        blockedReason:
-          !onBench && occupiedBlockers.length > 0
-            ? `Take off ${occupiedBlockers.map((b) => carPartLabel(b)).join(', ')} first`
+          !structurallyBlocked &&
+          !blockingGateGroup,
+        blockedReason: structurallyBlocked
+          ? `Take off ${occupiedBlockers.map((b) => carPartLabel(b)).join(', ')} first`
+          : blockingGateGroup
+            ? machineLineGateCopy(blockingGateGroup)
             : null,
       }
     })
@@ -3347,6 +3555,17 @@ export const useGameStore = defineStore('game', () => {
       costYen: quote.costYen,
       laborSlotsRequired: quote.laborSlotsRequired,
     }
+  }
+
+  /**
+   * The gate reason fitting a part into `carPartId`'s bench slot needs right
+   * now (only ever the wheels line, for the `tyres` member), or null when
+   * nothing gates it. Shared by `benchContainersFor`'s own caption and
+   * `ReplaceDrawer`'s bench-mode picker, so both read the same gate.
+   */
+  function benchSwapGateReasonFor(carPartId: CarPartId): string | null {
+    const group = benchSwapGateGroup(carPartId)
+    return group && !hasMachineLineFor(group, gameState.value) ? machineLineGateCopy(group) : null
   }
 
   /** Every assembly container currently on the bench for one car, each with its
@@ -3375,7 +3594,7 @@ export const useGameStore = defineStore('game', () => {
                 instance.band !== 'scrap' &&
                 (taxonomyEntry?.repairable ?? true),
               reconditionStep: instance ? benchMemberReconditionStep(instance) : null,
-              swapFeeYen: benchSwapFeeYen(carPartId, gameState.value, context.value),
+              swapGateReason: benchSwapGateReasonFor(carPartId),
             }
           }),
         }
@@ -3508,6 +3727,21 @@ export const useGameStore = defineStore('game', () => {
   function attendAuction(tier: AuctionTier): boolean {
     const result = resolveAttendAuctionCore(gameState.value, tier, context.value)
     if (result.outcome !== 'attended') return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
+   * The daily-unlock seam: charges `group`'s hire fee the first time that
+   * line is needed today (a zero fee, ownership, or a line already hired
+   * today is a silent no-op success), unlocking every operation on it until
+   * End Day. Returns false only on a genuine refusal (short cash) - the
+   * caller must not treat the line as available when this is false.
+   */
+  function hireMachineLine(group: ComponentId): boolean {
+    const result = resolveHireMachineLine(gameState.value, group, context.value)
+    if (result.outcome !== 'hired') return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
     return true
@@ -3963,9 +4197,20 @@ export const useGameStore = defineStore('game', () => {
     const result = advanceDay(state, emptyDayActions(), state.seed + state.day, context.value)
     gameState.value = result.state
     dayLog.value.push(...result.log)
+    // Machine hire is an instant action (the attendAuction pattern), so it
+    // never reaches `result.log` here - synthesise today's hire lines from
+    // `machineHirePaidDayByGroup`'s own record of what was hired today, the
+    // same running-cost treatment rent gets on the report.
+    const hiresToday: DayLogEntry[] = ComponentIdSchema.options
+      .filter((group) => state.machineHirePaidDayByGroup?.[group] === endedDay)
+      .map((group) => ({
+        type: 'machine-hired' as const,
+        componentId: group,
+        priceYen: context.value.economy.machineShopAssist.feeYenByGroup[group],
+      }))
     lastDayReport.value = {
       day: endedDay,
-      entries: result.log,
+      entries: [...hiresToday, ...result.log],
       cashDeltaYen: result.state.cashYen - cashBefore,
     }
     reportVisible.value = true
@@ -4266,9 +4511,16 @@ export const useGameStore = defineStore('game', () => {
     installablePartsForPart,
     installBlockedReason,
     removeBlockedReason,
-    machineAssistFee,
-    machineAssistInstallFee,
-    machineAssistRepairFee,
+    installGateReasonFor,
+    repairGateReasonFor,
+    machineLineOwned,
+    machineLineHiredToday,
+    machineLineAvailable,
+    machineLineFeeYen,
+    hireMachineLineGateReason,
+    hireMachineLine,
+    stagedActionGateReasonFor,
+    stagedWorkGated,
     serviceBaysView,
     parkingView,
     parkingCapacity,
@@ -4308,11 +4560,13 @@ export const useGameStore = defineStore('game', () => {
     refitAssembly,
     swapAssemblyMember,
     removeAssemblyMember,
-    assemblyMachineFee,
     assemblyLabel,
     assemblyRowsFor,
     benchContainersFor,
+    benchSwapGateReasonFor,
     unstageAssemblyAction,
+    unstagePipelineAction,
+    pipelineActionPlan,
     buyout,
     attendAuction,
     settleAuctionHammer,

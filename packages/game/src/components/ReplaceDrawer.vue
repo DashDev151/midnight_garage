@@ -32,11 +32,21 @@ const game = useGameStore()
 
 const componentId = computed(() => game.groupForCarPart(props.carPartId))
 
-/** When set, every candidate in this drawer is dimmed with this specific reason
- * instead of the generic "doesn't fit here" hint, since the block isn't about
- * any one part's fit, it's the slot itself not being buildable yet.
+/**
+ * When set, every candidate in this drawer is dimmed with this specific
+ * reason instead of the generic "doesn't fit here" hint, since the block
+ * isn't about any one part's fit, it's the slot itself not being buildable
+ * yet. A bench-mode drawer (fitting a benched assembly member) reads the
+ * member's own machine-line gate (only ever the wheels line, for tyres);
+ * an on-car drawer reads the NA-to-turbo capability ceiling instead - the
+ * two gates never overlap, since an assembly member never has an on-car
+ * Replace affordance of its own.
  */
-const blockedReason = computed(() => game.installBlockedReason(props.carId, props.carPartId))
+const blockedReason = computed(() =>
+  props.benchContainerId
+    ? game.benchSwapGateReasonFor(props.carPartId)
+    : game.installBlockedReason(props.carId, props.carPartId),
+)
 
 /** Every stageable part addressed to this exact slot, each flagged with
  * whether it actually fits this specific car (platform tags) and excluding

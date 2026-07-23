@@ -5,6 +5,14 @@ read of the existing tool-line/upgrade/rental machinery (discovery 2026-07-18). 
 COHESION pass: almost every piece already exists; the job is to make one consistent rule out
 of three half-built ones, not to add a parallel system.
 
+> SUPERSEDED IN PART (2026-07-23): the charge model below (one rental fee per operation,
+> posted to the car/job ledger) was replaced by Sprint 118 under
+> `docs/design/workshop-rework.md`: machine hire is now a DAILY unlock per line (same
+> `feeYenByGroup` prices, paid once per day, unlimited use until End Day, waived by
+> ownership) and posts as a running cost on the daily summary, never to a car's ledger.
+> The capability model (tools buy margin, not possibility; rent-or-own; signature ops;
+> the band ceiling) stands unchanged.
+
 ## The problem: three inconsistent half-rules today
 
 1. **Access is gated for only 3 of 6 groups.** Engine and drivetrain tier-2 machines

@@ -220,50 +220,73 @@ describe('CarDetailScreen', () => {
   })
 
   /**
-   * The `machine shop assist +<fee>` caption is
-   * previewed exactly where a signature-op fee is charged - the install/replace
-   * and on-car per-part repair of a suspension/body/interior signature slot - and
-   * never on a removal (removal is free for these groups). Owning the tier-2
-   * machine removes the preview, matching the fee dropping to 0.
+   * The machine-line gate reason is previewed exactly where the operation is
+   * gated - the install/replace and on-car per-part repair of a suspension/
+   * body/interior signature slot - and never on a removal (removal is free
+   * for these groups). Owning the tier-2 machine, or hiring the line for
+   * today, both clear the preview - access is a gate now, never a fee.
    */
-  it('previews the signature-op assist fee on repair/install of a signature slot at tier 1, never on removal, and hides it once the tier-2 machine is owned', async () => {
+  it('previews the machine-line gate reason on repair/install of a signature slot at tier 1, never on removal, and hides it once owned or hired', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, a shitbox at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
-    // panels: an installed body signature slot below mint (on-car per-part repair
-    // charges the body fee, and its removal must charge nothing). dampers: an
-    // empty suspension signature slot (installing one charges the suspension fee).
-    car.parts.panels = { installed: { ...car.parts.panels.installed!, band: 'poor' } }
+    // seats: an installed interior signature slot below mint (on-car per-part
+    // repair is gated, and its removal must never be) - `panels`/`underbody`
+    // no longer serve this purpose, both derived body value carriers now
+    // with no on-car repair affordance at all (`bodyPipeline.ts`). dampers:
+    // an empty suspension signature slot (installing one is gated).
+    car.parts.seats = { installed: { ...car.parts.seats.installed!, band: 'poor' } }
     car.parts.dampers = { installed: null }
 
-    const suspensionFee = formatYen(ECONOMY.machineShopAssist.feeYenByGroup.suspension)
-    const bodyFee = formatYen(ECONOMY.machineShopAssist.feeYenByGroup.body)
+    const suspensionMachine = TOOL_LINES.suspension.tiers[1]!.displayName
+    const interiorMachine = TOOL_LINES.interior.tiers[1]!.displayName
 
     const { wrapper } = await mountAt(id)
 
-    // Install/replace affordance of a signature slot: caption present at tier 1.
+    // Install/replace affordance of a signature slot: gate reason present at
+    // tier 1, neither owned nor hired.
     await selectPart(wrapper, 'suspension', 'dampers')
     const installCap = wrapper.find('[data-test="assist-fee-dampers"]')
     expect(installCap.exists()).toBe(true)
-    expect(installCap.text()).toContain(suspensionFee)
+    expect(installCap.text()).toContain(suspensionMachine)
 
-    // On-car per-part repair of a signature slot: caption present; the SAME
-    // installed slot's removal shows no fee (removal is free for these groups).
-    await selectPart(wrapper, 'body', 'panels')
-    const repairCap = wrapper.find('[data-test="assist-fee-repair-panels"]')
+    // On-car per-part repair of a signature slot: gate reason present; the SAME
+    // installed slot's removal shows nothing (removal is never gated for
+    // these groups).
+    await selectPart(wrapper, 'interior', 'seats')
+    const repairCap = wrapper.find('[data-test="assist-fee-repair-seats"]')
     expect(repairCap.exists()).toBe(true)
-    expect(repairCap.text()).toContain(bodyFee)
-    expect(wrapper.find('[data-test="assist-fee-panels"]').exists()).toBe(false)
+    expect(repairCap.text()).toContain(interiorMachine)
+    expect(wrapper.find('[data-test="assist-fee-seats"]').exists()).toBe(false)
 
-    // Owning the tier-2 machines drops both previews (the fee is now 0).
+    // Owning the tier-2 machines drops both previews.
     game.devSetToolTier('suspension', 2)
-    game.devSetToolTier('body', 2)
+    game.devSetToolTier('interior', 2)
     const owned = await mountAt(id)
     await selectPart(owned.wrapper, 'suspension', 'dampers')
     expect(owned.wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
-    await selectPart(owned.wrapper, 'body', 'panels')
-    expect(owned.wrapper.find('[data-test="assist-fee-repair-panels"]').exists()).toBe(false)
+    await selectPart(owned.wrapper, 'interior', 'seats')
+    expect(owned.wrapper.find('[data-test="assist-fee-repair-seats"]').exists()).toBe(false)
+  })
+
+  it('also hides the machine-line gate reason once the line is hired for the day, still at tier 1 (not owned)', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const id = game.gameState.ownedCars[0]!.id
+    const car = game.gameState.ownedCars.find((c) => c.id === id)!
+    car.parts.seats = { installed: { ...car.parts.seats.installed!, band: 'poor' } }
+    car.parts.dampers = { installed: null }
+    game.gameState = {
+      ...game.gameState,
+      machineHirePaidDayByGroup: { suspension: game.gameState.day, interior: game.gameState.day },
+    }
+
+    const { wrapper } = await mountAt(id)
+    await selectPart(wrapper, 'suspension', 'dampers')
+    expect(wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
+    await selectPart(wrapper, 'interior', 'seats')
+    expect(wrapper.find('[data-test="assist-fee-repair-seats"]').exists()).toBe(false)
   })
 
   /**
@@ -277,22 +300,24 @@ describe('CarDetailScreen', () => {
     game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, a shitbox at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
-    // panels: an installed, repairable body SURFACE slot below mint - the on-car
-    // repair "+" (and this ceiling caption) applies.
-    car.parts.panels = { installed: { ...car.parts.panels.installed!, band: 'worn' } }
-    const bodyMachine = TOOL_LINES.body.tiers[1]!.displayName
+    // seats: an installed, repairable interior SURFACE slot below mint - the
+    // on-car repair "+" (and this ceiling caption) applies. `panels` no
+    // longer serves this purpose: it is a derived body value carrier now
+    // with no on-car repair affordance at all (`bodyPipeline.ts`).
+    car.parts.seats = { installed: { ...car.parts.seats.installed!, band: 'worn' } }
+    const interiorMachine = TOOL_LINES.interior.tiers[1]!.displayName
 
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'body', 'panels')
-    const cap = wrapper.find('[data-test="repair-ceiling-panels"]')
+    await selectPart(wrapper, 'interior', 'seats')
+    const cap = wrapper.find('[data-test="repair-ceiling-seats"]')
     expect(cap.exists()).toBe(true)
-    expect(cap.text()).toBe(`Your tools finish at fine. The ${bodyMachine} reaches mint.`)
+    expect(cap.text()).toBe(`Your tools finish at fine. The ${interiorMachine} reaches mint.`)
 
     // Owning the tier-2 machine lifts the ceiling to mint - the caption drops.
-    game.devSetToolTier('body', 2)
+    game.devSetToolTier('interior', 2)
     const owned = await mountAt(id)
-    await selectPart(owned.wrapper, 'body', 'panels')
-    expect(owned.wrapper.find('[data-test="repair-ceiling-panels"]').exists()).toBe(false)
+    await selectPart(owned.wrapper, 'interior', 'seats')
+    expect(owned.wrapper.find('[data-test="repair-ceiling-seats"]').exists()).toBe(false)
   })
 
   it('a tile click only navigates; a block click docks that part in the action panel (Sprint 88 decision 1)', async () => {
@@ -518,10 +543,14 @@ describe('CarDetailScreen', () => {
       }
     })
 
-    it('the remaining-today figure is a caption that warns (never blocks) when the plan overruns today', async () => {
+    it('an overrun caption warns (never blocks) when the plan needs more labour than remains today', async () => {
       const game = useGameStore()
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
+      // The rolled row may land on a body signature slot (panels/underbody) -
+      // hire the line so only the labour-overrun concern under test can
+      // possibly disable Confirm.
+      game.hireMachineLine('body')
       game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
       expect(game.laborSlotsRemainingToday).toBe(0)
 
@@ -1100,22 +1129,43 @@ describe('CarDetailScreen', () => {
       return { id, wrapper, router }
     }
 
-    it('a stuck member names the gap, and Replace with its fee stands ready beside it', async () => {
+    it('a stuck member names the gap, and Replace stands ready with the machine-line gate beside it', async () => {
       const game = useGameStore()
       const { wrapper } = await benchTyres(game)
 
       // Scrap tyres cannot be reconditioned and the bin holds no replacement:
       // the panel says so and where the shop is, while Replace (the
-      // pick-from-your-parts drawer) and the fee it leads to stay available.
+      // pick-from-your-parts drawer) and the gate it leads to stay visible.
+      // The wheels line is neither owned nor hired at a fresh game start.
       const empty = wrapper.find('[data-test="bench-empty-tyres"]')
       expect(empty.exists()).toBe(true)
       expect(empty.text()).toContain('No replacement tyres on hand')
       expect(empty.text()).toContain('parts shop')
       expect(wrapper.find('[data-test="bench-replace-tyres"]').exists()).toBe(true)
-      expect(wrapper.find('[data-test="bench-swap-fee-tyres"]').exists()).toBe(true)
+      const gate = wrapper.find('[data-test="bench-swap-gate-tyres"]')
+      expect(gate.exists()).toBe(true)
+      expect(gate.text()).toContain(TOOL_LINES.wheels.tiers[1]!.displayName)
     })
 
-    it('Replace opens the inventory drawer scoped to the slot; picking a part fits it into the member', async () => {
+    it('picking a part is inert while the wheels line is neither owned nor hired today', async () => {
+      const game = useGameStore()
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
+      game.devGrantPart(tyresPart.id)
+      const { wrapper } = await benchTyres(game)
+      const stuckMemberId = game.gameState.assemblyInventory![0]!.members.tyres!.id
+
+      await wrapper.find('[data-test="bench-replace-tyres"]').trigger('click')
+      await flushPromises()
+      await wrapper.find('.part-card').trigger('click')
+      await flushPromises()
+
+      // Dimmed and inert: the click lands nowhere, the drawer stays open, and
+      // the stuck (scrap) member stays exactly where it was.
+      expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
+      expect(game.gameState.assemblyInventory![0]!.members.tyres!.id).toBe(stuckMemberId)
+    })
+
+    it('Replace opens the inventory drawer scoped to the slot; picking a part fits it into the member once the wheels line is hired', async () => {
       const game = useGameStore()
       const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
       game.devGrantPart(tyresPart.id)
@@ -1125,6 +1175,10 @@ describe('CarDetailScreen', () => {
       await flushPromises()
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
 
+      // Fitting a tyre needs the wheels line for the day - hire it, then the
+      // candidate card stops being dimmed and the click lands.
+      game.hireMachineLine('wheels')
+      await flushPromises()
       await wrapper.find('.part-card').trigger('click')
       await flushPromises()
       expect(game.gameState.assemblyInventory![0]!.members.tyres?.partId).toBe(tyresPart.id)
@@ -1156,6 +1210,8 @@ describe('CarDetailScreen', () => {
       const { wrapper } = await benchTyres(game)
 
       await wrapper.find('[data-test="bench-replace-tyres"]').trigger('click')
+      await flushPromises()
+      game.hireMachineLine('wheels')
       await flushPromises()
       await wrapper.find('.part-card').trigger('click')
       await flushPromises()
@@ -1282,6 +1338,9 @@ describe('CarDetailScreen', () => {
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
+      // dampers is a suspension signature slot - the install needs the line
+      // hired for today (a fresh shop owns nothing at tier 2).
+      game.hireMachineLine('suspension')
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
@@ -1514,8 +1573,16 @@ describe('CarDetailScreen', () => {
 
     it('honest owned cars never render the symptom panel', async () => {
       const game = useGameStore()
-      game.devGrantCar(CARS[0]!.id)
-      const id = game.gameState.ownedCars[0]!.id
+      // The zone roll (`bodyPipeline.ts`) now consumes extra seeded draws
+      // ahead of symptom rolling, so a fixed grant no longer reliably lands
+      // on an honest car - retry until one does.
+      let id: string | null = null
+      for (let i = 0; i < 30 && !id; i++) {
+        game.devGrantCar(CARS[0]!.id)
+        const car = game.gameState.ownedCars.at(-1)!
+        if (car.symptoms.length === 0) id = car.id
+      }
+      if (!id) throw new Error('expected an honest granted car within 30 tries')
 
       const { wrapper } = await mountAt(id)
       expect(wrapper.find('[data-test="car-symptoms"]').exists()).toBe(false)
@@ -1589,6 +1656,81 @@ describe('CarDetailScreen', () => {
       // The checklist still shows - only the workup button hides.
       expect(wrapper.find('[data-test="car-symptoms"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="car-workup"]').exists()).toBe(false)
+    })
+  })
+
+  describe('the Machine hire panel', () => {
+    it('shows In-house for an owned line, Hired today for a line hired this day, and a priced Hire button for everything else', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.devSetToolTier('engine', 2)
+      game.hireMachineLine('body')
+
+      const { wrapper } = await mountAt(id)
+      expect(wrapper.find('[data-test="machine-hire-chip-engine"]').text()).toBe('In-house')
+      expect(wrapper.find('[data-test="machine-hire-chip-body"]').text()).toBe('Hired today')
+      expect(wrapper.find('[data-test="hire-machine-suspension"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="hire-machine-suspension"]').text()).toBe(
+        `Hire for the day (${formatYen(ECONOMY.machineShopAssist.feeYenByGroup.suspension)})`,
+      )
+      // A line already owned or hired shows no button at all.
+      expect(wrapper.find('[data-test="hire-machine-engine"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="hire-machine-body"]').exists()).toBe(false)
+    })
+
+    it('clicking Hire charges the fee once and flips the row to Hired today', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const cashBefore = game.cashYen
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="hire-machine-suspension"]').trigger('click')
+      await flushPromises()
+
+      expect(game.cashYen).toBe(cashBefore - ECONOMY.machineShopAssist.feeYenByGroup.suspension)
+      expect(wrapper.find('[data-test="machine-hire-chip-suspension"]').text()).toBe('Hired today')
+      expect(wrapper.find('[data-test="hire-machine-suspension"]').exists()).toBe(false)
+    })
+  })
+
+  describe('the staged-work machine-line gate', () => {
+    it('shows the gate reason on a staged row needing an unhired line, and disables Confirm', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
+      const part = untaggedPartFor('dampers')
+      game.devGrantPart(part.id)
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
+      game.stageAction(id, { kind: 'install', componentId: 'suspension', partInstanceId })
+
+      const { wrapper } = await mountAt(id)
+      const gateRow = wrapper.find('[data-test="staged-gate-suspension"]')
+      expect(gateRow.exists()).toBe(true)
+      expect(gateRow.text()).toBe(
+        `Needs the ${TOOL_LINES.suspension.tiers[1]!.displayName} for today. Hire it for the day, or buy your own.`,
+      )
+      expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('hiring the line clears the gate reason and re-enables Confirm', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.removePart(id, 'dampers')
+      const part = untaggedPartFor('dampers')
+      game.devGrantPart(part.id)
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
+      game.stageAction(id, { kind: 'install', componentId: 'suspension', partInstanceId })
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.find('[data-test="hire-machine-suspension"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="staged-gate-suspension"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeUndefined()
     })
   })
 })

@@ -45,14 +45,36 @@ export function hasWorkAddress(action: StagedAction): action is AddressedStagedA
   return action.kind === 'repair' || action.kind === 'install'
 }
 
+const PIPELINE_KINDS = ['pipeline-stage', 'pipeline-swap-panel', 'pipeline-paint'] as const
+type PipelineStagedAction = Extract<StagedAction, { kind: (typeof PIPELINE_KINDS)[number] }>
+
+function isPipelineAction(action: StagedAction): action is PipelineStagedAction {
+  return (PIPELINE_KINDS as readonly string[]).includes(action.kind)
+}
+
 /**
  * Whether staging `b` displaces already-staged `a` - the staged-
  * action generalisation of `addressesOverlap`. Two per-part actions collide by
  * address overlap exactly as before; an assembly action collides only with the
  * SAME operation on the SAME assembly (a re-stage replaces it), and never with
  * a per-part action - an assembly action has no per-part address to overlap.
+ * A body-pipeline action collides only with the SAME op on the SAME zone
+ * (`pipeline-stage` additionally matches on its own `stage`) - re-staging the
+ * identical op replaces it, but staging a DIFFERENT stage on the same zone
+ * (fill-and-sand, then prime, then paint) must coexist as a real sequence.
  */
 export function stagedActionsCollide(a: StagedAction, b: StagedAction): boolean {
+  if (isPipelineAction(a) || isPipelineAction(b)) {
+    if (
+      !isPipelineAction(a) ||
+      !isPipelineAction(b) ||
+      a.kind !== b.kind ||
+      a.zoneId !== b.zoneId
+    ) {
+      return false
+    }
+    return a.kind === 'pipeline-stage' && b.kind === 'pipeline-stage' ? a.stage === b.stage : true
+  }
   if (!hasWorkAddress(a) || !hasWorkAddress(b)) {
     return (
       !hasWorkAddress(a) && !hasWorkAddress(b) && a.kind === b.kind && a.assemblyId === b.assemblyId

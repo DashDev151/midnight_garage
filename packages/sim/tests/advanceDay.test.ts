@@ -5,6 +5,7 @@ import { advanceDay } from '../src/advanceDay'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { hashState } from '../src/hashState'
+import { resolveHireMachineLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
 import { groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
@@ -159,9 +160,24 @@ function scriptedActionsForDay(day: number): DayActions {
   return noActions
 }
 
+/**
+ * Instant machine hires the scripted career fronts before a day's actions
+ * queue - mirrors the store's own `hireMachineLine` wrapper (an immediate
+ * action, not a `DayActions` entry, same as `attendAuction`). Day 1's body
+ * repair climbs panels/underbody (body's signature slots) and day 3's
+ * install targets dampers (a suspension signature slot), so both lines need
+ * hiring for the day before the machine-gated work can proceed.
+ */
+function hireForDay(state: GameState, day: number): GameState {
+  if (day === 1) return resolveHireMachineLine(state, 'body', CONTEXT).state
+  if (day === 3) return resolveHireMachineLine(state, 'suspension', CONTEXT).state
+  return state
+}
+
 function runCareer(days: number): GameState {
   let state = initialState()
   for (let day = 1; day <= days; day++) {
+    state = hireForDay(state, day)
     const actions = scriptedActionsForDay(day)
     const result = advanceDay(state, actions, state.seed + state.day, CONTEXT)
     state = result.state
@@ -173,12 +189,19 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    // Adding a trait to `TraitIdSchema` widens `rollStaffCandidate`'s own
-    // `rng.pick` draw, shifting which trait (and everything the shared RNG
-    // stream draws afterwards) a staff-ad roll lands on partway through this
-    // scripted career - an intended consequence of growing the roll pool,
-    // not a regression.
-    expect(hashState(finalState)).toBe('577b2daf')
+    // Re-pinned for the body model switchover (case (a), an intentional
+    // change): every generated car now carries real zone state, and
+    // `panels`/`paint`/`underbody` bands are DERIVED from it rather than
+    // rolled/stored directly - shifting every generated lot's condition,
+    // value, and repair bill from day 1 onward. The scripted day-1 "body
+    // repair" action no longer touches `panels`/`underbody` at all (their
+    // bands are derived now; direct repair on them refuses) - only `aero`
+    // still climbs, changing that action's real labour/cash and every later
+    // day's state built on top of it. Re-pinned again for the SKU
+    // dispositions (the retired paint finishes and the six kits migrated
+    // into the widened `aero` slot), which reshape the catalog every
+    // aftermarket roll and repair quote draws from.
+    expect(hashState(finalState)).toBe('d0e2394e')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -211,10 +234,11 @@ describe('advanceDay golden master', () => {
   it('rent is charged again, every 7 days', () => {
     const finalState = runCareer(30)
     // Rent charges on days 7/14/21/28 within a 30-day career (four times) at
-    // economy.json's WEEKLY_RENT_YEN. The day-1 body repair and the day-3
-    // dampers install both incur machine-shop assist fees at tier 1, the
-    // lowest accessible tier for signature operations on their respective
-    // groups (body and suspension).
+    // economy.json's WEEKLY_RENT_YEN. `hireForDay` fronts the body line's
+    // daily hire on day 1 (the body repair climbs a signature slot) and the
+    // suspension line's on day 3 (the dampers install targets one), each
+    // exactly once - a running cost, same treatment as rent, never charged
+    // per operation.
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
@@ -224,7 +248,7 @@ describe('advanceDay golden master', () => {
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       CONTEXT.economy.restoration.repairStepFraction,
-      CONTEXT.economy.energy.energyPerGradeByTier,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
     )
     const { body: bodyFeeYen, suspension: suspensionFeeYen } =
       CONTEXT.economy.machineShopAssist.feeYenByGroup
@@ -299,7 +323,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    expect(hashState(acquisitionCareer().sold)).toBe('e293217c')
+    // Re-pinned for the body model switchover (case (a), an intentional
+    // change) - see the golden-master describe block above for the reason:
+    // every generated lot's zone state now shapes its condition and value
+    // from the moment it rolls.
+    expect(hashState(acquisitionCareer().sold)).toBe('3fd7b213')
   })
 })
 

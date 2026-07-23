@@ -444,16 +444,32 @@ describe('TutorialOverlay', () => {
     expect(heroWheels.classList.contains('tutorial-spotlight')).toBe(false)
   })
 
-  it('falls back to the nav tab when the step control is absent from the DOM', async () => {
+  it('spotlights nothing on the anchorless welcome step, not even the garage nav fallback', async () => {
     const game = useGameStore()
     game.newGame(8)
-    // Welcome step anchors `day-value` (garage) - not in the DOM here, so the
-    // spotlight lands on the garage tab instead.
+    // The welcome step carries no anchorTestId at all (item 1 hotfix - nothing
+    // for the player to do yet) - the spotlight must stay off, not fall back
+    // to a nav tab that happens to be present.
     const navGarage = addAnchor('nav-garage')
     render()
     await nextTick()
 
-    expect(navGarage.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(navGarage.classList.contains('tutorial-spotlight')).toBe(false)
+    expect(document.querySelectorAll('.tutorial-spotlight')).toHaveLength(0)
+  })
+
+  it('falls back to the nav tab when a REAL anchored step is absent from the DOM', async () => {
+    const game = useGameStore()
+    game.newGame(14)
+    // Advance past welcome onto `accept`, whose own anchor (`mission-accept`)
+    // is not in the DOM here, so the spotlight lands on the jobs tab instead -
+    // the fallback mechanism itself, exercised on a step that still anchors.
+    game.acknowledgeTutorialStep('welcome')
+    const navJobs = addAnchor('nav-jobs')
+    render()
+    await nextTick()
+
+    expect(navJobs.classList.contains('tutorial-spotlight')).toBe(true)
   })
 
   it('shows the terminal sign-off after delivery and finishes cleanly', async () => {

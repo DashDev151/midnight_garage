@@ -46,6 +46,24 @@ const ByCarPartIdWeightSchema = z.object({
   dashGauges: z.number().nonnegative(),
 })
 
+/** A zone's severity roll weights over 0/1/2/3, as positive integer
+ * percentages - not required to sum to exactly 100, but every seed table in
+ * this codebase does. Feeds `partsGeneration.zoneStates` below. */
+const ZoneSeverityWeightsSchema = z.tuple([
+  z.number().int().positive(),
+  z.number().int().positive(),
+  z.number().int().positive(),
+  z.number().int().positive(),
+])
+
+/** One `ZoneSeverityWeightsSchema` row per `PartFitmentClass`. */
+const ByPartFitmentClassZoneWeightsSchema = z.object({
+  shitbox: ZoneSeverityWeightsSchema,
+  common: ZoneSeverityWeightsSchema,
+  uncommon: ZoneSeverityWeightsSchema,
+  rare: ZoneSeverityWeightsSchema,
+})
+
 /** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
  * used as `Readonly<Record<AuctionTier, number>>` in sim/constants.ts before
  * this file existed. Explicit per-tier keys (not a generic `z.record`) so a
@@ -844,6 +862,23 @@ export const EconomyConfigSchema = z.object({
         sport: z.number().nonnegative(),
         race: z.number().nonnegative(),
       }),
+      /**
+       * The zone model's own generation tunables (docs/design/
+       * workshop-rework.md's generation table): per-tier severity weights
+       * for a zone's `metal` and `finish`, rolled independently per zone per
+       * generated car. `chassisMetalWeightsByTier` rolls the chassis zone's
+       * metal severity on the NEXT-KINDER tier's row instead of reusing
+       * `metalWeightsByTier` directly, so structural rot stays rare without
+       * flooding the yard with cases needing the body line. `surfaceExtraChance`
+       * is the chance a zone's generated surface severity (`max(0, metal - 1)`)
+       * is bumped up one further step, capped at 2.
+       */
+      zoneStates: z.object({
+        metalWeightsByTier: ByPartFitmentClassZoneWeightsSchema,
+        finishWeightsByTier: ByPartFitmentClassZoneWeightsSchema,
+        chassisMetalWeightsByTier: ByPartFitmentClassZoneWeightsSchema,
+        surfaceExtraChance: z.number().min(0).max(1),
+      }),
     })
     .refine(
       (pg) =>
@@ -1162,9 +1197,9 @@ export const EconomyConfigSchema = z.object({
    *
    * Tools and staff are the loosening levers: a benched member RAISES the
    * pool (`laborSlotsPerDay x pointsPerLabour`, `energyMax` in
-   * laborSlots.ts), while a higher tool tier REDUCES a repair's per-grade
-   * cost (`energyPerGradeByTier`, no ceil, so a tier is a genuine fraction of
-   * the work, not a rounded-up whole slot).
+   * laborSlots.ts), while a higher tool tier REDUCES a repair's per-band-step
+   * cost (`energyPerBandStepByToolTier`, no ceil, so a tier is a genuine
+   * fraction of the work, not a rounded-up whole slot).
    */
   energy: z.object({
     /** Energy points one labour slot is worth (the x10 scale). The per-member
@@ -1177,12 +1212,12 @@ export const EconomyConfigSchema = z.object({
      * the old `PLAYER_BASE_LABOR_SLOTS` x `pointsPerLabour`, so day-1 is
      * unchanged. Benched staff add on top; the pool refills fully each day. */
     basePoolPoints: z.number().int().positive(),
-    /** Repair energy per grade climbed, by the group's tool tier (the tool-
-     * tier speed axis, now on the bar). A repair costs `grades x
-     * energyPerGradeByTier[tier]` points - NO ceil, so a higher tier is a
-     * genuine fraction of the work. Must be positive and non-increasing up
-     * the tiers (a better tier never costs MORE per grade). */
-    energyPerGradeByTier: z
+    /** Repair energy per band step climbed, by the group's tool tier (the
+     * tool-tier speed axis, now on the bar). A repair costs `steps x
+     * energyPerBandStepByToolTier[tier]` points - NO ceil, so a higher tier
+     * is a genuine fraction of the work. Must be positive and non-increasing
+     * up the tiers (a better tier never costs MORE per band step). */
+    energyPerBandStepByToolTier: z
       .object({
         1: z.number().int().positive(),
         2: z.number().int().positive(),
@@ -1190,7 +1225,7 @@ export const EconomyConfigSchema = z.object({
       })
       .refine((e) => e[1] >= e[2] && e[2] >= e[3], {
         message:
-          'energy.energyPerGradeByTier must be non-increasing up the tiers (tier 1 >= tier 2 >= tier 3)',
+          'energy.energyPerBandStepByToolTier must be non-increasing up the tiers (tier 1 >= tier 2 >= tier 3)',
       }),
     /** Install energy by the target slot's depth class. Removal and a
      * like-for-like equivalence refit price through `actionPoints.removePart`
@@ -1274,8 +1309,8 @@ export const EconomyConfigSchema = z.object({
      * tier-2 is owned (removal stays free; a non-listed light bolt-on slot in
      * the same group is never charged). A PARTIAL map by design:
      * engine/drivetrain gate on buried depth (`removeMachineGateGroup`) and
-     * wheels on the tyre bench op (`benchSwapFeeYen`), so they name no slots
-     * here - this predicate must never fire for them.
+     * wheels on the tyre bench op (`benchSwapGateGroup`), so they name no
+     * slots here - this predicate must never fire for them.
      */
     signatureSlotsByGroup: z.partialRecord(ComponentIdSchema, z.array(CarPartIdSchema).min(1)),
     probeAmortisationOps: z.number().int().positive(),

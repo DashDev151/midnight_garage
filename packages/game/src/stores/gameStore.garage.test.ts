@@ -198,6 +198,9 @@ describe('garage: instant part install', () => {
       game.installablePartsFor(car.id, 'interior').some((pi) => pi.id === partInstance.id),
     ).toBe(true)
 
+    // seats is an interior signature slot - the install needs the line
+    // hired for today (a fresh shop owns nothing at tier 2).
+    game.hireMachineLine('interior')
     game.install(car.id, 'interior', partInstance.id)
     // Filled again - `dashGauges` is still occupied too, so the group is
     // fully occupied once more.

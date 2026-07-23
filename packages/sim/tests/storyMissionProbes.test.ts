@@ -76,9 +76,18 @@ function stockCarPartsAt(
   return result
 }
 
+/** The slot's OWN native aftermarket SKU, never a migrated one sharing the
+ * same (carPartId, grade, fitmentClass) address - `aero` now also carries
+ * the six migrated panel/underbody kits (`priceBasisPartId` set, since they
+ * price from their own original basis), so a plain match is ambiguous
+ * there; every probe in this file means the slot's own family. */
 function aftermarketPart(carPartId: CarPartId, grade: Grade, fitmentClass: PartFitmentClass): Part {
   const part = PARTS.find(
-    (p) => p.carPartId === carPartId && p.grade === grade && p.fitmentClass === fitmentClass,
+    (p) =>
+      p.carPartId === carPartId &&
+      p.grade === grade &&
+      p.fitmentClass === fitmentClass &&
+      p.priceBasisPartId === undefined,
   )
   if (!part)
     throw new Error(`no catalog "${grade}" "${carPartId}" part for fitment class "${fitmentClass}"`)
@@ -558,7 +567,7 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
     )
   })
 
-  it('the-showroom-standard: a cefiro-a31 with every part fine-or-better, sport panels/paint/underbody/aero, and 4 mechanicals minted clears style >= 50; formula-derived payout 1,200,000 yen', () => {
+  it('the-showroom-standard: a cefiro-a31 with every part fine-or-better, race aero/rims/seats, and 4 mechanicals minted clears style >= 50; formula-derived payout 1,231,000 yen', () => {
     const modelId = 'nissan-cefiro-a31'
     const model = CARS.find((c) => c.id === modelId)!
     const fitmentClass = fitmentClassForTier(model.tier)
@@ -583,17 +592,21 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       CONTEXT.economy,
     )
 
-    // The showroom body kit: sport-grade panels/paint/underbody/aero clear
-    // the style floor; a further mechanical polish (4 engine-group parts to
-    // mint) is a forecourt-honest "we treated her right underneath too",
-    // still fine-or-better either way.
-    const SPORT_SWAP: CarPartId[] = ['panels', 'paint', 'underbody', 'aero']
+    // The showroom body kit: `panels`/`paint`/`underbody` carry no
+    // aftermarket grades any more (they are derived body value carriers -
+    // `bodyPipeline.ts`); the showroom look now comes from the widened aero
+    // slot plus rims and seats, at race grade to clear the style floor (sport
+    // alone falls short once the body trio can no longer stack their own
+    // separate bonuses on top of aero's). A further mechanical polish (4
+    // engine-group parts to mint) is a forecourt-honest "we treated her right
+    // underneath too", still fine-or-better either way.
+    const AFTERMARKET_SWAP: CarPartId[] = ['aero', 'rims', 'seats']
     const MINT_UPGRADE: CarPartId[] = ['block', 'exhaust', 'fuelSystem', 'clutch']
 
     const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
     let partsYen = 0
-    for (const carPartId of SPORT_SWAP) {
-      const part = aftermarketPart(carPartId, 'sport', fitmentClass)
+    for (const carPartId of AFTERMARKET_SWAP) {
+      const part = aftermarketPart(carPartId, 'race', fitmentClass)
       partsYen += part.priceYen
       afterParts[carPartId] = {
         installed: {
@@ -612,7 +625,7 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
 
     let repairYen = 0
     for (const entry of PARTS_TAXONOMY) {
-      if (SPORT_SWAP.includes(entry.id)) continue // aftermarket - priced via partsYen, not repaired
+      if (AFTERMARKET_SWAP.includes(entry.id)) continue // aftermarket - priced via partsYen, not repaired
       const grades = MINT_UPGRADE.includes(entry.id) ? 2 : 1 // worn -> mint or worn -> fine
       repairYen += Math.round(
         grades * 0.1 * CONTEXT.stockPartByCarPartId[fitmentClass][entry.id].priceYen,
@@ -637,6 +650,11 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
     expect(target.budgetCapYen, 'the-showroom-standard one-price: budgetCapYen === payoutYen').toBe(
       target.payoutYen,
     )
+    // The payout is formula-derived from the honest showroom recipe above
+    // (race aero/rims/seats plus the four minted mechanicals): the three body
+    // carriers hold no aftermarket grades, so the showroom look rides the
+    // widened aero slot and cabin/wheel dress rather than stacking body-part
+    // bonuses.
     expect(target.payoutYen, `the-showroom-standard payoutYen (formula-derived)`).toBe(
       payoutYenFor(probeCostYen),
     )
@@ -713,11 +731,14 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       apparentBandByPartId: null,
       parts: stockCarPartsAt(fitmentClass, 'worn'),
     }
-    const SPORT_SWAP: CarPartId[] = ['panels', 'paint', 'underbody', 'aero']
+    // `panels`/`paint`/`underbody` carry no aftermarket grades any more -
+    // see the satisfiability probe above for the full reasoning; race grade
+    // aero/rims/seats clears the style floor here too.
+    const AFTERMARKET_SWAP: CarPartId[] = ['aero', 'rims', 'seats']
     const MINT_UPGRADE: CarPartId[] = ['block', 'exhaust', 'fuelSystem', 'clutch']
     const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
-    for (const carPartId of SPORT_SWAP) {
-      const part = aftermarketPart(carPartId, 'sport', fitmentClass)
+    for (const carPartId of AFTERMARKET_SWAP) {
+      const part = aftermarketPart(carPartId, 'race', fitmentClass)
       afterParts[carPartId] = {
         installed: {
           id: `probe-deliver-showroom-${carPartId}`,
@@ -892,9 +913,9 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
    * machine is owned, and never fires for a non-signature (light bolt-on)
    * slot in the same group - the no-over-gating check. It is also 0 for
    * the engine/drivetrain/wheels slots, which keep their own separate
-   * gates (`machineAssistFeeYen`/`benchSwapFeeYen`), proving the new
-   * predicate never leaks into - or double-charges - the three
-   * pre-existing gates.
+   * gates (`machineAssistFeeYen`/`assemblyMachineGateGroup`/
+   * `benchSwapGateGroup`), proving the new predicate never leaks into - or
+   * double-charges - the three pre-existing gates.
    */
   it('the three new signature-op gates charge at tier 1, are free at tier 2, and never over-gate light or pre-existing-gate work', () => {
     const { feeYenByGroup, signatureSlotsByGroup } = CONTEXT.economy.machineShopAssist

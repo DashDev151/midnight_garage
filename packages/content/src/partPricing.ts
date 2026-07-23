@@ -40,6 +40,18 @@ const ByCarPartIdPriceSchema = z.object({
   dashGauges: z.number().int().positive(),
 })
 
+/**
+ * `ByCarPartIdPriceSchema` plus the pricing bases that are not a `CarPartId`
+ * at all - a catalog entry's `priceBasisPartId` can address one of these
+ * instead of its own `carPartId` (`resolvePartPriceYen` below). `zonePanel`
+ * is optional: only ships once a catalog entry actually prices from it.
+ */
+const ByPriceBasisIdPriceSchema = ByCarPartIdPriceSchema.extend({
+  /** The stock, common-class base a zone-panel SKU prices from, independent
+   * of the derived `panels` carPartId's own base. */
+  zonePanel: z.number().int().positive().optional(),
+})
+
 const ByFitmentClassFactorSchema = z.object({
   shitbox: z.number().positive(),
   common: z.number().positive(),
@@ -61,7 +73,7 @@ const ByGradeFactorSchema = z.object({
  * entry is a deliberate, individually-justified decision.
  */
 export const PartPricingSheetSchema = z.object({
-  baseCostYen: ByCarPartIdPriceSchema,
+  baseCostYen: ByPriceBasisIdPriceSchema,
   classFactors: ByFitmentClassFactorSchema,
   gradeFactors: ByGradeFactorSchema,
   globalFactor: z.number().positive(),
@@ -75,16 +87,29 @@ export type PartPricingSheet = z.infer<typeof PartPricingSheetSchema>
  * otherwise `round100(base x class x grade x global)`. Rounds to the nearest
  * Y100 - fine-grained enough that the class/grade ladder still reads
  * distinctly, coarse enough that a shop's price tags never carry single-yen
- * noise.
+ * noise. `base` comes from `entry.priceBasisPartId` when the entry carries
+ * one, otherwise from its own `carPartId` - so an entry that never sets the
+ * field resolves byte-identically to before it existed.
  */
 export function resolvePartPriceYen(
-  entry: { id: string; carPartId: CarPartId; fitmentClass: PartFitmentClass; grade: Grade },
+  entry: {
+    id: string
+    carPartId: CarPartId
+    fitmentClass: PartFitmentClass
+    grade: Grade
+    priceBasisPartId?: string
+  },
   sheet: PartPricingSheet,
 ): number {
   const override = sheet.overrides[entry.id]
   if (override !== undefined) return override
+  const basisId = entry.priceBasisPartId ?? entry.carPartId
+  const baseCostYen = (sheet.baseCostYen as Record<string, number | undefined>)[basisId]
+  if (baseCostYen === undefined) {
+    throw new Error(`resolvePartPriceYen: no price basis "${basisId}" in the pricing sheet`)
+  }
   const raw =
-    sheet.baseCostYen[entry.carPartId] *
+    baseCostYen *
     sheet.classFactors[entry.fitmentClass] *
     sheet.gradeFactors[entry.grade] *
     sheet.globalFactor

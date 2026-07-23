@@ -268,15 +268,18 @@ const stepTotal = TUTORIAL_STEPS.length
  * the sub-state through a step), else the step's own anchor. A line anchor
  * may be a chain tried in DOM order (a multi-screen errand spotlights the
  * deepest control that exists right now). A `{lotId}` token resolves to the
- * scripted lot either way. */
+ * scripted lot either way. Empty when neither the step nor any visible line
+ * names an anchor (the step has nothing for the player to do yet) - the
+ * overlay then spotlights nothing at all, not even the nav-tab fallback. */
 const anchorTestIds = computed<string[]>(() => {
   const step = currentStep.value
   if (!step || isTerminal.value) return []
-  let anchor: string | readonly string[] = step.anchorTestId
+  let anchor: string | readonly string[] | null | undefined = step.anchorTestId
   for (const { line } of visibleEntries.value) {
     if (line.anchorTestId) anchor = line.anchorTestId
   }
-  const chain = Array.isArray(anchor) ? anchor : [anchor as string]
+  if (!anchor) return []
+  const chain = Array.isArray(anchor) ? anchor : [anchor]
   return chain.map((testId) => testId.replace('{lotId}', recipe.lotId))
 })
 
@@ -524,11 +527,14 @@ const confirmingSkip = ref(false)
   line-height: 1.4;
 }
 /* Per-step default placement (`panelPosition`): the class wins over the base
- * rule above on specificity alone, and a drag's inline style wins over both. */
+ * rule above on specificity alone, and a drag's inline style wins over both.
+ * `bottom` is raised clear of the floating HUD (the vertical labour gauge
+ * stacked above the End Day button, fixed to the same bottom-right corner)
+ * so the walkthrough box never overlaps it. */
 .tutorial-overlay.tutorial-pos-bottom-right {
   left: auto;
   right: 1rem;
-  bottom: 1rem;
+  bottom: 13.5rem;
 }
 .tutorial-overlay.tutorial-pos-right {
   left: auto;

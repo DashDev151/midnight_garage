@@ -171,7 +171,10 @@ function indexStockPartsByCarPartId(
   for (const fitmentClass of FITMENT_CLASSES) {
     const byCarPartId: Record<string, Part> = {}
     for (const part of parts) {
-      if (part.grade === 'stock' && part.fitmentClass === fitmentClass) {
+      // Per-zone replacement panels (zoneId-carrying SKUs) address a single
+      // body zone, never the whole slot, so they are excluded from the
+      // canonical stock-filler index.
+      if (part.grade === 'stock' && part.fitmentClass === fitmentClass && part.zoneId == null) {
         byCarPartId[part.carPartId] = part
       }
     }

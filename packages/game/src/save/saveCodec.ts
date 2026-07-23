@@ -558,8 +558,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * fee is 0 at current tuning anyway. The version bump alone is still
  * required (Save law) so an old client rejects a v46 save rather than
  * silently dropping the field.
+ * v46 -> v47 (the body model, phase 1): `CarInstanceSchema` gained an
+ * optional `zoneState` (the six-zone metal/surface/finish state the derived
+ * `panels`/`paint`/`underbody` bands will read once the sim switches over).
+ * The pure additive case (the genuinely-optional-key pattern, like
+ * `attendanceFeePaidDayByTier` at v46), so this needs NO `MIGRATIONS[46]`
+ * entry; a pre-v47 save's cars decode with it simply absent, which reads as
+ * "not yet on the zone model" - exactly correct, since nothing yet reads the
+ * field. The version bump alone is still required (Save law) so an old
+ * client rejects a v47 save rather than silently dropping the field.
  */
-export const SAVE_VERSION = 46
+export const SAVE_VERSION = 47
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -1030,10 +1039,9 @@ function migrateV19ToV20(gameState: unknown): unknown {
  * unchanged, so this is exactly the part these saves would have seen.
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
-  PARTS.filter((part) => part.grade === 'stock' && part.fitmentClass === 'common').map((part) => [
-    part.carPartId,
-    part.id,
-  ]),
+  PARTS.filter(
+    (part) => part.grade === 'stock' && part.fitmentClass === 'common' && part.zoneId == null,
+  ).map((part) => [part.carPartId, part.id]),
 )
 
 /** Monotonic id suffix for a synthesized stock `PartInstance` - migrations

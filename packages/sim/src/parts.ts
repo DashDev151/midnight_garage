@@ -66,6 +66,10 @@ export function partFitsCar(
   const taxonomyEntry = partsTaxonomyById[part.carPartId]
   return (
     !!taxonomyEntry &&
+    // A zone-scoped SKU (a per-zone replacement panel) addresses a single
+    // body zone, never a whole car slot, so it can never slot-fit a car:
+    // it is consumed by zone work, not installed as the slot's part.
+    part.zoneId == null &&
     taxonomyEntry.group === componentId &&
     (!carPartId || part.carPartId === carPartId) &&
     part.fitmentClass === fitmentClassForTier(model.tier) &&

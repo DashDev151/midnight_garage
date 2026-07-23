@@ -5952,10 +5952,371 @@
     "fitmentClass": "rare"
   },
   {
+    "id": "zone-panel-bonnet",
+    "brand": "OEM",
+    "name": "Bonnet panel",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "bonnet",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zone-panel-bonnet",
+    "brand": "OEM",
+    "name": "Bonnet panel",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "bonnet",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zone-panel-bonnet",
+    "brand": "OEM",
+    "name": "Bonnet panel",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "bonnet",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zone-panel-bonnet",
+    "brand": "OEM",
+    "name": "Bonnet panel",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "bonnet",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
+  },
+  {
+    "id": "zone-panel-boot",
+    "brand": "OEM",
+    "name": "Boot lid",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "boot",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zone-panel-boot",
+    "brand": "OEM",
+    "name": "Boot lid",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "boot",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zone-panel-boot",
+    "brand": "OEM",
+    "name": "Boot lid",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "boot",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zone-panel-boot",
+    "brand": "OEM",
+    "name": "Boot lid",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "boot",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
+  },
+  {
+    "id": "zone-panel-roof",
+    "brand": "OEM",
+    "name": "Roof skin",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "roof",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zone-panel-roof",
+    "brand": "OEM",
+    "name": "Roof skin",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "roof",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zone-panel-roof",
+    "brand": "OEM",
+    "name": "Roof skin",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "roof",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zone-panel-roof",
+    "brand": "OEM",
+    "name": "Roof skin",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "roof",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
+  },
+  {
+    "id": "zone-panel-left",
+    "brand": "OEM",
+    "name": "Left panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "left",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zone-panel-left",
+    "brand": "OEM",
+    "name": "Left panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "left",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zone-panel-left",
+    "brand": "OEM",
+    "name": "Left panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "left",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zone-panel-left",
+    "brand": "OEM",
+    "name": "Left panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "left",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
+  },
+  {
+    "id": "zone-panel-right",
+    "brand": "OEM",
+    "name": "Right panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "right",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "common"
+  },
+  {
+    "id": "shitbox-zone-panel-right",
+    "brand": "OEM",
+    "name": "Right panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "right",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "shitbox"
+  },
+  {
+    "id": "uncommon-zone-panel-right",
+    "brand": "OEM",
+    "name": "Right panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "right",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "uncommon"
+  },
+  {
+    "id": "rare-zone-panel-right",
+    "brand": "OEM",
+    "name": "Right panel set",
+    "carPartId": "panels",
+    "priceBasisPartId": "zonePanel",
+    "zoneId": "right",
+    "grade": "stock",
+    "requiredTags": [],
+    "statModifiers": {
+      "power": 0,
+      "handling": 0,
+      "style": 0,
+      "reliability": 0,
+      "authenticity": 0
+    },
+    "fitmentClass": "rare"
+  },
+  {
     "id": "frp-lightweight-panels",
     "brand": "FRP",
-    "name": "Lightweight Panel Kit",
-    "carPartId": "panels",
+    "name": "Lightweight Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -5970,8 +6331,9 @@
   {
     "id": "shitbox-frp-lightweight-panels",
     "brand": "FRP",
-    "name": "Lightweight Panel Kit",
-    "carPartId": "panels",
+    "name": "Lightweight Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -5986,8 +6348,9 @@
   {
     "id": "uncommon-frp-lightweight-panels",
     "brand": "FRP",
-    "name": "Lightweight Panel Kit",
-    "carPartId": "panels",
+    "name": "Lightweight Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -6002,8 +6365,9 @@
   {
     "id": "rare-frp-lightweight-panels",
     "brand": "FRP",
-    "name": "Lightweight Panel Kit",
-    "carPartId": "panels",
+    "name": "Lightweight Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -6018,8 +6382,9 @@
   {
     "id": "frp-sport-panel-kit",
     "brand": "FRP",
-    "name": "Sport Panel Kit",
-    "carPartId": "panels",
+    "name": "Sport Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6034,8 +6399,9 @@
   {
     "id": "shitbox-frp-sport-panel-kit",
     "brand": "FRP",
-    "name": "Sport Panel Kit",
-    "carPartId": "panels",
+    "name": "Sport Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6050,8 +6416,9 @@
   {
     "id": "uncommon-frp-sport-panel-kit",
     "brand": "FRP",
-    "name": "Sport Panel Kit",
-    "carPartId": "panels",
+    "name": "Sport Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6066,8 +6433,9 @@
   {
     "id": "rare-frp-sport-panel-kit",
     "brand": "FRP",
-    "name": "Sport Panel Kit",
-    "carPartId": "panels",
+    "name": "Sport Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6082,8 +6450,9 @@
   {
     "id": "frp-carbon-panel-kit",
     "brand": "FRP",
-    "name": "Carbon Panel Kit",
-    "carPartId": "panels",
+    "name": "Carbon Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6098,8 +6467,9 @@
   {
     "id": "shitbox-frp-carbon-panel-kit",
     "brand": "FRP",
-    "name": "Carbon Panel Kit",
-    "carPartId": "panels",
+    "name": "Carbon Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6114,8 +6484,9 @@
   {
     "id": "uncommon-frp-carbon-panel-kit",
     "brand": "FRP",
-    "name": "Carbon Panel Kit",
-    "carPartId": "panels",
+    "name": "Carbon Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6130,8 +6501,9 @@
   {
     "id": "rare-frp-carbon-panel-kit",
     "brand": "FRP",
-    "name": "Carbon Panel Kit",
-    "carPartId": "panels",
+    "name": "Carbon Body Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "panels",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6208,198 +6580,6 @@
     "fitmentClass": "rare"
   },
   {
-    "id": "akai-custom-twotone",
-    "brand": "Studio Akai",
-    "name": "Custom Two-Tone",
-    "carPartId": "paint",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 9,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "common"
-  },
-  {
-    "id": "shitbox-akai-custom-twotone",
-    "brand": "Studio Akai",
-    "name": "Custom Two-Tone",
-    "carPartId": "paint",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 9,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "shitbox"
-  },
-  {
-    "id": "uncommon-akai-custom-twotone",
-    "brand": "Studio Akai",
-    "name": "Custom Two-Tone",
-    "carPartId": "paint",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 9,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "uncommon"
-  },
-  {
-    "id": "rare-akai-custom-twotone",
-    "brand": "Studio Akai",
-    "name": "Custom Two-Tone",
-    "carPartId": "paint",
-    "grade": "street",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 9,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "rare"
-  },
-  {
-    "id": "akai-sport-livery",
-    "brand": "Studio Akai",
-    "name": "Sport Livery",
-    "carPartId": "paint",
-    "grade": "sport",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 14,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "common"
-  },
-  {
-    "id": "shitbox-akai-sport-livery",
-    "brand": "Studio Akai",
-    "name": "Sport Livery",
-    "carPartId": "paint",
-    "grade": "sport",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 14,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "shitbox"
-  },
-  {
-    "id": "uncommon-akai-sport-livery",
-    "brand": "Studio Akai",
-    "name": "Sport Livery",
-    "carPartId": "paint",
-    "grade": "sport",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 14,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "uncommon"
-  },
-  {
-    "id": "rare-akai-sport-livery",
-    "brand": "Studio Akai",
-    "name": "Sport Livery",
-    "carPartId": "paint",
-    "grade": "sport",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 14,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "rare"
-  },
-  {
-    "id": "akai-full-livery-wrap",
-    "brand": "Studio Akai",
-    "name": "Full Livery Wrap",
-    "carPartId": "paint",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 20,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "common"
-  },
-  {
-    "id": "shitbox-akai-full-livery-wrap",
-    "brand": "Studio Akai",
-    "name": "Full Livery Wrap",
-    "carPartId": "paint",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 20,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "shitbox"
-  },
-  {
-    "id": "uncommon-akai-full-livery-wrap",
-    "brand": "Studio Akai",
-    "name": "Full Livery Wrap",
-    "carPartId": "paint",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 20,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "uncommon"
-  },
-  {
-    "id": "rare-akai-full-livery-wrap",
-    "brand": "Studio Akai",
-    "name": "Full Livery Wrap",
-    "carPartId": "paint",
-    "grade": "race",
-    "requiredTags": [],
-    "statModifiers": {
-      "power": 0,
-      "handling": 0,
-      "style": 20,
-      "reliability": 0,
-      "authenticity": 0
-    },
-    "fitmentClass": "rare"
-  },
-  {
     "id": "stock-underbody",
     "brand": "OEM",
     "name": "Stock Underbody",
@@ -6467,7 +6647,8 @@
     "id": "neon-doraku-underglow-kit",
     "brand": "Neon Doraku",
     "name": "Underglow Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -6483,7 +6664,8 @@
     "id": "shitbox-neon-doraku-underglow-kit",
     "brand": "Neon Doraku",
     "name": "Underglow Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -6499,7 +6681,8 @@
     "id": "uncommon-neon-doraku-underglow-kit",
     "brand": "Neon Doraku",
     "name": "Underglow Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -6515,7 +6698,8 @@
     "id": "rare-neon-doraku-underglow-kit",
     "brand": "Neon Doraku",
     "name": "Underglow Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -6530,8 +6714,9 @@
   {
     "id": "namazu-sport-underbody-kit",
     "brand": "Namazu",
-    "name": "Sport Underbody Kit",
-    "carPartId": "underbody",
+    "name": "Skirt and Splitter Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6546,8 +6731,9 @@
   {
     "id": "shitbox-namazu-sport-underbody-kit",
     "brand": "Namazu",
-    "name": "Sport Underbody Kit",
-    "carPartId": "underbody",
+    "name": "Skirt and Splitter Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6562,8 +6748,9 @@
   {
     "id": "uncommon-namazu-sport-underbody-kit",
     "brand": "Namazu",
-    "name": "Sport Underbody Kit",
-    "carPartId": "underbody",
+    "name": "Skirt and Splitter Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6578,8 +6765,9 @@
   {
     "id": "rare-namazu-sport-underbody-kit",
     "brand": "Namazu",
-    "name": "Sport Underbody Kit",
-    "carPartId": "underbody",
+    "name": "Skirt and Splitter Kit",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -6595,7 +6783,8 @@
     "id": "namazu-flatfloor-kit",
     "brand": "Namazu",
     "name": "Flat Floor Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6611,7 +6800,8 @@
     "id": "shitbox-namazu-flatfloor-kit",
     "brand": "Namazu",
     "name": "Flat Floor Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6627,7 +6817,8 @@
     "id": "uncommon-namazu-flatfloor-kit",
     "brand": "Namazu",
     "name": "Flat Floor Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -6643,7 +6834,8 @@
     "id": "rare-namazu-flatfloor-kit",
     "brand": "Namazu",
     "name": "Flat Floor Kit",
-    "carPartId": "underbody",
+    "carPartId": "aero",
+    "priceBasisPartId": "underbody",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {

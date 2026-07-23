@@ -31,6 +31,17 @@ import {
   hasForcedInduction,
   isPartMissing,
 } from './bands'
+import {
+  applyDerivedBodyBands,
+  degradeZoneCarrierOneStep,
+  hasZoneDegradeHeadroom,
+  hasZoneImproveHeadroom,
+  improveZoneCarrierOneStep,
+  isBodyDerivedPart,
+  PANEL_ZONE_IDS,
+  rollZoneStates,
+  setZoneCarrierToAtLeastBand,
+} from './bodyPipeline'
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
 import { expectationForCar, mileageFactor } from './marketValue'
@@ -149,14 +160,37 @@ function applySymptoms(
     if (!installed) continue // nothing to damage - drop
 
     const beforeBand = installed.band
-    const newBand = bandIndex(cause.setBand) < bandIndex(beforeBand) ? cause.setBand : beforeBand
-    const tentative: CarInstance = {
-      ...working,
-      parts: {
-        ...working.parts,
-        [cause.carPartId]: { installed: { ...installed, band: newBand } },
-      },
-    }
+    // A body-derived carrier's damage moves the underlying zone state (never
+    // the band directly, per the single-writer rule) - a symptom cause is a
+    // real hidden defect, so unlike the money-only degrade/improve passes it
+    // legitimately touches metal too (`setZoneCarrierToAtLeastBand`).
+    const tentative: CarInstance =
+      working.zoneState && isBodyDerivedPart(cause.carPartId)
+        ? applyDerivedBodyBands(
+            {
+              ...working,
+              zoneState: setZoneCarrierToAtLeastBand(
+                working.zoneState,
+                cause.carPartId,
+                cause.setBand,
+              ),
+            },
+            model,
+            context,
+          )
+        : {
+            ...working,
+            parts: {
+              ...working.parts,
+              [cause.carPartId]: {
+                installed: {
+                  ...installed,
+                  band:
+                    bandIndex(cause.setBand) < bandIndex(beforeBand) ? cause.setBand : beforeBand,
+                },
+              },
+            },
+          }
     const enforced = enforceMaxBillFraction(tentative, model, context, carOrigin)
     if (!bandsMatch(enforced, tentative)) continue // Law 2 veto - drop entirely
 
@@ -179,12 +213,29 @@ function applySymptoms(
   }
 }
 
-/** The number of times any single part could ever be degraded by
- * `enforceMinWorkBill` below before it drops out of the candidate pool (see
- * that function's own doc comment) - `mint` down to one step above `scrap`.
- * Bounds the top-up loop so an unreachable floor stops cleanly rather than
- * spinning. */
+/** The number of times any single ORDINARY (non-zone-backed) part could ever
+ * be degraded by `enforceMinWorkBill` below before it drops out of the
+ * candidate pool (see that function's own doc comment) - `mint` down to one
+ * step above `scrap`. Bounds the top-up loop so an unreachable floor stops
+ * cleanly rather than spinning. */
 const MAX_DEGRADE_STEPS_PER_PART = bandIndex('mint') - bandIndex('poor')
+
+/**
+ * The worst-case number of times a zone-aware step (`degradeZoneCarrierOneStep`
+ * or `improveZoneCarrierOneStep`) can move real headroom for the three body
+ * carriers COMBINED, in EITHER direction, before every zone field is at its
+ * bound: un-missing up to 5 panel zones + `panels`' surface (5 zones x 2) +
+ * `paint`'s finish (5 zones x 3) + `underbody`'s chassis finish (1 x 3). One
+ * `degradeCandidates`/worst-band selection of a body carrier only ever
+ * advances ONE zone one step (never the whole part at once, unlike an
+ * ordinary part's `degradeBand`/`climbBand`), so the flat
+ * `MAX_DEGRADE_STEPS_PER_PART` bound below would undercount these three
+ * parts' true room and could cut the floor top-up or the Law 2 softening
+ * pass short before real, cheap headroom (e.g. an untouched zone's surface)
+ * was ever used.
+ */
+const MAX_ZONE_STATE_STEPS =
+  PANEL_ZONE_IDS.length + PANEL_ZONE_IDS.length * 2 + PANEL_ZONE_IDS.length * 3 + 3
 
 /** Every present, installed part on `car` eligible for one more degrade step
  * under `enforceMinWorkBill`'s never-to-scrap rule (a part already at `poor`,
@@ -203,7 +254,15 @@ function degradeCandidates(
   return ALL_CAR_PART_IDS.filter((partId) => {
     const installed = car.parts[partId].installed
     if (!installed) return false
-    if (bandIndex(installed.band) < minDegradableIndex) return false
+    // A zone-backed part's derived BAND can saturate at `poor` from `metal`
+    // alone (the degrade top-up never touches metal - it is money-free), so
+    // eligibility here reads the real money headroom in the zones directly
+    // rather than the coarser band index every ordinary part uses.
+    const eligible =
+      car.zoneState && isBodyDerivedPart(partId)
+        ? hasZoneDegradeHeadroom(car.zoneState, partId)
+        : bandIndex(installed.band) >= minDegradableIndex
+    if (!eligible) return false
     const meetsExpectation = bandIndex(installed.band) >= bandIndex(expectationBand)
     return atOrAboveExpectation ? meetsExpectation : !meetsExpectation
   })
@@ -237,6 +296,29 @@ function degradeCandidates(
  * schema keeps the floor strictly under the ceiling, so this guard is a
  * backstop rather than a path real content is expected to hit.
  */
+/** One candidate's degrade step, applied to `working` - the zone-aware
+ * branch for a derived body carrier, or a plain band step otherwise. Pure:
+ * never mutates `working`, always returns a fresh `CarInstance`. */
+function degradeOnePart(
+  working: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  partId: CarPartId,
+): CarInstance {
+  if (working.zoneState && isBodyDerivedPart(partId)) {
+    const zoneState = degradeZoneCarrierOneStep(working.zoneState, partId)
+    return applyDerivedBodyBands({ ...working, zoneState }, model, context)
+  }
+  const installed = working.parts[partId].installed!
+  return {
+    ...working,
+    parts: {
+      ...working.parts,
+      [partId]: { installed: { ...installed, band: degradeBand(installed.band, 1) } },
+    },
+  }
+}
+
 function enforceMinWorkBill(
   car: CarInstance,
   model: CarModel,
@@ -254,29 +336,35 @@ function enforceMinWorkBill(
     carCostToBandYen(c, model, partsById, partsTaxonomyById, economy, expectationBand)
 
   let working = car
-  let beforeLastStep = car
-  const maxSteps = ALL_CAR_PART_IDS.length * MAX_DEGRADE_STEPS_PER_PART
+  const ordinaryPartCount = car.zoneState ? ALL_CAR_PART_IDS.length - 3 : ALL_CAR_PART_IDS.length
+  const maxSteps =
+    ordinaryPartCount * MAX_DEGRADE_STEPS_PER_PART + (car.zoneState ? MAX_ZONE_STATE_STEPS : 0)
   for (let step = 0; step < maxSteps && billBelowExpectation(working) < floorYen; step++) {
     const preferred = degradeCandidates(working, expectationBand, true)
-    const pool =
-      preferred.length > 0 ? preferred : degradeCandidates(working, expectationBand, false)
+    let pool = preferred.length > 0 ? preferred : degradeCandidates(working, expectationBand, false)
     if (pool.length === 0) break // nothing left to degrade anywhere - best effort
 
-    beforeLastStep = working
-    const partId = rng.pick(pool)
-    const installed = working.parts[partId].installed!
-    working = {
-      ...working,
-      parts: {
-        ...working.parts,
-        [partId]: { installed: { ...installed, band: degradeBand(installed.band, 1) } },
-      },
+    // Try candidates from the pool until one clears the SAME Law 2 ceiling
+    // every other generation step obeys, dropping any that would breach it
+    // and trying the next rather than giving up the whole step outright -
+    // a single unlucky pick (e.g. the one candidate already hugging the
+    // ceiling) must never stop the floor short when another candidate could
+    // still have carried it forward.
+    let applied = false
+    while (pool.length > 0 && !applied) {
+      const partId = rng.pick(pool)
+      const candidate = degradeOnePart(working, model, context, partId)
+      const softened = enforceMaxBillFraction(candidate, model, context, carOrigin)
+      if (bandsMatch(softened, candidate)) {
+        working = softened
+        applied = true
+      } else {
+        pool = pool.filter((id) => id !== partId)
+      }
     }
+    if (!applied) break // every remaining candidate would breach the ceiling - true backstop
   }
-  if (working === car) return working // floor already met, or unreachable at step 0
-
-  const enforced = enforceMaxBillFraction(working, model, context, carOrigin)
-  return bandsMatch(enforced, working) ? enforced : beforeLastStep
+  return working
 }
 
 /**
@@ -625,8 +713,15 @@ export function generateAuctionCarInstance(
     parts,
     symptoms: [],
     apparentBandByPartId: null,
+    // The work model's own roll (docs/design/workshop-rework.md) - independent
+    // of the per-part jitter loop above, which still fills panels/paint/
+    // underbody with a stock part (never missing or aftermarket, since those
+    // SKUs are retired/migrated); the projection below immediately overwrites
+    // that jittered band with the real, zone-derived one.
+    zoneState: rollZoneStates(fitmentClass, economy, rng),
   }
-  const softened = enforceMaxBillFraction(rolled, model, context, carOrigin)
+  const withDerivedBands = applyDerivedBodyBands(rolled, model, context)
+  const softened = enforceMaxBillFraction(withDerivedBands, model, context, carOrigin)
   if (!allowSymptoms) return softened
 
   const {
@@ -671,25 +766,55 @@ export function enforceMaxBillFraction(
     carCostToMintYen(c, model, partsById, partsTaxonomyById, economy)
 
   let working = car
-  for (let pass = 0; pass < ALL_CAR_PART_IDS.length && billFor(working) > maxBillYen; pass++) {
+  // The ordinary 4-pass worst-case (every non-zone part shares one of 4
+  // non-mint bands, so they always climb together) is already generously
+  // covered by `ALL_CAR_PART_IDS.length`; a zone-backed carrier only ever
+  // advances ONE zone one step per pass (never the whole part), so a car on
+  // the zone model gets `MAX_ZONE_STATE_STEPS` more passes on top - the same
+  // bound `enforceMinWorkBill` sizes its own loop with.
+  const maxPasses = ALL_CAR_PART_IDS.length + (car.zoneState ? MAX_ZONE_STATE_STEPS : 0)
+  for (let pass = 0; pass < maxPasses && billFor(working) > maxBillYen; pass++) {
     let worstBandIdx: number | null = null
     for (const partId of ALL_CAR_PART_IDS) {
       const installed = working.parts[partId].installed
       if (!installed) continue
+      // An exhausted zone-backed carrier (no more money headroom to improve)
+      // never counts toward the worst-band search, even short of `mint`:
+      // metal never moves here, so a high-metal zone can pin a derived band
+      // below `mint` PERMANENTLY - left in, it would wrongly stay the
+      // eternal "worst part" forever and starve every other part still
+      // genuinely climbable of its own passes.
+      if (
+        working.zoneState &&
+        isBodyDerivedPart(partId) &&
+        !hasZoneImproveHeadroom(working.zoneState, partId)
+      ) {
+        continue
+      }
       const idx = bandIndex(installed.band)
       if (worstBandIdx === null || idx < worstBandIdx) worstBandIdx = idx
     }
     if (worstBandIdx === null || worstBandIdx >= bandIndex('mint')) break
     let parts = working.parts
+    let zoneState = working.zoneState
     for (const partId of ALL_CAR_PART_IDS) {
       const installed = parts[partId].installed
       if (!installed || bandIndex(installed.band) !== worstBandIdx) continue
+      // A derived body carrier never climbs its OWN band directly - the zone
+      // state underneath it improves by one step instead, and the projection
+      // re-derives the band from that afterward (the single-writer rule).
+      if (zoneState && isBodyDerivedPart(partId)) {
+        if (!hasZoneImproveHeadroom(zoneState, partId)) continue // exhausted - see the search above
+        zoneState = improveZoneCarrierOneStep(zoneState, partId)
+        continue
+      }
       parts = {
         ...parts,
         [partId]: { installed: { ...installed, band: climbBand(installed.band, 1) } },
       }
     }
-    working = { ...working, parts }
+    working = { ...working, parts, zoneState }
+    if (zoneState) working = applyDerivedBodyBands(working, model, context)
   }
 
   if (billFor(working) > maxBillYen) {

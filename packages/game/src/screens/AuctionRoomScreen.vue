@@ -210,7 +210,6 @@ function backToAuctions(): void {
         <p v-if="admissionFeeYen > 0" class="admission" data-test="admission-fee">
           Admission: {{ formatYen(admissionFeeYen) }}
         </p>
-        <p class="room-cash" data-test="room-cash">Cash: {{ formatYen(game.cashYen) }}</p>
       </header>
 
       <AuctionRoomFloor
@@ -278,12 +277,6 @@ function backToAuctions(): void {
 }
 
 .admission {
-  margin: 0;
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-}
-
-.room-cash {
   margin: 0;
   color: var(--mg-yen);
   font-size: var(--mg-fs-sm);

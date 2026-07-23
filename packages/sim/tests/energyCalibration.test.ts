@@ -25,7 +25,7 @@ import { buildCarInstance, groupCarParts, testSpecialty, testToolTiers } from '.
  * loosening curve stays honest.
  */
 const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
-const { basePoolPoints, pointsPerLabour, energyPerGradeByTier: EPG } = ECONOMY.energy
+const { basePoolPoints, pointsPerLabour, energyPerBandStepByToolTier: EPG } = ECONOMY.energy
 
 /** A minimal GameState carrying only what `energyMax` reads (its staff roster);
  * every other field is a neutral placeholder. */
@@ -100,9 +100,10 @@ describe('Sprint 94 energy-bar calibration (day-1 unchanged; tools + staff loose
   it('a fresh solo tier-1 shop starts with the day-1-unchanged base pool (old PLAYER_BASE_LABOR_SLOTS x pointsPerLabour = 6 x 10)', () => {
     expect(energyMax(stateWithStaff([]), ECONOMY)).toBe(basePoolPoints)
     expect(basePoolPoints).toBe(6 * pointsPerLabour)
-    // Tier 1 costs exactly one labour per grade - the old one-slot-per-grade,
-    // so day-1's repair pacing is byte-identical to the pre-Sprint-94 model.
-    expect(EPG[1]).toBe(pointsPerLabour)
+    // The labour retune halves tier 1's per-band-step cost (case (a), an
+    // intentional pacing change): a band step now costs half a labour slot,
+    // not a whole one.
+    expect(EPG[1]).toBe(pointsPerLabour / 2)
   })
 
   it('day-1 is not softlocked: the daily pool affords a representative worn-body repair with room to spare', () => {
@@ -139,10 +140,11 @@ describe('Sprint 94 energy-bar calibration (day-1 unchanged; tools + staff loose
 
     const ratio = lateThroughput / day1Throughput
     // The honest day-1 -> late-game loosening curve, pinned as assertions (not a
-    // console disclosure - sim has no DOM/node lib). Day-1 is exactly the old 6
-    // grades/day; late game (tier-3 + a full 2-slot bench) is 35.
-    expect(day1Throughput).toBe(6)
-    expect(lateThroughput).toBe(35)
+    // console disclosure - sim has no DOM/node lib). The labour retune (case
+    // (a), an intentional pacing change) moves day-1 to 12 grades/day; late
+    // game (tier-3 + a full 2-slot bench) is 140/3.
+    expect(day1Throughput).toBe(12)
+    expect(lateThroughput).toBe(140 / 3)
     // The gate: the loosening is real (late game genuinely out-works day 1) but
     // not absurd (an order of magnitude is the sane ceiling for this arc).
     expect(ratio).toBeGreaterThan(1)

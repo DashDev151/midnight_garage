@@ -222,6 +222,22 @@ const activeMembers = computed<readonly CarPartId[]>(() =>
   activeGroup.value ? (MEMBERS_BY_GROUP[activeGroup.value] ?? []) : [],
 )
 
+/**
+ * A slot's stacking privilege - the z that lets it sit over, and intercept
+ * clicks for, whatever it structurally blocks (`BLOCKED_BY`) - applies ONLY
+ * while the slot is actually fitted. An empty slot has nothing there to
+ * occlude anything, so it always stacks BELOW every fitted slot in view: a
+ * removed part's tile can no longer steal clicks meant for a part it used to
+ * sit over (removed rims must not block the brake pads/calipers underneath).
+ * Fitted-vs-fitted and ghost-vs-ghost keep their authored relative order -
+ * the coherence test's own rule (a blocker's rectangle always outranks
+ * whatever it blocks) still holds whenever both are actually present.
+ */
+const FITTED_STACK_BONUS = 1000
+function stackZ(partId: CarPartId, slot: DiagramSlot): number {
+  return slot.z + (isFitted(partId) ? FITTED_STACK_BONUS : 0)
+}
+
 const activeSlots = computed<ActiveSlotView[]>(() => {
   const componentId = activeGroup.value
   if (!componentId) return []
@@ -239,7 +255,7 @@ const activeSlots = computed<ActiveSlotView[]>(() => {
       slot: PARTS_DIAGRAM_LAYOUT[partId],
       visitor: true,
     })),
-  ].sort((a, b) => a.slot.z - b.slot.z)
+  ].sort((a, b) => stackZ(a.partId, a.slot) - stackZ(b.partId, b.slot))
 })
 
 const activeView = computed(() => {
@@ -283,11 +299,12 @@ function rectPct(x: number, y: number, w: number, h: number): Record<string, str
   }
 }
 
-function slotStyle(slot: DiagramSlot): Record<string, string> {
+function slotStyle(partId: CarPartId, slot: DiagramSlot): Record<string, string> {
   return {
     ...rectPct(slot.x, slot.y, slot.w, slot.h),
-    // Shell parts carry z = -2; offset keeps every z-index positive.
-    zIndex: String(slot.z + 3),
+    // The fitted-aware stacking order (`stackZ`) - shell parts carry the
+    // lowest authored z (-2); the +3 offset keeps every z-index positive.
+    zIndex: String(stackZ(partId, slot) + 3),
   }
 }
 
@@ -494,7 +511,7 @@ const hoveredRow = computed<CarPartRowView | null>(() =>
           type="button"
           class="pd-slot"
           :class="slotClasses(partId, visitor)"
-          :style="slotStyle(slot)"
+          :style="slotStyle(partId, slot)"
           :title="slotTitle(partId)"
           :aria-label="slotTitle(partId)"
           :data-part="partId"

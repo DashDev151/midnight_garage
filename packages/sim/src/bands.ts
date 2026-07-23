@@ -11,6 +11,7 @@ import {
   type PartFitmentClass,
   type ToolTiers,
 } from '@midnight-garage/content'
+import { bodyPartRepairBillYen, isBodyDerivedPart } from './bodyPipeline'
 import { crewEnergySaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
 
 /** The banded parts model's core math - band ordering, climbing, repair
@@ -177,6 +178,13 @@ export function carCostToBandYen(
   for (const partId of Object.keys(car.parts) as CarPartId[]) {
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
+    // A body value carrier on the zone model prices through the pipeline
+    // (materials + panels, money only - labour is never priced in yen): the
+    // generic per-part formula below never sees it.
+    if (car.zoneState && isBodyDerivedPart(partId)) {
+      total += bodyPartRepairBillYen(partId, car.zoneState, targetBand, carFitmentClass, partsById)
+      continue
+    }
     const installed = car.parts[partId].installed
     if (installed) {
       const catalogPart = partsById[installed.partId]
@@ -213,6 +221,10 @@ export function groupCostToMintYen(
   for (const partId of partIdsByGroup[groupId]) {
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
+    if (car.zoneState && isBodyDerivedPart(partId)) {
+      total += bodyPartRepairBillYen(partId, car.zoneState, 'mint', carFitmentClass, partsById)
+      continue
+    }
     const installed = car.parts[partId].installed
     if (installed) {
       const catalogPart = partsById[installed.partId]
@@ -266,16 +278,17 @@ export function repairLevelForGroup(toolTiers: ToolTiers, groupId: ComponentId):
   return toolTiers[groupId]
 }
 
-/** The labour ENERGY a repair of `grades` grades costs at `repairLevel`:
- * `grades x energyPerGradeByTier[repairLevel]`, with no ceiling - a higher
- * tier is a genuine fraction of the work, not a rounded-up whole slot. */
+/** The labour ENERGY a repair of `grades` band steps costs at `repairLevel`:
+ * `grades x energyPerBandStepByToolTier[repairLevel]`, with no ceiling - a
+ * higher tier is a genuine fraction of the work, not a rounded-up whole
+ * slot. */
 export function energyToClimb(
   grades: number,
   repairLevel: 1 | 2 | 3,
-  energyPerGradeByTier: EconomyConfig['energy']['energyPerGradeByTier'],
+  energyPerBandStepByToolTier: EconomyConfig['energy']['energyPerBandStepByToolTier'],
 ): number {
   if (grades <= 0) return 0
-  return grades * energyPerGradeByTier[repairLevel]
+  return grades * energyPerBandStepByToolTier[repairLevel]
 }
 
 /** The best band a REPAIR can climb a part to at `repairLevel` - gates
@@ -326,14 +339,14 @@ export function planPartRepair(
   taxonomyEntry: CarPartTaxonomyEntry,
   partPriceYen: number,
   repairStepFraction: number,
-  energyPerGradeByTier: EconomyConfig['energy']['energyPerGradeByTier'],
+  energyPerBandStepByToolTier: EconomyConfig['energy']['energyPerBandStepByToolTier'],
   repairCeiling?: ConditionBand,
 ): PartRepairPlan {
   if (!canRepair(band, taxonomyEntry)) return { laborSlotsRequired: 0, costYen: 0 }
   const effectiveTarget = repairCeiling ? clampRepairTarget(targetBand, repairCeiling) : targetBand
   const grades = gradesBetween(band, effectiveTarget)
   return {
-    laborSlotsRequired: energyToClimb(grades, repairLevel, energyPerGradeByTier),
+    laborSlotsRequired: energyToClimb(grades, repairLevel, energyPerBandStepByToolTier),
     costYen: Math.round(grades * repairStepFraction * partPriceYen),
   }
 }
@@ -379,7 +392,7 @@ export function planGroupRepair(
   partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   repairStepFraction: number,
-  energyPerGradeByTier: EconomyConfig['energy']['energyPerGradeByTier'],
+  energyPerBandStepByToolTier: EconomyConfig['energy']['energyPerBandStepByToolTier'],
   onlyPartId?: CarPartId,
   crew?: CrewSkillContext,
   repairBandCeilingByTier?: EconomyConfig['repairBandCeilingByTier'],
@@ -395,6 +408,10 @@ export function planGroupRepair(
     (partId) => !onlyPartId || partId === onlyPartId,
   )
   for (const partId of candidateIds) {
+    // A body value carrier's band is derived from zone state on a car that's
+    // on the zone model - direct repair never touches it; work the zone's
+    // pipeline stages instead (`bodyPipeline.ts`).
+    if (car.zoneState && isBodyDerivedPart(partId)) continue
     // candidateIds is already filtered to present slots (presentPartIdsInGroup
     // above), so `installed` is never null here.
     const installed = car.parts[partId].installed!
@@ -410,7 +427,7 @@ export function planGroupRepair(
       entry,
       catalogPart.priceYen,
       repairStepFraction,
-      energyPerGradeByTier,
+      energyPerBandStepByToolTier,
     )
     // `laborSlotsRequired > 0` is exactly "repairable and below the target"
     // (scrap, a non-repairable consumable, and nothing-to-climb all size to 0 energy).
@@ -442,6 +459,7 @@ export function worstRepairableBandInGroup(
 ): ConditionBand | null {
   let worst: ConditionBand | null = null
   for (const partId of presentPartIdsInGroup(car, groupId, partIdsByGroup)) {
+    if (car.zoneState && isBodyDerivedPart(partId)) continue // derived - never a repair target
     const installed = car.parts[partId].installed!
     const entry = partsTaxonomyById[partId]
     if (!entry || entry.depthClass !== 'surface' || !canRepair(installed.band, entry)) continue

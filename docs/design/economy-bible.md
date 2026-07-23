@@ -213,7 +213,7 @@ fails that test outright, rather than silently drifting).
 | `bookValueYen` per model | `cars.json` | Clean value, and therefore every price in the game |
 | `baseCostYen` / `classFactors` / `gradeFactors` / `globalFactor` / `overrides` | `partPricing.json` | Every catalog SKU's `priceYen`, every taxonomy entry's per-class stock-replacement price |
 | `STARTING_CASH_YEN`, `WEEKLY_RENT_YEN`, `DOUBLE_PARKING_FINE_YEN` | `economy.json` | Career solvency pacing |
-| `energy.*` (`pointsPerLabour`, `basePoolPoints`, `energyPerGradeByTier`, `energyByClass`, `actionPoints.*`) | `economy.json` | The whole labour economy: the day's pool, repair/install labour, and every physical action's own labour figure (`actionPoints`, one key per action, zero = free at current tuning) - the single tuning location for labour costs |
+| `energy.*` (`pointsPerLabour`, `basePoolPoints`, `energyPerBandStepByToolTier`, `energyByClass`, `actionPoints.*`) | `economy.json` | The whole labour economy: the day's pool, repair/install labour, and every physical action's own labour figure (`actionPoints`, one key per action, zero = free at current tuning) - the single tuning location for labour costs |
 | `AUCTION_RESERVE_PRICE_FRACTION`, `AUCTION_BUYOUT_PREMIUM`, `AUCTION_WHOLESALE_FRACTION`, `AUCTION_BID_INCREMENT_FRACTION`, `AUCTION_BID_INCREMENT_STEP_YEN`, `AUCTION_QUIET_DAYS_TO_HAMMER`, `AUCTION_LOTS_PER_TIER`, `AUCTION_DURATION_*`, `AUCTION_FLASH_CHANCE`, `AUCTION_LONG_CHANCE_UNCOMMON_RARE`, `AUCTION_DAILY_SPAWN_RATE`, `auctionInterest.*` | `economy.json` | The whole auction reserve/buyout/contestation model (`bidding.ts`, `auctions.ts`) |
 | `restoration.repairStepFraction` | `economy.json` | Every repair-cost formula (`bands.ts`'s `costToMintYen` family) |
 | `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread`, `valuation.foundation` (Law 5) | `economy.json` | `marketValue.ts`'s guide-value formula (`valuation.foundation` scales the aftermarket premium by the worst foundational part) |
@@ -452,6 +452,35 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   ladder's floor/rounding granularity moves out of code into a new ordinary anchor,
   `AUCTION_BID_INCREMENT_STEP_YEN` (5000) - a kei's ladder now steps at exactly Y5,000.
   Not a law change; audit table updated.
+- 2026-07-23: **The labour anchors retuned and renamed, machine hire recharged as a daily
+  unlock, and the tutorial mission's payout trimmed to match** (Sprint 118, the workshop
+  rework phase 1a; labour and hire levers signed in `docs/design/workshop-rework.md`, the
+  payout cut and this doc alignment ordered by the maintainer in session: "keep the margin
+  as it was, reduce Yuki's payment amount"). `energy.energyPerGradeByTier` renamed
+  `energy.energyPerBandStepByToolTier` (10/6/4 -> 5/4/3); `energy.energyByClass` bolt-on
+  10 -> 3, buried 20 -> 6; `machineShopAssist.feeYenByGroup` values unchanged but charged
+  once per line per day as a running cost on the daily summary, never on a car's ledger
+  (ownership waiver unchanged); `four-wheels` payout/budget 145,000 -> 130,000, restoring
+  the intro margin the daily hire had lifted by one saved engine fee. Audit table updated
+  (the `energy.*` row); the `machineShopAssist`-family table gap noted at the
+  `auctionRoom.*` row still stands. Not a law change.
+- 2026-07-23: **The body-zone workshop model, and `the-showroom-standard`'s payout bumped
+  to match its re-derived recipe** (Sprint 119, the workshop rework phase 1b; levers signed
+  in `docs/sprints/sprint119.md`'s lever table). Body condition is now generated and worked
+  as six zones (metal/surface/finish); `panels`/`paint`/`underbody` bands DERIVE from zone
+  state (worst-governs) and are priced money-only through the pipeline (materials +
+  replacement panels, never labour, per the maintainer's L9 ruling). New anchors: the six
+  `materials.json` prices and `baseCostYen.zonePanel` (6,000), both first-pass tuning bait;
+  `partsGeneration.zoneStates` (per-tier severity weights). The aftermarket paint SKUs
+  retired; the six aftermarket body kits migrated into the widened aero-and-body-kit family
+  at their own bases (`priceBasisPartId`), prices unchanged. `the-showroom-standard`
+  payout/budget 1,200,000 -> 1,231,000 (maintainer choice, in session): the sport body-part
+  grades its 1,200,000 was formula-derived from no longer exist, and the honest replacement
+  build re-derives to 1,231,000, so the payout was bumped to keep the mission formula-exact
+  rather than drift off-formula. Coherence re-derived and green: Law 2 worst bill/clean
+  0.567 (<= 0.60), Law 3 consumables-with-materials 0.127 (<= 0.15), Law 1 flip margin
+  positive on every model. First-pass numbers, to settle in playtesting; Law 2 and the flip
+  margin sit tighter than before and lead the tuning list. Not a law change.
 - 2026-07-20: **every physical action's labour cost becomes a named anchor**
   (`energy.actionPoints.*`, maintainer order 2026-07-20: "EVERY action that the player
   can do has a potential labour cost... centralized in a single location... fully

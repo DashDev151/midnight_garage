@@ -27,3 +27,19 @@ describe('TutorialStepSchema panelPosition', () => {
     )
   })
 })
+
+describe('TutorialStepSchema anchorTestId (item 1 hotfix: an anchorless step)', () => {
+  it('accepts a step with anchorTestId omitted entirely', () => {
+    const anchorless: Record<string, unknown> = { ...baseStep }
+    delete anchorless.anchorTestId
+    expect(TutorialStepSchema.safeParse(anchorless).success).toBe(true)
+  })
+
+  it('accepts a step with anchorTestId explicitly null', () => {
+    expect(TutorialStepSchema.safeParse({ ...baseStep, anchorTestId: null }).success).toBe(true)
+  })
+
+  it('still rejects an empty-string anchorTestId', () => {
+    expect(TutorialStepSchema.safeParse({ ...baseStep, anchorTestId: '' }).success).toBe(false)
+  })
+})

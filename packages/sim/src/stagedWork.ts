@@ -1,4 +1,11 @@
-import type { CarInstance, DayLogEntry, GameState, StagedAction } from '@midnight-garage/content'
+import {
+  fitmentClassForTier,
+  type CarInstance,
+  type DayLogEntry,
+  type GameState,
+  type StagedAction,
+  type ZoneId,
+} from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 import {
   assemblyContainerFor,
@@ -6,16 +13,32 @@ import {
   resolveRefitAssembly,
   resolveRemoveAssembly,
 } from './assemblies'
-import { bandIndex, canRepair, planGroupRepair } from './bands'
+import { bandIndex, canRepair, planGroupRepair, repairLevelForGroup } from './bands'
+import {
+  applyDerivedBodyBands,
+  bandForSeverity,
+  isBodyDerivedPart,
+  planPaintStage,
+  planPipelineStage,
+  planSwapPanel,
+  zonePanelPart,
+  type BodyLineCapability,
+  type PipelineStageEffect,
+} from './bodyPipeline'
+import { carOriginLabel } from './auctions'
+import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import {
   findWorkableCar,
+  hasMachineLineFor,
   installLaborSlotsFor,
-  machineAssistFeeYen,
+  machineHiredToday,
+  machineLineGroupFor,
   refitLaborSlotsFor,
   resolveJobLabor,
-  signatureOpFeeYen,
 } from './jobs'
+import { makeCarOrigin } from './provenance'
+import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
@@ -42,15 +65,16 @@ export interface StagedWorkResolution {
  * Immediate free refits: true when staging `action` (an
  * 'install') would resolve for FREE right now - zero labour (the picked
  * instance matches the target slot's own vacated baseline exactly, the
- * equivalence refit `refitLaborSlotsFor` prices free) AND zero new cash (no
- * machine-shop assist or signature-op fee on the target slot). A free refit
- * is putting the car back together the way it was found, not real work - the
- * game store's `stageAction` resolves it right away through the same job
- * machinery Confirm would use, exactly as `removePart` already resolves
- * instantly, rather than parking it on the staged list for a click that
- * would spend nothing anyway. A costed install (real labour, or any fee)
- * always stays staged. `false` for an unresolvable car/part/slot - the
- * caller's own fit gate has already refused those before this ever runs.
+ * equivalence refit `refitLaborSlotsFor` prices free) AND not machine-line
+ * gated (no buried or signature slot needing a line neither owned nor hired
+ * today). A free refit is putting the car back together the way it was
+ * found, not real work - the game store's `stageAction` resolves it right
+ * away through the same job machinery Confirm would use, exactly as
+ * `removePart` already resolves instantly, rather than parking it on the
+ * staged list for a click that would spend nothing anyway. A costed install
+ * (real labour) or a gated one always stays staged, so its gate reason can
+ * show. `false` for an unresolvable car/part/slot - the caller's own fit
+ * gate has already refused those before this ever runs.
  */
 export function isFreeInstallRefit(
   state: GameState,
@@ -64,10 +88,264 @@ export function isFreeInstallRefit(
   const targetPartId = action.carPartId ?? catalogPart?.carPartId
   if (!car || !partInstance || !targetPartId) return false
   if (refitLaborSlotsFor(car, targetPartId, partInstance, context) > 0) return false
-  const feeYen =
-    machineAssistFeeYen(targetPartId, state, context) +
-    signatureOpFeeYen(targetPartId, state, context)
-  return feeYen === 0
+  const group = machineLineGroupFor(targetPartId, context)
+  return !group || hasMachineLineFor(group, state)
+}
+
+interface PipelineOpResult {
+  state: GameState
+  log: DayLogEntry[]
+  laborSlotsUsed: number
+}
+
+const NOOP_PIPELINE_RESULT = (state: GameState): PipelineOpResult => ({
+  state,
+  log: [],
+  laborSlotsUsed: 0,
+})
+
+/** The body group's own capability reading for today (`bodyPipeline.ts`'s
+ * `BodyLineCapability`): `unlocked` is tier 2 owned or the line hired today
+ * (gates weld and the better paint finish); `fullCapability` is tier 3 owned
+ * or hired today (hiring always grants the WHOLE line, not just tier 2 - see
+ * `docs/design/workshop-rework.md`'s tool-gates section) - gates the best
+ * polish floor. */
+function bodyLineCapability(state: GameState): BodyLineCapability {
+  return {
+    unlocked: hasMachineLineFor('body', state),
+    fullCapability: state.toolTiers.body >= 3 || machineHiredToday('body', state),
+  }
+}
+
+/** Charges a pipeline effect's materials cost and labour against `state`,
+ * writes the zone mutation, and re-derives the three body bands - the
+ * shared second half of every generic-stage and paint-stage resolution.
+ * Silently refuses (0 labour, unchanged state) on insufficient labour or
+ * cash, the same idiom `chargeRepairWork`/`repairJobGate` use throughout
+ * this codebase. */
+function chargeAndApplyPipelineEffect(
+  state: GameState,
+  carInstanceId: string,
+  car: CarInstance,
+  zoneId: ZoneId,
+  effect: PipelineStageEffect,
+  laborSlotsRequired: number,
+  laborAvailable: number,
+  context: SimContext,
+): PipelineOpResult {
+  if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
+  if (state.cashYen < effect.materialsCostYen) return NOOP_PIPELINE_RESULT(state)
+  const model = context.modelsById[car.modelId]
+  if (!model || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+
+  const nextCar = applyDerivedBodyBands(
+    {
+      ...car,
+      zoneState: { ...car.zoneState, [zoneId]: effect.zone },
+    },
+    model,
+    context,
+  )
+  const isOwnedCar = state.ownedCars.some((c) => c.id === carInstanceId)
+  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
+  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
+  let next: GameState = {
+    ...state,
+    cashYen: state.cashYen - effect.materialsCostYen,
+    energySpentToday: state.energySpentToday + laborSlotsRequired,
+  }
+  if (ownedIndex !== -1) {
+    const ownedCars = [...next.ownedCars]
+    ownedCars[ownedIndex] = nextCar
+    next = { ...next, ownedCars }
+  } else if (serviceIndex !== -1) {
+    const activeServiceJobs = [...next.activeServiceJobs]
+    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: nextCar }
+    next = { ...next, activeServiceJobs }
+  } else {
+    return NOOP_PIPELINE_RESULT(state)
+  }
+  next = isOwnedCar
+    ? updateCarLedger(next, carInstanceId, (ledger) => ({
+        ...ledger,
+        repairYen: ledger.repairYen + effect.materialsCostYen,
+      }))
+    : updateServiceJobLedger(next, state.activeServiceJobs[serviceIndex]?.id ?? '', (ledger) => ({
+        ...ledger,
+        repairYen: ledger.repairYen + effect.materialsCostYen,
+      }))
+  return { state: next, log: [], laborSlotsUsed: laborSlotsRequired }
+}
+
+/** One `pipeline-stage` staged action's resolution - one of the six generic
+ * stages (strip/prep, beat, weld, fill-and-sand, prime, polish) on one zone.
+ * A prerequisite the zone doesn't meet is a silent no-op (the same "nothing
+ * to do" idiom `repairJobGate` uses); the weld machine-line gate logs a
+ * `job-blocked` entry, matching every other machine-line refusal in this
+ * codebase. */
+function resolvePipelineStageAction(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'pipeline-stage' }>,
+  context: SimContext,
+  laborAvailable: number,
+): PipelineOpResult {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  const zone = car.zoneState[action.zoneId]
+  const plan = planPipelineStage(action.stage, zone, bodyLineCapability(state))
+  if (!plan.ok) {
+    if (plan.reason === 'machine-line') {
+      return {
+        state,
+        log: [
+          {
+            type: 'job-blocked',
+            jobId: `pipeline-${carInstanceId}-${action.stage}-${action.zoneId}`,
+            reason: 'machine-line',
+          },
+        ],
+        laborSlotsUsed: 0,
+      }
+    }
+    return NOOP_PIPELINE_RESULT(state)
+  }
+  const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
+  const laborSlotsRequired =
+    plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
+  return chargeAndApplyPipelineEffect(
+    state,
+    carInstanceId,
+    car,
+    action.zoneId,
+    plan,
+    laborSlotsRequired,
+    laborAvailable,
+    context,
+  )
+}
+
+/** One `pipeline-paint` staged action's resolution - needs the zone primed;
+ * refuses silently (nothing to do) otherwise. */
+function resolvePipelinePaintAction(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'pipeline-paint' }>,
+  context: SimContext,
+  laborAvailable: number,
+): PipelineOpResult {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  const zone = car.zoneState[action.zoneId]
+  const plan = planPaintStage(zone, action.zoneId, action.colour, bodyLineCapability(state))
+  if (!plan.ok) return NOOP_PIPELINE_RESULT(state)
+  const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
+  const laborSlotsRequired =
+    plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
+  return chargeAndApplyPipelineEffect(
+    state,
+    carInstanceId,
+    car,
+    action.zoneId,
+    plan,
+    laborSlotsRequired,
+    laborAvailable,
+    context,
+  )
+}
+
+/**
+ * One `pipeline-swap-panel` staged action's resolution: consumes the picked
+ * zone-panel `PartInstance` from inventory, fits it (metal from the panel's
+ * own band, surface/finish reset - a fresh physical panel), and pushes the
+ * zone's OLD panel into inventory at its own pre-swap metal severity (the
+ * same harvesting shape `resolveRemovePart` uses elsewhere: a removed panel
+ * is never simply discarded). Labour is the fitting (bolt-on) class, not a
+ * band-step unit - no separate materials charge, since the new panel's price
+ * was already paid at purchase and lands on the car's ledger here, the same
+ * moment `completeJob`'s install-part branch posts a part's cost.
+ */
+function resolvePipelineSwapPanelAction(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'pipeline-swap-panel' }>,
+  context: SimContext,
+  laborAvailable: number,
+): PipelineOpResult {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  const model = context.modelsById[car.modelId]
+  if (!model) return NOOP_PIPELINE_RESULT(state)
+  const fitmentClass = fitmentClassForTier(model.tier)
+
+  const newPanelInstance = state.partInventory.find((p) => p.id === action.partInstanceId)
+  if (!newPanelInstance) return NOOP_PIPELINE_RESULT(state)
+  const newPanelCatalogPart = context.partsById[newPanelInstance.partId]
+  if (
+    !newPanelCatalogPart ||
+    newPanelCatalogPart.zoneId !== action.zoneId ||
+    newPanelCatalogPart.fitmentClass !== fitmentClass
+  ) {
+    return NOOP_PIPELINE_RESULT(state)
+  }
+
+  const laborSlotsRequired = context.economy.energy.energyByClass['bolt-on']
+  if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
+
+  const zone = car.zoneState[action.zoneId]
+  const plan = planSwapPanel(zone, newPanelInstance.band)
+  const oldPanelCatalogPart = zonePanelPart(context.partsById, action.zoneId, fitmentClass)
+
+  const nextCar = applyDerivedBodyBands(
+    { ...car, zoneState: { ...car.zoneState, [action.zoneId]: plan.zone } },
+    model,
+    context,
+  )
+
+  let partInventory = state.partInventory.filter((p) => p.id !== action.partInstanceId)
+  if (oldPanelCatalogPart) {
+    partInventory = [
+      ...partInventory,
+      {
+        id: `panel-${state.day}-${partInventory.length}`,
+        partId: oldPanelCatalogPart.id,
+        band: bandForSeverity(zone.metal),
+        genuinePeriod: false,
+        origin: makeCarOrigin(car.id, carOriginLabel(model, car.year), state.day),
+      },
+    ]
+  }
+
+  const isOwnedCar = state.ownedCars.some((c) => c.id === carInstanceId)
+  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
+  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
+  let next: GameState = {
+    ...state,
+    partInventory,
+    energySpentToday: state.energySpentToday + laborSlotsRequired,
+  }
+  if (ownedIndex !== -1) {
+    const ownedCars = [...next.ownedCars]
+    ownedCars[ownedIndex] = nextCar
+    next = { ...next, ownedCars }
+  } else if (serviceIndex !== -1) {
+    const activeServiceJobs = [...next.activeServiceJobs]
+    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: nextCar }
+    next = { ...next, activeServiceJobs }
+  } else {
+    return NOOP_PIPELINE_RESULT(state)
+  }
+  const pricePaidYen = newPanelInstance.pricePaidYen ?? 0
+  next = isOwnedCar
+    ? updateCarLedger(next, carInstanceId, (ledger) => ({
+        ...ledger,
+        partsYen: ledger.partsYen + pricePaidYen,
+      }))
+    : updateServiceJobLedger(next, state.activeServiceJobs[serviceIndex]?.id ?? '', (ledger) => ({
+        ...ledger,
+        partsYen: ledger.partsYen + pricePaidYen,
+      }))
+  return { state: next, log: [], laborSlotsUsed: laborSlotsRequired }
 }
 
 /**
@@ -139,6 +417,48 @@ export function confirmStagedWork(
       }
       continue
     }
+    // Every body-pipeline stage is likewise a single atomic resolver against
+    // the same shared labour budget - never a NewJobSpec/Job, since a stage
+    // is one zone mutation, not banded work on a whole slot.
+    if (action.kind === 'pipeline-stage') {
+      const result = resolvePipelineStageAction(
+        current,
+        carInstanceId,
+        action,
+        context,
+        remainingLabor,
+      )
+      current = result.state
+      log.push(...result.log)
+      remainingLabor -= result.laborSlotsUsed
+      continue
+    }
+    if (action.kind === 'pipeline-swap-panel') {
+      const result = resolvePipelineSwapPanelAction(
+        current,
+        carInstanceId,
+        action,
+        context,
+        remainingLabor,
+      )
+      current = result.state
+      log.push(...result.log)
+      remainingLabor -= result.laborSlotsUsed
+      continue
+    }
+    if (action.kind === 'pipeline-paint') {
+      const result = resolvePipelinePaintAction(
+        current,
+        carInstanceId,
+        action,
+        context,
+        remainingLabor,
+      )
+      current = result.state
+      log.push(...result.log)
+      remainingLabor -= result.laborSlotsUsed
+      continue
+    }
 
     let spec: NewJobSpec | null = null
     if (action.kind === 'repair') {
@@ -151,7 +471,7 @@ export function confirmStagedWork(
         context.partsById,
         context.partsTaxonomyById,
         context.economy.restoration.repairStepFraction,
-        context.economy.energy.energyPerGradeByTier,
+        context.economy.energy.energyPerBandStepByToolTier,
         action.carPartId,
         // Size staged repair labour with the benched crew's speed
         // discount, matching the store's Confirm-total preview.
@@ -229,6 +549,9 @@ export function previewPlannedWork(
         ? [action.carPartId]
         : context.partIdsByGroup[action.componentId]
       for (const partId of candidateIds) {
+        // A body value carrier's band is derived, never a direct repair
+        // target, on a car that's on the zone model - see `confirmStagedWork`.
+        if (car.zoneState && isBodyDerivedPart(partId)) continue
         const installed = parts[partId].installed
         if (!installed) continue
         const entry = context.partsTaxonomyById[partId]
@@ -250,6 +573,16 @@ export function previewPlannedWork(
             parts = { ...parts, [member as keyof typeof parts]: { installed: instance } }
         }
       }
+    } else if (
+      action.kind === 'pipeline-stage' ||
+      action.kind === 'pipeline-swap-panel' ||
+      action.kind === 'pipeline-paint'
+    ) {
+      // Not projected: a body-pipeline stage moves zone state, not a band
+      // directly, and this value preview only ever shows a projected BAND -
+      // a per-zone preview belongs to the future representative-schematic
+      // views, not this one.
+      continue
     } else {
       const partInstance = state.partInventory.find((p) => p.id === action.partInstanceId)
       if (!partInstance) continue

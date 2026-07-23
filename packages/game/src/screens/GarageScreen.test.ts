@@ -69,14 +69,6 @@ describe('GarageScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders the starting day and cash', () => {
-    const wrapper = mountScreen()
-    expect(wrapper.get('[data-test="day-value"]').text()).toBe('1')
-    // STARTING_CASH_YEN is 300,000 (derived from
-    // roster medians, see economy.ts's own schema doc comment).
-    expect(wrapper.text()).toContain('¥300,000')
-  })
-
   it('the reputation line links to the Standing screen (Sprint 62 item 17)', () => {
     const wrapper = mountScreen()
     const link = wrapper
@@ -101,18 +93,9 @@ describe('GarageScreen', () => {
     expect(wrapper.get('[data-test="reputation-value"]').text()).toContain('the engine house')
   })
 
-  it('End Day advances the rendered day counter (the DoD)', async () => {
-    // EndDayButton is App.vue's single global mount point,
-    // not rendered on this screen - advance via the store directly, the
-    // same action the button itself calls.
-    const game = useGameStore()
-    const wrapper = mountScreen()
-    game.endDay()
-    await wrapper.vm.$nextTick()
-    expect(wrapper.get('[data-test="day-value"]').text()).toBe('2')
-  })
-
-  // Event-log coverage lives in `EventLogDrawer.test.ts`, not here.
+  // Event-log coverage lives in `EventLogDrawer.test.ts`, not here. The day
+  // counter's own live-update coverage lives in `DayCashBox.test.ts` and
+  // `App.test.ts` now that it renders in the floating overlay, not here.
 
   it('a granted car lands in parking (never straight into a bay)', async () => {
     const game = useGameStore()

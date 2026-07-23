@@ -29,6 +29,8 @@ Priority order: **Safety > Correctness > Clarity > Efficiency.**
 21. **Bot careers FORBIDDEN (CRITICAL, maintainer directive 2026-07-17):** do not run `pnpm balance:run` or any bot-career simulation, for any purpose (gates, sprint Exits, curiosity), until the maintainer explicitly re-authorises it. The bots cannot play the post-Sprint-79 game and their numbers carry no signal until the harness is rebuilt after playtesting. The closed-form coherence and satisfiability probes in Vitest remain fully in force: they are arithmetic, not bots. `python -m balance.cli check`/`report` are suspended with it (they only make sense against freshly generated CSVs). The path-filtered CI balance job is unaffected (it spends CI minutes, not the maintainer's).
 22. **Economy levers are maintainer-gated, one by one (CRITICAL, maintainer directive 2026-07-22):** no change to `packages/content/data/economy.json`, to mission payouts/budgets, or to any sim value/pricing/labour formula, unless the maintainer has explicitly approved that SPECIFIC lever and value, listed by name in the sprint doc BEFORE any implementation agent launches. A general mandate, goal, or ruling NEVER extends to unlisted constants, however entailed the extra change seems. When implementation hits a wall that appears to need an unlisted lever, that thread's execution ENDS (no follow-up waves, no new agents): the numbers go to the maintainer as a question costing them ten seconds, which always outranks hours of compute. Two analysis rules ride with this, from the failure that created it: never charge fixed overheads (rent) against a single play's profitability, and never treat worst-case constructed probes as typical-case crises. A guard test pins the economy content so no lever moves silently; re-pin it only in the same change as the recorded approval.
 
+23. **Best overall solution (maintainer directive 2026-07-23):** when designing or proposing, optimise for the best, clearest, most easily maintainable product OVERALL. Never design around the current value of an adjacent tunable: every tunable is tunable, and a knob's today-value is not a constraint (the failure this bans: rejecting a better labour design "so staff contribution keeps its meaning" when staff contribution is itself one content number). Never prefer an inferior design because it needs less tuning, fewer file touches, or fewer approvals. Directive 22 still gates the VALUES: propose the full coherent design with its complete lever list and get the numbers signed; the sign-off process is never a reason to shrink the design.
+
 ## Sprint workflow (mandatory)
 
 All development happens in sprints, driven by the roadmap. Sprint docs live in `docs/sprints/sprintXX.md`. For every sprint:
@@ -47,9 +49,10 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-113 implemented and committed (Sprint 100 was superseded unbuilt
-by Sprint 110's live-room promotion; its doc records that); Sprint 114 (the selling rework) is
-in flight with its lever table maintainer-locked.
+**Current state:** Sprints 00-117 implemented and committed (Sprint 100 was superseded unbuilt
+by Sprint 110's live-room promotion; its doc records that); the workshop rework
+(`docs/design/workshop-rework.md`, FINAL) is in flight as Sprints 118-121: 118's levers are
+signed and implementing, 119's lever table awaits maintainer sign-off.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file

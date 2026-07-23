@@ -26,27 +26,44 @@ const props = defineProps<{
    * auction and service-jobs header readouts.
    */
   compact?: boolean
+  /**
+   * The floating HUD's variant: the track stands upright and fills from the
+   * bottom, a full day reading as a full-height column. Restyled layout, not
+   * rotated text - the caption (when passed) stays upright.
+   */
+  vertical?: boolean
 }>()
 
 const fillPercent = computed(() => {
   if (props.max <= 0) return 0
   return Math.max(0, Math.min(100, (props.remaining / props.max) * 100))
 })
+
+/** Vertical fills by height (bottom-anchored, growing upward); horizontal
+ * fills by width, as before. */
+const fillStyle = computed(() =>
+  props.vertical ? { height: `${fillPercent.value}%` } : { width: `${fillPercent.value}%` },
+)
+
+/** Screen-reader label carrying the same figures as the hover title, since
+ * the fill itself is a plain colour bar with no visible number. */
+const ariaLabel = computed(() => `Labour remaining: ${props.remaining} of ${props.max}`)
 </script>
 
 <template>
   <div
     class="labour-bar"
-    :class="{ compact }"
+    :class="{ compact, vertical }"
     data-test="labour-bar"
     :title="`${remaining} / ${max} labour`"
+    :aria-label="ariaLabel"
   >
     <span v-if="caption" class="labour-bar-caption">{{ caption }}</span>
     <span class="labour-bar-track">
       <span
         class="labour-bar-fill"
         :class="{ empty: remaining <= 0 }"
-        :style="{ width: fillPercent + '%' }"
+        :style="fillStyle"
         data-test="labour-bar-fill"
       ></span>
     </span>
@@ -116,5 +133,32 @@ const fillPercent = computed(() => {
 .labour-bar.compact .labour-bar-track {
   flex: 0 0 auto;
   width: 3.5rem;
+}
+
+/* The floating HUD's variant: an upright gauge, fixed height, the track
+ * filling from the bottom as the day's labour is spent. No rotated text -
+ * the caption (rarely used here) stays horizontal, just stacked above the
+ * track rather than beside it. */
+.labour-bar.vertical {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 2.75rem;
+  height: 8rem;
+  margin: 0;
+  gap: var(--mg-space-1);
+}
+
+.labour-bar.vertical .labour-bar-track {
+  flex: 1 1 auto;
+  width: 0.75rem;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.labour-bar.vertical .labour-bar-fill {
+  width: 100%;
 }
 </style>

@@ -3,7 +3,6 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { AUCTION_TIER_COPY, type AuctionTier } from '@midnight-garage/content'
 import AuctionLotCard from '../components/AuctionLotCard.vue'
-import LabourBar from '../components/LabourBar.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
@@ -183,15 +182,6 @@ const hasLots = computed(() => totalLots.value > 0)
     <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
     <header class="head">
       <h2>Auctions</h2>
-      <p class="cash">
-        {{ formatYen(game.cashYen) }} ·
-        <LabourBar
-          compact
-          caption="labour"
-          :remaining="game.laborSlotsRemainingToday"
-          :max="game.laborSlotsPerDay"
-        />
-      </p>
     </header>
 
     <!-- The active yard visit's own fixed panel - dies at day end (`advanceDay`)
@@ -362,11 +352,6 @@ h3 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   margin: 0 0 var(--mg-space-4);
-}
-
-.cash {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
 }
 
 .empty {

@@ -340,7 +340,7 @@ export function serviceJobCostBreakdown(
   context: SimContext,
 ): ServiceJobCostBreakdown {
   const { repairStepFraction } = context.economy.restoration
-  const { energyPerGradeByTier, pointsPerLabour } = context.economy.energy
+  const { energyPerBandStepByToolTier, pointsPerLabour } = context.economy.energy
   let taskCostYen = 0
   // The planners size labour in energy points; the customer payout prices
   // wrench time at a market rate per slot (`serviceJobs.laborRateYen` -
@@ -364,7 +364,7 @@ export function serviceJobCostBreakdown(
         entry,
         catalogPart.priceYen,
         repairStepFraction,
-        energyPerGradeByTier,
+        energyPerBandStepByToolTier,
       )
       taskCostYen += plan.costYen
       laborEnergy += plan.laborSlotsRequired + installLaborSlotsFor(carPartId, context)

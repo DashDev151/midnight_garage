@@ -22,6 +22,7 @@ import {
   repairLevelForGroup,
   type PartRepairPlan,
 } from './bands'
+import { isBodyDerivedPart } from './bodyPipeline'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
@@ -119,11 +120,13 @@ export function isJobComplete(job: Job): boolean {
 export interface JobCompletionResult {
   state: GameState
   /**
-   * True if an install-part job was skipped because its target slot was
-   * already occupied - the caller logs a job-blocked event rather than
-   * silently overwriting the existing part.
+   * Non-null when a completed install-part job could not actually apply:
+   * its target slot was already occupied ('slot-occupied'), or its group's
+   * machine line is neither owned nor hired today ('machine-line'). The
+   * caller logs a job-blocked event with this reason and leaves the job
+   * open to retry.
    */
-  blockedByOccupiedSlot: boolean
+  blockedReason: 'slot-occupied' | 'machine-line' | null
 }
 
 interface CarEffect {
@@ -257,57 +260,61 @@ function completeReconditionJob(state: GameState, job: Job, context: SimContext)
  */
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
   if (job.kind === 'recondition-part') {
-    return { state: completeReconditionJob(state, job, context), blockedByOccupiedSlot: false }
+    return { state: completeReconditionJob(state, job, context), blockedReason: null }
+  }
+
+  if (job.kind === 'install-part') {
+    // A buried engine/drivetrain fit or a suspension/body/interior
+    // signature fit needs that group's machine line - owned outright, or
+    // hired for today. Checked before the part ever touches the car, so a
+    // blocked install leaves the car and the job untouched, exactly like
+    // the occupied-slot block below.
+    const carPartId = installTargetCarPartId(state, job, context)
+    const machineGroup = carPartId ? machineLineGroupFor(carPartId, context) : null
+    if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
+      return { state, blockedReason: 'machine-line' }
+    }
   }
 
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
   if (ownedIndex !== -1) {
     const effect = applyJobToCar(state.ownedCars[ownedIndex]!, job, state.partInventory, context)
-    if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
+    if (effect.blockedByOccupiedSlot) return { state, blockedReason: 'slot-occupied' }
     const ownedCars = [...state.ownedCars]
     ownedCars[ownedIndex] = effect.car
     let next: GameState = { ...state, ownedCars, partInventory: effect.partInventory }
     if (job.kind === 'install-part') {
       // The part's own cost lands on the car's ledger the moment it's
-      // physically installed (not at purchase). A buried engine/drivetrain fit
-      // also owes the machine-shop assist fee unless the machine is owned.
+      // physically installed (not at purchase).
       const pricePaidYen =
         state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
-      const assistFeeYen = installMachineAssistFeeYen(state, job, context)
       next = updateCarLedger(next, job.carInstanceId, (ledger) => ({
         ...ledger,
         partsYen: ledger.partsYen + pricePaidYen,
-        repairYen: ledger.repairYen + assistFeeYen,
       }))
-      if (assistFeeYen > 0) next = { ...next, cashYen: next.cashYen - assistFeeYen }
     }
-    return { state: next, blockedByOccupiedSlot: false }
+    return { state: next, blockedReason: null }
   }
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === job.carInstanceId)
   if (serviceIndex !== -1) {
     const serviceJob = state.activeServiceJobs[serviceIndex]!
     const effect = applyJobToCar(serviceJob.car, job, state.partInventory, context)
-    if (effect.blockedByOccupiedSlot) return { state, blockedByOccupiedSlot: true }
+    if (effect.blockedByOccupiedSlot) return { state, blockedReason: 'slot-occupied' }
     const activeServiceJobs = [...state.activeServiceJobs]
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: effect.car }
     let next: GameState = { ...state, activeServiceJobs, partInventory: effect.partInventory }
     if (job.kind === 'install-part') {
       // The paid-price accounting at job scope, so the completion report can
-      // show what this specific job actually cost. The machine-shop assist fee
-      // for a buried engine/drivetrain fit lands on the job's own ledger too,
-      // so the customer's bill is honest.
+      // show what this specific job actually cost.
       const pricePaidYen =
         state.partInventory.find((p) => p.id === job.partInstanceId)?.pricePaidYen ?? 0
-      const assistFeeYen = installMachineAssistFeeYen(state, job, context)
       next = updateServiceJobLedger(next, serviceJob.id, (ledger) => ({
         ...ledger,
         partsYen: ledger.partsYen + pricePaidYen,
-        repairYen: ledger.repairYen + assistFeeYen,
       }))
-      if (assistFeeYen > 0) next = { ...next, cashYen: next.cashYen - assistFeeYen }
     }
-    return { state: next, blockedByOccupiedSlot: false }
+    return { state: next, blockedReason: null }
   }
 
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)
@@ -337,7 +344,8 @@ export function occupiedBlockers(
 
 /**
  * The two component groups whose buried slots need a tier-2 machine (or the
- * machine-shop assist fee) - the engine crane and the transmission bench.
+ * group's line hired for the day) - the engine crane and the transmission
+ * bench.
  */
 export type MachineGateGroup = 'engine' | 'drivetrain'
 
@@ -345,8 +353,7 @@ export type MachineGateGroup = 'engine' | 'drivetrain'
  * The tool line (and its tier-2 machine) a buried slot in that group needs -
  * `null` for a surface/bolt-on slot, or any group other than engine/drivetrain
  * (no machine gate exists elsewhere). Exported so the UI can pre-empt the same
- * gate `resolveRemovePart`/`completeJob` uses. Names which group's machine-shop
- * assist fee applies (`machineAssistFeeYen`).
+ * gate `resolveRemovePart`/`completeJob` uses.
  */
 export function removeMachineGateGroup(
   carPartId: CarPartId,
@@ -358,11 +365,63 @@ export function removeMachineGateGroup(
 }
 
 /**
- * The cash fee to perform a machine-gated operation (remove or install) on
- * `carPartId` without owning the tier-2 machine - `economy.machineShopAssist.feeYenByGroup[group]`
- * for a buried engine/drivetrain slot, or 0 when no machine gate applies or
- * the machine is already owned. Removal and install charge identically.
- * Exported so the UI can show the fee before the click.
+ * The group whose signature heavy op (a repair or install/replace of one of
+ * `economy.machineShopAssist.signatureSlotsByGroup[group]`) `carPartId` is,
+ * or `null` when it names no signature slot - structural only, independent
+ * of ownership or hire. The suspension/body/interior analogue of
+ * `removeMachineGateGroup`'s engine/drivetrain buried-slot check.
+ */
+export function signatureGroupFor(carPartId: CarPartId, context: SimContext): ComponentId | null {
+  const group = context.partsTaxonomyById[carPartId]?.group
+  if (!group) return null
+  const signatureSlots = context.economy.machineShopAssist.signatureSlotsByGroup[group]
+  return signatureSlots && signatureSlots.includes(carPartId) ? group : null
+}
+
+/**
+ * The single group, if any, whose machine line gates a REMOVE or
+ * INSTALL/REPLACE of `carPartId` - a buried engine/drivetrain slot or a
+ * suspension/body/interior signature slot. `null` for everything else. A
+ * carPartId is gated by at most one group.
+ */
+export function machineLineGroupFor(carPartId: CarPartId, context: SimContext): ComponentId | null {
+  return removeMachineGateGroup(carPartId, context) ?? signatureGroupFor(carPartId, context)
+}
+
+/**
+ * Whether `group`'s tier-2 machine is owned outright - the ownership half of
+ * "owned or hired today", extracted once so the fee helpers below, the hire
+ * gate, and the hire resolver never diverge on what counts as owned.
+ */
+export function ownsMachineForGroup(group: ComponentId, state: GameState): boolean {
+  return state.toolTiers[group] >= 2
+}
+
+/** Whether `group`'s daily hire (`resolveHireMachineLine`) has already been
+ * paid today. */
+export function machineHiredToday(group: ComponentId, state: GameState): boolean {
+  return state.machineHirePaidDayByGroup?.[group] === state.day
+}
+
+/**
+ * Whether `group`'s line is usable right now for every operation - owned
+ * outright, or hired for today. The gate every machine-line-gated operation
+ * (signature repair, buried removal, buried/signature install) checks
+ * before it proceeds.
+ */
+export function hasMachineLineFor(group: ComponentId, state: GameState): boolean {
+  return ownsMachineForGroup(group, state) || machineHiredToday(group, state)
+}
+
+/**
+ * The cash fee a machine-gated operation (remove or install) on `carPartId`
+ * would cost without owning the tier-2 machine -
+ * `economy.machineShopAssist.feeYenByGroup[group]` for a buried
+ * engine/drivetrain slot, or 0 when no machine gate applies or the machine
+ * is already owned. No longer charged per operation - the group's daily
+ * hire (`resolveHireMachineLine`) replaced that - kept as the
+ * ownership-only signal the amortisation probes and the hire panel's
+ * pricing read.
  */
 export function machineAssistFeeYen(
   carPartId: CarPartId,
@@ -370,49 +429,92 @@ export function machineAssistFeeYen(
   context: SimContext,
 ): number {
   const group = removeMachineGateGroup(carPartId, context)
-  if (!group || state.toolTiers[group] >= 2) return 0
+  if (!group || ownsMachineForGroup(group, state)) return 0
   return context.economy.machineShopAssist.feeYenByGroup[group]
 }
 
 /**
- * The machine-shop assist fee for a group's signature heavy op - a repair or
- * install/replace of one of `economy.machineShopAssist.signatureSlotsByGroup[group]` -
- * without owning that group's tier-2 machine, or 0 otherwise. The
- * suspension/body/interior analogue of `machineAssistFeeYen`'s engine/drivetrain
- * buried-slot gate: the two-post lift, MIG welder and trim bench each gate
- * their group's heavy work, reachable by owning the machine or paying the fee.
- * Removal of a signature slot stays free. Exported so the UI/probes read the
- * same value the charge uses.
+ * The machine-shop fee a group's signature heavy op would cost without
+ * owning that group's tier-2 machine, or 0 otherwise - the
+ * suspension/body/interior analogue of `machineAssistFeeYen`. No longer
+ * charged per operation; kept for the same reasons.
  */
 export function signatureOpFeeYen(
   carPartId: CarPartId,
   state: GameState,
   context: SimContext,
 ): number {
-  const group = context.partsTaxonomyById[carPartId]?.group
-  if (!group) return 0
-  const signatureSlots = context.economy.machineShopAssist.signatureSlotsByGroup[group]
-  if (!signatureSlots || !signatureSlots.includes(carPartId)) return 0
-  if (state.toolTiers[group] >= 2) return 0
+  const group = signatureGroupFor(carPartId, context)
+  if (!group || ownsMachineForGroup(group, state)) return 0
   return context.economy.machineShopAssist.feeYenByGroup[group]
 }
 
 /**
- * The machine-shop assist fee an install-part `job` owes, or 0 - resolved from
- * the part being installed (its catalog `carPartId`, still in
- * `state.partInventory` at this point) against the current tool tiers. Fitting
- * a buried engine/drivetrain part needs the crane/bench, satisfied by ownership
- * or this fee. An install also owes the suspension/body/interior signature-slot
- * fee (`signatureOpFeeYen`). A carPartId is in exactly one group, so at most one
- * of the two terms is ever non-zero.
+ * The catalog carPartId an install-part `job` targets, resolved from the
+ * part still sitting in `state.partInventory` at this point - shared by the
+ * machine-line install gate and the ledger's parts-cost lookup.
  */
-function installMachineAssistFeeYen(state: GameState, job: Job, context: SimContext): number {
+function installTargetCarPartId(state: GameState, job: Job, context: SimContext): CarPartId | null {
   const partId = state.partInventory.find((p) => p.id === job.partInstanceId)?.partId
   const carPartId = partId ? context.partsById[partId]?.carPartId : undefined
-  if (!carPartId) return 0
-  return (
-    machineAssistFeeYen(carPartId, state, context) + signatureOpFeeYen(carPartId, state, context)
-  )
+  return carPartId ?? null
+}
+
+export type HireMachineLineGateReason = 'no-cash'
+
+/**
+ * Whether hiring `group`'s line for today is blocked right now - `null` when
+ * it is not. Owning the group's tier-2 machine, a zero fee, or a group
+ * already hired today is never blocked; the only real reason is short cash
+ * for a fee that is both nonzero and unpaid. Modelled on
+ * `attendAuctionGateReason` (bidding.ts).
+ */
+export function hireMachineLineGateReason(
+  state: GameState,
+  group: ComponentId,
+  context: SimContext,
+): HireMachineLineGateReason | null {
+  if (ownsMachineForGroup(group, state)) return null
+  const feeYen = context.economy.machineShopAssist.feeYenByGroup[group]
+  if (feeYen <= 0) return null
+  if (machineHiredToday(group, state)) return null
+  return state.cashYen < feeYen ? 'no-cash' : null
+}
+
+export interface HireMachineLineResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: 'hired' | HireMachineLineGateReason
+}
+
+/**
+ * The daily-unlock seam: charges `group`'s hire fee the first time that
+ * line is needed on a given day, unlocking every operation on it (signature
+ * repair, buried removal, buried/signature install) until End Day. Owning
+ * the tier-2 machine, or a group already hired today, is a silent no-op - no
+ * charge, no state recorded - so a second hire the same day never charges
+ * twice. Short cash refuses via `hireMachineLineGateReason`. The spend is a
+ * running cost, posted to the day report exactly as rent is (never to a
+ * car's ledger) - modelled on `resolveAttendAuction` (bidding.ts).
+ */
+export function resolveHireMachineLine(
+  state: GameState,
+  group: ComponentId,
+  context: SimContext,
+): HireMachineLineResult {
+  if (ownsMachineForGroup(group, state)) return { state, log: [], outcome: 'hired' }
+  const feeYen = context.economy.machineShopAssist.feeYenByGroup[group]
+  if (feeYen <= 0) return { state, log: [], outcome: 'hired' }
+  if (machineHiredToday(group, state)) return { state, log: [], outcome: 'hired' }
+  const gateReason = hireMachineLineGateReason(state, group, context)
+  if (gateReason) return { state, log: [], outcome: gateReason }
+  const nextState: GameState = {
+    ...state,
+    cashYen: state.cashYen - feeYen,
+    machineHirePaidDayByGroup: { ...state.machineHirePaidDayByGroup, [group]: state.day },
+  }
+  const log: DayLogEntry[] = [{ type: 'machine-hired', componentId: group, priceYen: feeYen }]
+  return { state: nextState, log, outcome: 'hired' }
 }
 
 /**
@@ -436,8 +538,9 @@ function installMachineAssistFeeYen(state: GameState, job: Job, context: SimCont
  * below is the single predicate the UI queries to explain them. Shell parts
  * (`removable: false`) never come off. Blocked slots (occupied by a part that
  * must stay installed until reassembled) refuse while the blocker is still
- * occupied. Buried engine/drivetrain slots need the tier-2 machine OR incur
- * a machine-shop assist fee (charged to the car's ledger).
+ * occupied. Buried engine/drivetrain slots need the tier-2 machine owned or
+ * hired for the day (`hasMachineLineFor`) - a removal that needs a line
+ * neither owned nor hired today refuses rather than charging a fee.
  *
  * Removal labour reads `energy.actionPoints.removePart` (0 in shipped
  * content, so removal is free today); a figure above zero gates on
@@ -486,11 +589,12 @@ export function resolveRemovePart(
   const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
   if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
-  // Buried engine/drivetrain removal may incur a machine-shop assist fee (zero
-  // if the machine is owned or the slot isn't gated), deducted from cash and
-  // posted to the car's ledger via the repair-cost path so budget caps and
-  // service-job billing see it.
-  const assistFeeYen = machineAssistFeeYen(carPartId, state, context)
+  // Buried engine/drivetrain removal needs that group's machine line - owned
+  // outright, or hired for today (`resolveHireMachineLine`).
+  const machineGroup = removeMachineGateGroup(carPartId, context)
+  if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
+    return { state, log: [], laborSlotsUsed: 0 }
+  }
 
   // Removal empties the slot and stamps the removed instance's identity as
   // `vacatedBaseline` - a matching refit later is free logistics, anything
@@ -511,7 +615,6 @@ export function resolveRemovePart(
   const withLabor: GameState = {
     ...state,
     energySpentToday: state.energySpentToday + laborSlotsUsed,
-    cashYen: state.cashYen - assistFeeYen,
   }
 
   const ownedIndex = withLabor.ownedCars.findIndex((c) => c.id === carInstanceId)
@@ -532,14 +635,7 @@ export function resolveRemovePart(
       },
     ]
     const base: GameState = { ...withLabor, ownedCars, partInventory }
-    const nextState =
-      assistFeeYen > 0
-        ? updateCarLedger(base, carInstanceId, (ledger) => ({
-            ...ledger,
-            repairYen: ledger.repairYen + assistFeeYen,
-          }))
-        : base
-    return { state: nextState, log, laborSlotsUsed }
+    return { state: base, log, laborSlotsUsed }
   }
 
   const log: DayLogEntry[] = [
@@ -549,7 +645,7 @@ export function resolveRemovePart(
   const serviceIndex = withLabor.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   if (serviceIndex !== -1) {
     // A customer's car: a pulled part stays in our inventory - not ours to
-    // sell or scrap, but ours to recondition until the job closes out. Sprint
+    // sell or scrap, but ours to recondition until the job closes out.
     // No tagging needed on the way into inventory: `installed` already carries
     // its immutable origin from birth (the customer's car, or the market if the
     // player bought and fitted it), and that is what every ownership question
@@ -559,21 +655,16 @@ export function resolveRemovePart(
     activeServiceJobs[serviceIndex] = { ...serviceJob, car: updatedCar }
     const partInventory = [...withLabor.partInventory, installed]
     const base: GameState = { ...withLabor, activeServiceJobs, partInventory }
-    const nextState =
-      assistFeeYen > 0
-        ? updateServiceJobLedger(base, serviceJob.id, (ledger) => ({
-            ...ledger,
-            repairYen: ledger.repairYen + assistFeeYen,
-          }))
-        : base
-    return { state: nextState, log, laborSlotsUsed }
+    return { state: base, log, laborSlotsUsed }
   }
 
   return { state, log: [], laborSlotsUsed: 0 }
 }
 
 export type RemoveBlockReason =
-  { kind: 'not-removable' } | { kind: 'blocked-by'; blockedBy: CarPartId[] }
+  | { kind: 'not-removable' }
+  | { kind: 'blocked-by'; blockedBy: CarPartId[] }
+  | { kind: 'machine-line'; group: ComponentId }
 
 /**
  * The pure "why can't this come off" predicate - what the UI queries
@@ -583,20 +674,24 @@ export type RemoveBlockReason =
  * structural blocks it (it may still be refused for insufficient labor, or
  * simply already removed).
  *
- * A buried engine/drivetrain slot without the tier-2 machine is not blocked
- * here; it is workable at the machine-shop assist fee (`machineAssistFeeYen`),
- * which the UI surfaces as a fee caption. Only genuinely structural refusals
- * (the shell itself, an occupied blocker) remain here.
+ * A buried engine/drivetrain slot without the tier-2 machine owned or hired
+ * for today is blocked here (`machine-line`) - hire the line, or buy the
+ * tools.
  */
 export function removeBlockReason(
   car: CarInstance,
   carPartId: CarPartId,
+  state: GameState,
   context: SimContext,
 ): RemoveBlockReason | null {
   const entry = context.partsTaxonomyById[carPartId]
   if (!entry || !entry.removable) return { kind: 'not-removable' }
   const blockedBy = occupiedBlockers(car, carPartId, context)
   if (blockedBy.length > 0) return { kind: 'blocked-by', blockedBy }
+  const machineGroup = removeMachineGateGroup(carPartId, context)
+  if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
+    return { kind: 'machine-line', group: machineGroup }
+  }
   return null
 }
 
@@ -636,9 +731,11 @@ function chargeRepairWork(
 
 /**
  * The repair-cost gate on starting a new repair-zone job - checked once at
- * creation, never again. There is no ownership gate (tool lines are always
- * owned per progression bible law 1); the shop's current tool tier only sets
- * the repair level the work climbs at.
+ * creation, never again. Tool lines are always owned per progression bible
+ * law 1, so the shop's current tool tier mostly just sets the repair level
+ * the work climbs at; the one real ownership gate is a suspension/body/
+ * interior signature slot, which needs its group's machine line owned or
+ * hired for today.
  *
  * Repair-zone charges the real yen cost of the work from `planGroupRepair`'s
  * `costYen`, nothing else. A group with nothing left to repair (all parts at
@@ -664,6 +761,17 @@ export function repairJobGate(
     return {
       ok: false,
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
+    }
+  }
+  // `panels`/`paint`/`underbody` are derived from zone state on a car that's
+  // on the zone model - a per-part repair addressed at exactly one of them
+  // refuses outright (`bodyPipeline.ts`'s single-writer projection is the
+  // only thing allowed to move their band); the zone's own pipeline stages
+  // are how a player actually improves them.
+  if (spec.carPartId && car.zoneState && isBodyDerivedPart(spec.carPartId)) {
+    return {
+      ok: false,
+      log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'derived-band' }],
     }
   }
   // A REPAIR climbs a part only to the group's tool-tier ceiling
@@ -695,7 +803,7 @@ export function repairJobGate(
     context.partsById,
     context.partsTaxonomyById,
     context.economy.restoration.repairStepFraction,
-    context.economy.energy.energyPerGradeByTier,
+    context.economy.energy.energyPerBandStepByToolTier,
     spec.carPartId,
     { staff: state.staff, economy: context.economy },
   )
@@ -705,17 +813,20 @@ export function repairJobGate(
     return { ok: false, log: [] }
   }
 
-  // A repair that climbs a suspension/body/interior signature slot owes that
-  // group's machine-shop assist fee unless the tier-2 machine is owned - ONE fee
-  // per repair operation (every signature slot in a group shares the one fee, so
-  // the max over the plan is the group fee once), charged with repair cost and
-  // posted to `repairYen` ledger. Engine/drivetrain/wheels have no signature
-  // slots, so their repairs incur no fee.
-  const signatureFeeYen = plan.partIds.reduce(
-    (fee, partId) => Math.max(fee, signatureOpFeeYen(partId, state, context)),
-    0,
+  // A repair that climbs a suspension/body/interior signature slot needs
+  // that group's machine line - owned outright, or hired for today
+  // (`resolveHireMachineLine`). Engine/drivetrain/wheels have no signature
+  // slots, so their repairs are never gated here.
+  const needsMachineLine = plan.partIds.some(
+    (partId) => signatureGroupFor(partId, context) !== null,
   )
-  const charged = chargeRepairWork(state, plan.costYen + signatureFeeYen)
+  if (needsMachineLine && !hasMachineLineFor(spec.componentId, state)) {
+    return {
+      ok: false,
+      log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'machine-line' }],
+    }
+  }
+  const charged = chargeRepairWork(state, plan.costYen)
   // Can't afford the work right now - a silent refusal, matching every
   // other can't-afford-it gate in this codebase.
   if (!charged.ok) return { ok: false, log: [] }
@@ -784,8 +895,9 @@ export function naToTurboConversionBlocked(
  * that every slot starts filled with a stock part by default, a group-level
  * install into an already-occupied specific slot would otherwise pass this
  * gate, create a real job, and only fail silently at completion
- * (`blockedByOccupiedSlot`) - stranding that job open forever (nothing ever
- * removes a blocked job from `state.jobs`). Checking the resolved slot here
+ * (`JobCompletionResult.blockedReason`) - stranding that job open forever
+ * (nothing ever removes a blocked job from `state.jobs`). Checking the
+ * resolved slot here
  * is behaviorally identical to the old per-part check when `spec.carPartId`
  * is set (already guaranteed equal to `part.carPartId` by the `partFitsCar`
  * call below whenever `fits` can be true) and closes the group-level gap
@@ -942,8 +1054,8 @@ export function applyAvailableLaborToJob(
   if (isJobComplete(updatedJob)) {
     const result = completeJob(next, updatedJob, context)
     next = result.state
-    if (result.blockedByOccupiedSlot) {
-      log.push({ type: 'job-blocked', jobId, reason: 'slot-occupied' })
+    if (result.blockedReason) {
+      log.push({ type: 'job-blocked', jobId, reason: result.blockedReason })
     } else {
       next = { ...next, jobs: next.jobs.filter((j) => j.id !== jobId) }
       if (updatedJob.kind === 'recondition-part') {
@@ -1100,7 +1212,7 @@ function planReconditionPart(
     taxonomyEntry,
     catalogPart.priceYen,
     context.economy.restoration.repairStepFraction,
-    context.economy.energy.energyPerGradeByTier,
+    context.economy.energy.energyPerBandStepByToolTier,
   )
   // Zero when scrap, non-repairable, nothing left to climb, or already at/above
   // the tier ceiling (a tier-1 recondition of an already-fine part toward mint).

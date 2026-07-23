@@ -193,7 +193,13 @@ describe('every action gates on the labour bar and spends its own figure when ra
   it('benchFitMember: fitting a part into a benched assembly charges the figure, refuses short of it', () => {
     const car = ownedCar('car-bf')
     const spare = binPart('pi-spare-tyre', stockTyresId)
-    const state = baseState({ ownedCars: [car], partInventory: [spare] })
+    // Fitting a tyre needs the wheels line owned or hired today - hired here
+    // so this test exercises only the labour figure it means to.
+    const state = baseState({
+      ownedCars: [car],
+      partInventory: [spare],
+      machineHirePaidDayByGroup: { wheels: 1 },
+    })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
     const ctx = ctxWith('benchFitMember')

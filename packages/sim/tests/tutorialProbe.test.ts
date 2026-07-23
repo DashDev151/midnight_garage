@@ -12,7 +12,6 @@ import {
   type PartFitmentClass,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { assemblyMachineAssistFeeYen, benchSwapFeeYen } from '../src/assemblies'
 import { carCostToBandYen, hasForcedInduction } from '../src/bands'
 import { reserveYen, settleAuctionHammer } from '../src/bidding'
 import { buildSimContext } from '../src/context'
@@ -65,34 +64,31 @@ function stockPartsAt(
  * unwinnable and the four-wheels budget/payout it rides on stay honest.
  *
  * The build the tutorial teaches: buy the scripted lot AT RESERVE, pull the
- * wheel assembly and fit fresh stock tyres (part + one wheels bench fee), pull
- * the engine assembly with machine-shop assist to repair the buried
- * head/valvetrain (two engine assist fees, one round trip, + the banded
- * repair), refit. Everything else is already worn+, so the car is roadworthy
- * the moment those two faults are cleared.
+ * wheel assembly and fit fresh stock tyres (part + hiring the wheels line for
+ * the day), pull the engine assembly with machine-shop assist to repair the
+ * buried head/valvetrain (one engine line hire covering the whole round trip
+ * + the banded repair), refit. Everything else is already worn+, so the car
+ * is roadworthy the moment those two faults are cleared.
  */
-describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
+describe('tutorial satisfiability probe', () => {
   const state = createInitialGameState(CONTEXT, 1)
   const lot = buildTutorialLot(CONTEXT, 1)
 
   // Purchase: the pinned rival ceiling means the player wins at the reserve.
   const reserve = reserveYen(lot, state, CONTEXT)
 
-  // Wheel beat: one fresh stock tyre + one wheels bench fee to fit it.
+  // Wheel beat: one fresh stock tyre + hiring the wheels line for the day to
+  // fit it (neither owned at the fresh tier-1 tutorial start).
   const stockTyre = CONTEXT.stockPartByCarPartId[FITMENT].tyres
   const stockTyreYen = stockTyre.priceYen
-  const tyreFitYen = benchSwapFeeYen('tyres', state, CONTEXT)
+  const wheelsHireYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.wheels
 
-  // Engine beat: pull + refit the engine assembly (two engine assist fees) plus
-  // the banded repair of the buried head/valvetrain one rung, poor to worn -
+  // Engine beat: pull + refit the engine assembly - one engine line hire for
+  // the day covers both operations (not two separate fees) - plus the
+  // banded repair of the buried head/valvetrain one rung, poor to worn -
   // exactly the roadworthy bar, the taught lesson being "repair to what the
   // job needs".
-  const engineAssist = assemblyMachineAssistFeeYen(
-    CONTEXT.assembliesById.engineAssembly,
-    state,
-    CONTEXT,
-  )
-  const engineRoundTripYen = engineAssist * 2
+  const engineHireYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
   const hvRepairYen = carCostToBandYen(
     { ...lot.car, parts: stockPartsAt('worn', { headValvetrain: 'poor' }) },
     MODEL,
@@ -103,8 +99,13 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
   )
 
   const partsYen = stockTyreYen
-  const repairYen = tyreFitYen + engineRoundTripYen + hvRepairYen
-  const totalSpendYen = reserve + partsYen + repairYen
+  // What actually posts to the car's own ledger - the banded repair only.
+  // The wheels/engine line hires are a running cost, the same treatment as
+  // rent, never charged to a car's ledger, so they never enter here.
+  const repairYen = hvRepairYen
+  // What actually leaves the player's cash: the ledger repair cost plus the
+  // two machine-line hires, spent once each for the day.
+  const totalSpendYen = reserve + partsYen + repairYen + wheelsHireYen + engineHireYen
 
   // The one player mistake the budget must still absorb: buying sport rubber
   // instead of the stock tyres the copy points at.
@@ -127,7 +128,7 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
   })
 
   it('the taught build stays completable after one mistake, and clears a small deliberate profit', () => {
-    // Her budget and her pay are one figure (¥145,000); the mission is not
+    // Her budget and her pay are one figure (¥130,000); the mission is not
     // "spend under a cap higher than she pays" - it is "build within her
     // money and keep what is left". So the guarantee is that a single
     // wrong-band purchase still completes (spend + mistake within her
@@ -136,7 +137,9 @@ describe('tutorial satisfiability probe (Sprint 89 decision 3)', () => {
     expect(totalSpendYen + oneMistakeYen).toBeLessThanOrEqual(FOUR_WHEELS.budgetCapYen)
     // The intro mission is deliberately not a big earner: the payout covers
     // her costs with a modest margin, guarded both ways so a payout bump can
-    // never quietly turn Yuki's first job into a fat flip.
+    // never quietly turn Yuki's first job into a fat flip. The bound keeps a
+    // slice of headroom over the real closed-form margin rather than pinning
+    // it exactly.
     const profitYen = FOUR_WHEELS.payoutYen - totalSpendYen
     expect(profitYen).toBeGreaterThan(0)
     expect(profitYen).toBeLessThanOrEqual(15_000)

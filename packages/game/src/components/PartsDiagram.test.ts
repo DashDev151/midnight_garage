@@ -16,9 +16,15 @@ function grantCar(modelId?: string) {
 
 /** Forces every member of `groupId` (bar `forcedInduction`, whose empty slot
  * is only sometimes a defect) onto the car at mint - deterministic fixture
- * setup that doesn't depend on a granted car's own random condition roll. */
+ * setup that doesn't depend on a granted car's own random condition roll.
+ * Also clears any rolled symptom: a granted car's true band moves here, but
+ * a symptom's own `apparentBandByPartId` override does not, so a real roll
+ * landing on this group could otherwise leave a stale "uncertain" wash over
+ * a part this fixture just set to mint. */
 function fitAllMembers(game: ReturnType<typeof useGameStore>, carId: string, groupId: ComponentId) {
   const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+  car.symptoms = []
+  car.apparentBandByPartId = null
   for (const entry of PARTS_TAXONOMY.filter(
     (e) => e.group === groupId && e.id !== 'forcedInduction',
   )) {
@@ -267,5 +273,48 @@ describe('PartsDiagram (two-level)', () => {
     await wrapper.setProps({ carId: otherCarId })
     expect(wrapper.findAll('.pd-tile')).toHaveLength(6)
     expect(wrapper.findAll('.pd-slot')).toHaveLength(0)
+  })
+
+  describe('click-blocking (playtest item 5 hotfix: a removed blocker must not steal clicks)', () => {
+    it('with rims removed, brake pads outranks rims in stacking order and stays selectable', async () => {
+      const { game, carId } = grantCar()
+      // Rims is a wheel-assembly member - pulling the whole assembly is how it
+      // comes off, exactly like the existing "pulled visitor blocker" fixture.
+      expect(game.removeAssembly(carId, 'wheelAssembly')).toBe(true)
+      const wrapper = mountFor(carId)
+      await wrapper.get('[data-test="diagram-tile-suspension"]').trigger('click')
+
+      const rims = wrapper.get('[data-test="diagram-slot-rims"]')
+      const brakePads = wrapper.get('[data-test="diagram-slot-brakePadsDiscs"]')
+      expect(rims.classes()).toContain('ghost')
+
+      // happy-dom runs no real layout/paint, so a bare `trigger('click')` on
+      // the brakes element cannot reproduce the actual pixel-overlap bug - it
+      // bypasses hit-testing entirely and would pass even with the bug live.
+      // What actually proves the fix is the z-index each element renders
+      // with, the CSS stacking order a real browser's hit-testing honours: a
+      // removed (ghost) rims must render BELOW the still-fitted brake pads
+      // slot it used to sit over, so the brakes receive the click instead of
+      // the empty rim tile.
+      const rimsZ = Number((rims.element as HTMLElement).style.zIndex)
+      const brakesZ = Number((brakePads.element as HTMLElement).style.zIndex)
+      expect(brakesZ).toBeGreaterThan(rimsZ)
+
+      // Brake pads remains reachable and selects itself, unblocked.
+      await brakePads.trigger('click')
+      expect(wrapper.emitted('select')?.[0]).toEqual(['brakePadsDiscs'])
+    })
+
+    it('while rims IS fitted, it still outranks the brakes - unchanged: the wheel must come off first', async () => {
+      const { carId } = grantCar()
+      const wrapper = mountFor(carId)
+      await wrapper.get('[data-test="diagram-tile-suspension"]').trigger('click')
+
+      const rims = wrapper.get('[data-test="diagram-slot-rims"]')
+      const brakePads = wrapper.get('[data-test="diagram-slot-brakePadsDiscs"]')
+      const rimsZ = Number((rims.element as HTMLElement).style.zIndex)
+      const brakesZ = Number((brakePads.element as HTMLElement).style.zIndex)
+      expect(rimsZ).toBeGreaterThan(brakesZ)
+    })
   })
 })

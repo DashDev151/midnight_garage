@@ -418,6 +418,20 @@ export const GameStateSchema = z.object({
   attendanceFeePaidDayByTier: z
     .partialRecord(AuctionTierSchema, z.number().int().positive())
     .optional(),
+  /**
+   * The day each machine group's daily hire was last paid
+   * (`resolveHireMachineLine`, sim/jobs.ts) - a group entry equal to the
+   * current day means every operation on that group is unlocked for today,
+   * so a later signature repair, buried removal, or install on that group
+   * the same day needs no further charge. Recorded only when a nonzero fee
+   * is actually charged; a group whose tier-2 machine is already owned
+   * never gains an entry. The genuinely-optional-key pattern (like
+   * `attendanceFeePaidDayByTier` above), so no existing `GameState` literal
+   * needs touching.
+   */
+  machineHirePaidDayByGroup: z
+    .partialRecord(ComponentIdSchema, z.number().int().positive())
+    .optional(),
 })
 
 /**
@@ -490,6 +504,16 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * in its `blockedBy` list refuses install just as it refuses
        * uninstall, reassembly order matters (`installFitGate`). */
       'blocked-by',
+      /** A buried engine/drivetrain or suspension/body/interior signature
+       * slot's operation needs its group's machine line owned or hired for
+       * today (`hasMachineLineFor`, sim/jobs.ts) - hire it, or buy the
+       * tools. */
+      'machine-line',
+      /** `panels`/`paint`/`underbody` bands are derived from zone state (the
+       * body pipeline, sim/bodyPipeline.ts) - a direct repair-zone job
+       * addressed at one of them on a car already on the zone model refuses;
+       * work the zone's pipeline stages instead. */
+      'derived-band',
     ]),
   }),
   z.object({
@@ -768,6 +792,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('machine-listed'),
     componentId: ComponentIdSchema,
     tier: ToolTierSchema,
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** A machine group's daily hire fee was paid (`resolveHireMachineLine`,
+   * sim/jobs.ts) - a running cost, same treatment as rent: it never touches
+   * a car's own ledger. */
+  z.object({
+    type: z.literal('machine-hired'),
+    componentId: ComponentIdSchema,
     priceYen: z.number().int().nonnegative(),
   }),
   /** `beginInspectionVisit` started a yard visit. */

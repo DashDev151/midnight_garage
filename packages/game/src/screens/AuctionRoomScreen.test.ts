@@ -343,15 +343,6 @@ describe('AuctionRoomScreen', () => {
     expect((letgo.element as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('shows the current cash in the room header', async () => {
-    const game = useGameStore()
-    const lot = makeLot(game, 'cash-header-test-lot', 'thin')
-    seatLot(game, lot)
-    const { wrapper } = await mountRoom(lot.id)
-
-    expect(wrapper.find('[data-test="room-cash"]').text()).toBe(`Cash: ${formatYen(game.cashYen)}`)
-  })
-
   /** The room-entry admission: the real content ships every tier at 0 (built
    * dark), so only the "nothing renders" pin runs under real content; the
    * charge-on-entry behaviour needs a test-override context to exercise at

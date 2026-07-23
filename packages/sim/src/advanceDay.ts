@@ -202,9 +202,10 @@ export function advanceDay(
   }
 
   // 2b. Retry any job that's already fully-labored but was blocked from
-  // completing on a prior day (its target slot was occupied) - checked every
-  // day regardless of whether new labor was assigned today, same as before
-  // this function was split apart. A job `applyAvailableLaborToJob` just
+  // completing on a prior day (its target slot was occupied, or its group's
+  // machine line was neither owned nor hired that day) - checked every day
+  // regardless of whether new labor was assigned today, same as before this
+  // function was split apart. A job `applyAvailableLaborToJob` just
   // completed above is already gone from `next.jobs`, so this never
   // double-processes it.
   const stillOpen: Job[] = []
@@ -215,8 +216,8 @@ export function advanceDay(
     }
     const result = completeJob(next, job, context)
     next = result.state
-    if (result.blockedByOccupiedSlot) {
-      log.push({ type: 'job-blocked', jobId: job.id, reason: 'slot-occupied' })
+    if (result.blockedReason) {
+      log.push({ type: 'job-blocked', jobId: job.id, reason: result.blockedReason })
       stillOpen.push(job)
       continue
     }

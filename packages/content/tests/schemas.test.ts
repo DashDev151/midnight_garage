@@ -262,6 +262,28 @@ describe('seed content validates against schemas', () => {
     // Upkeep wear can only express in proportion to the car's own mileage -
     // a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])
+    // The zone model's own generation weights: per-tier metal/finish severity
+    // tables, the chassis zone's metal table shifted one row kinder per tier,
+    // and the surface-bump chance.
+    expect(result.data.partsGeneration.zoneStates.metalWeightsByTier).toEqual({
+      shitbox: [20, 35, 30, 15],
+      common: [40, 35, 20, 5],
+      uncommon: [55, 30, 12, 3],
+      rare: [65, 25, 8, 2],
+    })
+    expect(result.data.partsGeneration.zoneStates.finishWeightsByTier).toEqual({
+      shitbox: [5, 25, 40, 30],
+      common: [15, 40, 30, 15],
+      uncommon: [30, 40, 22, 8],
+      rare: [40, 38, 17, 5],
+    })
+    expect(result.data.partsGeneration.zoneStates.chassisMetalWeightsByTier).toEqual({
+      shitbox: [40, 35, 20, 5],
+      common: [55, 30, 12, 3],
+      uncommon: [65, 25, 8, 2],
+      rare: [75, 20, 4, 1],
+    })
+    expect(result.data.partsGeneration.zoneStates.surfaceExtraChance).toBe(0.2)
     expect(result.data.restoration.repairStepFraction).toBe(0.1)
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
@@ -361,14 +383,16 @@ describe('seed content validates against schemas', () => {
     expect(result.data.energy.pointsPerLabour).toBe(10)
     // Day-1 pool = old PLAYER_BASE_LABOR_SLOTS (6) x pointsPerLabour.
     expect(result.data.energy.basePoolPoints).toBe(60)
-    // Tier reduces a repair's per-grade cost, non-increasing up the tiers; tier 1
-    // is exactly the old one-slot-per-grade (10 = 1 slot x pointsPerLabour).
-    expect(result.data.energy.energyPerGradeByTier).toEqual({ 1: 10, 2: 6, 3: 4 })
-    // Install cost = old teardown.installSlotsByClass {0,1,2} x pointsPerLabour.
+    // Tier reduces a repair's per-band-step cost, non-increasing up the tiers.
+    // The labour retune (case (a), an intentional cost change, not a stale
+    // expectation) sets tier 1/2/3 to 5/4/3.
+    expect(result.data.energy.energyPerBandStepByToolTier).toEqual({ 1: 5, 2: 4, 3: 3 })
+    // Fitting energy by depth class, also retuned: the common bolt-on anchor
+    // drops to 3 and buried scales with it to 6.
     expect(result.data.energy.energyByClass).toEqual({
       surface: 0,
-      'bolt-on': 10,
-      buried: 20,
+      'bolt-on': 3,
+      buried: 6,
     })
     // Every physical action's labour figure lives in this one map; zero means
     // the action is free, a raised figure gates and spends. The two knowledge

@@ -8,6 +8,7 @@ import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
 import failureModesJson from '../data/failureModes.json'
 import lapReferencesJson from '../data/lapReferences.json'
+import materialsJson from '../data/materials.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
@@ -40,6 +41,7 @@ import { EconomyConfigSchema } from './economy'
 import { FacilitiesSchema } from './facilities'
 import { FailureModesSchema, type FailureMode } from './failureMode'
 import { LapReferencesSchema } from './lapReference'
+import { MaterialsSchema } from './material'
 import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
 import { PartPricingSheetSchema } from './partPricing'
 import type { PartFitmentClass } from './partFitment'
@@ -89,7 +91,11 @@ function stockReplacementPricesByClass(carPartId: CarPartId): Record<PartFitment
   const result = {} as Record<PartFitmentClass, number>
   for (const fitmentClass of FITMENT_CLASSES) {
     const stockPart = PARTS.find(
-      (p) => p.carPartId === carPartId && p.grade === 'stock' && p.fitmentClass === fitmentClass,
+      (p) =>
+        p.carPartId === carPartId &&
+        p.grade === 'stock' &&
+        p.fitmentClass === fitmentClass &&
+        p.zoneId == null,
     )
     if (!stockPart) {
       throw new Error(`no stock-grade "${fitmentClass}" catalog part addresses "${carPartId}"`)
@@ -129,6 +135,13 @@ export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(
 export const FACILITIES = FacilitiesSchema.parse(facilitiesJson)
 export const TOOL_LINES = ToolLinesSchema.parse(toolLinesJson)
 export const ECONOMY = EconomyConfigSchema.parse(economyJson)
+
+/**
+ * The body pipeline's consumable SKUs (filler, paper, primer, paint,
+ * underseal, polish) - charged at point of use into a staged stage's cost
+ * line, never pre-stocked.
+ */
+export const MATERIALS = MaterialsSchema.parse(materialsJson)
 export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)
 export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
 export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)

@@ -28,7 +28,8 @@
     "underbody": 24000,
     "aero": 18000,
     "seats": 35000,
-    "dashGauges": 12000
+    "dashGauges": 12000,
+    "zonePanel": 6000
   },
   "classFactors": {
     "shitbox": 0.25,

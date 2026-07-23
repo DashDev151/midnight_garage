@@ -1,6 +1,7 @@
 import {
   ALL_CAR_PART_IDS,
   ComponentIdSchema,
+  MATERIALS,
   ReputationTierSchema,
   fitmentClassForTier,
   type CarInstance,
@@ -46,6 +47,13 @@ import { freshToolTiers } from './toolLines'
 
 const CONSUMABLE_PART_IDS: readonly CarPartId[] = ['tyres', 'brakePadsDiscs', 'clutch']
 
+/** Every body-pipeline material's own flat price, summed once - materials
+ * price the same regardless of a car's class (an era-true tin of filler
+ * costs the same on a kei or a grand tourer), so they join Law 3's
+ * "brake pads vs car price" guard as one more flat consumable cost, exactly
+ * like tyres/brakePadsDiscs/clutch. */
+const MATERIALS_COST_YEN = MATERIALS.reduce((sum, material) => sum + material.priceYen, 0)
+
 export interface ModelCoherenceRow {
   modelId: string
   fitmentClass: PartFitmentClass
@@ -89,8 +97,9 @@ export interface ModelCoherenceRow {
   sensibleFlipMarginYen: number
   sensibleFlipMarginFraction: number
   /** Cost to replace every true consumable (tyres + brake pads/discs +
-   * clutch) from scratch at this model's own class, as a fraction of book
-   * value - the direct, permanent "brake pads vs car price" guard (Law 3). */
+   * clutch, class-priced) PLUS one of every body-pipeline material (flat-
+   * priced, class-independent), as a fraction of book value - the direct,
+   * permanent "brake pads vs car price" guard (Law 3). */
   consumablesCostYen: number
   consumablesShare: number
   /**
@@ -287,11 +296,12 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   const flipMarginYen = Math.round(cleanValueYen) - buyPriceYen - worstBillYen
   const flipMarginFraction = cleanValueYen > 0 ? flipMarginYen / cleanValueYen : 0
 
-  const consumablesCostYen = CONSUMABLE_PART_IDS.reduce(
-    (sum, partId) =>
-      sum + context.partsTaxonomyById[partId]!.stockReplacementPriceYenByClass[fitmentClass],
-    0,
-  )
+  const consumablesCostYen =
+    CONSUMABLE_PART_IDS.reduce(
+      (sum, partId) =>
+        sum + context.partsTaxonomyById[partId]!.stockReplacementPriceYenByClass[fitmentClass],
+      0,
+    ) + MATERIALS_COST_YEN
   const consumablesShare = model.bookValueYen > 0 ? consumablesCostYen / model.bookValueYen : 0
 
   // Law 6 (the wage law): the repairable portion of this car, planned to the
@@ -332,7 +342,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
       context.partsById,
       context.partsTaxonomyById,
       context.economy.restoration.repairStepFraction,
-      context.economy.energy.energyPerGradeByTier,
+      context.economy.energy.energyPerBandStepByToolTier,
     )
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired
@@ -358,7 +368,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
       entry,
       catalogPart.priceYen,
       context.economy.restoration.repairStepFraction,
-      context.economy.energy.energyPerGradeByTier,
+      context.economy.energy.energyPerBandStepByToolTier,
     )
     if (plan.laborSlotsRequired === 0) continue
     repairCostYen += plan.costYen

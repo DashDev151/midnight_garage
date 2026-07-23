@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
-import LabourBar from '../components/LabourBar.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
@@ -70,23 +69,6 @@ const draggedCarName = computed(() => {
     </h2>
 
     <dl class="stats">
-      <div>
-        <dt>Day</dt>
-        <dd data-test="day-value">{{ game.day }}</dd>
-      </div>
-      <div>
-        <dt>Cash</dt>
-        <dd class="cash">{{ formatYen(game.cashYen) }}</dd>
-      </div>
-      <!-- Labour left today is a first-class stat here, not just a caption
-           buried elsewhere. It is the one resource the whole day is budgeted
-           against. -->
-      <div>
-        <dt>Labour left today</dt>
-        <dd data-test="labour-value">
-          <LabourBar :remaining="game.laborSlotsRemainingToday" :max="game.laborSlotsPerDay" />
-        </dd>
-      </div>
       <div>
         <dt>Reputation</dt>
         <dd data-test="reputation-value">
@@ -241,10 +223,6 @@ h3 {
 .stats dd {
   margin: var(--mg-space-1) 0 0;
   font-size: var(--mg-fs-lg);
-}
-
-.cash {
-  color: var(--mg-yen);
 }
 
 /* The reputation line is a door to the Standing screen. It must LOOK like one:

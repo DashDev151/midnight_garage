@@ -1,6 +1,7 @@
-import type { DayLogEntry } from '@midnight-garage/content'
+import type { ComponentId, DayLogEntry } from '@midnight-garage/content'
 import {
   COMPONENT_DISPLAY_NAMES,
+  ComponentIdSchema,
   PARTS,
   TOOL_LINES,
   componentDisplayName,
@@ -15,6 +16,26 @@ const PART_LABELS = new Map(PARTS.map((p) => [p.id, `${p.brand} ${p.name}`]))
 
 function partLabel(partId: string): string {
   return PART_LABELS.get(partId) ?? partId
+}
+
+/** The machine-hire panel's per-group display name: the group's real
+ * tier-2 machinery, read straight off `TOOL_LINES` so this name can never
+ * drift from the Upgrades wall - distinct from `COMPONENT_DISPLAY_NAMES`
+ * (which reads "Suspension and Brakes"/"Wheels and Tyres"), since the hire
+ * panel and its gate reason name the actual machine, not the whole
+ * component group. */
+export const MACHINE_LINE_NAMES: Record<ComponentId, string> = Object.fromEntries(
+  ComponentIdSchema.options.map((componentId) => [
+    componentId,
+    TOOL_LINES[componentId].tiers[1]!.displayName,
+  ]),
+) as Record<ComponentId, string>
+
+/** The gate reason shown wherever a machine-gated operation needs `group`'s
+ * machine owned or hired for the day and isn't - the exact copy the
+ * workshop screen, the hire panel, and staged rows all share. */
+export function machineLineGateCopy(group: ComponentId): string {
+  return `Needs the ${MACHINE_LINE_NAMES[group]} for today. Hire it for the day, or buy your own.`
 }
 
 /** `count noun` with an `s` on the noun unless the count is exactly 1 - the
@@ -148,6 +169,8 @@ export function describeLogEntry(
       return `Classifieds: ${
         TOOL_LINES[entry.componentId].tiers[entry.tier - 1]!.displayName
       } listed, ${formatYen(entry.priceYen)}`
+    case 'machine-hired':
+      return `Hired the ${MACHINE_LINE_NAMES[entry.componentId]} for the day (${formatYen(entry.priceYen)})`
     case 'shell-scrapped': {
       const withParts =
         entry.carPartIds.length > 0
@@ -279,6 +302,13 @@ export function classifyDayReport(
         break
       case 'double-parking-fine':
         money.billsYen += Math.abs(entry.amountYen)
+        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
+        break
+      // A daily machine hire is a running cost, same treatment as rent, but
+      // (unlike rent) also worth its own notable line - the player staged
+      // work today that needed it.
+      case 'machine-hired':
+        money.billsYen += entry.priceYen
         rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
       // Swallowed on purpose. The sim still logs the entry (the day log and the

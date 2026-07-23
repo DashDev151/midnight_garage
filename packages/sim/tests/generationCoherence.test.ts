@@ -10,6 +10,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { generateAuctionCarInstance, wearExposure } from '../src/auctions'
 import { bandIndex } from '../src/bands'
+import { isBodyDerivedPart } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
 
@@ -24,10 +25,16 @@ import { createRng } from '../src/rng'
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const GAME_YEAR = 1995
 
-/** The worst band on any real installed part - the "how rough is this car". */
+/** The worst band on any real installed part - the "how rough is this car".
+ * Excludes `panels`/`paint`/`underbody`: those three are derived from zone
+ * state (`bodyPipeline.ts`), and the zone roll (docs/design/
+ * workshop-rework.md's generation table) is TIER-weighted alone, independent
+ * of age or mileage - a deliberate, separate generation axis this wave adds,
+ * not a claim the wear-model coherence tests below are about. */
 function worstBand(car: CarInstance): string {
   let worst = 'mint'
   for (const partId of ALL_CAR_PART_IDS) {
+    if (isBodyDerivedPart(partId)) continue
     const band = car.parts[partId].installed?.band
     if (band && bandIndex(band) < bandIndex(worst as never)) worst = band
   }

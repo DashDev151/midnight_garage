@@ -61,10 +61,15 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.find('[data-test="browse-everything"]').exists()).toBe(true)
   })
 
-  it('"Browse everything" shows the full flat catalog', async () => {
+  it('"Browse everything" shows the full flat catalog, minus the delisted derived-part stock references', async () => {
     const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
-    expect(wrapper.findAll('.part').length).toBe(PARTS.length)
+    // `panels`/`paint`/`underbody`'s own stock SKU (one per fitment class,
+    // 3 x 4 = 12) stays in the catalogue as the derived value carriers'
+    // installed reference (`bodyPipeline.ts`) but is never listed for sale -
+    // the market never lists them again (docs/sprints/sprint119.md's SKU
+    // dispositions).
+    expect(wrapper.findAll('.part').length).toBe(PARTS.length - 12)
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)
   })
 

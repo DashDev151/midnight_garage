@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { AssemblyIdSchema } from './assembly'
 import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
+import { PanelZoneIdSchema, ZoneIdSchema } from './zone'
+import { PipelineStageIdSchema } from './material'
 
 /**
  * One piece of work the player intends to do on a car but hasn't committed to
@@ -45,6 +47,27 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
    */
   z.object({ kind: z.literal('remove-assembly'), assemblyId: AssemblyIdSchema }),
   z.object({ kind: z.literal('refit-assembly'), assemblyId: AssemblyIdSchema }),
+  /**
+   * One body-pipeline stage on one zone (docs/design/workshop-rework.md's
+   * pipeline table) - strip/prep, beat, weld, fill-and-sand, prime, or
+   * polish, the six stages with no extra player input beyond which zone.
+   * Excludes `swapPanel` and `paint`, which need their own extra field below.
+   */
+  z.object({
+    kind: z.literal('pipeline-stage'),
+    stage: PipelineStageIdSchema.exclude(['swapPanel', 'paint']),
+    zoneId: ZoneIdSchema,
+  }),
+  /** Swap a zone's panel for the inventory `PartInstance` at `partInstanceId`
+   * - never the chassis zone, which has no panel. */
+  z.object({
+    kind: z.literal('pipeline-swap-panel'),
+    zoneId: PanelZoneIdSchema,
+    partInstanceId: z.string().min(1),
+  }),
+  /** The paint stage, with the colour chosen for this zone (chassis:
+   * underseal, so `colour` there is the underseal shade, not a chosen hue). */
+  z.object({ kind: z.literal('pipeline-paint'), zoneId: ZoneIdSchema, colour: z.string().min(1) }),
 ])
 
 export const StagedActionsSchema = z.array(StagedActionSchema)

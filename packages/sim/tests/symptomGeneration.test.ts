@@ -11,6 +11,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { generateAuctionCarInstance } from '../src/auctions'
 import { bandIndex } from '../src/bands'
+import { hasZoneImproveHeadroom, isBodyDerivedPart } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
 
@@ -117,7 +118,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
     expect(sawSymptom, 'expected at least one seed to roll a surviving symptom').toBe(true)
   })
 
-  it('the Law 2 drop rule fires when a symptom would push the car over its bill ceiling - no symptom ever survives, and every part reverts to its pre-symptom (mint) band', () => {
+  it('the Law 2 drop rule fires when a symptom would push the car over its bill ceiling - no symptom carrying real money cost ever survives, and every affected part reverts to its cheapest state', () => {
     const impossibleBudget: EconomyConfig = {
       ...ECONOMY,
       partsGeneration: {
@@ -125,8 +126,8 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
         maxBillFraction: 0.0001,
         // The core-loop floor is a separate mechanism from the Law 2 drop
         // rule this test targets - zeroed here so it never tops up a part
-        // away from mint and confounds the "every part reverts to mint"
-        // assertion below.
+        // away from mint and confounds the "every part reverts" assertion
+        // below.
         minWorkBillFractionByTier: { shitbox: 0, common: 0, uncommon: 0, rare: 0 },
       },
       diagnosis: economyWithGuaranteedSymptom().diagnosis,
@@ -150,17 +151,45 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
         guardedContext,
         GAME_YEAR,
       )
-      // The pre-symptom softening pass's own second pass guarantees an
-      // all-mint, zero-bill car under an unreachable budget - so if a
-      // symptom had actually survived it would show up as a non-mint band.
-      expect(
-        car.symptoms,
-        `seed ${seed}: no symptom should survive an impossible bill ceiling`,
-      ).toEqual([])
-      expect(car.apparentBandByPartId).toBeNull()
+      // `panels`' money bill rides on `surface` alone - `metal` is repaired
+      // by hand and never priced in yen. A symptom cause that damages
+      // `panels` via metal (the real content's "quarter-panel-filler"
+      // symptom: `panel-respray`, `rust-patch`) therefore adds ZERO money
+      // cost, so the money-driven Law 2 veto correctly has nothing to drop -
+      // a real, disclosed consequence of pricing labour outside yen, not a
+      // broken guard. Every OTHER surviving symptom would be a genuine
+      // violation.
+      const survivingCause = car.symptoms[0]
+        ? guardedContext.symptomsById[car.symptoms[0].symptomId]?.causes.find(
+            (c) => c.id === car.symptoms[0]!.trueCauseId,
+          )
+        : undefined
+      const survivorIsMoneyFreeBodyDamage = survivingCause?.carPartId === 'panels'
+      if (!survivorIsMoneyFreeBodyDamage) {
+        expect(
+          car.symptoms,
+          `seed ${seed}: no money-costing symptom should survive an impossible bill ceiling`,
+        ).toEqual([])
+        expect(car.apparentBandByPartId).toBeNull()
+      }
       for (const partId of ALL_CAR_PART_IDS) {
         const installed = car.parts[partId].installed
         if (!installed) continue
+        // `panels`/`paint`/`underbody` are derived from zone state
+        // (`bodyPipeline.ts`) and the softening pass never touches metal (it
+        // is money-free, so improving it would never lower the bill) - a
+        // high-metal zone (from the original roll, or a surviving
+        // money-free symptom cause) can pin the derived band below `mint`
+        // PERMANENTLY even once the carrier's own money contribution is
+        // fully exhausted at zero. The real claim for these three is "no
+        // more money left to soften", not "band is mint".
+        if (car.zoneState && isBodyDerivedPart(partId)) {
+          expect(
+            hasZoneImproveHeadroom(car.zoneState, partId),
+            `${partId}: should have no money-improve headroom left under an impossible budget`,
+          ).toBe(false)
+          continue
+        }
         expect(installed.band, `${partId} should have reverted to mint`).toBe('mint')
       }
     }

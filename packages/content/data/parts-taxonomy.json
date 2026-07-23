@@ -216,6 +216,7 @@
     "group": "body",
     "displayName": "Panels",
     "depthClass": "surface",
+    "removable": false,
     "statWeights": {
       "style": 2
     }

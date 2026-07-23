@@ -15,8 +15,8 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
-  assemblyMachineAssistFeeYen,
-  benchSwapFeeYen,
+  assemblyMachineGateGroup,
+  benchSwapGateGroup,
   dissolveAssembliesForCar,
   externalBlockersFor,
   resolveBuildAssembly,
@@ -26,7 +26,12 @@ import {
   resolveSwapAssemblyMember,
 } from '../src/assemblies'
 import { buildSimContext } from '../src/context'
-import { findLoosePart, machineAssistFeeYen, resolveReconditionLabor } from '../src/jobs'
+import {
+  findLoosePart,
+  machineAssistFeeYen,
+  removeMachineGateGroup,
+  resolveReconditionLabor,
+} from '../src/jobs'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
 import { buildCarInstance, mintCarParts, testSpecialty, testToolTiers } from './testFixtures'
@@ -41,13 +46,23 @@ const CONTEXT = buildSimContext(
   SERVICE_JOB_CUSTOMER_NAMES,
 )
 
-const WHEELS_FEE = CONTEXT.economy.machineShopAssist.feeYenByGroup.wheels
-const ENGINE_FEE = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
-const DRIVETRAIN_FEE = CONTEXT.economy.machineShopAssist.feeYenByGroup.drivetrain
-
 function def(assemblyId: AssemblyId) {
   return CONTEXT.assembliesById[assemblyId]
 }
+
+// Every machine line hired for day 1 by default (mirrors jobs.test.ts's own
+// fixture): most of this file's tests exercise labour and parts-cost
+// arithmetic, not the machine-line gate itself, so the default state assumes
+// every line already hired. Tests that mean to exercise the gate override
+// this back to `{}` explicitly.
+const ALL_LINES_HIRED_DAY_1 = {
+  engine: 1,
+  drivetrain: 1,
+  suspension: 1,
+  wheels: 1,
+  body: 1,
+  interior: 1,
+} as const
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
   return {
@@ -85,6 +100,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceJobLedgers: {},
     inspectionVisit: null,
     storyMissions: [],
+    machineHirePaidDayByGroup: { ...ALL_LINES_HIRED_DAY_1 },
     ...overrides,
   }
 }
@@ -141,7 +157,7 @@ function wrongClassTyre(id: string): PartInstance {
   }
 }
 
-describe('assembly definitions and derived gates (Sprint 87)', () => {
+describe('assembly definitions and derived gates', () => {
   it('external blockers are the union of members blockedBy pointing outside the assembly', () => {
     expect([...externalBlockersFor(def('engineAssembly'), CONTEXT)].sort()).toEqual([
       'cooling',
@@ -155,26 +171,23 @@ describe('assembly definitions and derived gates (Sprint 87)', () => {
     expect(externalBlockersFor(def('wheelAssembly'), CONTEXT)).toEqual([])
   })
 
-  it('the assembly machine fee is one fee per distinct machine group, or 0 when owned', () => {
-    const tier1 = baseState()
-    expect(assemblyMachineAssistFeeYen(def('engineAssembly'), tier1, CONTEXT)).toBe(ENGINE_FEE)
-    expect(assemblyMachineAssistFeeYen(def('gearboxAssembly'), tier1, CONTEXT)).toBe(DRIVETRAIN_FEE)
-    expect(assemblyMachineAssistFeeYen(def('wheelAssembly'), tier1, CONTEXT)).toBe(0)
-
-    const owned = baseState({ toolTiers: testToolTiers({ engine: 2, drivetrain: 2 }) })
-    expect(assemblyMachineAssistFeeYen(def('engineAssembly'), owned, CONTEXT)).toBe(0)
-    expect(assemblyMachineAssistFeeYen(def('gearboxAssembly'), owned, CONTEXT)).toBe(0)
+  it('assemblyMachineGateGroup names the one group an assembly shares, or null when none are machine-gated', () => {
+    expect(assemblyMachineGateGroup(def('engineAssembly'), CONTEXT)).toBe('engine')
+    expect(assemblyMachineGateGroup(def('gearboxAssembly'), CONTEXT)).toBe('drivetrain')
+    expect(assemblyMachineGateGroup(def('wheelAssembly'), CONTEXT)).toBeNull()
   })
 
-  it('the wheels bench fee applies only to a tyre swap, and only at tier 1', () => {
-    const tier1 = baseState()
-    expect(benchSwapFeeYen('tyres', tier1, CONTEXT)).toBe(WHEELS_FEE)
-    expect(benchSwapFeeYen('rims', tier1, CONTEXT)).toBe(0)
-    expect(
-      benchSwapFeeYen('tyres', baseState({ toolTiers: testToolTiers({ wheels: 2 }) }), CONTEXT),
-    ).toBe(0)
-    // The wheels fee is NOT the buried-slot machine gate: machineAssistFeeYen('tyres') stays 0.
-    expect(machineAssistFeeYen('tyres', tier1, CONTEXT)).toBe(0)
+  it('benchSwapGateGroup names the wheels line for a tyre swap only, distinct from the buried-slot gate', () => {
+    expect(benchSwapGateGroup('tyres')).toBe('wheels')
+    expect(benchSwapGateGroup('rims')).toBeNull()
+    // The wheels gate is NOT the buried-slot machine gate: machineAssistFeeYen('tyres') stays 0.
+    expect(machineAssistFeeYen('tyres', baseState(), CONTEXT)).toBe(0)
+  })
+
+  it('the engine assembly gate names the same group a buried camsTiming fit needs', () => {
+    expect(assemblyMachineGateGroup(def('engineAssembly'), CONTEXT)).toBe(
+      removeMachineGateGroup('camsTiming', CONTEXT),
+    )
   })
 })
 
@@ -280,8 +293,8 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
   })
 })
 
-describe('worked example: the tyre change (binding total, Sprint 87)', () => {
-  it('total 1 labour slot end to end; one wheels fee when renting, none when owning the tyre machine', () => {
+describe('worked example: the tyre change (binding total)', () => {
+  it('total 1 labour slot end to end; no cash moves here, whether owning or hiring the tyre machine', () => {
     for (const wheelsTier of [1, 2] as const) {
       const car = wheelsWornCar()
       const tyre = newTyre('pi-tyre-work')
@@ -296,16 +309,47 @@ describe('worked example: the tyre change (binding total, Sprint 87)', () => {
       const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
       const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
 
+      expect(swap.ok).toBe(true)
+      expect(on.ok).toBe(true)
       const totalLabour = off.laborSlotsUsed + on.laborSlotsUsed
       expect(totalLabour).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
-      const feePaid = state.cashYen - on.state.cashYen
-      expect(feePaid).toBe(wheelsTier >= 2 ? 0 : WHEELS_FEE)
+      // The fee is gone - fitting a tyre never spends cash directly, whether
+      // the wheels machine is owned or the line was hired for the day.
+      expect(on.state.cashYen).toBe(state.cashYen)
     }
+  })
+
+  it('fitting a tyre on the bench refuses without the wheels line owned or hired today, and proceeds once hired', () => {
+    const car = wheelsWornCar()
+    const tyre = newTyre('pi-tyre-gate')
+    const ungated = baseState({
+      ownedCars: [car],
+      partInventory: [tyre],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ wheels: 1 }),
+      machineHirePaidDayByGroup: {},
+    })
+    const off = resolveRemoveAssembly(ungated, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+    const blockedSwap = resolveSwapAssemblyMember(
+      off.state,
+      container.id,
+      'tyres',
+      tyre.id,
+      CONTEXT,
+    )
+    expect(blockedSwap.ok).toBe(false)
+    expect(blockedSwap.state).toBe(off.state)
+
+    const hired = { ...off.state, machineHirePaidDayByGroup: { wheels: off.state.day } }
+    const swap = resolveSwapAssemblyMember(hired, container.id, 'tyres', tyre.id, CONTEXT)
+    expect(swap.ok).toBe(true)
+    expect(swap.state.assemblyInventory![0]!.members.tyres!.id).toBe(tyre.id)
   })
 })
 
-describe('worked example: worn internals (binding total, Sprint 87)', () => {
-  it('remove 0 + refit 2 = 2 assembly labour; two engine fees (30,000) when renting, none when owning', () => {
+describe('worked example: worn internals (binding total)', () => {
+  it('remove 0 + refit 2 = 2 assembly labour; no fee posts to the car ledger, whether renting or owning', () => {
     for (const engineTier of [1, 2] as const) {
       const internals: PartInstance = {
         id: 'pi-internals',
@@ -340,18 +384,54 @@ describe('worked example: worn internals (binding total, Sprint 87)', () => {
       // Only internals is charged (buried install energy); block/head/cams free by equivalence.
       expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass.buried)
 
-      // Two engine assist fees end to end when renting, none when owning.
-      const removeFee = state.cashYen - off.state.cashYen
-      const refitFee = repair.state.cashYen - on.state.cashYen
-      expect(removeFee).toBe(engineTier >= 2 ? 0 : ENGINE_FEE)
-      expect(refitFee).toBe(engineTier >= 2 ? 0 : ENGINE_FEE)
-      expect(removeFee + refitFee).toBe(engineTier >= 2 ? 0 : 2 * ENGINE_FEE)
-
-      if (engineTier === 1) {
-        // The fees post to the car ledger, so mission budget caps see them.
-        expect(on.state.carLedgers[car.id]!.repairYen).toBeGreaterThanOrEqual(2 * ENGINE_FEE)
-      }
+      // No machine fee posts anywhere - remove and refit both spend only the
+      // internals repair cost, whether renting the engine line or owning it.
+      expect(state.cashYen - off.state.cashYen).toBe(0)
+      expect(repair.state.cashYen - on.state.cashYen).toBe(0)
+      expect(on.state.carLedgers[car.id]!.repairYen).toBe(0)
     }
+  })
+
+  it('refuses remove and refit alike without the engine line owned or hired today, and proceeds once hired', () => {
+    const internals: PartInstance = {
+      id: 'pi-internals-gate',
+      partId: CONTEXT.stockPartByCarPartId.common!.internals!.id,
+      band: 'worn',
+      genuinePeriod: false,
+      origin: makeCarOrigin('car-engine-gate', 'Test Car', 0),
+    }
+    const car = buildCarInstance({
+      id: 'car-engine-gate',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ internals, intake: null, exhaust: null, cooling: null }),
+    })
+    const ungated = baseState({
+      ownedCars: [car],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: {},
+    })
+
+    // Remove refuses without the line.
+    const blockedOff = resolveRemoveAssembly(ungated, car.id, 'engineAssembly', CONTEXT)
+    expect(blockedOff.ok).toBe(false)
+    expect(blockedOff.state).toBe(ungated)
+
+    // Hired for the day: remove proceeds.
+    const hired = { ...ungated, machineHirePaidDayByGroup: { engine: ungated.day } }
+    const off = resolveRemoveAssembly(hired, car.id, 'engineAssembly', CONTEXT)
+    expect(off.ok).toBe(true)
+    const container = off.state.assemblyInventory![0]!
+
+    // Refit checks the same gate independently against whatever state it's
+    // given - refuses if that state's hire record is stripped away...
+    const strippedHire = { ...off.state, machineHirePaidDayByGroup: {} }
+    expect(resolveRefitAssembly(strippedHire, container.id, CONTEXT).ok).toBe(false)
+
+    // ...and proceeds against the real, still-hired state.
+    const on = resolveRefitAssembly(off.state, container.id, CONTEXT)
+    expect(on.ok).toBe(true)
+    expect(on.state.ownedCars[0]!.parts.internals.installed!.id).toBe(internals.id)
   })
 })
 
@@ -418,7 +498,7 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     expect(pulled.state.partInventory.some((p) => p.id === originalTyres.id)).toBe(true)
     expect(pulled.state.assemblyInventory![0]!.members.tyres).toBeNull()
     // Dismounting is free and ungated: cash and energy untouched (the wheels
-    // fee is for fitting a tyre, never for pulling one off).
+    // gate is for fitting a tyre, never for pulling one off).
     expect(pulled.state.cashYen).toBe(off.state.cashYen)
     expect(pulled.state.energySpentToday).toBe(off.state.energySpentToday)
 
@@ -508,9 +588,11 @@ describe('the fitment law applies at the bench, not only on the car', () => {
   })
 })
 
-describe('renting never makes a standard tyre/brake service job loss-making (Sprint 87 decision 3b)', () => {
-  // The bread-and-butter tyre/brake service templates - the jobs a fresh shop
-  // without the tyre machine actually eats the wheels fee on.
+describe('a standard tyre/brake service job payout always covers its task cost', () => {
+  // The bread-and-butter tyre/brake service templates. The wheels machine
+  // hire fee never lands on a single job's margin - it's a running cost, the
+  // same as rent, amortised across the whole day's work rather than charged
+  // per job - so the invariant left to check is the task cost itself.
   const TEMPLATE_IDS = [
     'tyre-fit-and-balance',
     'brake-pads-service',
@@ -518,8 +600,7 @@ describe('renting never makes a standard tyre/brake service job loss-making (Spr
     'brake-system-overhaul',
   ]
 
-  it('worst-margin payout clears parts + the wheels fee, for every shitbox and common roster model', () => {
-    const tier1 = baseState() // wheels tier 1 - the wheels fee applies to a tyre op
+  it('worst-margin payout clears the task cost, for every shitbox and common roster model', () => {
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
     const shitboxCommonModels = CARS.filter((m) => {
       const fitmentClass = fitmentClassForTier(m.tier)
@@ -528,11 +609,6 @@ describe('renting never makes a standard tyre/brake service job loss-making (Spr
     const failures: string[] = []
     for (const id of TEMPLATE_IDS) {
       const template = SERVICE_JOB_TYPES.find((t) => t.id === id)!
-      // One wheels fitting fee per tyre task; a brake-only job pulls the wheel
-      // assembly for free (no tyre op), so it never eats the wheels fee.
-      const wheelsFee = template.tasks.some((t) => t.requirement.carPartId === 'tyres')
-        ? benchSwapFeeYen('tyres', tier1, CONTEXT)
-        : 0
       // Worst repairable starting band for any band-only task - maximises the
       // repair-side cost the payout has to cover.
       const overrides: Partial<Record<CarPartId, 'poor'>> = {}
@@ -542,27 +618,12 @@ describe('renting never makes a standard tyre/brake service job loss-making (Spr
       for (const model of shitboxCommonModels) {
         const car = buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
         const payout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
-        const cost =
-          serviceJobCostBreakdown(template.tasks, car, model, CONTEXT).taskCostYen + wheelsFee
+        const cost = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT).taskCostYen
         if (payout <= cost) {
-          failures.push(`${id} x ${model.id}: payout ${payout} <= parts+fee ${cost}`)
+          failures.push(`${id} x ${model.id}: payout ${payout} <= task cost ${cost}`)
         }
       }
     }
     expect(failures, failures.join('\n')).toEqual([])
-  })
-})
-
-describe('the engine assembly fee equals one engine machine fee (Sprint 87 decision 3c)', () => {
-  it('a make-it-pull-style buried camsTiming build costs the same two engine fees at the assembly level', () => {
-    const tier1 = baseState()
-    // The make-it-pull satisfiability probe (storyMissionProbes.test.ts) pins
-    // `2 * machineAssistFeeYen('camsTiming')` as the buried-slot assist cost of
-    // fitting the sport cams. At the assembly level, that is exactly one engine
-    // fee per direction of the engine-assembly round trip.
-    const perMemberFee = machineAssistFeeYen('camsTiming', tier1, CONTEXT)
-    expect(assemblyMachineAssistFeeYen(def('engineAssembly'), tier1, CONTEXT)).toBe(perMemberFee)
-    const roundTrip = 2 * assemblyMachineAssistFeeYen(def('engineAssembly'), tier1, CONTEXT)
-    expect(roundTrip).toBe(2 * perMemberFee)
   })
 })

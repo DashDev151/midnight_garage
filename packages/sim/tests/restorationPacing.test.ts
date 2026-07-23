@@ -56,7 +56,7 @@ function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): num
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1, // labor sizing is repairStepFraction-independent - this anchor is about labor, not cost
-      CONTEXT.economy.energy.energyPerGradeByTier,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
     ).laborSlotsRequired
   }
   return total

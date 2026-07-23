@@ -1,7 +1,7 @@
 import type { DayLogEntry } from '@midnight-garage/content'
-import { PARTS } from '@midnight-garage/content'
+import { PARTS, TOOL_LINES } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { describeLogEntry } from './dayLogFormat'
+import { classifyDayReport, describeLogEntry } from './dayLogFormat'
 
 // One representative of every DayLogEntry variant - guards the exhaustive
 // switch so a new/renamed entry type surfaces here rather than as a blank line.
@@ -90,6 +90,7 @@ const SAMPLES: DayLogEntry[] = [
   { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
   { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
   { type: 'machine-listed', componentId: 'wheels', tier: 2, priceYen: 150_000 },
+  { type: 'machine-hired', componentId: 'body', priceYen: 14_000 },
   { type: 'mission-accepted', missionId: 'test-mission-a' },
   {
     type: 'mission-delivered',
@@ -283,6 +284,11 @@ describe('describeLogEntry', () => {
     expect(line).toBe('Classifieds: Tyre machine & balancer listed, ¥150,000')
   })
 
+  it('a machine hire reads as the real machinery name and its daily price - the exact authored copy', () => {
+    const line = describeLogEntry({ type: 'machine-hired', componentId: 'body', priceYen: 14_000 })
+    expect(line).toBe(`Hired the ${TOOL_LINES.body.tiers[1]!.displayName} for the day (¥14,000)`)
+  })
+
   it('a mission delivered with a tip shows the tip alongside the payout', () => {
     const line = describeLogEntry({
       type: 'mission-delivered',
@@ -336,5 +342,19 @@ describe('describeLogEntry', () => {
     } as DayLogEntry)
     expect(bought).toContain(part.brand)
     expect(bought).not.toContain(part.id)
+  })
+})
+
+describe('classifyDayReport', () => {
+  it('a machine hire is both a notable line and part of the Bills figure - a running cost, like rent, but never silent', () => {
+    const view = classifyDayReport([
+      { type: 'machine-hired', componentId: 'suspension', priceYen: 5_000 },
+      { type: 'rent-paid', amountYen: -90_000 },
+    ])
+    expect(view.notable).toContain(
+      `Hired the ${TOOL_LINES.suspension.tiers[1]!.displayName} for the day (¥5,000)`,
+    )
+    // Both the hire and the rent land in the same Bills figure.
+    expect(view.money.billsYen).toBe(5_000 + 90_000)
   })
 })

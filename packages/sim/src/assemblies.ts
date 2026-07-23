@@ -4,6 +4,7 @@ import type {
   AssemblyId,
   CarInstance,
   CarPartId,
+  ComponentId,
   DayLogEntry,
   GameState,
   Part,
@@ -14,6 +15,7 @@ import type { SimContext } from './context'
 import { revealOnRemoval } from './diagnosis'
 import {
   findWorkableCar,
+  hasMachineLineFor,
   refitLaborSlotsFor,
   removeMachineGateGroup,
   type MachineGateGroup,
@@ -106,46 +108,35 @@ function memberFitsCar(
 }
 
 /**
- * The one machine-shop assist fee an assembly op owes at the current tool
- * tiers - the sum over the DISTINCT machine-gate groups its members belong to
- * (engine crane / transmission bench), each charged once, or 0 when the group
- * is already owned. Since every member of a shipped assembly shares one group,
- * this is one fee: `engineAssembly` owes one engine fee, `gearboxAssembly` one
- * drivetrain fee, `wheelAssembly` none (rims/tyres are not machine-gated).
- * Applies to both remove and refit, so a full round trip costs two fees when
- * renting.
+ * The machine-gate group an assembly's remove/refit op needs owned or hired
+ * for the day, or null when its members are not machine-gated at all -
+ * structural only, independent of ownership or hire (the same shape
+ * `removeMachineGateGroup` has for a single slot). Every shipped assembly
+ * names at most one group: `engineAssembly` engine, `gearboxAssembly`
+ * drivetrain, `wheelAssembly` none (rims/tyres are not machine-gated). The
+ * gate applies identically to remove and refit.
  */
-export function assemblyMachineAssistFeeYen(
+export function assemblyMachineGateGroup(
   def: AssemblyDef,
-  state: GameState,
   context: SimContext,
-): number {
-  const groups = new Set<MachineGateGroup>()
+): MachineGateGroup | null {
   for (const member of def.members) {
     const group = removeMachineGateGroup(member, context)
-    if (group) groups.add(group)
+    if (group) return group
   }
-  let fee = 0
-  for (const group of groups) {
-    if (state.toolTiers[group] < 2) fee += context.economy.machineShopAssist.feeYenByGroup[group]
-  }
-  return fee
+  return null
 }
 
 /**
- * The wheels-group bench fee for a tyre-into-assembly op -
- * `economy.machineShopAssist.feeYenByGroup.wheels` unless the shop owns
- * the tier-2 tyre machine. Applies only to swapping the `tyres` member;
- * every other member swap is free. Deliberately separate from
- * `machineAssistFeeYen`, which stays engine/drivetrain-only.
+ * The machine-gate group fitting a part into `memberSlot` on the bench needs
+ * owned or hired for the day - `wheels` for a tyre-into-assembly op, null for
+ * every other member (mounting is free). Structural only, independent of
+ * ownership or hire; deliberately separate from `removeMachineGateGroup`,
+ * which stays engine/drivetrain-only. Dismounting a member is never gated -
+ * only fitting one.
  */
-export function benchSwapFeeYen(
-  memberSlot: CarPartId,
-  state: GameState,
-  context: SimContext,
-): number {
-  if (memberSlot !== 'tyres') return 0
-  return state.toolTiers.wheels >= 2 ? 0 : context.economy.machineShopAssist.feeYenByGroup.wheels
+export function benchSwapGateGroup(memberSlot: CarPartId): ComponentId | null {
+  return memberSlot === 'tyres' ? 'wheels' : null
 }
 
 /** The deterministic id of the one container a given (car, assembly) can have
@@ -173,23 +164,9 @@ function writeCarBack(state: GameState, carInstanceId: string, car: CarInstance)
   return state
 }
 
-/** Posts `yen` to `repairYen` on the car's ledger (owned) or its service job's
- * ledger (customer) - the existing repair-cost path, so mission budget caps
- * and service-job billing see assembly fees exactly as they see per-slot ones. */
-function addRepairYen(state: GameState, carInstanceId: string, yen: number): GameState {
-  if (yen <= 0) return state
-  if (state.ownedCars.some((c) => c.id === carInstanceId)) {
-    return updateCarLedger(state, carInstanceId, (l) => ({ ...l, repairYen: l.repairYen + yen }))
-  }
-  const job = state.activeServiceJobs.find((sj) => sj.car.id === carInstanceId)
-  return job
-    ? updateServiceJobLedger(state, job.id, (l) => ({ ...l, repairYen: l.repairYen + yen }))
-    : state
-}
-
-/** Posts `yen` to `partsYen`, same owned/customer dispatch as `addRepairYen` -
- * a changed member refitted onto the car lands its paid price on the bill, the
- * way `completeJob`'s install-part branch does. */
+/** Posts `yen` to `partsYen` on the car's ledger (owned) or its service job's
+ * ledger (customer) - a changed member refitted onto the car lands its paid
+ * price on the bill, the way `completeJob`'s install-part branch does. */
 function addPartsYen(state: GameState, carInstanceId: string, yen: number): GameState {
   if (yen <= 0) return state
   if (state.ownedCars.some((c) => c.id === carInstanceId)) {
@@ -223,14 +200,16 @@ function anyMemberBusy(
  * Remove an assembly as a unit (car-level). Legal when every external
  * blocker is vacant and no member has an open job; labour is
  * `energy.actionPoints.removeAssembly` (0 in shipped content), gated on
- * `laborAvailable` when raised; the machine gate is satisfied by ownership or
- * the assist fee (posted to the car/job ledger). Each installed member moves into
+ * `laborAvailable` when raised; the machine gate (`assemblyMachineGateGroup`)
+ * needs that group's line owned or hired for the day - a running cost, never
+ * posted to the car's own ledger. Each installed member moves into
  * one container in `assemblyInventory`, and each vacated member slot stamps its
  * `vacatedBaseline` exactly as per-slot removal does - so refit later reads
  * those baselines back for the equivalence charge. An already-empty member slot
  * simply carries `null` into the container, its car slot untouched. Refuses
  * (no-op, `ok:false`) with nothing to pull, an occupied external blocker, an
- * open member job, or an existing container for this (car, assembly).
+ * open member job, an existing container for this (car, assembly), or the
+ * machine gate unmet.
  */
 export function resolveRemoveAssembly(
   state: GameState,
@@ -253,7 +232,9 @@ export function resolveRemoveAssembly(
   const laborSlotsUsed = context.economy.energy.actionPoints.removeAssembly
   if (laborSlotsUsed > laborAvailable) return fail
 
-  const assistFeeYen = assemblyMachineAssistFeeYen(def, state, context)
+  const gateGroup = assemblyMachineGateGroup(def, context)
+  if (gateGroup && !hasMachineLineFor(gateGroup, state)) return fail
+
   const isOwned = state.ownedCars.some((c) => c.id === carInstanceId)
   const members: AssemblyContainer['members'] = {}
   const log: DayLogEntry[] = []
@@ -308,9 +289,8 @@ export function resolveRemoveAssembly(
     ...withCar,
     assemblyInventory: [...(withCar.assemblyInventory ?? []), container],
     energySpentToday: withCar.energySpentToday + laborSlotsUsed,
-    cashYen: withCar.cashYen - assistFeeYen,
   }
-  return { state: addRepairYen(next, carInstanceId, assistFeeYen), log, laborSlotsUsed, ok: true }
+  return { state: next, log, laborSlotsUsed, ok: true }
 }
 
 /**
@@ -320,8 +300,9 @@ export function resolveRemoveAssembly(
  * `vacatedBaseline` refits at `energy.actionPoints.refitUnchangedMember`
  * (also 0 today, via `refitLaborSlotsFor`), a changed member charges its
  * normal install labour (`installLaborSlotsFor`, reading
- * `economy.energy.energyByClass`). The machine gate applies as
- * on removal (so a full round trip is two fees when renting). Each changed
+ * `economy.energy.energyByClass`). The machine gate applies as on removal -
+ * that group's line owned or hired for the day, one hire covering every
+ * operation on it for the whole day, remove and refit alike. Each changed
  * member's `pricePaidYen` lands on the bill. The container dissolves back into
  * the car's slots. `overrideCarId` refits a bench-BUILT assembly (no
  * `sourceCarId`) onto a chosen car - every member is then new to that car, so
@@ -334,8 +315,8 @@ export function resolveRemoveAssembly(
  * member either never left that car or was already fitment-checked against
  * it by `resolveSwapAssemblyMember`. Refuses if the car is gone, an external
  * blocker is occupied, a target slot is already full, a foreign-car member
- * does not fit, or the total labour exceeds `laborAvailable` (the op is
- * atomic).
+ * does not fit, the machine gate is unmet, or the total labour exceeds
+ * `laborAvailable` (the op is atomic).
  */
 export function resolveRefitAssembly(
   state: GameState,
@@ -379,7 +360,9 @@ export function resolveRefitAssembly(
   }
   if (laborSlotsRequired > laborAvailable) return fail
 
-  const assistFeeYen = assemblyMachineAssistFeeYen(def, state, context)
+  const gateGroup = assemblyMachineGateGroup(def, context)
+  if (gateGroup && !hasMachineLineFor(gateGroup, state)) return fail
+
   let parts = { ...car.parts }
   let partsCostYen = 0
   for (const member of def.members) {
@@ -394,9 +377,7 @@ export function resolveRefitAssembly(
     ...withCar,
     assemblyInventory: (withCar.assemblyInventory ?? []).filter((c) => c.id !== containerId),
     energySpentToday: withCar.energySpentToday + laborSlotsRequired,
-    cashYen: withCar.cashYen - assistFeeYen,
   }
-  next = addRepairYen(next, carInstanceId, assistFeeYen)
   next = addPartsYen(next, carInstanceId, partsCostYen)
   return { state: next, log: [], laborSlotsUsed: laborSlotsRequired, ok: true }
 }
@@ -412,12 +393,13 @@ export interface AssemblyMemberMoveResult {
  * `newPartInstanceId` from the parts bin into the member slot, and the displaced
  * member (if any) back to the bin. Labour is `energy.actionPoints.benchFitMember`
  * (0 in shipped content), gated on `laborAvailable` when raised. A
- * tyre-into-assembly op costs the wheels bench fee unless the tier-2 tyre
- * machine is owned (`benchSwapFeeYen`), posted to the source car's ledger.
+ * tyre-into-assembly op needs the wheels line owned or hired for the day
+ * (`benchSwapGateGroup`); every other member swap is ungated.
  * Refuses if the container/part is missing, the part does not address this
- * member slot, the part is scrap, or (for a container pulled off a car) the
- * part's fitment class does not match that car's (`memberFitsCar`) - the
- * fitment law applies at the bench, not only on the car.
+ * member slot, the part is scrap, the machine gate is unmet, or (for a
+ * container pulled off a car) the part's fitment class does not match that
+ * car's (`memberFitsCar`) - the fitment law applies at the bench, not only
+ * on the car.
  */
 export function resolveSwapAssemblyMember(
   state: GameState,
@@ -445,7 +427,9 @@ export function resolveSwapAssemblyMember(
   const laborSlotsUsed = context.economy.energy.actionPoints.benchFitMember
   if (laborSlotsUsed > laborAvailable) return fail
 
-  const feeYen = benchSwapFeeYen(memberSlot, state, context)
+  const gateGroup = benchSwapGateGroup(memberSlot)
+  if (gateGroup && !hasMachineLineFor(gateGroup, state)) return fail
+
   const displaced = container.members[memberSlot] ?? null
   const nextContainers = [...containers]
   nextContainers[containerIndex] = {
@@ -454,14 +438,12 @@ export function resolveSwapAssemblyMember(
   }
   let partInventory = state.partInventory.filter((p) => p.id !== newPartInstanceId)
   if (displaced) partInventory = [...partInventory, displaced]
-  let next: GameState = {
+  const next: GameState = {
     ...state,
     assemblyInventory: nextContainers,
     partInventory,
     energySpentToday: state.energySpentToday + laborSlotsUsed,
-    cashYen: state.cashYen - feeYen,
   }
-  if (container.sourceCarId) next = addRepairYen(next, container.sourceCarId, feeYen)
   return { state: next, log: [], ok: true }
 }
 
@@ -472,7 +454,7 @@ export function resolveSwapAssemblyMember(
  * members, and `resolveSwapAssemblyMember` fits into an empty slot exactly as
  * it displaces a full one. Labour is `energy.actionPoints.benchRemoveMember`
  * (0 in shipped content), gated on `laborAvailable` when raised; the
- * wheels-group fee is for FITTING a tyre, never for dismounting one.
+ * wheels-line gate applies to FITTING a tyre, never to dismounting one.
  * Refuses if the container, member slot, or mounted instance is missing.
  */
 export function resolveRemoveAssemblyMember(

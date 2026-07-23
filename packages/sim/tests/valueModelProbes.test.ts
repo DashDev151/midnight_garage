@@ -301,7 +301,7 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         CONTEXT.economy.restoration.repairStepFraction,
-        CONTEXT.economy.energy.energyPerGradeByTier,
+        CONTEXT.economy.energy.energyPerBandStepByToolTier,
       ).costYen
     }
     return total
@@ -445,7 +445,7 @@ function applyGroupRepairToBand(
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
     CONTEXT.economy.restoration.repairStepFraction,
-    CONTEXT.economy.energy.energyPerGradeByTier,
+    CONTEXT.economy.energy.energyPerBandStepByToolTier,
   )
   let parts = car.parts
   for (const partId of plan.partIds) {
@@ -816,13 +816,15 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
   if (!SHITBOX_MODEL) throw new Error('fixture shitbox-tier car missing from seed content')
 
   // The build, in real shitbox-class catalog SKUs: a race engine (block +
-  // internals), a race turbo, and expensive cosmetics (livery + aero) -
-  // each bought at full catalog price at the parts market.
+  // internals), a race turbo, and an expensive cosmetic (race aero) - each
+  // bought at full catalog price at the parts market. The old second
+  // cosmetic (a livery paint finish) is gone: `paint` is a derived body
+  // value carrier now and carries no aftermarket grades
+  // (`bodyPipeline.ts`) - `aero` alone carries the cosmetic premium here.
   const RACE_PART_IDS = [
     'shitbox-hagane-race-block',
     'shitbox-oni-race-piston-kit',
     'shitbox-khs-tr-500',
-    'shitbox-akai-full-livery-wrap',
     'shitbox-frp-race-aero',
   ] as const
 

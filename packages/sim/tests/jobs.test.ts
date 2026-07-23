@@ -16,6 +16,7 @@ import {
   completeJob,
   createJob,
   findOrCreateJob,
+  hasMachineLineFor,
   installLaborSlotsFor,
   machineAssistFeeYen,
   naToTurboConversionBlocked,
@@ -77,6 +78,23 @@ const sparePart: PartInstance = {
   origin: makeMarketOrigin(1),
 }
 
+// Every machine line hired for day 1 by default - this file's fixture car
+// (body 'poor', suspension/interior/etc. 'worn') routes most of its repair
+// and install specs through a signature or buried slot, and the machine-line
+// gate (case (a), an intentional change from a per-operation fee to a daily
+// hire) would otherwise block almost every test in this file for a reason
+// unrelated to what each test actually means to exercise. Tests that mean to
+// exercise the gate itself override this back to `{}` (or omit a group)
+// explicitly.
+const ALL_LINES_HIRED_DAY_1 = {
+  engine: 1,
+  drivetrain: 1,
+  suspension: 1,
+  wheels: 1,
+  body: 1,
+  interior: 1,
+} as const
+
 function baseState(overrides: Partial<GameState> = {}): GameState {
   return {
     day: 1,
@@ -113,6 +131,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     serviceJobLedgers: {},
     inspectionVisit: null,
     storyMissions: [],
+    machineHirePaidDayByGroup: { ...ALL_LINES_HIRED_DAY_1 },
     ...overrides,
   }
 }
@@ -162,7 +181,7 @@ describe('completeJob', () => {
       laborSlotsSpent: 3,
     }
     const result = completeJob(baseState(), job, CONTEXT)
-    expect(result.blockedByOccupiedSlot).toBe(false)
+    expect(result.blockedReason).toBeNull()
     const parts = result.state.ownedCars[0]!.parts
     expect(parts.panels.installed?.band).toBe('mint')
     expect(parts.paint.installed?.band).toBe('mint')
@@ -183,7 +202,7 @@ describe('completeJob', () => {
       laborSlotsSpent: 1,
     }
     const result = completeJob(baseState(), job, CONTEXT)
-    expect(result.blockedByOccupiedSlot).toBe(false)
+    expect(result.blockedReason).toBeNull()
     // The catalog part's own carPartId (dampers) is the real target slot.
     expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
     // sparePart is mint by construction, so this happens to also be mint -
@@ -192,7 +211,7 @@ describe('completeJob', () => {
     expect(result.state.partInventory).toHaveLength(0)
   })
 
-  it("Sprint 42: a completed install-part job on an OWNED car adds the part's pricePaidYen to the car's ledger partsYen (Sprint 92: dampers is a suspension signature slot, so the tier-1 install also owes the assist fee as repairYen)", () => {
+  it("a completed install-part job on an OWNED car adds the part's pricePaidYen to the car's ledger partsYen - a suspension signature slot (dampers) never adds a fee to repairYen anymore, since access is gated (hired for the day) rather than charged", () => {
     const pricedPart: PartInstance = { ...sparePart, id: 'pi-priced', pricePaidYen: 42_000 }
     const job: Job = {
       id: 'job-priced',
@@ -206,12 +225,12 @@ describe('completeJob', () => {
     const result = completeJob(baseState({ partInventory: [pricedPart] }), job, CONTEXT)
     expect(result.state.carLedgers[car.id]).toEqual({
       purchaseYen: null,
-      repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
+      repairYen: 0,
       partsYen: 42_000,
     })
   })
 
-  it('Sprint 42: a completed install-part job with no pricePaidYen (unknown) adds 0 partsYen, still creating the ledger entry (Sprint 92: the suspension signature-slot assist fee still lands on repairYen)', () => {
+  it('a completed install-part job with no pricePaidYen (unknown) adds 0 partsYen, still creating the ledger entry', () => {
     const job: Job = {
       id: 'job-unpriced',
       carInstanceId: car.id,
@@ -224,7 +243,7 @@ describe('completeJob', () => {
     const result = completeJob(baseState(), job, CONTEXT)
     expect(result.state.carLedgers[car.id]).toEqual({
       purchaseYen: null,
-      repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
+      repairYen: 0,
       partsYen: 0,
     })
   })
@@ -276,7 +295,7 @@ describe('completeJob', () => {
     )
     expect(result.state.carLedgers).toEqual({})
     expect(result.state.serviceJobLedgers[owningJob.id]).toEqual({
-      repairYen: CONTEXT.economy.machineShopAssist.feeYenByGroup.suspension,
+      repairYen: 0,
       partsYen: 42_000,
     })
   })
@@ -307,8 +326,25 @@ describe('completeJob', () => {
       laborSlotsSpent: 1,
     }
     const result = completeJob(baseState({ ownedCars: [occupiedCar] }), job, CONTEXT)
-    expect(result.blockedByOccupiedSlot).toBe(true)
+    expect(result.blockedReason).toBe('slot-occupied')
     expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe('pi-existing')
+    expect(result.state.partInventory).toHaveLength(1)
+  })
+
+  it('an install-part job addressed at a machine-line-gated slot is blocked (not applied) when the line is neither owned nor hired today', () => {
+    const job: Job = {
+      id: 'job-gated',
+      carInstanceId: car.id,
+      kind: 'install-part',
+      componentId: 'suspension',
+      partInstanceId: sparePart.id,
+      laborSlotsRequired: 1,
+      laborSlotsSpent: 1,
+    }
+    const result = completeJob(baseState({ machineHirePaidDayByGroup: {} }), job, CONTEXT)
+    expect(result.blockedReason).toBe('machine-line')
+    // Nothing moved: the car and the inventory are both untouched.
+    expect(result.state.ownedCars[0]?.parts.dampers.installed).toBeNull()
     expect(result.state.partInventory).toHaveLength(1)
   })
 })
@@ -382,14 +418,30 @@ describe('findOrCreateJob (Sprint 11)', () => {
       laborSlotsRequired: 3,
     }
 
-    it('repair proceeds at tier 1 with nothing upgraded - there is no ownership refusal anymore', () => {
+    it('repair proceeds at tier 1 with nothing upgraded, given the body line is hired for the day - there is no ownership refusal', () => {
       const result = findOrCreateJob(baseState({ toolTiers: testToolTiers() }), spec, CONTEXT)
       expect(result.job).not.toBeNull()
       expect(result.state.jobs).toHaveLength(1)
       expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
     })
 
-    it("charges exactly the group's real (tier-scaled) repair cost plus the Sprint 92 body signature-slot assist fee, deducted from cash - no consumables fee (Sprint 47)", () => {
+    it('refuses to create the job at all when the body line is neither owned nor hired today - a signature-slot repair (panels/underbody) is machine-line gated, not fee-charged', () => {
+      const result = findOrCreateJob(
+        baseState({ toolTiers: testToolTiers(), machineHirePaidDayByGroup: {} }),
+        spec,
+        CONTEXT,
+      )
+      expect(result.job).toBeNull()
+      expect(result.log).toEqual([
+        {
+          type: 'job-blocked',
+          jobId: `job-${car.id}-repair-zone-body`,
+          reason: 'machine-line',
+        },
+      ])
+    })
+
+    it("charges exactly the group's real (tier-scaled) repair cost, deducted from cash - no consumables fee and no per-operation assist fee (the body line's hire is a separate, once-a-day charge, not part of this repair's own price)", () => {
       const plan = planGroupRepair(
         car,
         'body',
@@ -399,26 +451,24 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
-        CONTEXT.economy.energy.energyPerGradeByTier,
+        CONTEXT.economy.energy.energyPerBandStepByToolTier,
       )
-      // The body group's signature slots owe the one-per-job assist fee too.
-      const totalCostYen = plan.costYen + CONTEXT.economy.machineShopAssist.feeYenByGroup.body
       const cashBefore = baseState().cashYen
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.job).not.toBeNull()
-      expect(result.state.cashYen).toBe(cashBefore - totalCostYen)
+      expect(result.state.cashYen).toBe(cashBefore - plan.costYen)
       expect(result.log).toEqual([
         {
           type: 'job-created',
           jobId: result.job!.id,
           carInstanceId: car.id,
           kind: 'repair-zone',
-          costYen: totalCostYen,
+          costYen: plan.costYen,
         },
       ])
     })
 
-    it('Sprint 42: creates the ledger entry and adds the full repair charge (plus the Sprint 92 body assist fee) as repairYen for an OWNED car', () => {
+    it('creates the ledger entry and adds the plan cost, with no assist fee, as repairYen for an OWNED car', () => {
       const plan = planGroupRepair(
         car,
         'body',
@@ -428,13 +478,12 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
-        CONTEXT.economy.energy.energyPerGradeByTier,
+        CONTEXT.economy.energy.energyPerBandStepByToolTier,
       )
-      const totalCostYen = plan.costYen + CONTEXT.economy.machineShopAssist.feeYenByGroup.body
       const result = findOrCreateJob(baseState(), spec, CONTEXT)
       expect(result.state.carLedgers[car.id]).toEqual({
         purchaseYen: null,
-        repairYen: totalCostYen,
+        repairYen: plan.costYen,
         partsYen: 0,
       })
     })
@@ -461,7 +510,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
-        CONTEXT.economy.energy.energyPerGradeByTier,
+        CONTEXT.economy.energy.energyPerBandStepByToolTier,
       )
       const t1Plan = planGroupRepair(
         car,
@@ -472,7 +521,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
-        CONTEXT.economy.energy.energyPerGradeByTier,
+        CONTEXT.economy.energy.energyPerBandStepByToolTier,
       )
       expect(t2Plan.costYen).toBe(t1Plan.costYen)
       expect(t2Plan.laborSlotsRequired).toBeLessThan(t1Plan.laborSlotsRequired)
@@ -504,7 +553,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         CONTEXT.partsById,
         CONTEXT.partsTaxonomyById,
         REPAIR_STEP_FRACTION,
-        CONTEXT.economy.energy.energyPerGradeByTier,
+        CONTEXT.economy.energy.energyPerBandStepByToolTier,
       )
       const totalCostYen = plan.costYen
       const broke = baseState({ cashYen: totalCostYen - 1 })
@@ -1196,20 +1245,22 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   it('removing a stock part drops it to inventory and leaves the slot genuinely empty', () => {
-    // car.parts.panels is a mint-of-condition 'poor' stock part per the
+    // car.parts.aero is a mint-of-condition 'poor' stock part per the
     // module-level fixture's body-group override - a real stock instance,
-    // not aftermarket.
-    const originalInstance = car.parts.panels.installed!
+    // not aftermarket. `panels`/`paint`/`underbody` are excluded here: they
+    // are derived body value carriers, never removable as a whole slot
+    // (`bodyPipeline.ts`) - `aero` is the body-group part that still is.
+    const originalInstance = car.parts.aero.installed!
     const state = baseState({ partInventory: [] })
-    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    const result = resolveRemovePart(state, car.id, 'aero', CONTEXT)
 
-    expect(result.state.ownedCars[0]?.parts.panels.installed).toBeNull()
+    expect(result.state.ownedCars[0]?.parts.aero.installed).toBeNull()
     expect(result.state.partInventory).toEqual([originalInstance])
     expect(result.log).toEqual([
       {
         type: 'part-removed',
         carInstanceId: car.id,
-        carPartId: 'panels',
+        carPartId: 'aero',
         partInstanceId: originalInstance.id,
       },
     ])
@@ -1266,7 +1317,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     description: 'Bodywork needs sorting.',
     tasks: [
       {
-        requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+        requirement: { kind: 'slotCondition', carPartId: 'aero', minBand: 'fine' },
         minToolTier: 1,
       },
     ],
@@ -1280,17 +1331,17 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   }
 
   it('Sprint 35 decision 2: removing a part from a CUSTOMER car keeps it in inventory, with its origin unchanged', () => {
-    const originalInstance = car.parts.panels.installed!
+    const originalInstance = car.parts.aero.installed!
     const state = baseState({
       ownedCars: [],
       activeServiceJobs: [customerServiceJob],
       partInventory: [],
     })
-    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    const result = resolveRemovePart(state, car.id, 'aero', CONTEXT)
 
-    // The slot still updates exactly like the owned-car case (panels is
+    // The slot still updates exactly like the owned-car case (aero is
     // stock, so the slot goes genuinely empty)...
-    expect(result.state.activeServiceJobs[0]?.car.parts.panels.installed).toBeNull()
+    expect(result.state.activeServiceJobs[0]?.car.parts.aero.installed).toBeNull()
     // ...and the removed part lands in OUR inventory byte-identical, its
     // ownership (`origin`) never rewritten by removal.
     expect(result.state.partInventory).toEqual([originalInstance])
@@ -1298,7 +1349,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       {
         type: 'part-removed',
         carInstanceId: car.id,
-        carPartId: 'panels',
+        carPartId: 'aero',
         partInstanceId: originalInstance.id,
       },
     ])
@@ -1323,9 +1374,9 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   it('Sprint 35: removing the same part from an OWNED car keeps its origin unchanged too', () => {
-    const originalInstance = car.parts.panels.installed!
+    const originalInstance = car.parts.aero.installed!
     const state = baseState({ partInventory: [] }) // ownedCars: [car] by default
-    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    const result = resolveRemovePart(state, car.id, 'aero', CONTEXT)
     expect(result.state.partInventory).toEqual([originalInstance])
   })
 
@@ -1362,7 +1413,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   it("refuses removing 'clutch' until 'gearbox' is off, and 'gearbox' until 'driveline' + 'exhaust' are both off", () => {
     const state = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
 
-    expect(removeBlockReason(car, 'clutch', CONTEXT)).toEqual({
+    expect(removeBlockReason(car, 'clutch', state, CONTEXT)).toEqual({
       kind: 'blocked-by',
       blockedBy: ['gearbox'],
     })
@@ -1370,7 +1421,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(clutchBlocked.state).toBe(state)
     expect(clutchBlocked.log).toEqual([])
 
-    expect(removeBlockReason(car, 'gearbox', CONTEXT)).toEqual({
+    expect(removeBlockReason(car, 'gearbox', state, CONTEXT)).toEqual({
       kind: 'blocked-by',
       blockedBy: ['driveline', 'exhaust'],
     })
@@ -1419,8 +1470,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(machineAssistFeeYen('gearbox', tierTwo, CONTEXT)).toBe(0)
   })
 
-  it('installing a buried ENGINE-group part below engine tier 2 charges the assist fee at completion, free at tier 2', () => {
-    const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
+  it('installing a buried ENGINE-group part is blocked without the engine line owned or hired today, and completes with no assist fee once it is (either way)', () => {
     const stockCams = CONTEXT.stockPartByCarPartId.shitbox!.camsTiming!
     const newCams: PartInstance = {
       id: 'pi-new-cams',
@@ -1442,28 +1492,49 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       partInstanceId: newCams.id,
       laborSlotsRequired: installLaborSlotsFor('camsTiming', CONTEXT),
     }
-    const tierOneState = baseState({
+
+    // Tier 1, engine neither owned nor hired today: the install labours
+    // fully but does not complete - blocked, not fee-charged.
+    const ungatedState = baseState({
       ownedCars: [carReady],
       partInventory: [newCams],
       serviceBayCarIds: [car.id],
       toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: {},
     })
-    const cashBefore = tierOneState.cashYen
-    const installed = resolveJobLabor(tierOneState, spec, Infinity, CONTEXT)
-    expect(installed.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
-    expect(installed.state.cashYen).toBe(cashBefore - engineFee)
-    expect(installed.state.carLedgers[car.id]?.repairYen).toBe(engineFee)
+    const cashBefore = ungatedState.cashYen
+    const blocked = resolveJobLabor(ungatedState, spec, Infinity, CONTEXT)
+    expect(blocked.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
+    expect(blocked.state.cashYen).toBe(cashBefore)
+    expect(blocked.log.some((e) => e.type === 'job-blocked' && e.reason === 'machine-line')).toBe(
+      true,
+    )
 
-    // At tier 2 the same install owes no assist fee.
-    const tierTwoState = baseState({
+    // Tier 1, engine hired for today: completes, no fee anywhere - cash only
+    // ever moves for the part itself (paid at purchase, not here).
+    const hiredState = baseState({
+      ownedCars: [carReady],
+      partInventory: [newCams],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: { engine: 1 },
+    })
+    const hiredInstall = resolveJobLabor(hiredState, spec, Infinity, CONTEXT)
+    expect(hiredInstall.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
+    expect(hiredInstall.state.cashYen).toBe(hiredState.cashYen)
+    expect(hiredInstall.state.carLedgers[car.id]?.repairYen).toBe(0)
+
+    // Tier 2 (owned outright): completes, no fee, same as hired.
+    const ownedState = baseState({
       ownedCars: [carReady],
       partInventory: [newCams],
       serviceBayCarIds: [car.id],
       toolTiers: testToolTiers({ engine: 2 }),
     })
-    const freeInstall = resolveJobLabor(tierTwoState, spec, Infinity, CONTEXT)
-    expect(freeInstall.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
-    expect(freeInstall.state.cashYen).toBe(tierTwoState.cashYen)
+    const ownedInstall = resolveJobLabor(ownedState, spec, Infinity, CONTEXT)
+    expect(ownedInstall.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
+    expect(ownedInstall.state.cashYen).toBe(ownedState.cashYen)
+    expect(ownedInstall.state.carLedgers[car.id]?.repairYen).toBe(0)
   })
 
   /**
@@ -1477,8 +1548,44 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(0)
     expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(0)
     expect(installLaborSlotsFor('panels', CONTEXT)).toBe(byClass.surface) // 0
-    expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(byClass['bolt-on']) // 10
-    expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(byClass.buried) // 20
+    expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(byClass['bolt-on']) // 3
+    expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(byClass.buried) // 6
+  })
+
+  // `resolveRemovePart`'s own buried-removal machine-line gate
+  // (`removeMachineGateGroup` + `hasMachineLineFor`, jobs.ts) is unreachable
+  // through the real catalog: every buried engine/drivetrain taxonomy entry
+  // (block, internals, headValvetrain, camsTiming, gearbox, clutch) is an
+  // assembly member, which `resolveRemovePart` refuses outright before the
+  // machine-gate check ever runs (assembly members come off only via
+  // `resolveRemoveAssembly`, out of this sprint's scope) - so this tests the
+  // gate combinator itself, the same way `machineAssistFeeYen`'s tests above
+  // exercise the fee helper directly.
+  it("hasMachineLineFor combines ownership and today's hire the same way the removal/install gates read it", () => {
+    const notOwnedNotHired = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: {},
+    })
+    expect(hasMachineLineFor('engine', notOwnedNotHired)).toBe(false)
+
+    const hiredToday = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: { engine: 1 },
+    })
+    expect(hasMachineLineFor('engine', hiredToday)).toBe(true)
+
+    const hiredYesterday = baseState({
+      day: 2,
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: { engine: 1 },
+    })
+    expect(hasMachineLineFor('engine', hiredYesterday)).toBe(false)
+
+    const owned = baseState({
+      toolTiers: testToolTiers({ engine: 2 }),
+      machineHirePaidDayByGroup: {},
+    })
+    expect(hasMachineLineFor('engine', owned)).toBe(true)
   })
 
   it('a removal succeeds even when zero labour is offered today, since removal now costs nothing', () => {
@@ -1790,14 +1897,15 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
 
 describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): the reveal-on-removal rule', () => {
   /** Two causes on two different real, always-installed parts of the module
-   * `car` fixture (`panels`/`seats`, both surface, both freely removable) -
-   * just enough to prove the owned-car branch of `resolveRemovePart`
-   * actually reaches `revealOnRemoval`, both branches. */
+   * `car` fixture (`aero`/`seats`, both surface, both freely removable -
+   * `panels` no longer is: it is a derived body value carrier, never a whole
+   * removable slot) - just enough to prove the owned-car branch of
+   * `resolveRemovePart` actually reaches `revealOnRemoval`, both branches. */
   const REVEAL_TEST_SYMPTOM = {
     id: 'reveal-test-symptom',
     cardLine: 'Reveal test symptom.',
     causes: [
-      { id: 'cause-panels', carPartId: 'panels' as const, setBand: 'poor' as const, weight: 50 },
+      { id: 'cause-aero', carPartId: 'aero' as const, setBand: 'poor' as const, weight: 50 },
       { id: 'cause-seats', carPartId: 'seats' as const, setBand: 'poor' as const, weight: 50 },
     ],
     tests: [],
@@ -1825,7 +1933,7 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
         {
           symptomId: 'reveal-test-symptom',
           trueCauseId,
-          remainingCauseIds: ['cause-panels', 'cause-seats'],
+          remainingCauseIds: ['cause-aero', 'cause-seats'],
           runTestIds: [],
         },
       ],
@@ -1833,22 +1941,22 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
   }
 
   it('removing the part the true cause targets reveals it: the part-removed log entry gains revealedCauseId, and the symptom collapses to [trueCauseId]', () => {
-    const state = baseState({ ownedCars: [carWithRevealSymptom('cause-panels')] })
-    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT_WITH_SYMPTOM)
+    const state = baseState({ ownedCars: [carWithRevealSymptom('cause-aero')] })
+    const result = resolveRemovePart(state, car.id, 'aero', CONTEXT_WITH_SYMPTOM)
     expect(result.log).toEqual([
       {
         type: 'part-removed',
         carInstanceId: car.id,
-        carPartId: 'panels',
-        partInstanceId: car.parts.panels.installed!.id,
-        revealedCauseId: 'cause-panels',
+        carPartId: 'aero',
+        partInstanceId: car.parts.aero.installed!.id,
+        revealedCauseId: 'cause-aero',
       },
     ])
-    expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-panels'])
+    expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-aero'])
   })
 
   it('removing a part the true cause does NOT target silently narrows without a reveal line: no revealedCauseId key on the log entry, the other candidate is eliminated', () => {
-    const state = baseState({ ownedCars: [carWithRevealSymptom('cause-panels')] })
+    const state = baseState({ ownedCars: [carWithRevealSymptom('cause-aero')] })
     const result = resolveRemovePart(state, car.id, 'seats', CONTEXT_WITH_SYMPTOM)
     expect(result.log).toEqual([
       {
@@ -1859,29 +1967,29 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
       },
     ])
     expect(result.log[0]).not.toHaveProperty('revealedCauseId')
-    expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-panels'])
+    expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['cause-aero'])
   })
 
   describe('completeJob wiring to pruneCuredCauses (cure-on-repair)', () => {
     it('a completed per-part repair-zone job that raises a resolved cause’s part past its setBand cures the symptom outright - it leaves car.symptoms entirely', () => {
-      const base = carWithRevealSymptom('cause-panels')
+      const base = carWithRevealSymptom('cause-aero')
       const resolvedCar: CarInstance = {
         ...base,
-        symptoms: [{ ...base.symptoms[0]!, remainingCauseIds: ['cause-panels'] }],
+        symptoms: [{ ...base.symptoms[0]!, remainingCauseIds: ['cause-aero'] }],
       }
       const state = baseState({ ownedCars: [resolvedCar] })
       const job: Job = {
-        id: 'job-cure-panels',
+        id: 'job-cure-aero',
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        carPartId: 'panels',
+        carPartId: 'aero',
         targetBand: 'mint',
         laborSlotsRequired: 1,
         laborSlotsSpent: 1,
       }
       const result = completeJob(state, job, CONTEXT_WITH_SYMPTOM)
-      expect(result.state.ownedCars[0]!.parts.panels.installed?.band).toBe('mint')
+      expect(result.state.ownedCars[0]!.parts.aero.installed?.band).toBe('mint')
       expect(result.state.ownedCars[0]!.symptoms).toEqual([])
     })
 
@@ -1962,7 +2070,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       REPAIR_STEP_FRACTION,
-      CONTEXT.economy.energy.energyPerGradeByTier,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
       'panels',
     )
 
@@ -2014,7 +2122,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       REPAIR_STEP_FRACTION,
-      CONTEXT.economy.energy.energyPerGradeByTier,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
       'panels',
     )
     const carResult = resolveJobLabor(
@@ -2033,13 +2141,13 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     )
     const carCashSpent = carState.cashYen - carResult.state.cashYen
     const carLaborSpent = carResult.state.energySpentToday
-    // panels is a body signature slot: the on-car repair also owes the body
-    // machine-shop assist fee, a tool-tier charge on top of the intrinsic price.
-    const bodyFeeYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.body
+    // panels is a body signature slot: the on-car repair needs the body line
+    // (owned or hired for the day, granted by this file's fixture default)
+    // but owes no per-operation fee on top of the intrinsic price anymore.
     expect(carResult.state.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
     expect(carCashSpent).toBeGreaterThan(0)
     expect(carLaborSpent).toBeGreaterThan(0)
-    expect(carCashSpent).toBe(onCarPlan.costYen + bodyFeeYen)
+    expect(carCashSpent).toBe(onCarPlan.costYen)
 
     // In-inventory: recondition the identical loose part (same catalog part,
     // same starting band) to mint - the SAME repairStepFraction, priced off
@@ -2055,7 +2163,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       REPAIR_STEP_FRACTION,
-      CONTEXT.economy.energy.energyPerGradeByTier,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
       'panels',
     )
     const invResult = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
@@ -2066,9 +2174,10 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     // Same labor either way (tier-independent labor sizing, unchanged).
     expect(invLaborSpent).toBe(carLaborSpent)
     // The arbitrage-death assertion: the intrinsic repair price is identical
-    // either way; the bench and on-car costs differ by exactly the body fee.
+    // either way, and now the two paths cost exactly the same cash too -
+    // the machine line is a gate, not a bench-vs-car price difference.
     expect(onCarPlan.costYen).toBe(benchPlan.costYen)
-    expect(carCashSpent).toBe(invCashSpent + bodyFeeYen)
+    expect(carCashSpent).toBe(invCashSpent)
     // The loose part climbed to mint (and is no longer an open job).
     expect(invResult.state.partInventory[0]?.band).toBe('fine')
     expect(invResult.state.jobs).toHaveLength(0)
@@ -2092,8 +2201,12 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       'fine',
       CONTEXT,
     )!
-    expect(t1Quote.laborSlotsRequired).toBe(2 * CONTEXT.economy.energy.energyPerGradeByTier[1])
-    expect(t3Quote.laborSlotsRequired).toBe(2 * CONTEXT.economy.energy.energyPerGradeByTier[3])
+    expect(t1Quote.laborSlotsRequired).toBe(
+      2 * CONTEXT.economy.energy.energyPerBandStepByToolTier[1],
+    )
+    expect(t3Quote.laborSlotsRequired).toBe(
+      2 * CONTEXT.economy.energy.energyPerBandStepByToolTier[3],
+    )
 
     const t3Plan = planGroupRepair(
       carWithPoorPanels(),
@@ -2104,7 +2217,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1, // repairStepFraction is irrelevant to labor sizing - only laborSlotsRequired is checked below
-      CONTEXT.economy.energy.energyPerGradeByTier,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
       'panels',
     )
     expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)

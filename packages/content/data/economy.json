@@ -149,9 +149,9 @@
       "brakeCalipersLines": 1,
       "rims": 3,
       "tyres": 3,
-      "panels": 1,
-      "paint": 1,
-      "underbody": 1,
+      "panels": 0,
+      "paint": 0,
+      "underbody": 0,
       "aero": 3,
       "seats": 3,
       "dashGauges": 1
@@ -228,6 +228,27 @@
       "street": 60,
       "sport": 30,
       "race": 10
+    },
+    "zoneStates": {
+      "metalWeightsByTier": {
+        "shitbox": [20, 35, 30, 15],
+        "common": [40, 35, 20, 5],
+        "uncommon": [55, 30, 12, 3],
+        "rare": [65, 25, 8, 2]
+      },
+      "finishWeightsByTier": {
+        "shitbox": [5, 25, 40, 30],
+        "common": [15, 40, 30, 15],
+        "uncommon": [30, 40, 22, 8],
+        "rare": [40, 38, 17, 5]
+      },
+      "chassisMetalWeightsByTier": {
+        "shitbox": [40, 35, 20, 5],
+        "common": [55, 30, 12, 3],
+        "uncommon": [65, 25, 8, 2],
+        "rare": [75, 20, 4, 1]
+      },
+      "surfaceExtraChance": 0.2
     }
   },
   "reputation": {
@@ -346,15 +367,15 @@
   "energy": {
     "pointsPerLabour": 10,
     "basePoolPoints": 60,
-    "energyPerGradeByTier": {
-      "1": 10,
-      "2": 6,
-      "3": 4
+    "energyPerBandStepByToolTier": {
+      "1": 5,
+      "2": 4,
+      "3": 3
     },
     "energyByClass": {
       "surface": 0,
-      "bolt-on": 10,
-      "buried": 20
+      "bolt-on": 3,
+      "buried": 6
     },
     "actionPoints": {
       "removePart": 0,

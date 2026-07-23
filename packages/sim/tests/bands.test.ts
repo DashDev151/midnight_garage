@@ -92,10 +92,10 @@ const NEUTRAL_ECONOMY: EconomyConfig = {
 }
 
 // Repair labour is measured in energy points: `grades x
-// energyPerGradeByTier[tier]`, no ceil. `EPG` is the content per-tier
-// per-grade cost ({1:10, 2:6, 3:4}); `PER` is `pointsPerLabour` (10). Every
+// energyPerBandStepByToolTier[tier]`, no ceil. `EPG` is the content per-tier
+// per-band-step cost ({1:5, 2:4, 3:3}); `PER` is `pointsPerLabour` (10). Every
 // labour assertion below re-derives off these knobs.
-const EPG = ECONOMY.energy.energyPerGradeByTier
+const EPG = ECONOMY.energy.energyPerBandStepByToolTier
 const PER = ECONOMY.energy.pointsPerLabour
 
 /** The real catalog price of whatever is actually installed at `partId` on
@@ -265,7 +265,7 @@ describe('repairLevelForGroup (Sprint 26 decision 7; tier-sourced since Sprint 3
   })
 })
 
-describe('energyToClimb (Sprint 94: grades x energyPerGradeByTier[tier], no ceil)', () => {
+describe('energyToClimb (Sprint 94: grades x energyPerBandStepByToolTier[tier], no ceil)', () => {
   it('is one labour per grade at tier 1 (the day-1-unchanged baseline)', () => {
     expect(energyToClimb(gradesBetween('fine', 'mint'), 1, EPG)).toBe(1 * EPG[1])
   })
@@ -488,9 +488,14 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
     const base = planBody()
     const withCrew = planBody({ staff: [benchedBody(5)], economy: ECONOMY })
     // Base plan is (2+3+1) grades at tier 1 = 6 x EPG[1] energy. Body skill 5 ->
-    // curve[5] = 2 labour saved = 2 x PER energy; base stays >= half, so - 2 x PER.
-    expect(base.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1])
-    expect(withCrew.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1] - 2 * PER)
+    // curve[5] = 2 labour saved = 2 x PER energy, but crewEnergySaved never
+    // saves more than half the base energy - the labour retune (case (a),
+    // an intentional pacing change) halved EPG[1], so that half-of-base
+    // floor, not the raw skill saving, is what actually binds here.
+    const baseEnergy = (2 + 3 + 1) * EPG[1]
+    const saved = Math.min(2 * PER, Math.floor(baseEnergy / 2), baseEnergy - PER)
+    expect(base.laborSlotsRequired).toBe(baseEnergy)
+    expect(withCrew.laborSlotsRequired).toBe(baseEnergy - saved)
     expect(withCrew.costYen).toBe(base.costYen)
     expect(withCrew.partIds).toEqual(base.partIds)
   })

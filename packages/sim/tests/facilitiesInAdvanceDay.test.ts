@@ -48,12 +48,15 @@ const noActions = DayActionsSchema.parse({})
  * isn't guaranteed to land below mint - forces it to a known repairable
  * 'worn' band (a real stock part) so createJobs below is guaranteed to
  * find something to repair regardless of the roll. These tests are
- * purely about the labor gate/timing, not condition.
+ * purely about the labor gate/timing, not condition - panels is a body
+ * signature slot, so the body line is also hired for today, isolating the
+ * service-bay/labour concern under test from the separate machine-line gate.
  */
 function withWornPanels(state: GameState): GameState {
   const car = state.ownedCars[0]!
   return {
     ...state,
+    machineHirePaidDayByGroup: { ...state.machineHirePaidDayByGroup, body: state.day },
     ownedCars: [
       {
         ...car,

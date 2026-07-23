@@ -42,6 +42,20 @@ describe('useGameStore', () => {
     expect(game.dayLog.length).toBeGreaterThan(0)
   })
 
+  it("endDay's report includes today's machine hires - an instant action that never reaches advanceDay's own log", () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.hireMachineLine('body')
+
+    game.endDay()
+
+    expect(game.lastDayReport?.entries).toContainEqual({
+      type: 'machine-hired',
+      componentId: 'body',
+      priceYen: ECONOMY.machineShopAssist.feeYenByGroup.body,
+    })
+  })
+
   it('newGame with no seed randomizes the career (external review finding 3)', () => {
     const a = useGameStore()
     a.newGame()

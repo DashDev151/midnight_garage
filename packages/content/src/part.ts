@@ -3,6 +3,7 @@ import { CarPartIdSchema, ConditionBandSchema, GradeSchema, TagSchema } from './
 import { PartFitmentClassSchema } from './partFitment'
 import { StatModifierSchema } from './stats'
 import { resolvePartPriceYen, type PartPricingSheet } from './partPricing'
+import { PanelZoneIdSchema } from './zone'
 
 /**
  * Parts are parody-branded from day one - no real/parody split. `carPartId`
@@ -24,6 +25,17 @@ export const PartCatalogEntrySchema = z.object({
   grade: GradeSchema,
   requiredTags: z.array(TagSchema).default([]),
   statModifiers: StatModifierSchema,
+  /**
+   * Which pricing-sheet basis this SKU prices from - defaults to `carPartId`
+   * when absent, so every pre-existing entry resolves exactly as before.
+   * Lets a SKU whose slot is a derived part (no catalog price of its own,
+   * e.g. a zone panel) price from an independent basis in
+   * `PartPricingSheet.baseCostYen` instead.
+   */
+  priceBasisPartId: z.string().min(1).optional(),
+  /** Which body zone this SKU is a replacement panel for - only zone-panel
+   * catalog entries carry this; every other SKU leaves it absent. */
+  zoneId: PanelZoneIdSchema.optional(),
 })
 
 export const PartCatalogEntriesSchema = z.array(PartCatalogEntrySchema).min(1)

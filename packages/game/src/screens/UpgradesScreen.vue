@@ -53,7 +53,7 @@ const selectedInfo = computed(() =>
           standing in town grows, both cost a little reputation too.
         </HelpHint>
       </h2>
-      <p class="rep">{{ game.reputationTier }} · {{ formatYen(game.cashYen) }}</p>
+      <p class="rep">{{ game.reputationTier }}</p>
     </header>
 
     <section class="classifieds">

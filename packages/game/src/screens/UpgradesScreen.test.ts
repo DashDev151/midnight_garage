@@ -132,7 +132,7 @@ describe('UpgradesScreen', () => {
       await wrapper.get('[data-test="tier-node-suspension-2"]').trigger('click')
       const line = wrapper.find('[data-test="rental-fee-line"]')
       expect(line.exists()).toBe(true)
-      expect(line.text()).toContain('machine shop')
+      expect(line.text()).toContain('hired for the day')
 
       game.devSetToolTier('suspension', 2)
       await wrapper.vm.$nextTick()

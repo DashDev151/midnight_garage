@@ -89,6 +89,41 @@ const CarSymptomSchema = z.object({
   runTestIds: z.array(z.string().min(1)).default([]),
 })
 
+/**
+ * One zone's work-model state (docs/design/workshop-rework.md's model
+ * section): `metal` (0 straight to 3 rotten or bent), `surface` (0 ready to 2
+ * raw), and `finish` (0 show to 3 flaking or bare - underseal on the chassis
+ * zone rather than paint). `panelMissing` is true only while the zone's panel
+ * has been removed and not yet replaced (never true for the chassis zone,
+ * which has no panel). `colour` is set at the paint stage and carries the
+ * car's own colour for that zone; absent until first painted. `primed` is
+ * true once the prime stage has run and stays true until the paint stage
+ * consumes it or a fresh strip/prep bares the zone again - the readiness gate
+ * the paint stage checks, since priming does not itself move `finish`.
+ */
+const ZoneStateSchema = z.object({
+  metal: z.number().int().min(0).max(3),
+  surface: z.number().int().min(0).max(2),
+  finish: z.number().int().min(0).max(3),
+  panelMissing: z.boolean(),
+  colour: z.string().min(1).optional(),
+  primed: z.boolean().default(false),
+})
+
+/**
+ * All six zones, keyed by `ZoneId`. Explicit per-zone keys (not a generic
+ * `z.record`), matching this codebase's established preference for a missing
+ * key to fail validation rather than silently vanish.
+ */
+const ZoneStatesSchema = z.object({
+  bonnet: ZoneStateSchema,
+  boot: ZoneStateSchema,
+  left: ZoneStateSchema,
+  right: ZoneStateSchema,
+  roof: ZoneStateSchema,
+  chassis: ZoneStateSchema,
+})
+
 export const CarInstanceSchema = z.object({
   id: z.string().min(1),
   modelId: z.string().min(1),
@@ -112,11 +147,20 @@ export const CarInstanceSchema = z.object({
     .partialRecord(CarPartIdSchema, ConditionBandSchema)
     .nullable()
     .default(null),
+  /**
+   * The work model's own resolution: six zones, each carrying metal/surface/
+   * finish severities the derived `panels`/`paint`/`underbody` bands read
+   * (worst-governs). Optional so every existing fixture and save parses
+   * unchanged - absent reads as "not yet on the zone model."
+   */
+  zoneState: ZoneStatesSchema.optional(),
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>
 export type CarPartState = z.infer<typeof CarPartStateSchema>
 export type PartBaseline = z.infer<typeof PartBaselineSchema>
+export type ZoneState = z.infer<typeof ZoneStateSchema>
+export type ZoneStates = z.infer<typeof ZoneStatesSchema>
 
 /** Every real `CarPartId`, in the same order as `CarPartIdSchema` - the
  * canonical iteration order for anything that needs to walk every part on a

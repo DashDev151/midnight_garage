@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import DayCashBox from './components/DayCashBox.vue'
 import DayReport from './components/DayReport.vue'
-import EndDayButton from './components/EndDayButton.vue'
 import EventLogDrawer from './components/EventLogDrawer.vue'
+import FloatingHud from './components/FloatingHud.vue'
 import JobCompleteModal from './components/JobCompleteModal.vue'
 import MissionCompleteModal from './components/MissionCompleteModal.vue'
 import SaleCompleteModal from './components/SaleCompleteModal.vue'
@@ -53,12 +54,13 @@ function openMenu(): void {
 }
 
 /**
- * The one app-wide End Day mount point, shown on every gameplay route (chrome
- * routes), never on the menu.
+ * The app-wide floating overlay mount points - the bottom-right HUD (labour
+ * gauge + End Day) and the top-right day/cash box - shown on every gameplay
+ * route (chrome routes), never on the menu.
  */
-const endDayButton = ref<InstanceType<typeof EndDayButton> | null>(null)
+const floatingHud = ref<InstanceType<typeof FloatingHud> | null>(null)
 const logDrawer = ref<InstanceType<typeof EventLogDrawer> | null>(null)
-const showEndDay = computed(() => showChrome.value)
+const showFloatingHud = computed(() => showChrome.value)
 
 /**
  * Escape reaches the menu from anywhere in gameplay, with three things taking
@@ -94,8 +96,8 @@ function onGlobalKeydown(event: KeyboardEvent): void {
     logDrawer.value.close()
     return
   }
-  if (endDayButton.value?.confirming) {
-    endDayButton.value.cancel()
+  if (floatingHud.value?.confirming) {
+    floatingHud.value.cancel()
     return
   }
   // Escape is a pause-menu toggle - open the menu from gameplay, and from
@@ -138,9 +140,8 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
     <RouterView />
   </main>
 
-  <div v-if="showEndDay" class="floating-end-day">
-    <EndDayButton ref="endDayButton" />
-  </div>
+  <FloatingHud v-if="showFloatingHud" ref="floatingHud" />
+  <DayCashBox v-if="showFloatingHud" />
 
   <DayReport />
   <JobCompleteModal />
@@ -213,16 +214,9 @@ nav a.router-link-active {
   font-family: inherit;
 }
 
-/* Room for the fixed End Day button so it never covers the bottom of a
-   screen's own content. */
+/* Room for the fixed floating HUD (vertical labour gauge + End Day button)
+   so it never covers the bottom of a screen's own content. */
 main.with-end-day {
-  padding-bottom: 80px;
-}
-
-.floating-end-day {
-  position: fixed;
-  right: var(--mg-space-4);
-  bottom: var(--mg-space-4);
-  z-index: 100;
+  padding-bottom: 13rem;
 }
 </style>
