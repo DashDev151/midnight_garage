@@ -56,6 +56,7 @@ import {
   assemblyContainerFor,
   assemblyMachineAssistFeeYen,
   assignToParking,
+  attendAuctionGateReason as attendAuctionGateReasonCore,
   availableTestIdsFor,
   energyMax,
   advanceDay,
@@ -127,6 +128,7 @@ import {
   resolveAcceptMission,
   resolveAcceptServiceJob,
   resolveRejectServiceJobOffer,
+  resolveAttendAuction as resolveAttendAuctionCore,
   resolveBuyoutInstant,
   resolveBuyPart,
   resolveDeliverMission,
@@ -157,12 +159,14 @@ import {
   shopTitle,
   swapCars as swapCarsCore,
   toolDeficitSummary,
+  unlockedAuctionTiers as unlockedAuctionTiersCore,
   unlockedTechniques,
   upgradeHintFor,
   valuateCarForBuyer,
   valueLedgerFor,
   worstRemainingBandFor,
   worstRepairableBandInGroup,
+  type AttendAuctionGateReason,
   type AuctionGrade,
   type CrewSkillContext,
   type DeliverySpeed,
@@ -2121,6 +2125,13 @@ export const useGameStore = defineStore('game', () => {
     }))
   })
 
+  /** Every auction tier open right now - derived from delivered guarantor
+   * missions (`local-yard` always included). `AuctionScreen` reads this to
+   * decide which tiers render their real board versus the locked-tier copy. */
+  const unlockedAuctionTiers = computed<AuctionTier[]>(() =>
+    unlockedAuctionTiersCore(gameState.value, context.value),
+  )
+
   /** Derived numbers + the 6 real group bands for one lot (lots are
    * transparent, no inspection gate). */
   function lotDetail(lotId: string): LotDetail | undefined {
@@ -2202,6 +2213,21 @@ export const useGameStore = defineStore('game', () => {
    * the "Inspect here" button's own price tag. */
   function travelFeeYenFor(tier: AuctionTier): number {
     return context.value.economy.diagnosis.travelFeeYenByTier[tier]
+  }
+
+  /**
+   * Whether taking a seat at `tier` right now is blocked
+   * (`attendAuctionGateReasonCore`) - the "Take a seat" control's proactive
+   * "why not" read, `null` when nothing blocks it.
+   */
+  function attendAuctionGateReason(tier: AuctionTier): AttendAuctionGateReason | null {
+    return attendAuctionGateReasonCore(gameState.value, tier, context.value)
+  }
+
+  /** The admission fee a room at `tier` charges - the room header's own
+   * price tag, and 0 for every tier at current tuning. */
+  function attendanceFeeYenFor(tier: AuctionTier): number {
+    return context.value.economy.auctionRoom.attendanceFeeYenByTier[tier]
   }
 
   /** The live auction room's fuse-length preset, persisted across careers -
@@ -3474,6 +3500,20 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * The room-entry seam: charges `tier`'s admission the first time a room
+   * seats there today (a zero fee, or a tier already paid today, is a
+   * silent no-op success). Returns false only on a genuine refusal
+   * (short cash) - the caller must not seat the player when this is false.
+   */
+  function attendAuction(tier: AuctionTier): boolean {
+    const result = resolveAttendAuctionCore(gameState.value, tier, context.value)
+    if (result.outcome !== 'attended') return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
    * Settles the live auction room's hammer win: the sim's own purchase path
    * at whatever price the room actually closed at - cash out, car in, the
    * same day. The room (`screens/auctionRoom.ts`) negotiates entirely off
@@ -4179,6 +4219,7 @@ export const useGameStore = defineStore('game', () => {
     partsCatalog,
     modelsCatalog,
     auctionLotsByTier,
+    unlockedAuctionTiers,
     resolveModelName,
     partName,
     componentLabel,
@@ -4209,6 +4250,8 @@ export const useGameStore = defineStore('game', () => {
     inspectionVisit,
     inspectionVisitGateReason,
     travelFeeYenFor,
+    attendAuctionGateReason,
+    attendanceFeeYenFor,
     fusePreset,
     setFusePreset,
     autoBidEnabled,
@@ -4271,6 +4314,7 @@ export const useGameStore = defineStore('game', () => {
     benchContainersFor,
     unstageAssemblyAction,
     buyout,
+    attendAuction,
     settleAuctionHammer,
     loseAuctionLot,
     buyPart,

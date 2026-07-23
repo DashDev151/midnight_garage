@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import auctionTierCopy from '../data/auctionTierCopy.json'
 import buyers from '../data/buyers.json'
 import cars from '../data/cars.json'
 import componentDisplayNames from '../data/componentDisplayNames.json'
@@ -13,6 +14,7 @@ import traits from '../data/traits.json'
 import venueNames from '../data/venueNames.json'
 import {
   AgeBandSchema,
+  AuctionTierCopySchema,
   BuyersSchema,
   CarModelsSchema,
   CarPartTaxonomyContentSchema,
@@ -151,6 +153,24 @@ describe('seed content validates against schemas', () => {
       expect(result.data[tier], `${tier} has no venue-name pool`).toBeTruthy()
       expect(result.data[tier].length, `${tier} does not have exactly 10 names`).toBe(10)
     }
+  })
+
+  /**
+   * The three locked-tier guarantor lines - pinned verbatim so a future edit
+   * can never silently drift from the approved copy.
+   */
+  it('auctionTierCopy.json (Sprint 115, verbatim)', () => {
+    const result = AuctionTierCopySchema.safeParse(auctionTierCopy)
+    if (!result.success) throw new Error(result.error.message)
+    expect(result.data.regional).toBe(
+      'Members only. Somebody has to vouch for you, and nobody does. Yet.',
+    )
+    expect(result.data.premium).toBe(
+      "The book at the door is full of names. Yours needs a sponsor's beside it.",
+    )
+    expect(result.data['collector-network']).toBe(
+      'Invitation only, and invitations start with a name they trust. No one is offering yours.',
+    )
   })
 
   it('facilities.json', () => {
@@ -390,7 +410,6 @@ describe('seed content validates against schemas', () => {
       'AUCTION_DURATION_FLASH_DAYS',
       'AUCTION_FLASH_CHANCE',
       'AUCTION_LONG_CHANCE_UNCOMMON_RARE',
-      'AUCTION_TRAVEL_FEE_YEN',
       'AUCTION_BUYOUT_PREMIUM',
       'AUCTION_WHOLESALE_FRACTION',
       'AUCTION_DAILY_SPAWN_RATE',
@@ -437,6 +456,14 @@ describe('seed content validates against schemas', () => {
     if (!result.success) return
     expect(result.data.auctionRoom.clockMs).toBe(5000)
     expect(result.data.auctionRoom.reserveFraction).toBe(0.55)
+    // Every tier ships at zero: the mechanic charges nothing until a tier's
+    // price moves off zero.
+    expect(result.data.auctionRoom.attendanceFeeYenByTier).toEqual({
+      'local-yard': 0,
+      regional: 0,
+      premium: 0,
+      'collector-network': 0,
+    })
     expect(result.data.auctionRoom.bidDelayMs).toEqual({ min: 800, max: 4600 })
     expect(result.data.auctionRoom.bargainChance).toBe(0.05)
     expect(result.data.auctionRoom.stepThresholdYen).toBe(500_000)

@@ -10,14 +10,16 @@ import {
 import { describe, expect, it } from 'vitest'
 import {
   anchorValueYen,
+  attendAuctionGateReason,
   carGuideValueYen,
   computeBuyoutPriceYen,
   privateValuationYen,
+  resolveAttendAuction,
   resolveBuyoutInstant,
   settleAuctionHammer,
 } from '../src/bidding'
 import { generateAuctionCatalog } from '../src/auctions'
-import { buildSimContext } from '../src/context'
+import { buildSimContext, type SimContext } from '../src/context'
 import { createRng } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
@@ -25,6 +27,26 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 /** A context with no interested buyers at all - forces `anchorValueYen`
  * (and therefore every private valuation) to 0 for every lot. */
 const NO_BUYERS_CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
+
+/** A nonzero admission fee at every tier - the real content ships all four
+ * at 0, so the charge-and-record behaviour needs a test override to exercise
+ * at all. */
+const ATTENDANCE_FEE_YEN = 5_000
+const ATTENDANCE_CONTEXT: SimContext = {
+  ...CONTEXT,
+  economy: {
+    ...CONTEXT.economy,
+    auctionRoom: {
+      ...CONTEXT.economy.auctionRoom,
+      attendanceFeeYenByTier: {
+        'local-yard': ATTENDANCE_FEE_YEN,
+        regional: ATTENDANCE_FEE_YEN,
+        premium: ATTENDANCE_FEE_YEN,
+        'collector-network': ATTENDANCE_FEE_YEN,
+      },
+    },
+  },
+}
 
 function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): GameState {
   return {
@@ -323,5 +345,76 @@ describe('settleAuctionHammer', () => {
     const a = settleAuctionHammer(state, lot.id, hammerYen, CONTEXT)
     const b = settleAuctionHammer(state, lot.id, hammerYen, CONTEXT)
     expect(a).toEqual(b)
+  })
+})
+
+/**
+ * The room-entry admission charge: per tier, per day, at the seat. The real
+ * content ships every tier at 0 (built dark), so every scenario that expects
+ * an actual charge needs `ATTENDANCE_CONTEXT`'s nonzero override; the real
+ * `CONTEXT` proves the zero-fee path stays silent.
+ */
+describe('attendAuctionGateReason / resolveAttendAuction', () => {
+  it('never blocks and never charges under the real, all-zero content', () => {
+    const state = stateWithLots([])
+    expect(attendAuctionGateReason(state, 'local-yard', CONTEXT)).toBeNull()
+    const result = resolveAttendAuction(state, 'local-yard', CONTEXT)
+    expect(result.outcome).toBe('attended')
+    expect(result.state).toBe(state)
+    expect(result.state.attendanceFeePaidDayByTier).toBeUndefined()
+  })
+
+  it('charges the first seat at a tier once a fee is nonzero', () => {
+    const state = stateWithLots([], { cashYen: 100_000 })
+    const result = resolveAttendAuction(state, 'regional', ATTENDANCE_CONTEXT)
+    expect(result.outcome).toBe('attended')
+    expect(result.state.cashYen).toBe(100_000 - ATTENDANCE_FEE_YEN)
+    expect(result.state.attendanceFeePaidDayByTier).toEqual({ regional: state.day })
+  })
+
+  it('does not charge a second seat at the same tier the same day', () => {
+    const state = stateWithLots([], { cashYen: 100_000 })
+    const first = resolveAttendAuction(state, 'regional', ATTENDANCE_CONTEXT)
+    const second = resolveAttendAuction(first.state, 'regional', ATTENDANCE_CONTEXT)
+    expect(second.outcome).toBe('attended')
+    expect(second.state).toBe(first.state)
+    expect(second.state.cashYen).toBe(100_000 - ATTENDANCE_FEE_YEN)
+  })
+
+  it('charges again the next day', () => {
+    const state = stateWithLots([], { cashYen: 100_000 })
+    const day1 = resolveAttendAuction(state, 'regional', ATTENDANCE_CONTEXT)
+    const nextDayState = { ...day1.state, day: day1.state.day + 1 }
+    const day2 = resolveAttendAuction(nextDayState, 'regional', ATTENDANCE_CONTEXT)
+    expect(day2.outcome).toBe('attended')
+    expect(day2.state.cashYen).toBe(100_000 - 2 * ATTENDANCE_FEE_YEN)
+    expect(day2.state.attendanceFeePaidDayByTier).toEqual({ regional: nextDayState.day })
+  })
+
+  it('a different tier the same day is its own, separately-charged admission', () => {
+    const state = stateWithLots([], { cashYen: 100_000 })
+    const regional = resolveAttendAuction(state, 'regional', ATTENDANCE_CONTEXT)
+    const premium = resolveAttendAuction(regional.state, 'premium', ATTENDANCE_CONTEXT)
+    expect(premium.outcome).toBe('attended')
+    expect(premium.state.cashYen).toBe(100_000 - 2 * ATTENDANCE_FEE_YEN)
+    expect(premium.state.attendanceFeePaidDayByTier).toEqual({
+      regional: state.day,
+      premium: state.day,
+    })
+  })
+
+  it("refuses on short cash, quietly, matching this file's established refusal shape", () => {
+    const state = stateWithLots([], { cashYen: ATTENDANCE_FEE_YEN - 1 })
+    expect(attendAuctionGateReason(state, 'regional', ATTENDANCE_CONTEXT)).toBe('no-cash')
+    const result = resolveAttendAuction(state, 'regional', ATTENDANCE_CONTEXT)
+    expect(result.outcome).toBe('no-cash')
+    expect(result.state).toBe(state)
+  })
+
+  it('buyout never touches it - resolveBuyoutInstant records no attendance charge', () => {
+    const { lot } = sampleLot(60)
+    const state = stateWithLots([lot], { cashYen: 10_000_000 })
+    const result = resolveBuyoutInstant(state, lot.id, ATTENDANCE_CONTEXT)
+    expect(result.state.attendanceFeePaidDayByTier).toBeUndefined()
   })
 })

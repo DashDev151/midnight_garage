@@ -23,5 +23,15 @@
     "id": "kaori",
     "name": "Kaori",
     "intro": "Writes the timed columns in the magazine you read."
+  },
+  {
+    "id": "numata",
+    "name": "Numata",
+    "intro": "Runs thirty taxis. Knows every driver by first name, and pays on the day."
+  },
+  {
+    "id": "ishida",
+    "name": "Ishida",
+    "intro": "Thirty years selling cars, and still walks the lot every morning like it's day one."
   }
 ]

@@ -19,7 +19,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('e8faedcff9c10fbef7440c6aaeb97f18179b16a512912e815019712f1265a8c9')
+    ).toBe('e4a56a9238e3128c461600f806fd3fdd81709e46b3f69d020a711fc9d3f75e57')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -42,6 +42,8 @@ describe('the economy approval gate', () => {
       'low-and-loud': { payoutYen: 1763000, budgetCapYen: 1763000 },
       'street-power-street-manners': { payoutYen: 1623000, budgetCapYen: 1623000 },
       'under-one-fifteen': { payoutYen: 3681000, budgetCapYen: 3681000 },
+      'the-fleet-spare': { payoutYen: 350000, budgetCapYen: 350000 },
+      'the-showroom-standard': { payoutYen: 1200000, budgetCapYen: 1200000 },
     })
   })
 })

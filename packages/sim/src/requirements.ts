@@ -82,6 +82,11 @@ export function requirementLabel(
         label: `Lap the ${spec.courseId} course in ${spec.maxSeconds}s or less`,
         required: `<= ${spec.maxSeconds}s`,
       }
+    case 'allPartsBandAtLeast':
+      return {
+        label: `Every part ${spec.minBand} condition or better`,
+        required: `${spec.minBand}+ throughout`,
+      }
   }
 }
 
@@ -240,6 +245,36 @@ function evaluateRoadworthy(
   return { pass: failingCount === 0, label, actual, required }
 }
 
+/**
+ * `roadworthy`'s general form: every slot a real defect could touch holds
+ * an installed part at `spec.minBand` or better. Same "a legitimately
+ * absent slot never counts" rule as `evaluateRoadworthy` (`isPartMissing`),
+ * just against a caller-named floor instead of the fixed `worn` one.
+ */
+function evaluateAllPartsBandAtLeast(
+  spec: Extract<RequirementSpec, { kind: 'allPartsBandAtLeast' }>,
+  car: CarInstance,
+  context: SimContext,
+): RequirementResult {
+  const { label, required } = requirementLabel(spec, context)
+  const model = context.modelsById[car.modelId]
+  const minIndex = bandIndex(spec.minBand)
+  let failingCount = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (installed) {
+      if (bandIndex(installed.band) < minIndex) failingCount += 1
+    } else if (!model || isPartMissing(car, model, partId)) {
+      failingCount += 1
+    }
+  }
+  const actual =
+    failingCount === 0
+      ? required
+      : `${failingCount} slot${failingCount === 1 ? '' : 's'} below ${spec.minBand}`
+  return { pass: failingCount === 0, label, actual, required }
+}
+
 /** A reference-lap time ceiling on one named course - passes when
  * `lapTimeSecondsFor` returns a real time at or under `maxSeconds`. Fails
  * with `actual: "no time set"` when the model returns `null` (no tyres
@@ -290,5 +325,7 @@ export function evaluateRequirement(
       return evaluateRoadworthy(spec, car, context)
     case 'lapTimeCeiling':
       return evaluateLapTimeCeiling(spec, car, model, context)
+    case 'allPartsBandAtLeast':
+      return evaluateAllPartsBandAtLeast(spec, car, context)
   }
 }

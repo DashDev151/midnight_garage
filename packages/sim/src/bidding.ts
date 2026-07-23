@@ -1,5 +1,6 @@
 import type {
   AuctionLot,
+  AuctionTier,
   Buyer,
   CarInstance,
   CarModel,
@@ -256,4 +257,57 @@ export function settleAuctionLotLost(state: GameState, lotId: string): GameState
     ...state,
     activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lotId),
   }
+}
+
+export type AttendAuctionGateReason = 'no-cash'
+
+/**
+ * Whether attending a live room at `tier` right now is blocked - `null` when
+ * it is not. A zero fee, or a tier already paid today, is never blocked; the
+ * only real reason is short cash for a fee that is both nonzero and unpaid.
+ */
+export function attendAuctionGateReason(
+  state: GameState,
+  tier: AuctionTier,
+  context: SimContext,
+): AttendAuctionGateReason | null {
+  const feeYen = context.economy.auctionRoom.attendanceFeeYenByTier[tier]
+  if (feeYen <= 0) return null
+  if (state.attendanceFeePaidDayByTier?.[tier] === state.day) return null
+  return state.cashYen < feeYen ? 'no-cash' : null
+}
+
+export interface AttendAuctionResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: 'attended' | AttendAuctionGateReason
+}
+
+/**
+ * The room-entry seam: charges `tier`'s admission the first time a room
+ * seats there on a given day. A zero fee (`attendanceFeeYenByTier[tier]`) is
+ * a silent no-op - no charge, no state recorded - and a tier already paid
+ * today is likewise a no-op success, so a second sitting the same day never
+ * charges twice. Short cash refuses via `attendAuctionGateReason`, same
+ * quiet-refusal shape as every other instant resolver in this file. Buyout
+ * never calls this - the desk, not the room.
+ */
+export function resolveAttendAuction(
+  state: GameState,
+  tier: AuctionTier,
+  context: SimContext,
+): AttendAuctionResult {
+  const feeYen = context.economy.auctionRoom.attendanceFeeYenByTier[tier]
+  if (feeYen <= 0) return { state, log: [], outcome: 'attended' }
+  if (state.attendanceFeePaidDayByTier?.[tier] === state.day) {
+    return { state, log: [], outcome: 'attended' }
+  }
+  const gateReason = attendAuctionGateReason(state, tier, context)
+  if (gateReason) return { state, log: [], outcome: gateReason }
+  const nextState: GameState = {
+    ...state,
+    cashYen: state.cashYen - feeYen,
+    attendanceFeePaidDayByTier: { ...state.attendanceFeePaidDayByTier, [tier]: state.day },
+  }
+  return { state: nextState, log: [], outcome: 'attended' }
 }

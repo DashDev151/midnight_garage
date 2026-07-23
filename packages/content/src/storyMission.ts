@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AuctionTierSchema } from './auction'
 import { ComponentIdSchema } from './tags'
 import { RequirementSpecSchema } from './requirement'
 
@@ -44,6 +45,16 @@ export const StoryMissionSchema = z.object({
   specialtyGroups: z.array(ComponentIdSchema).min(1),
   deliveredCopy: z.string().min(1),
   overdeliveredCopy: z.string().min(1),
+  /**
+   * The auction tier this mission's delivery unlocks - the guarantor
+   * system's reward field, absent for every mission that carries no unlock.
+   * Never `'local-yard'`: that tier is open from day one, not something a
+   * guarantor mission could plausibly unlock.
+   */
+  unlocksAuctionTier: AuctionTierSchema.optional().refine(
+    (tier) => tier === undefined || tier !== 'local-yard',
+    { message: "unlocksAuctionTier can never be 'local-yard' - it is open from day one" },
+  ),
 })
 
 export const StoryMissionsSchema = z.array(StoryMissionSchema)

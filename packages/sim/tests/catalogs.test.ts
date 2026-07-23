@@ -31,7 +31,7 @@ describe('refreshCatalogs', () => {
     expect(a).toEqual(b)
   })
 
-  it('generates lots for every eligible tier, but not collector-network below the rep gate', () => {
+  it('generates lots for every unlocked tier, but not collector-network (no guarantor mission unlocks it yet)', () => {
     const state = createInitialGameState(CONTEXT, 1)
     expect(state.reputationTier).toBe('unknown')
     const { freshLots, lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
@@ -39,46 +39,59 @@ describe('refreshCatalogs', () => {
     expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(false)
   })
 
-  it('holds back regional and premium lots below their Sprint 16 reputation gates', () => {
-    const state = createInitialGameState(CONTEXT, 1) // reputationTier: 'unknown'
+  it('holds back regional and premium lots until their guarantor mission delivers', () => {
+    const state = createInitialGameState(CONTEXT, 1) // no story missions delivered
     const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
     expect(lotsByTier.some((t) => t.tier === 'regional')).toBe(false)
     expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(false)
     expect(lotsByTier.some((t) => t.tier === 'local-yard')).toBe(true) // always open
   })
 
-  it('regional resumes once reputation reaches local; premium stays gated until known', () => {
-    const state = { ...createInitialGameState(CONTEXT, 1), reputationTier: 'local' as const }
+  it('reputation ALONE never opens regional/premium/collector-network - only a delivered guarantor mission does', () => {
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      reputationTier: 'respected' as const,
+    }
+    const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
+    expect(lotsByTier.some((t) => t.tier === 'regional')).toBe(false)
+    expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(false)
+    expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(false)
+  })
+
+  it('regional opens the moment the-fleet-spare is delivered; premium stays locked until the-showroom-standard delivers', () => {
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      storyMissions: [
+        { missionId: 'the-fleet-spare', status: 'delivered' as const, acceptedOnDay: 1 },
+      ],
+    }
     const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
     expect(lotsByTier.some((t) => t.tier === 'regional')).toBe(true)
     expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(false)
   })
 
-  it('premium resumes once reputation reaches known', () => {
-    const state = { ...createInitialGameState(CONTEXT, 1), reputationTier: 'known' as const }
+  it('premium opens the moment the-showroom-standard is delivered', () => {
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      storyMissions: [
+        { missionId: 'the-showroom-standard', status: 'delivered' as const, acceptedOnDay: 1 },
+      ],
+    }
     const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
     expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(true)
   })
 
-  it('generates collector-network lots once reputation clears the gate', () => {
-    // The seed roster has no 'legend'-tier car yet (see CLAUDE.md's easter
-    // egg note), so exercise the gate itself with a synthetic legend model -
-    // this guards refreshCatalogs's rep check, not the roster's content.
-    const baseModel = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')
-    if (!baseModel) throw new Error('fixture car missing from seed content')
-    const legendModel = { ...baseModel, id: 'test-legend-car', tier: 'legend' as const }
-    const context = buildSimContext(
-      [...CARS, legendModel],
-      PARTS,
-      BUYERS,
-      PARTS_TAXONOMY,
-      SERVICE_JOB_TYPES,
-      FACILITIES,
-      SERVICE_JOB_CUSTOMER_NAMES,
-    )
-    const state = { ...createInitialGameState(context, 1), reputationTier: 'respected' as const }
-    const { lotsByTier } = refreshCatalogs(state, context, 1, createRng(1))
-    expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(true)
+  it('collector-network stays locked even with every other mission delivered - no guarantor mission unlocks it yet', () => {
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      reputationTier: 'respected' as const,
+      storyMissions: [
+        { missionId: 'the-fleet-spare', status: 'delivered' as const, acceptedOnDay: 1 },
+        { missionId: 'the-showroom-standard', status: 'delivered' as const, acceptedOnDay: 1 },
+      ],
+    }
+    const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
+    expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(false)
   })
 
   // Service-job offers don't refresh here (see `refreshCatalogs`'s own doc

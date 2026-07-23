@@ -46,6 +46,10 @@
       },
       {
         "speaker": "instruction",
+        "text": "The permit behind the till covers any auction house in town. Getting through their doors is another matter: the bigger rooms want a member to vouch for you."
+      },
+      {
+        "speaker": "instruction",
         "text": "There is a {model} on the block that could be just right for her. Nothing glamorous, but read its sheet: it lists an engine tick, and the room can only price that noise at the odds. Prove which tick it is and you know something the price does not; if it is the cheap one, that is a bargain wearing a scary label."
       },
       {

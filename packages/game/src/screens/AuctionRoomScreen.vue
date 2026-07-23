@@ -51,6 +51,10 @@ let intervalId: ReturnType<typeof setInterval> | undefined
 
 const room = ref<Room | null>(null)
 const autoBidCeilingYen = ref(0)
+/** The admission `attendAuction` charged (or would charge) to seat this
+ * room's tier - captured once at build time; 0 for every tier at current
+ * tuning, so the header line below stays unrendered in practice. */
+const admissionFeeYen = ref(0)
 
 /** The stable per-lot, per-day seed: re-entering the same lot on the same day
  * replays an identical room. */
@@ -84,11 +88,15 @@ function scaledConfig(
  * (`sheetGuideValueYen`) and the bidder's own number (`playerEstimateYen`)
  * both over the CURRENT, possibly-narrowed lot, so re-inspecting between
  * visits changes what the player brings into the room. Null when the lot
- * isn't there to seat (a stale deep-link, or a lot already settled). */
+ * isn't there to seat (a stale deep-link, or a lot already settled) OR
+ * `attendAuction` refuses this tier's admission (short cash) - the same
+ * quiet redirect-to-auctions the caller already gives a stale lot. */
 function buildRoom(): Room | null {
   const lot = game.gameState.activeAuctionLots.find((l) => l.id === lotId.value)
   const model = lot ? game.context.modelsById[lot.modelId] : undefined
   if (!lot || !model) return null
+  if (!game.attendAuction(lot.tier)) return null
+  admissionFeeYen.value = game.attendanceFeeYenFor(lot.tier)
   const isTutorialLot = lot.id === TUTORIAL_LOT.lotId
   const roomReadYen = Math.round(sheetGuideValueYen(lot.car, model, game.gameState, game.context))
   const playerNumberYen = Math.round(
@@ -199,6 +207,9 @@ function backToAuctions(): void {
       <header class="room-head">
         <h3>{{ room.displayName }}</h3>
         <p class="headline">Estimated market value: {{ formatYen(room.playerNumberYen) }}</p>
+        <p v-if="admissionFeeYen > 0" class="admission" data-test="admission-fee">
+          Admission: {{ formatYen(admissionFeeYen) }}
+        </p>
         <p class="room-cash" data-test="room-cash">Cash: {{ formatYen(game.cashYen) }}</p>
       </header>
 
@@ -263,6 +274,12 @@ function backToAuctions(): void {
 .headline {
   margin: 0;
   color: var(--mg-text);
+  font-size: var(--mg-fs-sm);
+}
+
+.admission {
+  margin: 0;
+  color: var(--mg-yen);
   font-size: var(--mg-fs-sm);
 }
 

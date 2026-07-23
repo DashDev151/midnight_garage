@@ -16,7 +16,9 @@ import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
  * `budgetCap` (spend ceiling), `deadline` (day-of-delivery cutoff),
  * `tasteMatch` (a buyer archetype's own taste multiplier floor), and
  * `roadworthy` (every slot at `worn`+). Also `lapTimeCeiling` (a reference-lap
- * time floor). A service-job task's own `requirement` field (`serviceJob.ts`)
+ * time floor) and `allPartsBandAtLeast` (every slot at a named band or
+ * better - `roadworthy`'s general form, for a mission whose floor isn't
+ * `worn`). A service-job task's own `requirement` field (`serviceJob.ts`)
  * stays pinned to `SlotConditionRequirementSchema` specifically, not the whole
  * union below - a service job only ever authors that one kind, so its own type
  * stays concrete rather than every existing call site needing a `kind` narrowing
@@ -93,6 +95,15 @@ export const RequirementSpecSchema = z.discriminatedUnion('kind', [
     kind: z.literal('lapTimeCeiling'),
     courseId: z.string().min(1),
     maxSeconds: z.number().positive(),
+  }),
+  /** Every one of the car's 29 slots holds an installed part at `minBand` or
+   * better - `roadworthy`'s general form, for a mission whose floor is
+   * higher than `worn` (e.g. "every part fine or better"). A legitimately
+   * empty slot (e.g. forced induction on an NA car) never counts, same as
+   * `roadworthy`. */
+  z.object({
+    kind: z.literal('allPartsBandAtLeast'),
+    minBand: ConditionBandSchema,
   }),
 ])
 

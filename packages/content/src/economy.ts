@@ -47,10 +47,10 @@ const ByCarPartIdWeightSchema = z.object({
 })
 
 /** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
- * and `AUCTION_TRAVEL_FEE_YEN` used as `Readonly<Record<AuctionTier, number>>`
- * in sim/constants.ts before this file existed. Explicit per-tier keys (not a
- * generic `z.record`) so a missing tier fails validation, matching
- * `FacilitiesSchema`'s existing preference for explicit shape over a bare map. */
+ * used as `Readonly<Record<AuctionTier, number>>` in sim/constants.ts before
+ * this file existed. Explicit per-tier keys (not a generic `z.record`) so a
+ * missing tier fails validation, matching `FacilitiesSchema`'s existing
+ * preference for explicit shape over a bare map. */
 const ByAuctionTierSchema = z.object({
   'local-yard': z.number().int().nonnegative(),
   regional: z.number().int().nonnegative(),
@@ -109,6 +109,15 @@ export const AuctionRoomConfigSchema = z.object({
   clockMs: z.number().int().positive(),
   /** Opening bid, as a fraction of the room's read value. */
   reserveFraction: z.number().min(0).max(1),
+  /**
+   * Per-tier admission charged the first time a room seats at that tier on
+   * a given day - later sittings at the same tier the same day are covered
+   * (`resolveAttendAuction`, sim/bidding.ts). A zero fee is a silent no-op:
+   * no charge, no state recorded, nothing shown in the room header. Buyout
+   * never touches this; inspection visits keep their own separate travel
+   * fee (`diagnosis.travelFeeYenByTier`).
+   */
+  attendanceFeeYenByTier: ByAuctionTierSchema,
   /** Delay band before each ordinary room raise; always shorter than clockMs. */
   bidDelayMs: AuctionRoomDelayRangeSchema,
   /** Chance the room is cold and clears below the turnout floor. */
@@ -338,8 +347,6 @@ export const EconomyConfigSchema = z.object({
   AUCTION_FLASH_CHANCE: z.number().min(0).max(1),
   /** Chance an uncommon/rare lot rolls the long band instead of standard. */
   AUCTION_LONG_CHANCE_UNCOMMON_RARE: z.number().min(0).max(1),
-  /** Inspection travel fee by tier. */
-  AUCTION_TRAVEL_FEE_YEN: ByAuctionTierSchema,
   /**
    * Instant-buyout premium over `bidding.ts`'s `anchorValueYen` (the same
    * best-interested-buyer valuation the demand ceiling anchors to) - the

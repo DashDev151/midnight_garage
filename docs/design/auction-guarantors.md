@@ -1,8 +1,11 @@
 # Auction Guarantors
 
-**Status:** Designed, unscoped (maintainer-authored, filed 2026-07-19). Replaces the
-passive rep-threshold auction gate with authored story-mission unlocks. Queued to follow
-the economy legibility arc (Sprints 98-101).
+**Status:** Implemented (Sprint 115), regional and premium only. Replaces the passive
+rep-threshold auction gate with authored story-mission unlocks. The collector-network
+guarantor (Kurogane, the-quiet-crate) is written but held for the Hall of Legends arc (see
+`docs/sprints/sprint115.md` section 5 and `TODO.md`'s progression-map item) - rule 1 below
+still governs it (`AUCTION_TIER_MIN_REPUTATION` is fully retired) but no mission unlocks it
+yet, so it stays dark.
 
 ## Premise (lore)
 

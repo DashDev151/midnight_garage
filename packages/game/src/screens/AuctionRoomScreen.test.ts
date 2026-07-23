@@ -351,4 +351,81 @@ describe('AuctionRoomScreen', () => {
 
     expect(wrapper.find('[data-test="room-cash"]').text()).toBe(`Cash: ${formatYen(game.cashYen)}`)
   })
+
+  /** The room-entry admission: the real content ships every tier at 0 (built
+   * dark), so only the "nothing renders" pin runs under real content; the
+   * charge-on-entry behaviour needs a test-override context to exercise at
+   * all. */
+  describe('room admission', () => {
+    it('shows no admission line under the real, zero-fee content', async () => {
+      const game = useGameStore()
+      const lot = makeLot(game, 'admission-zero-test-lot', 'thin')
+      seatLot(game, lot)
+      const { wrapper } = await mountRoom(lot.id)
+
+      expect(wrapper.find('[data-test="admission-fee"]').exists()).toBe(false)
+    })
+
+    it('shows and charges the admission once a tier fee is tuned above zero, covering a same-day re-entry', async () => {
+      const game = useGameStore()
+      const lot = makeLot(game, 'admission-nonzero-test-lot', 'thin')
+      seatLot(game, lot)
+      game.context = {
+        ...game.context,
+        economy: {
+          ...game.context.economy,
+          auctionRoom: {
+            ...game.context.economy.auctionRoom,
+            attendanceFeeYenByTier: {
+              'local-yard': 5_000,
+              regional: 5_000,
+              premium: 5_000,
+              'collector-network': 5_000,
+            },
+          },
+        },
+      }
+      const cashBefore = game.cashYen
+
+      const first = await mountRoom(lot.id)
+      expect(first.wrapper.find('[data-test="admission-fee"]').text()).toBe(
+        `Admission: ${formatYen(5_000)}`,
+      )
+      expect(game.cashYen).toBe(cashBefore - 5_000)
+      first.wrapper.unmount()
+
+      // Re-entering the same lot the same day is already covered - no
+      // second charge.
+      await mountRoom(lot.id)
+      expect(game.cashYen).toBe(cashBefore - 5_000)
+    })
+
+    it('refuses to seat when admission is unaffordable, redirecting back to auctions', async () => {
+      const game = useGameStore()
+      const lot = makeLot(game, 'admission-refused-test-lot', 'thin')
+      seatLot(game, lot)
+      game.context = {
+        ...game.context,
+        economy: {
+          ...game.context.economy,
+          auctionRoom: {
+            ...game.context.economy.auctionRoom,
+            attendanceFeeYenByTier: {
+              'local-yard': 5_000,
+              regional: 5_000,
+              premium: 5_000,
+              'collector-network': 5_000,
+            },
+          },
+        },
+      }
+      game.gameState = { ...game.gameState, cashYen: 0 }
+
+      const { wrapper, router } = await mountRoom(lot.id)
+
+      expect(wrapper.find('.auction-room').exists()).toBe(false)
+      expect(router.currentRoute.value.name).toBe('auctions')
+      expect(game.cashYen).toBe(0)
+    })
+  })
 })

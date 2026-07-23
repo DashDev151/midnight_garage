@@ -549,8 +549,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * version bump is shared with the same sprint's `ForSaleEntry` change. The
  * version bump is what makes a pre-v45 client reject a v45 save rather than
  * silently misreading it.
+ * v45 -> v46 (auction room admission): `GameState` gained an
+ * optional `attendanceFeePaidDayByTier` (the day each auction tier's
+ * admission was last charged). The pure additive case (the genuinely-
+ * optional-key pattern, like `venueNameByTier` at v45), so this needs NO
+ * `MIGRATIONS[45]` entry; a pre-v46 save decodes with it simply absent,
+ * which reads as "nothing charged yet" - exactly correct, since every tier's
+ * fee is 0 at current tuning anyway. The version bump alone is still
+ * required (Save law) so an old client rejects a v46 save rather than
+ * silently dropping the field.
  */
-export const SAVE_VERSION = 45
+export const SAVE_VERSION = 46
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -219,13 +219,6 @@ pass."
   `playtest`, `decision \d`, or ISO dates inside comments under `packages/`, so the
   pattern cannot creep back.
 
-- [ ] **`AUCTION_TRAVEL_FEE_YEN` is dead content (found 2026-07-22, blocker investigation).**
-  Declared and schema-validated in `economy.json` (`local-yard: 8000`) but read by nothing in
-  sim or game (full-repo grep); the fee actually charged for a yard visit is
-  `diagnosis.travelFeeYenByTier` (2,000). Either wire it into the room/board flow it was
-  presumably meant for (a per-visit travel cost to remoter venues) or delete the block and its
-  schema; decide when next in the auction economy.
-
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
@@ -391,13 +384,6 @@ pass."
   it will eventually occupy; does an express option exist for cars the way it does for parts, or
   is next-day the only speed; how it reads on the car list before delivery.
 
-- [ ] **Auction Guarantors** (`docs/design/auction-guarantors.md`, maintainer-authored,
-  filed 2026-07-19): story-mission guarantors replace the passive rep gate on
-  regional/premium/collector-network. Maintainer ruling: implement AFTER the economy
-  legibility arc (Sprints 98-101) completes. Needs three personas and three missions
-  written (orchestrator-personal copy under the tone/content bars), the
-  `unlocksAuctionTier` reward field, and the stocked-on-unlock check in `catalogs.ts`.
-
 - [ ] **Overworld town map as navigation (maintainer-proposed, 2026-07-19 playtest item 5;
   needs its own design pass before any sprint).** Standing maintainer want ("I still think we
   need a kind of overworld map"): instead of, or alongside, the top tabs, a representational
@@ -432,11 +418,15 @@ pass."
 
 - [ ] **The progression map is drafted (`docs/design/progression-map.md`, 2026-07-22): the
   factual board for the mid-game design session, holes ranked.** Headliners: the
-  collector-network auction gate opens at `respected` onto a structurally EMPTY tier (zero
-  legend-rarity cars exist in content); the `legend` rep rung (1,400) gates nothing but staff
-  stat rolls; three of five staff traits are hireable but mechanically inert (ex-pro-driver,
-  night-owl, gaisha-fluent); gaisha cars are unreachable by any channel (no Import Broker
-  exists). The session's questions are listed at the map's end; no design was done in it.
+  collector-network auction tier has no unlocking guarantor mission yet (Sprint 115 shipped
+  guarantor unlocks for regional/premium; the collector persona Kurogane and mission
+  the-quiet-crate are written, byte-verbatim, in `docs/sprints/sprint115.md` section 5, but
+  held out deliberately - unlocking an empty tier is worse than the silence, and zero
+  legend-rarity cars exist in content yet for it to hold); the `legend` rep rung (1,400)
+  gates nothing but staff stat rolls; three of five staff traits are hireable but
+  mechanically inert (ex-pro-driver, night-owl, gaisha-fluent); gaisha cars are unreachable
+  by any channel (no Import Broker exists). The session's questions are listed at the map's
+  end; no design was done in it.
 
 - [ ] **Naming Layer parody-flag default is undecided.** GDD explicitly defers whether the game
   ships with real brand names or parody names by default to closer to release. Revisit once a

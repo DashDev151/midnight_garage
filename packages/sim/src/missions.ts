@@ -7,11 +7,13 @@ import type {
 } from '@midnight-garage/content'
 import { applyReputationDelta } from './calendar'
 import { carLedgerFor, deleteCarLedger } from './carLedger'
+import { stockNewlyUnlockedTier } from './catalogs'
 import type { SimContext } from './context'
 import { computeDerivedStats } from './derivedStats'
 import { releaseCarFromShop } from './facilities'
 import { lapTimeSecondsFor } from './lapModel'
 import { evaluateRequirement, type RequirementResult } from './requirements'
+import { createRng, hashStringToSeed } from './rng'
 import { applySpecialtyDelta } from './serviceJobs'
 import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
@@ -220,25 +222,47 @@ export function resolveDeliverMission(
   )
   const totalPayoutYen = mission.payoutYen + tipYen
 
-  return {
-    state: deleteCarLedger(
-      {
-        ...withSpecialty,
-        cashYen: withSpecialty.cashYen + totalPayoutYen,
-        ownedCars: withSpecialty.ownedCars.filter((c) => c.id !== carInstanceId),
-        storyMissions,
-      },
-      carInstanceId,
-    ),
-    log: [
-      {
-        type: 'mission-delivered',
-        missionId,
-        payoutYen: mission.payoutYen,
-        tipYen,
-        reputationGained: mission.reputationReward,
-        specialtyGained,
-      },
-    ],
+  const deliveredState = deleteCarLedger(
+    {
+      ...withSpecialty,
+      cashYen: withSpecialty.cashYen + totalPayoutYen,
+      ownedCars: withSpecialty.ownedCars.filter((c) => c.id !== carInstanceId),
+      storyMissions,
+    },
+    carInstanceId,
+  )
+
+  const log: DayLogEntry[] = [
+    {
+      type: 'mission-delivered',
+      missionId,
+      payoutYen: mission.payoutYen,
+      tipYen,
+      reputationGained: mission.reputationReward,
+      specialtyGained,
+    },
+  ]
+
+  // A guarantor mission's reward is a tier unlock, not just yen - the
+  // newly-open room gets stocked THIS SAME DAY (the "come by Thursday"
+  // beat needs a stocked room, not an empty one), reusing the day-1
+  // seeding path (`stockNewlyUnlockedTier`, catalogs.ts). The delivery
+  // event is a one-time fact per mission id, so the rng stream it derives
+  // (mission id + car instance id) is deterministic and never reused.
+  if (mission.unlocksAuctionTier) {
+    const tier = mission.unlocksAuctionTier
+    const rng = createRng(hashStringToSeed(`tier-unlock:${missionId}:${carInstanceId}`))
+    const freshLots = stockNewlyUnlockedTier(deliveredState, context, deliveredState.day, tier, rng)
+    if (freshLots.length > 0) {
+      return {
+        state: {
+          ...deliveredState,
+          activeAuctionLots: [...deliveredState.activeAuctionLots, ...freshLots],
+        },
+        log: [...log, { type: 'auction-catalog-refreshed', tier, lotCount: freshLots.length }],
+      }
+    }
   }
+
+  return { state: deliveredState, log }
 }

@@ -17,12 +17,13 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { carCostToBandYen, hasForcedInduction, repairCeilingForLevel } from '../src/bands'
+import { isAuctionTierUnlocked } from '../src/catalogs'
 import { buildSimContext } from '../src/context'
 import { resolveBuyPart } from '../src/parts'
 import { computeDerivedStats } from '../src/derivedStats'
 import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
-import { gradeMissionCar } from '../src/missions'
+import { gradeMissionCar, resolveDeliverMission } from '../src/missions'
 import { createInitialGameState } from '../src/newGame'
 import { machineAssistFeeYen, naToTurboConversionBlocked, signatureOpFeeYen } from '../src/jobs'
 import { valuateCarForBuyer } from '../src/valuation'
@@ -477,6 +478,285 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       ceil1AtTwoPercentSlower(timeSeconds),
     )
     assertPassesAndPriceLocked('under-one-fifteen', afterCar, probeCostYen)
+  })
+})
+
+/**
+ * The two guarantor missions (auction-tier unlock rewards). Their stat
+ * floors (reliability >= 58, style >= 50) and band floor ('fine') are
+ * hand-authored levers, not `floor90(measured)` pins like the missions
+ * above - so these probes assert the floor clears with margin rather than
+ * reproducing it exactly. `payoutYen`/`budgetCapYen` stay on the SAME
+ * formula-derived, one-price contract as every other mission: each probe
+ * recomputes `payoutYenFor(probeCostYen)` fresh and pins it against the
+ * authored content, so the two numbers can never quietly drift apart.
+ * Neither probe uses `buildProbe` - both mix bands/aftermarket in a shape
+ * that helper doesn't support (a uniform target band across the whole car).
+ */
+describe('guarantor mission probes (auction-tier unlock rewards)', () => {
+  it('the-fleet-spare: a crx-sir-ef8 with every reliability-weighted part at fine (cosmetics left worn) clears reliability >= 58; formula-derived payout 350,000 yen', () => {
+    const modelId = 'honda-crx-sir-ef8'
+    const model = CARS.find((c) => c.id === modelId)!
+    const fitmentClass = fitmentClassForTier(model.tier)
+    const startCar: CarInstance = {
+      id: 'probe-fleet-spare-start',
+      modelId,
+      year: 1990,
+      mileageKm: 120_000,
+      color: 'White',
+      provenanceNote: '',
+      authenticityPercent: 80,
+      symptoms: [],
+      apparentBandByPartId: null,
+      parts: stockCarPartsAt(fitmentClass, 'worn'),
+    }
+    const purchaseYen = marketValueYen(
+      model,
+      startCar,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+
+    // Fleet duty cares about mechanicals, not trim - every reliability-fed
+    // slot goes to fine; the five purely cosmetic slots stay worn (0 repair
+    // cost there, and nothing grades them).
+    const WORN_COSMETIC: CarPartId[] = ['paint', 'underbody', 'aero', 'seats', 'dashGauges']
+    const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
+    for (const partId of WORN_COSMETIC) {
+      afterParts[partId] = { installed: { ...afterParts[partId].installed!, band: 'worn' } }
+    }
+    const afterCar: CarInstance = { ...startCar, id: 'probe-fleet-spare-after', parts: afterParts }
+
+    let repairYen = 0
+    for (const entry of PARTS_TAXONOMY) {
+      if (WORN_COSMETIC.includes(entry.id)) continue
+      repairYen += Math.round(0.1 * CONTEXT.stockPartByCarPartId[fitmentClass][entry.id].priceYen)
+    }
+    const probeCostYen = purchaseYen + repairYen
+
+    const stats = computeDerivedStats(
+      model,
+      afterCar,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomy,
+      CONTEXT.economy,
+    )
+    expect(stats.reliability).toBeGreaterThanOrEqual(58)
+
+    const state = { ...createInitialGameState(CONTEXT, 1), ownedCars: [afterCar] }
+    const report = gradeMissionCar(state, 'the-fleet-spare', afterCar.id, CONTEXT)
+    expect(report.pass, JSON.stringify(report.lines)).toBe(true)
+
+    const target = mission('the-fleet-spare')
+    expect(target.budgetCapYen, 'the-fleet-spare one-price: budgetCapYen === payoutYen').toBe(
+      target.payoutYen,
+    )
+    expect(target.payoutYen, `the-fleet-spare payoutYen (formula-derived)`).toBe(
+      payoutYenFor(probeCostYen),
+    )
+  })
+
+  it('the-showroom-standard: a cefiro-a31 with every part fine-or-better, sport panels/paint/underbody/aero, and 4 mechanicals minted clears style >= 50; formula-derived payout 1,200,000 yen', () => {
+    const modelId = 'nissan-cefiro-a31'
+    const model = CARS.find((c) => c.id === modelId)!
+    const fitmentClass = fitmentClassForTier(model.tier)
+    const startCar: CarInstance = {
+      id: 'probe-showroom-start',
+      modelId,
+      year: 1990,
+      mileageKm: 120_000,
+      color: 'White',
+      provenanceNote: '',
+      authenticityPercent: 80,
+      symptoms: [],
+      apparentBandByPartId: null,
+      parts: stockCarPartsAt(fitmentClass, 'worn'),
+    }
+    const purchaseYen = marketValueYen(
+      model,
+      startCar,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+
+    // The showroom body kit: sport-grade panels/paint/underbody/aero clear
+    // the style floor; a further mechanical polish (4 engine-group parts to
+    // mint) is a forecourt-honest "we treated her right underneath too",
+    // still fine-or-better either way.
+    const SPORT_SWAP: CarPartId[] = ['panels', 'paint', 'underbody', 'aero']
+    const MINT_UPGRADE: CarPartId[] = ['block', 'exhaust', 'fuelSystem', 'clutch']
+
+    const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
+    let partsYen = 0
+    for (const carPartId of SPORT_SWAP) {
+      const part = aftermarketPart(carPartId, 'sport', fitmentClass)
+      partsYen += part.priceYen
+      afterParts[carPartId] = {
+        installed: {
+          id: `probe-showroom-after-${carPartId}`,
+          partId: part.id,
+          band: 'fine',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+      }
+    }
+    for (const partId of MINT_UPGRADE) {
+      afterParts[partId] = { installed: { ...afterParts[partId].installed!, band: 'mint' } }
+    }
+    const afterCar: CarInstance = { ...startCar, id: 'probe-showroom-after', parts: afterParts }
+
+    let repairYen = 0
+    for (const entry of PARTS_TAXONOMY) {
+      if (SPORT_SWAP.includes(entry.id)) continue // aftermarket - priced via partsYen, not repaired
+      const grades = MINT_UPGRADE.includes(entry.id) ? 2 : 1 // worn -> mint or worn -> fine
+      repairYen += Math.round(
+        grades * 0.1 * CONTEXT.stockPartByCarPartId[fitmentClass][entry.id].priceYen,
+      )
+    }
+    const probeCostYen = purchaseYen + repairYen + partsYen
+
+    const stats = computeDerivedStats(
+      model,
+      afterCar,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomy,
+      CONTEXT.economy,
+    )
+    expect(stats.style).toBeGreaterThanOrEqual(50)
+
+    const state = { ...createInitialGameState(CONTEXT, 1), ownedCars: [afterCar] }
+    const report = gradeMissionCar(state, 'the-showroom-standard', afterCar.id, CONTEXT)
+    expect(report.pass, JSON.stringify(report.lines)).toBe(true)
+
+    const target = mission('the-showroom-standard')
+    expect(target.budgetCapYen, 'the-showroom-standard one-price: budgetCapYen === payoutYen').toBe(
+      target.payoutYen,
+    )
+    expect(target.payoutYen, `the-showroom-standard payoutYen (formula-derived)`).toBe(
+      payoutYenFor(probeCostYen),
+    )
+  })
+
+  /**
+   * Immediate stocking: delivering a guarantor mission unlocks its tier the
+   * SAME day, with lots already on the board - the "come by Thursday needs
+   * a stocked room" rule, reusing the fleet-spare probe car above to drive
+   * a real delivery through `resolveDeliverMission`.
+   */
+  it('delivering the-fleet-spare unlocks regional THAT SAME DAY with lots already on the board', () => {
+    const modelId = 'honda-crx-sir-ef8'
+    const model = CARS.find((c) => c.id === modelId)!
+    const fitmentClass = fitmentClassForTier(model.tier)
+    const startCar: CarInstance = {
+      id: 'probe-deliver-start',
+      modelId,
+      year: 1990,
+      mileageKm: 120_000,
+      color: 'White',
+      provenanceNote: '',
+      authenticityPercent: 80,
+      symptoms: [],
+      apparentBandByPartId: null,
+      parts: stockCarPartsAt(fitmentClass, 'worn'),
+    }
+    const WORN_COSMETIC: CarPartId[] = ['paint', 'underbody', 'aero', 'seats', 'dashGauges']
+    const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
+    for (const partId of WORN_COSMETIC) {
+      afterParts[partId] = { installed: { ...afterParts[partId].installed!, band: 'worn' } }
+    }
+    const deliverableCar: CarInstance = { ...startCar, id: 'probe-deliver-car', parts: afterParts }
+
+    const base = createInitialGameState(CONTEXT, 1)
+    const state = {
+      ...base,
+      ownedCars: [deliverableCar],
+      storyMissions: [
+        { missionId: 'the-fleet-spare', status: 'active' as const, acceptedOnDay: 1 },
+      ],
+    }
+    expect(isAuctionTierUnlocked(state, CONTEXT, 'regional')).toBe(false)
+
+    const result = resolveDeliverMission(state, 'the-fleet-spare', deliverableCar.id, CONTEXT)
+    expect(
+      result.log.some((entry) => entry.type === 'mission-delivered'),
+      JSON.stringify(result.log),
+    ).toBe(true)
+
+    expect(isAuctionTierUnlocked(result.state, CONTEXT, 'regional')).toBe(true)
+    const regionalLots = result.state.activeAuctionLots.filter((l) => l.tier === 'regional')
+    expect(regionalLots.length).toBeGreaterThan(0)
+    expect(regionalLots.every((l) => l.tier === 'regional' && l.expiresOnDay > state.day)).toBe(
+      true,
+    )
+    // Stocked for TODAY, not tomorrow - the day the mission actually resolved.
+    expect(regionalLots.every((l) => l.id.startsWith(`lot-${state.day}-regional-`))).toBe(true)
+  })
+
+  it('delivering the-showroom-standard unlocks premium THAT SAME DAY with lots already on the board', () => {
+    const modelId = 'nissan-cefiro-a31'
+    const model = CARS.find((c) => c.id === modelId)!
+    const fitmentClass = fitmentClassForTier(model.tier)
+    const startCar: CarInstance = {
+      id: 'probe-deliver-showroom-start',
+      modelId,
+      year: 1990,
+      mileageKm: 120_000,
+      color: 'White',
+      provenanceNote: '',
+      authenticityPercent: 80,
+      symptoms: [],
+      apparentBandByPartId: null,
+      parts: stockCarPartsAt(fitmentClass, 'worn'),
+    }
+    const SPORT_SWAP: CarPartId[] = ['panels', 'paint', 'underbody', 'aero']
+    const MINT_UPGRADE: CarPartId[] = ['block', 'exhaust', 'fuelSystem', 'clutch']
+    const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
+    for (const carPartId of SPORT_SWAP) {
+      const part = aftermarketPart(carPartId, 'sport', fitmentClass)
+      afterParts[carPartId] = {
+        installed: {
+          id: `probe-deliver-showroom-${carPartId}`,
+          partId: part.id,
+          band: 'fine',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+      }
+    }
+    for (const partId of MINT_UPGRADE) {
+      afterParts[partId] = { installed: { ...afterParts[partId].installed!, band: 'mint' } }
+    }
+    const deliverableCar: CarInstance = {
+      ...startCar,
+      id: 'probe-deliver-showroom-car',
+      parts: afterParts,
+    }
+
+    const base = createInitialGameState(CONTEXT, 1)
+    const state = {
+      ...base,
+      ownedCars: [deliverableCar],
+      storyMissions: [
+        { missionId: 'the-showroom-standard', status: 'active' as const, acceptedOnDay: 1 },
+      ],
+    }
+    expect(isAuctionTierUnlocked(state, CONTEXT, 'premium')).toBe(false)
+
+    const result = resolveDeliverMission(state, 'the-showroom-standard', deliverableCar.id, CONTEXT)
+    expect(
+      result.log.some((entry) => entry.type === 'mission-delivered'),
+      JSON.stringify(result.log),
+    ).toBe(true)
+
+    expect(isAuctionTierUnlocked(result.state, CONTEXT, 'premium')).toBe(true)
+    const premiumLots = result.state.activeAuctionLots.filter((l) => l.tier === 'premium')
+    expect(premiumLots.length).toBeGreaterThan(0)
+    expect(premiumLots.every((l) => l.id.startsWith(`lot-${state.day}-premium-`))).toBe(true)
   })
 })
 

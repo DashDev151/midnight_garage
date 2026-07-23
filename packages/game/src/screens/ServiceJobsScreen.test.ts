@@ -463,8 +463,10 @@ describe('ServiceJobsScreen', () => {
      * Story missions are unfailable now, so the old "lapses then reoffers after
      * reofferDays" flow is gone. An accepted mission stays active however many
      * days pass, with no reputation penalty. Skips straight to
-     * `the-column-clock` (mission 5, gate 200) by marking the four earlier
-     * missions delivered directly, the same setup the removed lapse test used.
+     * `the-column-clock` (gate 200) by marking every earlier-gated mission
+     * delivered directly (including the-fleet-spare, gate 45, interleaved
+     * between wont-strand-her and first-proper-car), the same setup the
+     * removed lapse test used.
      */
     it('an accepted mission (the-column-clock) never lapses, however many days pass', () => {
       const game = useGameStore()
@@ -472,6 +474,7 @@ describe('ServiceJobsScreen', () => {
       const earlierMissionIds = [
         'four-wheels',
         'wont-strand-her',
+        'the-fleet-spare',
         'first-proper-car',
         'make-it-pull',
       ]

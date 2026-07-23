@@ -405,6 +405,19 @@ export const GameStateSchema = z.object({
    * `uiSettings` above), so no existing `GameState` literal needs touching.
    */
   venueNameByTier: VenueNameByTierSchema.optional(),
+  /**
+   * The day each auction tier's admission was last charged
+   * (`resolveAttendAuction`, sim/bidding.ts) - a tier entry equal to the
+   * current day means today's sitting there is already covered, so a later
+   * "Take a seat" at that tier the same day is free. Recorded only when a
+   * nonzero fee is actually charged; a zero-fee tier (every tier today)
+   * never gains an entry. The genuinely-optional-key pattern (like
+   * `venueNameByTier` above), so no existing `GameState` literal needs
+   * touching.
+   */
+  attendanceFeePaidDayByTier: z
+    .partialRecord(AuctionTierSchema, z.number().int().positive())
+    .optional(),
 })
 
 /**

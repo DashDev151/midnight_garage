@@ -1,4 +1,5 @@
 import assembliesJson from '../data/assemblies.json'
+import auctionTierCopyJson from '../data/auctionTierCopy.json'
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
@@ -25,6 +26,7 @@ import tutorialLotJson from '../data/tutorialLot.json'
 import tutorialStepsJson from '../data/tutorialSteps.json'
 import venueNamesJson from '../data/venueNames.json'
 import { AssemblyDefsSchema } from './assembly'
+import { AuctionTierCopySchema } from './auctionTierCopy'
 import { BuyersSchema } from './buyer'
 import { CarModelsSchema } from './carModel'
 import {
@@ -141,6 +143,12 @@ export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)
  * stores it, displayed wherever the tier label renders.
  */
 export const VENUE_NAMES = VenueNamesSchema.parse(venueNamesJson)
+
+/**
+ * The locked-tier guarantor line shown for each auction tier not yet
+ * unlocked - `AuctionScreen`'s locked-tier copy.
+ */
+export const AUCTION_TIER_COPY = AuctionTierCopySchema.parse(auctionTierCopyJson)
 
 /**
  * The shared failure-mode registry each symptom's own `causes` entries

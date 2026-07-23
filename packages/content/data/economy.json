@@ -14,12 +14,6 @@
   "AUCTION_DURATION_FLASH_DAYS": 1,
   "AUCTION_FLASH_CHANCE": 0.08,
   "AUCTION_LONG_CHANCE_UNCOMMON_RARE": 0.25,
-  "AUCTION_TRAVEL_FEE_YEN": {
-    "local-yard": 8000,
-    "regional": 15000,
-    "premium": 25000,
-    "collector-network": 40000
-  },
   "AUCTION_BUYOUT_PREMIUM": 1.25,
   "AUCTION_WHOLESALE_FRACTION": 0.97,
   "AUCTION_DAILY_SPAWN_RATE": {
@@ -417,6 +411,12 @@
   "auctionRoom": {
     "clockMs": 5000,
     "reserveFraction": 0.55,
+    "attendanceFeeYenByTier": {
+      "local-yard": 0,
+      "regional": 0,
+      "premium": 0,
+      "collector-network": 0
+    },
     "bidDelayMs": { "min": 800, "max": 4600 },
     "bargainChance": 0.05,
     "stepThresholdYen": 500000,

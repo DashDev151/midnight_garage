@@ -1,7 +1,6 @@
 import type { AuctionLot, AuctionTier, GameState } from '@midnight-garage/content'
 import { generateAuctionCatalog } from './auctions'
-import { currentGameYear, reputationAtLeast } from './calendar'
-import { AUCTION_TIER_MIN_REPUTATION } from './constants'
+import { currentGameYear } from './calendar'
 import type { SimContext } from './context'
 import type { Rng } from './rng'
 import { excludedAuctionModelIds } from './tutorial'
@@ -20,10 +19,36 @@ export interface CatalogRefresh {
 }
 
 /**
- * Shared generation loop: for each eligible tier (calendar + reputation
- * gated), asks `countForTier` how many lots to roll today and generates
- * exactly that many via `generateAuctionCatalog` - the one place "which
- * tiers, gated how" lives, whether the caller wants a fixed day-1 batch
+ * Whether `tier` is open for `state` right now - derived, never stored.
+ * `local-yard` is always open (the lease's own guarantor); every other tier
+ * opens the moment some story-mission record reaches `delivered` for a
+ * mission whose content names it via `unlocksAuctionTier`. The mission
+ * record IS the fact, so there is nothing else to check - a tier with no
+ * authored unlocking mission simply never opens.
+ */
+export function isAuctionTierUnlocked(
+  state: GameState,
+  context: SimContext,
+  tier: AuctionTier,
+): boolean {
+  if (tier === 'local-yard') return true
+  return state.storyMissions.some(
+    (record) =>
+      record.status === 'delivered' &&
+      context.storyMissionsById[record.missionId]?.unlocksAuctionTier === tier,
+  )
+}
+
+/** Every auction tier open for `state` right now, in tier order. */
+export function unlockedAuctionTiers(state: GameState, context: SimContext): AuctionTier[] {
+  return AUCTION_TIERS.filter((tier) => isAuctionTierUnlocked(state, context, tier))
+}
+
+/**
+ * Shared generation loop: for each unlocked tier (`isAuctionTierUnlocked`),
+ * asks `countForTier` how many lots to roll today and generates exactly
+ * that many via `generateAuctionCatalog` - the one place "which tiers,
+ * stocked how" lives, whether the caller wants a fixed day-1 batch
  * (`refreshCatalogs`) or a small daily trickle (`generateDailyAuctionArrivals`).
  */
 function generateForEligibleTiers(
@@ -43,7 +68,7 @@ function generateForEligibleTiers(
   const freshLots: AuctionLot[] = []
   const lotsByTier: { tier: AuctionTier; lotCount: number }[] = []
   for (const tier of AUCTION_TIERS) {
-    if (!reputationAtLeast(state.reputationTier, AUCTION_TIER_MIN_REPUTATION[tier])) {
+    if (!isAuctionTierUnlocked(state, context, tier)) {
       continue
     }
     const count = countForTier(tier)
@@ -85,6 +110,37 @@ export function refreshCatalogs(
     day,
     rng,
     (tier) => context.economy.AUCTION_LOTS_PER_TIER[tier],
+  )
+}
+
+/**
+ * A newly-unlocked tier's opening batch - the SAME day-1 seeding path
+ * `refreshCatalogs` uses (`AUCTION_LOTS_PER_TIER[tier]` lots via
+ * `generateAuctionCatalog`), scoped to just this one tier. Called the
+ * instant a guarantor mission delivers, so a tier that opens today is
+ * stocked today, never an empty room. `day` is the CURRENT day (unlike the
+ * daily-arrivals seam, this isn't posted for tomorrow - the guarantor's
+ * introduction lands the same tick the mission resolves).
+ */
+export function stockNewlyUnlockedTier(
+  state: GameState,
+  context: SimContext,
+  day: number,
+  tier: AuctionTier,
+  rng: Rng,
+): AuctionLot[] {
+  const year = currentGameYear(state.reputationTier)
+  const excludedModelIds = excludedAuctionModelIds(state)
+  return generateAuctionCatalog(
+    context.models,
+    tier,
+    day,
+    context.economy.AUCTION_LOTS_PER_TIER[tier],
+    rng,
+    context,
+    year,
+    state.reputationTier,
+    excludedModelIds,
   )
 }
 

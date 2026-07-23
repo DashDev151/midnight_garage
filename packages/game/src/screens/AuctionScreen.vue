@@ -1,14 +1,27 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import type { AuctionTier } from '@midnight-garage/content'
+import { RouterLink, useRouter } from 'vue-router'
+import { AUCTION_TIER_COPY, type AuctionTier } from '@midnight-garage/content'
 import AuctionLotCard from '../components/AuctionLotCard.vue'
 import LabourBar from '../components/LabourBar.vue'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
-import { venueLabelFor } from '../utils/auctionTierLabels'
+import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
 
+/** Every tier in display order - `AUCTION_TIER_LABELS`' own key order
+ * (local-yard, regional, premium, collector-network), reused rather than a
+ * second hand-written literal list. */
+const TIER_ORDER = Object.keys(AUCTION_TIER_LABELS) as AuctionTier[]
+
+/** The locked-tier guarantor line - `local-yard` is never locked, so this
+ * is only ever called behind a `!group.unlocked` guard. */
+function lockedTierCopyFor(tier: AuctionTier): string {
+  if (tier === 'local-yard') return ''
+  return AUCTION_TIER_COPY[tier]
+}
+
 const game = useGameStore()
+const router = useRouter()
 
 const GATE_REASON_LABEL: Record<string, string> = {
   // Labour is a continuous bar now, not integer slots.
@@ -86,6 +99,20 @@ function testDisabledReason(
   return null
 }
 
+/** The "Take a seat" control's disabled-reason title - the room-entry
+ * admission is 0 for every tier at current tuning, so this only ever reads
+ * as a real refusal once a tier's fee is tuned above 0. */
+function seatButtonTitle(tier: AuctionTier): string {
+  if (game.attendAuctionGateReason(tier)) {
+    return `Not enough cash - admission is ${formatYen(game.attendanceFeeYenFor(tier))}`
+  }
+  return 'Take a seat at this room'
+}
+
+function onTakeSeat(lotId: string): void {
+  void router.push({ name: 'auction-room', params: { lotId } })
+}
+
 /** Buy Now is a two-step commit - the first click arms this per-lot confirm
  * state, the second actually buys. A car is expensive and irreversible, so it
  * must never fire on a single stray click; the same two-step pattern the End
@@ -117,13 +144,34 @@ const willDoubleParkOnWin = computed(() => game.shopAtCapacity && !game.graceSlo
  */
 const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccupied)
 
-// Resolve each lot's detail once per render (avoids repeated lookups + template `!`).
-const allGroups = computed(() =>
-  game.auctionLotsByTier.map((g) => ({
-    tier: g.tier,
-    lots: g.lots.map((l) => game.lotDetail(l.id)).filter((d): d is LotDetail => d !== undefined),
-  })),
-)
+interface TierGroup {
+  tier: AuctionTier
+  unlocked: boolean
+  lots: LotDetail[]
+}
+
+/** Every tier, in display order - an unlocked tier with lots carries its
+ * resolved lot details (avoids repeated lookups + template `!`); an
+ * unlocked tier with none currently on the board renders nothing (same as
+ * before this sprint); a locked tier always renders, with its guarantor
+ * copy standing in for a board it doesn't have yet. */
+const allGroups = computed<TierGroup[]>(() => {
+  const lotsByTier = new Map(game.auctionLotsByTier.map((g) => [g.tier, g.lots]))
+  return TIER_ORDER.flatMap((tier): TierGroup[] => {
+    if (!game.unlockedAuctionTiers.includes(tier)) {
+      return [{ tier, unlocked: false, lots: [] }]
+    }
+    const lots = lotsByTier.get(tier)
+    if (!lots) return []
+    return [
+      {
+        tier,
+        unlocked: true,
+        lots: lots.map((l) => game.lotDetail(l.id)).filter((d): d is LotDetail => d !== undefined),
+      },
+    ]
+  })
+})
 
 const totalLots = computed(() => allGroups.value.reduce((n, g) => n + g.lots.length, 0))
 
@@ -169,9 +217,15 @@ const hasLots = computed(() => totalLots.value > 0)
 
     <div v-for="group in allGroups" :key="group.tier" class="tier">
       <div class="tier-head">
-        <h3>{{ venueLabelFor(group.tier, game.gameState.venueNameByTier) }}</h3>
+        <h3>
+          {{
+            group.unlocked
+              ? venueLabelFor(group.tier, game.gameState.venueNameByTier)
+              : AUCTION_TIER_LABELS[group.tier]
+          }}
+        </h3>
         <button
-          v-if="!isActiveVisitTier(group.tier)"
+          v-if="group.unlocked && !isActiveVisitTier(group.tier)"
           type="button"
           class="inspect-visit"
           :class="{ confirming: visitConfirmingTier === group.tier }"
@@ -183,7 +237,10 @@ const hasLots = computed(() => totalLots.value > 0)
           {{ inspectButtonLabel(group.tier) }}
         </button>
       </div>
-      <ul class="lots">
+      <p v-if="!group.unlocked" class="locked-tier" :data-test="'locked-tier-' + group.tier">
+        {{ lockedTierCopyFor(group.tier) }}
+      </p>
+      <ul v-else class="lots">
         <li v-for="d in group.lots" :key="d.lot.id" class="lot">
           <!-- The shared production card draws the identity panel, grades, the
                public symptom checklist, and the room's number and ledger. The
@@ -206,13 +263,16 @@ const hasLots = computed(() => totalLots.value > 0)
 
             <template #actions>
               <div class="seat-row">
-                <RouterLink
+                <button
+                  type="button"
                   class="seat-link"
+                  :disabled="!!game.attendAuctionGateReason(d.lot.tier)"
+                  :title="seatButtonTitle(d.lot.tier)"
                   :data-test="'take-seat-' + d.lot.id"
-                  :to="{ name: 'auction-room', params: { lotId: d.lot.id } }"
+                  @click="onTakeSeat(d.lot.id)"
                 >
                   Take a seat
-                </RouterLink>
+                </button>
               </div>
               <!-- Buy Now takes two clicks - it can never fire on a stray press. -->
               <div class="buyout-row">
@@ -294,6 +354,14 @@ h3 {
 .inspect-visit.confirming {
   border-color: var(--mg-neon-pink);
   color: var(--mg-neon-pink);
+}
+
+/* The guarantor line stands in for a board that doesn't exist yet - muted,
+   like `.empty`, never styled as an error or a warning. */
+.locked-tier {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-4);
 }
 
 .cash {

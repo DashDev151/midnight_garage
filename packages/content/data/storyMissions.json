@@ -44,6 +44,30 @@
     "overdeliveredCopy": "You checked things I didn't know cars had. I'm telling the whole neighbourhood."
   },
   {
+    "id": "the-fleet-spare",
+    "personaId": "numata",
+    "title": "The fleet spare",
+    "requestCopy": "One of my drivers put cab twelve into a barrier and walked away laughing, so we're calling it a lucky week. I need a spare that starts every shift and forgives every driver. Nothing clever. Clever breaks.",
+    "gateReputationPoints": 45,
+    "requirements": [
+      {
+        "kind": "statThreshold",
+        "stat": "reliability",
+        "min": 58
+      }
+    ],
+    "budgetCapYen": 350000,
+    "payoutYen": 350000,
+    "tipFraction": 0.1,
+    "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
+    "reputationReward": 22,
+    "specialtyGroups": ["engine"],
+    "deliveredCopy": "She'll outlast three of my drivers. Come by {venue} on Thursday; tell the desk Numata stands for you.",
+    "overdeliveredCopy": "Outlast three of my drivers? Give her a month, she'll outlast the fleet.",
+    "unlocksAuctionTier": "regional"
+  },
+  {
     "id": "first-proper-car",
     "personaId": "yuki",
     "title": "First proper car",
@@ -116,6 +140,34 @@
     "specialtyGroups": ["engine", "suspension"],
     "deliveredCopy": "Under the mark. The column runs next week; your name's in the last line.",
     "overdeliveredCopy": "WELL under. That's a headline, not a footnote."
+  },
+  {
+    "id": "the-showroom-standard",
+    "personaId": "ishida",
+    "title": "The showroom standard",
+    "requestCopy": "My forecourt sells the idea that a used car can be a new beginning. Bring me one I could photograph for the window, the kind that makes a young couple stop walking. I'll know it when I see it.",
+    "gateReputationPoints": 240,
+    "requirements": [
+      {
+        "kind": "allPartsBandAtLeast",
+        "minBand": "fine"
+      },
+      {
+        "kind": "statThreshold",
+        "stat": "style",
+        "min": 50
+      }
+    ],
+    "budgetCapYen": 1200000,
+    "payoutYen": 1200000,
+    "tipFraction": 0.1,
+    "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
+    "reputationReward": 38,
+    "specialtyGroups": ["body", "interior"],
+    "deliveredCopy": "It'll photograph beautifully. Come to {venue}; the book at the door will have your name where mine used to be.",
+    "overdeliveredCopy": "I didn't even need the photograph. She sold herself the moment she rolled onto the lot.",
+    "unlocksAuctionTier": "premium"
   },
   {
     "id": "low-and-loud",

@@ -1,4 +1,4 @@
-import type { AuctionTier, Grade, ReputationTier, ServiceJobTier } from '@midnight-garage/content'
+import type { Grade, ReputationTier, ServiceJobTier } from '@midnight-garage/content'
 
 /** Days between accepting a service job and the customer's car actually
  * arriving in the shop - "I'll drop it off first thing in the morning." */
@@ -7,8 +7,7 @@ export const SERVICE_JOB_ARRIVAL_DELAY_DAYS = 1
 /**
  * Which reputation tier unlocks each service-job template tier - a clean
  * 1:1 mapping onto the first 4 of the 5 reputation tiers (`legend`
- * reserved for something rarer, same framing as
- * `AUCTION_TIER_MIN_REPUTATION`). A turbo/FI install (tier 4) can never be
+ * reserved for something rarer). A turbo/FI install (tier 4) can never be
  * a first job: a brand-new game starts at `unknown`, tier 1 only.
  */
 export const SERVICE_JOB_TIER_MIN_REPUTATION: Readonly<Record<ServiceJobTier, ReputationTier>> = {
@@ -50,20 +49,6 @@ export const GRADE_REPUTATION_MULTIPLIER: Readonly<Record<Grade, number>> = {
  * best- or worst-case.
  */
 export const DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED = 10
-
-/**
- * Auction tier reputation ladder: extends the Collector Network gate (GDD
- * 6.5) to the other three tiers - a clean 1:1 mapping onto 4 of the 5
- * reputation tiers, `legend` reserved for something rarer than a mere
- * auction tier. `local-yard: unknown` means "no gate" (every tier is at
- * least `unknown`).
- */
-export const AUCTION_TIER_MIN_REPUTATION: Readonly<Record<AuctionTier, ReputationTier>> = {
-  'local-yard': 'unknown',
-  regional: 'local',
-  premium: 'known',
-  'collector-network': 'respected',
-}
 
 /**
  * Parts-market delivery timing: express pays this surcharge for a part to

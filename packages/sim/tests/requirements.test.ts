@@ -379,6 +379,74 @@ describe('evaluateRequirement', () => {
     })
   })
 
+  describe('allPartsBandAtLeast (Sprint 115)', () => {
+    it('passes when every slot is at least minBand', () => {
+      const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('fine') })
+      const result = evaluateRequirement(
+        { kind: 'allPartsBandAtLeast', minBand: 'fine' },
+        car,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+      )
+      expect(result.pass).toBe(true)
+    })
+
+    it('fails when at least one slot is below minBand', () => {
+      const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('fine') })
+      const withOneWorn = {
+        ...car,
+        parts: {
+          ...car.parts,
+          tyres: {
+            ...car.parts.tyres,
+            installed: { ...car.parts.tyres.installed!, band: 'worn' as const },
+          },
+        },
+      }
+      const result = evaluateRequirement(
+        { kind: 'allPartsBandAtLeast', minBand: 'fine' },
+        withOneWorn,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+      )
+      expect(result.pass).toBe(false)
+      expect(result.actual).toContain('1 slot')
+    })
+
+    it('fails when at least one slot is missing', () => {
+      const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('mint') })
+      const withOneMissing = { ...car, parts: { ...car.parts, block: { installed: null } } }
+      const result = evaluateRequirement(
+        { kind: 'allPartsBandAtLeast', minBand: 'fine' },
+        withOneMissing,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+      )
+      expect(result.pass).toBe(false)
+    })
+
+    // A legitimately-empty forcedInduction slot on an NA car never counts,
+    // same isPartMissing carve-out as roadworthy above.
+    it('an NA car with a legitimately-empty forcedInduction slot still passes at fine', () => {
+      const naModel = CARS.find((c) => !hasForcedInduction(c))!
+      const car = buildCarInstance({
+        modelId: naModel.id,
+        parts: { ...uniformCarParts('fine'), forcedInduction: { installed: null } },
+      })
+      const result = evaluateRequirement(
+        { kind: 'allPartsBandAtLeast', minBand: 'fine' },
+        car,
+        EMPTY_LEDGER,
+        1,
+        CONTEXT,
+      )
+      expect(result.pass).toBe(true)
+    })
+  })
+
   describe('lapTimeCeiling (Sprint 77)', () => {
     it('passes when the real lap time is at or under maxSeconds', () => {
       const car = buildCarInstance({

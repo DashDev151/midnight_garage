@@ -1,6 +1,14 @@
-import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { h } from 'vue'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import {
+  ALL_CAR_PART_IDS,
+  CARS,
+  fitmentClassForTier,
+  type CarInstance,
+} from '@midnight-garage/content'
 import { useGameStore } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
@@ -11,14 +19,80 @@ import AuctionScreen from './AuctionScreen.vue'
 // (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
+/** A real router so `useRouter()`/`<RouterLink>` resolve (the "Take a seat"
+ * control navigates via `router.push`) - destination screens are render-stub
+ * targets, this file never asserts anything about their content. */
+function makeRouter(): Router {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'garage', component: { render: () => h('div') } },
+      { path: '/auctions', name: 'auctions', component: { render: () => h('div') } },
+      {
+        path: '/auctions/:lotId/room',
+        name: 'auction-room',
+        component: { render: () => h('div') },
+      },
+    ],
+  })
+}
+
 function mountScreen() {
-  const wrapper = mount(AuctionScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  const wrapper = mount(AuctionScreen, { global: { plugins: [makeRouter()] } })
   mountedWrappers.push(wrapper)
   return wrapper
 }
 
+/** Same as `mountScreen`, plus the router instance itself - for the one test
+ * that asserts a real navigation actually happened. */
+function mountScreenWithRouter(): { wrapper: VueWrapper; router: Router } {
+  const router = makeRouter()
+  const wrapper = mount(AuctionScreen, { global: { plugins: [router] } })
+  mountedWrappers.push(wrapper)
+  return { wrapper, router }
+}
+
 function warpToCatalog(game: ReturnType<typeof useGameStore>) {
   for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
+}
+
+/** A synthetic owned car, every slot stock-and-fine, with NO ledger entry -
+ * `evaluateBudgetCap` reads a missing ledger as a 0 purchase (the same
+ * "accepted, unpriced" convention `storyMissionProbes.test.ts`'s probes
+ * rely on), so this always clears a guarantor mission's budget cap
+ * regardless of what a real, randomly-rolled auction lot would have cost.
+ * Reliability only reads band factors, so 'fine' everywhere clears any
+ * guarantor mission's reliability floor too. Returns the owned car's id. */
+function giveReliableOwnedCar(game: ReturnType<typeof useGameStore>): string {
+  const model = CARS.find((c) => c.id === 'honda-crx-sir-ef8')!
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const parts = {} as CarInstance['parts']
+  for (const partId of ALL_CAR_PART_IDS) {
+    const stockPart = game.context.stockPartByCarPartId[fitmentClass][partId]
+    parts[partId] = {
+      installed: {
+        id: `test-reliable-${partId}`,
+        partId: stockPart.id,
+        band: 'fine',
+        genuinePeriod: false,
+        origin: { kind: 'market', day: 1 },
+      },
+    }
+  }
+  const car: CarInstance = {
+    id: 'test-reliable-car',
+    modelId: model.id,
+    year: 1990,
+    mileageKm: 120_000,
+    color: 'White',
+    provenanceNote: '',
+    authenticityPercent: 80,
+    symptoms: [],
+    apparentBandByPartId: null,
+    parts,
+  }
+  game.gameState = { ...game.gameState, ownedCars: [...game.gameState.ownedCars, car] }
+  return car.id
 }
 
 /** Overwrites `lotId`'s car with a real, content-backed symptomatic fixture -
@@ -72,17 +146,54 @@ describe('AuctionScreen', () => {
     expect(wrapper.find(`[data-test="buyout-${lot.id}"]`).exists()).toBe(true)
   })
 
-  it('offers a "Take a seat" link into the live room for every lot', () => {
+  it('offers a "Take a seat" control into the live room for every lot, enabled under the real, zero-fee content', () => {
     const game = useGameStore()
     warpToCatalog(game)
     const lot = game.gameState.activeAuctionLots[0]!
     const wrapper = mountScreen()
-    const link = wrapper
-      .findAllComponents(RouterLinkStub)
-      .find((c) => c.attributes('data-test') === 'take-seat-' + lot.id)
-    expect(link).toBeDefined()
-    expect(link!.text()).toBe('Take a seat')
-    expect(link!.props('to')).toEqual({ name: 'auction-room', params: { lotId: lot.id } })
+    const button = wrapper.find(`[data-test="take-seat-${lot.id}"]`)
+    expect(button.exists()).toBe(true)
+    expect(button.text()).toBe('Take a seat')
+    expect((button.element as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('"Take a seat" navigates into the live room for that exact lot', async () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    const lot = game.gameState.activeAuctionLots[0]!
+    const { wrapper, router } = mountScreenWithRouter()
+
+    await wrapper.find(`[data-test="take-seat-${lot.id}"]`).trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('auction-room')
+    expect(router.currentRoute.value.params.lotId).toBe(lot.id)
+  })
+
+  it('a disabled "Take a seat" (short on cash, admission tuned above zero) explains itself in a tooltip', () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    const lot = game.gameState.activeAuctionLots[0]!
+    game.context = {
+      ...game.context,
+      economy: {
+        ...game.context.economy,
+        auctionRoom: {
+          ...game.context.economy.auctionRoom,
+          attendanceFeeYenByTier: {
+            'local-yard': 5_000,
+            regional: 5_000,
+            premium: 5_000,
+            'collector-network': 5_000,
+          },
+        },
+      },
+    }
+    game.gameState = { ...game.gameState, cashYen: 0 }
+    const wrapper = mountScreen()
+    const button = wrapper.find(`[data-test="take-seat-${lot.id}"]`)
+    expect((button.element as HTMLButtonElement).disabled).toBe(true)
+    expect(button.attributes('title')).toContain('Not enough cash')
   })
 
   it('shows a turnout read per lot and offers an always-visible instant buyout', async () => {
@@ -666,6 +777,67 @@ describe('AuctionScreen', () => {
       const doneLine = wrapper.find(`[data-test="inspector-done-${lot.id}"]`)
       expect(doneLine.exists()).toBe(true)
       expect(doneLine.text()).toBe('Rie hands the sheet back without a word.')
+    })
+  })
+
+  describe('locked-tier guarantor copy (Sprint 115)', () => {
+    it('renders the byte-verbatim guarantor line for every locked tier, with no inspect control', () => {
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="locked-tier-regional"]').text()).toBe(
+        'Members only. Somebody has to vouch for you, and nobody does. Yet.',
+      )
+      expect(wrapper.find('[data-test="locked-tier-premium"]').text()).toBe(
+        "The book at the door is full of names. Yours needs a sponsor's beside it.",
+      )
+      expect(wrapper.find('[data-test="locked-tier-collector-network"]').text()).toBe(
+        'Invitation only, and invitations start with a name they trust. No one is offering yours.',
+      )
+      for (const tier of ['regional', 'premium', 'collector-network']) {
+        expect(wrapper.find(`[data-test="inspect-visit-${tier}"]`).exists()).toBe(false)
+      }
+    })
+
+    it('shows the plain tier label (never the rolled venue name) on a locked tier heading', () => {
+      const game = useGameStore()
+      const wrapper = mountScreen()
+      const headings = wrapper.findAll('.tier-head h3').map((h) => h.text())
+      expect(headings).toContain(AUCTION_TIER_LABELS.regional)
+      expect(headings).not.toContain(game.gameState.venueNameByTier?.regional)
+    })
+
+    it('never shows the locked line for local-yard - it is open from day one', () => {
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="locked-tier-local-yard"]').exists()).toBe(false)
+    })
+
+    it('delivering the-fleet-spare flips regional to its real board (rolled venue name, no locked line), leaving premium/collector-network locked', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const carId = giveReliableOwnedCar(game)
+      game.gameState = {
+        ...game.gameState,
+        storyMissions: [
+          { missionId: 'the-fleet-spare', status: 'active', acceptedOnDay: game.gameState.day },
+        ],
+      }
+
+      const before = mountScreen()
+      expect(before.find('[data-test="locked-tier-regional"]').exists()).toBe(true)
+
+      const grade = game.gradeMission(carId)
+      expect(grade.pass, JSON.stringify(grade.lines)).toBe(true)
+      expect(game.deliverMission(carId)).toBe(true)
+
+      const after = mountScreen()
+      expect(after.find('[data-test="locked-tier-regional"]').exists()).toBe(false)
+      expect(after.find('[data-test="locked-tier-premium"]').exists()).toBe(true)
+      expect(after.find('[data-test="locked-tier-collector-network"]').exists()).toBe(true)
+
+      const regionalVenue = venueLabelFor('regional', game.gameState.venueNameByTier)
+      expect(after.findAll('.tier-head h3').map((h) => h.text())).toContain(regionalVenue)
+      // The local-yard heading stays exactly what it always was.
+      const localVenue = venueLabelFor('local-yard', game.gameState.venueNameByTier)
+      expect(after.findAll('.tier-head h3').map((h) => h.text())).toContain(localVenue)
     })
   })
 })

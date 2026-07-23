@@ -8,8 +8,7 @@ import { emptyDayActions, type DayActions } from '../actions'
 import { isGroupAtLeast, queueGroupRepair } from './bandHelpers'
 import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
-import { reputationAtLeast } from '../calendar'
-import { AUCTION_TIER_MIN_REPUTATION } from '../constants'
+import { isAuctionTierUnlocked } from '../catalogs'
 import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { energyMax } from '../laborSlots'
@@ -61,10 +60,11 @@ const TIER_ORDER: readonly AuctionTier[] = [
   'local-yard',
 ]
 
-/** The highest auction tier this career's current reputation actually unlocks. */
-function highestAccessibleTier(state: GameState): AuctionTier {
+/** The highest auction tier this career currently has open (derived: a
+ * guarantor mission delivered, or `local-yard`, which is always open). */
+function highestAccessibleTier(state: GameState, context: SimContext): AuctionTier {
   for (const tier of TIER_ORDER) {
-    if (reputationAtLeast(state.reputationTier, AUCTION_TIER_MIN_REPUTATION[tier])) return tier
+    if (isAuctionTierUnlocked(state, context, tier)) return tier
   }
   return 'local-yard'
 }
@@ -95,7 +95,7 @@ export function competentPolicyStrategy(
   let laborBudget = energyMax(state, context.economy)
   const bayBudget = serviceBayBudget(state)
   const upgradeBudget = toolUpgradeBudget()
-  const targetTier = highestAccessibleTier(state)
+  const targetTier = highestAccessibleTier(state, context)
 
   // 1. Continue any in-progress job (repair-zone or install-part).
   for (const job of state.jobs) {
