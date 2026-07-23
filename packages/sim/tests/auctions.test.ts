@@ -153,7 +153,9 @@ describe('generateAuctionCatalog reputation-weighted rarity pick (Sprint 85 deci
     const ratioPerModel = shitboxLots / shitboxIds.size / (commonLots / commonIds.size)
     expect(ratioPerModel).toBeGreaterThan(2.7)
     expect(ratioPerModel).toBeLessThan(3.3)
-  })
+    // A large sample by design (three 1000-lot draws, each rolling per-zone
+    // body state), so it needs headroom over the 5s default under coverage.
+  }, 30_000)
 
   it('at local reputation (and the default legend), the model draw is the old uniform pick - identical to today', () => {
     // No rarity weights exist for local or the default legend tier, so both
