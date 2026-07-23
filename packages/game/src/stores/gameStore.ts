@@ -61,6 +61,7 @@ import {
   advanceDay,
   bandFactor,
   bandIndex,
+  benchedMemberWithTrait,
   benchSwapFeeYen,
   beginInspectionVisit as beginInspectionVisitCore,
   canRepair,
@@ -138,6 +139,7 @@ import {
   resolveRemoveAssembly,
   resolveRemovePart,
   resolveRemoveAssemblyMember,
+  resolveSendInspector as resolveSendInspectorCore,
   resolveSwapAssemblyMember,
   resolveScrapPart,
   resolveScrapShell,
@@ -149,6 +151,7 @@ import {
   runDiagnosticTest as runDiagnosticTestCore,
   scrapValueYen,
   selectBoardRows,
+  sendInspectorGateReason as sendInspectorGateReasonCore,
   settleAuctionHammer as settleAuctionHammerCore,
   settleAuctionLotLost as settleAuctionLotLostCore,
   shopTitle,
@@ -168,6 +171,7 @@ import {
   type MissionGradeReport,
   type NewJobSpec,
   type OwnedWorkupGateReason,
+  type SendInspectorGateReason,
   type ServiceJobOutcome,
   type SimContext,
   type TurnoutBand,
@@ -2286,6 +2290,38 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /** The benched master inspector's own display name, if one is hired and
+   * on the bench right now - the send control's own label and done line
+   * both key off this. `undefined` when none is benched, which also means
+   * `sendInspectorGateReason` is already refusing `no-inspector` on every
+   * lot, so the button stays hidden regardless. */
+  const masterInspectorName = computed<string | undefined>(
+    () => benchedMemberWithTrait(gameState.value.staff, 'master-inspector')?.displayName,
+  )
+
+  /** The per-lot send-inspector control's own proactive "why not" read -
+   * `sendInspectorGateReasonCore`, `null` once nothing blocks it. */
+  function sendInspectorGateReason(lotId: string): SendInspectorGateReason | null {
+    return sendInspectorGateReasonCore(gameState.value, lotId, context.value)
+  }
+
+  /**
+   * Send the benched master inspector to walk `lotId`'s own open symptoms
+   * against the active visit's clock - one explicit action, real tests,
+   * real minutes, real trail entries (`resolveSendInspectorCore`). Returns
+   * `true` once it actually ran at least one test, `false` on any refusal
+   * (the gate already told the button why). No day-log entry either way,
+   * matching `runDiagnosticTest`'s own convention - the trail itself is the
+   * record.
+   */
+  function resolveSendInspector(lotId: string): boolean {
+    const result = resolveSendInspectorCore(gameState.value, lotId, context.value)
+    if (result.outcome !== 'done') return false
+    gameState.value = result.state
+    logSessionEvent('resolveSendInspector', { lotId })
+    return true
+  }
+
   /**
    * Parts in inventory that fit an EMPTY slot within the given group -
    * a group-level install still resolves
@@ -4180,6 +4216,9 @@ export const useGameStore = defineStore('game', () => {
     beginInspectionVisit,
     runDiagnosticTest,
     resolveOwnedWorkup,
+    masterInspectorName,
+    sendInspectorGateReason,
+    resolveSendInspector,
     installablePartsFor,
     installablePartsForPart,
     installBlockedReason,

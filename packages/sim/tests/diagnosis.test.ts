@@ -19,6 +19,7 @@ import {
   apparentViewOf,
   availableTestIdsFor,
   beginInspectionVisit,
+  bestNextTestId,
   displayedBandFor,
   expectedTrueValueYen,
   inspectionVisitGateReason,
@@ -26,9 +27,11 @@ import {
   playerEstimateYen,
   pruneCuredCauses,
   resolveOwnedWorkup,
+  resolveSendInspector,
   revealOnRemoval,
   runDiagnosticTest,
   saleRevealLineFor,
+  sendInspectorGateReason,
   sheetGuideValueYen,
   worstRemainingBandFor,
 } from '../src/diagnosis'
@@ -167,6 +170,47 @@ const FOUR_CAUSE_SYMPTOM: Symptom = {
   tests: [],
 }
 
+/**
+ * A two-step routed board (`send-inspector` fixture): the root splits four
+ * causes into a head group and a block group, each with its own follow-up
+ * test that finishes the job - the reading policy's own cheapest route to
+ * ANY true cause is root (10m) then the matching follow-up (10m), 20m
+ * total, exactly what `resolveSendInspector`'s own parity/minutes/budget
+ * probes below need a real multi-step walk to check against.
+ */
+const INSPECTOR_SYMPTOM: Symptom = {
+  id: 'inspector-test-symptom',
+  cardLine: 'Inspector test symptom.',
+  causes: [
+    { id: 'insp-cause-a', carPartId: 'headValvetrain', setBand: 'worn', weight: 25 },
+    { id: 'insp-cause-b', carPartId: 'headValvetrain', setBand: 'poor', weight: 25 },
+    { id: 'insp-cause-c', carPartId: 'internals', setBand: 'worn', weight: 25 },
+    { id: 'insp-cause-d', carPartId: 'internals', setBand: 'poor', weight: 25 },
+  ],
+  tests: [
+    {
+      testId: 'insp-root-test',
+      partition: [
+        ['insp-cause-a', 'insp-cause-b'],
+        ['insp-cause-c', 'insp-cause-d'],
+      ],
+      resultCopy: ['Points at the head.', 'Points at the block.'],
+    },
+    {
+      testId: 'insp-head-test',
+      partition: [['insp-cause-a'], ['insp-cause-b']],
+      resultCopy: ['Confirms the mild head cause.', 'Confirms the severe head cause.'],
+      unlockedBy: { testId: 'insp-root-test', group: 0 },
+    },
+    {
+      testId: 'insp-block-test',
+      partition: [['insp-cause-c'], ['insp-cause-d']],
+      resultCopy: ['Confirms the mild block cause.', 'Confirms the severe block cause.'],
+      unlockedBy: { testId: 'insp-root-test', group: 1 },
+    },
+  ],
+}
+
 const CONTEXT = buildSimContext(
   CARS,
   PARTS,
@@ -187,6 +231,7 @@ const CONTEXT = buildSimContext(
     ROUTED_GROUPLESS_SYMPTOM,
     CLUTCH_SYMPTOM,
     FOUR_CAUSE_SYMPTOM,
+    INSPECTOR_SYMPTOM,
   ],
   [
     { id: 'test-diagnostic', minutes: 15 },
@@ -194,6 +239,9 @@ const CONTEXT = buildSimContext(
     { id: 'routed-locked-test', minutes: 10 },
     { id: 'groupless-root-test', minutes: 10 },
     { id: 'groupless-child-test', minutes: 10 },
+    { id: 'insp-root-test', minutes: 10 },
+    { id: 'insp-head-test', minutes: 10 },
+    { id: 'insp-block-test', minutes: 10 },
   ],
 )
 
@@ -277,6 +325,46 @@ function carWithGrouplessRoutedSymptom(
       },
     ],
     apparentBandByPartId: { headValvetrain: 'mint' },
+  }
+}
+
+/** A car carrying `INSPECTOR_SYMPTOM` (send-inspector fixture) - `trueCauseId`
+ * varies per test; a second, single-test symptom (`TEST_SYMPTOM`'s own shape)
+ * joins when `withSecondSymptom` is set, so a walk can be checked moving on
+ * to a second symptom once the first resolves. */
+function carWithInspectorSymptom(trueCauseId: string, withSecondSymptom = false): CarInstance {
+  const symptoms: CarInstance['symptoms'] = [
+    {
+      symptomId: 'inspector-test-symptom',
+      trueCauseId,
+      remainingCauseIds: INSPECTOR_SYMPTOM.causes.map((c) => c.id),
+      runTestIds: [],
+    },
+  ]
+  if (withSecondSymptom) {
+    symptoms.push({
+      symptomId: 'test-symptom',
+      trueCauseId: 'cause-mild',
+      remainingCauseIds: ['cause-mild', 'cause-severe'],
+      runTestIds: [],
+    })
+  }
+  return { ...buildCarInstance({ modelId: MODEL.id }), symptoms }
+}
+
+/** A benched `master-inspector` - `resolveSendInspector`'s own gate (a) and
+ * every probe below that needs one hired and on the bench. */
+function masterInspectorStaff(overrides: Partial<StaffMember> = {}): StaffMember {
+  return {
+    id: 'inspector-1',
+    displayName: 'Rie',
+    stats: { engine: 1, chassis: 1, body: 1 },
+    laborSlotsPerDay: 1,
+    assignment: 'bench',
+    pendingAssignment: null,
+    weeklyWageYen: 5000,
+    trait: 'master-inspector',
+    ...overrides,
   }
 }
 
@@ -686,6 +774,191 @@ describe('runDiagnosticTest (Sprint 74 decision 2): gating and minutes accountin
     expect(updatedSymptom.remainingCauseIds).toEqual(['cause-mild'])
     expect(result.resultCopy).toBe('Points at the mild cause.')
     expect(result.log).toEqual([])
+  })
+})
+
+describe('sendInspectorGateReason / resolveSendInspector (Sprint 116, the master inspector)', () => {
+  it('refuses not-found for an unknown lotId', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithInspectorSymptom('insp-cause-a')),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    expect(sendInspectorGateReason(state, 'no-such-lot', CONTEXT)).toBe('not-found')
+    const result = resolveSendInspector(state, 'no-such-lot', CONTEXT)
+    expect(result.outcome).toBe('not-found')
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
+  })
+
+  it('refuses no-inspector when no benched master-inspector is on staff - empty roster or one on contract alike', () => {
+    const base = stateWithLot(carWithInspectorSymptom('insp-cause-a'))
+    const noStaff: GameState = { ...base, inspectionVisit: { tier: 'local-yard', minutesLeft: 60 } }
+    expect(sendInspectorGateReason(noStaff, 'lot-diag-test', CONTEXT)).toBe('no-inspector')
+    expect(resolveSendInspector(noStaff, 'lot-diag-test', CONTEXT).outcome).toBe('no-inspector')
+
+    const contracted: GameState = {
+      ...noStaff,
+      staff: [masterInspectorStaff({ assignment: 'contract' })],
+    }
+    expect(sendInspectorGateReason(contracted, 'lot-diag-test', CONTEXT)).toBe('no-inspector')
+  })
+
+  it('refuses no-visit when no visit is active, even with a benched inspector', () => {
+    const state = stateWithLot(carWithInspectorSymptom('insp-cause-a'))
+    const withInspector: GameState = { ...state, staff: [masterInspectorStaff()] }
+    expect(sendInspectorGateReason(withInspector, 'lot-diag-test', CONTEXT)).toBe('no-visit')
+    expect(resolveSendInspector(withInspector, 'lot-diag-test', CONTEXT).outcome).toBe('no-visit')
+  })
+
+  it('refuses wrong-tier when the active visit is at a different tier than the lot', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithInspectorSymptom('insp-cause-a')),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'regional', minutesLeft: 60 },
+    }
+    expect(sendInspectorGateReason(state, 'lot-diag-test', CONTEXT)).toBe('wrong-tier')
+    expect(resolveSendInspector(state, 'lot-diag-test', CONTEXT).outcome).toBe('wrong-tier')
+  })
+
+  it('refuses no-symptoms for an honest lot (no symptoms) even with an inspector and a matching visit', () => {
+    const honest = buildCarInstance({ modelId: MODEL.id })
+    const state: GameState = {
+      ...stateWithLot(honest),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    expect(sendInspectorGateReason(state, 'lot-diag-test', CONTEXT)).toBe('no-symptoms')
+    expect(resolveSendInspector(state, 'lot-diag-test', CONTEXT).outcome).toBe('no-symptoms')
+  })
+
+  it('refuses already-resolved once every symptom is already narrowed to one remaining cause', () => {
+    const car = carWithInspectorSymptom('insp-cause-a')
+    const resolved: CarInstance = {
+      ...car,
+      symptoms: [{ ...car.symptoms[0]!, remainingCauseIds: ['insp-cause-a'] }],
+    }
+    const state: GameState = {
+      ...stateWithLot(resolved),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    expect(sendInspectorGateReason(state, 'lot-diag-test', CONTEXT)).toBe('already-resolved')
+    expect(resolveSendInspector(state, 'lot-diag-test', CONTEXT).outcome).toBe('already-resolved')
+  })
+
+  it('refuses not-enough-minutes when the visit clock cannot cover even the first test the walk would run', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithInspectorSymptom('insp-cause-a')),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 5 }, // insp-root-test costs 10
+    }
+    expect(sendInspectorGateReason(state, 'lot-diag-test', CONTEXT)).toBe('not-enough-minutes')
+    const result = resolveSendInspector(state, 'lot-diag-test', CONTEXT)
+    expect(result.outcome).toBe('not-enough-minutes')
+    expect(result.state).toBe(state)
+  })
+
+  it('passes (null) once every gate clears: a benched inspector, a matching visit, an unresolved symptom, and enough minutes', () => {
+    const state: GameState = {
+      ...stateWithLot(carWithInspectorSymptom('insp-cause-a')),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    expect(sendInspectorGateReason(state, 'lot-diag-test', CONTEXT)).toBeNull()
+  })
+
+  it("parity: the resolver's own route through a fresh symptom equals the extracted walker's route, step for step", () => {
+    const car = carWithInspectorSymptom('insp-cause-b') // root (group 0) then insp-head-test
+    const state: GameState = {
+      ...stateWithLot(car),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+
+    // Independently replay the same walker the resolver itself calls -
+    // `bestNextTestId` - against the fresh symptom, narrowing by hand the
+    // same way `runDiagnosticTest` would, to build the route it predicts.
+    let walkerSymptom = car.symptoms[0]!
+    const walkerRoute: string[] = []
+    for (;;) {
+      const nextTestId = bestNextTestId(walkerSymptom, INSPECTOR_SYMPTOM, CONTEXT)
+      if (!nextTestId) break
+      walkerRoute.push(nextTestId)
+      const testApplication = INSPECTOR_SYMPTOM.tests.find((t) => t.testId === nextTestId)!
+      const group = testApplication.partition.find((g) => g.includes(walkerSymptom.trueCauseId))!
+      walkerSymptom = {
+        ...walkerSymptom,
+        remainingCauseIds: walkerSymptom.remainingCauseIds.filter((id) => group.includes(id)),
+        runTestIds: [...walkerSymptom.runTestIds, nextTestId],
+      }
+    }
+    expect(walkerRoute).toEqual(['insp-root-test', 'insp-head-test'])
+
+    const result = resolveSendInspector(state, 'lot-diag-test', CONTEXT)
+    expect(result.outcome).toBe('done')
+    const resolvedSymptom = result.state.activeAuctionLots[0]!.car.symptoms[0]!
+    expect(resolvedSymptom.runTestIds).toEqual(walkerRoute)
+    expect(resolvedSymptom.remainingCauseIds).toEqual(['insp-cause-b'])
+  })
+
+  it('minutes accounting: charges exactly the sum of every test actually run, across a second symptom too, and never touches cash or a day-log entry', () => {
+    const car = carWithInspectorSymptom('insp-cause-c', true) // + TEST_SYMPTOM, trueCauseId cause-mild
+    const state: GameState = {
+      ...stateWithLot(car),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 60 },
+    }
+    const cashBefore = state.cashYen
+
+    const result = resolveSendInspector(state, 'lot-diag-test', CONTEXT)
+    expect(result.outcome).toBe('done')
+    // insp-root-test (10) + insp-block-test (10) resolves the first symptom;
+    // test-diagnostic (15) resolves the second - 35 minutes total.
+    expect(result.state.inspectionVisit?.minutesLeft).toBe(60 - 35)
+    expect(result.state.cashYen).toBe(cashBefore)
+    expect(result.log).toEqual([])
+
+    const symptoms = result.state.activeAuctionLots[0]!.car.symptoms
+    expect(symptoms[0]!.runTestIds).toEqual(['insp-root-test', 'insp-block-test'])
+    expect(symptoms[0]!.remainingCauseIds).toEqual(['insp-cause-c'])
+    expect(symptoms[1]!.runTestIds).toEqual(['test-diagnostic'])
+    expect(symptoms[1]!.remainingCauseIds).toEqual(['cause-mild'])
+  })
+
+  it('budget exhaustion is honest: stops the instant the next test does not fit, leaving a partial trail and no free narrowing', () => {
+    const car = carWithInspectorSymptom('insp-cause-b')
+    const state: GameState = {
+      ...stateWithLot(car),
+      staff: [masterInspectorStaff()],
+      // Covers insp-root-test (10) but not the insp-head-test (10) that
+      // would follow it - 15 - 10 = 5, short of the second test's own cost.
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 15 },
+    }
+
+    const result = resolveSendInspector(state, 'lot-diag-test', CONTEXT)
+    expect(result.outcome).toBe('done')
+    expect(result.state.inspectionVisit?.minutesLeft).toBe(5)
+    const symptom = result.state.activeAuctionLots[0]!.car.symptoms[0]!
+    // Only the root ran - the head/block split is real information (down
+    // from 4 candidates to 2), but the mild/severe split within it never
+    // ran, so both group-0 causes are still standing: no test beyond what
+    // was actually paid for ever narrows anything.
+    expect(symptom.runTestIds).toEqual(['insp-root-test'])
+    expect([...symptom.remainingCauseIds].sort()).toEqual(['insp-cause-a', 'insp-cause-b'])
+  })
+
+  it('determinism: the same lot and the same starting state always produce the same route and the same resulting state', () => {
+    const car = carWithInspectorSymptom('insp-cause-d', true)
+    const state: GameState = {
+      ...stateWithLot(car),
+      staff: [masterInspectorStaff()],
+      inspectionVisit: { tier: 'local-yard', minutesLeft: 25 },
+    }
+    const first = resolveSendInspector(state, 'lot-diag-test', CONTEXT)
+    const second = resolveSendInspector(state, 'lot-diag-test', CONTEXT)
+    expect(second.outcome).toBe(first.outcome)
+    expect(second.state).toEqual(first.state)
   })
 })
 

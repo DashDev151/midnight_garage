@@ -59,6 +59,18 @@ function onRunTest(lotId: string, symptomIndex: number, testId: string): void {
   game.runDiagnosticTest(lotId, symptomIndex, testId)
 }
 
+/** Which lots have actually had a send-inspector pass run this session - a
+ * quiet screen-local record (mirrors `buyoutConfirming`'s own per-lot
+ * reactive idiom), so the done line stays visible even once the button
+ * itself hides again (the gate closing on `already-resolved` or
+ * `not-enough-minutes`). Never cleared; a fresh visit to Auctions starts
+ * clean. */
+const inspectorDoneLotIds = reactive<Record<string, boolean>>({})
+
+function onSendInspector(lotId: string): void {
+  if (game.resolveSendInspector(lotId)) inspectorDoneLotIds[lotId] = true
+}
+
 /** Why a specific test button is disabled right now, `null` when it isn't -
  * the yard visit's own proactive "why not" for a single test. */
 function testDisabledReason(
@@ -180,7 +192,11 @@ const hasLots = computed(() => totalLots.value > 0)
             :d="d"
             :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
             :player-estimate-yen="d.playerEstimateYen"
+            :show-send-inspector="game.sendInspectorGateReason(d.lot.id) === null"
+            :inspector-name="game.masterInspectorName ?? ''"
+            :show-inspector-done="!!inspectorDoneLotIds[d.lot.id]"
             @run-test="({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)"
+            @send-inspector="({ lotId }) => onSendInspector(lotId)"
           >
             <template #info>
               <div class="lot-secondary">

@@ -88,8 +88,10 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-const stockTyresId = CONTEXT.stockPartByCarPartId.common!.tyres!.id
-const stockRimsId = CONTEXT.stockPartByCarPartId.common!.rims!.id
+// shitbox class - honda-city-e-aa (every `ownedCar` fixture below) is
+// 'shitbox' tier, and a bench-fitted part must match the car's own class.
+const stockTyresId = CONTEXT.stockPartByCarPartId.shitbox!.tyres!.id
+const stockRimsId = CONTEXT.stockPartByCarPartId.shitbox!.rims!.id
 
 function binPart(id: string, partId: string, band: PartInstance['band'] = 'mint'): PartInstance {
   return { id, partId, band, genuinePeriod: false, origin: makeMarketOrigin(1) }

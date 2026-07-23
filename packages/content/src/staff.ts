@@ -6,6 +6,7 @@ export const TraitIdSchema = z.enum([
   'perfectionist',
   'night-owl',
   'gaisha-fluent',
+  'master-inspector',
 ])
 
 export const TraitDefinitionSchema = z.object({

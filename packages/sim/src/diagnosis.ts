@@ -10,11 +10,11 @@ import type {
   GameState,
   Symptom,
 } from '@midnight-garage/content'
-import { titleCaseFromSlug } from '@midnight-garage/content'
+import { DIAGNOSTIC_TESTS, titleCaseFromSlug } from '@midnight-garage/content'
 import { bandIndex } from './bands'
 import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
-import { benchHasTrait } from './crewSkills'
+import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
 import { marketValueYen } from './marketValue'
 
 type CarSymptom = CarInstance['symptoms'][number]
@@ -472,6 +472,132 @@ export function availableTestIdsFor(carSymptom: CarSymptom, symptom: Symptom): s
     .map((testApplication) => testApplication.testId)
 }
 
+/** Builds a from-scratch, real-shaped car symptom for `symptom` whose true
+ * cause is `trueCauseId` - every cause still a live candidate, nothing yet
+ * run. The optimal-route search's own starting point for "a car whose true
+ * cause turns out to be X" (`bestRouteMinutesToResolve` below). */
+function freshRouteState(symptom: Symptom, trueCauseId: string): CarSymptom {
+  return {
+    symptomId: symptom.id,
+    trueCauseId,
+    remainingCauseIds: symptom.causes.map((cause) => cause.id),
+    runTestIds: [],
+  }
+}
+
+/** One diagnostic test's minutes cost, read off the real content catalog -
+ * `bestRouteMinutesToResolve`'s own default lookup, since every existing
+ * caller (the route probes) only ever routes real symptoms against real
+ * tests. */
+const REAL_MINUTES_BY_TEST_ID: Readonly<Record<string, number>> = Object.fromEntries(
+  DIAGNOSTIC_TESTS.map((test) => [test.id, test.minutes]),
+)
+
+function realContentMinutesForTestId(testId: string): number {
+  const minutes = REAL_MINUTES_BY_TEST_ID[testId]
+  if (minutes === undefined) throw new Error(`no real content diagnostic test "${testId}"`)
+  return minutes
+}
+
+interface OptimalRoute {
+  /** The fewest additional minutes any legal route from here needs to reach
+   * full resolution (a single remaining cause) - zero once already resolved. */
+  minutes: number
+  /** The first test of that cheapest route, or `null` once resolved. */
+  nextTestId: string | null
+}
+
+/**
+ * The expected-minutes-optimal route search: the reading player's own
+ * policy, since a player who reads every result and reasons about it always
+ * routes to the cheapest path to the answer. Exhaustively tries every
+ * currently offered, not-yet-run test (`availableTestIdsFor`), narrows
+ * exactly as `runDiagnosticTest` narrows a real symptom for the known
+ * `trueCauseId`, and recurses; a branch that never reaches resolution
+ * contributes nothing (never wins, never throws here) - only the caller
+ * decides whether "no route at all" is an error. Ties (more than one test
+ * reaching the same minimal total) resolve to the first in
+ * `availableTestIdsFor`'s own order, so the pick is always deterministic.
+ * One search behind both `bestRouteMinutesToResolve` below (a fresh
+ * symptom, minutes only - the route probes' own reading-pays law) and
+ * `bestNextTestId` (a live, possibly mid-route symptom - the send-inspector
+ * resolver's own step, diagnosis.ts) - the reader policy has exactly one
+ * implementation.
+ */
+function searchOptimalRoute(
+  carSymptom: CarSymptom,
+  symptom: Symptom,
+  minutesForTestId: (testId: string) => number,
+): OptimalRoute | null {
+  if (carSymptom.remainingCauseIds.length <= 1) return { minutes: 0, nextTestId: null }
+  const available = availableTestIdsFor(carSymptom, symptom).filter(
+    (testId) => !carSymptom.runTestIds.includes(testId),
+  )
+  let best: OptimalRoute | null = null
+  for (const testId of available) {
+    const testApplication = symptom.tests.find((t) => t.testId === testId)
+    if (!testApplication) throw new Error(`"${symptom.id}" has no test "${testId}"`)
+    const group = testApplication.partition.find((g) => g.includes(carSymptom.trueCauseId))
+    if (!group) {
+      throw new Error(`"${testId}" partition never covers "${carSymptom.trueCauseId}"`)
+    }
+    const narrowed: CarSymptom = {
+      ...carSymptom,
+      remainingCauseIds: carSymptom.remainingCauseIds.filter((id) => group.includes(id)),
+      runTestIds: [...carSymptom.runTestIds, testId],
+    }
+    const sub = searchOptimalRoute(narrowed, symptom, minutesForTestId)
+    if (!sub) continue
+    const minutes = minutesForTestId(testId) + sub.minutes
+    if (best === null || minutes < best.minutes) best = { minutes, nextTestId: testId }
+  }
+  return best
+}
+
+/**
+ * The fewest minutes any legal route needs to fully resolve `symptom` down
+ * to `trueCauseId` alone, starting from a fresh (nothing yet run) symptom -
+ * `diagnosisRouteProbes.test.ts`'s own `readerMinutes`/`isIsolatable`/
+ * "reading pays" law reads this directly against real content
+ * (`minutesForTestId` defaults to the real catalog, `REAL_MINUTES_BY_TEST_ID`
+ * above). Throws if no route from a fresh symptom ever resolves this cause -
+ * the "resolution accounting" probe's own contract, unchanged from before
+ * the extraction.
+ */
+export function bestRouteMinutesToResolve(
+  symptom: Symptom,
+  trueCauseId: string,
+  minutesForTestId: (testId: string) => number = realContentMinutesForTestId,
+): number {
+  const route = searchOptimalRoute(freshRouteState(symptom, trueCauseId), symptom, minutesForTestId)
+  if (!route) {
+    throw new Error(`"${symptom.id}" has no route that ever resolves trueCauseId="${trueCauseId}"`)
+  }
+  return route.minutes
+}
+
+/**
+ * The next test the reading policy would run against `carSymptom` right
+ * now - `null` once it is already resolved (or, on a content bug, if no
+ * route from here ever resolves). The send-inspector resolver's own step
+ * (`resolveSendInspector` below): it charges this test through the REAL
+ * `runDiagnosticTest`, then asks again off the narrowed result, walking the
+ * same route a player who read every result and routed perfectly would
+ * have walked by hand.
+ */
+export function bestNextTestId(
+  carSymptom: CarSymptom,
+  symptom: Symptom,
+  context: SimContext,
+): string | null {
+  const route = searchOptimalRoute(carSymptom, symptom, (testId) => {
+    const test = context.diagnosticTestsById[testId]
+    if (!test) throw new Error(`context has no diagnostic test "${testId}"`)
+    return test.minutes
+  })
+  return route?.nextTestId ?? null
+}
+
 export type RunDiagnosticTestOutcome =
   | 'ran'
   | 'no-visit'
@@ -567,6 +693,115 @@ export function runDiagnosticTest(
     inspectionVisit: { ...visit, minutesLeft: visit.minutesLeft - test.minutes },
   }
   return { state: nextState, log: [], outcome: 'ran', resultCopy }
+}
+
+/** The very first test the send-inspector walk would attempt against `lot`
+ * right now: the first not-yet-resolved symptom (array order), its own
+ * next optimal test (`bestNextTestId`). `null` once every symptom is
+ * resolved, the lot carries none, or (a content bug) an open symptom has no
+ * route out at all. `sendInspectorGateReason`'s own `not-enough-minutes`
+ * check and `resolveSendInspector`'s own walk both start from this exact
+ * read, so the gate never promises a pass the walk then can't deliver. */
+function firstInspectionStep(
+  lot: AuctionLot,
+  context: SimContext,
+): { symptomIndex: number; testId: string; minutes: number } | null {
+  for (let symptomIndex = 0; symptomIndex < lot.car.symptoms.length; symptomIndex++) {
+    const carSymptom = lot.car.symptoms[symptomIndex]!
+    if (carSymptom.remainingCauseIds.length <= 1) continue
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) continue
+    const testId = bestNextTestId(carSymptom, symptom, context)
+    if (testId === null) continue
+    const test = context.diagnosticTestsById[testId]
+    if (!test) continue
+    return { symptomIndex, testId, minutes: test.minutes }
+  }
+  return null
+}
+
+export type SendInspectorGateReason =
+  | 'not-found'
+  | 'no-inspector'
+  | 'no-visit'
+  | 'wrong-tier'
+  | 'no-symptoms'
+  | 'already-resolved'
+  | 'not-enough-minutes'
+
+/**
+ * The pure "why can't I send the inspector at this lot right now" predicate
+ * - the per-lot send control's own proactive gate (mirrors
+ * `inspectionVisitGateReason`/`ownedWorkupGateReason`'s reuse shape). `null`
+ * when nothing blocks it. Checked in the order the design names them: (a)
+ * a benched `master-inspector` (`no-inspector`), (b) an active visit
+ * covering this lot's own tier (`no-visit`/`wrong-tier`), (c) at least one
+ * unresolved symptom (`no-symptoms`/`already-resolved`), (d) enough minutes
+ * left for the very next test the walk would run (`not-enough-minutes`,
+ * read off `firstInspectionStep`).
+ */
+export function sendInspectorGateReason(
+  state: GameState,
+  lotId: string,
+  context: SimContext,
+): SendInspectorGateReason | null {
+  const lot = state.activeAuctionLots.find((l) => l.id === lotId)
+  if (!lot) return 'not-found'
+  if (!benchedMemberWithTrait(state.staff, 'master-inspector')) return 'no-inspector'
+  const visit = state.inspectionVisit
+  if (!visit) return 'no-visit'
+  if (visit.tier !== lot.tier) return 'wrong-tier'
+  if (lot.car.symptoms.length === 0) return 'no-symptoms'
+  if (lot.car.symptoms.every((s) => s.remainingCauseIds.length <= 1)) return 'already-resolved'
+  const step = firstInspectionStep(lot, context)
+  if (!step || visit.minutesLeft < step.minutes) return 'not-enough-minutes'
+  return null
+}
+
+export type ResolveSendInspectorOutcome = 'done' | SendInspectorGateReason
+
+export interface ResolveSendInspectorResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: ResolveSendInspectorOutcome
+}
+
+/**
+ * Send the benched master inspector to walk `lotId`'s own open symptoms:
+ * one send per explicit player action, no automation beyond it. Walks
+ * symptoms in array order; within each, repeatedly asks `bestNextTestId`
+ * for the reading policy's own next move and runs it through the REAL
+ * `runDiagnosticTest` (real minute charging, real trail entries, real
+ * result lines - the inspector plays the same game a perfect manual player
+ * would, they just do not need the player's own clicks) until that
+ * symptom resolves, then moves to the next. Stops the instant the next
+ * test does not fit the visit's remaining minutes, leaving whatever ran so
+ * far in the trail and nothing more - no cherry-picking a cheaper test
+ * elsewhere on the sheet once the clock runs out. Deterministic: the same
+ * lot and the same remaining minutes always produce the same route,
+ * since `bestNextTestId` never rolls anything.
+ */
+export function resolveSendInspector(
+  state: GameState,
+  lotId: string,
+  context: SimContext,
+): ResolveSendInspectorResult {
+  const gateReason = sendInspectorGateReason(state, lotId, context)
+  if (gateReason) return { state, log: [], outcome: gateReason }
+
+  let current = state
+  for (;;) {
+    const lot = current.activeAuctionLots.find((l) => l.id === lotId)
+    if (!lot) break // defensive; the gate above already confirmed the lot exists
+    const step = firstInspectionStep(lot, context)
+    if (!step) break // every symptom resolved (or, on a content bug, stuck)
+    if ((current.inspectionVisit?.minutesLeft ?? 0) < step.minutes) break // budget exhausted
+    const result = runDiagnosticTest(current, lotId, step.symptomIndex, step.testId, context)
+    if (result.outcome !== 'ran') break // defensive; the gate/step above already cleared this
+    current = result.state
+  }
+
+  return { state: current, log: [], outcome: 'done' }
 }
 
 export type OwnedWorkupGateReason =

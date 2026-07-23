@@ -588,4 +588,84 @@ describe('AuctionScreen', () => {
       expect(wrapper.findAll('.lot-art').length).toBe(game.gameState.activeAuctionLots.length)
     })
   })
+
+  describe('the master inspector send control (Sprint 116)', () => {
+    /** Hires and benches a `master-inspector` directly on `gameState.staff` -
+     * a plain state poke, matching this file's own idiom (cashYen,
+     * parkingBayCount, ...) rather than the full ad-roll/hire flow. */
+    function hireMasterInspector(game: ReturnType<typeof useGameStore>, displayName = 'Rie') {
+      game.gameState = {
+        ...game.gameState,
+        staff: [
+          {
+            id: 'inspector-1',
+            displayName,
+            stats: { engine: 1, chassis: 1, body: 1 },
+            laborSlotsPerDay: 1,
+            assignment: 'bench',
+            pendingAssignment: null,
+            weeklyWageYen: 5000,
+            trait: 'master-inspector',
+          },
+        ],
+      }
+    }
+
+    it('stays hidden during an active visit on a symptomatic lot when no master-inspector is benched', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      const wrapper = mountScreen()
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      expect(wrapper.find(`[data-test="send-inspector-${lot.id}"]`).exists()).toBe(false)
+    })
+
+    it('stays hidden with a benched inspector but no active visit', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      makeSymptomaticLot(game, lot.id)
+      hireMasterInspector(game)
+      const wrapper = mountScreen()
+      expect(wrapper.find(`[data-test="send-inspector-${lot.id}"]`).exists()).toBe(false)
+    })
+
+    it("shows the send control naming the inspector's own real display name once every gate clears", async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      hireMasterInspector(game, 'Rie')
+      const wrapper = mountScreen()
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      const button = wrapper.find(`[data-test="send-inspector-${lot.id}"]`)
+      expect(button.exists()).toBe(true)
+      expect(button.text()).toBe('Send Rie to listen')
+    })
+
+    it('running the send control charges real minutes, fills the real trail, and shows the byte-verbatim done line naming the inspector', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      hireMasterInspector(game, 'Rie')
+      const wrapper = mountScreen()
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      const minutesBefore = game.inspectionVisit!.minutesLeft
+
+      await wrapper.find(`[data-test="send-inspector-${lot.id}"]`).trigger('click')
+
+      const updatedCar = game.gameState.activeAuctionLots.find((l) => l.id === lot.id)!.car
+      expect(updatedCar.symptoms[0]!.runTestIds.length).toBeGreaterThan(0)
+      expect(game.inspectionVisit!.minutesLeft).toBeLessThan(minutesBefore)
+
+      const symptomEl = wrapper.find(`[data-test="symptom-${lot.id}"]`)
+      expect(symptomEl.find('.symptom-trail').exists()).toBe(true)
+
+      const doneLine = wrapper.find(`[data-test="inspector-done-${lot.id}"]`)
+      expect(doneLine.exists()).toBe(true)
+      expect(doneLine.text()).toBe('Rie hands the sheet back without a word.')
+    })
+  })
 })

@@ -5,7 +5,7 @@ import {
   type TestApplication,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { availableTestIdsFor } from '../src/diagnosis'
+import { availableTestIdsFor, bestRouteMinutesToResolve } from '../src/diagnosis'
 
 /**
  * Closed-form walks over the real routed-diagnosis content: no bots, no RNG,
@@ -238,32 +238,6 @@ function boardNodes(symptom: Symptom): ReachableState[] {
     nodes.push(state)
   }
   return nodes
-}
-
-/** The fewest minutes any legal route needs to fully resolve `symptom` down
- * to `trueCauseId` alone - brute-forces every ordering of every available
- * test, pruning any branch already worse than the best full route found so
- * far. Trees this small (at most six tests) make the search trivial. */
-function bestRouteMinutesToResolve(symptom: Symptom, trueCauseId: string): number {
-  let best: number | null = null
-  const visit = (state: ProbeCarSymptom, minutesSpent: number): void => {
-    if (state.remainingCauseIds.length <= 1) {
-      if (best === null || minutesSpent < best) best = minutesSpent
-      return
-    }
-    if (best !== null && minutesSpent >= best) return
-    const available = availableTestIdsFor(state, symptom).filter(
-      (id) => !state.runTestIds.includes(id),
-    )
-    for (const testId of available) {
-      visit(narrow(state, symptom, testId), minutesSpent + MINUTES_BY_TEST_ID[testId]!)
-    }
-  }
-  visit(freshCarSymptom(symptom, trueCauseId), 0)
-  if (best === null) {
-    throw new Error(`"${symptom.id}" has no route that ever resolves trueCauseId="${trueCauseId}"`)
-  }
-  return best
 }
 
 /** True when some legal sequence of available tests can narrow "symptom"

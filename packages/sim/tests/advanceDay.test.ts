@@ -173,7 +173,12 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    expect(hashState(finalState)).toBe('64522008')
+    // Adding a trait to `TraitIdSchema` widens `rollStaffCandidate`'s own
+    // `rng.pick` draw, shifting which trait (and everything the shared RNG
+    // stream draws afterwards) a staff-ad roll lands on partway through this
+    // scripted career - an intended consequence of growing the roll pool,
+    // not a regression.
+    expect(hashState(finalState)).toBe('577b2daf')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {

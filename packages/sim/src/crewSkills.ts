@@ -31,10 +31,20 @@ export function skillKeyForGroup(group: ComponentId, economy: EconomyConfig): Cr
   return null
 }
 
-/** True while any benched member carries `trait`. The one activity gate: a
- * contracted member's trait is dormant, like their hands. */
+/** The first benched member carrying `trait` (array order), or `undefined`
+ * when none is - the trait's own live actor, not just whether one exists.
+ * The one activity gate: a contracted member's trait is dormant, like their
+ * hands. */
+export function benchedMemberWithTrait(
+  staff: readonly StaffMember[],
+  trait: TraitId,
+): StaffMember | undefined {
+  return staff.find((m) => m.assignment === 'bench' && m.trait === trait)
+}
+
+/** True while any benched member carries `trait`. */
 export function benchHasTrait(staff: readonly StaffMember[], trait: TraitId): boolean {
-  return staff.some((m) => m.assignment === 'bench' && m.trait === trait)
+  return benchedMemberWithTrait(staff, trait) !== undefined
 }
 
 /** True while any perfectionist is at the bench. */

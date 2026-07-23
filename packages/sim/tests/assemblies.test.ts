@@ -126,6 +126,21 @@ function newTyre(id: string): PartInstance {
   }
 }
 
+// A same-slot, wrong-class tyre - addresses 'tyres' exactly as `fittingTyre`
+// does, but its fitmentClass is 'common' where honda-city-e-aa is 'shitbox'.
+const wrongClassTyrePart = PARTS.find(
+  (p) => p.carPartId === 'tyres' && p.fitmentClass === 'common' && p.grade === 'street',
+)!
+function wrongClassTyre(id: string): PartInstance {
+  return {
+    id,
+    partId: wrongClassTyrePart.id,
+    band: 'mint',
+    genuinePeriod: false,
+    origin: makeMarketOrigin(1),
+  }
+}
+
 describe('assembly definitions and derived gates (Sprint 87)', () => {
   it('external blockers are the union of members blockedBy pointing outside the assembly', () => {
     expect([...externalBlockersFor(def('engineAssembly'), CONTEXT)].sort()).toEqual([
@@ -423,6 +438,73 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     expect(dissolved.partInventory.map((p) => p.id).sort()).toEqual(
       [originalRims.id, originalTyres.id].sort(),
     )
+  })
+})
+
+describe('the fitment law applies at the bench, not only on the car', () => {
+  it('resolveSwapAssemblyMember refuses a wrong-class part into a container pulled off a car, state unchanged', () => {
+    const car = wheelsWornCar()
+    const wrongTyre = wrongClassTyre('pi-wrong-swap')
+    const state = baseState({
+      ownedCars: [car],
+      partInventory: [wrongTyre],
+      serviceBayCarIds: [car.id],
+    })
+    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+    const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', wrongTyre.id, CONTEXT)
+    expect(swap.ok).toBe(false)
+    expect(swap.state).toBe(off.state)
+    // The original tyre stays put; the wrong-class one stays in the bin.
+    expect(off.state.assemblyInventory![0]!.members.tyres!.id).toBe(originalTyres.id)
+    expect(off.state.partInventory.some((p) => p.id === wrongTyre.id)).toBe(true)
+  })
+
+  it('resolveSwapAssemblyMember still fits a right-class part into the same slot', () => {
+    const car = wheelsWornCar()
+    const tyre = newTyre('pi-right-swap')
+    const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
+    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+    const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+    expect(swap.ok).toBe(true)
+    expect(swap.state.assemblyInventory![0]!.members.tyres!.id).toBe(tyre.id)
+  })
+
+  it('resolveRefitAssembly refuses a wrong-class member reaching a car via overrideCarId, even though the bench build never checked it', () => {
+    const bareRims: PartInstance = {
+      id: 'pi-br-fit',
+      partId: stockRims.id,
+      band: 'mint',
+      genuinePeriod: false,
+      origin: makeMarketOrigin(1),
+    }
+    const wrongTyre = wrongClassTyre('pi-wrong-refit')
+    const car = buildCarInstance({
+      id: 'car-bare-wrongclass',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ rims: null, tyres: null }),
+    })
+    const state = baseState({
+      ownedCars: [car],
+      partInventory: [bareRims, wrongTyre],
+      serviceBayCarIds: [car.id],
+    })
+    const built = resolveBuildAssembly(
+      state,
+      'wheelAssembly',
+      { rims: bareRims.id, tyres: wrongTyre.id },
+      CONTEXT,
+    )
+    // Building from loose bin parts never names a car, so it cannot and does
+    // not check fitment - the mismatch only becomes checkable once a target
+    // car is named, which is what overrideCarId does below.
+    expect(built.ok).toBe(true)
+    const container = built.state.assemblyInventory![0]!
+    const refit = resolveRefitAssembly(built.state, container.id, CONTEXT, Infinity, car.id)
+    expect(refit.ok).toBe(false)
+    expect(refit.state).toBe(built.state)
+    expect(refit.state.ownedCars[0]!.parts.tyres.installed).toBeNull()
   })
 })
 

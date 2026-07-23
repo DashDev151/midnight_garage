@@ -59,12 +59,29 @@ const props = withDefaults(
      * Left at its default `null` on the demo card, which draws its own
      * separate estimate line and never diverges this shared headline. */
     playerEstimateYen?: number | null
+    /** The send-inspector control's own visibility - the parent's own
+     * `sendInspectorGateReason(lotId) === null` read. Default false, so a
+     * parent that never wires the inspector (the demo cards) never shows it. */
+    showSendInspector?: boolean
+    /** The benched master inspector's real display name - passed straight
+     * through to `SymptomChecklist`. */
+    inspectorName?: string
+    /** Whether the send-inspector done line shows for this lot. */
+    showInspectorDone?: boolean
   }>(),
-  { showDeltas: true, inspectionOnRight: false, playerEstimateYen: null },
+  {
+    showDeltas: true,
+    inspectionOnRight: false,
+    playerEstimateYen: null,
+    showSendInspector: false,
+    inspectorName: '',
+    showInspectorDone: false,
+  },
 )
 
 const emit = defineEmits<{
   (e: 'run-test', payload: { lotId: string; symptomIndex: number; testId: string }): void
+  (e: 'send-inspector', payload: { lotId: string }): void
 }>()
 
 /** True once the player's own number has actually moved off the room's read -
@@ -160,7 +177,11 @@ const TURNOUT_LABEL: Record<string, string> = {
         :lot-id="d.lot.id"
         :disabled-reason-for="disabledReasonFor"
         :show-deltas="showDeltas"
+        :show-send-inspector="showSendInspector"
+        :inspector-name="inspectorName"
+        :show-inspector-done="showInspectorDone"
         @run-test="(payload) => emit('run-test', payload)"
+        @send-inspector="(payload) => emit('send-inspector', payload)"
       />
     </div>
 
@@ -211,7 +232,11 @@ const TURNOUT_LABEL: Record<string, string> = {
           :lot-id="d.lot.id"
           :disabled-reason-for="disabledReasonFor"
           :show-deltas="showDeltas"
+          :show-send-inspector="showSendInspector"
+          :inspector-name="inspectorName"
+          :show-inspector-done="showInspectorDone"
           @run-test="(payload) => emit('run-test', payload)"
+          @send-inspector="(payload) => emit('send-inspector', payload)"
         />
 
         <slot name="info" />

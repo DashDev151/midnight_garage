@@ -25,6 +25,7 @@ import {
   ProvenancePoolSchema,
   ToolLinesSchema,
   TraitDefinitionsSchema,
+  TraitIdSchema,
   UpkeepTierSchema,
   VenueNamesSchema,
 } from '../src'
@@ -73,6 +74,10 @@ describe('seed content validates against schemas', () => {
     const result = TraitDefinitionsSchema.safeParse(traits)
     if (!result.success) throw new Error(result.error.message)
     expect(result.data.length).toBeGreaterThan(0)
+    // Exactly the TraitIdSchema union, no orphaned id on either side - a
+    // trait missing its content entry would resolve to blank name/copy at
+    // the Staff Office (staffStore.ts's own `?? ''` fallback).
+    expect(result.data.map((t) => t.id).sort()).toEqual([...TraitIdSchema.options].sort())
   })
 
   /** The six always-owned tool lines replace equipment.json. */

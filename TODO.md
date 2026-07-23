@@ -225,19 +225,6 @@ pass."
   `diagnosis.travelFeeYenByTier` (2,000). Either wire it into the room/board flow it was
   presumably meant for (a per-visit travel cost to remoter venues) or delete the block and its
   schema; decide when next in the auction economy.
-- [ ] **The bench swap path bypasses the fitment law (found 2026-07-19, answering "what if
-  the player buys the wrong-class tyres").** `partFitsCar` (economy-bible law 3: "a
-  kei-class part physically cannot go on a sports car") is enforced on the on-car install
-  path (`installablePartsForPart`, ReplaceDrawer dims non-fitting parts) but neither
-  `benchSwapCandidates` (CarDetailScreen) nor `resolveSwapAssemblyMember` /
-  `resolveRefitAssembly` (sim/assemblies.ts) checks it - a wrong-class part gets a live
-  Fit button at the bench and rides the refit onto the car. Largely mitigated since: the
-  bench now fits through the Replace drawer, whose fit-check dims non-fitting parts and
-  makes them click-inert, and the walkthrough teaches the fits-this-vehicle filter with
-  fitment-checked conditions. What remains open is the RESOLVER:
-  `resolveSwapAssemblyMember` itself still accepts a wrong-class part, so only the UI
-  stands between a mod/dev path and a law violation. Fix when next in the assembly code:
-  the swap resolver refuses exactly as the on-car path does.
 
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench

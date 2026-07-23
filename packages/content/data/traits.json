@@ -23,5 +23,10 @@
     "id": "gaisha-fluent",
     "displayName": "Gaisha-Fluent",
     "description": "Learned wrenching on European iron before JDM ever crossed her mind. Import repairs don't confuse her the way they confuse everyone else."
+  },
+  {
+    "id": "master-inspector",
+    "displayName": "Master inspector",
+    "description": "Finds every fault in a car. Has never once offered to fix one."
   }
 ]

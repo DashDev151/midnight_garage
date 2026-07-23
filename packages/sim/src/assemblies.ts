@@ -6,6 +6,7 @@ import type {
   CarPartId,
   DayLogEntry,
   GameState,
+  Part,
   PartInstance,
 } from '@midnight-garage/content'
 import { updateCarLedger } from './carLedger'
@@ -17,6 +18,7 @@ import {
   removeMachineGateGroup,
   type MachineGateGroup,
 } from './jobs'
+import { partFitsCar } from './parts'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
@@ -79,6 +81,28 @@ function occupiedExternalBlockers(
   context: SimContext,
 ): CarPartId[] {
   return externalBlockersFor(def, context).filter((b) => car.parts[b].installed !== null)
+}
+
+/**
+ * Economy-bible law 3, lifted to assembly level: `catalogPart` may only
+ * occupy `memberSlot` on `car` if its fitment class matches the car's and it
+ * carries every tag the car requires - the same test `partFitsCar` runs for
+ * the on-car install path, so a wrong-class part is refused at the bench
+ * exactly as it is refused on the car.
+ */
+function memberFitsCar(
+  catalogPart: Part,
+  car: CarInstance,
+  memberSlot: CarPartId,
+  context: SimContext,
+): boolean {
+  const model = context.modelsById[car.modelId]
+  const group = context.partsTaxonomyById[memberSlot]?.group
+  return (
+    !!model &&
+    !!group &&
+    partFitsCar(catalogPart, model, group, context.partsTaxonomyById, memberSlot)
+  )
 }
 
 /**
@@ -301,9 +325,17 @@ export function resolveRemoveAssembly(
  * member's `pricePaidYen` lands on the bill. The container dissolves back into
  * the car's slots. `overrideCarId` refits a bench-BUILT assembly (no
  * `sourceCarId`) onto a chosen car - every member is then new to that car, so
- * every member charges install labour, as new-to-car parts do. Refuses if the
- * car is gone, an external blocker is occupied, a target slot is already full,
- * or the total labour exceeds `laborAvailable` (the op is atomic).
+ * every member charges install labour, as new-to-car parts do. Going onto a
+ * car other than `container.sourceCarId` (`overrideCarId`, or a bench-built
+ * container with no `sourceCarId` at all) is the one path that can land a
+ * member whose fitment was never checked against THIS car, so every member is
+ * fitment-checked here (`memberFitsCar`) whenever that is true; refitting
+ * straight back onto `container.sourceCarId` re-checks nothing, since every
+ * member either never left that car or was already fitment-checked against
+ * it by `resolveSwapAssemblyMember`. Refuses if the car is gone, an external
+ * blocker is occupied, a target slot is already full, a foreign-car member
+ * does not fit, or the total labour exceeds `laborAvailable` (the op is
+ * atomic).
  */
 export function resolveRefitAssembly(
   state: GameState,
@@ -322,8 +354,21 @@ export function resolveRefitAssembly(
   const car = findWorkableCar(state, carInstanceId)
   if (!car) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
+  // A member already fits `container.sourceCarId` - either it never left that
+  // car, or `resolveSwapAssemblyMember` fitment-checked it against that same
+  // car when it went into the container - so refitting it back onto that
+  // SAME car re-proves nothing. `overrideCarId`, or a bench-built container
+  // (`sourceCarId` null), puts members onto a car they were never checked
+  // against; that path is where a foreign part can slip through, so every
+  // member is checked here.
+  const targetIsForeignCar = carInstanceId !== container.sourceCarId
   for (const member of def.members) {
     if (car.parts[member].installed !== null) return fail // a target slot is still occupied
+    if (targetIsForeignCar) {
+      const instance = container.members[member]
+      const catalogPart = instance && context.partsById[instance.partId]
+      if (catalogPart && !memberFitsCar(catalogPart, car, member, context)) return fail
+    }
   }
 
   let laborSlotsRequired = context.economy.energy.actionPoints.refitAssembly
@@ -370,7 +415,9 @@ export interface AssemblyMemberMoveResult {
  * tyre-into-assembly op costs the wheels bench fee unless the tier-2 tyre
  * machine is owned (`benchSwapFeeYen`), posted to the source car's ledger.
  * Refuses if the container/part is missing, the part does not address this
- * member slot, or the part is scrap.
+ * member slot, the part is scrap, or (for a container pulled off a car) the
+ * part's fitment class does not match that car's (`memberFitsCar`) - the
+ * fitment law applies at the bench, not only on the car.
  */
 export function resolveSwapAssemblyMember(
   state: GameState,
@@ -391,6 +438,10 @@ export function resolveSwapAssemblyMember(
   if (!newPart || newPart.band === 'scrap') return fail
   const catalogPart = context.partsById[newPart.partId]
   if (!catalogPart || catalogPart.carPartId !== memberSlot) return fail
+  if (container.sourceCarId) {
+    const sourceCar = findWorkableCar(state, container.sourceCarId)
+    if (!sourceCar || !memberFitsCar(catalogPart, sourceCar, memberSlot, context)) return fail
+  }
   const laborSlotsUsed = context.economy.energy.actionPoints.benchFitMember
   if (laborSlotsUsed > laborAvailable) return fail
 
