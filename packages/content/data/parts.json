@@ -5704,7 +5704,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 10,
+      "handling": 0,
       "style": 0,
       "reliability": 0,
       "authenticity": 0
@@ -5720,7 +5720,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 10,
+      "handling": 0,
       "style": 0,
       "reliability": 0,
       "authenticity": 0
@@ -5736,7 +5736,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 10,
+      "handling": 0,
       "style": 0,
       "reliability": 0,
       "authenticity": 0
@@ -5752,7 +5752,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 10,
+      "handling": 0,
       "style": 0,
       "reliability": 0,
       "authenticity": 0
@@ -5768,7 +5768,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 18,
+      "handling": 0,
       "style": 0,
       "reliability": -2,
       "authenticity": 0
@@ -5784,7 +5784,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 18,
+      "handling": 0,
       "style": 0,
       "reliability": -2,
       "authenticity": 0
@@ -5800,7 +5800,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 18,
+      "handling": 0,
       "style": 0,
       "reliability": -2,
       "authenticity": 0
@@ -5816,7 +5816,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 18,
+      "handling": 0,
       "style": 0,
       "reliability": -2,
       "authenticity": 0
@@ -5832,7 +5832,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 26,
+      "handling": 0,
       "style": 0,
       "reliability": -5,
       "authenticity": 0
@@ -5848,7 +5848,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 26,
+      "handling": 0,
       "style": 0,
       "reliability": -5,
       "authenticity": 0
@@ -5864,7 +5864,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 26,
+      "handling": 0,
       "style": 0,
       "reliability": -5,
       "authenticity": 0
@@ -5880,7 +5880,7 @@
     "requiredTags": [],
     "statModifiers": {
       "power": 0,
-      "handling": 26,
+      "handling": 0,
       "style": 0,
       "reliability": -5,
       "authenticity": 0

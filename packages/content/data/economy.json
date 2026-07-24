@@ -101,11 +101,85 @@
   },
   "statFormulas": {
     "powerConditionFloor": 0.5,
-    "handlingBase": 50,
-    "handlingWeightDivisor": 50,
     "styleCap": 20,
     "reliabilityCap": 70,
-    "powerNormalizationCeiling": 300
+    "powerNormalizationCeiling": 300,
+    "grip": {
+      "eraRubberBands": [
+        { "beforeYear": 1968, "mu": 0.72 },
+        { "beforeYear": 1975, "mu": 0.76 },
+        { "beforeYear": 1982, "mu": 0.8 },
+        { "beforeYear": 1988, "mu": 0.835 },
+        { "beforeYear": 1993, "mu": 0.875 },
+        { "beforeYear": 1998, "mu": 0.905 },
+        { "beforeYear": 2008, "mu": 0.93 }
+      ],
+      "eraRubberDefaultMu": 0.98,
+      "tierDelta": {
+        "eco": -0.04,
+        "touring": -0.02,
+        "performance": 0.0,
+        "sport": 0.02,
+        "grand": 0.075,
+        "slick": 0.2
+      },
+      "gradeToCompound": {
+        "stock": null,
+        "street": "performance",
+        "sport": "sport",
+        "race": "slick"
+      },
+      "width": {
+        "referenceMm": 200,
+        "divisor": 1100,
+        "adjMin": -0.03,
+        "adjMax": 0.045,
+        "effMuFloor": 0.7,
+        "effMuSpan": 0.3,
+        "effMin": 0.4,
+        "effMax": 1.0,
+        "fallbackMm": 160
+      },
+      "transfer": {
+        "slope": 0.75,
+        "reference": 0.27,
+        "floor": 0.8,
+        "ceiling": 1.0
+      },
+      "layout": {
+        "base": 1.0,
+        "awdActive": 0.035,
+        "awdPassive": 0.02,
+        "mid": 0.015
+      },
+      "track": {
+        "keiMm": 1210,
+        "wideMm": 1560,
+        "standardMm": 1470,
+        "wideWidthThresholdMm": 245
+      },
+      "comHeightFallbackMm": 460,
+      "displayCurve": {
+        "stockLowG": 0.66,
+        "stockLowDisplay": 10,
+        "stockHighG": 1.1,
+        "stockHighDisplay": 55,
+        "modifiedHighG": 2.0,
+        "modifiedHighDisplay": 100
+      },
+      "balance": {
+        "frontReference": 52,
+        "frontDivisor": 8,
+        "frontFallback": 55,
+        "fwd": -1.0,
+        "rwd": 0.7,
+        "rear": 1.0,
+        "mid": 0.35,
+        "clampMin": -3,
+        "clampMax": 3,
+        "weight": 1.0
+      }
+    }
   },
   "bands": {
     "bandFactors": {

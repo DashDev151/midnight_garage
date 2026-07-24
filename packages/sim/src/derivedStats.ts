@@ -8,6 +8,7 @@ import {
   type StatBlock,
 } from '@midnight-garage/content'
 import { bandFactor, isPartMissing, isPartPresent } from './bands'
+import { balanceOf, computeGrip, effectiveCompound, gripToDisplay } from './performance'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -60,9 +61,13 @@ function weightedBandFactorForStat(
  * statModifiers from the parts catalog - sim has no data loader of its
  * own, so the caller supplies it.
  *
- * The five magic numbers below (power's condition floor, handling's
- * base/weight-divisor, style's cap, reliability's cap) live in
- * `economy.json.statFormulas`.
+ * The magic numbers below (power's condition floor, style's cap,
+ * reliability's cap) live in `economy.json.statFormulas`; handling's whole
+ * model lives in `statFormulas.grip` and is applied through `performance.ts`.
+ *
+ * Handling's mint base is the grip readout (`gripToDisplay(computeGrip(...))`)
+ * at the fitted tyre's effective compound, less a balance penalty; condition
+ * and part modifiers then scale and adjust it exactly like every other stat.
  *
  * Every condition input is `weightedBandFactorForStat` above, self-derived
  * from the taxonomy's own `statWeights` rather than a fixed per-stat
@@ -80,8 +85,7 @@ export function computeDerivedStats(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): StatBlock {
-  const { powerConditionFloor, handlingBase, handlingWeightDivisor, styleCap, reliabilityCap } =
-    economy.statFormulas
+  const { powerConditionFloor, styleCap, reliabilityCap, grip } = economy.statFormulas
 
   const powerFraction = weightedBandFactorForStat(instance, model, 'power', partsTaxonomy, economy)
   const powerConditionScale = powerConditionFloor + (1 - powerConditionFloor) * powerFraction
@@ -94,7 +98,11 @@ export function computeDerivedStats(
     partsTaxonomy,
     economy,
   )
-  let handling = handlingBase * handlingFraction - model.spec.curbWeightKg / handlingWeightDivisor
+  const compound = effectiveCompound(instance, model, partsById, grip)
+  const mintHandling =
+    gripToDisplay(computeGrip(model, compound, grip), grip) -
+    grip.balance.weight * Math.abs(balanceOf(model, grip))
+  let handling = mintHandling * handlingFraction
 
   const styleFraction = weightedBandFactorForStat(instance, model, 'style', partsTaxonomy, economy)
   let style = styleFraction * styleCap

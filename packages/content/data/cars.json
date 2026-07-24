@@ -177,7 +177,7 @@
     "spec": {
       "chassisCode": "JZX90",
       "engineCode": "1JZ-GTE",
-      "yearFrom": 1996,
+      "yearFrom": 1992,
       "curbWeightKg": 1450,
       "stockPowerPs": 280,
       "powerRpm": 6200,
@@ -764,6 +764,7 @@
       "dragCd": 0.4,
       "stockTyre": "225/50R16",
       "tyreCompound": "performance",
+      "activeYaw": "attesa",
       "zeroToHundredS": 5.1,
       "topSpeedKmh": 250,
       "dataConfidence": "HIGH",

@@ -99,6 +99,20 @@ export const ConditionBandSchema = z.enum(['scrap', 'poor', 'worn', 'fine', 'min
 
 export const GradeSchema = z.enum(['stock', 'street', 'sport', 'race'])
 
+/**
+ * The tyre compound tier a car's grip is computed from - the stock fitment's
+ * chemistry tier, plus the higher tiers a fitted aftermarket tyre reaches.
+ * `slick` is reached only by a fitted race tyre, never a stock fitment.
+ */
+export const TyreCompoundSchema = z.enum([
+  'eco',
+  'touring',
+  'performance',
+  'sport',
+  'grand',
+  'slick',
+])
+
 export const RarityTierSchema = z.enum([
   'shitbox',
   'common',
@@ -115,5 +129,6 @@ export type ComponentId = z.infer<typeof ComponentIdSchema>
 export type CarPartId = z.infer<typeof CarPartIdSchema>
 export type ConditionBand = z.infer<typeof ConditionBandSchema>
 export type Grade = z.infer<typeof GradeSchema>
+export type TyreCompound = z.infer<typeof TyreCompoundSchema>
 export type RarityTier = z.infer<typeof RarityTierSchema>
 export type ReputationTier = z.infer<typeof ReputationTierSchema>

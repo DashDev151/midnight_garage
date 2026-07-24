@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { RarityTierSchema, TagSchema, type Tag } from './tags'
+import { RarityTierSchema, TagSchema, TyreCompoundSchema, type Tag } from './tags'
 
 const LAYOUT_TAGS = ['FR', 'FF', 'AWD', 'MR', 'RR'] as const
 const INDUCTION_TAGS = ['NA', 'Turbo', 'Supercharged'] as const
@@ -61,7 +61,11 @@ export const CarModelSchema = z
       comHeightMm: z.number().int().positive().optional(),
       dragCd: z.number().positive().optional(),
       stockTyre: z.string().min(1).optional(),
-      tyreCompound: z.enum(['eco', 'touring', 'performance', 'sport', 'grand']).optional(),
+      tyreCompound: TyreCompoundSchema.optional(),
+      /** Factory active torque-vectoring (ATTESA E-TS Pro / Super AYC), the
+       * cornering edge that lifts an equipped AWD car's mechanical grip above
+       * a passive one. Absent on every car without it. */
+      activeYaw: z.enum(['attesa', 'ayc']).optional(),
       zeroToHundredS: z.number().positive().optional(),
       topSpeedKmh: z.number().int().positive().optional(),
       dataConfidence: z.enum(['HIGH', 'MED', 'LOW']).optional(),

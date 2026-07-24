@@ -326,8 +326,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // Re-pinned for the body model switchover (case (a), an intentional
     // change) - see the golden-master describe block above for the reason:
     // every generated lot's zone state now shapes its condition and value
-    // from the moment it rolls.
-    expect(hashState(acquisitionCareer().sold)).toBe('3fd7b213')
+    // from the moment it rolls. Re-pinned again now handling derives from
+    // mechanical grip rather than weight: the sold car's taste-adjusted price
+    // shifts with its new handling stat, moving the final career-state hash.
+    expect(hashState(acquisitionCareer().sold)).toBe('509aa1f1')
   })
 })
 

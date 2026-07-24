@@ -39,6 +39,13 @@ import storyMissions from '../data/storyMissions.json'
  * three parts are derived from zone state now, so they never roll missing
  * as a whole slot; only the `aero` kit slot still can, weight unchanged at
  * 3, exactly as the table states.
+ *
+ * Re-pinned for the grip-driven handling model (Sprint 123, maintainer-confirmed
+ * 2026-07-24): `statFormulas.handlingBase`/`handlingWeightDivisor` removed and a
+ * new `statFormulas.grip` block added (era rubber table, tier deltas incl. the
+ * provisional `slick: 0.20`, grade-to-compound map, width/transfer/layout/track
+ * constants, the two-segment display curve, and the balance term). Handling now
+ * derives from mechanical grip rather than weight.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -48,7 +55,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('c464eacacb21a8665eeede53965bba521e754224b2fec9f3f8c2ee8593a90058')
+    ).toBe('809f918772d94872c3c3b8223a60dfbf8d062ab52e36a7fb86e2d537c0d284ab')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

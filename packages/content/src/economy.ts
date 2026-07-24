@@ -6,6 +6,7 @@ import {
   ConditionBandSchema,
   RarityTierSchema,
   ReputationTierSchema,
+  TyreCompoundSchema,
 } from './tags'
 import { ToolTierSchema } from './toolLines'
 
@@ -645,20 +646,18 @@ export const EconomyConfigSchema = z.object({
       message: 'HEAT_MIN must be <= HEAT_MAX',
     }),
   /**
-   * `derivedStats.ts`'s five magic numbers, kept here as data so they can be
-   * retuned without a code edit. `powerNormalizationCeiling` isn't a
+   * `derivedStats.ts`'s stat-formula magic numbers, kept here as data so they
+   * can be retuned without a code edit. `powerNormalizationCeiling` isn't a
    * `computeDerivedStats` input - it feeds `valuateCarForBuyer`'s taste
    * normalisation instead - but lives in this block since it's part of the
-   * same "stat formula magic numbers" family.
+   * same "stat formula magic numbers" family. The `grip` block is handling's
+   * whole model: `performance.ts` reads it for `computeGrip`, `balanceOf`,
+   * and the display curve, and `derivedStats.ts` derives handling from those.
    */
   statFormulas: z.object({
     /** Power at 0 engine condition, as a fraction of stock power (floor);
      * scales linearly up to 1.0 (full stock power) at 100 condition. */
     powerConditionFloor: z.number().min(0).max(1),
-    /** Handling's base term, scaled by suspension condition / 100. */
-    handlingBase: z.number().positive(),
-    /** Curb weight (kg) divisor subtracted from handling's base term. */
-    handlingWeightDivisor: z.number().positive(),
     /** Style's cap at 100 body condition. */
     styleCap: z.number().positive(),
     /** Reliability's cap at 100 average engine+drivetrain condition. */
@@ -667,6 +666,104 @@ export const EconomyConfigSchema = z.object({
      * against (was the file-local `POWER_NORMALIZATION_CEILING` constant in
      * valuation.ts). */
     powerNormalizationCeiling: z.number().positive(),
+    /**
+     * Handling's grip model (`performance.ts`). Every constant of the
+     * mechanical-grip calculation, the tyre-grade-to-compound map, the
+     * two-segment 0-100 display curve, and the balance term lives here so
+     * the whole handling stat retunes from content alone.
+     */
+    grip: z.object({
+      /** Era rubber-chemistry ceiling: the first band whose `beforeYear`
+       * exceeds the car's `yearFrom` sets the base mu; `eraRubberDefaultMu`
+       * applies to anything at or past the last band's year. */
+      eraRubberBands: z
+        .array(z.object({ beforeYear: z.number().int(), mu: z.number().positive() }))
+        .min(1),
+      eraRubberDefaultMu: z.number().positive(),
+      /** Compound-tier mu adjustment added to the era ceiling. */
+      tierDelta: z.object({
+        eco: z.number(),
+        touring: z.number(),
+        performance: z.number(),
+        sport: z.number(),
+        grand: z.number(),
+        slick: z.number(),
+      }),
+      /** Fitted-tyre grade to effective compound tier. `stock` is `null` -
+       * a stock tyre keeps the model's own `spec.tyreCompound`. */
+      gradeToCompound: z.object({
+        stock: z.null(),
+        street: TyreCompoundSchema,
+        sport: TyreCompoundSchema,
+        race: TyreCompoundSchema,
+      }),
+      /** Contact-patch width adjustment, secondary to compound: a signed mu
+       * nudge from tyre section width, scaled by how much of a wide patch the
+       * rubber can exploit (`effMu*`), then clamped (`adj*`). */
+      width: z.object({
+        referenceMm: z.number(),
+        divisor: z.number().positive(),
+        adjMin: z.number(),
+        adjMax: z.number(),
+        effMuFloor: z.number(),
+        effMuSpan: z.number().positive(),
+        effMin: z.number(),
+        effMax: z.number(),
+        fallbackMm: z.number().positive(),
+      }),
+      /** Centre-of-mass / track weight-transfer factor, clamped to
+       * `[floor, ceiling]`. */
+      transfer: z.object({
+        slope: z.number(),
+        reference: z.number(),
+        floor: z.number(),
+        ceiling: z.number(),
+      }),
+      /** Drivetrain-layout grip bonus. AWD earns `awdActive` with factory
+       * active yaw, `awdPassive` without; a mid engine earns `mid`. */
+      layout: z.object({
+        base: z.number().positive(),
+        awdActive: z.number(),
+        awdPassive: z.number(),
+        mid: z.number(),
+      }),
+      /** Track width (mm) by class: Kei, wide (section width at or above the
+       * threshold), or standard. */
+      track: z.object({
+        keiMm: z.number().positive(),
+        wideMm: z.number().positive(),
+        standardMm: z.number().positive(),
+        wideWidthThresholdMm: z.number().positive(),
+      }),
+      /** Centre-of-mass height fallback for a model without a stated one. */
+      comHeightFallbackMm: z.number().positive(),
+      /** Two-segment display curve mapping mechanical g to the 0-100 readout:
+       * a steep stock segment (`stockLow` to `stockHigh`) and a gentle
+       * modified segment (`stockHigh` to `modifiedHigh`). */
+      displayCurve: z.object({
+        stockLowG: z.number(),
+        stockLowDisplay: z.number(),
+        stockHighG: z.number(),
+        stockHighDisplay: z.number(),
+        modifiedHighG: z.number(),
+        modifiedHighDisplay: z.number(),
+      }),
+      /** Balance term: front-weight bias plus drivetrain and engine-position
+       * offsets, clamped, then scaled by `weight` where it deducts from
+       * handling. */
+      balance: z.object({
+        frontReference: z.number(),
+        frontDivisor: z.number().positive(),
+        frontFallback: z.number(),
+        fwd: z.number(),
+        rwd: z.number(),
+        rear: z.number(),
+        mid: z.number(),
+        clampMin: z.number(),
+        clampMax: z.number(),
+        weight: z.number().nonnegative(),
+      }),
+    }),
   }),
   /**
    * The banded parts model's own tunables. The hidden-issue/inspection
