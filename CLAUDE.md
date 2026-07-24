@@ -49,10 +49,12 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-117 implemented and committed (Sprint 100 was superseded unbuilt
-by Sprint 110's live-room promotion; its doc records that); the workshop rework
-(`docs/design/workshop-rework.md`, FINAL) is in flight as Sprints 118-121: 118's levers are
-signed and implementing, 119's lever table awaits maintainer sign-off.
+**Current state:** Sprints 00-119 implemented and committed (Sprint 100 was superseded unbuilt
+by Sprint 110's live-room promotion; its doc records that). The workshop rework
+(`docs/design/workshop-rework.md`, FINAL) landed its phase 1 as Sprints 118-119; its views and
+flourishes (Sprints 120-121) are designed but not yet built. The car spec arc
+(`docs/design/car-spec-arc.md`) landed phase 1 as Sprint 122: real stock specs for the 26 in-game
+cars; the vetted spec book lives at `docs/design/car-spec-book.html`.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file
