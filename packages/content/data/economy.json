@@ -164,7 +164,7 @@
         "stockLowDisplay": 10,
         "stockHighG": 1.1,
         "stockHighDisplay": 55,
-        "modifiedHighG": 2.0,
+        "modifiedHighG": 1.62,
         "modifiedHighDisplay": 100
       },
       "balance": {

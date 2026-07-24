@@ -46,6 +46,13 @@ import storyMissions from '../data/storyMissions.json'
  * provisional `slick: 0.20`, grade-to-compound map, width/transfer/layout/track
  * constants, the two-segment display curve, and the balance term). Handling now
  * derives from mechanical grip rather than weight.
+ *
+ * Re-pinned 2026-07-24 (maintainer approval, in session): the grip display
+ * curve's `statFormulas.grip.displayCurve.modifiedHighG` 2.0 -> 1.62, so a
+ * full-slick race build (mechanical mu ~1.51, per the Calsonic BNR32 Gr.A
+ * telemetry) reads ~90 on the 0-100 handling stat instead of ~76. No current
+ * (stock) car exceeds mu 1.10, so no displayed stat or payout moves; this only
+ * sets the future modified-grip ceiling. Signed in docs/design/lap-calibration.md.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -55,7 +62,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('809f918772d94872c3c3b8223a60dfbf8d062ab52e36a7fb86e2d537c0d284ab')
+    ).toBe('0646083ee544fa73f8f8f00702bac55d0a7d5de1b8c460d10d4ec4db262deeb0')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

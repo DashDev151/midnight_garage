@@ -143,7 +143,7 @@
     "spec": {
       "chassisCode": "RPS13",
       "engineCode": "SR20DET",
-      "yearFrom": 1989,
+      "yearFrom": 1991,
       "curbWeightKg": 1220,
       "stockPowerPs": 205,
       "powerRpm": 6000,
@@ -612,8 +612,8 @@
     "parodyBrand": "Nissen",
     "spec": {
       "chassisCode": "S13",
-      "engineCode": "CA18DET",
-      "yearFrom": 1988,
+      "engineCode": "SR20DET",
+      "yearFrom": 1991,
       "curbWeightKg": 1150,
       "stockPowerPs": 205,
       "powerRpm": 6000,

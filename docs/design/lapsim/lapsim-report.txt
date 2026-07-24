@@ -1,0 +1,126 @@
+# RAN WHEN PARKED - lap-time model, all cars (external review, prototype)
+
+## The model
+Lap time = quasi-static point-mass sim over a course of corners + straights.
+ - corner apex speed = sqrt(mu * g * radius), mu from the signed-off grip model
+ - straights: accelerate under wheel power (the lesser of power-limited and the drivetrain
+   traction limit), aero drag = Cd x frontal area (0.82 x width x height), top speed
+   capped at the published figure, then grip-limited braking into the next corner
+ - torque delivery shapes corner-exit pull; a transition/agility term costs heavy,
+   low-grip cars time in tight corners. 0-100 validated against published figures.
+ - PROTOTYPE: drivetrain-launch and agility constants are first-pass; frontal areas are
+   REAL (0.82 x width x height) for all 85 cars from published dimensions.
+
+## The four courses
+- Touge: 1.5 km, 8 corners (3 hairpin, 3 slow, 2 medium), 59% straight, avg radius 56 m, longest straight 180 m
+- Mountain: 3.4 km, 10 corners (3 slow, 4 medium, 2 hairpin, 1 fast), 67% straight, avg radius 105 m, longest straight 400 m
+- Wangan: 5.8 km, 5 corners (3 fast, 2 medium), 84% straight, avg radius 282 m, longest straight 1500 m
+- Circuit: 2.9 km, 8 corners (3 slow, 2 medium, 1 hairpin, 2 fast), 64% straight, avg radius 129 m, longest straight 380 m
+  Touge = tight downhill pass (short straights, hairpins) -> grip + agility.
+  Mountain = longer pass with variety -> balance.
+  Wangan = bayshore expressway (long straights, fast sweepers) -> power + low drag.
+  Circuit = club track, mixed -> all-round.
+
+## Ranked by overall pace across all four courses
+rank ovr   PS   kg  PS/t mu   grip dt  delivery  0-100 top  touge  mtn   wang  circ  best   car
+  1 1.000  560 1480  378 1.08  53 RWD big-NA     4.1  325  67.5 102.1  90.2  80.7 Touge   Lexus LFA
+  2 1.040  480 1740  276 1.06  51 AWD twin-t     4.1  311  70.7 105.9  93.8  83.6 Circu   Nissan GT-R (R35)
+  3 1.085  380 1450  262 0.95  39 RWD big-NA     4.4  295  72.6 110.7  99.2  87.3 Touge   Ferrari F355 Berlinetta (F129)
+  4 1.087  300 1280  234 0.97  41 AWD turbo      4.6  241  71.0 109.9 103.1  86.8 Touge   Mitsubishi Lancer Evo VI Tommi Makinen (CP9A)
+  5 1.091  300 1270  236 0.96  41 AWD turbo      4.6  248  71.0 110.5 103.5  87.2 Touge   Subaru Impreza 22B STi
+  6 1.091  280 1270  220 0.95  39 RWD rotary-t   5.1  255  72.2 111.0 100.7  87.8 Touge   Mazda RX-7 Spirit R (FD3S)
+  7 1.093  320 1560  205 0.99  44 AWD twin-t     4.6  260  72.4 110.5 102.1  87.3 Touge   Nissan Skyline GT-R V-Spec II (BNR34)
+  8 1.098  300 1400  214 0.97  41 AWD turbo      4.7  252  72.5 110.8 103.5  87.6 Touge   Mitsubishi Lancer Evo VIII MR (CT9A)
+  9 1.110  250 1250  200 0.94  38 RWD VTEC       5.2  240  72.5 112.2 105.0  89.0 Touge   Honda S2000 (AP1)
+ 10 1.110  320 1530  209 0.95  39 AWD twin-t     4.8  250  74.4 112.7 102.2  88.9 Circu   Nissan Skyline GT-R (BCNR33)
+ 11 1.112  280 1230  228 0.90  34 RWD VTEC       4.7  262  73.5 113.1 102.6  89.6 Touge   Honda NSX-R (NA1)
+ 12 1.121  250 1310  191 0.93  37 RWD rotary     5.4  235  74.0 112.8 104.9  90.2 Touge   Mazda RX-8 (SE3P)
+ 13 1.121  291 1446  201 0.92  37 RWD NA         5.5  249  74.8 113.7 103.3  89.9 Touge   Nissan 350Z (Z33)
+ 14 1.123  250 1240  202 0.91  35 RWD turbo      5.7  245  74.4 114.1 104.2  90.0 Touge   Nissan Silvia Spec-R (S15)
+ 15 1.125  324 1500  216 0.91  36 RWD seq-twin   5.6  285  75.9 114.1 102.9  90.0 Circu * Toyota Supra RZ (JZA80)
+ 16 1.126  255 1260  202 0.89  33 RWD rotary-t   5.5  250  74.8 114.6 103.6  90.5 Touge * Mazda RX-7 (FD3S)
+ 17 1.128  220 1170  188 0.91  36 FWD VTEC       6.1  241  73.4 114.2 107.2  90.2 Touge   Honda Integra Type R (DC5)
+ 18 1.130  455 1490  305 0.86  30 RWD big-NA     4.9  298  77.3 115.0 100.8  91.1 Wanga   Lamborghini Countach LP5000 QV
+ 19 1.134  300 1290  233 0.86  31 RWD turbo      4.8  260  75.8 115.1 104.6  90.7 Touge   Porsche 911 Turbo (930)
+ 20 1.134  280 1470  190 0.92  37 AWD turbo      5.0  238  75.1 115.1 105.3  90.9 Touge   Subaru Impreza WRX STI (GDB)
+ 21 1.135  250 1230  203 0.89  34 AWD turbo      5.1  230  74.5 114.2 107.6  90.6 Touge * Subaru Impreza WRX STI (GC8)
+ 22 1.145  320 1720  186 0.92  37 AWD twin-t     5.1  250  77.4 116.5 104.6  91.5 Circu   Autech Stagea 260RS (WGNC34)
+ 23 1.146  255 1400  182 0.90  34 AWD turbo      5.2  246  76.1 115.8 106.8  91.7 Touge   Toyota Celica GT-Four (ST205)
+ 24 1.146  200 1060  189 0.88  32 FWD VTEC       6.4  233  74.7 114.9 109.8  91.5 Touge   Honda Integra Type R (DC2)
+ 25 1.147  320 1430  224 0.88  32 AWD twin-t     5.0  250  76.6 115.9 106.3  91.8 Touge * Nissan Skyline GT-R (BNR32)
+ 26 1.147  390 1506  259 0.84  29 RWD big-NA     4.9  290  78.0 116.8 103.1  92.4 Wanga   Ferrari Testarossa (F113)
+ 27 1.148  235 1340  175 0.89  33 RWD NA         6.0  250  76.0 116.8 106.2  92.3 Touge   Mercedes 190E 2.5-16 Evo II (W201)
+ 28 1.152  225 1240  181 0.87  32 RWD turbo      5.2  240  75.8 116.7 108.2  91.9 Touge * Toyota MR2 GT-S (SW20)
+ 29 1.152  210 1340  157 0.90  35 RWD NA         6.0  230  75.4 116.5 109.0  92.1 Touge   Toyota Altezza RS200 Z Edition (SXE10)
+ 30 1.153  185 1040  178 0.87  31 FWD VTEC       6.4  228  74.6 115.8 111.3  91.9 Touge   Honda Civic Type R (EK9)
+ 31 1.154  220 1240  177 0.88  32 RWD turbo      6.0  235  75.9 117.0 108.2  92.2 Touge * Nissan Silvia K's (S14)
+ 32 1.156  227 1275  178 0.89  33 AWD turbo      5.3  220  75.5 116.1 110.0  92.5 Touge   Ford Escort RS Cosworth
+ 33 1.157  286 1460  196 0.86  31 RWD NA         5.7  250  77.6 117.2 105.8  93.2 Mount   BMW M3 (E36)
+ 34 1.160  230 1220  189 0.86  31 AWD turbo      5.3  232  75.9 116.8 109.8  93.0 Touge   Nissan Pulsar GTI-R (RNN14)
+ 35 1.162  300 1710  175 0.89  34 AWD twin-t     5.3  279  78.4 118.2 105.8  93.0 Circu   Mitsubishi GTO Twin Turbo (Z16A)
+ 36 1.162  210 1210  174 0.86  31 AWD turbo      5.5  230  75.8 117.6 110.2  92.6 Touge   Mazda Familia GT-R (BG8Z)
+ 37 1.163  160  970  165 0.86  31 FWD VTEC       6.7  243  74.8 115.8 114.1  92.3 Touge * Honda CR-X SiR (EF8)
+ 38 1.173  280 1560  179 0.87  32 RWD twin-t     6.3  250  79.1 118.3 107.7  93.9 Mount   Toyota Soarer (JZZ30)
+ 39 1.174  304 1570  194 0.85  29 RWD twin-t     5.9  250  79.6 119.4 106.0  94.4 Mount * Nissan Fairlady Z (Z32)
+ 40 1.174  205 1150  178 0.84  28 RWD turbo      6.3  225  76.8 118.0 111.3  94.2 Touge * Nissan Silvia (S13)
+ 41 1.175  280 1480  189 0.84  29 RWD turbo      6.4  250  79.5 119.8 106.6  94.3 Circu   Toyota Chaser Tourer V (JZX100)
+ 42 1.181  205 1220  168 0.84  28 RWD turbo      6.3  225  77.5 119.7 110.9  94.7 Touge * Nissan 180SX (RPS13)
+ 43 1.182  240 1620  148 0.88  32 AWD NA         5.8  272  78.6 119.2 110.1  94.6 Touge   Subaru Alcyone SVX (CXD)
+ 44 1.182  200 1240  161 0.85  29 FWD VTEC       6.9  200  77.8 119.2 112.2  93.7 Touge * Honda Prelude Si VTEC (BB4)
+ 45 1.185  170 1050  162 0.83  27 FWD VTEC       6.8  215  77.1 119.8 112.5  94.9 Touge * Honda Civic SiR-II (EG6)
+ 46 1.185  300 1620  185 0.84  28 RWD rotary-t   6.5  250  80.9 121.0 105.8  95.4 Wanga   Eunos Cosmo (JC)
+ 47 1.186  324 1680  193 0.85  29 RWD seq-twin   6.4  250  81.1 120.9 106.1  95.2 Wanga * Toyota Aristo 3.0V (JZS147)
+ 48 1.186  135  950  142 0.85  30 FWD turbo      7.0  218  75.6 118.6 116.3  94.7 Touge   Toyota Starlet Glanza V (EP91)
+ 49 1.189  210 1300  162 0.85  29 AWD turbo      5.7  220  78.1 120.2 112.1  95.1 Touge   Lancia Delta HF Integrale Evo
+ 50 1.190  195 1253  156 0.85  29 RWD NA         6.3  235  77.1 119.4 114.9  94.7 Touge   BMW M3 (E30)
+ 51 1.190  280 1450  193 0.82  26 RWD twin-t     6.6  250  80.6 121.0 107.5  96.0 Mount * Toyota Chaser Tourer V (JZX90)
+ 52 1.209  175 1320  133 0.84  29 RWD turbo      7.1  215  79.0 121.8 114.8  96.8 Touge   Mitsubishi Starion (A187A)
+ 53 1.211  205 1370  150 0.82  26 RWD turbo      6.9  220  80.5 122.6 112.6  97.0 Touge * Nissan Cefiro (A31)
+ 54 1.213  145 1070  136 0.80  24 RWD s/c        6.5  210  78.1 123.2 116.3  96.6 Touge * Toyota MR2 (AW11)
+ 55 1.213  120  940  128 0.82  26 RWD NA         7.2  188  76.4 121.4 119.3  97.5 Touge   Eunos Roadster (NA6CE)
+ 56 1.214  185 1230  150 0.80  24 RWD rotary-t   6.7  230  80.4 122.4 113.9  97.0 Touge * Mazda Savanna RX-7 (FC3S)
+ 57 1.215  205 1350  152 0.81  26 RWD turbo      6.9  215  80.6 122.9 113.4  97.2 Touge   Nissan Laurel (C33)
+ 58 1.223  110  900  122 0.82  26 FWD NA         7.8  195  76.4 122.7 123.8  95.5 Touge * Toyota Sera (EXY10)
+ 59 1.224  130  940  138 0.79  23 RWD NA         7.3  185  77.3 122.6 120.6  97.8 Touge * Toyota Sprinter Trueno (AE86)
+ 60 1.226  188 1250  150 0.78  22 RWD NA         7.2  220  81.2 124.1 114.4  98.2 Touge   Alfa Romeo 75 3.0 V6
+ 61 1.240  139  907  153 0.75  20 FWD NA         7.4  204  79.7 124.4 120.8  98.3 Touge   VW Golf GTI Mk2 16V
+ 62 1.240  110  735  150 0.77  21 FWD turbo      7.6  180  77.5 124.2 123.3  98.9 Touge * Honda City Turbo II (AA)
+ 63 1.274  150 1010  149 0.71  15 RWD NA         7.5  210  83.0 129.6 120.4 101.8 Touge   Nissan Fairlady 240ZG (HS30)
+ 64 1.280   85  880   97 0.76  20 FWD NA         9.4  178  80.4 127.6 128.7 101.0 Touge * Nissan Sunny (B12)
+ 65 1.293   64  720   89 0.82  27 RWD turbo      9.1  150  76.3 126.4 139.1 101.8 Touge   Mazda Autozam AZ-1 (PG6SA)
+ 66 1.301  160 1040  154 0.68  12 RWD NA         8.0  210  85.2 130.8 124.2 103.4 Touge   Nissan Fairlady Z432 (PS30)
+ 67 1.308   64  725   88 0.79  23 RWD turbo      9.4  150  79.2 128.3 136.8 103.6 Touge   Suzuki Cappuccino (EA11R)
+ 68 1.311   64  810   79 0.82  26 FWD turbo     10.6  150  78.5 128.0 137.8 104.6 Touge   Daihatsu Copen (L880K)
+ 69 1.311  150 1120  134 0.66  10 RWD NA         7.8  220  87.6 132.8 121.0 105.1 Touge   Toyota 2000GT (MF10)
+ 70 1.312   64  700   91 0.77  22 AWD s/c        9.1  150  78.7 128.2 140.8 101.9 Touge   Subaru Vivio RX-R (KK4)
+ 71 1.315   64  650   98 0.77  21 FWD turbo      9.2  150  78.4 128.0 141.0 103.4 Touge * Suzuki Alto Works (HA21S)
+ 72 1.321   63  690   91 0.79  23 FWD NA         9.9  152  78.1 128.2 143.3 103.2 Touge   Rover Mini Cooper 1.3i
+ 73 1.323  160 1100  145 0.67  11 RWD NA         8.6  195  86.7 132.8 126.0 105.5 Touge   Nissan Skyline GT-R Hakosuka (KPGC10)
+ 74 1.325  110  940  117 0.67  11 RWD rotary     8.5  185  85.5 132.9 128.3 105.4 Touge   Mazda Cosmo Sport 110S (L10A)
+ 75 1.327   64  710   90 0.75  19 FWD turbo     10.0  150  80.5 131.3 138.8 104.1 Touge   Daihatsu Mira TR-XX Avanzato R (L502S)
+ 76 1.330   83  955   87 0.76  20 FWD NA        10.0  160  81.7 131.5 135.5 106.2 Touge * Toyota Carina (AT150)
+ 77 1.332   64  760   84 0.80  25 RWD NA         9.5  135  78.0 129.1 146.0 103.8 Touge * Honda Beat (PP1)
+ 78 1.355   52  570   91 0.69  13 FWD turbo     10.6  155  82.4 134.4 142.5 105.0 Touge   Daihatsu Mira TR-XX (L70)
+ 79 1.361  130 1150  113 0.66  10 RWD NA         9.2  175  88.6 136.4 132.5 107.0 Touge   Nissan Skyline 2000GT-X Kenmeri (KGC110)
+ 80 1.370   97  940  103 0.66  10 RWD NA         9.6  161  86.8 136.5 135.4 109.3 Touge   Datsun 510 / Bluebird (PL510)
+ 81 1.393   63  690   91 0.69  13 FWD NA        10.5  141  82.6 134.8 150.1 110.1 Touge * Honda City E (AA)
+ 82 1.409   55  720   76 0.70  15 FWD NA        11.8  140  82.9 139.0 150.6 110.9 Touge * Suzuki Wagon R (CT21S)
+ 83 1.411   38  620   61 0.72  16 FWD NA        14.6  145  83.2 137.3 155.6 108.1 Touge   Honda Today (JW1)
+ 84 1.416   73  950   77 0.69  14 FWD NA        11.9  149  86.5 137.8 150.7 109.7 Touge   Nissan S-Cargo (FHK11)
+ 85 1.543   38  770   49 0.69  13 AWD NA        19.6  124  90.1 149.8 170.6 119.2 Touge   Honda Acty (HA4)
+
+cars: 85   * = in playable game (26)   best = the course this car is relatively strongest on
+wrote lapsim-data.json (85 cars)
+
+# Legend Island calibration (course length 4720 m, straight frac 68%)
+car                                          ours   forza  delta    %err
+Lexus LFA                                     95.2   92.6    2.6    2.8
+Ferrari F355 Berlinetta (F129)               103.5  101.3    2.2    2.2
+Honda NSX-R (NA1)                            105.7  102.9    2.8    2.7
+Mitsubishi Lancer Evo VI Tommi Makinen (CP9A) 104.7  103.2    1.5    1.5
+BMW M3 (E30)                                 114.8  112.1    2.7    2.4
+Toyota Altezza RS200 Z Edition (SXE10)       112.7  113.1   -0.4   -0.3
+Toyota 2000GT (MF10)                         125.9  123.4    2.5    2.1
+Honda Beat (PP1)                             142.8  129.8   13.0   10.0
+Honda Acty (HA4)                             158.8  171.9  -13.1   -7.6
+spread ours 1.67x  forza 1.86x   mean abs err 4.5 s
