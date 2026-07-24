@@ -1,6 +1,7 @@
 # MIDNIGHT GARAGE - Car Roster
-## Inspiration Pool & Scope Ladder - v1.2
+## Inspiration Pool & Scope Ladder - v1.3
 *Companion to GDD v0.4 §4. This is the full inspiration pool; curation happens per scope tier. Real specs per GDD §2.4 naming layer.*
+*v1.3 (maintainer-approved): added the Eunos Roadster (NA6CE), Skyline GT-R (BCNR33), and Impreza WRX STI (GDB bugeye), completing the Miata, GT-R, and Impreza-versus-Evo lineages. Their scope tiers below are provisional, pending curation.*
 
 ## Scope Ladder
 | Tier | Count | When |
@@ -56,6 +57,7 @@ Column key: **P** = PoC-10 · **L** = Go-Live · pack name = post-launch expansi
 | Nissan Cefiro (A31) | RB20DET | Drift Pack |
 | Nissan Laurel (C33) | RB20DET | Drift Pack |
 | Toyota Chaser (JZX100) | 1JZ-GTE VVT-i | Drift Pack |
+| Eunos Roadster (NA6CE) | B6-ZE 1.6 | Featherweight FR; the accessible RWD grip lesson | **L** |
 
 ## Rotary
 | Car | Engine | Notes | Scope |
@@ -68,7 +70,9 @@ Column key: **P** = PoC-10 · **L** = Go-Live · pack name = post-launch expansi
 | Car | Engine | Notes | Scope |
 |---|---|---|---|
 | Nissan Skyline GT-R (BNR32) | RB26DETT | Godzilla | **L** |
+| Nissan Skyline GT-R (BCNR33) | RB26DETT | R33; the lineage's middle child | **L** |
 | Subaru Impreza WRX STI (GC8) | EJ20 | Rally blue | **L** |
+| Subaru Impreza WRX STI (GDB) | EJ207 | The bugeye; the Evo VIII's natural rival | **L** |
 | Toyota Celica GT-Four (ST205) | 3S-GTE | WRC controversy = flavor gold | **L** |
 | Nissan Pulsar GTI-R (RNN14) | SR20DET | Baby Godzilla | **L** |
 | Mazda Familia GT-R (BG8Z) | BPD 1.8T | 323 homologation deep cut | **L** |

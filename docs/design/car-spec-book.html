@@ -227,7 +227,10 @@ const CARS = [
 {n:"Daihatsu Mira TR-XX Avanzato R (L502S)",y:1995,sec:"Kei",dt:"FWD",ep:"front",ec:"JB-JL",cfg:"I4",asp:"turbo",cc:659,ps:64,psr:7500,q:64,tq:100,tqr:4000,rl:8000,kg:710,fr:60,wb:2300,com:510,cd:0.33,ty:"155/65R13",z:10.9,top:150,cf:"MED",ig:0,est:["rl","fr","com","cd"]},
 {n:"Honda Acty (HA3)",y:1990,sec:"Kei",dt:"RWD",ep:"mid",ec:"E07A",cfg:"I3",asp:"NA",cc:656,ps:38,psr:5300,q:38,tq:54,tqr:4500,rl:6000,kg:710,fr:48,wb:1900,com:650,cd:0.45,ty:"145R12",z:null,top:null,cf:"LOW",ig:0,est:["rl","kg","fr","com","cd"]},
 {n:"Suzuki Cappuccino (EA11R)",y:1991,sec:"Kei",dt:"RWD",ep:"front",ec:"F6A",cfg:"I3",asp:"turbo",cc:657,ps:64,psr:6500,q:64,tq:85,tqr:4000,rl:8500,kg:725,fr:50,wb:2060,com:430,cd:0.33,ty:"165/65R14",z:10.0,top:150,cf:"MED",ig:0,est:["com","cd","z"]},
-{n:"Honda Beat (PP1)",y:1991,sec:"Kei",dt:"RWD",ep:"mid",ec:"E07A MTREC",cfg:"I3",asp:"NA",cc:656,ps:64,psr:8100,q:64,tq:60,tqr:7000,rl:8500,kg:760,fr:43,wb:2280,com:420,cd:0.35,ty:"165/60R14",z:13.3,top:135,cf:"HIGH",ig:1,est:["com","cd"]}
+{n:"Honda Beat (PP1)",y:1991,sec:"Kei",dt:"RWD",ep:"mid",ec:"E07A MTREC",cfg:"I3",asp:"NA",cc:656,ps:64,psr:8100,q:64,tq:60,tqr:7000,rl:8500,kg:760,fr:43,wb:2280,com:420,cd:0.35,ty:"165/60R14",z:13.3,top:135,cf:"HIGH",ig:1,est:["com","cd"]},
+{n:"Eunos Roadster (NA6CE)",y:1989,sec:"FR / Drift",dt:"RWD",ep:"front",ec:"B6-ZE",cfg:"I4",asp:"NA",cc:1597,ps:120,psr:6500,q:120,tq:137,tqr:5500,rl:7200,kg:940,fr:52,wb:2265,com:460,cd:0.38,ty:"185/60R14",z:8.6,top:188,cf:"HIGH",ig:0,est:["com","fr"]},
+{n:"Nissan Skyline GT-R (BCNR33)",y:1995,sec:"AWD Turbo",dt:"AWD",ep:"front",ec:"RB26DETT",cfg:"I6",asp:"twin-turbo",cc:2568,ps:320,psr:6800,q:280,tq:368,tqr:4400,rl:8000,kg:1530,fr:55,wb:2720,com:510,cd:0.35,ty:"245/45R17",z:5.3,top:250,cf:"HIGH",ig:0,est:["ps","com"]},
+{n:"Subaru Impreza WRX STI (GDB)",y:2002,sec:"AWD Turbo",dt:"AWD",ep:"front",ec:"EJ207",cfg:"flat-4",asp:"turbo",cc:1994,ps:280,psr:6400,q:280,tq:373,tqr:4400,rl:8000,kg:1470,fr:59,wb:2525,com:530,cd:0.33,ty:"225/45R17",z:5.0,top:238,cf:"MED",ig:0,est:["com","fr"]}
 ];
 
 const K=7023.5; // Nm = K * PS / rpm
@@ -245,21 +248,25 @@ function compoundOf(c){
   const cap=c.y<1990?2:c.y<2000?3:4; // period tyre-compound ceiling
   return tiers[Math.min(ti,cap)];
 }
-// Continuous mu by tyre width (no banding), scaled by period tyre-compound tech.
-function eraTyre(y){return y<1972?0.87:y<1980?0.90:y<1988?0.95:y<1995?0.99:y<2005?1.0:1.06;}
+// Grip is compound-first: rubber chemistry sets mu, from the era technology
+// ceiling times the stock tyre's quality tier. Contact-patch width is a small
+// secondary adjustment, no longer the main driver.
+function eraRubber(y){return y<1968?0.72:y<1975?0.76:y<1982?0.80:y<1988?0.835:y<1993?0.875:y<1998?0.905:y<2008?0.93:0.98;}
+function tierDelta(t){return t==='eco'?-0.04:t==='touring'?-0.02:t==='performance'?0.0:t==='sport'?0.02:0.075;}
+function compoundMu(c){return eraRubber(c.y)+tierDelta(compoundOf(c));}
 function gripG(c){
   const w=tyreW(c);
-  const mu=(0.80+0.26*(1-Math.exp(-(w-145)/85)))*eraTyre(c.y); // width-driven, saturating, era-scaled
+  const cm=compoundMu(c);
+  const widthEff=Math.max(0.4,Math.min(1.0,(cm-0.70)/0.30)); // hard rubber cannot exploit a big contact patch
+  const widthAdj=Math.max(-0.03,Math.min(0.045,(w-200)/1100))*widthEff; // contact patch, secondary to compound
+  const mu=cm+widthAdj;
   const comR=(c.com||460)/trackOf(c);
   const transfer=Math.max(0.80,Math.min(1.0,1-0.75*(comR-0.27))); // CoM/track weight transfer
-  const loadBonus=Math.max(-0.04,Math.min(0.04,(6.0/(c.kg/w)-1)*0.08)); // wide-per-weight
   let layout=1.0;
-  if(c.dt==='AWD')layout+=0.04;                       // mechanical grip / rally setups
-  else if(c.ep==='mid')layout+=0.02;                  // low polar moment
-  if(/RB26DETT|VR38DETT/.test(c.ec))layout+=0.03;     // ATTESA E-TS active AWD (GT-R family)
-  if(c.n.indexOf('Lancer')>=0)layout+=0.025;          // Active Yaw Control (Lancer Evo)
-  const wPen=Math.max(0.93,Math.min(1.0,1-(c.kg-1400)*0.00013)); // heavy cars work their tyres harder
-  return mu*transfer*layout*wPen+loadBonus;           // stock downforce = 0
+  const active=/RB26DETT|VR38DETT/.test(c.ec)||c.n.indexOf('Lancer')>=0; // ATTESA E-TS Pro / Super AYC
+  if(c.dt==='AWD')layout+=active?0.035:0.02;          // active torque-vectoring earns an edge
+  else if(c.ep==='mid')layout+=0.015;                 // low polar moment
+  return mu*transfer*layout;                           // skidpad lateral g is mass-independent to first order
 }
 function balanceOf(c){
   let b=(52-(c.fr!=null?c.fr:55))/8;
