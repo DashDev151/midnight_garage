@@ -57,11 +57,38 @@ attributing a 1982 road test to a Golf GTI 16V, an engine that did not exist unt
 | Toyota MR2 (AW11) | 0.816 | R&T Nov 1984, 200 ft, **naturally aspirated**, not the supercharged car |
 | Mitsubishi Starion | 0.80 | base car; 0.85 with the Sport Handling Package. Unattributed, LOW |
 | Honda Prelude Si VTEC (BB4) | 0.80 | US car on **all-season** tyres; JDM on summer rubber reads higher |
+| Lexus LFA | 1.02-1.04 | production figures (Edmunds/R&T/MT). C/D's verified 1.00 was a PROTOTYPE on non-DOT tyres |
+| Nissan GT-R (R35) | 0.96 | 300 ft-equivalent. C/D's 0.99 was on a **185 ft** pad, which inflates it |
+| Subaru Impreza 22B STi | 0.96 | Mar 1999, 235/40ZR-17 |
+| Mitsubishi Lancer Evo VIII MR | 0.94 | US 2005 MY. Plain Evo VIII 0.90 in the same test |
+| Nissan Skyline GT-R V-Spec (BCNR33) | 0.94 | Dec 1995, 245/45ZR-17 |
+| Nissan Fairlady Z (Z32) Twin Turbo | 0.89 | Nov 1989. The NA car read 0.86 in the same test |
+| Nissan Skyline GT-R V-Spec (BNR34) | 0.89 | R&T Jul 1999, presumed 200 ft. **See the contradiction below** |
+| Mitsubishi Evo VI (plain, German mkt) | 0.90 | substitute for the TME, which has no test |
 | Toyota Celica All-Trac (ST165) | 0.74 | **wrong generation**, a floor for the ST205, not an estimate |
 
 **Explicitly rejected:** AE86 "0.79/0.82" (projectjdm cites nothing and gives both figures for the
 same measurement), F355 "0.93/0.96/0.97" (unsourced, untraceable, or the Spider), E36 M3 "0.84"
 (unverifiable), Testarossa "0.88" (unattributed), any "Est." figure.
+
+## The capstone: two well-sourced figures that rank backwards
+
+The **R33 V-Spec reads 0.94 g** on Car and Driver's 300 ft pad; the newer, wider-tyred **R34 V-Spec
+reads 0.89 g** on Road and Track's 200 ft pad. That is backwards twice over: the later car should not
+be slower, and the smaller pad should read higher, not lower. Both figures were read at source and
+both are individually sound. No published data resolves it.
+
+This is the whole problem in one line. Even where the real-world data exists and is well sourced, it
+cannot be trusted to RANK two closely-related cars, which is exactly what a lap model needs it for.
+
+## Two more traps worth recording
+
+- **The 2000GT's "0.84 g" is braking deceleration from 80 mph**, not cornering, and sits in the
+  Road and Track 1967 panel where it is easy to misread into a lateral slot. (Car and Driver's
+  2000GT test is April 1968, not 1967.)
+- **A "Car and Driver 1991 NSX, 0.86 g, 300 ft" figure** was asserted repeatedly by the search layer
+  with convincing supporting detail. It appears on no fetchable page and C/D has no 1990-93 NSX
+  archive test it could have come from. Fabricated.
 
 ## Structural gaps, by kind
 
