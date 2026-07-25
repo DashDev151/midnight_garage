@@ -138,18 +138,23 @@ sprint; D3 see below, this is the one that did not land as designed.
 somewhere. With the signed values it is a net gain on all five courses. The drag half works exactly
 as intended, it is simply outweighed. Measured on the Supra RZ, seconds against its own no-aero lap:
 
-| Course | drag alone | downforce alone | net |
-|---|---|---|---|
-| Kirifuri | +0.05 | -0.96 | **-0.81** |
-| Usui | +1.05 | -2.03 | **-1.32** |
-| Wangan | +3.31 | -4.13 | **-0.62** |
-| Tsurugi | +0.48 | -2.34 | **-2.27** |
-| Misaki | -0.12 | -5.95 | **-3.38** |
+Measured on the Supra RZ against the REVISED courses (see the course revision below):
 
-The bayshore does punish bodywork hardest (+3.31 s of pure drag, by far the largest), so the
-mechanism is right; but the Wangan as designed is five fast sweepers (160-400 m radius) taken at
-speed, which is precisely where downforce pays best. A wing therefore nets out barely-positive there
-(-0.62 s on a 103 s lap, 0.6%) rather than negative. Three honest options, maintainer's call:
+| Course | drag alone | net with the wing | net as % of lap |
+|---|---|---|---|
+| Kirifuri | +0.22 | **-2.36** | -0.9% |
+| Usui | +1.05 | **-1.32** | -1.1% |
+| Wangan | **+4.19** | **-0.92** | **-0.48%** |
+| Tsurugi | +0.48 | **-2.27** | -2.5% |
+| Misaki | -0.12 | **-3.38** | -3.1% |
+
+The bayshore punishes bodywork hardest by a wide margin (+4.19 s of pure drag, up from +3.31 before
+the revision), so the mechanism is right and the longer, straighter Wangan sharpened it. But the wing
+still nets out barely-positive there rather than negative: the revision moved it in the right
+direction relatively (0.60% of the lap before, 0.48% after) without flipping the sign. Sensitivity,
+for a decision: flipping the Wangan negative needs `race.dragCdDelta` around **0.11** for the Supra
+and about **0.17** for the RX-7 (which gains far more from the wing there), so no single value flips
+every car at once. Three honest options, maintainer's call:
 
 1. **Accept it.** A wing is a real upgrade whose gain nearly vanishes on the bayshore, and the trade
    lives in price and top speed instead of lap time. Nothing to change.
@@ -167,6 +172,32 @@ paid for most), not the aspiration.
 Floor Kit at race) is physically aerodynamic in a way the tabled aero line is not alone in, a flat
 floor is one of the biggest real downforce devices. They are left non-functional because they are not
 in the signed table. Worth a value decision alongside the question above.
+
+## Course revision (maintainer brief, 2026-07-25)
+
+Two of the five courses were redesigned to the maintainer's direction, landed alongside the aero
+work. The Sprint 124 shapes were a first cut; these are the corrected ones.
+
+| Course | Was | Now | Brief |
+|---|---|---|---|
+| Kirifuri Pass | 1.5 km, 8 corners | **4.2 km, 26 corners** (12 hairpin, 10 slow, 4 medium), 59% straight, avg radius 46 m | "substantially longer, more hairpins and very slow corners" |
+| Wangan Bayshore | 5.8 km, 5 corners (all fast sweepers) | **9.2 km, 9 corners** (3 fast, 4 medium, 2 slow), 86% straight, longest straight 1800 m | "more straights, longer overall, replace some fast sweepers with medium-speed corners, add 1 or 2 slow corners" |
+
+Kirifuri is now a genuine pass: 26 corners at 160 m spacing, which is close to the real Irohazaka's
+density, and 12 of them hairpins. Wangan is now an expressway rather than a sweeper course, with two
+slow junction-ramp corners and a 1.8 km main straight.
+
+Consequences, all mechanical:
+
+- The lap-sim prototype's own `COURSES` are now read from `courses.json`, and the faithfulness test
+  resolves its four geometries from content instead of restating them, so prototype and game can
+  never drift again.
+- Both mission ceilings re-derived by the probe rule (unchanged rule, new measured laps):
+  `the-column-clock` 78.1 -> **252.2 s**, `under-one-fifteen` 76.4 -> **248 s**. Payouts untouched.
+  The large jump is simply the 2.9x longer pass; a built AE86 now averages about 61 km/h over 26
+  corners, which is the right order for a real touge run.
+- The blind predictions were re-run and re-recorded before driving (see `lap-calibration.md`), at
+  Forza-parity stats rather than our spec book's.
 
 ## After this sprint
 

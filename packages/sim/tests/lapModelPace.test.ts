@@ -1,4 +1,10 @@
-import { CARS, ECONOMY, type CarModel, type Course } from '@midnight-garage/content'
+import {
+  CARS,
+  COURSES as CONTENT_COURSES,
+  ECONOMY,
+  type CarModel,
+  type Course,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { deliveryArchetype, frontalAreaM2, lapTime } from '../src/performance'
 import lapDataJson from '../../../docs/design/lapsim/lapsim-data.json'
@@ -14,65 +20,27 @@ import lapDataJson from '../../../docs/design/lapsim/lapsim-data.json'
  * bug in the port, never a reason to loosen the tolerance.
  */
 
-/** The prototype's four course geometries (COURSES in lapsim-report.cjs),
- * `[radius m, angle deg, following straight m]` per segment. Course ids are
- * test-local; only the segment shape drives the physics. */
+function COURSE_BY_ID(id: string): Course {
+  const found = CONTENT_COURSES.find((c) => c.id === id)
+  if (!found) throw new Error(`course ${id} missing from content`)
+  return found
+}
+
+/** The prototype's four course geometries are the game's own shipped courses,
+ * read from content rather than restated here, so the two can never drift: the
+ * prototype's Touge/Mountain/Wangan/Circuit are Kirifuri/Usui/Wangan/Tsurugi. */
+const COURSE_IDS = {
+  Touge: 'kirifuri',
+  Mountain: 'usui',
+  Wangan: 'wangan',
+  Circuit: 'tsurugi',
+} as const
+
 const COURSES: Record<'Touge' | 'Mountain' | 'Wangan' | 'Circuit', Course> = {
-  Touge: {
-    id: 'touge',
-    name: 'Touge',
-    segments: [
-      [18, 150, 90],
-      [45, 90, 70],
-      [20, 140, 80],
-      [55, 80, 120],
-      [110, 60, 150],
-      [18, 160, 70],
-      [50, 90, 100],
-      [130, 50, 180],
-    ],
-  },
-  Mountain: {
-    id: 'mountain',
-    name: 'Mountain',
-    segments: [
-      [60, 80, 200],
-      [140, 60, 280],
-      [22, 150, 150],
-      [50, 90, 180],
-      [120, 70, 250],
-      [300, 40, 400],
-      [55, 85, 160],
-      [150, 55, 300],
-      [20, 140, 120],
-      [130, 60, 220],
-    ],
-  },
-  Wangan: {
-    id: 'wangan',
-    name: 'Wangan',
-    segments: [
-      [320, 35, 1200],
-      [160, 50, 700],
-      [400, 30, 1500],
-      [350, 40, 900],
-      [180, 45, 600],
-    ],
-  },
-  Circuit: {
-    id: 'circuit',
-    name: 'Circuit',
-    segments: [
-      [55, 90, 200],
-      [130, 70, 250],
-      [20, 150, 140],
-      [300, 40, 380],
-      [50, 85, 180],
-      [140, 60, 240],
-      [280, 45, 320],
-      [60, 80, 160],
-    ],
-  },
+  Touge: COURSE_BY_ID(COURSE_IDS.Touge),
+  Mountain: COURSE_BY_ID(COURSE_IDS.Mountain),
+  Wangan: COURSE_BY_ID(COURSE_IDS.Wangan),
+  Circuit: COURSE_BY_ID(COURSE_IDS.Circuit),
 }
 
 type CourseKey = keyof typeof COURSES

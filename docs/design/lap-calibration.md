@@ -275,11 +275,31 @@ maintainer drives them, so the comparison cannot be rationalised after the fact.
 **Course:** Misaki International Raceway (the calibrated ex-Legend-Island facsimile).
 **Reproduce:** `node docs/design/lapsim/lapsim-report.cjs` (the `PREDICT` block).
 
-| Car (Forza's listing) | PS | kg | mu | 0-100 | top | **PREDICTED** |
-|---|---|---|---|---|---|---|
-| 1995 Honda Integra Type R (DC2) | 200 | 1060 | 0.88 | 6.4 s | 233 | **111.4 s (1:51.4)** |
-| 1995 Mazda RX-7 (FD3S) | 255 | 1260 | 0.89 | 5.5 s | 250 | **109.7 s (1:49.7)** |
-| 1989 Nissan Skyline GT-R (BNR32) | 280 | 1430 | 0.88 | 5.2 s | 250 | **111.4 s (1:51.4)** |
+**Superseded by the parity re-run below.** First pass, using our own spec-book figures: Integra
+111.4 s, RX-7 109.7 s, GT-R 111.4 s.
+
+### Re-predicted at Forza-parity stats (2026-07-25, still before driving)
+
+The maintainer read the three cars' actual in-game stats, which differ from our spec book on two of
+them, so the model is fed the numbers the game itself simulates (calibration stage 0). A spec
+difference must never be able to masquerade as a model error.
+
+| Car (Forza's listing) | PS | NM | kg | front | mu | 0-100 | top | **PREDICTED** |
+|---|---|---|---|---|---|---|---|---|
+| 2001 Honda Integra Type R (DC2) | 198 | 176 | 1197 | 62% | 0.88 | 6.3 s | 233 | **112.2 s (1:52.2)** |
+| 1992 Mazda RX-7 Type R (FD3S) | 256 | 294 | 1260 | 50% | 0.89 | 5.5 s | 250 | **109.3 s (1:49.3)** |
+| 1992 Nissan Skyline GT-R (BNR32) | 280 | 353 | 1480 | 59% | 0.88 | 5.2 s | 250 | **112.5 s (1:52.5)** |
+
+**Spec reconciliation, for the record:**
+
+- **Integra Type R.** Forza's "2001 Integra Type R" is the **US-market DC2** (B18C5), not the DC5:
+  195 hp = 198 PS, 130 lb-ft = 176 NM, and 2639 lb = 1197 kg all match exactly, and the US car ran
+  to 2001. Our roster carries the JDM DC2 (200 PS, 1060 kg), which is 137 kg lighter, hence the
+  re-predict. Same chassis, different market spec.
+- **RX-7.** Forza's 1992 Type R is 256 PS / 1260 kg against our 255 PS / 1260 kg, effectively
+  identical, so the change is rounding only.
+- **GT-R.** Forza shows the capped 280 PS (as expected) but **1480 kg** against our 1430, so it is
+  predicted 50 kg heavier than our spec book's figure.
 
 **Why these three (what each one probes that nothing else has):**
 

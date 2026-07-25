@@ -277,14 +277,32 @@ function straightTime(b, v_in, v_out, L) {
 // instead of the step integrator dividing by near-zero acceleration near vmax
 const COURSES = {
   Touge: [
-    [18, 150, 90],
-    [45, 90, 70],
-    [20, 140, 80],
-    [55, 80, 120],
-    [110, 60, 150],
-    [18, 160, 70],
-    [50, 90, 100],
-    [130, 50, 180],
+    [15, 180, 60],
+    [40, 90, 80],
+    [18, 160, 50],
+    [60, 70, 120],
+    [25, 140, 70],
+    [90, 55, 150],
+    [16, 175, 55],
+    [50, 80, 100],
+    [22, 150, 60],
+    [70, 65, 130],
+    [14, 180, 50],
+    [45, 85, 90],
+    [30, 120, 75],
+    [110, 50, 180],
+    [20, 165, 60],
+    [55, 75, 110],
+    [17, 170, 55],
+    [80, 60, 140],
+    [19, 170, 55],
+    [65, 70, 120],
+    [24, 145, 65],
+    [95, 55, 160],
+    [15, 180, 50],
+    [48, 80, 95],
+    [28, 130, 70],
+    [120, 45, 190],
   ],
   Mountain: [
     [60, 80, 200],
@@ -299,11 +317,15 @@ const COURSES = {
     [130, 60, 220],
   ],
   Wangan: [
-    [320, 35, 1200],
-    [160, 50, 700],
-    [400, 30, 1500],
-    [350, 40, 900],
-    [180, 45, 600],
+    [400, 30, 1800],
+    [150, 55, 700],
+    [90, 70, 500],
+    [350, 35, 1500],
+    [30, 120, 350],
+    [120, 60, 600],
+    [250, 40, 1200],
+    [45, 100, 400],
+    [180, 45, 900],
   ],
   Circuit: [
     [55, 90, 200],
@@ -612,19 +634,40 @@ console.error(
 // it (the gentleman's-agreement cars display the capped figure, so parity means
 // predicting at the number the game itself simulates).
 const PREDICT = [
-  { n: 'Honda Integra Type R (DC2)', forzaPs: null },
-  { n: 'Mazda RX-7 (FD3S)', forzaPs: null },
-  { n: 'Nissan Skyline GT-R (BNR32)', forzaPs: 280 },
+  // Forza-parity stats, read off the game by the maintainer: the model is fed the
+  // numbers the game itself simulates, so a spec difference cannot masquerade as a
+  // model error. The DC2 here is the US-market car (heavier than our JDM entry).
+  {
+    n: 'Honda Integra Type R (DC2)',
+    as: 'Integra Type R (DC2, US 2001)',
+    ps: 198,
+    tq: 176,
+    kg: 1197,
+    fr: 62,
+  },
+  { n: 'Mazda RX-7 (FD3S)', as: 'RX-7 Type R (FD3S, 1992)', ps: 256, tq: 294, kg: 1260, fr: 50 },
+  {
+    n: 'Nissan Skyline GT-R (BNR32)',
+    as: 'Skyline GT-R (BNR32, 1992)',
+    ps: 280,
+    tq: 353,
+    kg: 1480,
+    fr: 59,
+  },
 ]
 console.error('\n# Blind predictions, Misaki International Raceway')
 console.error('car                                     PS    kg   mu  0-100  top   PREDICTED')
 PREDICT.forEach((p) => {
   const base = CARS.find((c) => c.n === p.n)
   if (!base) return console.error('  MISSING FROM SPEC BOOK: ' + p.n)
-  const c = p.forzaPs ? { ...base, ps: p.forzaPs } : base
+  const c = { ...base }
+  if (p.ps != null) c.ps = p.ps
+  if (p.tq != null) c.tq = p.tq
+  if (p.kg != null) c.kg = p.kg
+  if (p.fr != null) c.fr = p.fr
   const b = carBlock(c)
   console.error(
-    c.n.padEnd(38) +
+    (p.as || c.n).padEnd(38) +
       String(c.ps).padStart(4) +
       String(c.kg).padStart(6) +
       gripMu(c).toFixed(2).padStart(5) +
