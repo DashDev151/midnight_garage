@@ -459,7 +459,6 @@ describe('seed content validates against schemas', () => {
       'machineShopAssist',
       'diagnosis',
       'auctionRoom',
-      'lapModel',
       'staff',
       'auctionGrading',
     ].sort()

@@ -60,6 +60,9 @@ export const CarModelSchema = z
       wheelbaseMm: z.number().int().positive().optional(),
       comHeightMm: z.number().int().positive().optional(),
       dragCd: z.number().positive().optional(),
+      // real published body width/height (mm); frontal area for aero drag derives as 0.82 * width * height
+      widthMm: z.number().int().positive().optional(),
+      heightMm: z.number().int().positive().optional(),
       stockTyre: z.string().min(1).optional(),
       tyreCompound: TyreCompoundSchema.optional(),
       /** Factory active torque-vectoring (ATTESA E-TS Pro / Super AYC), the

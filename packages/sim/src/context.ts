@@ -6,6 +6,7 @@ import type {
   CarPartId,
   CarPartTaxonomyEntry,
   ComponentId,
+  Course,
   DiagnosticTest,
   EconomyConfig,
   Facilities,
@@ -27,6 +28,7 @@ import type {
 } from '@midnight-garage/content'
 import {
   ASSEMBLIES,
+  COURSES,
   DIAGNOSTIC_TESTS,
   ECONOMY,
   LAP_REFERENCES,
@@ -133,6 +135,10 @@ export interface SimContext {
    * caller re-filters it. */
   lapReferencePool: readonly Extract<LapReferenceEntry, { anchor: false }>[]
   lapReferenceAnchor: Extract<LapReferenceEntry, { anchor: true }>
+  /** The lap-model course shapes a `courseId` requirement selects the lap to
+   * be measured on, and the same list indexed by id for that lookup. */
+  courses: readonly Course[]
+  coursesById: Readonly<Record<string, Course>>
   /** The job-ad candidate name/bio pools the seeded candidate roller
    * (`staff.ts`'s `rollStaffCandidate`) draws from. */
   staffCandidates: StaffCandidatePool
@@ -231,6 +237,7 @@ export function buildSimContext(
   staffCandidates: StaffCandidatePool = STAFF_CANDIDATES,
   assemblies: readonly AssemblyDef[] = ASSEMBLIES,
   venueNames: VenueNames = VENUE_NAMES,
+  courses: readonly Course[] = COURSES,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
@@ -276,6 +283,8 @@ export function buildSimContext(
     personasById: indexById(personas),
     lapReferencePool,
     lapReferenceAnchor,
+    courses,
+    coursesById: indexById(courses),
     staffCandidates,
     venueNames,
   }

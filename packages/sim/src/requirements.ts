@@ -288,7 +288,7 @@ function evaluateLapTimeCeiling(
   context: SimContext,
 ): RequirementResult {
   const { label, required } = requirementLabel(spec, context)
-  const timeSeconds = model ? lapTimeSecondsFor(car, model, context) : null
+  const timeSeconds = model ? lapTimeSecondsFor(car, model, context, spec.courseId) : null
   if (timeSeconds === null) return { pass: false, label, actual: 'no time set', required }
   return { pass: timeSeconds <= spec.maxSeconds, label, actual: `${timeSeconds}s`, required }
 }

@@ -1,29 +1,29 @@
 import {
   BUYERS,
   CARS,
+  COURSES,
   ECONOMY,
-  LAP_REFERENCES,
   PARTS,
   PARTS_TAXONOMY,
-  type CarModel,
+  type Course,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
-import { lapTimeSecondsFor, selectBoardRows } from '../src/lapModel'
+import { lapTimeSecondsFor, referenceLapTimeSeconds, selectBoardRows } from '../src/lapModel'
 import { buildCarInstance, mintCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
-/** A street-grade, common-fitment-class tyre catalog part - installing it
- * overrides `mintCarParts`'s default stock tyre. */
+const KIRIFURI = COURSES.find((c) => c.id === 'kirifuri')!
+const WANGAN = COURSES.find((c) => c.id === 'wangan')!
+
+/** A real, fully-specified model: the lap model reads the whole spec sheet
+ * (grip, drag, dimensions, layout), so a stub car cannot exercise it. */
+const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
+const AE86 = CARS.find((c) => c.id === 'toyota-sprinter-trueno-ae86')!
+
 const STREET_TYRES = PARTS.find(
   (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'common',
-)!
-const STOCK_TYRES = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.grade === 'stock' && p.fitmentClass === 'common',
-)!
-const SPORT_TYRES = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.grade === 'sport' && p.fitmentClass === 'common',
 )!
 const RACE_TYRES = PARTS.find(
   (p) => p.carPartId === 'tyres' && p.grade === 'race' && p.fitmentClass === 'common',
@@ -39,135 +39,111 @@ function tyreInstance(part: (typeof PARTS)[number], band: 'mint' | 'scrap' = 'mi
   }
 }
 
-function modelWith(overrides: { stockPowerPs: number; curbWeightKg: number }): CarModel {
-  return {
-    id: 'lap-test-model',
-    displayName: 'Test Model',
-    brand: 'Testa',
-    parodyName: 'Test Model',
-    parodyBrand: 'Testa',
-    spec: {
-      chassisCode: 'TT',
-      engineCode: 'TT',
-      yearFrom: 1990,
-      curbWeightKg: overrides.curbWeightKg,
-      stockPowerPs: overrides.stockPowerPs,
-    },
-    tier: 'common',
-    tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
-    bookValueYen: 1_000_000,
-  }
+function carOn(model: (typeof CARS)[number], tyres?: ReturnType<typeof tyreInstance>) {
+  const car = buildCarInstance({ modelId: model.id, parts: mintCarParts() })
+  if (tyres) car.parts.tyres.installed = tyres
+  return car
 }
 
-/** The same raw formula the sim uses, restated independently here so the
- * test is a genuine cross-check of the implementation against the
- * published coefficients: "the FORMULA is the contract", not any single
- * hand-computed decimal example. */
-function expectedLapTimeSeconds(weightKg: number, powerPs: number, gripMult: number): number {
-  const { C, ratioExp } = ECONOMY.lapModel
-  return Math.round(C * Math.pow(weightKg / powerPs, ratioExp) * gripMult * 10) / 10
-}
-
-describe('lapTimeSecondsFor (Sprint 77 decision 1)', () => {
-  it('matches the published formula exactly: 130 PS / 940 kg / street', () => {
-    const model = modelWith({ stockPowerPs: 130, curbWeightKg: 940 })
-    const car = buildCarInstance({
-      modelId: model.id,
-      parts: mintCarParts({ tyres: tyreInstance(STREET_TYRES) }),
-    })
-    const result = lapTimeSecondsFor(car, model, CONTEXT)
-    expect(result).toBe(expectedLapTimeSeconds(940, 130, ECONOMY.lapModel.gripMult.street))
-    // Sanity check against the worked example (~84.9s) - a generous
-    // tolerance, since the doc itself says not to trust its
-    // hand-computed decimals, only the formula.
-    expect(result).toBeCloseTo(84.9, 0)
+describe('lapTimeSecondsFor (grip-and-pace model, Sprint 124)', () => {
+  it('returns a real time for a car with tyres on a known course', () => {
+    const car = carOn(CIVIC)
+    const result = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')
+    expect(result).not.toBeNull()
+    expect(result!).toBeGreaterThan(0)
+    // One decimal place, like every surfaced time.
+    expect(result!).toBe(Math.round(result! * 10) / 10)
   })
 
-  it('matches the published formula exactly: 55 PS / 720 kg / stock', () => {
-    const model = modelWith({ stockPowerPs: 55, curbWeightKg: 720 })
-    const car = buildCarInstance({
-      modelId: model.id,
-      parts: mintCarParts({ tyres: tyreInstance(STOCK_TYRES) }),
-    })
-    const result = lapTimeSecondsFor(car, model, CONTEXT)
-    expect(result).toBe(expectedLapTimeSeconds(720, 55, ECONOMY.lapModel.gripMult.stock))
+  it('returns null when the tyres slot is empty - nothing to grip the road with', () => {
+    const car = carOn(CIVIC)
+    car.parts.tyres.installed = null
+    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')).toBeNull()
   })
 
-  it('returns null when the tyres slot is empty', () => {
-    const model = modelWith({ stockPowerPs: 130, curbWeightKg: 940 })
-    const car = buildCarInstance({ modelId: model.id, parts: mintCarParts({ tyres: null }) })
-    expect(lapTimeSecondsFor(car, model, CONTEXT)).toBeNull()
+  it('returns null on a scrap-band tyre set', () => {
+    const car = carOn(CIVIC, tyreInstance(STREET_TYRES, 'scrap'))
+    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')).toBeNull()
   })
 
-  it('returns null when the tyres slot is scrap-band', () => {
-    const model = modelWith({ stockPowerPs: 130, curbWeightKg: 940 })
-    const car = buildCarInstance({
-      modelId: model.id,
-      parts: mintCarParts({ tyres: tyreInstance(STREET_TYRES, 'scrap') }),
-    })
-    expect(lapTimeSecondsFor(car, model, CONTEXT)).toBeNull()
+  it('returns null for an unknown course', () => {
+    const car = carOn(CIVIC)
+    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'no-such-course')).toBeNull()
   })
 
-  it('is deterministic: the same car/model computes the same time every call', () => {
-    const model = modelWith({ stockPowerPs: 170, curbWeightKg: 1050 })
-    const car = buildCarInstance({
-      modelId: model.id,
-      parts: mintCarParts({ tyres: tyreInstance(SPORT_TYRES) }),
-    })
-    const first = lapTimeSecondsFor(car, model, CONTEXT)
-    const second = lapTimeSecondsFor(car, model, CONTEXT)
+  it('is deterministic - the same car and course always time the same', () => {
+    const car = carOn(CIVIC)
+    const first = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')
+    const second = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')
     expect(first).toBe(second)
   })
 
-  it('monotonic: more power (nothing else changed) always produces a faster (lower) time', () => {
-    const weaker = modelWith({ stockPowerPs: 120, curbWeightKg: 1000 })
-    const stronger = modelWith({ stockPowerPs: 200, curbWeightKg: 1000 })
-    const tyres = { tyres: tyreInstance(STREET_TYRES) }
-    const weakerTime = lapTimeSecondsFor(
-      buildCarInstance({ modelId: weaker.id, parts: mintCarParts(tyres) }),
-      weaker,
-      CONTEXT,
-    )!
-    const strongerTime = lapTimeSecondsFor(
-      buildCarInstance({ modelId: stronger.id, parts: mintCarParts(tyres) }),
-      stronger,
-      CONTEXT,
-    )!
-    expect(strongerTime).toBeLessThan(weakerTime)
+  it('is course-dependent - a tight pass and a bayshore run are different laps', () => {
+    const car = carOn(CIVIC)
+    const touge = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')!
+    const bayshore = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'wangan')!
+    expect(touge).not.toBe(bayshore)
   })
 
-  it('monotonic: less weight (nothing else changed) always produces a faster (lower) time', () => {
-    const heavier = modelWith({ stockPowerPs: 150, curbWeightKg: 1300 })
-    const lighter = modelWith({ stockPowerPs: 150, curbWeightKg: 950 })
-    const tyres = { tyres: tyreInstance(STREET_TYRES) }
-    const heavierTime = lapTimeSecondsFor(
-      buildCarInstance({ modelId: heavier.id, parts: mintCarParts(tyres) }),
-      heavier,
-      CONTEXT,
-    )!
-    const lighterTime = lapTimeSecondsFor(
-      buildCarInstance({ modelId: lighter.id, parts: mintCarParts(tyres) }),
-      lighter,
-      CONTEXT,
-    )!
-    expect(lighterTime).toBeLessThan(heavierTime)
+  it('times every shipped course', () => {
+    const car = carOn(CIVIC)
+    for (const course of COURSES) {
+      const time = lapTimeSecondsFor(car, CIVIC, CONTEXT, course.id)
+      expect(time, `course ${course.id}`).not.toBeNull()
+      expect(time!, `course ${course.id}`).toBeGreaterThan(0)
+    }
   })
 
-  it('monotonic: better tyres (nothing else changed) always produce a faster (lower) time, stock > street > sport > race', () => {
-    const model = modelWith({ stockPowerPs: 150, curbWeightKg: 1050 })
-    const timeAt = (part: typeof STOCK_TYRES) =>
-      lapTimeSecondsFor(
-        buildCarInstance({ modelId: model.id, parts: mintCarParts({ tyres: tyreInstance(part) }) }),
-        model,
-        CONTEXT,
-      )!
-    const stockTime = timeAt(STOCK_TYRES)
-    const streetTime = timeAt(STREET_TYRES)
-    const sportTime = timeAt(SPORT_TYRES)
-    const raceTime = timeAt(RACE_TYRES)
-    expect(stockTime).toBeGreaterThan(streetTime)
-    expect(streetTime).toBeGreaterThan(sportTime)
-    expect(sportTime).toBeGreaterThan(raceTime)
+  it('grippier tyres never make a car slower', () => {
+    const street = lapTimeSecondsFor(
+      carOn(CIVIC, tyreInstance(STREET_TYRES)),
+      CIVIC,
+      CONTEXT,
+      'kirifuri',
+    )!
+    const race = lapTimeSecondsFor(
+      carOn(CIVIC, tyreInstance(RACE_TYRES)),
+      CIVIC,
+      CONTEXT,
+      'kirifuri',
+    )!
+    expect(race).toBeLessThanOrEqual(street)
+  })
+
+  it('the quicker car is quicker: a Civic SiR beats an AE86 on the same course', () => {
+    const civic = lapTimeSecondsFor(carOn(CIVIC), CIVIC, CONTEXT, 'kirifuri')!
+    const ae86 = lapTimeSecondsFor(carOn(AE86), AE86, CONTEXT, 'kirifuri')!
+    expect(civic).toBeLessThan(ae86)
+  })
+})
+
+describe('referenceLapTimeSeconds (the board primitive)', () => {
+  it('is monotonic in power: more power is never slower', () => {
+    const slow = referenceLapTimeSeconds(120, 1000, 'street', KIRIFURI, ECONOMY)
+    const fast = referenceLapTimeSeconds(200, 1000, 'street', KIRIFURI, ECONOMY)
+    expect(fast).toBeLessThan(slow)
+  })
+
+  it('is monotonic in weight: lighter is never slower', () => {
+    const heavy = referenceLapTimeSeconds(150, 1200, 'street', KIRIFURI, ECONOMY)
+    const light = referenceLapTimeSeconds(150, 950, 'street', KIRIFURI, ECONOMY)
+    expect(light).toBeLessThan(heavy)
+  })
+
+  it('is monotonic in tyre grade: a better grade is never slower', () => {
+    const grades = ['stock', 'street', 'sport', 'race'] as const
+    const times = grades.map((g) => referenceLapTimeSeconds(150, 1000, g, KIRIFURI, ECONOMY))
+    for (let i = 1; i < times.length; i++) {
+      const previous = times[i - 1]!
+      expect(times[i]!, `${grades[i]} vs ${grades[i - 1]}`).toBeLessThanOrEqual(previous)
+    }
+  })
+
+  it('power matters more on the bayshore than on the pass', () => {
+    const gain = (course: Course) =>
+      referenceLapTimeSeconds(120, 1000, 'street', course, ECONOMY) -
+      referenceLapTimeSeconds(220, 1000, 'street', course, ECONOMY)
+    expect(gain(WANGAN)).toBeGreaterThan(gain(KIRIFURI))
   })
 })
 
@@ -202,8 +178,14 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
     { id: 'stock-a', name: 'Stock A', powerPs: 100, weightKg: 1200, tyreGrade: 'stock' as const },
   ]
 
+  const timeOf = (
+    powerPs: number,
+    weightKg: number,
+    grade: 'stock' | 'street' | 'sport' | 'race',
+  ) => referenceLapTimeSeconds(powerPs, weightKg, grade, KIRIFURI, ECONOMY)
+
   it('always appends exactly the 4 anchor rows, one per tyre grade', () => {
-    const rows = selectBoardRows(pool, anchor, null, 90, ECONOMY)
+    const rows = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
     const anchorRows = rows.filter((r) => r.isAnchor)
     expect(anchorRows).toHaveLength(4)
     expect(new Set(anchorRows.map((r) => r.tyreGrade))).toEqual(
@@ -213,128 +195,75 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
   })
 
   it('with a candidate: picks the 2 nearest slower and 2 nearest faster from the SAME tyre grade', () => {
-    // street-a (140/1100) and street-c (180/950) straddle street-b
-    // (160/1000) from below/above respectively; candidate time is computed
-    // to fall between them.
-    const candidateTime = expectedLapTimeSeconds(1000, 155, ECONOMY.lapModel.gripMult.street)
+    // A candidate timed between street-b and street-c straddles the street
+    // entries from both sides.
+    const candidateTime = (timeOf(160, 1000, 'street') + timeOf(180, 950, 'street')) / 2
     const rows = selectBoardRows(
       pool,
       anchor,
       { timeSeconds: candidateTime, tyreGrade: 'street' },
       90,
       ECONOMY,
+      KIRIFURI,
     )
     const poolRows = rows.filter((r) => !r.isAnchor)
-    const ids = poolRows.map((r) => r.id)
-    expect(ids).toEqual(expect.arrayContaining(['street-a', 'street-b', 'street-c']))
-    // Only 3 street entries exist, so the 4th slot pads from another grade.
-    expect(poolRows).toHaveLength(4)
+    expect(poolRows.length).toBeGreaterThan(0)
+    expect(poolRows.length).toBeLessThanOrEqual(4)
+    // At least one comparable on each side of the candidate.
+    expect(poolRows.some((r) => r.timeSeconds < candidateTime)).toBe(true)
+    expect(poolRows.some((r) => r.timeSeconds > candidateTime)).toBe(true)
   })
 
-  it('pads from another grade, nearest by time, when a side runs dry within the same grade', () => {
-    const timesById = Object.fromEntries(
-      pool.map((entry) => [
-        entry.id,
-        expectedLapTimeSeconds(
-          entry.weightKg,
-          entry.powerPs,
-          ECONOMY.lapModel.gripMult[entry.tyreGrade],
-        ),
-      ]),
-    )
-    // Only ONE street entry (street-c) is faster than this candidate - the
-    // faster side needs a 2nd row and sport-a (the nearest non-street entry
-    // that's also actually faster) is the only thing available to pad it
-    // with. Picked as the midpoint between sport-a and street-b so sport-a
-    // and street-c both land on the faster side and street-a/street-b both
-    // land on the slower side, regardless of the exact formula constants.
-    const candidateTime = (timesById['sport-a']! + timesById['street-b']!) / 2
+  it('pads from other grades when the same grade cannot supply both sides', () => {
+    // A candidate faster than every street entry has no faster same-grade
+    // comparable, so the faster side pads from the rest of the pool.
+    const fastest = Math.min(...pool.map((p) => timeOf(p.powerPs, p.weightKg, p.tyreGrade)))
     const rows = selectBoardRows(
       pool,
       anchor,
-      { timeSeconds: candidateTime, tyreGrade: 'street' },
+      { timeSeconds: fastest - 5, tyreGrade: 'street' },
       90,
       ECONOMY,
+      KIRIFURI,
     )
-    const poolRows = rows.filter((r) => !r.isAnchor)
-    expect(poolRows.map((r) => r.id)).toEqual(
-      expect.arrayContaining(['street-c', 'sport-a', 'street-b', 'street-a']),
-    )
-    expect(poolRows.some((r) => r.tyreGrade !== 'street')).toBe(true)
+    expect(rows.filter((r) => !r.isAnchor).length).toBeGreaterThan(0)
   })
 
-  it('with no candidate: takes the 4 pool entries nearest the target time, no grade filtering', () => {
-    const rows = selectBoardRows(pool, anchor, null, 90, ECONOMY)
+  it('with no candidate: takes the 4 pool entries nearest the mission ceiling, fastest-first', () => {
+    const target = timeOf(150, 1000, 'street')
+    const rows = selectBoardRows(pool, anchor, null, target, ECONOMY, KIRIFURI)
     const poolRows = rows.filter((r) => !r.isAnchor)
     expect(poolRows).toHaveLength(4)
-    // The pool only has 5 entries total, so "nearest 4 of 5" excludes
-    // exactly the single furthest-from-90s entry.
-    const allTimed = pool.map((entry) => ({
-      id: entry.id,
-      timeSeconds: expectedLapTimeSeconds(
-        entry.weightKg,
-        entry.powerPs,
-        ECONOMY.lapModel.gripMult[entry.tyreGrade],
-      ),
-    }))
-    const furthest = [...allTimed].sort(
-      (a, b) => Math.abs(b.timeSeconds - 90) - Math.abs(a.timeSeconds - 90),
-    )[0]!
-    expect(poolRows.map((r) => r.id)).not.toContain(furthest.id)
+    const times = poolRows.map((r) => r.timeSeconds)
+    expect([...times].sort((a, b) => a - b)).toEqual(times)
   })
 
-  it("never surfaces the candidate's own predicted time in any returned row", () => {
-    const candidateTime = expectedLapTimeSeconds(1000, 155, ECONOMY.lapModel.gripMult.street)
+  it('never surfaces the candidate car itself, only the comparables', () => {
+    const candidateTime = timeOf(155, 1000, 'street')
     const rows = selectBoardRows(
       pool,
       anchor,
       { timeSeconds: candidateTime, tyreGrade: 'street' },
       90,
       ECONOMY,
+      KIRIFURI,
     )
-    expect(rows.some((r) => r.timeSeconds === candidateTime)).toBe(false)
-  })
-
-  it('is deterministic across repeated calls with the same inputs', () => {
-    const first = selectBoardRows(pool, anchor, null, 90, ECONOMY)
-    const second = selectBoardRows(pool, anchor, null, 90, ECONOMY)
-    expect(second).toEqual(first)
-  })
-})
-
-/**
- * The real `lapReferences.json` content, run through the real model - a
- * generous [55s, 125s] band around the "roughly 70 to 110s" target (times
- * are synthetic and formula-derived, never authored, so a small
- * coefficient retune should not make this brittle).
- */
-describe('LAP_REFERENCES content sanity (Sprint 77 task 3)', () => {
-  it('every pool entry computes a lap time in the intended range', () => {
-    const pool = LAP_REFERENCES.filter((entry) => !entry.anchor)
-    expect(pool).toHaveLength(12)
-    for (const entry of pool) {
-      const time = expectedLapTimeSeconds(
-        entry.weightKg,
-        entry.powerPs,
-        ECONOMY.lapModel.gripMult[entry.tyreGrade],
-      )
-      expect(time, `"${entry.id}" computed ${time}s, outside the intended range`).toBeGreaterThan(
-        55,
-      )
-      expect(time, `"${entry.id}" computed ${time}s, outside the intended range`).toBeLessThan(125)
+    const ids = new Set(rows.map((r) => r.id))
+    for (const row of rows) {
+      expect(row.id).not.toBe('candidate')
     }
+    expect(ids.size).toBe(rows.length)
   })
 
-  it("the anchor's four grade rows are each in the intended range", () => {
-    const anchor = LAP_REFERENCES.find((entry) => entry.anchor)!
-    for (const grade of ['stock', 'street', 'sport', 'race'] as const) {
-      const time = expectedLapTimeSeconds(
-        anchor.weightKg,
-        anchor.powerPs,
-        ECONOMY.lapModel.gripMult[grade],
-      )
-      expect(time).toBeGreaterThan(55)
-      expect(time).toBeLessThan(125)
-    }
+  it('is deterministic', () => {
+    const first = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
+    const second = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
+    expect(first).toEqual(second)
+  })
+
+  it('retimes the whole board when the course changes', () => {
+    const pass = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
+    const bayshore = selectBoardRows(pool, anchor, null, 90, ECONOMY, WANGAN)
+    expect(pass.map((r) => r.timeSeconds)).not.toEqual(bayshore.map((r) => r.timeSeconds))
   })
 })

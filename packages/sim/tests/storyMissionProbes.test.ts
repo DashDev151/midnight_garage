@@ -367,7 +367,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       'mint',
       aftermarket,
     )
-    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT)!
+    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT, 'kirifuri')!
     expect(timeSeconds).not.toBeNull()
     expect(lapTimeCeilingMaxSeconds(mission('the-column-clock'))).toBe(
       ceil1AtTwoPercentSlower(timeSeconds),
@@ -481,7 +481,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       ['tyres', 'intake', 'exhaust', 'ignitionEcu'] as CarPartId[]
     ).map((carPartId) => ({ carPartId, part: aftermarketPart(carPartId, 'sport', fitmentClass) }))
     const { model, afterCar, probeCostYen } = buildProbe('mazda-rx7-fd3s', 'mint', aftermarket)
-    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT)!
+    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT, 'kirifuri')!
     expect(timeSeconds).not.toBeNull()
     expect(lapTimeCeilingMaxSeconds(mission('under-one-fifteen'))).toBe(
       ceil1AtTwoPercentSlower(timeSeconds),

@@ -1,5 +1,13 @@
-import type { CarInstance, CarModel, EconomyConfig, Grade } from '@midnight-garage/content'
+import type {
+  CarInstance,
+  CarModel,
+  Course,
+  EconomyConfig,
+  Grade,
+  TyreCompound,
+} from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
+import { effectiveCompound, lapTime } from './performance'
 import type { SimContext } from './context'
 
 function round1(value: number): number {
@@ -7,39 +15,63 @@ function round1(value: number): number {
 }
 
 /**
- * The raw lap-time formula over primitive power/weight/tyre-grade values,
- * shared by `lapTimeSecondsFor` (a real owned car) and `selectBoardRows`
- * (the reference board's content entries, which carry no
- * `CarInstance`/`CarModel` of their own). `economy.lapModel` is the one
- * source for every coefficient - never a hardcoded constant here.
+ * The reference board's entries are flavour cars (a power and a weight, no
+ * chassis of their own), so they are timed on a single neutral chassis: a
+ * mid-90s RWD NA coupe. Only the entry's weight, power, and tyre grade vary,
+ * which is exactly what the board asks the player to read.
  */
-function lapTimeFromRaw(
-  weightKg: number,
-  powerPs: number,
-  tyreGrade: Grade,
-  economy: EconomyConfig,
-): number {
-  const { C, ratioExp, gripMult } = economy.lapModel
-  return round1(C * Math.pow(weightKg / powerPs, ratioExp) * gripMult[tyreGrade])
+function referenceCarModel(weightKg: number): CarModel {
+  return {
+    id: 'lap-reference-chassis',
+    displayName: 'Reference chassis',
+    brand: 'Reference',
+    parodyName: 'Reference chassis',
+    parodyBrand: 'Reference',
+    tier: 'common',
+    tags: ['FR', 'NA', 'Piston'],
+    bookValueYen: 1,
+    spec: {
+      chassisCode: 'REF',
+      engineCode: 'REF',
+      yearFrom: 1995,
+      curbWeightKg: weightKg,
+      stockPowerPs: 1,
+      engineConfig: 'I4',
+      aspiration: 'NA',
+      weightDistributionFront: 53,
+      wheelbaseMm: 2500,
+      comHeightMm: 470,
+      dragCd: 0.33,
+      widthMm: 1720,
+      heightMm: 1330,
+      stockTyre: '205/55R15',
+      tyreCompound: 'performance',
+      topSpeedKmh: 240,
+    },
+  }
 }
 
 /**
- * `round1(C x (curbWeightKg / power) ^ ratioExp x gripMult[tyreGrade])`,
- * where `power` is the car's CURRENT derived power (condition and parts
- * matter - that is the build game) and `tyreGrade` is the fitted tyre
- * SKU's own catalog grade. Returns `null` (no time can be set) when the
- * tyres slot is empty or scrap-band - there is nothing to grip the road
- * with.
+ * A car's lap on one course: the grip-and-pace model (`performance.ts`'s
+ * `lapTime`) over that course's corner and straight segments, at the car's
+ * CURRENT derived power (condition and parts matter - that is the build game)
+ * and the compound its fitted tyres actually provide. Returns `null` (no time
+ * can be set) when the tyres slot is empty or scrap-band - there is nothing to
+ * grip the road with - or when the course id is unknown.
  */
 export function lapTimeSecondsFor(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  courseId: string,
 ): number | null {
   const installed = car.parts.tyres.installed
   if (!installed || installed.band === 'scrap') return null
   const tyrePart = context.partsById[installed.partId]
   if (!tyrePart) return null
+
+  const course = context.coursesById[courseId]
+  if (!course) return null
 
   const stats = computeDerivedStats(
     model,
@@ -48,7 +80,13 @@ export function lapTimeSecondsFor(
     context.partsTaxonomy,
     context.economy,
   )
-  return lapTimeFromRaw(model.spec.curbWeightKg, stats.power, tyrePart.grade, context.economy)
+  const compound = effectiveCompound(
+    car,
+    model,
+    context.partsById,
+    context.economy.statFormulas.grip,
+  )
+  return round1(lapTime(model, course, stats.power, compound, context.economy))
 }
 
 /** A pool/anchor entry's own content shape (`content/src/lapReference.ts`),
@@ -64,9 +102,9 @@ export interface LapReferenceCar {
 
 /** One row of the reference-lap board - a comparable car (or the grip
  * anchor, rendered once per tyre grade) with its model-computed time.
- * Times are never authored; they're always the live output of
- * `lapTimeFromRaw`, so retuning `economy.lapModel`'s coefficients retunes
- * the whole board for free. */
+ * Times are never authored; they're always the live output of the grip-and-pace
+ * model on the mission's own course, so a course or lever change retunes the
+ * whole board for free. */
 export interface LapBoardRow {
   id: string
   name: string
@@ -84,27 +122,59 @@ interface TimedPoolEntry extends LapReferenceCar {
   timeSeconds: number
 }
 
+/**
+ * A reference entry's time on a course: the neutral reference chassis at that
+ * entry's weight and power, on the compound its tyre grade fits. The board's
+ * timing primitive, exported so the board's numbers can be cross-checked
+ * against the model directly.
+ */
+export function referenceLapTimeSeconds(
+  powerPs: number,
+  weightKg: number,
+  tyreGrade: Grade,
+  course: Course,
+  economy: EconomyConfig,
+): number {
+  const compound: TyreCompound | undefined =
+    economy.statFormulas.grip.gradeToCompound[tyreGrade] ?? undefined
+  return round1(lapTime(referenceCarModel(weightKg), course, powerPs, compound, economy))
+}
+
+function referenceTime(
+  entry: LapReferenceCar,
+  tyreGrade: Grade,
+  course: Course,
+  economy: EconomyConfig,
+): number {
+  return referenceLapTimeSeconds(entry.powerPs, entry.weightKg, tyreGrade, course, economy)
+}
+
 function timeEntries(
   entries: readonly (LapReferenceCar & { tyreGrade: Grade })[],
+  course: Course,
   economy: EconomyConfig,
 ): TimedPoolEntry[] {
   return entries.map((entry) => ({
     ...entry,
-    timeSeconds: lapTimeFromRaw(entry.weightKg, entry.powerPs, entry.tyreGrade, economy),
+    timeSeconds: referenceTime(entry, entry.tyreGrade, course, economy),
   }))
 }
 
 /** The 4 anchor rows - one grip-anchor car (`content/src/lapReference.ts`'s
  * `anchor: true` entry), rendered once per tyre grade so the player reads
  * the grade deltas off one identical car. */
-function anchorRows(anchor: LapReferenceCar, economy: EconomyConfig): LapBoardRow[] {
+function anchorRows(
+  anchor: LapReferenceCar,
+  course: Course,
+  economy: EconomyConfig,
+): LapBoardRow[] {
   return GRADES.map((tyreGrade) => ({
     id: `${anchor.id}-${tyreGrade}`,
     name: anchor.name,
     powerPs: anchor.powerPs,
     weightKg: anchor.weightKg,
     tyreGrade,
-    timeSeconds: lapTimeFromRaw(anchor.weightKg, anchor.powerPs, tyreGrade, economy),
+    timeSeconds: referenceTime(anchor, tyreGrade, course, economy),
     isAnchor: true,
   }))
 }
@@ -151,8 +221,9 @@ export function selectBoardRows(
   candidate: { timeSeconds: number; tyreGrade: Grade } | null,
   noCandidateTargetSeconds: number,
   economy: EconomyConfig,
+  course: Course,
 ): LapBoardRow[] {
-  const timedPool = timeEntries(pool, economy)
+  const timedPool = timeEntries(pool, course, economy)
 
   let poolRows: TimedPoolEntry[]
   if (candidate) {
@@ -192,6 +263,6 @@ export function selectBoardRows(
 
   return [
     ...poolRows.map((entry) => ({ ...entry, isAnchor: false })),
-    ...anchorRows(anchor, economy),
+    ...anchorRows(anchor, course, economy),
   ]
 }

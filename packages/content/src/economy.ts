@@ -764,6 +764,47 @@ export const EconomyConfigSchema = z.object({
         weight: z.number().nonnegative(),
       }),
     }),
+    /** The pace/lap model (`performance.ts` lapTime): every physics constant of
+     * the quasi-static point-mass sim, the launch and agility terms, and the
+     * torque-curve delivery factors by engine archetype. Calibrated against the
+     * Forza gold standard; signed in docs/sprints/sprint124.md section A. */
+    pace: z.object({
+      gravity: z.number().positive(),
+      airDensity: z.number().positive(),
+      drivelineEfficiency: z.number().positive(),
+      rollingResistance: z.number().nonnegative(),
+      psWatts: z.number().positive(),
+      driverMassKg: z.number().nonnegative(),
+      awdLaunchFactor: z.number().positive(),
+      launchCapCoeff: z.number().positive(),
+      agilityWeight: z.number().nonnegative(),
+      cruiseThreshold: z.number().positive(),
+      deliverySaturationSpeed: z.number().positive(),
+      integrationStep: z.number().positive(),
+      frontalAreaCoeff: z.number().positive(),
+      frontalAreaFallbackM2: z.number().positive(),
+      /** The transition/agility term (a point-mass sim omits yaw): a heavy,
+       * low-grip car loses most time changing direction in tight corners.
+       * `agilityWeight` scales it; these normalise mass and corner geometry. */
+      agilityReferenceMassKg: z.number().positive(),
+      agilityAngleReferenceDeg: z.number().positive(),
+      agilityRadiusReferenceM: z.number().positive(),
+      agilityTightnessMin: z.number().positive(),
+      agilityTightnessMax: z.number().positive(),
+      /** Corner-exit torque delivery by engine archetype (1 = instant, lower =
+       * laggier); shapes usable force below `deliverySaturationSpeed`. */
+      delivery: z.object({
+        plainNA: z.number().positive(),
+        bigNA: z.number().positive(),
+        supercharged: z.number().positive(),
+        seqTwin: z.number().positive(),
+        parallelTwin: z.number().positive(),
+        seqTwinRotary: z.number().positive(),
+        vtecNA: z.number().positive(),
+        rotaryNA: z.number().positive(),
+        singleTurbo: z.number().positive(),
+      }),
+    }),
   }),
   /**
    * The banded parts model's own tunables. The hidden-issue/inspection
@@ -1458,35 +1499,6 @@ export const EconomyConfigSchema = z.object({
    * of truth.
    */
   auctionRoom: AuctionRoomConfigSchema,
-  /**
-   * One pure, monotonic formula over the car's CURRENT derived stats -
-   * `lapModel.ts`'s `lapTimeSecondsFor` reads every field here, never a
-   * hardcoded constant of its own. `C` and `ratioExp` are the power-to-weight
-   * curve's scale and exponent (`C x (curbWeightKg / power) ^ ratioExp`);
-   * `gripMult` is the fitted tyre SKU's own grade multiplying that base time
-   * (worse grip - `stock` - always slower, `race` always faster - monotonic
-   * by construction, never re-ordered by content). `courseId`/`courseName`
-   * name the one v1.0 course; the schema is course-keyed so a second course
-   * is content, not a code change.
-   *
-   * `gripMult`'s spread is deliberately tight: race tyres worth much more
-   * than roughly +26% power-equivalent over stock (about +6% per tyre step)
-   * would make tyre choice a solved opening move for every lap mission. Real
-   * course simulation (torque curve, drive type, brakes, drag) stays
-   * post-launch, tied to drive mode.
-   */
-  lapModel: z.object({
-    C: z.number().positive(),
-    ratioExp: z.number().positive(),
-    gripMult: z.object({
-      stock: z.number().positive(),
-      street: z.number().positive(),
-      sport: z.number().positive(),
-      race: z.number().positive(),
-    }),
-    courseId: z.string().min(1),
-    courseName: z.string().min(1),
-  }),
   /**
    * Every tunable knob behind job-ad acquisition and the crew economy. Both
    * formulas are fixed in code (`deriveStaffWageYen` and

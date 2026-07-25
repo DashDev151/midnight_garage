@@ -3983,6 +3983,8 @@ export const useGameStore = defineStore('game', () => {
       (r): r is Extract<RequirementSpec, { kind: 'lapTimeCeiling' }> => r.kind === 'lapTimeCeiling',
     )
     if (!lapRequirement) return []
+    const course = context.value.coursesById[lapRequirement.courseId]
+    if (!course) return []
 
     let candidate: { timeSeconds: number; tyreGrade: Grade } | null = null
     if (carInstanceId) {
@@ -3991,7 +3993,7 @@ export const useGameStore = defineStore('game', () => {
       const installed = car?.parts.tyres.installed
       const tyrePart = installed ? context.value.partsById[installed.partId] : undefined
       if (car && model && tyrePart) {
-        const timeSeconds = lapTimeSecondsFor(car, model, context.value)
+        const timeSeconds = lapTimeSecondsFor(car, model, context.value, lapRequirement.courseId)
         if (timeSeconds !== null) candidate = { timeSeconds, tyreGrade: tyrePart.grade }
       }
     }
@@ -4001,6 +4003,7 @@ export const useGameStore = defineStore('game', () => {
       candidate,
       lapRequirement.maxSeconds,
       context.value.economy,
+      course,
     )
   }
 

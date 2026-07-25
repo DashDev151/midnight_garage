@@ -3,6 +3,7 @@ import auctionTierCopyJson from '../data/auctionTierCopy.json'
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
+import coursesJson from '../data/courses.json'
 import diagnosticTestsJson from '../data/diagnosticTests.json'
 import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
@@ -36,6 +37,7 @@ import {
   type CarPartTaxonomyEntry,
 } from './carPart'
 import { ComponentDisplayNamesSchema } from './componentDisplayName'
+import { CoursesSchema } from './course'
 import { DiagnosticTestsSchema } from './diagnosticTest'
 import { EconomyConfigSchema } from './economy'
 import { FacilitiesSchema } from './facilities'
@@ -209,6 +211,13 @@ export const STORY_MISSIONS: StoryMission[] = STORY_MISSIONS_AUTHORED.map((missi
  * see `lapReference.ts`'s own doc comment for the anchor/pool discriminated shape.
  */
 export const LAP_REFERENCES = LapReferencesSchema.parse(lapReferencesJson)
+
+/**
+ * The lap-model course shapes - ordered corner/straight segment lists a
+ * `courseId` requirement (`requirements.ts`) selects the lap to be measured
+ * on. See `course.ts` for the segment tuple's shape.
+ */
+export const COURSES = CoursesSchema.parse(coursesJson)
 
 /**
  * The guided-tutorial script and the one scripted auction lot recipe.

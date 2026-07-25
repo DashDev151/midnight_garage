@@ -468,7 +468,7 @@ describe('evaluateRequirement', () => {
           },
         },
       }
-      const realTime = lapTimeSecondsFor(carWithTyres, MODEL, CONTEXT)!
+      const realTime = lapTimeSecondsFor(carWithTyres, MODEL, CONTEXT, 'kirifuri')!
       const result = evaluateRequirement(
         { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: realTime },
         carWithTyres,
@@ -497,7 +497,7 @@ describe('evaluateRequirement', () => {
           },
         },
       })
-      const realTime = lapTimeSecondsFor(car, MODEL, CONTEXT)!
+      const realTime = lapTimeSecondsFor(car, MODEL, CONTEXT, 'kirifuri')!
       const result = evaluateRequirement(
         { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: realTime - 0.1 },
         car,

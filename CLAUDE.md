@@ -53,8 +53,11 @@ roadmap to a free itch.io launch.
 by Sprint 110's live-room promotion; its doc records that). The workshop rework
 (`docs/design/workshop-rework.md`, FINAL) landed its phase 1 as Sprints 118-119; its views and
 flourishes (Sprints 120-121) are designed but not yet built. The car spec arc
-(`docs/design/car-spec-arc.md`) landed phase 1 as Sprint 122: real stock specs for the 26 in-game
-cars; the vetted spec book lives at `docs/design/car-spec-book.html`.
+(`docs/design/car-spec-arc.md`) landed real stock specs (Sprint 122), grip-driven handling
+(123), and the grip-and-pace lap model over five real courses (124); the vetted spec book
+lives at `docs/design/car-spec-book.html`, the pace model's maths in
+`docs/design/pace-model-math.md`, and its calibration against the maintainer's Forza lap times
+in `docs/design/lap-calibration.md` (prototype harness: `docs/design/lapsim/`). Aero is next.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file

@@ -39,11 +39,12 @@ const MINT_CIVIC_POWER = computeDerivedStats(
 ).power
 
 /** Same measured-not-guessed precedent, for the lap-tip tests: the mint
- * civic's real lap time under the shipped `economy.lapModel`. */
+ * civic's real lap on Kirifuri under the shipped grip-and-pace model. */
 const MINT_CIVIC_LAP_SECONDS = lapTimeSecondsFor(
   buildCarInstance({ modelId: CIVIC.id }),
   CIVIC,
   MEASURING_CONTEXT,
+  'kirifuri',
 )!
 
 /** A minimal, fully-specified test mission - every field a real

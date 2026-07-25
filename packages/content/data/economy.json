@@ -179,6 +179,38 @@
         "clampMax": 3,
         "weight": 1.0
       }
+    },
+    "pace": {
+      "gravity": 9.81,
+      "airDensity": 1.2,
+      "drivelineEfficiency": 0.88,
+      "rollingResistance": 0.012,
+      "psWatts": 735.5,
+      "driverMassKg": 75,
+      "awdLaunchFactor": 0.66,
+      "launchCapCoeff": 0.7,
+      "agilityWeight": 0.5,
+      "cruiseThreshold": 0.12,
+      "deliverySaturationSpeed": 33,
+      "integrationStep": 0.5,
+      "frontalAreaCoeff": 0.82,
+      "frontalAreaFallbackM2": 1.85,
+      "agilityReferenceMassKg": 1200,
+      "agilityAngleReferenceDeg": 90,
+      "agilityRadiusReferenceM": 80,
+      "agilityTightnessMin": 0.4,
+      "agilityTightnessMax": 2.5,
+      "delivery": {
+        "plainNA": 1.0,
+        "bigNA": 1.0,
+        "supercharged": 0.98,
+        "seqTwin": 0.9,
+        "parallelTwin": 0.85,
+        "seqTwinRotary": 0.85,
+        "vtecNA": 0.88,
+        "rotaryNA": 0.82,
+        "singleTurbo": 0.78
+      }
     }
   },
   "bands": {
@@ -542,18 +574,6 @@
       "spiteChance": 0.35,
       "spiteMaxRungs": 1
     }
-  },
-  "lapModel": {
-    "C": 42.5,
-    "ratioExp": 0.35,
-    "gripMult": {
-      "stock": 1.04,
-      "street": 1.0,
-      "sport": 0.98,
-      "race": 0.96
-    },
-    "courseId": "kirifuri",
-    "courseName": "Kirifuri Pass"
   },
   "staff": {
     "wageBaseYen": 4000,

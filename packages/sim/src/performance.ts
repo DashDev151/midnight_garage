@@ -2,6 +2,7 @@ import {
   layoutTagOf,
   type CarInstance,
   type CarModel,
+  type Course,
   type EconomyConfig,
   type Part,
   type TyreCompound,
@@ -10,6 +11,11 @@ import {
 /** The handling model's content block - every grip, balance, and display-curve
  * constant. */
 type GripConfig = EconomyConfig['statFormulas']['grip']
+
+/** The pace/lap model's content block - every physics constant of the
+ * quasi-static point-mass sim, the launch and agility terms, and the
+ * engine-archetype torque-delivery factors. */
+type PaceConfig = EconomyConfig['statFormulas']['pace']
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -170,4 +176,242 @@ export function gripToDisplay(g: number, grip: GripConfig): number {
       ? c.stockLowDisplay + (g - c.stockLowG) * stockSlope
       : c.stockHighDisplay + (g - c.stockHighG) * modifiedSlope
   return clamp(raw, 0, 100)
+}
+
+/**
+ * Numerical-method constants for the lap integrator - properties of the
+ * marching scheme, not economy levers, so they stay in code rather than
+ * content: the top-speed speed-march bounds and its step, the straight
+ * integrator's low-speed floor (keeps `power / (m * v)` finite off a standstill),
+ * the RWD longitudinal-transfer slip guard (a rear-drive car cannot transfer
+ * more than this share onto the driven axle), and the integrator's hard step
+ * cap (a runaway guard the physics never reaches).
+ */
+const VTOP_MARCH_MIN_MS = 20
+const VTOP_MARCH_MAX_MS = 150
+const VTOP_MARCH_STEP_MS = 0.5
+const STRAIGHT_MIN_SPEED_MS = 3
+const RWD_SLIP_GUARD = 0.9
+const INTEGRATOR_MAX_STEPS = 100000
+
+/**
+ * Spec fallbacks the calibration prototype defaulted inline. Only reached by a
+ * model that omits the field; every playable car states all three, so these
+ * never bind on the shipped roster.
+ */
+const WEIGHT_DIST_FRONT_FALLBACK = 55
+const WHEELBASE_FALLBACK_MM = 2500
+const DRAG_CD_FALLBACK = 0.34
+
+/**
+ * Aerodynamic frontal area (m^2): the real published body box (width x height,
+ * mm -> m) scaled by `frontalAreaCoeff` when both dimensions are known, else
+ * the fleet fallback. Mirrors the prototype's `frontalArea`.
+ */
+export function frontalAreaM2(model: CarModel, pace: PaceConfig): number {
+  const { widthMm, heightMm } = model.spec
+  if (widthMm != null && heightMm != null) {
+    return pace.frontalAreaCoeff * (widthMm / 1000) * (heightMm / 1000)
+  }
+  return pace.frontalAreaFallbackM2
+}
+
+/**
+ * The engine's torque-delivery archetype, keying `pace.delivery` (1 = instant
+ * corner-exit pull, lower = laggier). A rotary is split by induction, a
+ * twin-turbo by whether it is the sequential 2JZ-GTE, and the VTEC screamers
+ * are recognised by engine code; everything else falls to a plain or big
+ * naturally-aspirated curve. A faithful port of the prototype's `archOf` (its
+ * `superch`/`seqTwinR` are this map's `supercharged`/`seqTwinRotary`).
+ */
+export function deliveryArchetype(model: CarModel): keyof PaceConfig['delivery'] {
+  const engineConfig = model.spec.engineConfig ?? ''
+  const aspiration = model.spec.aspiration
+  const engineCode = model.spec.engineCode
+
+  if (engineConfig.startsWith('rotary')) {
+    return aspiration != null && aspiration.includes('turbo') ? 'seqTwinRotary' : 'rotaryNA'
+  }
+  if (aspiration === 'twin-turbo') return /2JZ-GTE/.test(engineCode) ? 'seqTwin' : 'parallelTwin'
+  if (aspiration === 'turbo') return 'singleTurbo'
+  if (aspiration === 'supercharged') return 'supercharged'
+  if (/B16|B18C|H22|F20C|K20A|C30A/.test(engineCode)) return 'vtecNA'
+  if (engineConfig === 'V8' || engineConfig === 'V10' || engineConfig === 'V12') return 'bigNA'
+  return 'plainNA'
+}
+
+/** The pre-computed per-car constants a lap march reads once (the prototype's
+ * `carBlock`). SI throughout: mass kg, power W, accelerations m/s^2, area m^2. */
+interface CarBlock {
+  /** Kerb mass plus the driver, kg. */
+  m: number
+  /** Wheel power after driveline losses, W. */
+  powerW: number
+  /** Mechanical lateral grip coefficient (the game's `computeGrip`). */
+  mu: number
+  /** Longitudinal launch-traction ceiling, m/s^2. */
+  aGrip: number
+  /** Drag area Cd x frontal area, m^2. */
+  cdA: number
+  /** Corner-exit torque-delivery factor for this engine archetype. */
+  deliveryFactor: number
+}
+
+/** Assembles a car's lap constants: mass, wheel power, grip, the
+ * drivetrain-dependent launch-traction ceiling, drag area, and delivery
+ * factor. Faithful port of the prototype's `carBlock`. */
+function carBlock(
+  model: CarModel,
+  powerPs: number,
+  compound: TyreCompound | undefined,
+  pace: PaceConfig,
+  grip: GripConfig,
+): CarBlock {
+  const g = pace.gravity
+  const m = model.spec.curbWeightKg + pace.driverMassKg
+  const powerW = powerPs * pace.psWatts * pace.drivelineEfficiency
+  const mu = computeGrip(model, compound, grip)
+
+  const front = model.spec.weightDistributionFront ?? WEIGHT_DIST_FRONT_FALLBACK
+  const rearBias = 1 - front / 100
+  const frontBias = front / 100
+  const comHeight = model.spec.comHeightMm ?? grip.comHeightFallbackMm
+  const wheelbase = model.spec.wheelbaseMm ?? WHEELBASE_FALLBACK_MM
+  const comRatio = comHeight / wheelbase
+  const launchCap = pace.launchCapCoeff * mu
+
+  const drivetrain = drivetrainOf(model)
+  let launchAccel: number
+  if (drivetrain === 'AWD') {
+    launchAccel = mu * pace.awdLaunchFactor
+  } else if (drivetrain === 'RWD') {
+    launchAccel = Math.min(
+      (mu * rearBias) / (1 - Math.min(RWD_SLIP_GUARD, mu * comRatio)),
+      launchCap,
+    )
+  } else {
+    launchAccel = Math.min((mu * frontBias) / (1 + mu * comRatio), launchCap)
+  }
+  const aGrip = Math.min(mu, launchAccel) * g
+
+  const cdA = (model.spec.dragCd ?? DRAG_CD_FALLBACK) * frontalAreaM2(model, pace)
+  const deliveryFactor = pace.delivery[deliveryArchetype(model)]
+  return { m, powerW, mu, aGrip, cdA, deliveryFactor }
+}
+
+/** Terminal speed (m/s): march up until aero + rolling drag cancels available
+ * wheel acceleration, then cap at the published top speed when known. Faithful
+ * port of the prototype's `vTopOf`. */
+function vTopOf(block: CarBlock, model: CarModel, pace: PaceConfig): number {
+  const g = pace.gravity
+  let vTop = VTOP_MARCH_MIN_MS
+  for (let v = VTOP_MARCH_MIN_MS; v < VTOP_MARCH_MAX_MS; v += VTOP_MARCH_STEP_MS) {
+    // 0.5 is the 1/2 in the drag equation (1/2 rho Cd A v^2), a physical
+    // constant, not a lever.
+    const aRes =
+      (0.5 * pace.airDensity * block.cdA * v * v + pace.rollingResistance * block.m * g) / block.m
+    if (block.powerW / (block.m * v) - aRes <= 0) {
+      vTop = v
+      break
+    }
+    vTop = v
+  }
+  const topSpeedKmh = model.spec.topSpeedKmh
+  if (topSpeedKmh != null) vTop = Math.min(vTop, topSpeedKmh / 3.6)
+  return vTop
+}
+
+/** Time (s) to cover one straight of `length` m, entering at `vIn` and braking
+ * down to `vOut` by its end: a forward Euler march under delivery-ramped wheel
+ * force minus aero + rolling drag, coasting once acceleration falls below the
+ * cruise threshold and grip-braking into the next corner. Faithful port of the
+ * prototype's `straightTime`. */
+function straightTime(
+  block: CarBlock,
+  vIn: number,
+  vOut: number,
+  length: number,
+  pace: PaceConfig,
+): number {
+  const g = pace.gravity
+  const dv = pace.integrationStep
+  const aBrake = block.mu * g
+  const vFull = pace.deliverySaturationSpeed
+  const rollingForce = pace.rollingResistance * block.m * g
+
+  let v = Math.max(vIn, STRAIGHT_MIN_SPEED_MS)
+  let x = 0
+  let t = 0
+  for (let i = 0; i < INTEGRATOR_MAX_STEPS; i++) {
+    const brakeDist = v > vOut ? (v * v - vOut * vOut) / (2 * aBrake) : 0
+    if (x + brakeDist >= length) {
+      if (v > vOut) t += (v - vOut) / aBrake
+      break
+    }
+    const aPow = block.powerW / (block.m * v)
+    const deliveryRamp = block.deliveryFactor + (1 - block.deliveryFactor) * Math.min(1, v / vFull)
+    const aEng = Math.min(aPow, block.aGrip) * deliveryRamp
+    const aRes = (0.5 * pace.airDensity * block.cdA * v * v + rollingForce) / block.m
+    const a = aEng - aRes
+    if (a <= pace.cruiseThreshold) {
+      // Coast the remaining distance at terminal speed, then brake in. The
+      // prototype also advanced x here; omitted because x is never read again
+      // past this break, so the lap time is identical.
+      const cruise = length - x - brakeDist
+      if (cruise > 0) t += cruise / v
+      if (v > vOut) t += (v - vOut) / aBrake
+      break
+    }
+    const dt = dv / a
+    x += v * dt
+    t += dt
+    v += dv
+  }
+  return t
+}
+
+/**
+ * Quasi-static lap time (raw seconds, unrounded) for `model` over `course` at
+ * `powerPs` on `compound` tyres. A point-mass march: each corner is taken at
+ * its grip-limited apex speed `sqrt(mu g r)` (capped at top speed), plus a
+ * transition/agility cost that bites heavy, low-grip cars in tight corners
+ * (a point mass has no yaw of its own), plus the straight that follows it
+ * marched under the pace physics. Faithful port of the prototype's `lap`.
+ */
+export function lapTime(
+  model: CarModel,
+  course: Course,
+  powerPs: number,
+  compound: TyreCompound | undefined,
+  economy: EconomyConfig,
+): number {
+  const pace = economy.statFormulas.pace
+  const grip = economy.statFormulas.grip
+  const g = pace.gravity
+
+  const block = carBlock(model, powerPs, compound, pace, grip)
+  const vTop = vTopOf(block, model, pace)
+
+  const segments = course.segments
+  const n = segments.length
+  const apex = segments.map((s) => Math.min(Math.sqrt(block.mu * g * s[0]), vTop))
+
+  let total = 0
+  for (let i = 0; i < n; i++) {
+    const [radiusM, angleDeg, straightM] = segments[i]!
+    const arc = (radiusM * angleDeg * Math.PI) / 180
+    total += arc / apex[i]!
+    const tight =
+      (angleDeg / pace.agilityAngleReferenceDeg) *
+      clamp(
+        pace.agilityRadiusReferenceM / radiusM,
+        pace.agilityTightnessMin,
+        pace.agilityTightnessMax,
+      )
+    total += ((pace.agilityWeight * (block.m / pace.agilityReferenceMassKg)) / block.mu) * tight
+    const vIn = Math.min(apex[i]!, vTop)
+    const vOut = Math.min(apex[(i + 1) % n]!, vTop)
+    total += straightTime(block, vIn, vOut, straightM, pace)
+  }
+  return total
 }

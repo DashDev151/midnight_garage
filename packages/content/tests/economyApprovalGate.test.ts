@@ -53,6 +53,20 @@ import storyMissions from '../data/storyMissions.json'
  * telemetry) reads ~90 on the 0-100 handling stat instead of ~76. No current
  * (stock) car exceeds mu 1.10, so no displayed stat or payout moves; this only
  * sets the future modified-grip ceiling. Signed in docs/design/lap-calibration.md.
+ *
+ * Re-pinned for Sprint 124's grip-and-pace lap model (lever table sections A and
+ * B, signed by the maintainer 2026-07-25 in docs/sprints/sprint124.md): the old
+ * `lapModel` block (`C`, `ratioExp`, `gripMult`, `courseId`, `courseName`) is
+ * removed, and `statFormulas.pace` is added, carrying the Forza-calibrated
+ * physics constants (gravity, air density, driveline efficiency, rolling
+ * resistance, the launch and agility terms, and the nine torque-delivery
+ * factors by engine archetype). Lap time is now a quasi-static point-mass sim
+ * over a real course rather than a power-to-weight curve. Mission payouts are
+ * unchanged: they derive from build cost, not lap time. The two lap CEILINGS
+ * move (`the-column-clock` 83.1 -> 78.1, `under-one-fifteen` 71.8 -> 76.4), each
+ * re-derived mechanically by `storyMissionProbes`'s own
+ * `ceil1AtTwoPercentSlower` rule from the freshly measured probe builds, not
+ * hand-picked.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -62,7 +76,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('0646083ee544fa73f8f8f00702bac55d0a7d5de1b8c460d10d4ec4db262deeb0')
+    ).toBe('0fbddd66c1a7842cfa260a9e8b25296cdaddc6b5847e0c8a917fee94070ecf15')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

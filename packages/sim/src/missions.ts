@@ -146,7 +146,7 @@ function isLapTimeCeiling(
 function earnsTip(
   mission: StoryMission,
   stats: ReturnType<typeof computeDerivedStats>,
-  lapTimeSeconds: number | null,
+  lapTimeFor: (courseId: string) => number | null,
 ): boolean {
   const thresholds = mission.requirements.filter(isStatThreshold)
   const lapCeilings = mission.requirements.filter(isLapTimeCeiling)
@@ -154,11 +154,15 @@ function earnsTip(
   const thresholdsClear = thresholds.every(
     (r) => stats[r.stat] >= r.min * (1 + mission.tipTriggerFraction),
   )
-  const lapsClear = lapCeilings.every(
-    (r) =>
+  // Each ceiling is timed on its own course, so a mission may grade more than
+  // one course without the times being conflated.
+  const lapsClear = lapCeilings.every((r) => {
+    const lapTimeSeconds = lapTimeFor(r.courseId)
+    return (
       lapTimeSeconds !== null &&
-      lapTimeSeconds <= r.maxSeconds * (1 - mission.lapTipTriggerFraction),
-  )
+      lapTimeSeconds <= r.maxSeconds * (1 - mission.lapTipTriggerFraction)
+    )
+  })
   return thresholdsClear && lapsClear
 }
 
@@ -196,8 +200,7 @@ export function resolveDeliverMission(
       context.partsTaxonomy,
       context.economy,
     )
-    const lapTimeSeconds = lapTimeSecondsFor(car, model, context)
-    if (earnsTip(mission, stats, lapTimeSeconds)) {
+    if (earnsTip(mission, stats, (courseId) => lapTimeSecondsFor(car, model, context, courseId))) {
       tipYen = Math.round(mission.payoutYen * mission.tipFraction)
     }
   }

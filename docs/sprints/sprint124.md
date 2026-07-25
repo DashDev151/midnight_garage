@@ -1,7 +1,8 @@
 # Sprint 124 - Rebuild lap on grip + pace (the timing half)
 
-**Status: DESIGNED, BLOCKED on the maintainer signing the lever table below (directive 22) before
-any implementation. 2026-07-24.** This is the second half of the car-spec arc
+**Status: IMPLEMENTED, ready for review. Lever table sections A and B signed by the maintainer
+2026-07-25 ("section A signed off", all five courses ship, integrate now, aero next sprint). See the
+Exit at the foot of this doc.** This is the second half of the car-spec arc
 (`docs/design/car-spec-integration-plan.md`): Sprint 123 made handling = grip + balance; this sprint
 replaces the placeholder lap formula with the calibrated grip+pace model. The physics is calibrated
 against the Forza gold standard (`docs/design/lap-calibration.md`, main field +/-3%); the prototype
@@ -150,5 +151,54 @@ this is structural, signed implicitly by signing A + B.
 3. **Section B:** which courses ship, and each lap mission's course.
 4. **Aero (124b) now or later?** Recommend later (zero stock impact).
 
-Nothing here is implemented. On sign-off of sections A + B, tasks 1-7 are mechanical and land in one
-pass with the checks green.
+## Exit (2026-07-25)
+
+Signed and implemented in one pass. The old placeholder lap formula is gone; lap time is now the
+Forza-calibrated grip-and-pace model over a real course.
+
+**Maintainer sign-off:** section A as proposed (no `eta` change). Section B: all five courses ship,
+the four archetypes plus the calibrated ex-Legend-Island flagship, named **Misaki International
+Raceway** (`misaki`), a coastal cape circuit. Both lap missions stay on Kirifuri. Integrate now;
+aero deferred to the next sprint.
+
+**What landed**
+
+- **Content.** `spec.widthMm`/`heightMm` (real published dimensions, all 26 cars) so frontal area,
+  and therefore drag, is real rather than class-estimated. New `courses.json` + `CourseSchema` with
+  the five courses; wired through `data.ts` and the sim context (`courses`, `coursesById`). New
+  `statFormulas.pace` block carrying every signed section-A constant; the old `lapModel` block
+  deleted from both schema and data.
+- **Model.** `performance.ts` gains `lapTime(model, course, powerPs, compound, economy)` plus
+  `frontalAreaM2` and `deliveryArchetype`: the quasi-static point-mass sim (grip-limited apex speeds,
+  the marched accel/brake straight solver with real drag, the launch-traction ceiling, the
+  torque-delivery ramp, and the agility term). It reuses the signed Sprint 123 `computeGrip`
+  untouched. Every lever reads from content; only numerical-method details are local.
+- **Faithfulness proof.** `lapModelPace.test.ts` pins the port against the prototype
+  (`docs/design/lapsim/`) across six cars spanning every delivery archetype on four courses: all 24
+  car-course pairs match to **0.000 s**.
+- **Consumers.** `lapTimeSecondsFor(car, model, context, courseId)` now resolves a real course
+  (returns null for an unknown one, alongside the existing no-tyres/scrap contract). `courseId` is
+  live everywhere instead of cosmetic. The reference board times its entries on the mission's own
+  course via a neutral reference chassis, so the board retunes itself per course; row shapes,
+  straddle selection, and the UI are untouched. `earnsTip` now times each ceiling on its own course,
+  so a future multi-course mission cannot conflate two times. `RADAR_POWER_REFERENCE_PS` 500 -> 560.
+
+**Levers moved:** exactly those signed (section A's constants; the five course definitions). Mission
+payouts and budget caps: **unchanged**, verified, they derive from build cost, not lap time.
+
+**Re-derived, not chosen:** the two lap ceilings, by `storyMissionProbes`'s own
+`ceil1AtTwoPercentSlower` rule from freshly measured probe builds. `the-column-clock` 83.1 -> **78.1**
+(the AE86 probe is quicker on the real model), `under-one-fifteen` 71.8 -> **76.4** (the FD3S probe is
+slower). Both missions still pass their probe builds, so the campaign remains satisfiable.
+
+**Checks:** full suite green, **132 files / 2292 tests**, typecheck clean. The `advanceDay` goldens
+`d0e2394e` and `509aa1f1` are **unchanged and passing**, which is the evidence that this stayed
+lap-only and never leaked into the handling stat or valuation. `economyApprovalGate` re-pinned in
+this same change with the approval recorded; `schemas.test.ts`'s top-level anchor list drops
+`lapModel`. `lapModel.test.ts` rewritten for the new shape (relationship assertions, not magic
+numbers): null contracts, determinism, course-dependence, and monotonicity in power, weight, and
+tyre grade, plus the sanity that power buys more on the bayshore than on a tight pass.
+
+**Known follow-ups (not regressions):** the kei outliers and the ~2-3% fast-field residual from the
+batch-1 calibration remain open in `docs/design/lap-calibration.md`; a later calibration pass would
+re-derive the two ceilings again, mechanically. Aero (`downforceCoeff`, speed-scaled) is Sprint 125.
