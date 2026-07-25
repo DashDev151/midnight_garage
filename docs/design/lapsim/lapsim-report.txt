@@ -124,3 +124,9 @@ Toyota 2000GT (MF10)                         125.9  123.4    2.5    2.1
 Honda Beat (PP1)                             142.8  129.8   13.0   10.0
 Honda Acty (HA4)                             158.8  171.9  -13.1   -7.6
 spread ours 1.67x  forza 1.86x   mean abs err 4.5 s
+
+# Blind predictions, Misaki International Raceway
+car                                     PS    kg   mu  0-100  top   PREDICTED
+Honda Integra Type R (DC2)             200  1060 0.88   6.4  233      111.4
+Mazda RX-7 (FD3S)                      255  1260 0.89   5.5  250      109.7
+Nissan Skyline GT-R (BNR32)            280  1430 0.88   5.2  250      111.4

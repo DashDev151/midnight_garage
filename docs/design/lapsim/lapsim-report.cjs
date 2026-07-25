@@ -606,3 +606,30 @@ console.error(
     mae.toFixed(1) +
     ' s',
 )
+
+// ---- blind predictions on Misaki (the calibrated ex-Legend-Island course) ----
+// Each entry names a spec-book car and, optionally, the power Forza will show for
+// it (the gentleman's-agreement cars display the capped figure, so parity means
+// predicting at the number the game itself simulates).
+const PREDICT = [
+  { n: 'Honda Integra Type R (DC2)', forzaPs: null },
+  { n: 'Mazda RX-7 (FD3S)', forzaPs: null },
+  { n: 'Nissan Skyline GT-R (BNR32)', forzaPs: 280 },
+]
+console.error('\n# Blind predictions, Misaki International Raceway')
+console.error('car                                     PS    kg   mu  0-100  top   PREDICTED')
+PREDICT.forEach((p) => {
+  const base = CARS.find((c) => c.n === p.n)
+  if (!base) return console.error('  MISSING FROM SPEC BOOK: ' + p.n)
+  const c = p.forzaPs ? { ...base, ps: p.forzaPs } : base
+  const b = carBlock(c)
+  console.error(
+    c.n.padEnd(38) +
+      String(c.ps).padStart(4) +
+      String(c.kg).padStart(6) +
+      gripMu(c).toFixed(2).padStart(5) +
+      zeroTo100(c).toFixed(1).padStart(6) +
+      String(Math.round(vTopOf(b, c) * 3.6)).padStart(5) +
+      lap(c, LEGEND).toFixed(1).padStart(11),
+  )
+})

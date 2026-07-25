@@ -266,7 +266,49 @@ the Acty).
   changed and the economy guard test (`economyApprovalGate`) re-pinned in the same change. No current
   (stock) car exceeds mu 1.10, so nothing visible moves today; it sets the future mod ceiling.
 
-## 8. Batch log
+## 8. Blind validation, round 1 (predictions recorded 2026-07-25, BEFORE driving)
+
+The model's real test is prediction, not fit. These three were chosen to attack the parts of the
+model the batch-1 anchors never touched, and the predictions are committed here before the
+maintainer drives them, so the comparison cannot be rationalised after the fact.
+
+**Course:** Misaki International Raceway (the calibrated ex-Legend-Island facsimile).
+**Reproduce:** `node docs/design/lapsim/lapsim-report.cjs` (the `PREDICT` block).
+
+| Car (Forza's listing) | PS | kg | mu | 0-100 | top | **PREDICTED** |
+|---|---|---|---|---|---|---|
+| 1995 Honda Integra Type R (DC2) | 200 | 1060 | 0.88 | 6.4 s | 233 | **111.4 s (1:51.4)** |
+| 1995 Mazda RX-7 (FD3S) | 255 | 1260 | 0.89 | 5.5 s | 250 | **109.7 s (1:49.7)** |
+| 1989 Nissan Skyline GT-R (BNR32) | 280 | 1430 | 0.88 | 5.2 s | 250 | **111.4 s (1:51.4)** |
+
+**Why these three (what each one probes that nothing else has):**
+
+1. **Integra Type R, the only front-driver ever tested.** All ten anchors so far are RWD, mid, or
+   AWD, so the FWD launch branch (`ag = (mu*cL)/(1 + mu*hL)`, where weight transfer moves AWAY from
+   the driven wheels) has never once been checked against reality. It is a whole code path running
+   on theory. A powerful, light FWD car is the sharpest available test of it, and the answer
+   generalises to every FWD car in the roster.
+2. **RX-7 FD3S, the only rotary, and a mission's own probe car.** The sequential-twin rotary
+   delivery factor (0.85) is an invented archetype constant, and rotaries are core to the game's
+   identity (FC, FD, RX-8, Cosmo). It doubles as the highest-stakes check available: this exact car
+   is the probe build behind the `under-one-fifteen` mission ceiling, so its accuracy is the
+   accuracy of shipped mission content.
+3. **R32 GT-R, AWD with active yaw.** Probes three untested terms at once: the parallel-twin
+   delivery factor (0.85), the active-yaw grip bonus (+0.035, granted for ATTESA), and the AWD
+   launch factor at a much heavier weight than the Evo. Not blind-confounded: the Evo VI (AWD,
+   1280 kg, matched to +1.5%) is a control, so a miss here isolates to yaw, delivery, or weight.
+
+**Assumptions to confirm before driving (a stat mismatch invalidates the comparison, not the
+model):** the GT-R is predicted at Forza's displayed 280 PS, not our de-restricted 320. Forza lists
+the RX-7 as the 1995 "Type RZ", a lighter FD variant than our 1991 base car, so if the game shows
+materially under 1260 kg, the prediction should be re-run at the shown weight before comparing.
+
+**Reading the result:** treat anything inside **+/-3%** (about +/-3.3 s here) as a pass, which is
+roughly the maintainer's own best-of-3 consistency band. Tighter than that measures driving, not the
+model. A miss is diagnostic, not a failure: the FWD car isolates the launch branch, the RX-7 the
+rotary delivery factor, the GT-R the yaw/delivery/AWD group.
+
+## 9. Batch log
 
 | Batch | Date | Cars | Status |
 |-------|------|------|--------|
