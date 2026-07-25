@@ -1,9 +1,15 @@
 # Lateral-g research: verified figures, and why they are NOT the sim's source
 
-**Status: REFERENCE ONLY. Completed 2026-07-25.** Five research agents searched the full 85-car
-roster for measured real-world skidpad figures. The headline conclusion is a negative one, and it is
-the useful part: **these numbers are on a different scale from Forza's and must never be fed to the
-lap model.** They are kept for authenticity, flavour copy, and sanity-checking only.
+**Status: REJECTED, CLOSED. Maintainer ruling 2026-07-25: "published lat g figures are no op... we
+will not be using any of them." Remaining research was cancelled mid-flight.**
+
+Not a source for anything. Not the sim's grip input, not a fallback, not a sanity check. These
+figures are retained ONLY so the question is not re-opened and the same fortnight of searching is not
+repeated: the reasons they fail are below, and they are structural rather than a matter of finding
+better sources. Grip comes from Forza telemetry.
+
+Five agents searched the full 85-car roster and produced 34 verified figures. The useful output was
+the negative result, not the numbers.
 
 ## Why they are not the sim's source
 
