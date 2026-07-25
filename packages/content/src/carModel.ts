@@ -65,6 +65,11 @@ export const CarModelSchema = z
       heightMm: z.number().int().positive().optional(),
       stockTyre: z.string().min(1).optional(),
       tyreCompound: TyreCompoundSchema.optional(),
+      /** Factory aerodynamic downforce coefficient: grip gained per (m/s)^2 of
+       * speed, so it is worth nothing at a standstill and a great deal on a fast
+       * corner. Absent (0) on almost every road car; only genuine factory aero
+       * earns a value. Aftermarket aero replaces it (same slot). */
+      downforceCoeff: z.number().nonnegative().optional(),
       /** Factory active torque-vectoring (ATTESA E-TS Pro / Super AYC), the
        * cornering edge that lifts an equipped AWD car's mechanical grip above
        * a passive one. Absent on every car without it. */

@@ -36,6 +36,14 @@ export const PartCatalogEntrySchema = z.object({
   /** Which body zone this SKU is a replacement panel for - only zone-panel
    * catalog entries carry this; every other SKU leaves it absent. */
   zoneId: PanelZoneIdSchema.optional(),
+  /**
+   * Whether this SKU actually works aerodynamically - it makes downforce and
+   * pays for it in drag, by its grade, from `statFormulas.aero.byGrade`. Only
+   * the true aero line (lip, wing, race aero) carries it; the body-panel and
+   * underglow SKUs sharing the `aero` slot are cosmetic or weight-focused and
+   * leave it absent.
+   */
+  aeroFunctional: z.boolean().optional(),
 })
 
 export const PartCatalogEntriesSchema = z.array(PartCatalogEntrySchema).min(1)

@@ -67,6 +67,16 @@ import storyMissions from '../data/storyMissions.json'
  * re-derived mechanically by `storyMissionProbes`'s own
  * `ceil1AtTwoPercentSlower` rule from the freshly measured probe builds, not
  * hand-picked.
+ *
+ * Re-pinned for Sprint 125's aero model (lever table sections A and C, signed by
+ * the maintainer 2026-07-25 in docs/sprints/sprint125.md): adds
+ * `statFormulas.aero` - `downforceK` 6.2e-5 (calibrated from the Calsonic BNR32
+ * Gr.A's measured lateral-g pair), `maxGripMultiplier` 1.6, and the per-grade
+ * downforce/drag table (street 0.10/+0.01, sport 0.40/+0.04, race 0.85/+0.09).
+ * Downforce is speed-squared, so it is worth nothing at a standstill and never
+ * touches the skidpad-based handling stat, valuation, or the goldens. No stock
+ * car carries factory downforce, so no shipped lap time, mission ceiling, or
+ * payout moves.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -76,7 +86,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('0fbddd66c1a7842cfa260a9e8b25296cdaddc6b5847e0c8a917fee94070ecf15')
+    ).toBe('8ae8a06c547e8c6c1905d5410dea87796a934d7ea4c443078d087115f8d7a0f9')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

@@ -1,7 +1,8 @@
 # Sprint 125 - Aero: downforce that grows with speed, and the drag it costs
 
-**Status: DESIGNED, awaiting the maintainer's sign-off on the lever table (directive 22) before
-implementation. 2026-07-25.** The third phase of the car spec arc, deferred out of Sprint 124 by the
+**Status: IMPLEMENTED, ready for review, with ONE OPEN LEVER QUESTION for the maintainer (see the
+Exit). Sections A and C signed 2026-07-25 ("continue with the rest of sprint 125"); the three open
+decisions took their recommended answers.** The third phase of the car spec arc, deferred out of Sprint 124 by the
 maintainer ("fine aero in next sprint") to keep that sprint's surface small. Sprint 124's Exit is the
 prerequisite: lap time is now a real sim over real courses, so a speed-dependent grip term finally
 has somewhere to land.
@@ -109,6 +110,63 @@ softest part of this table.
 - **Verify unchanged (do not edit):** both `advanceDay` goldens, mission payouts, the two lap
   ceilings, `derivedStats`/`radar` tests, valuation and marketValue probes.
 - **New:** an aero test file, plus the stock-times-unchanged regression pin.
+
+## Exit (2026-07-25)
+
+Implemented against the signed values. Full suite green, **133 files / 2307 tests**, typecheck clean,
+both `advanceDay` goldens unchanged, no shipped lap time, mission ceiling, or payout moved.
+
+**What landed**
+
+- `spec.downforceCoeff` on the car schema (absent/0 everywhere today) and `aeroFunctional` on the
+  part catalog, so a SKU declares whether it actually works aerodynamically.
+- `statFormulas.aero`: `downforceK` 6.2e-5, `maxGripMultiplier` 1.6, and the per-grade
+  downforce/drag table exactly as tabled.
+- `performance.ts`: `aeroGripMultiplier`, `effectiveDownforce`, and an `AeroEffect` threaded through
+  `carBlock`, the apex solve, the braking term, and `CdA`. Apex speed is implicit once downforce is
+  in play (grip depends on the speed being solved for) and closes in one step:
+  `v^2 = mu g r / (1 - mu K g r)`, with the multiplier ceiling governing when the denominator goes
+  non-positive. With no aero every formula reduces to the pre-aero model exactly, which the
+  all-cars/all-courses regression test asserts directly.
+- The 12 genuinely aerodynamic SKUs (lip, wing, race aero, across the four fitment classes) are
+  marked functional; the body-panel and underglow SKUs sharing the slot are not.
+
+**Open decisions, as taken:** D1 only the true aero line is functional; D2 no display surfacing this
+sprint; D3 see below, this is the one that did not land as designed.
+
+**THE OPEN LEVER QUESTION (needs a ten-second call).** D3 wanted a race wing to be genuinely wrong
+somewhere. With the signed values it is a net gain on all five courses. The drag half works exactly
+as intended, it is simply outweighed. Measured on the Supra RZ, seconds against its own no-aero lap:
+
+| Course | drag alone | downforce alone | net |
+|---|---|---|---|
+| Kirifuri | +0.05 | -0.96 | **-0.81** |
+| Usui | +1.05 | -2.03 | **-1.32** |
+| Wangan | +3.31 | -4.13 | **-0.62** |
+| Tsurugi | +0.48 | -2.34 | **-2.27** |
+| Misaki | -0.12 | -5.95 | **-3.38** |
+
+The bayshore does punish bodywork hardest (+3.31 s of pure drag, by far the largest), so the
+mechanism is right; but the Wangan as designed is five fast sweepers (160-400 m radius) taken at
+speed, which is precisely where downforce pays best. A wing therefore nets out barely-positive there
+(-0.62 s on a 103 s lap, 0.6%) rather than negative. Three honest options, maintainer's call:
+
+1. **Accept it.** A wing is a real upgrade whose gain nearly vanishes on the bayshore, and the trade
+   lives in price and top speed instead of lap time. Nothing to change.
+2. **Raise `race.dragCdDelta`** from 0.09 (roughly 0.16 would flip the Wangan negative). A lever
+   move, so it needs signing by value; it also makes the street/sport rows worth re-checking.
+3. **Give the course set a genuinely drag-dominated member** (a long expressway blast with only a
+   couple of corners), which is a course-content change rather than a physics one.
+
+Not chosen unilaterally: option 2 changes a signed value and option 3 adds course content, both
+outside what "continue with sprint 125" authorised. The acceptance test was rewritten to assert what
+the model actually does (drag bites hardest on the fastest course; a wing is worth least where it is
+paid for most), not the aspiration.
+
+**Also found, not actioned:** the aero slot's underbody line (Skirt and Splitter Kit at sport, Flat
+Floor Kit at race) is physically aerodynamic in a way the tabled aero line is not alone in, a flat
+floor is one of the biggest real downforce devices. They are left non-functional because they are not
+in the signed table. Worth a value decision alongside the question above.
 
 ## After this sprint
 

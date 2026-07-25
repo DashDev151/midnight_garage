@@ -6925,7 +6925,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "common",
+    "aeroFunctional": true
   },
   {
     "id": "shitbox-mikoshi-lip-kit",
@@ -6941,7 +6942,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "shitbox",
+    "aeroFunctional": true
   },
   {
     "id": "uncommon-mikoshi-lip-kit",
@@ -6957,7 +6959,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "uncommon",
+    "aeroFunctional": true
   },
   {
     "id": "rare-mikoshi-lip-kit",
@@ -6973,7 +6976,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "rare",
+    "aeroFunctional": true
   },
   {
     "id": "mikoshi-gt-wing",
@@ -6989,7 +6993,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "common",
+    "aeroFunctional": true
   },
   {
     "id": "shitbox-mikoshi-gt-wing",
@@ -7005,7 +7010,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "shitbox",
+    "aeroFunctional": true
   },
   {
     "id": "uncommon-mikoshi-gt-wing",
@@ -7021,7 +7027,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "uncommon",
+    "aeroFunctional": true
   },
   {
     "id": "rare-mikoshi-gt-wing",
@@ -7037,7 +7044,8 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "rare",
+    "aeroFunctional": true
   },
   {
     "id": "frp-race-aero",
@@ -7053,7 +7061,8 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "common",
+    "aeroFunctional": true
   },
   {
     "id": "shitbox-frp-race-aero",
@@ -7069,7 +7078,8 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "shitbox",
+    "aeroFunctional": true
   },
   {
     "id": "uncommon-frp-race-aero",
@@ -7085,7 +7095,8 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "uncommon",
+    "aeroFunctional": true
   },
   {
     "id": "rare-frp-race-aero",
@@ -7101,7 +7112,8 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "rare",
+    "aeroFunctional": true
   },
   {
     "id": "stock-seats",

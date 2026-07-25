@@ -180,6 +180,16 @@
         "weight": 1.0
       }
     },
+    "aero": {
+      "downforceK": 0.000062,
+      "maxGripMultiplier": 1.6,
+      "byGrade": {
+        "stock": { "downforceCoeff": 0, "dragCdDelta": 0 },
+        "street": { "downforceCoeff": 0.1, "dragCdDelta": 0.01 },
+        "sport": { "downforceCoeff": 0.4, "dragCdDelta": 0.04 },
+        "race": { "downforceCoeff": 0.85, "dragCdDelta": 0.09 }
+      }
+    },
     "pace": {
       "gravity": 9.81,
       "airDensity": 1.2,

@@ -7,7 +7,7 @@ import type {
   TyreCompound,
 } from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
-import { effectiveCompound, lapTime } from './performance'
+import { effectiveCompound, effectiveDownforce, lapTime } from './performance'
 import type { SimContext } from './context'
 
 function round1(value: number): number {
@@ -86,7 +86,13 @@ export function lapTimeSecondsFor(
     context.partsById,
     context.economy.statFormulas.grip,
   )
-  return round1(lapTime(model, course, stats.power, compound, context.economy))
+  const aeroEffect = effectiveDownforce(
+    car,
+    model,
+    context.partsById,
+    context.economy.statFormulas.aero,
+  )
+  return round1(lapTime(model, course, stats.power, compound, context.economy, aeroEffect))
 }
 
 /** A pool/anchor entry's own content shape (`content/src/lapReference.ts`),

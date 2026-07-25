@@ -764,6 +764,24 @@ export const EconomyConfigSchema = z.object({
         weight: z.number().nonnegative(),
       }),
     }),
+    /** Aerodynamics (`performance.ts`): downforce rises with the square of speed,
+     * so it is worth nothing at a standstill and a great deal on a fast corner,
+     * and the same bodywork that makes it costs drag. `downforceK` is the grip
+     * gained per (m/s)^2 at a `downforceCoeff` of 1.0, calibrated from the
+     * Calsonic BNR32 Gr.A's measured lateral-g pair; `maxGripMultiplier` bounds
+     * the term so nothing runs away at top speed. `byGrade` is what a fitted
+     * aero-functional SKU provides, by its grade. Signed in
+     * docs/sprints/sprint125.md. */
+    aero: z.object({
+      downforceK: z.number().positive(),
+      maxGripMultiplier: z.number().positive(),
+      byGrade: z.object({
+        stock: z.object({ downforceCoeff: z.number(), dragCdDelta: z.number() }),
+        street: z.object({ downforceCoeff: z.number(), dragCdDelta: z.number() }),
+        sport: z.object({ downforceCoeff: z.number(), dragCdDelta: z.number() }),
+        race: z.object({ downforceCoeff: z.number(), dragCdDelta: z.number() }),
+      }),
+    }),
     /** The pace/lap model (`performance.ts` lapTime): every physics constant of
      * the quasi-static point-mass sim, the launch and agility terms, and the
      * torque-curve delivery factors by engine archetype. Calibrated against the

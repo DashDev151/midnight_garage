@@ -17,6 +17,10 @@ type GripConfig = EconomyConfig['statFormulas']['grip']
  * engine-archetype torque-delivery factors. */
 type PaceConfig = EconomyConfig['statFormulas']['pace']
 
+/** The aero model's content block - the downforce coefficient, its ceiling, and
+ * what each aero grade provides. */
+type AeroConfig = EconomyConfig['statFormulas']['aero']
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
@@ -240,6 +244,50 @@ export function deliveryArchetype(model: CarModel): keyof PaceConfig['delivery']
   return 'plainNA'
 }
 
+/** What a car's bodywork does aerodynamically: how much downforce it makes and
+ * what that costs in drag. All-zero means no aero at all, which reduces every
+ * formula below to the pre-aero model exactly. */
+export interface AeroEffect {
+  /** Downforce coefficient - grip gained per (m/s)^2, scaled by `downforceK`. */
+  downforceCoeff: number
+  /** Drag coefficient added to the car's own `dragCd`. */
+  dragCdDelta: number
+}
+
+const NO_AERO: AeroEffect = { downforceCoeff: 0, dragCdDelta: 0 }
+
+/**
+ * The aero grip multiplier at speed `v`: `1 + downforceK * coeff * v^2`, bounded
+ * by `maxGripMultiplier`. Exactly 1 (no effect) at a standstill or with no aero,
+ * which is why downforce never touches the skidpad-based handling stat.
+ */
+export function aeroGripMultiplier(v: number, downforceCoeff: number, aero: AeroConfig): number {
+  if (downforceCoeff <= 0) return 1
+  return Math.min(1 + aero.downforceK * downforceCoeff * v * v, aero.maxGripMultiplier)
+}
+
+/**
+ * The aero a car is actually running: a fitted aero-functional SKU provides its
+ * grade's downforce and drag, and REPLACES the factory figure (it occupies the
+ * same slot - the factory item came off). Anything else, including a cosmetic or
+ * body-panel SKU in the aero slot, leaves the car on its own `spec.downforceCoeff`
+ * at no extra drag, since a published Cd already includes the factory bodywork.
+ */
+export function effectiveDownforce(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  aero: AeroConfig,
+): AeroEffect {
+  const installed = car.parts.aero?.installed
+  if (installed) {
+    const part = partsById[installed.partId]
+    if (part?.aeroFunctional) return aero.byGrade[part.grade]
+  }
+  const factory = model.spec.downforceCoeff ?? 0
+  return factory > 0 ? { downforceCoeff: factory, dragCdDelta: 0 } : NO_AERO
+}
+
 /** The pre-computed per-car constants a lap march reads once (the prototype's
  * `carBlock`). SI throughout: mass kg, power W, accelerations m/s^2, area m^2. */
 interface CarBlock {
@@ -255,6 +303,8 @@ interface CarBlock {
   cdA: number
   /** Corner-exit torque-delivery factor for this engine archetype. */
   deliveryFactor: number
+  /** Downforce coefficient in play (0 = no aero). */
+  downforceCoeff: number
 }
 
 /** Assembles a car's lap constants: mass, wheel power, grip, the
@@ -266,6 +316,7 @@ function carBlock(
   compound: TyreCompound | undefined,
   pace: PaceConfig,
   grip: GripConfig,
+  aeroEffect: AeroEffect,
 ): CarBlock {
   const g = pace.gravity
   const m = model.spec.curbWeightKg + pace.driverMassKg
@@ -294,9 +345,35 @@ function carBlock(
   }
   const aGrip = Math.min(mu, launchAccel) * g
 
-  const cdA = (model.spec.dragCd ?? DRAG_CD_FALLBACK) * frontalAreaM2(model, pace)
+  const cdA =
+    ((model.spec.dragCd ?? DRAG_CD_FALLBACK) + aeroEffect.dragCdDelta) * frontalAreaM2(model, pace)
   const deliveryFactor = pace.delivery[deliveryArchetype(model)]
-  return { m, powerW, mu, aGrip, cdA, deliveryFactor }
+  return { m, powerW, mu, aGrip, cdA, deliveryFactor, downforceCoeff: aeroEffect.downforceCoeff }
+}
+
+/**
+ * Grip-limited apex speed (m/s) for a corner of `radiusM`. Without aero this is
+ * the familiar `sqrt(mu g r)`. With aero it is implicit - the grip depends on the
+ * very speed being solved for - but it closes in one step: from
+ * `v^2 = mu (1 + K v^2) g r` with `K = downforceK * coeff`,
+ * `v^2 = mu g r / (1 - mu K g r)`. A non-positive denominator means downforce
+ * outruns the demand, so the multiplier ceiling governs instead; the same ceiling
+ * applies whenever the solved multiplier would exceed it.
+ */
+function apexSpeed(
+  mu: number,
+  radiusM: number,
+  downforceCoeff: number,
+  pace: PaceConfig,
+  aero: AeroConfig,
+): number {
+  const base = mu * pace.gravity * radiusM
+  if (downforceCoeff <= 0) return Math.sqrt(base)
+  const k = aero.downforceK * downforceCoeff
+  const denominator = 1 - mu * k * pace.gravity * radiusM
+  if (denominator <= 0) return Math.sqrt(base * aero.maxGripMultiplier)
+  const solved = base / denominator
+  return Math.sqrt(1 + k * solved > aero.maxGripMultiplier ? base * aero.maxGripMultiplier : solved)
 }
 
 /** Terminal speed (m/s): march up until aero + rolling drag cancels available
@@ -332,17 +409,22 @@ function straightTime(
   vOut: number,
   length: number,
   pace: PaceConfig,
+  aero: AeroConfig,
 ): number {
   const g = pace.gravity
   const dv = pace.integrationStep
-  const aBrake = block.mu * g
   const vFull = pace.deliverySaturationSpeed
   const rollingForce = pace.rollingResistance * block.m * g
+  // Braking shares the tyre's friction budget with cornering, so downforce helps
+  // it too - and more the faster the car is going.
+  const brakeAccelAt = (speed: number) =>
+    block.mu * aeroGripMultiplier(speed, block.downforceCoeff, aero) * g
 
   let v = Math.max(vIn, STRAIGHT_MIN_SPEED_MS)
   let x = 0
   let t = 0
   for (let i = 0; i < INTEGRATOR_MAX_STEPS; i++) {
+    const aBrake = brakeAccelAt(v)
     const brakeDist = v > vOut ? (v * v - vOut * vOut) / (2 * aBrake) : 0
     if (x + brakeDist >= length) {
       if (v > vOut) t += (v - vOut) / aBrake
@@ -384,17 +466,20 @@ export function lapTime(
   powerPs: number,
   compound: TyreCompound | undefined,
   economy: EconomyConfig,
+  aeroEffect: AeroEffect = NO_AERO,
 ): number {
   const pace = economy.statFormulas.pace
   const grip = economy.statFormulas.grip
-  const g = pace.gravity
+  const aero = economy.statFormulas.aero
 
-  const block = carBlock(model, powerPs, compound, pace, grip)
+  const block = carBlock(model, powerPs, compound, pace, grip, aeroEffect)
   const vTop = vTopOf(block, model, pace)
 
   const segments = course.segments
   const n = segments.length
-  const apex = segments.map((s) => Math.min(Math.sqrt(block.mu * g * s[0]), vTop))
+  const apex = segments.map((s) =>
+    Math.min(apexSpeed(block.mu, s[0], block.downforceCoeff, pace, aero), vTop),
+  )
 
   let total = 0
   for (let i = 0; i < n; i++) {
@@ -411,7 +496,7 @@ export function lapTime(
     total += ((pace.agilityWeight * (block.m / pace.agilityReferenceMassKg)) / block.mu) * tight
     const vIn = Math.min(apex[i]!, vTop)
     const vOut = Math.min(apex[(i + 1) % n]!, vTop)
-    total += straightTime(block, vIn, vOut, straightM, pace)
+    total += straightTime(block, vIn, vOut, straightM, pace, aero)
   }
   return total
 }
