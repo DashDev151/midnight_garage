@@ -199,7 +199,7 @@
       "driverMassKg": 75,
       "awdLaunchFactor": 0.66,
       "launchCapCoeff": 0.7,
-      "agilityWeight": 0.5,
+      "agilityWeight": 0.3,
       "cruiseThreshold": 0.12,
       "deliverySaturationSpeed": 33,
       "integrationStep": 0.5,

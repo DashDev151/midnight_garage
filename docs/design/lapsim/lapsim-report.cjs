@@ -357,7 +357,7 @@ function lap(c, segs) {
     n = segs.length,
     apex = segs.map((s) => Math.min(Math.sqrt(b.mu * g * s[0]), vTop))
   let t = 0
-  const kAgi = 0.5
+  const kAgi = 0.3
   for (let i = 0; i < n; i++) {
     t += (segs[i][0] * (segs[i][1] * Math.PI)) / 180 / apex[i]
     const tight = (segs[i][1] / 90) * Math.max(0.4, Math.min(2.5, 80 / segs[i][0]))

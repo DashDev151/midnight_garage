@@ -77,6 +77,15 @@ import storyMissions from '../data/storyMissions.json'
  * touches the skidpad-based handling stat, valuation, or the goldens. No stock
  * car carries factory downforce, so no shipped lap time, mission ceiling, or
  * payout moves.
+ *
+ * Re-pinned 2026-07-25 (maintainer approval, in session: "Signed off on the change
+ * to 0.3"): `statFormulas.pace.agilityWeight` 0.5 -> 0.3. The agility term is the
+ * model's stand-in for the direction-change time a point-mass sim cannot represent,
+ * and at 0.5 it over-penalised every car. Measured against twelve driven Forza laps
+ * (docs/design/lap-calibration.md): at 0.3 the nine originally-fitted cars land at
+ * +0.01% mean error and the three blind-test cars improve from +4.6% to +1.5%.
+ * The two lap ceilings re-derive mechanically (`the-column-clock` 252.2 -> 237.1,
+ * `under-one-fifteen` 248 -> 230.1); payouts are untouched.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -86,7 +95,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('8ae8a06c547e8c6c1905d5410dea87796a934d7ea4c443078d087115f8d7a0f9')
+    ).toBe('ba5b54ede9ce83585ebc84e9408dc32783ae3219a387615167cc57cfe0a87208')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

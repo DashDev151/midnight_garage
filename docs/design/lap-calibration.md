@@ -328,7 +328,54 @@ roughly the maintainer's own best-of-3 consistency band. Tighter than that measu
 model. A miss is diagnostic, not a failure: the FWD car isolates the launch branch, the RX-7 the
 rotary delivery factor, the GT-R the yaw/delivery/AWD group.
 
-## 9. Batch log
+## 9. Blind test result, and what it corrected (2026-07-25)
+
+Driven: Integra Type R (DC2) 108.8, RX-7 (FD3S) 105.3, Skyline GT-R (BNR32) 105.4. Every car came in
+FASTER than predicted (+3.1%, +3.8%, +6.8%), a systematic bias, not scatter. The first genuinely
+out-of-sample test the model has had, and it earned its keep twice.
+
+**Correction 1 (landed, maintainer-signed): the agility term was over-penalising.** `agilityWeight`
+0.5 -> **0.3**. It is the model's stand-in for direction-change time that a point-mass sim cannot
+represent, flagged first-pass from the start. At 0.3 the nine originally-fitted cars land at +0.01%
+mean error and the blind cars improve from +4.57% to +2.62% mean. Ruled out along the way, each worth
+under 0.3 s and so NOT the cause: `eta` (driveline efficiency, the suspect named in section 7 - these
+cars are grip-limited on this course, not power-limited), and `k_AWD` (launch traction).
+
+**Correction 2: a hypothesis raised and then correctly killed.** The GT-R's residual looked like it
+could be explained if Forza displayed the capped 280 PS while simulating the real ~320 (feeding 320
+put it at +1.3%). The maintainer refuted it: Forza lists the Mitsubishi GTO Twin Turbo at 324 PS, a
+car equally subject to the gentleman's agreement, so Forza reports real per-variant figures rather
+than badge figures. Its R32 at 280 PS therefore means 280 PS. **The parity assumption was right, and
+inflating the GT-R's power would have masked a genuine model defect rather than fixing one.** No
+power figure was changed as a result of this.
+
+**Model state after correction 1, at honest badge power:**
+
+| Car | model | driven | err |
+|---|---|---|---|
+| Nine fitted anchors (main field) | | | **+0.16% mean** |
+| Integra Type R (DC2), FWD | 110.3 | 108.8 | +1.4% |
+| RX-7 (FD3S), rotary twin | 107.3 | 105.3 | +1.9% |
+| Skyline GT-R (BNR32), AWD | 110.2 | 105.4 | **+4.6%** |
+
+Validated by this round: the **FWD launch branch** (an entire code path that had never met reality)
+at +1.4%, and the **rotary delivery** archetype at +1.9%. Both were structural unknowns; both hold.
+
+**The open defect: the GT-R needs about 12% more grip than the model gives it (0.88 -> 0.98).**
+Isolated by sweep, at the honest 280 PS: the parallel-twin delivery factor is worth only 0.3 s even
+raised to 1.0, and the AWD launch factor only 0.3 s even at 0.85, so neither is the cause; only mu
+closes the gap. But the active-yaw bonus cannot simply be raised, the Evo VI (also active-yaw AWD)
+is already accurate at +0.7% and would go too fast. The R32 is dragged down twice by the era model:
+the 1989 rubber band (0.875) and the pre-1990 compound-tier cap. Yet the M3 E30 sits in the same era
+band and is accurate, so the band is not uniformly wrong either. Unresolved, and deliberately not
+patched per car.
+
+**Next test, to discriminate:** the Mitsubishi GTO Twin Turbo. AWD, heavy (1710 kg), and Forza
+reports its power unambiguously, so it separates "our AWD/heavy-car modelling is short" from "the R32
+specifically is special" (ATTESA E-TS plus Super HICAS is exactly the sort of thing a point-mass
+model cannot see).
+
+## 10. Batch log
 
 | Batch | Date | Cars | Status |
 |-------|------|------|--------|

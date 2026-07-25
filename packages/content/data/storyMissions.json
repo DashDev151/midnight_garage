@@ -128,7 +128,7 @@
       {
         "kind": "lapTimeCeiling",
         "courseId": "kirifuri",
-        "maxSeconds": 252.2
+        "maxSeconds": 237.1
       }
     ],
     "budgetCapYen": 1557000,
@@ -240,7 +240,7 @@
       {
         "kind": "lapTimeCeiling",
         "courseId": "kirifuri",
-        "maxSeconds": 248
+        "maxSeconds": 230.1
       }
     ],
     "budgetCapYen": 3681000,

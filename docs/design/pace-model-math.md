@@ -19,7 +19,7 @@ a fixed-step marcher, so it satisfies the sim's seeded-determinism law.
 | `m_driver` | 75 kg | added driver mass |
 | `k_AWD` | 0.66 | AWD launch-traction factor (fraction of mu usable off the line) |
 | `a_capK` | 0.70 | RWD/FWD launch cap coefficient; cap = a_capK * mu (scales with the tyre, not a fixed g) |
-| `k_agi` | 0.5 | agility/transition weight (per-corner time penalty scale) |
+| `k_agi` | 0.3 | agility/transition weight (per-corner time penalty scale) |
 | `a_cruise` | 0.12 m/s^2 | below this residual acceleration the car is treated as coasting at terminal speed |
 | `dv` | 0.5 m/s | straight-line integration step |
 | `v_full` | 33 m/s | speed at/above which power delivery reaches full (delivery ramp saturates) |
