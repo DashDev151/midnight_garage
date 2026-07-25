@@ -402,7 +402,55 @@ Note the prediction already has the GTO fractionally FASTER than the R32's drive
 200 kg heavier, purely because the seven-year-newer tyre band outweighs the mass. If that ordering is
 wrong in the game, the era model is the thing to look at.
 
-## 11. Batch log
+## 11. Round 2 result: the GTO, and the ordering error it exposed (2026-07-25)
+
+Driven **109.5 s** against a predicted 104.9: we were **4.2% too FAST**, the opposite sign to round 1.
+(A first telemetry set was supplied in error and withdrawn; everything below uses the corrected
+figures.) Full telemetry let each sub-model be checked on its own rather than inferred from one lap.
+
+| Quantity | Model | Forza (measured) | Error |
+|---|---|---|---|
+| Lateral grip | 0.93 | 0.89 / 0.91 | +3 to 4% too grippy |
+| Braking, low speed | 0.93 g | 0.877 g | +6% too strong |
+| Braking, high speed | 0.93 g | 0.955 g | -8% (aero-assisted in game) |
+| Top speed | 288 km/h | 268.1 | +7.4% too fast |
+| 0-97 km/h | ~4.85 s | 5.629 s | ~14% too quick |
+| **Lap** | **104.9** | **109.5** | **+4.2% too fast** |
+
+Every quantity is biased the same way: the model over-rates this car across the board.
+
+**One candidate explains three of them at once: AWD driveline loss.** Solving the top speed backwards
+gives either a drag area of 0.784 (against our 0.640, so 23% more drag than we model) or a driveline
+efficiency of **0.73** at our drag. Real AWD transmissions lose roughly 20-25% against 12-15% for
+RWD, so a single `eta` of 0.88 applied to every drivetrain is too generous for AWD, and lowering it
+for AWD alone would simultaneously cut top speed, slow acceleration, and slow the lap. That is one
+principled lever fixing three measured symptoms rather than three separate fudges.
+
+### The headline problem: the two AWD cars are in the wrong ORDER, by 9.4 s
+
+| | Model | Driven |
+|---|---|---|
+| Skyline GT-R (BNR32) | 110.2 | **105.4** |
+| GTO Twin Turbo (1997) | **104.9** | 109.5 |
+| Gap | GTO faster by 5.3 | R32 faster by 4.1 |
+
+This is worse than either car's individual error, and it is not a tuning problem: no global constant
+reorders two cars. The cause is visible in the grip inputs. The era-rubber band hands the 1997 GTO
+**0.93** and the 1989 R32 **0.876**, purely because of their build years, while the GTO actually
+measures **0.89-0.91**, and the R32, to run 105.4, must be well above it. The proxy is backwards
+here: the R32 was a homologation special on wide sticky rubber with ATTESA E-TS, the GTO a heavy GT.
+Year is simply not a reliable stand-in for how much grip a specific car has.
+
+**Proposed direction (needs design and sign-off): make grip DATA where it is known, not a formula.**
+The project's own principle is that the spec sheet is law, and lateral g is a real, published,
+per-car figure exactly like power or kerb weight. A `spec.lateralG` used when present, with the era
+formula as the fallback for cars without one, would fix the ordering by construction instead of by
+tuning, and it is exactly what the Forza telemetry hands us for every car driven.
+
+**Immediate next data:** the R32's own telemetry (lateral g, braking, 0-97, top speed). It is the
+one measurement that would confirm or kill the grip hypothesis, and the car is already to hand.
+
+## 12. Batch log
 
 | Batch | Date | Cars | Status |
 |-------|------|------|--------|
