@@ -671,6 +671,18 @@ const PREDICT = [
     kg: 1680,
     fr: 61,
   },
+  // Round 3: measured lateral g of its own (1.10), so the fallback-formula work
+  // still in flight cannot move this one.
+  {
+    n: 'Lamborghini Countach LP5000 QV',
+    as: 'Countach LP5000 QV (1988)',
+    y: 1988,
+    ps: 461,
+    tq: 501,
+    kg: 1490,
+    fr: 41,
+    top: 300,
+  },
 ]
 console.error('\n# Blind predictions, Misaki International Raceway')
 console.error('car                                     PS    kg   mu  0-100  top   PREDICTED')

@@ -16,8 +16,26 @@
       "z": 4.1,
       "top": 325,
       "t": { "Touge": 203.5, "Mountain": 98.7, "Wangan": 165.4, "Circuit": 78.4 },
-      "overall": 1,
-      "rank": { "Touge": 1, "Mountain": 1, "Wangan": 1, "Circuit": 1, "Overall": 1 }
+      "overall": 1.003,
+      "rank": { "Touge": 2, "Mountain": 1, "Wangan": 1, "Circuit": 1, "Overall": 1 }
+    },
+    {
+      "n": "Lamborghini Countach LP5000 QV",
+      "y": 1985,
+      "q": 455,
+      "ig": false,
+      "ps": 455,
+      "kg": 1490,
+      "pw": 305,
+      "mu": 1.1,
+      "grip": 55,
+      "dt": "RWD",
+      "deliv": "big-NA",
+      "z": 3.7,
+      "top": 298,
+      "t": { "Touge": 201.3, "Mountain": 99.1, "Wangan": 170.4, "Circuit": 78.8 },
+      "overall": 1.01,
+      "rank": { "Touge": 1, "Mountain": 2, "Wangan": 2, "Circuit": 2, "Overall": 2 }
     },
     {
       "n": "Nissan GT-R (R35)",
@@ -34,8 +52,8 @@
       "z": 4.1,
       "top": 311,
       "t": { "Touge": 211.4, "Mountain": 101.9, "Wangan": 171.6, "Circuit": 80.8 },
-      "overall": 1.035,
-      "rank": { "Touge": 2, "Mountain": 2, "Wangan": 2, "Circuit": 2, "Overall": 2 }
+      "overall": 1.038,
+      "rank": { "Touge": 3, "Mountain": 3, "Wangan": 3, "Circuit": 3, "Overall": 3 }
     },
     {
       "n": "Ferrari F355 Berlinetta (F129)",
@@ -52,8 +70,8 @@
       "z": 4.4,
       "top": 295,
       "t": { "Touge": 218.7, "Mountain": 106.9, "Wangan": 180.8, "Circuit": 84.7 },
-      "overall": 1.083,
-      "rank": { "Touge": 9, "Mountain": 5, "Wangan": 3, "Circuit": 5, "Overall": 3 }
+      "overall": 1.086,
+      "rank": { "Touge": 10, "Mountain": 6, "Wangan": 4, "Circuit": 6, "Overall": 4 }
     },
     {
       "n": "Mitsubishi Lancer Evo VI Tommi Makinen (CP9A)",
@@ -70,8 +88,8 @@
       "z": 4.6,
       "top": 241,
       "t": { "Touge": 215.7, "Mountain": 106.6, "Wangan": 185.5, "Circuit": 84.6 },
-      "overall": 1.085,
-      "rank": { "Touge": 4, "Mountain": 3, "Wangan": 5, "Circuit": 3, "Overall": 4 }
+      "overall": 1.088,
+      "rank": { "Touge": 5, "Mountain": 4, "Wangan": 5, "Circuit": 4, "Overall": 5 }
     },
     {
       "n": "Nissan Skyline GT-R V-Spec II (BNR34)",
@@ -88,8 +106,8 @@
       "z": 4.6,
       "top": 260,
       "t": { "Touge": 217.1, "Mountain": 106.6, "Wangan": 185.8, "Circuit": 84.7 },
-      "overall": 1.088,
-      "rank": { "Touge": 5, "Mountain": 4, "Wangan": 7, "Circuit": 4, "Overall": 5 }
+      "overall": 1.091,
+      "rank": { "Touge": 6, "Mountain": 5, "Wangan": 7, "Circuit": 5, "Overall": 6 }
     },
     {
       "n": "Subaru Impreza 22B STi",
@@ -106,26 +124,8 @@
       "z": 4.6,
       "top": 248,
       "t": { "Touge": 215.7, "Mountain": 107.2, "Wangan": 187.3, "Circuit": 85 },
-      "overall": 1.091,
-      "rank": { "Touge": 3, "Mountain": 6, "Wangan": 9, "Circuit": 6, "Overall": 6 }
-    },
-    {
-      "n": "Mazda RX-7 Spirit R (FD3S)",
-      "y": 2002,
-      "q": 280,
-      "ig": false,
-      "ps": 280,
-      "kg": 1270,
-      "pw": 220,
-      "mu": 0.95,
-      "grip": 39,
-      "dt": "RWD",
-      "deliv": "rotary-t",
-      "z": 5.1,
-      "top": 255,
-      "t": { "Touge": 218.3, "Mountain": 107.7, "Wangan": 185.6, "Circuit": 85.6 },
-      "overall": 1.094,
-      "rank": { "Touge": 8, "Mountain": 9, "Wangan": 6, "Circuit": 9, "Overall": 7 }
+      "overall": 1.093,
+      "rank": { "Touge": 4, "Mountain": 7, "Wangan": 9, "Circuit": 7, "Overall": 7 }
     },
     {
       "n": "Mitsubishi Lancer Evo VIII MR (CT9A)",
@@ -142,8 +142,26 @@
       "z": 4.7,
       "top": 252,
       "t": { "Touge": 218.1, "Mountain": 107.3, "Wangan": 187.2, "Circuit": 85.2 },
-      "overall": 1.094,
-      "rank": { "Touge": 6, "Mountain": 8, "Wangan": 8, "Circuit": 7, "Overall": 8 }
+      "overall": 1.097,
+      "rank": { "Touge": 7, "Mountain": 9, "Wangan": 8, "Circuit": 8, "Overall": 8 }
+    },
+    {
+      "n": "Mazda RX-7 Spirit R (FD3S)",
+      "y": 2002,
+      "q": 280,
+      "ig": false,
+      "ps": 280,
+      "kg": 1270,
+      "pw": 220,
+      "mu": 0.95,
+      "grip": 39,
+      "dt": "RWD",
+      "deliv": "rotary-t",
+      "z": 5.1,
+      "top": 255,
+      "t": { "Touge": 218.3, "Mountain": 107.7, "Wangan": 185.6, "Circuit": 85.6 },
+      "overall": 1.097,
+      "rank": { "Touge": 9, "Mountain": 10, "Wangan": 6, "Circuit": 10, "Overall": 9 }
     },
     {
       "n": "Nissan Skyline GT-R (BNR32)",
@@ -160,8 +178,8 @@
       "z": 4.7,
       "top": 250,
       "t": { "Touge": 218.3, "Mountain": 107.2, "Wangan": 188.8, "Circuit": 85.5 },
-      "overall": 1.098,
-      "rank": { "Touge": 7, "Mountain": 7, "Wangan": 13, "Circuit": 8, "Overall": 9 }
+      "overall": 1.101,
+      "rank": { "Touge": 8, "Mountain": 8, "Wangan": 13, "Circuit": 9, "Overall": 10 }
     },
     {
       "n": "Nissan Skyline GT-R (BCNR33)",
@@ -178,8 +196,8 @@
       "z": 4.8,
       "top": 250,
       "t": { "Touge": 222.9, "Mountain": 108.7, "Wangan": 188.9, "Circuit": 86.2 },
-      "overall": 1.11,
-      "rank": { "Touge": 14, "Mountain": 10, "Wangan": 14, "Circuit": 10, "Overall": 10 }
+      "overall": 1.113,
+      "rank": { "Touge": 15, "Mountain": 11, "Wangan": 14, "Circuit": 11, "Overall": 11 }
     },
     {
       "n": "Honda NSX-R (NA1)",
@@ -196,8 +214,8 @@
       "z": 4.7,
       "top": 262,
       "t": { "Touge": 221.6, "Mountain": 109.7, "Wangan": 187.5, "Circuit": 87.3 },
-      "overall": 1.112,
-      "rank": { "Touge": 11, "Mountain": 13, "Wangan": 10, "Circuit": 14, "Overall": 11 }
+      "overall": 1.115,
+      "rank": { "Touge": 12, "Mountain": 14, "Wangan": 10, "Circuit": 15, "Overall": 12 }
     },
     {
       "n": "Honda S2000 (AP1)",
@@ -214,8 +232,8 @@
       "z": 5.2,
       "top": 240,
       "t": { "Touge": 218.9, "Mountain": 108.9, "Wangan": 192.9, "Circuit": 86.7 },
-      "overall": 1.113,
-      "rank": { "Touge": 10, "Mountain": 11, "Wangan": 20, "Circuit": 11, "Overall": 12 }
+      "overall": 1.116,
+      "rank": { "Touge": 11, "Mountain": 12, "Wangan": 20, "Circuit": 12, "Overall": 13 }
     },
     {
       "n": "Toyota Supra RZ (JZA80)",
@@ -232,8 +250,8 @@
       "z": 5.6,
       "top": 285,
       "t": { "Touge": 226.9, "Mountain": 110.1, "Wangan": 187.9, "Circuit": 87.2 },
-      "overall": 1.12,
-      "rank": { "Touge": 24, "Mountain": 15, "Wangan": 12, "Circuit": 12, "Overall": 13 }
+      "overall": 1.123,
+      "rank": { "Touge": 25, "Mountain": 16, "Wangan": 12, "Circuit": 13, "Overall": 14 }
     },
     {
       "n": "Nissan 350Z (Z33)",
@@ -250,8 +268,8 @@
       "z": 5.5,
       "top": 249,
       "t": { "Touge": 225.2, "Mountain": 109.8, "Wangan": 190.7, "Circuit": 87.3 },
-      "overall": 1.122,
-      "rank": { "Touge": 17, "Mountain": 14, "Wangan": 16, "Circuit": 13, "Overall": 14 }
+      "overall": 1.125,
+      "rank": { "Touge": 18, "Mountain": 15, "Wangan": 16, "Circuit": 14, "Overall": 15 }
     },
     {
       "n": "Nissan Silvia Spec-R (S15)",
@@ -268,8 +286,8 @@
       "z": 5.7,
       "top": 245,
       "t": { "Touge": 223.8, "Mountain": 110.7, "Wangan": 189.7, "Circuit": 87.7 },
-      "overall": 1.122,
-      "rank": { "Touge": 15, "Mountain": 16, "Wangan": 15, "Circuit": 15, "Overall": 15 }
+      "overall": 1.125,
+      "rank": { "Touge": 16, "Mountain": 17, "Wangan": 15, "Circuit": 16, "Overall": 16 }
     },
     {
       "n": "Mazda RX-8 (SE3P)",
@@ -286,26 +304,8 @@
       "z": 5.4,
       "top": 235,
       "t": { "Touge": 221.9, "Mountain": 109.3, "Wangan": 194.3, "Circuit": 87.8 },
-      "overall": 1.123,
-      "rank": { "Touge": 12, "Mountain": 12, "Wangan": 23, "Circuit": 16, "Overall": 16 }
-    },
-    {
-      "n": "Lamborghini Countach LP5000 QV",
-      "y": 1985,
-      "q": 455,
-      "ig": false,
-      "ps": 455,
-      "kg": 1490,
-      "pw": 305,
-      "mu": 0.86,
-      "grip": 30,
-      "dt": "RWD",
-      "deliv": "big-NA",
-      "z": 4.9,
-      "top": 298,
-      "t": { "Touge": 231.4, "Mountain": 110.8, "Wangan": 184.3, "Circuit": 88.1 },
-      "overall": 1.125,
-      "rank": { "Touge": 35, "Mountain": 17, "Wangan": 4, "Circuit": 19, "Overall": 17 }
+      "overall": 1.126,
+      "rank": { "Touge": 13, "Mountain": 13, "Wangan": 23, "Circuit": 17, "Overall": 17 }
     },
     {
       "n": "Subaru Impreza WRX STI (GDB)",
@@ -322,8 +322,8 @@
       "z": 5,
       "top": 238,
       "t": { "Touge": 225.8, "Mountain": 111.2, "Wangan": 192.4, "Circuit": 88.3 },
-      "overall": 1.131,
-      "rank": { "Touge": 19, "Mountain": 21, "Wangan": 18, "Circuit": 21, "Overall": 18 }
+      "overall": 1.134,
+      "rank": { "Touge": 20, "Mountain": 21, "Wangan": 18, "Circuit": 21, "Overall": 18 }
     },
     {
       "n": "Honda Integra Type R (DC5)",
@@ -340,8 +340,8 @@
       "z": 6.1,
       "top": 241,
       "t": { "Touge": 222.5, "Mountain": 111, "Wangan": 196.3, "Circuit": 88 },
-      "overall": 1.132,
-      "rank": { "Touge": 13, "Mountain": 19, "Wangan": 30, "Circuit": 17, "Overall": 19 }
+      "overall": 1.135,
+      "rank": { "Touge": 14, "Mountain": 19, "Wangan": 30, "Circuit": 18, "Overall": 19 }
     },
     {
       "n": "Mazda RX-7 (FD3S)",
@@ -358,8 +358,8 @@
       "z": 5.5,
       "top": 250,
       "t": { "Touge": 225.8, "Mountain": 111.1, "Wangan": 193.2, "Circuit": 88.1 },
-      "overall": 1.132,
-      "rank": { "Touge": 20, "Mountain": 20, "Wangan": 21, "Circuit": 18, "Overall": 20 }
+      "overall": 1.135,
+      "rank": { "Touge": 21, "Mountain": 20, "Wangan": 21, "Circuit": 19, "Overall": 20 }
     },
     {
       "n": "Porsche 911 Turbo (930)",
@@ -376,8 +376,8 @@
       "z": 4.8,
       "top": 260,
       "t": { "Touge": 227.9, "Mountain": 111.4, "Wangan": 191.7, "Circuit": 88.2 },
-      "overall": 1.133,
-      "rank": { "Touge": 28, "Mountain": 22, "Wangan": 17, "Circuit": 20, "Overall": 21 }
+      "overall": 1.136,
+      "rank": { "Touge": 29, "Mountain": 22, "Wangan": 17, "Circuit": 20, "Overall": 21 }
     },
     {
       "n": "Subaru Impreza WRX STI (GC8)",
@@ -394,8 +394,8 @@
       "z": 5.1,
       "top": 230,
       "t": { "Touge": 225, "Mountain": 110.8, "Wangan": 196.2, "Circuit": 88.3 },
-      "overall": 1.135,
-      "rank": { "Touge": 16, "Mountain": 18, "Wangan": 29, "Circuit": 22, "Overall": 22 }
+      "overall": 1.138,
+      "rank": { "Touge": 17, "Mountain": 18, "Wangan": 29, "Circuit": 22, "Overall": 22 }
     },
     {
       "n": "Autech Stagea 260RS (WGNC34)",
@@ -412,8 +412,8 @@
       "z": 5.1,
       "top": 250,
       "t": { "Touge": 230.3, "Mountain": 111.9, "Wangan": 192.5, "Circuit": 88.4 },
-      "overall": 1.139,
-      "rank": { "Touge": 34, "Mountain": 24, "Wangan": 19, "Circuit": 23, "Overall": 23 }
+      "overall": 1.142,
+      "rank": { "Touge": 35, "Mountain": 24, "Wangan": 19, "Circuit": 23, "Overall": 23 }
     },
     {
       "n": "Ferrari Testarossa (F113)",
@@ -430,7 +430,7 @@
       "z": 4.9,
       "top": 290,
       "t": { "Touge": 233.2, "Mountain": 112.4, "Wangan": 187.7, "Circuit": 89.4 },
-      "overall": 1.14,
+      "overall": 1.143,
       "rank": { "Touge": 40, "Mountain": 26, "Wangan": 11, "Circuit": 25, "Overall": 24 }
     },
     {
@@ -448,8 +448,8 @@
       "z": 5.2,
       "top": 246,
       "t": { "Touge": 227.8, "Mountain": 112, "Wangan": 194.7, "Circuit": 89.1 },
-      "overall": 1.142,
-      "rank": { "Touge": 26, "Mountain": 25, "Wangan": 24, "Circuit": 24, "Overall": 25 }
+      "overall": 1.145,
+      "rank": { "Touge": 27, "Mountain": 25, "Wangan": 24, "Circuit": 24, "Overall": 25 }
     },
     {
       "n": "Honda Integra Type R (DC2)",
@@ -466,8 +466,8 @@
       "z": 6.4,
       "top": 233,
       "t": { "Touge": 225.2, "Mountain": 111.9, "Wangan": 199.9, "Circuit": 89.4 },
-      "overall": 1.147,
-      "rank": { "Touge": 18, "Mountain": 23, "Wangan": 39, "Circuit": 26, "Overall": 26 }
+      "overall": 1.15,
+      "rank": { "Touge": 19, "Mountain": 23, "Wangan": 39, "Circuit": 26, "Overall": 26 }
     },
     {
       "n": "Toyota MR2 GT-S (SW20)",
@@ -484,8 +484,8 @@
       "z": 5.2,
       "top": 240,
       "t": { "Touge": 227.9, "Mountain": 113.2, "Wangan": 196, "Circuit": 89.5 },
-      "overall": 1.148,
-      "rank": { "Touge": 27, "Mountain": 33, "Wangan": 28, "Circuit": 27, "Overall": 27 }
+      "overall": 1.151,
+      "rank": { "Touge": 28, "Mountain": 33, "Wangan": 28, "Circuit": 27, "Overall": 27 }
     },
     {
       "n": "Honda Civic Type R (EK9)",
@@ -502,8 +502,8 @@
       "z": 6.4,
       "top": 228,
       "t": { "Touge": 226, "Mountain": 112.8, "Wangan": 199.5, "Circuit": 89.8 },
-      "overall": 1.151,
-      "rank": { "Touge": 21, "Mountain": 28, "Wangan": 36, "Circuit": 30, "Overall": 28 }
+      "overall": 1.154,
+      "rank": { "Touge": 22, "Mountain": 28, "Wangan": 36, "Circuit": 30, "Overall": 28 }
     },
     {
       "n": "Mercedes 190E 2.5-16 Evo II (W201)",
@@ -520,8 +520,8 @@
       "z": 6,
       "top": 250,
       "t": { "Touge": 227.9, "Mountain": 113, "Wangan": 198.3, "Circuit": 89.8 },
-      "overall": 1.152,
-      "rank": { "Touge": 29, "Mountain": 31, "Wangan": 35, "Circuit": 29, "Overall": 29 }
+      "overall": 1.155,
+      "rank": { "Touge": 30, "Mountain": 31, "Wangan": 35, "Circuit": 29, "Overall": 29 }
     },
     {
       "n": "BMW M3 (E36)",
@@ -538,7 +538,7 @@
       "z": 5.7,
       "top": 250,
       "t": { "Touge": 233.3, "Mountain": 113.1, "Wangan": 193.2, "Circuit": 90.3 },
-      "overall": 1.153,
+      "overall": 1.156,
       "rank": { "Touge": 41, "Mountain": 32, "Wangan": 22, "Circuit": 35, "Overall": 30 }
     },
     {
@@ -556,8 +556,8 @@
       "z": 5.3,
       "top": 220,
       "t": { "Touge": 227, "Mountain": 112.6, "Wangan": 199.9, "Circuit": 90.1 },
-      "overall": 1.153,
-      "rank": { "Touge": 25, "Mountain": 27, "Wangan": 38, "Circuit": 33, "Overall": 31 }
+      "overall": 1.156,
+      "rank": { "Touge": 26, "Mountain": 27, "Wangan": 38, "Circuit": 33, "Overall": 31 }
     },
     {
       "n": "Toyota Altezza RS200 Z Edition (SXE10)",
@@ -574,8 +574,8 @@
       "z": 6,
       "top": 230,
       "t": { "Touge": 226.7, "Mountain": 112.8, "Wangan": 200.7, "Circuit": 89.6 },
-      "overall": 1.153,
-      "rank": { "Touge": 23, "Mountain": 29, "Wangan": 42, "Circuit": 28, "Overall": 32 }
+      "overall": 1.157,
+      "rank": { "Touge": 24, "Mountain": 29, "Wangan": 42, "Circuit": 28, "Overall": 32 }
     },
     {
       "n": "Nissan Silvia K's (S14)",
@@ -592,8 +592,8 @@
       "z": 6,
       "top": 235,
       "t": { "Touge": 229, "Mountain": 113.5, "Wangan": 197.9, "Circuit": 89.8 },
-      "overall": 1.154,
-      "rank": { "Touge": 30, "Mountain": 35, "Wangan": 34, "Circuit": 31, "Overall": 33 }
+      "overall": 1.158,
+      "rank": { "Touge": 31, "Mountain": 35, "Wangan": 34, "Circuit": 31, "Overall": 33 }
     },
     {
       "n": "Honda CR-X SiR (EF8)",
@@ -610,8 +610,8 @@
       "z": 6.7,
       "top": 243,
       "t": { "Touge": 226.3, "Mountain": 113, "Wangan": 202.9, "Circuit": 90.4 },
-      "overall": 1.159,
-      "rank": { "Touge": 22, "Mountain": 30, "Wangan": 46, "Circuit": 36, "Overall": 34 }
+      "overall": 1.162,
+      "rank": { "Touge": 23, "Mountain": 30, "Wangan": 46, "Circuit": 36, "Overall": 34 }
     },
     {
       "n": "Mitsubishi GTO Twin Turbo (Z16A)",
@@ -628,7 +628,7 @@
       "z": 5.3,
       "top": 268,
       "t": { "Touge": 235, "Mountain": 113.6, "Wangan": 195.9, "Circuit": 89.9 },
-      "overall": 1.159,
+      "overall": 1.162,
       "rank": { "Touge": 47, "Mountain": 36, "Wangan": 26, "Circuit": 32, "Overall": 35 }
     },
     {
@@ -646,8 +646,8 @@
       "z": 5.5,
       "top": 230,
       "t": { "Touge": 229, "Mountain": 114.1, "Wangan": 199.8, "Circuit": 90.3 },
-      "overall": 1.16,
-      "rank": { "Touge": 32, "Mountain": 38, "Wangan": 37, "Circuit": 34, "Overall": 36 }
+      "overall": 1.163,
+      "rank": { "Touge": 33, "Mountain": 38, "Wangan": 37, "Circuit": 34, "Overall": 36 }
     },
     {
       "n": "Nissan Pulsar GTI-R (RNN14)",
@@ -664,8 +664,8 @@
       "z": 5.3,
       "top": 232,
       "t": { "Touge": 229, "Mountain": 113.3, "Wangan": 201.6, "Circuit": 90.6 },
-      "overall": 1.162,
-      "rank": { "Touge": 33, "Mountain": 34, "Wangan": 44, "Circuit": 37, "Overall": 37 }
+      "overall": 1.165,
+      "rank": { "Touge": 34, "Mountain": 34, "Wangan": 44, "Circuit": 37, "Overall": 37 }
     },
     {
       "n": "Toyota Soarer (JZZ30)",
@@ -682,7 +682,7 @@
       "z": 6.3,
       "top": 250,
       "t": { "Touge": 236, "Mountain": 113.9, "Wangan": 196, "Circuit": 90.9 },
-      "overall": 1.165,
+      "overall": 1.168,
       "rank": { "Touge": 50, "Mountain": 37, "Wangan": 27, "Circuit": 38, "Overall": 38 }
     },
     {
@@ -700,7 +700,7 @@
       "z": 5.9,
       "top": 250,
       "t": { "Touge": 238.5, "Mountain": 114.9, "Wangan": 195.2, "Circuit": 91.3 },
-      "overall": 1.17,
+      "overall": 1.173,
       "rank": { "Touge": 59, "Mountain": 41, "Wangan": 25, "Circuit": 41, "Overall": 39 }
     },
     {
@@ -718,7 +718,7 @@
       "z": 6.3,
       "top": 225,
       "t": { "Touge": 232.5, "Mountain": 114.6, "Wangan": 200.8, "Circuit": 91.9 },
-      "overall": 1.172,
+      "overall": 1.175,
       "rank": { "Touge": 38, "Mountain": 39, "Wangan": 43, "Circuit": 43, "Overall": 40 }
     },
     {
@@ -736,7 +736,7 @@
       "z": 5.8,
       "top": 272,
       "t": { "Touge": 235.5, "Mountain": 114.7, "Wangan": 200, "Circuit": 91.5 },
-      "overall": 1.174,
+      "overall": 1.177,
       "rank": { "Touge": 48, "Mountain": 40, "Wangan": 40, "Circuit": 42, "Overall": 41 }
     },
     {
@@ -754,7 +754,7 @@
       "z": 6.4,
       "top": 250,
       "t": { "Touge": 239.2, "Mountain": 115.5, "Wangan": 197.6, "Circuit": 91.3 },
-      "overall": 1.176,
+      "overall": 1.18,
       "rank": { "Touge": 60, "Mountain": 42, "Wangan": 33, "Circuit": 40, "Overall": 42 }
     },
     {
@@ -772,7 +772,7 @@
       "z": 6.3,
       "top": 235,
       "t": { "Touge": 232.1, "Mountain": 115.8, "Wangan": 202.2, "Circuit": 92.2 },
-      "overall": 1.178,
+      "overall": 1.181,
       "rank": { "Touge": 37, "Mountain": 44, "Wangan": 45, "Circuit": 46, "Overall": 43 }
     },
     {
@@ -790,7 +790,7 @@
       "z": 6.9,
       "top": 200,
       "t": { "Touge": 234.5, "Mountain": 115.6, "Wangan": 203.3, "Circuit": 91.3 },
-      "overall": 1.179,
+      "overall": 1.182,
       "rank": { "Touge": 46, "Mountain": 43, "Wangan": 47, "Circuit": 39, "Overall": 44 }
     },
     {
@@ -808,26 +808,8 @@
       "z": 6.4,
       "top": 250,
       "t": { "Touge": 241.2, "Mountain": 116, "Wangan": 196.4, "Circuit": 91.9 },
-      "overall": 1.18,
+      "overall": 1.183,
       "rank": { "Touge": 64, "Mountain": 46, "Wangan": 31, "Circuit": 44, "Overall": 45 }
-    },
-    {
-      "n": "Eunos Cosmo (JC)",
-      "y": 1990,
-      "q": 280,
-      "ig": false,
-      "ps": 300,
-      "kg": 1620,
-      "pw": 185,
-      "mu": 0.84,
-      "grip": 28,
-      "dt": "RWD",
-      "deliv": "rotary-t",
-      "z": 6.5,
-      "top": 250,
-      "t": { "Touge": 242.9, "Mountain": 116.3, "Wangan": 197.1, "Circuit": 92.2 },
-      "overall": 1.185,
-      "rank": { "Touge": 68, "Mountain": 48, "Wangan": 32, "Circuit": 45, "Overall": 46 }
     },
     {
       "n": "Nissan 180SX (RPS13)",
@@ -844,8 +826,26 @@
       "z": 6.3,
       "top": 225,
       "t": { "Touge": 233.5, "Mountain": 116.1, "Wangan": 204.9, "Circuit": 92.2 },
-      "overall": 1.185,
-      "rank": { "Touge": 44, "Mountain": 47, "Wangan": 49, "Circuit": 47, "Overall": 47 }
+      "overall": 1.188,
+      "rank": { "Touge": 44, "Mountain": 47, "Wangan": 49, "Circuit": 47, "Overall": 46 }
+    },
+    {
+      "n": "Eunos Cosmo (JC)",
+      "y": 1990,
+      "q": 280,
+      "ig": false,
+      "ps": 300,
+      "kg": 1620,
+      "pw": 185,
+      "mu": 0.84,
+      "grip": 28,
+      "dt": "RWD",
+      "deliv": "rotary-t",
+      "z": 6.5,
+      "top": 250,
+      "t": { "Touge": 242.9, "Mountain": 116.3, "Wangan": 197.1, "Circuit": 92.2 },
+      "overall": 1.188,
+      "rank": { "Touge": 68, "Mountain": 48, "Wangan": 32, "Circuit": 45, "Overall": 47 }
     },
     {
       "n": "Toyota Starlet Glanza V (EP91)",
@@ -862,8 +862,8 @@
       "z": 7,
       "top": 218,
       "t": { "Touge": 229, "Mountain": 115.8, "Wangan": 209.5, "Circuit": 92.7 },
-      "overall": 1.187,
-      "rank": { "Touge": 31, "Mountain": 45, "Wangan": 54, "Circuit": 50, "Overall": 48 }
+      "overall": 1.19,
+      "rank": { "Touge": 32, "Mountain": 45, "Wangan": 54, "Circuit": 50, "Overall": 48 }
     },
     {
       "n": "Honda Civic SiR-II (EG6)",
@@ -880,7 +880,7 @@
       "z": 6.8,
       "top": 215,
       "t": { "Touge": 233.1, "Mountain": 116.6, "Wangan": 204.8, "Circuit": 92.7 },
-      "overall": 1.187,
+      "overall": 1.19,
       "rank": { "Touge": 39, "Mountain": 51, "Wangan": 48, "Circuit": 49, "Overall": 49 }
     },
     {
@@ -898,7 +898,7 @@
       "z": 5.7,
       "top": 220,
       "t": { "Touge": 233.5, "Mountain": 116.4, "Wangan": 208, "Circuit": 92.5 },
-      "overall": 1.191,
+      "overall": 1.194,
       "rank": { "Touge": 43, "Mountain": 49, "Wangan": 51, "Circuit": 48, "Overall": 50 }
     },
     {
@@ -916,7 +916,7 @@
       "z": 6.6,
       "top": 250,
       "t": { "Touge": 242.2, "Mountain": 116.6, "Wangan": 200, "Circuit": 93 },
-      "overall": 1.192,
+      "overall": 1.195,
       "rank": { "Touge": 67, "Mountain": 50, "Wangan": 41, "Circuit": 51, "Overall": 51 }
     },
     {
@@ -934,7 +934,7 @@
       "z": 6.7,
       "top": 230,
       "t": { "Touge": 240.7, "Mountain": 118.6, "Wangan": 208.4, "Circuit": 94.4 },
-      "overall": 1.212,
+      "overall": 1.215,
       "rank": { "Touge": 62, "Mountain": 55, "Wangan": 52, "Circuit": 56, "Overall": 52 }
     },
     {
@@ -952,7 +952,7 @@
       "z": 6.9,
       "top": 215,
       "t": { "Touge": 241.4, "Mountain": 118.9, "Wangan": 207.7, "Circuit": 94.4 },
-      "overall": 1.212,
+      "overall": 1.216,
       "rank": { "Touge": 65, "Mountain": 56, "Wangan": 50, "Circuit": 57, "Overall": 53 }
     },
     {
@@ -970,7 +970,7 @@
       "z": 7.1,
       "top": 215,
       "t": { "Touge": 237.9, "Mountain": 117.9, "Wangan": 212.7, "Circuit": 94.1 },
-      "overall": 1.213,
+      "overall": 1.216,
       "rank": { "Touge": 55, "Mountain": 52, "Wangan": 56, "Circuit": 53, "Overall": 54 }
     },
     {
@@ -988,7 +988,7 @@
       "z": 6.9,
       "top": 220,
       "t": { "Touge": 241.8, "Mountain": 118.4, "Wangan": 208.8, "Circuit": 94.2 },
-      "overall": 1.213,
+      "overall": 1.216,
       "rank": { "Touge": 66, "Mountain": 53, "Wangan": 53, "Circuit": 54, "Overall": 55 }
     },
     {
@@ -1006,7 +1006,7 @@
       "z": 7.8,
       "top": 195,
       "t": { "Touge": 233.6, "Mountain": 119.9, "Wangan": 217.7, "Circuit": 93.6 },
-      "overall": 1.218,
+      "overall": 1.221,
       "rank": { "Touge": 45, "Mountain": 58, "Wangan": 59, "Circuit": 52, "Overall": 56 }
     },
     {
@@ -1024,7 +1024,7 @@
       "z": 6.5,
       "top": 210,
       "t": { "Touge": 236.2, "Mountain": 119.9, "Wangan": 214.3, "Circuit": 94.4 },
-      "overall": 1.219,
+      "overall": 1.222,
       "rank": { "Touge": 51, "Mountain": 59, "Wangan": 57, "Circuit": 55, "Overall": 57 }
     },
     {
@@ -1042,7 +1042,7 @@
       "z": 7.2,
       "top": 188,
       "t": { "Touge": 232, "Mountain": 118.5, "Wangan": 217.8, "Circuit": 95.6 },
-      "overall": 1.219,
+      "overall": 1.222,
       "rank": { "Touge": 36, "Mountain": 54, "Wangan": 60, "Circuit": 59, "Overall": 58 }
     },
     {
@@ -1060,7 +1060,7 @@
       "z": 7.2,
       "top": 220,
       "t": { "Touge": 244.3, "Mountain": 120.2, "Wangan": 210.2, "Circuit": 95.5 },
-      "overall": 1.227,
+      "overall": 1.23,
       "rank": { "Touge": 70, "Mountain": 60, "Wangan": 55, "Circuit": 58, "Overall": 59 }
     },
     {
@@ -1078,7 +1078,7 @@
       "z": 7.3,
       "top": 185,
       "t": { "Touge": 236, "Mountain": 119.6, "Wangan": 218, "Circuit": 95.7 },
-      "overall": 1.228,
+      "overall": 1.231,
       "rank": { "Touge": 49, "Mountain": 57, "Wangan": 61, "Circuit": 60, "Overall": 60 }
     },
     {
@@ -1096,7 +1096,7 @@
       "z": 7.4,
       "top": 204,
       "t": { "Touge": 240.9, "Mountain": 121.4, "Wangan": 216.4, "Circuit": 96.2 },
-      "overall": 1.237,
+      "overall": 1.241,
       "rank": { "Touge": 63, "Mountain": 61, "Wangan": 58, "Circuit": 61, "Overall": 61 }
     },
     {
@@ -1114,7 +1114,7 @@
       "z": 7.6,
       "top": 180,
       "t": { "Touge": 236.6, "Mountain": 121.7, "Wangan": 224.7, "Circuit": 97.3 },
-      "overall": 1.249,
+      "overall": 1.252,
       "rank": { "Touge": 53, "Mountain": 62, "Wangan": 65, "Circuit": 62, "Overall": 62 }
     },
     {
@@ -1132,7 +1132,7 @@
       "z": 7.5,
       "top": 210,
       "t": { "Touge": 251.6, "Mountain": 126, "Wangan": 221.7, "Circuit": 99.3 },
-      "overall": 1.28,
+      "overall": 1.283,
       "rank": { "Touge": 74, "Mountain": 70, "Wangan": 62, "Circuit": 64, "Overall": 63 }
     },
     {
@@ -1150,7 +1150,7 @@
       "z": 9.1,
       "top": 150,
       "t": { "Touge": 233.3, "Mountain": 124.2, "Wangan": 241.1, "Circuit": 100.2 },
-      "overall": 1.285,
+      "overall": 1.288,
       "rank": { "Touge": 42, "Mountain": 63, "Wangan": 71, "Circuit": 65, "Overall": 64 }
     },
     {
@@ -1168,7 +1168,7 @@
       "z": 9.4,
       "top": 178,
       "t": { "Touge": 243.8, "Mountain": 124.7, "Wangan": 235.8, "Circuit": 99 },
-      "overall": 1.287,
+      "overall": 1.291,
       "rank": { "Touge": 69, "Mountain": 64, "Wangan": 68, "Circuit": 63, "Overall": 65 }
     },
     {
@@ -1186,7 +1186,7 @@
       "z": 8,
       "top": 210,
       "t": { "Touge": 258.7, "Mountain": 127, "Wangan": 223.1, "Circuit": 100.8 },
-      "overall": 1.298,
+      "overall": 1.301,
       "rank": { "Touge": 78, "Mountain": 72, "Wangan": 63, "Circuit": 67, "Overall": 66 }
     },
     {
@@ -1204,7 +1204,7 @@
       "z": 9.2,
       "top": 150,
       "t": { "Touge": 238.4, "Mountain": 125.8, "Wangan": 239.8, "Circuit": 101.9 },
-      "overall": 1.299,
+      "overall": 1.302,
       "rank": { "Touge": 56, "Mountain": 66, "Wangan": 70, "Circuit": 69, "Overall": 67 }
     },
     {
@@ -1222,7 +1222,7 @@
       "z": 9.4,
       "top": 150,
       "t": { "Touge": 238.5, "Mountain": 125.9, "Wangan": 241.6, "Circuit": 102 },
-      "overall": 1.302,
+      "overall": 1.306,
       "rank": { "Touge": 58, "Mountain": 68, "Wangan": 72, "Circuit": 70, "Overall": 68 }
     },
     {
@@ -1240,7 +1240,7 @@
       "z": 9.1,
       "top": 150,
       "t": { "Touge": 239.5, "Mountain": 125.9, "Wangan": 247.1, "Circuit": 100.3 },
-      "overall": 1.306,
+      "overall": 1.31,
       "rank": { "Touge": 61, "Mountain": 67, "Wangan": 77, "Circuit": 66, "Overall": 69 }
     },
     {
@@ -1258,7 +1258,7 @@
       "z": 10.6,
       "top": 150,
       "t": { "Touge": 238.5, "Mountain": 125.5, "Wangan": 246.6, "Circuit": 102.9 },
-      "overall": 1.312,
+      "overall": 1.315,
       "rank": { "Touge": 57, "Mountain": 65, "Wangan": 76, "Circuit": 75, "Overall": 70 }
     },
     {
@@ -1276,7 +1276,7 @@
       "z": 7.8,
       "top": 220,
       "t": { "Touge": 262.4, "Mountain": 128.6, "Wangan": 223.6, "Circuit": 102.3 },
-      "overall": 1.312,
+      "overall": 1.316,
       "rank": { "Touge": 83, "Mountain": 74, "Wangan": 64, "Circuit": 72, "Overall": 71 }
     },
     {
@@ -1294,7 +1294,7 @@
       "z": 9.5,
       "top": 135,
       "t": { "Touge": 236.3, "Mountain": 126.6, "Wangan": 249.1, "Circuit": 102.1 },
-      "overall": 1.313,
+      "overall": 1.316,
       "rank": { "Touge": 52, "Mountain": 71, "Wangan": 78, "Circuit": 71, "Overall": 72 }
     },
     {
@@ -1312,7 +1312,7 @@
       "z": 8.6,
       "top": 195,
       "t": { "Touge": 262.1, "Mountain": 128.7, "Wangan": 225.8, "Circuit": 102.8 },
-      "overall": 1.317,
+      "overall": 1.32,
       "rank": { "Touge": 82, "Mountain": 75, "Wangan": 66, "Circuit": 74, "Overall": 73 }
     },
     {
@@ -1330,7 +1330,7 @@
       "z": 9.9,
       "top": 152,
       "t": { "Touge": 236.7, "Mountain": 126, "Wangan": 254, "Circuit": 101.7 },
-      "overall": 1.318,
+      "overall": 1.321,
       "rank": { "Touge": 54, "Mountain": 69, "Wangan": 79, "Circuit": 68, "Overall": 74 }
     },
     {
@@ -1348,7 +1348,7 @@
       "z": 8.5,
       "top": 185,
       "t": { "Touge": 259.5, "Mountain": 129.3, "Wangan": 229.7, "Circuit": 103 },
-      "overall": 1.322,
+      "overall": 1.326,
       "rank": { "Touge": 79, "Mountain": 77, "Wangan": 67, "Circuit": 76, "Overall": 75 }
     },
     {
@@ -1366,7 +1366,7 @@
       "z": 10,
       "top": 150,
       "t": { "Touge": 244.5, "Mountain": 128.9, "Wangan": 245.8, "Circuit": 102.4 },
-      "overall": 1.325,
+      "overall": 1.328,
       "rank": { "Touge": 71, "Mountain": 76, "Wangan": 75, "Circuit": 73, "Overall": 76 }
     },
     {
@@ -1384,7 +1384,7 @@
       "z": 10,
       "top": 160,
       "t": { "Touge": 246.7, "Mountain": 128.3, "Wangan": 244.1, "Circuit": 104.1 },
-      "overall": 1.329,
+      "overall": 1.332,
       "rank": { "Touge": 72, "Mountain": 73, "Wangan": 73, "Circuit": 79, "Overall": 77 }
     },
     {
@@ -1402,7 +1402,7 @@
       "z": 9.2,
       "top": 175,
       "t": { "Touge": 266.7, "Mountain": 132.1, "Wangan": 236.1, "Circuit": 104.1 },
-      "overall": 1.351,
+      "overall": 1.354,
       "rank": { "Touge": 85, "Mountain": 78, "Wangan": 69, "Circuit": 78, "Overall": 78 }
     },
     {
@@ -1420,7 +1420,7 @@
       "z": 10.6,
       "top": 155,
       "t": { "Touge": 251.2, "Mountain": 132.3, "Wangan": 256.7, "Circuit": 103.5 },
-      "overall": 1.362,
+      "overall": 1.365,
       "rank": { "Touge": 73, "Mountain": 80, "Wangan": 80, "Circuit": 77, "Overall": 79 }
     },
     {
@@ -1438,7 +1438,7 @@
       "z": 9.6,
       "top": 161,
       "t": { "Touge": 261.2, "Mountain": 132.9, "Wangan": 245.2, "Circuit": 106.9 },
-      "overall": 1.369,
+      "overall": 1.372,
       "rank": { "Touge": 81, "Mountain": 81, "Wangan": 74, "Circuit": 81, "Overall": 80 }
     },
     {
@@ -1456,7 +1456,7 @@
       "z": 10.5,
       "top": 141,
       "t": { "Touge": 252.6, "Mountain": 132.2, "Wangan": 259.7, "Circuit": 108.4 },
-      "overall": 1.383,
+      "overall": 1.387,
       "rank": { "Touge": 75, "Mountain": 79, "Wangan": 81, "Circuit": 83, "Overall": 81 }
     },
     {
@@ -1474,7 +1474,7 @@
       "z": 14.6,
       "top": 145,
       "t": { "Touge": 253, "Mountain": 135, "Wangan": 268.6, "Circuit": 106.5 },
-      "overall": 1.398,
+      "overall": 1.402,
       "rank": { "Touge": 76, "Mountain": 83, "Wangan": 84, "Circuit": 80, "Overall": 82 }
     },
     {
@@ -1492,7 +1492,7 @@
       "z": 11.8,
       "top": 140,
       "t": { "Touge": 253, "Mountain": 136.4, "Wangan": 264.3, "Circuit": 109.1 },
-      "overall": 1.404,
+      "overall": 1.407,
       "rank": { "Touge": 77, "Mountain": 84, "Wangan": 82, "Circuit": 84, "Overall": 83 }
     },
     {
@@ -1510,7 +1510,7 @@
       "z": 11.9,
       "top": 149,
       "t": { "Touge": 261.1, "Mountain": 134.3, "Wangan": 265.6, "Circuit": 107.4 },
-      "overall": 1.405,
+      "overall": 1.408,
       "rank": { "Touge": 80, "Mountain": 82, "Wangan": 83, "Circuit": 82, "Overall": 84 }
     },
     {
@@ -1528,7 +1528,7 @@
       "z": 19.6,
       "top": 124,
       "t": { "Touge": 266.4, "Mountain": 147, "Wangan": 297.3, "Circuit": 117.3 },
-      "overall": 1.523,
+      "overall": 1.527,
       "rank": { "Touge": 84, "Mountain": 85, "Wangan": 85, "Circuit": 85, "Overall": 85 }
     }
   ]
