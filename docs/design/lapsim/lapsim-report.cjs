@@ -691,3 +691,30 @@ PREDICT.forEach((p) => {
       lap(c, LEGEND).toFixed(1).padStart(11),
   )
 })
+
+// ---- acceleration model check: our 0-100 vs each car's PUBLISHED 0-100 ----
+const accRows = CARS.filter((c) => c.z).map((c) => {
+  const t = zeroTo100(c)
+  return { n: c.n, dt: c.dt, pub: c.z, mod: t, err: ((t - c.z) / c.z) * 100 }
+})
+accRows.sort((a, b) => a.err - b.err)
+console.error('')
+console.error('# 0-100 km/h: model vs published')
+accRows.forEach((r) =>
+  console.error(
+    '  ' +
+      r.n.slice(0, 38).padEnd(39) +
+      r.dt.padEnd(4) +
+      r.pub.toFixed(1).padStart(6) +
+      r.mod.toFixed(1).padStart(7) +
+      r.err.toFixed(0).padStart(6) +
+      '%',
+  ),
+)
+const mAvg = (a) => a.reduce((x, y) => x + y, 0) / a.length
+console.error('  MEAN ' + mAvg(accRows.map((r) => r.err)).toFixed(1) + '%  n=' + accRows.length)
+;['AWD', 'RWD', 'FWD'].forEach((d) => {
+  const grp = accRows.filter((r) => r.dt === d)
+  if (grp.length)
+    console.error('   ' + d + ' ' + mAvg(grp.map((r) => r.err)).toFixed(1) + '% n=' + grp.length)
+})
