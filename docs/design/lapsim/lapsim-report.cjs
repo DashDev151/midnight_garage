@@ -49,6 +49,10 @@ function tierDelta(t) {
           : 0.075
 }
 function gripMu(c) {
+  // A measured lateral g is authoritative where we have one: it is a real per-car
+  // spec like power or kerb weight, and no formula over year, width and mass can
+  // out-predict a measurement. The formula below is the fallback for the rest.
+  if (c.lg) return c.lg
   const w = tyreW(c),
     cm = eraRubber(c.y) + tierDelta(compoundOf(c))
   const we = Math.max(0.4, Math.min(1, (cm - 0.7) / 0.3))

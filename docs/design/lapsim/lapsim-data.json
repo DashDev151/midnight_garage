@@ -53,7 +53,7 @@
       "top": 295,
       "t": { "Touge": 218.7, "Mountain": 106.9, "Wangan": 180.8, "Circuit": 84.7 },
       "overall": 1.083,
-      "rank": { "Touge": 8, "Mountain": 5, "Wangan": 3, "Circuit": 5, "Overall": 3 }
+      "rank": { "Touge": 9, "Mountain": 5, "Wangan": 3, "Circuit": 5, "Overall": 3 }
     },
     {
       "n": "Mitsubishi Lancer Evo VI Tommi Makinen (CP9A)",
@@ -125,7 +125,7 @@
       "top": 255,
       "t": { "Touge": 218.3, "Mountain": 107.7, "Wangan": 185.6, "Circuit": 85.6 },
       "overall": 1.094,
-      "rank": { "Touge": 7, "Mountain": 8, "Wangan": 6, "Circuit": 8, "Overall": 7 }
+      "rank": { "Touge": 8, "Mountain": 9, "Wangan": 6, "Circuit": 9, "Overall": 7 }
     },
     {
       "n": "Mitsubishi Lancer Evo VIII MR (CT9A)",
@@ -143,7 +143,25 @@
       "top": 252,
       "t": { "Touge": 218.1, "Mountain": 107.3, "Wangan": 187.2, "Circuit": 85.2 },
       "overall": 1.094,
-      "rank": { "Touge": 6, "Mountain": 7, "Wangan": 8, "Circuit": 7, "Overall": 8 }
+      "rank": { "Touge": 6, "Mountain": 8, "Wangan": 8, "Circuit": 7, "Overall": 8 }
+    },
+    {
+      "n": "Nissan Skyline GT-R (BNR32)",
+      "y": 1989,
+      "q": 280,
+      "ig": true,
+      "ps": 320,
+      "kg": 1430,
+      "pw": 224,
+      "mu": 0.96,
+      "grip": 41,
+      "dt": "AWD",
+      "deliv": "twin-t",
+      "z": 4.7,
+      "top": 250,
+      "t": { "Touge": 218.3, "Mountain": 107.2, "Wangan": 188.8, "Circuit": 85.5 },
+      "overall": 1.098,
+      "rank": { "Touge": 7, "Mountain": 7, "Wangan": 13, "Circuit": 8, "Overall": 9 }
     },
     {
       "n": "Nissan Skyline GT-R (BCNR33)",
@@ -161,7 +179,7 @@
       "top": 250,
       "t": { "Touge": 222.9, "Mountain": 108.7, "Wangan": 188.9, "Circuit": 86.2 },
       "overall": 1.11,
-      "rank": { "Touge": 13, "Mountain": 9, "Wangan": 13, "Circuit": 9, "Overall": 9 }
+      "rank": { "Touge": 14, "Mountain": 10, "Wangan": 14, "Circuit": 10, "Overall": 10 }
     },
     {
       "n": "Honda NSX-R (NA1)",
@@ -179,7 +197,7 @@
       "top": 262,
       "t": { "Touge": 221.6, "Mountain": 109.7, "Wangan": 187.5, "Circuit": 87.3 },
       "overall": 1.112,
-      "rank": { "Touge": 10, "Mountain": 12, "Wangan": 10, "Circuit": 13, "Overall": 10 }
+      "rank": { "Touge": 11, "Mountain": 13, "Wangan": 10, "Circuit": 14, "Overall": 11 }
     },
     {
       "n": "Honda S2000 (AP1)",
@@ -197,7 +215,7 @@
       "top": 240,
       "t": { "Touge": 218.9, "Mountain": 108.9, "Wangan": 192.9, "Circuit": 86.7 },
       "overall": 1.113,
-      "rank": { "Touge": 9, "Mountain": 10, "Wangan": 20, "Circuit": 10, "Overall": 11 }
+      "rank": { "Touge": 10, "Mountain": 11, "Wangan": 20, "Circuit": 11, "Overall": 12 }
     },
     {
       "n": "Toyota Supra RZ (JZA80)",
@@ -215,7 +233,7 @@
       "top": 285,
       "t": { "Touge": 226.9, "Mountain": 110.1, "Wangan": 187.9, "Circuit": 87.2 },
       "overall": 1.12,
-      "rank": { "Touge": 23, "Mountain": 14, "Wangan": 12, "Circuit": 11, "Overall": 12 }
+      "rank": { "Touge": 24, "Mountain": 15, "Wangan": 12, "Circuit": 12, "Overall": 13 }
     },
     {
       "n": "Nissan 350Z (Z33)",
@@ -233,7 +251,7 @@
       "top": 249,
       "t": { "Touge": 225.2, "Mountain": 109.8, "Wangan": 190.7, "Circuit": 87.3 },
       "overall": 1.122,
-      "rank": { "Touge": 16, "Mountain": 13, "Wangan": 15, "Circuit": 12, "Overall": 13 }
+      "rank": { "Touge": 17, "Mountain": 14, "Wangan": 16, "Circuit": 13, "Overall": 14 }
     },
     {
       "n": "Nissan Silvia Spec-R (S15)",
@@ -251,7 +269,7 @@
       "top": 245,
       "t": { "Touge": 223.8, "Mountain": 110.7, "Wangan": 189.7, "Circuit": 87.7 },
       "overall": 1.122,
-      "rank": { "Touge": 14, "Mountain": 15, "Wangan": 14, "Circuit": 14, "Overall": 14 }
+      "rank": { "Touge": 15, "Mountain": 16, "Wangan": 15, "Circuit": 15, "Overall": 15 }
     },
     {
       "n": "Mazda RX-8 (SE3P)",
@@ -269,7 +287,7 @@
       "top": 235,
       "t": { "Touge": 221.9, "Mountain": 109.3, "Wangan": 194.3, "Circuit": 87.8 },
       "overall": 1.123,
-      "rank": { "Touge": 11, "Mountain": 11, "Wangan": 23, "Circuit": 15, "Overall": 15 }
+      "rank": { "Touge": 12, "Mountain": 12, "Wangan": 23, "Circuit": 16, "Overall": 16 }
     },
     {
       "n": "Lamborghini Countach LP5000 QV",
@@ -287,7 +305,7 @@
       "top": 298,
       "t": { "Touge": 231.4, "Mountain": 110.8, "Wangan": 184.3, "Circuit": 88.1 },
       "overall": 1.125,
-      "rank": { "Touge": 35, "Mountain": 16, "Wangan": 4, "Circuit": 18, "Overall": 16 }
+      "rank": { "Touge": 35, "Mountain": 17, "Wangan": 4, "Circuit": 19, "Overall": 17 }
     },
     {
       "n": "Subaru Impreza WRX STI (GDB)",
@@ -305,7 +323,7 @@
       "top": 238,
       "t": { "Touge": 225.8, "Mountain": 111.2, "Wangan": 192.4, "Circuit": 88.3 },
       "overall": 1.131,
-      "rank": { "Touge": 18, "Mountain": 20, "Wangan": 17, "Circuit": 20, "Overall": 17 }
+      "rank": { "Touge": 19, "Mountain": 21, "Wangan": 18, "Circuit": 21, "Overall": 18 }
     },
     {
       "n": "Honda Integra Type R (DC5)",
@@ -323,7 +341,7 @@
       "top": 241,
       "t": { "Touge": 222.5, "Mountain": 111, "Wangan": 196.3, "Circuit": 88 },
       "overall": 1.132,
-      "rank": { "Touge": 12, "Mountain": 18, "Wangan": 30, "Circuit": 16, "Overall": 18 }
+      "rank": { "Touge": 13, "Mountain": 19, "Wangan": 30, "Circuit": 17, "Overall": 19 }
     },
     {
       "n": "Mazda RX-7 (FD3S)",
@@ -341,7 +359,7 @@
       "top": 250,
       "t": { "Touge": 225.8, "Mountain": 111.1, "Wangan": 193.2, "Circuit": 88.1 },
       "overall": 1.132,
-      "rank": { "Touge": 19, "Mountain": 19, "Wangan": 21, "Circuit": 17, "Overall": 19 }
+      "rank": { "Touge": 20, "Mountain": 20, "Wangan": 21, "Circuit": 18, "Overall": 20 }
     },
     {
       "n": "Porsche 911 Turbo (930)",
@@ -359,7 +377,7 @@
       "top": 260,
       "t": { "Touge": 227.9, "Mountain": 111.4, "Wangan": 191.7, "Circuit": 88.2 },
       "overall": 1.133,
-      "rank": { "Touge": 27, "Mountain": 21, "Wangan": 16, "Circuit": 19, "Overall": 20 }
+      "rank": { "Touge": 28, "Mountain": 22, "Wangan": 17, "Circuit": 20, "Overall": 21 }
     },
     {
       "n": "Subaru Impreza WRX STI (GC8)",
@@ -377,7 +395,7 @@
       "top": 230,
       "t": { "Touge": 225, "Mountain": 110.8, "Wangan": 196.2, "Circuit": 88.3 },
       "overall": 1.135,
-      "rank": { "Touge": 15, "Mountain": 17, "Wangan": 29, "Circuit": 21, "Overall": 21 }
+      "rank": { "Touge": 16, "Mountain": 18, "Wangan": 29, "Circuit": 22, "Overall": 22 }
     },
     {
       "n": "Autech Stagea 260RS (WGNC34)",
@@ -395,7 +413,7 @@
       "top": 250,
       "t": { "Touge": 230.3, "Mountain": 111.9, "Wangan": 192.5, "Circuit": 88.4 },
       "overall": 1.139,
-      "rank": { "Touge": 34, "Mountain": 24, "Wangan": 18, "Circuit": 22, "Overall": 22 }
+      "rank": { "Touge": 34, "Mountain": 24, "Wangan": 19, "Circuit": 23, "Overall": 23 }
     },
     {
       "n": "Ferrari Testarossa (F113)",
@@ -413,25 +431,7 @@
       "top": 290,
       "t": { "Touge": 233.2, "Mountain": 112.4, "Wangan": 187.7, "Circuit": 89.4 },
       "overall": 1.14,
-      "rank": { "Touge": 40, "Mountain": 26, "Wangan": 11, "Circuit": 25, "Overall": 23 }
-    },
-    {
-      "n": "Nissan Skyline GT-R (BNR32)",
-      "y": 1989,
-      "q": 280,
-      "ig": true,
-      "ps": 320,
-      "kg": 1430,
-      "pw": 224,
-      "mu": 0.88,
-      "grip": 32,
-      "dt": "AWD",
-      "deliv": "twin-t",
-      "z": 5,
-      "top": 250,
-      "t": { "Touge": 229.9, "Mountain": 111.9, "Wangan": 192.8, "Circuit": 89.1 },
-      "overall": 1.141,
-      "rank": { "Touge": 33, "Mountain": 22, "Wangan": 19, "Circuit": 24, "Overall": 24 }
+      "rank": { "Touge": 40, "Mountain": 26, "Wangan": 11, "Circuit": 25, "Overall": 24 }
     },
     {
       "n": "Toyota Celica GT-Four (ST205)",
@@ -449,7 +449,7 @@
       "top": 246,
       "t": { "Touge": 227.8, "Mountain": 112, "Wangan": 194.7, "Circuit": 89.1 },
       "overall": 1.142,
-      "rank": { "Touge": 25, "Mountain": 25, "Wangan": 24, "Circuit": 23, "Overall": 25 }
+      "rank": { "Touge": 26, "Mountain": 25, "Wangan": 24, "Circuit": 24, "Overall": 25 }
     },
     {
       "n": "Honda Integra Type R (DC2)",
@@ -467,7 +467,7 @@
       "top": 233,
       "t": { "Touge": 225.2, "Mountain": 111.9, "Wangan": 199.9, "Circuit": 89.4 },
       "overall": 1.147,
-      "rank": { "Touge": 17, "Mountain": 23, "Wangan": 39, "Circuit": 26, "Overall": 26 }
+      "rank": { "Touge": 18, "Mountain": 23, "Wangan": 39, "Circuit": 26, "Overall": 26 }
     },
     {
       "n": "Toyota MR2 GT-S (SW20)",
@@ -485,7 +485,7 @@
       "top": 240,
       "t": { "Touge": 227.9, "Mountain": 113.2, "Wangan": 196, "Circuit": 89.5 },
       "overall": 1.148,
-      "rank": { "Touge": 26, "Mountain": 33, "Wangan": 28, "Circuit": 27, "Overall": 27 }
+      "rank": { "Touge": 27, "Mountain": 33, "Wangan": 28, "Circuit": 27, "Overall": 27 }
     },
     {
       "n": "Honda Civic Type R (EK9)",
@@ -503,7 +503,7 @@
       "top": 228,
       "t": { "Touge": 226, "Mountain": 112.8, "Wangan": 199.5, "Circuit": 89.8 },
       "overall": 1.151,
-      "rank": { "Touge": 20, "Mountain": 28, "Wangan": 36, "Circuit": 30, "Overall": 28 }
+      "rank": { "Touge": 21, "Mountain": 28, "Wangan": 36, "Circuit": 30, "Overall": 28 }
     },
     {
       "n": "Mercedes 190E 2.5-16 Evo II (W201)",
@@ -521,7 +521,7 @@
       "top": 250,
       "t": { "Touge": 227.9, "Mountain": 113, "Wangan": 198.3, "Circuit": 89.8 },
       "overall": 1.152,
-      "rank": { "Touge": 28, "Mountain": 31, "Wangan": 35, "Circuit": 29, "Overall": 29 }
+      "rank": { "Touge": 29, "Mountain": 31, "Wangan": 35, "Circuit": 29, "Overall": 29 }
     },
     {
       "n": "BMW M3 (E36)",
@@ -557,7 +557,7 @@
       "top": 220,
       "t": { "Touge": 227, "Mountain": 112.6, "Wangan": 199.9, "Circuit": 90.1 },
       "overall": 1.153,
-      "rank": { "Touge": 24, "Mountain": 27, "Wangan": 38, "Circuit": 33, "Overall": 31 }
+      "rank": { "Touge": 25, "Mountain": 27, "Wangan": 38, "Circuit": 33, "Overall": 31 }
     },
     {
       "n": "Toyota Altezza RS200 Z Edition (SXE10)",
@@ -575,7 +575,7 @@
       "top": 230,
       "t": { "Touge": 226.7, "Mountain": 112.8, "Wangan": 200.7, "Circuit": 89.6 },
       "overall": 1.153,
-      "rank": { "Touge": 22, "Mountain": 29, "Wangan": 42, "Circuit": 28, "Overall": 32 }
+      "rank": { "Touge": 23, "Mountain": 29, "Wangan": 42, "Circuit": 28, "Overall": 32 }
     },
     {
       "n": "Nissan Silvia K's (S14)",
@@ -593,25 +593,7 @@
       "top": 235,
       "t": { "Touge": 229, "Mountain": 113.5, "Wangan": 197.9, "Circuit": 89.8 },
       "overall": 1.154,
-      "rank": { "Touge": 29, "Mountain": 35, "Wangan": 34, "Circuit": 32, "Overall": 33 }
-    },
-    {
-      "n": "Mitsubishi GTO Twin Turbo (Z16A)",
-      "y": 1990,
-      "q": 280,
-      "ig": false,
-      "ps": 300,
-      "kg": 1710,
-      "pw": 175,
-      "mu": 0.89,
-      "grip": 34,
-      "dt": "AWD",
-      "deliv": "twin-t",
-      "z": 5.3,
-      "top": 279,
-      "t": { "Touge": 234.5, "Mountain": 113.5, "Wangan": 195.8, "Circuit": 89.8 },
-      "overall": 1.158,
-      "rank": { "Touge": 47, "Mountain": 36, "Wangan": 26, "Circuit": 31, "Overall": 34 }
+      "rank": { "Touge": 30, "Mountain": 35, "Wangan": 34, "Circuit": 31, "Overall": 33 }
     },
     {
       "n": "Honda CR-X SiR (EF8)",
@@ -629,7 +611,25 @@
       "top": 243,
       "t": { "Touge": 226.3, "Mountain": 113, "Wangan": 202.9, "Circuit": 90.4 },
       "overall": 1.159,
-      "rank": { "Touge": 21, "Mountain": 30, "Wangan": 46, "Circuit": 36, "Overall": 35 }
+      "rank": { "Touge": 22, "Mountain": 30, "Wangan": 46, "Circuit": 36, "Overall": 34 }
+    },
+    {
+      "n": "Mitsubishi GTO Twin Turbo (Z16A)",
+      "y": 1990,
+      "q": 280,
+      "ig": false,
+      "ps": 300,
+      "kg": 1710,
+      "pw": 175,
+      "mu": 0.89,
+      "grip": 34,
+      "dt": "AWD",
+      "deliv": "twin-t",
+      "z": 5.3,
+      "top": 268,
+      "t": { "Touge": 235, "Mountain": 113.6, "Wangan": 195.9, "Circuit": 89.9 },
+      "overall": 1.159,
+      "rank": { "Touge": 47, "Mountain": 36, "Wangan": 26, "Circuit": 32, "Overall": 35 }
     },
     {
       "n": "Mazda Familia GT-R (BG8Z)",
@@ -647,7 +647,7 @@
       "top": 230,
       "t": { "Touge": 229, "Mountain": 114.1, "Wangan": 199.8, "Circuit": 90.3 },
       "overall": 1.16,
-      "rank": { "Touge": 31, "Mountain": 38, "Wangan": 37, "Circuit": 34, "Overall": 36 }
+      "rank": { "Touge": 32, "Mountain": 38, "Wangan": 37, "Circuit": 34, "Overall": 36 }
     },
     {
       "n": "Nissan Pulsar GTI-R (RNN14)",
@@ -665,7 +665,7 @@
       "top": 232,
       "t": { "Touge": 229, "Mountain": 113.3, "Wangan": 201.6, "Circuit": 90.6 },
       "overall": 1.162,
-      "rank": { "Touge": 32, "Mountain": 34, "Wangan": 44, "Circuit": 37, "Overall": 37 }
+      "rank": { "Touge": 33, "Mountain": 34, "Wangan": 44, "Circuit": 37, "Overall": 37 }
     },
     {
       "n": "Toyota Soarer (JZZ30)",
@@ -863,7 +863,7 @@
       "top": 218,
       "t": { "Touge": 229, "Mountain": 115.8, "Wangan": 209.5, "Circuit": 92.7 },
       "overall": 1.187,
-      "rank": { "Touge": 30, "Mountain": 45, "Wangan": 54, "Circuit": 50, "Overall": 48 }
+      "rank": { "Touge": 31, "Mountain": 45, "Wangan": 54, "Circuit": 50, "Overall": 48 }
     },
     {
       "n": "Honda Civic SiR-II (EG6)",
