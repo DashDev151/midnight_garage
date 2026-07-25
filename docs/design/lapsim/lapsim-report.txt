@@ -130,3 +130,4 @@ car                                     PS    kg   mu  0-100  top   PREDICTED
 Integra Type R (DC2, US 2001)          198  1197 0.88   6.3  233      110.3
 RX-7 Type R (FD3S, 1992)               256  1260 0.89   5.5  250      107.3
 Skyline GT-R (BNR32, 1992)             280  1480 0.88   5.2  250      110.2
+GTO Twin Turbo (1997)                  324  1680 0.93   5.0  288      104.9

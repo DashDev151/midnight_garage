@@ -654,6 +654,19 @@ const PREDICT = [
     kg: 1480,
     fr: 59,
   },
+  // Round 2: the discriminating test. AWD and heavy, with unambiguous power, so it
+  // separates "our AWD/heavy modelling is short" from "the R32 is a special case".
+  // `y` matters: it selects the tyre-era band, and Forza's car is the 1997, not our
+  // spec book's 1990.
+  {
+    n: 'Mitsubishi GTO Twin Turbo (Z16A)',
+    as: 'GTO Twin Turbo (1997)',
+    y: 1997,
+    ps: 324,
+    tq: 427,
+    kg: 1680,
+    fr: 61,
+  },
 ]
 console.error('\n# Blind predictions, Misaki International Raceway')
 console.error('car                                     PS    kg   mu  0-100  top   PREDICTED')
@@ -665,6 +678,8 @@ PREDICT.forEach((p) => {
   if (p.tq != null) c.tq = p.tq
   if (p.kg != null) c.kg = p.kg
   if (p.fr != null) c.fr = p.fr
+  if (p.y != null) c.y = p.y
+  if (p.top != null) c.top = p.top
   const b = carBlock(c)
   console.error(
     (p.as || c.n).padEnd(38) +

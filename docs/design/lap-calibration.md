@@ -375,7 +375,34 @@ reports its power unambiguously, so it separates "our AWD/heavy-car modelling is
 specifically is special" (ATTESA E-TS plus Super HICAS is exactly the sort of thing a point-mass
 model cannot see).
 
-## 10. Batch log
+## 10. Blind validation, round 2 (recorded 2026-07-25, BEFORE driving)
+
+One car, chosen to settle the open GT-R defect rather than to add coverage.
+
+| Car (Forza) | PS | NM | kg | front | mu | 0-100 | vmax | **PREDICTED** |
+|---|---|---|---|---|---|---|---|---|
+| 1997 Mitsubishi GTO Twin Turbo | 324 | 427 | 1680 | 61% | 0.93 | 5.0 s | 288 | **104.9 s (1:44.9)** |
+
+Fed at Forza's own stats, including its **1997** build year rather than our spec book's 1990, because
+the year selects the tyre-era band (1997 -> 0.905, against the 1990 car's 0.875). Our entry carries no
+published top speed, so the model derives 288 km/h from drag; capping it at a realistic 260 gives
+105.5 s, so the prediction is robust either way. Call it **105 +/- 0.5 s**.
+
+**Why this car settles it.** It is AWD and heavy (1680 kg), like the R32, but its power is
+unambiguous, so it cleanly separates the two surviving explanations for the GT-R's +4.6%:
+
+- **If it drives near 105**, our AWD and heavy-car modelling is sound and the **R32 is a special
+  case**: its 1989 tyre-era band plus the pre-1990 compound cap under-rate it, and ATTESA E-TS with
+  Super HICAS is exactly the sort of active chassis a point-mass model cannot see. Fix the R32 (or the
+  late-80s era treatment), not the AWD model.
+- **If it drives near 100-101** (us slow by the same ~4-5%), the defect is **systematic in AWD or
+  heavy cars**, and the era band is a red herring. Fix the model, not the car.
+
+Note the prediction already has the GTO fractionally FASTER than the R32's driven 105.4 despite being
+200 kg heavier, purely because the seven-year-newer tyre band outweighs the mass. If that ordering is
+wrong in the game, the era model is the thing to look at.
+
+## 11. Batch log
 
 | Batch | Date | Cars | Status |
 |-------|------|------|--------|
