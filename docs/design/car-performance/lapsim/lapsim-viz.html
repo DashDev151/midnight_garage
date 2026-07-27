@@ -266,6 +266,22 @@ const FLAV={
     `same runs, and it reaches <b>no lap on any other course</b>.</p>`+
     `<p><b>Overall is a weighted index, not an average</b>: ${wtxt}. 1.000 means fastest car on `+
     `every course.</p>`+
+    (KC.accMeasured==null?``:`<p><b>How much of each car is measured, and how much is predicted.</b> `+
+      `A car's acceleration is worked out from two timed runs, 0 to 97 and 0 to 161 km/h, which `+
+      `together separate how hard it launches from how much power actually reaches the road. `+
+      `<b>${KC.accMeasured} of the ${DATA.cars.length} cars have both</b>, so those two numbers `+
+      `come straight off the car. <b>${KC.accOnePoint} have only one</b> and the other half is `+
+      `predicted. <b>${KC.accPredicted} have neither</b>, and both halves are predicted from the `+
+      `cars that do: those rows carry an <i>accel est</i> badge, and every fingerprint captured `+
+      `improves them. A prediction is not a measurement however good the fit.</p>`)+
+    (KC.kAgi==null?``:`<p><b>What was fitted, and on what.</b> The direction-change weight `+
+      `(kAgi ${KC.kAgi}) is fitted on the `+
+      `${(V.misakiLaps||0)+(V.hakoneLaps||0)+(V.wanganLaps||0)} driven laps across the three lap `+
+      `courses at once, counting each course equally so no single road can dominate it. That is a `+
+      `statement about the FIT and has nothing to do with the index weights above. The brake dead `+
+      `distance (${KC.brakeD0} m) is one global value across every car that publishes two stopping `+
+      `distances. Nothing at all is fitted per car: each car's own figures are solved from its own `+
+      `measurements and reproduce them exactly.</p>`)+
     `</div>`;}
 }
 function caption(v){
@@ -286,10 +302,11 @@ function caption(v){
 }
 const VIEWS=["Overall",...DATA.courses];
 const K=DATA.constants||{};
+// The header says what the page IS. Everything about how the constants were fitted lives in the
+// folded notes: putting "equal weight per course" (which is about the FIT) a few words from the
+// index weights (which are not equal) made the two read as a contradiction.
 document.getElementById("scope").innerHTML=
-  `${DATA.cars.length} cars &middot; ${DATA.courses.length} courses` +
-  (K.accMeasured==null?"":` &middot; acceleration measured on ${K.accMeasured}, one-point on ${K.accOnePoint}, regressed on ${K.accPredicted}`) +
-  (K.kAgi==null?"":` &middot; direction change kAgi ${K.kAgi}, fitted on ${(V.misakiLaps||0)+(V.hakoneLaps||0)+(V.wanganLaps||0)} driven laps across Misaki, Hakone and Wangan at equal weight per course &middot; brake dead distance ${K.brakeD0} m`);
+  `${DATA.cars.length} cars &middot; ${DATA.courses.length} courses`;
 document.getElementById("figbtn").textContent=`Playable ${DATA.cars.filter(c=>c.ig).length}`;
 document.getElementById("fallbtn").textContent=`All ${DATA.cars.length}`;
 // Three states, not two: a measured curve, a curve with one measurement and one estimate, and
