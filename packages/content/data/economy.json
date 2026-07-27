@@ -218,6 +218,14 @@
         "accelLaunch": [-1.210155, 0.13001, 0.058427, 0.346372],
         "accelPower": [1.710061, 0.057124, -0.024687, -0.175188]
       }
+    },
+    "condition": {
+      "bandFactor": {
+        "grip": { "mint": 1.0, "fine": 0.975, "worn": 0.935, "poor": 0.875, "scrap": 0.8 },
+        "braking": { "mint": 1.0, "fine": 0.98, "worn": 0.95, "poor": 0.9, "scrap": 0.84 },
+        "driveline": { "mint": 1.0, "fine": 0.995, "worn": 0.98, "poor": 0.96, "scrap": 0.93 },
+        "aero": { "mint": 1.0, "fine": 0.99, "worn": 0.96, "poor": 0.9, "scrap": 0.8 }
+      }
     }
   },
   "bands": {

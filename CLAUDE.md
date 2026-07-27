@@ -60,8 +60,9 @@ README is the design of record, including the list of what is still outstanding.
 game's physics**: `packages/sim/src/performance.ts` runs it and `courses.json` ships its four
 calibrated courses, with `packages/sim/tests/harnessAcceptance.test.ts` holding every shipped car
 on every shipped course to a tenth of a second of the harness. What a part's CONDITION does to
-performance, and what an AFTERMARKET part does to it, are still undesigned. Sprint 126 was
-overtaken before it was built and its lever table is dead.
+performance landed as Sprint 129 (four physical dials driven off the taxonomy's `physicalWeights`,
+on PROVISIONAL curves in `statFormulas.condition`); what an AFTERMARKET part does to it is still
+undesigned. Sprint 126 was overtaken before it was built and its lever table is dead.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file

@@ -1,10 +1,13 @@
 import {
   ALL_CAR_PART_IDS,
+  PhysicalDialSchema,
   type CarInstance,
   type CarModel,
   type CarPartTaxonomyEntry,
+  type ConditionBand,
   type EconomyConfig,
   type Part,
+  type PhysicalDial,
   type StatBlock,
 } from '@midnight-garage/content'
 import { bandFactor, isPartMissing, isPartPresent } from './bands'
@@ -14,6 +17,7 @@ import {
   effectiveDownforce,
   effectiveGrip,
   gripToDisplay,
+  type ConditionFactors,
 } from './performance'
 
 function clamp(value: number, min: number, max: number): number {
@@ -23,17 +27,20 @@ function clamp(value: number, min: number, max: number): number {
 type StatKey = 'power' | 'handling' | 'style' | 'reliability'
 
 /**
- * How well a stat is served by the car's real parts - a weighted mean of
- * `bandFactor` across every taxonomy part that contributes to `stat` at
- * all (`statWeights[stat] > 0`), weighted by that part's own weight.
- * Self-derives from `parts-taxonomy.json`'s `statWeights` rather than a
- * second, hand-maintained list of "which parts feed power" - one source of
- * truth (content law), so a part's stat contribution can never drift out
- * of sync between the taxonomy and this formula. A legitimately-empty
- * forced-induction slot (NA car) simply drops out of `power`'s weighted
- * mean. Returns 1 (as if every contributing part were mint) when nothing
- * on the car contributes to `stat` at all, so a degenerate taxonomy entry
- * never divides by zero.
+ * How well one quantity is served by the car's real parts - a weighted mean of
+ * a band curve across every taxonomy part that carries a weight for it,
+ * weighted by that part's own weight. `weightOf` picks the weight column out of
+ * a taxonomy entry and `factorOf` says what a band is worth on that column, so
+ * the same traversal answers both an abstract stat and a physical dial rather
+ * than either growing its own walker.
+ *
+ * Self-derives from `parts-taxonomy.json`'s own weights rather than a second,
+ * hand-maintained list of "which parts feed power" - one source of truth
+ * (content law), so a part's contribution can never drift out of sync between
+ * the taxonomy and this formula. A legitimately-empty forced-induction slot
+ * (NA car) simply drops out of `power`'s weighted mean. Returns 1 (as if every
+ * contributing part were mint) when nothing on the car carries a weight at all,
+ * so a quantity no part reaches never divides by zero.
  *
  * A MISSING part (`isPartMissing` - a real defect, not the legitimate
  * NA-forced-induction case) counts at a 0 band factor rather than
@@ -41,6 +48,28 @@ type StatKey = 'power' | 'handling' | 'style' | 'reliability'
  * not quietly vanish from the formula the way a car that never had a
  * turbo correctly does.
  */
+function weightedBandFactor(
+  car: CarInstance,
+  model: CarModel,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  weightOf: (entry: CarPartTaxonomyEntry) => number,
+  factorOf: (band: ConditionBand) => number,
+): number {
+  let weightedSum = 0
+  let totalWeight = 0
+  for (const entry of partsTaxonomy) {
+    const weight = weightOf(entry)
+    if (!weight) continue
+    const installed = car.parts[entry.id].installed
+    if (!isPartPresent(car, entry.id) && !isPartMissing(car, model, entry.id)) continue
+    weightedSum += weight * (installed ? factorOf(installed.band) : 0)
+    totalWeight += weight
+  }
+  return totalWeight > 0 ? weightedSum / totalWeight : 1
+}
+
+/** `weightedBandFactor` over the taxonomy's `statWeights`, on the value-side
+ * band curve - the condition input to every one of the five derived stats. */
 function weightedBandFactorForStat(
   car: CarInstance,
   model: CarModel,
@@ -48,17 +77,44 @@ function weightedBandFactorForStat(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): number {
-  let weightedSum = 0
-  let totalWeight = 0
-  for (const entry of partsTaxonomy) {
-    const weight = entry.statWeights[stat]
-    if (!weight) continue
-    const installed = car.parts[entry.id].installed
-    if (!isPartPresent(car, entry.id) && !isPartMissing(car, model, entry.id)) continue
-    weightedSum += weight * (installed ? bandFactor(installed.band, economy) : 0)
-    totalWeight += weight
+  return weightedBandFactor(
+    car,
+    model,
+    partsTaxonomy,
+    (entry) => entry.statWeights[stat],
+    (band) => bandFactor(band, economy),
+  )
+}
+
+/**
+ * The same traversal over the taxonomy's `physicalWeights`, on each dial's own
+ * far gentler curve: how much grip, braking, driveline and downforce the car
+ * still delivers. This is the ONLY route condition takes into the performance
+ * model, and each dial has exactly one path into it, so nothing is charged
+ * twice. Engine condition is absent by design - it reaches the model through
+ * the car's current power instead.
+ *
+ * Every dial is exactly 1.0 for a car whose relevant parts are all mint, so a
+ * car in good order runs on its measured figures untouched.
+ */
+export function physicalConditionFactors(
+  car: CarInstance,
+  model: CarModel,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): ConditionFactors {
+  const curves = economy.statFormulas.condition.bandFactor
+  const factors = {} as Record<PhysicalDial, number>
+  for (const dial of PhysicalDialSchema.options) {
+    factors[dial] = weightedBandFactor(
+      car,
+      model,
+      partsTaxonomy,
+      (entry) => entry.physicalWeights[dial],
+      (band) => curves[dial][band],
+    )
   }
-  return totalWeight > 0 ? weightedSum / totalWeight : 1
+  return factors
 }
 
 /**
@@ -75,8 +131,10 @@ function weightedBandFactorForStat(
  * tyre's effective compound and the downforce the car is actually running, less
  * a balance penalty; condition and part modifiers then scale and adjust it
  * exactly like every other stat. The grip it reads is `effectiveGrip`, the same
- * quantity the lap model corners on, so a car whose grip was measured cannot
- * show a handling number its own lap time disagrees with.
+ * quantity the lap model corners on, and it is read through the same physical
+ * grip and aero condition factors the lap runs on, so a car whose grip was
+ * measured cannot show a handling number its own lap time disagrees with,
+ * worn or not.
  *
  * Every condition input is `weightedBandFactorForStat` above, self-derived
  * from the taxonomy's own `statWeights` rather than a fixed per-stat
@@ -109,10 +167,11 @@ export function computeDerivedStats(
   )
   const compound = effectiveCompound(instance, model, partsById, grip)
   const downforce = effectiveDownforce(instance, model, partsById, aero)
+  const physical = physicalConditionFactors(instance, model, partsTaxonomy, economy)
   const mintHandling =
     gripToDisplay(
-      effectiveGrip(model, compound, grip, aero),
-      downforce.downforceCoeff,
+      effectiveGrip(model, compound, grip, aero, physical.grip),
+      downforce.downforceCoeff * physical.aero,
       grip,
       aero,
     ) -

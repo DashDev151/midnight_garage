@@ -3,6 +3,28 @@ import { CarPartIdSchema, ComponentIdSchema } from './tags'
 import { StatModifierSchema } from './stats'
 
 /**
+ * How much this part's condition band degrades each physical dial of the
+ * performance model, weighted against every other part that reaches the same
+ * dial. Zero (the default) on every dial the part has no physical bearing on,
+ * which is most parts on most dials.
+ *
+ * `grip` and `braking` must stay DISJOINT part sets, and `tyres` belongs to
+ * `grip` alone. The two dials are not independent: the model derives the
+ * braking coefficient from mechanical grip (`bmu = brakeRatio * mu`), so a part
+ * weighted on both would reach braking twice, once through `mu` and once
+ * through the dial. Tyre condition is already carried at the right magnitude by
+ * the `mu` path, since braking and cornering both scale roughly proportionally
+ * with tyre grip; the `braking` dial carries what the brake HARDWARE
+ * contributes on top, which is what its name says.
+ */
+export const PhysicalWeightsSchema = z.object({
+  grip: z.number().nonnegative().default(0),
+  braking: z.number().nonnegative().default(0),
+  driveline: z.number().nonnegative().default(0),
+  aero: z.number().nonnegative().default(0),
+})
+
+/**
  * How deep a slot sits in the car - `surface` (the shell/trim, repaired in
  * place, never bench-only), `bolt-on` (one removal step), `buried` (behind
  * other parts, the deepest jobs). Drives which slots are bench-only
@@ -56,6 +78,10 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * slots block nothing. */
   blockedBy: z.array(CarPartIdSchema).default([]),
   statWeights: StatModifierSchema,
+  /** This part's pull on each physical dial of the performance model - see
+   * `PhysicalWeightsSchema`. Omitted on the parts that move no dial, which
+   * resolves to zero weight everywhere. */
+  physicalWeights: PhysicalWeightsSchema.default({ grip: 0, braking: 0, driveline: 0, aero: 0 }),
 })
 
 export const CarPartTaxonomyContentSchema = z.array(CarPartTaxonomyEntryContentSchema).min(1)

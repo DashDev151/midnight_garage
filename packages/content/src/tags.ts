@@ -97,6 +97,24 @@ export const CarPartIdSchema = z.enum([
  */
 export const ConditionBandSchema = z.enum(['scrap', 'poor', 'worn', 'fine', 'mint'])
 
+/**
+ * The four physical dials a car's part condition degrades - each one a
+ * quantity the performance model runs on, and each with exactly one condition
+ * path into it: a part reaches a dial through the taxonomy's
+ * `physicalWeights`, and that dial's own band curve
+ * (`statFormulas.condition.bandFactor`) says what a band costs it.
+ *
+ * The dials are not all independent of each other, and the weights have to
+ * respect that: braking is DERIVED from mechanical grip in the model, so a part
+ * weighted on both `grip` and `braking` would reach braking twice. Those two
+ * part sets stay disjoint.
+ *
+ * There is deliberately no `power` dial. Engine condition already reaches the
+ * model through the car's CURRENT power, so a second factor would charge a
+ * worn engine twice and stop the model reproducing its own measurements.
+ */
+export const PhysicalDialSchema = z.enum(['grip', 'braking', 'driveline', 'aero'])
+
 export const GradeSchema = z.enum(['stock', 'street', 'sport', 'race'])
 
 /**
@@ -128,6 +146,7 @@ export type Tag = z.infer<typeof TagSchema>
 export type ComponentId = z.infer<typeof ComponentIdSchema>
 export type CarPartId = z.infer<typeof CarPartIdSchema>
 export type ConditionBand = z.infer<typeof ConditionBandSchema>
+export type PhysicalDial = z.infer<typeof PhysicalDialSchema>
 export type Grade = z.infer<typeof GradeSchema>
 export type TyreCompound = z.infer<typeof TyreCompoundSchema>
 export type RarityTier = z.infer<typeof RarityTierSchema>

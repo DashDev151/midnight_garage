@@ -5,8 +5,29 @@ import {
   type Course,
   type EconomyConfig,
   type Part,
+  type PhysicalDial,
   type TyreCompound,
 } from '@midnight-garage/content'
+
+/**
+ * How much of each physical dial a car's parts still deliver, 1.0 being a car
+ * in good order. The measured figures every formula below is built on describe
+ * a stock car in good order, so this is the one place condition enters the
+ * physics, and every dial is exactly 1.0 at mint.
+ *
+ * `derivedStats.ts` computes these from the taxonomy's `physicalWeights`; this
+ * file only spends them.
+ */
+export type ConditionFactors = Readonly<Record<PhysicalDial, number>>
+
+/** A car whose every physical dial is in good order - the neutral element, and
+ * what a caller that has no condition to state gets. */
+export const MINT_CONDITION_FACTORS: ConditionFactors = {
+  grip: 1,
+  braking: 1,
+  driveline: 1,
+  aero: 1,
+}
 
 /** The handling model's content block - every grip, balance, and display-curve
  * constant. */
@@ -324,24 +345,27 @@ export function factoryDownforceCoeff(model: CarModel, aero: AeroConfig): number
 
 /**
  * The mechanical lateral grip a car actually corners on, fitted with
- * `compound`. Where a car publishes a measured lateral pair, the measurement IS
- * its stock grip and the formula supplies only the PROPORTION a change of tyre
- * moves it by; with no measurement the ratio is taken against the formula
- * itself and the result is the formula's own value exactly.
+ * `compound` and worn to `conditionFactor`. Where a car publishes a measured
+ * lateral pair, the measurement IS its stock grip and the formula supplies only
+ * the PROPORTION a change of tyre moves it by; with no measurement the ratio is
+ * taken against the formula itself and the result is the formula's own value
+ * exactly.
  *
  * The lap and the handling readout both read grip from here, so a measured
  * car's displayed handling and its lap time can never disagree about how much
- * grip it has.
+ * grip it has - which is why the grip dial's condition factor is applied here
+ * rather than at either call site.
  */
 export function effectiveGrip(
   model: CarModel,
   compound: TyreCompound | undefined,
   grip: GripConfig,
   aero: AeroConfig,
+  conditionFactor = 1,
 ): number {
   const formulaStockMu = computeGrip(model, model.spec.tyreCompound, grip)
   const stockMu = measuredGripOf(model, aero)?.mu ?? formulaStockMu
-  return stockMu * (computeGrip(model, compound, grip) / formulaStockMu)
+  return stockMu * (computeGrip(model, compound, grip) / formulaStockMu) * conditionFactor
 }
 
 function factoryAeroOf(model: CarModel, aero: AeroConfig): AeroEffect {
@@ -731,10 +755,19 @@ interface CarBlock {
 }
 
 /**
- * Assembles a car's run constants at its CURRENT power and fitted compound. The
- * stock solve supplies the ratios; the car's own figures supply the scale, so a
- * turbo raises effective power and a stickier tyre raises grip, braking and
- * launch together in the proportion the grip formula predicts.
+ * Assembles a car's run constants at its CURRENT power, fitted compound and
+ * parts condition. The stock solve supplies the ratios; the car's own figures
+ * supply the scale, so a turbo raises effective power and a stickier tyre
+ * raises grip, braking and launch together in the proportion the grip formula
+ * predicts.
+ *
+ * Each condition dial lands on exactly one quantity here. The grip dial is
+ * already inside `mu` (so it reaches braking and launch the same way a change
+ * of tyre does), the braking dial is what worn brakes cost ON TOP of the rubber,
+ * the driveline dial is the fraction of crank power that still reaches the road,
+ * and the aero dial is how much downforce damaged bodywork still makes. No
+ * dial for power: `powerPs` is the car's CURRENT power and already carries
+ * engine condition.
  */
 function carBlock(
   model: CarModel,
@@ -744,12 +777,13 @@ function carBlock(
   grip: GripConfig,
   aero: AeroConfig,
   aeroEffect: AeroEffect,
+  condition: ConditionFactors,
 ): CarBlock {
   const formulaStockMu = computeGrip(model, model.spec.tyreCompound, grip)
   const stock = stockBehaviourOf(model, formulaStockMu, pace, aero)
-  const mu = effectiveGrip(model, compound, grip, aero)
+  const mu = effectiveGrip(model, compound, grip, aero, condition.grip)
 
-  const crankPowerW = powerPs * pace.psWatts * pace.drivelineEfficiency
+  const crankPowerW = powerPs * pace.psWatts * pace.drivelineEfficiency * condition.driveline
   const cdA =
     ((model.spec.dragCd ?? DRAG_CD_FALLBACK) + aeroEffect.dragCdDelta) * frontalAreaM2(model, pace)
 
@@ -758,10 +792,10 @@ function carBlock(
     crankPowerW,
     effectivePowerW: stock.powerRatio * crankPowerW,
     mu,
-    brakeMu: stock.brakeRatio * mu,
+    brakeMu: stock.brakeRatio * mu * condition.braking,
     launchAccel: stock.launchRatio * mu * pace.gravity,
     cdA,
-    downforceCoeff: aeroEffect.downforceCoeff,
+    downforceCoeff: aeroEffect.downforceCoeff * condition.aero,
   }
 }
 
@@ -991,7 +1025,9 @@ function dragRun(block: CarBlock, lengthM: number, vCap: number, pace: PaceConfi
 
 /**
  * Time (raw seconds, unrounded) for `model` over `course` at `powerPs` on
- * `compound` tyres. `aeroEffect` defaults to the car's own factory bodywork.
+ * `compound` tyres. `aeroEffect` defaults to the car's own factory bodywork and
+ * `condition` to a car in good order, which is the state the measured figures
+ * describe.
  *
  * A `lap` course is walked corner by corner; a `standing-km` course is run flat
  * out from rest by its own evaluator, because a road with no corners cannot be
@@ -1004,13 +1040,14 @@ export function lapTime(
   compound: TyreCompound | undefined,
   economy: EconomyConfig,
   aeroEffect?: AeroEffect,
+  condition: ConditionFactors = MINT_CONDITION_FACTORS,
 ): number {
   const pace = economy.statFormulas.pace
   const grip = economy.statFormulas.grip
   const aero = economy.statFormulas.aero
 
   const effect = aeroEffect ?? factoryAeroOf(model, aero)
-  const block = carBlock(model, powerPs, compound, pace, grip, aero, effect)
+  const block = carBlock(model, powerPs, compound, pace, grip, aero, effect, condition)
   const vTop = vTopOf(block, model, pace)
 
   if (course.kind === 'standing-km') {

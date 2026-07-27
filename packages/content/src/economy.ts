@@ -311,6 +311,19 @@ export const CurveSchema = z
   })
 
 /**
+ * One physical dial's condition curve: the fraction of that dial a car still
+ * delivers at each band. Mint is 1.0 by construction, so a car in good order
+ * runs on its measured figures exactly.
+ */
+const PhysicalConditionCurveSchema = z.object({
+  mint: z.number().positive(),
+  fine: z.number().positive(),
+  worn: z.number().positive(),
+  poor: z.number().positive(),
+  scrap: z.number().positive(),
+})
+
+/**
  * Designer-tunable economy/auction numbers live here (content law), threaded
  * through `SimContext` like every other content file.
  */
@@ -848,6 +861,36 @@ export const EconomyConfigSchema = z.object({
         brake: z.tuple([z.number(), z.number(), z.number()]),
         accelLaunch: z.tuple([z.number(), z.number(), z.number(), z.number()]),
         accelPower: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+      }),
+    }),
+    /**
+     * What CONDITION does to the physical dials. A dial's factor is the
+     * weighted mean of its curve here across the parts that reach it
+     * (`physicalWeights` in parts-taxonomy.json), and it multiplies that dial
+     * directly: `grip` the car's mechanical grip, `braking` its braking
+     * coefficient, `driveline` the crank-to-wheel conversion, `aero` its
+     * downforce coefficient.
+     *
+     * Deliberately separate from `bands.bandFactors`. That curve is right for a
+     * stat CONTRIBUTION and catastrophic as a multiplier on physics: at its
+     * scrap value of 0.15 a car's grip coefficient would land near 0.13 and it
+     * would not move. These curves are far gentler, and mint is exactly 1.000
+     * on every dial, so a car in good order reproduces its measured figures to
+     * the last bit.
+     *
+     * PROVISIONAL. These are first-pass values reasoned from real degradation
+     * (a perished tyre loses roughly a fifth of its dry grip; a single stop is
+     * mostly tyre-limited; a tired clutch and diff cost drivability rather than
+     * steady-state thrust; a cracked splitter loses real downforce), not
+     * measurements. No driven data exists for a worn car, and every one of them
+     * is expected to be tuned.
+     */
+    condition: z.object({
+      bandFactor: z.object({
+        grip: PhysicalConditionCurveSchema,
+        braking: PhysicalConditionCurveSchema,
+        driveline: PhysicalConditionCurveSchema,
+        aero: PhysicalConditionCurveSchema,
       }),
     }),
   }),

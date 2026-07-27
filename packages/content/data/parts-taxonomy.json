@@ -102,6 +102,9 @@
     "blockedBy": ["driveline", "exhaust"],
     "statWeights": {
       "reliability": 2
+    },
+    "physicalWeights": {
+      "driveline": 1
     }
   },
   {
@@ -113,6 +116,9 @@
     "blockedBy": ["gearbox"],
     "statWeights": {
       "reliability": 1
+    },
+    "physicalWeights": {
+      "driveline": 2
     }
   },
   {
@@ -122,6 +128,9 @@
     "blockedBy": ["driveline"],
     "statWeights": {
       "reliability": 1
+    },
+    "physicalWeights": {
+      "driveline": 1
     }
   },
   {
@@ -130,6 +139,9 @@
     "displayName": "Driveline",
     "statWeights": {
       "reliability": 1
+    },
+    "physicalWeights": {
+      "driveline": 2
     }
   },
   {
@@ -148,6 +160,9 @@
     "displayName": "Dampers",
     "statWeights": {
       "handling": 2
+    },
+    "physicalWeights": {
+      "grip": 2
     }
   },
   {
@@ -156,6 +171,9 @@
     "displayName": "Springs",
     "statWeights": {
       "handling": 2
+    },
+    "physicalWeights": {
+      "grip": 2
     }
   },
   {
@@ -164,6 +182,9 @@
     "displayName": "Anti-Roll Bars",
     "statWeights": {
       "handling": 2
+    },
+    "physicalWeights": {
+      "grip": 2
     }
   },
   {
@@ -172,6 +193,9 @@
     "displayName": "Steering",
     "statWeights": {
       "handling": 2
+    },
+    "physicalWeights": {
+      "grip": 1
     }
   },
   {
@@ -182,6 +206,9 @@
     "blockedBy": ["rims"],
     "statWeights": {
       "handling": 1
+    },
+    "physicalWeights": {
+      "braking": 3
     }
   },
   {
@@ -191,6 +218,9 @@
     "blockedBy": ["rims"],
     "statWeights": {
       "handling": 1
+    },
+    "physicalWeights": {
+      "braking": 2
     }
   },
   {
@@ -199,6 +229,9 @@
     "displayName": "Rims",
     "statWeights": {
       "style": 3
+    },
+    "physicalWeights": {
+      "grip": 1
     }
   },
   {
@@ -209,6 +242,9 @@
     "blockedBy": ["rims"],
     "statWeights": {
       "handling": 3
+    },
+    "physicalWeights": {
+      "grip": 3
     }
   },
   {
@@ -219,6 +255,9 @@
     "removable": false,
     "statWeights": {
       "style": 2
+    },
+    "physicalWeights": {
+      "aero": 1
     }
   },
   {
@@ -239,6 +278,9 @@
     "removable": false,
     "statWeights": {
       "style": 2
+    },
+    "physicalWeights": {
+      "aero": 1
     }
   },
   {
@@ -249,6 +291,9 @@
     "statWeights": {
       "style": 2,
       "handling": 1
+    },
+    "physicalWeights": {
+      "aero": 3
     }
   },
   {

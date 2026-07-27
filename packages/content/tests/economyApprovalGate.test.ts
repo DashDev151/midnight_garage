@@ -107,6 +107,15 @@ import storyMissions from '../data/storyMissions.json'
  * tuner taste match (0.99 -> 0.97, which follows its 180SX's handling stat). That
  * mission's power floor 235 -> 180 is a PROVISIONAL hand-set value, recorded as
  * such in the sprint doc.
+ *
+ * Re-pinned for the condition-to-physics curves approved in docs/sprints/sprint129.md
+ * ("The curves"): adds `statFormulas.condition.bandFactor`, one five-band curve per
+ * physical dial - `grip` 1.000/0.975/0.935/0.875/0.800, `braking`
+ * 1.000/0.980/0.950/0.900/0.840, `driveline` 1.000/0.995/0.980/0.960/0.930, `aero`
+ * 1.000/0.990/0.960/0.900/0.800. Every one is a PROVISIONAL first-pass value, stated
+ * as such in that doc and in the schema. Mint is exactly 1.000 on all four, so no
+ * shipped lap time, handling stat, mission ceiling or payout moves: the harness
+ * acceptance times are untouched.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -116,7 +125,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('1241657e4fe04c2a6121d013fa6e5be176288fc78348f19902c377fd8d6c11fb')
+    ).toBe('f3837ef64ff23f70dbdfdebb06f1de6e8831d7541296123a629ccf42260767bb')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
